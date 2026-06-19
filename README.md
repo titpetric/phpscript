@@ -85,39 +85,30 @@ use it, there is `stdlib.Register` and `stdlib.RegisterFS`. If you don't
 register a FS with the interpreter, `include` functionality will not
 work, as well as writing files.
 
-## A quick CLI benchmark
+## A quick HTTP benchmark
 
-Going into `test/fixtures` and running `test-minitpl.php`:
+Used: PHP 8.5.4
 
-- phpscript takes 0.015s per run
-- php 8.5.4 takes 0.026s per run
+- `php -S 0:8080` from tests/fixtures/
+- `phpscript server` from tests/fixtures/
 
-Running `phpscript server`:
+|                    | php 8.5.4     | phpscript      | multiplier    |
+|--------------------|---------------|----------------|---------------|
+| hello-world.php    | ~8000 req/sec | ~18000 req/sec | 2.25x better  |
+| test-minitpl.php   | ~5500 req/sec | ~350 req/sec   | 15x worse     |
 
-```bash
-$ wrk http://localhost:8080/test-minitpl.php
-Running 10s test @ http://localhost:8080/test-minitpl.php
-  2 threads and 10 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    33.76ms   11.07ms 128.30ms   72.60%
-    Req/Sec   148.90     19.84   190.00     72.00%
-  2973 requests in 10.02s, 389.04KB read
-Requests/sec:    296.63
-Transfer/sec:     38.82KB
-```
+More tests are needed. Currently, the project doesn't have any caching
+optimisations to skip repeating work related to parsing the source.
 
-```bash
-$ wrk http://localhost:8080/test-hello-world.php
-Running 10s test @ http://localhost:8080/test-hello-world.php
-  2 threads and 10 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   620.16us  537.23us   8.53ms   87.48%
-    Req/Sec     9.14k   827.16    17.21k    82.59%
-  182794 requests in 10.10s, 22.31MB read
-Requests/sec:  18099.61
-Transfer/sec:      2.21MB
-```
+Ideally `minitpl` can get to a comparable or better request rate than
+PHP. To consider a 30% slowdown same as with stdlib php, the expected
+request rate for phpscript is about 12,600 request per second once the
+underlying performance issue is adressed.
 
-I think there's some optimization room for phpscript here. Execution
-currently repeats the parsing steps when loading files, so there should
-be at least a third of overhead to optimize away by caching this.
+No go benchmarks have been added yet. Ideally test fixtures are also
+reused as benchmarks, to compare a native go implementation against the
+same implementation running via phpscript.
+
+## Contributing
+
+Contributions welcome. Open an issue to discuss before opening PRs.
