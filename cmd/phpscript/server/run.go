@@ -1,0 +1,135 @@
+package server
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+
+	"github.com/titpetric/cli"
+	"github.com/titpetric/platform"
+
+	"github.com/titpetric/phpscript/parser"
+	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib"
+)
+
+// Name is the command title.
+const Name = "Run php server"
+
+// NewCommand creates a new server command.
+func NewCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "server",
+		Title: Name,
+		Run: func(ctx context.Context, args []string) error {
+			return Run(ctx, args)
+		},
+	}
+}
+
+// Module implements the platform.Module interface.
+type Module struct {
+	platform.UnimplementedModule
+
+	root string
+}
+
+// NewModule creates the HTTP module.
+func NewModule(root string) *Module {
+	return &Module{
+		UnimplementedModule: *platform.NewUnimplementedModule("phpserver"),
+		root:                root,
+	}
+}
+
+// Mount registers HTTP routes.
+func (m *Module) Mount(ctx context.Context, r platform.Router) error {
+	r.Get("/*", m.handleRequest)
+	return nil
+}
+
+// handleRequest resolves the request path and renders the file.
+func (m *Module) handleRequest(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	path := r.URL.Path
+	if path == "/" {
+		path = "/index.php"
+	}
+
+	filename := filepath.Join(m.root, filepath.Clean(path))
+
+	result, headers, err := renderFile(ctx, filename, r)
+	if err != nil {
+		log.Printf("Error in request %s, %s: %s\n", path, filename, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Default content type, then apply any headers staged by PHP header().
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	for name, values := range headers {
+		w.Header()[name] = values
+	}
+	_, _ = w.Write([]byte(result))
+}
+
+// renderFile executes a .php file and returns the output plus any response
+// headers staged by the PHP header() function. The *http.Request is exposed to
+// the script via a runner.Context ($_GET/$_POST/$_PATH, getallheaders, header).
+func renderFile(ctx context.Context, filename string, r *http.Request) (string, http.Header, error) {
+	buf, err := os.ReadFile(filename)
+	if err != nil {
+		return "", nil, fmt.Errorf("error reading %s: %w", filename, err)
+	}
+
+	prog, err := parser.Parse(string(buf))
+	if err != nil {
+		return "", nil, fmt.Errorf("error parsing %s: %w", filename, err)
+	}
+
+	var out bytes.Buffer
+
+	rt := runner.New(&out)
+	rt.SetFS(os.DirFS("."), parser.Parse)
+
+	stdlib.Register(rt)
+	stdlib.RegisterFS(rt, ".")
+
+	reqCtx := runner.FromRequest(r)
+	reqCtx.Register(rt)
+
+	if err := rt.Run(prog); err != nil {
+		return "", nil, err
+	}
+
+	return out.String(), reqCtx.ResponseHeaders(), nil
+}
+
+// Run starts the platform lifecycle and waits for shutdown.
+func Run(ctx context.Context, args []string) error {
+	root := "."
+	if len(args) > 0 {
+		root = args[0]
+	}
+
+	opts := platform.NewOptions()
+	opts.ServerAddr = ":8080"
+
+	svc := platform.New(opts)
+	svc.Register(NewModule(root))
+
+	err := svc.Start(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Wait until SIGINT/SIGTERM shutdown.
+	svc.Wait()
+
+	return nil
+}

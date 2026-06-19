@@ -1,0 +1,16 @@
+tasks:
+  default:
+    cmds:
+      - goimports -w .
+      - go fmt ./...
+      - go mod tidy
+      - go test ./...
+      - go install .
+      - task: test:phpscript:run
+
+  test:phpscript:run:
+    dir: tests/fixtures
+    passthru: true
+    cmds:
+      - phpscript run test-minitpl.php
+      - php test-minitpl.php

@@ -1,0 +1,607 @@
+package runner
+
+import (
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
+	"path"
+	"path/filepath"
+	"reflect"
+	"strings"
+
+	"github.com/titpetric/phpscript/model"
+)
+
+// This file is the statement interpreter. expr-lang evaluates expressions, but
+// PHP programs are statements: control flow and mutation. The interpreter walks
+// the model.Stmt tree, owns the mutable Scope, and calls Runtime.Eval for every
+// leaf expression value.
+
+// flow signals non-local control transfer out of a statement list.
+type flow int
+
+const (
+	flowNormal flow = iota
+	flowReturn
+	flowBreak
+	flowContinue
+)
+
+// IncludeFunc resolves an include/require path to a parsed program. Wiring this
+// from the host keeps the runner free of file-system and parser dependencies.
+type IncludeFunc func(path string) (*model.Program, error)
+
+// SetIncludeResolver installs the include/require resolver.
+func (rt *Runtime) SetIncludeResolver(fn IncludeFunc) { rt.include = fn }
+
+// Run executes a whole program in the global scope.
+func (rt *Runtime) Run(p *model.Program) error {
+	scope := NewScope()
+	for name, val := range rt.globals {
+		scope.Set(name, val)
+	}
+	// Hoist declarations so functions/classes are callable before their textual
+	// position (PHP semantics for top-level function/class definitions).
+	if err := rt.hoist(p.Stmts); err != nil {
+		return err
+	}
+	_, _, err := rt.exec(p.Stmts, scope)
+	return err
+}
+
+// hoist registers all function and class declarations found at the given level.
+func (rt *Runtime) hoist(stmts []model.Stmt) error {
+	// First pass: classes, so methods can be attached.
+	classes := map[string]*model.Class{}
+	for _, s := range stmts {
+		if cd, ok := s.(*model.ClassDecl); ok {
+			c := &model.Class{Name: cd.Name, Fields: cd.Fields, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
+			for _, m := range cd.Methods {
+				c.Methods[m.Name] = m
+			}
+			classes[cd.Name] = c
+			rt.RegisterClass(c)
+		}
+	}
+	// Second pass: functions (free and the `function Class::method` form).
+	for _, s := range stmts {
+		fd, ok := s.(*model.FuncDecl)
+		if !ok {
+			continue
+		}
+		if fd.Class != "" {
+			c, ok := classes[fd.Class]
+			if !ok {
+				return fmt.Errorf("method %s::%s: unknown class", fd.Class, fd.Name)
+			}
+			c.Methods[fd.Name] = fd
+			continue
+		}
+		decl := fd
+		rt.RegisterFunc(fd.Name, func(args ...any) (any, error) {
+			return rt.invokeFunc(decl, args)
+		})
+	}
+	return nil
+}
+
+// exec runs a statement list, propagating return flow.
+func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
+	for _, s := range stmts {
+		val, fl, err := rt.execOne(s, scope)
+		if err != nil {
+			if rt.errorHandler != nil {
+				rt.errorHandler(err)
+				continue
+			}
+			return nil, flowNormal, err
+		}
+		if fl != flowNormal {
+			return val, fl, nil
+		}
+	}
+	return nil, flowNormal, nil
+}
+
+func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
+	switch n := s.(type) {
+	case *model.InlineHTML:
+		_, err := io.WriteString(rt.out, n.Text)
+		return nil, flowNormal, err
+
+	case *model.Echo:
+		for _, a := range n.Args {
+			v, err := rt.Eval(a, scope)
+			if err != nil {
+				return nil, flowNormal, err
+			}
+			if _, err := io.WriteString(rt.out, phpString(v)); err != nil {
+				return nil, flowNormal, err
+			}
+		}
+		return nil, flowNormal, nil
+
+	case *model.ExprStmt:
+		_, err := rt.Eval(n.X, scope)
+		return nil, flowNormal, err
+
+	case *model.Assign:
+		return nil, flowNormal, rt.execAssign(n, scope)
+
+	case *model.If:
+		cond, err := rt.Eval(n.Cond, scope)
+		if err != nil {
+			return nil, flowNormal, err
+		}
+		if phpTruthy(cond) {
+			return rt.exec(n.Then, scope)
+		}
+		return rt.exec(n.Else, scope)
+
+	case *model.Foreach:
+		return rt.execForeach(n, scope)
+
+	case *model.For:
+		return rt.execFor(n, scope)
+
+	case *model.Return:
+		if n.Value == nil {
+			return nil, flowReturn, nil
+		}
+		v, err := rt.Eval(n.Value, scope)
+		return v, flowReturn, err
+
+	case *model.Include:
+		return nil, flowNormal, rt.execInclude(n, scope)
+
+	case *model.Try:
+		return rt.execTry(n, scope)
+
+	case *model.Switch:
+		return rt.execSwitch(n, scope)
+
+	case *model.Break:
+		return nil, flowBreak, nil
+
+	case *model.Continue:
+		return nil, flowContinue, nil
+
+	case *model.Throw:
+		v, err := rt.Eval(n.X, scope)
+		if err != nil {
+			return nil, flowNormal, err
+		}
+		return nil, flowNormal, fmt.Errorf("uncaught exception: %s", phpString(v))
+
+	case *model.FuncDecl, *model.ClassDecl:
+		// Already handled by hoist.
+		return nil, flowNormal, nil
+
+	default:
+		return nil, flowNormal, fmt.Errorf("exec: unsupported statement %T", s)
+	}
+}
+
+func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error) {
+	src, err := rt.Eval(n.Source, scope)
+	if err != nil {
+		return nil, flowNormal, err
+	}
+	var (
+		val   any
+		ret   flow
+		retOK bool
+	)
+	// iter runs the loop body for one (key, value) pair, returning whether to
+	// continue iterating. It records any error / non-normal flow in the
+	// enclosing variables.
+	iter := func(k, v any) bool {
+		if n.KeyVar != "" {
+			scope.Set(n.KeyVar, k)
+		}
+		scope.Set(n.ValVar, v)
+		var fl flow
+		val, fl, err = rt.exec(n.Body, scope)
+		if err != nil {
+			return false
+		}
+		switch fl {
+		case flowReturn:
+			ret, retOK = flowReturn, true
+			return false
+		case flowBreak:
+			return false
+		case flowContinue:
+			return true
+		}
+		return true
+	}
+
+	switch src := src.(type) {
+	case *model.Array:
+		src.Range(iter)
+	default:
+		// Native Go collections (e.g. a []Record returned by a forwarded
+		// method) are iterable too: slices/arrays by integer index, maps by key.
+		rv := reflect.ValueOf(src)
+		switch rv.Kind() {
+		case reflect.Slice, reflect.Array:
+			for i := 0; i < rv.Len(); i++ {
+				if !iter(int64(i), rv.Index(i).Interface()) {
+					break
+				}
+			}
+		case reflect.Map:
+			for _, mk := range rv.MapKeys() {
+				if !iter(mk.Interface(), rv.MapIndex(mk).Interface()) {
+					break
+				}
+			}
+		}
+		// Any other non-iterable source is skipped (PHP warns and continues).
+	}
+
+	if err != nil {
+		return nil, flowNormal, err
+	}
+	if retOK {
+		return val, ret, nil
+	}
+	return nil, flowNormal, nil
+}
+
+func (rt *Runtime) execFor(n *model.For, scope *Scope) (any, flow, error) {
+	if n.Init != nil {
+		if _, _, err := rt.execOne(n.Init, scope); err != nil {
+			return nil, flowNormal, err
+		}
+	}
+	for {
+		if n.Cond != nil {
+			c, err := rt.Eval(n.Cond, scope)
+			if err != nil {
+				return nil, flowNormal, err
+			}
+			if !phpTruthy(c) {
+				break
+			}
+		}
+		val, fl, err := rt.exec(n.Body, scope)
+		if err != nil {
+			return nil, flowNormal, err
+		}
+		if fl == flowReturn {
+			return val, fl, nil
+		}
+		if fl == flowBreak {
+			break
+		}
+		// flowContinue / flowNormal both fall through to the post step.
+		if n.Post != nil {
+			if _, _, err := rt.execOne(n.Post, scope); err != nil {
+				return nil, flowNormal, err
+			}
+		}
+	}
+	return nil, flowNormal, nil
+}
+
+// execTry runs the try body; if it raises an error (a throw or a runtime error
+// from a forwarded Go call), the first catch clause handles it with the error
+// bound to its variable (so `echo $e` prints the message). A finally block, if
+// present, always runs. There is no exception class hierarchy, so the first
+// catch catches everything.
+func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
+	val, fl, err := rt.exec(n.Body, scope)
+	if err != nil && len(n.Catches) > 0 {
+		c := n.Catches[0]
+		if c.Var != "" {
+			// Bind the root cause so PHP sees the original message, not the
+			// transpiler's "eval ..."/"compile ..." wrapping.
+			for {
+				if unwrapped := errors.Unwrap(err); unwrapped != nil {
+					err = unwrapped
+					continue
+				}
+				break
+			}
+			scope.Set(c.Var, err)
+		}
+		val, fl, err = rt.exec(c.Body, scope)
+	}
+	if len(n.Finally) > 0 {
+		fVal, fFl, fErr := rt.exec(n.Finally, scope)
+		// A finally that returns/throws overrides the try/catch outcome.
+		if fErr != nil {
+			return fVal, flowNormal, fErr
+		}
+		if fFl != flowNormal {
+			return fVal, fFl, nil
+		}
+	}
+	return val, fl, err
+}
+
+// execSwitch evaluates the discriminant and runs matching case bodies with PHP
+// fall-through; break stops the switch, return propagates out.
+func (rt *Runtime) execSwitch(n *model.Switch, scope *Scope) (any, flow, error) {
+	cond, err := rt.Eval(n.Cond, scope)
+	if err != nil {
+		return nil, flowNormal, err
+	}
+	matched := false
+	for _, c := range n.Cases {
+		if !matched {
+			cv, err := rt.Eval(c.Value, scope)
+			if err != nil {
+				return nil, flowNormal, err
+			}
+			if !phpLooseEqual(cond, cv) {
+				continue
+			}
+			matched = true
+		}
+		val, fl, err := rt.exec(c.Body, scope)
+		if err != nil {
+			return nil, flowNormal, err
+		}
+		switch fl {
+		case flowReturn:
+			return val, flowReturn, nil
+		case flowBreak:
+			return nil, flowNormal, nil
+		case flowContinue:
+			return nil, flowContinue, nil
+		}
+	}
+	if !matched && n.Default != nil {
+		val, fl, err := rt.exec(n.Default, scope)
+		if err != nil {
+			return nil, flowNormal, err
+		}
+		switch fl {
+		case flowReturn:
+			return val, flowReturn, nil
+		case flowContinue:
+			return nil, flowContinue, nil
+		}
+	}
+	return nil, flowNormal, nil
+}
+
+func (rt *Runtime) execInclude(n *model.Include, scope *Scope) error {
+	path, err := rt.Eval(n.Path, scope)
+	if err != nil {
+		return err
+	}
+	prog, err := rt.resolveInclude(phpString(path))
+	if err != nil {
+		return fmt.Errorf("error including %s: %w", phpString(path), err)
+	}
+	if err := rt.hoist(prog.Stmts); err != nil {
+		return err
+	}
+	_, _, err = rt.exec(prog.Stmts, scope)
+	return err
+}
+
+// resolveInclude turns an include path into a parsed program, preferring an
+// explicit IncludeFunc resolver and otherwise reading from the configured fs.FS.
+func (rt *Runtime) resolveInclude(path string) (*model.Program, error) {
+	if rt.include != nil {
+		return rt.include(path)
+	}
+	if rt.fsys != nil && rt.parse != nil {
+		b, err := fs.ReadFile(rt.fsys, cleanFSPath(path))
+		if err != nil {
+			return nil, fmt.Errorf("include %q: %w", path, err)
+		}
+		prog, err := rt.parse(string(b))
+		if err != nil {
+			return nil, fmt.Errorf("parse %q: %w", path, err)
+		}
+		return prog, nil
+	}
+	return nil, fmt.Errorf("include %q: no resolver or source FS configured", path)
+}
+
+// cleanFSPath normalises an include path for fs.FS, which requires slash-rooted,
+// unrooted, dot-free paths.
+func cleanFSPath(p string) string {
+	p = filepath.ToSlash(p)
+	p = strings.TrimPrefix(p, "./")
+	p = strings.TrimPrefix(p, "/")
+	return path.Clean(p)
+}
+
+// execAssign mutates a variable, property or array element. expr-lang cannot do
+// this, so it lives entirely here.
+func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
+	rhs, err := rt.Eval(n.Value, scope)
+	if err != nil {
+		return err
+	}
+
+	switch tgt := n.Target.(type) {
+	case *model.Var:
+		cur, _ := scope.Get(tgt.Name)
+		scope.Set(tgt.Name, applyAssignOp(n.Op, cur, rhs))
+		return nil
+
+	case *model.ListExpr:
+		// list($a, $b) = $arr — destructure by position (integer keys).
+		arr, ok := rhs.(*model.Array)
+		if !ok {
+			return fmt.Errorf("assign: list() target requires an array")
+		}
+		for i, el := range tgt.Elems {
+			if el == nil {
+				continue
+			}
+			v, _ := arr.Get(int64(i))
+			if err := rt.assignTo(el, v, scope); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case *model.PropAccess:
+		base, err := rt.Eval(tgt.Base, scope)
+		if err != nil {
+			return err
+		}
+		obj, ok := base.(*model.Object)
+		if !ok {
+			return fmt.Errorf("assign: %q is not an object property", tgt.Name)
+		}
+		obj.Props[tgt.Name] = applyAssignOp(n.Op, obj.Props[tgt.Name], rhs)
+		return nil
+
+	case *model.Index:
+		base, err := rt.Eval(tgt.Base, scope)
+		if err != nil {
+			return err
+		}
+		arr, ok := base.(*model.Array)
+		if !ok {
+			return fmt.Errorf("assign: target is not an array")
+		}
+		if n.Op == "[]=" || tgt.Index == nil {
+			arr.Append(rhs)
+			return nil
+		}
+		key, err := rt.Eval(tgt.Index, scope)
+		if err != nil {
+			return err
+		}
+		k := normalizeKey(key)
+		cur, _ := arr.Get(k)
+		arr.Set(k, applyAssignOp(n.Op, cur, rhs))
+		return nil
+
+	default:
+		return fmt.Errorf("assign: unsupported target %T", n.Target)
+	}
+}
+
+// assignTo writes an already-evaluated value into an lvalue (used by list()
+// destructuring). Only plain `=` semantics are needed here.
+func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
+	switch tgt := target.(type) {
+	case *model.Var:
+		scope.Set(tgt.Name, val)
+		return nil
+	case *model.PropAccess:
+		base, err := rt.Eval(tgt.Base, scope)
+		if err != nil {
+			return err
+		}
+		obj, ok := base.(*model.Object)
+		if !ok {
+			return fmt.Errorf("assign: %q is not an object property", tgt.Name)
+		}
+		obj.Props[tgt.Name] = val
+		return nil
+	case *model.Index:
+		base, err := rt.Eval(tgt.Base, scope)
+		if err != nil {
+			return err
+		}
+		arr, ok := base.(*model.Array)
+		if !ok {
+			return fmt.Errorf("assign: target is not an array")
+		}
+		if tgt.Index == nil {
+			arr.Append(val)
+			return nil
+		}
+		key, err := rt.Eval(tgt.Index, scope)
+		if err != nil {
+			return err
+		}
+		arr.Set(normalizeKey(key), val)
+		return nil
+	default:
+		return fmt.Errorf("assign: unsupported list() element %T", target)
+	}
+}
+
+// applyAssignOp resolves compound-assignment operators against the current value.
+func applyAssignOp(op string, cur, rhs any) any {
+	switch op {
+	case "", "=", "[]=":
+		return rhs
+	case ".=":
+		return phpString(cur) + phpString(rhs)
+	case "+=":
+		return toInt(cur) + toInt(rhs)
+	case "-=":
+		return toInt(cur) - toInt(rhs)
+	default:
+		return rhs
+	}
+}
+
+// invokeFunc runs a user-defined function in a fresh scope.
+func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
+	scope := NewScope()
+	scope.Set(argsKey, args)
+	if err := rt.bindParams(decl, args, scope); err != nil {
+		return nil, err
+	}
+	val, _, err := rt.exec(decl.Body, scope)
+	return val, err
+}
+
+// invokeMethod runs a method with $this bound to obj.
+func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any) (any, error) {
+	scope := NewScope()
+	scope.Set("this", obj)
+	scope.Set(argsKey, args)
+	if obj.Class != nil {
+		scope.Set("__class__", obj.Class.Name)
+	}
+	if err := rt.bindParams(decl, args, scope); err != nil {
+		return nil, err
+	}
+	val, _, err := rt.exec(decl.Body, scope)
+	return val, err
+}
+
+// invokeClosure runs an anonymous function in a fresh scope. minitpl's closures
+// capture nothing, so no enclosing scope is threaded in.
+func (rt *Runtime) invokeClosure(cl *model.Closure, args []any) (any, error) {
+	scope := NewScope()
+	scope.Set(argsKey, args)
+	decl := &model.FuncDecl{Params: cl.Params, Body: cl.Body}
+	if err := rt.bindParams(decl, args, scope); err != nil {
+		return nil, err
+	}
+	val, _, err := rt.exec(cl.Body, scope)
+	return val, err
+}
+
+// argsKey is the scope slot holding the current call's positional arguments so
+// func_get_args() can return them.
+const argsKey = "__args__"
+
+// bindParams binds positional args to parameter names, applying defaults.
+func (rt *Runtime) bindParams(decl *model.FuncDecl, args []any, scope *Scope) error {
+	for i, p := range decl.Params {
+		if i < len(args) {
+			scope.Set(p.Name, args[i])
+			continue
+		}
+		if p.Default != nil {
+			v, err := rt.Eval(p.Default, scope)
+			if err != nil {
+				return err
+			}
+			scope.Set(p.Name, v)
+			continue
+		}
+		scope.Set(p.Name, nil)
+	}
+	return nil
+}

@@ -1,0 +1,160 @@
+package runner
+
+import (
+	"net/http"
+	"regexp"
+	"sort"
+	"strings"
+
+	"github.com/titpetric/phpscript/model"
+)
+
+// Context carries the per-request state extracted from an *http.Request and
+// exposes it to transpiled PHP. It is the bridge between Go's HTTP layer and the
+// PHP execution space: the README's "$_SERVER gray area" made concrete and
+// scoped to one request.
+//
+// The maps mirror PHP's request superglobals:
+//
+//   - Get  -> $_GET   (URL query string parameters)
+//   - Post -> $_POST  (form body parameters)
+//   - Path -> route path values, e.g. "/users/{id}" with id => "42"
+//
+// Headers holds the incoming request headers (canonical name -> value) so PHP
+// code can read them via getallheaders(); response holds headers staged by the
+// PHP header() function for the host to flush onto the http.ResponseWriter.
+//
+// The whole "API" the README wants forwarded into go-expr lives on this object:
+// Register wires the request-aware functions (getallheaders, header) into a
+// Runtime and seeds the superglobals, so PHP can call them and read the values
+// from the Go execution space directly (see runner.Eval / RegisterFunc).
+type Context struct {
+	Get     map[string]string
+	Post    map[string]string
+	Path    map[string]string
+	Headers map[string]string
+
+	// response collects headers set by the PHP header() function. It is an
+	// http.Header (a map, hence reference-shared across copies of Context) so a
+	// host handler can flush it onto the response after execution.
+	response http.Header
+}
+
+// pathVarRE matches Go 1.22+ ServeMux wildcard segments, e.g. {id} or {rest...}.
+var pathVarRE = regexp.MustCompile(`\{([a-zA-Z_][a-zA-Z0-9_]*)(\.\.\.)?\}`)
+
+// FromRequest builds a Context from an HTTP request. Query and form values are
+// flattened to their first value (PHP's scalar superglobal shape); path values
+// are pulled out of the matched ServeMux pattern via r.PathValue.
+func FromRequest(r *http.Request) Context {
+	c := Context{
+		Get:      map[string]string{},
+		Post:     map[string]string{},
+		Path:     map[string]string{},
+		Headers:  map[string]string{},
+		response: http.Header{},
+	}
+
+	// Query string ($_GET).
+	for k, v := range r.URL.Query() {
+		if len(v) > 0 {
+			c.Get[k] = v[0]
+		}
+	}
+
+	// Form body ($_POST). ParseForm is idempotent and a no-op for bodyless
+	// requests, so calling it unconditionally is safe.
+	_ = r.ParseForm()
+	for k, v := range r.PostForm {
+		if len(v) > 0 {
+			c.Post[k] = v[0]
+		}
+	}
+
+	// Path values from the matched route pattern, e.g. "GET /users/{id}".
+	// The stdlib exposes individual values via r.PathValue but no enumeration,
+	// so we recover the wildcard names from r.Pattern and look each one up.
+	for _, m := range pathVarRE.FindAllStringSubmatch(r.Pattern, -1) {
+		name := m[1]
+		if val := r.PathValue(name); val != "" {
+			c.Path[name] = val
+		}
+	}
+
+	// Request headers (canonical name -> first value).
+	for k, v := range r.Header {
+		if len(v) > 0 {
+			c.Headers[k] = v[0]
+		}
+	}
+
+	return c
+}
+
+// Register installs the request-aware PHP functions onto rt and seeds the
+// request superglobals. After this, transpiled PHP can call getallheaders() /
+// header() and read $_GET, $_POST, $_PATH — all backed by this Context.
+func (c Context) Register(rt *Runtime) {
+	// PHP header inspection.
+	rt.RegisterFunc("getallheaders", c.GetAllHeaders)
+	rt.RegisterFunc("get_all_headers", c.GetAllHeaders) // README spelling / alias
+	rt.RegisterFunc("apache_request_headers", c.GetAllHeaders)
+
+	// PHP response header emission.
+	rt.RegisterFunc("header", c.Header)
+
+	// Superglobals as ordinary PHP arrays.
+	rt.SetGlobal("_GET", mapToArray(c.Get))
+	rt.SetGlobal("_POST", mapToArray(c.Post))
+	rt.SetGlobal("_PATH", mapToArray(c.Path))
+}
+
+// GetAllHeaders implements PHP getallheaders(): an associative array of the
+// incoming request headers keyed by canonical header name.
+func (c Context) GetAllHeaders() *model.Array {
+	return mapToArray(c.Headers)
+}
+
+// Header implements PHP header($header[, $replace[, $code]]): it parses a
+// "Name: value" line and stages it on the response header set. replace controls
+// whether an existing header of the same name is overwritten (default true).
+func (c Context) Header(header string, opts ...any) {
+	name, value, ok := strings.Cut(header, ":")
+	if !ok {
+		// Status-line / valueless headers (e.g. "HTTP/1.0 404 Not Found") have
+		// no name:value shape; ignore for the simple model.
+		return
+	}
+	name = strings.TrimSpace(name)
+	value = strings.TrimSpace(value)
+
+	replace := true
+	if len(opts) > 0 {
+		replace = phpTruthy(opts[0])
+	}
+	if replace {
+		c.response.Set(name, value)
+	} else {
+		c.response.Add(name, value)
+	}
+}
+
+// ResponseHeaders returns the headers staged by the PHP header() function so a
+// host handler can copy them onto the http.ResponseWriter after execution.
+func (c Context) ResponseHeaders() http.Header { return c.response }
+
+// mapToArray converts a string map into a PHP associative array with stable,
+// alphabetical key order (Go map iteration is random; PHP callers expect a
+// deterministic shape).
+func mapToArray(m map[string]string) *model.Array {
+	arr := model.NewArray()
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		arr.Set(k, m[k])
+	}
+	return arr
+}

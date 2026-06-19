@@ -1,0 +1,319 @@
+package runner
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+	"strings"
+
+	"github.com/titpetric/phpscript/model"
+)
+
+// contextType is the reflect type of context.Context, used to detect callables
+// that want the runtime context auto-injected as their first argument.
+var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+
+// wantsContext reports whether fn's first parameter is a context.Context.
+func wantsContext(t reflect.Type) bool {
+	return t.Kind() == reflect.Func && t.NumIn() > 0 && t.In(0) == contextType
+}
+
+// invokeWithContext calls fn (any Go callable) via invokeAny, auto-prepending
+// rt.ctx when fn's first parameter is a context.Context. This mirrors vuego's
+// wrapContextFunc: PHP code supplies only the "business" arguments while the
+// lifecycle context is filled in from the runtime.
+func (rt *Runtime) invokeWithContext(fn any, args []any) (any, error) {
+	if wantsContext(reflect.TypeOf(fn)) {
+		full := make([]any, 0, len(args)+1)
+		full = append(full, rt.ctx)
+		full = append(full, args...)
+		return invokeAny(fn, full)
+	}
+	return invokeAny(fn, args)
+}
+
+// This file implements the PHP-semantic helpers injected into every expr env.
+// They encapsulate the behaviour expr-lang has no opinion about: PHP's ordered
+// hybrid arrays, lenient index/property access, dynamic method dispatch (PHP
+// objects vs. forwarded Go values), and object construction.
+//
+// Keeping these in Go (rather than emitting inline expr) means the transpiler
+// output stays small and type-agnostic, and PHP semantics have one home.
+
+// helperConcat implements PHP's `.` string concatenation with stringy coercion.
+func helperConcat(a, b any) string {
+	return phpString(a) + phpString(b)
+}
+
+// helperPair builds one array entry; key may be nil for list-style append.
+func helperPair(key, val any) model.ArrayItemValue {
+	return model.ArrayItemValue{Key: key, Val: val}
+}
+
+// helperArray constructs an ordered *model.Array from pairs, mirroring PHP's
+// array() where unkeyed items take the next integer index.
+func helperArray(items ...model.ArrayItemValue) *model.Array {
+	arr := model.NewArray()
+	for _, it := range items {
+		if it.Key == nil {
+			arr.Append(it.Val)
+		} else {
+			arr.Set(normalizeKey(it.Key), it.Val)
+		}
+	}
+	return arr
+}
+
+// helperIndex implements `base[idx]` for *Array, Go maps and Go slices/arrays.
+// Missing keys yield nil (PHP's forgiving access), not an error.
+func helperIndex(base, idx any) any {
+	switch b := base.(type) {
+	case *model.Array:
+		v, _ := b.Get(normalizeKey(idx))
+		return v
+	case string:
+		// PHP string offset: $s[$i] returns the byte at position i as a string.
+		i := toInt(idx)
+		if i < 0 {
+			i += int64(len(b))
+		}
+		if i < 0 || i >= int64(len(b)) {
+			return ""
+		}
+		return string(b[i])
+	case nil:
+		return nil
+	}
+	rv := reflect.ValueOf(base)
+	switch rv.Kind() {
+	case reflect.Map:
+		mv := rv.MapIndex(reflect.ValueOf(idx))
+		if !mv.IsValid() {
+			return nil
+		}
+		return mv.Interface()
+	case reflect.Slice, reflect.Array:
+		i := toInt(idx)
+		if i < 0 || i >= int64(rv.Len()) {
+			return nil
+		}
+		return rv.Index(int(i)).Interface()
+	}
+	return nil
+}
+
+// helperGet implements `base->name` / `base.name` property access against PHP
+// objects (Props bag) and, by reflection, exported fields of Go structs.
+func helperGet(base any, name string) any {
+	switch b := base.(type) {
+	case *model.Object:
+		return b.Props[name]
+	case nil:
+		return nil
+	}
+	rv := reflect.Indirect(reflect.ValueOf(base))
+	if rv.Kind() == reflect.Struct {
+		// Exact match first, then case-insensitive (PHP property access on a Go
+		// struct: `$rec->value` resolves the exported field Value).
+		if f := rv.FieldByName(name); f.IsValid() {
+			return f.Interface()
+		}
+		if f := rv.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) }); f.IsValid() {
+			return f.Interface()
+		}
+	}
+	return nil
+}
+
+// adapt wraps any Go callable in the uniform func(...any) (any, error) signature
+// used throughout the env. This serves two purposes:
+//
+//   - Type checking: the compile-time env (expr.Env) needs each function to have
+//     a callable type, but a concrete signature (e.g. func(string) int) would
+//     make expr reject dynamically-typed PHP arguments. A variadic-any signature
+//     accepts anything.
+//   - Runtime correctness: expr's compiled fast path asserts the env value has
+//     the exact type seen at compile time. Using the same adapted value in both
+//     the type env and the run env keeps those in sync.
+//
+// The wrapper performs PHP-ish argument coercion via reflection so shims can
+// still be written with natural Go signatures.
+func adapt(fn any) func(...any) (any, error) {
+	return func(args ...any) (any, error) { return invokeAny(fn, args) }
+}
+
+// invokeAny calls fn (any Go callable) with args via reflection, coercing
+// arguments to the declared parameter types where convertible.
+func invokeAny(fn any, args []any) (any, error) {
+	rv := reflect.ValueOf(fn)
+	if rv.Kind() != reflect.Func {
+		return nil, fmt.Errorf("not callable: %T", fn)
+	}
+	t := rv.Type()
+	in := make([]reflect.Value, 0, len(args))
+	for i, a := range args {
+		in = append(in, coerceArg(a, paramType(t, i)))
+	}
+	// Pad missing non-variadic params with zero values (PHP tolerates this).
+	for len(in) < t.NumIn() && !(t.IsVariadic() && len(in) >= t.NumIn()-1) {
+		in = append(in, reflect.Zero(t.In(len(in))))
+	}
+	out := rv.Call(in)
+	return firstReturn(out)
+}
+
+// paramType returns the declared parameter type at position i (handling variadic).
+func paramType(t reflect.Type, i int) reflect.Type {
+	n := t.NumIn()
+	if n == 0 {
+		return nil
+	}
+	if t.IsVariadic() && i >= n-1 {
+		return t.In(n - 1).Elem()
+	}
+	if i < n {
+		return t.In(i)
+	}
+	return nil
+}
+
+// coerceArg converts a value to the target parameter type where a cheap
+// conversion makes it assignable; otherwise it is passed through.
+func coerceArg(v any, want reflect.Type) reflect.Value {
+	if want == nil {
+		return reflect.ValueOf(v)
+	}
+	if v == nil {
+		return reflect.Zero(want)
+	}
+	rv := reflect.ValueOf(v)
+	if rv.Type().AssignableTo(want) {
+		return rv
+	}
+	if rv.Type().ConvertibleTo(want) {
+		return rv.Convert(want)
+	}
+	return rv
+}
+
+// helperCall implements `base->method(args...)`. It dispatches PHP methods on
+// model.Object instances back into the interpreter, and otherwise invokes a Go
+// method on the value by reflection (the "invoke from values on the stack"
+// capability the README relies on).
+func (rt *Runtime) helperCall(scope *Scope) func(base any, method string, args ...any) (any, error) {
+	return func(base any, method string, args ...any) (any, error) {
+		if obj, ok := base.(*model.Object); ok && obj.Class != nil {
+			if decl, ok := obj.Class.Methods[method]; ok {
+				return rt.invokeMethod(obj, decl, args)
+			}
+		}
+		return rt.callGoMethod(base, method, args)
+	}
+}
+
+// helperNew implements `new Class(args...)`: instantiate from the class table,
+// apply field defaults, and run the same-named constructor method if present.
+func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any, error) {
+	return func(class string, args ...any) (any, error) {
+		// A Go constructor takes precedence: `new Storage` becomes a native Go
+		// value (storage, err := NewStorage(ctx)) with the context auto-injected
+		// and any trailing error surfaced as a thrown error.
+		if ctor, ok := rt.constructors[class]; ok {
+			return rt.invokeWithContext(ctor, args)
+		}
+		c, ok := rt.classes[class]
+		if !ok {
+			return nil, fmt.Errorf("new: undefined class %q", class)
+		}
+		obj := model.NewObject(c)
+		for _, f := range c.Fields {
+			var def any
+			if f.Default != nil {
+				v, err := rt.Eval(f.Default, scope)
+				if err != nil {
+					return nil, err
+				}
+				def = v
+			}
+			obj.Props[f.Name] = def
+		}
+		// Constructor: prefer the modern __construct, fall back to the PHP4-style
+		// method named after the class.
+		ctor, ok := c.Methods["__construct"]
+		if !ok {
+			ctor, ok = c.Methods[class]
+		}
+		if !ok {
+			// PHP4-style constructor named after the class's short name (the
+			// part after the last namespace separator).
+			if i := strings.LastIndexByte(class, '\\'); i >= 0 {
+				ctor, ok = c.Methods[class[i+1:]]
+			}
+		}
+		if ok {
+			if _, err := rt.invokeMethod(obj, ctor, args); err != nil {
+				return nil, err
+			}
+		}
+		return obj, nil
+	}
+}
+
+// callGoMethod invokes an exported method on a Go value by reflection. Method
+// names are matched case-insensitively (PHP method calls are case-insensitive,
+// so `$obj->get()` resolves Go's exported Get). When the method's first
+// parameter is a context.Context the runtime context is auto-injected, and
+// arguments are coerced to the declared parameter types.
+func (rt *Runtime) callGoMethod(base any, method string, args []any) (any, error) {
+	if base == nil {
+		return nil, fmt.Errorf("call %s on nil", method)
+	}
+	rv := reflect.ValueOf(base)
+	m := rv.MethodByName(method)
+	if !m.IsValid() {
+		m = methodByNameFold(rv, method)
+	}
+	if !m.IsValid() {
+		return nil, fmt.Errorf("undefined method %T::%s", base, method)
+	}
+	mt := m.Type()
+	if wantsContext(mt) {
+		args = append([]any{rt.ctx}, args...)
+	}
+	in := make([]reflect.Value, len(args))
+	for i, a := range args {
+		in[i] = coerceArg(a, paramType(mt, i))
+	}
+	out := m.Call(in)
+	return firstReturn(out)
+}
+
+// methodByNameFold finds an exported method on rv whose name matches under a
+// case-insensitive comparison (PHP method-call semantics).
+func methodByNameFold(rv reflect.Value, method string) reflect.Value {
+	t := rv.Type()
+	for i := 0; i < t.NumMethod(); i++ {
+		if strings.EqualFold(t.Method(i).Name, method) {
+			return rv.Method(i)
+		}
+	}
+	return reflect.Value{}
+}
+
+// firstReturn reduces a reflect Call result to (value, error) following Go
+// conventions: a trailing error is surfaced, the first non-error value returned.
+func firstReturn(out []reflect.Value) (any, error) {
+	var result any
+	for _, o := range out {
+		if err, ok := o.Interface().(error); ok {
+			if err != nil {
+				return result, err
+			}
+			continue
+		}
+		if result == nil {
+			result = o.Interface()
+		}
+	}
+	return result, nil
+}
