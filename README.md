@@ -10,8 +10,8 @@ Several key parts of the project are:
 - A non-OOP subset of PHP syntax (no extends, no namespaces,...)
 - Custom exception handling (throw new Exception)
 
-If I'd have to put a version and ignore huge missing swaths of the
-standard library, this would be a minimalist PHP without OOP constructs.
+There is no stated PHP version compatibility here, but it should feel
+most similar to PHP4 syntax with some PHP5 features sprinkled around.
 
 Various stuff is missing and a compatibility table is currently not maintained.
 
