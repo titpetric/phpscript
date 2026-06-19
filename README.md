@@ -83,7 +83,8 @@ functions needed to be implemented:
 The implementation surface is essentially a stub right now. In order to
 use it, there is `stdlib.Register` and `stdlib.RegisterFS`. If you don't
 register a FS with the interpreter, `include` functionality will not
-work, as well as writing files.
+work, as well as other file APIs like `file_get_contents`,
+`file_put_contents`, `filemtime`, `fopen`,...
 
 ## A quick HTTP benchmark
 
