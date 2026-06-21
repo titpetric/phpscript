@@ -64,7 +64,6 @@ sequenceDiagram
     participant U as User
     participant G as Go CLI tool
     participant VM as PHP VM
-    participant API as Go API Bridge
 
     U->>G: Run cli command
 
