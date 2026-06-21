@@ -42,8 +42,8 @@ sequenceDiagram
     deactivate VM
     deactivate G
 
-    VM->>G: ResponseWriter output
-    G->>U: HTTP Response
+    VM-->>G: ResponseWriter output
+    G-->>U: HTTP Response
 ```
 
 The internal error handling (go runtime) can be also managed in the PHP
@@ -88,8 +88,8 @@ sequenceDiagram
     deactivate VM
     deactivate G
 
-    VM->>G: io.Writer output
-    G->>U: Flush output, os.Exit
+    VM-->>G: io.Writer output
+    G-->>U: Flush output, os.Exit
 ```
 
 The excution of PHP scripts via the command line can be done with
