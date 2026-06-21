@@ -35,7 +35,9 @@ func NewCommand() *cli.Command {
 type Module struct {
 	platform.UnimplementedModule
 
-	root string
+	root         string
+	includeCache *runner.IncludeCache
+	exprCache    *runner.ExprCache
 }
 
 // NewModule creates the HTTP module.
@@ -43,6 +45,8 @@ func NewModule(root string) *Module {
 	return &Module{
 		UnimplementedModule: *platform.NewUnimplementedModule("phpserver"),
 		root:                root,
+		includeCache:        runner.NewIncludeCache(),
+		exprCache:           runner.NewExprCache(),
 	}
 }
 
@@ -63,7 +67,7 @@ func (m *Module) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	filename := filepath.Join(m.root, filepath.Clean(path))
 
-	result, headers, err := renderFile(ctx, filename, r)
+	result, headers, err := m.renderFile(ctx, filename, r)
 	if err != nil {
 		log.Printf("Error in request %s, %s: %s\n", path, filename, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -81,7 +85,7 @@ func (m *Module) handleRequest(w http.ResponseWriter, r *http.Request) {
 // renderFile executes a .php file and returns the output plus any response
 // headers staged by the PHP header() function. The *http.Request is exposed to
 // the script via a runner.Context ($_GET/$_POST/$_PATH, getallheaders, header).
-func renderFile(ctx context.Context, filename string, r *http.Request) (string, http.Header, error) {
+func (m *Module) renderFile(ctx context.Context, filename string, r *http.Request) (string, http.Header, error) {
 	buf, err := os.ReadFile(filename)
 	if err != nil {
 		return "", nil, fmt.Errorf("error reading %s: %w", filename, err)
@@ -95,7 +99,9 @@ func renderFile(ctx context.Context, filename string, r *http.Request) (string, 
 	var out bytes.Buffer
 
 	rt := runner.New(&out)
-	rt.SetFS(os.DirFS("."), parser.Parse)
+	rt.SetFS(os.DirFS(m.root), parser.Parse)
+	rt.SetIncludeCache(m.includeCache)
+	rt.SetExprCache(m.exprCache)
 
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, ".")
