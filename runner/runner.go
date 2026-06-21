@@ -393,7 +393,12 @@ func (rt *Runtime) resolveInclude(path string) (*model.Program, error) {
 		return rt.include(path)
 	}
 	if rt.fsys != nil && rt.parse != nil {
-		b, err := fs.ReadFile(rt.fsys, cleanFSPath(path))
+		cleanPath := cleanFSPath(path)
+		if prog, ok := rt.includeCache.Get(cleanPath); ok {
+			return prog, nil
+		}
+
+		b, err := fs.ReadFile(rt.fsys, cleanPath)
 		if err != nil {
 			return nil, fmt.Errorf("include %q: %w", path, err)
 		}
@@ -401,6 +406,7 @@ func (rt *Runtime) resolveInclude(path string) (*model.Program, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parse %q: %w", path, err)
 		}
+		rt.includeCache.Set(cleanPath, prog)
 		return prog, nil
 	}
 	return nil, fmt.Errorf("include %q: no resolver or source FS configured", path)

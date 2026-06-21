@@ -30,6 +30,7 @@ import (
 type Runtime struct {
 	out     io.Writer
 	funcs   map[string]any
+	wrapped map[string]func(...any) (any, error)
 	classes map[string]*model.Class
 
 	// constructors maps a class name to a Go constructor function, so PHP's
@@ -58,19 +59,93 @@ type Runtime struct {
 	// fsys is the source root for include/require resolution; parse turns a
 	// file's bytes into a program. Wiring an fs.FS (os.DirFS / embed.FS) keeps
 	// the runner host-agnostic while letting callers provide a source tree.
-	fsys  fs.FS
-	parse ParseFunc
+	fsys         fs.FS
+	parse        ParseFunc
+	includeCache *IncludeCache
 
 	// classConsts caches evaluated class constants (Class::NAME) per class.
 	classConsts map[string]map[string]any
 
-	mu    sync.Mutex
-	cache map[string]*vm.Program // expr source -> compiled program
+	mu        sync.Mutex
+	cache     map[string]*vm.Program // expr source -> compiled program
+	exprCache *ExprCache
+	envPool   sync.Pool
+	helpers   map[string]func(...any) (any, error)
 }
 
 // ParseFunc turns PHP source into a program. It is injected (rather than
 // imported) so the runner keeps no dependency on the parser package.
 type ParseFunc func(src string) (*model.Program, error)
+
+type compiledExpr struct {
+	src      string
+	vars     []string
+	closures map[string]*model.Closure
+	prog     *vm.Program
+}
+
+// ExprCache stores compiled expression programs by AST expression node. Like
+// IncludeCache, it assumes parsed ASTs are immutable after parsing.
+type ExprCache struct {
+	mu    sync.Mutex
+	exprs map[model.Expr]*compiledExpr
+}
+
+func NewExprCache() *ExprCache {
+	return &ExprCache{exprs: map[model.Expr]*compiledExpr{}}
+}
+
+func (c *ExprCache) Get(e model.Expr) (*compiledExpr, bool) {
+	if c == nil {
+		return nil, false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	ce, ok := c.exprs[e]
+	return ce, ok
+}
+
+func (c *ExprCache) Set(e model.Expr, ce *compiledExpr) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.exprs[e] = ce
+}
+
+// IncludeCache stores parsed include/require programs by cleaned filesystem
+// path. Parsed programs are treated as immutable by Runtime.Run/exec: hoisting
+// copies declarations into runtime maps, while statement execution only reads
+// the AST, so cached *model.Program values can be shared safely by callers that
+// do not mutate ASTs themselves.
+type IncludeCache struct {
+	mu       sync.Mutex
+	programs map[string]*model.Program
+}
+
+func NewIncludeCache() *IncludeCache {
+	return &IncludeCache{programs: map[string]*model.Program{}}
+}
+
+func (c *IncludeCache) Get(path string) (*model.Program, bool) {
+	if c == nil {
+		return nil, false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	prog, ok := c.programs[path]
+	return prog, ok
+}
+
+func (c *IncludeCache) Set(path string, prog *model.Program) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.programs[path] = prog
+}
 
 // New returns a Runtime that writes echo output to w (defaults to os.Stdout).
 func New(w io.Writer) *Runtime {
@@ -80,6 +155,7 @@ func New(w io.Writer) *Runtime {
 	rt := &Runtime{
 		out:          w,
 		funcs:        map[string]any{},
+		wrapped:      map[string]func(...any) (any, error){},
 		classes:      map[string]*model.Class{},
 		constructors: map[string]any{},
 		ctx:          context.Background(),
@@ -87,7 +163,18 @@ func New(w io.Writer) *Runtime {
 		constants:    map[string]any{},
 		classConsts:  map[string]map[string]any{},
 		cache:        map[string]*vm.Program{},
+		exprCache:    NewExprCache(),
+		helpers: map[string]func(...any) (any, error){
+			"__bool":   adapt(phpTruthy),
+			"__concat": adapt(helperConcat),
+			"__pair":   adapt(helperPair),
+			"__array":  adapt(helperArray),
+			"__index":  adapt(helperIndex),
+			"__get":    adapt(helperGet),
+			"__cast":   adapt(helperCast),
+		},
 	}
+	rt.envPool.New = func() any { return make(map[string]any, 128) }
 
 	rt.RegisterConstructor("Exception", NewException)
 
@@ -126,7 +213,16 @@ func (rt *Runtime) RegisterConstructor(name string, ctor any) {
 func (rt *Runtime) SetFS(fsys fs.FS, parse ParseFunc) {
 	rt.fsys = fsys
 	rt.parse = parse
+	rt.includeCache = NewIncludeCache()
 }
+
+// SetIncludeCache installs a shared include cache. Passing nil disables include
+// caching until SetFS is called again.
+func (rt *Runtime) SetIncludeCache(cache *IncludeCache) { rt.includeCache = cache }
+
+// SetExprCache installs a shared compiled-expression cache. Passing nil
+// disables AST-node expression caching for this runtime.
+func (rt *Runtime) SetExprCache(cache *ExprCache) { rt.exprCache = cache }
 
 // FS returns the configured source root (or nil).
 func (rt *Runtime) FS() fs.FS { return rt.fsys }
@@ -156,6 +252,7 @@ func (rt *Runtime) Const(name string) (any, bool) {
 // { return len(s) }) makes `strlen($x)` work in transpiled code.
 func (rt *Runtime) RegisterFunc(name string, fn any) {
 	rt.funcs[name] = fn
+	rt.wrapped[name] = adapt(fn)
 }
 
 // RegisterClass adds a resolved class to the class table so `new Name` works.
@@ -179,26 +276,59 @@ var dynamicType = new(any)
 // Eval transpiles e, binds the referenced variables from scope, and runs the
 // resulting program through the expr-lang VM.
 func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
+	ce, err := rt.compileExpr(e)
+	if err != nil {
+		return nil, err
+	}
+
+	base := rt.baseEnv(scope)
+	defer rt.releaseEnv(base)
+
+	// Anonymous functions become callables in the env (bound by their synthetic
+	// identifier) so transpiled code can pass them, e.g. usort's comparator.
+	for id, cl := range ce.closures {
+		decl := cl
+		base[id] = adapt(func(args ...any) (any, error) { return rt.invokeClosure(decl, args) })
+	}
+
+	// Run env: same functions/helpers, but variables carry their real values.
+	// Bare identifiers that are not set in the current scope fall back to the
+	// constant table (PHP constants are visible in every scope, whereas plain
+	// variables are confined to their frame). This is what lets a method body
+	// reference T_VARIABLE / a define()d constant the same way top-level code
+	// can.
+	for _, name := range ce.vars {
+		if v, ok := scope.Get(name); ok {
+			base[varIdent(name)] = v
+		} else if c, ok := rt.constants[name]; ok {
+			base[varIdent(name)] = c
+		} else {
+			base[varIdent(name)] = nil
+		}
+	}
+
+	out, err := expr.Run(ce.prog, base)
+	if err != nil {
+		return nil, fmt.Errorf("eval %q: %w", ce.src, err)
+	}
+	return out, nil
+}
+
+func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
+	if ce, ok := rt.exprCache.Get(e); ok {
+		return ce, nil
+	}
+
 	tr := NewTranspiler()
 	src, vars, err := tr.Transpile(e)
 	if err != nil {
 		return nil, err
 	}
-	closures := tr.Closures()
 
-	base := rt.baseEnv(scope)
-
-	// Anonymous functions become callables in the env (bound by their synthetic
-	// identifier) so transpiled code can pass them, e.g. usort's comparator.
-	for id, cl := range closures {
-		decl := cl
-		base[id] = adapt(func(args ...any) (any, error) { return rt.invokeClosure(decl, args) })
+	base := rt.typeEnvBase()
+	for id := range tr.Closures() {
+		base[id] = adapt(func(args ...any) (any, error) { return nil, nil })
 	}
-
-	// Type env: functions/helpers plus every referenced variable typed as
-	// dynamic. expr.Env is required for DisableAllBuiltins to take effect — it
-	// is what tells the compiler that names like `count` are env functions
-	// rather than (now-disabled) builtins.
 	typeEnv := make(map[string]any, len(base)+len(vars))
 	maps.Copy(typeEnv, base)
 	for _, name := range vars {
@@ -209,28 +339,13 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compile %q: %w", src, err)
 	}
+	ce := &compiledExpr{src: src, vars: vars, closures: tr.Closures(), prog: prog}
 
-	// Run env: same functions/helpers, but variables carry their real values.
-	// Bare identifiers that are not set in the current scope fall back to the
-	// constant table (PHP constants are visible in every scope, whereas plain
-	// variables are confined to their frame). This is what lets a method body
-	// reference T_VARIABLE / a define()d constant the same way top-level code
-	// can.
-	for _, name := range vars {
-		if v, ok := scope.Get(name); ok {
-			base[varIdent(name)] = v
-		} else if c, ok := rt.constants[name]; ok {
-			base[varIdent(name)] = c
-		} else {
-			base[varIdent(name)] = nil
-		}
+	if cached, ok := rt.exprCache.Get(e); ok {
+		return cached, nil
 	}
-
-	out, err := expr.Run(prog, base)
-	if err != nil {
-		return nil, fmt.Errorf("eval %q: %w", src, err)
-	}
-	return out, nil
+	rt.exprCache.Set(e, ce)
+	return ce, nil
 }
 
 // compile returns a cached compiled program for src.
@@ -268,21 +383,17 @@ func (rt *Runtime) compile(src string, typeEnv map[string]any) (*vm.Program, err
 // typed PHP arguments and keeps the runtime func type in sync with the type
 // env (see helpers.go::adapt and Eval).
 func (rt *Runtime) baseEnv(scope *Scope) map[string]any {
-	env := make(map[string]any, len(rt.funcs)+8)
-	for name, fn := range rt.funcs {
-		env[name] = adapt(fn)
+	env := rt.envPool.Get().(map[string]any)
+	for name, fn := range rt.wrapped {
+		env[name] = fn
 	}
 	// PHP-semantic helpers (see helpers.go). They close over rt and scope so
 	// that method dispatch and instantiation can re-enter the interpreter.
-	env["__bool"] = adapt(phpTruthy)
-	env["__concat"] = adapt(helperConcat)
-	env["__pair"] = adapt(helperPair)
-	env["__array"] = adapt(helperArray)
-	env["__index"] = adapt(helperIndex)
-	env["__get"] = adapt(helperGet)
+	for name, fn := range rt.helpers {
+		env[name] = fn
+	}
 	env["__call"] = adapt(rt.helperCall(scope))
 	env["__new"] = adapt(rt.helperNew(scope))
-	env["__cast"] = adapt(helperCast)
 	env["__classconst"] = adapt(rt.helperClassConst(scope))
 	env["__set"] = adapt(rt.helperSet(scope))
 	env["__ref"] = adapt(rt.helperRef(scope))
@@ -300,6 +411,36 @@ func (rt *Runtime) baseEnv(scope *Scope) map[string]any {
 		}
 		return arr
 	})
+	return env
+}
+
+func (rt *Runtime) releaseEnv(env map[string]any) {
+	for k := range env {
+		delete(env, k)
+	}
+	rt.envPool.Put(env)
+}
+
+func (rt *Runtime) typeEnvBase() map[string]any {
+	env := make(map[string]any, len(rt.wrapped)+13)
+	for name, fn := range rt.wrapped {
+		env[name] = fn
+	}
+	stub := adapt(func(args ...any) any { return nil })
+	env["__bool"] = stub
+	env["__concat"] = stub
+	env["__pair"] = stub
+	env["__array"] = stub
+	env["__index"] = stub
+	env["__get"] = stub
+	env["__call"] = stub
+	env["__new"] = stub
+	env["__cast"] = stub
+	env["__classconst"] = stub
+	env["__set"] = stub
+	env["__ref"] = stub
+	env["__func"] = stub
+	env["func_get_args"] = stub
 	return env
 }
 
