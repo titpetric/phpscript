@@ -28,5 +28,6 @@ func start() error {
 			Branch:     Branch,
 		})
 	})
+	app.DefaultCommand = "run"
 	return app.Run()
 }

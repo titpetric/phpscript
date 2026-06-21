@@ -87,8 +87,14 @@ sequenceDiagram
 ```
 
 The excution of PHP scripts via the command line can be done with
-`phpscript run <file.php>` or with using a shebang and an executable
-file `#!/usr/bin/env phpscript` followed by the script code.
+`phpscript <file.php>` or with using a shebang:
+
+```php
+#!/usr/bin/env phpscript
+<?php
+
+echo "Hello world\n";
+```
 
 The CLI can still bundle internal APIs for use in PHP, however you then
 need to provide your own script binary that adds the bindings to be used

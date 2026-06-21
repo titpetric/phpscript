@@ -47,6 +47,13 @@ func TestInlineHTML(t *testing.T) {
 	}
 }
 
+func TestShebangIsIgnored(t *testing.T) {
+	got := run(t, "#!/usr/bin/env phpscript\n<?php echo \"hi\";")
+	if got != "hi" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestArithmeticAndVars(t *testing.T) {
 	got := run(t, `<?php $a = 2; $b = 3; echo $a * $b + 1;`)
 	if got != "7" {

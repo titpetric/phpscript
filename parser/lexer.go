@@ -51,6 +51,7 @@ var multiCharOps = []string{
 }
 
 func (l *lexer) run() ([]token, error) {
+	l.skipShebang()
 	for l.pos < len(l.src) {
 		if !l.inPHP {
 			l.lexInlineHTML()
@@ -62,6 +63,18 @@ func (l *lexer) run() ([]token, error) {
 	}
 	l.emit(tEOF, "")
 	return l.tokens, nil
+}
+
+func (l *lexer) skipShebang() {
+	if !strings.HasPrefix(l.src, "#!") {
+		return
+	}
+	for l.pos < len(l.src) && l.src[l.pos] != '\n' {
+		l.pos++
+	}
+	if l.pos < len(l.src) {
+		l.advanceRune()
+	}
 }
 
 func (l *lexer) emit(k tokKind, v string) {

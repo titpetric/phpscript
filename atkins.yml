@@ -12,5 +12,6 @@ tasks:
     dir: tests/fixtures
     passthru: true
     cmds:
-      - phpscript run test-minitpl.php
+      - phpscript test-minitpl.php
       - php test-minitpl.php
+      - ./test-shebang
