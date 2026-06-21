@@ -3,6 +3,7 @@ package stdlib
 import (
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
@@ -19,16 +20,17 @@ import (
 // which is correct whenever the matched construct is absent from the input — the
 // only situation minitpl's happy compile path encounters.
 func registerRegex(rt *runner.Runtime) {
-	rt.RegisterFunc("preg_match_all", phpPregMatchAll)
-	rt.RegisterFunc("preg_match", phpPregMatch)
-	rt.RegisterFunc("preg_replace", phpPregReplace)
+	cache := newRegexpCache()
+	rt.RegisterFunc("preg_match_all", cache.phpPregMatchAll)
+	rt.RegisterFunc("preg_match", cache.phpPregMatch)
+	rt.RegisterFunc("preg_replace", cache.phpPregReplace)
 }
 
 // phpPregMatchAll implements preg_match_all($pattern, $subject, &$matches) in
 // PREG_PATTERN_ORDER: matches[0]=full matches, matches[g]=group g captures. The
 // third parameter is a setter (the runner's by-reference wrapper).
-func phpPregMatchAll(pattern, subject string, set ...func(any)) int64 {
-	re, hadBackref, err := compilePCRE(pattern)
+func (c *regexpCache) phpPregMatchAll(pattern, subject string, set ...func(any)) int64 {
+	re, hadBackref, err := c.compilePCRE(pattern)
 	if err != nil || hadBackref {
 		writeRef(set, model.NewArray())
 		return 0
@@ -54,8 +56,8 @@ func phpPregMatchAll(pattern, subject string, set ...func(any)) int64 {
 
 // phpPregMatch implements preg_match returning 0/1 and optionally filling
 // $matches with the first match's groups.
-func phpPregMatch(pattern, subject string, set ...func(any)) int64 {
-	re, hadBackref, err := compilePCRE(pattern)
+func (c *regexpCache) phpPregMatch(pattern, subject string, set ...func(any)) int64 {
+	re, hadBackref, err := c.compilePCRE(pattern)
 	if err != nil || hadBackref {
 		writeRef(set, model.NewArray())
 		return 0
@@ -76,8 +78,8 @@ func phpPregMatch(pattern, subject string, set ...func(any)) int64 {
 // phpPregReplace implements preg_replace($pattern, $replacement, $subject) for
 // string arguments, converting PHP backreference syntax (\1 / $1) in the
 // replacement to RE2's ${1}.
-func phpPregReplace(pattern, replacement, subject string) string {
-	re, hadBackref, err := compilePCRE(pattern)
+func (c *regexpCache) phpPregReplace(pattern, replacement, subject string) string {
+	re, hadBackref, err := c.compilePCRE(pattern)
 	if err != nil || hadBackref {
 		return subject
 	}
@@ -89,6 +91,38 @@ func writeRef(set []func(any), v any) {
 	if len(set) > 0 && set[0] != nil {
 		set[0](v)
 	}
+}
+
+type regexpCache struct {
+	mu    sync.Mutex
+	cache map[string]regexpCacheEntry
+}
+
+type regexpCacheEntry struct {
+	re         *regexp.Regexp
+	hadBackref bool
+	err        error
+}
+
+func newRegexpCache() *regexpCache {
+	return &regexpCache{cache: map[string]regexpCacheEntry{}}
+}
+
+func (c *regexpCache) compilePCRE(pattern string) (re *regexp.Regexp, hadBackref bool, err error) {
+	c.mu.Lock()
+	entry, ok := c.cache[pattern]
+	c.mu.Unlock()
+	if ok {
+		return entry.re, entry.hadBackref, entry.err
+	}
+
+	re, hadBackref, err = compilePCRE(pattern)
+
+	c.mu.Lock()
+	c.cache[pattern] = regexpCacheEntry{re: re, hadBackref: hadBackref, err: err}
+	c.mu.Unlock()
+
+	return re, hadBackref, err
 }
 
 // compilePCRE translates a PCRE pattern (with /.../flags delimiters) into a Go
