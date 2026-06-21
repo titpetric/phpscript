@@ -78,11 +78,6 @@ sequenceDiagram
 
     VM->>VM: Load and Execute PHP script
 
-    alt PHP calls host functionality with implicit context.Context use and error handling
-        VM->>API: Invoke Go API
-        API-->>VM: Return result
-    end
-
     VM->>VM: Internal error handling
 
     deactivate VM
