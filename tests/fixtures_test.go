@@ -20,9 +20,12 @@ import (
 	"embed"
 	"errors"
 	"io/fs"
+	"os"
+	"runtime/pprof"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
@@ -32,6 +35,10 @@ import (
 
 //go:embed all:fixtures
 var fixturesFS embed.FS
+
+var phpFS fs.FS
+var includeCache = runner.NewIncludeCache()
+var exprCache = runner.NewExprCache()
 
 // ---------------------------------------------------------------------------
 // Host-provided capability surfaced to PHP
@@ -169,19 +176,8 @@ func runFixture(ctx context.Context, f fixture) (string, error) {
 		return "Internal Server Error", err
 	}
 
-	ctx = context.WithValue(ctx, tenantKey, "acme")
-
-	phpFS, _ := fs.Sub(fixturesFS, "fixtures")
-
 	var out strings.Builder
-	rt := runner.New(&out)
-	rt.SetFS(phpFS, parser.Parse)
-	rt.SetContext(ctx)
-	rt.RegisterConstructor("Storage", NewStorage)
-	rt.RegisterConstructor("FailStorage", NewFailStorage)
-
-	stdlib.RegisterFS(rt, ".")
-	stdlib.Register(rt)
+	rt := newTestRuntime(&out, ctx)
 
 	/*
 		rt.RegisterFunc("sprintf", fmt.Sprintf)
@@ -198,6 +194,30 @@ func runFixture(ctx context.Context, f fixture) (string, error) {
 		return "Internal Server Error", err
 	}
 	return out.String(), nil
+}
+
+func testPHPFS() fs.FS {
+	if phpFS == nil {
+		var err error
+		phpFS, err = fs.Sub(fixturesFS, "fixtures")
+		if err != nil {
+			panic(err)
+		}
+	}
+	return phpFS
+}
+
+func newTestRuntime(out *strings.Builder, ctx context.Context) *runner.Runtime {
+	rt := runner.New(out)
+	rt.SetFS(testPHPFS(), parser.Parse)
+	rt.SetIncludeCache(includeCache)
+	rt.SetExprCache(exprCache)
+	rt.SetContext(context.WithValue(ctx, tenantKey, "acme"))
+	rt.RegisterConstructor("Storage", NewStorage)
+	rt.RegisterConstructor("FailStorage", NewFailStorage)
+	stdlib.RegisterFS(rt, ".")
+	stdlib.Register(rt)
+	return rt
 }
 
 func errorChainContains(err error, substr string) bool {
@@ -246,7 +266,7 @@ func TestFixtures(t *testing.T) {
 				if runErr == nil {
 					t.Fatalf("expected error containing %q, got output %q", f.Error, out)
 				}
-				if !strings.Contains(runErr.Error(), f.Error) {
+				if !errorChainContains(runErr, f.Error) {
 					t.Fatalf("error %v does not contain %q", runErr, f.Error)
 				}
 			} else if runErr != nil {
@@ -272,6 +292,114 @@ func TestFixtures(t *testing.T) {
 			status = "FAIL"
 		}
 		t.Logf("  [%s] %s", status, r.name)
+	}
+}
+
+func BenchmarkMinitpl(b *testing.B) {
+	srcBytes, err := fixturesFS.ReadFile("fixtures/test-minitpl.php")
+	if err != nil {
+		b.Fatal(err)
+	}
+	src := string(srcBytes)
+
+	b.Run("parse", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			if _, err := parser.Parse(src); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	prog, err := parser.Parse(src)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.Run("runtime_setup", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			var out strings.Builder
+			_ = newTestRuntime(&out, b.Context())
+		}
+	})
+
+	b.Run("run_preparsed", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			var out strings.Builder
+			rt := newTestRuntime(&out, b.Context())
+			if err := rt.Run(prog); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("end_to_end_accounting", func(b *testing.B) {
+		b.ReportAllocs()
+		var parseDur, setupDur, runDur time.Duration
+		for b.Loop() {
+			start := time.Now()
+			prog, err := parser.Parse(src)
+			parseDur += time.Since(start)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			var out strings.Builder
+			start = time.Now()
+			rt := newTestRuntime(&out, b.Context())
+			setupDur += time.Since(start)
+
+			start = time.Now()
+			if err := rt.Run(prog); err != nil {
+				b.Fatal(err)
+			}
+			runDur += time.Since(start)
+		}
+		b.ReportMetric(float64(parseDur.Nanoseconds())/float64(b.N), "parse_ns/op")
+		b.ReportMetric(float64(setupDur.Nanoseconds())/float64(b.N), "setup_ns/op")
+		b.ReportMetric(float64(runDur.Nanoseconds())/float64(b.N), "run_ns/op")
+	})
+}
+
+func TestMinitplProfiles(t *testing.T) {
+	if os.Getenv("PHPSCRIPT_WRITE_PROFILES") != "1" {
+		t.Skip("set PHPSCRIPT_WRITE_PROFILES=1 to write cpu/memory profiles")
+	}
+	srcBytes, err := fixturesFS.ReadFile("fixtures/test-minitpl.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(srcBytes)
+	cpu, err := os.Create("minitpl.cpu.pprof")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cpu.Close()
+	if err := pprof.StartCPUProfile(cpu); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 500; i++ {
+		prog, err := parser.Parse(src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out strings.Builder
+		rt := newTestRuntime(&out, t.Context())
+		if err := rt.Run(prog); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pprof.StopCPUProfile()
+
+	mem, err := os.Create("minitpl.mem.pprof")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mem.Close()
+	if err := pprof.WriteHeapProfile(mem); err != nil {
+		t.Fatal(err)
 	}
 }
 
