@@ -56,12 +56,10 @@ type Runtime struct {
 	// miss the current scope fall back here (see Eval).
 	constants map[string]any
 
-	// fsys is the source root for include/require resolution; parse turns a
-	// file's bytes into a program. Wiring an fs.FS (os.DirFS / embed.FS) keeps
-	// the runner host-agnostic while letting callers provide a source tree.
-	fsys         fs.FS
-	parse        ParseFunc
+	// opts holds runtime source root, working directory, and write policy.
+	opts         Options
 	includeCache *IncludeCache
+	included     []string
 
 	// classConsts caches evaluated class constants (Class::NAME) per class.
 	classConsts map[string]map[string]any
@@ -73,9 +71,19 @@ type Runtime struct {
 	helpers   map[string]func(...any) (any, error)
 }
 
-// ParseFunc turns PHP source into a program. It is injected (rather than
-// imported) so the runner keeps no dependency on the parser package.
-type ParseFunc func(src string) (*model.Program, error)
+// Options configures a Runtime.
+type Options struct {
+	// RootFS is the filesystem used to load PHP entrypoints and includes.
+	RootFS fs.FS
+
+	// WorkDir is the directory inside RootFS used as the script working directory.
+	// Empty means the RootFS root.
+	WorkDir string
+
+	// WritablePaths optionally restricts filesystem writes. When empty, writes are
+	// left to normal OS/user permissions. Enforcement is done by filesystem shims.
+	WritablePaths []string
+}
 
 type compiledExpr struct {
 	src      string
@@ -84,15 +92,18 @@ type compiledExpr struct {
 	prog     *vm.Program
 }
 
-// ExprCache stores compiled expression programs by AST expression node. Like
-// IncludeCache, it assumes parsed ASTs are immutable after parsing.
+// ExprCache stores compiled expression programs by AST expression node and by
+// transpiled expr source. The node cache is the fastest path for reused parsed
+// programs. The source cache lets freshly parsed but identical PHP expression
+// trees reuse compiled expr bytecode across load+execute cycles.
 type ExprCache struct {
 	mu    sync.Mutex
 	exprs map[model.Expr]*compiledExpr
+	bySrc map[string]*compiledExpr
 }
 
 func NewExprCache() *ExprCache {
-	return &ExprCache{exprs: map[model.Expr]*compiledExpr{}}
+	return &ExprCache{exprs: map[model.Expr]*compiledExpr{}, bySrc: map[string]*compiledExpr{}}
 }
 
 func (c *ExprCache) Get(e model.Expr) (*compiledExpr, bool) {
@@ -112,6 +123,17 @@ func (c *ExprCache) Set(e model.Expr, ce *compiledExpr) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.exprs[e] = ce
+	c.bySrc[ce.src] = ce
+}
+
+func (c *ExprCache) GetSource(src string) (*compiledExpr, bool) {
+	if c == nil {
+		return nil, false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	ce, ok := c.bySrc[src]
+	return ce, ok
 }
 
 // IncludeCache stores parsed include/require programs by cleaned filesystem
@@ -148,12 +170,15 @@ func (c *IncludeCache) Set(path string, prog *model.Program) {
 }
 
 // New returns a Runtime that writes echo output to w (defaults to os.Stdout).
-func New(w io.Writer) *Runtime {
+func New(w io.Writer, opts Options) *Runtime {
 	if w == nil {
 		w = os.Stdout
 	}
+	opts.WorkDir = cleanFSPath(opts.WorkDir)
 	rt := &Runtime{
 		out:          w,
+		opts:         opts,
+		includeCache: NewIncludeCache(),
 		funcs:        map[string]any{},
 		wrapped:      map[string]func(...any) (any, error){},
 		classes:      map[string]*model.Class{},
@@ -206,18 +231,8 @@ func (rt *Runtime) RegisterConstructor(name string, ctor any) {
 	rt.constructors[name] = ctor
 }
 
-// SetFS installs the source root used to resolve include/require, with the
-// parser used to compile each included file. This is the runner's "root dir"
-// abstraction: pass os.DirFS(dir) for a directory tree or an embed.FS for an
-// embedded one.
-func (rt *Runtime) SetFS(fsys fs.FS, parse ParseFunc) {
-	rt.fsys = fsys
-	rt.parse = parse
-	rt.includeCache = NewIncludeCache()
-}
-
 // SetIncludeCache installs a shared include cache. Passing nil disables include
-// caching until SetFS is called again.
+// caching.
 func (rt *Runtime) SetIncludeCache(cache *IncludeCache) { rt.includeCache = cache }
 
 // SetExprCache installs a shared compiled-expression cache. Passing nil
@@ -225,7 +240,16 @@ func (rt *Runtime) SetIncludeCache(cache *IncludeCache) { rt.includeCache = cach
 func (rt *Runtime) SetExprCache(cache *ExprCache) { rt.exprCache = cache }
 
 // FS returns the configured source root (or nil).
-func (rt *Runtime) FS() fs.FS { return rt.fsys }
+func (rt *Runtime) FS() fs.FS { return rt.opts.RootFS }
+
+// WorkDir returns the configured working directory inside the source root.
+func (rt *Runtime) WorkDir() string { return rt.opts.WorkDir }
+
+// WritablePaths returns the configured writable path whitelist.
+func (rt *Runtime) WritablePaths() []string { return append([]string(nil), rt.opts.WritablePaths...) }
+
+// IncludedFiles returns the cleaned dirFS filenames included by this runtime.
+func (rt *Runtime) IncludedFiles() []string { return append([]string(nil), rt.included...) }
 
 // SetGlobal seeds a variable into the global scope before execution. Useful for
 // injecting request data (the README's $_SERVER gray area) or, in tests, an
@@ -324,9 +348,16 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 	if err != nil {
 		return nil, err
 	}
+	closures := tr.Closures()
+	if len(closures) == 0 {
+		if ce, ok := rt.exprCache.GetSource(src); ok {
+			rt.exprCache.Set(e, ce)
+			return ce, nil
+		}
+	}
 
 	base := rt.typeEnvBase()
-	for id := range tr.Closures() {
+	for id := range closures {
 		base[id] = adapt(func(args ...any) (any, error) { return nil, nil })
 	}
 	typeEnv := make(map[string]any, len(base)+len(vars))
@@ -339,7 +370,7 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compile %q: %w", src, err)
 	}
-	ce := &compiledExpr{src: src, vars: vars, closures: tr.Closures(), prog: prog}
+	ce := &compiledExpr{src: src, vars: vars, closures: closures, prog: prog}
 
 	if cached, ok := rt.exprCache.Get(e); ok {
 		return cached, nil

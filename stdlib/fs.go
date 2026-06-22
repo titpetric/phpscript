@@ -16,7 +16,7 @@ import (
 //
 // Go's fs.FS is read-only, so the engine's writes (fopen/fwrite/mkdir) use the
 // os package against the same root; the runner's include resolution still uses
-// the fs.FS abstraction (see Runtime.SetFS).
+// the fs.FS abstraction passed to runner.New.
 func RegisterFS(rt *runner.Runtime, dir string) {
 	resolve := func(p string) string {
 		if filepath.IsAbs(p) {

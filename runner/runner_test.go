@@ -17,7 +17,7 @@ func run(t *testing.T, src string) string {
 		t.Fatalf("parse: %v", err)
 	}
 	var out strings.Builder
-	rt := runner.New(&out)
+	rt := runner.New(&out, runner.Options{})
 	// minimal forwarded stdlib (the README's "bring your own stdlib" idea)
 	rt.RegisterFunc("strlen", func(s string) int { return len(s) })
 	rt.RegisterFunc("strtoupper", strings.ToUpper)
@@ -168,7 +168,7 @@ func TestBuiltinOverride(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	var out strings.Builder
-	rt := runner.New(&out)
+	rt := runner.New(&out, runner.Options{})
 	// Our own count: PHP arrays count their entries.
 	rt.RegisterFunc("count", func(a any) int {
 		if arr, ok := a.(interface{ Len() int }); ok {
@@ -208,7 +208,7 @@ echo $out;`)
 		t.Fatalf("parse: %v", err)
 	}
 	var out strings.Builder
-	rt := runner.New(&out)
+	rt := runner.New(&out, runner.Options{})
 	rt.RegisterFunc("token_get_all", parser.TokenGetAll)
 	rt.RegisterFunc("token_name", parser.TokenName)
 	rt.RegisterFunc("is_array", func(a any) bool {

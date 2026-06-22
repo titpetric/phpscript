@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"github.com/titpetric/cli"
 	"github.com/titpetric/platform"
 
-	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 )
@@ -86,22 +84,15 @@ func (m *Module) handleRequest(w http.ResponseWriter, r *http.Request) {
 // headers staged by the PHP header() function. The *http.Request is exposed to
 // the script via a runner.Context ($_GET/$_POST/$_PATH, getallheaders, header).
 func (m *Module) renderFile(ctx context.Context, filename string, r *http.Request) (string, http.Header, error) {
-	buf, err := os.ReadFile(filename)
-	if err != nil {
-		return "", nil, fmt.Errorf("error reading %s: %w", filename, err)
-	}
-
-	prog, err := parser.Parse(string(buf))
-	if err != nil {
-		return "", nil, fmt.Errorf("error parsing %s: %w", filename, err)
-	}
-
 	var out bytes.Buffer
 
-	rt := runner.New(&out)
-	rt.SetFS(os.DirFS(m.root), parser.Parse)
+	rt := runner.New(&out, runner.Options{RootFS: os.DirFS(m.root)})
 	rt.SetIncludeCache(m.includeCache)
 	rt.SetExprCache(m.exprCache)
+	prog, err := rt.LoadFile(filename)
+	if err != nil {
+		return "", nil, err
+	}
 
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, ".")

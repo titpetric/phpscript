@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/parser"
 )
 
 // This file is the statement interpreter. expr-lang evaluates expressions, but
@@ -34,6 +35,28 @@ type IncludeFunc func(path string) (*model.Program, error)
 
 // SetIncludeResolver installs the include/require resolver.
 func (rt *Runtime) SetIncludeResolver(fn IncludeFunc) { rt.include = fn }
+
+// Load parses PHP source into a program.
+func (rt *Runtime) Load(src string) (*model.Program, error) {
+	return parser.Parse(src)
+}
+
+// LoadFile reads and parses a PHP file from the runtime source FS.
+func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
+	if rt.opts.RootFS == nil {
+		return nil, fmt.Errorf("load %q: no source FS configured", path)
+	}
+	cleanPath := rt.resolveFSPath(path)
+	b, err := fs.ReadFile(rt.opts.RootFS, cleanPath)
+	if err != nil {
+		return nil, fmt.Errorf("load %q: %w", path, err)
+	}
+	prog, err := rt.Load(string(b))
+	if err != nil {
+		return nil, fmt.Errorf("parse %q: %w", path, err)
+	}
+	return prog, nil
+}
 
 // Run executes a whole program in the global scope.
 func (rt *Runtime) Run(p *model.Program) error {
@@ -375,10 +398,11 @@ func (rt *Runtime) execInclude(n *model.Include, scope *Scope) error {
 	if err != nil {
 		return err
 	}
-	prog, err := rt.resolveInclude(phpString(path))
+	prog, filename, err := rt.resolveInclude(phpString(path))
 	if err != nil {
 		return fmt.Errorf("error including %s: %w", phpString(path), err)
 	}
+	rt.included = append(rt.included, filename)
 	if err := rt.hoist(prog.Stmts); err != nil {
 		return err
 	}
@@ -388,28 +412,25 @@ func (rt *Runtime) execInclude(n *model.Include, scope *Scope) error {
 
 // resolveInclude turns an include path into a parsed program, preferring an
 // explicit IncludeFunc resolver and otherwise reading from the configured fs.FS.
-func (rt *Runtime) resolveInclude(path string) (*model.Program, error) {
+func (rt *Runtime) resolveInclude(path string) (*model.Program, string, error) {
 	if rt.include != nil {
-		return rt.include(path)
+		prog, err := rt.include(path)
+		return prog, cleanFSPath(path), err
 	}
-	if rt.fsys != nil && rt.parse != nil {
+	if rt.opts.RootFS != nil {
 		cleanPath := cleanFSPath(path)
 		if prog, ok := rt.includeCache.Get(cleanPath); ok {
-			return prog, nil
+			return prog, cleanPath, nil
 		}
 
-		b, err := fs.ReadFile(rt.fsys, cleanPath)
+		prog, err := rt.LoadFile(cleanPath)
 		if err != nil {
-			return nil, fmt.Errorf("include %q: %w", path, err)
-		}
-		prog, err := rt.parse(string(b))
-		if err != nil {
-			return nil, fmt.Errorf("parse %q: %w", path, err)
+			return nil, "", fmt.Errorf("include %q: %w", path, err)
 		}
 		rt.includeCache.Set(cleanPath, prog)
-		return prog, nil
+		return prog, cleanPath, nil
 	}
-	return nil, fmt.Errorf("include %q: no resolver or source FS configured", path)
+	return nil, "", fmt.Errorf("include %q: no resolver or source FS configured", path)
 }
 
 // cleanFSPath normalises an include path for fs.FS, which requires slash-rooted,
@@ -419,6 +440,14 @@ func cleanFSPath(p string) string {
 	p = strings.TrimPrefix(p, "./")
 	p = strings.TrimPrefix(p, "/")
 	return path.Clean(p)
+}
+
+func (rt *Runtime) resolveFSPath(p string) string {
+	cleanPath := cleanFSPath(p)
+	if rt.opts.WorkDir == "" || rt.opts.WorkDir == "." || cleanPath == "." {
+		return cleanPath
+	}
+	return cleanFSPath(path.Join(rt.opts.WorkDir, cleanPath))
 }
 
 // execAssign mutates a variable, property or array element. expr-lang cannot do

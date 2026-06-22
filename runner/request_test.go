@@ -19,7 +19,7 @@ func runReq(t *testing.T, r *http.Request, src string) (string, http.Header) {
 		t.Fatalf("parse: %v", err)
 	}
 	var out strings.Builder
-	rt := runner.New(&out)
+	rt := runner.New(&out, runner.Options{})
 	ctx := runner.FromRequest(r)
 	ctx.Register(rt)
 	if err := rt.Run(prog); err != nil {

@@ -3,12 +3,10 @@ package run
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/titpetric/cli"
 
-	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 )
@@ -33,19 +31,11 @@ func Run(ctx context.Context, args []string) error {
 		return errors.New("usage: phpscript <file.php>")
 	}
 
-	filename := args[0]
-	buf, err := os.ReadFile(filename)
+	rt := runner.New(os.Stdout, runner.Options{RootFS: os.DirFS(".")})
+	prog, err := rt.LoadFile(args[0])
 	if err != nil {
-		return fmt.Errorf("error reading %s: %w", filename, err)
+		return err
 	}
-
-	prog, err := parser.Parse(string(buf))
-	if err != nil {
-		return fmt.Errorf("error parsing %s: %w", filename, err)
-	}
-
-	rt := runner.New(os.Stdout)
-	rt.SetFS(os.DirFS("."), parser.Parse)
 
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, ".")

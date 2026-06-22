@@ -39,7 +39,7 @@ an error occurs. The error can be handled in PHP or Go.
 To use Go types, you can simply bind them to a runner:
 
 ```go
-rt := runner.New(os.Stdout)
+rt := runner.New(os.Stdout, runner.Options{RootFS: os.DirFS(".")})
 rt.RegisterConstructor("Storage", NewStorage)
 ```
 
