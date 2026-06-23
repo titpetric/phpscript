@@ -114,6 +114,9 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 	for _, s := range stmts {
 		val, fl, err := rt.execOne(s, scope)
 		if err != nil {
+			if _, ok := IsExit(err); ok {
+				return nil, flowNormal, err
+			}
 			if rt.errorHandler != nil {
 				rt.errorHandler(err)
 				continue

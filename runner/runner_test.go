@@ -96,6 +96,13 @@ func TestForeachKeyValue(t *testing.T) {
 	}
 }
 
+func TestForeachWithoutParens(t *testing.T) {
+	got := run(t, `<?php $m = array("a" => 1, "b" => 2); foreach $m as $k => $v { echo $k . "=" . $v . ";"; }`)
+	if got != "a=1;b=2;" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestArrayIndexAndAppend(t *testing.T) {
 	got := run(t, `<?php $a = array(); $a[] = "x"; $a[] = "y"; echo $a[0] . $a[1] . count($a);`)
 	if got != "xy2" {
