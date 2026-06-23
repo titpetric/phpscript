@@ -1,0 +1,172 @@
+package lint
+
+import (
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/parser"
+)
+
+// Diagnostic is one lint finding.
+type Diagnostic struct {
+	File    string
+	Line    int
+	Message string
+}
+
+func (d Diagnostic) String() string {
+	if d.File != "" {
+		return fmt.Sprintf("%s:%d: %s", d.File, d.Line, d.Message)
+	}
+	return fmt.Sprintf("line %d: %s", d.Line, d.Message)
+}
+
+// File parses and lints one PHP source file.
+func File(name, src string) ([]Diagnostic, error) {
+	prog, err := parser.Parse(src)
+	if err != nil {
+		return nil, err
+	}
+	var out []Diagnostic
+	lintStmts(name, prog.Stmts, &out)
+	return out, nil
+}
+
+// Paths lints each provided file or directory. Directories are walked for .php
+// and .phpt files.
+func Paths(paths []string) ([]Diagnostic, error) {
+	if len(paths) == 0 {
+		paths = []string{"."}
+	}
+	var out []Diagnostic
+	for _, p := range paths {
+		if err := lintPath(p, &out); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func lintPath(path string, out *[]Diagnostic) error {
+	return filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if d.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(p, ".php") && !strings.HasSuffix(p, ".phpt") {
+			return nil
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		diags, err := File(p, string(b))
+		if err != nil {
+			return fmt.Errorf("%s: %w", p, err)
+		}
+		*out = append(*out, diags...)
+		return nil
+	})
+}
+func lintStmts(file string, stmts []model.Stmt, out *[]Diagnostic) {
+	for _, s := range stmts {
+		switch n := s.(type) {
+		case *model.If:
+			lintCondition(file, n.Cond, out)
+			lintStmts(file, n.Then, out)
+			lintStmts(file, n.Else, out)
+		case *model.For:
+			if n.Cond != nil {
+				lintCondition(file, n.Cond, out)
+			}
+			lintStmts(file, n.Body, out)
+		case *model.FuncDecl:
+			lintStmts(file, n.Body, out)
+		case *model.ClassDecl:
+			for _, m := range n.Methods {
+				lintStmts(file, m.Body, out)
+			}
+		case *model.Try:
+			lintStmts(file, n.Body, out)
+			for _, c := range n.Catches {
+				lintStmts(file, c.Body, out)
+			}
+			lintStmts(file, n.Finally, out)
+		case *model.Switch:
+			for _, c := range n.Cases {
+				lintStmts(file, c.Body, out)
+			}
+			lintStmts(file, n.Default, out)
+		}
+	}
+}
+
+func lintCondition(file string, e model.Expr, out *[]Diagnostic) {
+	for _, a := range assignExprs(e) {
+		*out = append(*out, Diagnostic{
+			File:    file,
+			Line:    a.Line,
+			Message: "assignment in conditional statement",
+		})
+	}
+}
+
+func assignExprs(e model.Expr) []*model.AssignExpr {
+	var out []*model.AssignExpr
+	collectAssignExprs(e, &out)
+	return out
+}
+
+func collectAssignExprs(e model.Expr, out *[]*model.AssignExpr) {
+	switch n := e.(type) {
+	case nil:
+	case *model.AssignExpr:
+		*out = append(*out, n)
+		collectAssignExprs(n.Value, out)
+	case *model.Unary:
+		collectAssignExprs(n.X, out)
+	case *model.Binary:
+		collectAssignExprs(n.Left, out)
+		collectAssignExprs(n.Right, out)
+	case *model.Ternary:
+		collectAssignExprs(n.Cond, out)
+		collectAssignExprs(n.Then, out)
+		collectAssignExprs(n.Else, out)
+	case *model.Cast:
+		collectAssignExprs(n.X, out)
+	case *model.Index:
+		collectAssignExprs(n.Base, out)
+		collectAssignExprs(n.Index, out)
+	case *model.PropAccess:
+		collectAssignExprs(n.Base, out)
+	case *model.MethodCall:
+		collectAssignExprs(n.Base, out)
+		collectAssignExprList(n.Args, out)
+	case *model.Call:
+		collectAssignExprList(n.Args, out)
+	case *model.New:
+		collectAssignExprList(n.Args, out)
+	case *model.ArrayLit:
+		for _, it := range n.Items {
+			collectAssignExprs(it.Key, out)
+			collectAssignExprs(it.Val, out)
+		}
+	case *model.ListExpr:
+		collectAssignExprList(n.Elems, out)
+	}
+}
+
+func collectAssignExprList(xs []model.Expr, out *[]*model.AssignExpr) {
+	for _, x := range xs {
+		collectAssignExprs(x, out)
+	}
+}
