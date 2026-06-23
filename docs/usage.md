@@ -1,5 +1,16 @@
 # Usage
 
+The intended usage for phpscript is to be imported into your Go project.
+You can however install it to run as a CLI or as a HTTP server.
+
+```bash
+go install github.com/titpetric/phpscript@latest
+```
+
+The binary can be used via shebang to provide executable scripts. You
+can invoke it with `phpscript file.php` to run a file, and you can start
+a HTTP server with `phpscript server`, serving the current directory.
+
 ## Go API bridge
 
 The phpscript runner allows to inject Go types into the PHP VM and then
@@ -33,8 +44,8 @@ if err := storage.Set(ctx, "greeting", "hello"); err != nil {
 ```
 
 The context value is injected based on if a function takes context or
-not, and the errors are implicitly handled to interrupt the request if
-an error occurs. The error can be handled in PHP or Go.
+not, and the error returns are implicitly handled to interrupt the
+request if an error occurs. The error can be handled in PHP or Go.
 
 To use Go types, you can simply bind them to a runner:
 
