@@ -9,6 +9,8 @@ very rudimentary and only enables limited functionality.
 - [PHP compatibility](./docs/php-compatibility.md)
 - [Installation and usage](./docs/usage.md)
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/titpetric/phpscript.svg)](https://pkg.go.dev/github.com/titpetric/phpscript)
+
 ## Current state
 
 Several unit focused test fixtures exists, namely:

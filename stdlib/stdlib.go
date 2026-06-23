@@ -421,6 +421,9 @@ func jsonDecodeValue(v any) any {
 // ---------------------------------------------------------------------------
 
 func registerLang(rt *runner.Runtime) {
+	rt.RegisterFunc("php_sapi_name", func() string {
+		return rt.SAPI()
+	})
 	rt.RegisterFunc("isset", func(args ...any) bool {
 		for _, a := range args {
 			if a == nil {

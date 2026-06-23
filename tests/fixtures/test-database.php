@@ -4,10 +4,14 @@ include("code/Database.php");
 
 $databases = array("sqlite", "postgres", "mysql");
 
+if ($_GET['db']) {
+	$databases = array($_GET['db']);
+}
+
 echo '<table border="1">';
 echo '<tr>';
 
-foreach $databases as $dbname {
+foreach ($databases as $dbname) {
 	echo '<td>' . $dbname . '</td>';
 }
 
@@ -15,9 +19,9 @@ echo '</tr>';
 
 echo '<tr>';
 
-foreach $databases as $dbname {
+foreach ($databases as $dbname) {
 	echo '<td><pre>';
-	if $dbname == "postgres" {
+	if ($dbname == "postgres") {
 		$db = new Database;
 		$db->connect("postgres_test");
 
@@ -28,16 +32,16 @@ foreach $databases as $dbname {
 		$db->close();
 	}
 
-	if $dbname == "mysql" {
+	if ($dbname == "mysql") {
 		$db = new Database;
-		$db->connect("mysql_test")
+		$db->connect("mysql_test");
 
 		echo json_encode($db->get_all("show databases;"));
 
 		$db->close();
 	}
 
-	if $dbname == "sqlite" {
+	if ($dbname == "sqlite") {
 		$db = new Database();
 		$db->connect("sqlite_test");
 		$db->query("PRAGMA journal_mode = WAL;");

@@ -86,7 +86,10 @@ func (m *Module) handleRequest(w http.ResponseWriter, r *http.Request) {
 func (m *Module) renderFile(ctx context.Context, filename string, r *http.Request) (string, http.Header, error) {
 	var out bytes.Buffer
 
-	rt := runner.New(&out, runner.Options{RootFS: os.DirFS(m.root)})
+	rt := runner.New(&out, runner.Options{
+		SAPI:   "cgi-phpscript",
+		RootFS: os.DirFS(m.root),
+	})
 	rt.SetIncludeCache(m.includeCache)
 	rt.SetExprCache(m.exprCache)
 	prog, err := rt.LoadFile(filename)

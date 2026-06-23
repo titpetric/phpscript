@@ -23,3 +23,9 @@ tasks:
       - phpscript test-minitpl.php
       - php test-minitpl.php
       - ./test-shebang
+
+  lint:
+    passthru: true
+    cmds:
+      - gofsck ./...
+      - go-fsck lint ./...

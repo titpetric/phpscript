@@ -77,8 +77,14 @@ type ExitError struct {
 	Code int
 }
 
+// Error returns a formatted PHP exit status.
 func (e *ExitError) Error() string {
 	return fmt.Sprintf("exit(%d)", e.Code)
+}
+
+// SAPI returns the configured SAPI string.
+func (r *Runtime) SAPI() string {
+	return r.opts.SAPI
 }
 
 // IsExit reports whether err was caused by PHP die()/exit().
@@ -99,6 +105,9 @@ func (rt *Runtime) Exit(code int) error {
 type Options struct {
 	// RootFS is the filesystem used to load PHP entrypoints and includes.
 	RootFS fs.FS
+
+	// SAPI provides output for `php_sapi_name`.
+	SAPI string
 
 	// WorkDir is the directory inside RootFS used as the script working directory.
 	// Empty means the RootFS root.
@@ -126,10 +135,12 @@ type ExprCache struct {
 	bySrc map[string]*compiledExpr
 }
 
+// NewExprCache returns an empty compiled expression cache.
 func NewExprCache() *ExprCache {
 	return &ExprCache{exprs: map[model.Expr]*compiledExpr{}, bySrc: map[string]*compiledExpr{}}
 }
 
+// Get returns the compiled expression cached for e, if any.
 func (c *ExprCache) Get(e model.Expr) (*compiledExpr, bool) {
 	if c == nil {
 		return nil, false
@@ -140,6 +151,7 @@ func (c *ExprCache) Get(e model.Expr) (*compiledExpr, bool) {
 	return ce, ok
 }
 
+// Set stores ce for e and its transpiled source.
 func (c *ExprCache) Set(e model.Expr, ce *compiledExpr) {
 	if c == nil {
 		return
@@ -150,6 +162,7 @@ func (c *ExprCache) Set(e model.Expr, ce *compiledExpr) {
 	c.bySrc[ce.src] = ce
 }
 
+// GetSource returns the compiled expression cached for src, if any.
 func (c *ExprCache) GetSource(src string) (*compiledExpr, bool) {
 	if c == nil {
 		return nil, false
@@ -170,10 +183,12 @@ type IncludeCache struct {
 	programs map[string]*model.Program
 }
 
+// NewIncludeCache returns an empty parsed include cache.
 func NewIncludeCache() *IncludeCache {
 	return &IncludeCache{programs: map[string]*model.Program{}}
 }
 
+// Get returns the parsed program cached for path, if any.
 func (c *IncludeCache) Get(path string) (*model.Program, bool) {
 	if c == nil {
 		return nil, false
@@ -184,6 +199,7 @@ func (c *IncludeCache) Get(path string) (*model.Program, bool) {
 	return prog, ok
 }
 
+// Set stores prog for path.
 func (c *IncludeCache) Set(path string, prog *model.Program) {
 	if c == nil {
 		return
@@ -229,6 +245,7 @@ func New(w io.Writer, opts Options) *Runtime {
 	return rt
 }
 
+// NewException returns message as the native Exception value.
 func NewException(message string) string {
 	return message
 }
@@ -248,8 +265,8 @@ func (rt *Runtime) SetContext(ctx context.Context) {
 // context.Context (auto-injected) and may return a trailing error, which is
 // surfaced to the interpreter as a thrown error. Example:
 //
-//	rt.RegisterConstructor("Storage", func(ctx context.Context) (Storage, error) { ... })
-//	// PHP:  $storage = new Storage;   // == storage, err := NewStorage(ctx)
+//	rt.RegisterConstructor("Storage", func(ctx context.Context) (Storage, error) { ... }).
+//	// PHP:  $storage = new Storage;   // == storage, err := NewStorage(ctx).
 func (rt *Runtime) RegisterConstructor(name string, ctor any) {
 	rt.constructors[name] = ctor
 }

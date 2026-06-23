@@ -64,6 +64,7 @@ The database extensions are unique to phpscript.
 - `is_numeric`
 - `function_exists` (currently returns `false`)
 - `get_included_files`
+- `php_sapi_name`
 
 ### Tokenizer + Constants
 
@@ -120,6 +121,7 @@ they don't support options constants.
 
 - `set_error_handler`
 - `trigger_error`
+- `global`
 
 Error handling uses Go errors surfaced into the PHP runtime as thrown errors.
 PHP code should use `try` / `catch` instead of PHP4-style warning/error handler

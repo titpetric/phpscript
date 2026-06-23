@@ -40,6 +40,17 @@ type Context struct {
 	response http.Header
 }
 
+// NewContext returns an allocated empty Context value.
+func NewContext() Context {
+	return Context{
+		Get:      map[string]string{},
+		Post:     map[string]string{},
+		Path:     map[string]string{},
+		Headers:  map[string]string{},
+		response: http.Header{},
+	}
+}
+
 // pathVarRE matches Go 1.22+ ServeMux wildcard segments, e.g. {id} or {rest...}.
 var pathVarRE = regexp.MustCompile(`\{([a-zA-Z_][a-zA-Z0-9_]*)(\.\.\.)?\}`)
 
@@ -47,13 +58,7 @@ var pathVarRE = regexp.MustCompile(`\{([a-zA-Z_][a-zA-Z0-9_]*)(\.\.\.)?\}`)
 // flattened to their first value (PHP's scalar superglobal shape); path values
 // are pulled out of the matched ServeMux pattern via r.PathValue.
 func FromRequest(r *http.Request) Context {
-	c := Context{
-		Get:      map[string]string{},
-		Post:     map[string]string{},
-		Path:     map[string]string{},
-		Headers:  map[string]string{},
-		response: http.Header{},
-	}
+	c := NewContext()
 
 	// Query string ($_GET).
 	for k, v := range r.URL.Query() {

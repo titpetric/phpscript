@@ -4,8 +4,9 @@ package runner
 //
 // PHP has no block scoping: variables introduced inside if/for/foreach bodies
 // live in the enclosing function scope. Each function call gets a fresh Scope;
-// the file body runs in the global Scope. (There is intentionally no `global`
-// keyword per the README's omissions list.)
+// the file body runs in the global Scope.
+//
+// There is intentionally no `global` keyword implemented.
 type Scope struct {
 	vars map[string]any
 }

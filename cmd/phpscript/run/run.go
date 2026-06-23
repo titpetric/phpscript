@@ -31,7 +31,10 @@ func Run(ctx context.Context, args []string) error {
 		return errors.New("usage: phpscript <file.php>")
 	}
 
-	rt := runner.New(os.Stdout, runner.Options{RootFS: os.DirFS(".")})
+	rt := runner.New(os.Stdout, runner.Options{
+		SAPI:   "cli",
+		RootFS: os.DirFS("."),
+	})
 	prog, err := rt.LoadFile(args[0])
 	if err != nil {
 		return err
@@ -39,6 +42,9 @@ func Run(ctx context.Context, args []string) error {
 
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, ".")
+
+	reqCtx := runner.NewContext()
+	reqCtx.Register(rt)
 
 	if err := rt.Run(prog); err != nil {
 		if exitErr, ok := runner.IsExit(err); ok {

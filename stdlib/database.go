@@ -17,10 +17,12 @@ func RegisterDatabase(rt *runner.Runtime) {
 	rt.RegisterConstructor("DatabaseDriver", NewDatabaseDriver)
 }
 
+// DatabaseDriver wraps a SQL database connection for PHP scripts.
 type DatabaseDriver struct {
 	db *sql.DB
 }
 
+// NewDatabaseDriver opens a database connection from the named DB_DSN_* env var.
 func NewDatabaseDriver(ctx context.Context, name string) (*DatabaseDriver, error) {
 	envKey := "DB_DSN_" + strings.ToUpper(name)
 	dsn := os.Getenv(envKey)
@@ -54,11 +56,13 @@ func NewDatabaseDriver(ctx context.Context, name string) (*DatabaseDriver, error
 	return &DatabaseDriver{db: db}, nil
 }
 
+// Close closes the underlying database connection.
 func (d *DatabaseDriver) Close() {
 	d.db.Close()
 	d.db = nil
 }
 
+// Prepare creates a database statement for query.
 func (d *DatabaseDriver) Prepare(query string) (*DatabaseStatement, error) {
 	if d == nil || d.db == nil {
 		return nil, fmt.Errorf("database: nil driver")
@@ -66,6 +70,7 @@ func (d *DatabaseDriver) Prepare(query string) (*DatabaseStatement, error) {
 	return &DatabaseStatement{db: d.db, query: query, named: map[string]any{}, positional: map[int64]any{}}, nil
 }
 
+// LastInsertId returns the SQLite last inserted row ID.
 func (d *DatabaseDriver) LastInsertId(ctx context.Context) (int64, error) {
 	if d == nil || d.db == nil {
 		return 0, fmt.Errorf("database: nil driver")
@@ -77,6 +82,7 @@ func (d *DatabaseDriver) LastInsertId(ctx context.Context) (int64, error) {
 	return id, nil
 }
 
+// DatabaseStatement holds a prepared query and bound values for execution.
 type DatabaseStatement struct {
 	db         *sql.DB
 	query      string
@@ -85,6 +91,7 @@ type DatabaseStatement struct {
 	rows       *sql.Rows
 }
 
+// BindValue binds value to a named or positional query parameter.
 func (s *DatabaseStatement) BindValue(key, value any) error {
 	if s == nil {
 		return fmt.Errorf("database: nil statement")
@@ -102,6 +109,7 @@ func (s *DatabaseStatement) BindValue(key, value any) error {
 	return nil
 }
 
+// Execute runs the statement and stores the result cursor.
 func (s *DatabaseStatement) Execute(ctx context.Context) error {
 	if s == nil || s.db == nil {
 		return fmt.Errorf("database: nil statement")
@@ -119,6 +127,7 @@ func (s *DatabaseStatement) Execute(ctx context.Context) error {
 	return nil
 }
 
+// Fetch returns the next result row or false when no rows remain.
 func (s *DatabaseStatement) Fetch() (any, error) {
 	if s == nil {
 		return false, fmt.Errorf("database: nil statement")
@@ -150,6 +159,7 @@ func (s *DatabaseStatement) Fetch() (any, error) {
 	return out, nil
 }
 
+// CloseCursor closes the active result cursor.
 func (s *DatabaseStatement) CloseCursor() error {
 	if s == nil {
 		return fmt.Errorf("database: nil statement")

@@ -11,6 +11,8 @@ class Template
 
 	/** Holds search paths */
 	var $_paths;
+	/** Disable cache */
+	var $_nocache;
 	/** Compile location, relative or absolute */
 	var $_compile_location, $_compile_absolute;
 	/** Defaults */
