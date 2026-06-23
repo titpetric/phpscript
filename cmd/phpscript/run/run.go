@@ -41,6 +41,9 @@ func Run(ctx context.Context, args []string) error {
 	stdlib.RegisterFS(rt, ".")
 
 	if err := rt.Run(prog); err != nil {
+		if exitErr, ok := runner.IsExit(err); ok {
+			os.Exit(exitErr.Code)
+		}
 		return err
 	}
 	return nil

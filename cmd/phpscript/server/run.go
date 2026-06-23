@@ -101,6 +101,9 @@ func (m *Module) renderFile(ctx context.Context, filename string, r *http.Reques
 	reqCtx.Register(rt)
 
 	if err := rt.Run(prog); err != nil {
+		if _, ok := runner.IsExit(err); ok {
+			return out.String(), reqCtx.ResponseHeaders(), nil
+		}
 		return "", nil, err
 	}
 
