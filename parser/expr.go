@@ -38,7 +38,7 @@ func (p *parser) parseAssign() (model.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &model.AssignExpr{Target: left, Op: op, Value: right}, nil
+		return &model.AssignExpr{Target: left, Op: op, Value: right, Line: t.line}, nil
 	}
 	return left, nil
 }
@@ -59,9 +59,12 @@ func (p *parser) parseTernary() (model.Expr, error) {
 	}
 	if p.isOp("?") {
 		p.next()
-		then, err := p.parseExpr()
-		if err != nil {
-			return nil, err
+		then := cond
+		if !p.isOp(":") {
+			then, err = p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
 		}
 		if err := p.eatOp(":"); err != nil {
 			return nil, err

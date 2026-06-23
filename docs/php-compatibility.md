@@ -47,6 +47,7 @@ To use the provided PHP standard library APIs:
 - `isset`
 - `empty`
 - `is_array`
+- `is_int`
 - `is_string`
 - `is_object`
 - `is_numeric`
@@ -114,6 +115,6 @@ general PHP standard library. Common additions likely to unlock more scripts:
 - String utilities: `str_contains`, `str_starts_with`, `str_ends_with`, `strtolower`/`strtoupper` are present, but `ucfirst`, `ucwords`, `strtr`, `preg_split` are not
 - URL/query helpers: `parse_url`, `parse_str`, `http_build_query`, `urlencode`, `urldecode`, `rawurlencode`, `rawurldecode`
 - Date/time and randomness: `time`, `date`, `strtotime`, `microtime`, `rand`, `mt_rand`
-- Type/casting helpers: `is_int`, `is_bool`, `is_float`, `is_null`, `gettype`, `intval`, `strval`, `boolval`, `floatval`
+- Type/casting helpers: `is_bool`, `is_float`, `is_null`, `gettype`, `intval`, `strval`, `boolval`, `floatval`
 - Filesystem/path helpers: `realpath`, `is_file`, `is_dir`, `filesize`, `pathinfo`, `glob`, `rename`, `copy`
 - Output buffering: `ob_start`, `ob_get_clean`, `ob_get_contents`, `ob_end_clean`

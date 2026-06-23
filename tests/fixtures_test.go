@@ -208,7 +208,8 @@ func testPHPFS() fs.FS {
 }
 
 func newTestRuntime(out *strings.Builder, ctx context.Context) *runner.Runtime {
-	rt := runner.New(out, runner.Options{RootFS: testPHPFS()})
+	options := runner.Options{RootFS: testPHPFS()}
+	rt := runner.New(out, options)
 	rt.SetIncludeCache(includeCache)
 	rt.SetExprCache(exprCache)
 	rt.SetContext(context.WithValue(ctx, tenantKey, "acme"))

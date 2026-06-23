@@ -60,6 +60,16 @@ func TestTokenGetAllShape(t *testing.T) {
 	}
 }
 
+func TestIfConditionSyntax(t *testing.T) {
+	if _, err := parser.Parse(`<?php $foo = false; if !$foo { echo "no"; }`); err != nil {
+		t.Fatalf("unwrapped if condition failed to parse: %v", err)
+	}
+
+	if _, err := parser.Parse(`<?php if ($row = fn()) { echo "ok"; }`); err != nil {
+		t.Fatalf("assignment-in-condition should parse for runtime/lint compatibility: %v", err)
+	}
+}
+
 func TestTokenSingleCharStrings(t *testing.T) {
 	toks := parser.TokenGetAll(`<?php ($a);`)
 	var parens int

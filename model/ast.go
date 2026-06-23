@@ -320,6 +320,7 @@ type AssignExpr struct {
 	Target Expr
 	Op     string
 	Value  Expr
+	Line   int
 }
 
 // ListExpr is `list($a, $b, ...)`, valid only as an assignment target. Elements

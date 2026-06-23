@@ -172,15 +172,18 @@ func (p *parser) parseEcho() (model.Stmt, error) {
 
 func (p *parser) parseIf() (model.Stmt, error) {
 	p.next() // if
-	if err := p.eatOp("("); err != nil {
-		return nil, err
+	wrapped := p.isOp("(")
+	if wrapped {
+		p.next()
 	}
 	cond, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
-	if err := p.eatOp(")"); err != nil {
-		return nil, err
+	if wrapped {
+		if err := p.eatOp(")"); err != nil {
+			return nil, err
+		}
 	}
 	then, err := p.parseBlock()
 	if err != nil {
@@ -214,7 +217,6 @@ func (p *parser) parseIf() (model.Stmt, error) {
 	}
 	return node, nil
 }
-
 func (p *parser) parseForeach() (model.Stmt, error) {
 	p.next() // foreach
 	if err := p.eatOp("("); err != nil {
