@@ -2,11 +2,15 @@
 
 class Database
 {
-	protected $handle = false;
+	protected $handle;
 
 	public function connect($connection_name)
 	{
 		$this->handle = new DatabaseDriver($connection_name);
+	}
+
+	public function close() {
+		$this->handle->close();
 	}
 
 	public function insert($table, $values)

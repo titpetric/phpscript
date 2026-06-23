@@ -22,6 +22,10 @@ foreach $databases as $dbname {
 		$db->connect("postgres_test");
 
 		echo json_encode($db->get_all("select datname from pg_database where datistemplate = false;"));
+
+		echo json_encode($db->get("show max_connections;"));
+
+		$db->close();
 	}
 
 	if $dbname == "mysql" {
@@ -29,17 +33,25 @@ foreach $databases as $dbname {
 		$db->connect("mysql_test")
 
 		echo json_encode($db->get_all("show databases;"));
+
+		$db->close();
 	}
 
 	if $dbname == "sqlite" {
 		$db = new Database();
 		$db->connect("sqlite_test");
+		$db->query("PRAGMA journal_mode = WAL;");
+		$db->query("PRAGMA synchronous = NORMAL;");
+		$db->query("PRAGMA busy_timeout = 1000;");
 
-		$db->query("drop table if exists users");
-		$db->query("create table users (id integer primary key autoincrement, name text)");
-
-		$db->insert("users", array("name" => "Ada"));
-		$db->insert("users", array("name" => "Grace"));
+		try {
+			$db->get("select count(id) from users");
+		} catch ($e) {
+			$db->query("drop table if exists users");
+			$db->query("create table users (id integer primary key autoincrement, name text)");
+			$db->insert("users", array("name" => "Ada"));
+			$db->insert("users", array("name" => "Grace"));
+		}
 
 		$row = $db->get("select id, name from users where name = ?", "Ada");
 		$users = $db->get_all("select name from users order by id");
@@ -48,6 +60,8 @@ foreach $databases as $dbname {
 		foreach ($users as $row) {
 			echo $row["name"] . "\n";
 		}
+
+		$db->close();
 	}
 	echo '</pre></td>';
 }

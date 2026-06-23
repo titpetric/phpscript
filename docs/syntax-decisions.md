@@ -25,3 +25,24 @@ The syntax is in essence a non-OOP version of PHP4 with the extension of
 a built in `Exception` type and `try` + `catch` statements for error
 handling. This is in contrast with PHP4 `set_error_handler` and
 `trigger_error` which are unimplemented APIs.
+
+## Deviations from PHP syntax
+
+Unlike PHP, phpscript aims to simplify the syntax by removing the
+parenthesis from conditional and iteration statements. This results in
+phpscript specific syntax which cannot be executed by php.
+
+```php
+if $id {
+	// ...
+}
+
+foreach $users as $user {
+	// ...
+}
+```
+
+In addition to this syntax extension, other changes are being considered:
+
+- End of line semicolons optional, `fmt` to remove them.
+- Assigment in `if` statement is discouraged with `lint`.

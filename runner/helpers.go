@@ -216,12 +216,24 @@ func coerceArg(v any, want reflect.Type) reflect.Value {
 func (rt *Runtime) helperCall(scope *Scope) func(base any, method string, args ...any) (any, error) {
 	return func(base any, method string, args ...any) (any, error) {
 		if obj, ok := base.(*model.Object); ok && obj.Class != nil {
-			if decl, ok := obj.Class.Methods[method]; ok {
+			if decl, ok := lookupPHPMethod(obj.Class, method); ok {
 				return rt.invokeMethod(obj, decl, args)
 			}
 		}
 		return rt.callGoMethod(base, method, args)
 	}
+}
+
+func lookupPHPMethod(class *model.Class, method string) (*model.FuncDecl, bool) {
+	if decl, ok := class.Methods[method]; ok {
+		return decl, true
+	}
+	for name, decl := range class.Methods {
+		if strings.EqualFold(name, method) {
+			return decl, true
+		}
+	}
+	return nil, false
 }
 
 // helperNew implements `new Class(args...)`: instantiate from the class table,

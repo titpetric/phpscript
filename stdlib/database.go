@@ -47,7 +47,16 @@ func NewDatabaseDriver(ctx context.Context, name string) (*DatabaseDriver, error
 		db.Close()
 		return nil, err
 	}
+	// Set connection pool limits - max 20 open connections
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(20)
+
 	return &DatabaseDriver{db: db}, nil
+}
+
+func (d *DatabaseDriver) Close() {
+	d.db.Close()
+	d.db = nil
 }
 
 func (d *DatabaseDriver) Prepare(query string) (*DatabaseStatement, error) {

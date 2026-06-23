@@ -42,6 +42,15 @@ To use the provided PHP standard library APIs:
 - `array_values`
 - `usort`
 
+### Database API (stdlib/database.go)
+
+The database extensions are unique to phpscript.
+
+- Database connection pooling: Max 20 open connections set via `db.SetMaxOpenConns(20)`
+- Supported engines: SQLite, PostgreSQL, MySQL via DSN configuration
+- Key methods: `connect()`, `query()`, `insert()`, `get()`, `get_all()`
+- Transactions: `begin()`, `commit()`, `rollback()`
+
 ### Language helpers
 
 - `isset`
