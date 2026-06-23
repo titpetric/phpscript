@@ -2,20 +2,54 @@
 
 include("code/Database.php");
 
-$db = new Database();
-$db->connect("sqlite://file:phpscript-test?mode=memory&cache=shared");
+$databases = array("sqlite", "postgres", "mysql");
 
-$db->query("drop table if exists users");
-$db->query("create table users (id integer primary key autoincrement, name text)");
+echo '<table border="1">';
+echo '<tr>';
 
-$db->insert("users", array("name" => "Ada"));
-$db->insert("users", array("name" => "Grace"));
-
-$row = $db->get("select id, name from users where name = ?", "Ada");
-
-echo $row["name"] . "#" . $row["id"] . "\n";
-
-$users = $db->get_all("select name from users order by id");
-foreach ($users as $row) {
-	echo $row["name"] . "\n";
+foreach $databases as $dbname {
+	echo '<td>' . $dbname . '</td>';
 }
+
+echo '</tr>';
+
+echo '<tr>';
+
+foreach $databases as $dbname {
+	echo '<td><pre>';
+	if $dbname == "postgres" {
+		$db = new Database;
+		$db->connect("postgres_test");
+
+		echo json_encode($db->get_all("select datname from pg_database where datistemplate = false;"));
+	}
+
+	if $dbname == "mysql" {
+		$db = new Database;
+		$db->connect("mysql_test")
+
+		echo json_encode($db->get_all("show databases;"));
+	}
+
+	if $dbname == "sqlite" {
+		$db = new Database();
+		$db->connect("sqlite_test");
+
+		$db->query("drop table if exists users");
+		$db->query("create table users (id integer primary key autoincrement, name text)");
+
+		$db->insert("users", array("name" => "Ada"));
+		$db->insert("users", array("name" => "Grace"));
+
+		$row = $db->get("select id, name from users where name = ?", "Ada");
+		$users = $db->get_all("select name from users order by id");
+
+		echo $row["name"] . "#" . $row["id"] . "\n";
+		foreach ($users as $row) {
+			echo $row["name"] . "\n";
+		}
+	}
+	echo '</pre></td>';
+}
+
+echo '</tr>';

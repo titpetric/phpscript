@@ -6,6 +6,7 @@
 package stdlib
 
 import (
+	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"sort"
@@ -21,6 +22,7 @@ import (
 func Register(rt *runner.Runtime) {
 	registerStrings(rt)
 	registerArrays(rt)
+	registerJSON(rt)
 	registerRegex(rt)
 	registerLang(rt)
 	registerTokenizer(rt)
@@ -313,6 +315,108 @@ func phpUsort(a *model.Array, cmp func(...any) (any, error)) bool {
 }
 
 // ---------------------------------------------------------------------------
+// json
+// ---------------------------------------------------------------------------
+
+func registerJSON(rt *runner.Runtime) {
+	rt.RegisterFunc("json_encode", phpJSONEncode)
+	rt.RegisterFunc("json_decode", phpJSONDecode)
+}
+
+func phpJSONEncode(v any) (any, error) {
+	b, err := json.Marshal(jsonEncodeValue(v))
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
+}
+
+func phpJSONDecode(s string) (any, error) {
+	var v any
+	dec := json.NewDecoder(strings.NewReader(s))
+	dec.UseNumber()
+	if err := dec.Decode(&v); err != nil {
+		return nil, err
+	}
+	return jsonDecodeValue(v), nil
+}
+
+func jsonEncodeValue(v any) any {
+	switch x := v.(type) {
+	case *model.Array:
+		if x == nil {
+			return nil
+		}
+		if jsonArrayIsList(x) {
+			out := make([]any, 0, x.Len())
+			x.Range(func(_, v any) bool {
+				out = append(out, jsonEncodeValue(v))
+				return true
+			})
+			return out
+		}
+		out := map[string]any{}
+		x.Range(func(k, v any) bool {
+			out[toString(k)] = jsonEncodeValue(v)
+			return true
+		})
+		return out
+	case *model.Object:
+		if x == nil {
+			return nil
+		}
+		out := map[string]any{}
+		for k, v := range x.Props {
+			out[k] = jsonEncodeValue(v)
+		}
+		return out
+	default:
+		return v
+	}
+}
+
+func jsonArrayIsList(a *model.Array) bool {
+	expect := int64(0)
+	isList := true
+	a.Range(func(k, _ any) bool {
+		if i, ok := k.(int64); !ok || i != expect {
+			isList = false
+			return false
+		}
+		expect++
+		return true
+	})
+	return isList
+}
+
+func jsonDecodeValue(v any) any {
+	switch x := v.(type) {
+	case []any:
+		out := model.NewArray()
+		for _, v := range x {
+			out.Append(jsonDecodeValue(v))
+		}
+		return out
+	case map[string]any:
+		out := model.NewArray()
+		for k, v := range x {
+			out.Set(k, jsonDecodeValue(v))
+		}
+		return out
+	case json.Number:
+		if i, err := x.Int64(); err == nil {
+			return i
+		}
+		if f, err := x.Float64(); err == nil {
+			return f
+		}
+		return string(x)
+	default:
+		return v
+	}
+}
+
+// ---------------------------------------------------------------------------
 // language constructs exposed as functions
 // ---------------------------------------------------------------------------
 
@@ -346,6 +450,20 @@ func registerLang(rt *runner.Runtime) {
 	})
 	rt.RegisterFunc("call_user_func_array", phpCallUserFuncArray)
 	rt.RegisterFunc("function_exists", func(string) bool { return false })
+	rt.RegisterFunc("exit", func(code ...any) (any, error) {
+		status := 0
+		if len(code) > 0 {
+			status = int(toInt(code[0]))
+		}
+		return nil, rt.Exit(status)
+	})
+	rt.RegisterFunc("die", func(code ...any) (any, error) {
+		status := 0
+		if len(code) > 0 {
+			status = int(toInt(code[0]))
+		}
+		return nil, rt.Exit(status)
+	})
 }
 
 func phpCallUserFuncArray(fn func(...any) (any, error), args *model.Array) (any, error) {

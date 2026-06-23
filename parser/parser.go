@@ -106,6 +106,12 @@ func (p *parser) parseStmt() (model.Stmt, error) {
 			return p.parseWhile()
 		case "return":
 			return p.parseReturn()
+		case "die", "exit":
+			if p.peek(1).kind != tOp || p.peek(1).val != "(" {
+				p.next()
+				p.optSemi()
+				return &model.ExprStmt{X: &model.Call{Name: t.val}}, nil
+			}
 		case "function":
 			// A bare `function(` is an anonymous closure expression statement,
 			// not a declaration.
@@ -219,8 +225,9 @@ func (p *parser) parseIf() (model.Stmt, error) {
 }
 func (p *parser) parseForeach() (model.Stmt, error) {
 	p.next() // foreach
-	if err := p.eatOp("("); err != nil {
-		return nil, err
+	wrapped := p.isOp("(")
+	if wrapped {
+		p.next()
 	}
 	src, err := p.parseExpr()
 	if err != nil {
@@ -244,8 +251,10 @@ func (p *parser) parseForeach() (model.Stmt, error) {
 		node.KeyVar = first
 		node.ValVar = val
 	}
-	if err := p.eatOp(")"); err != nil {
-		return nil, err
+	if wrapped {
+		if err := p.eatOp(")"); err != nil {
+			return nil, err
+		}
 	}
 	body, err := p.parseBlock()
 	if err != nil {

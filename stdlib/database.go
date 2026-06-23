@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
-	_ "modernc.org/sqlite"
 )
 
 // RegisterDatabase installs the Go database bridge used by PHP via
@@ -21,18 +21,25 @@ type DatabaseDriver struct {
 	db *sql.DB
 }
 
-func NewDatabaseDriver(ctx context.Context, dsn string) (*DatabaseDriver, error) {
-	driver, name, ok := strings.Cut(dsn, "://")
-	if driver == "" {
-		return nil, fmt.Errorf("database dsn missing driver: %q", dsn)
+func NewDatabaseDriver(ctx context.Context, name string) (*DatabaseDriver, error) {
+	envKey := "DB_DSN_" + strings.ToUpper(name)
+	dsn := os.Getenv(envKey)
+	if dsn == "" {
+		return nil, fmt.Errorf("Can't connect to %s, no %s env", name, envKey)
 	}
-	if !ok {
-		return nil, fmt.Errorf("database dsn missing separator: %q", dsn)
+
+	if !strings.Contains(dsn, "://") {
+		return nil, fmt.Errorf("malformed dsn, expecting driver://connection_string, got %q", dsn)
 	}
-	if driver == "sqlite" {
-		driver = "sqlite"
-	}
-	db, err := sql.Open(driver, name)
+
+	driver, name, _ := strings.Cut(dsn, "://")
+	db, err := func() (*sql.DB, error) {
+		// postgres keeps driver in DSN
+		if driver == "postgres" {
+			return sql.Open("pgx", dsn)
+		}
+		return sql.Open(driver, name)
+	}()
 	if err != nil {
 		return nil, err
 	}

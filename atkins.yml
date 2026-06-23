@@ -1,16 +1,23 @@
 tasks:
   default:
+    env:
+      include: .env.testing
     cmds:
+      - go mod tidy
       - goimports -w .
       - go fmt ./...
-      - go mod tidy
-      - go test ./...
       - go install .
+      - CGO_ENABLED=0 go build -o bin/ .
+      - docker build --rm -t titpetric/phpscript:latest -f docker/Dockerfile .
+      - task: up
+      - go test ./...
       - task: test:phpscript:run
 
   test:phpscript:run:
     dir: tests/fixtures
     passthru: true
+    env:
+      include: .env.testing
     cmds:
       - phpscript test-minitpl.php
       - php test-minitpl.php

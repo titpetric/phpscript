@@ -1,0 +1,12 @@
+include:
+  - docker/service/mysql.yml
+  - docker/service/postgres.yml
+
+services:
+  phpscript:
+    image: titpetric/phpscript:latest
+    env_file: .env.docker
+    ports:
+      - 8080:8080
+    volumes:
+      - $PWD/tests/fixtures/:/app

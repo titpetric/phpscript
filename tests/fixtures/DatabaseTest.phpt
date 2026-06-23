@@ -6,7 +6,7 @@ description: Database.php can use the Go DatabaseDriver with sqlite.
 include("code/Database.php");
 
 $db = new Database();
-$db->connect("sqlite://file:phpscript-test?mode=memory&cache=shared");
+$db->connect("sqlite_test");
 
 $db->query("drop table if exists users");
 $db->query("create table users (id integer primary key autoincrement, name text)");

@@ -1,3 +1,4 @@
 *.pprof
 *.test
 *.cov
+/bin

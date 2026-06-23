@@ -9,6 +9,10 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/run"
 	"github.com/titpetric/phpscript/cmd/phpscript/server"
 	"github.com/titpetric/phpscript/cmd/phpscript/version"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
