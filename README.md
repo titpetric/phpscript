@@ -5,7 +5,7 @@ expression syntax and some parts of the standard library. It's currently
 very rudimentary and only enables limited functionality.
 
 - [About phpscript](./docs/README.md)
-- [Syntax decisions](./docs/syntax-decisions.md)
+- [Syntax](./docs/syntax.md)
 - [PHP compatibility](./docs/php-compatibility.md)
 - [Installation and usage](./docs/usage.md)
 
@@ -18,7 +18,7 @@ Several unit focused test fixtures exists, namely:
 3. loading and executing template engine code
 
 This means that phpscript is currently able to use a generic Database
-client. Our own standard library implements a `Database` class which is
+client. Our own standard library implements a `DatabaseDriver` class which is
 integration tested with
 [./tests/fixtures/test-database.php](./tests/fixtures/test-database.php)
 over several databases (pgx, mysql, sqlite).

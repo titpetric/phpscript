@@ -37,8 +37,10 @@ To use the provided PHP standard library APIs:
 - `count`
 - `in_array`
 - `array_unique`
+- `array_map`
 - `array_merge`
 - `array_keys`
+- `array_slice`
 - `array_values`
 - `usort`
 
@@ -105,6 +107,15 @@ These are registered separately with `runner.Context.Register(rt)`.
 - `$_PATH`
 - `$_SERVER`
 
+### JSON
+
+A simplified JSON encoding and decoding function is provided. These
+functions are not API compatible with the PHP standard library, because
+they don't support options constants.
+
+- `json_encode`
+- `json_decode`
+
 ## Explicitly not implemented by design
 
 - `set_error_handler`
@@ -119,8 +130,7 @@ APIs. Hosts that need global error reporting should use `Runtime.OnError`.
 The current shim set was sized for the minitpl compatibility target, not for a
 general PHP standard library. Common additions likely to unlock more scripts:
 
-- JSON: `json_encode`, `json_decode`, `json_last_error`, `json_last_error_msg`
-- Array utilities: `array_map`, `array_filter`, `array_search`, `array_key_exists`, `array_slice`, `array_reverse`, `array_diff`, `array_intersect`
+- Array utilities: `array_filter`, `array_search`, `array_key_exists`, `array_reverse`, `array_diff`, `array_intersect`
 - String utilities: `str_contains`, `str_starts_with`, `str_ends_with`, `strtolower`/`strtoupper` are present, but `ucfirst`, `ucwords`, `strtr`, `preg_split` are not
 - URL/query helpers: `parse_url`, `parse_str`, `http_build_query`, `urlencode`, `urldecode`, `rawurlencode`, `rawurldecode`
 - Date/time and randomness: `time`, `date`, `strtotime`, `microtime`, `rand`, `mt_rand`
