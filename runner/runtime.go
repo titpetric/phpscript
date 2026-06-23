@@ -195,7 +195,6 @@ func New(w io.Writer, opts Options) *Runtime {
 			"__pair":   adapt(helperPair),
 			"__array":  adapt(helperArray),
 			"__index":  adapt(helperIndex),
-			"__get":    adapt(helperGet),
 			"__cast":   adapt(helperCast),
 		},
 	}
@@ -424,6 +423,7 @@ func (rt *Runtime) baseEnv(scope *Scope) map[string]any {
 		env[name] = fn
 	}
 	env["__call"] = adapt(rt.helperCall(scope))
+	env["__get"] = adapt(rt.helperGet(scope))
 	env["__new"] = adapt(rt.helperNew(scope))
 	env["__classconst"] = adapt(rt.helperClassConst(scope))
 	env["__set"] = adapt(rt.helperSet(scope))

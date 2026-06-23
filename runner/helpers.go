@@ -103,26 +103,39 @@ func helperIndex(base, idx any) any {
 }
 
 // helperGet implements `base->name` / `base.name` property access against PHP
-// objects (Props bag) and, by reflection, exported fields of Go structs.
-func helperGet(base any, name string) any {
-	switch b := base.(type) {
-	case *model.Object:
-		return b.Props[name]
-	case nil:
+// objects (Props bag) and, by reflection, exported fields of Go structs. When a
+// PHP object has no matching property but has a method by that name, it returns
+// a callable bound to that object; this supports PHP idioms such as
+// `call_user_func_array($this->query, $args)`.
+func (rt *Runtime) helperGet(scope *Scope) func(base any, name string) any {
+	return func(base any, name string) any {
+		switch b := base.(type) {
+		case *model.Object:
+			if v, ok := b.Props[name]; ok {
+				return v
+			}
+			if b.Class != nil {
+				if decl, ok := b.Class.Methods[name]; ok {
+					return func(args ...any) (any, error) { return rt.invokeMethod(b, decl, args) }
+				}
+			}
+			return nil
+		case nil:
+			return nil
+		}
+		rv := reflect.Indirect(reflect.ValueOf(base))
+		if rv.Kind() == reflect.Struct {
+			// Exact match first, then case-insensitive (PHP property access on a Go
+			// struct: `$rec->value` resolves the exported field Value).
+			if f := rv.FieldByName(name); f.IsValid() {
+				return f.Interface()
+			}
+			if f := rv.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) }); f.IsValid() {
+				return f.Interface()
+			}
+		}
 		return nil
 	}
-	rv := reflect.Indirect(reflect.ValueOf(base))
-	if rv.Kind() == reflect.Struct {
-		// Exact match first, then case-insensitive (PHP property access on a Go
-		// struct: `$rec->value` resolves the exported field Value).
-		if f := rv.FieldByName(name); f.IsValid() {
-			return f.Interface()
-		}
-		if f := rv.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) }); f.IsValid() {
-			return f.Interface()
-		}
-	}
-	return nil
 }
 
 // adapt wraps any Go callable in the uniform func(...any) (any, error) signature

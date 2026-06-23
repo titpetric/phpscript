@@ -3,8 +3,8 @@ description: This includes titpetric/minitpl source files.
 ---
 <?php
 
-include("minitpl/Compiler.php");
-include("minitpl/Template.php");
+include("code/Compiler.php");
+include("code/Template.php");
 
 $tpl = new Template();
 $tpl->set_paths('templates/');

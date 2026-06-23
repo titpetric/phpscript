@@ -24,6 +24,7 @@ func Register(rt *runner.Runtime) {
 	registerRegex(rt)
 	registerLang(rt)
 	registerTokenizer(rt)
+	RegisterDatabase(rt)
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +235,58 @@ func registerArrays(rt *runner.Runtime) {
 		a.Range(func(_, v any) bool { out.Append(v); return true })
 		return out
 	})
+	rt.RegisterFunc("array_slice", phpArraySlice)
+	rt.RegisterFunc("array_map", phpArrayMap)
 	rt.RegisterFunc("usort", phpUsort)
+}
+
+func phpArraySlice(a *model.Array, offset int64, length ...int64) *model.Array {
+	out := model.NewArray()
+	if a == nil {
+		return out
+	}
+	var vals []any
+	a.Range(func(_, v any) bool { vals = append(vals, v); return true })
+	start := int(offset)
+	if start < 0 {
+		start += len(vals)
+	}
+	if start < 0 {
+		start = 0
+	}
+	if start > len(vals) {
+		return out
+	}
+	end := len(vals)
+	if len(length) > 0 {
+		end = start + int(length[0])
+		if end < start {
+			end = start
+		}
+		if end > len(vals) {
+			end = len(vals)
+		}
+	}
+	for _, v := range vals[start:end] {
+		out.Append(v)
+	}
+	return out
+}
+
+func phpArrayMap(fn func(...any) (any, error), a *model.Array) (*model.Array, error) {
+	out := model.NewArray()
+	if a == nil {
+		return out, nil
+	}
+	a.Range(func(_, v any) bool {
+		mapped, err := fn(v)
+		if err != nil {
+			return false
+		}
+		out.Append(mapped)
+		return true
+	})
+	return out, nil
 }
 
 // phpUsort sorts the array's values in place using cmp, reindexing with integer
@@ -285,7 +337,19 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return false
 	})
+	rt.RegisterFunc("call_user_func_array", phpCallUserFuncArray)
 	rt.RegisterFunc("function_exists", func(string) bool { return false })
+}
+
+func phpCallUserFuncArray(fn func(...any) (any, error), args *model.Array) (any, error) {
+	var callArgs []any
+	if args != nil {
+		args.Range(func(_, v any) bool {
+			callArgs = append(callArgs, v)
+			return true
+		})
+	}
+	return fn(callArgs...)
 }
 
 // ---------------------------------------------------------------------------

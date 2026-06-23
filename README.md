@@ -7,7 +7,7 @@ very rudimentary and only enables limited functionality.
 - [About phpscript](./docs/README.md)
 - [Syntax decisions](./docs/syntax-decisions.md)
 - [PHP compatibility](./docs/php-compatibility.md)
-- [Usage - Go API Bridge](./docs/usage.md)
+- [Installation and usage](./docs/usage.md)
 
 ## Contributing
 

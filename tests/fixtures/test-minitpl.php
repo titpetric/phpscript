@@ -1,7 +1,8 @@
 <?php
 
-include("minitpl/Compiler.php");
-include("minitpl/Template.php");
+include("code/Compiler.php");
+include("code/Template.php");
+include("code/functions.php");
 
 $tpl = new Template();
 $tpl->set_paths('templates/');
