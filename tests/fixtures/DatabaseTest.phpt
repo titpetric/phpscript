@@ -3,26 +3,25 @@ description: Database.php can use the Go DatabaseDriver with sqlite.
 ---
 <?php
 
-class PDO { const FETCH_ASSOC = 2; }
-
 include("code/Database.php");
 
 $db = new Database();
 $db->connect("sqlite://file:phpscript-test?mode=memory&cache=shared");
+
+$db->query("drop table if exists users");
 $db->query("create table users (id integer primary key autoincrement, name text)");
+
 $db->insert("users", array("name" => "Ada"));
 $db->insert("users", array("name" => "Grace"));
 
-$stmt = $db->query("select id, name from users where name = ?", "Ada");
-$row = $db->fetch($stmt);
-echo $row["name"] . "#" . $row["id"] . "\n";
-$stmt->closeCursor();
+$row = $db->get("select id, name from users where name = ?", "Ada");
 
-$stmt = $db->query("select name from users order by id");
-while ($row = $db->fetch($stmt)) {
+echo $row["name"] . "#" . $row["id"] . "\n";
+
+$users = $db->get_all("select name from users order by id");
+foreach ($users as $row) {
 	echo $row["name"] . "\n";
 }
-$stmt->closeCursor();
 ---
 Ada#1
 Ada
