@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -69,6 +70,29 @@ type Runtime struct {
 	exprCache *ExprCache
 	envPool   sync.Pool
 	helpers   map[string]func(...any) (any, error)
+}
+
+// ExitError is returned when PHP die()/exit() interrupts script execution.
+type ExitError struct {
+	Code int
+}
+
+func (e *ExitError) Error() string {
+	return fmt.Sprintf("exit(%d)", e.Code)
+}
+
+// IsExit reports whether err was caused by PHP die()/exit().
+func IsExit(err error) (*ExitError, bool) {
+	var exitErr *ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr, true
+	}
+	return nil, false
+}
+
+// Exit interrupts execution with a PHP exit status.
+func (rt *Runtime) Exit(code int) error {
+	return &ExitError{Code: code}
 }
 
 // Options configures a Runtime.
