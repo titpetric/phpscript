@@ -83,8 +83,8 @@ func (e *ExitError) Error() string {
 }
 
 // SAPI returns the configured SAPI string.
-func (r *Runtime) SAPI() string {
-	return r.opts.SAPI
+func (rt *Runtime) SAPI() string {
+	return rt.opts.SAPI
 }
 
 // IsExit reports whether err was caused by PHP die()/exit().
