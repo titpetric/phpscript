@@ -17,7 +17,7 @@ import (
 
 func main() {
 	if err := start(); err != nil {
-		log.Fatalf("Unexpected error: %+v", err)
+		log.Fatalf("Unexpected error: %v", err)
 	}
 }
 
