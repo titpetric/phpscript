@@ -1,25 +1,32 @@
 package stdlib
 
+// Exception holds an error code and error message.
 type Exception struct {
-	Message string
-	Code    int
+	Message string `json:"message"`
+	Code    int    `json:"code"`
 }
 
-func NewException(message string, code int) error {
-	return &Exception{
+// NewException will return a new allocation for an exception.
+// A nil error is returned so a new exception is not thrown immediately
+// whenever a `new Exception` call is made in the runtime.
+func NewException(message string, code int) (Exception, error) {
+	return Exception{
 		Message: message,
 		Code:    code,
-	}
+	}, nil
 }
 
-func (e *Exception) GetCode() int {
+// GetCode returns the error code of the exception.
+func (e Exception) GetCode() int {
 	return e.Code
 }
 
-func (e *Exception) GetMessage() string {
+// GetMessage returns the error message of the exception.
+func (e Exception) GetMessage() string {
 	return e.Message
 }
 
-func (e *Exception) Error() string {
+// Error is implemented to satisfy an error interface.
+func (e Exception) Error() string {
 	return e.Message
 }

@@ -240,14 +240,7 @@ func New(w io.Writer, opts Options) *Runtime {
 	}
 	rt.envPool.New = func() any { return make(map[string]any, 128) }
 
-	rt.RegisterConstructor("Exception", NewException)
-
 	return rt
-}
-
-// NewException returns message as the native Exception value.
-func NewException(message string) string {
-	return message
 }
 
 // SetContext installs the lifecycle context auto-injected into registered Go

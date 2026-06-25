@@ -12,6 +12,7 @@ import (
 // contextType is the reflect type of context.Context, used to detect callables
 // that want the runtime context auto-injected as their first argument.
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 // wantsContext reports whether fn's first parameter is a context.Context.
 func wantsContext(t reflect.Type) bool {
@@ -244,7 +245,11 @@ func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any,
 		// value (storage, err := NewStorage(ctx)) with the context auto-injected
 		// and any trailing error surfaced as a thrown error.
 		if ctor, ok := rt.constructors[class]; ok {
-			return rt.invokeWithContext(ctor, args)
+			v, err := rt.invokeWithContext(ctor, args)
+			if err != nil {
+				return nil, err
+			}
+			return v, nil
 		}
 		c, ok := rt.classes[class]
 		if !ok {
@@ -330,7 +335,8 @@ func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 func firstReturn(out []reflect.Value) (any, error) {
 	var result any
 	for _, o := range out {
-		if err, ok := o.Interface().(error); ok {
+		if o.Type() == errorType {
+			err, _ := o.Interface().(error)
 			if err != nil {
 				return result, err
 			}
