@@ -38,6 +38,10 @@ func RegisterFS(rt *runner.Runtime, dir string) {
 		}
 	}
 
+	rt.RegisterFunc("glob", func(p string) ([]string, error) {
+		return fs.Glob(rt.FS(), p)
+	})
+
 	// file_get_contents: prefer the runner's FS, fall back to OS for absolute paths or missing files
 	rt.RegisterFunc("file_get_contents", func(p string) any {
 		if filepath.IsAbs(p) {
