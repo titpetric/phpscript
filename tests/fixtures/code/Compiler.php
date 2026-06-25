@@ -4,17 +4,14 @@
 class Compiler
 {
 	protected $hooks = array(
-		HOOK_POSITION_PRE => array(),
-		HOOK_POSITION_POST => array()
-	);    
-    
-	function __construct()
-	{
-		$this->_tag_php_open = "<"."?php";
-		$this->_tag_php_close = "?".">\n";
-		$this->_literals = array();
-	}
-    
+		"pre" => array(),
+		"post" => array()
+	);
+
+	public $_tag_php_open = "<"."?php";
+	public $_tag_php_close = "?".">\n";
+	public $_literals = array();
+
 	function set_hooks($hooks)
 	{
 		$this->hooks = $hooks;
@@ -34,18 +31,18 @@ class Compiler
 	function compile($filename, $output_filename, $find_path, $nocache)
 	{
 		$contents = $this->load_contents($filename);
-        
-		foreach ($this->hooks[POSITION_PRE] as $hook) {
+
+		foreach ($this->hooks["pre"] as $hook) {
 			$contents = $hook->execute($filename, $contents);
 		}
-        
+
 		$r = 0;
 		if ($contents!==false && $contents!=="") {
 			while (preg_match_all("/\{include\ (.*?)\}/s", $contents, $matches)) {
 				$matches = array_unique($matches[1]);
 				foreach ($matches as $file) {
 					$cn = "<!-- ".$file." -->";
-					if (($fn = call_user_func($find_path, $file))!==false) {
+					if (($fn = call_user_func_array($find_path, array($file)))!==false) {
 						$cn = $this->load_contents($fn.$file);
 					}
 					$contents = str_replace("{include ".$file."}", $cn, $contents);
@@ -68,7 +65,7 @@ class Compiler
 			$contents = $this->_parse_variables($contents);
 			$contents = $this->_template_cleanup($contents);
 
-			foreach ($this->hooks[POSITION_POST] as $hook) {
+			foreach ($this->hooks["post"] as $hook) {
 				$contents = $hook->execute($filename, $contents);
 			}
 

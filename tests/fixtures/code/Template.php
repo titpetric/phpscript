@@ -6,9 +6,6 @@ class Template
 	const E_TEMPLATE_COMPILE = "Template file '%s' doesn't exist! Is the compile dir writable?";
 	const E_FILENAME_EMPTY = "Filename can't be empty, tried to render '%s'";
 
-	const HOOK_POSITION_PRE = "pre";
-	const HOOK_POSITION_POST = "post";
-
 	/** Holds search paths */
 	var $_paths;
 	/** Disable cache */
@@ -22,7 +19,7 @@ class Template
 	protected $stack = [];
 	protected $filename;
 	protected $source;
-	protected $vars;
+	protected $vars = [];
 	protected $hooks = array(
 		"pre" => [],
 		"post" => []
@@ -106,7 +103,7 @@ class Template
 	{
 		$c = new Compiler;
 		$c->set_hooks($this->hooks);
-		return $c->compile($s,$d,array(&$this,"_find_path"),$this->_nocache);
+		return $c->compile($s, $d, $this->_find_path, $this->_nocache);
 	}
 
 	/** Sets searchable template paths */
