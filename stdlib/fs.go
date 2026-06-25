@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/titpetric/phpscript/runner"
 )
@@ -100,6 +101,22 @@ func RegisterFS(rt *runner.Runtime, dir string) {
 	})
 	rt.RegisterFunc("unlink", func(p string) bool {
 		return os.Remove(resolve(p)) == nil
+	})
+	rt.RegisterFunc("touch", func(p string, mtime ...int64) bool {
+		name := resolve(p)
+		f, err := os.OpenFile(name, os.O_CREATE, 0o644)
+		if err != nil {
+			return false
+		}
+		if err := f.Close(); err != nil {
+			return false
+		}
+
+		t := time.Now()
+		if len(mtime) > 0 {
+			t = time.Unix(mtime[0], 0)
+		}
+		return os.Chtimes(name, t, t) == nil
 	})
 
 	rt.RegisterFunc("fopen", func(p, mode string) any {

@@ -444,6 +444,7 @@ func registerLang(rt *runner.Runtime) {
 		return false
 	})
 	rt.RegisterFunc("is_string", func(a any) bool { _, ok := a.(string); return ok })
+	rt.RegisterFunc("is_bool", func(a any) bool { _, ok := a.(bool); return ok })
 	rt.RegisterFunc("is_object", func(a any) bool { _, ok := a.(*model.Object); return ok })
 	rt.RegisterFunc("get_included_files", func() []string { return rt.IncludedFiles() })
 	rt.RegisterFunc("is_numeric", func(a any) bool {
