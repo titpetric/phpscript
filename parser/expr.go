@@ -243,7 +243,7 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 		return &model.Lit{Value: nil}, nil
 	case "new":
 		return p.parseNew()
-	case "function":
+	case "fn", "func", "function":
 		return p.parseClosure()
 	case "list":
 		return p.parseList()

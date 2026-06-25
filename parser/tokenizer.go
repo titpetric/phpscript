@@ -138,7 +138,8 @@ var tokenNames = map[int]string{
 var tokenKeywords = map[string]int{
 	"if": T_IF, "else": T_ELSE, "elseif": T_ELSEIF,
 	"foreach": T_FOREACH, "for": T_FOR, "while": T_WHILE, "as": T_AS,
-	"function": T_FUNCTION, "return": T_RETURN, "new": T_NEW, "echo": T_ECHO,
+	"fn": T_FUNCTION, "func": T_FUNCTION, "function": T_FUNCTION,
+	"return": T_RETURN, "new": T_NEW, "echo": T_ECHO,
 	"array": T_ARRAY, "class": T_CLASS, "var": T_VAR,
 	"include": T_INCLUDE, "include_once": T_INCLUDE_ONCE,
 	"require": T_REQUIRE, "require_once": T_REQUIRE_ONCE,

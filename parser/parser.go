@@ -56,7 +56,15 @@ func (p *parser) next() token {
 func (p *parser) atEOF() bool { return p.cur().kind == tEOF }
 
 func (p *parser) isOp(v string) bool { t := p.cur(); return t.kind == tOp && t.val == v }
-func (p *parser) isKw(v string) bool { t := p.cur(); return t.kind == tIdent && t.val == v }
+func (p *parser) isKw(vss ...string) bool {
+	for _, v := range vss {
+		t := p.cur()
+		if t.kind == tIdent && t.val == v {
+			return true
+		}
+	}
+	return false
+}
 
 func (p *parser) eatOp(v string) error {
 	if !p.isOp(v) {
@@ -112,7 +120,7 @@ func (p *parser) parseStmt() (model.Stmt, error) {
 				p.optSemi()
 				return &model.ExprStmt{X: &model.Call{Name: t.val}}, nil
 			}
-		case "function":
+		case "fn", "func", "function":
 			// A bare `function(` is an anonymous closure expression statement,
 			// not a declaration.
 			if p.peek(1).kind == tOp && p.peek(1).val == "(" {
@@ -575,7 +583,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 				return nil, err
 			}
 			cd.Fields = append(cd.Fields, fields...)
-		case p.isKw("function"):
+		case p.isKw("fn", "func", "function"):
 			if methodAbstract {
 				// `abstract function name($args);` — declaration only, no body.
 				if err := p.skipAbstractMethod(); err != nil {
