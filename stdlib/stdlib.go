@@ -20,6 +20,8 @@ import (
 // Register installs the pure (non-filesystem) shims and PHP constants. Use
 // RegisterFS to add filesystem IO bound to a root directory.
 func Register(rt *runner.Runtime) {
+	rt.RegisterConstructor("Exception", NewException)
+
 	registerStrings(rt)
 	registerArrays(rt)
 	registerJSON(rt)
