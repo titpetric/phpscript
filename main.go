@@ -5,6 +5,7 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/cmd/phpscript/ast"
 	"github.com/titpetric/phpscript/cmd/phpscript/lint"
 	"github.com/titpetric/phpscript/cmd/phpscript/route"
 	"github.com/titpetric/phpscript/cmd/phpscript/run"
@@ -24,6 +25,7 @@ func main() {
 
 func start() error {
 	app := cli.NewApp("phpscript")
+	app.AddCommand("ast", ast.Name, ast.NewCommand)
 	app.AddCommand("lint", lint.Name, lint.NewCommand)
 	app.AddCommand("run", run.Name, run.NewCommand)
 	app.AddCommand("route", route.Name, route.NewCommand)

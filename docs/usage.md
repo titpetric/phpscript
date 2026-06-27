@@ -1,81 +1,126 @@
-# Usage
+# phpscript CLI
 
-The intended usage for phpscript is to be imported into your Go project.
-You can however install it to run as a CLI or as a HTTP server.
+Install the command with Go:
 
 ```bash
 go install github.com/titpetric/phpscript@latest
 ```
 
-The binary can be used via shebang to provide executable scripts. You
-can invoke it with `phpscript file.php` to run a file, and you can start
-a HTTP server with `phpscript server`, serving the current directory.
+The binary is named `phpscript`. Running a PHP file is the default command, so
+these are equivalent:
 
-## Go API bridge
+```bash
+phpscript script.php
+phpscript run script.php
+```
 
-The phpscript runner allows to inject Go types into the PHP VM and then
-use them. The methods automatically get the request context, and any
-error returned is explicitly handled and thrown. To give you a basic
-idea from a passing test fixture:
+You can use `titpetric/phpscript:latest` docker image (linux/amd64, ~44MB).
+
+## Commands
+
+### `phpscript run <file.php>`
+
+Parse and execute a PHP script in CLI mode.
+
+```bash
+phpscript run tests/fixtures/test-minitpl.php
+phpscript tests/fixtures/test-minitpl.php
+```
+
+Use this command for normal script execution and shebang scripts:
 
 ```php
+#!/usr/bin/env phpscript
 <?php
-
-$storage = new Storage;
-$storage->set("greeting", "hello");
-$storage->set("name", "world");
-
-$greeting = $storage->get("greeting");
-$name = $storage->get("name");
-$count = $storage->len();
+echo "Hello world\n";
 ```
 
-In effect the above becomes:
+### `phpscript lint <path>...`
 
-```go
-storage, err := NewStorage(ctx)
-if err != nil {
-	return err
-}
-if err := storage.Set(ctx, "greeting", "hello"); err != nil {
-	return err
-}
-// ...
+Lint one or more PHP files or directories.
+
+```bash
+phpscript lint tests/fixtures
+phpscript lint path/to/file.php
 ```
 
-The context value is injected based on if a function takes context or
-not, and the error returns are implicitly handled to interrupt the
-request if an error occurs. The error can be handled in PHP or Go.
+The current lint pass reports assignment expressions inside `if` conditions,
+including nested forms such as `if (($row = fn()) !== false) { ... }`.
 
-To use Go types, you can simply bind them to a runner:
+### `phpscript ast <file.php>`
+
+Tokenize a PHP file and print its PHP-style token stream.
+
+```bash
+phpscript ast tests/fixtures/code/TemplateTest_phpscript.php
+```
+
+The output uses the same token names exposed by `token_get_all()` and
+`token_name()`, such as `T_OPEN_TAG`, `T_STRING`, `T_VARIABLE`, and
+`T_OBJECT_OPERATOR`, plus `CHAR` for single-character tokens. Each line includes
+the source line number, token name, and raw token text.
+
+This is a debugging/development helper. It is useful when checking how PHP
+source is tokenized before changing parser or runtime behavior.
+
+### `phpscript server [directory]`
+
+Run a simple HTTP server for PHP files. The directory defaults to the current
+working directory.
+
+```bash
+phpscript server
+phpscript server ./public
+```
+
+Requests are mapped to PHP files under the root directory. `/` resolves to
+`/index.php`. The request context populates PHP request globals and captures
+headers staged by PHP code.
+
+### `phpscript route [directory]`
+
+Run the route-comment based HTTP server. The directory defaults to the current
+working directory.
+
+```bash
+phpscript route ./tests/fixtures/route
+```
+
+Route files use `// @route METHOD /path/{param}` comments. See
+[PHP routing](./use-cases/php-routing.md) for details.
+
+### `phpscript version`
+
+Print build and module information.
+
+```bash
+phpscript version
+```
+
+## Docker image
+
+Build a local binary and image from source:
+
+```bash
+CGO_ENABLED=0 go build -o bin/ .
+docker build -t titpetric/phpscript:latest -f docker/Dockerfile .
+```
+
+See [../compose.yml](../compose.yml) for the development/test services used by
+the repository.
+
+## Embedding from Go
+
+The CLI is a thin wrapper around the Go runtime. For applications that need host
+bindings, construct a `runner.Runtime` directly and register functions,
+constructors, or request context values from Go code.
 
 ```go
 rt := runner.New(os.Stdout, runner.Options{RootFS: os.DirFS(".")})
 rt.RegisterConstructor("Storage", NewStorage)
 ```
 
-And this in turn enables `new Storage` to work in PHP. The value behaves
-like a PHP `class`, and allows you to use fields or methods from the
-struct, as long as they are exported.
-
-This code works with the following implementation:
-
-```go
-type Storage interface {
-        Set(ctx context.Context, key, value string)
-        Get(ctx context.Context, key string) (Record, error)
-        All(ctx context.Context) ([]Record, error)
-        Len() int64
-        Tenant() string
-}
-
-func NewStorage(ctx context.Context) (Storage, error) {
-	// implement
-}
-```
-
-While an interface is demonstrated, any type can be used.
-
-The context value is filled from the request, and the errors returned
-are promoted to a request error. The error can be handled either by the
-VM instance, or by using `try` and `catch` statements in the script.
+This enables PHP code such as `new Storage` to use Go-backed values. Constructor
+and method parameters can receive `context.Context` automatically when the Go
+function signature asks for it, and returned errors are surfaced to PHP as
+runtime exceptions.
