@@ -1,3 +1,5 @@
+/docs/data
+/docs/log
 *.pprof
 *.test
 *.cov
