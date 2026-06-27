@@ -82,6 +82,13 @@ func TestForLoop(t *testing.T) {
 	}
 }
 
+func TestPostIncrement(t *testing.T) {
+	got := run(t, `<?php $i = 0; echo $i++; echo $i; for (; $i < 4; $i++) { echo $i; }`)
+	if got != "01123" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestForeachArray(t *testing.T) {
 	got := run(t, `<?php $xs = array(10, 20, 30); foreach ($xs as $v) { echo $v . ","; }`)
 	if got != "10,20,30," {

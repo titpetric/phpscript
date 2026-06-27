@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/expr-lang/expr"
@@ -122,6 +123,7 @@ type compiledExpr struct {
 	src      string
 	vars     []string
 	closures map[string]*model.Closure
+	exprs    map[string]model.Expr
 	prog     *vm.Program
 }
 
@@ -253,6 +255,11 @@ func (rt *Runtime) SetContext(ctx context.Context) {
 	rt.ctx = ctx
 }
 
+// Context() returns the given context.
+func (rt *Runtime) Context() context.Context {
+	return rt.ctx
+}
+
 // RegisterConstructor binds a class name to a Go constructor so `new Name` in
 // PHP instantiates a native Go value. The constructor may take a leading
 // context.Context (auto-injected) and may return a trailing error, which is
@@ -333,6 +340,13 @@ var dynamicType = new(any)
 // Eval transpiles e, binds the referenced variables from scope, and runs the
 // resulting program through the expr-lang VM.
 func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
+	if b, ok := e.(*model.Binary); ok && b.Op == "." {
+		return rt.evalConcat(b, scope)
+	}
+	if u, ok := e.(*model.Unary); ok && (u.Op == "++" || u.Op == "--") {
+		return rt.evalIncDec(u, scope)
+	}
+
 	ce, err := rt.compileExpr(e)
 	if err != nil {
 		return nil, err
@@ -347,6 +361,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 		decl := cl
 		base[id] = adapt(func(args ...any) (any, error) { return rt.invokeClosure(decl, args) })
 	}
+	base["__eval"] = adapt(rt.helperEval(scope, ce.exprs))
 
 	// Run env: same functions/helpers, but variables carry their real values.
 	// Bare identifiers that are not set in the current scope fall back to the
@@ -393,6 +408,9 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 	for id := range closures {
 		base[id] = adapt(func(args ...any) (any, error) { return nil, nil })
 	}
+	if len(tr.Exprs()) > 0 {
+		base["__eval"] = adapt(func(args ...any) any { return nil })
+	}
 	typeEnv := make(map[string]any, len(base)+len(vars))
 	maps.Copy(typeEnv, base)
 	for _, name := range vars {
@@ -403,7 +421,7 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compile %q: %w", src, err)
 	}
-	ce := &compiledExpr{src: src, vars: vars, closures: closures, prog: prog}
+	ce := &compiledExpr{src: src, vars: vars, closures: closures, exprs: tr.Exprs(), prog: prog}
 
 	if cached, ok := rt.exprCache.Get(e); ok {
 		return cached, nil
@@ -516,6 +534,55 @@ func (rt *Runtime) helperSet(scope *Scope) func(name string, val any) any {
 	return func(name string, val any) any {
 		scope.Set(name, val)
 		return val
+	}
+}
+
+func (rt *Runtime) evalIncDec(n *model.Unary, scope *Scope) (any, error) {
+	cur, err := rt.readLValue(n.X, scope)
+	if err != nil {
+		return nil, err
+	}
+	next := toInt(cur) + 1
+	if n.Op == "--" {
+		next = toInt(cur) - 1
+	}
+	if err := rt.assignTo(n.X, next, scope); err != nil {
+		return nil, err
+	}
+	if n.Postfix {
+		return cur, nil
+	}
+	return next, nil
+}
+
+func (rt *Runtime) evalConcat(n *model.Binary, scope *Scope) (any, error) {
+	parts := flattenConcat(n, nil)
+	var out strings.Builder
+	for _, part := range parts {
+		v, err := rt.Eval(part, scope)
+		if err != nil {
+			return nil, err
+		}
+		out.WriteString(phpString(v))
+	}
+	return out.String(), nil
+}
+
+func flattenConcat(e model.Expr, out []model.Expr) []model.Expr {
+	if b, ok := e.(*model.Binary); ok && b.Op == "." {
+		out = flattenConcat(b.Left, out)
+		return flattenConcat(b.Right, out)
+	}
+	return append(out, e)
+}
+
+func (rt *Runtime) helperEval(scope *Scope, exprs map[string]model.Expr) func(string) (any, error) {
+	return func(id string) (any, error) {
+		e := exprs[id]
+		if e == nil {
+			return nil, fmt.Errorf("eval: unknown expression marker %s", id)
+		}
+		return rt.Eval(e, scope)
 	}
 }
 

@@ -523,6 +523,44 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 	}
 }
 
+func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
+	switch tgt := target.(type) {
+	case *model.Var:
+		v, _ := scope.Get(tgt.Name)
+		return v, nil
+	case *model.PropAccess:
+		base, err := rt.Eval(tgt.Base, scope)
+		if err != nil {
+			return nil, err
+		}
+		obj, ok := base.(*model.Object)
+		if !ok {
+			return nil, fmt.Errorf("assign: %q is not an object property", tgt.Name)
+		}
+		return obj.Props[tgt.Name], nil
+	case *model.Index:
+		base, err := rt.Eval(tgt.Base, scope)
+		if err != nil {
+			return nil, err
+		}
+		arr, ok := base.(*model.Array)
+		if !ok {
+			return nil, fmt.Errorf("assign: target is not an array")
+		}
+		if tgt.Index == nil {
+			return nil, fmt.Errorf("assign: [] append target is write-only")
+		}
+		key, err := rt.Eval(tgt.Index, scope)
+		if err != nil {
+			return nil, err
+		}
+		v, _ := arr.Get(normalizeKey(key))
+		return v, nil
+	default:
+		return nil, fmt.Errorf("assign: unsupported target %T", target)
+	}
+}
+
 // assignTo writes an already-evaluated value into an lvalue (used by list()
 // destructuring). Only plain `=` semantics are needed here.
 func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {

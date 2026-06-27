@@ -44,11 +44,12 @@ type Transpiler struct {
 	// the synthetic env identifier they are bound to (__cl0, __cl1, ...). The
 	// runtime turns each into a callable before evaluation.
 	closures map[string]*model.Closure
+	exprs    map[string]model.Expr
 }
 
 // NewTranspiler returns a fresh transpiler.
 func NewTranspiler() *Transpiler {
-	return &Transpiler{vars: map[string]struct{}{}, closures: map[string]*model.Closure{}}
+	return &Transpiler{vars: map[string]struct{}{}, closures: map[string]*model.Closure{}, exprs: map[string]model.Expr{}}
 }
 
 // Transpile converts e into expr-lang source and returns the source plus the
@@ -56,6 +57,7 @@ func NewTranspiler() *Transpiler {
 func (t *Transpiler) Transpile(e model.Expr) (src string, vars []string, err error) {
 	t.vars = map[string]struct{}{}
 	t.closures = map[string]*model.Closure{}
+	t.exprs = map[string]model.Expr{}
 	src, err = t.emit(e)
 	if err != nil {
 		return "", nil, err
@@ -70,6 +72,14 @@ func (t *Transpiler) Transpile(e model.Expr) (src string, vars []string, err err
 // Closures returns the anonymous functions collected during the last Transpile,
 // keyed by their env identifier.
 func (t *Transpiler) Closures() map[string]*model.Closure { return t.closures }
+
+func (t *Transpiler) Exprs() map[string]model.Expr { return t.exprs }
+
+func (t *Transpiler) mark(e model.Expr) string {
+	id := fmt.Sprintf("%d__expr", len(t.exprs))
+	t.exprs[id] = e
+	return id
+}
 
 // varIdent is the expr identifier used for a PHP variable. `$this` becomes the
 // identifier `this`; everything else is prefixed to avoid clashing with
@@ -91,6 +101,10 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		return varIdent(n.Name), nil
 
 	case *model.Unary:
+		if n.Op == "++" || n.Op == "--" {
+			id := t.mark(n)
+			return fmt.Sprintf("__eval(%q)", id), nil
+		}
 		x, err := t.emit(n.X)
 		if err != nil {
 			return "", err
