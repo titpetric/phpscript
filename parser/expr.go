@@ -122,6 +122,17 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		}
 		return &model.Cast{Type: typ, X: x}, nil
 	}
+	if p.isOp("++") || p.isOp("--") {
+		op := p.next().val
+		x, err := p.parsePostfix()
+		if err != nil {
+			return nil, err
+		}
+		if !isLValue(x) {
+			return nil, fmt.Errorf("line %d: %s requires assignable target", p.cur().line, op)
+		}
+		return &model.Unary{Op: op, X: x}, nil
+	}
 	if p.isOp("!") || p.isOp("-") || p.isOp("+") {
 		op := p.next().val
 		x, err := p.parseUnary()
@@ -184,6 +195,8 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 				return nil, err
 			}
 			e = &model.Index{Base: e, Index: idx}
+		case (p.isOp("++") || p.isOp("--")) && isLValue(e):
+			e = &model.Unary{Op: p.next().val, X: e, Postfix: true}
 		default:
 			return e, nil
 		}
