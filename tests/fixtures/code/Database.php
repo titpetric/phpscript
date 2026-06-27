@@ -40,7 +40,7 @@ class Database
 					$query .= ', ';
 				}
 				$query .= "$k = :$k";
-				$index = $index + 1;
+				$index++;
 			}
 		}
 		$query .= " where ";
@@ -51,7 +51,7 @@ class Database
 				$query .= ' and ';
 			}
 			$query .= "$k = :$k";
-			$index = $index + 1;
+			$index++;
 		}
 		return $this->query($query, $values);
 	}
@@ -68,7 +68,7 @@ class Database
 			$idx = 1;
 			foreach ($values as $v) {
 				$stmt->bindValue($idx, $v);
-				$idx = $idx + 1;
+				$idx++;
 			}
 		}
 		$stmt->execute();
@@ -79,7 +79,7 @@ class Database
 	{
 		$stmt = call_user_func_array($this->query, func_get_args());
 		$row = $this->fetch($stmt);
-		$stmt->closeCursor();
+		$stmt->close();
 		return $row;
 	}
 
@@ -97,7 +97,7 @@ class Database
 	{
 		$row = $stmt->fetch();
 		if (empty($row)) {
-			$stmt->closeCursor();
+			$stmt->close();
 		}
 		return $row;
 	}

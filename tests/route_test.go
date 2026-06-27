@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"context"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -22,7 +21,7 @@ func TestRouteSharedMemoryFixture(t *testing.T) {
 	shm := NewSharedMemory()
 	mux := http.NewServeMux()
 	_, err = route.NewService(root, mux, route.WithRuntimeFunc(func(rt *runner.Runtime) {
-		rt.SetContext(SharedMemoryContext(context.Background(), shm))
+		rt.SetContext(SharedMemoryContext(rt.Context(), shm))
 		rt.RegisterConstructor("SharedMemory", NewSharedMemoryBinding)
 	}))
 	if err != nil {
@@ -60,7 +59,7 @@ func ExampleSharedMemory() {
 	shm := NewSharedMemory()
 	mux := http.NewServeMux()
 	_, err = route.NewService(root, mux, route.WithRuntimeFunc(func(rt *runner.Runtime) {
-		rt.SetContext(SharedMemoryContext(context.Background(), shm))
+		rt.SetContext(SharedMemoryContext(rt.Context(), shm))
 		rt.RegisterConstructor("SharedMemory", NewSharedMemoryBinding)
 	}))
 	if err != nil {

@@ -85,12 +85,9 @@ class TemplateTest
 
 		$i = 0;
 		$items = array();
-		$items[] = array("id" => $i);
-		$i = $i + 1
-		$items[] = array("id" => $i);
-		$i = $i + 1
-		$items[] = array("id" => $i);
-		$i = $i + 1
+		$items[] = array("id" => $i++);
+		$items[] = array("id" => $i++);
+		$items[] = array("id" => $i++);
 		$tpl->assign("items", $items);
 		$tpl->assign(array("foo"=>"bar", "d" => array("burger")), "foo");
 		$tpl->assign(".foo_foo", "baz");

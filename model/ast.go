@@ -271,10 +271,11 @@ type New struct {
 	Args  []Expr
 }
 
-// Unary is a prefix operator: "!", "-", "+".
+// Unary is a prefix/postfix operator: "!", "-", "+", "++", "--".
 type Unary struct {
-	Op string
-	X  Expr
+	Op      string
+	X       Expr
+	Postfix bool
 }
 
 // Binary is an infix operator. Op covers arithmetic (+ - * / %), string concat

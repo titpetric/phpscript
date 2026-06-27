@@ -119,7 +119,7 @@ func (s *DatabaseStatement) Execute(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := s.CloseCursor(); err != nil {
+	if err := s.Close(); err != nil {
 		rows.Close()
 		return err
 	}
@@ -159,8 +159,8 @@ func (s *DatabaseStatement) Fetch() (any, error) {
 	return out, nil
 }
 
-// CloseCursor closes the active result cursor.
-func (s *DatabaseStatement) CloseCursor() error {
+// Close closes the active result cursor.
+func (s *DatabaseStatement) Close() error {
 	if s == nil {
 		return fmt.Errorf("database: nil statement")
 	}
