@@ -1,0 +1,14 @@
+# Use cases walkthrough
+
+The `phpscript` project has similar use cases to PHP. With implicit
+error checking and source code evaluation that matches the experience of
+PHP, it can be pretty much used in the same ways as you would use PHP.
+
+- [Usage of Go bindings](bindings.md)
+- [Error handling](error-handling.md)
+- [Routing](routing.md)
+- [Database bindings](database.md)
+- [Templating](templating.md)
+
+Combining these principles you can create lightweight web applications
+that follow simple PHP conventions without OOP.
