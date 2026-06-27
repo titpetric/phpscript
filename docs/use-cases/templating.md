@@ -70,7 +70,6 @@ which posted the article, and the sections sorted by editorial system of
 weights. Using the PHPscript runtime makes such code much shorter than
 Go with it's type safety and explicit error handling.
 
-
 Go shines for CRUD-like APIs that usually fetch a single bit of data.
 Once this becomes a O(N) operation, the process to compose the returned
 data together can involve a lot of error handling boilerplate.

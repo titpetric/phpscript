@@ -25,7 +25,7 @@ $res1 = $storage->call($_GET['id']);
 ```
 
 The VM provides implicit error handling of Go code. If an error is
-returned from the Go binding, an `Exception` object is throw in the VM.
+returned from the Go binding, an `Exception` object is thrown in the VM.
 You can handle the exception either in PHP or in Go.
 
 ## Handling PHP exceptions
