@@ -1,8 +1,9 @@
 # Creating a routed PHP server
 
-This tutorial mirrors the route test suite in `tests/route_test.go`. It builds a
-small key/value HTTP API from PHP endpoint files, while keeping shared process
-state in Go.
+This tutorial mirrors the route test suite in
+[tests/route_test.go](https://github.com/titpetric/phpscript/blob/main/tests/route_test.go).
+It builds a small key/value HTTP API from PHP endpoint files, while
+keeping shared process state in Go.
 
 ## Source tree
 
@@ -25,7 +26,7 @@ Go owns the server shell and process-wide capabilities:
 
 - `http.ServeMux` and route registration through `route.NewService`.
 - The embedded filesystem used by tests, via `fixturesFS` and `fs.Sub`.
-- `SharedMemory`, the synchronized in-memory key/value and counter store.
+- [SharedMemory](https://github.com/titpetric/phpscript/blob/main/tests/route.go), the synchronized in-memory key/value and counter store.
 - The PHP class binding: `rt.RegisterConstructor("SharedMemory", ...)`.
 - The request test harness using `httptest`.
 
@@ -49,7 +50,7 @@ PHP owns endpoint behavior:
 
 - Route declarations with `// @route METHOD /path/{param}`.
 - Reading path params from `$_PATH`.
-- Reading form data from `$_POST`.
+- Reading query and form data from `$_GET` and `$_POST`.
 - Calling host-provided methods on `SharedMemory`.
 - Producing the response body with `echo`.
 
@@ -57,11 +58,14 @@ PHP owns endpoint behavior:
 
 ```php
 <?php
+
 // @route POST /kv/{key}
+
 $shm = new SharedMemory;
 $shm->incr("requests");
 $shm->incr("post");
 $shm->set($_PATH["key"], $_POST["value"]);
+
 echo "ok";
 ```
 
@@ -69,10 +73,13 @@ echo "ok";
 
 ```php
 <?php
+
 // @route GET /kv/{key}
+
 $shm = new SharedMemory;
 $shm->incr("requests");
 $shm->incr("get");
+
 echo $shm->get($_PATH["key"]);
 ```
 
@@ -80,8 +87,11 @@ echo $shm->get($_PATH["key"]);
 
 ```php
 <?php
+
 // @route GET /stats/{counter}
+
 $shm = new SharedMemory;
+
 echo $shm->count($_PATH["counter"]);
 ```
 
