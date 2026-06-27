@@ -8,8 +8,16 @@ very rudimentary and only enables limited functionality.
 - [Syntax](./docs/syntax.md)
 - [PHP compatibility](./docs/php-compatibility.md)
 - [Installation and usage](./docs/usage.md)
+- [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/titpetric/phpscript.svg)](https://pkg.go.dev/github.com/titpetric/phpscript)
+## Use cases
+
+- [PHP routing](./docs/use-cases/php-routing.md)
+
+## Tutorials
+
+- [Creating a routed PHP server](./docs/tutorials/creating-a-routed-php-server.md)
+
 
 ## Current state
 

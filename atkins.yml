@@ -8,7 +8,7 @@ tasks:
       - go fmt ./...
       - go install .
       - CGO_ENABLED=0 go build -o bin/ .
-      - docker build --rm -t titpetric/phpscript:latest -f docker/Dockerfile .
+      - task: docker:build
       - task: up
       - go test ./...
       - task: test:phpscript:run
