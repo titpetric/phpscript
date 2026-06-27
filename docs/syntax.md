@@ -5,15 +5,23 @@ allows for usage of `class`, `new`, `throw`, `catch` and generally
 supports PHP expression syntax for conditions, loops, ternary operators
 and more.
 
-This is a list of unsupported syntax:
+## Omissions
+
+This is a list of intentionally unsupported syntax:
 
 - Namespaces
 - Inheritance
 - Interfaces, traits, implements
 - Public / private variables
 - Public / private class methods
+- Alternate colon loop syntax such as `for (...): ... endfor;`. This is
+  intentionally not implemented; use brace-delimited blocks.
+- Multi-level `break N` and `continue N`. Use plain `break` / `continue` in the
+  current loop only.
+- Compound assignment operators `*=`, `/=`, and `%=`. These are intentionally
+  not implemented; use explicit assignment such as `$x = $x * $y` when needed.
 
-Supported syntax:
+## Supported syntax
 
 - Statements in file
 - Class + statements in file
@@ -44,6 +52,16 @@ if $id {
 foreach $users as $user {
 	// ...
 }
+```
+
+Brace-delimited blocks are the supported loop form. PHP's alternate colon loop
+syntax is intentionally unsupported and will not be implemented:
+
+```php
+// unsupported phpscript syntax
+for ($i = 0; $i < 3; $i++):
+	echo $i;
+endfor;
 ```
 
 ## Conditions
