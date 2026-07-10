@@ -62,6 +62,24 @@ func TestArithmeticAndVars(t *testing.T) {
 	}
 }
 
+func TestArithmeticWithNumericStrings(t *testing.T) {
+	prog, err := parser.Parse(`<?php echo $_GET["pageNumber"] + 0;`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	arr := model.NewArray()
+	arr.Set("pageNumber", "1")
+	rt.SetGlobal("_GET", arr)
+	if err := rt.Run(prog); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if got := out.String(); got != "1" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestForwardedFunction(t *testing.T) {
 	got := run(t, `<?php echo strtoupper("abc") . strlen("hello");`)
 	if got != "ABC5" {

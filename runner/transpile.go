@@ -250,7 +250,9 @@ func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 	case "&&", "||":
 		// Logical operators need bool operands in expr-lang.
 		return fmt.Sprintf("__bool(%s) %s __bool(%s)", l, n.Op, r), nil
-	case "==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "/", "%":
+	case "+", "-", "*", "/", "%":
+		return fmt.Sprintf("__arith(%q, %s, %s)", n.Op, l, r), nil
+	case "==", "!=", "<", "<=", ">", ">=":
 		return fmt.Sprintf("(%s) %s (%s)", l, n.Op, r), nil
 	default:
 		return "", fmt.Errorf("transpile: unsupported operator %q", n.Op)

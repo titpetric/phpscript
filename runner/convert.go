@@ -121,6 +121,31 @@ func helperCast(typ string, v any) any {
 	}
 }
 
+// phpArith applies + - * / % with the same int coercion used by += and -=.
+func phpArith(op string, a, b any) any {
+	x, y := toInt(a), toInt(b)
+	switch op {
+	case "+":
+		return x + y
+	case "-":
+		return x - y
+	case "*":
+		return x * y
+	case "/":
+		if y == 0 {
+			return int64(0)
+		}
+		return x / y
+	case "%":
+		if y == 0 {
+			return int64(0)
+		}
+		return x % y
+	default:
+		return int64(0)
+	}
+}
+
 // toFloat coerces a value to float64.
 func toFloat(v any) float64 {
 	switch x := v.(type) {

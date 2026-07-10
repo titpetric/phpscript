@@ -118,6 +118,7 @@ func New(w io.Writer, opts Options) *Runtime {
 			"__array":  adapt(helperArray),
 			"__index":  adapt(helperIndex),
 			"__cast":   adapt(helperCast),
+			"__arith":  adapt(phpArith),
 		},
 	}
 	rt.envPool.New = func() any { return make(map[string]any, 128) }
@@ -402,6 +403,7 @@ func (rt *Runtime) typeEnvBase() map[string]any {
 	env["__call"] = stub
 	env["__new"] = stub
 	env["__cast"] = stub
+	env["__arith"] = stub
 	env["__classconst"] = stub
 	env["__set"] = stub
 	env["__ref"] = stub
