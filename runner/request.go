@@ -9,25 +9,8 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Context carries the per-request state extracted from an *http.Request and
-// exposes it to transpiled PHP. It is the bridge between Go's HTTP layer and the
-// PHP execution space: the README's "$_SERVER gray area" made concrete and
-// scoped to one request.
-//
-// The maps mirror PHP's request superglobals:
-//
-//   - Get  -> $_GET   (URL query string parameters)
-//   - Post -> $_POST  (form body parameters)
-//   - Path -> route path values, e.g. "/users/{id}" with id => "42"
-//
-// Headers holds the incoming request headers (canonical name -> value) so PHP
-// code can read them via getallheaders(); response holds headers staged by the
-// PHP header() function for the host to flush onto the http.ResponseWriter.
-//
-// The whole "API" the README wants forwarded into go-expr lives on this object:
-// Register wires the request-aware functions (getallheaders, header) into a
-// Runtime and seeds the superglobals, so PHP can call them and read the values
-// from the Go execution space directly (see runner.Eval / RegisterFunc).
+// Context carries HTTP request data exposed to PHP as superglobals, header
+// functions, and staged response headers.
 type Context struct {
 	Get     map[string]string
 	Post    map[string]string

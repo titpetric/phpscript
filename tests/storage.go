@@ -10,18 +10,8 @@ import (
 // Host-provided capability surfaced to PHP
 // ---------------------------------------------------------------------------
 
-// Storage is a host capability exposed to PHP. The constructor takes a
-// context.Context (auto-injected by the runner) and may fail; its methods read
-// and write key/value pairs. This is the "bring your own type" bridge:
-//
-//	PHP:  $storage = new Storage;          // == storage, err := NewStorage(ctx)
-//	      $storage->set("k", "v");         //    storage.Set("k", "v")
-//	      $val = $storage->get("k");       //    val, err := storage.Get("k")
-//	      echo $val;                       //    print the assigned value
-//
-// Every method takes a context.Context as its first parameter; the runner
-// auto-injects the runtime context, so PHP calls them without it
-// (`$storage->get("k")` == storage.Get(ctx, "k")).
+// Storage is a host-provided key/value capability whose context parameters are
+// supplied automatically when PHP invokes its methods.
 type Storage interface {
 	Set(ctx context.Context, key, value string)
 	Get(ctx context.Context, key string) (Record, error)

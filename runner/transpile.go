@@ -9,33 +9,8 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Transpiler lowers a model.Expr tree into a go-expr (expr-lang) source string.
-//
-// Why transpile at all instead of evaluating the AST directly? expr-lang is a
-// fast, sandboxed, Go-native expression VM. By emitting expr source for the
-// "pure expression" parts of PHP we get, for free:
-//
-//   - operator semantics and precedence,
-//   - safe, terminating evaluation,
-//   - direct invocation of Go functions/methods on values from the stack
-//     (the whole point noted in the README — PHP's huge stdlib becomes a set
-//     of forwarded Go symbols rather than a reimplementation).
-//
-// expr-lang is expression-only: no loops, no mutation, no statements. Those
-// live in the runner's statement interpreter (runner.go). The transpiler also
-// never tries to encode PHP-specific value semantics inline; instead it emits
-// calls to a small set of runtime helpers (see helpers.go) so the generated
-// expression stays type-agnostic:
-//
-//	$a . $b           -> __concat(v_a, v_b)
-//	$arr[$k]          -> __index(v_arr, v_k)
-//	$obj->field       -> __get(v_obj, "field")
-//	$obj->m($x)       -> __call(v_obj, "m", v_x)
-//	new Foo($x)       -> __new("Foo", v_x)
-//	array(1, "k"=>2)  -> __array(__pair(null, 1), __pair("k", 2))
-//
-// Variables are referenced as v_<name> and supplied through the expr env at run
-// time, which is also how registered/forwarded functions become callable.
+// Transpiler lowers expression AST nodes into type-agnostic expr-lang source
+// that delegates PHP-specific behavior to runtime helpers.
 type Transpiler struct {
 	// vars collects every variable referenced by the expression so the runtime
 	// knows which scope values to bind into the expr env.

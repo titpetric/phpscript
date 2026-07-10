@@ -33,6 +33,20 @@ func (rt *Runtime) invokeWithContext(fn any, args []any) (any, error) {
 	return invokeAny(fn, args)
 }
 
+// invokeWithScopeContext is the free-function variant of invokeWithContext. It
+// derives a context containing the active PHP frame so language helpers such as
+// compact() can inspect caller-local variables without exposing Scope as a PHP
+// argument.
+func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any, error) {
+	if wantsContext(reflect.TypeOf(fn)) {
+		full := make([]any, 0, len(args)+1)
+		full = append(full, contextWithScope(rt.ctx, scope))
+		full = append(full, args...)
+		return invokeAny(fn, full)
+	}
+	return invokeAny(fn, args)
+}
+
 // This file implements the PHP-semantic helpers injected into every expr env.
 // They encapsulate the behaviour expr-lang has no opinion about: PHP's ordered
 // hybrid arrays, lenient index/property access, dynamic method dispatch (PHP

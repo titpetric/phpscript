@@ -214,6 +214,13 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	if err != nil {
 		return nil, flowNormal, err
 	}
+	keyTarget, valTarget := n.KeyTarget, n.ValTarget
+	if keyTarget == nil && n.KeyVar != "" {
+		keyTarget = &model.Var{Name: n.KeyVar}
+	}
+	if valTarget == nil && n.ValVar != "" {
+		valTarget = &model.Var{Name: n.ValVar}
+	}
 	var (
 		val   any
 		ret   flow
@@ -223,10 +230,14 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	// continue iterating. It records any error / non-normal flow in the
 	// enclosing variables.
 	iter := func(k, v any) bool {
-		if n.KeyVar != "" {
-			scope.Set(n.KeyVar, k)
+		if keyTarget != nil {
+			if err = rt.assignTo(keyTarget, k, scope); err != nil {
+				return false
+			}
 		}
-		scope.Set(n.ValVar, v)
+		if err = rt.assignTo(valTarget, v, scope); err != nil {
+			return false
+		}
 		var fl flow
 		val, fl, err = rt.exec(n.Body, scope)
 		if err != nil {

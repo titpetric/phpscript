@@ -245,19 +245,29 @@ func (p *parser) parseForeach() (model.Stmt, error) {
 		return nil, fmt.Errorf("line %d: expected 'as' in foreach", p.cur().line)
 	}
 	p.next()
-	first, err := p.parseForeachVar()
+	first, err := p.parseForeachTarget()
 	if err != nil {
 		return nil, err
 	}
-	node := &model.Foreach{Source: src, ValVar: first}
+	node := &model.Foreach{Source: src, ValTarget: first}
+	if v, ok := first.(*model.Var); ok {
+		node.ValVar = v.Name
+	}
 	if p.isOp("=>") {
 		p.next()
-		val, err := p.parseForeachVar()
+		val, err := p.parseForeachTarget()
 		if err != nil {
 			return nil, err
 		}
-		node.KeyVar = first
-		node.ValVar = val
+		node.KeyTarget = first
+		node.ValTarget = val
+		node.ValVar = ""
+		if v, ok := first.(*model.Var); ok {
+			node.KeyVar = v.Name
+		}
+		if v, ok := val.(*model.Var); ok {
+			node.ValVar = v.Name
+		}
 	}
 	if wrapped {
 		if err := p.eatOp(")"); err != nil {
@@ -272,11 +282,15 @@ func (p *parser) parseForeach() (model.Stmt, error) {
 	return node, nil
 }
 
-func (p *parser) parseForeachVar() (string, error) {
-	if p.cur().kind != tVar {
-		return "", fmt.Errorf("line %d: expected $var in foreach", p.cur().line)
+func (p *parser) parseForeachTarget() (model.Expr, error) {
+	target, err := p.parsePostfix()
+	if err != nil {
+		return nil, err
 	}
-	return p.next().val, nil
+	if !isLValue(target) {
+		return nil, fmt.Errorf("line %d: expected assignable target in foreach", p.cur().line)
+	}
+	return target, nil
 }
 
 func (p *parser) parseFor() (model.Stmt, error) {

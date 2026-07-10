@@ -68,12 +68,14 @@ type If struct {
 	Else []Stmt // may itself contain a single nested *If for elseif chains
 }
 
-// Foreach is `foreach (Source as [KeyVar =>] ValVar) { Body }`.
+// Foreach is `foreach (Source as [KeyTarget =>] ValTarget) { Body }`.
 type Foreach struct {
-	Source Expr
-	KeyVar string // "" if not captured
-	ValVar string
-	Body   []Stmt
+	Source    Expr
+	KeyTarget Expr // nil if not captured
+	ValTarget Expr
+	KeyVar    string // deprecated: use KeyTarget
+	ValVar    string // deprecated: use ValTarget
+	Body      []Stmt
 }
 
 // For is `for (Init; Cond; Post) { Body }`. `while` is parsed into a For with

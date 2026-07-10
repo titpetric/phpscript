@@ -16,19 +16,8 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Runtime is the abstraction over the expr-lang VM. It owns everything the
-// transpiled expressions need to run:
-//
-//   - the output sink (echo target: stdout/stderr for CLI, a buffer for HTTP),
-//   - the symbol table of forwarded/registered functions (the "bring your own
-//     stdlib" mechanism from the README — register_function),
-//   - the class table (resolved ClassDecls), and
-//   - an optional error handler (register_error_handler).
-//
-// A Runtime evaluates a model.Expr by transpiling it to expr source, assembling
-// an env (helpers + functions + the current scope's variables) and running it
-// through a cached *vm.Program. Statements (control flow, mutation) are driven
-// by the interpreter in runner.go, which calls back into Eval for leaf values.
+// Runtime executes parsed PHP statements and evaluates transpiled expressions
+// with registered functions, classes, constructors, and runtime state.
 type Runtime struct {
 	out     io.Writer
 	funcs   map[string]any
@@ -102,115 +91,6 @@ func (rt *Runtime) Exit(code int) error {
 	return &ExitError{Code: code}
 }
 
-// Options configures a Runtime.
-type Options struct {
-	// RootFS is the filesystem used to load PHP entrypoints and includes.
-	RootFS fs.FS
-
-	// SAPI provides output for `php_sapi_name`.
-	SAPI string
-
-	// WorkDir is the directory inside RootFS used as the script working directory.
-	// Empty means the RootFS root.
-	WorkDir string
-
-	// WritablePaths optionally restricts filesystem writes. When empty, writes are
-	// left to normal OS/user permissions. Enforcement is done by filesystem shims.
-	WritablePaths []string
-}
-
-type compiledExpr struct {
-	src      string
-	vars     []string
-	closures map[string]*model.Closure
-	exprs    map[string]model.Expr
-	prog     *vm.Program
-}
-
-// ExprCache stores compiled expression programs by AST expression node and by
-// transpiled expr source. The node cache is the fastest path for reused parsed
-// programs. The source cache lets freshly parsed but identical PHP expression
-// trees reuse compiled expr bytecode across load+execute cycles.
-type ExprCache struct {
-	mu    sync.Mutex
-	exprs map[model.Expr]*compiledExpr
-	bySrc map[string]*compiledExpr
-}
-
-// NewExprCache returns an empty compiled expression cache.
-func NewExprCache() *ExprCache {
-	return &ExprCache{exprs: map[model.Expr]*compiledExpr{}, bySrc: map[string]*compiledExpr{}}
-}
-
-// Get returns the compiled expression cached for e, if any.
-func (c *ExprCache) Get(e model.Expr) (*compiledExpr, bool) {
-	if c == nil {
-		return nil, false
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	ce, ok := c.exprs[e]
-	return ce, ok
-}
-
-// Set stores ce for e and its transpiled source.
-func (c *ExprCache) Set(e model.Expr, ce *compiledExpr) {
-	if c == nil {
-		return
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.exprs[e] = ce
-	c.bySrc[ce.src] = ce
-}
-
-// GetSource returns the compiled expression cached for src, if any.
-func (c *ExprCache) GetSource(src string) (*compiledExpr, bool) {
-	if c == nil {
-		return nil, false
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	ce, ok := c.bySrc[src]
-	return ce, ok
-}
-
-// IncludeCache stores parsed include/require programs by cleaned filesystem
-// path. Parsed programs are treated as immutable by Runtime.Run/exec: hoisting
-// copies declarations into runtime maps, while statement execution only reads
-// the AST, so cached *model.Program values can be shared safely by callers that
-// do not mutate ASTs themselves.
-type IncludeCache struct {
-	mu       sync.Mutex
-	programs map[string]*model.Program
-}
-
-// NewIncludeCache returns an empty parsed include cache.
-func NewIncludeCache() *IncludeCache {
-	return &IncludeCache{programs: map[string]*model.Program{}}
-}
-
-// Get returns the parsed program cached for path, if any.
-func (c *IncludeCache) Get(path string) (*model.Program, bool) {
-	if c == nil {
-		return nil, false
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	prog, ok := c.programs[path]
-	return prog, ok
-}
-
-// Set stores prog for path.
-func (c *IncludeCache) Set(path string, prog *model.Program) {
-	if c == nil {
-		return
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.programs[path] = prog
-}
-
 // New returns a Runtime that writes echo output to w (defaults to os.Stdout).
 func New(w io.Writer, opts Options) *Runtime {
 	if w == nil {
@@ -255,7 +135,7 @@ func (rt *Runtime) SetContext(ctx context.Context) {
 	rt.ctx = ctx
 }
 
-// Context() returns the given context.
+// Context returns the configured lifecycle context.
 func (rt *Runtime) Context() context.Context {
 	return rt.ctx
 }
@@ -466,8 +346,11 @@ func (rt *Runtime) compile(src string, typeEnv map[string]any) (*vm.Program, err
 // env (see helpers.go::adapt and Eval).
 func (rt *Runtime) baseEnv(scope *Scope) map[string]any {
 	env := rt.envPool.Get().(map[string]any)
-	for name, fn := range rt.wrapped {
-		env[name] = fn
+	for name, fn := range rt.funcs {
+		callable := fn
+		env[name] = func(args ...any) (any, error) {
+			return rt.invokeWithScopeContext(callable, args, scope)
+		}
 	}
 	// PHP-semantic helpers (see helpers.go). They close over rt and scope so
 	// that method dispatch and instantiation can re-enter the interpreter.

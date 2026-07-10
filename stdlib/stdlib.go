@@ -6,6 +6,7 @@
 package stdlib
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"hash/crc32"
@@ -180,6 +181,7 @@ func phpSprintf(format string, args ...any) string {
 // ---------------------------------------------------------------------------
 
 func registerArrays(rt *runner.Runtime) {
+	rt.RegisterFunc("compact", phpCompact)
 	rt.RegisterFunc("count", func(a any) int64 {
 		if arr, ok := a.(*model.Array); ok {
 			return int64(arr.Len())
@@ -242,6 +244,22 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("array_slice", phpArraySlice)
 	rt.RegisterFunc("array_map", phpArrayMap)
 	rt.RegisterFunc("usort", phpUsort)
+}
+
+// phpCompact builds an associative map from variables in the calling scope.
+// Names that do not exist are omitted, matching PHP's compact().
+func phpCompact(ctx context.Context, names ...string) map[string]any {
+	out := map[string]any{}
+	scope, ok := runner.ScopeFromContext(ctx)
+	if !ok {
+		return out
+	}
+	for _, name := range names {
+		if value, ok := scope.Get(name); ok {
+			out[name] = value
+		}
+	}
+	return out
 }
 
 func phpArraySlice(a *model.Array, offset int64, length ...int64) *model.Array {

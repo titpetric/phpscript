@@ -1,6 +1,7 @@
 package runner_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -68,6 +69,31 @@ func TestForwardedFunction(t *testing.T) {
 	}
 }
 
+func TestForwardedFunctionContextIncludesScope(t *testing.T) {
+	prog, err := parser.Parse(`<?php $local = "scope"; echo inspect_context("local");`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	type contextKey struct{}
+	rt.SetContext(context.WithValue(t.Context(), contextKey{}, "lifecycle"))
+	rt.RegisterFunc("inspect_context", func(ctx context.Context, name string) string {
+		scope, ok := runner.ScopeFromContext(ctx)
+		if !ok {
+			return "missing scope"
+		}
+		value, _ := scope.Get(name)
+		return ctx.Value(contextKey{}).(string) + ":" + value.(string)
+	})
+	if err := rt.Run(prog); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if got := out.String(); got != "lifecycle:scope" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestIfElse(t *testing.T) {
 	got := run(t, `<?php $x = 5; if ($x > 3) { echo "big"; } else { echo "small"; }`)
 	if got != "big" {
@@ -98,6 +124,13 @@ func TestForeachArray(t *testing.T) {
 
 func TestForeachKeyValue(t *testing.T) {
 	got := run(t, `<?php $m = array("a" => 1, "b" => 2); foreach ($m as $k => $v) { echo $k . "=" . $v . ";"; }`)
+	if got != "a=1;b=2;" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestForeachIndexedTargets(t *testing.T) {
+	got := run(t, `<?php $m = array("a" => 1, "b" => 2); $out = array(); foreach ($m as $out['key'] => $out['value']) { echo $out['key'] . "=" . $out['value'] . ";"; }`)
 	if got != "a=1;b=2;" {
 		t.Fatalf("got %q", got)
 	}
