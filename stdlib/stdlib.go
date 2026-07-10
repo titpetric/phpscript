@@ -242,6 +242,7 @@ func registerArrays(rt *runner.Runtime) {
 		return out
 	})
 	rt.RegisterFunc("array_slice", phpArraySlice)
+	rt.RegisterFunc("array_splice", phpArraySplice)
 	rt.RegisterFunc("array_map", phpArrayMap)
 	rt.RegisterFunc("usort", phpUsort)
 }
@@ -260,6 +261,96 @@ func phpCompact(ctx context.Context, names ...string) map[string]any {
 		}
 	}
 	return out
+}
+
+func phpArraySplice(a *model.Array, offset int64, optional ...any) *model.Array {
+	removed := model.NewArray()
+	if a == nil {
+		return removed
+	}
+
+	var vals []any
+	a.Range(func(_, v any) bool {
+		vals = append(vals, v)
+		return true
+	})
+
+	n := len(vals)
+
+	start := int(offset)
+	if start < 0 {
+		start += n
+	}
+	if start < 0 {
+		start = 0
+	}
+	if start > n {
+		start = n
+	}
+
+	end := n
+	var replacement []any
+	switch len(optional) {
+	case 0:
+		// length omitted: remove through end of array
+	case 1:
+		end = phpArraySpliceEnd(start, n, optional[0])
+	case 2:
+		end = phpArraySpliceEnd(start, n, optional[0])
+		replacement = phpArraySpliceReplacement(optional[1])
+	default:
+		end = phpArraySpliceEnd(start, n, optional[0])
+		replacement = phpArraySpliceReplacement(optional[1])
+	}
+
+	for _, v := range vals[start:end] {
+		removed.Append(v)
+	}
+
+	out := append([]any{}, vals[:start]...)
+	out = append(out, replacement...)
+	out = append(out, vals[end:]...)
+
+	a.Clear()
+	for _, v := range out {
+		a.Append(v)
+	}
+
+	return removed
+}
+
+func phpArraySpliceEnd(start, n int, lengthArg any) int {
+	if lengthArg == nil {
+		return n
+	}
+	l := int(toInt(lengthArg))
+	if l >= 0 {
+		end := start + l
+		if end > n {
+			end = n
+		}
+		return end
+	}
+	end := n + l
+	if end < start {
+		end = start
+	}
+	return end
+}
+
+func phpArraySpliceReplacement(rep any) []any {
+	if rep == nil {
+		return nil
+	}
+	if arr, ok := rep.(*model.Array); ok {
+		var out []any
+		arr.Range(func(_, v any) bool {
+			out = append(out, v)
+			return true
+		})
+		return out
+	}
+	return []any{rep}
 }
 
 func phpArraySlice(a *model.Array, offset int64, length ...int64) *model.Array {

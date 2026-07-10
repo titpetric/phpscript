@@ -67,6 +67,13 @@ func (a *Array) Range(fn func(key, val any) bool) {
 	}
 }
 
+// Clear removes all entries and resets list indexing.
+func (a *Array) Clear() {
+	a.keys = nil
+	a.values = map[any]any{}
+	a.nextID = 0
+}
+
 // Class is the resolved, runnable form of a ClassDecl: field defaults plus a
 // method table keyed by method name.
 type Class struct {
