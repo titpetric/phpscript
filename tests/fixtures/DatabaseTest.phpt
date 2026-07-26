@@ -1,5 +1,5 @@
 name: database bridge
-description: Database.php can use the Go DatabaseDriver with sqlite.
+description: Database.php can use the Go-backed PS\Database with sqlite.
 ---
 <?php
 

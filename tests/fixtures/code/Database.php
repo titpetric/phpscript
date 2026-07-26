@@ -6,7 +6,7 @@ class Database
 
 	public function connect($connection_name)
 	{
-		$this->handle = new DatabaseDriver($connection_name);
+		$this->handle = new \PS\Database($connection_name);
 	}
 
 	public function close() {
