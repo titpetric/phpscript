@@ -57,6 +57,45 @@ func TestFromRequestPost(t *testing.T) {
 	}
 }
 
+func TestSuperglobalsVisibleInsideFunctions(t *testing.T) {
+	mux := http.NewServeMux()
+	var got *http.Request
+	mux.HandleFunc("GET /run/{jobName}", func(_ http.ResponseWriter, r *http.Request) { got = r })
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/run/api_stats")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	src := `<?php
+function route_job_name() {
+	return $_PATH["jobName"];
+}
+echo route_job_name();
+`
+	out, _ := runReq(t, got, src)
+	if out != "api_stats" {
+		t.Fatalf("got %q, want %q", out, "api_stats")
+	}
+}
+
+func TestGlobalsNotVisibleInsideFunctions(t *testing.T) {
+	src := `<?php
+$job = "local";
+function read_job() {
+	return $job;
+}
+echo read_job();
+`
+	out, _ := runReq(t, httptest.NewRequest("GET", "/", nil), src)
+	if out != "" {
+		t.Fatalf("got %q, want empty string", out)
+	}
+}
+
 func TestGetAllHeaders(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("X-Custom", "yes")

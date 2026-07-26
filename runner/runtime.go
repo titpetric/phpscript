@@ -16,6 +16,13 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
+// phpSuperglobals are visible in every scope without a `global` declaration.
+var phpSuperglobals = map[string]struct{}{
+	"_COOKIE": {}, "_ENV": {}, "_FILES": {}, "_GET": {},
+	"_POST": {}, "_REQUEST": {}, "_SERVER": {}, "_SESSION": {},
+	"_PATH": {},
+}
+
 // Runtime executes parsed PHP statements and evaluates transpiled expressions
 // with registered functions, classes, constructors, and runtime state.
 type Runtime struct {
@@ -255,6 +262,8 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 			base[varIdent(name)] = v
 		} else if c, ok := rt.constants[name]; ok {
 			base[varIdent(name)] = c
+		} else if _, ok := phpSuperglobals[name]; ok {
+			base[varIdent(name)] = rt.globals[name]
 		} else {
 			base[varIdent(name)] = nil
 		}
