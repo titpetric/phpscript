@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -227,6 +228,12 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 
 	case tOp:
 		switch t.val {
+		case "\\":
+			name, _, err := p.parseQualifiedName(true)
+			if err != nil {
+				return nil, err
+			}
+			return p.parseNamedExpr(name, true)
 		case "(":
 			p.next()
 			e, err := p.parseExpr()
@@ -266,14 +273,25 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 		}
 		return &model.Lit{Value: nil}, nil
 	}
+	name := t.val
+	for p.isOp("\\") {
+		p.next()
+		if p.cur().kind != tIdent {
+			return nil, fmt.Errorf("line %d: expected name segment", p.cur().line)
+		}
+		name += "\\" + p.next().val
+	}
+	return p.parseNamedExpr(name, false)
+}
 
+func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) {
 	// `Class::CONST` / `self::CONST` class-constant access.
 	if p.isOp("::") {
 		p.next()
 		if p.cur().kind != tIdent {
 			return nil, fmt.Errorf("line %d: expected constant name after ::", p.cur().line)
 		}
-		return &model.ClassConst{Class: t.val, Name: p.next().val}, nil
+		return &model.ClassConst{Class: p.qualify(name, absolute), Name: p.next().val}, nil
 	}
 
 	// Function call vs. bare identifier (treated as constant lookup via a Call
@@ -283,12 +301,18 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &model.Call{Name: t.val, Args: args}, nil
+		if !absolute && p.namespace != "" && !strings.ContainsRune(name, '\\') {
+			return &model.Call{Name: p.qualify(name, false), Fallback: name, Args: args}, nil
+		}
+		return &model.Call{Name: p.qualify(name, absolute), Args: args}, nil
 	}
 	// Bare identifier: a constant. Model it as a Var so the env can resolve it,
 	// or as a literal string fallback. We use Call-free Var-like lookup via a
 	// no-arg marker is overkill; represent as a Var reference.
-	return &model.Var{Name: t.val}, nil
+	if name == "__NAMESPACE__" {
+		return &model.Lit{Value: p.namespace}, nil
+	}
+	return &model.Var{Name: name}, nil
 }
 
 // parseClosure parses an anonymous function `function(params) [use(...)] { body }`.
@@ -338,23 +362,11 @@ func (p *parser) parseList() (model.Expr, error) {
 }
 
 func (p *parser) parseNew() (model.Expr, error) {
-	// Tolerate a leading namespace separator (e.g. `new \Exception`).
-	for p.isOp("\\") {
-		p.next()
+	class, absolute, err := p.parseQualifiedName(true)
+	if err != nil {
+		return nil, fmt.Errorf("line %d: expected class name after new: %w", p.cur().line, err)
 	}
-	if p.cur().kind != tIdent {
-		return nil, fmt.Errorf("line %d: expected class name after new", p.cur().line)
-	}
-	class := p.next().val
-	// Tolerate namespaced names `A\B\C` — keep only the final segment.
-	for p.isOp("\\") {
-		p.next()
-		if p.cur().kind != tIdent {
-			return nil, fmt.Errorf("line %d: expected class name segment", p.cur().line)
-		}
-		class = p.next().val
-	}
-	n := &model.New{Class: class}
+	n := &model.New{Class: p.qualify(class, absolute)}
 	if p.isOp("(") {
 		args, err := p.parseArgs()
 		if err != nil {

@@ -6,12 +6,13 @@
 // function and class declarations, the `function Class::method()` form, method
 // and property access via both `->` and `.`, array/new expressions, and the
 // usual operators. It intentionally does not implement the full PHP grammar
-// (see the README "omissions" list: namespaces, inheritance, interfaces, etc.).
+// (see the README "omissions" list: inheritance, interfaces, traits, etc.).
 package parser
 
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -31,8 +32,12 @@ func Parse(src string) (*model.Program, error) {
 }
 
 type parser struct {
-	toks []token
-	i    int
+	toks      []token
+	i         int
+	namespace string
+	inClass   bool
+	topLevel  bool
+	topSeen   bool
 }
 
 func (p *parser) cur() token { return p.toks[p.i] }
@@ -76,6 +81,9 @@ func (p *parser) eatOp(v string) error {
 
 // parseStmts parses statements until EOF (top) or a closing brace.
 func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
+	wasTopLevel := p.topLevel
+	p.topLevel = top
+	defer func() { p.topLevel = wasTopLevel }()
 	var out []model.Stmt
 	for !p.atEOF() {
 		if !top && p.isOp("}") {
@@ -86,6 +94,16 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 			return nil, err
 		}
 		if s != nil {
+			if top {
+				p.topSeen = true
+			}
+			if top && p.namespace != "" {
+				switch s.(type) {
+				case *model.ClassDecl, *model.FuncDecl:
+				default:
+					return nil, fmt.Errorf("line %d: namespaced files may only declare symbols", p.cur().line)
+				}
+			}
 			out = append(out, s)
 		}
 	}
@@ -102,6 +120,8 @@ func (p *parser) parseStmt() (model.Stmt, error) {
 
 	if t.kind == tIdent {
 		switch t.val {
+		case "namespace":
+			return p.parseNamespace()
 		case "echo":
 			return p.parseEcho()
 		case "if":
@@ -163,6 +183,57 @@ func (p *parser) parseStmt() (model.Stmt, error) {
 	}
 
 	return p.parseExprStmt()
+}
+
+func (p *parser) parseNamespace() (model.Stmt, error) {
+	line := p.next().line
+	if !p.topLevel {
+		return nil, fmt.Errorf("line %d: namespace declarations are only allowed at the top level", line)
+	}
+	if p.topSeen {
+		return nil, fmt.Errorf("line %d: namespace declaration must be the first statement", line)
+	}
+	name, _, err := p.parseQualifiedName(false)
+	if err != nil {
+		return nil, fmt.Errorf("line %d: invalid namespace: %w", line, err)
+	}
+	if name == "" {
+		return nil, fmt.Errorf("line %d: expected namespace name", line)
+	}
+	if err := p.eatOp(";"); err != nil {
+		return nil, err
+	}
+	p.namespace = name
+	return nil, nil
+}
+
+// parseQualifiedName consumes Ident (\\ Ident)*. If leading is allowed, an
+// initial namespace separator marks the name as fully qualified.
+func (p *parser) parseQualifiedName(leading bool) (string, bool, error) {
+	absolute := false
+	if leading && p.isOp("\\") {
+		absolute = true
+		p.next()
+	}
+	if p.cur().kind != tIdent {
+		return "", absolute, fmt.Errorf("expected name, got %s", p.cur())
+	}
+	parts := []string{p.next().val}
+	for p.isOp("\\") {
+		p.next()
+		if p.cur().kind != tIdent {
+			return "", absolute, fmt.Errorf("expected name segment, got %s", p.cur())
+		}
+		parts = append(parts, p.next().val)
+	}
+	return strings.Join(parts, "\\"), absolute, nil
+}
+
+func (p *parser) qualify(name string, absolute bool) string {
+	if absolute || p.namespace == "" || name == "self" || name == "static" {
+		return name
+	}
+	return p.namespace + "\\" + name
 }
 
 func (p *parser) parseEcho() (model.Stmt, error) {
@@ -520,6 +591,8 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 		}
 		fd.Class = name
 		fd.Name = p.next().val
+	} else if p.namespace != "" && !p.inClass {
+		fd.Name = p.namespace + "\\" + fd.Name
 	}
 
 	params, err := p.parseParams()
@@ -566,7 +639,10 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 	if p.cur().kind != tIdent {
 		return nil, fmt.Errorf("line %d: expected class name", p.cur().line)
 	}
-	cd := &model.ClassDecl{Name: p.next().val, Abstract: abstract}
+	cd := &model.ClassDecl{Name: p.qualify(p.next().val, false), Abstract: abstract}
+	wasInClass := p.inClass
+	p.inClass = true
+	defer func() { p.inClass = wasInClass }()
 	if err := p.eatOp("{"); err != nil {
 		return nil, err
 	}
