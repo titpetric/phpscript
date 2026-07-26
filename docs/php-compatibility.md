@@ -11,111 +11,42 @@ To use the provided PHP standard library APIs:
 - use `stdlib.RegisterFS(rt, dir)` to add filesystem IO bound to a root directory
 - use `runner.Context.Register(rt)` to register request-aware HTTP shims and seed request globals
 
-## Implemented shims
+## Implemented APIs
 
-### Strings
+The authoritative function inventory is generated from the runtime itself:
 
-- `strlen`
-- `strtoupper`
-- `strtolower`
-- `trim`
-- `rtrim`
-- `ltrim`
-- `substr`
-- `strpos`
-- `strstr`
-- `str_replace`
-- `str_repeat`
-- `implode`
-- `explode`
-- `htmlspecialchars`
-- `sprintf`
-- `crc32`
+- [Implemented PHP APIs](./implemented-apis.md)
+- Regenerate with `phpscript list-apis.php > docs/implemented-apis.md`
 
-### Arrays
-
-- `count`
-- `in_array`
-- `array_unique`
-- `array_map`
-- `array_merge`
-- `array_keys`
-- `array_slice`
-- `array_values`
-- `usort`
+This avoids a manually maintained list drifting from the functions actually
+registered by `stdlib.Register`, `stdlib.RegisterFS`, and
+`runner.Context.Register` in the standard CLI runtime.
 
 ### Database API (stdlib/database.go)
 
-The database extensions are unique to phpscript.
+The database extensions are unique to phpscript and are exposed as
+`PS\Database`.
 
 - Database connection pooling: Max 20 open connections set via `db.SetMaxOpenConns(20)`
 - Supported engines: SQLite, PostgreSQL, MySQL via DSN configuration
 - Key methods: `connect()`, `query()`, `insert()`, `get()`, `get_all()`
 - Transactions: `begin()`, `commit()`, `rollback()`
 
-### Language helpers
-
-- `isset`
-- `empty`
-- `is_array`
-- `is_int`
-- `is_string`
-- `is_object`
-- `is_numeric`
-- `function_exists` (currently returns `false`)
-- `get_included_files`
-- `php_sapi_name`
-
-### Tokenizer + Constants
-
-- `token_get_all`
-- `token_name`
-- `T_VARIABLE`
-- `T_OBJECT_OPERATOR`
-- `T_STRING`
-
 ### Filesystem
 
 These are registered separately with `stdlib.RegisterFS(rt, dir)`.
-
-- `file_get_contents`
-- `file_exists`
-- `filemtime`
-- `dirname`
-- `basename`
-- `mkdir`
-- `unlink`
-- `fopen`
-- `fwrite`
-- `fclose`
-
-### Regex
-
-- `preg_match_all`
-- `preg_match`
-- `preg_replace`
 
 ### HTTP request / response
 
 These are registered separately with `runner.Context.Register(rt)`.
 
-- `getallheaders`
-- `get_all_headers`
-- `apache_request_headers`
-- `header`
-- `$_GET`
-- `$_POST`
-- `$_PATH`
-- `$_SERVER`
+Request globals include `$_GET`, `$_POST`, `$_PATH`, and `$_SERVER`.
 
 ### JSON
 
-A simplified JSON encoding and decoding function is provided. These
-functions are not API compatible with the PHP standard library, because
-they don't support options constants.
-
-- `json_encode`
-- `json_decode`
+Simplified JSON encoding and decoding functions are provided. They are not API
+compatible with the PHP standard library because they do not support options
+constants.
 
 ## Explicitly not implemented by design
 

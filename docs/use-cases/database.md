@@ -8,7 +8,7 @@ The phpscript runtime imports the following drivers:
 
 Rudimentary bindings for a database client are provided in the Go API:
 
-- [go stdlib.DatabaseDriver](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib#DatabaseDriver)
+- [go stdlib/ps.Database](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps#Database)
 - [go stdlib.DatabaseStatement](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib#DatabaseStatement)
 - [php Database.php](../../tests/fixtures/code/Database.php)
 

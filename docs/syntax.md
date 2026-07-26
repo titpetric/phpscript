@@ -9,7 +9,6 @@ and more.
 
 This is a list of intentionally unsupported syntax:
 
-- Namespaces
 - Inheritance
 - Interfaces, traits, implements
 - Public / private variables
@@ -28,6 +27,29 @@ This is a list of intentionally unsupported syntax:
 - Class in file
 - Composition with `include`
 - Field and method access
+- Semicolon-delimited namespaces and namespace-qualified class/function names
+
+## Namespaces and autoloading
+
+Namespaced files use the semicolon form and may only contain function and class
+declarations:
+
+```php
+namespace App\Model;
+
+class User
+{
+}
+```
+
+Class names are resolved relative to the current namespace; a leading `\`
+selects the global namespace. Unqualified function calls first check the current
+namespace and then fall back to the global function.
+
+There is no implicit class autoloader. Constructing an undefined class throws
+an error unless an autoloader has been registered with
+`spl_autoload_register()`. Calling it without a callback explicitly registers
+PHP's default lowercasing `.inc`/`.php` include-path loader.
 
 The syntax is in essence a non-OOP version of PHP4 with the extension of
 a built in `Exception` type and `try` + `catch` statements for error
