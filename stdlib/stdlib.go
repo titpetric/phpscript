@@ -10,12 +10,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/crc32"
+	"os"
 	"sort"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
+
+	"github.com/titpetric/phpscript/stdlib/ps"
 )
 
 // Register installs the pure (non-filesystem) shims and PHP constants. Use
@@ -29,7 +32,8 @@ func Register(rt *runner.Runtime) {
 	registerRegex(rt)
 	registerLang(rt)
 	registerTokenizer(rt)
-	RegisterDatabase(rt)
+
+	ps.Register(rt)
 }
 
 // ---------------------------------------------------------------------------
@@ -532,6 +536,77 @@ func jsonDecodeValue(v any) any {
 // ---------------------------------------------------------------------------
 
 func registerLang(rt *runner.Runtime) {
+	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
+	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
+	rt.RegisterFunc("spl_autoload_register", func(args ...any) (bool, error) {
+		var callback any = rt.SPLAutoload
+		if len(args) > 0 && args[0] != nil {
+			callback = args[0]
+		}
+		prepend := len(args) > 2 && truthy(args[2])
+		rt.RegisterAutoloader(callback, prepend)
+		return true, nil
+	})
+	rt.RegisterFunc("spl_autoload", func(class string, _ ...any) error {
+		return rt.SPLAutoload(class)
+	})
+	rt.RegisterFunc("class_exists", func(name string, autoload ...bool) (bool, error) {
+		load := true
+		if len(autoload) > 0 {
+			load = autoload[0]
+		}
+		return rt.ClassExists(name, load)
+	})
+	rt.RegisterFunc("set_include_path", rt.SetIncludePath)
+	rt.RegisterFunc("get_include_path", rt.IncludePath)
+	rt.RegisterFunc("get_defined_constants", func(categorize ...bool) *model.Array {
+		constants := model.NewArray()
+		defined := rt.DefinedConstants()
+		names := make([]string, 0, len(defined))
+		for name := range defined {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			constants.Set(name, defined[name])
+		}
+		if len(categorize) > 0 && categorize[0] {
+			grouped := model.NewArray()
+			grouped.Set("Core", constants)
+			return grouped
+		}
+		return constants
+	})
+	rt.RegisterFunc("get_defined_functions", func(_ ...bool) *model.Array {
+		internal, user := rt.DefinedFunctions()
+		functions := model.NewArray()
+		functions.Set("internal", stringArray(internal))
+		functions.Set("user", stringArray(user))
+		return functions
+	})
+	rt.RegisterFunc("get_defined_vars", func(ctx context.Context) *model.Array {
+		vars := model.NewArray()
+		scope, ok := runner.ScopeFromContext(ctx)
+		if !ok {
+			return vars
+		}
+		defined := scope.DefinedVars()
+		names := make([]string, 0, len(defined))
+		for name := range defined {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			vars.Set(name, defined[name])
+		}
+		return vars
+	})
+	rt.RegisterFunc("get_declared_classes", func() *model.Array {
+		return stringArray(rt.DeclaredClasses())
+	})
+	rt.RegisterFunc("phpinfo", func(_ ...any) (bool, error) {
+		return true, rt.PHPInfo()
+	})
 	rt.RegisterFunc("php_sapi_name", func() string {
 		return rt.SAPI()
 	})
@@ -579,6 +654,14 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return nil, rt.Exit(status)
 	})
+}
+
+func stringArray(values []string) *model.Array {
+	result := model.NewArray()
+	for _, value := range values {
+		result.Append(value)
+	}
+	return result
 }
 
 func phpCallUserFuncArray(fn func(...any) (any, error), args *model.Array) (any, error) {

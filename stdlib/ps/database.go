@@ -1,4 +1,4 @@
-package stdlib
+package ps
 
 import (
 	"context"
@@ -11,19 +11,18 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// RegisterDatabase installs the Go database bridge used by PHP via
-// `new DatabaseDriver("driver://dsn")`.
+// RegisterDatabase installs the Go database bridge as PS\Database.
 func RegisterDatabase(rt *runner.Runtime) {
-	rt.RegisterConstructor("DatabaseDriver", NewDatabaseDriver)
+	rt.RegisterConstructor("PS\\Database", NewDatabase)
 }
 
-// DatabaseDriver wraps a SQL database connection for PHP scripts.
-type DatabaseDriver struct {
+// Database wraps a SQL database connection for PHP scripts.
+type Database struct {
 	db *sql.DB
 }
 
-// NewDatabaseDriver opens a database connection from the named DB_DSN_* env var.
-func NewDatabaseDriver(ctx context.Context, name string) (*DatabaseDriver, error) {
+// NewDatabase opens a database connection from the named DB_DSN_* env var.
+func NewDatabase(ctx context.Context, name string) (*Database, error) {
 	envKey := "DB_DSN_" + strings.ToUpper(name)
 	dsn := os.Getenv(envKey)
 	if dsn == "" {
@@ -53,17 +52,17 @@ func NewDatabaseDriver(ctx context.Context, name string) (*DatabaseDriver, error
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(20)
 
-	return &DatabaseDriver{db: db}, nil
+	return &Database{db: db}, nil
 }
 
 // Close closes the underlying database connection.
-func (d *DatabaseDriver) Close() {
+func (d *Database) Close() {
 	d.db.Close()
 	d.db = nil
 }
 
 // Prepare creates a database statement for query.
-func (d *DatabaseDriver) Prepare(query string) (*DatabaseStatement, error) {
+func (d *Database) Prepare(query string) (*DatabaseStatement, error) {
 	if d == nil || d.db == nil {
 		return nil, fmt.Errorf("database: nil driver")
 	}
@@ -71,7 +70,7 @@ func (d *DatabaseDriver) Prepare(query string) (*DatabaseStatement, error) {
 }
 
 // LastInsertId returns the SQLite last inserted row ID.
-func (d *DatabaseDriver) LastInsertId(ctx context.Context) (int64, error) {
+func (d *Database) LastInsertId(ctx context.Context) (int64, error) {
 	if d == nil || d.db == nil {
 		return 0, fmt.Errorf("database: nil driver")
 	}
