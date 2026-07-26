@@ -20,7 +20,7 @@ Several unit focused test fixtures exists, namely:
 3. loading and executing template engine code
 
 This means that phpscript is currently able to use a generic Database
-client. Our own standard library implements a `DatabaseDriver` class which is
+client. Our own standard library implements a `PS\Database` class which is
 integration tested with
 [./tests/fixtures/test-database.php](./tests/fixtures/test-database.php)
 over several databases (pgx, mysql, sqlite).

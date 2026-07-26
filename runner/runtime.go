@@ -8,6 +8,8 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	goruntime "runtime"
+	"sort"
 	"strings"
 	"sync"
 
@@ -28,6 +30,7 @@ var phpSuperglobals = map[string]struct{}{
 type Runtime struct {
 	out     io.Writer
 	funcs   map[string]any
+	userFns map[string]struct{}
 	wrapped map[string]func(...any) (any, error)
 	classes map[string]*model.Class
 
@@ -37,6 +40,8 @@ type Runtime struct {
 	// func(ctx context.Context) (Storage, error) makes `$s = new Storage;`
 	// behave like `s, err := NewStorage(ctx)` (the error surfaces as a throw).
 	constructors map[string]any
+	autoloaders  []any
+	includePath  string
 
 	// ctx is the request/lifecycle context auto-injected into any registered
 	// callable (constructor, method, function) whose first parameter is a
@@ -109,9 +114,11 @@ func New(w io.Writer, opts Options) *Runtime {
 		opts:         opts,
 		includeCache: NewIncludeCache(),
 		funcs:        map[string]any{},
+		userFns:      map[string]struct{}{},
 		wrapped:      map[string]func(...any) (any, error){},
 		classes:      map[string]*model.Class{},
 		constructors: map[string]any{},
+		includePath:  ".",
 		ctx:          context.Background(),
 		globals:      map[string]any{},
 		constants:    map[string]any{},
@@ -207,9 +214,134 @@ func (rt *Runtime) RegisterFunc(name string, fn any) {
 	rt.wrapped[name] = adapt(fn)
 }
 
+func (rt *Runtime) registerUserFunc(name string, fn any) {
+	rt.RegisterFunc(name, fn)
+	rt.userFns[name] = struct{}{}
+}
+
+// DefinedFunctions returns stable snapshots of registered host/internal and
+// PHP user-defined function names.
+func (rt *Runtime) DefinedFunctions() (internal, user []string) {
+	for name := range rt.funcs {
+		if _, ok := rt.userFns[name]; ok {
+			user = append(user, name)
+		} else {
+			internal = append(internal, name)
+		}
+	}
+	sort.Strings(internal)
+	sort.Strings(user)
+	return internal, user
+}
+
+// DefinedConstants returns a stable snapshot of all runtime constants.
+func (rt *Runtime) DefinedConstants() map[string]any {
+	return maps.Clone(rt.constants)
+}
+
+// DeclaredClasses returns the names of PHP classes and host-backed constructor
+// classes currently available to the runtime. PHP does not guarantee ordering;
+// phpscript sorts the snapshot for deterministic diagnostics.
+func (rt *Runtime) DeclaredClasses() []string {
+	names := make(map[string]struct{}, len(rt.classes)+len(rt.constructors))
+	for name := range rt.classes {
+		names[name] = struct{}{}
+	}
+	for name := range rt.constructors {
+		names[name] = struct{}{}
+	}
+	out := make([]string, 0, len(names))
+	for name := range names {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// PHPInfo prints a compact phpinfo-style text report for the phpscript
+// runtime. It intentionally reports runtime facts rather than PHP extensions
+// that phpscript does not provide.
+func (rt *Runtime) PHPInfo() error {
+	internal, user := rt.DefinedFunctions()
+	_, err := fmt.Fprintf(rt.out, "phpscript\n\nRuntime => phpscript\nSAPI => %s\nGo Version => %s\nOperating System => %s\nArchitecture => %s\nInclude Path => %s\nWorking Directory => %s\nInternal Functions => %d\nUser Functions => %d\nDeclared Classes => %d\nDefined Constants => %d\n",
+		rt.SAPI(), goruntime.Version(), goruntime.GOOS, goruntime.GOARCH,
+		rt.IncludePath(), rt.WorkDir(), len(internal), len(user),
+		len(rt.DeclaredClasses()), len(rt.constants))
+	return err
+}
+
 // RegisterClass adds a resolved class to the class table so `new Name` works.
 func (rt *Runtime) RegisterClass(c *model.Class) {
 	rt.classes[c.Name] = c
+}
+
+// RegisterAutoloader appends or prepends a callback to the SPL autoload queue.
+// The callback receives a fully-qualified class name without a leading slash.
+func (rt *Runtime) RegisterAutoloader(callback any, prepend bool) {
+	if prepend {
+		rt.autoloaders = append([]any{callback}, rt.autoloaders...)
+		return
+	}
+	rt.autoloaders = append(rt.autoloaders, callback)
+}
+
+// SetIncludePath sets the path list used by the default SPL autoloader and
+// returns its previous value.
+func (rt *Runtime) SetIncludePath(value string) string {
+	old := rt.includePath
+	rt.includePath = value
+	return old
+}
+
+// IncludePath returns the current SPL include path.
+func (rt *Runtime) IncludePath() string { return rt.includePath }
+
+// ClassExists reports whether a PHP or host-backed class exists. If autoload is
+// true, registered autoloaders are given a chance to define a missing class.
+func (rt *Runtime) ClassExists(name string, autoload bool) (bool, error) {
+	name = strings.TrimPrefix(name, "\\")
+	if rt.hasClass(name) {
+		return true, nil
+	}
+	if !autoload {
+		return false, nil
+	}
+	if err := rt.autoload(name, NewScope()); err != nil {
+		return false, err
+	}
+	return rt.hasClass(name), nil
+}
+
+func (rt *Runtime) hasClass(name string) bool {
+	if _, ok := rt.lookupConstructor(name); ok {
+		return true
+	}
+	_, ok := rt.lookupClass(name)
+	return ok
+}
+
+func (rt *Runtime) lookupClass(name string) (*model.Class, bool) {
+	if c, ok := rt.classes[name]; ok {
+		return c, true
+	}
+	for className, c := range rt.classes {
+		if strings.EqualFold(className, name) {
+			return c, true
+		}
+	}
+	return nil, false
+}
+
+func (rt *Runtime) lookupConstructor(name string) (any, bool) {
+	if ctor, ok := rt.constructors[name]; ok {
+		return ctor, true
+	}
+	for className, ctor := range rt.constructors {
+		if strings.EqualFold(className, name) {
+			return ctor, true
+		}
+	}
+	return nil, false
 }
 
 // OnError installs an error handler (register_error_handler). When set, runtime
@@ -373,7 +505,7 @@ func (rt *Runtime) baseEnv(scope *Scope) map[string]any {
 	env["__classconst"] = adapt(rt.helperClassConst(scope))
 	env["__set"] = adapt(rt.helperSet(scope))
 	env["__ref"] = adapt(rt.helperRef(scope))
-	env["__func"] = adapt(rt.helperFunc())
+	env["__func"] = adapt(rt.helperFunc(scope))
 	// func_get_args() needs the current frame's arguments, so it is provided as
 	// a scope-aware helper rather than a plain forwarded function.
 	env["func_get_args"] = adapt(func() *model.Array {
@@ -484,18 +616,30 @@ func (rt *Runtime) helperEval(scope *Scope, exprs map[string]model.Expr) func(st
 // looks up name in the runtime function table and, if missing, the global
 // fallback name — matching PHP's namespace resolution where an unqualified call
 // falls back to the global function of the same short name.
-func (rt *Runtime) helperFunc() func(name, fallback string, args ...any) (any, error) {
+func (rt *Runtime) helperFunc(scope *Scope) func(name, fallback string, args ...any) (any, error) {
 	return func(name, fallback string, args ...any) (any, error) {
-		if fn, ok := rt.funcs[name]; ok {
-			return invokeAny(fn, args)
+		if fn, ok := rt.lookupFunc(name); ok {
+			return rt.invokeWithScopeContext(fn, args, scope)
 		}
 		if fallback != "" {
-			if fn, ok := rt.funcs[fallback]; ok {
-				return invokeAny(fn, args)
+			if fn, ok := rt.lookupFunc(fallback); ok {
+				return rt.invokeWithScopeContext(fn, args, scope)
 			}
 		}
 		return nil, fmt.Errorf("call to undefined function %s()", name)
 	}
+}
+
+func (rt *Runtime) lookupFunc(name string) (any, bool) {
+	if fn, ok := rt.funcs[name]; ok {
+		return fn, true
+	}
+	for functionName, fn := range rt.funcs {
+		if strings.EqualFold(functionName, name) {
+			return fn, true
+		}
+	}
+	return nil, false
 }
 
 // helperRef yields a setter for a by-reference output parameter (e.g.
@@ -515,14 +659,20 @@ func (rt *Runtime) helperClassConst(scope *Scope) func(class, name string) (any,
 				class, _ = c.(string)
 			}
 		}
+		if !rt.hasClass(class) {
+			if err := rt.autoload(class, scope); err != nil {
+				return nil, err
+			}
+		}
+		c, ok := rt.lookupClass(class)
+		if !ok {
+			return nil, fmt.Errorf("class constant %s::%s: unknown class", class, name)
+		}
+		class = c.Name
 		if cached, ok := rt.classConsts[class]; ok {
 			if v, ok := cached[name]; ok {
 				return v, nil
 			}
-		}
-		c, ok := rt.classes[class]
-		if !ok {
-			return nil, fmt.Errorf("class constant %s::%s: unknown class", class, name)
 		}
 		for _, k := range c.Consts {
 			if k.Name != name {

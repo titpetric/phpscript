@@ -31,6 +31,20 @@ func (s *Scope) Set(name string, val any) {
 	s.vars[name] = val
 }
 
+// DefinedVars returns a snapshot of PHP-visible variables in this frame.
+// Interpreter bookkeeping slots use a double-underscore prefix and are not PHP
+// variables, so they are omitted.
+func (s *Scope) DefinedVars() map[string]any {
+	vars := make(map[string]any, len(s.vars))
+	for name, value := range s.vars {
+		if len(name) >= 2 && name[:2] == "__" {
+			continue
+		}
+		vars[name] = value
+	}
+	return vars
+}
+
 func contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	return context.WithValue(ctx, scopeContextKey{}, scope)
 }

@@ -255,17 +255,23 @@ func lookupPHPMethod(class *model.Class, method string) (*model.FuncDecl, bool) 
 // apply field defaults, and run the same-named constructor method if present.
 func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any, error) {
 	return func(class string, args ...any) (any, error) {
+		class = strings.TrimPrefix(class, "\\")
+		if !rt.hasClass(class) {
+			if err := rt.autoload(class, scope); err != nil {
+				return nil, err
+			}
+		}
 		// A Go constructor takes precedence: `new Storage` becomes a native Go
 		// value (storage, err := NewStorage(ctx)) with the context auto-injected
 		// and any trailing error surfaced as a thrown error.
-		if ctor, ok := rt.constructors[class]; ok {
+		if ctor, ok := rt.lookupConstructor(class); ok {
 			v, err := rt.invokeWithContext(ctor, args)
 			if err != nil {
 				return nil, err
 			}
 			return v, nil
 		}
-		c, ok := rt.classes[class]
+		c, ok := rt.lookupClass(class)
 		if !ok {
 			return nil, fmt.Errorf("new: undefined class %q", class)
 		}

@@ -2,6 +2,7 @@ package runner_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -291,5 +292,30 @@ echo $out;`)
 		if !strings.Contains(got, want) {
 			t.Fatalf("output missing %q\n%s", want, got)
 		}
+	}
+}
+
+func TestNamespaceDeclarationPlacement(t *testing.T) {
+	for _, src := range []string{
+		`<?php echo "side effect"; namespace App; class User {}`,
+		`<?php function outer() { namespace App; }`,
+	} {
+		if _, err := parser.Parse(src); err == nil {
+			t.Fatalf("expected invalid namespace placement for %q", src)
+		}
+	}
+}
+
+func TestClassExistsPropagatesAutoloaderError(t *testing.T) {
+	rt := runner.New(nil, runner.Options{})
+	want := errors.New("autoload failed")
+	rt.RegisterAutoloader(func(string) error { return want }, false)
+
+	exists, err := rt.ClassExists("Missing", true)
+	if exists {
+		t.Fatal("missing class unexpectedly exists")
+	}
+	if !errors.Is(err, want) {
+		t.Fatalf("got error %v, want %v", err, want)
 	}
 }

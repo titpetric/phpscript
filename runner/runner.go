@@ -102,7 +102,7 @@ func (rt *Runtime) hoist(stmts []model.Stmt) error {
 			continue
 		}
 		decl := fd
-		rt.RegisterFunc(fd.Name, func(args ...any) (any, error) {
+		rt.registerUserFunc(fd.Name, func(args ...any) (any, error) {
 			return rt.invokeFunc(decl, args)
 		})
 	}
@@ -412,9 +412,13 @@ func (rt *Runtime) execInclude(n *model.Include, scope *Scope) error {
 	if err != nil {
 		return err
 	}
-	prog, filename, err := rt.resolveInclude(phpString(path))
+	return rt.includeFile(phpString(path), scope)
+}
+
+func (rt *Runtime) includeFile(path string, scope *Scope) error {
+	prog, filename, err := rt.resolveInclude(path)
 	if err != nil {
-		return fmt.Errorf("error including %s: %w", phpString(path), err)
+		return fmt.Errorf("error including %s: %w", path, err)
 	}
 	rt.included = append(rt.included, filename)
 	if err := rt.hoist(prog.Stmts); err != nil {
@@ -422,6 +426,50 @@ func (rt *Runtime) execInclude(n *model.Include, scope *Scope) error {
 	}
 	_, _, err = rt.exec(prog.Stmts, scope)
 	return err
+}
+
+func (rt *Runtime) autoload(class string, scope *Scope) error {
+	for _, loader := range rt.autoloaders {
+		callable := loader
+		if name, ok := loader.(string); ok {
+			var found bool
+			callable, found = rt.lookupFunc(name)
+			if !found {
+				return fmt.Errorf("autoload callback %q is not callable", name)
+			}
+		}
+		if _, err := rt.invokeWithScopeContext(callable, []any{class}, scope); err != nil {
+			return err
+		}
+		if rt.hasClass(class) {
+			return nil
+		}
+	}
+	return nil
+}
+
+// SPLAutoload implements PHP's default autoloader: lowercase the qualified
+// class name and search each include_path entry for class.php.
+func (rt *Runtime) SPLAutoload(class string) error {
+	class = strings.ToLower(strings.TrimPrefix(class, "\\"))
+	class = strings.ReplaceAll(class, "\\", "/")
+	for _, dir := range filepath.SplitList(rt.includePath) {
+		if dir == "" {
+			dir = "."
+		}
+		for _, ext := range []string{".php"} {
+			filename := path.Join(filepath.ToSlash(dir), class+ext)
+			cleanPath := rt.resolveFSPath(filename)
+			if rt.opts.RootFS == nil {
+				continue
+			}
+			if _, err := fs.Stat(rt.opts.RootFS, cleanPath); err != nil {
+				continue
+			}
+			return rt.includeFile(filename, NewScope())
+		}
+	}
+	return nil
 }
 
 // resolveInclude turns an include path into a parsed program, preferring an

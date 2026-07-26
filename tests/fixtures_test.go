@@ -128,7 +128,6 @@ func newTestRuntime(out *strings.Builder, ctx context.Context) *runner.Runtime {
 	rt.SetContext(context.WithValue(ctx, tenantKey, "acme"))
 	rt.RegisterConstructor("Storage", NewStorage)
 	rt.RegisterConstructor("FailStorage", NewFailStorage)
-	stdlib.RegisterDatabase(rt)
 	stdlib.RegisterFS(rt, ".")
 	stdlib.Register(rt)
 	return rt
