@@ -49,7 +49,7 @@ namespace and then fall back to the global function.
 There is no implicit class autoloader. Constructing an undefined class throws
 an error unless an autoloader has been registered with
 `spl_autoload_register()`. Calling it without a callback explicitly registers
-PHP's default lowercasing `.inc`/`.php` include-path loader.
+PHP's default lowercasing `.php` include-path loader.
 
 The syntax is in essence a non-OOP version of PHP4 with the extension of
 a built in `Exception` type and `try` + `catch` statements for error

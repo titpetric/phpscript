@@ -11,7 +11,14 @@ tasks:
       - task: docker:build
       - task: up
       - go test ./...
+      - task: test:introspection
       - task: test:phpscript:run
+
+  test:introspection:
+    passthru: true
+    cmds:
+      - ./scripts/list-apis.php > docs/implemented-apis.md
+      - ./scripts/phpinfo.php
 
   test:phpscript:run:
     dir: tests/fixtures
