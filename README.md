@@ -1,4 +1,4 @@
-# phpscript
+# phpscript - A custom PHP-flavoured runtime written in Go
 
 This is an experimental PHP interpreter. It supports the basic php
 expression syntax and some parts of the standard library. It's currently
