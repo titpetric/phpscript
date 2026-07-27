@@ -179,7 +179,8 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		return v, flowReturn, err
 
 	case *model.Include:
-		return nil, flowNormal, rt.execInclude(n, scope)
+		_, err := rt.evalInclude(n, scope)
+		return nil, flowNormal, err
 
 	case *model.Try:
 		return rt.execTry(n, scope)
@@ -407,25 +408,33 @@ func (rt *Runtime) execSwitch(n *model.Switch, scope *Scope) (any, flow, error) 
 	return nil, flowNormal, nil
 }
 
-func (rt *Runtime) execInclude(n *model.Include, scope *Scope) error {
+func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	path, err := rt.Eval(n.Path, scope)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return rt.includeFile(phpString(path), scope)
 }
 
-func (rt *Runtime) includeFile(path string, scope *Scope) error {
+func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	prog, filename, err := rt.resolveInclude(path)
 	if err != nil {
-		return fmt.Errorf("error including %s: %w", path, err)
+		return nil, fmt.Errorf("error including %s: %w", path, err)
 	}
 	rt.included = append(rt.included, filename)
 	if err := rt.hoist(prog.Stmts); err != nil {
-		return err
+		return nil, err
 	}
-	_, _, err = rt.exec(prog.Stmts, scope)
-	return err
+	value, fl, err := rt.exec(prog.Stmts, scope)
+	if err != nil {
+		return nil, err
+	}
+	if fl == flowReturn {
+		return value, nil
+	}
+	// PHP include/require constructs evaluate to 1 when the included file
+	// reaches its end without an explicit return.
+	return int64(1), nil
 }
 
 func (rt *Runtime) autoload(class string, scope *Scope) error {
@@ -466,7 +475,8 @@ func (rt *Runtime) SPLAutoload(class string) error {
 			if _, err := fs.Stat(rt.opts.RootFS, cleanPath); err != nil {
 				continue
 			}
-			return rt.includeFile(filename, NewScope())
+			_, err := rt.includeFile(filename, NewScope())
+			return err
 		}
 	}
 	return nil

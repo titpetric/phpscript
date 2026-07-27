@@ -366,6 +366,9 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	if u, ok := e.(*model.Unary); ok && (u.Op == "++" || u.Op == "--") {
 		return rt.evalIncDec(u, scope)
 	}
+	if i, ok := e.(*model.Include); ok {
+		return rt.evalInclude(i, scope)
+	}
 
 	ce, err := rt.compileExpr(e)
 	if err != nil {

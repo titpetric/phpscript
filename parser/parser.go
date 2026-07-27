@@ -432,6 +432,15 @@ func (p *parser) parseReturn() (model.Stmt, error) {
 
 func (p *parser) parseInclude() (model.Stmt, error) {
 	kw := p.next().val
+	e, err := p.parseIncludeExpr(kw)
+	if err != nil {
+		return nil, err
+	}
+	p.optSemi()
+	return e, nil
+}
+
+func (p *parser) parseIncludeExpr(kw string) (*model.Include, error) {
 	once := kw == "include_once" || kw == "require_once"
 	hadParen := p.isOp("(")
 	if hadParen {
@@ -446,7 +455,6 @@ func (p *parser) parseInclude() (model.Stmt, error) {
 			return nil, err
 		}
 	}
-	p.optSemi()
 	return &model.Include{Path: e, Once: once}, nil
 }
 

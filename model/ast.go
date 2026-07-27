@@ -92,7 +92,9 @@ type Return struct {
 	Value Expr // may be nil
 }
 
-// Include pulls in another file (include / include_once / require).
+// Include pulls in another file (include / include_once / require). PHP allows
+// include constructs both as standalone statements and as value-producing
+// expressions.
 type Include struct {
 	Path Expr
 	Once bool
@@ -348,6 +350,8 @@ func (*Cast) node()       {}
 func (*Closure) node()    {}
 func (*AssignExpr) node() {}
 func (*ListExpr) node()   {}
+
+func (*Include) expr() {}
 
 func (*Lit) expr()        {}
 func (*Var) expr()        {}

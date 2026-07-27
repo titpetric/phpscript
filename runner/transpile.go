@@ -160,6 +160,10 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		}
 		return fmt.Sprintf("__set(%q, %s)", v.Name, val), nil
 
+	case *model.Include:
+		id := t.mark(n)
+		return fmt.Sprintf("__eval(%q)", id), nil
+
 	case *model.Closure:
 		id := fmt.Sprintf("__cl%d", len(t.closures))
 		t.closures[id] = n

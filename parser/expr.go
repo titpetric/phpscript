@@ -267,6 +267,8 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 		return p.parseClosure()
 	case "list":
 		return p.parseList()
+	case "include", "include_once", "require", "require_once":
+		return p.parseIncludeExpr(t.val)
 	case "array":
 		if p.isOp("(") {
 			return p.parseArrayLiteral("(", ")")
