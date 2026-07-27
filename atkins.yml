@@ -7,7 +7,7 @@ tasks:
       - goimports -w .
       - go fmt ./...
       - go install .
-      - CGO_ENABLED=0 go build -o bin/ .
+      - task: go:build
       - task: docker:build
       - task: up
       - go test ./...
