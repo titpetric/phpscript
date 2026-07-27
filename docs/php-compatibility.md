@@ -16,6 +16,7 @@ To use the provided PHP standard library APIs:
 The authoritative function inventory is generated from the runtime itself:
 
 - [Implemented PHP APIs](./implemented-apis.md)
+- [Deferred callbacks](./defer.md)
 - Regenerate with `phpscript list-apis.php > docs/implemented-apis.md`
 
 This avoids a manually maintained list drifting from the functions actually

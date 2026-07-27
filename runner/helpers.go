@@ -138,16 +138,26 @@ func (rt *Runtime) helperGet(scope *Scope) func(base any, name string) any {
 		case nil:
 			return nil
 		}
-		rv := reflect.Indirect(reflect.ValueOf(base))
-		if rv.Kind() == reflect.Struct {
+		rv := reflect.ValueOf(base)
+		value := reflect.Indirect(rv)
+		if value.Kind() == reflect.Struct {
 			// Exact match first, then case-insensitive (PHP property access on a Go
 			// struct: `$rec->value` resolves the exported field Value).
-			if f := rv.FieldByName(name); f.IsValid() {
+			if f := value.FieldByName(name); f.IsValid() {
 				return f.Interface()
 			}
-			if f := rv.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) }); f.IsValid() {
+			if f := value.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) }); f.IsValid() {
 				return f.Interface()
 			}
+		}
+		// A method read without parentheses is a bound callable, as in
+		// `defer($db->close)`. Keep the receiver attached by returning the
+		// reflect method value itself.
+		if m := rv.MethodByName(name); m.IsValid() {
+			return m.Interface()
+		}
+		if m := methodByNameFold(rv, name); m.IsValid() {
+			return m.Interface()
 		}
 		return nil
 	}

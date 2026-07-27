@@ -69,8 +69,8 @@ func (rt *Runtime) Run(p *model.Program) error {
 	if err := rt.hoist(p.Stmts); err != nil {
 		return err
 	}
-	_, _, err := rt.exec(p.Stmts, scope)
-	return err
+	_, _, runErr := rt.exec(p.Stmts, scope)
+	return combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
 // hoist registers all function and class declarations found at the given level.
@@ -425,7 +425,9 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	if err := rt.hoist(prog.Stmts); err != nil {
 		return nil, err
 	}
-	value, fl, err := rt.exec(prog.Stmts, scope)
+	deferMark := len(scope.deferred)
+	value, fl, runErr := rt.exec(prog.Stmts, scope)
+	err = combineErrors(runErr, rt.runDeferred(scope, deferMark))
 	if err != nil {
 		return nil, err
 	}
@@ -695,8 +697,8 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}
-	val, _, err := rt.exec(decl.Body, scope)
-	return val, err
+	val, _, runErr := rt.exec(decl.Body, scope)
+	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
 // invokeMethod runs a method with $this bound to obj.
@@ -710,8 +712,8 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}
-	val, _, err := rt.exec(decl.Body, scope)
-	return val, err
+	val, _, runErr := rt.exec(decl.Body, scope)
+	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
 // invokeClosure runs an anonymous function in a fresh scope. minitpl's closures
@@ -723,8 +725,44 @@ func (rt *Runtime) invokeClosure(cl *model.Closure, args []any) (any, error) {
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}
-	val, _, err := rt.exec(cl.Body, scope)
-	return val, err
+	val, _, runErr := rt.exec(cl.Body, scope)
+	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
+}
+
+// runDeferred invokes callbacks registered since mark in last-in, first-out
+// order. Each callback is removed before invocation so it runs at most once,
+// including when it fails or registers another callback during the unwind.
+func (rt *Runtime) runDeferred(scope *Scope, mark int) error {
+	var errs []error
+	for len(scope.deferred) > mark {
+		i := len(scope.deferred) - 1
+		callback := scope.deferred[i]
+		scope.deferred[i] = nil
+		scope.deferred = scope.deferred[:i]
+		if _, err := rt.invokeWithScopeContext(callback, nil, scope); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return combineErrors(errs...)
+}
+
+// combineErrors preserves an existing error unchanged when there is only one,
+// while retaining every error when execution and one or more defers fail.
+func combineErrors(errs ...error) error {
+	nonNil := errs[:0]
+	for _, err := range errs {
+		if err != nil {
+			nonNil = append(nonNil, err)
+		}
+	}
+	switch len(nonNil) {
+	case 0:
+		return nil
+	case 1:
+		return nonNil[0]
+	default:
+		return errors.Join(nonNil...)
+	}
 }
 
 // argsKey is the scope slot holding the current call's positional arguments so

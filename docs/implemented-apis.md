@@ -78,6 +78,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `compact`
 - `count`
 - `crc32`
+- `defer`
 - `die`
 - `dirname`
 - `empty`

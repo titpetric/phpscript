@@ -12,7 +12,8 @@ type scopeContextKey struct{}
 //
 // There is intentionally no `global` keyword implemented.
 type Scope struct {
-	vars map[string]any
+	vars     map[string]any
+	deferred []any
 }
 
 // NewScope returns an empty scope.
@@ -29,6 +30,12 @@ func (s *Scope) Get(name string) (any, bool) {
 // Set stores name=val.
 func (s *Scope) Set(name string, val any) {
 	s.vars[name] = val
+}
+
+// Defer registers a callback to run when the current PHP execution frame
+// returns. Callbacks run in last-in, first-out order.
+func (s *Scope) Defer(callback any) {
+	s.deferred = append(s.deferred, callback)
 }
 
 // DefinedVars returns a snapshot of PHP-visible variables in this frame.
