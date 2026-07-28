@@ -211,9 +211,6 @@ Run it with:
 go test ./tests -run '^$' -bench '^BenchmarkGoBindingHTTP$' -benchmem
 ```
 
-A dated sample, including its Go version and machine details, is checked in at
-[`tests/benchmark-results.txt`](../../../tests/benchmark-results.txt).
-
 The difference between the two sub-benchmarks estimates the end-to-end overhead
 of using a fresh PHP VM for this binding path on the current machine. It is not
 a reflection-only microbenchmark and should not be treated as a fixed production
