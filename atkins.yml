@@ -10,14 +10,14 @@ tasks:
       - task: go:build
       - task: docker:build
       - task: up
-      - go test ./...
+      - go test ./... -bench=. -benchtime 10s -benchmem
       - task: test:introspection
       - task: test:phpscript:run
 
   test:introspection:
     passthru: true
     cmds:
-      - ./scripts/list-apis.php > docs/implemented-apis.md
+      - ./scripts/list-apis.php > docs/reference/extensions/implemented-apis.md
       - ./scripts/phpinfo.php
 
   test:phpscript:run:

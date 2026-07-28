@@ -15,50 +15,40 @@ type compiledExpr struct {
 	prog     *vm.Program
 }
 
-// ExprCache stores compiled expression programs by AST expression node and by
-// transpiled expr source. The node cache is the fastest path for reused parsed
-// programs. The source cache lets freshly parsed but identical PHP expression
-// trees reuse compiled expr bytecode across load+execute cycles.
+// ExprCache stores immutable compiled expression programs by transpiled source.
+// AST-specific metadata stays on each Runtime so a shared cache neither retains
+// freshly parsed request ASTs nor reuses closures/nested expressions from a
+// different program.
 type ExprCache struct {
-	mu    sync.Mutex
-	exprs map[model.Expr]*compiledExpr
-	bySrc map[string]*compiledExpr
+	mu    sync.RWMutex
+	bySrc map[string]*vm.Program
 }
 
 // NewExprCache returns an empty compiled expression cache.
 func NewExprCache() *ExprCache {
-	return &ExprCache{exprs: map[model.Expr]*compiledExpr{}, bySrc: map[string]*compiledExpr{}}
+	return &ExprCache{}
 }
 
-// Get returns the compiled expression cached for e, if any.
-func (c *ExprCache) Get(e model.Expr) (*compiledExpr, bool) {
+// GetSource returns the compiled expression cached for src, if any.
+func (c *ExprCache) GetSource(src string) (*vm.Program, bool) {
 	if c == nil {
 		return nil, false
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	ce, ok := c.exprs[e]
-	return ce, ok
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	prog, ok := c.bySrc[src]
+	return prog, ok
 }
 
-// Set stores ce for e and its transpiled source.
-func (c *ExprCache) Set(e model.Expr, ce *compiledExpr) {
+// SetSource stores a compiled program for transpiled source.
+func (c *ExprCache) SetSource(src string, prog *vm.Program) {
 	if c == nil {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.exprs[e] = ce
-	c.bySrc[ce.src] = ce
-}
-
-// GetSource returns the compiled expression cached for src, if any.
-func (c *ExprCache) GetSource(src string) (*compiledExpr, bool) {
-	if c == nil {
-		return nil, false
+	if c.bySrc == nil {
+		c.bySrc = make(map[string]*vm.Program)
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	ce, ok := c.bySrc[src]
-	return ce, ok
+	c.bySrc[src] = prog
 }

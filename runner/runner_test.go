@@ -113,6 +113,32 @@ func TestForwardedFunctionContextIncludesScope(t *testing.T) {
 	}
 }
 
+func TestSharedExprCacheKeepsNestedExpressionsRuntimeLocal(t *testing.T) {
+	cache := runner.NewExprCache()
+	runCached := func(src string) string {
+		t.Helper()
+		prog, err := parser.Parse(src)
+		if err != nil {
+			t.Fatalf("parse: %v", err)
+		}
+		var out strings.Builder
+		rt := runner.New(&out, runner.Options{})
+		rt.SetExprCache(cache)
+		rt.RegisterFunc("identity", func(v any) any { return v })
+		if err := rt.Run(prog); err != nil {
+			t.Fatalf("run: %v", err)
+		}
+		return out.String()
+	}
+
+	if got := runCached(`<?php $a = 1; echo identity($a++);`); got != "1" {
+		t.Fatalf("first program got %q", got)
+	}
+	if got := runCached(`<?php $b = 10; echo identity($b++);`); got != "10" {
+		t.Fatalf("second program got %q", got)
+	}
+}
+
 func TestIfElse(t *testing.T) {
 	got := run(t, `<?php $x = 5; if ($x > 3) { echo "big"; } else { echo "small"; }`)
 	if got != "big" {

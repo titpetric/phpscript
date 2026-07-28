@@ -20,6 +20,8 @@ import (
 	"embed"
 	"errors"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"runtime/pprof"
 	"strings"
@@ -274,6 +276,80 @@ func BenchmarkMinitpl(b *testing.B) {
 		b.ReportMetric(float64(setupDur.Nanoseconds())/float64(b.N), "setup_ns/op")
 		b.ReportMetric(float64(runDur.Nanoseconds())/float64(b.N), "run_ns/op")
 	})
+}
+
+var bindingBenchmarkSink int
+
+// BenchmarkGoBindingHTTP compares the same constructor and API calls made by a
+// native Go HTTP handler and by a per-request PHP runtime. Source parsing is
+// intentionally outside the timed region, and one prebuilt request is reused.
+// Per-iteration recorder allocation, runtime setup, reflective binding
+// dispatch, execution, and response writing are included where applicable.
+func BenchmarkGoBindingHTTP(b *testing.B) {
+	prog, err := parser.Parse(`<?php
+$storage = new Storage;
+$storage->set("color", "blue");
+$record = $storage->get("color");
+echo $storage->tenant() . ":" . $record->value;
+`)
+	if err != nil {
+		b.Fatal(err)
+	}
+	sharedExprCache := runner.NewExprCache()
+
+	goHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		storage, err := NewStorage(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		storage.Set(r.Context(), "color", "blue")
+		record, err := storage.Get(r.Context(), "color")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, _ = w.Write([]byte(storage.Tenant() + ":" + record.Value))
+	})
+
+	phpHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rt := runner.New(w, runner.Options{})
+		rt.SetExprCache(sharedExprCache)
+		rt.SetContext(r.Context())
+		rt.RegisterConstructor("Storage", NewStorage)
+		if err := rt.Run(prog); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/binding", nil)
+	request = request.WithContext(context.WithValue(request.Context(), tenantKey, "acme"))
+	const expected = "acme:blue"
+
+	benchmarks := []struct {
+		name    string
+		handler http.Handler
+	}{
+		{name: "go_handler", handler: goHandler},
+		{name: "php_vm_handler", handler: phpHandler},
+	}
+	for _, benchmark := range benchmarks {
+		b.Run(benchmark.name, func(b *testing.B) {
+			check := httptest.NewRecorder()
+			benchmark.handler.ServeHTTP(check, request)
+			if check.Code != http.StatusOK || check.Body.String() != expected {
+				b.Fatalf("status/body = %d/%q, want %d/%q", check.Code, check.Body.String(), http.StatusOK, expected)
+			}
+
+			b.ReportAllocs()
+			b.ResetTimer()
+			for b.Loop() {
+				response := httptest.NewRecorder()
+				benchmark.handler.ServeHTTP(response, request)
+				bindingBenchmarkSink = response.Body.Len()
+			}
+		})
+	}
 }
 
 func TestMinitplProfiles(t *testing.T) {

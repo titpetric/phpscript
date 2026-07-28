@@ -5,8 +5,7 @@ expression syntax and some parts of the standard library. It's currently
 very rudimentary and only enables limited functionality.
 
 - [About phpscript](./docs/README.md)
-- [Syntax](./docs/syntax.md)
-- [PHP compatibility](./docs/php-compatibility.md)
+- [Language reference and PHP compatibility](./docs/reference/README.md)
 - [Installation and usage](./docs/usage.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
 - [Use cases](./docs/use-cases)

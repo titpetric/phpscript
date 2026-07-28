@@ -64,6 +64,7 @@ type Service struct {
 	mux          *http.ServeMux
 	warnings     []string
 	runtimeFuncs []RuntimeFunc
+	exprCache    *runner.ExprCache
 }
 
 // NewService registers annotated PHP endpoints from root on mux.
@@ -71,7 +72,10 @@ func NewService(root fs.FS, mux *http.ServeMux, opts ...Option) (*Service, error
 	if mux == nil {
 		return nil, fmt.Errorf("route: nil mux")
 	}
-	svc := &Service{mux: mux}
+	svc := &Service{
+		mux:       mux,
+		exprCache: runner.NewExprCache(),
+	}
 	for _, opt := range opts {
 		opt(svc)
 	}
@@ -92,6 +96,10 @@ func (m *Service) Register(root fs.FS) error {
 	if root == nil {
 		return fmt.Errorf("route: nil root filesystem")
 	}
+	// Include paths are relative to one filesystem root. Keep a cache per
+	// Register call so two roots containing the same path cannot share a parsed
+	// program accidentally.
+	includeCache := runner.NewIncludeCache()
 	seen := map[string]string{}
 	return fs.WalkDir(root, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -112,7 +120,7 @@ func (m *Service) Register(root fs.FS) error {
 			seen[pattern] = path
 			file := path
 			m.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
-				m.servePHP(root, file, w, r)
+				m.servePHP(root, file, includeCache, w, r)
 			})
 		}
 		return nil
@@ -147,9 +155,11 @@ func parseRoutes(src []byte) []route {
 	return routes
 }
 
-func (m *Service) servePHP(root fs.FS, file string, w http.ResponseWriter, r *http.Request) {
+func (m *Service) servePHP(root fs.FS, file string, includeCache *runner.IncludeCache, w http.ResponseWriter, r *http.Request) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{RootFS: root, SAPI: "http"})
+	rt.SetIncludeCache(includeCache)
+	rt.SetExprCache(m.exprCache)
 	rt.SetContext(r.Context())
 	stdlib.Register(rt)
 	ctx := runner.FromRequest(r)

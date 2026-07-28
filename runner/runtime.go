@@ -70,8 +70,16 @@ type Runtime struct {
 	mu        sync.Mutex
 	cache     map[string]*vm.Program // expr source -> compiled program
 	exprCache *ExprCache
-	envPool   sync.Pool
+	compiled  map[model.Expr]*compiledExpr
 	helpers   map[string]func(...any) (any, error)
+}
+
+// evalEnvPool is shared by runtimes because HTTP integrations commonly create
+// one Runtime per request. A per-Runtime pool never survived long enough to
+// reuse its first environment map. releaseEnv removes every value (including
+// closures over the Runtime and Scope) before returning a map to this pool.
+var evalEnvPool = sync.Pool{
+	New: func() any { return make(map[string]any, 128) },
 }
 
 // ExitError is returned when PHP die()/exit() interrupts script execution.
@@ -123,7 +131,6 @@ func New(w io.Writer, opts Options) *Runtime {
 		globals:      map[string]any{},
 		constants:    map[string]any{},
 		classConsts:  map[string]map[string]any{},
-		cache:        map[string]*vm.Program{},
 		exprCache:    NewExprCache(),
 		helpers: map[string]func(...any) (any, error){
 			"__bool":   adapt(phpTruthy),
@@ -135,8 +142,6 @@ func New(w io.Writer, opts Options) *Runtime {
 			"__arith":  adapt(phpArith),
 		},
 	}
-	rt.envPool.New = func() any { return make(map[string]any, 128) }
-
 	return rt
 }
 
@@ -166,12 +171,14 @@ func (rt *Runtime) RegisterConstructor(name string, ctor any) {
 	rt.constructors[name] = ctor
 }
 
-// SetIncludeCache installs a shared include cache. Passing nil disables include
-// caching.
+// SetIncludeCache installs a shared include cache. A cache must only be shared
+// by runtimes whose include paths resolve within the same source-root namespace.
+// Passing nil disables include caching.
 func (rt *Runtime) SetIncludeCache(cache *IncludeCache) { rt.includeCache = cache }
 
-// SetExprCache installs a shared compiled-expression cache. Passing nil
-// disables AST-node expression caching for this runtime.
+// SetExprCache installs a source-keyed compiled-program cache that is safe to
+// share across runtimes. AST-specific expression metadata remains runtime-local.
+// Passing nil disables cross-runtime expression caching.
 func (rt *Runtime) SetExprCache(cache *ExprCache) { rt.exprCache = cache }
 
 // FS returns the configured source root (or nil).
@@ -412,8 +419,10 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 }
 
 func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
-	if ce, ok := rt.exprCache.Get(e); ok {
-		return ce, nil
+	if rt.compiled != nil {
+		if ce, ok := rt.compiled[e]; ok {
+			return ce, nil
+		}
 	}
 
 	tr := NewTranspiler()
@@ -422,18 +431,18 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 		return nil, err
 	}
 	closures := tr.Closures()
-	if len(closures) == 0 {
-		if ce, ok := rt.exprCache.GetSource(src); ok {
-			rt.exprCache.Set(e, ce)
-			return ce, nil
-		}
+	exprs := tr.Exprs()
+	if prog, ok := rt.exprCache.GetSource(src); ok {
+		ce := &compiledExpr{src: src, vars: vars, closures: closures, exprs: exprs, prog: prog}
+		rt.setCompiledExpr(e, ce)
+		return ce, nil
 	}
 
 	base := rt.typeEnvBase()
 	for id := range closures {
 		base[id] = adapt(func(args ...any) (any, error) { return nil, nil })
 	}
-	if len(tr.Exprs()) > 0 {
+	if len(exprs) > 0 {
 		base["__eval"] = adapt(func(args ...any) any { return nil })
 	}
 	typeEnv := make(map[string]any, len(base)+len(vars))
@@ -446,13 +455,17 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 	if err != nil {
 		return nil, fmt.Errorf("compile %q: %w", src, err)
 	}
-	ce := &compiledExpr{src: src, vars: vars, closures: closures, exprs: tr.Exprs(), prog: prog}
-
-	if cached, ok := rt.exprCache.Get(e); ok {
-		return cached, nil
-	}
-	rt.exprCache.Set(e, ce)
+	ce := &compiledExpr{src: src, vars: vars, closures: closures, exprs: exprs, prog: prog}
+	rt.exprCache.SetSource(src, prog)
+	rt.setCompiledExpr(e, ce)
 	return ce, nil
+}
+
+func (rt *Runtime) setCompiledExpr(e model.Expr, ce *compiledExpr) {
+	if rt.compiled == nil {
+		rt.compiled = make(map[model.Expr]*compiledExpr)
+	}
+	rt.compiled[e] = ce
 }
 
 // compile returns a cached compiled program for src.
@@ -469,12 +482,17 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 func (rt *Runtime) compile(src string, typeEnv map[string]any) (*vm.Program, error) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
-	if p, ok := rt.cache[src]; ok {
-		return p, nil
+	if rt.cache != nil {
+		if p, ok := rt.cache[src]; ok {
+			return p, nil
+		}
 	}
 	p, err := expr.Compile(src, expr.Env(typeEnv), expr.DisableAllBuiltins())
 	if err != nil {
 		return nil, err
+	}
+	if rt.cache == nil {
+		rt.cache = make(map[string]*vm.Program)
 	}
 	rt.cache[src] = p
 	return p, nil
@@ -490,7 +508,7 @@ func (rt *Runtime) compile(src string, typeEnv map[string]any) (*vm.Program, err
 // typed PHP arguments and keeps the runtime func type in sync with the type
 // env (see helpers.go::adapt and Eval).
 func (rt *Runtime) baseEnv(scope *Scope) map[string]any {
-	env := rt.envPool.Get().(map[string]any)
+	env := evalEnvPool.Get().(map[string]any)
 	for name, fn := range rt.funcs {
 		callable := fn
 		env[name] = func(args ...any) (any, error) {
@@ -526,10 +544,14 @@ func (rt *Runtime) baseEnv(scope *Scope) map[string]any {
 }
 
 func (rt *Runtime) releaseEnv(env map[string]any) {
+	oversized := len(env) > 256
 	for k := range env {
 		delete(env, k)
 	}
-	rt.envPool.Put(env)
+	if oversized {
+		return
+	}
+	evalEnvPool.Put(env)
 }
 
 func (rt *Runtime) typeEnvBase() map[string]any {
