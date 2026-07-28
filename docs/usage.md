@@ -87,7 +87,7 @@ phpscript route ./tests/fixtures/route
 ```
 
 Route files use `// @route METHOD /path/{param}` comments. See
-[PHP routing](./use-cases/php-routing.md) for details.
+[PHP routing](./use-cases/routing.md) for details.
 
 ### `phpscript version`
 

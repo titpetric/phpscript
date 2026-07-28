@@ -1,0 +1,59 @@
+title: phpscript language reference
+description: A PHP language-reference-shaped guide to the syntax and runtime behavior implemented by phpscript.
+compatibility:
+  - feature: PHP language reference
+    status: Partial compatibility
+    notes: Only documented chapters and features are implemented.
+  - feature: phpscript extensions
+    status: Compatibility
+    notes: Documented separately because these APIs and syntax do not exist in PHP.
+  - feature: Fibers, generators, attributes, references, enums, stream contexts and wrappers
+    status: Not implemented
+    notes: Omitted from the sitemap because phpscript has no corresponding feature.
+sitemap:
+  - section: Syntax and values
+    description: Source-file structure, runtime values, variables, constants, and expression evaluation.
+    links:
+      - path: basic-syntax/README.md
+        description: PHP tags, inline HTML, statement separators, comments, and shebang scripts.
+      - path: types/README.md
+        description: Dynamic scalar, array, object, callable, and cast behavior.
+      - path: variables/README.md
+        description: Assignment, local scope, arrays, properties, and destructuring.
+      - path: constants/README.md
+        description: Class constants and values registered by an embedding host.
+      - path: expressions/README.md
+        description: Assignment, ternary, call, construction, and include expressions.
+      - path: operators/README.md
+        description: Supported operators, precedence, mutation, and unavailable PHP groups.
+  - section: Control and composition
+    description: Statements and declarations used to organize executable scripts.
+    links:
+      - path: control-structures/README.md
+        description: Conditions, loops, switches, jumps, returns, and includes.
+      - path: functions/README.md
+        description: Named functions, closures, arguments, defaults, and keyword differences.
+      - path: classes-and-objects/README.md
+        description: Basic classes, properties, methods, constructors, and host-backed objects.
+      - path: namespaces/README.md
+        description: Namespace declarations, name resolution, function fallback, and autoloading.
+  - section: Failures and runtime-provided values
+    description: The supported error model and values supplied by the runtime or request host.
+    links:
+      - path: errors/README.md
+        description: Parse failures, runtime errors, and the host error callback.
+      - path: exceptions/README.md
+        description: Throwing, catching, finally blocks, and differences from PHP exception dispatch.
+      - path: predefined-variables/README.md
+        description: Request query, form, and route variables, plus unsupported PHP superglobals.
+      - path: predefined-interfaces-and-classes/README.md
+        description: Exception and closure behavior, plus absent PHP runtime types.
+  - section: phpscript extensions
+    description: Runtime-specific syntax and APIs that are not part of the PHP language reference.
+    links:
+      - path: extensions/README.md
+        description: defer, the PS namespace, function keyword aliases, and portability hazards.
+      - path: extensions/bindings.md
+        description: Exposing Go constructors, functions, methods, contexts, and values to PHP.
+      - path: extensions/implemented-apis.md
+        description: Generated inventory of functions and classes in the standard CLI runtime.

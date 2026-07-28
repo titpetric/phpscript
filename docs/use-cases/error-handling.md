@@ -75,8 +75,7 @@ to Go functions like `func(err error)` from PHP code.
 
 ## Handing exceptions in Go
 
-If an exception is unhandled in Go, a runtime callback can be registered
-to catch and observe the exception.
+An embedding host can register a runtime callback for statement errors.
 
 ```go
 rt.OnError(func(err error) {
@@ -84,9 +83,14 @@ rt.OnError(func(err error) {
 })
 ```
 
+The callback consumes each non-exit statement error and execution continues.
+It can therefore prevent an enclosing PHP `try`/`catch` from receiving the
+error; omit `OnError` when PHP code should control propagation.
+
 The runtime context is accessible over `rt.Context()`.
 
 ## References
 
-- [PHP Compatibility](../php-compatibility.md)
+- [Errors](../reference/errors/README.md)
+- [Exceptions](../reference/exceptions/README.md)
 - [Runner.OnError](https://pkg.go.dev/github.com/titpetric/phpscript@main/runner#Runtime.OnError)
