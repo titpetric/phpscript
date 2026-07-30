@@ -65,7 +65,7 @@ func (m *Module) handleRequest(w http.ResponseWriter, r *http.Request) {
 
 	filename := filepath.Join(m.root, filepath.Clean(path))
 
-	result, headers, err := m.renderFile(ctx, filename, r)
+	result, headers, status, err := m.renderFile(ctx, filename, r)
 	if err != nil {
 		log.Printf("Error in request %s, %s: %s\n", path, filename, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -77,13 +77,16 @@ func (m *Module) handleRequest(w http.ResponseWriter, r *http.Request) {
 	for name, values := range headers {
 		w.Header()[name] = values
 	}
+	if status != 0 {
+		w.WriteHeader(status)
+	}
 	_, _ = w.Write([]byte(result))
 }
 
 // renderFile executes a .php file and returns the output plus any response
 // headers staged by the PHP header() function. The *http.Request is exposed to
 // the script via a runner.Context ($_GET/$_POST/$_PATH, getallheaders, header).
-func (m *Module) renderFile(ctx context.Context, filename string, r *http.Request) (string, http.Header, error) {
+func (m *Module) renderFile(ctx context.Context, filename string, r *http.Request) (string, http.Header, int, error) {
 	var out bytes.Buffer
 
 	rt := runner.New(&out, runner.Options{
@@ -94,7 +97,7 @@ func (m *Module) renderFile(ctx context.Context, filename string, r *http.Reques
 	rt.SetExprCache(m.exprCache)
 	prog, err := rt.LoadFile(filename)
 	if err != nil {
-		return "", nil, err
+		return "", nil, 0, err
 	}
 
 	stdlib.Register(rt)
@@ -105,12 +108,12 @@ func (m *Module) renderFile(ctx context.Context, filename string, r *http.Reques
 
 	if err := rt.Run(prog); err != nil {
 		if _, ok := runner.IsExit(err); ok {
-			return out.String(), reqCtx.ResponseHeaders(), nil
+			return out.String(), reqCtx.ResponseHeaders(), reqCtx.ResponseStatus(), nil
 		}
-		return "", nil, err
+		return "", nil, 0, err
 	}
 
-	return out.String(), reqCtx.ResponseHeaders(), nil
+	return out.String(), reqCtx.ResponseHeaders(), reqCtx.ResponseStatus(), nil
 }
 
 // Run starts the platform lifecycle and waits for shutdown.

@@ -51,6 +51,7 @@ type fixture struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description"`
 	Error       string `yaml:"error"` // optional: expected error substring
+	Stdin       string `yaml:"stdin"` // optional: runtime STDIN contents
 
 	PHP      string `yaml:"-"`
 	Expected string `yaml:"-"`
@@ -89,7 +90,7 @@ func runFixture(ctx context.Context, f fixture) (string, error) {
 	}
 
 	var out strings.Builder
-	rt := newTestRuntime(&out, ctx)
+	rt := newTestRuntime(&out, ctx, strings.NewReader(f.Stdin))
 
 	/*
 		rt.RegisterFunc("sprintf", fmt.Sprintf)
@@ -122,8 +123,11 @@ func testPHPFS() fs.FS {
 	return phpFS
 }
 
-func newTestRuntime(out *strings.Builder, ctx context.Context) *runner.Runtime {
+func newTestRuntime(out *strings.Builder, ctx context.Context, input ...*strings.Reader) *runner.Runtime {
 	options := runner.Options{RootFS: testPHPFS()}
+	if len(input) > 0 {
+		options.Stdin = input[0]
+	}
 	rt := runner.New(out, options)
 	rt.SetIncludeCache(includeCache)
 	rt.SetExprCache(exprCache)

@@ -21,16 +21,19 @@ type Context struct {
 	// http.Header (a map, hence reference-shared across copies of Context) so a
 	// host handler can flush it onto the response after execution.
 	response http.Header
+	status   *int
 }
 
 // NewContext returns an allocated empty Context value.
 func NewContext() Context {
+	status := 0
 	return Context{
 		Get:      map[string]string{},
 		Post:     map[string]string{},
 		Path:     map[string]string{},
 		Headers:  map[string]string{},
 		response: http.Header{},
+		status:   &status,
 	}
 }
 
@@ -125,11 +128,31 @@ func (c Context) Header(header string, opts ...any) {
 	} else {
 		c.response.Add(name, value)
 	}
+	if strings.EqualFold(name, "Location") && c.ResponseStatus() == 0 {
+		*c.status = http.StatusFound
+	}
+	if len(opts) > 1 {
+		switch code := opts[1].(type) {
+		case int:
+			*c.status = code
+		case int64:
+			*c.status = int(code)
+		}
+	}
 }
 
 // ResponseHeaders returns the headers staged by the PHP header() function so a
 // host handler can copy them onto the http.ResponseWriter after execution.
 func (c Context) ResponseHeaders() http.Header { return c.response }
+
+// ResponseStatus returns the status staged by header(), or zero when the host
+// should retain its default status. A Location header defaults to 302 like PHP.
+func (c Context) ResponseStatus() int {
+	if c.status == nil {
+		return 0
+	}
+	return *c.status
+}
 
 // mapToArray converts a string map into a PHP associative array with stable,
 // alphabetical key order (Go map iteration is random; PHP callers expect a

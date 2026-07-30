@@ -1,11 +1,18 @@
 package runner
 
-import "io/fs"
+import (
+	"io"
+	"io/fs"
+)
 
 // Options configures a Runtime.
 type Options struct {
 	// RootFS is the filesystem used to load PHP entrypoints and includes.
 	RootFS fs.FS
+
+	// Stdin is exposed to scripts as the STDIN stream. A nil reader produces an
+	// empty stream; CLI hosts should pass os.Stdin explicitly.
+	Stdin io.Reader
 
 	// SAPI provides output for `php_sapi_name`.
 	SAPI string

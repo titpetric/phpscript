@@ -23,6 +23,7 @@ Regenerate it after changing runtime or standard-library registrations.
 
 - `str_repeat`
 - `str_replace`
+- `stream_get_contents`
 - `strlen`
 - `strpos`
 - `strstr`

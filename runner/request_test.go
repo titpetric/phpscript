@@ -114,3 +114,19 @@ func TestHeaderEmission(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
+	ctx := runner.NewContext()
+	rt := runner.New(&strings.Builder{}, runner.Options{})
+	ctx.Register(rt)
+	prog, err := parser.Parse(`<?php header("Location: /next");`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(prog); err != nil {
+		t.Fatal(err)
+	}
+	if got := ctx.ResponseStatus(); got != http.StatusFound {
+		t.Fatalf("status = %d, want %d", got, http.StatusFound)
+	}
+}

@@ -116,6 +116,9 @@ func New(w io.Writer, opts Options) *Runtime {
 	if w == nil {
 		w = os.Stdout
 	}
+	if opts.Stdin == nil {
+		opts.Stdin = strings.NewReader("")
+	}
 	opts.WorkDir = cleanFSPath(opts.WorkDir)
 	rt := &Runtime{
 		out:          w,
@@ -183,6 +186,9 @@ func (rt *Runtime) SetExprCache(cache *ExprCache) { rt.exprCache = cache }
 
 // FS returns the configured source root (or nil).
 func (rt *Runtime) FS() fs.FS { return rt.opts.RootFS }
+
+// Stdin returns the input stream configured by the runtime host.
+func (rt *Runtime) Stdin() io.Reader { return rt.opts.Stdin }
 
 // WorkDir returns the configured working directory inside the source root.
 func (rt *Runtime) WorkDir() string { return rt.opts.WorkDir }

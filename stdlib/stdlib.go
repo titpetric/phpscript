@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/crc32"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -538,6 +539,14 @@ func jsonDecodeValue(v any) any {
 func registerLang(rt *runner.Runtime) {
 	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
 	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
+	rt.SetConst("STDIN", rt.Stdin())
+	rt.RegisterFunc("stream_get_contents", func(stream io.Reader, _ ...any) (string, error) {
+		v, err := io.ReadAll(stream)
+		if err != nil {
+			return "", err
+		}
+		return string(v), nil
+	})
 	rt.RegisterFunc("spl_autoload_register", func(args ...any) (bool, error) {
 		var callback any = rt.SPLAutoload
 		if len(args) > 0 && args[0] != nil {

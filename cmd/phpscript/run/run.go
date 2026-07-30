@@ -34,6 +34,7 @@ func Run(ctx context.Context, args []string) error {
 	rt := runner.New(os.Stdout, runner.Options{
 		SAPI:   "cli",
 		RootFS: os.DirFS("."),
+		Stdin:  os.Stdin,
 	})
 	prog, err := rt.LoadFile(args[0])
 	if err != nil {
