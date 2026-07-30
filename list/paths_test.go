@@ -23,7 +23,7 @@ func TestExpandDotAndRecursive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := list.Expand([]string{"."})
+	got, err := list.ExpandFiles([]string{"."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestExpandDotAndRecursive(t *testing.T) {
 		t.Fatalf("dot = %v, want only a.php", got)
 	}
 
-	got, err = list.Expand([]string{"./..."})
+	got, err = list.ExpandFiles([]string{"./..."})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestExpandFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "only.php")
 	mustWrite(t, path, "<?php\n")
-	got, err := list.Expand([]string{path})
+	got, err := list.ExpandFiles([]string{path})
 	if err != nil {
 		t.Fatal(err)
 	}
