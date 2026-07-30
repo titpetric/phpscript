@@ -179,11 +179,17 @@ func (m *Service) servePHP(root fs.FS, file string, includeCache *runner.Include
 	}
 	if err != nil {
 		if _, ok := runner.IsExit(err); ok {
+			if status := ctx.ResponseStatus(); status != 0 {
+				w.WriteHeader(status)
+			}
 			_, _ = io.WriteString(w, out.String())
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if status := ctx.ResponseStatus(); status != 0 {
+		w.WriteHeader(status)
 	}
 	_, _ = io.WriteString(w, out.String())
 }

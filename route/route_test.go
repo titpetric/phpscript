@@ -17,6 +17,11 @@ echo $_PATH["id"];
 // @route: /submit
 echo $_POST["name"];
 `)},
+	"redirect.php": {Data: []byte(`<?php
+// @route POST /redirect
+header("Location: /done");
+exit;
+`)},
 	"ignored.txt": {Data: []byte(`// @route GET /ignored`)},
 }
 
@@ -58,5 +63,22 @@ func TestServiceRegistersDefaultGetAndPost(t *testing.T) {
 	}
 	if got := rr.Body.String(); got != "bob" {
 		t.Fatalf("body = %q, want %q", got, "bob")
+	}
+}
+
+func TestServiceAppliesRedirectStatus(t *testing.T) {
+	mux := http.NewServeMux()
+	if _, err := NewService(testRouteFileSystem, mux); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/redirect", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusFound)
+	}
+	if got := rr.Header().Get("Location"); got != "/done" {
+		t.Fatalf("Location = %q, want /done", got)
 	}
 }
