@@ -29,7 +29,8 @@ type Expr interface {
 
 // Program is the top-level result of parsing a single PHP file.
 type Program struct {
-	Stmts []Stmt
+	Stmts     []Stmt
+	Namespace string // set when the file declares `namespace Name;`
 }
 
 func (*Program) node() {}
@@ -103,10 +104,13 @@ type Include struct {
 // FuncDecl is a free function or a class method declared with the
 // `function Class::method()` syntax described in the README.
 type FuncDecl struct {
-	Class  string // "" for free functions
-	Name   string
-	Params []Param
-	Body   []Stmt
+	Class      string // "" for free functions
+	Name       string
+	Params     []Param
+	Body       []Stmt
+	Visibility string // "public", "protected", "private", or ""
+	Static     bool
+	Abstract   bool // declaration only; Body is empty
 }
 
 // ClassDecl is a trimmed-down class: fields + methods + class constants, no
@@ -172,8 +176,9 @@ type Param struct {
 
 // Field is a class property declaration (also reused for class constants).
 type Field struct {
-	Name    string
-	Default Expr // nil if none
+	Name       string
+	Default    Expr   // nil if none
+	Visibility string // "public", "protected", "private", or ""
 }
 
 func (*InlineHTML) node() {}
