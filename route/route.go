@@ -112,8 +112,8 @@ func (m *Service) Register(root fs.FS) error {
 		if err != nil {
 			return err
 		}
-		for _, route := range parseRoutes(b) {
-			pattern := route.method + " " + route.path
+		for _, route := range Annotations(b) {
+			pattern := route.Method + " " + route.Path
 			if prev, ok := seen[pattern]; ok {
 				m.warnings = append(m.warnings, fmt.Sprintf("duplicate route %q in %s; previously registered by %s", pattern, path, prev))
 			}
@@ -127,13 +127,16 @@ func (m *Service) Register(root fs.FS) error {
 	})
 }
 
-type route struct {
-	method string
-	path   string
+// Annotation is one // @route declaration found in a PHP source file.
+type Annotation struct {
+	Method string
+	Path   string
 }
 
-func parseRoutes(src []byte) []route {
-	var routes []route
+// Annotations returns @route declarations from src. A path-only annotation
+// expands to both GET and POST, matching the HTTP router.
+func Annotations(src []byte) []Annotation {
+	var routes []Annotation
 	for _, line := range bytes.Split(src, []byte("\n")) {
 		text := strings.TrimSpace(string(line))
 		text = strings.TrimPrefix(text, "//")
@@ -146,10 +149,10 @@ func parseRoutes(src []byte) []route {
 		fields := strings.Fields(strings.TrimSpace(text))
 		switch len(fields) {
 		case 1:
-			routes = append(routes, route{method: http.MethodGet, path: fields[0]})
-			routes = append(routes, route{method: http.MethodPost, path: fields[0]})
+			routes = append(routes, Annotation{Method: http.MethodGet, Path: fields[0]})
+			routes = append(routes, Annotation{Method: http.MethodPost, Path: fields[0]})
 		default:
-			routes = append(routes, route{method: strings.ToUpper(fields[0]), path: fields[1]})
+			routes = append(routes, Annotation{Method: strings.ToUpper(fields[0]), Path: fields[1]})
 		}
 	}
 	return routes
@@ -176,17 +179,11 @@ func (m *Service) servePHP(root fs.FS, file string, includeCache *runner.Include
 	}
 	if err != nil {
 		if _, ok := runner.IsExit(err); ok {
-			if status := ctx.ResponseStatus(); status != 0 {
-				w.WriteHeader(status)
-			}
 			_, _ = io.WriteString(w, out.String())
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	if status := ctx.ResponseStatus(); status != 0 {
-		w.WriteHeader(status)
 	}
 	_, _ = io.WriteString(w, out.String())
 }
