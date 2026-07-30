@@ -7,10 +7,10 @@ tasks:
       - goimports -w .
       - go fmt ./...
       - go install .
+      - task: go:test
       - task: go:build
       - task: docker:build
       - task: up
-      - go test ./... -bench=. -benchtime 10s -benchmem
       - task: test:introspection
       - task: test:phpscript:run
 
