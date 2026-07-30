@@ -28,7 +28,7 @@ func Parse(src string) (*model.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Program{Stmts: stmts}, nil
+	return &model.Program{Stmts: stmts, Namespace: p.namespace}, nil
 }
 
 type parser struct {
@@ -655,13 +655,19 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 		return nil, err
 	}
 	for !p.isOp("}") && !p.atEOF() {
-		// Skip leading modifiers; visibility and static/abstract/final are
-		// tolerated but not enforced (README omits method visibility). `abstract`
-		// marks a body-less method.
+		// Collect leading modifiers. Visibility/static are recorded for
+		// formatting; abstract marks a body-less method.
+		visibility := ""
+		isStatic := false
 		methodAbstract := false
 		for p.isKw("public") || p.isKw("private") || p.isKw("protected") ||
 			p.isKw("static") || p.isKw("final") || p.isKw("abstract") {
-			if p.isKw("abstract") {
+			switch {
+			case p.isKw("public"), p.isKw("private"), p.isKw("protected"):
+				visibility = p.cur().val
+			case p.isKw("static"):
+				isStatic = true
+			case p.isKw("abstract"):
 				methodAbstract = true
 			}
 			p.next()
@@ -673,31 +679,38 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
+			for i := range consts {
+				consts[i].Visibility = visibility
+			}
 			cd.Consts = append(cd.Consts, consts...)
 		case p.isKw("var"):
 			p.next()
-			fields, err := p.parseFields()
+			fields, err := p.parseFields(visibility)
 			if err != nil {
 				return nil, err
 			}
 			cd.Fields = append(cd.Fields, fields...)
 		case p.isKw("fn", "func", "function"):
 			if methodAbstract {
-				// `abstract function name($args);` — declaration only, no body.
-				if err := p.skipAbstractMethod(); err != nil {
+				m, err := p.parseAbstractMethod(visibility, isStatic)
+				if err != nil {
 					return nil, err
 				}
+				cd.Methods = append(cd.Methods, m)
 				continue
 			}
 			m, err := p.parseFunction()
 			if err != nil {
 				return nil, err
 			}
-			cd.Methods = append(cd.Methods, m.(*model.FuncDecl))
+			fd := m.(*model.FuncDecl)
+			fd.Visibility = visibility
+			fd.Static = isStatic
+			cd.Methods = append(cd.Methods, fd)
 		case p.cur().kind == tVar:
 			// Typed/visibility-prefixed property without `var` (e.g.
 			// `protected $stack = array();`).
-			fields, err := p.parseFields()
+			fields, err := p.parseFields(visibility)
 			if err != nil {
 				return nil, err
 			}
@@ -737,27 +750,34 @@ func (p *parser) parseConsts() ([]model.Field, error) {
 	return consts, nil
 }
 
-// skipAbstractMethod consumes `function name(params);` with no body.
-func (p *parser) skipAbstractMethod() error {
+// parseAbstractMethod consumes `function name(params);` with no body.
+func (p *parser) parseAbstractMethod(visibility string, isStatic bool) (*model.FuncDecl, error) {
 	p.next() // function
 	if p.cur().kind != tIdent {
-		return fmt.Errorf("line %d: expected method name", p.cur().line)
+		return nil, fmt.Errorf("line %d: expected method name", p.cur().line)
 	}
-	p.next() // name
-	if _, err := p.parseParams(); err != nil {
-		return err
+	name := p.next().val
+	params, err := p.parseParams()
+	if err != nil {
+		return nil, err
 	}
 	p.optSemi()
-	return nil
+	return &model.FuncDecl{
+		Name:       name,
+		Params:     params,
+		Visibility: visibility,
+		Static:     isStatic,
+		Abstract:   true,
+	}, nil
 }
 
-func (p *parser) parseFields() ([]model.Field, error) {
+func (p *parser) parseFields(visibility string) ([]model.Field, error) {
 	var fields []model.Field
 	for {
 		if p.cur().kind != tVar {
 			return nil, fmt.Errorf("line %d: expected $field", p.cur().line)
 		}
-		f := model.Field{Name: p.next().val}
+		f := model.Field{Name: p.next().val, Visibility: visibility}
 		if p.isOp("=") {
 			p.next()
 			def, err := p.parseExpr()
