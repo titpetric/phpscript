@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
@@ -300,6 +301,10 @@ echo $storage->tenant() . ":" . $record->value;
 		b.Fatal(err)
 	}
 	sharedExprCache := runner.NewExprCache()
+	flatExprCache := flatstack.NewExprCache()
+	if err := flatstack.Supports(prog); err != nil {
+		b.Fatalf("flatstack benchmark would fall back: %v", err)
+	}
 
 	goHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		storage, err := NewStorage(r.Context())
@@ -325,6 +330,15 @@ echo $storage->tenant() . ":" . $record->value;
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
+	flatHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rt := flatstack.New(w, flatstack.Options{})
+		rt.SetExprCache(flatExprCache)
+		rt.SetContext(r.Context())
+		rt.RegisterConstructor("Storage", NewStorage)
+		if err := rt.Run(prog); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
 
 	request := httptest.NewRequest(http.MethodGet, "/binding", nil)
 	request = request.WithContext(context.WithValue(request.Context(), tenantKey, "acme"))
@@ -336,6 +350,7 @@ echo $storage->tenant() . ":" . $record->value;
 	}{
 		{name: "go_handler", handler: goHandler},
 		{name: "php_vm_handler", handler: phpHandler},
+		{name: "flatstack_handler", handler: flatHandler},
 	}
 	for _, benchmark := range benchmarks {
 		b.Run(benchmark.name, func(b *testing.B) {

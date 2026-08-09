@@ -26,3 +26,7 @@ the first can handle the error.
 
 Errors returned by a Go function invoked through a runtime binding enter the
 same catch path as an explicit `throw`.
+
+Panics raised by registered Go constructors, functions, or methods are recovered
+at the host-call boundary and enter this same catch path as `HostPanicError`.
+Without a matching `try`/`catch`, the error is returned to the embedding host.

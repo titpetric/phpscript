@@ -29,6 +29,7 @@ var phpSuperglobals = map[string]struct{}{
 // with registered functions, classes, constructors, and runtime state.
 type Runtime struct {
 	out     io.Writer
+	flat    bool
 	funcs   map[string]any
 	userFns map[string]struct{}
 	wrapped map[string]func(...any) (any, error)
@@ -160,6 +161,15 @@ func environmentSnapshot() map[string]string {
 		env[name] = value
 	}
 	return env
+}
+
+// NewFlatStack returns a Runtime that executes supported programs through the
+// flat bytecode backend and atomically falls back to the interpreter otherwise.
+// Most callers should use flatstack.New, which preserves runner's public API.
+func NewFlatStack(w io.Writer, opts Options) *Runtime {
+	rt := New(w, opts)
+	rt.flat = true
+	return rt
 }
 
 // SetContext installs the lifecycle context auto-injected into registered Go

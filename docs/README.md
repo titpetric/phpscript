@@ -7,6 +7,9 @@ runtime is mainly focused on:
 1. Bundling and using PHP as part of a Go service, embedding php assets to a binary
 2. Interfacing type safe Go code with PHP as an "intra-process" execution bridge
 
+For the runner-compatible compile-once bytecode backend, see
+[Flat-stack runtime](./flatstack.md).
+
 This allows several use cases for the runtime, however does not support
 running most open source PHP projects that are using advanced syntax
 that the runtime doesn't implement.

@@ -14,6 +14,18 @@ import (
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
+// HostPanicError converts a panic raised by a registered Go constructor,
+// function, or method into the runtime error path. PHP try/catch can therefore
+// handle it like an error returned by the same host callable.
+type HostPanicError struct {
+	Callable string
+	Value    any
+}
+
+func (e *HostPanicError) Error() string {
+	return fmt.Sprintf("host panic in %s: %v", e.Callable, e.Value)
+}
+
 // wantsContext reports whether fn's first parameter is a context.Context.
 func wantsContext(t reflect.Type) bool {
 	return t.Kind() == reflect.Func && t.NumIn() > 0 && t.In(0) == contextType
@@ -182,7 +194,13 @@ func adapt(fn any) func(...any) (any, error) {
 
 // invokeAny calls fn (any Go callable) with args via reflection, coercing
 // arguments to the declared parameter types where convertible.
-func invokeAny(fn any, args []any) (any, error) {
+func invokeAny(fn any, args []any) (result any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result = nil
+			err = &HostPanicError{Callable: fmt.Sprintf("%T", fn), Value: recovered}
+		}
+	}()
 	rv := reflect.ValueOf(fn)
 	if rv.Kind() != reflect.Func {
 		return nil, fmt.Errorf("not callable: %T", fn)
@@ -324,7 +342,16 @@ func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any,
 // so `$obj->get()` resolves Go's exported Get). When the method's first
 // parameter is a context.Context the runtime context is auto-injected, and
 // arguments are coerced to the declared parameter types.
-func (rt *Runtime) callGoMethod(base any, method string, args []any) (any, error) {
+func (rt *Runtime) callGoMethod(base any, method string, args []any) (result any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result = nil
+			err = &HostPanicError{
+				Callable: fmt.Sprintf("%T::%s", base, method),
+				Value:    recovered,
+			}
+		}
+	}()
 	if base == nil {
 		return nil, fmt.Errorf("call %s on nil", method)
 	}
