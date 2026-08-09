@@ -9,13 +9,13 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - $PWD/tests/fixtures/:/app
+      - $PWD/demos/dbadmin/:/app
 
   php:
     image: php:8.5
     ports:
       - 8081:8081
     volumes:
-      - $PWD/tests/fixtures/:/app
+      - $PWD/demos/dbadmin/:/app
     working_dir: /app
     command: [php, -S, "0:8081"]
