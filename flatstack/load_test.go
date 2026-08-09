@@ -1,0 +1,369 @@
+package flatstack_test
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"testing"
+
+	"github.com/titpetric/phpscript/flatstack"
+	"github.com/titpetric/phpscript/parser"
+)
+
+// These cases mirror the flat-stack repository's table-driven VM and load
+// tests, adapted to phpscript's public parser and runner-compatible API.
+func TestFlatstackTableDrivenExecution(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{
+			name:   "literal",
+			source: `<?php echo "hello"; ?>`,
+			want:   "hello",
+		},
+		{
+			name:   "assigned concat",
+			source: `<?php $left = "flat"; $right = "stack"; echo $left . "-" . $right; ?>`,
+			want:   "flat-stack",
+		},
+		{
+			name:   "php string coercion",
+			source: `<?php $number = 42; echo "answer=" . $number; ?>`,
+			want:   "answer=42",
+		},
+		{
+			name:   "inline html",
+			source: `before-<?php $value = "inside"; echo $value; ?>-after`,
+			want:   "before-inside-after",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := parser.Parse(test.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := flatstack.Supports(program); err != nil {
+				t.Fatalf("test unexpectedly uses interpreter fallback: %v", err)
+			}
+			var output strings.Builder
+			runtime := flatstack.New(&output, flatstack.Options{})
+			if err := runtime.Run(program); err != nil {
+				t.Fatal(err)
+			}
+			if got := output.String(); got != test.want {
+				t.Fatalf("output = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestFlatstackNativeLanguageCoverage(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{"arithmetic and precedence", `<?php echo 2 + 3 * 4, ":", 9 % 4;`, "14:1"},
+		{"comparison and unary", `<?php echo 2 < 3 ? "yes" : "no"; echo !false ? ":true" : ":false";`, "yes:true"},
+		{"short circuit", `<?php $n = 0; false && ($n = 1); true || ($n = 2); echo $n;`, "0"},
+		{"array read write append", `<?php $a = array("x" => 1); $a["x"] += 2; $a[] = 4; echo $a["x"], ":", $a[0];`, "3:4"},
+		{"increment and decrement", `<?php $n = 1; echo $n++, ":", ++$n, ":"; $a = array(4); echo --$a[0], ":", $a[0]--;`, "1:3:3:3"},
+		{"if else", `<?php $n = 3; if ($n > 2) echo "big"; else echo "small";`, "big"},
+		{"for continue break", `<?php for ($i = 0; $i < 6; $i += 1) { if ($i == 2) continue; if ($i == 5) break; echo $i; }`, "0134"},
+		{"switch fallthrough and break", `<?php $n = 2; switch ($n) { case 1: echo "one"; break; case 2: echo "two"; case 3: echo "+three"; break; default: echo "other"; }`, "two+three"},
+		{"throw and catch", `<?php try { throw "boom"; } catch (Exception $e) { echo $e; }`, "uncaught exception: boom"},
+		{"foreach variables", `<?php foreach (array("a" => 1, "b" => 2) as $k => $v) echo $k . $v;`, "a1b2"},
+		{"foreach index targets", `<?php $state = array(); foreach (array("x" => 7) as $state["k"] => $state["v"]) echo $state["k"] . $state["v"];`, "x7"},
+		{"elvis evaluates condition once", `<?php $value = "kept"; echo $value ?: "fallback";`, "kept"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := parser.Parse(test.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := flatstack.Supports(program); err != nil {
+				t.Fatalf("expected native bytecode support: %v", err)
+			}
+			var output strings.Builder
+			runtime := flatstack.New(&output, flatstack.Options{})
+			if err := runtime.Run(program); err != nil {
+				t.Fatal(err)
+			}
+			if got := output.String(); got != test.want {
+				t.Fatalf("output = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestFlatstackLoopControlUnwindsTryHandler(t *testing.T) {
+	program, err := parser.Parse(`<?php
+for ($i = 0; $i < 1; $i += 1) {
+    try { break; } catch (Exception $e) { echo "wrong catch"; }
+}
+$storage = new Storage;
+$storage->get("missing");
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+	runtime := flatstack.New(io.Discard, flatstack.Options{})
+	runtime.RegisterConstructor("Storage", newStorage)
+	err = runtime.Run(program)
+	if err == nil || !strings.Contains(err.Error(), "missing key") {
+		t.Fatalf("error after break = %v, want uncaught missing-key error", err)
+	}
+}
+
+func TestFlatstackRejectsWholeProgramBeforeSideEffects(t *testing.T) {
+	program, err := parser.Parse(`<?php
+$storage = new Storage;
+function unsupported() { return 42; }
+echo unsupported();
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err == nil {
+		t.Fatal("program with a user function should require interpreter fallback")
+	}
+
+	var constructions atomic.Int64
+	constructor := func(context.Context) (*storage, error) {
+		constructions.Add(1)
+		return &storage{values: make(map[string]string)}, nil
+	}
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	runtime.RegisterConstructor("Storage", constructor)
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got := constructions.Load(); got != 1 {
+		t.Fatalf("constructor called %d times; fallback repeated a side effect", got)
+	}
+	if got := output.String(); got != "42" {
+		t.Fatalf("fallback output = %q, want 42", got)
+	}
+}
+
+func TestFlatstackSharedCacheParallel(t *testing.T) {
+	program, err := parser.Parse(`<?php $a = "shared"; $b = "-cache"; echo $a . $b; ?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+
+	cache := flatstack.NewExprCache()
+	const workers = 16
+	const iterations = 100
+	var failures atomic.Int64
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range iterations {
+				var output strings.Builder
+				runtime := flatstack.New(&output, flatstack.Options{})
+				runtime.SetExprCache(cache)
+				if err := runtime.Run(program); err != nil || output.String() != "shared-cache" {
+					failures.Add(1)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	if got := failures.Load(); got != 0 {
+		t.Fatalf("parallel runs failed: %d", got)
+	}
+}
+
+func TestFlatstackHostErrorPropagates(t *testing.T) {
+	program, err := parser.Parse(`<?php $storage = new Storage; $storage->get("missing"); ?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+
+	runtime := flatstack.New(io.Discard, flatstack.Options{})
+	runtime.RegisterConstructor("Storage", newStorage)
+	err = runtime.Run(program)
+	if err == nil || !strings.Contains(err.Error(), "missing key") {
+		t.Fatalf("error = %v, want missing-key host error", err)
+	}
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, errors.New("output unavailable")
+}
+
+func TestFlatstackOutputErrorPropagates(t *testing.T) {
+	program, err := parser.Parse(`<?php echo "value"; ?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime := flatstack.New(failingWriter{}, flatstack.Options{})
+	err = runtime.Run(program)
+	if err == nil || !strings.Contains(err.Error(), "output unavailable") {
+		t.Fatalf("error = %v, want writer error", err)
+	}
+}
+
+func TestFlatstackRuntimeGlobalUsesFlatBytecode(t *testing.T) {
+	program, err := parser.Parse(`<?php echo "tenant=" . $tenant; ?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("runtime global should compile as a host-backed flat local: %v", err)
+	}
+
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	runtime.SetGlobal("tenant", "acme")
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "tenant=acme" {
+		t.Fatalf("output = %q, want tenant=acme", got)
+	}
+}
+
+type panicHost struct{}
+
+func (panicHost) Crash() {
+	panic("deliberate host panic")
+}
+
+func TestFlatstackHostPanicBecomesError(t *testing.T) {
+	program, err := parser.Parse(`<?php $host = new PanicHost; $host->crash(); ?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+	runtime := flatstack.New(io.Discard, flatstack.Options{})
+	runtime.RegisterConstructor("PanicHost", func() panicHost { return panicHost{} })
+	err = runtime.Run(program)
+	var panicErr *flatstack.HostPanicError
+	if err == nil || !errors.As(err, &panicErr) || !strings.Contains(err.Error(), "deliberate host panic") {
+		t.Fatalf("panic boundary error = %v", err)
+	}
+}
+
+func TestFlatstackHostPanicCanBeCaught(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		setup  func(*flatstack.Runtime)
+	}{
+		{
+			name: "method",
+			source: `<?php
+$host = new PanicHost;
+try { $host->crash(); } catch (Exception $e) { echo "caught: " . $e; }
+?>`,
+			setup: func(runtime *flatstack.Runtime) {
+				runtime.RegisterConstructor("PanicHost", func() panicHost { return panicHost{} })
+			},
+		},
+		{
+			name: "constructor",
+			source: `<?php
+try { $host = new PanicHost; } catch (Exception $e) { echo "caught: " . $e; }
+?>`,
+			setup: func(runtime *flatstack.Runtime) {
+				runtime.RegisterConstructor("PanicHost", func() panicHost {
+					panic("constructor exploded")
+				})
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := parser.Parse(test.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := flatstack.Supports(program); err != nil {
+				t.Fatalf("try/catch should compile into flat bytecode: %v", err)
+			}
+			var output strings.Builder
+			runtime := flatstack.New(&output, flatstack.Options{})
+			test.setup(runtime)
+			if err := runtime.Run(program); err != nil {
+				t.Fatalf("caught panic escaped runtime: %v", err)
+			}
+			if got := output.String(); !strings.HasPrefix(got, "caught: host panic in ") {
+				t.Fatalf("output = %q, want caught host panic", got)
+			}
+		})
+	}
+}
+
+func TestFlatstackPrecompiledAllocationBudget(t *testing.T) {
+	program, err := parser.Parse(`<?php $left = "flat"; $right = "stack"; echo $left . $right; ?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime := flatstack.New(io.Discard, flatstack.Options{})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	allocations := testing.AllocsPerRun(500, func() {
+		if err := runtime.Run(program); err != nil {
+			panic(err)
+		}
+	})
+	t.Logf("precompiled concat allocations/run = %.2f", allocations)
+	if allocations > 4 {
+		t.Fatalf("precompiled concat allocations/run = %.2f, want <= 4", allocations)
+	}
+}
+
+func TestFlatstackDeepConcat(t *testing.T) {
+	const depth = 100
+	source := `<?php $value = "x"; echo $value` + strings.Repeat(` . "x"`, depth) + `; ?>`
+	program, err := parser.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.Len(), depth+1; got != want {
+		t.Fatalf("output length = %d, want %d", got, want)
+	}
+}
+
+func ExampleSupports() {
+	program, _ := parser.Parse(`<?php $a = "flat"; echo $a . "stack"; ?>`)
+	fmt.Println(flatstack.Supports(program) == nil)
+	// Output: true
+}

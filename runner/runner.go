@@ -60,6 +60,15 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 
 // Run executes a whole program in the global scope.
 func (rt *Runtime) Run(p *model.Program) error {
+	if rt.flat {
+		if handled, err := rt.runFlat(p); handled {
+			return err
+		}
+	}
+	return rt.runInterpreted(p)
+}
+
+func (rt *Runtime) runInterpreted(p *model.Program) error {
 	scope := NewScope()
 	for name, val := range rt.globals {
 		scope.Set(name, val)
