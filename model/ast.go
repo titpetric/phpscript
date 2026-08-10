@@ -306,6 +306,24 @@ type Unary struct {
 	Postfix bool
 }
 
+// Parenthesized preserves explicit grouping from the source expression.
+type Parenthesized struct {
+	X Expr
+}
+
+// UnwrapParenthesized returns the expression inside any explicit grouping.
+// Consumers that inspect expression shape rather than evaluate it should use
+// this so parentheses remain semantically transparent.
+func UnwrapParenthesized(e Expr) Expr {
+	for {
+		p, ok := e.(*Parenthesized)
+		if !ok {
+			return e
+		}
+		e = p.X
+	}
+}
+
 // Binary is an infix operator. Op covers arithmetic (+ - * / %), string concat
 // ("."), comparison (== != === !== < <= > >=) and logical (&& ||).
 type Binary struct {
@@ -367,6 +385,9 @@ func (*Call) node()       {}
 func (*MethodCall) node() {}
 func (*New) node()        {}
 func (*Unary) node()      {}
+
+func (*Parenthesized) node() {}
+
 func (*Binary) node()     {}
 func (*Ternary) node()    {}
 func (*ClassConst) node() {}
@@ -386,6 +407,9 @@ func (*Call) expr()       {}
 func (*MethodCall) expr() {}
 func (*New) expr()        {}
 func (*Unary) expr()      {}
+
+func (*Parenthesized) expr() {}
+
 func (*Binary) expr()     {}
 func (*Ternary) expr()    {}
 func (*ClassConst) expr() {}

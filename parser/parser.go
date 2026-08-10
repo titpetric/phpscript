@@ -669,6 +669,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 		return nil, err
 	}
 	for !p.isOp("}") && !p.atEOF() {
+		memberStart := p.cur().line
 		// Collect leading modifiers. Visibility/static are recorded for
 		// formatting; abstract marks a body-less method.
 		visibility := ""
@@ -710,6 +711,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 				if err != nil {
 					return nil, err
 				}
+				p.spans[m] = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
 				cd.Methods = append(cd.Methods, m)
 				continue
 			}
@@ -720,6 +722,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 			fd := m.(*model.FuncDecl)
 			fd.Visibility = visibility
 			fd.Static = isStatic
+			p.spans[fd] = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
 			cd.Methods = append(cd.Methods, fd)
 		case p.cur().kind == tVar:
 			// Typed/visibility-prefixed property without `var` (e.g.
@@ -855,7 +858,7 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 	}
 	// parseExpr already folds assignment into an AssignExpr; lower it to a
 	// statement-level Assign so the interpreter's mutation path handles it.
-	if ae, ok := lhs.(*model.AssignExpr); ok {
+	if ae, ok := model.UnwrapParenthesized(lhs).(*model.AssignExpr); ok {
 		return &model.Assign{Target: ae.Target, Op: ae.Op, Value: ae.Value}, nil
 	}
 	return &model.ExprStmt{X: lhs}, nil

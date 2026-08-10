@@ -149,6 +149,94 @@ echo $shm->get($_PATH["key"]);
 	}
 }
 
+func TestCommentsImmediatelyPrecedeClassAndFunctionDeclarations(t *testing.T) {
+	in := `<?php
+
+/** Class docs. */
+
+
+class Example {
+	// Method docs.
+
+	public function run() {}
+}
+
+/* Function
+ * docs.
+ */
+
+function helper() {}
+`
+	want := `<?php
+
+/** Class docs. */
+class Example {
+	// Method docs.
+	public function run() {
+	}
+}
+
+/* Function
+ * docs.
+ */
+function helper() {
+}
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != want {
+		t.Fatalf("unexpected declaration comments:\n--- got ---\n%s--- want ---\n%s", out, want)
+	}
+	again, err := formatter.Source(out)
+	if err != nil || again != out {
+		t.Fatalf("output is not idempotent: %v\nfirst: %q\nsecond: %q", err, out, again)
+	}
+}
+
+func TestExplicitExpressionParenthesesRetained(t *testing.T) {
+	in := "<?php\n$offset = ($page - 1) * $limit;\n$value = (($a + $b));\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"$offset = ($page - 1) * $limit;",
+		"$value = (($a + $b));",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("expression grouping %q changed:\n%s", want, out)
+		}
+	}
+	again, err := formatter.Source(out)
+	if err != nil || again != out {
+		t.Fatalf("output is not idempotent: %v\nfirst: %q\nsecond: %q", err, out, again)
+	}
+}
+
+func TestTrailingCommentIsNotMovedToFollowingDeclaration(t *testing.T) {
+	in := "<?php\n$value = 1; // value docs\nfunction helper() {}\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, "// value docs") {
+		t.Fatalf("trailing comment was moved to declaration:\n%s", out)
+	}
+}
+
+func TestDeclarationCommentIsNotDuplicatedOnSameLine(t *testing.T) {
+	in := "<?php\n// first only\nfunction first() {} function second() {}\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(out, "// first only") != 1 {
+		t.Fatalf("declaration comment duplicated:\n%s", out)
+	}
+}
+
 func TestDropCloseTagForClassOnlyFile(t *testing.T) {
 	in := "<?php\nclass Foo\n{\n}\n?>\n"
 	out, err := formatter.Source(in)

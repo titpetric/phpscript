@@ -69,14 +69,19 @@ func Source(src string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	out := Print(prog, Options{LeadingComments: leadingComments(src)})
+	declarationComments, attachedCommentLines := commentsBeforeDeclarations(src)
+	out := Print(prog, Options{
+		LeadingComments:     leadingComments(src, attachedCommentLines),
+		DeclarationComments: declarationComments,
+	})
 	out = strings.ReplaceAll(out, "\r\n", "\n")
 	return strings.ReplaceAll(out, "\r", "\n"), nil
 }
 
 // Options controls AST pretty-printing.
 type Options struct {
-	LeadingComments []string // emitted after <?php, before namespace/stmts
+	LeadingComments     []string           // emitted after <?php, before namespace/stmts
+	DeclarationComments map[int][][]string // comment groups keyed by declaration source line
 }
 
 // Print renders prog as formatted PHP source.
@@ -92,7 +97,11 @@ func Print(prog *model.Program, opts Options) string {
 			stmts = stmts[:len(stmts)-1]
 		}
 	}
-	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans}
+	declarationComments := make(map[int][][]string, len(opts.DeclarationComments))
+	for line, groups := range opts.DeclarationComments {
+		declarationComments[line] = append([][]string(nil), groups...)
+	}
+	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans, declarationComments: declarationComments}
 	if startsInPHP {
 		p.line("<?php")
 		p.blank()
@@ -116,11 +125,12 @@ func Print(prog *model.Program, opts Options) string {
 }
 
 type printer struct {
-	buf       strings.Builder
-	depth     int
-	namespace string
-	inPHP     bool
-	spans     map[model.Stmt]model.SourceSpan
+	buf                 strings.Builder
+	depth               int
+	namespace           string
+	inPHP               bool
+	spans               map[model.Stmt]model.SourceSpan
+	declarationComments map[int][][]string
 }
 
 func (p *printer) indent() string {
@@ -183,6 +193,7 @@ func (p *printer) stmt(s model.Stmt) {
 	if _, ok := s.(*model.InlineHTML); !ok {
 		p.ensurePHP()
 	}
+	p.printDeclarationComments(s)
 	switch n := s.(type) {
 	case *model.InlineHTML:
 		if p.inPHP {
@@ -237,6 +248,36 @@ func (p *printer) stmt(s model.Stmt) {
 		p.line("continue;")
 	default:
 		p.line(fmt.Sprintf("/* unsupported statement %T */", s))
+	}
+}
+
+func (p *printer) printDeclarationComments(s model.Stmt) {
+	switch s.(type) {
+	case *model.ClassDecl, *model.FuncDecl:
+	default:
+		return
+	}
+	span, ok := p.spans[s]
+	if !ok {
+		return
+	}
+	groups := p.declarationComments[span.Start]
+	if len(groups) == 0 {
+		return
+	}
+	for _, comment := range groups[0] {
+		p.comment(comment)
+	}
+	p.declarationComments[span.Start] = groups[1:]
+}
+
+func (p *printer) comment(comment string) {
+	lines := strings.Split(strings.ReplaceAll(comment, "\r\n", "\n"), "\n")
+	for i, line := range lines {
+		if i > 0 {
+			line = strings.TrimPrefix(line, p.indent())
+		}
+		p.line(line)
 	}
 }
 
@@ -418,6 +459,7 @@ func (p *printer) printClass(n *model.ClassDecl) {
 	}
 	for _, m := range n.Methods {
 		writeBlank()
+		p.printDeclarationComments(m)
 		p.printFunc(m, true)
 	}
 	p.depth--
@@ -533,6 +575,8 @@ func (p *printer) expr(e model.Expr) string {
 			return p.expr(n.X) + n.Op
 		}
 		return n.Op + p.expr(n.X)
+	case *model.Parenthesized:
+		return "(" + p.expr(n.X) + ")"
 	case *model.Binary:
 		return p.expr(n.Left) + " " + n.Op + " " + p.expr(n.Right)
 	case *model.Ternary:
@@ -548,7 +592,7 @@ func (p *printer) expr(e model.Expr) string {
 		if op == "[]=" {
 			return p.expr(n.Target) + "[] = " + p.expr(n.Value)
 		}
-		return "(" + p.expr(n.Target) + " " + op + " " + p.expr(n.Value) + ")"
+		return p.expr(n.Target) + " " + op + " " + p.expr(n.Value)
 	case *model.ListExpr:
 		return "list(" + p.args(n.Elems) + ")"
 	case *model.Include:
@@ -577,7 +621,7 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 	b.WriteString("{\n")
 	p.depth++
 	// Temporarily divert: build body lines with indent.
-	sub := &printer{depth: p.depth, namespace: p.namespace, inPHP: true, spans: p.spans}
+	sub := &printer{depth: p.depth, namespace: p.namespace, inPHP: true, spans: p.spans, declarationComments: p.declarationComments}
 	sub.stmts(body)
 	sub.ensurePHP()
 	p.depth--
@@ -741,7 +785,7 @@ func collapseBlankLines(src string) string {
 
 // leadingComments returns // and /* */ comments between the open tag and the
 // first non-comment code token (e.g. // @route annotations).
-func leadingComments(src string) []string {
+func leadingComments(src string, attached map[int]bool) []string {
 	var comments []string
 	seenOpen := false
 	parser.TokenGetAll(src).Range(func(_, val any) bool {
@@ -761,7 +805,8 @@ func leadingComments(src string) []string {
 		case parser.T_WHITESPACE, parser.T_INLINE_HTML:
 			// keep scanning
 		case parser.T_COMMENT:
-			if seenOpen {
+			line, _ := a.Get(int64(2))
+			if seenOpen && !attached[int(line.(int64))] {
 				comments = append(comments, strings.TrimRight(text.(string), "\r\n"))
 			}
 		default:
@@ -772,4 +817,95 @@ func leadingComments(src string) []string {
 		return true
 	})
 	return comments
+}
+
+// commentsBeforeDeclarations associates a run of comments with the class or
+// function declaration that follows it. Whitespace, including blank lines, and
+// declaration modifiers may occur between the comment and declaration.
+func commentsBeforeDeclarations(src string) (map[int][][]string, map[int]bool) {
+	type token struct {
+		id          int
+		text        string
+		line        int
+		commentOnly bool
+	}
+	var tokens []token
+	offset := 0
+	parser.TokenGetAll(src).Range(func(_, val any) bool {
+		a, ok := val.(*model.Array)
+		if !ok {
+			text := val.(string)
+			tokens = append(tokens, token{text: text})
+			offset += len(text)
+			return true
+		}
+		id, _ := a.Get(int64(0))
+		text, _ := a.Get(int64(1))
+		line, _ := a.Get(int64(2))
+		tokenText := text.(string)
+		lineStart := strings.LastIndex(src[:offset], "\n") + 1
+		prefix := strings.TrimSpace(src[lineStart:offset])
+		tokens = append(tokens, token{
+			id:          int(id.(int64)),
+			text:        tokenText,
+			line:        int(line.(int64)),
+			commentOnly: prefix == "" || prefix == "<?php" || prefix == "<?",
+		})
+		offset += len(tokenText)
+		return true
+	})
+
+	comments := make(map[int][][]string)
+	attached := make(map[int]bool)
+	for i := 0; i < len(tokens); i++ {
+		if tokens[i].id != parser.T_COMMENT || !tokens[i].commentOnly {
+			continue
+		}
+		var group []token
+		j := i
+		for j < len(tokens) {
+			if tokens[j].id == parser.T_COMMENT {
+				group = append(group, tokens[j])
+				j++
+				continue
+			}
+			if tokens[j].id == parser.T_WHITESPACE {
+				j++
+				continue
+			}
+			break
+		}
+		declLine := 0
+		for j < len(tokens) && tokens[j].id == parser.T_STRING && isDeclarationModifier(tokens[j].text) {
+			if declLine == 0 {
+				declLine = tokens[j].line
+			}
+			j++
+			for j < len(tokens) && tokens[j].id == parser.T_WHITESPACE {
+				j++
+			}
+		}
+		if j >= len(tokens) || (tokens[j].id != parser.T_FUNCTION && tokens[j].id != parser.T_CLASS) {
+			continue
+		}
+		if declLine == 0 {
+			declLine = tokens[j].line
+		}
+		texts := make([]string, 0, len(group))
+		for _, c := range group {
+			texts = append(texts, strings.TrimRight(c.text, "\r\n"))
+			attached[c.line] = true
+		}
+		comments[declLine] = append(comments[declLine], texts)
+		i = j - 1
+	}
+	return comments, attached
+}
+
+func isDeclarationModifier(s string) bool {
+	switch strings.ToLower(s) {
+	case "public", "protected", "private", "static", "final", "abstract":
+		return true
+	}
+	return false
 }

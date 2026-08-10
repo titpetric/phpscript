@@ -532,7 +532,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		return err
 	}
 
-	switch tgt := n.Target.(type) {
+	switch tgt := model.UnwrapParenthesized(n.Target).(type) {
 	case *model.Var:
 		cur, _ := scope.Get(tgt.Name)
 		scope.Set(tgt.Name, applyAssignOp(n.Op, cur, rhs))
@@ -595,7 +595,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 }
 
 func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
-	switch tgt := target.(type) {
+	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
 		v, _ := scope.Get(tgt.Name)
 		return v, nil
@@ -635,7 +635,7 @@ func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 // assignTo writes an already-evaluated value into an lvalue (used by list()
 // destructuring). Only plain `=` semantics are needed here.
 func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
-	switch tgt := target.(type) {
+	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
 		scope.Set(tgt.Name, val)
 		return nil

@@ -29,5 +29,6 @@ if (strpos($prefix, "select") === 0 || strpos($prefix, "pragma") === 0 || strpos
 
 $statement->close();
 $title = "SQL console";
+
 render($tpl, "sql", array("title" => $title, "query" => $query, "message" => $message, "rows" => $rows, "result_columns" => $result_columns));
 $db->close();

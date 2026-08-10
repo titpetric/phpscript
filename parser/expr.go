@@ -46,7 +46,7 @@ func (p *parser) parseAssign() (model.Expr, error) {
 
 // isLValue reports whether e can be assigned to.
 func isLValue(e model.Expr) bool {
-	switch e.(type) {
+	switch model.UnwrapParenthesized(e).(type) {
 	case *model.Var, *model.Index, *model.PropAccess, *model.ListExpr:
 		return true
 	}
@@ -240,7 +240,10 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 			if err != nil {
 				return nil, err
 			}
-			return e, p.eatOp(")")
+			if err := p.eatOp(")"); err != nil {
+				return nil, err
+			}
+			return &model.Parenthesized{X: e}, nil
 		case "[":
 			return p.parseArrayLiteral("[", "]")
 		case "{":

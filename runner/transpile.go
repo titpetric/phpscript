@@ -91,6 +91,13 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		}
 		return op + "(" + x + ")", nil
 
+	case *model.Parenthesized:
+		x, err := t.emit(n.X)
+		if err != nil {
+			return "", err
+		}
+		return "(" + x + ")", nil
+
 	case *model.Binary:
 		return t.emitBinary(n)
 
@@ -146,7 +153,7 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		return fmt.Sprintf("__cast(%q, %s)", n.Type, x), nil
 
 	case *model.AssignExpr:
-		v, ok := n.Target.(*model.Var)
+		v, ok := model.UnwrapParenthesized(n.Target).(*model.Var)
 		if !ok {
 			return "", fmt.Errorf("transpile: assignment expression supports only $var targets, got %T", n.Target)
 		}
@@ -211,7 +218,7 @@ func (t *Transpiler) emitCall(n *model.Call) (string, error) {
 	args := make([]string, 0, len(n.Args))
 	for i, a := range n.Args {
 		if refs[i] {
-			if v, ok := a.(*model.Var); ok {
+			if v, ok := model.UnwrapParenthesized(a).(*model.Var); ok {
 				t.vars[v.Name] = struct{}{}
 				args = append(args, fmt.Sprintf("__ref(%q)", v.Name))
 				continue

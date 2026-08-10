@@ -20,5 +20,6 @@ foreach ($raw as $table) {
 
 $table_count = count($tables);
 $title = "Database overview";
+
 render($tpl, "dashboard", array("title" => $title, "tables" => $tables, "table_count" => $table_count, "column_count" => $column_count, "row_count" => $row_count));
 $db->close();
