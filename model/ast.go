@@ -31,6 +31,16 @@ type Expr interface {
 type Program struct {
 	Stmts     []Stmt
 	Namespace string // set when the file declares `namespace Name;`
+	// SourceSpans records original statement lines when Program came from the
+	// parser. Consumers may ignore it; the formatter uses it to retain a single
+	// intentional blank line between statements.
+	SourceSpans map[Stmt]SourceSpan
+}
+
+// SourceSpan is the inclusive source-line range occupied by a statement.
+type SourceSpan struct {
+	Start int
+	End   int
 }
 
 // RouteAnnotation is one // @route declaration found in a PHP source file.

@@ -1,7 +1,7 @@
 // Package formatter pretty-prints phpscript ASTs in a gofmt-like style:
 // hard tabs, canonical `function` keywords, parentheses on control structures,
-// semicolons, collapsed blank lines, and a trailing newline. Class declarations
-// use a next-line opening brace; functions and control structures do not.
+// semicolons, collapsed blank lines, and a trailing newline. Class, function,
+// and control-structure opening braces stay on the declaration line.
 package formatter
 
 import (
@@ -86,7 +86,13 @@ func Print(prog *model.Program, opts Options) string {
 		_, startsWithHTML := prog.Stmts[0].(*model.InlineHTML)
 		startsInPHP = startsInPHP || !startsWithHTML
 	}
-	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP}
+	stmts := prog.Stmts
+	if len(stmts) > 0 {
+		if html, ok := stmts[len(stmts)-1].(*model.InlineHTML); ok && strings.TrimSpace(html.Text) == "" {
+			stmts = stmts[:len(stmts)-1]
+		}
+	}
+	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans}
 	if startsInPHP {
 		p.line("<?php")
 		p.blank()
@@ -101,12 +107,7 @@ func Print(prog *model.Program, opts Options) string {
 		p.line("namespace " + prog.Namespace + ";")
 		p.blank()
 	}
-	for i, s := range prog.Stmts {
-		if i > 0 && (isDecl(s) || isDecl(prog.Stmts[i-1])) {
-			p.blank()
-		}
-		p.stmt(s)
-	}
+	p.stmts(stmts)
 	out := collapseBlankLines(p.buf.String())
 	if !strings.HasSuffix(out, "\n") {
 		out += "\n"
@@ -119,6 +120,7 @@ type printer struct {
 	depth     int
 	namespace string
 	inPHP     bool
+	spans     map[model.Stmt]model.SourceSpan
 }
 
 func (p *printer) indent() string {
@@ -136,7 +138,7 @@ func (p *printer) ensurePHP() {
 func (p *printer) line(s string) {
 	p.ensurePHP()
 	p.buf.WriteString(p.indent())
-	p.buf.WriteString(s)
+	p.buf.WriteString(strings.TrimRight(s, " \t"))
 	p.buf.WriteByte('\n')
 }
 
@@ -146,6 +148,37 @@ func (p *printer) blank() {
 	}
 }
 
+// stmts prints a statement list without leading or trailing blank lines. It
+// retains one source blank line and adds separation after block statements and
+// before a call that follows assignments.
+func (p *printer) stmts(stmts []model.Stmt) {
+	for i, s := range stmts {
+		if i > 0 && p.blankBetween(stmts[i-1], s) {
+			p.blank()
+		}
+		p.stmt(s)
+	}
+}
+
+func (p *printer) blankBetween(prev, next model.Stmt) bool {
+	if before, ok := p.spans[next]; ok {
+		if after, ok := p.spans[prev]; ok && before.Start > after.End+1 {
+			return true
+		}
+	}
+	if _, class := prev.(*model.ClassDecl); class {
+		return false
+	}
+	if isBlockStmt(prev) {
+		return true
+	}
+	if isDecl(next) || isFuncDecl(prev) {
+		return true
+	}
+	_, assigned := prev.(*model.Assign)
+	return assigned && isCallStmt(next)
+}
+
 func (p *printer) stmt(s model.Stmt) {
 	if _, ok := s.(*model.InlineHTML); !ok {
 		p.ensurePHP()
@@ -153,6 +186,7 @@ func (p *printer) stmt(s model.Stmt) {
 	switch n := s.(type) {
 	case *model.InlineHTML:
 		if p.inPHP {
+			p.blank()
 			p.line("?>")
 			p.inPHP = false
 		}
@@ -220,9 +254,7 @@ func (p *printer) printIf(n *model.If, elseif bool) {
 	}
 	p.line(kw + " (" + p.expr(n.Cond) + ") {")
 	p.depth++
-	for _, s := range n.Then {
-		p.stmt(s)
-	}
+	p.stmts(n.Then)
 	p.depth--
 	if len(n.Else) == 1 {
 		if nested, ok := n.Else[0].(*model.If); ok {
@@ -237,9 +269,7 @@ func (p *printer) printIf(n *model.If, elseif bool) {
 	if len(n.Else) > 0 {
 		p.line("} else {")
 		p.depth++
-		for _, s := range n.Else {
-			p.stmt(s)
-		}
+		p.stmts(n.Else)
 		p.depth--
 	}
 	p.line("}")
@@ -249,9 +279,7 @@ func (p *printer) printElseIf(n *model.If) {
 	// Continuation after "} " already written without newline finish.
 	p.buf.WriteString("elseif (" + p.expr(n.Cond) + ") {\n")
 	p.depth++
-	for _, s := range n.Then {
-		p.stmt(s)
-	}
+	p.stmts(n.Then)
 	p.depth--
 	if len(n.Else) == 1 {
 		if nested, ok := n.Else[0].(*model.If); ok {
@@ -264,9 +292,7 @@ func (p *printer) printElseIf(n *model.If) {
 	if len(n.Else) > 0 {
 		p.line("} else {")
 		p.depth++
-		for _, s := range n.Else {
-			p.stmt(s)
-		}
+		p.stmts(n.Else)
 		p.depth--
 	}
 	p.line("}")
@@ -288,9 +314,7 @@ func (p *printer) printForeach(n *model.Foreach) {
 	head += ") {"
 	p.line(head)
 	p.depth++
-	for _, s := range n.Body {
-		p.stmt(s)
-	}
+	p.stmts(n.Body)
 	p.depth--
 	p.line("}")
 }
@@ -300,9 +324,7 @@ func (p *printer) printFor(n *model.For) {
 	if n.Init == nil && n.Post == nil {
 		p.line("while (" + p.expr(n.Cond) + ") {")
 		p.depth++
-		for _, s := range n.Body {
-			p.stmt(s)
-		}
+		p.stmts(n.Body)
 		p.depth--
 		p.line("}")
 		return
@@ -315,9 +337,7 @@ func (p *printer) printFor(n *model.For) {
 	}
 	p.line("for (" + init + "; " + cond + "; " + post + ") {")
 	p.depth++
-	for _, s := range n.Body {
-		p.stmt(s)
-	}
+	p.stmts(n.Body)
 	p.depth--
 	p.line("}")
 }
@@ -365,9 +385,7 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 	b.WriteString(" {")
 	p.line(b.String())
 	p.depth++
-	for _, s := range n.Body {
-		p.stmt(s)
-	}
+	p.stmts(n.Body)
 	p.depth--
 	p.line("}")
 }
@@ -377,8 +395,7 @@ func (p *printer) printClass(n *model.ClassDecl) {
 	if n.Abstract {
 		head = "abstract " + head
 	}
-	p.line(head)
-	p.line("{")
+	p.line(head + " {")
 	p.depth++
 	first := true
 	writeBlank := func() {
@@ -427,24 +444,18 @@ func (p *printer) field(f model.Field) string {
 func (p *printer) printTry(n *model.Try) {
 	p.line("try {")
 	p.depth++
-	for _, s := range n.Body {
-		p.stmt(s)
-	}
+	p.stmts(n.Body)
 	p.depth--
 	for _, c := range n.Catches {
 		p.line("} catch ($" + c.Var + ") {")
 		p.depth++
-		for _, s := range c.Body {
-			p.stmt(s)
-		}
+		p.stmts(c.Body)
 		p.depth--
 	}
 	if len(n.Finally) > 0 {
 		p.line("} finally {")
 		p.depth++
-		for _, s := range n.Finally {
-			p.stmt(s)
-		}
+		p.stmts(n.Finally)
 		p.depth--
 	}
 	p.line("}")
@@ -456,17 +467,13 @@ func (p *printer) printSwitch(n *model.Switch) {
 	for _, c := range n.Cases {
 		p.line("case " + p.expr(c.Value) + ":")
 		p.depth++
-		for _, s := range c.Body {
-			p.stmt(s)
-		}
+		p.stmts(c.Body)
 		p.depth--
 	}
 	if len(n.Default) > 0 {
 		p.line("default:")
 		p.depth++
-		for _, s := range n.Default {
-			p.stmt(s)
-		}
+		p.stmts(n.Default)
 		p.depth--
 	}
 	p.depth--
@@ -570,10 +577,8 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 	b.WriteString("{\n")
 	p.depth++
 	// Temporarily divert: build body lines with indent.
-	sub := &printer{depth: p.depth, namespace: p.namespace, inPHP: true}
-	for _, s := range body {
-		sub.stmt(s)
-	}
+	sub := &printer{depth: p.depth, namespace: p.namespace, inPHP: true, spans: p.spans}
+	sub.stmts(body)
 	sub.ensurePHP()
 	p.depth--
 	b.WriteString(sub.buf.String())
@@ -655,6 +660,31 @@ func isDecl(s model.Stmt) bool {
 	return false
 }
 
+func isFuncDecl(s model.Stmt) bool {
+	_, ok := s.(*model.FuncDecl)
+	return ok
+}
+
+func isBlockStmt(s model.Stmt) bool {
+	switch s.(type) {
+	case *model.If, *model.Foreach, *model.For, *model.Try, *model.Switch:
+		return true
+	}
+	return false
+}
+
+func isCallStmt(s model.Stmt) bool {
+	n, ok := s.(*model.ExprStmt)
+	if !ok {
+		return false
+	}
+	switch n.X.(type) {
+	case *model.Call, *model.MethodCall:
+		return true
+	}
+	return false
+}
+
 func shortName(name string) string {
 	if i := strings.LastIndex(name, `\`); i >= 0 {
 		return name[i+1:]
@@ -685,10 +715,13 @@ func (p *printer) typeName(name string) string {
 }
 
 func collapseBlankLines(src string) string {
+	src = strings.ReplaceAll(src, "\r\n", "\n")
+	src = strings.ReplaceAll(src, "\r", "\n")
 	lines := strings.Split(src, "\n")
 	var out []string
 	blank := false
 	for _, line := range lines {
+		line = strings.TrimRight(line, " \t")
 		if strings.TrimSpace(line) == "" {
 			if blank {
 				continue
