@@ -3,14 +3,19 @@ package server
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+	"path"
+	"strings"
 
 	"github.com/titpetric/cli"
 	"github.com/titpetric/platform"
 
+	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 )
@@ -32,10 +37,7 @@ func NewCommand() *cli.Command {
 // Module implements the platform.Module interface.
 type Module struct {
 	platform.UnimplementedModule
-
-	root         string
-	includeCache *runner.IncludeCache
-	exprCache    *runner.ExprCache
+	root string
 }
 
 // NewModule creates the HTTP module.
@@ -43,77 +45,118 @@ func NewModule(root string) *Module {
 	return &Module{
 		UnimplementedModule: *platform.NewUnimplementedModule("phpserver"),
 		root:                root,
-		includeCache:        runner.NewIncludeCache(),
-		exprCache:           runner.NewExprCache(),
 	}
 }
 
 // Mount registers HTTP routes.
 func (m *Module) Mount(ctx context.Context, r platform.Router) error {
-	r.Get("/*", m.handleRequest)
+	handler, err := newHandler(os.DirFS(m.root), m.root)
+	if err != nil {
+		return err
+	}
+	r.Handle("/*", handler)
 	return nil
 }
 
-// handleRequest resolves the request path and renders the file.
-func (m *Module) handleRequest(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	path := r.URL.Path
-	if path == "/" {
-		path = "/index.php"
-	}
-
-	filename := filepath.Join(m.root, filepath.Clean(path))
-
-	result, headers, status, err := m.renderFile(ctx, filename, r)
-	if err != nil {
-		log.Printf("Error in request %s, %s: %s\n", path, filename, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Default content type, then apply any headers staged by PHP header().
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	for name, values := range headers {
-		w.Header()[name] = values
-	}
-	if status != 0 {
-		w.WriteHeader(status)
-	}
-	_, _ = w.Write([]byte(result))
+type handler struct {
+	root         fs.FS
+	rootDir      string
+	public       fs.FS
+	static       http.Handler
+	includeCache *runner.IncludeCache
+	exprCache    *runner.ExprCache
 }
 
-// renderFile executes a .php file and returns the output plus any response
-// headers staged by the PHP header() function. The *http.Request is exposed to
-// the script via a runner.Context ($_GET/$_POST/$_PATH, getallheaders, header).
-func (m *Module) renderFile(ctx context.Context, filename string, r *http.Request) (string, http.Header, int, error) {
+// NewHandler serves annotated project routes and files beneath public/.
+func NewHandler(root fs.FS) (http.Handler, error) {
+	return newHandler(root, "")
+}
+
+func newHandler(root fs.FS, rootDir string) (http.Handler, error) {
+	public, err := fs.Sub(root, "public")
+	if err != nil {
+		return nil, fmt.Errorf("server: public directory: %w", err)
+	}
+	h := &handler{
+		root:         root,
+		rootDir:      rootDir,
+		public:       public,
+		static:       http.FileServer(http.FS(public)),
+		includeCache: runner.NewIncludeCache(),
+		exprCache:    runner.NewExprCache(),
+	}
+	mux := http.NewServeMux()
+	opts := []routesvc.Option{routesvc.WithExcludedDirectory("public")}
+	if rootDir != "" {
+		opts = append(opts, routesvc.WithRuntimeFunc(func(rt *runner.Runtime) {
+			stdlib.RegisterFS(rt, rootDir)
+		}))
+	}
+	if _, err := routesvc.NewService(root, mux, opts...); err != nil {
+		return nil, err
+	}
+	mux.Handle("/", h)
+	return mux, nil
+}
+
+func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	filename := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+	if filename == "" || filename == "." {
+		filename = "index.php"
+	}
+	info, err := fs.Stat(h.public, filename)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if !info.IsDir() && path.Ext(filename) == ".php" {
+		h.servePHP(w, r, path.Join("public", filename))
+		return
+	}
+	h.static.ServeHTTP(w, r)
+}
+
+func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename string) {
 	var out bytes.Buffer
 
 	rt := runner.New(&out, runner.Options{
 		SAPI:   "cgi-phpscript",
-		RootFS: os.DirFS(m.root),
+		RootFS: h.root,
 	})
-	rt.SetIncludeCache(m.includeCache)
-	rt.SetExprCache(m.exprCache)
+	rt.SetIncludeCache(h.includeCache)
+	rt.SetExprCache(h.exprCache)
+	rt.SetContext(r.Context())
 	prog, err := rt.LoadFile(filename)
 	if err != nil {
-		return "", nil, 0, err
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	stdlib.Register(rt)
-	stdlib.RegisterFS(rt, ".")
-
+	if h.rootDir != "" {
+		stdlib.RegisterFS(rt, h.rootDir)
+	}
 	reqCtx := runner.FromRequest(r)
 	reqCtx.Register(rt)
 
-	if err := rt.Run(prog); err != nil {
-		if _, ok := runner.IsExit(err); ok {
-			return out.String(), reqCtx.ResponseHeaders(), reqCtx.ResponseStatus(), nil
-		}
-		return "", nil, 0, err
+	err = rt.Run(prog)
+	for name, values := range reqCtx.ResponseHeaders() {
+		w.Header()[name] = values
 	}
-
-	return out.String(), reqCtx.ResponseHeaders(), reqCtx.ResponseStatus(), nil
+	if err != nil {
+		if _, ok := runner.IsExit(err); !ok {
+			log.Printf("Error in request %s, %s: %s", r.URL.Path, filename, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	if w.Header().Get("Content-Type") == "" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	}
+	if status := reqCtx.ResponseStatus(); status != 0 {
+		w.WriteHeader(status)
+	}
+	_, _ = io.WriteString(w, out.String())
 }
 
 // Run starts the platform lifecycle and waits for shutdown.

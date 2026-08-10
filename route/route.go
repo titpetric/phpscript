@@ -66,6 +66,17 @@ type Service struct {
 	warnings     []string
 	runtimeFuncs []RuntimeFunc
 	exprCache    *runner.ExprCache
+	excludedDirs map[string]struct{}
+}
+
+// WithExcludedDirectory skips a top-level directory while scanning routes.
+func WithExcludedDirectory(name string) Option {
+	return func(m *Service) {
+		name = strings.Trim(name, "/")
+		if name != "" {
+			m.excludedDirs[name] = struct{}{}
+		}
+	}
 }
 
 // NewService registers annotated PHP endpoints from root on mux.
@@ -74,8 +85,9 @@ func NewService(root fs.FS, mux *http.ServeMux, opts ...Option) (*Service, error
 		return nil, fmt.Errorf("route: nil mux")
 	}
 	svc := &Service{
-		mux:       mux,
-		exprCache: runner.NewExprCache(),
+		mux:          mux,
+		exprCache:    runner.NewExprCache(),
+		excludedDirs: make(map[string]struct{}),
 	}
 	for _, opt := range opts {
 		opt(svc)
@@ -106,6 +118,11 @@ func (m *Service) Register(root fs.FS) error {
 		if err != nil {
 			return err
 		}
+		if d.IsDir() {
+			if _, excluded := m.excludedDirs[path]; excluded {
+				return fs.SkipDir
+			}
+		}
 		if d.IsDir() || filepath.Ext(path) != ".php" {
 			return nil
 		}
@@ -114,7 +131,11 @@ func (m *Service) Register(root fs.FS) error {
 			return err
 		}
 		for _, route := range Annotations(b) {
-			pattern := route.Method + " " + route.Path
+			patternPath := route.Path
+			if patternPath == "/" {
+				patternPath = "/{$}"
+			}
+			pattern := route.Method + " " + patternPath
 			if prev, ok := seen[pattern]; ok {
 				m.warnings = append(m.warnings, fmt.Sprintf("duplicate route %q in %s; previously registered by %s", pattern, path, prev))
 			}

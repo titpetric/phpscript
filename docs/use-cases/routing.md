@@ -13,6 +13,10 @@ is used.
 phpscript route ./tests/fixtures/route
 ```
 
+`phpscript server [directory]` also registers annotated routes, while serving
+only the application's `public/` directory directly. Under `server`, route
+files belong outside `public/`; annotations under `public/` are ignored.
+
 The route test fixture uses this source tree:
 
 ```text

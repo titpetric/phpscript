@@ -2,11 +2,9 @@ package lint
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
-	"path/filepath"
-	"strings"
 
+	"github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 )
@@ -36,47 +34,27 @@ func File(name, src string) ([]Diagnostic, error) {
 	return out, nil
 }
 
-// Paths lints each provided file or directory. Directories are walked for .php
-// and .phpt files.
+// Paths lints each file selected by the provided Go-style path patterns.
 func Paths(paths []string) ([]Diagnostic, error) {
-	if len(paths) == 0 {
-		paths = []string{"."}
+	files, err := list.ExpandFiles(paths)
+	if err != nil {
+		return nil, err
 	}
 	var out []Diagnostic
-	for _, p := range paths {
-		if err := lintPath(p, &out); err != nil {
+	for _, file := range files {
+		b, err := os.ReadFile(file)
+		if err != nil {
 			return nil, err
 		}
+		diags, err := File(file, string(b))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", file, err)
+		}
+		out = append(out, diags...)
 	}
 	return out, nil
 }
 
-func lintPath(path string, out *[]Diagnostic) error {
-	return filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if d.Name() == ".git" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !strings.HasSuffix(p, ".php") && !strings.HasSuffix(p, ".phpt") {
-			return nil
-		}
-		b, err := os.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		diags, err := File(p, string(b))
-		if err != nil {
-			return fmt.Errorf("%s: %w", p, err)
-		}
-		*out = append(*out, diags...)
-		return nil
-	})
-}
 func lintStmts(file string, stmts []model.Stmt, out *[]Diagnostic) {
 	for _, s := range stmts {
 		switch n := s.(type) {
@@ -133,6 +111,8 @@ func collectAssignExprs(e model.Expr, out *[]*model.AssignExpr) {
 		*out = append(*out, n)
 		collectAssignExprs(n.Value, out)
 	case *model.Unary:
+		collectAssignExprs(n.X, out)
+	case *model.Parenthesized:
 		collectAssignExprs(n.X, out)
 	case *model.Binary:
 		collectAssignExprs(n.Left, out)

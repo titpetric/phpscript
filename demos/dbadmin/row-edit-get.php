@@ -18,5 +18,6 @@ if (!$row) {
 
 $mode = "Update";
 $title = "Edit row · " . $table;
+
 render($tpl, "row-form", array("title" => $title, "table" => $table, "columns" => $columns, "mode" => $mode, "row" => $row));
 $db->close();

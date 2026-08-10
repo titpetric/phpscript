@@ -9,6 +9,10 @@ import (
 )
 
 var testRouteFileSystem = fstest.MapFS{
+	"index.php": {Data: []byte(`<?php
+// @route GET /
+echo "home";
+`)},
 	"users/show.php": {Data: []byte(`<?php
 // @route GET /users/{id}
 echo $_PATH["id"];
@@ -21,6 +25,10 @@ echo $_POST["name"];
 // @route POST /redirect
 header("Location: /done");
 exit;
+`)},
+	"public/annotated.php": {Data: []byte(`<?php
+// @route GET /not-registered
+echo "public";
 `)},
 	"ignored.txt": {Data: []byte(`// @route GET /ignored`)},
 }
@@ -43,6 +51,19 @@ func TestServiceRegistersAnnotatedPHPFiles(t *testing.T) {
 	}
 	if got := rr.Body.String(); got != "42" {
 		t.Fatalf("body = %q, want %q", got, "42")
+	}
+}
+
+func TestRootRouteDoesNotMatchSubpaths(t *testing.T) {
+	mux := http.NewServeMux()
+	if _, err := NewService(testRouteFileSystem, mux); err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/asset.css", nil))
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
 	}
 }
 
@@ -80,5 +101,18 @@ func TestServiceAppliesRedirectStatus(t *testing.T) {
 	}
 	if got := rr.Header().Get("Location"); got != "/done" {
 		t.Fatalf("Location = %q, want /done", got)
+	}
+}
+
+func TestServiceSkipsExcludedDirectory(t *testing.T) {
+	mux := http.NewServeMux()
+	if _, err := NewService(testRouteFileSystem, mux, WithExcludedDirectory("public")); err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/not-registered", nil))
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
 	}
 }

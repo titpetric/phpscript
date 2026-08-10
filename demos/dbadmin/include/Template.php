@@ -3,7 +3,9 @@
 /** Template loader modelled after go-web-crontab/frontend. */
 class Template {
 	var $_paths;
+
 	var $filename;
+
 	var $vars = array();
 
 	function __construct($paths = false) {
@@ -14,9 +16,11 @@ class Template {
 		if ($paths === false) {
 			$paths = array("templates/");
 		}
+
 		if (is_string($paths)) {
 			$paths = func_get_args();
 		}
+
 		$this->_paths = $paths;
 	}
 
@@ -39,6 +43,7 @@ class Template {
 		if ($this->filename === false) {
 			throw new Exception("Template file not loaded");
 		}
+
 		include $this->filename;
 	}
 }

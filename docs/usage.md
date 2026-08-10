@@ -95,17 +95,37 @@ source is tokenized before changing parser or runtime behavior.
 
 ### `phpscript server [directory]`
 
-Run a simple HTTP server for PHP files. The directory defaults to the current
-working directory.
+Run the PHP application rooted at the given directory. The directory defaults
+to the current working directory and must contain a `public/` web root.
 
 ```bash
 phpscript server
-phpscript server ./public
+phpscript server ./my-app
 ```
 
-Requests are mapped to PHP files under the root directory. `/` resolves to
-`/index.php`. The request context populates PHP request globals and captures
-headers staged by PHP code.
+CSS, JavaScript, images, and other non-PHP files are served directly from
+`public/`. PHP files in `public/` are executable by filename, and `/` resolves
+to `public/index.php` when no annotated route handles it. Files outside
+`public/` are never directly exposed.
+
+PHP files outside `public/` are scanned recursively for
+`// @route METHOD /path/{param}` annotations. Those routes execute with the
+application directory as their source filesystem, so they can include shared
+bootstrap code and templates outside the web root. Route annotations in
+`public/` are ignored.
+
+```text
+my-app/
+├── public/
+│   ├── index.php
+│   └── assets/
+│       ├── app.js
+│       └── style.css
+├── routes/
+│   └── users.php
+└── templates/
+    └── user.tpl
+```
 
 ### `phpscript route [directory]`
 
