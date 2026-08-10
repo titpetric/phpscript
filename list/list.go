@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
@@ -189,19 +190,36 @@ func collectClasses(stmts []model.Stmt, out *[]string) {
 	}
 }
 
-// Markdown renders rows as a GitHub-flavoured markdown table.
+// Markdown renders rows as an indented, padded GitHub-flavoured markdown table.
 func Markdown(rows []Row) string {
-	var b strings.Builder
-	b.WriteString("| Route | Filename | Classes |\n")
-	b.WriteString("|-----------|------------|---------------|\n")
+	headings := [3]string{"Route", "Filename", "Classes"}
+	widths := [3]int{len(headings[0]), len(headings[1]), len(headings[2])}
 	for _, r := range rows {
-		fmt.Fprintf(&b, "| %s | %s | %s |\n",
-			cell(r.Route),
-			filenameCell(r.Filename),
-			cell(r.Classes),
-		)
+		values := [3]string{cell(r.Route), filenameCell(r.Filename), cell(r.Classes)}
+		for i, value := range values {
+			widths[i] = max(widths[i], utf8.RuneCountInString(value))
+		}
+	}
+
+	var b strings.Builder
+	writeMarkdownRow(&b, headings, widths)
+	b.WriteString("  |")
+	for _, width := range widths {
+		fmt.Fprintf(&b, "%s|", strings.Repeat("-", width+2))
+	}
+	b.WriteByte('\n')
+	for _, r := range rows {
+		writeMarkdownRow(&b, [3]string{cell(r.Route), filenameCell(r.Filename), cell(r.Classes)}, widths)
 	}
 	return b.String()
+}
+
+func writeMarkdownRow(b *strings.Builder, values [3]string, widths [3]int) {
+	b.WriteString("  |")
+	for i, value := range values {
+		fmt.Fprintf(b, " %s%s |", value, strings.Repeat(" ", widths[i]-utf8.RuneCountInString(value)))
+	}
+	b.WriteByte('\n')
 }
 
 func cell(s string) string {

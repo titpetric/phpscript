@@ -3,7 +3,6 @@ package fmtcmd
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/titpetric/cli"
 
@@ -26,12 +25,12 @@ func NewCommand() *cli.Command {
 
 // Run formats files or directories in place by pretty-printing the AST.
 func Run(args []string) error {
-	n, err := formatter.Paths(args)
+	files, err := formatter.ChangedPaths(args)
 	if err != nil {
 		return err
 	}
-	if n > 0 {
-		fmt.Fprintf(os.Stderr, "formatted %d file(s)\n", n)
+	for _, file := range files {
+		fmt.Println(file)
 	}
 	return nil
 }

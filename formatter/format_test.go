@@ -1,6 +1,8 @@
 package formatter_test
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -34,11 +36,11 @@ class Test
 	if !strings.Contains(out, "function isValid()") {
 		t.Fatalf("missing function keyword:\n%s", out)
 	}
-	if strings.Contains(out, "\n{") {
-		t.Fatalf("Allman braces remain:\n%s", out)
+	if strings.Contains(out, "function isAdmin()\n") {
+		t.Fatalf("function opening brace moved to next line:\n%s", out)
 	}
-	if !strings.Contains(out, "class Test {") {
-		t.Fatalf("expected OTBS class brace:\n%s", out)
+	if !strings.Contains(out, "class Test\n{") {
+		t.Fatalf("expected class brace on next line:\n%s", out)
 	}
 	if strings.Contains(out, "    ") {
 		t.Fatalf("spaces used for indent:\n%s", out)
@@ -82,6 +84,7 @@ class Database {
 	for _, want := range []string{
 		"namespace App;",
 		"protected $handle;",
+		"class Database\n{",
 		"public function connect($name) {",
 		"new \\PS\\Database($name)",
 		"if (!is_array($name)) {",
@@ -90,6 +93,44 @@ class Database {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in:\n%s", want, out)
 		}
+	}
+}
+
+func TestFunctionsAndStatementsKeepOpeningBraceOnSameLine(t *testing.T) {
+	in := `<?php
+function check($values)
+{
+	if ($values)
+		echo "yes";
+	foreach ($values as $value)
+		echo $value;
+	while ($values)
+		break;
+}
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"function check($values) {",
+		"if ($values) {",
+		"foreach ($values as $value) {",
+		"while ($values) {",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in:\n%s", want, out)
+		}
+	}
+}
+
+func TestBareExitRemainsBare(t *testing.T) {
+	out, err := formatter.Source("<?php\nexit;\ndie;\nexit();\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "exit;\ndie;\nexit();") {
+		t.Fatalf("exit syntax changed:\n%s", out)
 	}
 }
 
@@ -116,6 +157,121 @@ func TestDropCloseTagForClassOnlyFile(t *testing.T) {
 	}
 	if strings.Contains(out, "?>") {
 		t.Fatalf("?> not removed:\n%s", out)
+	}
+}
+
+func TestClosingTagPreservedAroundInlineHTML(t *testing.T) {
+	in := "<?php\nif ($ok) { ?>\n<p>ok</p>\n<?php echo \"done\";\n}\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "if ($ok) {\n\t?>\n<p>ok</p>\n<?php\n\techo \"done\";") {
+		t.Fatalf("PHP/HTML transitions lost:\n%s", out)
+	}
+	if _, err := parser.Parse(out); err != nil {
+		t.Fatalf("formatted mixed PHP/HTML does not parse: %v\n%s", err, out)
+	}
+}
+
+func TestPHPReopensForClosingBraceAfterInlineHTML(t *testing.T) {
+	in := "<?php\nif ($ok) { ?>inline<?php }\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "inline<?php\n}") {
+		t.Fatalf("closing brace emitted outside PHP:\n%s", out)
+	}
+	if _, err := parser.Parse(out); err != nil {
+		t.Fatalf("formatted output does not parse: %v\n%s", err, out)
+	}
+	again, err := formatter.Source(out)
+	if err != nil || again != out {
+		t.Fatalf("mixed-content output is not idempotent: %v\nfirst: %q\nsecond: %q", err, out, again)
+	}
+}
+
+func TestTemplateStartingWithInlineHTMLIsUnchanged(t *testing.T) {
+	in := "<h1>Title</h1>\n<?php echo \"body\";\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != in {
+		t.Fatalf("template changed: %q", out)
+	}
+}
+
+func TestPathsReturnsChangedFilesAndSkipsTemplates(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "script.php")
+	template := filepath.Join(dir, "template.php")
+	templateSource := "<h1>Title</h1>\n<?php echo  \"body\";\n"
+	if err := os.WriteFile(script, []byte("<?php\necho  \"body\";\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(template, []byte(templateSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := formatter.ChangedPaths([]string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(changed) != 1 || changed[0] != script {
+		t.Fatalf("changed = %v, want [%s]", changed, script)
+	}
+	templateAfter, err := os.ReadFile(template)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(templateAfter) != templateSource {
+		t.Fatalf("template changed: %q", templateAfter)
+	}
+}
+
+func TestSourceNormalizesLineEndings(t *testing.T) {
+	in := "<?php\r\necho \"a\r\nb\";\r\n?>\r\n<p>done</p>\r\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, "\r") {
+		t.Fatalf("non-LF line ending remains: %q", out)
+	}
+	if !strings.Contains(out, `echo "a\r\nb";`) {
+		t.Fatalf("string literal value changed: %q", out)
+	}
+	if !strings.Contains(out, "?>\n<p>done</p>\n") {
+		t.Fatalf("unexpected normalized output: %q", out)
+	}
+}
+
+func TestIncludeAndRequireSyntaxPreserved(t *testing.T) {
+	in := `<?php
+include "a.php";
+include_once("b.php");
+require "c.php";
+require_once("d.php");
+$result = require("e.php");
+$other = include "f.php";
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`include "a.php";`,
+		`include_once("b.php");`,
+		`require "c.php";`,
+		`require_once("d.php");`,
+		`$result = require("e.php");`,
+		`$other = include "f.php";`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("include/require syntax %q changed:\n%s", want, out)
+		}
 	}
 }
 
@@ -157,7 +313,7 @@ class Loaded {
 	if !strings.Contains(out, "namespace Fixture;") {
 		t.Fatalf("printed:\n%s", out)
 	}
-	if !strings.Contains(out, "class Loaded {") {
+	if !strings.Contains(out, "class Loaded\n{") {
 		t.Fatalf("printed:\n%s", out)
 	}
 }

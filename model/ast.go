@@ -33,6 +33,12 @@ type Program struct {
 	Namespace string // set when the file declares `namespace Name;`
 }
 
+// RouteAnnotation is one // @route declaration found in a PHP source file.
+type RouteAnnotation struct {
+	Method string
+	Path   string
+}
+
 func (*Program) node() {}
 
 // ---------------------------------------------------------------------------
@@ -97,8 +103,10 @@ type Return struct {
 // include constructs both as standalone statements and as value-producing
 // expressions.
 type Include struct {
-	Path Expr
-	Once bool
+	Path          Expr
+	Keyword       string // include, include_once, require, or require_once
+	Once          bool
+	Parenthesized bool
 }
 
 // FuncDecl is a free function or a class method declared with the
@@ -265,6 +273,7 @@ type Call struct {
 	Name     string
 	Fallback string
 	Args     []Expr
+	Bare     bool // exit/die used without parentheses
 }
 
 // MethodCall is `Base->method(args...)` or `Base.method(args...)`.

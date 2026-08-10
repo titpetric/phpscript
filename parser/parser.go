@@ -138,7 +138,7 @@ func (p *parser) parseStmt() (model.Stmt, error) {
 			if p.peek(1).kind != tOp || p.peek(1).val != "(" {
 				p.next()
 				p.optSemi()
-				return &model.ExprStmt{X: &model.Call{Name: t.val}}, nil
+				return &model.ExprStmt{X: &model.Call{Name: t.val, Bare: true}}, nil
 			}
 		case "fn", "func", "function":
 			// A bare `function(` is an anonymous closure expression statement,
@@ -455,7 +455,7 @@ func (p *parser) parseIncludeExpr(kw string) (*model.Include, error) {
 			return nil, err
 		}
 	}
-	return &model.Include{Path: e, Once: once}, nil
+	return &model.Include{Path: e, Keyword: kw, Once: once, Parenthesized: hadParen}, nil
 }
 
 func (p *parser) parseThrow() (model.Stmt, error) {
