@@ -23,12 +23,12 @@ func Parse(src string) (*model.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &parser{toks: toks}
+	p := &parser{toks: toks, spans: make(map[model.Stmt]model.SourceSpan)}
 	stmts, err := p.parseStmts(true)
 	if err != nil {
 		return nil, err
 	}
-	return &model.Program{Stmts: stmts, Namespace: p.namespace}, nil
+	return &model.Program{Stmts: stmts, Namespace: p.namespace, SourceSpans: p.spans}, nil
 }
 
 type parser struct {
@@ -38,6 +38,7 @@ type parser struct {
 	inClass   bool
 	topLevel  bool
 	topSeen   bool
+	spans     map[model.Stmt]model.SourceSpan
 }
 
 func (p *parser) cur() token { return p.toks[p.i] }
@@ -111,6 +112,19 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 }
 
 func (p *parser) parseStmt() (model.Stmt, error) {
+	start := p.cur().line
+	s, err := p.parseStmtNode()
+	if err == nil && s != nil {
+		end := start
+		if p.i > 0 {
+			end = p.toks[p.i-1].line
+		}
+		p.spans[s] = model.SourceSpan{Start: start, End: end}
+	}
+	return s, err
+}
+
+func (p *parser) parseStmtNode() (model.Stmt, error) {
 	t := p.cur()
 
 	if t.kind == tInlineHTML {
