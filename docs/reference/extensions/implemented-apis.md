@@ -91,6 +91,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `function_exists`
 - `fwrite`
 - `getallheaders`
+- `getenv`
 - `glob`
 - `header`
 - `htmlspecialchars`
@@ -101,6 +102,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `mkdir`
 - `php_sapi_name`
 - `phpinfo`
+- `putenv`
 - `rtrim`
 - `set_include_path`
 - `sprintf`

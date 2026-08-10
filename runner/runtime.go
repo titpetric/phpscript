@@ -34,6 +34,10 @@ type Runtime struct {
 	wrapped map[string]func(...any) (any, error)
 	classes map[string]*model.Class
 
+	// Env is the environment visible to PHP for this Runtime. New snapshots the
+	// host environment so mutations remain local to a single request/runtime.
+	Env map[string]string
+
 	// constructors maps a class name to a Go constructor function, so PHP's
 	// `new Name` instantiates a native Go value rather than a model.Object. This
 	// is the bridge for "bring your own type": a constructor like
@@ -122,6 +126,7 @@ func New(w io.Writer, opts Options) *Runtime {
 	opts.WorkDir = cleanFSPath(opts.WorkDir)
 	rt := &Runtime{
 		out:          w,
+		Env:          environmentSnapshot(),
 		opts:         opts,
 		includeCache: NewIncludeCache(),
 		funcs:        map[string]any{},
@@ -146,6 +151,15 @@ func New(w io.Writer, opts Options) *Runtime {
 		},
 	}
 	return rt
+}
+
+func environmentSnapshot() map[string]string {
+	env := make(map[string]string)
+	for _, entry := range os.Environ() {
+		name, value, _ := strings.Cut(entry, "=")
+		env[name] = value
+	}
+	return env
 }
 
 // SetContext installs the lifecycle context auto-injected into registered Go

@@ -1,7 +1,5 @@
 tasks:
   default:
-    env:
-      include: .env.testing
     cmds:
       - go mod tidy
       - goimports -w .
@@ -23,8 +21,6 @@ tasks:
   test:phpscript:run:
     dir: tests/fixtures
     passthru: true
-    env:
-      include: .env.testing
     cmds:
       - phpscript test-database.php
       - phpscript test-minitpl.php
