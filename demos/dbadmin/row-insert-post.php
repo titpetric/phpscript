@@ -18,6 +18,8 @@ foreach ($columns as $column) {
 		$values[] = $_POST["value_" . $cid];
 	}
 }
+
 $args = array_merge(array("INSERT INTO " . qi($table) . " (" . implode(",", $names) . ") VALUES (" . implode(",", $marks) . ")"), $values);
+
 call_user_func_array($db->query, $args);
 redirect_to("/table/" . $table);

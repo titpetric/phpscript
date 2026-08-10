@@ -7,7 +7,5 @@ $table = $_PATH["table"];
 $columns = columns_for($db, $table);
 $mode = "Insert";
 $title = "Insert · " . $table;
-include "templates/header.php";
-include "templates/row-form.php";
-include "templates/footer.php";
+render($tpl, "row-form", array("title" => $title, "table" => $table, "columns" => $columns, "mode" => $mode, "row" => array()));
 $db->close();

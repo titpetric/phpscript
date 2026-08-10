@@ -8,6 +8,7 @@ $meta = table_info($db, $table);
 if (strpos(strtoupper($meta["sql"]), "WITHOUT ROWID") !== false) {
 	die("This table has no rowid.");
 }
+
 $rowid = (int)$_PATH["rowid"];
 $columns = columns_for($db, $table);
 $sets = array();
@@ -21,6 +22,8 @@ foreach ($columns as $column) {
 		$values[] = $_POST["value_" . $cid];
 	}
 }
+
 $values[] = $rowid;
+
 call_user_func_array($db->query, array_merge(array("UPDATE " . qi($table) . " SET " . implode(",", $sets) . " WHERE rowid = ?"), $values));
 redirect_to("/table/" . $table);

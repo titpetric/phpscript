@@ -21,6 +21,7 @@ class Database {
 				$position++;
 			}
 		}
+
 		$statement->execute();
 		return $statement;
 	}
@@ -28,6 +29,7 @@ class Database {
 	public function get($sql) {
 		$statement = call_user_func_array($this->query, func_get_args());
 		$row = $statement->fetch();
+
 		$statement->close();
 		return $row;
 	}
@@ -40,6 +42,7 @@ class Database {
 			$rows[] = $row;
 			$row = $statement->fetch();
 		}
+
 		$statement->close();
 		return $rows;
 	}

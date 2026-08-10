@@ -7,6 +7,7 @@ $query = trim($_POST["query"]);
 if ($query == "") {
 	die("Enter a SQL statement.");
 }
+
 $statement = $db->query($query);
 $prefix = strtolower(ltrim($query));
 $rows = array();
@@ -18,14 +19,15 @@ if (strpos($prefix, "select") === 0 || strpos($prefix, "pragma") === 0 || strpos
 		if (count($result_columns) == 0) {
 			$result_columns = array_keys($row);
 		}
+
 		$rows[] = $row;
 		$row = $statement->fetch();
 	}
+
 	$message = "Query completed; " . count($rows) . " row(s) returned.";
 }
+
 $statement->close();
 $title = "SQL console";
-include "templates/header.php";
-include "templates/sql.php";
-include "templates/footer.php";
+render($tpl, "sql", array("title" => $title, "query" => $query, "message" => $message, "rows" => $rows, "result_columns" => $result_columns));
 $db->close();

@@ -17,9 +17,8 @@ foreach ($raw as $table) {
 	$row_count = $row_count + $table["rows"];
 	$tables[] = $table;
 }
+
 $table_count = count($tables);
 $title = "Database overview";
-include "templates/header.php";
-include "templates/dashboard.php";
-include "templates/footer.php";
+render($tpl, "dashboard", array("title" => $title, "tables" => $tables, "table_count" => $table_count, "column_count" => $column_count, "row_count" => $row_count));
 $db->close();

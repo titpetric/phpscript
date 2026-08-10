@@ -8,7 +8,5 @@ $meta = table_info($db, $table);
 $columns = columns_for($db, $table);
 $indexes = $db->get_all("PRAGMA index_list(" . qi($table) . ")");
 $title = "Structure · " . $table;
-include "templates/header.php";
-include "templates/structure.php";
-include "templates/footer.php";
+render($tpl, "structure", array("title" => $title, "table" => $table, "meta" => $meta, "columns" => $columns, "indexes" => $indexes));
 $db->close();
