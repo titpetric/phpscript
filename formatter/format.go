@@ -1,7 +1,7 @@
 // Package formatter pretty-prints phpscript ASTs in a gofmt-like style:
-// hard tabs, One True Brace Style, canonical `function` keywords, parentheses
-// on control structures, semicolons, collapsed blank lines, and a trailing
-// newline. Class-only files omit a closing `?>`.
+// hard tabs, canonical `function` keywords, parentheses on control structures,
+// semicolons, collapsed blank lines, and a trailing newline. Class declarations
+// use a next-line opening brace; functions and control structures do not.
 package formatter
 
 import (
@@ -16,18 +16,24 @@ import (
 
 // Paths formats each path argument in place. Returns the number of files changed.
 func Paths(paths []string) (int, error) {
+	changed, err := ChangedPaths(paths)
+	return len(changed), err
+}
+
+// ChangedPaths formats each path argument in place and returns the files changed.
+func ChangedPaths(paths []string) ([]string, error) {
 	files, err := list.ExpandFiles(paths)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	changed := 0
+	var changed []string
 	for _, file := range files {
 		ok, err := File(file)
 		if err != nil {
 			return changed, err
 		}
 		if ok {
-			changed++
+			changed = append(changed, file)
 		}
 	}
 	return changed, nil
@@ -54,11 +60,18 @@ func File(path string) (bool, error) {
 
 // Source parses src and pretty-prints the AST.
 func Source(src string) (string, error) {
+	// Files that start outside PHP are templates. Formatting their PHP blocks
+	// independently is not supported yet, so leave the entire file unchanged.
+	if !strings.HasPrefix(src, "<?php") {
+		return src, nil
+	}
 	prog, err := parser.Parse(src)
 	if err != nil {
 		return "", err
 	}
-	return Print(prog, Options{LeadingComments: leadingComments(src)}), nil
+	out := Print(prog, Options{LeadingComments: leadingComments(src)})
+	out = strings.ReplaceAll(out, "\r\n", "\n")
+	return strings.ReplaceAll(out, "\r", "\n"), nil
 }
 
 // Options controls AST pretty-printing.
@@ -68,9 +81,16 @@ type Options struct {
 
 // Print renders prog as formatted PHP source.
 func Print(prog *model.Program, opts Options) string {
-	p := &printer{depth: 0, namespace: prog.Namespace}
-	p.line("<?php")
-	p.blank()
+	startsInPHP := prog.Namespace != "" || len(opts.LeadingComments) > 0 || len(prog.Stmts) == 0
+	if len(prog.Stmts) > 0 {
+		_, startsWithHTML := prog.Stmts[0].(*model.InlineHTML)
+		startsInPHP = startsInPHP || !startsWithHTML
+	}
+	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP}
+	if startsInPHP {
+		p.line("<?php")
+		p.blank()
+	}
 	for _, c := range opts.LeadingComments {
 		p.line(c)
 	}
@@ -98,30 +118,46 @@ type printer struct {
 	buf       strings.Builder
 	depth     int
 	namespace string
+	inPHP     bool
 }
 
 func (p *printer) indent() string {
 	return strings.Repeat("\t", p.depth)
 }
 
+func (p *printer) ensurePHP() {
+	if p.inPHP {
+		return
+	}
+	p.buf.WriteString("<?php\n")
+	p.inPHP = true
+}
+
 func (p *printer) line(s string) {
+	p.ensurePHP()
 	p.buf.WriteString(p.indent())
 	p.buf.WriteString(s)
 	p.buf.WriteByte('\n')
 }
 
 func (p *printer) blank() {
-	p.buf.WriteByte('\n')
+	if p.inPHP {
+		p.buf.WriteByte('\n')
+	}
 }
 
 func (p *printer) stmt(s model.Stmt) {
+	if _, ok := s.(*model.InlineHTML); !ok {
+		p.ensurePHP()
+	}
 	switch n := s.(type) {
 	case *model.InlineHTML:
+		if p.inPHP {
+			p.line("?>")
+			p.inPHP = false
+		}
 		// Raw HTML outside PHP tags — emit verbatim without indent.
 		p.buf.WriteString(n.Text)
-		if !strings.HasSuffix(n.Text, "\n") {
-			p.buf.WriteByte('\n')
-		}
 	case *model.Echo:
 		args := make([]string, len(n.Args))
 		for i, a := range n.Args {
@@ -145,11 +181,12 @@ func (p *printer) stmt(s model.Stmt) {
 			p.line("return " + p.expr(n.Value) + ";")
 		}
 	case *model.Include:
-		kw := "include"
-		if n.Once {
-			kw = "include_once"
+		kw := includeKeyword(n)
+		if n.Parenthesized {
+			p.line(kw + "(" + p.expr(n.Path) + ");")
+		} else {
+			p.line(kw + " " + p.expr(n.Path) + ";")
 		}
-		p.line(kw + " " + p.expr(n.Path) + ";")
 	case *model.FuncDecl:
 		p.printFunc(n, false)
 	case *model.ClassDecl:
@@ -190,6 +227,7 @@ func (p *printer) printIf(n *model.If, elseif bool) {
 	if len(n.Else) == 1 {
 		if nested, ok := n.Else[0].(*model.If); ok {
 			// Write "} elseif ..." without a blank close line.
+			p.ensurePHP()
 			p.buf.WriteString(p.indent() + "} ")
 			// printIf for elseif writes the full line including indent — trim.
 			p.printElseIf(nested)
@@ -217,6 +255,7 @@ func (p *printer) printElseIf(n *model.If) {
 	p.depth--
 	if len(n.Else) == 1 {
 		if nested, ok := n.Else[0].(*model.If); ok {
+			p.ensurePHP()
 			p.buf.WriteString(p.indent() + "} ")
 			p.printElseIf(nested)
 			return
@@ -334,11 +373,12 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 }
 
 func (p *printer) printClass(n *model.ClassDecl) {
-	head := "class " + shortName(n.Name) + " {"
+	head := "class " + shortName(n.Name)
 	if n.Abstract {
 		head = "abstract " + head
 	}
 	p.line(head)
+	p.line("{")
 	p.depth++
 	first := true
 	writeBlank := func() {
@@ -469,6 +509,9 @@ func (p *printer) expr(e model.Expr) string {
 		} else {
 			name = p.typeName(n.Name)
 		}
+		if n.Bare {
+			return name
+		}
 		return name + "(" + p.args(n.Args) + ")"
 	case *model.MethodCall:
 		return p.expr(n.Base) + "->" + n.Method + "(" + p.args(n.Args) + ")"
@@ -502,14 +545,24 @@ func (p *printer) expr(e model.Expr) string {
 	case *model.ListExpr:
 		return "list(" + p.args(n.Elems) + ")"
 	case *model.Include:
-		kw := "include"
-		if n.Once {
-			kw = "include_once"
+		kw := includeKeyword(n)
+		if n.Parenthesized {
+			return kw + "(" + p.expr(n.Path) + ")"
 		}
-		return kw + "(" + p.expr(n.Path) + ")"
+		return kw + " " + p.expr(n.Path)
 	default:
 		return fmt.Sprintf("/* expr %T */", e)
 	}
+}
+
+func includeKeyword(n *model.Include) string {
+	if n.Keyword != "" {
+		return n.Keyword
+	}
+	if n.Once {
+		return "include_once"
+	}
+	return "include"
 }
 
 func (p *printer) inlineBlock(body []model.Stmt) string {
@@ -517,10 +570,11 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 	b.WriteString("{\n")
 	p.depth++
 	// Temporarily divert: build body lines with indent.
-	sub := &printer{depth: p.depth, namespace: p.namespace}
+	sub := &printer{depth: p.depth, namespace: p.namespace, inPHP: true}
 	for _, s := range body {
 		sub.stmt(s)
 	}
+	sub.ensurePHP()
 	p.depth--
 	b.WriteString(sub.buf.String())
 	b.WriteString(p.indent() + "}")

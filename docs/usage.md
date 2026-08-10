@@ -47,6 +47,36 @@ phpscript lint path/to/file.php
 The current lint pass reports assignment expressions inside `if` conditions,
 including nested forms such as `if (($row = fn()) !== false) { ... }`.
 
+### `phpscript fmt <path>...`
+
+Format one or more PHP files or directories in place. A directory path formats
+PHP files directly in that directory; append `/...` to include its
+subdirectories. With no path, the command uses the current directory (`.`).
+
+```bash
+phpscript fmt script.php
+phpscript fmt ./src        # PHP files directly in ./src
+phpscript fmt ./src/...    # PHP files in ./src and its subdirectories
+```
+
+The formatter uses tabs for indentation, places class opening braces on the
+next line, keeps function and control-statement braces on the same line, and
+normalizes line endings to LF.
+
+### `phpscript list <path>...`
+
+List routes, PHP files, and classes found under one or more paths as a Markdown
+table. When output is attached to a terminal, the table is trimmed to fit its
+width. A directory path lists PHP files directly in that directory; append
+`/...` to include its subdirectories. With no path, the command uses the
+current directory (`.`).
+
+```bash
+phpscript list ./src        # PHP files directly in ./src
+phpscript list ./src/...    # PHP files in ./src and its subdirectories
+phpscript list index.php    # A specific PHP file
+```
+
 ### `phpscript ast <file.php>`
 
 Tokenize a PHP file and print its PHP-style token stream.

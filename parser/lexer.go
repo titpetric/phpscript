@@ -116,7 +116,9 @@ func (l *lexer) lexPHP() error {
 		if strings.HasPrefix(l.src[l.pos:], "?>") {
 			l.advance(2)
 			// PHP eats a single trailing newline after ?>.
-			if l.pos < len(l.src) && l.src[l.pos] == '\n' {
+			if strings.HasPrefix(l.src[l.pos:], "\r\n") {
+				l.advance(2)
+			} else if l.pos < len(l.src) && (l.src[l.pos] == '\n' || l.src[l.pos] == '\r') {
 				l.advanceRune()
 			}
 			l.inPHP = false

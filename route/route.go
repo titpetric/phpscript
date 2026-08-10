@@ -40,6 +40,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 )
@@ -127,16 +128,10 @@ func (m *Service) Register(root fs.FS) error {
 	})
 }
 
-// Annotation is one // @route declaration found in a PHP source file.
-type Annotation struct {
-	Method string
-	Path   string
-}
-
 // Annotations returns @route declarations from src. A path-only annotation
 // expands to both GET and POST, matching the HTTP router.
-func Annotations(src []byte) []Annotation {
-	var routes []Annotation
+func Annotations(src []byte) []model.RouteAnnotation {
+	var routes []model.RouteAnnotation
 	for _, line := range bytes.Split(src, []byte("\n")) {
 		text := strings.TrimSpace(string(line))
 		text = strings.TrimPrefix(text, "//")
@@ -149,10 +144,10 @@ func Annotations(src []byte) []Annotation {
 		fields := strings.Fields(strings.TrimSpace(text))
 		switch len(fields) {
 		case 1:
-			routes = append(routes, Annotation{Method: http.MethodGet, Path: fields[0]})
-			routes = append(routes, Annotation{Method: http.MethodPost, Path: fields[0]})
+			routes = append(routes, model.RouteAnnotation{Method: http.MethodGet, Path: fields[0]})
+			routes = append(routes, model.RouteAnnotation{Method: http.MethodPost, Path: fields[0]})
 		default:
-			routes = append(routes, Annotation{Method: strings.ToUpper(fields[0]), Path: fields[1]})
+			routes = append(routes, model.RouteAnnotation{Method: strings.ToUpper(fields[0]), Path: fields[1]})
 		}
 	}
 	return routes

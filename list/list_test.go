@@ -39,7 +39,8 @@ echo $_PATH["id"];
 		t.Fatal(err)
 	}
 	md := list.Markdown(rows)
-	if !strings.Contains(md, "| Route | Filename | Classes |") {
+	header := strings.SplitN(md, "\n", 2)[0]
+	if !strings.HasPrefix(header, "  | Route") || !strings.Contains(header, "Filename") || !strings.Contains(header, "Classes") {
 		t.Fatalf("missing header: %s", md)
 	}
 	if !strings.Contains(md, "App\\Database") && !strings.Contains(md, `App\Database`) {
@@ -53,6 +54,25 @@ echo $_PATH["id"];
 	}
 	if !strings.Contains(md, "<none>") {
 		t.Fatalf("expected <none> placeholder: %s", md)
+	}
+}
+
+func TestMarkdownPrintsFullTable(t *testing.T) {
+	rows := []list.Row{{
+		Route:    "GET /users/{id}/with/a/very/long/path",
+		Filename: "include/a/very/long/Database.php",
+		Classes:  `App\DatabaseWithAVeryLongName`,
+	}}
+	md := list.Markdown(rows)
+	for _, line := range strings.Split(strings.TrimSuffix(md, "\n"), "\n") {
+		if !strings.HasPrefix(line, "  |") {
+			t.Fatalf("line is not indented: %q", line)
+		}
+	}
+	for _, want := range []string{rows[0].Route, rows[0].Filename, rows[0].Classes} {
+		if !strings.Contains(md, want) {
+			t.Fatalf("missing full cell %q: %s", want, md)
+		}
 	}
 }
 
