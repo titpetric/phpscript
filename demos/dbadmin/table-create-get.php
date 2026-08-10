@@ -7,11 +7,11 @@ $engine = "sqlite";
 if (isset($_GET["engine"])) {
 	$engine = strtolower($_GET["engine"]);
 }
+
 if (!in_array($engine, array("sqlite", "pgsql", "mysql"))) {
 	$engine = "sqlite";
 }
+
 $title = "Create table";
-include "templates/header.php";
-include "templates/create.php";
-include "templates/footer.php";
+render($tpl, "create", array("title" => $title, "engine" => $engine));
 $db->close();

@@ -8,7 +8,5 @@ $message = "";
 $rows = array();
 $result_columns = array();
 $title = "SQL console";
-include "templates/header.php";
-include "templates/sql.php";
-include "templates/footer.php";
+render($tpl, "sql", array("title" => $title, "query" => $query, "message" => $message, "rows" => $rows, "result_columns" => $result_columns));
 $db->close();

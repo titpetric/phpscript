@@ -1,7 +1,10 @@
 <?php
 
 include "include/Database.php";
+include "include/Template.php";
 $db = new Database;
+$tpl = new Template;
+
 $db->connect("dbadmin");
 $catalogue = $db->get("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'catalogue'");
 if (!$catalogue) {
@@ -15,6 +18,7 @@ function h($value) {
 	if ($value === null) {
 		return "<span class=\"null\">NULL</span>";
 	}
+
 	return htmlspecialchars("" . $value);
 }
 
@@ -26,6 +30,7 @@ function qi($name) {
 	if (!identifier_ok($name)) {
 		die("Invalid SQL identifier.");
 	}
+
 	return "\"" . $name . "\"";
 }
 
@@ -33,10 +38,12 @@ function table_info($db, $table) {
 	if (!identifier_ok($table)) {
 		die("Invalid table name.");
 	}
+
 	$found = $db->get("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name = ? AND name NOT LIKE 'sqlite_%'", $table);
 	if (!$found) {
 		die("Table not found.");
 	}
+
 	return $found;
 }
 
@@ -54,5 +61,12 @@ function csv_cell($value) {
 	if ($value === null) {
 		$value = "";
 	}
+
 	return "\"" . str_replace("\"", "\"\"", "" . $value) . "\"";
+}
+
+function render($tpl, $name, $vars) {
+	$tpl->load($name . ".tpl");
+	$tpl->assign($vars);
+	$tpl->render();
 }
