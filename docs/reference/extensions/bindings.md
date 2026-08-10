@@ -20,7 +20,7 @@ rt.RegisterConstructor("Storage", NewStorage)
 
 program, err := parser.Parse(source)
 if err == nil {
-    err = rt.Run(program)
+	err = rt.Run(program)
 }
 ```
 

@@ -1,14 +1,14 @@
 # Namespaces
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| Defining namespaces | Partial compatibility | Only one semicolon-delimited namespace at the start of a file is supported. |
-| Sub-namespaces | Compatibility | Qualified names with `\` are supported. |
-| Multiple namespaces per file | Not implemented | Braced namespaces and repeated declarations are unavailable. |
+| PHP language-reference feature     | Status                | Notes                                                                             |
+|------------------------------------|-----------------------|-----------------------------------------------------------------------------------|
+| Defining namespaces                | Partial compatibility | Only one semicolon-delimited namespace at the start of a file is supported.       |
+| Sub-namespaces                     | Compatibility         | Qualified names with `\` are supported.                                           |
+| Multiple namespaces per file       | Not implemented       | Braced namespaces and repeated declarations are unavailable.                      |
 | Relative and fully-qualified names | Partial compatibility | Current-namespace and leading-`\` names resolve; `namespace\Name` is unavailable. |
-| Aliasing and importing | Not implemented | The `use` import statement is unavailable. |
-| `__NAMESPACE__` | Compatibility | Resolves to the current namespace name. |
-| Function fallback | Compatibility | Unqualified calls fall back from the current namespace to global functions. |
+| Aliasing and importing             | Not implemented       | The `use` import statement is unavailable.                                        |
+| `__NAMESPACE__`                    | Compatibility         | Resolves to the current namespace name.                                           |
+| Function fallback                  | Compatibility         | Unqualified calls fall back from the current namespace to global functions.       |
 
 ## Defining a namespace
 

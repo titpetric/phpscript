@@ -1,12 +1,12 @@
 # Basic syntax
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| PHP tags | Compatibility | `<?php`, short `<?`, and `?>` are recognized. |
-| Escaping from HTML | Compatibility | Text outside PHP tags is emitted; as in PHP, one newline immediately after `?>` is consumed. |
-| Instruction separation | Compatibility | Semicolons terminate simple statements; a closing tag also ends PHP mode. |
-| Comments | Compatibility | `//`, `#`, and `/* ... */` comments are supported. |
-| Shebang | phpscript extension | A leading `#!` line is ignored, allowing executable scripts. |
+| PHP language-reference feature | Status              | Notes                                                                                        |
+|--------------------------------|---------------------|----------------------------------------------------------------------------------------------|
+| PHP tags                       | Compatibility       | `<?php`, short `<?`, and `?>` are recognized.                                                |
+| Escaping from HTML             | Compatibility       | Text outside PHP tags is emitted; as in PHP, one newline immediately after `?>` is consumed. |
+| Instruction separation         | Compatibility       | Semicolons terminate simple statements; a closing tag also ends PHP mode.                    |
+| Comments                       | Compatibility       | `//`, `#`, and `/* ... */` comments are supported.                                           |
+| Shebang                        | phpscript extension | A leading `#!` line is ignored, allowing executable scripts.                                 |
 
 phpscript accepts files containing PHP blocks and inline text. The closing tag
 is optional at the end of a file. One newline immediately following a closing

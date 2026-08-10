@@ -1,13 +1,13 @@
 # Functions
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| User-defined functions | Compatibility | Named functions, parameters, defaults, calls, and returns are supported. |
-| Anonymous functions | Partial compatibility | Closures work, but `use (...)` captures are parsed and ignored. |
-| Arrow functions | Incompatible syntax | `fn` introduces a normal block-bodied function/closure; PHP's `fn (...) => ...` form is unavailable. |
-| Arguments by value | Partial compatibility | Names are bound in a new local scope, but mutable arrays do not have PHP copy-on-write behavior. |
-| References and variadics | Not implemented | `&`, `...`, named arguments, and argument unpacking are unavailable. |
-| Type declarations | Not implemented | Parameter and return types are unavailable. |
+| PHP language-reference feature | Status                | Notes                                                                                                |
+|--------------------------------|-----------------------|------------------------------------------------------------------------------------------------------|
+| User-defined functions         | Compatibility         | Named functions, parameters, defaults, calls, and returns are supported.                             |
+| Anonymous functions            | Partial compatibility | Closures work, but `use (...)` captures are parsed and ignored.                                      |
+| Arrow functions                | Incompatible syntax   | `fn` introduces a normal block-bodied function/closure; PHP's `fn (...) => ...` form is unavailable. |
+| Arguments by value             | Partial compatibility | Names are bound in a new local scope, but mutable arrays do not have PHP copy-on-write behavior.     |
+| References and variadics       | Not implemented       | `&`, `...`, named arguments, and argument unpacking are unavailable.                                 |
+| Type declarations              | Not implemented       | Parameter and return types are unavailable.                                                          |
 
 ## Defining functions
 
