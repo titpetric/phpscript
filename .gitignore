@@ -1,6 +1,8 @@
 /docs/data
 /docs/log
 *.pprof
+*.db
+*.sqlite
 *.test
 *.cov
 /bin

@@ -6,16 +6,14 @@ services:
   phpscript:
     image: titpetric/phpscript:latest
     env_file: .env.docker
-    ports:
-      - 8080:8080
+    networks:
+      - projects-ingress
+    labels:
+      caddy: dbadmin.localhost
+      caddy.reverse_proxy: "{{upstreams 8080}}"
     volumes:
       - $PWD/demos/dbadmin/:/app
 
-  php:
-    image: php:8.5
-    ports:
-      - 8081:8081
-    volumes:
-      - $PWD/demos/dbadmin/:/app
-    working_dir: /app
-    command: [php, -S, "0:8081"]
+networks:
+  projects-ingress:
+    external: true
