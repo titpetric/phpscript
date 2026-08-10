@@ -26,7 +26,7 @@ func wantsContext(t reflect.Type) bool {
 func (rt *Runtime) invokeWithContext(fn any, args []any) (any, error) {
 	if wantsContext(reflect.TypeOf(fn)) {
 		full := make([]any, 0, len(args)+1)
-		full = append(full, rt.ctx)
+		full = append(full, contextWithEnv(rt.ctx, rt.Env))
 		full = append(full, args...)
 		return invokeAny(fn, full)
 	}
@@ -40,7 +40,7 @@ func (rt *Runtime) invokeWithContext(fn any, args []any) (any, error) {
 func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any, error) {
 	if wantsContext(reflect.TypeOf(fn)) {
 		full := make([]any, 0, len(args)+1)
-		full = append(full, contextWithScope(rt.ctx, scope))
+		full = append(full, contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope))
 		full = append(full, args...)
 		return invokeAny(fn, full)
 	}
@@ -338,7 +338,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any) (any, error
 	}
 	mt := m.Type()
 	if wantsContext(mt) {
-		args = append([]any{rt.ctx}, args...)
+		args = append([]any{contextWithEnv(rt.ctx, rt.Env)}, args...)
 	}
 	in := make([]reflect.Value, len(args))
 	for i, a := range args {

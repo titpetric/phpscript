@@ -1,5 +1,9 @@
 <?php
 
+putenv("DB_DSN_SQLITE_TEST", "sqlite://file:phpscript-test?mode=memory&cache=shared");
+putenv("DB_DSN_POSTGRES_TEST", "postgres://postgres:test@localhost:15432/postgres?sslmode=disable");
+putenv("DB_DSN_MYSQL_TEST", "mysql://root:test@tcp(localhost:13306)/mysql");
+
 include("code/Database.php");
 
 $databases = array("sqlite", "postgres", "mysql");

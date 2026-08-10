@@ -24,7 +24,11 @@ type Database struct {
 // NewDatabase opens a database connection from the named DB_DSN_* env var.
 func NewDatabase(ctx context.Context, name string) (*Database, error) {
 	envKey := "DB_DSN_" + strings.ToUpper(name)
+	env, ok := runner.EnvFromContext(ctx)
 	dsn := os.Getenv(envKey)
+	if ok {
+		dsn = env[envKey]
+	}
 	if dsn == "" {
 		return nil, fmt.Errorf("Can't connect to %s, no %s env", name, envKey)
 	}

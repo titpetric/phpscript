@@ -3,6 +3,7 @@ package runner
 import "context"
 
 type scopeContextKey struct{}
+type envContextKey struct{}
 
 // Scope is a flat variable table for one execution frame.
 //
@@ -56,9 +57,20 @@ func contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	return context.WithValue(ctx, scopeContextKey{}, scope)
 }
 
+func contextWithEnv(ctx context.Context, env map[string]string) context.Context {
+	return context.WithValue(ctx, envContextKey{}, env)
+}
+
 // ScopeFromContext returns the active PHP execution frame attached to a
 // context auto-injected into a registered free function.
 func ScopeFromContext(ctx context.Context) (*Scope, bool) {
 	scope, ok := ctx.Value(scopeContextKey{}).(*Scope)
 	return scope, ok
+}
+
+// EnvFromContext returns the request-scoped environment attached to contexts
+// auto-injected into registered Go callables.
+func EnvFromContext(ctx context.Context) (map[string]string, bool) {
+	env, ok := ctx.Value(envContextKey{}).(map[string]string)
+	return env, ok
 }
