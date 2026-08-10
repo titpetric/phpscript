@@ -1,12 +1,12 @@
 # Exceptions
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| `throw` | Compatibility | Values and constructed `Exception` objects can be thrown. |
-| `try`, `catch`, `finally` | Partial compatibility | The first catch handles every failure; `finally` always runs. |
-| Catch type filters | Not implemented | Parsed exception types and union filters are ignored. |
-| Exception hierarchy | Not implemented | There is no PHP `Throwable` hierarchy or type-based dispatch. |
-| Extending exceptions | Not implemented | Class inheritance is unavailable. |
+| PHP language-reference feature | Status                | Notes                                                         |
+|--------------------------------|-----------------------|---------------------------------------------------------------|
+| `throw`                        | Compatibility         | Values and constructed `Exception` objects can be thrown.     |
+| `try`, `catch`, `finally`      | Partial compatibility | The first catch handles every failure; `finally` always runs. |
+| Catch type filters             | Not implemented       | Parsed exception types and union filters are ignored.         |
+| Exception hierarchy            | Not implemented       | There is no PHP `Throwable` hierarchy or type-based dispatch. |
+| Extending exceptions           | Not implemented       | Class inheritance is unavailable.                             |
 
 ## Throwing and catching
 

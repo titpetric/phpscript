@@ -4,6 +4,9 @@ The `flatstack` package is an alternative entry point for embedding phpscript.
 It keeps the `runner` API while adding a compile-once flat-bytecode path for a
 growing subset of the public `model.Program` AST.
 
+The API is experimental and may change at any point before a stable release,
+or be absorbed into the already provided runner APIs.
+
 ```diagram
 parser.Parse
      │

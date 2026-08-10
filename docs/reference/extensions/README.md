@@ -1,13 +1,13 @@
 # phpscript extensions
 
-| Extension | Status | Notes |
-| --- | --- | --- |
-| `defer()` | phpscript extension | Runs callbacks when the current execution frame exits. |
-| `PS` namespace | phpscript extension | Contains host-backed APIs such as `PS\Database`. |
-| `func` keyword | phpscript extension | Alias for block-bodied `function`. |
-| `fn` keyword | PHP-incompatible | Alias for block-bodied `function`, not a PHP arrow function. |
-| Parenthesis-free conditions | PHP-incompatible | Selected `if` and `foreach` forms can omit parentheses. |
-| `{...}` arrays | PHP-incompatible | Braces can delimit an array literal. |
+| Extension                   | Status              | Notes                                                        |
+|-----------------------------|---------------------|--------------------------------------------------------------|
+| `defer()`                   | phpscript extension | Runs callbacks when the current execution frame exits.       |
+| `PS` namespace              | phpscript extension | Contains host-backed APIs such as `PS\Database`.             |
+| `func` keyword              | phpscript extension | Alias for block-bodied `function`.                           |
+| `fn` keyword                | PHP-incompatible    | Alias for block-bodied `function`, not a PHP arrow function. |
+| Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.      |
+| `{...}` arrays              | PHP-incompatible    | Braces can delimit an array literal.                         |
 
 These features have no equivalent in the PHP language reference or deliberately
 use syntax differently. Avoid them when source must also run on PHP.

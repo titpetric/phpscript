@@ -1,12 +1,12 @@
 # Constants
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| Global constant declarations | Not implemented | `const` and `define()` cannot declare global constants in script code. |
-| Host-registered constants | phpscript extension | A Go host can register constants with `Runtime.SetConst`. |
-| Class constants | Compatibility | `const NAME = value` and `Class::NAME` are supported. |
-| Predefined constants | Partial compatibility | Standard-library registration installs a small runtime-defined set. |
-| Magic constants | Partial compatibility | Only `__NAMESPACE__` is implemented. |
+| PHP language-reference feature | Status                | Notes                                                                  |
+|--------------------------------|-----------------------|------------------------------------------------------------------------|
+| Global constant declarations   | Not implemented       | `const` and `define()` cannot declare global constants in script code. |
+| Host-registered constants      | phpscript extension   | A Go host can register constants with `Runtime.SetConst`.              |
+| Class constants                | Compatibility         | `const NAME = value` and `Class::NAME` are supported.                  |
+| Predefined constants           | Partial compatibility | Standard-library registration installs a small runtime-defined set.    |
+| Magic constants                | Partial compatibility | Only `__NAMESPACE__` is implemented.                                   |
 
 ## Class constants
 

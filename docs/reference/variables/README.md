@@ -1,13 +1,13 @@
 # Variables
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| Basics | Compatibility | Variables use the `$name` form and are created by assignment. |
-| Predefined variables | Partial compatibility | Only the request variables documented in [Predefined variables](../predefined-variables/README.md) are seeded. |
-| Variable scope | Partial compatibility | Calls have local scope; PHP `global` and static locals are unavailable. |
-| Variable variables | Not implemented | Forms such as `$$name` are unavailable. |
-| Variables from external sources | Partial compatibility | HTTP query, form, and route values are provided by the request context. |
-| References | Not implemented | `&` is accepted in limited positions but does not create PHP reference semantics. |
+| PHP language-reference feature  | Status                | Notes                                                                                                          |
+|---------------------------------|-----------------------|----------------------------------------------------------------------------------------------------------------|
+| Basics                          | Compatibility         | Variables use the `$name` form and are created by assignment.                                                  |
+| Predefined variables            | Partial compatibility | Only the request variables documented in [Predefined variables](../predefined-variables/README.md) are seeded. |
+| Variable scope                  | Partial compatibility | Calls have local scope; PHP `global` and static locals are unavailable.                                        |
+| Variable variables              | Not implemented       | Forms such as `$$name` are unavailable.                                                                        |
+| Variables from external sources | Partial compatibility | HTTP query, form, and route values are provided by the request context.                                        |
+| References                      | Not implemented       | `&` is accepted in limited positions but does not create PHP reference semantics.                              |
 
 ## Basics
 

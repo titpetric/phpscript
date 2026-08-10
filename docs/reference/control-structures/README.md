@@ -1,15 +1,15 @@
 # Control structures
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| `if`, `elseif`, `else` | Compatibility | Brace-delimited branches are supported. |
-| `while`, `for`, `foreach` | Compatibility | Brace-delimited loops are supported. |
-| `switch` | Compatibility | Case fallthrough and `break` are supported. |
-| `break`, `continue` | Partial compatibility | Only the nearest loop/switch can be targeted; numeric levels are unavailable. |
-| `return` | Compatibility | A value is optional. |
-| `include`, `require` | Partial compatibility | All four keywords parse, but `include_once` and `require_once` do not suppress repeated execution. |
-| `declare`, `do-while`, `goto`, alternate syntax | Not implemented | These PHP control structures are unavailable. |
-| Parenthesis-free conditions | phpscript extension | `if $value {}` and `foreach $items as $item {}` are accepted. |
+| PHP language-reference feature                  | Status                | Notes                                                                                              |
+|-------------------------------------------------|-----------------------|----------------------------------------------------------------------------------------------------|
+| `if`, `elseif`, `else`                          | Compatibility         | Brace-delimited branches are supported.                                                            |
+| `while`, `for`, `foreach`                       | Compatibility         | Brace-delimited loops are supported.                                                               |
+| `switch`                                        | Compatibility         | Case fallthrough and `break` are supported.                                                        |
+| `break`, `continue`                             | Partial compatibility | Only the nearest loop/switch can be targeted; numeric levels are unavailable.                      |
+| `return`                                        | Compatibility         | A value is optional.                                                                               |
+| `include`, `require`                            | Partial compatibility | All four keywords parse, but `include_once` and `require_once` do not suppress repeated execution. |
+| `declare`, `do-while`, `goto`, alternate syntax | Not implemented       | These PHP control structures are unavailable.                                                      |
+| Parenthesis-free conditions                     | phpscript extension   | `if $value {}` and `foreach $items as $item {}` are accepted.                                      |
 
 ## Conditions
 

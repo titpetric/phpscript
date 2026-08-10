@@ -1,10 +1,10 @@
 # phpscript language reference
 
-| Reference area | Status | Notes |
-| --- | --- | --- |
-| PHP language reference | Partial compatibility | Only documented chapters and features are implemented. |
-| phpscript extensions | Compatibility | Documented separately because these APIs and syntax do not exist in PHP. |
-| Fibers, generators, attributes, references, enums, stream contexts and wrappers | Not implemented | Omitted from the sitemap because phpscript has no corresponding feature. |
+| Reference area                                                                  | Status                | Notes                                                                    |
+|---------------------------------------------------------------------------------|-----------------------|--------------------------------------------------------------------------|
+| PHP language reference                                                          | Partial compatibility | Only documented chapters and features are implemented.                   |
+| phpscript extensions                                                            | Compatibility         | Documented separately because these APIs and syntax do not exist in PHP. |
+| Fibers, generators, attributes, references, enums, stream contexts and wrappers | Not implemented       | Omitted from the sitemap because phpscript has no corresponding feature. |
 
 A PHP language-reference-shaped guide to the syntax and runtime behavior implemented by phpscript.
 

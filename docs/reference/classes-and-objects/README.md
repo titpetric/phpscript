@@ -1,15 +1,15 @@
 # Classes and objects
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| Classes, properties, methods | Partial compatibility | Basic declarations, construction, `$this`, fields, and method calls are supported. |
-| Constructors | Compatibility | `__construct` is called when present. |
-| Class constants | Compatibility | Declaration and `Class::NAME` access are supported. |
-| Visibility, static, final, abstract | Not enforced | Modifiers may be accepted but do not provide PHP semantics. |
-| Inheritance and interfaces | Not implemented | `extends`, `implements`, interfaces, and traits are unavailable. |
-| Static members and methods | Not implemented | `Class::method()` and static properties are unavailable. |
-| Magic methods | Partial compatibility | `__construct` is supported; the wider PHP magic-method contract is not. |
-| Enums, anonymous classes, cloning | Not implemented | These PHP object features are unavailable. |
+| PHP language-reference feature      | Status                | Notes                                                                              |
+|-------------------------------------|-----------------------|------------------------------------------------------------------------------------|
+| Classes, properties, methods        | Partial compatibility | Basic declarations, construction, `$this`, fields, and method calls are supported. |
+| Constructors                        | Compatibility         | `__construct` is called when present.                                              |
+| Class constants                     | Compatibility         | Declaration and `Class::NAME` access are supported.                                |
+| Visibility, static, final, abstract | Not enforced          | Modifiers may be accepted but do not provide PHP semantics.                        |
+| Inheritance and interfaces          | Not implemented       | `extends`, `implements`, interfaces, and traits are unavailable.                   |
+| Static members and methods          | Not implemented       | `Class::method()` and static properties are unavailable.                           |
+| Magic methods                       | Partial compatibility | `__construct` is supported; the wider PHP magic-method contract is not.            |
+| Enums, anonymous classes, cloning   | Not implemented       | These PHP object features are unavailable.                                         |
 
 ## Declaring a class
 

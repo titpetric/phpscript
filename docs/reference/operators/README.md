@@ -1,15 +1,15 @@
 # Operators
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| Arithmetic | Partial compatibility | `+`, `-`, `*`, `/`, `%`, and unary `+`/`-` are supported. Exponentiation is unavailable. |
-| Increment/decrement | Compatibility | Prefix and postfix `++` and `--` work on assignable targets. |
-| Assignment | Partial compatibility | `=`, `+=`, `-=`, and `.=` are supported; other compound forms are unavailable. |
-| Comparison | Partial compatibility | `<`, `<=`, `>`, `>=`, `==`, `!=`, `===`, and `!==` are supported with simplified coercion. |
-| Logical | Partial compatibility | `!`, `&&`, and `||` are supported; word forms (`and`, `or`, `xor`) are unavailable. |
-| String | Compatibility | `.` and `.=` concatenate values. |
-| Array, bitwise, execution, type, functional | Not implemented | PHP's operators in these groups are unavailable. |
-| Error control (`@`) | Not implemented | The token is accepted but does not suppress errors. |
+| PHP language-reference feature              | Status                | Notes                                                                                      |
+|---------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------|
+| Arithmetic                                  | Partial compatibility | `+`, `-`, `*`, `/`, `%`, and unary `+`/`-` are supported. Exponentiation is unavailable.   |
+| Increment/decrement                         | Compatibility         | Prefix and postfix `++` and `--` work on assignable targets.                               |
+| Assignment                                  | Partial compatibility | `=`, `+=`, `-=`, and `.=` are supported; other compound forms are unavailable.             |
+| Comparison                                  | Partial compatibility | `<`, `<=`, `>`, `>=`, `==`, `!=`, `===`, and `!==` are supported with simplified coercion. |
+| Logical                                     | Partial compatibility | `!`, `&&`, and `                                                                           |
+| String                                      | Compatibility         | `.` and `.=` concatenate values.                                                           |
+| Array, bitwise, execution, type, functional | Not implemented       | PHP's operators in these groups are unavailable.                                           |
+| Error control (`@`)                         | Not implemented       | The token is accepted but does not suppress errors.                                        |
 
 ## Precedence
 

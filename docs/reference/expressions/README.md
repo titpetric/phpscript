@@ -1,14 +1,14 @@
 # Expressions
 
-| PHP language-reference feature | Status | Notes |
-| --- | --- | --- |
-| Literals and variables | Compatibility | Supported values can be used as expressions. |
-| Assignment expressions | Partial compatibility | Plain `=` to a variable returns the assigned value; other expression targets/operators are unavailable. |
-| Ternary expressions | Compatibility | Full and shorthand (`?:`) forms are supported. |
-| Function and method calls | Compatibility | Calls are expressions. |
-| `new` expressions | Compatibility | Parentheses are optional when no constructor arguments are supplied. |
-| `include` expressions | Partial compatibility | Include forms can occur as statements or expressions; failure behavior is simplified. |
-| `match`, `yield`, cloning | Not implemented | These PHP expression forms are unavailable. |
+| PHP language-reference feature | Status                | Notes                                                                                                   |
+|--------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------|
+| Literals and variables         | Compatibility         | Supported values can be used as expressions.                                                            |
+| Assignment expressions         | Partial compatibility | Plain `=` to a variable returns the assigned value; other expression targets/operators are unavailable. |
+| Ternary expressions            | Compatibility         | Full and shorthand (`?:`) forms are supported.                                                          |
+| Function and method calls      | Compatibility         | Calls are expressions.                                                                                  |
+| `new` expressions              | Compatibility         | Parentheses are optional when no constructor arguments are supplied.                                    |
+| `include` expressions          | Partial compatibility | Include forms can occur as statements or expressions; failure behavior is simplified.                   |
+| `match`, `yield`, cloning      | Not implemented       | These PHP expression forms are unavailable.                                                             |
 
 ## Assignment expressions
 
