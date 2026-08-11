@@ -20,6 +20,12 @@ type errorHandler struct {
 	stackDepth int
 }
 
+type callFrame struct {
+	returnPC    int
+	locals      []any
+	initialized []bool
+}
+
 // Run executes a previously validated flat instruction stream.
 func Run(program *Program, host Host) (err error) {
 	if program == nil {
@@ -31,6 +37,7 @@ func Run(program *Program, host Host) (err error) {
 	initialized := make([]bool, len(program.localNames))
 	iterators := make(map[int]*iteratorState)
 	var handlers []errorHandler
+	var callFrames []callFrame
 	defer func() {
 		clear(stack)
 		clear(locals)
@@ -287,6 +294,31 @@ func Run(program *Program, host Host) (err error) {
 			}
 			var value any
 			if inst.op == opCall {
+				if def, ok := program.userFuncs[inst.name]; ok {
+					callFrames = append(callFrames, callFrame{
+						returnPC:    pc,
+						locals:      locals,
+						initialized: initialized,
+					})
+					locals = make([]any, len(program.localNames))
+					initialized = make([]bool, len(program.localNames))
+					for i, paramName := range def.params {
+						if i < len(arguments) {
+							slot := -1
+							for s, name := range program.localNames {
+								if name == paramName {
+									slot = s
+									break
+								}
+							}
+							if slot >= 0 {
+								locals[slot], initialized[slot] = arguments[i], true
+							}
+						}
+					}
+					pc = def.entryPC
+					continue
+				}
 				value, err = host.Call(inst.name, inst.extra, arguments)
 			} else {
 				value, err = host.Construct(inst.name, arguments)
@@ -375,6 +407,22 @@ func Run(program *Program, host Host) (err error) {
 				continue
 			}
 			return throwErr
+		case opReturn:
+			retVal, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			if len(callFrames) > 0 {
+				lastFrame := callFrames[len(callFrames)-1]
+				callFrames = callFrames[:len(callFrames)-1]
+				pc = lastFrame.returnPC
+				locals = lastFrame.locals
+				initialized = lastFrame.initialized
+				stack = append(stack, retVal)
+			} else {
+				stack = append(stack, retVal)
+				return nil
+			}
 		default:
 			return fmt.Errorf("flatstack: pc %d: invalid opcode %d", pc, inst.op)
 		}

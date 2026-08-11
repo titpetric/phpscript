@@ -80,3 +80,28 @@ func TestArithmeticUsesFlatBytecode(t *testing.T) {
 		t.Fatalf("flat bytecode output = %q, want %q", got, want)
 	}
 }
+
+func TestUserFunctionDeclarationAndCallFlatBytecode(t *testing.T) {
+	program, err := parser.Parse(`<?php
+		function add($a, $b) {
+			return $a + $b;
+		}
+		$res = add(15, 27);
+		echo $res;
+	?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("user function declaration should compile to flat bytecode: %v", err)
+	}
+
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.String(), "42"; got != want {
+		t.Fatalf("user func output = %q, want %q", got, want)
+	}
+}
