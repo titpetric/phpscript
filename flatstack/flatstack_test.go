@@ -80,3 +80,31 @@ func TestArithmeticUsesFlatBytecode(t *testing.T) {
 		t.Fatalf("flat bytecode output = %q, want %q", got, want)
 	}
 }
+
+func TestFinallyBlockFlatBytecode(t *testing.T) {
+	program, err := parser.Parse(`<?php
+		$status = "start";
+		try {
+			$status = "in_try";
+		} catch ($e) {
+			$status = "in_catch";
+		} finally {
+			echo $status . "_finally";
+		}
+	?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("try/catch/finally should compile to flat bytecode: %v", err)
+	}
+
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.String(), "in_try_finally"; got != want {
+		t.Fatalf("finally output = %q, want %q", got, want)
+	}
+}

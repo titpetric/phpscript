@@ -143,13 +143,16 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 }
 
 func (c *compiler) tryStmt(node *model.Try, path string) error {
-	if len(node.Catches) == 0 || len(node.Finally) != 0 {
-		return unsupported(path, "try without one catch or with finally")
+	if len(node.Catches) == 0 && len(node.Finally) == 0 {
+		return unsupported(path, "try without catch or finally")
 	}
-	catch := node.Catches[0]
 	catchSlot := -1
-	if catch.Var != "" {
-		catchSlot = c.slot(catch.Var)
+	var catch *model.Catch
+	if len(node.Catches) > 0 {
+		catch = &node.Catches[0]
+		if catch.Var != "" {
+			catchSlot = c.slot(catch.Var)
+		}
 	}
 	push := c.emit(instruction{op: opTryPush, a: catchSlot, target: -1})
 	if err := c.block(node.Body, path+".body"); err != nil {
@@ -158,11 +161,20 @@ func (c *compiler) tryStmt(node *model.Try, path string) error {
 	pop := c.emit(instruction{op: opTryPop})
 	c.program.code[push].b = pop
 	endJump := c.emit(instruction{op: opJump, target: -1})
+
 	c.program.code[push].target = len(c.program.code)
-	if err := c.block(catch.Body, path+".catch"); err != nil {
-		return err
+	if catch != nil {
+		if err := c.block(catch.Body, path+".catch"); err != nil {
+			return err
+		}
 	}
-	c.program.code[endJump].target = len(c.program.code)
+	finallyTarget := len(c.program.code)
+	c.program.code[endJump].target = finallyTarget
+	if len(node.Finally) > 0 {
+		if err := c.block(node.Finally, path+".finally"); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
