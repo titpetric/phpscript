@@ -12,6 +12,7 @@ import (
 func Register(rt *runner.Runtime) {
 	RegisterDatabase(rt)
 	RegisterDefer(rt)
+	RegisterSHM(rt)
 }
 
 // RegisterDefer installs defer() in the global function namespace.
