@@ -396,8 +396,36 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 			}
 		}
 		c.emit(instruction{op: opSetIndex, b: boolInt(appendValue), c: boolInt(keep), name: operator})
+	case *model.ListExpr:
+		return c.listAssignment(target.Elems, keep, path)
+	case *model.ArrayLit:
+		elems := make([]model.Expr, len(target.Items))
+		for i, item := range target.Items {
+			elems[i] = item.Val
+		}
+		return c.listAssignment(elems, keep, path)
 	default:
 		return unsupported(path+".target", "assignment target %T", target)
+	}
+	return nil
+}
+
+func (c *compiler) listAssignment(elems []model.Expr, keep bool, path string) error {
+	sourceSlot := c.slot(fmt.Sprintf("\x00list-%d", len(c.program.code)))
+	c.emit(instruction{op: opStore, a: sourceSlot})
+	for i, elem := range elems {
+		if elem == nil {
+			continue
+		}
+		c.emit(instruction{op: opLoad, a: sourceSlot})
+		c.emit(instruction{op: opPushConst, a: c.constant(int64(i))})
+		c.emit(instruction{op: opIndex})
+		if err := c.storeTop(elem, fmt.Sprintf("%s.elem[%d]", path, i)); err != nil {
+			return err
+		}
+	}
+	if keep {
+		c.emit(instruction{op: opLoad, a: sourceSlot})
 	}
 	return nil
 }
