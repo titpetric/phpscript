@@ -34,6 +34,7 @@ const (
 	opTryPush
 	opTryPop
 	opThrow
+	opReturn
 )
 
 type instruction struct {
@@ -46,11 +47,17 @@ type instruction struct {
 	extra  string
 }
 
+type userFuncDef struct {
+	entryPC int
+	params  []string
+}
+
 // Program is immutable bytecode compiled from a complete model.Program.
 type Program struct {
 	code       []instruction
 	constants  []any
 	localNames []string
+	userFuncs  map[string]userFuncDef
 }
 
 // Entry is one key/value pair produced for foreach.

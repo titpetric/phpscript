@@ -116,6 +116,20 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 			return err
 		}
 		c.emit(instruction{op: opThrow})
+	case *model.FuncDecl:
+		if node.Class != "" {
+			return unsupported(path, "class method decl %s::%s", node.Class, node.Name)
+		}
+		return c.funcDecl(node, path)
+	case *model.Return:
+		if node.Value != nil {
+			if err := c.expr(node.Value, path+".value"); err != nil {
+				return err
+			}
+		} else {
+			c.emit(instruction{op: opPushConst, a: c.constant(nil)})
+		}
+		c.emit(instruction{op: opReturn})
 	case *model.Break:
 		if len(c.loops) == 0 {
 			return unsupported(path, "break outside loop")
@@ -174,6 +188,37 @@ func (c *compiler) tryStmt(node *model.Try, path string) error {
 		if err := c.block(node.Finally, path+".finally"); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (c *compiler) funcDecl(node *model.FuncDecl, path string) error {
+	jumpAround := c.emit(instruction{op: opJump, target: -1})
+	funcPC := len(c.program.code)
+
+	for _, param := range node.Params {
+		_ = c.slot(param.Name)
+	}
+
+	if err := c.block(node.Body, path+".body"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opPushConst, a: c.constant(nil)})
+	c.emit(instruction{op: opReturn})
+
+	endPC := len(c.program.code)
+	c.program.code[jumpAround].target = endPC
+
+	if c.program.userFuncs == nil {
+		c.program.userFuncs = make(map[string]userFuncDef)
+	}
+	params := make([]string, len(node.Params))
+	for i, p := range node.Params {
+		params[i] = p.Name
+	}
+	c.program.userFuncs[node.Name] = userFuncDef{
+		entryPC: funcPC,
+		params:  params,
 	}
 	return nil
 }
@@ -421,6 +466,9 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.program.code[endJump].target = len(c.program.code)
 	case *model.Call:
+		if node.Name == "compact" {
+			return unsupported(path, "compact() requires scope reflection")
+		}
 		for i, argument := range node.Args {
 			if err := c.expr(argument, fmt.Sprintf("%s.arg[%d]", path, i)); err != nil {
 				return err
