@@ -1,4 +1,4 @@
-package ps_test
+package tests
 
 import (
 	"context"

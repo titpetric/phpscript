@@ -1,4 +1,4 @@
-package stdlib_test
+package tests
 
 import (
 	"os"
