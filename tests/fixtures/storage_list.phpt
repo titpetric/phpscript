@@ -1,4 +1,5 @@
 name: storage list of rich types
+flatstack: true
 description: >
   all() returns a Go slice of rich Record structs. PHP foreach iterates the Go
   slice directly, and each element's struct fields are read with `->`. This

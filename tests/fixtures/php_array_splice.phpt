@@ -1,4 +1,5 @@
 name: Array splice tests
+flatstack: true
 description: Mainly tests array_splice.
 ---
 <?php

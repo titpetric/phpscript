@@ -131,14 +131,14 @@ $storage->get("missing");
 func TestFlatstackRejectsWholeProgramBeforeSideEffects(t *testing.T) {
 	program, err := parser.Parse(`<?php
 $storage = new Storage;
-function unsupported() { return 42; }
-echo unsupported();
+class UnsupportedClass {}
+echo 42;
 `)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := flatstack.Supports(program); err == nil {
-		t.Fatal("program with a user function should require interpreter fallback")
+		t.Fatal("program with a class declaration should require interpreter fallback")
 	}
 
 	var constructions atomic.Int64
