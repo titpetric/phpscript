@@ -1,13 +1,13 @@
 package flatstack_test
 
 import (
-	"context"
 	"io"
 	"testing"
 
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
+	"github.com/titpetric/phpscript/tests"
 )
 
 func mustFlatProgram(tb testing.TB, source string) *model.Program {
@@ -90,8 +90,7 @@ echo $storage->tenant() . ":" . $record->value;
 	b.RunParallel(func(pb *testing.PB) {
 		runtime := flatstack.New(io.Discard, flatstack.Options{})
 		runtime.SetExprCache(cache)
-		runtime.SetContext(context.WithValue(context.Background(), contextKey("tenant"), "acme"))
-		runtime.RegisterConstructor("Storage", newStorage)
+		runtime.RegisterConstructor("Storage", tests.NewStorage)
 		for pb.Next() {
 			if err := runtime.Run(program); err != nil {
 				b.Fatal(err)
