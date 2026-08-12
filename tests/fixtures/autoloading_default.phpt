@@ -1,4 +1,5 @@
 name: default spl autoloading
+flatstack: true
 description: >
   Registering spl_autoload without a callback searches the configured include
   path for the lowercased namespaced class name with PHP file extensions.

@@ -1,4 +1,5 @@
 name: condition syntax
+flatstack: true
 description: >
   Covers parenthesized PHP-style if conditions, phpscript's unwrapped short-if
   condition, and runtime compatibility for assignment expressions inside if
