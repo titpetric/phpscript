@@ -51,8 +51,9 @@ var exprCache = runner.NewExprCache()
 type fixture struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description"`
-	Error       string `yaml:"error"` // optional: expected error substring
-	Stdin       string `yaml:"stdin"` // optional: runtime STDIN contents
+	Error       string `yaml:"error"`     // optional: expected error substring
+	Stdin       string `yaml:"stdin"`     // optional: runtime STDIN contents
+	Flatstack   bool   `yaml:"flatstack"` // optional: run through flat bytecode fixtures
 
 	PHP      string `yaml:"-"`
 	Expected string `yaml:"-"`

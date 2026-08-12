@@ -1,4 +1,5 @@
 name: exception (caught)
+flatstack: true
 description: >
   A caught exception can be handled with it's `getCode` and `getMessage`
   methods. If you use the variable `$e` itself, it only prints the message.

@@ -1,4 +1,5 @@
 name: storage context injection
+flatstack: true
 description: >
   The runtime's context.Context is auto-injected into the constructor (mirroring
   vuego's wrapContextFunc). A value placed on the context — the tenant — is
