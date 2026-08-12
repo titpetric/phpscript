@@ -8,6 +8,7 @@ PHP, it can be pretty much used in the same ways as you would use PHP.
 - [Error handling](error-handling.md)
 - [Routing](routing.md)
 - [Database bindings](database.md)
+- [Shared memory bindings](shared-memory.md)
 - [Templating](templating.md)
 
 Combining these principles you can create lightweight web applications
