@@ -12,6 +12,7 @@ import (
 
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/parser"
+	"github.com/titpetric/phpscript/tests"
 )
 
 // These cases mirror the flat-stack repository's table-driven VM and load
@@ -121,7 +122,7 @@ $storage->get("missing");
 		t.Fatal(err)
 	}
 	runtime := flatstack.New(io.Discard, flatstack.Options{})
-	runtime.RegisterConstructor("Storage", newStorage)
+	runtime.RegisterConstructor("Storage", tests.NewStorage)
 	err = runtime.Run(program)
 	if err == nil || !strings.Contains(err.Error(), "missing key") {
 		t.Fatalf("error after break = %v, want uncaught missing-key error", err)
@@ -142,9 +143,9 @@ echo 42;
 	}
 
 	var constructions atomic.Int64
-	constructor := func(context.Context) (*storage, error) {
+	constructor := func(ctx context.Context) (tests.Storage, error) {
 		constructions.Add(1)
-		return &storage{values: make(map[string]string)}, nil
+		return tests.NewStorage(ctx)
 	}
 	var output strings.Builder
 	runtime := flatstack.New(&output, flatstack.Options{})
@@ -204,7 +205,7 @@ func TestFlatstackHostErrorPropagates(t *testing.T) {
 	}
 
 	runtime := flatstack.New(io.Discard, flatstack.Options{})
-	runtime.RegisterConstructor("Storage", newStorage)
+	runtime.RegisterConstructor("Storage", tests.NewStorage)
 	err = runtime.Run(program)
 	if err == nil || !strings.Contains(err.Error(), "missing key") {
 		t.Fatalf("error = %v, want missing-key host error", err)

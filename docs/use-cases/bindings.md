@@ -52,25 +52,25 @@ restricted but serves as a good example of how to create a Go binding.
 
 ## Shared memory
 
-The PHP runtime is a request driven runtime. In order to enable
-persistance between requests inside the service itself, a simple
-`SharedMemory` type should be implemented.
+The PHP runtime is request driven. The `stdlib/ps` package provides a
+concurrency-safe `SharedMemory` binding for retaining process-local state
+between runtimes.
 
-- `NewSharedMemory() *SharedMemory`
+- `ps.NewSharedMemory() *ps.SharedMemory`
 - `func (m *SharedMemory) Set(_ context.Context, key, value string)`
 - `func (m *SharedMemory) Get(_ context.Context, key string) string`
 
-And two utility functions to enable sharing this type.
+Two utility functions bind the same instance to multiple runtimes:
 
-- `SharedMemoryContext(context.Context, *SharedMemory) context.Context`
-- `NewSharedMemoryBinding(ctx context.Context) (*SharedMemory, error)`
+- `ps.SharedMemoryContext(context.Context, *ps.SharedMemory) context.Context`
+- `ps.NewSharedMemoryBinding(ctx context.Context) (*ps.SharedMemory, error)`
 
-And finnally creating the go bindings:
+Register the standard-library constructor as follows:
 
 ```go
-shm := NewSharedMemory()
-rt.RegisterContext(SharedMemoryContext(rt.Context(), shm))
-rt.RegisterConstructor("SharedMemory", NewSharedMemoryBinding)
+shm := ps.NewSharedMemory()
+rt.SetContext(ps.SharedMemoryContext(rt.Context(), shm))
+ps.RegisterSharedMemory(rt)
 ```
 
 The bindings can now be used from PHP. Using the `@route` hints, a
@@ -81,7 +81,7 @@ request handler can look like this:
 
 // @route POST /kv/{key}
 
-$shm = new SharedMemory;
+$shm = new PS\SharedMemory;
 $shm->incr("requests");
 $shm->incr("post");
 $shm->set($_PATH["key"], $_POST["value"]);
@@ -93,5 +93,5 @@ echo "ok";
 
 - [PHP exception class](https://www.php.net/manual/en/class.exception.php)
 - [stdlib/Exception type](../../stdlib/exception.go)
-- [tests/SharedMemory type](../../tests/route.go)
+- [stdlib/ps SharedMemory type](../../stdlib/ps/shared_memory.go)
 - [Request routing](routing.md)
