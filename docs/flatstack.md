@@ -238,7 +238,7 @@ The test suite contains:
 - Runner-fallback and side-effect atomicity tests
 - Shared-cache parallel tests and race checks
 - Allocation-budget and deep-expression tests
-- The complete `.phpt` fixture corpus through both runtime imports
+- Opted-in `.phpt` fixtures through both runtime imports
 - Compiler-input, malformed-AST, native differential, and fallback differential
   fuzz targets
 
