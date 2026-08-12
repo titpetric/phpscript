@@ -50,7 +50,27 @@ func TestHandlerServesPublicFilesAndPHP(t *testing.T) {
 			if tt.contentType != "" && !strings.HasPrefix(rr.Header().Get("Content-Type"), tt.contentType) {
 				t.Fatalf("Content-Type = %q, want prefix %q", rr.Header().Get("Content-Type"), tt.contentType)
 			}
+			if rr.Header().Get("Request-Id") == "" {
+				t.Fatal("Request-Id header is empty")
+			}
 		})
+	}
+}
+
+func TestHandlerServesServerStatus(t *testing.T) {
+	h, err := NewHandler(testFS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/debug/server-status", nil)
+	req.Header.Set("Accept", "text/json")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"active_requests":1`) {
+		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+	}
+	if rr.Header().Get("Request-Id") == "" {
+		t.Fatal("Request-Id header is empty")
 	}
 }
 
