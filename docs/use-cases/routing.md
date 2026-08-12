@@ -120,12 +120,12 @@ such as shared memory, database handles, metrics, or other request-wide
 services.
 
 ```go
-shm := NewSharedMemory()
+shm := ps.NewSharedMemory()
 mux := http.NewServeMux()
 
 _, err := route.NewService(root, mux, route.WithRuntimeFunc(func(rt *runner.Runtime) {
-	rt.SetContext(SharedMemoryContext(context.Background(), shm))
-	rt.RegisterConstructor("SharedMemory", NewSharedMemoryBinding)
+	rt.SetContext(ps.SharedMemoryContext(rt.Context(), shm))
+	rt.RegisterConstructor("SharedMemory", ps.NewSharedMemoryBinding)
 }))
 ```
 
@@ -136,5 +136,5 @@ services, and bindings. Every request gets a fresh PHP runtime, but
 ## References
 
 - [Route tests](../../tests/route_test.go)
-- [SharedMemory binding](../../tests/route.go)
+- [SharedMemory binding](../../stdlib/ps/shared_memory.go)
 - [Route fixtures](../../tests/fixtures/route)
