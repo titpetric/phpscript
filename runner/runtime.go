@@ -28,12 +28,15 @@ var phpSuperglobals = map[string]struct{}{
 // Runtime executes parsed PHP statements and evaluates transpiled expressions
 // with registered functions, classes, constructors, and runtime state.
 type Runtime struct {
-	out     io.Writer
-	flat    bool
-	funcs   map[string]any
-	userFns map[string]struct{}
-	wrapped map[string]func(...any) (any, error)
-	classes map[string]*model.Class
+	out        io.Writer
+	flat       bool
+	status     Status
+	entrypoint string
+	observers  []Observer
+	funcs      map[string]any
+	userFns    map[string]struct{}
+	wrapped    map[string]func(...any) (any, error)
+	classes    map[string]*model.Class
 
 	// Env is the environment visible to PHP for this Runtime. New snapshots the
 	// host environment so mutations remain local to a single request/runtime.
@@ -180,11 +183,92 @@ func (rt *Runtime) SetContext(ctx context.Context) {
 		ctx = context.Background()
 	}
 	rt.ctx = ctx
+	for _, observer := range rt.observers {
+		observer.UpdateStatus(rt.ctx, rt.status)
+	}
 }
 
 // Context returns the configured lifecycle context.
 func (rt *Runtime) Context() context.Context {
 	return rt.ctx
+}
+
+// Status describes the current phase of a Runtime. The one-character values
+// follow the scoreboard convention used by servers such as lighttpd.
+type Status string
+
+const (
+	StatusWaiting    Status = "_"
+	StatusStarting   Status = "s"
+	StatusReading    Status = "R"
+	StatusProcessing Status = "P"
+	StatusWriting    Status = "W"
+	StatusKeepalive  Status = "K"
+	StatusClosing    Status = "C"
+	StatusError      Status = "E"
+)
+
+// Observer receives lifecycle updates for a Runtime. Implementations must be
+// safe for use by concurrent runtimes.
+type Observer interface {
+	UpdateStatus(context.Context, Status)
+}
+
+// FilenameObserver optionally receives the entrypoint passed to LoadFile.
+type FilenameObserver interface {
+	UpdateFilename(context.Context, string)
+}
+
+// IncludeObserver optionally receives the number of files included so far.
+type IncludeObserver interface {
+	UpdateIncludedFiles(context.Context, int)
+}
+
+// Observe registers an observer and reports that this Runtime is starting.
+func (rt *Runtime) Observe(observer Observer) {
+	if observer == nil {
+		return
+	}
+	rt.observers = append(rt.observers, observer)
+	if rt.status == "" {
+		rt.status = StatusStarting
+	}
+	observer.UpdateStatus(rt.ctx, rt.status)
+}
+
+// UpdateStatus publishes a lifecycle phase to all registered observers. It is
+// also available to hosts for phases that occur outside PHP execution.
+func (rt *Runtime) UpdateStatus(status Status) {
+	if rt.status == status {
+		return
+	}
+	rt.status = status
+	for _, observer := range rt.observers {
+		observer.UpdateStatus(rt.ctx, status)
+	}
+}
+
+// UpdateFilename publishes the PHP entrypoint to observers that support
+// filename updates.
+func (rt *Runtime) UpdateFilename(filename string) {
+	if rt.entrypoint != "" {
+		return
+	}
+	rt.entrypoint = filename
+	for _, observer := range rt.observers {
+		if filenameObserver, ok := observer.(FilenameObserver); ok {
+			filenameObserver.UpdateFilename(rt.ctx, filename)
+		}
+	}
+}
+
+// UpdateIncludedFiles publishes the current number of included files.
+func (rt *Runtime) UpdateIncludedFiles(count int) {
+	for _, observer := range rt.observers {
+		if includeObserver, ok := observer.(IncludeObserver); ok {
+			includeObserver.UpdateIncludedFiles(rt.ctx, count)
+		}
+	}
 }
 
 // RegisterConstructor binds a class name to a Go constructor so `new Name` in

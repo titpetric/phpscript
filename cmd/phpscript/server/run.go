@@ -18,6 +18,7 @@ import (
 	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
+	statusmw "github.com/titpetric/phpscript/stdlib/middleware"
 )
 
 // Name is the command title.
@@ -65,6 +66,7 @@ type handler struct {
 	static       http.Handler
 	includeCache *runner.IncludeCache
 	exprCache    *runner.ExprCache
+	serverStatus *statusmw.ServerStatus
 }
 
 // NewHandler serves annotated project routes and files beneath public/.
@@ -77,6 +79,7 @@ func newHandler(root fs.FS, rootDir string) (http.Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("server: public directory: %w", err)
 	}
+	serverStatus := statusmw.NewServerStatus()
 	h := &handler{
 		root:         root,
 		rootDir:      rootDir,
@@ -84,9 +87,13 @@ func newHandler(root fs.FS, rootDir string) (http.Handler, error) {
 		static:       http.FileServer(http.FS(public)),
 		includeCache: runner.NewIncludeCache(),
 		exprCache:    runner.NewExprCache(),
+		serverStatus: serverStatus,
 	}
 	mux := http.NewServeMux()
-	opts := []routesvc.Option{routesvc.WithExcludedDirectory("public")}
+	opts := []routesvc.Option{
+		routesvc.WithExcludedDirectory("public"),
+		routesvc.WithRuntimeFunc(func(rt *runner.Runtime) { rt.Observe(serverStatus) }),
+	}
 	if rootDir != "" {
 		opts = append(opts, routesvc.WithRuntimeFunc(func(rt *runner.Runtime) {
 			stdlib.RegisterFS(rt, rootDir)
@@ -96,7 +103,7 @@ func newHandler(root fs.FS, rootDir string) (http.Handler, error) {
 		return nil, err
 	}
 	mux.Handle("/", h)
-	return mux, nil
+	return serverStatus.Middleware(mux), nil
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +133,7 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	rt.SetIncludeCache(h.includeCache)
 	rt.SetExprCache(h.exprCache)
 	rt.SetContext(r.Context())
+	rt.Observe(h.serverStatus)
 	prog, err := rt.LoadFile(filename)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

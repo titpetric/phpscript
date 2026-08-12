@@ -38,17 +38,26 @@ func (rt *Runtime) SetIncludeResolver(fn IncludeFunc) { rt.include = fn }
 
 // Load parses PHP source into a program.
 func (rt *Runtime) Load(src string) (*model.Program, error) {
-	return parser.Parse(src)
+	rt.UpdateStatus(StatusReading)
+	program, err := parser.Parse(src)
+	if err != nil {
+		rt.UpdateStatus(StatusError)
+	}
+	return program, err
 }
 
 // LoadFile reads and parses a PHP file from the runtime source FS.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
+	rt.UpdateFilename(path)
+	rt.UpdateStatus(StatusReading)
 	if rt.opts.RootFS == nil {
+		rt.UpdateStatus(StatusError)
 		return nil, fmt.Errorf("load %q: no source FS configured", path)
 	}
 	cleanPath := rt.resolveFSPath(path)
 	b, err := fs.ReadFile(rt.opts.RootFS, cleanPath)
 	if err != nil {
+		rt.UpdateStatus(StatusError)
 		return nil, fmt.Errorf("load %q: %w", path, err)
 	}
 	prog, err := rt.Load(string(b))
@@ -60,12 +69,22 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 
 // Run executes a whole program in the global scope.
 func (rt *Runtime) Run(p *model.Program) error {
+	rt.UpdateStatus(StatusProcessing)
+	var err error
 	if rt.flat {
-		if handled, err := rt.runFlat(p); handled {
+		if handled, flatErr := rt.runFlat(p); handled {
+			err = flatErr
+			if err != nil {
+				rt.UpdateStatus(StatusError)
+			}
 			return err
 		}
 	}
-	return rt.runInterpreted(p)
+	err = rt.runInterpreted(p)
+	if err != nil {
+		rt.UpdateStatus(StatusError)
+	}
+	return err
 }
 
 func (rt *Runtime) runInterpreted(p *model.Program) error {
@@ -121,6 +140,7 @@ func (rt *Runtime) hoist(stmts []model.Stmt) error {
 // exec runs a statement list, propagating return flow.
 func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 	for _, s := range stmts {
+		rt.UpdateStatus(StatusProcessing)
 		val, fl, err := rt.execOne(s, scope)
 		if err != nil {
 			if _, ok := IsExit(err); ok {
@@ -142,6 +162,7 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	switch n := s.(type) {
 	case *model.InlineHTML:
+		rt.UpdateStatus(StatusWriting)
 		_, err := io.WriteString(rt.out, n.Text)
 		return nil, flowNormal, err
 
@@ -151,6 +172,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 			if err != nil {
 				return nil, flowNormal, err
 			}
+			rt.UpdateStatus(StatusWriting)
 			if _, err := io.WriteString(rt.out, phpString(v)); err != nil {
 				return nil, flowNormal, err
 			}
@@ -431,6 +453,7 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 		return nil, fmt.Errorf("error including %s: %w", path, err)
 	}
 	rt.included = append(rt.included, filename)
+	rt.UpdateIncludedFiles(len(rt.included))
 	if err := rt.hoist(prog.Stmts); err != nil {
 		return nil, err
 	}
