@@ -150,7 +150,8 @@ type ServerStatus struct {
 func NewServerStatus() *ServerStatus {
 	return &ServerStatus{
 		started: time.Now(), active: make(map[string]*Request),
-		stateTime: make(map[model.Status]time.Duration),
+		stateTime:     make(map[model.Status]time.Duration),
+		TrackMemStats: true,
 	}
 }
 
