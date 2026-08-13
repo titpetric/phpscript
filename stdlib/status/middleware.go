@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/model"
 )
 
 // ServerStatusPath is the default status overview served by ServerStatus.
@@ -38,41 +38,26 @@ const (
 	topLimit     = 20
 )
 
+type (
+	Request          = model.Request
+	RequestStatistic = model.RequestStatistic
+	RequestSpan      = model.RequestSpan
+	Flag             = model.Flag
+)
+
+var (
+	Span      = model.Span
+	OpenSpan  = model.OpenSpan
+	CloseSpan = model.CloseSpan
+	SpanType  = model.SpanType
+)
+
 type requestIDKey struct{}
 
 // RequestID returns the ULID assigned to the request in ctx.
 func RequestID(ctx context.Context) string {
 	id, _ := ctx.Value(requestIDKey{}).(string)
 	return id
-}
-
-// Request describes an active or recently completed request.
-type Request struct {
-	ID             string        `json:"request_id"`
-	Status         runner.Status `json:"status"`
-	Request        string        `json:"request"`
-	Hostname       string        `json:"hostname"`
-	Filename       string        `json:"filename,omitempty"`
-	IncludedFiles  int           `json:"included_files"`
-	Method         string        `json:"method"`
-	URI            string        `json:"uri"`
-	Protocol       string        `json:"protocol"`
-	RemoteAddress  string        `json:"remote_address"`
-	UserAgent      string        `json:"user_agent,omitempty"`
-	StartedAt      time.Time     `json:"started_at"`
-	UpdatedAt      time.Time     `json:"updated_at"`
-	Duration       time.Duration `json:"duration_ns"`
-	ResponseStatus int           `json:"response_status,omitempty"`
-	ResponseBytes  int64         `json:"response_bytes"`
-	HeapDelta      int64         `json:"heap_delta_bytes"`
-	AllocatedBytes uint64        `json:"allocated_bytes"`
-	Allocations    uint64        `json:"allocations"`
-	GCCycles       uint32        `json:"gc_cycles"`
-	GCPause        time.Duration `json:"gc_pause_ns"`
-	Spans          []RequestSpan `json:"spans,omitempty"`
-
-	mem            runtime.MemStats
-	stateChangedAt time.Time
 }
 
 // MemorySnapshot describes current process memory and GC pressure.
@@ -98,24 +83,6 @@ type PoolEstimate struct {
 	WithinMemoryLimit     uint64 `json:"requests_within_memory_limit,omitempty"`
 }
 
-// RequestStatistic aggregates one method and URI in the rolling window.
-type RequestStatistic struct {
-	Request               string        `json:"request"`
-	Hostname              string        `json:"hostname"`
-	Filename              string        `json:"filename,omitempty"`
-	AverageIncludedFiles  float64       `json:"average_included_files"`
-	Count                 uint64        `json:"count"`
-	Share                 float64       `json:"share_percent"`
-	AverageDuration       time.Duration `json:"average_duration_ns"`
-	AverageResponseBytes  uint64        `json:"average_response_bytes"`
-	AverageAllocatedBytes uint64        `json:"average_allocated_bytes"`
-
-	totalDuration      time.Duration
-	totalResponseBytes uint64
-	totalAllocated     uint64
-	totalIncluded      uint64
-}
-
 // StatisticsSnapshot contains the most frequent requests in the rolling
 // completed-request window.
 type StatisticsSnapshot struct {
@@ -127,7 +94,7 @@ type StatisticsSnapshot struct {
 
 // StateDuration is the lifetime request time observed in one scoreboard state.
 type StateDuration struct {
-	State    runner.Status `json:"state"`
+	State    model.Status  `json:"state"`
 	Label    string        `json:"label"`
 	Duration time.Duration `json:"duration_ns"`
 	Share    float64       `json:"share_percent"`
@@ -165,14 +132,14 @@ type ServerStatus struct {
 	total     uint64
 	samples   uint64
 	allocated uint64
-	stateTime map[runner.Status]time.Duration
+	stateTime map[model.Status]time.Duration
 }
 
 // NewServerStatus creates an empty process list.
 func NewServerStatus() *ServerStatus {
 	return &ServerStatus{
 		started: time.Now(), active: make(map[string]*Request),
-		stateTime: make(map[runner.Status]time.Duration),
+		stateTime: make(map[model.Status]time.Duration),
 	}
 }
 
@@ -192,21 +159,30 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 		runtime.ReadMemStats(&before)
 		now := time.Now()
 		entry := &Request{
-			ID: id, Status: runner.StatusReading, Request: r.Method + " " + r.URL.RequestURI(),
-			Hostname: r.Host, Method: r.Method, URI: r.URL.RequestURI(),
-			Protocol: r.Proto, RemoteAddress: r.RemoteAddr, UserAgent: r.UserAgent(),
-			StartedAt: now, UpdatedAt: now, mem: before, stateChangedAt: now,
+			ID:            id,
+			Status:        model.StatusReading,
+			Request:       r.Method + " " + r.URL.RequestURI(),
+			Hostname:      r.Host,
+			Method:        r.Method,
+			URI:           r.URL.RequestURI(),
+			Protocol:      r.Proto,
+			RemoteAddress: r.RemoteAddr,
+			UserAgent:     r.UserAgent(),
+			StartedAt:     now,
+			UpdatedAt:     now,
+			MemStats:      before,
+			ChangedAt:     now,
 		}
-		ctx = withRequest(ctx, entry)
+		ctx = model.WithRequest(ctx, entry)
 		r = r.WithContext(ctx)
-		Span(ctx, r.URL.Path, SpanType.HTTP, OpenSpan)
+		model.Span(ctx, r.URL.Path, model.SpanType.HTTP, model.OpenSpan)
 		s.mu.Lock()
 		s.total++
 		s.active[id] = entry
 		s.mu.Unlock()
 
 		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK, onWrite: func() {
-			s.UpdateStatus(ctx, runner.StatusWriting)
+			s.UpdateStatus(ctx, model.StatusWriting)
 		}}
 		defer s.finish(ctx, entry, rw)
 		if isServerStatusPath(r.URL.Path) {
@@ -230,7 +206,7 @@ func isServerStatusPath(path string) bool {
 }
 
 // UpdateStatus implements runner.Observer.
-func (s *ServerStatus) UpdateStatus(ctx context.Context, status runner.Status) {
+func (s *ServerStatus) UpdateStatus(ctx context.Context, status model.Status) {
 	id := RequestID(ctx)
 	if id == "" {
 		return
@@ -238,10 +214,10 @@ func (s *ServerStatus) UpdateStatus(ctx context.Context, status runner.Status) {
 	s.mu.Lock()
 	if entry := s.active[id]; entry != nil {
 		now := time.Now()
-		s.stateTime[entry.Status] += now.Sub(entry.stateChangedAt)
+		s.stateTime[entry.Status] += now.Sub(entry.ChangedAt)
 		entry.Status = status
 		entry.UpdatedAt = now
-		entry.stateChangedAt = now
+		entry.ChangedAt = now
 	}
 	s.mu.Unlock()
 }
@@ -258,7 +234,13 @@ func (s *ServerStatus) UpdateFilename(ctx context.Context, filename string) {
 		entry.UpdatedAt = time.Now()
 	}
 	s.mu.Unlock()
-	Span(ctx, filename)
+	model.Span(ctx, filename, model.OpenSpan)
+}
+
+// Trace will add a span with the invoked message. It's used to trace
+// runtime internals, like including files.
+func (s *ServerStatus) Trace(ctx context.Context, message string) {
+	model.Span(ctx, message)
 }
 
 // UpdateIncludedFiles records the number of files included by an active PHP
@@ -283,24 +265,24 @@ func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseW
 	if message == "" {
 		message = entry.URI
 	}
-	Span(ctx, message, SpanType.HTTP, CloseSpan)
+	model.Span(ctx, message, model.SpanType.HTTP, model.CloseSpan)
 	now := time.Now()
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.active, entry.ID)
-	s.stateTime[entry.Status] += now.Sub(entry.stateChangedAt)
+	s.stateTime[entry.Status] += now.Sub(entry.ChangedAt)
 	entry.UpdatedAt = now
 	entry.Duration = now.Sub(entry.StartedAt)
 	entry.ResponseStatus = rw.status
 	entry.ResponseBytes = rw.bytes
-	entry.HeapDelta = signedDelta(after.HeapAlloc, entry.mem.HeapAlloc)
-	entry.AllocatedBytes = delta(after.TotalAlloc, entry.mem.TotalAlloc)
-	entry.Allocations = delta(after.Mallocs, entry.mem.Mallocs)
-	entry.GCCycles = uint32(delta(uint64(after.NumGC), uint64(entry.mem.NumGC)))
-	entry.GCPause = time.Duration(delta(after.PauseTotalNs, entry.mem.PauseTotalNs))
-	entry.mem = runtime.MemStats{}
-	entry.stateChangedAt = time.Time{}
+	entry.HeapDelta = signedDelta(after.HeapAlloc, entry.MemStats.HeapAlloc)
+	entry.AllocatedBytes = delta(after.TotalAlloc, entry.MemStats.TotalAlloc)
+	entry.Allocations = delta(after.Mallocs, entry.MemStats.Mallocs)
+	entry.GCCycles = uint32(delta(uint64(after.NumGC), uint64(entry.MemStats.NumGC)))
+	entry.GCPause = time.Duration(delta(after.PauseTotalNs, entry.MemStats.PauseTotalNs))
+	entry.MemStats = runtime.MemStats{}
+	entry.ChangedAt = time.Time{}
 	s.samples++
 	s.allocated += entry.AllocatedBytes
 	s.history = append(s.history, *entry)
@@ -338,7 +320,7 @@ func (s *ServerStatus) Snapshot() Snapshot {
 
 	s.mu.RLock()
 	now := time.Now()
-	stateTime := make(map[runner.Status]time.Duration, len(s.stateTime))
+	stateTime := make(map[model.Status]time.Duration, len(s.stateTime))
 	for status, duration := range s.stateTime {
 		stateTime[status] = duration
 	}
@@ -347,7 +329,7 @@ func (s *ServerStatus) Snapshot() Snapshot {
 		copy := activeRequest(entry)
 		copy.Duration = now.Sub(copy.StartedAt)
 		requests = append(requests, copy)
-		stateTime[entry.Status] += now.Sub(entry.stateChangedAt)
+		stateTime[entry.Status] += now.Sub(entry.ChangedAt)
 	}
 	history := append([]Request(nil), s.history...)
 	total, samples, allocated := s.total, s.samples, s.allocated
@@ -436,19 +418,19 @@ func activeRequest(entry *Request) Request {
 	}
 }
 
-func requestStateDurations(durations map[runner.Status]time.Duration) []StateDuration {
+func requestStateDurations(durations map[model.Status]time.Duration) []StateDuration {
 	states := []struct {
-		status runner.Status
+		status model.Status
 		label  string
 	}{
-		{runner.StatusWaiting, "Waiting"},
-		{runner.StatusStarting, "Starting"},
-		{runner.StatusReading, "Reading"},
-		{runner.StatusProcessing, "Processing"},
-		{runner.StatusWriting, "Writing"},
-		{runner.StatusKeepalive, "Keepalive"},
-		{runner.StatusClosing, "Closing"},
-		{runner.StatusError, "Error"},
+		{model.StatusWaiting, "Waiting"},
+		{model.StatusStarting, "Starting"},
+		{model.StatusReading, "Reading"},
+		{model.StatusProcessing, "Processing"},
+		{model.StatusWriting, "Writing"},
+		{model.StatusKeepalive, "Keepalive"},
+		{model.StatusClosing, "Closing"},
+		{model.StatusError, "Error"},
 	}
 	var total time.Duration
 	for _, duration := range durations {
@@ -482,28 +464,28 @@ func requestStatistics(history []Request) StatisticsSnapshot {
 			grouped[key] = stat
 		}
 		stat.Count++
-		stat.totalDuration += request.Duration
+		stat.TotalDuration += request.Duration
 		if request.ResponseBytes > 0 {
-			stat.totalResponseBytes += uint64(request.ResponseBytes)
+			stat.TotalResponseBytes += uint64(request.ResponseBytes)
 		}
-		stat.totalAllocated += request.AllocatedBytes
-		stat.totalIncluded += uint64(request.IncludedFiles)
+		stat.TotalAllocated += request.AllocatedBytes
+		stat.TotalIncluded += uint64(request.IncludedFiles)
 	}
 	result.Top = make([]RequestStatistic, 0, len(grouped))
 	for _, stat := range grouped {
 		stat.Share = float64(stat.Count) * 100 / float64(len(history))
-		stat.AverageDuration = stat.totalDuration / time.Duration(stat.Count)
-		stat.AverageResponseBytes = stat.totalResponseBytes / stat.Count
-		stat.AverageAllocatedBytes = stat.totalAllocated / stat.Count
-		stat.AverageIncludedFiles = float64(stat.totalIncluded) / float64(stat.Count)
+		stat.AverageDuration = stat.TotalDuration / time.Duration(stat.Count)
+		stat.AverageResponseBytes = stat.TotalResponseBytes / stat.Count
+		stat.AverageAllocatedBytes = stat.TotalAllocated / stat.Count
+		stat.AverageIncludedFiles = float64(stat.TotalIncluded) / float64(stat.Count)
 		result.Top = append(result.Top, *stat)
 	}
 	sort.Slice(result.Top, func(i, j int) bool {
 		if result.Top[i].Count != result.Top[j].Count {
 			return result.Top[i].Count > result.Top[j].Count
 		}
-		if result.Top[i].totalDuration != result.Top[j].totalDuration {
-			return result.Top[i].totalDuration > result.Top[j].totalDuration
+		if result.Top[i].TotalDuration != result.Top[j].TotalDuration {
+			return result.Top[i].TotalDuration > result.Top[j].TotalDuration
 		}
 		if result.Top[i].Request != result.Top[j].Request {
 			return result.Top[i].Request < result.Top[j].Request
@@ -824,17 +806,17 @@ func bytesText(n uint64) string {
 
 func spanTypeColor(spanType Flag) string {
 	switch spanType {
-	case SpanType.Database:
+	case model.SpanType.Database:
 		return "#2563eb"
-	case SpanType.Internal:
+	case model.SpanType.Internal:
 		return "#6b7280"
-	case SpanType.External:
+	case model.SpanType.External:
 		return "#7c3aed"
-	case SpanType.Template:
+	case model.SpanType.Template:
 		return "#db2777"
-	case SpanType.Cache:
+	case model.SpanType.Cache:
 		return "#0891b2"
-	case SpanType.HTTP:
+	case model.SpanType.HTTP:
 		return "#16a34a"
 	default:
 		return "#d97706"

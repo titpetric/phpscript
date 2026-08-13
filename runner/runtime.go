@@ -31,7 +31,7 @@ var phpSuperglobals = map[string]struct{}{
 type Runtime struct {
 	out        io.Writer
 	flat       bool
-	status     Status
+	status     model.Status
 	entrypoint string
 	observers  []Observer
 	funcs      map[string]any
@@ -195,25 +195,11 @@ func (rt *Runtime) Context() context.Context {
 	return rt.ctx
 }
 
-// Status describes the current phase of a Runtime. The one-character values
-// follow the scoreboard convention used by servers such as lighttpd.
-type Status string
-
-const (
-	StatusWaiting    Status = "_"
-	StatusStarting   Status = "s"
-	StatusReading    Status = "R"
-	StatusProcessing Status = "P"
-	StatusWriting    Status = "W"
-	StatusKeepalive  Status = "K"
-	StatusClosing    Status = "C"
-	StatusError      Status = "E"
-)
-
 // Observer receives lifecycle updates for a Runtime. Implementations must be
 // safe for use by concurrent runtimes.
 type Observer interface {
-	UpdateStatus(context.Context, Status)
+	UpdateStatus(context.Context, model.Status)
+	Trace(context.Context, string)
 }
 
 // FilenameObserver optionally receives the entrypoint passed to LoadFile.
@@ -233,20 +219,27 @@ func (rt *Runtime) Observe(observer Observer) {
 	}
 	rt.observers = append(rt.observers, observer)
 	if rt.status == "" {
-		rt.status = StatusStarting
+		rt.status = model.StatusStarting
 	}
 	observer.UpdateStatus(rt.ctx, rt.status)
 }
 
 // UpdateStatus publishes a lifecycle phase to all registered observers. It is
 // also available to hosts for phases that occur outside PHP execution.
-func (rt *Runtime) UpdateStatus(status Status) {
+func (rt *Runtime) UpdateStatus(status model.Status) {
 	if rt.status == status {
 		return
 	}
 	rt.status = status
 	for _, observer := range rt.observers {
 		observer.UpdateStatus(rt.ctx, status)
+	}
+}
+
+// Trace publishes a trace span to registered observers.
+func (rt *Runtime) Trace(message string) {
+	for _, observer := range rt.observers {
+		observer.Trace(rt.ctx, message)
 	}
 }
 

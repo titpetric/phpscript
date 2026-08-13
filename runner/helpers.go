@@ -283,6 +283,8 @@ func lookupPHPMethod(class *model.Class, method string) (*model.FuncDecl, bool) 
 // apply field defaults, and run the same-named constructor method if present.
 func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any, error) {
 	return func(class string, args ...any) (any, error) {
+		defer rt.trace("<code>new " + class + "</code>")()
+
 		class = strings.TrimPrefix(class, "\\")
 		if !rt.hasClass(class) {
 			if err := rt.autoload(class, scope); err != nil {
