@@ -20,6 +20,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/titpetric/platform"
+
 	"github.com/titpetric/phpscript/model"
 )
 
@@ -31,11 +33,6 @@ const (
 	ServerStatusLogPath    = ServerStatusPath + "/log"
 	ServerStatusStatsPath  = ServerStatusPath + "/stats"
 	ServerStatusDetailPath = ServerStatusPath + "/detail/"
-)
-
-const (
-	historyLimit = 100
-	topLimit     = 20
 )
 
 type (
@@ -135,27 +132,48 @@ type Snapshot struct {
 // Use Middleware with routers that accept func(http.Handler) http.Handler. The
 // type also implements http.Handler for explicitly mounting the status route.
 type ServerStatus struct {
-	mu            sync.RWMutex
-	started       time.Time
-	active        map[string]*Request
-	history       []Request
-	total         uint64
-	samples       uint64
-	allocated     uint64
-	stateTime     map[model.Status]time.Duration
-	TrackMemStats bool
+	platform.UnimplementedModule
+
+	mu        sync.RWMutex
+	started   time.Time
+	active    map[string]*Request
+	history   []Request
+	total     uint64
+	samples   uint64
+	allocated uint64
+	stateTime map[model.Status]time.Duration
+	options   Options
 }
 
-// NewServerStatus creates an empty process list.
-func NewServerStatus() *ServerStatus {
+var _ platform.Module = (*ServerStatus)(nil)
+
+// NewModule creates an empty status module.
+func NewModule(options Options) *ServerStatus {
 	return &ServerStatus{
-		started: time.Now(), active: make(map[string]*Request),
-		stateTime:     make(map[model.Status]time.Duration),
-		TrackMemStats: true,
+		UnimplementedModule: *platform.NewUnimplementedModule("status"),
+		started:             time.Now(),
+		active:              make(map[string]*Request),
+		stateTime:           make(map[model.Status]time.Duration),
+		options:             options,
 	}
 }
 
-// Middleware records requests and intercepts ServerStatusPath.
+// NewServerStatus creates an empty status module.
+func NewServerStatus(options Options) *ServerStatus {
+	return NewModule(options)
+}
+
+// Mount registers status page routes on the platform router.
+func (s *ServerStatus) Mount(_ context.Context, r platform.Router) error {
+	r.Handle(ServerStatusPath, s)
+	r.Handle(ServerStatusLivePath, s)
+	r.Handle(ServerStatusLogPath, s)
+	r.Handle(ServerStatusStatsPath, s)
+	r.Handle(ServerStatusDetailPath+"*", s)
+	return nil
+}
+
+// Middleware records requests handled by the platform.
 func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := newULID(time.Now())
@@ -168,7 +186,7 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), requestIDKey{}, id)
 
 		var before runtime.MemStats
-		if s.TrackMemStats {
+		if s.options.TrackMemoryUse {
 			runtime.ReadMemStats(&before)
 		}
 		now := time.Now()
@@ -195,28 +213,16 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 		s.active[id] = entry
 		s.mu.Unlock()
 
-		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK, onWrite: func() {
-			s.UpdateStatus(ctx, model.StatusWriting)
-		}}
-		defer s.finish(ctx, entry, rw)
-		if isServerStatusPath(r.URL.Path) {
-			s.ServeHTTP(rw, r)
-			return
+		rw := &responseWriter{
+			ResponseWriter: w,
+			status:         http.StatusOK,
+			onWrite: func() {
+				s.UpdateStatus(ctx, model.StatusWriting)
+			},
 		}
+		defer s.finish(ctx, entry, rw)
 		next.ServeHTTP(rw, r)
 	})
-}
-
-func isServerStatusPath(path string) bool {
-	if strings.HasPrefix(path, ServerStatusDetailPath) {
-		return true
-	}
-	switch path {
-	case ServerStatusPath, ServerStatusLivePath, ServerStatusLogPath, ServerStatusStatsPath:
-		return true
-	default:
-		return false
-	}
 }
 
 // UpdateStatus implements runner.Observer.
@@ -279,7 +285,7 @@ func (s *ServerStatus) UpdateIncludedFiles(ctx context.Context, count int) {
 
 func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseWriter) {
 	var after runtime.MemStats
-	if s.TrackMemStats {
+	if s.options.TrackMemoryUse {
 		runtime.ReadMemStats(&after)
 	}
 	model.Span(model.WithSpanFilename(ctx, entry.Filename), "done", model.SpanType.HTTP, model.CloseSpan)
@@ -304,8 +310,8 @@ func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseW
 	s.samples++
 	s.allocated += entry.AllocatedBytes
 	s.history = append(s.history, *entry)
-	if len(s.history) > historyLimit {
-		s.history = append(s.history[:0], s.history[len(s.history)-historyLimit:]...)
+	if len(s.history) > s.options.RingBufferSize {
+		s.history = append(s.history[:0], s.history[len(s.history)-s.options.RingBufferSize:]...)
 	}
 }
 
@@ -364,10 +370,12 @@ func (s *ServerStatus) Snapshot() Snapshot {
 	for _, request := range requests {
 		counts[string(request.Status)]++
 	}
-	statistics := requestStatistics(history)
+	statistics := requestStatistics(history, s.options)
 	stateDurations := requestStateDurations(stateTime)
 	limit := memoryLimit()
-	pool := PoolEstimate{Samples: samples}
+	pool := PoolEstimate{
+		Samples: samples,
+	}
 	if samples > 0 {
 		pool.AverageAllocatedBytes = allocated / samples
 		if pool.AverageAllocatedBytes > 0 {
@@ -441,14 +449,38 @@ func requestStateDurations(durations map[model.Status]time.Duration) []StateDura
 		status model.Status
 		label  string
 	}{
-		{model.StatusWaiting, "Waiting"},
-		{model.StatusStarting, "Starting"},
-		{model.StatusReading, "Reading"},
-		{model.StatusProcessing, "Processing"},
-		{model.StatusWriting, "Writing"},
-		{model.StatusKeepalive, "Keepalive"},
-		{model.StatusClosing, "Closing"},
-		{model.StatusError, "Error"},
+		{
+			status: model.StatusWaiting,
+			label:  "Waiting",
+		},
+		{
+			status: model.StatusStarting,
+			label:  "Starting",
+		},
+		{
+			status: model.StatusReading,
+			label:  "Reading",
+		},
+		{
+			status: model.StatusProcessing,
+			label:  "Processing",
+		},
+		{
+			status: model.StatusWriting,
+			label:  "Writing",
+		},
+		{
+			status: model.StatusKeepalive,
+			label:  "Keepalive",
+		},
+		{
+			status: model.StatusClosing,
+			label:  "Closing",
+		},
+		{
+			status: model.StatusError,
+			label:  "Error",
+		},
 	}
 	var total time.Duration
 	for _, duration := range durations {
@@ -461,15 +493,21 @@ func requestStateDurations(durations map[model.Status]time.Duration) []StateDura
 			continue
 		}
 		result = append(result, StateDuration{
-			State: state.status, Label: state.label, Duration: duration,
-			Share: float64(duration) * 100 / float64(total),
+			State:    state.status,
+			Label:    state.label,
+			Duration: duration,
+			Share:    float64(duration) * 100 / float64(total),
 		})
 	}
 	return result
 }
 
-func requestStatistics(history []Request) StatisticsSnapshot {
-	result := StatisticsSnapshot{WindowSize: len(history), WindowLimit: historyLimit, TopLimit: topLimit}
+func requestStatistics(history []Request, options Options) StatisticsSnapshot {
+	result := StatisticsSnapshot{
+		WindowSize:  len(history),
+		WindowLimit: options.RingBufferSize,
+		TopLimit:    options.TopRequests,
+	}
 	if len(history) == 0 {
 		return result
 	}
@@ -478,7 +516,11 @@ func requestStatistics(history []Request) StatisticsSnapshot {
 		key := request.Hostname + "\x00" + request.Request + "\x00" + request.Filename
 		stat := grouped[key]
 		if stat == nil {
-			stat = &RequestStatistic{Request: request.Request, Hostname: request.Hostname, Filename: request.Filename}
+			stat = &RequestStatistic{
+				Request:  request.Request,
+				Hostname: request.Hostname,
+				Filename: request.Filename,
+			}
 			grouped[key] = stat
 		}
 		stat.Count++
@@ -513,8 +555,8 @@ func requestStatistics(history []Request) StatisticsSnapshot {
 		}
 		return result.Top[i].Filename < result.Top[j].Filename
 	})
-	if len(result.Top) > topLimit {
-		result.Top = result.Top[:topLimit]
+	if len(result.Top) > options.TopRequests {
+		result.Top = result.Top[:options.TopRequests]
 	}
 	return result
 }
@@ -606,7 +648,11 @@ func (s *ServerStatus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeText(w, snapshot, view)
 	default:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_ = statusTemplate.Execute(w, statusPage{Snapshot: snapshot, View: string(view), Limit: limit})
+		_ = statusTemplate.Execute(w, statusPage{
+			Snapshot: snapshot,
+			View:     string(view),
+			Limit:    limit,
+		})
 	}
 }
 
@@ -627,7 +673,13 @@ func (s *ServerStatus) serveDetail(w http.ResponseWriter, r *http.Request, id st
 		writeDetailText(w, request, rows)
 	default:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_ = statusTemplate.Execute(w, statusPage{Snapshot: s.Snapshot(), View: string(statusViewDetail), Detail: &request, SpanRows: rows, SpanTime: requestSpanDurations(request)})
+		_ = statusTemplate.Execute(w, statusPage{
+			Snapshot: s.Snapshot(),
+			View:     string(statusViewDetail),
+			Detail:   &request,
+			SpanRows: rows,
+			SpanTime: requestSpanDurations(request),
+		})
 	}
 }
 
@@ -656,7 +708,13 @@ func requestSpanRows(request Request) []spanRow {
 				stack = slices.Delete(stack, slices.Index(stack, open), slices.Index(stack, open)+1)
 			}
 		}
-		rows[i] = spanRow{RequestSpan: *span, Offset: span.Time.Sub(request.StartedAt), Duration: span.Duration, HasDuration: span.Duration > 0, Depth: len(stack)}
+		rows[i] = spanRow{
+			RequestSpan: *span,
+			Offset:      span.Time.Sub(request.StartedAt),
+			Duration:    span.Duration,
+			HasDuration: span.Duration > 0,
+			Depth:       len(stack),
+		}
 		if span.Open {
 			stack = append(stack, i)
 		}
@@ -690,6 +748,9 @@ func requestSpanDurations(request Request) []SpanDuration {
 		if !row.HasDuration || row.Duration <= 0 {
 			continue
 		}
+		if row.Type == SpanType.HTTP && row.Depth == 0 {
+			continue
+		}
 		start, end := row.Time, row.Time.Add(row.Duration)
 		if start.Before(request.StartedAt) {
 			start = request.StartedAt
@@ -700,7 +761,11 @@ func requestSpanDurations(request Request) []SpanDuration {
 		if !end.After(start) {
 			continue
 		}
-		intervals = append(intervals, interval{spanType: row.Type, start: start, end: end})
+		intervals = append(intervals, interval{
+			spanType: row.Type,
+			start:    start,
+			end:      end,
+		})
 		boundaries = append(boundaries, start, end)
 	}
 	slices.SortFunc(boundaries, func(a, b time.Time) int { return a.Compare(b) })
@@ -732,7 +797,9 @@ func requestSpanDurations(request Request) []SpanDuration {
 		}
 		offset := start.Sub(request.StartedAt)
 		result = append(result, SpanDuration{
-			Type: spanType, Offset: offset, Duration: duration,
+			Type:        spanType,
+			Offset:      offset,
+			Duration:    duration,
 			OffsetShare: float64(offset) * 100 / float64(request.Duration),
 			Share:       float64(duration) * 100 / float64(request.Duration),
 		})

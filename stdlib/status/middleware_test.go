@@ -13,8 +13,7 @@ import (
 )
 
 func TestServerStatusRecordsRequestAndRuntime(t *testing.T) {
-	status := NewServerStatus()
-	status.TrackMemStats = true
+	status := NewServerStatus(NewOptions())
 	handler := status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if id := RequestID(r.Context()); id == "" {
 			t.Fatal("request id missing from context")
@@ -85,7 +84,7 @@ func TestServerStatusRecordsRequestAndRuntime(t *testing.T) {
 }
 
 func TestServerStatusRepresentations(t *testing.T) {
-	status := NewServerStatus()
+	status := NewServerStatus(NewOptions())
 	recorded := httptest.NewRecorder()
 	status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("body"))
@@ -128,8 +127,8 @@ func TestServerStatusRepresentations(t *testing.T) {
 }
 
 func TestMiddlewareRecordsStatusRequest(t *testing.T) {
-	status := NewServerStatus()
-	handler := status.Middleware(http.NotFoundHandler())
+	status := NewServerStatus(NewOptions())
+	handler := status.Middleware(status)
 	for _, path := range []string{ServerStatusPath, ServerStatusLivePath, ServerStatusLogPath, ServerStatusStatsPath} {
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
@@ -146,11 +145,12 @@ func TestMiddlewareRecordsStatusRequest(t *testing.T) {
 }
 
 func TestRequestStatisticsRollingWindow(t *testing.T) {
-	status := NewServerStatus()
+	options := NewOptions()
+	status := NewServerStatus(options)
 	handler := status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	}))
-	for i := 0; i < historyLimit+5; i++ {
+	for i := 0; i < options.RingBufferSize+5; i++ {
 		path := "/less-common"
 		if i%2 == 0 {
 			path = "/common"
@@ -158,13 +158,13 @@ func TestRequestStatisticsRollingWindow(t *testing.T) {
 		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
 	}
 	snapshot := status.Snapshot()
-	if len(snapshot.Requests) != 0 || snapshot.Statistics.WindowSize != historyLimit {
+	if len(snapshot.Requests) != 0 || snapshot.Statistics.WindowSize != options.RingBufferSize {
 		t.Fatalf("unexpected process/statistics sizes: %d, %d", len(snapshot.Requests), snapshot.Statistics.WindowSize)
 	}
 	if len(snapshot.Statistics.Top) != 2 {
 		t.Fatalf("top statistics = %+v", snapshot.Statistics.Top)
 	}
-	if len(snapshot.Log) != historyLimit || snapshot.Log[0].Request != "GET /common" {
+	if len(snapshot.Log) != options.RingBufferSize || snapshot.Log[0].Request != "GET /common" {
 		t.Fatalf("unexpected log: len=%d first=%+v", len(snapshot.Log), snapshot.Log[0])
 	}
 	for _, got := range snapshot.Statistics.Top {
@@ -174,8 +174,35 @@ func TestRequestStatisticsRollingWindow(t *testing.T) {
 	}
 }
 
+func TestServerStatusOptions(t *testing.T) {
+	options := Options{
+		RingBufferSize: 2,
+		TopRequests:    1,
+	}
+	status := NewModule(options)
+	handler := status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("ok"))
+	}))
+	for _, path := range []string{"/first", "/second", "/third"} {
+		handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, path, nil))
+	}
+
+	snapshot := status.Snapshot()
+	if snapshot.Statistics.WindowLimit != 2 || snapshot.Statistics.WindowSize != 2 || len(snapshot.Log) != 2 {
+		t.Fatalf("unexpected rolling window: %+v", snapshot.Statistics)
+	}
+	if snapshot.Statistics.TopLimit != 1 || len(snapshot.Statistics.Top) != 1 {
+		t.Fatalf("unexpected top requests: %+v", snapshot.Statistics)
+	}
+	for _, request := range snapshot.Log {
+		if request.AllocatedBytes != 0 || request.Allocations != 0 || request.HeapDelta != 0 {
+			t.Fatalf("memory use was tracked: %+v", request)
+		}
+	}
+}
+
 func TestRequestSpansAndDetail(t *testing.T) {
-	status := NewServerStatus()
+	status := NewServerStatus(NewOptions())
 	handler := status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		Span(r.Context(), "getUser", Flag("database"))
 		Span(r.Context(), "render", SpanType.Template, OpenSpan)
@@ -211,10 +238,13 @@ func TestRequestSpansAndDetail(t *testing.T) {
 	detailRequest.Header.Set("Accept", "text/html")
 	status.ServeHTTP(detail, detailRequest)
 
-	for _, text := range []string{"<h3>Process state</h3>", "aria-label=\"Request span type timeline\"", "<b>http</b>", "<b>template</b>", "<th>Type</th>", "<th>Time</th>", "<th>Duration</th>", "<th>Filename</th>", "<th>Message</th>"} {
+	for _, text := range []string{"<h3>Process state</h3>", "aria-label=\"Request span type timeline\"", "<b>template</b>", "<th>Type</th>", "<th>Time</th>", "<th>Duration</th>", "<th>Filename</th>", "<th>Message</th>"} {
 		if !strings.Contains(detail.Body.String(), text) {
 			t.Fatalf("detail body does not contain %q: %s", text, detail.Body.String())
 		}
+	}
+	if strings.Contains(detail.Body.String(), "<b>http</b>") {
+		t.Fatalf("detail process state contains outer HTTP span: %s", detail.Body.String())
 	}
 
 	log := httptest.NewRecorder()
@@ -230,12 +260,35 @@ func TestRequestSpanDurationsUseTimedRegions(t *testing.T) {
 		StartedAt: started,
 		Duration:  10 * time.Millisecond,
 		Spans: []*RequestSpan{
-			{Time: started, Type: SpanType.HTTP, Open: true},
-			{Time: started.Add(time.Millisecond), Duration: time.Millisecond, Type: SpanType.Database},
-			{Time: started.Add(2 * time.Millisecond), Type: SpanType.Template, Open: true},
-			{Time: started.Add(3 * time.Millisecond), Type: SpanType.Internal},
-			{Time: started.Add(6 * time.Millisecond), Type: SpanType.Template, Close: true},
-			{Time: started.Add(10 * time.Millisecond), Type: SpanType.HTTP, Close: true},
+			{
+				Time: started,
+				Type: SpanType.HTTP,
+				Open: true,
+			},
+			{
+				Time:     started.Add(time.Millisecond),
+				Duration: time.Millisecond,
+				Type:     SpanType.Database,
+			},
+			{
+				Time: started.Add(2 * time.Millisecond),
+				Type: SpanType.Template,
+				Open: true,
+			},
+			{
+				Time: started.Add(3 * time.Millisecond),
+				Type: SpanType.Internal,
+			},
+			{
+				Time:  started.Add(6 * time.Millisecond),
+				Type:  SpanType.Template,
+				Close: true,
+			},
+			{
+				Time:  started.Add(10 * time.Millisecond),
+				Type:  SpanType.HTTP,
+				Close: true,
+			},
 		},
 	}
 
@@ -254,11 +307,9 @@ func TestRequestSpanDurationsUseTimedRegions(t *testing.T) {
 	}
 
 	states := requestSpanDurations(request)
-	if len(states) != 4 ||
-		states[0].Type != SpanType.HTTP || states[0].Offset != 0 || states[0].Duration != time.Millisecond || states[0].OffsetShare != 0 || states[0].Share != 10 ||
-		states[1].Type != SpanType.Database || states[1].Offset != time.Millisecond || states[1].Duration != time.Millisecond || states[1].OffsetShare != 10 || states[1].Share != 10 ||
-		states[2].Type != SpanType.Template || states[2].Offset != 2*time.Millisecond || states[2].Duration != 4*time.Millisecond || states[2].OffsetShare != 20 || states[2].Share != 40 ||
-		states[3].Type != SpanType.HTTP || states[3].Offset != 6*time.Millisecond || states[3].Duration != 4*time.Millisecond || states[3].OffsetShare != 60 || states[3].Share != 40 {
+	if len(states) != 2 ||
+		states[0].Type != SpanType.Database || states[0].Offset != time.Millisecond || states[0].Duration != time.Millisecond || states[0].OffsetShare != 10 || states[0].Share != 10 ||
+		states[1].Type != SpanType.Template || states[1].Offset != 2*time.Millisecond || states[1].Duration != 4*time.Millisecond || states[1].OffsetShare != 20 || states[1].Share != 40 {
 		t.Fatalf("span states = %+v", states)
 	}
 	if got := durationMilliseconds(1500 * time.Microsecond); got != "1.5000 ms" {

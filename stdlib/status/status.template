@@ -84,6 +84,7 @@
   <section><p><a href="/debug/server-status/log">← Request log</a></p><h2>{{.Detail.Request}}</h2><p>Request ID <code>{{.Detail.ID}}</code> · HTTP {{.Detail.ResponseStatus}} · {{duration .Detail.Duration}}</p>
   <h3>Process state</h3><div class="state-bar process-state-bar" aria-label="Request span type timeline">{{range .SpanTime}}<span style="{{spanStateStyle .}}" title="{{.Type}} at {{duration .Offset}}: {{duration .Duration}}"></span>{{end}}</div>
   <div class="state-legend">{{range .SpanTime}}<span><i style="{{spanTypeBackground .Type}}"></i><b>{{.Type}}</b> {{duration .Offset}}–{{duration (addDuration .Offset .Duration)}}</span>{{else}}<span>No timed span regions recorded.</span>{{end}}</div>
+  <br>
   <table><thead><tr><th>Type</th><th>Time</th><th>Duration</th><th>Filename</th><th>Message</th></tr></thead><tbody>
   {{range .SpanRows}}
     <tr><td><span class="span-type" style="{{spanTypeStyle .Type}}">{{.Type}}</span></td><td>{{duration .Offset}}</td><td>{{if .HasDuration}}{{durationMS .Duration}}{{end}}</td><td>{{.Filename}}</td><td style="{{spanBorder .Type}}"><span class="span-message" style="{{spanIndent .Depth}}"><i class="span-bullet" style="{{spanColor .Depth}}"></i>{{.Message}}</span></td></tr>{{else}}<tr><td colspan="5">No spans recorded.</td></tr>
