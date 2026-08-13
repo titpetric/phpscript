@@ -38,6 +38,7 @@ func Register(rt *runner.Runtime) {
 	registerEnvironment(rt)
 
 	ps.Register(rt)
+	status.Register(rt)
 }
 
 func registerEnvironment(rt *runner.Runtime) {

@@ -8,7 +8,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// Register installs the phpscript extensions into the runtime.
+// Register installs symbols into the runtime.
 func Register(rt *runner.Runtime) {
 	RegisterDatabase(rt)
 	RegisterDefer(rt)
