@@ -1,6 +1,6 @@
 # Server status middleware
 
-`stdlib/middleware.ServerStatus` is a lighttpd-style request scoreboard for
+`stdlib/status.ServerStatus` is a lighttpd-style request scoreboard for
 phpscript services. It combines HTTP middleware with a PHP runtime observer to
 show which requests are active, what the runtime is doing, recently completed
 request costs, aggregate traffic, memory pressure, and garbage-collection
@@ -12,13 +12,15 @@ The bundled `phpscript server` enables it automatically.
 
 | Path | View |
 |---|---|
-| `/debug/server-status` | Live processes (default) |
+| `/debug/server-status` | Live processes and the 100-request log |
 | `/debug/server-status/live` | Live processes |
 | `/debug/server-status/log` | Completed request log |
 | `/debug/server-status/stats` | Aggregated request statistics |
+| `/debug/server-status/detail/{id}` | Completed request spans |
 
 The navigation links open distinct endpoints rather than switching client-side
-tabs. The live view contains only requests currently in flight. An entry is
+tabs. The overview combines live processes with the full rolling request log;
+the live view contains only requests currently in flight. An entry is
 removed as soon as its handler returns, including for keep-alive connections.
 The log is newest-first, retains the latest 100 completed requests, and offers
 20, 50, and 100 row views. Statistics group that rolling window by hostname,
@@ -30,7 +32,7 @@ normalized share of all requests in the window.
 Install one `ServerStatus` value as both HTTP middleware and runtime observer:
 
 ```go
-status := middleware.NewServerStatus()
+status := status.NewServerStatus()
 mux.Use(status.Middleware)
 
 rt.SetContext(r.Context())
@@ -40,7 +42,7 @@ rt.Observe(status)
 With the standard library, wrap the application mux:
 
 ```go
-status := middleware.NewServerStatus()
+status := status.NewServerStatus()
 mux := http.NewServeMux()
 server := &http.Server{Handler: status.Middleware(mux)}
 ```
@@ -52,7 +54,7 @@ all status routes and observes every application request.
 
 Each request receives a generated ULID in its `Request-Id` request and response
 headers. The ID is also stored in the request context and is available through
-`middleware.RequestID(ctx)`. The runtime observer calls these hooks while the
+`status.RequestID(ctx)`. The runtime observer calls these hooks while the
 request is active:
 
 - `UpdateStatus` records runtime state transitions.
@@ -70,6 +72,21 @@ the hostname, PHP entrypoint, included-file count, protocol status, duration,
 response bytes, remote address, heap delta, allocated bytes and objects, GC
 cycles, and GC pause observed during the request. The log preserves this data
 after the active process entry is removed.
+
+Each completed request links to a detail page containing its spans. PHP code can
+record a span through the standard library; the context is supplied by the
+runtime and the optional strings configure its type and nesting hints:
+
+```php
+span("getUser", "database");
+span("render", "template", "open");
+span("render", "template", "close");
+```
+
+The detail table reports each span's time from the request start and its
+duration up to the next span. Span types default to `internal`.
+The HTTP middleware records open and close spans for every request. Resolving a
+PHP entrypoint appends another span with that filename.
 
 The scoreboard recognizes the following runtime states:
 
@@ -100,9 +117,9 @@ Content negotiation applies to every endpoint:
 - A `curl/*` user agent receives plain text by default.
 - Other clients receive HTML.
 
-The default/live JSON response is the complete `Snapshot`, including server
+The overview and live JSON responses contain the complete `Snapshot`, including server
 metadata and all status collections. The log JSON endpoint returns the selected
-list of `RequestSnapshot` values; the statistics endpoint returns a
+list of `Request` values; the statistics endpoint returns a
 `StatisticsSnapshot`. Plain text is scoped to the selected view.
 
 ## Memory impact and pool estimates

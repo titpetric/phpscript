@@ -11,6 +11,7 @@ import (
 var testFS = fstest.MapFS{
 	"public/index.php":  {Data: []byte(`<?php echo "home";`)},
 	"public/direct.php": {Data: []byte(`<?php echo $_GET["name"];`)},
+	"public/spans.php":  {Data: []byte(`<?php span("getUser", "database"); echo "spans";`)},
 	"public/style.css":  {Data: []byte(`body { color: red; }`)},
 	"public/app.js":     {Data: []byte(`console.log("ok");`)},
 	"public/annotated.php": {Data: []byte(`<?php
@@ -71,6 +72,30 @@ func TestHandlerServesServerStatus(t *testing.T) {
 	}
 	if rr.Header().Get("Request-Id") == "" {
 		t.Fatal("Request-Id header is empty")
+	}
+}
+
+func TestHandlerRecordsPHPSpan(t *testing.T) {
+	h, err := NewHandler(testFS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRecorder()
+	h.ServeHTTP(request, httptest.NewRequest(http.MethodGet, "/spans.php", nil))
+	if request.Code != http.StatusOK || request.Body.String() != "spans" {
+		t.Fatalf("status = %d, body = %q", request.Code, request.Body.String())
+	}
+	id := request.Header().Get("Request-Id")
+	overview := httptest.NewRecorder()
+	h.ServeHTTP(overview, httptest.NewRequest(http.MethodGet, "/debug/server-status", nil))
+	if overview.Code != http.StatusOK || !strings.Contains(overview.Body.String(), "/debug/server-status/detail/"+id) || !strings.Contains(overview.Body.String(), "GET /spans.php") {
+		t.Fatalf("status = %d, body = %q", overview.Code, overview.Body.String())
+	}
+
+	detail := httptest.NewRecorder()
+	h.ServeHTTP(detail, httptest.NewRequest(http.MethodGet, "/debug/server-status/detail/"+id, nil))
+	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), "getUser") || !strings.Contains(detail.Body.String(), "database") {
+		t.Fatalf("status = %d, body = %q", detail.Code, detail.Body.String())
 	}
 }
 
