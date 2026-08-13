@@ -81,6 +81,17 @@ code {
   min-width: 1px;
 }
 
+.process-state-bar {
+  position: relative;
+  display: block;
+}
+
+.process-state-bar span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
 .state-legend {
   display: flex;
   flex-wrap: wrap;

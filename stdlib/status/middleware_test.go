@@ -66,6 +66,11 @@ func TestServerStatusRecordsRequestAndRuntime(t *testing.T) {
 		}
 		t.Fatal()
 	}
+	for i, span := range spans {
+		if span.Filename != "routes/hello.php" {
+			t.Fatalf("span %d filename = %q", i, span.Filename)
+		}
+	}
 	var stateShare float64
 	for _, state := range snapshot.StateTime {
 		if state.Duration <= 0 {
@@ -205,7 +210,7 @@ func TestRequestSpansAndDetail(t *testing.T) {
 	detailRequest.Header.Set("Accept", "text/html")
 	status.ServeHTTP(detail, detailRequest)
 
-	for _, text := range []string{"<th>Type</th>", "<th>Time</th>", "<th>Duration</th>", "<th>Message</th>"} {
+	for _, text := range []string{"<h3>Process state</h3>", "aria-label=\"Request span type timeline\"", "<b>http</b>", "<b>template</b>", "<th>Type</th>", "<th>Time</th>", "<th>Duration</th>", "<th>Filename</th>", "<th>Message</th>"} {
 		if !strings.Contains(detail.Body.String(), text) {
 			t.Fatalf("detail body does not contain %q: %s", text, detail.Body.String())
 		}
@@ -215,6 +220,48 @@ func TestRequestSpansAndDetail(t *testing.T) {
 	status.ServeHTTP(log, httptest.NewRequest(http.MethodGet, ServerStatusLogPath, nil))
 	if !strings.Contains(log.Body.String(), ServerStatusDetailPath+id) {
 		t.Fatalf("log does not link detail: %s", log.Body.String())
+	}
+}
+
+func TestRequestSpanDurationsUseTimedRegions(t *testing.T) {
+	started := time.Unix(1_700_000_000, 0)
+	request := Request{
+		StartedAt: started,
+		Duration:  10 * time.Millisecond,
+		Spans: []*RequestSpan{
+			{Time: started, Type: SpanType.HTTP, Open: true},
+			{Time: started.Add(time.Millisecond), Duration: time.Millisecond, Type: SpanType.Database},
+			{Time: started.Add(2 * time.Millisecond), Type: SpanType.Template, Open: true},
+			{Time: started.Add(3 * time.Millisecond), Type: SpanType.Internal},
+			{Time: started.Add(6 * time.Millisecond), Type: SpanType.Template, Close: true},
+			{Time: started.Add(10 * time.Millisecond), Type: SpanType.HTTP, Close: true},
+		},
+	}
+
+	rows := requestSpanRows(request)
+	if !rows[0].HasDuration || rows[0].Duration != 10*time.Millisecond {
+		t.Fatalf("HTTP row duration = %s, present=%t", rows[0].Duration, rows[0].HasDuration)
+	}
+	if !rows[1].HasDuration || rows[1].Duration != time.Millisecond {
+		t.Fatalf("database span duration = %s, present=%t", rows[1].Duration, rows[1].HasDuration)
+	}
+	if !rows[2].HasDuration || rows[2].Duration != 4*time.Millisecond {
+		t.Fatalf("template row duration = %s, present=%t", rows[2].Duration, rows[2].HasDuration)
+	}
+	if rows[4].HasDuration || rows[5].HasDuration {
+		t.Fatal("closing spans should not receive durations")
+	}
+
+	states := requestSpanDurations(request)
+	if len(states) != 4 ||
+		states[0].Type != SpanType.HTTP || states[0].Offset != 0 || states[0].Duration != time.Millisecond || states[0].OffsetShare != 0 || states[0].Share != 10 ||
+		states[1].Type != SpanType.Database || states[1].Offset != time.Millisecond || states[1].Duration != time.Millisecond || states[1].OffsetShare != 10 || states[1].Share != 10 ||
+		states[2].Type != SpanType.Template || states[2].Offset != 2*time.Millisecond || states[2].Duration != 4*time.Millisecond || states[2].OffsetShare != 20 || states[2].Share != 40 ||
+		states[3].Type != SpanType.HTTP || states[3].Offset != 6*time.Millisecond || states[3].Duration != 4*time.Millisecond || states[3].OffsetShare != 60 || states[3].Share != 40 {
+		t.Fatalf("span states = %+v", states)
+	}
+	if got := durationMilliseconds(1500 * time.Microsecond); got != "1.5000 ms" {
+		t.Fatalf("formatted duration = %q", got)
 	}
 }
 

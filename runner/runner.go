@@ -101,7 +101,7 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 	}
 	// Hoist declarations so functions/classes are callable before their textual
 	// position (PHP semantics for top-level function/class definitions).
-	if err := rt.hoist(p.Stmts); err != nil {
+	if err := rt.hoist(p.Stmts, rt.entrypoint); err != nil {
 		return err
 	}
 	_, _, runErr := rt.exec(p.Stmts, scope)
@@ -109,13 +109,14 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 }
 
 // hoist registers all function and class declarations found at the given level.
-func (rt *Runtime) hoist(stmts []model.Stmt) error {
+func (rt *Runtime) hoist(stmts []model.Stmt, filename string) error {
 	// First pass: classes, so methods can be attached.
 	classes := map[string]*model.Class{}
 	for _, s := range stmts {
 		if cd, ok := s.(*model.ClassDecl); ok {
 			c := &model.Class{Name: cd.Name, Fields: cd.Fields, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
 			for _, m := range cd.Methods {
+				m.Filename = filename
 				c.Methods[m.Name] = m
 			}
 			classes[cd.Name] = c
@@ -128,6 +129,7 @@ func (rt *Runtime) hoist(stmts []model.Stmt) error {
 		if !ok {
 			continue
 		}
+		fd.Filename = filename
 		if fd.Class != "" {
 			c, ok := classes[fd.Class]
 			if !ok {
@@ -454,16 +456,29 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	return rt.includeFile(phpString(path), scope)
 }
 
-func (rt *Runtime) trace(message string) func() {
-	started := time.Now()
+func (rt *Runtime) trace(scope *Scope, message string) func() {
+	span := rt.traceContext(contextWithScope(rt.ctx, scope), message)
 	return func() {
-		duration := float64(time.Since(started)) / float64(time.Millisecond)
-		rt.Trace(fmt.Sprintf("<b>%.4f ms</b> - %s", duration, message))
+		if span != nil {
+			span.Duration = time.Since(span.Time)
+		}
+	}
+}
+
+func (rt *Runtime) traceRegion(scope *Scope, message string, flags ...model.Flag) func() {
+	ctx := contextWithScope(rt.ctx, scope)
+	rt.traceContext(ctx, message, append(flags, model.OpenSpan)...)
+	return func() {
+		rt.traceContext(ctx, message, append(flags, model.CloseSpan)...)
 	}
 }
 
 func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
-	defer rt.trace(fmt.Sprintf("include <code>%s</code>", path))()
+	var spanType model.Flag
+	if strings.EqualFold(filepath.Ext(path), ".tpl") {
+		spanType = model.SpanType.Template
+	}
+	defer rt.traceRegion(scope, "include "+path, spanType)()
 
 	prog, filename, err := rt.resolveInclude(path)
 	if err != nil {
@@ -473,7 +488,7 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	rt.UpdateIncludedFiles(len(rt.included))
 	restoreFile := setScopeFile(scope, filename)
 	defer restoreFile()
-	if err := rt.hoist(prog.Stmts); err != nil {
+	if err := rt.hoist(prog.Stmts, filename); err != nil {
 		return nil, err
 	}
 	deferMark := len(scope.deferred)
@@ -790,6 +805,9 @@ func applyAssignOp(op string, cur, rhs any) any {
 // invokeFunc runs a user-defined function in a fresh scope.
 func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 	scope := NewScope()
+	if decl.Filename != "" {
+		setScopeFile(scope, decl.Filename)
+	}
 	scope.Set(argsKey, args)
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
@@ -801,6 +819,9 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 // invokeMethod runs a method with $this bound to obj.
 func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any) (any, error) {
 	scope := NewScope()
+	if decl.Filename != "" {
+		setScopeFile(scope, decl.Filename)
+	}
 	scope.Set("this", obj)
 	scope.Set(argsKey, args)
 	if obj.Class != nil {
