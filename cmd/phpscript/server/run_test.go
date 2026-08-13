@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/status"
 )
@@ -45,7 +46,6 @@ func TestHandlerServesPublicFilesAndPHP(t *testing.T) {
 		{path: "/direct.php?name=Ada", body: "Ada", contentType: "text/html"},
 		{path: "/style.css", body: "body { color: red; }", contentType: "text/css"},
 		{path: "/app.js", body: `console.log("ok");`, contentType: "text/javascript"},
-		{path: "/hello/Ada", body: "hello Ada", contentType: ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
@@ -58,6 +58,25 @@ func TestHandlerServesPublicFilesAndPHP(t *testing.T) {
 				t.Fatalf("Content-Type = %q, want prefix %q", rr.Header().Get("Content-Type"), tt.contentType)
 			}
 		})
+	}
+}
+
+func TestRouteModuleServesAnnotatedRoutes(t *testing.T) {
+	handler, err := NewHandler(testFS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	router := chi.NewRouter()
+	routes := routesvc.NewModule(testFS, routesvc.WithExcludedDirectory("public"))
+	if err := routes.Mount(context.Background(), router); err != nil {
+		t.Fatal(err)
+	}
+	router.Handle("/*", handler)
+
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/hello/Ada", nil))
+	if rr.Code != http.StatusOK || rr.Body.String() != "hello Ada" {
+		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
 	}
 }
 
@@ -135,7 +154,7 @@ func TestHandlerDoesNotExposeProjectFilesOrPublicAnnotations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/secret.txt", "/routes/hello.php", "/hidden-annotation"} {
+	for _, path := range []string{"/secret.txt", "/routes/hello.php", "/hello/Ada", "/hidden-annotation"} {
 		rr := httptest.NewRecorder()
 		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, path, nil))
 		if rr.Code != http.StatusNotFound {

@@ -13,6 +13,9 @@ func TestLoadConfig(t *testing.T) {
 	if config.Flatstack.Enabled {
 		t.Fatal("flatstack is enabled by default")
 	}
+	if !config.Routes.Enabled {
+		t.Fatal("annotated routes are disabled by default")
+	}
 	if !config.Status.Enabled {
 		t.Fatal("status module is disabled by default")
 	}

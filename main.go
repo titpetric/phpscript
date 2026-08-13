@@ -11,7 +11,6 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/fmt"
 	"github.com/titpetric/phpscript/cmd/phpscript/lint"
 	"github.com/titpetric/phpscript/cmd/phpscript/list"
-	"github.com/titpetric/phpscript/cmd/phpscript/route"
 	"github.com/titpetric/phpscript/cmd/phpscript/run"
 	"github.com/titpetric/phpscript/cmd/phpscript/server"
 	"github.com/titpetric/phpscript/cmd/phpscript/test"
@@ -45,9 +44,6 @@ func start() error {
 	app.AddCommand("list", list.Name, list.NewCommand)
 	app.AddCommand("run", run.Name, func() *cli.Command {
 		return run.NewCommand(appConfig)
-	})
-	app.AddCommand("route", route.Name, func() *cli.Command {
-		return route.NewCommand(appConfig)
 	})
 	app.AddCommand("server", server.Name, func() *cli.Command {
 		return server.NewCommand(appConfig)

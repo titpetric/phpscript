@@ -100,28 +100,7 @@ func newHandler(root fs.FS, rootDir string, options runner.Options, flatstack bo
 		flatstack:     flatstack,
 		observers:     observers,
 	}
-	mux := http.NewServeMux()
-	opts := []routesvc.Option{
-		routesvc.WithExcludedDirectory("public"),
-		routesvc.WithExprCache(h.exprCache),
-		routesvc.WithRunnerOptions(options),
-		routesvc.WithFlatstack(flatstack),
-	}
-	for _, observer := range observers {
-		opts = append(opts, routesvc.WithRuntimeFunc(func(rt *runner.Runtime) {
-			rt.Observe(observer)
-		}))
-	}
-	if rootDir != "" {
-		opts = append(opts, routesvc.WithRuntimeFunc(func(rt *runner.Runtime) {
-			stdlib.RegisterFS(rt, rootDir)
-		}))
-	}
-	if _, err := routesvc.NewService(root, mux, opts...); err != nil {
-		return nil, err
-	}
-	mux.Handle("/", h)
-	return mux, nil
+	return h, nil
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -208,6 +187,18 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 		svc.Use(serverStatus.Middleware)
 		svc.Register(serverStatus)
 		observers = append(observers, serverStatus)
+	}
+	if config.Routes.Enabled {
+		routeOptions := []routesvc.Option{
+			routesvc.WithExcludedDirectory("public"),
+			routesvc.WithRunnerOptions(config.Runner),
+			routesvc.WithFlatstack(config.Flatstack.Enabled),
+			routesvc.WithObservers(observers...),
+			routesvc.WithRuntimeFunc(func(rt *runner.Runtime) {
+				stdlib.RegisterFS(rt, root)
+			}),
+		}
+		svc.Register(routesvc.NewModule(os.DirFS(root), routeOptions...))
 	}
 	svc.Register(NewModule(root, config.Runner, config.Flatstack.Enabled, observers...))
 

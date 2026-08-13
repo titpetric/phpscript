@@ -112,7 +112,13 @@ PHP files outside `public/` are scanned recursively for
 `// @route METHOD /path/{param}` annotations. Those routes execute with the
 application directory as their source filesystem, so they can include shared
 bootstrap code and templates outside the web root. Route annotations in
-`public/` are ignored.
+`public/` are ignored. Route loading is controlled by the embedded
+`phpscript.yml` configuration:
+
+```yaml
+routes:
+  enabled: true
+```
 
 ```text
 my-app/
@@ -127,17 +133,7 @@ my-app/
     └── user.tpl
 ```
 
-### `phpscript route [directory]`
-
-Run the route-comment based HTTP server. The directory defaults to the current
-working directory.
-
-```bash
-phpscript route ./tests/fixtures/route
-```
-
-Route files use `// @route METHOD /path/{param}` comments. See
-[PHP routing](./use-cases/routing.md) for details.
+See [PHP routing](./use-cases/routing.md) for route annotation details.
 
 ### `phpscript version`
 

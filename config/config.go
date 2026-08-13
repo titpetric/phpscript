@@ -10,11 +10,17 @@ import (
 type Config struct {
 	Runner    runner.Options `yaml:"runner"`
 	Flatstack Flatstack      `yaml:"flatstack"`
+	Routes    Routes         `yaml:"routes"`
 	Status    Status         `yaml:"status"`
 }
 
 // Flatstack selects the flat bytecode runtime when enabled.
 type Flatstack struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// Routes controls loading of annotated PHP routes by HTTP servers.
+type Routes struct {
 	Enabled bool `yaml:"enabled"`
 }
 
@@ -27,6 +33,9 @@ type Status struct {
 // New returns the default configuration.
 func New() Config {
 	return Config{
+		Routes: Routes{
+			Enabled: true,
+		},
 		Status: Status{
 			Enabled: true,
 			Options: status.NewOptions(),

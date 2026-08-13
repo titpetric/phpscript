@@ -5,6 +5,9 @@ runner:
 flatstack:
   enabled: false
 
+routes:
+  enabled: true
+
 status:
   enabled: true
   options:

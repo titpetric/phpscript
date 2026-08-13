@@ -43,6 +43,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
+	"github.com/titpetric/platform"
 )
 
 // RuntimeFunc customizes a PHP runtime before a routed PHP endpoint executes.
@@ -51,9 +52,8 @@ type RuntimeFunc func(*runner.Runtime)
 // Option configures Service.
 type Option func(*Service)
 
-// Router registers HTTP handlers by pattern.
-type Router interface {
-	Handle(string, http.Handler)
+type routeRegistrar interface {
+	Handle(string, string, http.Handler)
 }
 
 // WithRuntimeFunc registers fn to customize each request runtime.
@@ -63,6 +63,15 @@ func WithRuntimeFunc(fn RuntimeFunc) Option {
 			m.runtimeFuncs = append(m.runtimeFuncs, fn)
 		}
 	}
+}
+
+// WithObservers attaches runtime observers to every routed request.
+func WithObservers(observers ...runner.Observer) Option {
+	return WithRuntimeFunc(func(runtime *runner.Runtime) {
+		for _, observer := range observers {
+			runtime.Observe(observer)
+		}
+	})
 }
 
 // WithRunnerOptions configures runtimes created for routed PHP endpoints.
@@ -81,13 +90,38 @@ func WithFlatstack(enabled bool) Option {
 
 // Service owns route registration for annotated PHP endpoints.
 type Service struct {
-	mux           Router
+	mux           *http.ServeMux
+	router        routeRegistrar
 	warnings      []string
 	runtimeFuncs  []RuntimeFunc
 	exprCache     *runner.ExprCache
 	excludedDirs  map[string]struct{}
 	runnerOptions runner.Options
 	flatstack     bool
+}
+
+// Module loads annotated PHP routes into a platform router.
+type Module struct {
+	platform.UnimplementedModule
+	root    fs.FS
+	options []Option
+}
+
+// NewModule creates an annotated route module.
+func NewModule(root fs.FS, options ...Option) *Module {
+	return &Module{
+		UnimplementedModule: *platform.NewUnimplementedModule("phproute"),
+		root:                root,
+		options:             options,
+	}
+}
+
+// Mount registers all discovered routes with the platform router.
+func (m *Module) Mount(_ context.Context, router platform.Router) error {
+	_, err := newService(m.root, platformRouteRegistrar{
+		Router: router,
+	}, m.options...)
+	return err
 }
 
 // WithExcludedDirectory skips a top-level directory while scanning routes.
@@ -108,12 +142,22 @@ func WithExprCache(cache *runner.ExprCache) Option {
 }
 
 // NewService registers annotated PHP endpoints from root on mux.
-func NewService(root fs.FS, mux Router, opts ...Option) (*Service, error) {
+func NewService(root fs.FS, mux *http.ServeMux, opts ...Option) (*Service, error) {
 	if mux == nil {
 		return nil, fmt.Errorf("route: nil mux")
 	}
+	service, err := newService(root, serveMuxRouteRegistrar{
+		ServeMux: mux,
+	}, opts...)
+	if service != nil {
+		service.mux = mux
+	}
+	return service, err
+}
+
+func newService(root fs.FS, router routeRegistrar, opts ...Option) (*Service, error) {
 	svc := &Service{
-		mux:          mux,
+		router:       router,
 		excludedDirs: make(map[string]struct{}),
 	}
 	for _, opt := range opts {
@@ -161,22 +205,37 @@ func (m *Service) Register(root fs.FS) error {
 			return err
 		}
 		for _, route := range Annotations(b) {
-			patternPath := route.Path
-			if patternPath == "/" {
-				patternPath = "/{$}"
-			}
-			pattern := route.Method + " " + patternPath
+			pattern := route.Method + " " + route.Path
 			if prev, ok := seen[pattern]; ok {
 				m.warnings = append(m.warnings, fmt.Sprintf("duplicate route %q in %s; previously registered by %s", pattern, path, prev))
 			}
 			seen[pattern] = path
 			file := path
-			m.mux.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			m.router.Handle(route.Method, route.Path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				m.servePHP(root, file, includeCache, w, r)
 			}))
 		}
 		return nil
 	})
+}
+
+type serveMuxRouteRegistrar struct {
+	*http.ServeMux
+}
+
+func (r serveMuxRouteRegistrar) Handle(method string, routePath string, handler http.Handler) {
+	if routePath == "/" {
+		routePath = "/{$}"
+	}
+	r.ServeMux.Handle(method+" "+routePath, handler)
+}
+
+type platformRouteRegistrar struct {
+	platform.Router
+}
+
+func (r platformRouteRegistrar) Handle(method string, routePath string, handler http.Handler) {
+	r.Router.Method(method, routePath, handler)
 }
 
 // Annotations returns @route declarations from src. A path-only annotation

@@ -4,18 +4,21 @@ The phpscript runtime contains a routing helper that turns PHP files into
 `net/http` handlers. It keeps the server shell and shared services in Go,
 while PHP owns small endpoint behavior.
 
-When you run `phpscript route [directory]`, it scans a PHP source tree
-for `// @route` comments and registers those files as `net/http`
-`ServeMux` handlers. If no directory is provided, the current directory
-is used.
+When `routes.enabled` is true in `phpscript.yml`, `phpscript server [directory]`
+scans the PHP source tree for `// @route` comments and registers those files as
+HTTP handlers. If no directory is provided, the current directory is used.
 
 ```sh
-phpscript route ./tests/fixtures/route
+phpscript server ./my-app
 ```
 
-`phpscript server [directory]` also registers annotated routes, while serving
-only the application's `public/` directory directly. Under `server`, route
-files belong outside `public/`; annotations under `public/` are ignored.
+The server also serves only the application's `public/` directory directly.
+Route files belong outside `public/`; annotations under `public/` are ignored.
+
+```yaml
+routes:
+  enabled: true
+```
 
 The route test fixture uses this source tree:
 
@@ -114,10 +117,9 @@ curl http://localhost:8080/stats/requests
 # 2
 ```
 
-The command-line `phpscript route` entrypoint only loads the PHP files.
-Embedding `route.Service` from Go is how applications add capabilities
-such as shared memory, database handles, metrics, or other request-wide
-services.
+The bundled server loads annotated PHP routes alongside the public web root.
+Embedding `route.Service` from Go lets applications add capabilities such as
+shared memory, database handles, metrics, or other request-wide services.
 
 ```go
 shm := ps.NewSharedMemory()
