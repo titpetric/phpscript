@@ -135,14 +135,15 @@ type Snapshot struct {
 // Use Middleware with routers that accept func(http.Handler) http.Handler. The
 // type also implements http.Handler for explicitly mounting the status route.
 type ServerStatus struct {
-	mu        sync.RWMutex
-	started   time.Time
-	active    map[string]*Request
-	history   []Request
-	total     uint64
-	samples   uint64
-	allocated uint64
-	stateTime map[model.Status]time.Duration
+	mu            sync.RWMutex
+	started       time.Time
+	active        map[string]*Request
+	history       []Request
+	total         uint64
+	samples       uint64
+	allocated     uint64
+	stateTime     map[model.Status]time.Duration
+	TrackMemStats bool
 }
 
 // NewServerStatus creates an empty process list.
@@ -166,7 +167,9 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), requestIDKey{}, id)
 
 		var before runtime.MemStats
-		runtime.ReadMemStats(&before)
+		if s.TrackMemStats {
+			runtime.ReadMemStats(&before)
+		}
 		now := time.Now()
 		entry := &Request{
 			ID:            id,
@@ -275,12 +278,11 @@ func (s *ServerStatus) UpdateIncludedFiles(ctx context.Context, count int) {
 
 func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseWriter) {
 	var after runtime.MemStats
-	runtime.ReadMemStats(&after)
-	message := entry.Filename
-	if message == "" {
-		message = entry.URI
+	if s.TrackMemStats {
+		runtime.ReadMemStats(&after)
 	}
-	model.Span(model.WithSpanFilename(ctx, entry.Filename), message, model.SpanType.HTTP, model.CloseSpan)
+	model.Span(model.WithSpanFilename(ctx, entry.Filename), "done", model.SpanType.HTTP, model.CloseSpan)
+
 	now := time.Now()
 
 	s.mu.Lock()
