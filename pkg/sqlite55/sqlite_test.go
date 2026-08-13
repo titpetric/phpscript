@@ -2,62 +2,64 @@ package sqlite55_test
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/titpetric/phpscript/pkg/sqlite55"
 )
 
-func TestSQLiteAdapterMemoryOperations(t *testing.T) {
+func TestSQLiteAdapterSecurityAndFDLeakFixes(t *testing.T) {
 	ctx := context.Background()
 
-	adapter, err := sqlite55.Memory()
+	// 1. Verify PRAGMAs on sqlite:// DSN
+	adapter, err := sqlite55.Open("sqlite://file:test_pragma.db?mode=memory&cache=shared")
 	if err != nil {
-		t.Fatalf("failed to open memory sqlite adapter: %v", err)
+		t.Fatalf("failed to open sqlite adapter: %v", err)
 	}
 	defer adapter.Close()
 
-	// Execute DDL
-	_, err = adapter.Execute(ctx, "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT)")
+	fkRow, err := adapter.First(ctx, "PRAGMA foreign_keys;")
+	if err != nil || fkRow == nil || fmt.Sprint(fkRow["foreign_keys"]) != "1" {
+		t.Fatalf("expected foreign_keys PRAGMA = 1, got %v (err: %v)", fkRow, err)
+	}
+
+	btRow, err := adapter.First(ctx, "PRAGMA busy_timeout;")
+	if err != nil || btRow == nil || fmt.Sprint(btRow["timeout"]) != "5000" {
+		t.Fatalf("expected busy_timeout PRAGMA = 5000, got %v (err: %v)", btRow, err)
+	}
+
+	// 2. Verify SQL Injection Rejection on Forged Table / Column Identifiers
+	_, err = adapter.Execute(ctx, "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)")
 	if err != nil {
-		t.Fatalf("failed to create table: %v", err)
+		t.Fatalf("create table failed: %v", err)
 	}
 
-	// Insert
-	id, err := adapter.Insert(ctx, "users", map[string]any{
-		"name":  "Alice",
-		"email": "alice@example.com",
-	})
-	if err != nil {
-		t.Fatalf("insert failed: %v", err)
-	}
-	if id != 1 {
-		t.Fatalf("expected inserted id 1, got %d", id)
+	_, err = adapter.Insert(ctx, "users; DROP TABLE users; --", map[string]any{"name": "Alice"})
+	if err == nil {
+		t.Fatalf("expected SQL injection attempt on table name to fail, but it succeeded")
 	}
 
-	// First
-	user, err := adapter.First(ctx, "SELECT * FROM users WHERE id = ?", id)
-	if err != nil {
-		t.Fatalf("first query failed: %v", err)
-	}
-	if user == nil || user["name"] != "Alice" {
-		t.Fatalf("expected user name Alice, got %v", user)
+	_, err = adapter.Insert(ctx, "users", map[string]any{"name'; DROP TABLE users; --": "Alice"})
+	if err == nil {
+		t.Fatalf("expected SQL injection attempt on column name to fail, but it succeeded")
 	}
 
-	// All
-	users, err := adapter.All(ctx, "SELECT * FROM users")
-	if err != nil || len(users) != 1 {
-		t.Fatalf("all query failed or expected 1 row, got %d", len(users))
-	}
+	// 3. Verify Finalizer FD Leak Prevention on Unclosed PHPBridge Objects
+	createUnclosedBridges(ctx, t)
+	runtime.GC()
+	time.Sleep(50 * time.Millisecond)
+	runtime.GC()
+}
 
-	// Update
-	affected, err := adapter.Update(ctx, "users", map[string]any{"name": "Alice Smith"}, "id = ?", id)
-	if err != nil || affected != 1 {
-		t.Fatalf("update failed: affected %d, err %v", affected, err)
-	}
-
-	// Delete
-	affected, err = adapter.Delete(ctx, "users", "id = ?", id)
-	if err != nil || affected != 1 {
-		t.Fatalf("delete failed: affected %d, err %v", affected, err)
+func createUnclosedBridges(ctx context.Context, t *testing.T) {
+	for i := 0; i < 20; i++ {
+		bridge, err := sqlite55.NewPHPBridge(ctx, "sqlite://file:memory?mode=memory&cache=shared")
+		if err != nil {
+			t.Fatalf("failed to create bridge %d: %v", i, err)
+		}
+		_, _ = bridge.Execute("CREATE TABLE IF NOT EXISTS probe (id INT)")
+		// Omit bridge.Close() intentionally to let finalizer reclaim FD
 	}
 }

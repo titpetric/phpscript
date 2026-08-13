@@ -4,14 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
+	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
+
+var validIdent = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 // Adapter wraps *sql.DB with user-friendly SQLite helpers and sensible defaults.
 type Adapter struct {
@@ -24,18 +29,31 @@ func Open(dsn string) (*Adapter, error) {
 	if dsn == "" {
 		dsn = "sqlite://file:memory?mode=memory&cache=shared"
 	}
-	cleanDSN := dsn
-	if !strings.HasPrefix(cleanDSN, "sqlite://") && !strings.HasPrefix(cleanDSN, "file:") && dsn != ":memory:" {
-		cleanDSN = fmt.Sprintf("%s?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=ON", dsn)
+
+	raw := dsn
+	if strings.HasPrefix(raw, "sqlite://") {
+		raw = strings.TrimPrefix(raw, "sqlite://")
 	}
 
-	driverDSN := strings.TrimPrefix(cleanDSN, "sqlite://")
-	db, err := sql.Open("sqlite", driverDSN)
+	if !strings.Contains(raw, "_foreign_keys=") {
+		if strings.Contains(raw, "?") {
+			raw += "&_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=ON"
+		} else {
+			raw += "?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=ON"
+		}
+	}
+
+	db, err := sql.Open("sqlite", raw)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite open error: %w", err)
 	}
 
-	// Pragma defaults with strict error checking
+	// Enforce connection limits to prevent FD leaks & pool exhaustion
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	// Execute PRAGMAs with strict error checking
 	pragmas := []string{
 		"PRAGMA journal_mode=WAL;",
 		"PRAGMA busy_timeout=5000;",
@@ -69,7 +87,9 @@ func (a *Adapter) Close() error {
 	if a == nil || a.db == nil {
 		return nil
 	}
-	return a.db.Close()
+	err := a.db.Close()
+	a.db = nil
+	return err
 }
 
 // Execute runs a DDL/DML statement and returns affected rows count.
@@ -93,6 +113,11 @@ func (a *Adapter) Insert(ctx context.Context, table string, data map[string]any)
 		return 0, fmt.Errorf("insert data cannot be empty")
 	}
 
+	quotedTable, err := sanitizeIdent(table)
+	if err != nil {
+		return 0, err
+	}
+
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -103,12 +128,16 @@ func (a *Adapter) Insert(ctx context.Context, table string, data map[string]any)
 	placeholders := make([]string, len(keys))
 	vals := make([]any, len(keys))
 	for i, k := range keys {
-		quotedCols[i] = quoteIdent(k)
+		qCol, err := sanitizeIdent(k)
+		if err != nil {
+			return 0, err
+		}
+		quotedCols[i] = qCol
 		placeholders[i] = "?"
 		vals[i] = data[k]
 	}
 
-	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", quoteIdent(table), strings.Join(quotedCols, ", "), strings.Join(placeholders, ", "))
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", quotedTable, strings.Join(quotedCols, ", "), strings.Join(placeholders, ", "))
 	res, err := a.db.ExecContext(ctx, query, vals...)
 	if err != nil {
 		return 0, fmt.Errorf("insert failed: %w", err)
@@ -118,18 +147,51 @@ func (a *Adapter) Insert(ctx context.Context, table string, data map[string]any)
 
 // First queries and returns a single row as a map[string]any, or nil if not found.
 func (a *Adapter) First(ctx context.Context, query string, args ...any) (map[string]any, error) {
-	q := query
-	if !strings.Contains(strings.ToUpper(q), "LIMIT") {
+	if a == nil || a.db == nil {
+		return nil, fmt.Errorf("sqlite adapter not connected")
+	}
+
+	q := strings.TrimRight(strings.TrimSpace(query), ";")
+	upper := strings.ToUpper(q)
+	if strings.HasPrefix(upper, "SELECT") && !strings.Contains(upper, " LIMIT ") && !strings.HasSuffix(upper, " LIMIT") {
 		q += " LIMIT 1"
 	}
-	rows, err := a.All(ctx, q, args...)
+
+	rows, err := a.db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("first query failed: %w", err)
 	}
-	if len(rows) == 0 {
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read columns: %w", err)
+	}
+
+	if !rows.Next() {
 		return nil, nil
 	}
-	return rows[0], nil
+
+	vals := make([]any, len(cols))
+	valPtrs := make([]any, len(cols))
+	for i := range vals {
+		valPtrs[i] = &vals[i]
+	}
+
+	if err := rows.Scan(valPtrs...); err != nil {
+		return nil, fmt.Errorf("row scan failed: %w", err)
+	}
+
+	rowMap := make(map[string]any, len(cols))
+	for i, col := range cols {
+		val := vals[i]
+		if b, ok := val.([]byte); ok {
+			rowMap[col] = string(b)
+		} else {
+			rowMap[col] = val
+		}
+	}
+	return rowMap, rows.Err()
 }
 
 // All queries and returns all matching rows as []map[string]any.
@@ -185,6 +247,11 @@ func (a *Adapter) Update(ctx context.Context, table string, data map[string]any,
 		return 0, fmt.Errorf("update data cannot be empty")
 	}
 
+	quotedTable, err := sanitizeIdent(table)
+	if err != nil {
+		return 0, err
+	}
+
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -194,12 +261,16 @@ func (a *Adapter) Update(ctx context.Context, table string, data map[string]any,
 	setClauses := make([]string, len(keys))
 	queryArgs := make([]any, 0, len(keys)+len(whereArgs))
 	for i, k := range keys {
-		setClauses[i] = fmt.Sprintf("%s = ?", quoteIdent(k))
+		qCol, err := sanitizeIdent(k)
+		if err != nil {
+			return 0, err
+		}
+		setClauses[i] = fmt.Sprintf("%s = ?", qCol)
 		queryArgs = append(queryArgs, data[k])
 	}
 	queryArgs = append(queryArgs, whereArgs...)
 
-	query := fmt.Sprintf("UPDATE %s SET %s", quoteIdent(table), strings.Join(setClauses, ", "))
+	query := fmt.Sprintf("UPDATE %s SET %s", quotedTable, strings.Join(setClauses, ", "))
 	if where != "" {
 		query += " WHERE " + where
 	}
@@ -217,7 +288,12 @@ func (a *Adapter) Delete(ctx context.Context, table string, where string, whereA
 		return 0, fmt.Errorf("sqlite adapter not connected")
 	}
 
-	query := fmt.Sprintf("DELETE FROM %s", quoteIdent(table))
+	quotedTable, err := sanitizeIdent(table)
+	if err != nil {
+		return 0, err
+	}
+
+	query := fmt.Sprintf("DELETE FROM %s", quotedTable)
 	if where != "" {
 		query += " WHERE " + where
 	}
@@ -264,7 +340,14 @@ func NewPHPBridge(ctx context.Context, dsn ...string) (*PHPBridge, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PHPBridge{adapter: adapter, ctx: ctx}, nil
+
+	bridge := &PHPBridge{adapter: adapter, ctx: ctx}
+	runtime.SetFinalizer(bridge, func(b *PHPBridge) {
+		if b != nil && b.adapter != nil {
+			_ = b.adapter.Close()
+		}
+	})
+	return bridge, nil
 }
 
 // PHPBridge provides methods exposed to PHP scripts.
@@ -317,12 +400,17 @@ func (b *PHPBridge) Delete(table string, where string, whereArgs ...any) (int64,
 
 // Close closes the underlying SQLite connection.
 func (b *PHPBridge) Close() error {
+	if b == nil || b.adapter == nil {
+		return nil
+	}
 	return b.adapter.Close()
 }
 
-func quoteIdent(s string) string {
-	clean := strings.ReplaceAll(s, `"`, `""`)
-	return `"` + clean + `"`
+func sanitizeIdent(s string) (string, error) {
+	if !validIdent.MatchString(s) {
+		return "", fmt.Errorf("invalid SQL identifier %q: must match ^[A-Za-z_][A-Za-z0-9_]*$", s)
+	}
+	return `"` + s + `"`, nil
 }
 
 func modelArrayToMap(val any) map[string]any {
