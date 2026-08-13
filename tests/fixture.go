@@ -37,6 +37,14 @@ var exprCache = runner.NewExprCache()
 var flatIncludeCache = flatstack.NewIncludeCache()
 var flatExprCache = flatstack.NewExprCache()
 
+// ResetCaches clears all global shared caches between test suites.
+func ResetCaches() {
+	includeCache.Clear()
+	exprCache.Clear()
+	flatIncludeCache.Clear()
+	flatExprCache.Clear()
+}
+
 func testPHPFS() fs.FS {
 	phpFSOnce.Do(func() {
 		var err error
