@@ -87,7 +87,7 @@ func TestHandlerRecordsPHPSpan(t *testing.T) {
 	}
 	id := request.Header().Get("Request-Id")
 	overview := httptest.NewRecorder()
-	h.ServeHTTP(overview, httptest.NewRequest(http.MethodGet, "/debug/server-status", nil))
+	h.ServeHTTP(overview, httptest.NewRequest(http.MethodGet, "/debug/server-status/log", nil))
 	if overview.Code != http.StatusOK || !strings.Contains(overview.Body.String(), "/debug/server-status/detail/"+id) || !strings.Contains(overview.Body.String(), "GET /spans.php") {
 		t.Fatalf("status = %d, body = %q", overview.Code, overview.Body.String())
 	}

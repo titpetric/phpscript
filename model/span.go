@@ -1,4 +1,4 @@
-package status
+package model
 
 import (
 	"context"
@@ -44,7 +44,7 @@ type RequestSpan struct {
 
 type requestKey struct{}
 
-func withRequest(ctx context.Context, request *Request) context.Context {
+func WithRequest(ctx context.Context, request *Request) context.Context {
 	return context.WithValue(ctx, requestKey{}, request)
 }
 
@@ -55,26 +55,5 @@ func Span(ctx context.Context, message string, flags ...Flag) {
 	if request == nil {
 		return
 	}
-	request.appendSpan(time.Now(), message, flags...)
-}
-
-func (r *Request) appendSpan(at time.Time, message string, flags ...Flag) {
-	span := RequestSpan{
-		ID:      len(r.Spans) + 1,
-		Time:    at,
-		Type:    SpanType.Internal,
-		Message: template.HTML(message),
-	}
-	for _, flag := range flags {
-		switch flag {
-		case OpenSpan:
-			span.Open = true
-		case CloseSpan:
-			span.Close = true
-		case "":
-		default:
-			span.Type = flag
-		}
-	}
-	r.Spans = append(r.Spans, span)
+	request.AppendSpan(time.Now(), message, flags...)
 }

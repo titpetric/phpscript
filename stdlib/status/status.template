@@ -5,8 +5,11 @@
     <title>phpscript server status</title>
     <style>{{ .StyleCSS }}</style>
 </head>
+<body>
 
-<body><h1>phpscript server status</h1><div class="metrics">
+<h1>phpscript server status</h1>
+
+<div class="metrics">
 <div>
 <b>Uptime</b><br>{{duration .Uptime}}</div>
 <div>
@@ -18,8 +21,15 @@
 <div>
 <b>Pool estimate</b><br>{{.Pool.BeforeNextGC}} before GC / {{.Pool.WithinMemoryLimit}} within limit</div>
 </div>
+
 <p>PID {{.PID}} · {{.GoVersion}} · GOMAXPROCS {{.GOMAXPROCS}} · {{.Goroutines}} goroutines</p>
-<nav class="tabs"><a href="/debug/server-status"{{if eq .View "overview"}} class="active"{{end}}>Overview</a><a href="/debug/server-status/live"{{if eq .View "live"}} class="active"{{end}}>Processes</a><a href="/debug/server-status/log"{{if eq .View "log"}} class="active"{{end}}>Log</a><a href="/debug/server-status/stats"{{if eq .View "stats"}} class="active"{{end}}>Statistics</a>
+
+
+<nav class="tabs">
+<a href="/debug/server-status"{{if eq .View "overview"}} class="active"{{end}}>Overview</a>
+<a href="/debug/server-status/live"{{if eq .View "live"}} class="active"{{end}}>Processes</a>
+<a href="/debug/server-status/log"{{if eq .View "log"}} class="active"{{end}}>Log</a>
+<a href="/debug/server-status/stats"{{if eq .View "stats"}} class="active"{{end}}>Statistics</a>
 </nav>
 {{if or (eq .View "live") (eq .View "overview")}}
 <section>
@@ -33,26 +43,54 @@
 <h2>Lifetime request state time</h2><div class="state-bar" aria-label="Lifetime request state time">{{range .StateTime}}<span class="{{stateClass .Label}}" style="{{stateWidth .Share}}" title="{{.Label}}: {{duration .Duration}} ({{printf "%.2f" .Share}}%)"></span>{{end}}</div>
 <div class="state-legend">{{range .StateTime}}<span><i class="{{stateClass .Label}}"></i><b>{{.Label}} ({{.State}})</b> {{duration .Duration}} · {{printf "%.2f" .Share}}%</span>{{else}}<span>No request state time observed.</span>{{end}}</div>
 <p><small>Aggregated across all requests since server start. Concurrent request time is cumulative and may exceed uptime.</small></p></section>{{end}}
-{{if eq .View "overview"}}
-<section><h2>Request log</h2><table><thead><tr><th>Request ID</th><th>Request</th><th>Hostname</th><th>Filename</th><th>Included</th><th>HTTP</th><th>Duration</th><th>Bytes</th><th>Heap Δ</th><th>Allocated</th><th>Objects</th><th>GC / pause</th><th>Remote</th></tr></thead><tbody>
-{{range .Log}}<tr><td><a href="/debug/server-status/detail/{{.ID}}">{{.ID}}</a></td><td>{{.Request}}</td><td>{{.Hostname}}</td><td>{{.Filename}}</td><td>{{included .IncludedFiles}}</td><td>{{.ResponseStatus}}</td><td>{{duration .Duration}}</td><td>{{.ResponseBytes}}</td><td>{{bytes .HeapDelta}}</td><td>{{bytes .AllocatedBytes}}</td><td>{{.Allocations}}</td><td>{{.GCCycles}} / {{duration .GCPause}}</td><td>{{.RemoteAddress}}</td></tr>{{else}}<tr><td colspan="13">No completed requests in the rolling log.</td></tr>{{end}}
-</tbody></table></section>
-{{end}}
+
 {{if eq .View "log"}}
-<section><nav class="tabs"><a href="/debug/server-status/log?limit=20"{{if eq .Limit 20}} class="active"{{end}}>20</a><a href="/debug/server-status/log?limit=50"{{if eq .Limit 50}} class="active"{{end}}>50</a><a href="/debug/server-status/log?limit=100"{{if eq .Limit 100}} class="active"{{end}}>100</a></nav><table><thead><tr><th>Request ID</th><th>Request</th><th>Hostname</th><th>Filename</th><th>Included</th><th>HTTP</th><th>Duration</th><th>Bytes</th><th>Heap Δ</th><th>Allocated</th><th>Objects</th><th>GC / pause</th><th>Remote</th></tr></thead><tbody>
-{{range .Log}}<tr><td><a href="/debug/server-status/detail/{{.ID}}">{{.ID}}</a></td><td>{{.Request}}</td><td>{{.Hostname}}</td><td>{{.Filename}}</td><td>{{included .IncludedFiles}}</td><td>{{.ResponseStatus}}</td><td>{{duration .Duration}}</td><td>{{.ResponseBytes}}</td><td>{{bytes .HeapDelta}}</td><td>{{bytes .AllocatedBytes}}</td><td>{{.Allocations}}</td><td>{{.GCCycles}} / {{duration .GCPause}}</td><td>{{.RemoteAddress}}</td></tr>{{else}}<tr><td colspan="13">No completed requests in the rolling log.</td></tr>{{end}}
-</tbody></table></section>{{end}}
+<section>
+<nav class="tabs">
+<a href="/debug/server-status/log?limit=20"{{if eq .Limit 20}} class="active"{{end}}>20</a>
+<a href="/debug/server-status/log?limit=50"{{if eq .Limit 50}} class="active"{{end}}>50</a>
+<a href="/debug/server-status/log?limit=100"{{if eq .Limit 100}} class="active"{{end}}>100</a>
+</nav>
+
+<table>
+<thead><tr><th>Request ID</th><th>Request</th><th>Hostname</th><th>Filename</th><th>Included</th><th>HTTP</th><th>Duration</th><th>Bytes</th><th>Heap Δ</th><th>Allocated</th><th>Objects</th><th>GC / pause</th><th>Remote</th></tr></thead>
+<tbody>
+  {{range .Log}}
+    <tr><td><a href="/debug/server-status/detail/{{.ID}}">{{.ID}}</a></td><td>{{.Request}}</td><td>{{.Hostname}}</td><td>{{.Filename}}</td><td>{{included .IncludedFiles}}</td><td>{{.ResponseStatus}}</td><td>{{duration .Duration}}</td><td>{{.ResponseBytes}}</td><td>{{bytes .HeapDelta}}</td><td>{{bytes .AllocatedBytes}}</td><td>{{.Allocations}}</td><td>{{.GCCycles}} / {{duration .GCPause}}</td><td>{{.RemoteAddress}}</td></tr>{{else}}<tr><td colspan="13">No completed requests in the rolling log.</td></tr>
+  {{end}}
+</tbody>
+</table>
+
+</section>
+{{end}}
+
 {{if eq .View "stats"}}
-<section><p>Top {{.Statistics.TopLimit}} requests from the rolling window of {{.Statistics.WindowSize}} / {{.Statistics.WindowLimit}} completed requests.</p><table><thead><tr><th>Share</th><th>Count</th><th>Request</th><th>Hostname</th><th>Filename</th><th>Average included</th><th>Average time</th><th>Average bytes</th><th>Average allocated</th></tr></thead><tbody>
-{{range .Statistics.Top}}
-<tr><td class="share"><meter min="0" max="100" value="{{printf "%.2f" .Share}}"></meter>{{printf "%.2f" .Share}}%</td><td>{{.Count}}</td><td>{{.Request}}</td><td>{{.Hostname}}</td><td>{{.Filename}}</td><td>{{averageIncluded .AverageIncludedFiles}}</td><td>{{duration .AverageDuration}}</td><td>{{bytes .AverageResponseBytes}}</td><td>{{bytes .AverageAllocatedBytes}}</td></tr>{{else}}<tr><td colspan="9">No completed requests in the rolling window.</td></tr>{{end}}
-</tbody></table></section>{{end}}
+<section>
+  <p>Top {{.Statistics.TopLimit}} requests from the rolling window of {{.Statistics.WindowSize}} / {{.Statistics.WindowLimit}} completed requests.</p>
+
+  <table>
+    <thead><tr><th>Share</th><th>Count</th><th>Request</th><th>Hostname</th><th>Filename</th><th>Average included</th><th>Average time</th><th>Average bytes</th><th>Average allocated</th></tr></thead>
+    <tbody>
+      {{range .Statistics.Top}}
+        <tr><td class="share"><meter min="0" max="100" value="{{printf "%.2f" .Share}}"></meter>{{printf "%.2f" .Share}}%</td><td>{{.Count}}</td><td>{{.Request}}</td><td>{{.Hostname}}</td><td>{{.Filename}}</td><td>{{averageIncluded .AverageIncludedFiles}}</td><td>{{duration .AverageDuration}}</td><td>{{bytes .AverageResponseBytes}}</td><td>{{bytes .AverageAllocatedBytes}}</td></tr>{{else}}<tr><td colspan="9">No completed requests in the rolling window.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+
+</section>
+{{end}}
+
 {{if eq .View "detail"}}
-<section><p><a href="/debug/server-status/log">← Request log</a></p><h2>{{.Detail.Request}}</h2><p>Request ID <code>{{.Detail.ID}}</code> · HTTP {{.Detail.ResponseStatus}} · {{duration .Detail.Duration}}</p>
-<table><thead><tr><th>Type</th><th>Time</th><th>Duration</th><th>Message</th></tr></thead><tbody>
-{{range .SpanRows}}
-<tr><td><span class="span-type" style="{{spanTypeStyle .Type}}">{{.Type}}</span></td><td>{{duration .Offset}}</td><td>{{if .HasDuration}}{{duration .Duration}}{{end}}</td><td style="{{spanBorder .Type}}"><span class="span-message" style="{{spanIndent .Depth}}"><i class="span-bullet" style="{{spanColor .Depth}}"></i>{{.Message}}</span></td></tr>{{else}}<tr><td colspan="4">No spans recorded.</td></tr>{{end}}
-</tbody></table></section>{{end}}
+  <section><p><a href="/debug/server-status/log">← Request log</a></p><h2>{{.Detail.Request}}</h2><p>Request ID <code>{{.Detail.ID}}</code> · HTTP {{.Detail.ResponseStatus}} · {{duration .Detail.Duration}}</p>
+  <table><thead><tr><th>Type</th><th>Time</th><th>Duration</th><th>Message</th></tr></thead><tbody>
+  {{range .SpanRows}}
+    <tr><td><span class="span-type" style="{{spanTypeStyle .Type}}">{{.Type}}</span></td><td>{{duration .Offset}}</td><td>{{if .HasDuration}}{{duration .Duration}}{{end}}</td><td style="{{spanBorder .Type}}"><span class="span-message" style="{{spanIndent .Depth}}"><i class="span-bullet" style="{{spanColor .Depth}}"></i>{{.Message}}</span></td></tr>{{else}}<tr><td colspan="4">No spans recorded.</td></tr>
+  {{end}}
+  </tbody></table></section>
+{{end}}
+
 <p><small>Per-request memory deltas are process-wide and may overlap when requests run concurrently.</small></p>
-</body></html>
+
+</body>
+</html>
 

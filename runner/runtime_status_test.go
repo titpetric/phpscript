@@ -6,15 +6,22 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/titpetric/phpscript/model"
 )
 
 type statusRecorder struct {
-	statuses  []Status
+	statuses  []model.Status
 	filenames []string
+	traces    []string
 	included  []int
 }
 
-func (r *statusRecorder) UpdateStatus(_ context.Context, status Status) {
+func (r *statusRecorder) Trace(_ context.Context, message string) {
+	r.traces = append(r.traces, message)
+}
+
+func (r *statusRecorder) UpdateStatus(_ context.Context, status model.Status) {
 	r.statuses = append(r.statuses, status)
 }
 
@@ -38,7 +45,7 @@ func TestRuntimeObserverReceivesExecutionPhases(t *testing.T) {
 	if err := rt.Run(program); err != nil {
 		t.Fatal(err)
 	}
-	want := []Status{StatusStarting, StatusReading, StatusProcessing, StatusWriting}
+	want := []model.Status{model.StatusStarting, model.StatusReading, model.StatusProcessing, model.StatusWriting}
 	if !reflect.DeepEqual(recorder.statuses, want) {
 		t.Fatalf("statuses = %q, want %q", recorder.statuses, want)
 	}
@@ -51,7 +58,7 @@ func TestRuntimeObserverReceivesParseError(t *testing.T) {
 	if _, err := rt.Load(`<?php echo ;`); err == nil {
 		t.Fatal("expected parse error")
 	}
-	if got := recorder.statuses[len(recorder.statuses)-1]; got != StatusError {
+	if got := recorder.statuses[len(recorder.statuses)-1]; got != model.StatusError {
 		t.Fatalf("last status = %q, want E", got)
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
@@ -38,10 +39,10 @@ func (rt *Runtime) SetIncludeResolver(fn IncludeFunc) { rt.include = fn }
 
 // Load parses PHP source into a program.
 func (rt *Runtime) Load(src string) (*model.Program, error) {
-	rt.UpdateStatus(StatusReading)
+	rt.UpdateStatus(model.StatusReading)
 	program, err := parser.Parse(src)
 	if err != nil {
-		rt.UpdateStatus(StatusError)
+		rt.UpdateStatus(model.StatusError)
 	}
 	return program, err
 }
@@ -49,15 +50,15 @@ func (rt *Runtime) Load(src string) (*model.Program, error) {
 // LoadFile reads and parses a PHP file from the runtime source FS.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 	rt.UpdateFilename(path)
-	rt.UpdateStatus(StatusReading)
+	rt.UpdateStatus(model.StatusReading)
 	if rt.opts.RootFS == nil {
-		rt.UpdateStatus(StatusError)
+		rt.UpdateStatus(model.StatusError)
 		return nil, fmt.Errorf("load %q: no source FS configured", path)
 	}
 	cleanPath := rt.resolveFSPath(path)
 	b, err := fs.ReadFile(rt.opts.RootFS, cleanPath)
 	if err != nil {
-		rt.UpdateStatus(StatusError)
+		rt.UpdateStatus(model.StatusError)
 		return nil, fmt.Errorf("load %q: %w", path, err)
 	}
 	prog, err := rt.Load(string(b))
@@ -72,19 +73,19 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 	defer func() {
 		err = combineErrors(err, rt.runShutdown())
 	}()
-	rt.UpdateStatus(StatusProcessing)
+	rt.UpdateStatus(model.StatusProcessing)
 	if rt.flat {
 		if handled, flatErr := rt.runFlat(p); handled {
 			err = flatErr
 			if err != nil {
-				rt.UpdateStatus(StatusError)
+				rt.UpdateStatus(model.StatusError)
 			}
 			return err
 		}
 	}
 	err = rt.runInterpreted(p)
 	if err != nil {
-		rt.UpdateStatus(StatusError)
+		rt.UpdateStatus(model.StatusError)
 	}
 	return err
 }
@@ -146,7 +147,7 @@ func (rt *Runtime) hoist(stmts []model.Stmt) error {
 // exec runs a statement list, propagating return flow.
 func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 	for _, s := range stmts {
-		rt.UpdateStatus(StatusProcessing)
+		rt.UpdateStatus(model.StatusProcessing)
 		val, fl, err := rt.execOne(s, scope)
 		if err != nil {
 			if _, ok := IsExit(err); ok {
@@ -168,7 +169,7 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	switch n := s.(type) {
 	case *model.InlineHTML:
-		rt.UpdateStatus(StatusWriting)
+		rt.UpdateStatus(model.StatusWriting)
 		_, err := io.WriteString(rt.out, n.Text)
 		return nil, flowNormal, err
 
@@ -178,7 +179,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 			if err != nil {
 				return nil, flowNormal, err
 			}
-			rt.UpdateStatus(StatusWriting)
+			rt.UpdateStatus(model.StatusWriting)
 			if _, err := io.WriteString(rt.out, phpString(v)); err != nil {
 				return nil, flowNormal, err
 			}
@@ -453,7 +454,17 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	return rt.includeFile(phpString(path), scope)
 }
 
+func (rt *Runtime) trace(message string) func() {
+	started := time.Now()
+	return func() {
+		duration := float64(time.Since(started)) / float64(time.Millisecond)
+		rt.Trace(fmt.Sprintf("<b>%.4f ms</b> - %s", duration, message))
+	}
+}
+
 func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
+	defer rt.trace(fmt.Sprintf("include <code>%s</code>", path))()
+
 	prog, filename, err := rt.resolveInclude(path)
 	if err != nil {
 		return nil, fmt.Errorf("error including %s: %w", path, err)
