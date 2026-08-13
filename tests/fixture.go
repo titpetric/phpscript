@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/titpetric/phpscript/flatstack"
@@ -28,6 +29,8 @@ import (
 var fixturesFS embed.FS
 
 var phpFS fs.FS
+var phpFSOnce sync.Once
+
 var includeCache = runner.NewIncludeCache()
 var exprCache = runner.NewExprCache()
 
@@ -35,13 +38,13 @@ var flatIncludeCache = flatstack.NewIncludeCache()
 var flatExprCache = flatstack.NewExprCache()
 
 func testPHPFS() fs.FS {
-	if phpFS == nil {
+	phpFSOnce.Do(func() {
 		var err error
 		phpFS, err = fs.Sub(fixturesFS, "fixtures")
 		if err != nil {
 			panic(err)
 		}
-	}
+	})
 	return phpFS
 }
 
@@ -103,7 +106,8 @@ type TestResult struct {
 
 // ParseFixture splits a .phpt file into its three sections and parses the YAML metadata.
 func ParseFixture(data []byte, path ...string) (*Fixture, error) {
-	parts := strings.SplitN(string(data), "\n---\n", 3)
+	normalized := strings.ReplaceAll(string(data), "\r\n", "\n")
+	parts := strings.SplitN(normalized, "\n---\n", 3)
 	if len(parts) != 3 {
 		return nil, errors.New("malformed .phpt: want <yaml>---<php>---<output>")
 	}
@@ -230,7 +234,7 @@ func RunFixture(ctx context.Context, f *Fixture) *TestResult {
 
 	out, reqCtx, runErr := executeFixturePHP(ctx, f)
 	res.GotOutput = out
-	res.WantOutput = strings.TrimRight(f.Expected, "\n")
+	res.WantOutput = strings.TrimSuffix(f.Expected, "\n")
 	res.DurationMs = time.Since(start).Milliseconds()
 
 	if f.Error != "" {
@@ -266,7 +270,7 @@ func RunFixture(ctx context.Context, f *Fixture) *TestResult {
 	}
 
 	// Compare stdout
-	gotTrim := strings.TrimRight(out, "\n")
+	gotTrim := strings.TrimSuffix(out, "\n")
 	if gotTrim != res.WantOutput {
 		res.Passed = false
 		res.FailureReason = fmt.Sprintf("output mismatch:\n  got:  %q\n  want: %q", gotTrim, res.WantOutput)
@@ -288,7 +292,7 @@ func RunFixture(ctx context.Context, f *Fixture) *TestResult {
 			res.FailureReason = fmt.Sprintf("[flatstack] unexpected error: %v", flatErr)
 			return res
 		} else {
-			flatTrim := strings.TrimRight(flatOut, "\n")
+			flatTrim := strings.TrimSuffix(flatOut, "\n")
 			if flatTrim != res.WantOutput {
 				res.Passed = false
 				res.FailureReason = fmt.Sprintf("[flatstack] output mismatch:\n  got:  %q\n  want: %q", flatTrim, res.WantOutput)
@@ -409,6 +413,21 @@ func buildFixtureRequestContext(f *Fixture) runner.Context {
 	if reqCtx.Headers == nil {
 		reqCtx.Headers = make(map[string]string)
 	}
+	if reqCtx.Server == nil {
+		reqCtx.Server = make(map[string]string)
+	}
+
+	// Populate standard $_SERVER environment
+	reqCtx.Server["REQUEST_METHOD"] = "GET"
+	reqCtx.Server["REQUEST_URI"] = "/"
+	reqCtx.Server["QUERY_STRING"] = ""
+	reqCtx.Server["HTTP_HOST"] = "localhost"
+	reqCtx.Server["SERVER_PROTOCOL"] = "HTTP/1.1"
+
+	for k, v := range reqCtx.Headers {
+		key := "HTTP_" + strings.ToUpper(strings.ReplaceAll(k, "-", "_"))
+		reqCtx.Server[key] = v
+	}
 
 	// Parse args
 	if f.Request.Args != nil {
@@ -463,9 +482,7 @@ func WriteJSONReport(w io.Writer, results []*TestResult) error {
 	})
 }
 
-// WriteHTMLReport outputs an HTML report of the test results.
-func WriteHTMLReport(w io.Writer, results []*TestResult) error {
-	const htmlTpl = `<!DOCTYPE html>
+var htmlReportTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="utf-8">
@@ -513,8 +530,10 @@ func WriteHTMLReport(w io.Writer, results []*TestResult) error {
 		</tbody>
 	</table>
 </body>
-</html>`
+</html>`))
 
+// WriteHTMLReport outputs an HTML report of the test results.
+func WriteHTMLReport(w io.Writer, results []*TestResult) error {
 	var passed, failed int
 	for _, r := range results {
 		if r.Passed {
@@ -524,12 +543,7 @@ func WriteHTMLReport(w io.Writer, results []*TestResult) error {
 		}
 	}
 
-	tmpl, err := template.New("report").Parse(htmlTpl)
-	if err != nil {
-		return err
-	}
-
-	return tmpl.Execute(w, map[string]any{
+	return htmlReportTemplate.Execute(w, map[string]any{
 		"Total":   len(results),
 		"Passed":  passed,
 		"Failed":  failed,

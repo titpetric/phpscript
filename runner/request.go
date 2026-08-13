@@ -125,14 +125,12 @@ func (c Context) Register(rt *Runtime) {
 	rt.SetGlobal("_ENV", mapToArray(c.Env))
 	rt.SetGlobal("_PATH", mapToArray(c.Path))
 
-	if len(c.Argv) > 0 {
-		arr := model.NewArray()
-		for i, arg := range c.Argv {
-			arr.Set(int64(i), arg)
-		}
-		rt.SetGlobal("argv", arr)
-		rt.SetGlobal("argc", int64(len(c.Argv)))
+	argvArr := model.NewArray()
+	for i, arg := range c.Argv {
+		argvArr.Set(int64(i), arg)
 	}
+	rt.SetGlobal("argv", argvArr)
+	rt.SetGlobal("argc", int64(len(c.Argv)))
 }
 
 // GetAllHeaders implements PHP getallheaders(): an associative array of the
@@ -193,6 +191,9 @@ func (c Context) ResponseStatus() int {
 // alphabetical key order (Go map iteration is random; PHP callers expect a
 // deterministic shape).
 func mapToArray(m map[string]string) *model.Array {
+	if len(m) == 0 {
+		return model.NewArray()
+	}
 	arr := model.NewArray()
 	keys := make([]string, 0, len(m))
 	for k := range m {
