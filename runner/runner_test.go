@@ -3,6 +3,7 @@ package runner_test
 import (
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -85,6 +86,25 @@ func TestForwardedFunction(t *testing.T) {
 	got := run(t, `<?php echo strtoupper("abc") . strlen("hello");`)
 	if got != "ABC5" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestAssignExportedGoField(t *testing.T) {
+	type host struct {
+		EnableTracing bool
+	}
+	instance := &host{}
+	prog, err := parser.Parse(`<?php $host = new Host; $host->EnableTracing = true;`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	rt := runner.New(io.Discard, runner.Options{})
+	rt.RegisterConstructor("Host", func() *host { return instance })
+	if err := rt.Run(prog); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if !instance.EnableTracing {
+		t.Fatal("EnableTracing was not mutated")
 	}
 }
 

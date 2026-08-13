@@ -68,9 +68,11 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 }
 
 // Run executes a whole program in the global scope.
-func (rt *Runtime) Run(p *model.Program) error {
+func (rt *Runtime) Run(p *model.Program) (err error) {
+	defer func() {
+		err = combineErrors(err, rt.runShutdown())
+	}()
 	rt.UpdateStatus(StatusProcessing)
-	var err error
 	if rt.flat {
 		if handled, flatErr := rt.runFlat(p); handled {
 			err = flatErr
@@ -91,6 +93,10 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 	scope := NewScope()
 	for name, val := range rt.globals {
 		scope.Set(name, val)
+	}
+	if rt.entrypoint != "" {
+		scope.Set("__FILE__", rt.entrypoint)
+		scope.Set("__DIR__", path.Dir(rt.entrypoint))
 	}
 	// Hoist declarations so functions/classes are callable before their textual
 	// position (PHP semantics for top-level function/class definitions).
@@ -454,6 +460,8 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	}
 	rt.included = append(rt.included, filename)
 	rt.UpdateIncludedFiles(len(rt.included))
+	restoreFile := setScopeFile(scope, filename)
+	defer restoreFile()
 	if err := rt.hoist(prog.Stmts); err != nil {
 		return nil, err
 	}
@@ -469,6 +477,25 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	// PHP include/require constructs evaluate to 1 when the included file
 	// reaches its end without an explicit return.
 	return int64(1), nil
+}
+
+func setScopeFile(scope *Scope, filename string) func() {
+	previousFile, hadFile := scope.Get("__FILE__")
+	previousDir, hadDir := scope.Get("__DIR__")
+	scope.Set("__FILE__", filename)
+	scope.Set("__DIR__", path.Dir(filename))
+	return func() {
+		if hadFile {
+			scope.Set("__FILE__", previousFile)
+		} else {
+			delete(scope.vars, "__FILE__")
+		}
+		if hadDir {
+			scope.Set("__DIR__", previousDir)
+		} else {
+			delete(scope.vars, "__DIR__")
+		}
+	}
 }
 
 func (rt *Runtime) autoload(class string, scope *Scope) error {
@@ -592,12 +619,13 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		if err != nil {
 			return err
 		}
-		obj, ok := base.(*model.Object)
-		if !ok {
-			return fmt.Errorf("assign: %q is not an object property", tgt.Name)
+		if obj, ok := base.(*model.Object); ok {
+			obj.Props[tgt.Name] = applyAssignOp(n.Op, obj.Props[tgt.Name], rhs)
+			return nil
 		}
-		obj.Props[tgt.Name] = applyAssignOp(n.Op, obj.Props[tgt.Name], rhs)
-		return nil
+		return assignGoField(base, tgt.Name, func(current any) any {
+			return applyAssignOp(n.Op, current, rhs)
+		})
 
 	case *model.Index:
 		base, err := rt.Eval(tgt.Base, scope)
@@ -676,12 +704,11 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 		if err != nil {
 			return err
 		}
-		obj, ok := base.(*model.Object)
-		if !ok {
-			return fmt.Errorf("assign: %q is not an object property", tgt.Name)
+		if obj, ok := base.(*model.Object); ok {
+			obj.Props[tgt.Name] = val
+			return nil
 		}
-		obj.Props[tgt.Name] = val
-		return nil
+		return assignGoField(base, tgt.Name, func(any) any { return val })
 	case *model.Index:
 		base, err := rt.Eval(tgt.Base, scope)
 		if err != nil {
@@ -704,6 +731,33 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	default:
 		return fmt.Errorf("assign: unsupported list() element %T", target)
 	}
+}
+
+func assignGoField(base any, name string, value func(any) any) error {
+	rv := reflect.ValueOf(base)
+	if !rv.IsValid() || (rv.Kind() == reflect.Pointer && rv.IsNil()) {
+		return fmt.Errorf("assign: %q is not an object property", name)
+	}
+	object := reflect.Indirect(rv)
+	if object.Kind() != reflect.Struct {
+		return fmt.Errorf("assign: %q is not an object property", name)
+	}
+	field := object.FieldByName(name)
+	if !field.IsValid() {
+		field = object.FieldByNameFunc(func(fieldName string) bool {
+			return strings.EqualFold(fieldName, name)
+		})
+	}
+	if !field.IsValid() || !field.CanSet() || !field.CanInterface() {
+		return fmt.Errorf("assign: %q is not a writable object property", name)
+	}
+	raw := value(field.Interface())
+	next := coerceArg(raw, field.Type())
+	if !next.IsValid() || !next.Type().AssignableTo(field.Type()) {
+		return fmt.Errorf("assign: cannot assign %T to property %q", raw, name)
+	}
+	field.Set(next)
+	return nil
 }
 
 // applyAssignOp resolves compound-assignment operators against the current value.
@@ -748,11 +802,17 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// invokeClosure runs an anonymous function in a fresh scope. minitpl's closures
-// capture nothing, so no enclosing scope is threaded in.
-func (rt *Runtime) invokeClosure(cl *model.Closure, args []any) (any, error) {
+// invokeClosure runs an anonymous function in a fresh scope. User variables are
+// not captured, but lexical magic constants retain their defining filename.
+func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, filename, directory any) (any, error) {
 	scope := NewScope()
 	scope.Set(argsKey, args)
+	if filename != nil {
+		scope.Set("__FILE__", filename)
+	}
+	if directory != nil {
+		scope.Set("__DIR__", directory)
+	}
 	decl := &model.FuncDecl{Params: cl.Params, Body: cl.Body}
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
@@ -771,6 +831,20 @@ func (rt *Runtime) runDeferred(scope *Scope, mark int) error {
 		callback := scope.deferred[i]
 		scope.deferred[i] = nil
 		scope.deferred = scope.deferred[:i]
+		if _, err := rt.invokeWithScopeContext(callback, nil, scope); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return combineErrors(errs...)
+}
+
+func (rt *Runtime) runShutdown() error {
+	var errs []error
+	scope := NewScope()
+	for len(rt.shutdown) > 0 {
+		callback := rt.shutdown[0]
+		rt.shutdown[0] = nil
+		rt.shutdown = rt.shutdown[1:]
 		if _, err := rt.invokeWithScopeContext(callback, nil, scope); err != nil {
 			errs = append(errs, err)
 		}
