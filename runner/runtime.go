@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"maps"
 	"os"
+	"path"
 	goruntime "runtime"
 	"sort"
 	"strings"
@@ -60,6 +61,7 @@ type Runtime struct {
 	errorHandler func(error)
 	include      IncludeFunc
 	globals      map[string]any
+	shutdown     []any
 
 	// constants holds PHP constants (define()/named T_* etc.). Unlike globals,
 	// constants are visible in every scope — including inside functions and
@@ -255,6 +257,8 @@ func (rt *Runtime) UpdateFilename(filename string) {
 		return
 	}
 	rt.entrypoint = filename
+	rt.SetConst("__FILE__", filename)
+	rt.SetConst("__DIR__", path.Dir(filename))
 	for _, observer := range rt.observers {
 		if filenameObserver, ok := observer.(FilenameObserver); ok {
 			filenameObserver.UpdateFilename(rt.ctx, filename)
@@ -319,6 +323,12 @@ func (rt *Runtime) SetGlobal(name string, val any) {
 // and methods — unlike globals, which PHP confines to the global scope.
 func (rt *Runtime) SetConst(name string, val any) {
 	rt.constants[name] = val
+}
+
+// RegisterShutdown appends a callback to run when the current program exits.
+// Shutdown callbacks run in registration order, including after exit or error.
+func (rt *Runtime) RegisterShutdown(callback any) {
+	rt.shutdown = append(rt.shutdown, callback)
 }
 
 // Const returns a registered constant value and whether it is defined.
@@ -503,7 +513,11 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	// identifier) so transpiled code can pass them, e.g. usort's comparator.
 	for id, cl := range ce.closures {
 		decl := cl
-		base[id] = adapt(func(args ...any) (any, error) { return rt.invokeClosure(decl, args) })
+		filename, _ := scope.Get("__FILE__")
+		directory, _ := scope.Get("__DIR__")
+		base[id] = adapt(func(args ...any) (any, error) {
+			return rt.invokeClosure(decl, args, filename, directory)
+		})
 	}
 	base["__eval"] = adapt(rt.helperEval(scope, ce.exprs))
 
