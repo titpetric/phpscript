@@ -14,3 +14,6 @@ status:
     ring_buffer_size: 100
     top_requests: 20
     track_memory_use: true
+
+env:
+  - "PLATFORM_DB_SQLITE_TEST=sqlite://:memory:"

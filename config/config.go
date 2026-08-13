@@ -1,10 +1,15 @@
-// Package config defines the phpscript.yml configuration model.
+// Package config defines the config/config.yml configuration model.
 package config
 
 import (
+	_ "embed"
+
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/status"
 )
+
+//go:embed config.yml
+var DefaultRuntimeConfig []byte
 
 // Config configures phpscript runtimes and HTTP modules.
 type Config struct {
@@ -12,6 +17,7 @@ type Config struct {
 	Flatstack Flatstack      `yaml:"flatstack"`
 	Routes    Routes         `yaml:"routes"`
 	Status    Status         `yaml:"status"`
+	Env       []string       `yaml:"env"`
 }
 
 // Flatstack selects the flat bytecode runtime when enabled.

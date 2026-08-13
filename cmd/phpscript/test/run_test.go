@@ -7,7 +7,12 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/cmd/phpscript/test"
+	"github.com/titpetric/phpscript/tests"
 )
+
+func TestMain(m *testing.M) {
+	tests.TestMain(m)
+}
 
 func TestRunCommand(t *testing.T) {
 	ctx := context.Background()

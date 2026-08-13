@@ -8,6 +8,7 @@ Regenerate it after changing runtime or standard-library registrations.
 ## PS namespace
 
 - `PS\Database` (class)
+- `PS\DatabaseClient` (class)
 - `PS\SharedMemory` (class)
 
 ## Arrays

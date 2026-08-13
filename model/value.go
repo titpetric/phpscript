@@ -1,5 +1,7 @@
 package model
 
+import "fmt"
+
 // PHP runtime values are represented with plain Go types so that they flow
 // transparently in and out of the expr-lang VM (which works against native Go
 // values and reflection):
@@ -65,6 +67,16 @@ func (a *Array) Range(fn func(key, val any) bool) {
 			return
 		}
 	}
+}
+
+// Map returns the array as a string-keyed map for Go APIs that accept named
+// values. PHP integer keys are represented by their decimal string form.
+func (a *Array) Map() map[string]any {
+	result := make(map[string]any, len(a.keys))
+	for _, key := range a.keys {
+		result[fmt.Sprint(key)] = a.values[key]
+	}
+	return result
 }
 
 // Clear removes all entries and resets list indexing.

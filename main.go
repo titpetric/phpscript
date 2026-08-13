@@ -5,7 +5,9 @@ import (
 	"log"
 
 	"github.com/goccy/go-yaml"
+
 	"github.com/titpetric/cli"
+	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/cmd/phpscript/ast"
 	"github.com/titpetric/phpscript/cmd/phpscript/fmt"
@@ -22,9 +24,6 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-//go:embed phpscript.yml
-var configData []byte
-
 func main() {
 	if err := start(); err != nil {
 		log.Fatalf("Unexpected error: %v", err)
@@ -36,6 +35,8 @@ func start() error {
 	if err != nil {
 		return err
 	}
+
+	platform.SetupConnections(appConfig.Env)
 
 	app := cli.NewApp("phpscript")
 	app.AddCommand("ast", ast.Name, ast.NewCommand)
@@ -63,8 +64,8 @@ func start() error {
 
 func loadConfig() (config.Config, error) {
 	result := config.New()
-	if err := yaml.Unmarshal(configData, &result); err != nil {
-		log.Printf("Could not parse phpscript.yml: %v", err)
+	if err := yaml.Unmarshal(config.DefaultRuntimeConfig, &result); err != nil {
+		log.Printf("Could not parse default runtime config: %v", err)
 		return result, err
 	}
 	return result, nil

@@ -12,6 +12,16 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
+type snakeCaseMethodHost struct{}
+
+func (*snakeCaseMethodHost) GetAll(context.Context) (any, error) {
+	return "all", nil
+}
+
+func (*snakeCaseMethodHost) AffectedRows(context.Context) (any, error) {
+	return "affected", nil
+}
+
 // run parses src, wires a tiny shim stdlib, executes, and returns the output.
 func run(t *testing.T, src string) string {
 	t.Helper()
@@ -85,6 +95,26 @@ func TestArithmeticWithNumericStrings(t *testing.T) {
 func TestForwardedFunction(t *testing.T) {
 	got := run(t, `<?php echo strtoupper("abc") . strlen("hello");`)
 	if got != "ABC5" {
+		t.Fatalf("got %q", got)
+	}
+}
+
+func TestGoMethodsMatchSnakeCasePHPNames(t *testing.T) {
+	prog, err := parser.Parse(`<?php
+$host = new Host;
+echo $host->get_all();
+echo ":" . $host->affected_rows();
+`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	rt.RegisterConstructor("Host", func() *snakeCaseMethodHost { return &snakeCaseMethodHost{} })
+	if err := rt.Run(prog); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if got := out.String(); got != "all:affected" {
 		t.Fatalf("got %q", got)
 	}
 }

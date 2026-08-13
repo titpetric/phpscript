@@ -362,12 +362,20 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 	return firstReturn(out)
 }
 
-// methodByNameFold finds an exported method on rv whose name matches under a
-// case-insensitive comparison (PHP method-call semantics).
+// methodByNameFold finds an exported method using PHP's case-insensitive
+// semantics, then retries without underscores so snake_case PHP names resolve
+// idiomatic Go names (for example get_all -> GetAll).
 func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 	t := rv.Type()
 	for i := 0; i < t.NumMethod(); i++ {
 		if strings.EqualFold(t.Method(i).Name, method) {
+			return rv.Method(i)
+		}
+	}
+	method = strings.ReplaceAll(method, "_", "")
+	for i := 0; i < t.NumMethod(); i++ {
+		name := strings.ReplaceAll(t.Method(i).Name, "_", "")
+		if strings.EqualFold(name, method) {
 			return rv.Method(i)
 		}
 	}

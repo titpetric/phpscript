@@ -1,6 +1,6 @@
 module github.com/titpetric/phpscript
 
-go 1.26.3
+go 1.27rc1
 
 require (
 	github.com/expr-lang/expr v1.17.8
@@ -9,7 +9,8 @@ require (
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/titpetric/cli v0.4.3
-	github.com/titpetric/platform v0.4.7
+	github.com/titpetric/pdo v0.0.0-20260708190443-d44610ab0476
+	github.com/titpetric/platform v0.4.8
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.56.0
 )
@@ -42,7 +43,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.45.0 // indirect
 	go.opentelemetry.io/otel/trace v1.45.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect

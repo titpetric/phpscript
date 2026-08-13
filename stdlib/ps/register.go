@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/titpetric/pdo/client"
+	"github.com/titpetric/platform"
+
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -14,6 +17,15 @@ func Register(rt *runner.Runtime) {
 	RegisterDefer(rt)
 	RegisterSharedMemory(rt)
 	RegisterShutdown(rt)
+
+	rt.RegisterConstructor("PS\\DatabaseClient", func(ctx context.Context, name string) (*client.Bridge, error) {
+		handle, err := platform.Database.Connect(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+
+		return client.NewBridge(handle), nil
+	})
 }
 
 // RegisterDefer installs defer() in the global function namespace.

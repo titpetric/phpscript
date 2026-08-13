@@ -1,8 +1,11 @@
 package tests
 
 import (
+	"log"
 	"os"
 	"testing"
+
+	"github.com/titpetric/platform"
 )
 
 func TestMain(m *testing.M) {
@@ -11,14 +14,26 @@ func TestMain(m *testing.M) {
 }
 
 func setTestEnv() {
-	env := map[string]string{
-		"DB_DSN_SQLITE_TEST":   "sqlite://file:phpscript-test?mode=memory&cache=shared",
-		"DB_DSN_POSTGRES_TEST": "postgres://postgres:test@localhost:15432/postgres?sslmode=disable",
-		"DB_DSN_MYSQL_TEST":    "mysql://root:test@tcp(localhost:13306)/mysql",
+	env := []string{
+		"PLATFORM_DB_SQLITE_TEST=sqlite://file:phpscript-test?mode=memory&cache=shared",
+		"PLATFORM_DB_POSTGRES_TEST=postgres://postgres:test@localhost:15432/postgres?sslmode=disable",
+		"PLATFORM_DB_MYSQL_TEST=mysql://root:test@tcp(localhost:13306)/mysql",
 	}
-	for key, value := range env {
-		if err := os.Setenv(key, value); err != nil {
-			panic(err)
+
+	platform.SetupConnections(env)
+
+	// Add default storage for blog.
+	if val, ok := platform.Database.(ExtendedProvider); ok {
+		connectionList := val.List()
+		log.Println("connections", len(connectionList))
+		for k, v := range connectionList {
+			log.Println(k, v)
 		}
 	}
+}
+
+// ExtendedProvider extends database providers with listing and registration.
+type ExtendedProvider interface {
+	List() []string
+	Register(string, string)
 }

@@ -113,7 +113,7 @@ PHP files outside `public/` are scanned recursively for
 application directory as their source filesystem, so they can include shared
 bootstrap code and templates outside the web root. Route annotations in
 `public/` are ignored. Route loading is controlled by the embedded
-`phpscript.yml` configuration:
+`config/config.yml` configuration:
 
 ```yaml
 routes:
