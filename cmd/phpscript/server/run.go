@@ -18,7 +18,7 @@ import (
 	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
-	statusmw "github.com/titpetric/phpscript/stdlib/middleware"
+	"github.com/titpetric/phpscript/stdlib/status"
 )
 
 // Name is the command title.
@@ -66,7 +66,7 @@ type handler struct {
 	static       http.Handler
 	includeCache *runner.IncludeCache
 	exprCache    *runner.ExprCache
-	serverStatus *statusmw.ServerStatus
+	serverStatus *status.ServerStatus
 }
 
 // NewHandler serves annotated project routes and files beneath public/.
@@ -79,7 +79,7 @@ func newHandler(root fs.FS, rootDir string) (http.Handler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("server: public directory: %w", err)
 	}
-	serverStatus := statusmw.NewServerStatus()
+	serverStatus := status.NewServerStatus()
 	h := &handler{
 		root:         root,
 		rootDir:      rootDir,

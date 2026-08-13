@@ -104,8 +104,10 @@ Regenerate it after changing runtime or standard-library registrations.
 - `php_sapi_name`
 - `phpinfo`
 - `putenv`
+- `register_shutdown_function`
 - `rtrim`
 - `set_include_path`
+- `span`
 - `sprintf`
 - `substr`
 - `token_get_all`
