@@ -7,6 +7,7 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 )
@@ -15,27 +16,31 @@ import (
 const Name = "Run php script"
 
 // NewCommand creates a new version command with build information.
-func NewCommand() *cli.Command {
+func NewCommand(config config.Config) *cli.Command {
 	return &cli.Command{
 		Name:  "run",
 		Title: Name,
 		Run: func(ctx context.Context, args []string) error {
-			return Run(ctx, args)
+			return Run(ctx, args, config)
 		},
 	}
 }
 
 // Run runs the command with options and CLI arguments.
-func Run(ctx context.Context, args []string) error {
+func Run(ctx context.Context, args []string, config config.Config) error {
 	if len(args) == 0 {
 		return errors.New("usage: phpscript <file.php>")
 	}
 
-	rt := runner.New(os.Stdout, runner.Options{
-		SAPI:   "cli",
-		RootFS: os.DirFS("."),
-		Stdin:  os.Stdin,
-	})
+	options := config.Runner
+	options.SAPI = "cli"
+	options.RootFS = os.DirFS(".")
+	options.Stdin = os.Stdin
+	newRuntime := runner.New
+	if config.Flatstack.Enabled {
+		newRuntime = runner.NewFlatStack
+	}
+	rt := newRuntime(os.Stdout, options)
 	prog, err := rt.LoadFile(args[0])
 	if err != nil {
 		return err

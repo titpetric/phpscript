@@ -15,6 +15,7 @@ import (
 	"github.com/titpetric/cli"
 	"github.com/titpetric/platform"
 
+	"github.com/titpetric/phpscript/config"
 	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
@@ -25,12 +26,12 @@ import (
 const Name = "Run php server"
 
 // NewCommand creates a new server command.
-func NewCommand() *cli.Command {
+func NewCommand(config config.Config) *cli.Command {
 	return &cli.Command{
 		Name:  "server",
 		Title: Name,
 		Run: func(ctx context.Context, args []string) error {
-			return Run(ctx, args)
+			return Run(ctx, args, config)
 		},
 	}
 }
@@ -38,20 +39,26 @@ func NewCommand() *cli.Command {
 // Module implements the platform.Module interface.
 type Module struct {
 	platform.UnimplementedModule
-	root string
+	root          string
+	runnerOptions runner.Options
+	flatstack     bool
+	observers     []runner.Observer
 }
 
 // NewModule creates the HTTP module.
-func NewModule(root string) *Module {
+func NewModule(root string, options runner.Options, flatstack bool, observers ...runner.Observer) *Module {
 	return &Module{
 		UnimplementedModule: *platform.NewUnimplementedModule("phpserver"),
 		root:                root,
+		runnerOptions:       options,
+		flatstack:           flatstack,
+		observers:           observers,
 	}
 }
 
 // Mount registers HTTP routes.
 func (m *Module) Mount(ctx context.Context, r platform.Router) error {
-	handler, err := newHandler(os.DirFS(m.root), m.root)
+	handler, err := newHandler(os.DirFS(m.root), m.root, m.runnerOptions, m.flatstack, m.observers...)
 	if err != nil {
 		return err
 	}
@@ -60,40 +67,50 @@ func (m *Module) Mount(ctx context.Context, r platform.Router) error {
 }
 
 type handler struct {
-	root         fs.FS
-	rootDir      string
-	public       fs.FS
-	static       http.Handler
-	includeCache *runner.IncludeCache
-	exprCache    *runner.ExprCache
-	serverStatus *status.ServerStatus
+	root          fs.FS
+	rootDir       string
+	public        fs.FS
+	static        http.Handler
+	includeCache  *runner.IncludeCache
+	exprCache     *runner.ExprCache
+	runnerOptions runner.Options
+	flatstack     bool
+	observers     []runner.Observer
 }
 
 // NewHandler serves annotated project routes and files beneath public/.
 func NewHandler(root fs.FS) (http.Handler, error) {
-	return newHandler(root, "")
+	var options runner.Options
+	return newHandler(root, "", options, false)
 }
 
-func newHandler(root fs.FS, rootDir string) (http.Handler, error) {
+func newHandler(root fs.FS, rootDir string, options runner.Options, flatstack bool, observers ...runner.Observer) (http.Handler, error) {
 	public, err := fs.Sub(root, "public")
 	if err != nil {
 		return nil, fmt.Errorf("server: public directory: %w", err)
 	}
-	serverStatus := status.NewServerStatus()
 	h := &handler{
-		root:         root,
-		rootDir:      rootDir,
-		public:       public,
-		static:       http.FileServer(http.FS(public)),
-		includeCache: runner.NewIncludeCache(),
-		exprCache:    runner.NewExprCache(),
-		serverStatus: serverStatus,
+		root:          root,
+		rootDir:       rootDir,
+		public:        public,
+		static:        http.FileServer(http.FS(public)),
+		includeCache:  runner.NewIncludeCache(),
+		exprCache:     runner.NewExprCache(),
+		runnerOptions: options,
+		flatstack:     flatstack,
+		observers:     observers,
 	}
 	mux := http.NewServeMux()
 	opts := []routesvc.Option{
 		routesvc.WithExcludedDirectory("public"),
 		routesvc.WithExprCache(h.exprCache),
-		routesvc.WithRuntimeFunc(func(rt *runner.Runtime) { rt.Observe(serverStatus) }),
+		routesvc.WithRunnerOptions(options),
+		routesvc.WithFlatstack(flatstack),
+	}
+	for _, observer := range observers {
+		opts = append(opts, routesvc.WithRuntimeFunc(func(rt *runner.Runtime) {
+			rt.Observe(observer)
+		}))
 	}
 	if rootDir != "" {
 		opts = append(opts, routesvc.WithRuntimeFunc(func(rt *runner.Runtime) {
@@ -104,7 +121,7 @@ func newHandler(root fs.FS, rootDir string) (http.Handler, error) {
 		return nil, err
 	}
 	mux.Handle("/", h)
-	return serverStatus.Middleware(mux), nil
+	return mux, nil
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -127,14 +144,20 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename string) {
 	var out bytes.Buffer
 
-	rt := runner.New(&out, runner.Options{
-		SAPI:   "cgi-phpscript",
-		RootFS: h.root,
-	})
+	options := h.runnerOptions
+	options.SAPI = "cgi-phpscript"
+	options.RootFS = h.root
+	newRuntime := runner.New
+	if h.flatstack {
+		newRuntime = runner.NewFlatStack
+	}
+	rt := newRuntime(&out, options)
 	rt.SetIncludeCache(h.includeCache)
 	rt.SetExprCache(h.exprCache)
 	rt.SetContext(r.Context())
-	rt.Observe(h.serverStatus)
+	for _, observer := range h.observers {
+		rt.Observe(observer)
+	}
 	prog, err := rt.LoadFile(filename)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -169,7 +192,7 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 }
 
 // Run starts the platform lifecycle and waits for shutdown.
-func Run(ctx context.Context, args []string) error {
+func Run(ctx context.Context, args []string, config config.Config) error {
 	root := "."
 	if len(args) > 0 {
 		root = args[0]
@@ -179,7 +202,14 @@ func Run(ctx context.Context, args []string) error {
 	opts.ServerAddr = ":8080"
 
 	svc := platform.New(opts)
-	svc.Register(NewModule(root))
+	var observers []runner.Observer
+	if config.Status.Enabled {
+		serverStatus := status.NewModule(config.Status.Options)
+		svc.Use(serverStatus.Middleware)
+		svc.Register(serverStatus)
+		observers = append(observers, serverStatus)
+	}
+	svc.Register(NewModule(root, config.Runner, config.Flatstack.Enabled, observers...))
 
 	err := svc.Start(ctx)
 	if err != nil {

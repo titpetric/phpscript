@@ -51,6 +51,11 @@ type RuntimeFunc func(*runner.Runtime)
 // Option configures Service.
 type Option func(*Service)
 
+// Router registers HTTP handlers by pattern.
+type Router interface {
+	Handle(string, http.Handler)
+}
+
 // WithRuntimeFunc registers fn to customize each request runtime.
 func WithRuntimeFunc(fn RuntimeFunc) Option {
 	return func(m *Service) {
@@ -60,13 +65,29 @@ func WithRuntimeFunc(fn RuntimeFunc) Option {
 	}
 }
 
+// WithRunnerOptions configures runtimes created for routed PHP endpoints.
+func WithRunnerOptions(options runner.Options) Option {
+	return func(m *Service) {
+		m.runnerOptions = options
+	}
+}
+
+// WithFlatstack enables the flat bytecode runtime with interpreter fallback.
+func WithFlatstack(enabled bool) Option {
+	return func(m *Service) {
+		m.flatstack = enabled
+	}
+}
+
 // Service owns route registration for annotated PHP endpoints.
 type Service struct {
-	mux          *http.ServeMux
-	warnings     []string
-	runtimeFuncs []RuntimeFunc
-	exprCache    *runner.ExprCache
-	excludedDirs map[string]struct{}
+	mux           Router
+	warnings      []string
+	runtimeFuncs  []RuntimeFunc
+	exprCache     *runner.ExprCache
+	excludedDirs  map[string]struct{}
+	runnerOptions runner.Options
+	flatstack     bool
 }
 
 // WithExcludedDirectory skips a top-level directory while scanning routes.
@@ -87,7 +108,7 @@ func WithExprCache(cache *runner.ExprCache) Option {
 }
 
 // NewService registers annotated PHP endpoints from root on mux.
-func NewService(root fs.FS, mux *http.ServeMux, opts ...Option) (*Service, error) {
+func NewService(root fs.FS, mux Router, opts ...Option) (*Service, error) {
 	if mux == nil {
 		return nil, fmt.Errorf("route: nil mux")
 	}
@@ -150,9 +171,9 @@ func (m *Service) Register(root fs.FS) error {
 			}
 			seen[pattern] = path
 			file := path
-			m.mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+			m.mux.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				m.servePHP(root, file, includeCache, w, r)
-			})
+			}))
 		}
 		return nil
 	})
@@ -185,7 +206,14 @@ func Annotations(src []byte) []model.RouteAnnotation {
 
 func (m *Service) servePHP(root fs.FS, file string, includeCache *runner.IncludeCache, w http.ResponseWriter, r *http.Request) {
 	var out strings.Builder
-	rt := runner.New(&out, runner.Options{RootFS: root, SAPI: "http"})
+	options := m.runnerOptions
+	options.RootFS = root
+	options.SAPI = "http"
+	newRuntime := runner.New
+	if m.flatstack {
+		newRuntime = runner.NewFlatStack
+	}
+	rt := newRuntime(&out, options)
 	rt.SetIncludeCache(includeCache)
 	rt.SetExprCache(m.exprCache)
 	rt.SetContext(r.Context())

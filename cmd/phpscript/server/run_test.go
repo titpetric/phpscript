@@ -1,11 +1,17 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/go-chi/chi/v5"
+
+	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib/status"
 )
 
 var testFS = fstest.MapFS{
@@ -51,15 +57,12 @@ func TestHandlerServesPublicFilesAndPHP(t *testing.T) {
 			if tt.contentType != "" && !strings.HasPrefix(rr.Header().Get("Content-Type"), tt.contentType) {
 				t.Fatalf("Content-Type = %q, want prefix %q", rr.Header().Get("Content-Type"), tt.contentType)
 			}
-			if rr.Header().Get("Request-Id") == "" {
-				t.Fatal("Request-Id header is empty")
-			}
 		})
 	}
 }
 
 func TestHandlerServesServerStatus(t *testing.T) {
-	h, err := NewHandler(testFS)
+	h, err := newStatusHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,8 +78,20 @@ func TestHandlerServesServerStatus(t *testing.T) {
 	}
 }
 
-func TestHandlerRecordsPHPSpan(t *testing.T) {
+func TestHandlerDoesNotOwnServerStatus(t *testing.T) {
 	h, err := NewHandler(testFS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, status.ServerStatusPath, nil))
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+	}
+}
+
+func TestHandlerRecordsPHPSpan(t *testing.T) {
+	h, err := newStatusHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +112,22 @@ func TestHandlerRecordsPHPSpan(t *testing.T) {
 	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), "getUser") || !strings.Contains(detail.Body.String(), "database") {
 		t.Fatalf("status = %d, body = %q", detail.Code, detail.Body.String())
 	}
+}
+
+func newStatusHandler(root fstest.MapFS) (http.Handler, error) {
+	serverStatus := status.NewModule(status.NewOptions())
+	var options runner.Options
+	handler, err := newHandler(root, "", options, false, serverStatus)
+	if err != nil {
+		return nil, err
+	}
+	router := chi.NewRouter()
+	router.Use(serverStatus.Middleware)
+	if err := serverStatus.Mount(context.Background(), router); err != nil {
+		return nil, err
+	}
+	router.Handle("/*", handler)
+	return router, nil
 }
 
 func TestHandlerDoesNotExposeProjectFilesOrPublicAnnotations(t *testing.T) {
