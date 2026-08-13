@@ -12,6 +12,7 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/route"
 	"github.com/titpetric/phpscript/cmd/phpscript/run"
 	"github.com/titpetric/phpscript/cmd/phpscript/server"
+	testcmd "github.com/titpetric/phpscript/cmd/phpscript/test"
 	"github.com/titpetric/phpscript/cmd/phpscript/version"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -34,6 +35,7 @@ func start() error {
 	app.AddCommand("run", run.Name, run.NewCommand)
 	app.AddCommand("route", route.Name, route.NewCommand)
 	app.AddCommand("server", server.Name, server.NewCommand)
+	app.AddCommand("test", testcmd.Name, testcmd.NewCommand)
 	app.AddCommand("version", version.Name, func() *cli.Command {
 		return version.NewCommand(version.Info{
 			Version:    Version,
