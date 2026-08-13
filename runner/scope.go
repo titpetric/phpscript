@@ -1,6 +1,10 @@
 package runner
 
-import "context"
+import (
+	"context"
+
+	"github.com/titpetric/phpscript/model"
+)
 
 type scopeContextKey struct{}
 type envContextKey struct{}
@@ -54,6 +58,11 @@ func (s *Scope) DefinedVars() map[string]any {
 }
 
 func contextWithScope(ctx context.Context, scope *Scope) context.Context {
+	if filename, ok := scope.Get("__FILE__"); ok {
+		if filename, ok := filename.(string); ok {
+			ctx = model.WithSpanFilename(ctx, filename)
+		}
+	}
 	return context.WithValue(ctx, scopeContextKey{}, scope)
 }
 

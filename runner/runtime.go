@@ -199,7 +199,7 @@ func (rt *Runtime) Context() context.Context {
 // safe for use by concurrent runtimes.
 type Observer interface {
 	UpdateStatus(context.Context, model.Status)
-	Trace(context.Context, string)
+	Trace(context.Context, string, ...model.Flag) *model.RequestSpan
 }
 
 // FilenameObserver optionally receives the entrypoint passed to LoadFile.
@@ -236,11 +236,21 @@ func (rt *Runtime) UpdateStatus(status model.Status) {
 	}
 }
 
-// Trace publishes a trace span to registered observers.
-func (rt *Runtime) Trace(message string) {
+// Trace publishes a trace span to registered observers and returns the first
+// mutable span provided by one of them.
+func (rt *Runtime) Trace(message string, flags ...model.Flag) *model.RequestSpan {
+	return rt.traceContext(rt.ctx, message, flags...)
+}
+
+func (rt *Runtime) traceContext(ctx context.Context, message string, flags ...model.Flag) *model.RequestSpan {
+	var span *model.RequestSpan
 	for _, observer := range rt.observers {
-		observer.Trace(rt.ctx, message)
+		observed := observer.Trace(ctx, message, flags...)
+		if span == nil {
+			span = observed
+		}
 	}
+	return span
 }
 
 // UpdateFilename publishes the PHP entrypoint to observers that support

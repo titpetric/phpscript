@@ -155,11 +155,12 @@ func traceDatabaseQuery(ctx context.Context, enabled bool, query string) func() 
 	if !enabled {
 		return noop
 	}
-	started := time.Now()
+	span := status.Span(ctx, fmt.Sprintf("<code>%s</code>", query), status.SpanType.Database)
 
 	return func() {
-		duration := float64(time.Since(started)) / float64(time.Millisecond)
-		status.Span(ctx, fmt.Sprintf("<b>%.4f ms</b> - <code>%s</code>", duration, query), status.SpanType.Database)
+		if span != nil {
+			span.Duration = time.Since(span.Time)
+		}
 	}
 }
 

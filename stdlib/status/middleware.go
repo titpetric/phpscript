@@ -100,6 +100,16 @@ type StateDuration struct {
 	Share    float64       `json:"share_percent"`
 }
 
+// SpanDuration is one point-in-time segment where a span type was the active,
+// innermost region of a request.
+type SpanDuration struct {
+	Type        Flag          `json:"type"`
+	Offset      time.Duration `json:"offset_ns"`
+	Duration    time.Duration `json:"duration_ns"`
+	OffsetShare float64       `json:"offset_percent"`
+	Share       float64       `json:"share_percent"`
+}
+
 // Snapshot is the complete server-status document.
 type Snapshot struct {
 	StartedAt   time.Time          `json:"started_at"`
@@ -232,15 +242,20 @@ func (s *ServerStatus) UpdateFilename(ctx context.Context, filename string) {
 	if entry := s.active[id]; entry != nil {
 		entry.Filename = filename
 		entry.UpdatedAt = time.Now()
+		for _, span := range entry.Spans {
+			if span != nil && span.Filename == "" {
+				span.Filename = filename
+			}
+		}
 	}
 	s.mu.Unlock()
-	model.Span(ctx, filename, model.OpenSpan)
+	model.Span(model.WithSpanFilename(ctx, filename), filename, model.OpenSpan)
 }
 
 // Trace will add a span with the invoked message. It's used to trace
 // runtime internals, like including files.
-func (s *ServerStatus) Trace(ctx context.Context, message string) {
-	model.Span(ctx, message)
+func (s *ServerStatus) Trace(ctx context.Context, message string, flags ...model.Flag) *model.RequestSpan {
+	return model.Span(ctx, message, flags...)
 }
 
 // UpdateIncludedFiles records the number of files included by an active PHP
@@ -265,7 +280,7 @@ func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseW
 	if message == "" {
 		message = entry.URI
 	}
-	model.Span(ctx, message, model.SpanType.HTTP, model.CloseSpan)
+	model.Span(model.WithSpanFilename(ctx, entry.Filename), message, model.SpanType.HTTP, model.CloseSpan)
 	now := time.Now()
 
 	s.mu.Lock()
@@ -551,6 +566,7 @@ type statusPage struct {
 	Limit    int
 	Detail   *Request
 	SpanRows []spanRow
+	SpanTime []SpanDuration
 }
 
 type spanRow struct {
@@ -608,7 +624,7 @@ func (s *ServerStatus) serveDetail(w http.ResponseWriter, r *http.Request, id st
 		writeDetailText(w, request, rows)
 	default:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_ = statusTemplate.Execute(w, statusPage{Snapshot: s.Snapshot(), View: string(statusViewDetail), Detail: &request, SpanRows: rows})
+		_ = statusTemplate.Execute(w, statusPage{Snapshot: s.Snapshot(), View: string(statusViewDetail), Detail: &request, SpanRows: rows, SpanTime: requestSpanDurations(request)})
 	}
 }
 
@@ -625,21 +641,100 @@ func (s *ServerStatus) completedRequest(id string) (Request, bool) {
 
 func requestSpanRows(request Request) []spanRow {
 	rows := make([]spanRow, len(request.Spans))
-	depth := 0
+	stack := make([]int, 0)
 	for i, span := range request.Spans {
-		if span.Close && depth > 0 {
-			depth--
+		if span == nil {
+			continue
 		}
-		rows[i] = spanRow{RequestSpan: span, Offset: span.Time.Sub(request.StartedAt), Depth: depth}
-		if i+1 < len(request.Spans) {
-			rows[i].Duration = request.Spans[i+1].Time.Sub(span.Time)
-			rows[i].HasDuration = true
+		if span.Close {
+			if open := matchingOpenSpan(stack, rows, span.Type); open >= 0 {
+				rows[open].Duration = span.Time.Sub(rows[open].Time)
+				rows[open].HasDuration = rows[open].Duration >= 0
+				stack = slices.Delete(stack, slices.Index(stack, open), slices.Index(stack, open)+1)
+			}
 		}
+		rows[i] = spanRow{RequestSpan: *span, Offset: span.Time.Sub(request.StartedAt), Duration: span.Duration, HasDuration: span.Duration > 0, Depth: len(stack)}
 		if span.Open {
-			depth++
+			stack = append(stack, i)
 		}
 	}
 	return rows
+}
+
+func matchingOpenSpan(stack []int, rows []spanRow, spanType Flag) int {
+	for i := len(stack) - 1; i >= 0; i-- {
+		if rows[stack[i]].Type == spanType {
+			return stack[i]
+		}
+	}
+	return -1
+}
+
+func requestSpanDurations(request Request) []SpanDuration {
+	rows := requestSpanRows(request)
+	if request.Duration <= 0 {
+		return nil
+	}
+	requestEnd := request.StartedAt.Add(request.Duration)
+	type interval struct {
+		spanType Flag
+		start    time.Time
+		end      time.Time
+	}
+	intervals := make([]interval, 0, len(rows))
+	boundaries := make([]time.Time, 0, len(rows)*2)
+	for _, row := range rows {
+		if !row.HasDuration || row.Duration <= 0 {
+			continue
+		}
+		start, end := row.Time, row.Time.Add(row.Duration)
+		if start.Before(request.StartedAt) {
+			start = request.StartedAt
+		}
+		if end.After(requestEnd) {
+			end = requestEnd
+		}
+		if !end.After(start) {
+			continue
+		}
+		intervals = append(intervals, interval{spanType: row.Type, start: start, end: end})
+		boundaries = append(boundaries, start, end)
+	}
+	slices.SortFunc(boundaries, func(a, b time.Time) int { return a.Compare(b) })
+	boundaries = slices.Compact(boundaries)
+
+	result := make([]SpanDuration, 0, len(boundaries))
+	for i := 0; i+1 < len(boundaries); i++ {
+		start, end := boundaries[i], boundaries[i+1]
+		active := -1
+		for j, candidate := range intervals {
+			if candidate.start.After(start) || !candidate.end.After(start) {
+				continue
+			}
+			if active < 0 || candidate.start.After(intervals[active].start) || candidate.start.Equal(intervals[active].start) && candidate.end.Before(intervals[active].end) {
+				active = j
+			}
+		}
+		if active < 0 {
+			continue
+		}
+		spanType, duration := intervals[active].spanType, end.Sub(start)
+		if len(result) > 0 {
+			previous := &result[len(result)-1]
+			if previous.Type == spanType && previous.Offset+previous.Duration == start.Sub(request.StartedAt) {
+				previous.Duration += duration
+				previous.Share = float64(previous.Duration) * 100 / float64(request.Duration)
+				continue
+			}
+		}
+		offset := start.Sub(request.StartedAt)
+		result = append(result, SpanDuration{
+			Type: spanType, Offset: offset, Duration: duration,
+			OffsetShare: float64(offset) * 100 / float64(request.Duration),
+			Share:       float64(duration) * 100 / float64(request.Duration),
+		})
+	}
+	return result
 }
 
 func requestedLogLimit(r *http.Request) int {
@@ -757,14 +852,23 @@ func writeRequestLogText(w io.Writer, requests []Request) {
 
 func writeDetailText(w io.Writer, request Request, rows []spanRow) {
 	fmt.Fprintf(w, "%s\nRequest ID: %s  Status: %d  Duration: %s\n\n", request.Request, request.ID, request.ResponseStatus, request.Duration.Round(time.Microsecond))
-	fmt.Fprintln(w, "TYPE          TIME          DURATION      MESSAGE")
+	fmt.Fprintln(w, "Process state:")
+	for _, state := range requestSpanDurations(request) {
+		fmt.Fprintf(w, "%s at %s: %s, %.2f%%\n", state.Type, state.Offset.Round(time.Microsecond), state.Duration.Round(time.Microsecond), state.Share)
+	}
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "TYPE          TIME          DURATION      FILENAME                       MESSAGE")
 	for _, row := range rows {
 		duration := "-"
 		if row.HasDuration {
-			duration = row.Duration.Round(time.Microsecond).String()
+			duration = durationMilliseconds(row.Duration)
 		}
-		fmt.Fprintf(w, "%-13s %-13s %-13s %s%s\n", row.Type, row.Offset.Round(time.Microsecond), duration, strings.Repeat("  ", row.Depth), row.Message)
+		fmt.Fprintf(w, "%-13s %-13s %-13s %-30s %s%s\n", row.Type, row.Offset.Round(time.Microsecond), duration, row.Filename, strings.Repeat("  ", row.Depth), row.Message)
 	}
+}
+
+func durationMilliseconds(duration time.Duration) string {
+	return fmt.Sprintf("%.4f ms", float64(duration)/float64(time.Millisecond))
 }
 
 func includedText(count int) string {
@@ -825,6 +929,8 @@ func spanTypeColor(spanType Flag) string {
 
 var statusTemplate = template.Must(template.New("server-status").Funcs(template.FuncMap{
 	"duration":        func(d time.Duration) string { return d.Round(time.Microsecond).String() },
+	"durationMS":      durationMilliseconds,
+	"addDuration":     func(a, b time.Duration) time.Duration { return a + b },
 	"included":        includedText,
 	"averageIncluded": averageIncludedText,
 	"stateClass":      func(label string) string { return strings.ToLower(label) },
@@ -847,6 +953,12 @@ var statusTemplate = template.Must(template.New("server-status").Funcs(template.
 	},
 	"spanBorder": func(spanType Flag) template.CSS {
 		return template.CSS("border-left:4px solid " + spanTypeColor(spanType))
+	},
+	"spanStateStyle": func(state SpanDuration) template.CSS {
+		return template.CSS(fmt.Sprintf("left:%.4f%%;width:%.4f%%;background:%s", state.OffsetShare, state.Share, spanTypeColor(state.Type)))
+	},
+	"spanTypeBackground": func(spanType Flag) template.CSS {
+		return template.CSS("background:" + spanTypeColor(spanType))
 	},
 	"bytes": func(value any) string {
 		switch n := value.(type) {

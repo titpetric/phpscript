@@ -31,24 +31,9 @@ func wantsContext(t reflect.Type) bool {
 	return t.Kind() == reflect.Func && t.NumIn() > 0 && t.In(0) == contextType
 }
 
-// invokeWithContext calls fn (any Go callable) via invokeAny, auto-prepending
-// rt.ctx when fn's first parameter is a context.Context. This mirrors vuego's
-// wrapContextFunc: PHP code supplies only the "business" arguments while the
-// lifecycle context is filled in from the runtime.
-func (rt *Runtime) invokeWithContext(fn any, args []any) (any, error) {
-	if wantsContext(reflect.TypeOf(fn)) {
-		full := make([]any, 0, len(args)+1)
-		full = append(full, contextWithEnv(rt.ctx, rt.Env))
-		full = append(full, args...)
-		return invokeAny(fn, full)
-	}
-	return invokeAny(fn, args)
-}
-
-// invokeWithScopeContext is the free-function variant of invokeWithContext. It
-// derives a context containing the active PHP frame so language helpers such as
-// compact() can inspect caller-local variables without exposing Scope as a PHP
-// argument.
+// invokeWithScopeContext derives a context containing the active PHP frame so
+// language helpers such as compact() can inspect caller-local variables and
+// observability can identify the active source file.
 func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any, error) {
 	if wantsContext(reflect.TypeOf(fn)) {
 		full := make([]any, 0, len(args)+1)
@@ -263,7 +248,7 @@ func (rt *Runtime) helperCall(scope *Scope) func(base any, method string, args .
 				return rt.invokeMethod(obj, decl, args)
 			}
 		}
-		return rt.callGoMethod(base, method, args)
+		return rt.callGoMethod(base, method, args, scope)
 	}
 }
 
@@ -283,7 +268,7 @@ func lookupPHPMethod(class *model.Class, method string) (*model.FuncDecl, bool) 
 // apply field defaults, and run the same-named constructor method if present.
 func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any, error) {
 	return func(class string, args ...any) (any, error) {
-		defer rt.trace("<code>new " + class + "</code>")()
+		defer rt.trace(scope, "new "+class)()
 
 		class = strings.TrimPrefix(class, "\\")
 		if !rt.hasClass(class) {
@@ -295,7 +280,7 @@ func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any,
 		// value (storage, err := NewStorage(ctx)) with the context auto-injected
 		// and any trailing error surfaced as a thrown error.
 		if ctor, ok := rt.lookupConstructor(class); ok {
-			v, err := rt.invokeWithContext(ctor, args)
+			v, err := rt.invokeWithScopeContext(ctor, args, scope)
 			if err != nil {
 				return nil, err
 			}
@@ -344,7 +329,7 @@ func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any,
 // so `$obj->get()` resolves Go's exported Get). When the method's first
 // parameter is a context.Context the runtime context is auto-injected, and
 // arguments are coerced to the declared parameter types.
-func (rt *Runtime) callGoMethod(base any, method string, args []any) (result any, err error) {
+func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scope) (result any, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil
@@ -367,7 +352,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any) (result any
 	}
 	mt := m.Type()
 	if wantsContext(mt) {
-		args = append([]any{contextWithEnv(rt.ctx, rt.Env)}, args...)
+		args = append([]any{contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope)}, args...)
 	}
 	in := make([]reflect.Value, len(args))
 	for i, a := range args {

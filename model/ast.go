@@ -124,6 +124,7 @@ type Include struct {
 type FuncDecl struct {
 	Class      string // "" for free functions
 	Name       string
+	Filename   string
 	Params     []Param
 	Body       []Stmt
 	Visibility string // "public", "protected", "private", or ""
