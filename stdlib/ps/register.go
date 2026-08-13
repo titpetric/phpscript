@@ -18,13 +18,15 @@ func Register(rt *runner.Runtime) {
 	RegisterSharedMemory(rt)
 	RegisterShutdown(rt)
 
-	rt.RegisterConstructor("PS\\DatabaseClient", func(ctx context.Context, name string) (*client.Bridge, error) {
+	rt.RegisterConstructor("PS\\DatabaseClient", func(ctx context.Context, name string) (*DatabaseClient, error) {
 		handle, err := platform.Database.Connect(ctx, name)
 		if err != nil {
 			return nil, err
 		}
 
-		return client.NewBridge(handle), nil
+		databaseClient := &DatabaseClient{DatabaseClient: client.NewBridge(handle)}
+		databaseClient.DatabaseClient.WithObserver(databaseClient.observe)
+		return databaseClient, nil
 	})
 }
 

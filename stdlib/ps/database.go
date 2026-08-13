@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
@@ -155,11 +154,11 @@ func traceDatabaseQuery(ctx context.Context, enabled bool, query string) func() 
 	if !enabled {
 		return noop
 	}
-	span := status.Span(ctx, fmt.Sprintf("<code>%s</code>", query), status.SpanType.Database)
+	span := status.StartSpan(ctx, fmt.Sprintf("<code>%s</code>", query), status.SpanType.Database)
 
 	return func() {
 		if span != nil {
-			span.Duration = time.Since(span.Time)
+			span.End()
 		}
 	}
 }
