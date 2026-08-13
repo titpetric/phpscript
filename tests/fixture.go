@@ -68,7 +68,7 @@ func errorChainContains(err error, substr string) bool {
 
 // FixtureRequest contains request data exposed to PHP as superglobals.
 type FixtureRequest struct {
-	Args    any               `yaml:"args"`    // map[string]string or []string or scalar
+	Args    any               `yaml:"args"` // map[string]string or []string or scalar
 	Get     map[string]string `yaml:"get"`
 	Post    map[string]string `yaml:"post"`
 	Cookie  map[string]string `yaml:"cookie"`
@@ -100,16 +100,16 @@ type Fixture struct {
 
 // TestResult carries execution outcome for a single fixture.
 type TestResult struct {
-	Name          string        `json:"name"`
-	Description   string        `json:"description"`
-	Path          string        `json:"path"`
-	Passed        bool          `json:"passed"`
-	DurationMs    int64         `json:"duration_ms"`
-	FailureReason string        `json:"failure_reason,omitempty"`
-	GotOutput     string        `json:"got_output,omitempty"`
-	WantOutput    string        `json:"want_output,omitempty"`
-	Error         string        `json:"error,omitempty"`
-	FlatstackUsed bool          `json:"flatstack_used,omitempty"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	Path          string `json:"path"`
+	Passed        bool   `json:"passed"`
+	DurationMs    int64  `json:"duration_ms"`
+	FailureReason string `json:"failure_reason,omitempty"`
+	GotOutput     string `json:"got_output,omitempty"`
+	WantOutput    string `json:"want_output,omitempty"`
+	Error         string `json:"error,omitempty"`
+	FlatstackUsed bool   `json:"flatstack_used,omitempty"`
 }
 
 // ParseFixture splits a .phpt file into its three sections and parses the YAML metadata.
