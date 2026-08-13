@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib/status"
 )
 
 // RegisterDatabase installs the Go database bridge as PS\Database.
@@ -18,7 +20,13 @@ func RegisterDatabase(rt *runner.Runtime) {
 
 // Database wraps a SQL database connection for PHP scripts.
 type Database struct {
-	db *sql.DB
+	db      *sql.DB
+	options Options
+}
+
+// Options contains mutable flags for the database client.
+type Options struct {
+	EnableTracing bool
 }
 
 // NewDatabase opens a database connection from the named DB_DSN_* env var.
@@ -59,6 +67,11 @@ func NewDatabase(ctx context.Context, name string) (*Database, error) {
 	return &Database{db: db}, nil
 }
 
+// EnableTracing enables the internal span telemetry.
+func (d *Database) EnableTracing() {
+	d.options.EnableTracing = true
+}
+
 // Close closes the underlying database connection.
 func (d *Database) Close() {
 	d.db.Close()
@@ -70,7 +83,7 @@ func (d *Database) Prepare(query string) (*DatabaseStatement, error) {
 	if d == nil || d.db == nil {
 		return nil, fmt.Errorf("database: nil driver")
 	}
-	return &DatabaseStatement{db: d.db, query: query, named: map[string]any{}, positional: map[int64]any{}}, nil
+	return &DatabaseStatement{database: d, query: query, named: map[string]any{}, positional: map[int64]any{}}, nil
 }
 
 // LastInsertId returns the SQLite last inserted row ID.
@@ -78,6 +91,9 @@ func (d *Database) LastInsertId(ctx context.Context) (int64, error) {
 	if d == nil || d.db == nil {
 		return 0, fmt.Errorf("database: nil driver")
 	}
+
+	defer traceDatabaseQuery(ctx, d.options.EnableTracing, "select last_insert_rowid()")()
+
 	var id int64
 	if err := d.db.QueryRowContext(ctx, "select last_insert_rowid()").Scan(&id); err != nil {
 		return 0, err
@@ -87,7 +103,7 @@ func (d *Database) LastInsertId(ctx context.Context) (int64, error) {
 
 // DatabaseStatement holds a prepared query and bound values for execution.
 type DatabaseStatement struct {
-	db         *sql.DB
+	database   *Database
 	query      string
 	named      map[string]any
 	positional map[int64]any
@@ -114,11 +130,14 @@ func (s *DatabaseStatement) BindValue(key, value any) error {
 
 // Execute runs the statement and stores the result cursor.
 func (s *DatabaseStatement) Execute(ctx context.Context) error {
-	if s == nil || s.db == nil {
+	if s == nil || s.database == nil || s.database.db == nil {
 		return fmt.Errorf("database: nil statement")
 	}
+
+	defer traceDatabaseQuery(ctx, s.database.options.EnableTracing, s.query)()
+
 	args := s.args()
-	rows, err := s.db.QueryContext(ctx, s.query, args...)
+	rows, err := s.database.db.QueryContext(ctx, s.query, args...)
 	if err != nil {
 		return err
 	}
@@ -128,6 +147,20 @@ func (s *DatabaseStatement) Execute(ctx context.Context) error {
 	}
 	s.rows = rows
 	return nil
+}
+
+func noop() {}
+
+func traceDatabaseQuery(ctx context.Context, enabled bool, query string) func() {
+	if !enabled {
+		return noop
+	}
+	started := time.Now()
+
+	return func() {
+		duration := float64(time.Since(started)) / float64(time.Millisecond)
+		status.Span(ctx, fmt.Sprintf("<b>%.4f ms</b> - <code>%s</code>", duration, query), status.SpanType.Database)
+	}
 }
 
 // Fetch returns the next result row or false when no rows remain.
