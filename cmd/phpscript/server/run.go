@@ -92,6 +92,7 @@ func newHandler(root fs.FS, rootDir string) (http.Handler, error) {
 	mux := http.NewServeMux()
 	opts := []routesvc.Option{
 		routesvc.WithExcludedDirectory("public"),
+		routesvc.WithExprCache(h.exprCache),
 		routesvc.WithRuntimeFunc(func(rt *runner.Runtime) { rt.Observe(serverStatus) }),
 	}
 	if rootDir != "" {

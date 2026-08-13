@@ -1,4 +1,4 @@
-package fmtcmd
+package fmt
 
 import (
 	"context"

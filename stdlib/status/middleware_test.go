@@ -14,6 +14,7 @@ import (
 
 func TestServerStatusRecordsRequestAndRuntime(t *testing.T) {
 	status := NewServerStatus()
+	status.TrackMemStats = true
 	handler := status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if id := RequestID(r.Context()); id == "" {
 			t.Fatal("request id missing from context")
@@ -59,7 +60,7 @@ func TestServerStatusRecordsRequestAndRuntime(t *testing.T) {
 		t.Fatalf("unexpected log: %+v", snapshot.Log)
 	}
 	spans := snapshot.Log[0].Spans
-	if len(spans) != 3 || !spans[0].Open || spans[0].Message != "/hello" || spans[1].Message != "routes/hello.php" || spans[1].Type != SpanType.Internal || !spans[2].Close || spans[2].Message != "routes/hello.php" {
+	if len(spans) != 3 || !spans[0].Open || spans[0].Message != "/hello" || spans[1].Message != "routes/hello.php" || spans[1].Type != SpanType.Internal || !spans[2].Close || spans[2].Message != "done" {
 		t.Log("Spans:", len(spans))
 		for idx, span := range spans {
 			t.Logf(" - %d. %+v", idx, span)

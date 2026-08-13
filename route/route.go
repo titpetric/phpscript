@@ -79,6 +79,13 @@ func WithExcludedDirectory(name string) Option {
 	}
 }
 
+// WithExprCache sets a shared expression cache to the service.
+func WithExprCache(cache *runner.ExprCache) Option {
+	return func(m *Service) {
+		m.exprCache = cache
+	}
+}
+
 // NewService registers annotated PHP endpoints from root on mux.
 func NewService(root fs.FS, mux *http.ServeMux, opts ...Option) (*Service, error) {
 	if mux == nil {
@@ -86,7 +93,6 @@ func NewService(root fs.FS, mux *http.ServeMux, opts ...Option) (*Service, error
 	}
 	svc := &Service{
 		mux:          mux,
-		exprCache:    runner.NewExprCache(),
 		excludedDirs: make(map[string]struct{}),
 	}
 	for _, opt := range opts {
@@ -108,6 +114,9 @@ func NewService(root fs.FS, mux *http.ServeMux, opts ...Option) (*Service, error
 func (m *Service) Register(root fs.FS) error {
 	if root == nil {
 		return fmt.Errorf("route: nil root filesystem")
+	}
+	if m.exprCache == nil {
+		m.exprCache = runner.NewExprCache()
 	}
 	// Include paths are relative to one filesystem root. Keep a cache per
 	// Register call so two roots containing the same path cannot share a parsed

@@ -17,7 +17,6 @@ package tests
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"io/fs"
 	"net/http"
@@ -35,13 +34,6 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
-
-//go:embed all:fixtures
-var fixturesFS embed.FS
-
-var phpFS fs.FS
-var includeCache = runner.NewIncludeCache()
-var exprCache = runner.NewExprCache()
 
 // ---------------------------------------------------------------------------
 // Fixture format + harness
@@ -94,17 +86,6 @@ func runFixture(ctx context.Context, f fixture) (string, error) {
 	var out strings.Builder
 	rt := newTestRuntime(&out, ctx, strings.NewReader(f.Stdin))
 
-	/*
-		rt.RegisterFunc("sprintf", fmt.Sprintf)
-		rt.RegisterFunc("rtrim", strings.TrimRight)
-		rt.RegisterFunc("is_string", func(in any) bool {
-			_, ok := in.(string)
-			return ok
-		})
-		rt.RegisterFunc("empty", func(in any) bool {
-			return in == reflect.Zero(reflect.TypeOf(in)).Interface()
-		}) */
-
 	if err := rt.Run(prog); err != nil {
 		if _, ok := runner.IsExit(err); ok {
 			return out.String(), nil
@@ -112,17 +93,6 @@ func runFixture(ctx context.Context, f fixture) (string, error) {
 		return "Internal Server Error", err
 	}
 	return out.String(), nil
-}
-
-func testPHPFS() fs.FS {
-	if phpFS == nil {
-		var err error
-		phpFS, err = fs.Sub(fixturesFS, "fixtures")
-		if err != nil {
-			panic(err)
-		}
-	}
-	return phpFS
 }
 
 func newTestRuntime(out *strings.Builder, ctx context.Context, input ...*strings.Reader) *runner.Runtime {
@@ -138,17 +108,8 @@ func newTestRuntime(out *strings.Builder, ctx context.Context, input ...*strings
 	rt.RegisterConstructor("FailStorage", NewFailStorage)
 	stdlib.RegisterFS(rt, ".")
 	stdlib.Register(rt)
+	runner.NewContext().Register(rt)
 	return rt
-}
-
-func errorChainContains(err error, substr string) bool {
-	for err != nil {
-		if strings.Contains(err.Error(), substr) {
-			return true
-		}
-		err = errors.Unwrap(err)
-	}
-	return false
 }
 
 // TestFixtures discovers every fixtures/*.phpt file, runs it, and asserts the
@@ -173,36 +134,19 @@ func TestFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", e.Name(), err)
 		}
-		f, err := parseFixture(data)
+		fx, err := ParseFixture(data, "fixtures/"+e.Name())
 		if err != nil {
 			t.Fatalf("parse %s: %v", e.Name(), err)
 		}
 
-		passed := t.Run(f.Name, func(t *testing.T) {
-			out, runErr := runFixture(t.Context(), f)
-
-			// The `error` field asserts an *uncaught* error surfaced to the
-			// host: it must occur and its message must contain the substring.
-			if f.Error != "" {
-				if runErr == nil {
-					t.Fatalf("expected error containing %q, got output %q", f.Error, out)
-				}
-				if !errorChainContains(runErr, f.Error) {
-					t.Fatalf("error %v does not contain %q", runErr, f.Error)
-				}
-			} else if runErr != nil {
-				t.Fatalf("unexpected uncaught error: %v", runErr)
-			}
-
-			// Output (host body) is always compared against the expected section.
-			want := strings.TrimRight(f.Expected, "\n")
-			got := strings.TrimRight(out, "\n")
-			if got != want {
-				t.Fatalf("output mismatch\n got: %q\nwant: %q", got, want)
+		passed := t.Run(fx.Name, func(t *testing.T) {
+			res := RunFixture(t.Context(), fx)
+			if !res.Passed {
+				t.Fatalf("fixture failed: %s", res.FailureReason)
 			}
 		})
 
-		results = append(results, result{f.Name, passed})
+		results = append(results, result{fx.Name, passed})
 	}
 
 	// Summary table.

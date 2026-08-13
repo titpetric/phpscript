@@ -421,14 +421,19 @@ func phpArrayMap(fn func(...any) (any, error), a *model.Array) (*model.Array, er
 	if a == nil {
 		return out, nil
 	}
+	var mapErr error
 	a.Range(func(_, v any) bool {
 		mapped, err := fn(v)
 		if err != nil {
+			mapErr = err
 			return false
 		}
 		out.Append(mapped)
 		return true
 	})
+	if mapErr != nil {
+		return nil, mapErr
+	}
 	return out, nil
 }
 

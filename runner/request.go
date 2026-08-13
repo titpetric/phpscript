@@ -15,7 +15,11 @@ type Context struct {
 	Get     map[string]string
 	Post    map[string]string
 	Path    map[string]string
+	Cookie  map[string]string
+	Server  map[string]string
+	Env     map[string]string
 	Headers map[string]string
+	Argv    []string
 
 	// response collects headers set by the PHP header() function. It is an
 	// http.Header (a map, hence reference-shared across copies of Context) so a
@@ -31,7 +35,11 @@ func NewContext() Context {
 		Get:      map[string]string{},
 		Post:     map[string]string{},
 		Path:     map[string]string{},
+		Cookie:   map[string]string{},
+		Server:   map[string]string{},
+		Env:      map[string]string{},
 		Headers:  map[string]string{},
+		Argv:     []string{},
 		response: http.Header{},
 		status:   &status,
 	}
@@ -62,6 +70,19 @@ func FromRequest(r *http.Request) Context {
 		}
 	}
 
+	// Cookies ($_COOKIE).
+	for _, ck := range r.Cookies() {
+		c.Cookie[ck.Name] = ck.Value
+	}
+
+	// Server variables ($_SERVER).
+	c.Server["REQUEST_METHOD"] = r.Method
+	c.Server["REQUEST_URI"] = r.URL.RequestURI()
+	c.Server["QUERY_STRING"] = r.URL.RawQuery
+	c.Server["HTTP_HOST"] = r.Host
+	c.Server["SERVER_PROTOCOL"] = r.Proto
+	c.Server["REMOTE_ADDR"] = r.RemoteAddr
+
 	// Path values from the matched route pattern, e.g. "GET /users/{id}".
 	// The stdlib exposes individual values via r.PathValue but no enumeration,
 	// so we recover the wildcard names from r.Pattern and look each one up.
@@ -76,6 +97,8 @@ func FromRequest(r *http.Request) Context {
 	for k, v := range r.Header {
 		if len(v) > 0 {
 			c.Headers[k] = v[0]
+			key := "HTTP_" + strings.ToUpper(strings.ReplaceAll(k, "-", "_"))
+			c.Server[key] = v[0]
 		}
 	}
 
@@ -97,7 +120,17 @@ func (c Context) Register(rt *Runtime) {
 	// Superglobals as ordinary PHP arrays.
 	rt.SetGlobal("_GET", mapToArray(c.Get))
 	rt.SetGlobal("_POST", mapToArray(c.Post))
+	rt.SetGlobal("_COOKIE", mapToArray(c.Cookie))
+	rt.SetGlobal("_SERVER", mapToArray(c.Server))
+	rt.SetGlobal("_ENV", mapToArray(c.Env))
 	rt.SetGlobal("_PATH", mapToArray(c.Path))
+
+	argvArr := model.NewArray()
+	for i, arg := range c.Argv {
+		argvArr.Set(int64(i), arg)
+	}
+	rt.SetGlobal("argv", argvArr)
+	rt.SetGlobal("argc", int64(len(c.Argv)))
 }
 
 // GetAllHeaders implements PHP getallheaders(): an associative array of the
@@ -158,6 +191,9 @@ func (c Context) ResponseStatus() int {
 // alphabetical key order (Go map iteration is random; PHP callers expect a
 // deterministic shape).
 func mapToArray(m map[string]string) *model.Array {
+	if len(m) == 0 {
+		return model.NewArray()
+	}
 	arr := model.NewArray()
 	keys := make([]string, 0, len(m))
 	for k := range m {
