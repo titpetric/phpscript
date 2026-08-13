@@ -19,6 +19,7 @@ import (
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 
+	"github.com/titpetric/phpscript/pkg/sqlite55"
 	"github.com/titpetric/phpscript/stdlib/ps"
 	"github.com/titpetric/phpscript/stdlib/status"
 )
@@ -38,6 +39,7 @@ func Register(rt *runner.Runtime) {
 	registerEnvironment(rt)
 
 	ps.Register(rt)
+	sqlite55.Register(rt)
 }
 
 func registerEnvironment(rt *runner.Runtime) {
