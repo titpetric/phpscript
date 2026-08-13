@@ -8,7 +8,9 @@ Regenerate it after changing runtime or standard-library registrations.
 ## PS namespace
 
 - `PS\Database` (class)
+- `PS\SQLite` (class)
 - `PS\SharedMemory` (class)
+- `PS\Telemetry` (class)
 
 ## Arrays
 
@@ -120,3 +122,5 @@ Regenerate it after changing runtime or standard-library registrations.
 ## Classes
 
 - `Exception`
+- `SQLite`
+- `Telemetry`

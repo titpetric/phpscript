@@ -6,14 +6,18 @@ import (
 	"reflect"
 
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib/status"
 )
 
 // Register installs the phpscript extensions into the runtime.
+// These are all custom API's and not PHP standard library ones.
 func Register(rt *runner.Runtime) {
 	RegisterDatabase(rt)
 	RegisterDefer(rt)
 	RegisterSharedMemory(rt)
 	RegisterShutdown(rt)
+
+	rt.RegisterFunc("span", status.Span)
 }
 
 // RegisterDefer installs defer() in the global function namespace.
