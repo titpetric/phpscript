@@ -6,5 +6,5 @@ import (
 
 // Register installs symbols into the runtime.
 func Register(rt *runner.Runtime) {
-	rt.RegisterFunc("span", Span)
+	rt.RegisterFunc("start_span", StartSpan)
 }

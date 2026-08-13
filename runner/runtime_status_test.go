@@ -21,7 +21,7 @@ type statusRecorder struct {
 
 func (r *statusRecorder) Trace(ctx context.Context, message string, flags ...model.Flag) *model.RequestSpan {
 	r.traces = append(r.traces, message)
-	span := model.Span(model.WithRequest(ctx, &r.request), message, flags...)
+	span := model.StartSpan(model.WithRequest(ctx, &r.request), message, flags...)
 	r.spans = append(r.spans, span)
 	return span
 }
@@ -65,6 +65,27 @@ func TestRuntimeObserverReceivesParseError(t *testing.T) {
 	}
 	if got := recorder.statuses[len(recorder.statuses)-1]; got != model.StatusError {
 		t.Fatalf("last status = %q, want E", got)
+	}
+}
+
+func TestRuntimeObserverReceivesExecutionErrorSpan(t *testing.T) {
+	recorder := &statusRecorder{}
+	rt := New(nil, Options{RootFS: fstest.MapFS{
+		"main.php": {Data: []byte(`<?php $value = 1; $value["key"] = 2;`)},
+	}})
+	rt.Observe(recorder)
+	program, err := rt.LoadFile("main.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err == nil {
+		t.Fatal("expected execution error")
+	}
+	if got := recorder.statuses[len(recorder.statuses)-1]; got != model.StatusError {
+		t.Fatalf("last status = %q, want E", got)
+	}
+	if len(recorder.spans) != 1 || recorder.spans[0].Message != "Error: <code>assign: target is not an array</code>" || recorder.spans[0].Error != "assign: target is not an array" || recorder.spans[0].Filename != "main.php" {
+		t.Fatalf("error spans = %+v", recorder.spans)
 	}
 }
 
@@ -157,5 +178,29 @@ func TestRuntimeObserverReceivesMeasuredConstructor(t *testing.T) {
 	}
 	if len(recorder.spans) != 1 || recorder.spans[0].Duration <= 0 || recorder.spans[0].Filename != "main.php" {
 		t.Fatalf("constructor spans = %+v", recorder.spans)
+	}
+}
+
+func TestRuntimeObserverReceivesMeasuredPHPMethod(t *testing.T) {
+	recorder := &statusRecorder{}
+	rt := New(nil, Options{RootFS: fstest.MapFS{
+		"main.php": {Data: []byte(`<?php
+class Database {
+    function get() { return "result"; }
+}
+$db = new Database;
+echo $db->get();
+`)},
+	}})
+	rt.Observe(recorder)
+	program, err := rt.LoadFile("main.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if len(recorder.spans) != 2 || recorder.spans[0].Message != "new Database" || recorder.spans[1].Message != "db.get" || recorder.spans[1].Duration <= 0 || recorder.spans[1].Filename != "main.php" {
+		t.Fatalf("method spans = %+v", recorder.spans)
 	}
 }

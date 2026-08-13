@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 )
@@ -9,14 +10,14 @@ import (
 func TestSpanReturnsStableMutableValue(t *testing.T) {
 	request := &Request{}
 	ctx := WithSpanFilename(WithRequest(context.Background(), request), "views/page.tpl")
-	span := Span(ctx, "measured")
+	span := StartSpan(ctx, "measured")
 	if span == nil {
 		t.Fatal("Span returned nil")
 	}
 	for i := 0; i < 100; i++ {
-		Span(ctx, "nested")
+		StartSpan(ctx, "nested")
 	}
-	span.Duration = 5 * time.Millisecond
+	span.SetDuration(5 * time.Millisecond)
 	if request.Spans[0] != span || request.Spans[0].Duration != 5*time.Millisecond {
 		t.Fatalf("stored span was not mutable: %+v", request.Spans[0])
 	}
@@ -26,8 +27,30 @@ func TestSpanReturnsStableMutableValue(t *testing.T) {
 }
 
 func TestSpanWithoutRequestReturnsNil(t *testing.T) {
-	if span := Span(context.Background(), "ignored"); span != nil {
+	if span := StartSpan(context.Background(), "ignored"); span != nil {
 		t.Fatalf("Span returned %+v without a request", span)
+	}
+}
+
+func TestRequestTracerAndSpanMethods(t *testing.T) {
+	request := &Request{}
+	ctx := WithSpanFilename(context.Background(), "source.php")
+	span, ok := request.StartSpan(ctx, "work").(*RequestSpan)
+	if !ok {
+		t.Fatalf("span = %#v", span)
+	}
+	started := time.Now().Add(-time.Second)
+	span.SetMessage("updated")
+	span.SetFilename("updated.php")
+	span.SetLine(42)
+	span.SetTime(started)
+	span.SetType(SpanType.External)
+	span.SetAttribute("attempt", int64(2))
+	span.RecordError(errors.New("failed"))
+	span.End()
+
+	if span.Message != "updated" || span.Filename != "updated.php" || span.Line != 42 || !span.Time.Equal(started) || span.Duration < time.Second || span.Type != SpanType.External || span.Attributes["attempt"] != int64(2) || span.Error != "failed" {
+		t.Fatalf("span = %+v", span)
 	}
 }
 

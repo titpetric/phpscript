@@ -148,15 +148,26 @@ func (rt *Runtime) helperGet(scope *Scope) func(base any, name string) any {
 			}
 		}
 		// A method read without parentheses is a bound callable, as in
-		// `defer($db->close)`. Keep the receiver attached by returning the
-		// reflect method value itself.
+		// `defer($db->close)` or `call_user_func_array($db->get, $args)`.
+		// Return the runtime's uniform callable signature so indirect calls get
+		// the same context injection and coercion as direct method calls.
 		if m := rv.MethodByName(name); m.IsValid() {
-			return m.Interface()
+			return rt.boundGoMethod(base, name, scope)
 		}
 		if m := methodByNameFold(rv, name); m.IsValid() {
-			return m.Interface()
+			return rt.boundGoMethod(base, name, scope)
 		}
 		return nil
+	}
+}
+
+func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...any) (any, error) {
+	return func(args ...any) (any, error) {
+		callScope := scope
+		if callScope == nil {
+			callScope = NewScope()
+		}
+		return rt.callGoMethod(base, method, args, callScope)
 	}
 }
 

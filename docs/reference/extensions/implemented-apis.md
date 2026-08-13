@@ -108,8 +108,8 @@ Regenerate it after changing runtime or standard-library registrations.
 - `register_shutdown_function`
 - `rtrim`
 - `set_include_path`
-- `span`
 - `sprintf`
+- `start_span`
 - `substr`
 - `token_get_all`
 - `token_name`

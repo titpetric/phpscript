@@ -3,13 +3,13 @@ package runner
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"io/fs"
 	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
@@ -72,21 +72,30 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 func (rt *Runtime) Run(p *model.Program) (err error) {
 	defer func() {
 		err = combineErrors(err, rt.runShutdown())
+		if err == nil {
+			return
+		}
+		rt.UpdateStatus(model.StatusError)
+		if _, exit := IsExit(err); exit {
+			return
+		}
+		ctx := rt.ctx
+		if rt.entrypoint != "" {
+			ctx = model.WithSpanFilename(ctx, rt.entrypoint)
+		}
+		span := rt.traceContext(ctx, fmt.Sprintf("Error: <code>%s</code>", template.HTMLEscapeString(err.Error())))
+		if span != nil {
+			span.RecordError(err)
+		}
 	}()
 	rt.UpdateStatus(model.StatusProcessing)
 	if rt.flat {
 		if handled, flatErr := rt.runFlat(p); handled {
 			err = flatErr
-			if err != nil {
-				rt.UpdateStatus(model.StatusError)
-			}
 			return err
 		}
 	}
 	err = rt.runInterpreted(p)
-	if err != nil {
-		rt.UpdateStatus(model.StatusError)
-	}
 	return err
 }
 
@@ -460,7 +469,7 @@ func (rt *Runtime) trace(scope *Scope, message string) func() {
 	span := rt.traceContext(contextWithScope(rt.ctx, scope), message)
 	return func() {
 		if span != nil {
-			span.Duration = time.Since(span.Time)
+			span.End()
 		}
 	}
 }
@@ -616,6 +625,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 	if err != nil {
 		return err
 	}
+	bindConstructorID(n.Target, n.Value, n.Op, rhs)
 
 	switch tgt := model.UnwrapParenthesized(n.Target).(type) {
 	case *model.Var:
@@ -677,6 +687,22 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 
 	default:
 		return fmt.Errorf("assign: unsupported target %T", n.Target)
+	}
+}
+
+func bindConstructorID(target, value model.Expr, op string, result any) {
+	if op != "" && op != "=" {
+		return
+	}
+	variable, ok := model.UnwrapParenthesized(target).(*model.Var)
+	if !ok {
+		return
+	}
+	if _, ok := model.UnwrapParenthesized(value).(*model.New); !ok {
+		return
+	}
+	if identifiable, ok := result.(interface{ SetID(string) }); ok {
+		identifiable.SetID(variable.Name)
 	}
 }
 
@@ -827,6 +853,14 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	if obj.Class != nil {
 		scope.Set("__class__", obj.Class.Name)
 	}
+	name := obj.ID
+	if name == "" && obj.Class != nil {
+		name = obj.Class.Name
+	}
+	if name != "" {
+		name += "."
+	}
+	defer rt.trace(scope, name+decl.Name)()
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}

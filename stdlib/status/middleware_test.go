@@ -204,10 +204,10 @@ func TestServerStatusOptions(t *testing.T) {
 func TestRequestSpansAndDetail(t *testing.T) {
 	status := NewServerStatus(NewOptions())
 	handler := status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		Span(r.Context(), "getUser", Flag("database"))
-		Span(r.Context(), "render", SpanType.Template, OpenSpan)
-		Span(r.Context(), "partial")
-		Span(r.Context(), "render", SpanType.Template, CloseSpan)
+		StartSpan(r.Context(), "getUser", Flag("database"))
+		StartSpan(r.Context(), "render", SpanType.Template, OpenSpan)
+		StartSpan(r.Context(), "partial")
+		StartSpan(r.Context(), "render", SpanType.Template, CloseSpan)
 		_, _ = w.Write([]byte("ok"))
 	}))
 	recorder := httptest.NewRecorder()

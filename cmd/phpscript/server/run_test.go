@@ -18,7 +18,7 @@ import (
 var testFS = fstest.MapFS{
 	"public/index.php":  {Data: []byte(`<?php echo "home";`)},
 	"public/direct.php": {Data: []byte(`<?php echo $_GET["name"];`)},
-	"public/spans.php":  {Data: []byte(`<?php span("getUser", "database"); echo "spans";`)},
+	"public/spans.php":  {Data: []byte(`<?php $span = start_span("getUser", "database"); $span->set_attribute("user_id", 42); $span->set_filename("custom.php"); $span->set_line(12); $span->record_error(new Exception("failed", 500)); $span->end(); echo "spans";`)},
 	"public/style.css":  {Data: []byte(`body { color: red; }`)},
 	"public/app.js":     {Data: []byte(`console.log("ok");`)},
 	"public/annotated.php": {Data: []byte(`<?php
@@ -130,6 +130,16 @@ func TestHandlerRecordsPHPSpan(t *testing.T) {
 	h.ServeHTTP(detail, httptest.NewRequest(http.MethodGet, "/debug/server-status/detail/"+id, nil))
 	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), "getUser") || !strings.Contains(detail.Body.String(), "database") {
 		t.Fatalf("status = %d, body = %q", detail.Code, detail.Body.String())
+	}
+
+	detailJSON := httptest.NewRecorder()
+	detailRequest := httptest.NewRequest(http.MethodGet, "/debug/server-status/detail/"+id, nil)
+	detailRequest.Header.Set("Accept", "application/json")
+	h.ServeHTTP(detailJSON, detailRequest)
+	for _, value := range []string{`"filename":"custom.php"`, `"line":12`, `"attributes":{"user_id":42}`, `"error":"failed"`} {
+		if !strings.Contains(detailJSON.Body.String(), value) {
+			t.Fatalf("JSON detail does not contain %s: %s", value, detailJSON.Body.String())
+		}
 	}
 }
 

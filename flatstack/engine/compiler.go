@@ -384,7 +384,13 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 	}
 	switch target := target.(type) {
 	case *model.Var:
-		c.emit(instruction{op: opStore, a: c.slot(target.Name), b: boolInt(keep), name: operator})
+		constructorID := ""
+		if operator == "" || operator == "=" {
+			if _, ok := model.UnwrapParenthesized(value).(*model.New); ok {
+				constructorID = target.Name
+			}
+		}
+		c.emit(instruction{op: opStore, a: c.slot(target.Name), b: boolInt(keep), name: operator, extra: constructorID})
 	case *model.Index:
 		if err := c.expr(target.Base, path+".target.base"); err != nil {
 			return err

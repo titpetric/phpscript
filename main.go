@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"log"
+	"os"
 
 	"github.com/goccy/go-yaml"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/test"
 	"github.com/titpetric/phpscript/cmd/phpscript/version"
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/model"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -37,6 +39,16 @@ func start() error {
 	}
 
 	platform.SetupConnections(appConfig.Env)
+
+	if os.Getenv("DEBUG") != "" {
+		if val, ok := platform.Database.(model.ExtendedDatabaseProvider); ok {
+			connectionList := val.List()
+			log.Println("connections", len(connectionList))
+			for k, v := range connectionList {
+				log.Println(k, v)
+			}
+		}
+	}
 
 	app := cli.NewApp("phpscript")
 	app.AddCommand("ast", ast.Name, ast.NewCommand)

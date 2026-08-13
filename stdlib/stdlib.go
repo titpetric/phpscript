@@ -27,7 +27,6 @@ import (
 // RegisterFS to add filesystem IO bound to a root directory.
 func Register(rt *runner.Runtime) {
 	rt.RegisterConstructor("Exception", NewException)
-	rt.RegisterFunc("span", status.Span)
 
 	registerStrings(rt)
 	registerArrays(rt)

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"html/template"
 	"runtime"
 	"time"
@@ -35,6 +36,13 @@ type Request struct {
 	ChangedAt time.Time        `json:"-"`
 }
 
+var _ Tracer = (*Request)(nil)
+
+// StartSpan starts a named span attached to the request.
+func (r *Request) StartSpan(ctx context.Context, name string) Span {
+	return StartSpan(WithRequest(ctx, r), name)
+}
+
 func (r *Request) AppendSpan(at time.Time, message string, flags ...Flag) *RequestSpan {
 	span := &RequestSpan{
 		ID:      len(r.Spans) + 1,
@@ -65,7 +73,7 @@ func (r *Request) AppendSpan(at time.Time, message string, flags ...Flag) *Reque
 			}
 			if candidate.Open {
 				if depth == 0 {
-					candidate.Duration = at.Sub(candidate.Time)
+					candidate.SetDuration(at.Sub(candidate.Time))
 					break
 				}
 				depth--

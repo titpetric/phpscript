@@ -101,11 +101,17 @@ type Class struct {
 type Object struct {
 	Class *Class
 	Props map[string]any
+	ID    string
 }
 
 // NewObject builds an instance with field defaults applied.
 func NewObject(c *Class) *Object {
 	return &Object{Class: c, Props: map[string]any{}}
+}
+
+// SetID records the PHP variable receiving this constructed object.
+func (o *Object) SetID(id string) {
+	o.ID = id
 }
 
 // ArrayItemValue is a runtime (already-evaluated) array entry, the value-level

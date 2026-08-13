@@ -78,9 +78,10 @@ record a span through the standard library; the context is supplied by the
 runtime and the optional strings configure its type and nesting hints:
 
 ```php
-span("getUser", "database");
-span("render", "template", "open");
-span("render", "template", "close");
+$span = start_span("getUser", "database");
+$span->set_attribute("user_id", 42);
+$span->set_message("load user");
+$span->end();
 ```
 
 The detail table reports each span's time from the request start and its

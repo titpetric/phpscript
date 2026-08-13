@@ -3,6 +3,7 @@ package runner_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -20,6 +21,22 @@ func (*snakeCaseMethodHost) GetAll(context.Context) (any, error) {
 
 func (*snakeCaseMethodHost) AffectedRows(context.Context) (any, error) {
 	return "affected", nil
+}
+
+type constructorIDHost struct {
+	id string
+}
+
+func (h *constructorIDHost) SetID(id string) { h.id = id }
+func (h *constructorIDHost) GetID() string   { return h.id }
+
+type contextMethodHost struct{}
+
+func (*contextMethodHost) Get(ctx context.Context, query string, args ...any) (any, error) {
+	if ctx == nil {
+		return nil, errors.New("missing context")
+	}
+	return query + ":" + fmt.Sprint(args[0]), nil
 }
 
 // run parses src, wires a tiny shim stdlib, executes, and returns the output.
@@ -96,6 +113,57 @@ func TestForwardedFunction(t *testing.T) {
 	got := run(t, `<?php echo strtoupper("abc") . strlen("hello");`)
 	if got != "ABC5" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestConstructorResultReceivesVariableID(t *testing.T) {
+	program, err := parser.Parse(`<?php $db = new Host; $alias = $db; echo $alias->get_id();`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name string
+		new  func(io.Writer, runner.Options) *runner.Runtime
+	}{
+		{"interpreter", runner.New},
+		{"flatstack", runner.NewFlatStack},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var out strings.Builder
+			instance := &constructorIDHost{}
+			rt := test.new(&out, runner.Options{})
+			rt.RegisterConstructor("Host", func() *constructorIDHost { return instance })
+			if err := rt.Run(program); err != nil {
+				t.Fatal(err)
+			}
+			if instance.id != "db" || out.String() != "db" {
+				t.Fatalf("ID = %q, output = %q", instance.id, out.String())
+			}
+		})
+	}
+}
+
+func TestNativeBoundMethodUsesUniformCallable(t *testing.T) {
+	program, err := parser.Parse(`<?php $db = new Host; echo invoke_array($db->get, array("select", 7));`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	rt.RegisterConstructor("Host", func() *contextMethodHost { return &contextMethodHost{} })
+	rt.RegisterFunc("invoke_array", func(fn func(...any) (any, error), args *model.Array) (any, error) {
+		var values []any
+		args.Range(func(_, value any) bool {
+			values = append(values, value)
+			return true
+		})
+		return fn(values...)
+	})
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "select:7" {
+		t.Fatalf("output = %q", out.String())
 	}
 }
 

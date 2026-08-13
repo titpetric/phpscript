@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/platform"
 )
 
@@ -22,18 +23,11 @@ func setTestEnv() {
 
 	platform.SetupConnections(env)
 
-	// Add default storage for blog.
-	if val, ok := platform.Database.(ExtendedProvider); ok {
+	if val, ok := platform.Database.(model.ExtendedDatabaseProvider); ok {
 		connectionList := val.List()
 		log.Println("connections", len(connectionList))
 		for k, v := range connectionList {
 			log.Println(k, v)
 		}
 	}
-}
-
-// ExtendedProvider extends database providers with listing and registration.
-type ExtendedProvider interface {
-	List() []string
-	Register(string, string)
 }

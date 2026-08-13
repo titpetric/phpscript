@@ -281,7 +281,10 @@ func (rt *Runtime) UpdateIncludedFiles(count int) {
 // RegisterConstructor binds a class name to a Go constructor so `new Name` in
 // PHP instantiates a native Go value. The constructor may take a leading
 // context.Context (auto-injected) and may return a trailing error, which is
-// surfaced to the interpreter as a thrown error. Example:
+// surfaced to the interpreter as a thrown error. When a direct variable
+// assignment receives a constructed value that implements SetID(string), the
+// runtime passes it the PHP variable name without the leading dollar sign.
+// Example:
 //
 //	rt.RegisterConstructor("Storage", func(ctx context.Context) (Storage, error) { ... }).
 //	// PHP:  $storage = new Storage;   // == storage, err := NewStorage(ctx).

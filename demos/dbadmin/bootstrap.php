@@ -1,11 +1,10 @@
 <?php
 
-include "include/Database.php";
 include "include/Template.php";
-$db = new Database;
+
+$db = new PS\DatabaseClient("dbadmin");
 $tpl = new Template;
 
-$db->connect("dbadmin");
 $catalogue = $db->get("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'catalogue'");
 if (!$catalogue) {
 	$db->query("CREATE TABLE catalogue (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'General', notes TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");

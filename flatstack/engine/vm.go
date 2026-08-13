@@ -123,6 +123,9 @@ func Run(program *Program, host Host) (err error) {
 					return err
 				}
 			}
+			if identifiable, ok := value.(interface{ SetID(string) }); ok && inst.extra != "" {
+				identifiable.SetID(inst.extra)
+			}
 			locals[inst.a], initialized[inst.a] = value, true
 			if inst.b != 0 {
 				stack = append(stack, value)

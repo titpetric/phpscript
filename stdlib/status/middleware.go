@@ -43,7 +43,7 @@ type (
 )
 
 var (
-	Span      = model.Span
+	StartSpan = model.StartSpan
 	OpenSpan  = model.OpenSpan
 	CloseSpan = model.CloseSpan
 	SpanType  = model.SpanType
@@ -146,6 +146,7 @@ type ServerStatus struct {
 }
 
 var _ platform.Module = (*ServerStatus)(nil)
+var _ model.Tracer = (*ServerStatus)(nil)
 
 // NewModule creates an empty status module.
 func NewModule(options Options) *ServerStatus {
@@ -207,7 +208,7 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 		}
 		ctx = model.WithRequest(ctx, entry)
 		r = r.WithContext(ctx)
-		model.Span(ctx, r.URL.Path, model.SpanType.HTTP, model.OpenSpan)
+		model.StartSpan(ctx, r.URL.Path, model.SpanType.HTTP, model.OpenSpan)
 		s.mu.Lock()
 		s.total++
 		s.active[id] = entry
@@ -254,18 +255,23 @@ func (s *ServerStatus) UpdateFilename(ctx context.Context, filename string) {
 		entry.UpdatedAt = time.Now()
 		for _, span := range entry.Spans {
 			if span != nil && span.Filename == "" {
-				span.Filename = filename
+				span.SetFilename(filename)
 			}
 		}
 	}
 	s.mu.Unlock()
-	model.Span(model.WithSpanFilename(ctx, filename), filename, model.OpenSpan)
+	model.StartSpan(model.WithSpanFilename(ctx, filename), filename, model.OpenSpan)
+}
+
+// StartSpan starts a named span for ctx.
+func (s *ServerStatus) StartSpan(ctx context.Context, name string) model.Span {
+	return model.StartSpan(ctx, name)
 }
 
 // Trace will add a span with the invoked message. It's used to trace
 // runtime internals, like including files.
 func (s *ServerStatus) Trace(ctx context.Context, message string, flags ...model.Flag) *model.RequestSpan {
-	return model.Span(ctx, message, flags...)
+	return model.StartSpan(ctx, message, flags...)
 }
 
 // UpdateIncludedFiles records the number of files included by an active PHP
@@ -288,7 +294,7 @@ func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseW
 	if s.options.TrackMemoryUse {
 		runtime.ReadMemStats(&after)
 	}
-	model.Span(model.WithSpanFilename(ctx, entry.Filename), "done", model.SpanType.HTTP, model.CloseSpan)
+	model.StartSpan(model.WithSpanFilename(ctx, entry.Filename), "done", model.SpanType.HTTP, model.CloseSpan)
 
 	now := time.Now()
 
