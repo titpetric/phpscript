@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
@@ -140,5 +141,54 @@ func TestDeferRejectsTypedNilCallback(t *testing.T) {
 
 	if err := rt.Run(program); err == nil || !strings.Contains(err.Error(), "argument must be callable") {
 		t.Fatalf("run error = %v, want invalid callable error", err)
+	}
+}
+
+func TestRegisterShutdownFunctionRunsInOrderWithMagicFile(t *testing.T) {
+	var out strings.Builder
+	root := fstest.MapFS{
+		"main.php": {Data: []byte(`<?php
+register_shutdown_function(function() { echo "-first:" . __FILE__; });
+register_shutdown_function(function() { echo "-second:" . __FILE__; });
+echo __FILE__ . "-body";
+`)},
+	}
+	rt := runner.New(&out, runner.Options{RootFS: root})
+	ps.RegisterShutdown(rt)
+	program, err := rt.LoadFile("main.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), "main.php-body-first:main.php-second:main.php"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+func TestShutdownClosureKeepsIncludedMagicFile(t *testing.T) {
+	var out strings.Builder
+	root := fstest.MapFS{
+		"main.php": {Data: []byte(`<?php
+echo __FILE__ . "-main";
+include "bootstrap.php";
+`)},
+		"bootstrap.php": {Data: []byte(`<?php
+echo "-" . __FILE__ . "-open";
+register_shutdown_function(function() { echo "-" . __FILE__ . "-close"; });
+`)},
+	}
+	rt := runner.New(&out, runner.Options{RootFS: root})
+	ps.RegisterShutdown(rt)
+	program, err := rt.LoadFile("main.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := out.String(), "main.php-main-bootstrap.php-open-bootstrap.php-close"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
 	}
 }
