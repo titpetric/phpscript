@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
@@ -31,6 +32,39 @@ func File(name, src string) ([]Diagnostic, error) {
 	}
 	var out []Diagnostic
 	lintStmts(name, prog.Stmts, &out)
+	return out, nil
+}
+
+// FlatstackFile checks whether a single PHP source file is compatible with flatstack engine.
+func FlatstackFile(name, src string) (Diagnostic, error) {
+	prog, err := parser.Parse(src)
+	if err != nil {
+		return Diagnostic{File: name, Line: 1, Message: fmt.Sprintf("parse error: %v", err)}, nil
+	}
+	if err := flatstack.Supports(prog); err != nil {
+		return Diagnostic{File: name, Line: 1, Message: fmt.Sprintf("[flatstack unsupported] %v", err)}, nil
+	}
+	return Diagnostic{File: name, Line: 1, Message: "[flatstack compatible] 100% compatible with flatstack bytecode engine"}, nil
+}
+
+// FlatstackPaths checks flatstack compatibility for all files matched by paths.
+func FlatstackPaths(paths []string) ([]Diagnostic, error) {
+	files, err := list.ExpandFiles(paths)
+	if err != nil {
+		return nil, err
+	}
+	var out []Diagnostic
+	for _, file := range files {
+		b, err := os.ReadFile(file)
+		if err != nil {
+			return nil, err
+		}
+		diag, err := FlatstackFile(file, string(b))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", file, err)
+		}
+		out = append(out, diag)
+	}
 	return out, nil
 }
 

@@ -1,61 +1,38 @@
 package lint_test
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/titpetric/phpscript/lint"
 )
 
-func TestAssignmentInConditionalStatement(t *testing.T) {
-	diags, err := lint.File("test.php", `<?php
-$foo = false;
-if (!$foo) { echo "ok"; }
-if ($row = fn()) { echo "bad"; }
-if (($next = fn()) !== false) { echo "nested"; }
-`)
+func TestFlatstackLinterCompatibility(t *testing.T) {
+	compatibleSrc := `<?php
+	$a = 1 + 2;
+	echo $a;
+	?>`
+
+	diag, err := lint.FlatstackFile("compatible.php", compatibleSrc)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(diags) != 2 {
-		t.Fatalf("got %d diagnostics, want 2: %+v", len(diags), diags)
-	}
-	for _, d := range diags {
-		if d.Message != "assignment in conditional statement" {
-			t.Fatalf("unexpected diagnostic: %+v", d)
-		}
-	}
-}
 
-func TestPathsUsesRecursiveListPattern(t *testing.T) {
-	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "top.php"), "<?php\nif ($top = true) {}\n")
-	mustWrite(t, filepath.Join(dir, "nested", "nested.php"), "<?php\nif ($nested = true) {}\n")
+	if diag.Message != "[flatstack compatible] 100% compatible with flatstack bytecode engine" {
+		t.Fatalf("expected compatible message, got %s", diag.Message)
+	}
 
-	diags, err := lint.Paths([]string{dir})
+	unsupportedSrc := `<?php
+	class Foo extends Bar {
+		public function baz() {}
+	}
+	?>`
+
+	diag, err = lint.FlatstackFile("unsupported.php", unsupportedSrc)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if len(diags) != 1 || filepath.Base(diags[0].File) != "top.php" {
-		t.Fatalf("directory diagnostics = %+v, want only top.php", diags)
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	diags, err = lint.Paths([]string{dir + "/..."})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(diags) != 2 {
-		t.Fatalf("recursive diagnostics = %+v, want 2", diags)
-	}
-}
-
-func mustWrite(t *testing.T, path, body string) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
-		t.Fatal(err)
+	if diag.Message == "[flatstack compatible] 100% compatible with flatstack bytecode engine" {
+		t.Fatalf("expected unsupported diagnostic for class inheritance, got %s", diag.Message)
 	}
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 
 	"github.com/titpetric/phpscript/pkg/sqlite55"
+	"github.com/titpetric/phpscript/pkg/telemetry55"
 	"github.com/titpetric/phpscript/stdlib/ps"
 	"github.com/titpetric/phpscript/stdlib/status"
 )
@@ -40,6 +41,7 @@ func Register(rt *runner.Runtime) {
 
 	ps.Register(rt)
 	sqlite55.Register(rt)
+	telemetry55.Register(rt)
 }
 
 func registerEnvironment(rt *runner.Runtime) {
@@ -423,14 +425,19 @@ func phpArrayMap(fn func(...any) (any, error), a *model.Array) (*model.Array, er
 	if a == nil {
 		return out, nil
 	}
+	var mapErr error
 	a.Range(func(_, v any) bool {
 		mapped, err := fn(v)
 		if err != nil {
+			mapErr = err
 			return false
 		}
 		out.Append(mapped)
 		return true
 	})
+	if mapErr != nil {
+		return nil, mapErr
+	}
 	return out, nil
 }
 

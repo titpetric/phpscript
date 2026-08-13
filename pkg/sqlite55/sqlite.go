@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 
 	_ "modernc.org/sqlite"
 
@@ -18,7 +17,6 @@ import (
 type Adapter struct {
 	db  *sql.DB
 	dsn string
-	mu  sync.RWMutex
 }
 
 // Open creates an Adapter connected to a SQLite database file or DSN with WAL & busy_timeout.
@@ -37,10 +35,18 @@ func Open(dsn string) (*Adapter, error) {
 		return nil, fmt.Errorf("sqlite open error: %w", err)
 	}
 
-	// Pragma defaults
-	_, _ = db.Exec("PRAGMA journal_mode=WAL;")
-	_, _ = db.Exec("PRAGMA busy_timeout=5000;")
-	_, _ = db.Exec("PRAGMA foreign_keys=ON;")
+	// Pragma defaults with strict error checking
+	pragmas := []string{
+		"PRAGMA journal_mode=WAL;",
+		"PRAGMA busy_timeout=5000;",
+		"PRAGMA foreign_keys=ON;",
+	}
+	for _, pragma := range pragmas {
+		if _, err := db.Exec(pragma); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("failed to set pragma %q: %w", pragma, err)
+		}
+	}
 
 	return &Adapter{
 		db:  db,
@@ -73,7 +79,7 @@ func (a *Adapter) Execute(ctx context.Context, query string, args ...any) (int64
 	}
 	res, err := a.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("execute query failed: %w", err)
 	}
 	return res.RowsAffected()
 }
@@ -93,15 +99,16 @@ func (a *Adapter) Insert(ctx context.Context, table string, data map[string]any)
 	}
 	sort.Strings(keys)
 
-	cols := strings.Join(keys, ", ")
+	quotedCols := make([]string, len(keys))
 	placeholders := make([]string, len(keys))
 	vals := make([]any, len(keys))
 	for i, k := range keys {
+		quotedCols[i] = quoteIdent(k)
 		placeholders[i] = "?"
 		vals[i] = data[k]
 	}
 
-	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, cols, strings.Join(placeholders, ", "))
+	query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", quoteIdent(table), strings.Join(quotedCols, ", "), strings.Join(placeholders, ", "))
 	res, err := a.db.ExecContext(ctx, query, vals...)
 	if err != nil {
 		return 0, fmt.Errorf("insert failed: %w", err)
@@ -111,9 +118,13 @@ func (a *Adapter) Insert(ctx context.Context, table string, data map[string]any)
 
 // First queries and returns a single row as a map[string]any, or nil if not found.
 func (a *Adapter) First(ctx context.Context, query string, args ...any) (map[string]any, error) {
-	rows, err := a.All(ctx, query, args...)
+	q := query
+	if !strings.Contains(strings.ToUpper(q), "LIMIT") {
+		q += " LIMIT 1"
+	}
+	rows, err := a.All(ctx, q, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("first query failed: %w", err)
 	}
 	if len(rows) == 0 {
 		return nil, nil
@@ -129,13 +140,13 @@ func (a *Adapter) All(ctx context.Context, query string, args ...any) ([]map[str
 
 	rows, err := a.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("all query failed: %w", err)
 	}
 	defer rows.Close()
 
 	cols, err := rows.Columns()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read columns: %w", err)
 	}
 
 	var results []map[string]any
@@ -147,7 +158,7 @@ func (a *Adapter) All(ctx context.Context, query string, args ...any) ([]map[str
 		}
 
 		if err := rows.Scan(valPtrs...); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("row scan failed: %w", err)
 		}
 
 		rowMap := make(map[string]any, len(cols))
@@ -183,12 +194,12 @@ func (a *Adapter) Update(ctx context.Context, table string, data map[string]any,
 	setClauses := make([]string, len(keys))
 	queryArgs := make([]any, 0, len(keys)+len(whereArgs))
 	for i, k := range keys {
-		setClauses[i] = fmt.Sprintf("%s = ?", k)
+		setClauses[i] = fmt.Sprintf("%s = ?", quoteIdent(k))
 		queryArgs = append(queryArgs, data[k])
 	}
 	queryArgs = append(queryArgs, whereArgs...)
 
-	query := fmt.Sprintf("UPDATE %s SET %s", table, strings.Join(setClauses, ", "))
+	query := fmt.Sprintf("UPDATE %s SET %s", quoteIdent(table), strings.Join(setClauses, ", "))
 	if where != "" {
 		query += " WHERE " + where
 	}
@@ -206,7 +217,7 @@ func (a *Adapter) Delete(ctx context.Context, table string, where string, whereA
 		return 0, fmt.Errorf("sqlite adapter not connected")
 	}
 
-	query := fmt.Sprintf("DELETE FROM %s", table)
+	query := fmt.Sprintf("DELETE FROM %s", quoteIdent(table))
 	if where != "" {
 		query += " WHERE " + where
 	}
@@ -226,12 +237,12 @@ func (a *Adapter) Transaction(ctx context.Context, fn func(*sql.Tx) error) error
 
 	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	if err := fn(tx); err != nil {
 		_ = tx.Rollback()
-		return err
+		return fmt.Errorf("transaction failed and rolled back: %w", err)
 	}
 
 	return tx.Commit()
@@ -262,14 +273,17 @@ type PHPBridge struct {
 	ctx     context.Context
 }
 
+// Execute executes a DDL/DML query with optional arguments.
 func (b *PHPBridge) Execute(query string, args ...any) (int64, error) {
 	return b.adapter.Execute(b.ctx, query, unpackArgs(args)...)
 }
 
+// Insert inserts a row map into table and returns inserted ID.
 func (b *PHPBridge) Insert(table string, data any) (int64, error) {
 	return b.adapter.Insert(b.ctx, table, modelArrayToMap(data))
 }
 
+// First fetches the first row matching query.
 func (b *PHPBridge) First(query string, args ...any) (*model.Array, error) {
 	row, err := b.adapter.First(b.ctx, query, unpackArgs(args)...)
 	if err != nil || row == nil {
@@ -278,6 +292,7 @@ func (b *PHPBridge) First(query string, args ...any) (*model.Array, error) {
 	return mapToModelArray(row), nil
 }
 
+// All fetches all rows matching query.
 func (b *PHPBridge) All(query string, args ...any) (*model.Array, error) {
 	rows, err := b.adapter.All(b.ctx, query, unpackArgs(args)...)
 	if err != nil {
@@ -290,16 +305,24 @@ func (b *PHPBridge) All(query string, args ...any) (*model.Array, error) {
 	return arr, nil
 }
 
+// Update updates rows in table matching where condition.
 func (b *PHPBridge) Update(table string, data any, where string, whereArgs ...any) (int64, error) {
 	return b.adapter.Update(b.ctx, table, modelArrayToMap(data), where, unpackArgs(whereArgs)...)
 }
 
+// Delete deletes rows in table matching where condition.
 func (b *PHPBridge) Delete(table string, where string, whereArgs ...any) (int64, error) {
 	return b.adapter.Delete(b.ctx, table, where, unpackArgs(whereArgs)...)
 }
 
+// Close closes the underlying SQLite connection.
 func (b *PHPBridge) Close() error {
 	return b.adapter.Close()
+}
+
+func quoteIdent(s string) string {
+	clean := strings.ReplaceAll(s, `"`, `""`)
+	return `"` + clean + `"`
 }
 
 func modelArrayToMap(val any) map[string]any {
