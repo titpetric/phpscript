@@ -1,4 +1,4 @@
-package testcmd_test
+package test_test
 
 import (
 	"context"
@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	testcmd "github.com/titpetric/phpscript/cmd/phpscript/test"
+	"github.com/titpetric/phpscript/cmd/phpscript/test"
 )
 
 func TestRunCommand(t *testing.T) {
 	ctx := context.Background()
 
-	tmpDir, err := os.MkdirTemp("", "phpscript-testcmd-*")
+	tmpDir, err := os.MkdirTemp("", "phpscript-test-*")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,12 +21,12 @@ func TestRunCommand(t *testing.T) {
 	jsonReport := filepath.Join(tmpDir, "report.json")
 	htmlReport := filepath.Join(tmpDir, "report.html")
 
-	opts := testcmd.Options{
+	opts := test.Options{
 		Report:     jsonReport,
 		ReportHTML: htmlReport,
 	}
 
-	err = testcmd.Run(ctx, []string{"../../../tests/fixtures"}, opts)
+	err = test.Run(ctx, []string{"../../../tests/fixtures"}, opts)
 	if err != nil {
 		t.Fatalf("unexpected error running test command: %v", err)
 	}
