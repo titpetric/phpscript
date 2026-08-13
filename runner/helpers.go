@@ -128,7 +128,7 @@ func (rt *Runtime) helperGet(scope *Scope) func(base any, name string) any {
 			}
 			if b.Class != nil {
 				if decl, ok := b.Class.Methods[name]; ok {
-					return func(args ...any) (any, error) { return rt.invokeMethod(b, decl, args) }
+					return func(args ...any) (any, error) { return rt.invokeMethod(b, decl, args, scope) }
 				}
 			}
 			return nil
@@ -256,7 +256,7 @@ func (rt *Runtime) helperCall(scope *Scope) func(base any, method string, args .
 	return func(base any, method string, args ...any) (any, error) {
 		if obj, ok := base.(*model.Object); ok && obj.Class != nil {
 			if decl, ok := lookupPHPMethod(obj.Class, method); ok {
-				return rt.invokeMethod(obj, decl, args)
+				return rt.invokeMethod(obj, decl, args, scope)
 			}
 		}
 		return rt.callGoMethod(base, method, args, scope)
@@ -327,7 +327,7 @@ func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any,
 			}
 		}
 		if ok {
-			if _, err := rt.invokeMethod(obj, ctor, args); err != nil {
+			if _, err := rt.invokeMethod(obj, ctor, args, scope); err != nil {
 				return nil, err
 			}
 		}

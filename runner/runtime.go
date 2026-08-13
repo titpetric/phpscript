@@ -82,6 +82,9 @@ type Runtime struct {
 	exprCache *ExprCache
 	compiled  map[model.Expr]*compiledExpr
 	helpers   map[string]func(...any) (any, error)
+
+	sourceSpans map[model.Stmt]model.SourceSpan
+	currentLine int
 }
 
 // evalEnvPool is shared by runtimes because HTTP integrations commonly create
@@ -146,6 +149,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		constants:    map[string]any{},
 		classConsts:  map[string]map[string]any{},
 		exprCache:    NewExprCache(),
+		sourceSpans:  map[model.Stmt]model.SourceSpan{},
 		helpers: map[string]func(...any) (any, error){
 			"__bool":   adapt(phpTruthy),
 			"__concat": adapt(helperConcat),

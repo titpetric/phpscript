@@ -128,7 +128,7 @@ func TestHandlerRecordsPHPSpan(t *testing.T) {
 
 	detail := httptest.NewRecorder()
 	h.ServeHTTP(detail, httptest.NewRequest(http.MethodGet, "/debug/server-status/detail/"+id, nil))
-	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), "getUser") || !strings.Contains(detail.Body.String(), "database") {
+	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), "getUser") || !strings.Contains(detail.Body.String(), "database") || !strings.Contains(detail.Body.String(), "custom.php:L12") {
 		t.Fatalf("status = %d, body = %q", detail.Code, detail.Body.String())
 	}
 

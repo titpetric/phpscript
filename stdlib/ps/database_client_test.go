@@ -12,7 +12,7 @@ import (
 
 func TestDatabaseClientObserverRecordsQuerySpan(t *testing.T) {
 	request := &model.Request{}
-	ctx := model.WithSpanFilename(model.WithRequest(context.Background(), request), "queries/users.php")
+	ctx := model.WithSpanLine(model.WithSpanFilename(model.WithRequest(context.Background(), request), "queries/users.php"), 23)
 	started := time.Now().Add(-time.Second)
 	duration := 25 * time.Millisecond
 	databaseClient := &DatabaseClient{ID: "db"}
@@ -31,7 +31,7 @@ func TestDatabaseClientObserverRecordsQuerySpan(t *testing.T) {
 		t.Fatalf("spans = %+v", request.Spans)
 	}
 	span := request.Spans[0]
-	if span.Type != model.SpanType.Database || span.Filename != "queries/users.php" || span.Message != "db.Get: <code>select * from users where id = ?</code>" || !span.Time.Equal(started) || span.Duration != duration {
+	if span.Type != model.SpanType.Database || span.Filename != "queries/users.php" || span.Line != 23 || span.Message != "db.Get: <code>select * from users where id = ?</code>" || !span.Time.Equal(started) || span.Duration != duration {
 		t.Fatalf("database span = %+v", span)
 	}
 }

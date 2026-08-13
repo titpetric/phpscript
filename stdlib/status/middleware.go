@@ -933,14 +933,24 @@ func writeDetailText(w io.Writer, request Request, rows []spanRow) {
 		fmt.Fprintf(w, "%s at %s: %s, %.2f%%\n", state.Type, state.Offset.Round(time.Microsecond), state.Duration.Round(time.Microsecond), state.Share)
 	}
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "TYPE          TIME          DURATION      FILENAME                       MESSAGE")
+	fmt.Fprintln(w, "TYPE          TIME          DURATION      SOURCE                         MESSAGE")
 	for _, row := range rows {
 		duration := "-"
 		if row.HasDuration {
 			duration = durationMilliseconds(row.Duration)
 		}
-		fmt.Fprintf(w, "%-13s %-13s %-13s %-30s %s%s\n", row.Type, row.Offset.Round(time.Microsecond), duration, row.Filename, strings.Repeat("  ", row.Depth), row.Message)
+		fmt.Fprintf(w, "%-13s %-13s %-13s %-30s %s%s\n", row.Type, row.Offset.Round(time.Microsecond), duration, spanSource(row.Filename, row.Line), strings.Repeat("  ", row.Depth), row.Message)
 	}
+}
+
+func spanSource(filename string, line int) string {
+	if line <= 0 {
+		return filename
+	}
+	if filename == "" {
+		return fmt.Sprintf("L%d", line)
+	}
+	return fmt.Sprintf("%s:L%d", filename, line)
 }
 
 func durationMilliseconds(duration time.Duration) string {
@@ -1006,6 +1016,7 @@ func spanTypeColor(spanType Flag) string {
 var statusTemplate = template.Must(template.New("server-status").Funcs(template.FuncMap{
 	"duration":        func(d time.Duration) string { return d.Round(time.Microsecond).String() },
 	"durationMS":      durationMilliseconds,
+	"spanSource":      spanSource,
 	"addDuration":     func(a, b time.Duration) time.Duration { return a + b },
 	"included":        includedText,
 	"averageIncluded": averageIncludedText,

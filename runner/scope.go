@@ -63,6 +63,11 @@ func contextWithScope(ctx context.Context, scope *Scope) context.Context {
 			ctx = model.WithSpanFilename(ctx, filename)
 		}
 	}
+	if line, ok := scope.Get("__LINE__"); ok {
+		if line, ok := line.(int); ok {
+			ctx = model.WithSpanLine(ctx, line)
+		}
+	}
 	return context.WithValue(ctx, scopeContextKey{}, scope)
 }
 

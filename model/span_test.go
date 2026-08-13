@@ -9,7 +9,7 @@ import (
 
 func TestSpanReturnsStableMutableValue(t *testing.T) {
 	request := &Request{}
-	ctx := WithSpanFilename(WithRequest(context.Background(), request), "views/page.tpl")
+	ctx := WithSpanLine(WithSpanFilename(WithRequest(context.Background(), request), "views/page.tpl"), 17)
 	span := StartSpan(ctx, "measured")
 	if span == nil {
 		t.Fatal("Span returned nil")
@@ -23,6 +23,9 @@ func TestSpanReturnsStableMutableValue(t *testing.T) {
 	}
 	if span.Filename != "views/page.tpl" {
 		t.Fatalf("span filename = %q", span.Filename)
+	}
+	if span.Line != 17 {
+		t.Fatalf("span line = %d", span.Line)
 	}
 }
 

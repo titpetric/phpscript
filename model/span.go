@@ -137,6 +137,7 @@ func (s *RequestSpan) RecordError(err error) {
 
 type requestKey struct{}
 type spanFilenameKey struct{}
+type spanLineKey struct{}
 
 func WithRequest(ctx context.Context, request *Request) context.Context {
 	return context.WithValue(ctx, requestKey{}, request)
@@ -151,6 +152,14 @@ func WithSpanFilename(ctx context.Context, filename string) context.Context {
 	return context.WithValue(ctx, spanFilenameKey{}, filename)
 }
 
+// WithSpanLine associates spans created from ctx with the active source line.
+func WithSpanLine(ctx context.Context, line int) context.Context {
+	if line <= 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, spanLineKey{}, line)
+}
+
 // StartSpan appends an event to the request in ctx and returns it so callers can
 // add measurements after the observed work completes. The type defaults to
 // internal; any other string flag selects a custom type.
@@ -162,5 +171,7 @@ func StartSpan(ctx context.Context, message string, flags ...Flag) *RequestSpan 
 	span := request.AppendSpan(time.Now(), message, flags...)
 	filename, _ := ctx.Value(spanFilenameKey{}).(string)
 	span.SetFilename(filename)
+	line, _ := ctx.Value(spanLineKey{}).(int)
+	span.SetLine(line)
 	return span
 }

@@ -204,7 +204,9 @@ func TestServerStatusOptions(t *testing.T) {
 func TestRequestSpansAndDetail(t *testing.T) {
 	status := NewServerStatus(NewOptions())
 	handler := status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		StartSpan(r.Context(), "getUser", Flag("database"))
+		span := StartSpan(r.Context(), "getUser", Flag("database"))
+		span.SetFilename("users.php")
+		span.SetLine(42)
 		StartSpan(r.Context(), "render", SpanType.Template, OpenSpan)
 		StartSpan(r.Context(), "partial")
 		StartSpan(r.Context(), "render", SpanType.Template, CloseSpan)
@@ -238,7 +240,7 @@ func TestRequestSpansAndDetail(t *testing.T) {
 	detailRequest.Header.Set("Accept", "text/html")
 	status.ServeHTTP(detail, detailRequest)
 
-	for _, text := range []string{"<h3>Process state</h3>", "aria-label=\"Request span type timeline\"", "<b>template</b>", "<th>Type</th>", "<th>Time</th>", "<th>Duration</th>", "<th>Filename</th>", "<th>Message</th>"} {
+	for _, text := range []string{"<h3>Process state</h3>", "aria-label=\"Request span type timeline\"", "<b>template</b>", "<th>Type</th>", "<th>Time</th>", "<th>Duration</th>", "<th>Source</th>", "users.php:L42", "<th>Message</th>"} {
 		if !strings.Contains(detail.Body.String(), text) {
 			t.Fatalf("detail body does not contain %q: %s", text, detail.Body.String())
 		}

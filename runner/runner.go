@@ -83,6 +83,7 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 		if rt.entrypoint != "" {
 			ctx = model.WithSpanFilename(ctx, rt.entrypoint)
 		}
+		ctx = model.WithSpanLine(ctx, rt.currentLine)
 		span := rt.traceContext(ctx, fmt.Sprintf("Error: <code>%s</code>", template.HTMLEscapeString(err.Error())))
 		if span != nil {
 			span.RecordError(err)
@@ -100,6 +101,7 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 }
 
 func (rt *Runtime) runInterpreted(p *model.Program) error {
+	rt.addSourceSpans(p)
 	scope := NewScope()
 	for name, val := range rt.globals {
 		scope.Set(name, val)
@@ -158,6 +160,10 @@ func (rt *Runtime) hoist(stmts []model.Stmt, filename string) error {
 // exec runs a statement list, propagating return flow.
 func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 	for _, s := range stmts {
+		if source, ok := rt.sourceSpans[s]; ok {
+			rt.currentLine = source.Start
+			scope.Set("__LINE__", source.Start)
+		}
 		rt.UpdateStatus(model.StatusProcessing)
 		val, fl, err := rt.execOne(s, scope)
 		if err != nil {
@@ -493,6 +499,7 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error including %s: %w", path, err)
 	}
+	rt.addSourceSpans(prog)
 	rt.included = append(rt.included, filename)
 	rt.UpdateIncludedFiles(len(rt.included))
 	restoreFile := setScopeFile(scope, filename)
@@ -512,6 +519,12 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	// PHP include/require constructs evaluate to 1 when the included file
 	// reaches its end without an explicit return.
 	return int64(1), nil
+}
+
+func (rt *Runtime) addSourceSpans(program *model.Program) {
+	for statement, source := range program.SourceSpans {
+		rt.sourceSpans[statement] = source
+	}
 }
 
 func setScopeFile(scope *Scope, filename string) func() {
@@ -842,8 +855,10 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// invokeMethod runs a method with $this bound to obj.
-func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any) (any, error) {
+// invokeMethod runs a method with $this bound to obj. The invocation span uses
+// the caller scope; the fresh scope below identifies where the method body is
+// defined and is used for spans created from within that body.
+func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := NewScope()
 	if decl.Filename != "" {
 		setScopeFile(scope, decl.Filename)
@@ -860,7 +875,11 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	if name != "" {
 		name += "."
 	}
-	defer rt.trace(scope, name+decl.Name)()
+	traceScope := caller
+	if traceScope == nil {
+		traceScope = scope
+	}
+	defer rt.trace(traceScope, name+decl.Name)()
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}
