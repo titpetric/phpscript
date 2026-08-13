@@ -1,4 +1,4 @@
-package middleware
+package status
 
 import (
 	"encoding/json"
@@ -58,6 +58,10 @@ func TestServerStatusRecordsRequestAndRuntime(t *testing.T) {
 	if len(snapshot.Log) != 1 || snapshot.Log[0].ID != id || snapshot.Log[0].Hostname != "example.test" || snapshot.Log[0].Filename != "routes/hello.php" || snapshot.Log[0].IncludedFiles != 3 {
 		t.Fatalf("unexpected log: %+v", snapshot.Log)
 	}
+	spans := snapshot.Log[0].Spans
+	if len(spans) != 3 || !spans[0].Open || spans[0].Message != "/hello" || spans[1].Message != "routes/hello.php" || spans[1].Type != SpanType.Internal || !spans[2].Close || spans[2].Message != "routes/hello.php" {
+		t.Fatalf("implicit request spans = %+v", spans)
+	}
 	var stateShare float64
 	for _, state := range snapshot.StateTime {
 		if state.Duration <= 0 {
@@ -80,8 +84,9 @@ func TestServerStatusRepresentations(t *testing.T) {
 		name, path, accept, userAgent, contentType, contains, excludes string
 	}{
 		{"json live", ServerStatusLivePath, "text/json", "", "text/json", `"total_requests":1`, ""},
-		{"plain live", ServerStatusPath, "text/plain", "", "text/plain", "REQUEST-ID", "Request log"},
+		{"plain overview", ServerStatusPath, "text/plain", "", "text/plain", "REQUEST-ID", "Top requests"},
 		{"curl log", ServerStatusLogPath, "*/*", "curl/8.0", "text/plain", "Request log", "Top requests"},
+		{"html overview", ServerStatusPath, "text/html", "Mozilla/5.0", "text/html", ServerStatusDetailPath, "No completed requests"},
 		{"html live", ServerStatusLivePath, "text/html", "Mozilla/5.0", "text/html", "Lifetime request state time", "No completed requests"},
 		{"html log", ServerStatusLogPath, "text/html", "Mozilla/5.0", "text/html", "GET /recorded", "No requests in flight"},
 		{"html stats", ServerStatusStatsPath, "text/html", "Mozilla/5.0", "text/html", "Top 20 requests", "No requests in flight"},
@@ -156,6 +161,55 @@ func TestRequestStatisticsRollingWindow(t *testing.T) {
 		if got.Count != 50 || got.Share != 50 {
 			t.Fatalf("statistic = %+v", got)
 		}
+	}
+}
+
+func TestRequestSpansAndDetail(t *testing.T) {
+	status := NewServerStatus()
+	handler := status.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		Span(r.Context(), "getUser", Flag("database"))
+		Span(r.Context(), "render", SpanType.Template, OpenSpan)
+		Span(r.Context(), "partial")
+		Span(r.Context(), "render", SpanType.Template, CloseSpan)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/users/1", nil))
+	id := recorder.Header().Get("Request-Id")
+
+	request := status.Snapshot().Log[0]
+	if len(request.Spans) != 6 {
+		t.Fatalf("spans = %+v", request.Spans)
+	}
+	for i, span := range request.Spans {
+		if span.ID != i+1 {
+			t.Fatalf("span %d ID = %d", i, span.ID)
+		}
+	}
+	if first, last := request.Spans[0], request.Spans[len(request.Spans)-1]; first.Type != SpanType.HTTP || !first.Open || last.Type != SpanType.HTTP || !last.Close {
+		t.Fatalf("HTTP boundary spans = %+v / %+v", first, last)
+	}
+	if request.Spans[1].Type != Flag("database") || request.Spans[1].Message != "getUser" {
+		t.Fatalf("database span = %+v", request.Spans[1])
+	}
+	if request.Spans[3].Type != SpanType.Internal {
+		t.Fatalf("default span type = %q", request.Spans[3].Type)
+	}
+
+	detail := httptest.NewRecorder()
+	detailRequest := httptest.NewRequest(http.MethodGet, ServerStatusDetailPath+id, nil)
+	detailRequest.Header.Set("Accept", "text/html")
+	status.ServeHTTP(detail, detailRequest)
+	for _, text := range []string{"<tr><th>Type</th><th>Time</th><th>Duration</th><th>Message</th></tr>", "database", "getUser", "span-type", "span-bullet", "margin-left:1.5em", "margin-left:3.0em", "border-left:4px solid #2563eb"} {
+		if !strings.Contains(detail.Body.String(), text) {
+			t.Fatalf("detail body does not contain %q: %s", text, detail.Body.String())
+		}
+	}
+
+	log := httptest.NewRecorder()
+	status.ServeHTTP(log, httptest.NewRequest(http.MethodGet, ServerStatusLogPath, nil))
+	if !strings.Contains(log.Body.String(), ServerStatusDetailPath+id) {
+		t.Fatalf("log does not link detail: %s", log.Body.String())
 	}
 }
 

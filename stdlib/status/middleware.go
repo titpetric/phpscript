@@ -1,5 +1,5 @@
-// Package middleware provides HTTP middleware for phpscript services.
-package middleware
+// Package status provides request tracing and HTTP server status pages.
+package status
 
 import (
 	"context"
@@ -23,13 +23,14 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// ServerStatusPath is the default live-process endpoint served by ServerStatus.
+// ServerStatusPath is the default status overview served by ServerStatus.
 const ServerStatusPath = "/debug/server-status"
 
 const (
-	ServerStatusLivePath  = ServerStatusPath + "/live"
-	ServerStatusLogPath   = ServerStatusPath + "/log"
-	ServerStatusStatsPath = ServerStatusPath + "/stats"
+	ServerStatusLivePath   = ServerStatusPath + "/live"
+	ServerStatusLogPath    = ServerStatusPath + "/log"
+	ServerStatusStatsPath  = ServerStatusPath + "/stats"
+	ServerStatusDetailPath = ServerStatusPath + "/detail/"
 )
 
 const (
@@ -45,8 +46,8 @@ func RequestID(ctx context.Context) string {
 	return id
 }
 
-// RequestSnapshot describes an active or recently completed request.
-type RequestSnapshot struct {
+// Request describes an active or recently completed request.
+type Request struct {
 	ID             string        `json:"request_id"`
 	Status         runner.Status `json:"status"`
 	Request        string        `json:"request"`
@@ -68,6 +69,7 @@ type RequestSnapshot struct {
 	Allocations    uint64        `json:"allocations"`
 	GCCycles       uint32        `json:"gc_cycles"`
 	GCPause        time.Duration `json:"gc_pause_ns"`
+	Spans          []RequestSpan `json:"spans,omitempty"`
 
 	mem            runtime.MemStats
 	stateChangedAt time.Time
@@ -145,9 +147,11 @@ type Snapshot struct {
 	StateTime   []StateDuration    `json:"state_time"`
 	Memory      MemorySnapshot     `json:"memory"`
 	Pool        PoolEstimate       `json:"pool_estimate"`
-	Requests    []RequestSnapshot  `json:"requests"`
-	Log         []RequestSnapshot  `json:"log"`
+	Requests    []Request          `json:"requests"`
+	Log         []Request          `json:"log"`
 	Statistics  StatisticsSnapshot `json:"statistics"`
+
+	StyleCSS template.CSS `json:"-"`
 }
 
 // ServerStatus tracks requests, observes PHP runtimes, and serves status data.
@@ -156,8 +160,8 @@ type Snapshot struct {
 type ServerStatus struct {
 	mu        sync.RWMutex
 	started   time.Time
-	active    map[string]*RequestSnapshot
-	history   []RequestSnapshot
+	active    map[string]*Request
+	history   []Request
 	total     uint64
 	samples   uint64
 	allocated uint64
@@ -167,7 +171,7 @@ type ServerStatus struct {
 // NewServerStatus creates an empty process list.
 func NewServerStatus() *ServerStatus {
 	return &ServerStatus{
-		started: time.Now(), active: make(map[string]*RequestSnapshot),
+		started: time.Now(), active: make(map[string]*Request),
 		stateTime: make(map[runner.Status]time.Duration),
 	}
 }
@@ -183,17 +187,19 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 		r.Header.Set("Request-Id", id)
 		w.Header().Set("Request-Id", id)
 		ctx := context.WithValue(r.Context(), requestIDKey{}, id)
-		r = r.WithContext(ctx)
 
 		var before runtime.MemStats
 		runtime.ReadMemStats(&before)
 		now := time.Now()
-		entry := &RequestSnapshot{
+		entry := &Request{
 			ID: id, Status: runner.StatusReading, Request: r.Method + " " + r.URL.RequestURI(),
 			Hostname: r.Host, Method: r.Method, URI: r.URL.RequestURI(),
 			Protocol: r.Proto, RemoteAddress: r.RemoteAddr, UserAgent: r.UserAgent(),
 			StartedAt: now, UpdatedAt: now, mem: before, stateChangedAt: now,
 		}
+		ctx = withRequest(ctx, entry)
+		r = r.WithContext(ctx)
+		Span(ctx, r.URL.Path, SpanType.HTTP, OpenSpan)
 		s.mu.Lock()
 		s.total++
 		s.active[id] = entry
@@ -202,7 +208,7 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK, onWrite: func() {
 			s.UpdateStatus(ctx, runner.StatusWriting)
 		}}
-		defer s.finish(entry, rw)
+		defer s.finish(ctx, entry, rw)
 		if isServerStatusPath(r.URL.Path) {
 			s.ServeHTTP(rw, r)
 			return
@@ -212,6 +218,9 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 }
 
 func isServerStatusPath(path string) bool {
+	if strings.HasPrefix(path, ServerStatusDetailPath) {
+		return true
+	}
 	switch path {
 	case ServerStatusPath, ServerStatusLivePath, ServerStatusLogPath, ServerStatusStatsPath:
 		return true
@@ -249,6 +258,7 @@ func (s *ServerStatus) UpdateFilename(ctx context.Context, filename string) {
 		entry.UpdatedAt = time.Now()
 	}
 	s.mu.Unlock()
+	Span(ctx, filename)
 }
 
 // UpdateIncludedFiles records the number of files included by an active PHP
@@ -266,9 +276,14 @@ func (s *ServerStatus) UpdateIncludedFiles(ctx context.Context, count int) {
 	s.mu.Unlock()
 }
 
-func (s *ServerStatus) finish(entry *RequestSnapshot, rw *responseWriter) {
+func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseWriter) {
 	var after runtime.MemStats
 	runtime.ReadMemStats(&after)
+	message := entry.Filename
+	if message == "" {
+		message = entry.URI
+	}
+	Span(ctx, message, SpanType.HTTP, CloseSpan)
 	now := time.Now()
 
 	s.mu.Lock()
@@ -327,23 +342,21 @@ func (s *ServerStatus) Snapshot() Snapshot {
 	for status, duration := range s.stateTime {
 		stateTime[status] = duration
 	}
-	requests := make([]RequestSnapshot, 0, len(s.active))
+	requests := make([]Request, 0, len(s.active))
 	for _, entry := range s.active {
-		copy := *entry
+		copy := activeRequest(entry)
 		copy.Duration = now.Sub(copy.StartedAt)
-		copy.mem = runtime.MemStats{}
-		copy.stateChangedAt = time.Time{}
 		requests = append(requests, copy)
 		stateTime[entry.Status] += now.Sub(entry.stateChangedAt)
 	}
-	history := append([]RequestSnapshot(nil), s.history...)
+	history := append([]Request(nil), s.history...)
 	total, samples, allocated := s.total, s.samples, s.allocated
 	started := s.started
 	active := len(s.active)
 	s.mu.RUnlock()
 
 	sort.Slice(requests, func(i, j int) bool { return requests[i].StartedAt.After(requests[j].StartedAt) })
-	log := make([]RequestSnapshot, len(history))
+	log := make([]Request, len(history))
 	for i := range history {
 		log[len(history)-1-i] = history[i]
 	}
@@ -367,15 +380,59 @@ func (s *ServerStatus) Snapshot() Snapshot {
 		}
 	}
 	return Snapshot{
-		StartedAt: started, Uptime: time.Since(started), PID: os.Getpid(),
-		GoVersion: runtime.Version(), GOMAXPROCS: runtime.GOMAXPROCS(0), Goroutines: runtime.NumGoroutine(),
-		Total: total, Active: active, StatusCount: counts, StateTime: stateDurations,
+		StartedAt:   started,
+		Uptime:      time.Since(started),
+		PID:         os.Getpid(),
+		GoVersion:   runtime.Version(),
+		GOMAXPROCS:  runtime.GOMAXPROCS(0),
+		Goroutines:  runtime.NumGoroutine(),
+		Total:       total,
+		Active:      active,
+		StatusCount: counts,
+		StateTime:   stateDurations,
 		Memory: MemorySnapshot{
-			HeapAlloc: mem.HeapAlloc, HeapInuse: mem.HeapInuse, HeapObjects: mem.HeapObjects,
-			StackInuse: mem.StackInuse, System: mem.Sys, NextGC: mem.NextGC, NumGC: mem.NumGC,
-			GCPauseTotal: mem.PauseTotalNs, GCCPUFraction: mem.GCCPUFraction, MemoryLimit: limit,
+			HeapAlloc:     mem.HeapAlloc,
+			HeapInuse:     mem.HeapInuse,
+			HeapObjects:   mem.HeapObjects,
+			StackInuse:    mem.StackInuse,
+			System:        mem.Sys,
+			NextGC:        mem.NextGC,
+			NumGC:         mem.NumGC,
+			GCPauseTotal:  mem.PauseTotalNs,
+			GCCPUFraction: mem.GCCPUFraction,
+			MemoryLimit:   limit,
 		},
-		Pool: pool, Requests: requests, Log: log, Statistics: statistics,
+		Pool:       pool,
+		Requests:   requests,
+		Log:        log,
+		Statistics: statistics,
+		StyleCSS:   template.CSS(statusCSS),
+	}
+}
+
+func activeRequest(entry *Request) Request {
+	return Request{
+		ID:             entry.ID,
+		Status:         entry.Status,
+		Request:        entry.Request,
+		Hostname:       entry.Hostname,
+		Filename:       entry.Filename,
+		IncludedFiles:  entry.IncludedFiles,
+		Method:         entry.Method,
+		URI:            entry.URI,
+		Protocol:       entry.Protocol,
+		RemoteAddress:  entry.RemoteAddress,
+		UserAgent:      entry.UserAgent,
+		StartedAt:      entry.StartedAt,
+		UpdatedAt:      entry.UpdatedAt,
+		Duration:       entry.Duration,
+		ResponseStatus: entry.ResponseStatus,
+		ResponseBytes:  entry.ResponseBytes,
+		HeapDelta:      entry.HeapDelta,
+		AllocatedBytes: entry.AllocatedBytes,
+		Allocations:    entry.Allocations,
+		GCCycles:       entry.GCCycles,
+		GCPause:        entry.GCPause,
 	}
 }
 
@@ -411,7 +468,7 @@ func requestStateDurations(durations map[runner.Status]time.Duration) []StateDur
 	return result
 }
 
-func requestStatistics(history []RequestSnapshot) StatisticsSnapshot {
+func requestStatistics(history []Request) StatisticsSnapshot {
 	result := StatisticsSnapshot{WindowSize: len(history), WindowLimit: historyLimit, TopLimit: topLimit}
 	if len(history) == 0 {
 		return result
@@ -499,19 +556,35 @@ func memoryLimit() uint64 {
 type statusView string
 
 const (
-	statusViewLive  statusView = "live"
-	statusViewLog   statusView = "log"
-	statusViewStats statusView = "stats"
+	statusViewOverview statusView = "overview"
+	statusViewLive     statusView = "live"
+	statusViewLog      statusView = "log"
+	statusViewStats    statusView = "stats"
+	statusViewDetail   statusView = "detail"
 )
 
 type statusPage struct {
 	Snapshot
-	View  string
-	Limit int
+	View     string
+	Limit    int
+	Detail   *Request
+	SpanRows []spanRow
+}
+
+type spanRow struct {
+	RequestSpan
+	Offset      time.Duration
+	Duration    time.Duration
+	HasDuration bool
+	Depth       int
 }
 
 // ServeHTTP renders one server-status view as JSON, plain text, or HTML.
 func (s *ServerStatus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if id, ok := strings.CutPrefix(r.URL.Path, ServerStatusDetailPath); ok {
+		s.serveDetail(w, r, id)
+		return
+	}
 	view, ok := viewForPath(r.URL.Path)
 	if !ok {
 		http.NotFound(w, r)
@@ -536,6 +609,57 @@ func (s *ServerStatus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *ServerStatus) serveDetail(w http.ResponseWriter, r *http.Request, id string) {
+	request, ok := s.completedRequest(id)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	rows := requestSpanRows(request)
+	accept := strings.ToLower(r.Header.Get("Accept"))
+	switch {
+	case strings.Contains(accept, "text/json") || strings.Contains(accept, "application/json"):
+		w.Header().Set("Content-Type", "text/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(request)
+	case strings.Contains(accept, "text/plain") || strings.HasPrefix(strings.ToLower(r.UserAgent()), "curl/"):
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		writeDetailText(w, request, rows)
+	default:
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_ = statusTemplate.Execute(w, statusPage{Snapshot: s.Snapshot(), View: string(statusViewDetail), Detail: &request, SpanRows: rows})
+	}
+}
+
+func (s *ServerStatus) completedRequest(id string) (Request, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for i := len(s.history) - 1; i >= 0; i-- {
+		if s.history[i].ID == id {
+			return s.history[i], true
+		}
+	}
+	return Request{}, false
+}
+
+func requestSpanRows(request Request) []spanRow {
+	rows := make([]spanRow, len(request.Spans))
+	depth := 0
+	for i, span := range request.Spans {
+		if span.Close && depth > 0 {
+			depth--
+		}
+		rows[i] = spanRow{RequestSpan: span, Offset: span.Time.Sub(request.StartedAt), Depth: depth}
+		if i+1 < len(request.Spans) {
+			rows[i].Duration = request.Spans[i+1].Time.Sub(span.Time)
+			rows[i].HasDuration = true
+		}
+		if span.Open {
+			depth++
+		}
+	}
+	return rows
+}
+
 func requestedLogLimit(r *http.Request) int {
 	switch r.URL.Query().Get("limit") {
 	case "50":
@@ -549,7 +673,9 @@ func requestedLogLimit(r *http.Request) int {
 
 func viewForPath(path string) (statusView, bool) {
 	switch path {
-	case ServerStatusPath, ServerStatusLivePath:
+	case ServerStatusPath:
+		return statusViewOverview, true
+	case ServerStatusLivePath:
 		return statusViewLive, true
 	case ServerStatusLogPath:
 		return statusViewLog, true
@@ -617,12 +743,10 @@ func writeText(w io.Writer, s Snapshot, view statusView) {
 	fmt.Fprintf(w, "Requests: %d total, %d active  Heap: %s / next GC %s  GC: %d cycles, %.2f%% CPU\n", s.Total, s.Active, bytesText(s.Memory.HeapAlloc), bytesText(s.Memory.NextGC), s.Memory.NumGC, s.Memory.GCCPUFraction*100)
 	fmt.Fprintf(w, "Pool estimate: %d samples, %s/request, %d before GC, %d within memory limit\n\n", s.Pool.Samples, bytesText(s.Pool.AverageAllocatedBytes), s.Pool.BeforeNextGC, s.Pool.WithinMemoryLimit)
 	switch view {
+	case statusViewOverview:
+		writeRequestLogText(w, s.Log)
 	case statusViewLog:
-		fmt.Fprintf(w, "Request log (latest %d):\n", len(s.Log))
-		fmt.Fprintln(w, "REQUEST                         HOSTNAME                 FILENAME                       INCLUDED          STATUS  DURATION     BYTES      HEAP       ALLOC      OBJECTS    GC/PAUSE")
-		for _, request := range s.Log {
-			fmt.Fprintf(w, "%-31s %-24s %-30s %-17s %-7d %-12s %-10d %-10s %-10s %-10d %d/%s\n", request.Request, request.Hostname, request.Filename, includedText(request.IncludedFiles), request.ResponseStatus, request.Duration.Round(time.Microsecond), request.ResponseBytes, signedBytesText(request.HeapDelta), bytesText(request.AllocatedBytes), request.Allocations, request.GCCycles, request.GCPause.Round(time.Microsecond))
-		}
+		writeRequestLogText(w, s.Log)
 	case statusViewStats:
 		fmt.Fprintf(w, "Top requests (last %d of %d):\n", s.Statistics.WindowSize, s.Statistics.WindowLimit)
 		fmt.Fprintln(w, "SHARE    COUNT  AVG TIME      AVG BYTES  AVG ALLOC  AVG INCLUDED  REQUEST                         HOSTNAME                 FILENAME")
@@ -638,6 +762,26 @@ func writeText(w io.Writer, s Snapshot, view statusView) {
 		for _, state := range s.StateTime {
 			fmt.Fprintf(w, "%s (%s): %s, %.2f%%\n", state.Label, state.State, state.Duration.Round(time.Microsecond), state.Share)
 		}
+	}
+}
+
+func writeRequestLogText(w io.Writer, requests []Request) {
+	fmt.Fprintf(w, "Request log (latest %d):\n", len(requests))
+	fmt.Fprintln(w, "REQUEST-ID                  REQUEST                         HOSTNAME                 FILENAME                       INCLUDED          STATUS  DURATION     BYTES      HEAP       ALLOC      OBJECTS    GC/PAUSE")
+	for _, request := range requests {
+		fmt.Fprintf(w, "%-26s %-31s %-24s %-30s %-17s %-7d %-12s %-10d %-10s %-10s %-10d %d/%s\n", request.ID, request.Request, request.Hostname, request.Filename, includedText(request.IncludedFiles), request.ResponseStatus, request.Duration.Round(time.Microsecond), request.ResponseBytes, signedBytesText(request.HeapDelta), bytesText(request.AllocatedBytes), request.Allocations, request.GCCycles, request.GCPause.Round(time.Microsecond))
+	}
+}
+
+func writeDetailText(w io.Writer, request Request, rows []spanRow) {
+	fmt.Fprintf(w, "%s\nRequest ID: %s  Status: %d  Duration: %s\n\n", request.Request, request.ID, request.ResponseStatus, request.Duration.Round(time.Microsecond))
+	fmt.Fprintln(w, "TYPE          TIME          DURATION      MESSAGE")
+	for _, row := range rows {
+		duration := "-"
+		if row.HasDuration {
+			duration = row.Duration.Round(time.Microsecond).String()
+		}
+		fmt.Fprintf(w, "%-13s %-13s %-13s %s%s\n", row.Type, row.Offset.Round(time.Microsecond), duration, strings.Repeat("  ", row.Depth), row.Message)
 	}
 }
 
@@ -678,6 +822,25 @@ func bytesText(n uint64) string {
 	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
 }
 
+func spanTypeColor(spanType Flag) string {
+	switch spanType {
+	case SpanType.Database:
+		return "#2563eb"
+	case SpanType.Internal:
+		return "#6b7280"
+	case SpanType.External:
+		return "#7c3aed"
+	case SpanType.Template:
+		return "#db2777"
+	case SpanType.Cache:
+		return "#0891b2"
+	case SpanType.HTTP:
+		return "#16a34a"
+	default:
+		return "#d97706"
+	}
+}
+
 var statusTemplate = template.Must(template.New("server-status").Funcs(template.FuncMap{
 	"duration":        func(d time.Duration) string { return d.Round(time.Microsecond).String() },
 	"included":        includedText,
@@ -685,6 +848,23 @@ var statusTemplate = template.Must(template.New("server-status").Funcs(template.
 	"stateClass":      func(label string) string { return strings.ToLower(label) },
 	"stateWidth": func(share float64) template.CSS {
 		return template.CSS(fmt.Sprintf("width:%.4f%%", share))
+	},
+	"spanIndent": func(depth int) template.CSS {
+		return template.CSS(fmt.Sprintf("margin-left:%.1fem", float64(depth)*1.5))
+	},
+	"spanColor": func(depth int) template.CSS {
+		depth = min(depth, 4)
+		red := 255 - depth*10/4
+		green := 255 - depth*97/4
+		blue := 255 - depth*244/4
+		return template.CSS(fmt.Sprintf("background:rgb(%d,%d,%d)", red, green, blue))
+	},
+	"spanTypeStyle": func(spanType Flag) template.CSS {
+		color := spanTypeColor(spanType)
+		return template.CSS(fmt.Sprintf("background:%s;color:white", color))
+	},
+	"spanBorder": func(spanType Flag) template.CSS {
+		return template.CSS("border-left:4px solid " + spanTypeColor(spanType))
 	},
 	"bytes": func(value any) string {
 		switch n := value.(type) {
@@ -696,29 +876,7 @@ var statusTemplate = template.Must(template.New("server-status").Funcs(template.
 			return "0 B"
 		}
 	},
-}).Parse(`<!doctype html>
-<html><head><meta charset="utf-8"><title>phpscript server status</title>
-<style>body{font:14px system-ui,sans-serif;margin:2rem;color:#222}table{border-collapse:collapse;width:100%}th,td{padding:.4rem .6rem;border-bottom:1px solid #ddd;text-align:left;white-space:nowrap}th{background:#f3f3f3}.metrics{display:flex;gap:2rem;flex-wrap:wrap}.metrics div{padding:.8rem;background:#f7f7f7}code{font-weight:bold}.tabs{display:flex;gap:.4rem;margin:1.5rem 0 .8rem}.tabs a{border:1px solid #bbb;background:#eee;padding:.5rem .9rem;color:#222;text-decoration:none}.tabs a.active{background:#333;color:#fff}.share meter{width:7rem;margin-right:.5rem}.state-bar{display:flex;height:2rem;width:100%;overflow:hidden;background:#eee;margin:.7rem 0}.state-bar span{min-width:1px}.state-legend{display:flex;flex-wrap:wrap;gap:1rem}.state-legend i{display:inline-block;width:.8rem;height:.8rem;margin-right:.3rem}.waiting{background:#9ca3af}.starting{background:#a78bfa}.reading{background:#60a5fa}.processing{background:#f59e0b}.writing{background:#34d399}.keepalive{background:#22d3ee}.closing{background:#64748b}.error{background:#ef4444}</style></head>
-<body><h1>phpscript server status</h1><div class="metrics">
-<div><b>Uptime</b><br>{{duration .Uptime}}</div><div><b>Requests</b><br>{{.Total}} total / {{.Active}} active</div>
-<div><b>Heap</b><br>{{bytes .Memory.HeapAlloc}} / {{bytes .Memory.NextGC}} next GC</div><div><b>GC</b><br>{{.Memory.NumGC}} cycles</div>
-<div><b>Pool estimate</b><br>{{.Pool.BeforeNextGC}} before GC / {{.Pool.WithinMemoryLimit}} within limit</div></div>
-<p>PID {{.PID}} · {{.GoVersion}} · GOMAXPROCS {{.GOMAXPROCS}} · {{.Goroutines}} goroutines</p>
-<nav class="tabs"><a href="/debug/server-status/live"{{if eq .View "live"}} class="active"{{end}}>Processes</a><a href="/debug/server-status/log"{{if eq .View "log"}} class="active"{{end}}>Log</a><a href="/debug/server-status/stats"{{if eq .View "stats"}} class="active"{{end}}>Statistics</a></nav>
-{{if eq .View "live"}}<section><table><thead><tr><th>S</th><th>Request ID</th><th>Request</th><th>Hostname</th><th>Filename</th><th>Included</th><th>HTTP</th><th>Duration</th><th>Bytes</th><th>Heap Δ</th><th>Allocated</th><th>Objects</th><th>GC / pause</th><th>Remote</th></tr></thead><tbody>
-{{range .Requests}}<tr><td><code>{{.Status}}</code></td><td>{{.ID}}</td><td>{{.Request}}</td><td>{{.Hostname}}</td><td>{{.Filename}}</td><td>{{included .IncludedFiles}}</td><td>{{.ResponseStatus}}</td><td>{{duration .Duration}}</td><td>{{.ResponseBytes}}</td><td>{{bytes .HeapDelta}}</td><td>{{bytes .AllocatedBytes}}</td><td>{{.Allocations}}</td><td>{{.GCCycles}} / {{duration .GCPause}}</td><td>{{.RemoteAddress}}</td></tr>{{else}}<tr><td colspan="14">No requests in flight.</td></tr>{{end}}
-</tbody></table><p><small>States: _ waiting, s starting, R reading, P processing, W writing, K keepalive, C closing, E error.</small></p>
-<h2>Lifetime request state time</h2><div class="state-bar" aria-label="Lifetime request state time">{{range .StateTime}}<span class="{{stateClass .Label}}" style="{{stateWidth .Share}}" title="{{.Label}}: {{duration .Duration}} ({{printf "%.2f" .Share}}%)"></span>{{end}}</div>
-<div class="state-legend">{{range .StateTime}}<span><i class="{{stateClass .Label}}"></i><b>{{.Label}} ({{.State}})</b> {{duration .Duration}} · {{printf "%.2f" .Share}}%</span>{{else}}<span>No request state time observed.</span>{{end}}</div>
-<p><small>Aggregated across all requests since server start. Concurrent request time is cumulative and may exceed uptime.</small></p></section>{{end}}
-{{if eq .View "log"}}<section><nav class="tabs"><a href="/debug/server-status/log?limit=20"{{if eq .Limit 20}} class="active"{{end}}>20</a><a href="/debug/server-status/log?limit=50"{{if eq .Limit 50}} class="active"{{end}}>50</a><a href="/debug/server-status/log?limit=100"{{if eq .Limit 100}} class="active"{{end}}>100</a></nav><table><thead><tr><th>Request ID</th><th>Request</th><th>Hostname</th><th>Filename</th><th>Included</th><th>HTTP</th><th>Duration</th><th>Bytes</th><th>Heap Δ</th><th>Allocated</th><th>Objects</th><th>GC / pause</th><th>Remote</th></tr></thead><tbody>
-{{range .Log}}<tr><td>{{.ID}}</td><td>{{.Request}}</td><td>{{.Hostname}}</td><td>{{.Filename}}</td><td>{{included .IncludedFiles}}</td><td>{{.ResponseStatus}}</td><td>{{duration .Duration}}</td><td>{{.ResponseBytes}}</td><td>{{bytes .HeapDelta}}</td><td>{{bytes .AllocatedBytes}}</td><td>{{.Allocations}}</td><td>{{.GCCycles}} / {{duration .GCPause}}</td><td>{{.RemoteAddress}}</td></tr>{{else}}<tr><td colspan="13">No completed requests in the rolling log.</td></tr>{{end}}
-</tbody></table></section>{{end}}
-{{if eq .View "stats"}}<section><p>Top {{.Statistics.TopLimit}} requests from the rolling window of {{.Statistics.WindowSize}} / {{.Statistics.WindowLimit}} completed requests.</p><table><thead><tr><th>Share</th><th>Count</th><th>Request</th><th>Hostname</th><th>Filename</th><th>Average included</th><th>Average time</th><th>Average bytes</th><th>Average allocated</th></tr></thead><tbody>
-{{range .Statistics.Top}}<tr><td class="share"><meter min="0" max="100" value="{{printf "%.2f" .Share}}"></meter>{{printf "%.2f" .Share}}%</td><td>{{.Count}}</td><td>{{.Request}}</td><td>{{.Hostname}}</td><td>{{.Filename}}</td><td>{{averageIncluded .AverageIncludedFiles}}</td><td>{{duration .AverageDuration}}</td><td>{{bytes .AverageResponseBytes}}</td><td>{{bytes .AverageAllocatedBytes}}</td></tr>{{else}}<tr><td colspan="9">No completed requests in the rolling window.</td></tr>{{end}}
-</tbody></table></section>{{end}}
-<p><small>Per-request memory deltas are process-wide and may overlap when requests run concurrently.</small></p>
-</body></html>`))
+}).Parse(statusTemplateContents))
 
 const crockford = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
