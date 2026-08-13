@@ -5,6 +5,7 @@ class Database {
 
 	public function connect($name) {
 		$this->handle = new PS\Database($name);
+		$this->handle->enableTracing();
 	}
 
 	public function query($sql, $values = false) {
