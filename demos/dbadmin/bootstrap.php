@@ -2,7 +2,7 @@
 
 include "include/Template.php";
 
-$db = new PS\DatabaseClient("dbadmin");
+$db = new Database("dbadmin");
 $tpl = new Template;
 
 $catalogue = $db->get("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'catalogue'");

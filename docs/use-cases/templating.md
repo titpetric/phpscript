@@ -41,8 +41,7 @@ class UserStorage {
 	var $db;
 
 	UserService() {
-		$db = new Database;
-		$db->connect("users");
+		$db = new Database("users");
 		$this->db = $db;
 	}
 

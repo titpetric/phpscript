@@ -36,7 +36,7 @@ echo $variables["local"] . "\n";
 echo fixture_introspection_vars("function") . "\n";
 echo in_array("FixtureIntrospectionClass", $classes) ? "php class\n" : "missing php class\n";
 echo in_array("Exception", $classes) ? "host class\n" : "missing host class\n";
-echo in_array("PS\\Database", $classes) ? "namespaced host class\n" : "missing namespaced host class\n";
+echo in_array("Database", $classes) ? "database host class\n" : "missing database host class\n";
 ?>
 ---
 constant
@@ -47,4 +47,4 @@ visible
 function local
 php class
 host class
-namespaced host class
+database host class

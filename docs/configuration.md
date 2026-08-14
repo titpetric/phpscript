@@ -82,7 +82,7 @@ for endpoints, representations, and interpretation.
 ## Database connections
 
 Each `env` item with a `PLATFORM_DB_<NAME>=<driver>://<dsn>` key registers a
-named connection for `PS\DatabaseClient`. Names are lowercased, so this config:
+named connection for `Database`. Names are lowercased, so this config:
 
 ```yaml
 env:
@@ -93,12 +93,10 @@ env:
 is available to PHP as:
 
 ```php
-$app = new PS\DatabaseClient("app");
-$reporting = new PS\DatabaseClient("reporting");
+$app = new Database("app");
+$reporting = new Database("reporting");
 ```
 
 The list is passed to the database connection registry; it does not add the
 entries to the process environment or PHP variables. Actual process environment
-variables named `PLATFORM_DB_*` are also registered when phpscript starts. The
-older `PS\Database` binding separately reads `DB_DSN_<NAME>` from the process
-environment.
+variables named `PLATFORM_DB_*` are also registered when phpscript starts.

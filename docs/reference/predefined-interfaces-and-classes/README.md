@@ -23,4 +23,4 @@ model.
 ## Runtime class discovery
 
 `get_declared_classes()` returns user-defined and host-registered classes,
-including `Exception` and `PS\Database` when the standard library is registered.
+including `Exception` and `Database` when the standard library is registered.

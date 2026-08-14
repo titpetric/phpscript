@@ -3,233 +3,148 @@ package ps
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
-	"os"
-	"strings"
+
+	"github.com/titpetric/pdo/client"
 
 	"github.com/titpetric/phpscript/model"
-	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/status"
 )
 
-// RegisterDatabase installs the Go database bridge as PS\Database.
-func RegisterDatabase(rt *runner.Runtime) {
-	rt.RegisterConstructor("PS\\Database", NewDatabase)
-}
-
-// Database wraps a SQL database connection for PHP scripts.
+// Database adds request tracing to the database binding.
 type Database struct {
-	db      *sql.DB
-	options Options
+	Bridge *client.Bridge
+	ID     string
 }
 
-// Options contains mutable flags for the database client.
-type Options struct {
-	EnableTracing bool
+type databaseSpanKey struct{}
+
+// SetID records the PHP variable receiving this constructed client.
+func (b *Database) SetID(id string) {
+	b.ID = id
 }
 
-// NewDatabase opens a database connection from the named DB_DSN_* env var.
-func NewDatabase(ctx context.Context, name string) (*Database, error) {
-	envKey := "DB_DSN_" + strings.ToUpper(name)
-	env, ok := runner.EnvFromContext(ctx)
-	dsn := os.Getenv(envKey)
-	if ok {
-		dsn = env[envKey]
-	}
-	if dsn == "" {
-		return nil, fmt.Errorf("Can't connect to %s, no %s env", name, envKey)
-	}
-
-	if !strings.Contains(dsn, "://") {
-		return nil, fmt.Errorf("malformed dsn, expecting driver://connection_string, got %q", dsn)
-	}
-
-	driver, name, _ := strings.Cut(dsn, "://")
-	db, err := func() (*sql.DB, error) {
-		// postgres keeps driver in DSN
-		if driver == "postgres" {
-			return sql.Open("pgx", dsn)
-		}
-		return sql.Open(driver, name)
-	}()
-	if err != nil {
-		return nil, err
-	}
-	if err := db.PingContext(ctx); err != nil {
-		db.Close()
-		return nil, err
-	}
-	// Set connection pool limits - max 20 open connections
-	db.SetMaxOpenConns(20)
-	db.SetMaxIdleConns(20)
-
-	return &Database{db: db}, nil
+// Insert inserts a dynamically typed named value.
+func (b *Database) Insert(ctx context.Context, table string, value any) (any, error) {
+	return b.Bridge.Insert(b.withSpan(ctx, "Insert"), table, value)
 }
 
-// EnableTracing enables the internal span telemetry.
-func (d *Database) EnableTracing() {
-	d.options.EnableTracing = true
+// Replace replaces a row using a dynamically typed named value.
+func (b *Database) Replace(ctx context.Context, table string, value any) (any, error) {
+	return b.Bridge.Replace(b.withSpan(ctx, "Replace"), table, value)
 }
 
-// Close closes the underlying database connection.
-func (d *Database) Close() {
-	d.db.Close()
-	d.db = nil
+// Update updates a row using dynamically typed named values and key columns.
+func (b *Database) Update(ctx context.Context, table string, value any, keyColumns ...any) (any, error) {
+	return b.Bridge.Update(b.withSpan(ctx, "Update"), table, value, keyColumns...)
 }
 
-// Prepare creates a database statement for query.
-func (d *Database) Prepare(query string) (*DatabaseStatement, error) {
-	if d == nil || d.db == nil {
-		return nil, fmt.Errorf("database: nil driver")
-	}
-	return &DatabaseStatement{database: d, query: query, named: map[string]any{}, positional: map[int64]any{}}, nil
+// Query executes a statement with dynamically typed arguments.
+func (b *Database) Query(ctx context.Context, query string, args ...any) (any, error) {
+	return b.Bridge.Query(b.withSpan(ctx, "Query"), query, args...)
 }
 
-// LastInsertId returns the SQLite last inserted row ID.
-func (d *Database) LastInsertId(ctx context.Context) (int64, error) {
-	if d == nil || d.db == nil {
-		return 0, fmt.Errorf("database: nil driver")
-	}
-
-	defer traceDatabaseQuery(ctx, d.options.EnableTracing, "select last_insert_rowid()")()
-
-	var id int64
-	if err := d.db.QueryRowContext(ctx, "select last_insert_rowid()").Scan(&id); err != nil {
-		return 0, err
-	}
-	return id, nil
-}
-
-// DatabaseStatement holds a prepared query and bound values for execution.
-type DatabaseStatement struct {
-	database   *Database
-	query      string
-	named      map[string]any
-	positional map[int64]any
-	rows       *sql.Rows
-}
-
-// BindValue binds value to a named or positional query parameter.
-func (s *DatabaseStatement) BindValue(key, value any) error {
-	if s == nil {
-		return fmt.Errorf("database: nil statement")
-	}
-	switch k := key.(type) {
-	case string:
-		s.named[strings.TrimPrefix(k, ":")] = value
-	case int64:
-		s.positional[k] = value
-	case int:
-		s.positional[int64(k)] = value
-	default:
-		return fmt.Errorf("database: unsupported bind key %T", key)
-	}
-	return nil
-}
-
-// Execute runs the statement and stores the result cursor.
-func (s *DatabaseStatement) Execute(ctx context.Context) error {
-	if s == nil || s.database == nil || s.database.db == nil {
-		return fmt.Errorf("database: nil statement")
-	}
-
-	defer traceDatabaseQuery(ctx, s.database.options.EnableTracing, s.query)()
-
-	args := s.args()
-	rows, err := s.database.db.QueryContext(ctx, s.query, args...)
-	if err != nil {
-		return err
-	}
-	if err := s.Close(); err != nil {
-		rows.Close()
-		return err
-	}
-	s.rows = rows
-	return nil
-}
-
-func noop() {}
-
-func traceDatabaseQuery(ctx context.Context, enabled bool, query string) func() {
-	if !enabled {
-		return noop
-	}
-	span := status.StartSpan(ctx, fmt.Sprintf("<code>%s</code>", query), status.SpanType.Database)
-
-	return func() {
-		if span != nil {
-			span.End()
-		}
-	}
-}
-
-// Fetch returns the next result row or false when no rows remain.
-func (s *DatabaseStatement) Fetch() (any, error) {
-	if s == nil {
-		return false, fmt.Errorf("database: nil statement")
-	}
-	if s.rows == nil || !s.rows.Next() {
-		if s.rows != nil {
-			if err := s.rows.Err(); err != nil {
-				return false, err
-			}
-		}
+// Get returns the first result row.
+func (b *Database) Get(ctx context.Context, query string, args ...any) (any, error) {
+	value, err := b.Bridge.Get(b.withSpan(ctx, "Get"), query, args...)
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
-	cols, err := s.rows.Columns()
-	if err != nil {
-		return false, err
-	}
-	vals := make([]any, len(cols))
-	ptrs := make([]any, len(cols))
-	for i := range vals {
-		ptrs[i] = &vals[i]
-	}
-	if err := s.rows.Scan(ptrs...); err != nil {
-		return false, err
-	}
-	out := model.NewArray()
-	for i, col := range cols {
-		out.Set(col, normalizeSQLValue(vals[i]))
-	}
-	return out, nil
+	return databaseValue(value), err
 }
 
-// Close closes the active result cursor.
-func (s *DatabaseStatement) Close() error {
-	if s == nil {
-		return fmt.Errorf("database: nil statement")
-	}
-	if s.rows == nil {
-		return nil
-	}
-	err := s.rows.Close()
-	s.rows = nil
-	return err
+// GetAll returns all result rows.
+func (b *Database) GetAll(ctx context.Context, query string, args ...any) (any, error) {
+	value, err := b.Bridge.GetAll(b.withSpan(ctx, "GetAll"), query, args...)
+	return databaseValue(value), err
 }
 
-func (s *DatabaseStatement) args() []any {
-	if len(s.named) > 0 {
-		args := make([]any, 0, len(s.named))
-		for k, v := range s.named {
-			args = append(args, sql.Named(k, v))
+// Connect reserves an exclusive connection from the pool.
+func (b *Database) Connect(ctx context.Context) (any, error) {
+	b.span(ctx, "Connect")
+	return b.Bridge.Connect(ctx)
+}
+
+// Close releases an exclusive connection back to the pool.
+func (b *Database) Close(ctx context.Context) (any, error) {
+	b.span(ctx, "Close")
+	return b.Bridge.Close(ctx)
+}
+
+// Begin starts a transaction and opens its tracing span.
+func (b *Database) Begin(ctx context.Context) (any, error) {
+	b.span(ctx, "Begin", status.OpenSpan)
+	return b.Bridge.Begin(ctx)
+}
+
+// Rollback rolls back the active transaction and closes its tracing span.
+func (b *Database) Rollback(ctx context.Context) (any, error) {
+	b.span(ctx, "Rollback", status.CloseSpan)
+	return b.Bridge.Rollback(ctx)
+}
+
+// Commit commits the active transaction and closes its tracing span.
+func (b *Database) Commit(ctx context.Context) (any, error) {
+	b.span(ctx, "Commit", status.CloseSpan)
+	return b.Bridge.Commit(ctx)
+}
+
+// InsertID returns the ID generated by the last insert.
+func (b *Database) InsertID(ctx context.Context) (any, error) {
+	b.span(ctx, "InsertID")
+	return b.Bridge.InsertID(ctx)
+}
+
+// RowsAffected returns the affected row count from the last write.
+func (b *Database) RowsAffected(ctx context.Context) (any, error) {
+	b.span(ctx, "RowsAffected")
+	return b.Bridge.RowsAffected(ctx)
+}
+
+func (b *Database) observe(ctx context.Context, entry client.QueryLogEntry) {
+	span, _ := ctx.Value(databaseSpanKey{}).(*status.RequestSpan)
+	if span != nil {
+		span.SetMessage(fmt.Sprintf("%s: <code>%s</code>", span.Message, entry.Query))
+		span.SetTime(entry.Started)
+		span.SetDuration(entry.Duration)
+		span.SetAttribute("transaction_depth", entry.TxDepth)
+		if entry.Err != nil {
+			span.RecordError(entry.Err)
 		}
-		return args
 	}
-	args := make([]any, 0, len(s.positional))
-	for i := int64(1); i <= int64(len(s.positional)); i++ {
-		args = append(args, s.positional[i])
-	}
-	return args
 }
 
-func normalizeSQLValue(v any) any {
-	switch x := v.(type) {
-	case []byte:
-		return string(x)
-	case int64, float64, string, bool, nil:
-		return x
+func (b *Database) span(ctx context.Context, method string, flags ...status.Flag) *status.RequestSpan {
+	if b.ID != "" {
+		method = b.ID + "." + method
+	}
+	return status.StartSpan(ctx, method, append([]status.Flag{status.SpanType.Database}, flags...)...)
+}
+
+func (b *Database) withSpan(ctx context.Context, method string) context.Context {
+	span := b.span(ctx, method)
+	if span == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, databaseSpanKey{}, span)
+}
+
+func databaseValue(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		result := model.NewArray()
+		for key, item := range value {
+			result.Set(key, databaseValue(item))
+		}
+		return result
+	case []map[string]any:
+		result := model.NewArray()
+		for _, item := range value {
+			result.Append(databaseValue(item))
+		}
+		return result
 	default:
-		return fmt.Sprintf("%v", x)
+		return value
 	}
 }

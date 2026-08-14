@@ -1,13 +1,9 @@
 name: database bridge
-description: Database.php can use the Go-backed PS\Database with sqlite.
+description: Database.php can use the Go-backed Database with sqlite.
 ---
 <?php
 
-include("code/Database.php");
-
-$db = new PS\DatabaseClient("sqlite_test");
-
-//$db->connect("sqlite_test");
+$db = new Database("sqlite_test");
 
 $db->query("drop table if exists users");
 $db->query("create table users (id integer primary key autoincrement, name text)");

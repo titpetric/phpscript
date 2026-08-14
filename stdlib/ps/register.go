@@ -13,20 +13,19 @@ import (
 
 // Register installs symbols into the runtime.
 func Register(rt *runner.Runtime) {
-	RegisterDatabase(rt)
 	RegisterDefer(rt)
 	RegisterSharedMemory(rt)
 	RegisterShutdown(rt)
 
-	rt.RegisterConstructor("PS\\DatabaseClient", func(ctx context.Context, name string) (*DatabaseClient, error) {
+	rt.RegisterConstructor("Database", func(ctx context.Context, name string) (*Database, error) {
 		handle, err := platform.Database.Connect(ctx, name)
 		if err != nil {
 			return nil, err
 		}
 
-		databaseClient := &DatabaseClient{DatabaseClient: client.NewBridge(handle)}
-		databaseClient.DatabaseClient.WithObserver(databaseClient.observe)
-		return databaseClient, nil
+		database := &Database{Bridge: client.NewBridge(handle)}
+		database.Bridge.WithObserver(database.observe)
+		return database, nil
 	})
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"os"
 
@@ -42,6 +43,8 @@ func start() error {
 	platform.SetupConnections(appConfig.Env)
 
 	if os.Getenv("DEBUG") != "" {
+		log.Println("sql_drivers", sql.Drivers())
+
 		if val, ok := platform.Database.(model.ExtendedDatabaseProvider); ok {
 			connectionList := val.List()
 			log.Println("connections", len(connectionList))

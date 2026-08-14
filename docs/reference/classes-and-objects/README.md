@@ -39,4 +39,4 @@ visibility is not enforced. Methods always behave as instance methods.
 
 An embedding Go application can register constructors. Returned Go values are
 then exposed through the same `new`, method-call, and property-access syntax.
-`PS\Database` is the standard example.
+`Database` is the standard example.

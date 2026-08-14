@@ -1,12 +1,6 @@
 <?php
 
-putenv("DB_DSN_SQLITE_TEST", "sqlite://file:phpscript-test?mode=memory&cache=shared");
-putenv("DB_DSN_POSTGRES_TEST", "postgres://postgres:test@localhost:15432/postgres?sslmode=disable");
-putenv("DB_DSN_MYSQL_TEST", "mysql://root:test@tcp(localhost:13306)/mysql");
-
-include("code/Database.php");
-
-$databases = array("sqlite", "postgres", "mysql");
+$databases = array("sqlite", "mysql", "postgres");
 
 if ($_GET['db']) {
 	$databases = array($_GET['db']);
@@ -26,8 +20,7 @@ echo '<tr>';
 foreach ($databases as $dbname) {
 	echo '<td><pre>';
 	if ($dbname == "postgres") {
-		$db = new Database;
-		$db->connect("postgres_test");
+		$db = new Database("postgres_test");
 
 		echo json_encode($db->get_all("select datname from pg_database where datistemplate = false;"));
 
@@ -37,8 +30,7 @@ foreach ($databases as $dbname) {
 	}
 
 	if ($dbname == "mysql") {
-		$db = new Database;
-		$db->connect("mysql_test");
+		$db = new Database("mysql_test");
 
 		echo json_encode($db->get_all("show databases;"));
 
@@ -46,8 +38,7 @@ foreach ($databases as $dbname) {
 	}
 
 	if ($dbname == "sqlite") {
-		$db = new Database();
-		$db->connect("sqlite_test");
+		$db = new Database("sqlite_test");
 		$db->query("PRAGMA journal_mode = WAL;");
 		$db->query("PRAGMA synchronous = NORMAL;");
 		$db->query("PRAGMA busy_timeout = 1000;");

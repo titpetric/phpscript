@@ -3,7 +3,7 @@
 | Extension                   | Status              | Notes                                                        |
 |-----------------------------|---------------------|--------------------------------------------------------------|
 | `defer()`                   | phpscript extension | Runs callbacks when the current execution frame exits.       |
-| `PS` namespace              | phpscript extension | Contains host-backed APIs such as `PS\DatabaseClient`.       |
+| Host-backed APIs            | phpscript extension | Contains runtime services such as `Database`.                 |
 | `func` keyword              | phpscript extension | Alias for block-bodied `function`.                           |
 | `fn` keyword                | PHP-incompatible    | Alias for block-bodied `function`, not a PHP arrow function. |
 | Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.      |
@@ -28,30 +28,20 @@ function work() {
 A bound method can also be deferred:
 
 ```php
-$db = new \PS\Database("app");
+$db = new Database("app");
 defer($db->close);
 ```
 
-## PS namespace
+## Host-backed APIs
 
-The standard library reserves `PS` for phpscript-specific host APIs.
+### `Database`
 
-### `PS\DatabaseClient`
-
-`new PS\DatabaseClient("name")` connects through the named platform database
+`new Database("name")` connects through the named platform database
 configured by `PLATFORM_DB_<NAME>` in the process environment or configuration
 file. It provides `query()`, `get()`, `get_all()`, `insert()`, `replace()`,
 `update()`, `begin()`, `commit()`, `rollback()`, `insert_id()`, and
 `rows_affected()`. Database operations automatically add timed database spans to
 server-status request traces.
-
-### `PS\Database`
-
-`new PS\Database("name")` opens the connection configured in
-`DB_DSN_<NAME>`. SQLite, PostgreSQL, and MySQL drivers are registered. Database
-methods are `prepare()`, `lastInsertId()` (SQLite), and `close()`. A prepared
-statement supports `bindValue()`, `execute()`, `fetch()`, and `close()`.
-Transactions are not exposed by this host-backed API.
 
 ## Function keyword aliases
 
