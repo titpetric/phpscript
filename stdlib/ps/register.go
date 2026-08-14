@@ -16,6 +16,7 @@ func Register(rt *runner.Runtime) {
 	RegisterDefer(rt)
 	RegisterSharedMemory(rt)
 	RegisterShutdown(rt)
+	RegisterSession(rt)
 
 	rt.RegisterConstructor("Database", func(ctx context.Context, name string) (*Database, error) {
 		handle, err := platform.Database.Connect(ctx, name)
@@ -27,6 +28,13 @@ func Register(rt *runner.Runtime) {
 		database.Bridge.WithObserver(database.observe)
 		return database, nil
 	})
+}
+
+// RegisterSession installs session storage and manager bindings.
+func RegisterSession(rt *runner.Runtime) {
+	rt.RegisterConstructor("Session\\Storage\\Memory", NewSessionStorageMemory)
+	rt.RegisterConstructor("Session\\Storage\\Disk", NewSessionStorageDisk)
+	rt.RegisterConstructor("Session\\Manager", NewSessionManager)
 }
 
 // RegisterDefer installs defer() in the global function namespace.

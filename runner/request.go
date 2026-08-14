@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"net/http"
 	"regexp"
 	"sort"
@@ -27,6 +28,8 @@ type Context struct {
 	response http.Header
 	status   *int
 }
+
+type requestContextKey struct{}
 
 // NewContext returns an allocated empty Context value.
 func NewContext() Context {
@@ -109,6 +112,10 @@ func FromRequest(r *http.Request) Context {
 // request superglobals. After this, transpiled PHP can call getallheaders() /
 // header() and read $_GET, $_POST, $_PATH — all backed by this Context.
 func (c Context) Register(rt *Runtime) {
+	// Make request cookies and staged response headers available to bindings
+	// whose methods receive the runtime lifecycle context.
+	rt.SetContext(context.WithValue(rt.Context(), requestContextKey{}, c))
+
 	// PHP header inspection.
 	rt.RegisterFunc("getallheaders", c.GetAllHeaders)
 	rt.RegisterFunc("get_all_headers", c.GetAllHeaders) // README spelling / alias
@@ -177,6 +184,20 @@ func (c Context) Header(header string, opts ...any) {
 // ResponseHeaders returns the headers staged by the PHP header() function so a
 // host handler can copy them onto the http.ResponseWriter after execution.
 func (c Context) ResponseHeaders() http.Header { return c.response }
+
+// RequestContext returns the request data registered on a runtime context.
+// It is intended for request-aware Go bindings such as session management.
+func RequestContext(ctx context.Context) (Context, bool) {
+	c, ok := ctx.Value(requestContextKey{}).(Context)
+	return c, ok
+}
+
+// AddResponseHeader appends a response header without replacing existing
+// values. It is useful for headers such as Set-Cookie that may occur more than
+// once in a response.
+func (c Context) AddResponseHeader(name, value string) {
+	c.response.Add(name, value)
+}
 
 // ResponseStatus returns the status staged by header(), or zero when the host
 // should retain its default status. A Location header defaults to 302 like PHP.

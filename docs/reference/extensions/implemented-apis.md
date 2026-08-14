@@ -120,3 +120,6 @@ Regenerate it after changing runtime or standard-library registrations.
 
 - `Database`
 - `Exception`
+- `Session\Manager`
+- `Session\Storage\Disk`
+- `Session\Storage\Memory`
