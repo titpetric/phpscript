@@ -3,8 +3,12 @@ package test
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/titpetric/cli"
@@ -19,6 +23,9 @@ const Name = "Run .phpt test fixtures"
 type Options struct {
 	Report     string
 	ReportHTML string
+	Count      int
+	Time       time.Duration
+	Profile    bool
 }
 
 // NewCommand creates a new test command.
@@ -30,10 +37,94 @@ func NewCommand() *cli.Command {
 		Bind: func(fs *cli.FlagSet) {
 			fs.StringVar(&opts.Report, "report", "", "Write JSON test report to specified file")
 			fs.StringVar(&opts.ReportHTML, "report-html", "", "Write HTML test report to specified file")
+			fs.IntVar(&opts.Count, "count", 0, "Run each test the set amount of times")
+			fs.DurationVar(&opts.Time, "time", 0, "Rerun each test in a loop for the given duration (e.g. 10s)")
+			fs.BoolVar(&opts.Profile, "profile", false, "Report memory usage per run (allocs/op, B/op)")
 		},
 		Run: func(ctx context.Context, args []string) error {
 			return Run(ctx, args, opts)
 		},
+	}
+}
+
+// fixtureRun aggregates the outcome of one fixture over one or more runs.
+type fixtureRun struct {
+	Result      *tests.TestResult
+	DisplayPath string
+	Runs        int
+	Total       time.Duration
+	AllocsPerOp uint64
+	BytesPerOp  uint64
+}
+
+// runFixtureLoop reruns one fixture until the count and time requirements are
+// both met (a single run when neither flag is set). The reported result is the
+// first failing run if any, else the last run.
+func runFixtureLoop(ctx context.Context, fx *tests.Fixture, opts Options) *fixtureRun {
+	out := &fixtureRun{}
+	var before, after runtime.MemStats
+	if opts.Profile {
+		runtime.ReadMemStats(&before)
+	}
+	start := time.Now()
+	for {
+		res := tests.RunFixture(ctx, fx)
+		out.Runs++
+		if out.Result == nil || (out.Result.Passed && !res.Passed) {
+			out.Result = res
+		}
+		more := false
+		if opts.Count > 0 && out.Runs < opts.Count {
+			more = true
+		}
+		if opts.Time > 0 && time.Since(start) < opts.Time {
+			more = true
+		}
+		if !more || ctx.Err() != nil {
+			break
+		}
+	}
+	out.Total = time.Since(start)
+	if opts.Profile {
+		runtime.ReadMemStats(&after)
+		n := uint64(out.Runs)
+		out.AllocsPerOp = (after.Mallocs - before.Mallocs) / n
+		out.BytesPerOp = (after.TotalAlloc - before.TotalAlloc) / n
+	}
+	return out
+}
+
+// writeMarkdownTable prints the benchmark-style summary table. Base columns
+// are Status, Filename, Duration; Count is added when -count/-time is in
+// effect, Allocations/op and Bytes/op when -profile is.
+func writeMarkdownTable(w io.Writer, runs []*fixtureRun, opts Options) {
+	loop := opts.Count > 0 || opts.Time > 0
+	header := []string{"Status", "Filename", "Duration"}
+	if loop {
+		header = append(header, "Count")
+	}
+	if opts.Profile {
+		header = append(header, "Allocations/op", "Bytes/op")
+	}
+	fmt.Fprintln(w, "| "+strings.Join(header, " | ")+" |")
+	sep := make([]string, len(header))
+	for i := range sep {
+		sep[i] = "--"
+	}
+	fmt.Fprintln(w, "| "+strings.Join(sep, " | ")+" |")
+	for _, r := range runs {
+		status := "PASS"
+		if !r.Result.Passed {
+			status = "FAIL"
+		}
+		row := []string{status, r.DisplayPath, r.Total.Round(time.Microsecond).String()}
+		if loop {
+			row = append(row, strconv.Itoa(r.Runs))
+		}
+		if opts.Profile {
+			row = append(row, strconv.FormatUint(r.AllocsPerOp, 10), strconv.FormatUint(r.BytesPerOp, 10))
+		}
+		fmt.Fprintln(w, "| "+strings.Join(row, " | ")+" |")
 	}
 }
 
@@ -55,29 +146,33 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	}
 
 	var results []*tests.TestResult
+	var runs []*fixtureRun
 	var passedCount, failedCount int
 	startAll := time.Now()
 
 	for _, fx := range fixtures {
-		res := tests.RunFixture(ctx, fx)
+		fr := runFixtureLoop(ctx, fx, opts)
+		res := fr.Result
 		results = append(results, res)
 
-		displayPath := fx.Path
-		if displayPath == "" {
-			displayPath = fx.Name
+		fr.DisplayPath = fx.Path
+		if fr.DisplayPath == "" {
+			fr.DisplayPath = fx.Name
 		}
+		runs = append(runs, fr)
 
 		if res.Passed {
 			passedCount++
-			fmt.Printf("PASS %s (%dms)\n", displayPath, res.DurationMs)
 		} else {
 			failedCount++
-			fmt.Printf("FAIL %s (%dms)\n", displayPath, res.DurationMs)
+			fmt.Printf("FAIL %s (%dms)\n", fr.DisplayPath, res.DurationMs)
 			if res.FailureReason != "" {
 				fmt.Printf("  Reason: %s\n", res.FailureReason)
 			}
 		}
 	}
+
+	writeMarkdownTable(os.Stdout, runs, opts)
 
 	totalDur := time.Since(startAll).Milliseconds()
 	fmt.Printf("\nTest summary: %d passed, %d failed out of %d fixtures (%dms)\n", passedCount, failedCount, len(fixtures), totalDur)
