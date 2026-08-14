@@ -8,9 +8,9 @@ require (
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.10.0
-	github.com/titpetric/cli v0.4.3
+	github.com/titpetric/cli v0.5.0
 	github.com/titpetric/pdo v0.0.0-20260813195802-bd436e1a6653
-	github.com/titpetric/platform v0.4.8
+	github.com/titpetric/platform v0.4.9
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.56.0
 )
