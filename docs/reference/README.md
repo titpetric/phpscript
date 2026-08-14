@@ -83,6 +83,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
 - [phpscript extensions](extensions/README.md) — defer, the PS namespace, function keyword aliases, and portability hazards.
   - [Deferred callbacks](extensions/README.md#deferred-callbacks)
   - [PS namespace](extensions/README.md#ps-namespace)
+    - [`PS\DatabaseClient`](extensions/README.md#psdatabaseclient)
     - [`PS\Database`](extensions/README.md#psdatabase)
   - [Function keyword aliases](extensions/README.md#function-keyword-aliases)
   - [Parenthesis-free conditions](extensions/README.md#parenthesis-free-conditions)

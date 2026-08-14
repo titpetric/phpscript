@@ -3,7 +3,7 @@
 | Extension                   | Status              | Notes                                                        |
 |-----------------------------|---------------------|--------------------------------------------------------------|
 | `defer()`                   | phpscript extension | Runs callbacks when the current execution frame exits.       |
-| `PS` namespace              | phpscript extension | Contains host-backed APIs such as `PS\Database`.             |
+| `PS` namespace              | phpscript extension | Contains host-backed APIs such as `PS\DatabaseClient`.       |
 | `func` keyword              | phpscript extension | Alias for block-bodied `function`.                           |
 | `fn` keyword                | PHP-incompatible    | Alias for block-bodied `function`, not a PHP arrow function. |
 | Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.      |
@@ -35,6 +35,15 @@ defer($db->close);
 ## PS namespace
 
 The standard library reserves `PS` for phpscript-specific host APIs.
+
+### `PS\DatabaseClient`
+
+`new PS\DatabaseClient("name")` connects through the named platform database
+configured by `PLATFORM_DB_<NAME>` in the process environment or configuration
+file. It provides `query()`, `get()`, `get_all()`, `insert()`, `replace()`,
+`update()`, `begin()`, `commit()`, `rollback()`, `insert_id()`, and
+`rows_affected()`. Database operations automatically add timed database spans to
+server-status request traces.
 
 ### `PS\Database`
 

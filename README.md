@@ -7,6 +7,7 @@ very rudimentary and only enables limited functionality.
 - [About phpscript](./docs/README.md)
 - [Language reference and PHP compatibility](./docs/reference/README.md)
 - [Installation and usage](./docs/usage.md)
+- [Configuration](./docs/configuration.md)
 - [Testing and extending tests](./docs/testing.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
 - [Use cases](./docs/use-cases)

@@ -16,6 +16,10 @@ phpscript run script.php
 
 You can use `titpetric/phpscript:latest` docker image (linux/amd64, ~44MB).
 
+Use `phpscript -f config.yml ...` to load runtime and server settings from a
+YAML file. Without `-f`, the binary uses its embedded defaults. See
+[Configuration](./configuration.md) for every available setting.
+
 ## Commands
 
 ### `phpscript run <file.php>`
@@ -112,8 +116,7 @@ PHP files outside `public/` are scanned recursively for
 `// @route METHOD /path/{param}` annotations. Those routes execute with the
 application directory as their source filesystem, so they can include shared
 bootstrap code and templates outside the web root. Route annotations in
-`public/` are ignored. Route loading is controlled by the embedded
-`config/config.yml` configuration:
+`public/` are ignored. Route loading is controlled by the active configuration:
 
 ```yaml
 routes:

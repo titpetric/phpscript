@@ -6,13 +6,15 @@ show which requests are active, what the runtime is doing, recently completed
 request costs, aggregate traffic, memory pressure, and garbage-collection
 activity.
 
-The bundled `phpscript server` enables it automatically.
+The bundled `phpscript server` enables it by default. Set `status.enabled` to
+`false` in a file passed with `-f` to disable it; retention, statistics, and
+memory sampling are also configurable. See [Configuration](./configuration.md#http-modules).
 
 ## Endpoints
 
 | Path | View |
 |---|---|
-| `/debug/server-status` | Live processes and the 100-request log |
+| `/debug/server-status` | Live processes and the rolling request log |
 | `/debug/server-status/live` | Live processes |
 | `/debug/server-status/log` | Completed request log |
 | `/debug/server-status/stats` | Aggregated request statistics |
@@ -22,35 +24,31 @@ The navigation links open distinct endpoints rather than switching client-side
 tabs. The overview combines live processes with the full rolling request log;
 the live view contains only requests currently in flight. An entry is
 removed as soon as its handler returns, including for keep-alive connections.
-The log is newest-first, retains the latest 100 completed requests, and offers
-20, 50, and 100 row views. Statistics group that rolling window by hostname,
-method and URI, and PHP entrypoint, then display the top 20 groups with their
-normalized share of all requests in the window.
+The log is newest-first and offers 20, 50, and 100 row views. By default it
+retains 100 completed requests. Statistics group that rolling window by
+hostname, method and URI, and PHP entrypoint, then display up to 20 groups with
+their normalized share of all requests in the window. `ring_buffer_size` and
+`top_requests` configure those two limits.
 
 ## Integration
 
-Install one `ServerStatus` value as both HTTP middleware and runtime observer:
+Install one `ServerStatus` value as HTTP middleware, a platform module, and a
+runtime observer:
 
 ```go
-status := status.NewServerStatus()
-mux.Use(status.Middleware)
+serverStatus := status.NewModule(status.NewOptions())
+service.Use(serverStatus.Middleware)
+service.Register(serverStatus)
 
 rt.SetContext(r.Context())
-rt.Observe(status)
-```
-
-With the standard library, wrap the application mux:
-
-```go
-status := status.NewServerStatus()
-mux := http.NewServeMux()
-server := &http.Server{Handler: status.Middleware(mux)}
+rt.Observe(serverStatus)
 ```
 
 `ServerStatus` also implements `http.Handler`. It can be mounted explicitly at
 `ServerStatusPath`, `ServerStatusLivePath`, `ServerStatusLogPath`, and
-`ServerStatusStatsPath`, but wrapping is preferred: the middleware then exposes
-all status routes and observes every application request.
+`ServerStatusStatsPath`, plus the `ServerStatusDetailPath` prefix. The platform
+module mounts these handlers, while the middleware observes every application
+request.
 
 Each request receives a generated ULID in its `Request-Id` request and response
 headers. The ID is also stored in the request context and is available through
@@ -84,10 +82,14 @@ $span->set_message("load user");
 $span->end();
 ```
 
-The detail table reports each span's time from the request start and its
-duration up to the next span. Span types default to `internal`.
-The HTTP middleware records open and close spans for every request. Resolving a
-PHP entrypoint appends another span with that filename.
+The detail table reports each span's time from the request start, measured
+duration, source file and line when known, type, and message. Attributes and
+recorded errors are included in structured span data. Span types default to
+`internal`. Explicit spans measure until `end()`; runtime-generated spans cover
+operations such as PHP calls, includes, and database client work. Open and close
+markers form nested timed regions in the process-state timeline. The HTTP
+middleware records the outer request region, and resolving a PHP entrypoint
+adds its source span.
 
 The scoreboard recognizes the following runtime states:
 
@@ -127,10 +129,11 @@ list of `Request` values; the statistics endpoint returns a
 
 The snapshot reports uptime, PID, Go version, GOMAXPROCS, goroutine count, heap,
 stack and system memory, the next GC target, GC cycles and pauses, and GC CPU
-fraction. The middleware samples process-wide `runtime.MemStats` before and
-after each request. From completed samples it calculates average allocation
-churn and estimates how many similarly expensive requests could fit before the
-next GC target and within the effective memory limit.
+fraction. When `track_memory_use` is enabled, the middleware samples
+process-wide `runtime.MemStats` before and after each request. From completed
+samples it calculates average allocation churn and estimates how many similarly
+expensive requests could fit before the next GC target and within the effective
+memory limit.
 
 The effective limit is the smallest detected value among Go's memory limit,
 Linux cgroup limits, and host physical memory. These figures are capacity hints,
