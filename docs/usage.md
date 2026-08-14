@@ -51,6 +51,36 @@ phpscript lint path/to/file.php
 The current lint pass reports assignment expressions inside `if` conditions,
 including nested forms such as `if (($row = fn()) !== false) { ... }`.
 
+### `phpscript test <path>...`
+
+Discover and run `.phpt` fixtures. With no path, the command searches the
+current directory. Results are printed as they complete, using a colored table
+in a terminal and Markdown when output is redirected.
+
+```bash
+phpscript test tests/fixtures
+phpscript test tests/fixtures/array_indexing.phpt
+```
+
+Use `--count N` to run each fixture N times in one aggregate row, or `--time D`
+to repeatedly run each fixture for at least duration D. When both flags are
+provided, they select benchmark sampling: each fixture prints N rows, and each
+row is an independent sample that runs for at least D. The `Count` column is
+the number of fixture executions completed during that sample. `GC Runs`
+reports completed Go garbage-collection cycles as `N (M%)`, where M is their
+share of the fixture execution count for that row, shown to two decimal places.
+
+```bash
+phpscript test --count 5 tests/fixtures
+phpscript test --time 1s tests/fixtures
+phpscript test --count 5 --time 1s tests/fixtures
+```
+
+Use `--profile` to add per-operation allocation and byte counts. `--report`
+and `--report-html` write JSON and HTML reports respectively; reports continue
+to contain one result per fixture even when benchmark sampling prints multiple
+rows.
+
 ### `phpscript fmt <path>...`
 
 Format one or more PHP files or directories in place. A directory path formats
