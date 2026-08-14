@@ -3,12 +3,9 @@ package test
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/titpetric/cli"
@@ -37,8 +34,8 @@ func NewCommand() *cli.Command {
 		Bind: func(fs *cli.FlagSet) {
 			fs.StringVar(&opts.Report, "report", "", "Write JSON test report to specified file")
 			fs.StringVar(&opts.ReportHTML, "report-html", "", "Write HTML test report to specified file")
-			fs.IntVar(&opts.Count, "count", 0, "Run each test the set amount of times")
-			fs.DurationVar(&opts.Time, "time", 0, "Rerun each test in a loop for the given duration (e.g. 10s)")
+			fs.IntVar(&opts.Count, "count", 0, "Run each test N times; with --time, produce N benchmark samples")
+			fs.DurationVar(&opts.Time, "time", 0, "Run each test for this duration per benchmark sample (e.g. 10s)")
 			fs.BoolVar(&opts.Profile, "profile", false, "Report memory usage per run (allocs/op, B/op)")
 		},
 		Run: func(ctx context.Context, args []string) error {
@@ -55,6 +52,7 @@ type fixtureRun struct {
 	Total       time.Duration
 	AllocsPerOp uint64
 	BytesPerOp  uint64
+	GCRuns      uint32
 }
 
 // runFixtureLoop reruns one fixture until the count and time requirements are
@@ -63,9 +61,7 @@ type fixtureRun struct {
 func runFixtureLoop(ctx context.Context, fx *tests.Fixture, opts Options) *fixtureRun {
 	out := &fixtureRun{}
 	var before, after runtime.MemStats
-	if opts.Profile {
-		runtime.ReadMemStats(&before)
-	}
+	runtime.ReadMemStats(&before)
 	start := time.Now()
 	for {
 		res := tests.RunFixture(ctx, fx)
@@ -85,8 +81,9 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, opts Options) *fixtu
 		}
 	}
 	out.Total = time.Since(start)
+	runtime.ReadMemStats(&after)
+	out.GCRuns = after.NumGC - before.NumGC
 	if opts.Profile {
-		runtime.ReadMemStats(&after)
 		n := uint64(out.Runs)
 		out.AllocsPerOp = (after.Mallocs - before.Mallocs) / n
 		out.BytesPerOp = (after.TotalAlloc - before.TotalAlloc) / n
@@ -94,38 +91,24 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, opts Options) *fixtu
 	return out
 }
 
-// writeMarkdownTable prints the benchmark-style summary table. Base columns
-// are Status, Filename, Duration; Count is added when -count/-time is in
-// effect, Allocations/op and Bytes/op when -profile is.
-func writeMarkdownTable(w io.Writer, runs []*fixtureRun, opts Options) {
-	loop := opts.Count > 0 || opts.Time > 0
-	header := []string{"Status", "Filename", "Duration"}
-	if loop {
-		header = append(header, "Count")
+// runFixtureSamples returns one aggregate run normally. When count and time
+// are both set, count selects the number of benchmark samples and each sample
+// runs independently for the requested time.
+func runFixtureSamples(ctx context.Context, fx *tests.Fixture, opts Options) []*fixtureRun {
+	if opts.Count <= 0 || opts.Time <= 0 {
+		return []*fixtureRun{runFixtureLoop(ctx, fx, opts)}
 	}
-	if opts.Profile {
-		header = append(header, "Allocations/op", "Bytes/op")
-	}
-	fmt.Fprintln(w, "| "+strings.Join(header, " | ")+" |")
-	sep := make([]string, len(header))
-	for i := range sep {
-		sep[i] = "--"
-	}
-	fmt.Fprintln(w, "| "+strings.Join(sep, " | ")+" |")
-	for _, r := range runs {
-		status := "PASS"
-		if !r.Result.Passed {
-			status = "FAIL"
+
+	sampleOpts := opts
+	sampleOpts.Count = 0
+	runs := make([]*fixtureRun, 0, opts.Count)
+	for range opts.Count {
+		runs = append(runs, runFixtureLoop(ctx, fx, sampleOpts))
+		if ctx.Err() != nil {
+			break
 		}
-		row := []string{status, r.DisplayPath, r.Total.Round(time.Microsecond).String()}
-		if loop {
-			row = append(row, strconv.Itoa(r.Runs))
-		}
-		if opts.Profile {
-			row = append(row, strconv.FormatUint(r.AllocsPerOp, 10), strconv.FormatUint(r.BytesPerOp, 10))
-		}
-		fmt.Fprintln(w, "| "+strings.Join(row, " | ")+" |")
 	}
+	return runs
 }
 
 // Run executes .phpt test fixtures matching the provided paths or patterns.
@@ -145,37 +128,53 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		return nil
 	}
 
+	displayPaths := make([]string, len(fixtures))
+	for i, fx := range fixtures {
+		displayPaths[i] = fx.Path
+		if displayPaths[i] == "" {
+			displayPaths[i] = fx.Name
+		}
+	}
+	table := newResultTable(os.Stdout, displayPaths, opts)
+	table.writeHeader()
+
 	var results []*tests.TestResult
-	var runs []*fixtureRun
+	var failedRuns []*fixtureRun
 	var passedCount, failedCount int
 	startAll := time.Now()
 
-	for _, fx := range fixtures {
-		fr := runFixtureLoop(ctx, fx, opts)
-		res := fr.Result
-		results = append(results, res)
+	for i, fx := range fixtures {
+		var fixtureResult *tests.TestResult
+		var firstFailedRun *fixtureRun
+		for _, fr := range runFixtureSamples(ctx, fx, opts) {
+			fr.DisplayPath = displayPaths[i]
+			table.writeResult(fr)
 
-		fr.DisplayPath = fx.Path
-		if fr.DisplayPath == "" {
-			fr.DisplayPath = fx.Name
+			if fixtureResult == nil || fixtureResult.Passed {
+				fixtureResult = fr.Result
+			}
+			if !fr.Result.Passed && firstFailedRun == nil {
+				firstFailedRun = fr
+			}
 		}
-		runs = append(runs, fr)
+		results = append(results, fixtureResult)
 
-		if res.Passed {
+		if fixtureResult.Passed {
 			passedCount++
 		} else {
 			failedCount++
-			fmt.Printf("FAIL %s (%dms)\n", fr.DisplayPath, res.DurationMs)
-			if res.FailureReason != "" {
-				fmt.Printf("  Reason: %s\n", res.FailureReason)
-			}
+			failedRuns = append(failedRuns, firstFailedRun)
 		}
 	}
+	table.close()
+	table.writeSummary(passedCount, failedCount, len(fixtures), time.Since(startAll))
 
-	writeMarkdownTable(os.Stdout, runs, opts)
-
-	totalDur := time.Since(startAll).Milliseconds()
-	fmt.Printf("\nTest summary: %d passed, %d failed out of %d fixtures (%dms)\n", passedCount, failedCount, len(fixtures), totalDur)
+	for _, fr := range failedRuns {
+		fmt.Printf("FAIL %s (%dms)\n", fr.DisplayPath, fr.Result.DurationMs)
+		if fr.Result.FailureReason != "" {
+			fmt.Printf("  Reason: %s\n", fr.Result.FailureReason)
+		}
+	}
 
 	if opts.Report != "" {
 		if err := writeReportFile(opts.Report, func(f *os.File) error {
