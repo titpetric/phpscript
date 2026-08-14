@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/expr-lang/expr/vm"
+
 	flatvm "github.com/titpetric/phpscript/flatstack/engine"
 	"github.com/titpetric/phpscript/model"
 )

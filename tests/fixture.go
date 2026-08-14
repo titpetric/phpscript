@@ -17,24 +17,27 @@ import (
 	"sync"
 	"time"
 
+	yaml "gopkg.in/yaml.v3"
+
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
-
-	"gopkg.in/yaml.v3"
 )
 
 //go:embed all:fixtures
 var fixturesFS embed.FS
 
 var phpFS fs.FS
+
 var phpFSOnce sync.Once
 
 var includeCache = runner.NewIncludeCache()
+
 var exprCache = runner.NewExprCache()
 
 var flatIncludeCache = flatstack.NewIncludeCache()
+
 var flatExprCache = flatstack.NewExprCache()
 
 // ResetCaches clears all global shared caches between test suites.

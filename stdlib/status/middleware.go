@@ -146,6 +146,7 @@ type ServerStatus struct {
 }
 
 var _ platform.Module = (*ServerStatus)(nil)
+
 var _ model.Tracer = (*ServerStatus)(nil)
 
 // NewModule creates an empty status module.

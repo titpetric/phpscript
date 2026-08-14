@@ -1,11 +1,13 @@
 package main
 
 import (
-	_ "embed"
 	"log"
 	"os"
 
-	"github.com/goccy/go-yaml"
+	_ "embed"
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "modernc.org/sqlite"
 
 	"github.com/titpetric/cli"
 	"github.com/titpetric/platform"
@@ -18,12 +20,7 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/server"
 	"github.com/titpetric/phpscript/cmd/phpscript/test"
 	"github.com/titpetric/phpscript/cmd/phpscript/version"
-	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/model"
-
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -33,7 +30,11 @@ func main() {
 }
 
 func start() error {
-	appConfig, err := loadConfig()
+	configFile, args, err := parseConfigFile(os.Args[1:])
+	if err != nil {
+		return err
+	}
+	appConfig, err := loadConfig(configFile)
 	if err != nil {
 		return err
 	}
@@ -71,14 +72,5 @@ func start() error {
 		})
 	})
 	app.DefaultCommand = "run"
-	return app.Run()
-}
-
-func loadConfig() (config.Config, error) {
-	result := config.New()
-	if err := yaml.Unmarshal(config.DefaultRuntimeConfig, &result); err != nil {
-		log.Printf("Could not parse default runtime config: %v", err)
-		return result, err
-	}
-	return result, nil
+	return app.RunWithArgs(args)
 }

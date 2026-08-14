@@ -57,8 +57,10 @@ func (h flatHost) Lookup(name string) any {
 }
 
 func (h flatHost) Array(items []model.ArrayItemValue) any { return helperArray(items...) }
-func (h flatHost) Index(base, index any) any              { return helperIndex(base, index) }
-func (h flatHost) Truthy(value any) bool                  { return phpTruthy(value) }
+
+func (h flatHost) Index(base, index any) any { return helperIndex(base, index) }
+
+func (h flatHost) Truthy(value any) bool { return phpTruthy(value) }
 
 func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) error {
 	array, ok := base.(*model.Array)

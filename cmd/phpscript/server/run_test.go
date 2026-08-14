@@ -8,7 +8,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/go-chi/chi/v5"
+	chi "github.com/go-chi/chi/v5"
 
 	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/expr-lang/expr/vm"
+
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )

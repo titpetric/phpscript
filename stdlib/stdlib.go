@@ -18,7 +18,6 @@ import (
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
-
 	"github.com/titpetric/phpscript/stdlib/ps"
 	"github.com/titpetric/phpscript/stdlib/status"
 )

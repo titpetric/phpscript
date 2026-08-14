@@ -7,6 +7,7 @@ import (
 )
 
 type scopeContextKey struct{}
+
 type envContextKey struct{}
 
 // Scope is a flat variable table for one execution frame.

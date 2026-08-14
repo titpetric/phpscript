@@ -61,7 +61,8 @@ func (s *memStorage) All(_ context.Context) ([]Record, error) {
 	return out, nil
 }
 
-func (s *memStorage) Len() int64     { return int64(len(s.data)) }
+func (s *memStorage) Len() int64 { return int64(len(s.data)) }
+
 func (s *memStorage) Tenant() string { return s.tenant }
 
 // ctxKey is the context key used to thread request-scoped data into constructors.

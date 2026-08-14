@@ -40,10 +40,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/titpetric/platform"
+
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
-	"github.com/titpetric/platform"
 )
 
 // RuntimeFunc customizes a PHP runtime before a routed PHP endpoint executes.

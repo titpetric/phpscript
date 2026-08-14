@@ -1,9 +1,14 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+)
 
 func TestLoadConfig(t *testing.T) {
-	config, err := loadConfig()
+	config, err := loadConfig("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,5 +28,44 @@ func TestLoadConfig(t *testing.T) {
 		config.Status.Options.TopRequests != 20 ||
 		!config.Status.Options.TrackMemoryUse {
 		t.Fatalf("status options = %+v", config.Status.Options)
+	}
+}
+
+func TestLoadConfigFile(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "config.yml")
+	if err := os.WriteFile(filename, []byte(`
+runner:
+  work_dir: "app"
+flatstack:
+  enabled: true
+routes:
+  enabled: false
+status:
+  enabled: false
+env:
+  - "PLATFORM_DB_APP=sqlite://app.db"
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := loadConfig(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Runner.WorkDir != "app" || !config.Flatstack.Enabled || config.Routes.Enabled || config.Status.Enabled {
+		t.Fatalf("config = %+v", config)
+	}
+	if !reflect.DeepEqual(config.Env, []string{"PLATFORM_DB_APP=sqlite://app.db"}) {
+		t.Fatalf("env = %q", config.Env)
+	}
+}
+
+func TestParseConfigFile(t *testing.T) {
+	filename, args, err := parseConfigFile([]string{"server", "-f", "config.yml", "app"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filename != "config.yml" || !reflect.DeepEqual(args, []string{"server", "app"}) {
+		t.Fatalf("filename = %q, args = %q", filename, args)
 	}
 }

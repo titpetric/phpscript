@@ -201,38 +201,68 @@ type Field struct {
 }
 
 func (*InlineHTML) node() {}
-func (*Echo) node()       {}
-func (*ExprStmt) node()   {}
-func (*Assign) node()     {}
-func (*If) node()         {}
-func (*Foreach) node()    {}
-func (*For) node()        {}
-func (*Return) node()     {}
-func (*Include) node()    {}
-func (*FuncDecl) node()   {}
-func (*ClassDecl) node()  {}
-func (*Throw) node()      {}
-func (*Try) node()        {}
-func (*Switch) node()     {}
-func (*Break) node()      {}
-func (*Continue) node()   {}
+
+func (*Echo) node() {}
+
+func (*ExprStmt) node() {}
+
+func (*Assign) node() {}
+
+func (*If) node() {}
+
+func (*Foreach) node() {}
+
+func (*For) node() {}
+
+func (*Return) node() {}
+
+func (*Include) node() {}
+
+func (*FuncDecl) node() {}
+
+func (*ClassDecl) node() {}
+
+func (*Throw) node() {}
+
+func (*Try) node() {}
+
+func (*Switch) node() {}
+
+func (*Break) node() {}
+
+func (*Continue) node() {}
 
 func (*InlineHTML) stmt() {}
-func (*Echo) stmt()       {}
-func (*ExprStmt) stmt()   {}
-func (*Assign) stmt()     {}
-func (*If) stmt()         {}
-func (*Foreach) stmt()    {}
-func (*For) stmt()        {}
-func (*Return) stmt()     {}
-func (*Include) stmt()    {}
-func (*FuncDecl) stmt()   {}
-func (*ClassDecl) stmt()  {}
-func (*Throw) stmt()      {}
-func (*Try) stmt()        {}
-func (*Switch) stmt()     {}
-func (*Break) stmt()      {}
-func (*Continue) stmt()   {}
+
+func (*Echo) stmt() {}
+
+func (*ExprStmt) stmt() {}
+
+func (*Assign) stmt() {}
+
+func (*If) stmt() {}
+
+func (*Foreach) stmt() {}
+
+func (*For) stmt() {}
+
+func (*Return) stmt() {}
+
+func (*Include) stmt() {}
+
+func (*FuncDecl) stmt() {}
+
+func (*ClassDecl) stmt() {}
+
+func (*Throw) stmt() {}
+
+func (*Try) stmt() {}
+
+func (*Switch) stmt() {}
+
+func (*Break) stmt() {}
+
+func (*Continue) stmt() {}
 
 // ---------------------------------------------------------------------------
 // Expressions
@@ -377,44 +407,72 @@ type ListExpr struct {
 	Elems []Expr
 }
 
-func (*Lit) node()        {}
-func (*Var) node()        {}
-func (*ArrayLit) node()   {}
-func (*Index) node()      {}
+func (*Lit) node() {}
+
+func (*Var) node() {}
+
+func (*ArrayLit) node() {}
+
+func (*Index) node() {}
+
 func (*PropAccess) node() {}
-func (*Call) node()       {}
+
+func (*Call) node() {}
+
 func (*MethodCall) node() {}
-func (*New) node()        {}
-func (*Unary) node()      {}
+
+func (*New) node() {}
+
+func (*Unary) node() {}
 
 func (*Parenthesized) node() {}
 
-func (*Binary) node()     {}
-func (*Ternary) node()    {}
+func (*Binary) node() {}
+
+func (*Ternary) node() {}
+
 func (*ClassConst) node() {}
-func (*Cast) node()       {}
-func (*Closure) node()    {}
+
+func (*Cast) node() {}
+
+func (*Closure) node() {}
+
 func (*AssignExpr) node() {}
-func (*ListExpr) node()   {}
+
+func (*ListExpr) node() {}
 
 func (*Include) expr() {}
 
-func (*Lit) expr()        {}
-func (*Var) expr()        {}
-func (*ArrayLit) expr()   {}
-func (*Index) expr()      {}
+func (*Lit) expr() {}
+
+func (*Var) expr() {}
+
+func (*ArrayLit) expr() {}
+
+func (*Index) expr() {}
+
 func (*PropAccess) expr() {}
-func (*Call) expr()       {}
+
+func (*Call) expr() {}
+
 func (*MethodCall) expr() {}
-func (*New) expr()        {}
-func (*Unary) expr()      {}
+
+func (*New) expr() {}
+
+func (*Unary) expr() {}
 
 func (*Parenthesized) expr() {}
 
-func (*Binary) expr()     {}
-func (*Ternary) expr()    {}
+func (*Binary) expr() {}
+
+func (*Ternary) expr() {}
+
 func (*ClassConst) expr() {}
-func (*Cast) expr()       {}
-func (*Closure) expr()    {}
+
+func (*Cast) expr() {}
+
+func (*Closure) expr() {}
+
 func (*AssignExpr) expr() {}
-func (*ListExpr) expr()   {}
+
+func (*ListExpr) expr() {}

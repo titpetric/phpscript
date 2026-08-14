@@ -5,8 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/platform"
+
+	"github.com/titpetric/phpscript/model"
 )
 
 func TestMain(m *testing.M) {

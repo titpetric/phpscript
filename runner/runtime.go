@@ -16,6 +16,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+
 	"github.com/titpetric/phpscript/model"
 )
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/titpetric/cli"
+
 	"github.com/titpetric/phpscript/tests"
 )
 

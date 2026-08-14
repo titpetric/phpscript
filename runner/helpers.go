@@ -12,6 +12,7 @@ import (
 // contextType is the reflect type of context.Context, used to detect callables
 // that want the runtime context auto-injected as their first argument.
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
 
 // HostPanicError converts a panic raised by a registered Go constructor,

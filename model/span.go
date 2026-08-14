@@ -136,7 +136,9 @@ func (s *RequestSpan) RecordError(err error) {
 }
 
 type requestKey struct{}
+
 type spanFilenameKey struct{}
+
 type spanLineKey struct{}
 
 func WithRequest(ctx context.Context, request *Request) context.Context {

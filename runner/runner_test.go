@@ -28,7 +28,8 @@ type constructorIDHost struct {
 }
 
 func (h *constructorIDHost) SetID(id string) { h.id = id }
-func (h *constructorIDHost) GetID() string   { return h.id }
+
+func (h *constructorIDHost) GetID() string { return h.id }
 
 type contextMethodHost struct{}
 

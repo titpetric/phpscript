@@ -51,6 +51,7 @@ func (p *parser) peek(n int) token {
 	}
 	return p.toks[j]
 }
+
 func (p *parser) next() token {
 	t := p.toks[p.i]
 	if p.i < len(p.toks)-1 {
@@ -62,6 +63,7 @@ func (p *parser) next() token {
 func (p *parser) atEOF() bool { return p.cur().kind == tEOF }
 
 func (p *parser) isOp(v string) bool { t := p.cur(); return t.kind == tOp && t.val == v }
+
 func (p *parser) isKw(vss ...string) bool {
 	for _, v := range vss {
 		t := p.cur()
@@ -316,6 +318,7 @@ func (p *parser) parseIf() (model.Stmt, error) {
 	}
 	return node, nil
 }
+
 func (p *parser) parseForeach() (model.Stmt, error) {
 	p.next() // foreach
 	wrapped := p.isOp("(")

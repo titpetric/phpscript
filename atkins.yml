@@ -3,6 +3,7 @@ tasks:
     cmds:
       - go mod tidy
       - goimports -w .
+      - goimports-reviser -set-alias -format -imports-order "std,blanked,general,company,project" ./...
       - go fmt ./...
       - go install .
       - task: go:test
