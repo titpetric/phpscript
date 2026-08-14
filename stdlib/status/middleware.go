@@ -143,21 +143,37 @@ type ServerStatus struct {
 	allocated uint64
 	stateTime map[model.Status]time.Duration
 	options   Options
+	storage   Storage
 }
 
 var _ platform.Module = (*ServerStatus)(nil)
 
 var _ model.Tracer = (*ServerStatus)(nil)
 
-// NewModule creates an empty status module.
+// NewModule creates an empty status module. An unknown Driver or a failing
+// storage path is surfaced on stderr and telemetry continues memory-only:
+// the status page must never take the server down.
 func NewModule(options Options) *ServerStatus {
-	return &ServerStatus{
+	s := &ServerStatus{
 		UnimplementedModule: *platform.NewUnimplementedModule("status"),
 		started:             time.Now(),
 		active:              make(map[string]*Request),
 		stateTime:           make(map[model.Status]time.Duration),
 		options:             options,
 	}
+	switch options.Driver {
+	case "":
+	case "disk":
+		storage, err := NewDiskStorage(options.Path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "status: %v — trace detail storage disabled\n", err)
+		} else {
+			s.storage = storage
+		}
+	default:
+		fmt.Fprintf(os.Stderr, "status: unknown driver %q — trace detail storage disabled\n", options.Driver)
+	}
+	return s
 }
 
 // NewServerStatus creates an empty status module.
@@ -319,6 +335,15 @@ func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseW
 	s.history = append(s.history, *entry)
 	if len(s.history) > s.options.RingBufferSize {
 		s.history = append(s.history[:0], s.history[len(s.history)-s.options.RingBufferSize:]...)
+	}
+	// Flush the completed trace to durable storage, sampling-gated. The
+	// write happens outside the request path (finish already runs after the
+	// response); a storage error only costs the permalink, never the page.
+	if s.storage != nil && sampled(s.options.Sampling) {
+		record := *entry
+		if err := s.storage.Put(ctx, &record); err != nil {
+			fmt.Fprintf(os.Stderr, "status: trace storage put %s: %v\n", record.ID, err)
+		}
 	}
 }
 
@@ -665,6 +690,23 @@ func (s *ServerStatus) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *ServerStatus) serveDetail(w http.ResponseWriter, r *http.Request, id string) {
 	request, ok := s.completedRequest(id)
+	if !ok && s.storage != nil {
+		rc, err := s.storage.Get(r.Context(), id)
+		if err == nil {
+			defer rc.Close()
+			accept := strings.ToLower(r.Header.Get("Accept"))
+			if strings.Contains(accept, "text/json") || strings.Contains(accept, "application/json") {
+				// Ideal state: carry the stored file straight into the
+				// response body, no decode round trip.
+				w.Header().Set("Content-Type", "text/json; charset=utf-8")
+				_, _ = io.Copy(w, rc)
+				return
+			}
+			if decodeErr := json.NewDecoder(rc).Decode(&request); decodeErr == nil {
+				ok = true
+			}
+		}
+	}
 	if !ok {
 		http.NotFound(w, r)
 		return
