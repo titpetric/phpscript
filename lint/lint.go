@@ -3,11 +3,13 @@ package lint
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
+	"github.com/titpetric/phpscript/tests"
 )
 
 // Diagnostic is one lint finding.
@@ -26,9 +28,13 @@ func (d Diagnostic) String() string {
 
 // File parses and lints one PHP source file.
 func File(name, src string) ([]Diagnostic, error) {
+	src, err := lintSource(name, src)
+	if err != nil {
+		return []Diagnostic{{File: name, Line: 1, Message: fmt.Sprintf("fixture parse error: %v", err)}}, nil
+	}
 	prog, err := parser.Parse(src)
 	if err != nil {
-		return nil, err
+		return []Diagnostic{{File: name, Line: 1, Message: fmt.Sprintf("parse error: %v", err)}}, nil
 	}
 	var out []Diagnostic
 	lintStmts(name, prog.Stmts, &out)
@@ -37,6 +43,10 @@ func File(name, src string) ([]Diagnostic, error) {
 
 // FlatstackFile checks whether a single PHP source file is compatible with flatstack engine.
 func FlatstackFile(name, src string) (Diagnostic, error) {
+	src, err := lintSource(name, src)
+	if err != nil {
+		return Diagnostic{File: name, Line: 1, Message: fmt.Sprintf("fixture parse error: %v", err)}, nil
+	}
 	prog, err := parser.Parse(src)
 	if err != nil {
 		return Diagnostic{File: name, Line: 1, Message: fmt.Sprintf("parse error: %v", err)}, nil
@@ -87,6 +97,28 @@ func Paths(paths []string) ([]Diagnostic, error) {
 		out = append(out, diags...)
 	}
 	return out, nil
+}
+
+func lintSource(name, src string) (string, error) {
+	if !strings.HasSuffix(name, ".phpt") {
+		return src, nil
+	}
+
+	fixture, err := tests.ParseFixture([]byte(src), name)
+	if err != nil {
+		return "", err
+	}
+
+	// Keep the PHP section at its physical position in the fixture so lint
+	// diagnostics point to lines in the .phpt file rather than section-relative
+	// lines.
+	normalized := strings.ReplaceAll(src, "\r\n", "\n")
+	phpStart := strings.Index(normalized, "\n---\n") + len("\n---\n")
+	lineOffset := strings.Count(normalized[:phpStart], "\n")
+	if strings.HasPrefix(normalized[phpStart:], "\n") {
+		lineOffset++ // ParseFixture trims one optional leading section newline.
+	}
+	return strings.Repeat("\n", lineOffset) + fixture.PHP, nil
 }
 
 func lintStmts(file string, stmts []model.Stmt, out *[]Diagnostic) {
