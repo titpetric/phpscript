@@ -184,10 +184,7 @@ func (t *markdownTable) writeResult(r *fixtureRun) {
 
 func (t *markdownTable) close() {}
 
-func (t *markdownTable) writeSummary(passed, failed, total int, duration time.Duration) {
-	fmt.Fprintf(t.w, "Test summary: %d passed, %d failed out of %d fixtures (%dms)\n",
-		passed, failed, total, duration.Milliseconds())
-}
+func (t *markdownTable) writeSummary(int, int, int, time.Duration) {}
 
 func (t *markdownTable) writeMarkdownRow(values []string) {
 	cells := make([]string, len(values))
