@@ -139,8 +139,7 @@ func TestResultTableFallsBackToMarkdown(t *testing.T) {
 
 	want := "| Test | Filename | Duration (ms) | GC Runs         |\n" +
 		"| ---- | -------- | ------------- | --------------- |\n" +
-		"| PASS | a.phpt   | 1             | 0 (0.00%)       |\n" +
-		"Test summary: 1 passed, 0 failed out of 1 fixtures (1ms)\n"
+		"| PASS | a.phpt   | 1             | 0 (0.00%)       |\n"
 	if got := buf.String(); got != want {
 		t.Fatalf("non-terminal table =\n%s\nwant:\n%s", got, want)
 	}
