@@ -66,14 +66,14 @@ func RegisterSMTP(rt *runner.Runtime) {
 //		"from"     => "Example <noreply@example.com>",
 //		"insecure" => true,
 //	));
-func NewSMTPBinding(ctx context.Context, options *model.Array) (*SMTP, error) {
-	if options == nil {
+func NewSMTPBinding(ctx context.Context, options any) (*SMTP, error) {
+	if !model.IsCollection(options) {
 		return nil, fmt.Errorf("SMTP: connection options are required")
 	}
 
 	config := Config{Port: 25}
 	var err error
-	options.Range(func(key, value any) bool {
+	model.RangeValues(options, func(key, value any) bool {
 		switch strings.ToLower(toString(key)) {
 		case "host":
 			config.Host = toString(value)

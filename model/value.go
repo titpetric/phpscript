@@ -32,6 +32,20 @@ func NewArray() *Array {
 	return &Array{values: map[any]any{}}
 }
 
+// NewArraySize returns an empty ordered array with room for n entries. Building
+// an array of known size through it avoids the key slice's growth reallocations
+// (a 5-entry array grows 1->2->4->8), which is most of what an *Array costs
+// beyond its map.
+func NewArraySize(n int) *Array {
+	if n <= 0 {
+		return NewArray()
+	}
+	return &Array{
+		keys:   make([]any, 0, n),
+		values: make(map[any]any, n),
+	}
+}
+
 // Set assigns key=val, appending the key if new.
 func (a *Array) Set(key, val any) {
 	if _, ok := a.values[key]; !ok {

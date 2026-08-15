@@ -54,6 +54,12 @@ func phpTruthy(v any) bool {
 	case *model.Array:
 		return x.Len() > 0
 	default:
+		// An empty collection is falsey whatever its Go type, so a binding that
+		// returns a []string behaves like one that returns an *Array in
+		// `if ($rows)` and `empty($rows)`.
+		if n, ok := model.LenValues(v); ok {
+			return n > 0
+		}
 		return true
 	}
 }
@@ -108,13 +114,16 @@ func helperCast(typ string, v any) any {
 	case "string":
 		return phpString(v)
 	case "array":
-		if a, ok := v.(*model.Array); ok {
-			return a
+		if v == nil {
+			return model.NewArray()
 		}
-		a := model.NewArray()
-		if v != nil {
-			a.Append(v)
+		// (array) on a collection converts it, preserving keys; on a scalar it
+		// wraps the value, as PHP does.
+		if model.IsCollection(v) {
+			return model.ToArray(v)
 		}
+		a := model.NewArraySize(1)
+		a.Append(v)
 		return a
 	default:
 		return v

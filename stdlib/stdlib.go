@@ -12,6 +12,7 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -146,16 +147,16 @@ func phpSubstr(s string, start int64, length ...int64) string {
 	return s[start:end]
 }
 
-// phpStrReplace implements str_replace where search may be a string or array
-// (with a scalar or array replacement), and subject is a string.
+// phpStrReplace implements str_replace where search may be a string or a
+// collection (with a scalar or collection replacement), and subject is a string.
 func phpStrReplace(search, replace, subject any) string {
 	out := toString(subject)
-	if sa, ok := search.(*model.Array); ok {
-		ra, raIsArr := replace.(*model.Array)
-		repl := arrStrings(ra)
-		for i, s := range arrStrings(sa) {
+	if model.IsCollection(search) {
+		replIsList := model.IsCollection(replace)
+		repl := arrStrings(replace)
+		for i, s := range arrStrings(search) {
 			r := ""
-			if raIsArr {
+			if replIsList {
 				if i < len(repl) {
 					r = repl[i]
 				}
@@ -171,29 +172,27 @@ func phpStrReplace(search, replace, subject any) string {
 
 func phpImplode(a, b any) string {
 	// implode($glue, $array) or implode($array).
-	glue := ""
-	var arr *model.Array
-	if x, ok := a.(*model.Array); ok {
-		arr = x
-	} else {
-		glue = toString(a)
-		arr, _ = b.(*model.Array)
+	if model.IsCollection(a) {
+		return strings.Join(arrStrings(a), "")
 	}
-	return strings.Join(arrStrings(arr), glue)
+	// A []string joins without the per-element conversion arrStrings would do.
+	if parts, ok := b.([]string); ok {
+		return strings.Join(parts, toString(a))
+	}
+	return strings.Join(arrStrings(b), toString(a))
 }
 
-func phpExplode(delim, s string, limit ...int64) *model.Array {
+// phpExplode returns the parts as a []string: strings.Split already allocated
+// exactly that, so handing it straight to the VM costs nothing beyond the split
+// itself. The VM indexes, iterates and destructures it like any array.
+func phpExplode(delim, s string, limit ...int64) []string {
 	parts := strings.Split(s, delim)
 	if len(limit) > 0 && limit[0] > 0 && int64(len(parts)) > limit[0] {
-		head := parts[:limit[0]-1]
 		tail := strings.Join(parts[limit[0]-1:], delim)
-		parts = append(append([]string{}, head...), tail)
+		parts = parts[:limit[0]]
+		parts[limit[0]-1] = tail
 	}
-	out := model.NewArray()
-	for _, p := range parts {
-		out.Append(p)
-	}
-	return out
+	return parts
 }
 
 // phpSprintf implements a subset of sprintf: %s %d %u %% and width/precision
@@ -213,17 +212,22 @@ func phpSprintf(format string, args ...any) string {
 // arrays
 // ---------------------------------------------------------------------------
 
+// The array shims take `any` rather than *model.Array and read their input
+// through model.RangeValues, so a script can pass either a PHP array or the
+// native Go slice/map a binding returned. Those that build a fresh list return
+// a []any (one allocation, presized) instead of an *model.Array (a struct, a
+// map[any]any, a growing key slice and an interface box per key). The ones that
+// preserve or merge keys still return *model.Array, because only *model.Array
+// carries PHP's ordered hybrid-key semantics.
 func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("compact", phpCompact)
 	rt.RegisterFunc("count", func(a any) int64 {
-		if arr, ok := a.(*model.Array); ok {
-			return int64(arr.Len())
-		}
-		return 0
+		n, _ := model.LenValues(a)
+		return int64(n)
 	})
-	rt.RegisterFunc("in_array", func(needle any, haystack *model.Array, _ ...any) bool {
+	rt.RegisterFunc("in_array", func(needle, haystack any, _ ...any) bool {
 		found := false
-		haystack.Range(func(_, v any) bool {
+		model.RangeValues(haystack, func(_, v any) bool {
 			if toString(v) == toString(needle) {
 				found = true
 				return false
@@ -232,10 +236,11 @@ func registerArrays(rt *runner.Runtime) {
 		})
 		return found
 	})
-	rt.RegisterFunc("array_unique", func(a *model.Array, _ ...any) *model.Array {
-		out := model.NewArray()
-		seen := map[string]bool{}
-		a.Range(func(k, v any) bool {
+	rt.RegisterFunc("array_unique", func(a any, _ ...any) *model.Array {
+		n, _ := model.LenValues(a)
+		out := model.NewArraySize(n)
+		seen := make(map[string]bool, n)
+		model.RangeValues(a, func(k, v any) bool {
 			s := toString(v)
 			if !seen[s] {
 				seen[s] = true
@@ -245,13 +250,15 @@ func registerArrays(rt *runner.Runtime) {
 		})
 		return out
 	})
-	rt.RegisterFunc("array_merge", func(arrs ...*model.Array) *model.Array {
-		out := model.NewArray()
+	rt.RegisterFunc("array_merge", func(arrs ...any) *model.Array {
+		size := 0
 		for _, a := range arrs {
-			if a == nil {
-				continue
-			}
-			a.Range(func(k, v any) bool {
+			n, _ := model.LenValues(a)
+			size += n
+		}
+		out := model.NewArraySize(size)
+		for _, a := range arrs {
+			model.RangeValues(a, func(k, v any) bool {
 				if _, isInt := k.(int64); isInt {
 					out.Append(v)
 				} else {
@@ -262,16 +269,16 @@ func registerArrays(rt *runner.Runtime) {
 		}
 		return out
 	})
-	rt.RegisterFunc("array_keys", func(a *model.Array) *model.Array {
-		out := model.NewArray()
-		for _, k := range a.Keys() {
-			out.Append(k)
-		}
+	rt.RegisterFunc("array_keys", func(a any) []any {
+		n, _ := model.LenValues(a)
+		out := make([]any, 0, n)
+		model.RangeValues(a, func(k, _ any) bool { out = append(out, k); return true })
 		return out
 	})
-	rt.RegisterFunc("array_values", func(a *model.Array) *model.Array {
-		out := model.NewArray()
-		a.Range(func(_, v any) bool { out.Append(v); return true })
+	rt.RegisterFunc("array_values", func(a any) []any {
+		n, _ := model.LenValues(a)
+		out := make([]any, 0, n)
+		model.RangeValues(a, func(_, v any) bool { out = append(out, v); return true })
 		return out
 	})
 	rt.RegisterFunc("array_slice", phpArraySlice)
@@ -296,18 +303,18 @@ func phpCompact(ctx context.Context, names ...string) map[string]any {
 	return out
 }
 
-func phpArraySplice(a *model.Array, offset int64, optional ...any) *model.Array {
-	removed := model.NewArray()
-	if a == nil {
-		return removed
+// phpArraySplice removes (and optionally replaces) a run of elements, returning
+// the removed ones as a []any. It resizes its argument, which a Go slice cannot
+// do through the interface holding it, so this is one of the few shims that
+// genuinely requires a *model.Array — passing anything else is an error rather
+// than a silent no-op.
+func phpArraySplice(target any, offset int64, optional ...any) ([]any, error) {
+	a, ok := target.(*model.Array)
+	if !ok || a == nil {
+		return nil, fmt.Errorf("array_splice: expected an array, got %T", target)
 	}
 
-	var vals []any
-	a.Range(func(_, v any) bool {
-		vals = append(vals, v)
-		return true
-	})
-
+	vals := arrValues(a)
 	n := len(vals)
 
 	start := int(offset)
@@ -336,11 +343,11 @@ func phpArraySplice(a *model.Array, offset int64, optional ...any) *model.Array 
 		replacement = phpArraySpliceReplacement(optional[1])
 	}
 
-	for _, v := range vals[start:end] {
-		removed.Append(v)
-	}
+	removed := make([]any, end-start)
+	copy(removed, vals[start:end])
 
-	out := append([]any{}, vals[:start]...)
+	out := make([]any, 0, start+len(replacement)+(n-end))
+	out = append(out, vals[:start]...)
 	out = append(out, replacement...)
 	out = append(out, vals[end:]...)
 
@@ -349,7 +356,7 @@ func phpArraySplice(a *model.Array, offset int64, optional ...any) *model.Array 
 		a.Append(v)
 	}
 
-	return removed
+	return removed, nil
 }
 
 func phpArraySpliceEnd(start, n int, lengthArg any) int {
@@ -375,24 +382,17 @@ func phpArraySpliceReplacement(rep any) []any {
 	if rep == nil {
 		return nil
 	}
-	if arr, ok := rep.(*model.Array); ok {
-		var out []any
-		arr.Range(func(_, v any) bool {
-			out = append(out, v)
-			return true
-		})
-		return out
+	if model.IsCollection(rep) {
+		return arrValues(rep)
 	}
 	return []any{rep}
 }
 
-func phpArraySlice(a *model.Array, offset int64, length ...int64) *model.Array {
-	out := model.NewArray()
-	if a == nil {
-		return out
-	}
-	var vals []any
-	a.Range(func(_, v any) bool { vals = append(vals, v); return true })
+// phpArraySlice returns the selected run as a []any. PHP's array_slice
+// reindexes integer keys, which this shim has always done for every key, so a
+// list is a faithful representation of the result.
+func phpArraySlice(a any, offset int64, length ...int64) []any {
+	vals := arrValues(a)
 	start := int(offset)
 	if start < 0 {
 		start += len(vals)
@@ -401,7 +401,7 @@ func phpArraySlice(a *model.Array, offset int64, length ...int64) *model.Array {
 		start = 0
 	}
 	if start > len(vals) {
-		return out
+		return nil
 	}
 	end := len(vals)
 	if len(length) > 0 {
@@ -413,25 +413,22 @@ func phpArraySlice(a *model.Array, offset int64, length ...int64) *model.Array {
 			end = len(vals)
 		}
 	}
-	for _, v := range vals[start:end] {
-		out.Append(v)
-	}
+	out := make([]any, end-start)
+	copy(out, vals[start:end])
 	return out
 }
 
-func phpArrayMap(fn func(...any) (any, error), a *model.Array) (*model.Array, error) {
-	out := model.NewArray()
-	if a == nil {
-		return out, nil
-	}
+func phpArrayMap(fn func(...any) (any, error), a any) ([]any, error) {
+	n, _ := model.LenValues(a)
+	out := make([]any, 0, n)
 	var mapErr error
-	a.Range(func(_, v any) bool {
+	model.RangeValues(a, func(_, v any) bool {
 		mapped, err := fn(v)
 		if err != nil {
 			mapErr = err
 			return false
 		}
-		out.Append(mapped)
+		out = append(out, mapped)
 		return true
 	})
 	if mapErr != nil {
@@ -440,26 +437,48 @@ func phpArrayMap(fn func(...any) (any, error), a *model.Array) (*model.Array, er
 	return out, nil
 }
 
-// phpUsort sorts the array's values in place using cmp, reindexing with integer
-// keys (PHP semantics). cmp is the env-adapted comparator: func(...any)(any,error).
-func phpUsort(a *model.Array, cmp func(...any) (any, error)) bool {
-	if a == nil {
-		return false
-	}
-	var vals []any
-	a.Range(func(_, v any) bool { vals = append(vals, v); return true })
-	sort.SliceStable(vals, func(i, j int) bool {
-		r, err := cmp(vals[i], vals[j])
+// phpUsort sorts values in place using cmp, reindexing with integer keys (PHP
+// semantics). cmp is the env-adapted comparator: func(...any)(any,error).
+// A *model.Array is rebuilt as a 0-indexed list; a native Go slice is sorted
+// through its backing array, which the script shares, so both are mutated in
+// place as PHP expects.
+func phpUsort(a any, cmp func(...any) (any, error)) bool {
+	less := func(x, y any) bool {
+		r, err := cmp(x, y)
 		if err != nil {
 			return false
 		}
 		return toInt(r) < 0
-	})
-	// Rebuild a as a 0-indexed list in place.
-	*a = *model.NewArray()
-	for _, v := range vals {
-		a.Append(v)
 	}
+
+	switch target := a.(type) {
+	case nil:
+		return false
+	case *model.Array:
+		if target == nil {
+			return false
+		}
+		vals := arrValues(target)
+		sort.SliceStable(vals, func(i, j int) bool { return less(vals[i], vals[j]) })
+		target.Clear()
+		for _, v := range vals {
+			target.Append(v)
+		}
+		return true
+	case []any:
+		sort.SliceStable(target, func(i, j int) bool { return less(target[i], target[j]) })
+		return true
+	}
+
+	rv := reflect.ValueOf(a)
+	if rv.Kind() != reflect.Slice {
+		return false
+	}
+	// rv indexes the same backing array sort.SliceStable swaps, so reads stay
+	// consistent with the ongoing sort.
+	sort.SliceStable(a, func(i, j int) bool {
+		return less(rv.Index(i).Interface(), rv.Index(j).Interface())
+	})
 	return true
 }
 
@@ -490,8 +509,14 @@ func phpJSONDecode(s string) (any, error) {
 	return jsonDecodeValue(v), nil
 }
 
+// jsonEncodeValue rewrites the value model into something encoding/json
+// understands. Native Go collections are already encodable, so they are only
+// walked when they might contain an *model.Array or *model.Object; scalars and
+// []string pass through untouched.
 func jsonEncodeValue(v any) any {
 	switch x := v.(type) {
+	case nil, string, bool, int64, int, float64, []string:
+		return v
 	case *model.Array:
 		if x == nil {
 			return nil
@@ -504,7 +529,7 @@ func jsonEncodeValue(v any) any {
 			})
 			return out
 		}
-		out := map[string]any{}
+		out := make(map[string]any, x.Len())
 		x.Range(func(k, v any) bool {
 			out[toString(k)] = jsonEncodeValue(v)
 			return true
@@ -514,9 +539,21 @@ func jsonEncodeValue(v any) any {
 		if x == nil {
 			return nil
 		}
-		out := map[string]any{}
+		out := make(map[string]any, len(x.Props))
 		for k, v := range x.Props {
 			out[k] = jsonEncodeValue(v)
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, item := range x {
+			out[i] = jsonEncodeValue(item)
+		}
+		return out
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, item := range x {
+			out[k] = jsonEncodeValue(item)
 		}
 		return out
 	default:
@@ -541,13 +578,19 @@ func jsonArrayIsList(a *model.Array) bool {
 func jsonDecodeValue(v any) any {
 	switch x := v.(type) {
 	case []any:
-		out := model.NewArray()
-		for _, v := range x {
-			out.Append(jsonDecodeValue(v))
+		// A JSON array is positional, so a []any loses nothing and reuses the
+		// slice the decoder already allocated.
+		for i, item := range x {
+			x[i] = jsonDecodeValue(item)
 		}
-		return out
+		return x
 	case map[string]any:
-		out := model.NewArray()
+		// A JSON object becomes an *model.Array. The decoder's map has already
+		// lost the document's key order, but an *model.Array at least fixes one
+		// order for the value's lifetime, so iterating a decoded object twice
+		// renders the same output twice. Handing the map through would make
+		// every foreach re-randomise.
+		out := model.NewArraySize(len(x))
 		for k, v := range x {
 			out.Set(k, jsonDecodeValue(v))
 		}
@@ -601,9 +644,11 @@ func registerLang(rt *runner.Runtime) {
 	})
 	rt.RegisterFunc("set_include_path", rt.SetIncludePath)
 	rt.RegisterFunc("get_include_path", rt.IncludePath)
+	// The introspection shims keep returning *model.Array: their whole value is
+	// a stable, name-sorted listing, which a Go map cannot express.
 	rt.RegisterFunc("get_defined_constants", func(categorize ...bool) *model.Array {
-		constants := model.NewArray()
 		defined := rt.DefinedConstants()
+		constants := model.NewArraySize(len(defined))
 		names := make([]string, 0, len(defined))
 		for name := range defined {
 			names = append(names, name)
@@ -613,26 +658,23 @@ func registerLang(rt *runner.Runtime) {
 			constants.Set(name, defined[name])
 		}
 		if len(categorize) > 0 && categorize[0] {
-			grouped := model.NewArray()
+			grouped := model.NewArraySize(1)
 			grouped.Set("Core", constants)
 			return grouped
 		}
 		return constants
 	})
-	rt.RegisterFunc("get_defined_functions", func(_ ...bool) *model.Array {
+	rt.RegisterFunc("get_defined_functions", func(_ ...bool) map[string][]string {
 		internal, user := rt.DefinedFunctions()
-		functions := model.NewArray()
-		functions.Set("internal", stringArray(internal))
-		functions.Set("user", stringArray(user))
-		return functions
+		return map[string][]string{"internal": internal, "user": user}
 	})
 	rt.RegisterFunc("get_defined_vars", func(ctx context.Context) *model.Array {
-		vars := model.NewArray()
 		scope, ok := runner.ScopeFromContext(ctx)
 		if !ok {
-			return vars
+			return model.NewArray()
 		}
 		defined := scope.DefinedVars()
+		vars := model.NewArraySize(len(defined))
 		names := make([]string, 0, len(defined))
 		for name := range defined {
 			names = append(names, name)
@@ -643,8 +685,8 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return vars
 	})
-	rt.RegisterFunc("get_declared_classes", func() *model.Array {
-		return stringArray(rt.DeclaredClasses())
+	rt.RegisterFunc("get_declared_classes", func() []string {
+		return rt.DeclaredClasses()
 	})
 	rt.RegisterFunc("phpinfo", func(_ ...any) (bool, error) {
 		return true, rt.PHPInfo()
@@ -661,7 +703,9 @@ func registerLang(rt *runner.Runtime) {
 		return true
 	})
 	rt.RegisterFunc("empty", func(a any) bool { return !truthy(a) })
-	rt.RegisterFunc("is_array", func(a any) bool { _, ok := a.(*model.Array); return ok })
+	// A binding's []string is as much a PHP array as an *model.Array is, so
+	// is_array() answers for the whole value model, not one Go type.
+	rt.RegisterFunc("is_array", model.IsCollection)
 	rt.RegisterFunc("is_int", func(a any) bool {
 		switch a.(type) {
 		case int, int64:
@@ -698,23 +742,13 @@ func registerLang(rt *runner.Runtime) {
 	})
 }
 
-func stringArray(values []string) *model.Array {
-	result := model.NewArray()
-	for _, value := range values {
-		result.Append(value)
+func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
+	// A []any argument list is already the shape fn wants, so the common case
+	// (array_merge's output, func_get_args) forwards without a copy.
+	if callArgs, ok := args.([]any); ok {
+		return fn(callArgs...)
 	}
-	return result
-}
-
-func phpCallUserFuncArray(fn func(...any) (any, error), args *model.Array) (any, error) {
-	var callArgs []any
-	if args != nil {
-		args.Range(func(_, v any) bool {
-			callArgs = append(callArgs, v)
-			return true
-		})
-	}
-	return fn(callArgs...)
+	return fn(arrValues(args)...)
 }
 
 // ---------------------------------------------------------------------------
@@ -797,16 +831,38 @@ func truthy(v any) bool {
 	case *model.Array:
 		return x.Len() > 0
 	default:
+		if n, ok := model.LenValues(v); ok {
+			return n > 0
+		}
 		return true
 	}
 }
 
-// arrStrings returns the array's values as strings in order.
-func arrStrings(a *model.Array) []string {
-	if a == nil {
+// arrStrings returns a collection's values as strings in order.
+func arrStrings(a any) []string {
+	if parts, ok := a.([]string); ok {
+		return parts
+	}
+	n, _ := model.LenValues(a)
+	if n == 0 {
 		return nil
 	}
-	var out []string
-	a.Range(func(_, v any) bool { out = append(out, toString(v)); return true })
+	out := make([]string, 0, n)
+	model.RangeValues(a, func(_, v any) bool { out = append(out, toString(v)); return true })
+	return out
+}
+
+// arrValues returns a collection's values in order. A []any is returned as is:
+// callers only read it, and the shims that do not (array_splice) copy first.
+func arrValues(a any) []any {
+	if vals, ok := a.([]any); ok {
+		return vals
+	}
+	n, _ := model.LenValues(a)
+	if n == 0 {
+		return nil
+	}
+	out := make([]any, 0, n)
+	model.RangeValues(a, func(_, v any) bool { out = append(out, v); return true })
 	return out
 }

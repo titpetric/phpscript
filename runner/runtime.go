@@ -668,16 +668,16 @@ func (rt *Runtime) baseEnv(scope *Scope) map[string]any {
 	env["__func"] = adapt(rt.helperFunc(scope))
 	// func_get_args() needs the current frame's arguments, so it is provided as
 	// a scope-aware helper rather than a plain forwarded function.
-	env["func_get_args"] = adapt(func() *model.Array {
-		arr := model.NewArray()
+	// The frame already holds its arguments as a []any, which the VM indexes and
+	// iterates directly, so func_get_args() hands that slice back rather than
+	// rebuilding it as an *model.Array.
+	env["func_get_args"] = adapt(func() []any {
 		if v, ok := scope.Get(argsKey); ok {
 			if args, ok := v.([]any); ok {
-				for _, a := range args {
-					arr.Append(a)
-				}
+				return args
 			}
 		}
-		return arr
+		return nil
 	})
 	return env
 }

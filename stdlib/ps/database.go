@@ -8,7 +8,6 @@ import (
 
 	"github.com/titpetric/pdo/client"
 
-	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/stdlib/status"
 )
 
@@ -46,18 +45,30 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 }
 
 // Get returns the first result row.
+//
+// Rows reach PHP as the bridge produced them — a map[string]any per row, a
+// []map[string]any per result set — rather than being copied into a
+// *model.Array. The VM reads both natively: foreach walks them, $row["col"]
+// indexes them, and $row["extra"] = 1 writes to them, since a Go map is a
+// reference type. The copy cost two allocations plus an interface box per
+// column on every row of every query.
+//
+// The one thing a map does not carry is column order, and neither did the
+// *model.Array: the bridge's map had already lost it, so
+// `foreach ($row as $column => $value)` has always produced an arbitrary order.
+// It is now arbitrary per iteration rather than fixed per row; scripts that
+// need a stable order should name their columns in the SELECT and index them.
 func (b *Database) Get(ctx context.Context, query string, args ...any) (any, error) {
 	value, err := b.Bridge.Get(b.withSpan(ctx, "Get"), query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
-	return databaseValue(value), err
+	return value, err
 }
 
-// GetAll returns all result rows.
+// GetAll returns all result rows. See Get for the row representation.
 func (b *Database) GetAll(ctx context.Context, query string, args ...any) (any, error) {
-	value, err := b.Bridge.GetAll(b.withSpan(ctx, "GetAll"), query, args...)
-	return databaseValue(value), err
+	return b.Bridge.GetAll(b.withSpan(ctx, "GetAll"), query, args...)
 }
 
 // Connect reserves an exclusive connection from the pool.
@@ -128,23 +139,4 @@ func (b *Database) withSpan(ctx context.Context, method string) context.Context 
 		return ctx
 	}
 	return context.WithValue(ctx, databaseSpanKey{}, span)
-}
-
-func databaseValue(value any) any {
-	switch value := value.(type) {
-	case map[string]any:
-		result := model.NewArray()
-		for key, item := range value {
-			result.Set(key, databaseValue(item))
-		}
-		return result
-	case []map[string]any:
-		result := model.NewArray()
-		for _, item := range value {
-			result.Append(databaseValue(item))
-		}
-		return result
-	default:
-		return value
-	}
 }

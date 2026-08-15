@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -29,49 +28,50 @@ func registerRegex(rt *runner.Runtime) {
 // phpPregMatchAll implements preg_match_all($pattern, $subject, &$matches) in
 // PREG_PATTERN_ORDER: matches[0]=full matches, matches[g]=group g captures. The
 // third parameter is a setter (the runner's by-reference wrapper).
+//
+// $matches is written as a []any of []string columns. Both levels are indexed
+// and iterated by the VM exactly like nested PHP arrays, and the columns are
+// plain string slices, so a match set of g groups over n matches costs g+1
+// allocations instead of the 2(g+1) plus 2n interface boxes an *model.Array
+// pair would.
 func (c *regexpCache) phpPregMatchAll(pattern, subject string, set ...func(any)) int64 {
 	re, hadBackref, err := c.compilePCRE(pattern)
 	if err != nil || hadBackref {
-		writeRef(set, model.NewArray())
+		writeRef(set, []any(nil))
 		return 0
 	}
 	all := re.FindAllStringSubmatch(subject, -1)
 	groups := re.NumSubexp()
 
-	out := model.NewArray()
+	out := make([]any, 0, groups+1)
 	for g := 0; g <= groups; g++ {
-		col := model.NewArray()
-		for _, m := range all {
+		col := make([]string, len(all))
+		for i, m := range all {
 			if g < len(m) {
-				col.Append(m[g])
-			} else {
-				col.Append("")
+				col[i] = m[g]
 			}
 		}
-		out.Set(int64(g), col)
+		out = append(out, col)
 	}
 	writeRef(set, out)
 	return int64(len(all))
 }
 
 // phpPregMatch implements preg_match returning 0/1 and optionally filling
-// $matches with the first match's groups.
+// $matches with the first match's groups. FindStringSubmatch already returns
+// the groups as a []string, so $matches is that slice with nothing copied.
 func (c *regexpCache) phpPregMatch(pattern, subject string, set ...func(any)) int64 {
 	re, hadBackref, err := c.compilePCRE(pattern)
 	if err != nil || hadBackref {
-		writeRef(set, model.NewArray())
+		writeRef(set, []string(nil))
 		return 0
 	}
 	m := re.FindStringSubmatch(subject)
-	out := model.NewArray()
 	if m == nil {
-		writeRef(set, out)
+		writeRef(set, []string(nil))
 		return 0
 	}
-	for _, g := range m {
-		out.Append(g)
-	}
-	writeRef(set, out)
+	writeRef(set, m)
 	return 1
 }
 

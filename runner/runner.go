@@ -647,17 +647,17 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		return nil
 
 	case *model.ListExpr:
-		// list($a, $b) = $arr — destructure by position (integer keys).
-		arr, ok := rhs.(*model.Array)
-		if !ok {
+		// list($a, $b) = $arr — destructure by position (integer keys). The
+		// source is read through helperIndex, so a binding returning a native
+		// []string destructures like an *Array.
+		if !model.IsCollection(rhs) {
 			return fmt.Errorf("assign: list() target requires an array")
 		}
 		for i, el := range tgt.Elems {
 			if el == nil {
 				continue
 			}
-			v, _ := arr.Get(int64(i))
-			if err := rt.assignTo(el, v, scope); err != nil {
+			if err := rt.assignTo(el, helperIndex(rhs, int64(i)), scope); err != nil {
 				return err
 			}
 		}
@@ -683,7 +683,20 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		}
 		arr, ok := base.(*model.Array)
 		if !ok {
-			return fmt.Errorf("assign: target is not an array")
+			// Native Go collections are writable where Go itself allows it: map
+			// entries can be added or replaced, existing slice elements can be
+			// overwritten. Only `$a[] =` needs an *Array, since a slice cannot
+			// grow through the interface holding it.
+			if n.Op == "[]=" || tgt.Index == nil {
+				return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
+			}
+			key, err := rt.Eval(tgt.Index, scope)
+			if err != nil {
+				return err
+			}
+			return assignGoIndex(base, key, func(current any) any {
+				return applyAssignOp(n.Op, current, rhs)
+			})
 		}
 		if n.Op == "[]=" || tgt.Index == nil {
 			arr.Append(rhs)
@@ -781,7 +794,14 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 		}
 		arr, ok := base.(*model.Array)
 		if !ok {
-			return fmt.Errorf("assign: target is not an array")
+			if tgt.Index == nil {
+				return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
+			}
+			key, err := rt.Eval(tgt.Index, scope)
+			if err != nil {
+				return err
+			}
+			return assignGoIndex(base, key, func(any) any { return val })
 		}
 		if tgt.Index == nil {
 			arr.Append(val)
@@ -796,6 +816,48 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	default:
 		return fmt.Errorf("assign: unsupported list() element %T", target)
 	}
+}
+
+// assignGoIndex writes into a native Go collection returned by a binding. Go
+// maps accept new and replacement keys (they are reference types, so the script
+// observes the write), and existing slice elements are addressable through the
+// shared backing array. A slice cannot grow through the interface value holding
+// it, so callers reject `$a[] =` before reaching here.
+func assignGoIndex(base, key any, value func(current any) any) error {
+	rv := reflect.ValueOf(base)
+	switch rv.Kind() {
+	case reflect.Map:
+		if rv.IsNil() {
+			return fmt.Errorf("assign: cannot write to a nil %T", base)
+		}
+		mapKey := coerceArg(normalizeKey(key), rv.Type().Key())
+		if !mapKey.IsValid() || !mapKey.Type().AssignableTo(rv.Type().Key()) {
+			return fmt.Errorf("assign: cannot use %T as a key of %T", key, base)
+		}
+		var current any
+		if existing := rv.MapIndex(mapKey); existing.IsValid() {
+			current = existing.Interface()
+		}
+		next := coerceArg(value(current), rv.Type().Elem())
+		if !next.IsValid() || !next.Type().AssignableTo(rv.Type().Elem()) {
+			return fmt.Errorf("assign: cannot assign to an element of %T", base)
+		}
+		rv.SetMapIndex(mapKey, next)
+		return nil
+	case reflect.Slice, reflect.Array:
+		index := toInt(key)
+		if index < 0 || index >= int64(rv.Len()) {
+			return fmt.Errorf("assign: index %d is out of range for %T", index, base)
+		}
+		element := rv.Index(int(index))
+		next := coerceArg(value(element.Interface()), element.Type())
+		if !element.CanSet() || !next.IsValid() || !next.Type().AssignableTo(element.Type()) {
+			return fmt.Errorf("assign: cannot assign to an element of %T", base)
+		}
+		element.Set(next)
+		return nil
+	}
+	return fmt.Errorf("assign: target is not an array")
 }
 
 func assignGoField(base any, name string, value func(any) any) error {
