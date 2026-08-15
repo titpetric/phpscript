@@ -23,7 +23,9 @@ func Parse(src string) (*model.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &parser{toks: toks, spans: make(map[model.Stmt]model.SourceSpan)}
+	// One span per statement; statements run around one per sixteen tokens, so
+	// the hint saves the map's rehash-and-copy cycle (rule 6).
+	p := &parser{toks: toks, spans: make(map[model.Stmt]model.SourceSpan, len(toks)/16+8)}
 	stmts, err := p.parseStmts(true)
 	if err != nil {
 		return nil, err
@@ -39,6 +41,27 @@ type parser struct {
 	topLevel  bool
 	topSeen   bool
 	spans     map[model.Stmt]model.SourceSpan
+
+	// Chunked node storage and list scratch stacks; see alloc.go.
+	varNodes        nodeChunk[model.Var]
+	litNodes        nodeChunk[model.Lit]
+	binaryNodes     nodeChunk[model.Binary]
+	indexNodes      nodeChunk[model.Index]
+	propNodes       nodeChunk[model.PropAccess]
+	methodNodes     nodeChunk[model.MethodCall]
+	callNodes       nodeChunk[model.Call]
+	parenNodes      nodeChunk[model.Parenthesized]
+	unaryNodes      nodeChunk[model.Unary]
+	assignExprNodes nodeChunk[model.AssignExpr]
+	exprStmtNodes   nodeChunk[model.ExprStmt]
+	assignNodes     nodeChunk[model.Assign]
+	echoNodes       nodeChunk[model.Echo]
+	arrayLitNodes   nodeChunk[model.ArrayLit]
+
+	exprs  scratch[model.Expr]
+	stmts  scratch[model.Stmt]
+	params scratch[model.Param]
+	items  scratch[model.ArrayItem]
 }
 
 func (p *parser) cur() token { return p.toks[p.i] }
@@ -87,13 +110,14 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 	wasTopLevel := p.topLevel
 	p.topLevel = top
 	defer func() { p.topLevel = wasTopLevel }()
-	var out []model.Stmt
+	mark := p.stmts.mark()
 	for !p.atEOF() {
 		if !top && p.isOp("}") {
 			break
 		}
 		s, err := p.parseStmt()
 		if err != nil {
+			p.stmts.drop(mark)
 			return nil, err
 		}
 		if s != nil {
@@ -104,13 +128,14 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 				switch s.(type) {
 				case *model.ClassDecl, *model.FuncDecl:
 				default:
+					p.stmts.drop(mark)
 					return nil, fmt.Errorf("line %d: namespaced files may only declare symbols", p.cur().line)
 				}
 			}
-			out = append(out, s)
+			p.stmts.push(s)
 		}
 	}
-	return out, nil
+	return p.stmts.take(mark), nil
 }
 
 func (p *parser) parseStmt() (model.Stmt, error) {
@@ -234,7 +259,13 @@ func (p *parser) parseQualifiedName(leading bool) (string, bool, error) {
 	if p.cur().kind != tIdent {
 		return "", absolute, fmt.Errorf("expected name, got %s", p.cur())
 	}
-	parts := []string{p.next().val}
+	first := p.next().val
+	// Unqualified name (the common case): the token text is the whole name, so
+	// neither the parts slice nor the Join copy is needed.
+	if !p.isOp("\\") {
+		return first, absolute, nil
+	}
+	parts := []string{first}
 	for p.isOp("\\") {
 		p.next()
 		if p.cur().kind != tIdent {
@@ -254,13 +285,14 @@ func (p *parser) qualify(name string, absolute bool) string {
 
 func (p *parser) parseEcho() (model.Stmt, error) {
 	p.next() // echo
-	var args []model.Expr
+	mark := p.exprs.mark()
 	for {
 		e, err := p.parseExpr()
 		if err != nil {
+			p.exprs.drop(mark)
 			return nil, err
 		}
-		args = append(args, e)
+		p.exprs.push(e)
 		if p.isOp(",") {
 			p.next()
 			continue
@@ -268,7 +300,7 @@ func (p *parser) parseEcho() (model.Stmt, error) {
 		break
 	}
 	p.optSemi()
-	return &model.Echo{Args: args}, nil
+	return p.newEcho(p.exprs.take(mark)), nil
 }
 
 func (p *parser) parseIf() (model.Stmt, error) {
@@ -587,17 +619,18 @@ func (p *parser) parseSwitch() (model.Stmt, error) {
 
 // parseCaseBody parses statements until the next case/default or closing brace.
 func (p *parser) parseCaseBody() ([]model.Stmt, error) {
-	var out []model.Stmt
+	mark := p.stmts.mark()
 	for !p.isOp("}") && !p.atEOF() && !p.isKw("case") && !p.isKw("default") {
 		s, err := p.parseStmt()
 		if err != nil {
+			p.stmts.drop(mark)
 			return nil, err
 		}
 		if s != nil {
-			out = append(out, s)
+			p.stmts.push(s)
 		}
 	}
-	return out, nil
+	return p.stmts.take(mark), nil
 }
 
 func (p *parser) parseFunction() (model.Stmt, error) {
@@ -637,9 +670,10 @@ func (p *parser) parseParams() ([]model.Param, error) {
 	if err := p.eatOp("("); err != nil {
 		return nil, err
 	}
-	var params []model.Param
+	mark := p.params.mark()
 	for !p.isOp(")") {
 		if p.cur().kind != tVar {
+			p.params.drop(mark)
 			return nil, fmt.Errorf("line %d: expected parameter $var", p.cur().line)
 		}
 		pr := model.Param{Name: p.next().val}
@@ -647,16 +681,17 @@ func (p *parser) parseParams() ([]model.Param, error) {
 			p.next()
 			def, err := p.parseExpr()
 			if err != nil {
+				p.params.drop(mark)
 				return nil, err
 			}
 			pr.Default = def
 		}
-		params = append(params, pr)
+		p.params.push(pr)
 		if p.isOp(",") {
 			p.next()
 		}
 	}
-	return params, p.eatOp(")")
+	return p.params.take(mark), p.eatOp(")")
 }
 
 func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
@@ -862,9 +897,9 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 	// parseExpr already folds assignment into an AssignExpr; lower it to a
 	// statement-level Assign so the interpreter's mutation path handles it.
 	if ae, ok := model.UnwrapParenthesized(lhs).(*model.AssignExpr); ok {
-		return &model.Assign{Target: ae.Target, Op: ae.Op, Value: ae.Value}, nil
+		return p.newAssign(ae.Target, ae.Op, ae.Value), nil
 	}
-	return &model.ExprStmt{X: lhs}, nil
+	return p.newExprStmt(lhs), nil
 }
 
 func isAssignOp(v string) bool {

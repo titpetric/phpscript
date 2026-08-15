@@ -788,34 +788,30 @@ func collapseBlankLines(src string) string {
 func leadingComments(src string, attached map[int]bool) []string {
 	var comments []string
 	seenOpen := false
-	parser.TokenGetAll(src).Range(func(_, val any) bool {
-		a, ok := val.(*model.Array)
+	for _, val := range parser.TokenGetAll(src) {
+		a, ok := val.([]any)
 		if !ok {
 			// CHAR token — end of preamble.
 			if seenOpen {
-				return false
+				break
 			}
-			return true
+			continue
 		}
-		id, _ := a.Get(int64(0))
-		text, _ := a.Get(int64(1))
-		switch int(id.(int64)) {
+		switch int(a[0].(int64)) {
 		case parser.T_OPEN_TAG:
 			seenOpen = true
 		case parser.T_WHITESPACE, parser.T_INLINE_HTML:
 			// keep scanning
 		case parser.T_COMMENT:
-			line, _ := a.Get(int64(2))
-			if seenOpen && !attached[int(line.(int64))] {
-				comments = append(comments, strings.TrimRight(text.(string), "\r\n"))
+			if seenOpen && !attached[int(a[2].(int64))] {
+				comments = append(comments, strings.TrimRight(a[1].(string), "\r\n"))
 			}
 		default:
 			if seenOpen {
-				return false
+				return comments
 			}
 		}
-		return true
-	})
+	}
 	return comments
 }
 
@@ -829,31 +825,28 @@ func commentsBeforeDeclarations(src string) (map[int][][]string, map[int]bool) {
 		line        int
 		commentOnly bool
 	}
-	var tokens []token
+	raw := parser.TokenGetAll(src)
+	tokens := make([]token, 0, len(raw))
 	offset := 0
-	parser.TokenGetAll(src).Range(func(_, val any) bool {
-		a, ok := val.(*model.Array)
+	for _, val := range raw {
+		a, ok := val.([]any)
 		if !ok {
 			text := val.(string)
 			tokens = append(tokens, token{text: text})
 			offset += len(text)
-			return true
+			continue
 		}
-		id, _ := a.Get(int64(0))
-		text, _ := a.Get(int64(1))
-		line, _ := a.Get(int64(2))
-		tokenText := text.(string)
+		tokenText := a[1].(string)
 		lineStart := strings.LastIndex(src[:offset], "\n") + 1
 		prefix := strings.TrimSpace(src[lineStart:offset])
 		tokens = append(tokens, token{
-			id:          int(id.(int64)),
+			id:          int(a[0].(int64)),
 			text:        tokenText,
-			line:        int(line.(int64)),
+			line:        int(a[2].(int64)),
 			commentOnly: prefix == "" || prefix == "<?php" || prefix == "<?",
 		})
 		offset += len(tokenText)
-		return true
-	})
+	}
 
 	comments := make(map[int][][]string)
 	attached := make(map[int]bool)

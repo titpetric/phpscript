@@ -24,26 +24,32 @@ Same five-element list, five representations:
 
 | Return shape                 | B/op | allocs/op | ns/op |
 |------------------------------|-----:|----------:|------:|
-| `[]string`, no copy          |   48 |         2 |   218 |
-| `[]string`                   |  128 |         3 |   313 |
-| `any` holding `[]string`     |  144 |         4 |   325 |
-| `[]any`                      |  208 |         8 |   443 |
-| `*model.Array`               |  728 |        13 |  1121 |
-| `any` holding `*model.Array` |  744 |        14 |  1268 |
+| `[]string`, no copy          |   48 |         2 |   254 |
+| `[]string`                   |  128 |         3 |   328 |
+| `any` holding `[]string`     |  144 |         4 |   313 |
+| `[]any`                      |  208 |         8 |   469 |
+| `*model.Array`               |  408 |        11 |   724 |
+| `any` holding `*model.Array` |  424 |        12 |   814 |
 
 Five rows of two columns — the database shape:
 
 | Return shape                     | B/op | allocs/op | ns/op |
 |----------------------------------|-----:|----------:|------:|
-| `[]map[string]any`               | 1856 |        18 |  1793 |
-| `*model.Array` of `*model.Array` | 2888 |        38 |  4788 |
+| `[]map[string]any`               | 1856 |        18 |  1635 |
+| `*model.Array` of `*model.Array` | 2648 |        36 |  2750 |
 
 `explode(",", "a,b,c,d,e")`, before and after this guideline was applied:
 
 | Implementation       | B/op | allocs/op | ns/op |
 |----------------------|-----:|----------:|------:|
-| `[]string` (now)     |  128 |         3 |   457 |
-| `*model.Array` (was) |  808 |        14 |  1347 |
+| `[]string` (now)     |  128 |         3 |   412 |
+| `*model.Array` (was) |  488 |        12 |   765 |
+
+The `*model.Array` rows are cheaper than they used to be — 728 B/13 allocs and
+2888 B/38 in an earlier revision of this document — because `model.Array` now
+has a list mode (see the audit at the bottom). The ordering of the table is
+unchanged: a slice still beats it, and the gap on the nested database shape is
+still an order of magnitude in time.
 
 ## The rules
 
@@ -157,21 +163,65 @@ Sources: [Stack Allocations and Escape Analysis](https://goperf.dev/01-common-pa
 [Memory Preallocation](https://goperf.dev/01-common-patterns/mem-prealloc/),
 [Escape Analysis in Go](https://blog.jetbrains.com/go/2026/07/20/escape-analysis/).
 
-## The bigger lever
+## The bigger lever (fixed)
 
-Before optimising a return shape, know what it is competing with.
-`runner.baseEnv` rebuilds the expression environment on **every** `Eval`,
-allocating one closure per registered function. The same script, run against a
-runtime with the full stdlib versus one with a single binding registered:
+This section used to say that the size of the function table was the dominant
+cost: `runner.baseEnv` rebuilt the expression environment on **every** `Eval`,
+allocating one closure per registered function, and roughly 78% of a script's
+allocations were that rebuild. The same script against a runtime with the full
+stdlib versus one with a single binding registered measured 649 vs 145
+allocs/op.
+
+It no longer does. `runner` now:
+
+- pools evaluation environments per `Runtime` (`acquireEnv` / `releaseEnv`) and
+  reaches the registered function's scope through a `scopeRef` indirection
+  instead of capturing it, so an environment is built once rather than per
+  `Eval`;
+- populates an environment with the functions an expression actually calls, on
+  demand (`Runtime.installFunc`, fed by `Transpiler.Calls`), instead of the
+  whole table;
+- caches the expr compile configuration per function-table generation
+  (`Runtime.exprConfig`) and builds its type-env nature directly
+  (`typeEnvNature`) rather than letting expr walk the table reflectively.
 
 | Runtime                    | B/op  | allocs/op | ns/op |
 |----------------------------|------:|----------:|------:|
-| full stdlib (80 functions) | 28031 |       649 | 55986 |
-| one binding                |  3822 |       145 | 14627 |
+| full stdlib (was)          | 28031 |       649 | 55986 |
+| one binding (was)          |  3822 |       145 | 14627 |
+| full stdlib (now)          |   929 |        24 |  5562 |
+| one binding (now)          |   929 |        24 |  4936 |
 
-Roughly 78% of a script's allocations are the size of the function table,
-re-paid per expression. That dwarfs every return shape in this document.
+The two are now identical: a script pays for the functions it calls, not for
+the size of the table it could call from.
 `BenchmarkScriptEnvFullStdlib` / `BenchmarkScriptEnvMinimal` measure it.
+
+### The compile-time type env, and why it is still there
+
+The third bullet was the single largest item in the tree once the runtime env
+was fixed: `expr.Compile(src, expr.Env(typeEnv), ...)` makes expr walk the
+whole ~95-entry type-env map through `reflect.Value.MapKeys` + `MapIndex` +
+`copyVal` on **every compile**. That was 64% of all allocations.
+
+The obvious fix — drop `expr.Env` entirely, since PHP is dynamically typed and
+the comment above `Runtime.compile` claimed we compiled without type
+information anyway — is **wrong, and silently so**. `expr/parser.parseCall`
+checks its own `predicates` table *before* the disabled-builtins list, and the
+only thing that stops a name being parsed as expr's predicate syntax is
+`conf.Config.IsOverridden(name)`, which consults `Config.Env`. PHP's `count`,
+`map`, `filter`, `find`, `sum`, `reduce` and `sortBy` all collide.
+`expr.DisableAllBuiltins()` does not cover this. With no env, `count($x)`
+compiles to expr's `count` predicate instead of the registered PHP function.
+
+So the env stays; what was removed is the per-compile cost of deriving it. The
+config is built once per function-table generation, and because every entry is
+the same shared stub, one `nature.Nature` is derived and reused for all keys
+(`typeEnvNature`) instead of one reflective walk per key.
+
+If you change any of this, `runner/compile_test.go::TestCompileMatchesExprEnv`
+is the guard: it compiles a corpus both ways and diffs
+`vm.Program.Disassemble()`, so a config change that alters emitted bytecode
+fails loudly rather than becoming a subtle interpreter bug.
 
 ## How to measure
 
@@ -206,7 +256,7 @@ available.
 |----------------|-----------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
 | `array_keys`   | `[]any`, presized                                   | OK                                                                                                                                        |
 | `array_map`    | `([]any, error)`, presized                          | OK                                                                                                                                        |
-| `array_merge`  | `*model.Array`, presized                            | OK (by design) — merges string keys. **TODO:** return `[]any` when every input is a list, which is the common `call_user_func_array` case |
+| `array_merge`  | `*model.Array`, presized                            | OK (by design) — merges string keys. Returning `[]any` for the all-lists case was tried and reverted: once `model.Array` gained list mode it measured 8 allocs either way, and the slice cannot serve `$x = array_merge($a, $b); $x[] = "z"` (rule 4) |
 | `array_slice`  | `[]any`, exact size                                 | OK                                                                                                                                        |
 | `array_splice` | `([]any, error)`                                    | OK (by design) — resizes its argument, so it requires `*model.Array` and now errors instead of panicking on a slice                       |
 | `array_unique` | `*model.Array`, presized                            | OK (by design) — preserves keys                                                                                                           |
@@ -222,8 +272,8 @@ available.
 |------------------------------------------------------------------------------|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `explode`                                                                    | `[]string` from `strings.Split`       | OK                                                                                                                                                                                     |
 | `implode`                                                                    | `string`, `[]string` fast path        | OK                                                                                                                                                                                     |
-| `htmlspecialchars`                                                           | `string`                              | **TODO:** builds a `strings.NewReplacer` on every call. Hoist to a package-level `var`. Called once per template variable, so this is the hottest fixable allocation in the string set |
-| `crc32`                                                                      | `int64`                               | **TODO (verify):** `[]byte(s)` conversion per call. Escape analysis may already stack-allocate it; confirm with `go build -gcflags=-m ./stdlib` before changing anything               |
+| `htmlspecialchars`                                                           | `string`                              | OK — the `strings.Replacer` is now a package-level `var` (was rebuilt per call: 11 allocs → 2)                                                                                        |
+| `crc32`                                                                      | `int64`                               | OK — the `[]byte(s)` conversion *did* escape (`crc32.ChecksumIEEE` leaks its argument). Now a package-level table plus a byte-wise loop for inputs ≤ 256 B: 1 alloc → 0               |
 | `sprintf`                                                                    | `string`                              | OK — `fmt` boxes its arguments, but the VM already handed them over as `any`                                                                                                           |
 | `str_replace`                                                                | `string`                              | OK — reads any collection shape                                                                                                                                                        |
 | `strlen`, `str_repeat`, `strtoupper`, `strtolower`, `trim`, `ltrim`, `rtrim` | `int64` / `string`                    | OK                                                                                                                                                                                     |
@@ -275,9 +325,9 @@ available.
 | `get_include_path`, `php_sapi_name`                          | `string`                               | OK                                                                                                                                                                                                                              |
 | `get_defined_constants`                                      | `*model.Array`, presized               | OK (by design) — sorted listing                                                                                                                                                                                                 |
 | `get_defined_vars`                                           | `*model.Array`, presized               | OK (by design) — sorted listing                                                                                                                                                                                                 |
-| `getallheaders`, `get_all_headers`, `apache_request_headers` | `*model.Array` via `runner.mapToArray` | OK (by design) — sorted for determinism. **TODO:** presize with `model.NewArraySize`; once per request, so low value                                                                                                            |
+| `getallheaders`, `get_all_headers`, `apache_request_headers` | `*model.Array` via `runner.mapToArray` | OK (by design) — sorted for determinism; `mapToArray` presizes with `model.NewArraySize`                                                                                                                                       |
 | `phpinfo`                                                    | `(bool, error)`                        | OK                                                                                                                                                                                                                              |
-| `token_get_all`                                              | `*model.Array` of `*model.Array`       | **TODO:** the worst remaining shape. One nested array per token, and the minitpl compiler tokenises every template. `[]any` of `[]any` (or a `[]Token` struct slice) would cut it by roughly 4x. Lives in `parser/tokenizer.go` |
+| `token_get_all`                                              | `[]any` of `[]any`                     | OK — was `*model.Array` of `*model.Array`. Triples are carved out of chunked backing arrays and ids/lines come from a pre-boxed table: 6003 → 1828 allocs on a 5.6 KB template          |
 | `token_name`                                                 | `string`                               | OK                                                                                                                                                                                                                              |
 
 ### Language and control
@@ -308,12 +358,15 @@ available.
 | `Session\Manager`                                | `(*SessionManager, error)`; `Get` `(string, error)`, `Valid` `(bool, error)`, `Start` `error`  | OK                                                                                                                                                                                          |
 | `Session\Storage\Disk`, `Session\Storage\Memory` | pointers                                                                                       | OK                                                                                                                                                                                          |
 | `SharedMemory`                                   | `*SharedMemory`; `Get`/`Count` `string`, `Incr` `int64`, `Has`/`Delete` `bool`                 | OK                                                                                                                                                                                          |
-| `Exception`                                      | `(Exception, error)` — a struct **value**                                                      | **TODO:** returning a value boxes a copy of the struct, and PHP cannot write to its fields. `*Exception` costs the same one allocation and keeps reference semantics                        |
+| `Exception`                                      | `(*Exception, error)`                                                                          | OK — was a struct **value**, which boxed a copy and left `$e->message = "x"` failing with "not a writable object property". The pointer costs the same one allocation                       |
 
 ### Outside the binding layer
 
 | Item                    | Status                                                                                                                                                                                                                                                                                                       |
 |-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `runner.baseEnv`        | **TODO, highest value.** One closure allocated per registered function per `Eval` — around 78% of a script's allocations. Candidates: build the closure set once per `Run` and rebind the scope, or key the env off a shared immutable table with the scope passed through a field rather than a capture     |
-| `parser.TokenGetAll`    | **TODO:** see `token_get_all` above                                                                                                                                                                                                                                                                          |
-| `model.Array` internals | **TODO, broad:** a list-mode `Array` that keeps values in a `[]any` and allocates the `map[any]any` only when a non-sequential key appears would cut every remaining `*model.Array` from ~11 allocations to ~7, including PHP array literals built by `helperArray` — the hottest array path in any template |
+| `runner.baseEnv`        | **Done.** Replaced by pooled environments with on-demand function installation and a cached compile config — see "The bigger lever (fixed)" above                                                                                                                                                             |
+| `parser.TokenGetAll`    | **Done.** See `token_get_all` above                                                                                                                                                                                                                                                                          |
+| `model.Array` internals | **Done.** `Array` has a list mode: while every key is the dense sequence `0..n-1` the values live in a `[]any` and neither the `map[any]any` nor the key slice is allocated. The first key that breaks the invariant promotes it, permanently. A 5-element build went 11 → 9 allocs, 50 elements 66 → 57, and `Range` over a list is ~17x faster with zero allocations |
+| `parser` lexer / AST    | **Done.** Operator tokens come from a package-level table of substrings instead of `string(c)` per token, the token slice is presized, and AST nodes are carved out of chunked backing arrays. Parsing a 10.8 KB file went 3197 → 564 allocs                                                                   |
+| expr compile pipeline   | **Remaining, external.** `runner.compile` is now the largest single block (~48% cum): expr's own parser and compiler turning the transpiled source into a `vm.Program`. It is a *cold-start* cost — `ExprCache` means a long-lived runtime pays it once per distinct expression — so it dominates one-shot CLI runs and not servers. Reducing it means emitting fewer or shorter expressions, not micro-optimising expr |
+| `reflect.Value.Call`    | **Remaining, by design.** ~43% cum. This is the reflection boundary the project trades throughput for; see "Where the guidance stops"                                                                                                                                                                         |

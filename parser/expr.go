@@ -39,7 +39,7 @@ func (p *parser) parseAssign() (model.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &model.AssignExpr{Target: left, Op: op, Value: right, Line: t.line}, nil
+		return p.newAssignExpr(left, op, right, t.line), nil
 	}
 	return left, nil
 }
@@ -98,7 +98,7 @@ func (p *parser) parseBinary(minPrec int) (model.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = &model.Binary{Op: op, Left: left, Right: right}
+		left = p.newBinary(op, left, right)
 	}
 	return left, nil
 }
@@ -132,7 +132,7 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		if !isLValue(x) {
 			return nil, fmt.Errorf("line %d: %s requires assignable target", p.cur().line, op)
 		}
-		return &model.Unary{Op: op, X: x}, nil
+		return p.newUnary(op, x, false), nil
 	}
 	if p.isOp("!") || p.isOp("-") || p.isOp("+") {
 		op := p.next().val
@@ -140,7 +140,7 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &model.Unary{Op: op, X: x}, nil
+		return p.newUnary(op, x, false), nil
 	}
 	// `@expr` error suppression and `&expr` reference are parse-level no-ops
 	// (the VM has no by-reference values; callable arrays carry the marker
@@ -176,16 +176,16 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 				if err != nil {
 					return nil, err
 				}
-				e = &model.MethodCall{Base: e, Method: name, Args: args}
+				e = p.newMethodCall(e, name, args)
 			} else {
-				e = &model.PropAccess{Base: e, Name: name}
+				e = p.newProp(e, name)
 			}
 		case p.isOp("["):
 			p.next()
 			if p.isOp("]") {
 				// `$a[]` append target — represented as Index with nil index.
 				p.next()
-				e = &model.Index{Base: e, Index: nil}
+				e = p.newIndex(e, nil)
 				continue
 			}
 			idx, err := p.parseExpr()
@@ -195,9 +195,9 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			if err := p.eatOp("]"); err != nil {
 				return nil, err
 			}
-			e = &model.Index{Base: e, Index: idx}
+			e = p.newIndex(e, idx)
 		case (p.isOp("++") || p.isOp("--")) && isLValue(e):
-			e = &model.Unary{Op: p.next().val, X: e, Postfix: true}
+			e = p.newUnary(p.next().val, e, true)
 		default:
 			return e, nil
 		}
@@ -209,7 +209,7 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 	switch t.kind {
 	case tVar:
 		p.next()
-		return &model.Var{Name: t.val}, nil
+		return p.newVar(t.val), nil
 
 	case tInt, tFloat:
 		p.next()
@@ -217,11 +217,11 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &model.Lit{Value: v}, nil
+		return p.newLit(v), nil
 
 	case tString:
 		p.next()
-		return &model.Lit{Value: t.val}, nil
+		return p.newLit(t.val), nil
 
 	case tIdent:
 		return p.parseIdentExpr()
@@ -243,7 +243,7 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 			if err := p.eatOp(")"); err != nil {
 				return nil, err
 			}
-			return &model.Parenthesized{X: e}, nil
+			return p.newParen(e), nil
 		case "[":
 			return p.parseArrayLiteral("[", "]")
 		case "{":
@@ -259,11 +259,11 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 	t := p.next()
 	switch t.val {
 	case "true", "TRUE", "True":
-		return &model.Lit{Value: true}, nil
+		return p.newLit(true), nil
 	case "false", "FALSE", "False":
-		return &model.Lit{Value: false}, nil
+		return p.newLit(false), nil
 	case "null", "NULL", "Null":
-		return &model.Lit{Value: nil}, nil
+		return p.newLit(nil), nil
 	case "new":
 		return p.parseNew()
 	case "fn", "func", "function":
@@ -276,7 +276,7 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 		if p.isOp("(") {
 			return p.parseArrayLiteral("(", ")")
 		}
-		return &model.Lit{Value: nil}, nil
+		return p.newLit(nil), nil
 	}
 	name := t.val
 	for p.isOp("\\") {
@@ -307,17 +307,17 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 			return nil, err
 		}
 		if !absolute && p.namespace != "" && !strings.ContainsRune(name, '\\') {
-			return &model.Call{Name: p.qualify(name, false), Fallback: name, Args: args}, nil
+			return p.newCall(p.qualify(name, false), name, args), nil
 		}
-		return &model.Call{Name: p.qualify(name, absolute), Args: args}, nil
+		return p.newCall(p.qualify(name, absolute), "", args), nil
 	}
 	// Bare identifier: a constant. Model it as a Var so the env can resolve it,
 	// or as a literal string fallback. We use Call-free Var-like lookup via a
 	// no-arg marker is overkill; represent as a Var reference.
 	if name == "__NAMESPACE__" {
-		return &model.Lit{Value: p.namespace}, nil
+		return p.newLit(p.namespace), nil
 	}
-	return &model.Var{Name: name}, nil
+	return p.newVar(name), nil
 }
 
 // parseClosure parses an anonymous function `function(params) [use(...)] { body }`.
@@ -347,23 +347,24 @@ func (p *parser) parseList() (model.Expr, error) {
 	if err := p.eatOp("("); err != nil {
 		return nil, err
 	}
-	lst := &model.ListExpr{}
+	mark := p.exprs.mark()
 	for !p.isOp(")") {
 		if p.isOp(",") {
-			lst.Elems = append(lst.Elems, nil)
+			p.exprs.push(nil)
 			p.next()
 			continue
 		}
 		e, err := p.parseExpr()
 		if err != nil {
+			p.exprs.drop(mark)
 			return nil, err
 		}
-		lst.Elems = append(lst.Elems, e)
+		p.exprs.push(e)
 		if p.isOp(",") {
 			p.next()
 		}
 	}
-	return lst, p.eatOp(")")
+	return &model.ListExpr{Elems: p.exprs.take(mark)}, p.eatOp(")")
 }
 
 func (p *parser) parseNew() (model.Expr, error) {
@@ -386,30 +387,32 @@ func (p *parser) parseArgs() ([]model.Expr, error) {
 	if err := p.eatOp("("); err != nil {
 		return nil, err
 	}
-	var args []model.Expr
+	mark := p.exprs.mark()
 	for !p.isOp(")") {
 		e, err := p.parseExpr()
 		if err != nil {
+			p.exprs.drop(mark)
 			return nil, err
 		}
-		args = append(args, e)
+		p.exprs.push(e)
 		if p.isOp(",") {
 			p.next()
 			continue
 		}
 		break
 	}
-	return args, p.eatOp(")")
+	return p.exprs.take(mark), p.eatOp(")")
 }
 
 func (p *parser) parseArrayLiteral(open, close string) (model.Expr, error) {
 	if err := p.eatOp(open); err != nil {
 		return nil, err
 	}
-	lit := &model.ArrayLit{}
+	mark := p.items.mark()
 	for !p.isOp(close) {
 		first, err := p.parseExpr()
 		if err != nil {
+			p.items.drop(mark)
 			return nil, err
 		}
 		item := model.ArrayItem{Val: first}
@@ -417,16 +420,17 @@ func (p *parser) parseArrayLiteral(open, close string) (model.Expr, error) {
 			p.next()
 			val, err := p.parseExpr()
 			if err != nil {
+				p.items.drop(mark)
 				return nil, err
 			}
 			item = model.ArrayItem{Key: first, Val: val}
 		}
-		lit.Items = append(lit.Items, item)
+		p.items.push(item)
 		if p.isOp(",") {
 			p.next()
 			continue
 		}
 		break
 	}
-	return lit, p.eatOp(close)
+	return p.newArrayLit(p.items.take(mark)), p.eatOp(close)
 }

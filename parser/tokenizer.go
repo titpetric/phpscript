@@ -3,8 +3,7 @@ package parser
 import (
 	"strings"
 	"unicode"
-
-	"github.com/titpetric/phpscript/model"
+	"unicode/utf8"
 )
 
 // This file provides a PHP-compatible tokenizer: TokenGetAll / TokenName plus
@@ -17,8 +16,15 @@ import (
 //   - a single-character string (e.g. "(", ")", ";"), or
 //   - a 3-element array [int id, string text, int line].
 //
-// We reproduce that shape using the VM's own *model.Array so the result flows
-// straight into transpiled PHP code (foreach, $v[0], $v[1], is_array, ...).
+// We reproduce that shape with native Go values — a []any of single-char
+// strings and []any{int64 id, string text, int64 line} triples. The VM reads
+// slices through model.RangeValues / reflection, so the result still flows
+// straight into transpiled PHP code (foreach, $v[0], $v[1], is_array, count,
+// and element writes such as $v[0] = token_name($v[0])). It does not support
+// `$tokens[] = ...`; no in-tree caller appends to a token list. See
+// docs/allocation-performance.md rules 2, 4 and 6 for why this beats the
+// *model.Array of *model.Array it replaced.
+//
 // Register it on a runtime with:
 //
 //	rt.RegisterFunc("token_get_all", parser.TokenGetAll)
@@ -180,23 +186,68 @@ func TokenName(id int) string {
 	return "UNKNOWN"
 }
 
-// TokenGetAll tokenizes src the way PHP's token_get_all does, returning a
-// *model.Array of single-char strings and [id, text, line] arrays.
-func TokenGetAll(src string) *model.Array {
+// boxedInts holds pre-boxed int64 values so that emitting a token id or a line
+// number costs no allocation. The runtime only interns 0–255 itself
+// (runtime.staticuint64s); every T_* id is >= 256 and templates run past line
+// 255, so both would otherwise allocate 8 bytes per token.
+var boxedInts = func() [boxedIntMax]any {
+	var out [boxedIntMax]any
+	for i := range out {
+		out[i] = int64(i)
+	}
+	return out
+}()
+
+const boxedIntMax = 1024
+
+func boxInt(v int) any {
+	if v >= 0 && v < boxedIntMax {
+		return boxedInts[v]
+	}
+	return int64(v)
+}
+
+// boxedChars holds pre-boxed one-byte strings for the single-character tokens
+// ("(", ")", ";", ...), which are the most frequent tokens in any source file.
+var boxedChars = func() [utf8.RuneSelf]any {
+	var out [utf8.RuneSelf]any
+	for i := range out {
+		out[i] = string(rune(i))
+	}
+	return out
+}()
+
+// The [id, text, line] triples are carved out of chunked backing arrays rather
+// than allocated one by one. Chunks start small and double so that a two-line
+// minitpl expression does not pay for a large block, and a whole file amortises
+// the per-token allocation away. Each triple is handed to PHP as a 3-element
+// slice with cap == len, so a script cannot scribble past its own token.
+const (
+	tokenChunkMin = 8
+	tokenChunkMax = 64
+)
+
+// TokenGetAll tokenizes src the way PHP's token_get_all does, returning a []any
+// of single-char strings and []any{id, text, line} triples.
+func TokenGetAll(src string) []any {
 	tk := &phpTokenizer{src: src, line: 1}
 	return tk.run()
 }
 
 type phpTokenizer struct {
-	src   string
-	pos   int
-	line  int
-	inPHP bool
-	out   *model.Array
+	src       string
+	pos       int
+	line      int
+	inPHP     bool
+	out       []any
+	chunk     []any
+	chunkSize int
 }
 
-func (t *phpTokenizer) run() *model.Array {
-	t.out = model.NewArray()
+func (t *phpTokenizer) run() []any {
+	// Presize (rule 6): PHP averages a little under one token every four bytes
+	// once whitespace runs and inline HTML are collapsed into single tokens.
+	t.out = make([]any, 0, len(t.src)/4+8)
 	for t.pos < len(t.src) {
 		if !t.inPHP {
 			t.scanInlineHTML()
@@ -209,15 +260,31 @@ func (t *phpTokenizer) run() *model.Array {
 
 // emitArr appends an [id, text, line] token.
 func (t *phpTokenizer) emitArr(id int, text string, line int) {
-	a := model.NewArray()
-	a.Append(int64(id))
-	a.Append(text)
-	a.Append(int64(line))
-	t.out.Append(a)
+	if len(t.chunk) == 0 {
+		switch {
+		case t.chunkSize == 0:
+			t.chunkSize = tokenChunkMin
+		case t.chunkSize < tokenChunkMax:
+			t.chunkSize *= 2
+		}
+		t.chunk = make([]any, 3*t.chunkSize)
+	}
+	triple := t.chunk[0:3:3]
+	t.chunk = t.chunk[3:]
+	triple[0] = boxInt(id)
+	triple[1] = text
+	triple[2] = boxInt(line)
+	t.out = append(t.out, triple)
 }
 
 // emitChar appends a single-character (string) token.
-func (t *phpTokenizer) emitChar(text string) { t.out.Append(text) }
+func (t *phpTokenizer) emitChar(c byte) {
+	if c < utf8.RuneSelf {
+		t.out = append(t.out, boxedChars[c])
+		return
+	}
+	t.out = append(t.out, string(c))
+}
 
 func (t *phpTokenizer) scanInlineHTML() {
 	start := t.pos
@@ -278,7 +345,7 @@ func (t *phpTokenizer) scanPHP() {
 		default:
 			if !t.scanOperator() {
 				// Unknown byte: emit as a single-char token (PHP-ish).
-				t.emitChar(string(c))
+				t.emitChar(c)
 				t.advance()
 			}
 		}
@@ -398,7 +465,7 @@ func (t *phpTokenizer) scanOperator() bool {
 	const singles = "+-*/%.,;()[]{}=<>!&|?:@~^"
 	c := t.src[t.pos]
 	if strings.IndexByte(singles, c) >= 0 {
-		t.emitChar(string(c))
+		t.emitChar(c)
 		t.advance()
 		return true
 	}

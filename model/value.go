@@ -1,6 +1,9 @@
 package model
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 // PHP runtime values are represented with plain Go types so that they flow
 // transparently in and out of the expr-lang VM (which works against native Go
@@ -21,33 +24,97 @@ import "fmt"
 
 // Array is PHP's ordered hash map. It preserves insertion order and allows both
 // integer and string keys, so it doubles as list and dictionary.
+//
+// It has two internal representations and switches between them by itself:
+//
+//	list mode  values live in `list`, the key of element i is int64(i).
+//	           `keys` and `values` are nil, so the array costs one slice.
+//	map mode   `values` holds key->value and `keys` holds insertion order.
+//
+// A new array starts in list mode, which is what `$a[] = v` (Append) and a PHP
+// list literal produce, and stays there for as long as every key so far is the
+// dense sequence 0,1,...,n-1. The first key that breaks the invariant — a
+// string key, a negative or sparse integer, an int that is not an int64 —
+// promotes the array to map mode, permanently. See promote.
+//
+// Nothing about the observable behaviour differs between the two modes;
+// list mode exists only so that the common case does not allocate a
+// map[any]any, a key slice, and an interface box per key. Keys are still
+// treated as opaque: an Array never normalises "1" to 1 (its callers do, see
+// runner.normalizeKey), and only an int64 key advances the append index.
 type Array struct {
-	keys   []any
+	list   []any // list mode only: element i is the value of key int64(i)
+	keys   []any // map mode only: keys in insertion order
 	values map[any]any
 	nextID int64
 }
 
 // NewArray returns an empty ordered array.
 func NewArray() *Array {
-	return &Array{values: map[any]any{}}
+	return &Array{}
 }
 
 // NewArraySize returns an empty ordered array with room for n entries. Building
-// an array of known size through it avoids the key slice's growth reallocations
-// (a 5-entry array grows 1->2->4->8), which is most of what an *Array costs
-// beyond its map.
+// an array of known size through it avoids the backing slice's growth
+// reallocations (a 5-entry array grows 1->2->4->8), which is most of what an
+// *Array costs while it stays in list mode.
 func NewArraySize(n int) *Array {
 	if n <= 0 {
 		return NewArray()
 	}
-	return &Array{
-		keys:   make([]any, 0, n),
-		values: make(map[any]any, n),
+	return &Array{list: make([]any, 0, n)}
+}
+
+// isList reports whether the array is still in list mode.
+func (a *Array) isList() bool { return a.values == nil }
+
+// promote switches the array from list mode to map mode, materialising the
+// implicit integer keys. It is the only place the map and the key slice are
+// allocated.
+//
+// The empty case reuses the list's backing array as the key slice, so a
+// presized array whose first key is a string (json_decode of an object, the
+// sorted introspection listings) still costs exactly the map. A non-empty list
+// gets a fresh key slice on purpose: a script may promote an array from inside
+// its own foreach, and Range is walking the backing array we would otherwise
+// be overwriting with keys.
+func (a *Array) promote() {
+	n := len(a.list)
+	size := n
+	if c := cap(a.list); c > size {
+		size = c
 	}
+	a.values = make(map[any]any, size)
+	for i, v := range a.list {
+		a.values[int64(i)] = v
+	}
+	if n == 0 {
+		a.keys = a.list[:0]
+	} else {
+		a.keys = make([]any, n, size)
+		for i := range a.keys {
+			a.keys[i] = int64(i)
+		}
+	}
+	a.list = nil
 }
 
 // Set assigns key=val, appending the key if new.
 func (a *Array) Set(key, val any) {
+	if a.isList() {
+		// In list mode nextID is always len(list), so an int64 key inside
+		// [0, len] either overwrites an element or extends the list by one.
+		if i, ok := key.(int64); ok && i >= 0 && i <= int64(len(a.list)) {
+			if i == int64(len(a.list)) {
+				a.list = append(a.list, val)
+				a.nextID = i + 1
+			} else {
+				a.list[i] = val
+			}
+			return
+		}
+		a.promote()
+	}
 	if _, ok := a.values[key]; !ok {
 		a.keys = append(a.keys, key)
 	}
@@ -59,23 +126,57 @@ func (a *Array) Set(key, val any) {
 
 // Append adds val at the next integer index (PHP `$a[] = v`).
 func (a *Array) Append(val any) {
+	if a.isList() {
+		a.list = append(a.list, val)
+		a.nextID++
+		return
+	}
 	a.Set(a.nextID, val)
 }
 
 // Get returns the value for key and whether it existed.
 func (a *Array) Get(key any) (any, bool) {
+	if a.isList() {
+		if i, ok := key.(int64); ok && i >= 0 && i < int64(len(a.list)) {
+			return a.list[i], true
+		}
+		return nil, false
+	}
 	v, ok := a.values[key]
 	return v, ok
 }
 
 // Len reports the number of entries.
-func (a *Array) Len() int { return len(a.keys) }
+func (a *Array) Len() int {
+	if a.isList() {
+		return len(a.list)
+	}
+	return len(a.keys)
+}
 
-// Keys returns keys in insertion order.
-func (a *Array) Keys() []any { return a.keys }
+// Keys returns keys in insertion order. A list-mode array materialises them on
+// each call, since it does not store them.
+func (a *Array) Keys() []any {
+	if a.isList() {
+		keys := make([]any, len(a.list))
+		for i := range keys {
+			keys[i] = int64(i)
+		}
+		return keys
+	}
+	return a.keys
+}
 
 // Range iterates entries in insertion order.
 func (a *Array) Range(fn func(key, val any) bool) {
+	if a.isList() {
+		for i, v := range a.list {
+			if !fn(int64(i), v) {
+				return
+			}
+		}
+		return
+	}
 	for _, k := range a.keys {
 		if !fn(k, a.values[k]) {
 			return
@@ -86,6 +187,13 @@ func (a *Array) Range(fn func(key, val any) bool) {
 // Map returns the array as a string-keyed map for Go APIs that accept named
 // values. PHP integer keys are represented by their decimal string form.
 func (a *Array) Map() map[string]any {
+	if a.isList() {
+		result := make(map[string]any, len(a.list))
+		for i, v := range a.list {
+			result[strconv.Itoa(i)] = v
+		}
+		return result
+	}
 	result := make(map[string]any, len(a.keys))
 	for _, key := range a.keys {
 		result[fmt.Sprint(key)] = a.values[key]
@@ -93,10 +201,12 @@ func (a *Array) Map() map[string]any {
 	return result
 }
 
-// Clear removes all entries and resets list indexing.
+// Clear removes all entries and resets list indexing, returning the array to
+// list mode.
 func (a *Array) Clear() {
+	a.list = nil
 	a.keys = nil
-	a.values = map[any]any{}
+	a.values = nil
 	a.nextID = 0
 }
 

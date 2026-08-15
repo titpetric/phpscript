@@ -10,11 +10,41 @@ import (
 )
 
 type compiledExpr struct {
-	src      string
-	vars     []string
+	src  string
+	vars []string
+	// idents holds the expr identifier for each entry of vars (varIdent), built
+	// once at compile time so Eval does not rebuild the "v_"-prefixed strings on
+	// every evaluation.
+	idents []string
+	// calls holds the registered-function names the expression calls as bare env
+	// identifiers, so Eval can install exactly those closures into the evaluation
+	// environment instead of the whole function table (see Runtime.buildEnv).
+	calls    []string
 	closures map[string]*model.Closure
 	exprs    map[string]model.Expr
 	prog     *vm.Program
+}
+
+// newCompiledExpr snapshots one compiled expression. vars, idents and calls come
+// from the pooled transpiler and are copied into a single backing array here,
+// both because the transpiler reuses its own storage and because one allocation
+// is cheaper than three.
+func newCompiledExpr(src string, vars, idents, calls []string, closures map[string]*model.Closure, exprs map[string]model.Expr, prog *vm.Program) *compiledExpr {
+	n := len(vars)
+	c := len(calls)
+	buf := make([]string, 2*n+c)
+	copy(buf, vars)
+	copy(buf[n:], idents)
+	copy(buf[2*n:], calls)
+	return &compiledExpr{
+		src:      src,
+		vars:     buf[:n:n],
+		idents:   buf[n : 2*n : 2*n],
+		calls:    buf[2*n:],
+		closures: closures,
+		exprs:    exprs,
+		prog:     prog,
+	}
 }
 
 // ExprCache stores immutable compiled expression programs by transpiled source

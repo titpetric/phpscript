@@ -120,8 +120,11 @@ func helperIndex(base, idx any) any {
 // PHP object has no matching property but has a method by that name, it returns
 // a callable bound to that object; this supports PHP idioms such as
 // `call_user_func_array($this->query, $args)`.
-func (rt *Runtime) helperGet(scope *Scope) func(base any, name string) any {
+func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 	return func(base any, name string) any {
+		// A bound callable produced here can outlive the expression that read it,
+		// so the scope is captured by value rather than through the reference.
+		scope := ref.scope
 		switch b := base.(type) {
 		case *model.Object:
 			if v, ok := b.Props[name]; ok {
@@ -253,8 +256,9 @@ func coerceArg(v any, want reflect.Type) reflect.Value {
 // model.Object instances back into the interpreter, and otherwise invokes a Go
 // method on the value by reflection (the "invoke from values on the stack"
 // capability the README relies on).
-func (rt *Runtime) helperCall(scope *Scope) func(base any, method string, args ...any) (any, error) {
+func (rt *Runtime) helperCall(ref *scopeRef) func(base any, method string, args ...any) (any, error) {
 	return func(base any, method string, args ...any) (any, error) {
+		scope := ref.scope
 		if obj, ok := base.(*model.Object); ok && obj.Class != nil {
 			if decl, ok := lookupPHPMethod(obj.Class, method); ok {
 				return rt.invokeMethod(obj, decl, args, scope)
@@ -278,9 +282,12 @@ func lookupPHPMethod(class *model.Class, method string) (*model.FuncDecl, bool) 
 
 // helperNew implements `new Class(args...)`: instantiate from the class table,
 // apply field defaults, and run the same-named constructor method if present.
-func (rt *Runtime) helperNew(scope *Scope) func(class string, args ...any) (any, error) {
+func (rt *Runtime) helperNew(ref *scopeRef) func(class string, args ...any) (any, error) {
 	return func(class string, args ...any) (any, error) {
-		defer rt.trace(scope, "new "+class)()
+		scope := ref.scope
+		if len(rt.observers) > 0 {
+			defer rt.trace(scope, "new "+class)()
+		}
 
 		class = strings.TrimPrefix(class, "\\")
 		if !rt.hasClass(class) {

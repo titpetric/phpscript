@@ -238,9 +238,12 @@ func envelopeAddress(from string) (string, error) {
 	return address.Address, nil
 }
 
+// headerReplacer is built once rather than per header per message.
+var headerReplacer = strings.NewReplacer("\r", "", "\n", "")
+
 // header strips CR/LF so script-supplied values cannot inject headers.
 func header(value string) string {
-	return strings.NewReplacer("\r", "", "\n", "").Replace(value)
+	return headerReplacer.Replace(value)
 }
 
 func toString(value any) string {

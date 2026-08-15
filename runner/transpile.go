@@ -2,9 +2,9 @@ package runner
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -12,46 +12,134 @@ import (
 // Transpiler lowers expression AST nodes into type-agnostic expr-lang source
 // that delegates PHP-specific behavior to runtime helpers.
 type Transpiler struct {
-	// vars collects every variable referenced by the expression so the runtime
-	// knows which scope values to bind into the expr env.
-	vars map[string]struct{}
+	// vars collects every variable referenced by the expression, in first-use
+	// order, so the runtime knows which scope values to bind into the expr env.
+	// A slice with a linear scan beats a map here: expressions reference a
+	// handful of variables and the result is handed to the compiled expression
+	// as a slice anyway.
+	vars []string
+	// idents holds the expr identifier (varIdent) for each entry of vars. It is
+	// collected here because emit already builds the string.
+	idents []string
+	// calls collects, deduplicated and in first-use order, every function name
+	// emitted as a bare env identifier (see emitCall). It is what lets the
+	// runtime populate an evaluation environment with the handful of registered
+	// functions an expression actually calls instead of the whole table.
+	// Namespaced and fallback calls are not collected: they dispatch through the
+	// __func helper, which resolves against the function table directly.
+	calls []string
 	// closures collects anonymous functions encountered while emitting, keyed by
 	// the synthetic env identifier they are bound to (__cl0, __cl1, ...). The
-	// runtime turns each into a callable before evaluation.
+	// runtime turns each into a callable before evaluation. Both maps stay nil
+	// until something is put in them: most expressions have neither a closure nor
+	// an evaluation marker, and the maps outlive the transpiler (the compiled
+	// expression retains them), so they cannot be reused.
 	closures map[string]*model.Closure
 	exprs    map[string]model.Expr
 }
 
 // NewTranspiler returns a fresh transpiler.
 func NewTranspiler() *Transpiler {
-	return &Transpiler{vars: map[string]struct{}{}, closures: map[string]*model.Closure{}, exprs: map[string]model.Expr{}}
+	return &Transpiler{}
+}
+
+// transpilers pools transpilers across compiles. A transpiler holds no state
+// between runs beyond the collections Reset drops, and compiling an expression
+// is a leaf operation (emit never re-enters the runtime), so one instance is
+// enough per goroutine in flight.
+var transpilers sync.Pool
+
+// acquireTranspiler returns a reset transpiler from the pool.
+func acquireTranspiler() *Transpiler {
+	if t, ok := transpilers.Get().(*Transpiler); ok {
+		t.Reset()
+		return t
+	}
+	return NewTranspiler()
+}
+
+// releaseTranspiler returns t to the pool. The caller must not hold on to the
+// slices returned by Transpile — Reset keeps their backing arrays.
+func releaseTranspiler(t *Transpiler) {
+	t.Reset()
+	transpilers.Put(t)
+}
+
+// Reset clears the state collected by the last Transpile, keeping the backing
+// arrays of the variable slices.
+func (t *Transpiler) Reset() {
+	t.vars = t.vars[:0]
+	t.idents = t.idents[:0]
+	t.calls = t.calls[:0]
+	t.closures = nil
+	t.exprs = nil
 }
 
 // Transpile converts e into expr-lang source and returns the source plus the
-// sorted set of variable names it references.
+// set of variable names it references, in first-use order.
+//
+// The returned slice aliases the transpiler's own storage; copy it (or use
+// Idents, which is kept in step with it) before the transpiler is reused.
 func (t *Transpiler) Transpile(e model.Expr) (src string, vars []string, err error) {
-	t.vars = map[string]struct{}{}
-	t.closures = map[string]*model.Closure{}
-	t.exprs = map[string]model.Expr{}
+	t.vars = t.vars[:0]
+	t.idents = t.idents[:0]
+	t.calls = t.calls[:0]
+	t.closures = nil
+	t.exprs = nil
 	src, err = t.emit(e)
 	if err != nil {
 		return "", nil, err
 	}
-	for name := range t.vars {
-		vars = append(vars, name)
+	return src, t.vars, nil
+}
+
+// Idents returns the expr identifiers of the variables collected during the
+// last Transpile, positionally matching its vars result.
+func (t *Transpiler) Idents() []string { return t.idents }
+
+// Calls returns the function names the last Transpile emitted as bare env
+// identifiers, deduplicated and in first-use order. Like Idents, it aliases the
+// transpiler's own storage.
+func (t *Transpiler) Calls() []string { return t.calls }
+
+// addCall records a function name emitted as a bare env identifier. Expressions
+// call a handful of distinct functions, so a linear scan beats a map for the
+// same reason addVar uses one.
+func (t *Transpiler) addCall(name string) {
+	for _, have := range t.calls {
+		if have == name {
+			return
+		}
 	}
-	sort.Strings(vars)
-	return src, vars, nil
+	t.calls = append(t.calls, name)
 }
 
 // Closures returns the anonymous functions collected during the last Transpile,
-// keyed by their env identifier.
+// keyed by their env identifier. It is nil when the expression has none.
 func (t *Transpiler) Closures() map[string]*model.Closure { return t.closures }
 
+// Exprs returns the sub-expressions marked for deferred evaluation during the
+// last Transpile. It is nil when the expression has none.
 func (t *Transpiler) Exprs() map[string]model.Expr { return t.exprs }
 
+// addVar records a referenced variable and returns its expr identifier.
+func (t *Transpiler) addVar(name string) string {
+	for i, have := range t.vars {
+		if have == name {
+			return t.idents[i]
+		}
+	}
+	ident := varIdent(name)
+	t.vars = append(t.vars, name)
+	t.idents = append(t.idents, ident)
+	return ident
+}
+
 func (t *Transpiler) mark(e model.Expr) string {
-	id := fmt.Sprintf("%d__expr", len(t.exprs))
+	id := strconv.Itoa(len(t.exprs)) + "__expr"
+	if t.exprs == nil {
+		t.exprs = make(map[string]model.Expr, 1)
+	}
 	t.exprs[id] = e
 	return id
 }
@@ -72,13 +160,11 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		return litSource(n.Value), nil
 
 	case *model.Var:
-		t.vars[n.Name] = struct{}{}
-		return varIdent(n.Name), nil
+		return t.addVar(n.Name), nil
 
 	case *model.Unary:
 		if n.Op == "++" || n.Op == "--" {
-			id := t.mark(n)
-			return fmt.Sprintf("__eval(%q)", id), nil
+			return "__eval(" + strconv.Quote(t.mark(n)) + ")", nil
 		}
 		x, err := t.emit(n.X)
 		if err != nil {
@@ -130,27 +216,27 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("__index(%s, %s)", base, idx), nil
+		return "__index(" + base + ", " + idx + ")", nil
 
 	case *model.PropAccess:
 		base, err := t.emit(n.Base)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("__get(%s, %q)", base, n.Name), nil
+		return "__get(" + base + ", " + strconv.Quote(n.Name) + ")", nil
 
 	case *model.Call:
 		return t.emitCall(n)
 
 	case *model.ClassConst:
-		return fmt.Sprintf("__classconst(%q, %q)", n.Class, n.Name), nil
+		return "__classconst(" + strconv.Quote(n.Class) + ", " + strconv.Quote(n.Name) + ")", nil
 
 	case *model.Cast:
 		x, err := t.emit(n.X)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("__cast(%q, %s)", n.Type, x), nil
+		return "__cast(" + strconv.Quote(n.Type) + ", " + x + ")", nil
 
 	case *model.AssignExpr:
 		v, ok := model.UnwrapParenthesized(n.Target).(*model.Var)
@@ -165,14 +251,16 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		if n.Op != "=" && n.Op != "" {
 			return "", fmt.Errorf("transpile: assignment expression op %q unsupported", n.Op)
 		}
-		return fmt.Sprintf("__set(%q, %s)", v.Name, val), nil
+		return "__set(" + strconv.Quote(v.Name) + ", " + val + ")", nil
 
 	case *model.Include:
-		id := t.mark(n)
-		return fmt.Sprintf("__eval(%q)", id), nil
+		return "__eval(" + strconv.Quote(t.mark(n)) + ")", nil
 
 	case *model.Closure:
-		id := fmt.Sprintf("__cl%d", len(t.closures))
+		id := "__cl" + strconv.Itoa(len(t.closures))
+		if t.closures == nil {
+			t.closures = make(map[string]*model.Closure, 1)
+		}
 		t.closures[id] = n
 		return id, nil
 
@@ -185,16 +273,14 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		parts := append([]string{base, strconv.Quote(n.Method)}, args...)
-		return fmt.Sprintf("__call(%s)", strings.Join(parts, ", ")), nil
+		return joinCall("__call", base, strconv.Quote(n.Method), args), nil
 
 	case *model.New:
 		args, err := t.emitArgs(n.Args)
 		if err != nil {
 			return "", err
 		}
-		parts := append([]string{strconv.Quote(n.Class)}, args...)
-		return fmt.Sprintf("__new(%s)", strings.Join(parts, ", ")), nil
+		return joinCall("__new", strconv.Quote(n.Class), "", args), nil
 
 	default:
 		return "", fmt.Errorf("transpile: unsupported expression %T", e)
@@ -219,8 +305,8 @@ func (t *Transpiler) emitCall(n *model.Call) (string, error) {
 	for i, a := range n.Args {
 		if refs[i] {
 			if v, ok := model.UnwrapParenthesized(a).(*model.Var); ok {
-				t.vars[v.Name] = struct{}{}
-				args = append(args, fmt.Sprintf("__ref(%q)", v.Name))
+				t.addVar(v.Name)
+				args = append(args, "__ref("+strconv.Quote(v.Name)+")")
 				continue
 			}
 		}
@@ -235,10 +321,50 @@ func (t *Transpiler) emitCall(n *model.Call) (string, error) {
 	// resolves Name then Fallback in the runtime function table. Plain, global
 	// calls keep resolving as a bare env identifier (the fast, original path).
 	if n.Fallback != "" || strings.ContainsRune(n.Name, '\\') {
-		parts := append([]string{strconv.Quote(n.Name), strconv.Quote(n.Fallback)}, args...)
-		return fmt.Sprintf("__func(%s)", strings.Join(parts, ", ")), nil
+		return joinCall("__func", strconv.Quote(n.Name), strconv.Quote(n.Fallback), args), nil
 	}
-	return fmt.Sprintf("%s(%s)", n.Name, strings.Join(args, ", ")), nil
+	t.addCall(n.Name)
+	return joinCall(n.Name, "", "", args), nil
+}
+
+// joinCall renders `name(lead1, lead2, args...)` into one presized buffer.
+// Empty leading arguments are omitted — nothing the transpiler emits is the
+// empty string (a quoted empty PHP string is `""`, two characters).
+func joinCall(name, lead1, lead2 string, args []string) string {
+	size := len(name) + 2
+	for _, a := range args {
+		size += len(a) + 2
+	}
+	if lead1 != "" {
+		size += len(lead1) + 2
+	}
+	if lead2 != "" {
+		size += len(lead2) + 2
+	}
+	var b strings.Builder
+	b.Grow(size)
+	b.WriteString(name)
+	b.WriteByte('(')
+	first := true
+	for _, s := range [2]string{lead1, lead2} {
+		if s == "" {
+			continue
+		}
+		if !first {
+			b.WriteString(", ")
+		}
+		first = false
+		b.WriteString(s)
+	}
+	for _, a := range args {
+		if !first {
+			b.WriteString(", ")
+		}
+		first = false
+		b.WriteString(a)
+	}
+	b.WriteByte(')')
+	return b.String()
 }
 
 func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
@@ -253,21 +379,55 @@ func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 	switch n.Op {
 	case ".":
 		// PHP string concatenation -> helper (expr `+` is numeric/typed).
-		return fmt.Sprintf("__concat(%s, %s)", l, r), nil
+		return concat("__concat(", l, ", ", r, ")"), nil
 	case "===":
-		return fmt.Sprintf("(%s) == (%s)", l, r), nil
+		return concat("(", l, ") == (", r, ")"), nil
 	case "!==":
-		return fmt.Sprintf("(%s) != (%s)", l, r), nil
-	case "&&", "||":
+		return concat("(", l, ") != (", r, ")"), nil
+	case "&&":
 		// Logical operators need bool operands in expr-lang.
-		return fmt.Sprintf("__bool(%s) %s __bool(%s)", l, n.Op, r), nil
-	case "+", "-", "*", "/", "%":
-		return fmt.Sprintf("__arith(%q, %s, %s)", n.Op, l, r), nil
-	case "==", "!=", "<", "<=", ">", ">=":
-		return fmt.Sprintf("(%s) %s (%s)", l, n.Op, r), nil
+		return concat("__bool(", l, ") && __bool(", r, ")"), nil
+	case "||":
+		return concat("__bool(", l, ") || __bool(", r, ")"), nil
+	case "+":
+		return concat(`__arith("+", `, l, ", ", r, ")"), nil
+	case "-":
+		return concat(`__arith("-", `, l, ", ", r, ")"), nil
+	case "*":
+		return concat(`__arith("*", `, l, ", ", r, ")"), nil
+	case "/":
+		return concat(`__arith("/", `, l, ", ", r, ")"), nil
+	case "%":
+		return concat(`__arith("%", `, l, ", ", r, ")"), nil
+	case "==":
+		return concat("(", l, ") == (", r, ")"), nil
+	case "!=":
+		return concat("(", l, ") != (", r, ")"), nil
+	case "<":
+		return concat("(", l, ") < (", r, ")"), nil
+	case "<=":
+		return concat("(", l, ") <= (", r, ")"), nil
+	case ">":
+		return concat("(", l, ") > (", r, ")"), nil
+	case ">=":
+		return concat("(", l, ") >= (", r, ")"), nil
 	default:
 		return "", fmt.Errorf("transpile: unsupported operator %q", n.Op)
 	}
+}
+
+// concat joins five fragments into one presized string. The Go compiler folds
+// the constant fragments, so this is one allocation where a Sprintf would box
+// its arguments and grow a buffer.
+func concat(a, b, c, d, e string) string {
+	var sb strings.Builder
+	sb.Grow(len(a) + len(b) + len(c) + len(d) + len(e))
+	sb.WriteString(a)
+	sb.WriteString(b)
+	sb.WriteString(c)
+	sb.WriteString(d)
+	sb.WriteString(e)
+	return sb.String()
 }
 
 func (t *Transpiler) emitArray(n *model.ArrayLit) (string, error) {
@@ -285,9 +445,9 @@ func (t *Transpiler) emitArray(n *model.ArrayLit) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		pairs = append(pairs, fmt.Sprintf("__pair(%s, %s)", key, val))
+		pairs = append(pairs, concat("__pair(", key, ", ", val, ")"))
 	}
-	return fmt.Sprintf("__array(%s)", strings.Join(pairs, ", ")), nil
+	return joinCall("__array", "", "", pairs), nil
 }
 
 func (t *Transpiler) emitArgs(args []model.Expr) ([]string, error) {

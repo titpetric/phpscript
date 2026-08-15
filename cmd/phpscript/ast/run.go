@@ -8,7 +8,6 @@ import (
 
 	"github.com/titpetric/cli"
 
-	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 )
 
@@ -39,16 +38,12 @@ func Run(args []string) error {
 	return nil
 }
 
-func printTokens(tokens *model.Array) {
-	tokens.Range(func(_, val any) bool {
-		if tok, ok := val.(*model.Array); ok {
-			id, _ := tok.Get(int64(0))
-			text, _ := tok.Get(int64(1))
-			line, _ := tok.Get(int64(2))
-			fmt.Printf("%4d  %-28s  %q\n", line, parser.TokenName(int(id.(int64))), text)
-			return true
+func printTokens(tokens []any) {
+	for _, val := range tokens {
+		if tok, ok := val.([]any); ok {
+			fmt.Printf("%4d  %-28s  %q\n", tok[2], parser.TokenName(int(tok[0].(int64))), tok[1])
+			continue
 		}
 		fmt.Printf("      %-28s  %q\n", "CHAR", val)
-		return true
-	})
+	}
 }
