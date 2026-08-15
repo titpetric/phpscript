@@ -2,7 +2,10 @@ package smtp
 
 import (
 	"context"
+	"crypto/tls"
+	"errors"
 	"fmt"
+	"io"
 	"net/mail"
 	"net/smtp"
 	"strings"
@@ -28,6 +31,11 @@ type Config struct {
 	Username string `yaml:"username" json:"username"`
 	Password string `yaml:"password" json:"password"`
 	From     string `yaml:"from" json:"from"`
+
+	// Insecure accepts the STARTTLS certificate without verifying its chain or
+	// names. Hosts that present a self-signed certificate, or one carrying no
+	// subjectAltName, are unreachable without it.
+	Insecure bool `yaml:"insecure" json:"insecure"`
 }
 
 // Sender interface defines methods for sending emails
@@ -56,6 +64,7 @@ func RegisterSMTP(rt *runner.Runtime) {
 //		"username" => "noreply@example.com",
 //		"password" => "secret",
 //		"from"     => "Example <noreply@example.com>",
+//		"insecure" => true,
 //	));
 func NewSMTPBinding(ctx context.Context, options *model.Array) (*SMTP, error) {
 	if options == nil {
@@ -76,6 +85,8 @@ func NewSMTPBinding(ctx context.Context, options *model.Array) (*SMTP, error) {
 			config.Password = toString(value)
 		case "from":
 			config.From = toString(value)
+		case "insecure":
+			config.Insecure = toBool(value)
 		default:
 			err = fmt.Errorf("SMTP: unknown option %q", toString(key))
 			return false
@@ -120,8 +131,6 @@ func (s *SMTP) Send(recipient, subject, body string) error {
 		return s.sender.Send(recipient, subject, body)
 	}
 
-	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
-
 	sender, err := envelopeAddress(s.config.From)
 	if err != nil {
 		return err
@@ -136,12 +145,71 @@ func (s *SMTP) Send(recipient, subject, body string) error {
 	}
 
 	// Send the email
-	err = smtp.SendMail(addr, auth, sender, []string{recipient}, []byte(message))
-	if err != nil {
+	if err := s.deliver(auth, sender, recipient, message); err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
 	return nil
+}
+
+// deliver runs the SMTP conversation. It follows smtp.SendMail, which cannot be
+// used directly because it builds its own TLS config, leaving no way to reach a
+// host whose certificate does not verify (see Config.Insecure).
+func (s *SMTP) deliver(auth smtp.Auth, sender, recipient, message string) error {
+	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
+
+	client, err := smtp.Dial(addr)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err := client.StartTLS(s.tlsConfig()); err != nil {
+			return err
+		}
+	}
+
+	if auth != nil {
+		if ok, _ := client.Extension("AUTH"); !ok {
+			return errors.New("smtp: server doesn't support AUTH")
+		}
+		if err := client.Auth(auth); err != nil {
+			return err
+		}
+	}
+
+	if err := client.Mail(sender); err != nil {
+		return err
+	}
+	if err := client.Rcpt(recipient); err != nil {
+		return err
+	}
+
+	writer, err := client.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := io.WriteString(writer, message); err != nil {
+		return err
+	}
+	if err := writer.Close(); err != nil {
+		return err
+	}
+
+	return client.Quit()
+}
+
+// tlsConfig returns the STARTTLS settings for the configured host. Insecure
+// turns off verification entirely: the certificate is still used to encrypt the
+// session, but neither its chain nor its names are checked, so the connection
+// is no longer protected against a man in the middle.
+func (s *SMTP) tlsConfig() *tls.Config {
+	return &tls.Config{
+		ServerName:         s.config.Host,
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: s.config.Insecure, //nolint:gosec // opt-in, see Config.Insecure
+	}
 }
 
 // buildMessage renders the RFC 5322 message. From carries the configured
@@ -183,6 +251,26 @@ func toString(value any) string {
 		return v
 	default:
 		return fmt.Sprintf("%v", v)
+	}
+}
+
+// toBool follows PHP truthiness for the values a script can hand an option:
+// "false", "off", "no", "0" and the empty string are false, as is a zero
+// number; anything else set is true.
+func toBool(value any) bool {
+	switch v := value.(type) {
+	case nil:
+		return false
+	case bool:
+		return v
+	case string:
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "", "0", "false", "off", "no":
+			return false
+		}
+		return true
+	default:
+		return toInt(value) != 0
 	}
 }
 

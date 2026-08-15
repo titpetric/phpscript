@@ -59,6 +59,8 @@ $smtp = new SMTP(array(
 $smtp->send("hello@example.com", "Subject", "Body");
 ```
 
+The connection is upgraded with STARTTLS whenever the server offers it. `insecure => true` accepts the certificate without verifying its chain or names, which is what a host with a self-signed certificate — or one carrying no `subjectAltName`, the case Go reports as `certificate is not valid for any names` — requires. The session stays encrypted, but it is no longer protected against a man in the middle, so prefer a certificate the host can verify.
+
 A failed delivery throws, so wrap the call in `try`/`catch` when the request should survive an unreachable mail server.
 
 ### `mail()`

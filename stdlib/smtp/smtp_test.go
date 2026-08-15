@@ -46,7 +46,8 @@ func TestRegisterSMTP(t *testing.T) {
 			"port" => 587,
 			"username" => "noreply@example.com",
 			"password" => "secret",
-			"from" => "BlackSky HAL <noreply@example.com>"
+			"from" => "BlackSky HAL <noreply@example.com>",
+			"insecure" => true
 		));
 		$smtp->send("hello@example.com", "Contact request", "Body line");
 		echo "sent";
