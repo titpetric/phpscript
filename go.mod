@@ -12,7 +12,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/titpetric/cli v0.5.0
 	github.com/titpetric/pdo v0.0.0-20260814130052-5c4c128dfa7c
-	github.com/titpetric/platform v0.4.10-0.20260814161941-c00ba2e6065d
+	github.com/titpetric/platform v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.56.0
 )

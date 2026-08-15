@@ -92,6 +92,8 @@ github.com/titpetric/pdo v0.0.0-20260814130052-5c4c128dfa7c h1:8IDbCbpskKNpNZKOZ
 github.com/titpetric/pdo v0.0.0-20260814130052-5c4c128dfa7c/go.mod h1:5gjK3h3omQAPpnVscZwqF8MBhhI6t18mQS/oHeESNKs=
 github.com/titpetric/platform v0.4.10-0.20260814161941-c00ba2e6065d h1:1/gOID0ioibfgrH+PQNOghleAPyI0jWHOIFNdp/8Q84=
 github.com/titpetric/platform v0.4.10-0.20260814161941-c00ba2e6065d/go.mod h1:ImVxZUx03Wmq79n4o7dGsWZL6ycuo1aPAxhqzVtUpdY=
+github.com/titpetric/platform v0.5.0 h1:jatpYCPXfiOu2x9WZizWmyddS3erE4YAeO3nJuiimj8=
+github.com/titpetric/platform v0.5.0/go.mod h1:ImVxZUx03Wmq79n4o7dGsWZL6ycuo1aPAxhqzVtUpdY=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=
 go.opentelemetry.io/otel v1.45.0 h1:pdrWmLHofpubmArBv1LgFSv1Z0Ie/ppdZzu+kUN5EeU=
