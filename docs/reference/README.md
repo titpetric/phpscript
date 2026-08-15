@@ -86,6 +86,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [`Database`](extensions/README.md#database)
     - [`Database\Migrate`](extensions/README.md#databasemigrate)
     - [`SharedMemory`](extensions/README.md#sharedmemory)
+    - [`SMTP`](extensions/README.md#smtp)
     - [`mail()`](extensions/README.md#mail)
   - [Function keyword aliases](extensions/README.md#function-keyword-aliases)
   - [Parenthesis-free conditions](extensions/README.md#parenthesis-free-conditions)

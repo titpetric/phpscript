@@ -150,14 +150,25 @@ var tokenMultiOps = []struct {
 	op string
 	id int
 }{
-	{"===", T_IS_IDENTICAL}, {"!==", T_IS_NOT_IDENTICAL},
-	{"==", T_IS_EQUAL}, {"!=", T_IS_NOT_EQUAL},
-	{"<=", T_IS_SMALLER_OR_EQUAL}, {">=", T_IS_GREATER_OR_EQUAL},
-	{"&&", T_BOOLEAN_AND}, {"||", T_BOOLEAN_OR},
-	{"->", T_OBJECT_OPERATOR}, {"=>", T_DOUBLE_ARROW}, {"::", T_DOUBLE_COLON},
-	{"++", T_INC}, {"--", T_DEC},
-	{"+=", T_PLUS_EQUAL}, {"-=", T_MINUS_EQUAL}, {"*=", T_MUL_EQUAL},
-	{"/=", T_DIV_EQUAL}, {"%=", T_MOD_EQUAL}, {".=", T_CONCAT_EQUAL},
+	{"===", T_IS_IDENTICAL},
+	{"!==", T_IS_NOT_IDENTICAL},
+	{"==", T_IS_EQUAL},
+	{"!=", T_IS_NOT_EQUAL},
+	{"<=", T_IS_SMALLER_OR_EQUAL},
+	{">=", T_IS_GREATER_OR_EQUAL},
+	{"&&", T_BOOLEAN_AND},
+	{"||", T_BOOLEAN_OR},
+	{"->", T_OBJECT_OPERATOR},
+	{"=>", T_DOUBLE_ARROW},
+	{"::", T_DOUBLE_COLON},
+	{"++", T_INC},
+	{"--", T_DEC},
+	{"+=", T_PLUS_EQUAL},
+	{"-=", T_MINUS_EQUAL},
+	{"*=", T_MUL_EQUAL},
+	{"/=", T_DIV_EQUAL},
+	{"%=", T_MOD_EQUAL},
+	{".=", T_CONCAT_EQUAL},
 }
 
 // TokenName returns the PHP name for a token id (PHP's token_name). Unknown ids

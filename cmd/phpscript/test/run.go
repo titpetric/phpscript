@@ -112,7 +112,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 func writeReportFile(path string, writeFn func(*os.File) error) error {
 	dir := filepath.Dir(path)
 	if dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return err
 		}
 	}

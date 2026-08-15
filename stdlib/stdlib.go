@@ -18,13 +18,12 @@ import (
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
-	"github.com/titpetric/phpscript/stdlib/ps"
-	"github.com/titpetric/phpscript/stdlib/status"
 )
 
-// Register installs the pure (non-filesystem) shims, PHP constants, and any
-// additional package bindings. Use RegisterFS to add filesystem IO bound to a
-// root directory.
+// Register installs the pure (non-filesystem) shims, PHP constants, every
+// binding contributed by an imported binding package (see
+// runner.RegisterBinding and imports.go), and any additional bindings passed by
+// the caller. Use RegisterFS to add filesystem IO bound to a root directory.
 func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
 	rt.RegisterConstructor("Exception", NewException)
 
@@ -36,8 +35,9 @@ func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
 	registerTokenizer(rt)
 	registerEnvironment(rt)
 
-	ps.Register(rt)
-	status.Register(rt)
+	for _, register := range runner.Bindings() {
+		register(rt)
+	}
 	for _, register := range bindings {
 		register(rt)
 	}

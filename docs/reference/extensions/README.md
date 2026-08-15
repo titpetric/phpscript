@@ -44,9 +44,26 @@ defer($db->rollback);
 
 `new SharedMemory` creates a process-local key/value and counter store. An embedding host can place one shared instance in each runtime context to retain state across requests. See the [shared-memory guide](../../use-cases/shared-memory.md).
 
+### `SMTP`
+
+`new SMTP` creates a sender from script-supplied connection settings and delivers with `send($recipient, $subject, $body)`. Authentication (PLAIN) is used when both `username` and `password` are set; `port` defaults to 25. `from` may carry a display name, which becomes the message's `From` header while the bare address is used as the envelope sender.
+
+```php
+$smtp = new SMTP(array(
+	"host" => "smtp.example.com",
+	"port" => 587,
+	"username" => "noreply@example.com",
+	"password" => "secret",
+	"from" => "Example Robot <noreply@example.com>",
+));
+$smtp->send("hello@example.com", "Subject", "Body");
+```
+
+A failed delivery throws, so wrap the call in `try`/`catch` when the request should survive an unreachable mail server.
+
 ### `mail()`
 
-The optional SMTP binding exposes the bare `mail($recipient, $subject, $body)` function when an embedding host registers `stdlib/smtp` with a configured sender. It is not installed by the standard CLI runtime.
+The optional SMTP binding also exposes the bare `mail($recipient, $subject, $body)` function when an embedding host registers `stdlib/smtp` with a configured sender. Unlike `SMTP`, it is not installed by the standard CLI runtime.
 
 ## Function keyword aliases
 
@@ -84,7 +101,10 @@ Use `get_defined_functions()`, `get_declared_classes()`, and `get_defined_consta
 
 Embedding hosts opt into runtime services separately:
 
-- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, `Database`, `Database\Migrate`, and `SharedMemory`.
+- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterBinding`: `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `SMTP`, and `start_span`.
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
-- `smtp.Register(rt, sender)` installs the standard library and the bare `mail()` SMTP binding.
+- `smtp.Register(rt, sender)` adds the bare `mail()` SMTP binding for a host-configured sender.
+- `smtp.SenderContext(ctx, sender)` makes `new SMTP` deliver through `sender` instead of dialing its configured host. `smtp.NewMemory()` is a sender that queues messages in memory, which is how tests and dry runs capture mail without a mail server.
 - `runner.Context.Register(rt)` adds request-aware header functions and seeds `$_GET`, `$_POST`, and `$_PATH`.
+
+Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterBinding(Register)`, and `stdlib/imports.go` blank-imports them. A host that wants a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.
