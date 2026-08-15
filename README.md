@@ -1,8 +1,6 @@
 # phpscript - A custom PHP-flavoured runtime written in Go
 
-This is an experimental PHP interpreter. It supports the basic php
-expression syntax and some parts of the standard library. It's currently
-very rudimentary and only enables limited functionality.
+This is an experimental PHP interpreter. It supports the basic php expression syntax and some parts of the standard library. It's currently very rudimentary and only enables limited functionality.
 
 - [About phpscript](./docs/README.md)
 - [Language reference and PHP compatibility](./docs/reference/README.md)
@@ -20,11 +18,7 @@ Several unit focused test fixtures exists, namely:
 2. database client and usage from PHP side (bring your own database/sql driver)
 3. loading and executing template engine code
 
-This means that phpscript is currently able to use a generic Database
-client. Our own standard library implements a `PS\Database` class which is
-integration tested with
-[./tests/fixtures/test-database.php](./tests/fixtures/test-database.php)
-over several databases (pgx, mysql, sqlite).
+This means that phpscript is currently able to use a generic Database client. Our own standard library implements a `Database` class which is integration tested with [./tests/fixtures/test-database.php](./tests/fixtures/test-database.php) over several databases (pgx, mysql, sqlite).
 
 ## Building a docker image
 

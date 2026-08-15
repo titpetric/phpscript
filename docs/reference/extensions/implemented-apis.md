@@ -5,10 +5,6 @@
 This file lists PHP functions and classes registered by the standard phpscript CLI runtime.
 Regenerate it after changing runtime or standard-library registrations.
 
-## PS namespace
-
-- `PS\SharedMemory` (class)
-
 ## Arrays
 
 - `array_keys`
@@ -123,3 +119,4 @@ Regenerate it after changing runtime or standard-library registrations.
 - `Session\Manager`
 - `Session\Storage\Disk`
 - `Session\Storage\Memory`
+- `SharedMemory`

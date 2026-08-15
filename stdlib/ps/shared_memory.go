@@ -11,7 +11,7 @@ import (
 type sharedMemoryKey struct{}
 
 // SharedMemory is a thread-safe in-memory key-value and atomic counter store
-// exposed as PS\SharedMemory to scripts.
+// exposed as SharedMemory to scripts.
 type SharedMemory struct {
 	mu       sync.Mutex
 	data     map[string]string
@@ -31,7 +31,7 @@ func SharedMemoryContext(ctx context.Context, s *SharedMemory) context.Context {
 	return context.WithValue(ctx, sharedMemoryKey{}, s)
 }
 
-// NewSharedMemoryBinding is the constructor callback registered for PS\SharedMemory.
+// NewSharedMemoryBinding is the constructor callback registered for SharedMemory.
 func NewSharedMemoryBinding(ctx context.Context) (*SharedMemory, error) {
 	s, _ := ctx.Value(sharedMemoryKey{}).(*SharedMemory)
 	if s == nil {
@@ -40,9 +40,9 @@ func NewSharedMemoryBinding(ctx context.Context) (*SharedMemory, error) {
 	return s, nil
 }
 
-// RegisterSharedMemory installs PS\SharedMemory in the runtime.
+// RegisterSharedMemory installs SharedMemory in the runtime.
 func RegisterSharedMemory(rt *runner.Runtime) {
-	rt.RegisterConstructor("PS\\SharedMemory", NewSharedMemoryBinding)
+	rt.RegisterConstructor("SharedMemory", NewSharedMemoryBinding)
 }
 
 // Set stores a string value.

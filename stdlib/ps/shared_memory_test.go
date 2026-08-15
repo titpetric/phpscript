@@ -33,7 +33,7 @@ func TestSharedMemoryBindingAcrossRequests(t *testing.T) {
 	}
 
 	first := runRequest(`<?php
-		$shm = new PS\SharedMemory;
+		$shm = new SharedMemory;
 		$shm->incr("requests");
 		echo $shm->count("requests");
 	?>`)
@@ -42,7 +42,7 @@ func TestSharedMemoryBindingAcrossRequests(t *testing.T) {
 	}
 
 	second := runRequest(`<?php
-		$shm = new PS\SharedMemory;
+		$shm = new SharedMemory;
 		$shm->incr("requests");
 		echo $shm->count("requests");
 	?>`)

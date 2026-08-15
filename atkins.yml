@@ -18,6 +18,8 @@ tasks:
     cmds:
       - ./scripts/list-apis.php > docs/reference/extensions/implemented-apis.md
       - ./scripts/phpinfo.php
+      - cd docs/reference && php README.php > README.md
+      - task: mdox:fmt
 
   test:phpscript:run:
     dir: tests/fixtures

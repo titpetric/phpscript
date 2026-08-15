@@ -80,10 +80,12 @@ The supported error model and values supplied by the runtime or request host.
 
 Runtime-specific syntax and APIs that are not part of the PHP language reference.
 
-- [phpscript extensions](extensions/README.md) — defer, the PS namespace, function keyword aliases, and portability hazards.
+- [phpscript extensions](extensions/README.md) — defer, bare host bindings, function keyword aliases, and portability hazards.
   - [Deferred callbacks](extensions/README.md#deferred-callbacks)
   - [Host-backed APIs](extensions/README.md#host-backed-apis)
     - [`Database`](extensions/README.md#database)
+    - [`SharedMemory`](extensions/README.md#sharedmemory)
+    - [`mail()`](extensions/README.md#mail)
   - [Function keyword aliases](extensions/README.md#function-keyword-aliases)
   - [Parenthesis-free conditions](extensions/README.md#parenthesis-free-conditions)
   - [Implemented APIs](extensions/README.md#implemented-apis)
@@ -97,7 +99,6 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Value conversion](extensions/bindings.md#value-conversion)
   - [HTTP binding benchmark](extensions/bindings.md#http-binding-benchmark)
 - [Implemented PHP APIs](extensions/implemented-apis.md) — Generated inventory of functions and classes in the standard CLI runtime.
-  - [PS namespace](extensions/implemented-apis.md#ps-namespace)
   - [Arrays](extensions/implemented-apis.md#arrays)
   - [Strings](extensions/implemented-apis.md#strings)
   - [JSON](extensions/implemented-apis.md#json)

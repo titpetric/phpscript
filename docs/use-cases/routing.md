@@ -4,8 +4,7 @@ The phpscript runtime contains a routing helper that turns PHP files into
 `net/http` handlers. It keeps the server shell and shared services in Go,
 while PHP owns small endpoint behavior.
 
-When `routes.enabled` is true in the active configuration, `phpscript server
-[directory]` scans the PHP source tree for `// @route` comments and registers
+When `routes.enabled` is true in the active configuration, `phpscript server [directory]` scans the PHP source tree for `// @route` comments and registers
 those files as HTTP handlers. If no directory is provided, the current
 directory is used. Pass a custom configuration with `-f config.yml`; otherwise
 the embedded defaults are used.

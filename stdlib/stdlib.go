@@ -22,9 +22,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib/status"
 )
 
-// Register installs the pure (non-filesystem) shims and PHP constants. Use
-// RegisterFS to add filesystem IO bound to a root directory.
-func Register(rt *runner.Runtime) {
+// Register installs the pure (non-filesystem) shims, PHP constants, and any
+// additional package bindings. Use RegisterFS to add filesystem IO bound to a
+// root directory.
+func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
 	rt.RegisterConstructor("Exception", NewException)
 
 	registerStrings(rt)
@@ -37,6 +38,9 @@ func Register(rt *runner.Runtime) {
 
 	ps.Register(rt)
 	status.Register(rt)
+	for _, register := range bindings {
+		register(rt)
+	}
 }
 
 func registerEnvironment(rt *runner.Runtime) {

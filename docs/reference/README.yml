@@ -52,7 +52,7 @@ sitemap:
     description: Runtime-specific syntax and APIs that are not part of the PHP language reference.
     links:
       - path: extensions/README.md
-        description: defer, the PS namespace, function keyword aliases, and portability hazards.
+        description: defer, bare host bindings, function keyword aliases, and portability hazards.
       - path: extensions/bindings.md
         description: Exposing Go constructors, functions, methods, contexts, and values to PHP.
       - path: extensions/implemented-apis.md

@@ -12,13 +12,13 @@ memory sampling are also configurable. See [Configuration](./configuration.md#ht
 
 ## Endpoints
 
-| Path | View |
-|---|---|
-| `/debug/server-status` | Live processes and the rolling request log |
-| `/debug/server-status/live` | Live processes |
-| `/debug/server-status/log` | Completed request log |
-| `/debug/server-status/stats` | Aggregated request statistics |
-| `/debug/server-status/detail/{id}` | Completed request spans |
+| Path                               | View                                       |
+|------------------------------------|--------------------------------------------|
+| `/debug/server-status`             | Live processes and the rolling request log |
+| `/debug/server-status/live`        | Live processes                             |
+| `/debug/server-status/log`         | Completed request log                      |
+| `/debug/server-status/stats`       | Aggregated request statistics              |
+| `/debug/server-status/detail/{id}` | Completed request spans                    |
 
 The navigation links open distinct endpoints rather than switching client-side
 tabs. The overview combines live processes with the full rolling request log;
@@ -93,16 +93,16 @@ adds its source span.
 
 The scoreboard recognizes the following runtime states:
 
-| State | Meaning |
-|---|---|
-| `_` | Waiting for a request |
-| `s` | PHP runtime starting |
-| `R` | Reading or parsing the request/PHP source |
-| `P` | Executing PHP |
-| `W` | Producing or sending the response |
-| `K` | Keepalive |
-| `C` | Closing |
-| `E` | Runtime error |
+| State | Meaning                                   |
+|-------|-------------------------------------------|
+| `_`   | Waiting for a request                     |
+| `s`   | PHP runtime starting                      |
+| `R`   | Reading or parsing the request/PHP source |
+| `P`   | Executing PHP                             |
+| `W`   | Producing or sending the response         |
+| `K`   | Keepalive                                 |
+| `C`   | Closing                                   |
+| `E`   | Runtime error                             |
 
 At every transition, the middleware adds time spent in the previous state to a
 lifetime total. A snapshot also includes elapsed time in the current state of

@@ -64,7 +64,7 @@ class Database {
 	protected $handle;
 
 	public function connect($name) {
-		$this->handle = new \PS\Database($name);
+		$this->handle = new \Host\Database($name);
 		if (!is_array($name)) {
 			$index = 0;
 		}
@@ -86,7 +86,7 @@ class Database {
 		"protected $handle;",
 		"class Database {",
 		"public function connect($name) {",
-		"new \\PS\\Database($name)",
+		"new \\Host\\Database($name)",
 		"if (!is_array($name)) {",
 		"foreach ($values as $k => $v) {",
 	} {

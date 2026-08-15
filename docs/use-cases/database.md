@@ -77,7 +77,7 @@ The final arguments to `update` name the columns used in its `WHERE` clause.
 Those columns must also be present in the value array. The write helpers and
 `query` return `true` on success.
 
-## Transactions and exclusive connections
+## Transactions and pinned connections
 
 `begin` starts a transaction. All subsequent operations on that client use the
 transaction until `commit` or `rollback`:
@@ -91,19 +91,21 @@ $db->commit();
 Nested transactions are not supported. `commit` and `rollback` are safe to call
 when no transaction is active.
 
-Ordinary operations borrow connections from the shared pool. Call `connect`
-only when several non-transactional operations must use the same physical
-connection, and call `close` afterward to return it to the pool:
+The constructor is sufficient for ordinary operations, which borrow connections
+from the shared pool. When several non-transactional operations must use the
+same physical connection, call the zero-argument `connect()` method to pin one
+and call `close()` afterward to return it to the pool:
 
 ```php
+$db = new Database("app");
 $db->connect();
 $db->query("create temporary table selected_users (id integer)");
 $db->query("insert into selected_users values (?)", 10);
 $db->close();
 ```
 
-`close` does not close the shared pool and has no effect unless `connect` was
-called.
+`connect()` does not select or configure a named database. The connection name
+is always passed to `new Database("name")`.
 
 ## Tracing
 
@@ -121,7 +123,7 @@ The binding provides these methods:
 - `query($sql, ...$arguments)`
 - `get($sql, ...$arguments)`
 - `get_all($sql, ...$arguments)`
-- `connect()` and `close()`
+- `connect()` and `close()` for optional connection pinning
 - `begin()`, `commit()`, and `rollback()`
 - `insert_id()` and `rows_affected()`
 

@@ -48,10 +48,10 @@ the complete example when you want behavior to be explicit.
 `runner` applies to the `run` and `server` commands and to annotated routes
 created by the bundled server.
 
-| Key | Default | Purpose |
-|---|---:|---|
-| `work_dir` | `.` | Directory inside the runtime source filesystem used to resolve relative script and include paths. |
-| `writable_paths` | `[]` | Writable-path allowlist exposed to filesystem integrations. An empty list adds no allowlist restriction. |
+| Key              | Default | Purpose                                                                                                  |
+|------------------|--------:|----------------------------------------------------------------------------------------------------------|
+| `work_dir`       |     `.` | Directory inside the runtime source filesystem used to resolve relative script and include paths.        |
+| `writable_paths` |    `[]` | Writable-path allowlist exposed to filesystem integrations. An empty list adds no allowlist restriction. |
 
 ## Runtime backend
 
@@ -69,11 +69,11 @@ requested PHP entrypoints under `public/` are independent of this setting.
 `status.enabled` controls the server status module and its
 `/debug/server-status` endpoints. Its options are:
 
-| Key | Default | Purpose |
-|---|---:|---|
-| `ring_buffer_size` | `100` | Number of completed requests retained for the log and rolling statistics. |
-| `top_requests` | `20` | Maximum request groups returned by rolling statistics. |
-| `track_memory_use` | `true` | Record process-wide allocation and garbage-collection changes per request. |
+| Key                | Default | Purpose                                                                    |
+|--------------------|--------:|----------------------------------------------------------------------------|
+| `ring_buffer_size` |   `100` | Number of completed requests retained for the log and rolling statistics.  |
+| `top_requests`     |    `20` | Maximum request groups returned by rolling statistics.                     |
+| `track_memory_use` |  `true` | Record process-wide allocation and garbage-collection changes per request. |
 
 Memory tracking has process-wide sampling overhead and concurrent requests can
 overlap in those measurements. See [Server status middleware](./server-status.md)
