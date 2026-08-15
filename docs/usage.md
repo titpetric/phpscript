@@ -123,6 +123,22 @@ routes:
   enabled: true
 ```
 
+Before the server starts listening, PHP files anywhere in the application tree
+that contain an `@startup` comment execute once in path order. Use these files
+for required setup such as database migrations:
+
+```php
+<?php
+// @startup
+
+$migrate = new Database\Migrate("app");
+$migrate->load("./schema/*.sql");
+$migrate->run();
+```
+
+Startup files run with the CLI SAPI and the application filesystem. If one
+fails, the server is not started.
+
 ```text
 my-app/
 ├── public/

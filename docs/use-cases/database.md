@@ -39,6 +39,30 @@ $db = new Database("app");
 The constructor throws an exception if the connection name is not registered or
 the pool cannot be opened.
 
+## Run migrations
+
+`Database\Migrate` applies `*.up.sql` migration files to a named connection.
+Run migrations from an [`@startup`](../usage.md) file so they finish before the
+server starts listening:
+
+```php
+<?php
+// @startup
+
+$migrate = new Database\Migrate("app");
+$migrate->load("./schema/*.sql");
+$migrate->run();
+```
+
+`load()` accepts a glob relative to the runtime working directory. It reads the
+matching files from the application filesystem; the migration runner applies
+files whose names end in `.up.sql` in filename order. Applied migrations are
+recorded in a `migrations` table and skipped on later server starts.
+
+Loading or applying a migration can raise a PHP exception. An uncaught
+exception aborts startup, and the startup event and error are recorded in
+server-status telemetry when status tracking is enabled.
+
 ## Execute queries
 
 Use `query` for statements that do not return rows. Positional arguments are
@@ -117,6 +141,8 @@ transaction depth.
 
 The binding provides these methods:
 
+`Database`:
+
 - `insert($table, $values)`
 - `replace($table, $values)`
 - `update($table, $values, ...$key_columns)`
@@ -126,6 +152,11 @@ The binding provides these methods:
 - `connect()` and `close()` for optional connection pinning
 - `begin()`, `commit()`, and `rollback()`
 - `insert_id()` and `rows_affected()`
+
+`Database\Migrate`:
+
+- `load($pattern)`
+- `run()`
 
 ## Complete example
 
@@ -148,5 +179,7 @@ foreach ($users as $row) {
 ## References
 
 - [Go `stdlib/ps.Database`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps#Database)
+- [Go `stdlib/ps.DatabaseMigrate`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps#DatabaseMigrate)
+- [tests/fixtures/database_migrate.phpt](../../tests/fixtures/database_migrate.phpt)
 - [tests/fixtures/platform_database.phpt](../../tests/fixtures/platform_database.phpt)
 - [tests/fixtures/test-database.php](../../tests/fixtures/test-database.php)

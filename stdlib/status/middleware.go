@@ -227,6 +227,46 @@ func (s *ServerStatus) Middleware(next http.Handler) http.Handler {
 	})
 }
 
+// TrackLifecycle records a non-HTTP lifecycle event and its runtime spans.
+func (s *ServerStatus) TrackLifecycle(ctx context.Context, name, filename string, run func(context.Context) error) error {
+	now := time.Now()
+	id, err := newULID(now)
+	if err != nil {
+		return err
+	}
+	entry := &Request{
+		ID:        id,
+		Status:    model.StatusStarting,
+		Request:   name,
+		Filename:  filename,
+		Method:    "STARTUP",
+		URI:       filename,
+		StartedAt: now,
+		UpdatedAt: now,
+		ChangedAt: now,
+	}
+	if s.options.TrackMemoryUse {
+		runtime.ReadMemStats(&entry.MemStats)
+	}
+	ctx = context.WithValue(ctx, requestIDKey{}, id)
+	ctx = model.WithSpanFilename(model.WithRequest(ctx, entry), filename)
+
+	s.mu.Lock()
+	s.total++
+	s.active[id] = entry
+	s.mu.Unlock()
+
+	span := model.StartSpan(ctx, name, model.SpanType.Internal, model.OpenSpan)
+	err = run(ctx)
+	if err != nil {
+		s.UpdateStatus(ctx, model.StatusError)
+		span.RecordError(err)
+	}
+	model.StartSpan(ctx, name, model.SpanType.Internal, model.CloseSpan)
+	s.complete(entry, 0, 0)
+	return err
+}
+
 // UpdateStatus implements runner.Observer.
 func (s *ServerStatus) UpdateStatus(ctx context.Context, status model.Status) {
 	id := RequestID(ctx)
@@ -291,11 +331,15 @@ func (s *ServerStatus) UpdateIncludedFiles(ctx context.Context, count int) {
 }
 
 func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseWriter) {
+	model.StartSpan(model.WithSpanFilename(ctx, entry.Filename), "done", model.SpanType.HTTP, model.CloseSpan)
+	s.complete(entry, rw.status, rw.bytes)
+}
+
+func (s *ServerStatus) complete(entry *Request, responseStatus int, responseBytes int64) {
 	var after runtime.MemStats
 	if s.options.TrackMemoryUse {
 		runtime.ReadMemStats(&after)
 	}
-	model.StartSpan(model.WithSpanFilename(ctx, entry.Filename), "done", model.SpanType.HTTP, model.CloseSpan)
 
 	now := time.Now()
 
@@ -305,8 +349,8 @@ func (s *ServerStatus) finish(ctx context.Context, entry *Request, rw *responseW
 	s.stateTime[entry.Status] += now.Sub(entry.ChangedAt)
 	entry.UpdatedAt = now
 	entry.Duration = now.Sub(entry.StartedAt)
-	entry.ResponseStatus = rw.status
-	entry.ResponseBytes = rw.bytes
+	entry.ResponseStatus = responseStatus
+	entry.ResponseBytes = responseBytes
 	entry.HeapDelta = signedDelta(after.HeapAlloc, entry.MemStats.HeapAlloc)
 	entry.AllocatedBytes = delta(after.TotalAlloc, entry.MemStats.TotalAlloc)
 	entry.Allocations = delta(after.Mallocs, entry.MemStats.Mallocs)

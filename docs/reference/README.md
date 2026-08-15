@@ -84,6 +84,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Deferred callbacks](extensions/README.md#deferred-callbacks)
   - [Host-backed APIs](extensions/README.md#host-backed-apis)
     - [`Database`](extensions/README.md#database)
+    - [`Database\Migrate`](extensions/README.md#databasemigrate)
     - [`SharedMemory`](extensions/README.md#sharedmemory)
     - [`mail()`](extensions/README.md#mail)
   - [Function keyword aliases](extensions/README.md#function-keyword-aliases)

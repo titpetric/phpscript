@@ -17,6 +17,7 @@ func Register(rt *runner.Runtime) {
 	RegisterSharedMemory(rt)
 	RegisterShutdown(rt)
 	RegisterSession(rt)
+	RegisterDatabaseMigrate(rt)
 
 	rt.RegisterConstructor("Database", func(ctx context.Context, name string) (*Database, error) {
 		handle, err := platform.Database.Connect(ctx, name)
@@ -27,6 +28,21 @@ func Register(rt *runner.Runtime) {
 		database := &Database{Bridge: client.NewBridge(handle)}
 		database.Bridge.WithObserver(database.observe)
 		return database, nil
+	})
+}
+
+// RegisterDatabaseMigrate installs the Database\Migrate binding.
+func RegisterDatabaseMigrate(rt *runner.Runtime) {
+	rt.RegisterConstructor("Database\\Migrate", func(ctx context.Context, names ...string) (*DatabaseMigrate, error) {
+		database, err := platform.Database.Open(ctx, names...)
+		if err != nil {
+			return nil, err
+		}
+		return &DatabaseMigrate{
+			database: database,
+			root:     rt.FS(),
+			workDir:  rt.WorkDir(),
+		}, nil
 	})
 }
 

@@ -1,13 +1,13 @@
 # phpscript extensions
 
-| Extension                   | Status              | Notes                                                           |
-|-----------------------------|---------------------|-----------------------------------------------------------------|
-| `defer()`                   | phpscript extension | Runs callbacks when the current execution frame exits.          |
-| Host-backed APIs            | phpscript extension | Bare bindings such as `Database`, `SharedMemory`, and `mail()`. |
-| `func` keyword              | phpscript extension | Alias for block-bodied `function`.                              |
-| `fn` keyword                | PHP-incompatible    | Alias for block-bodied `function`, not a PHP arrow function.    |
-| Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.         |
-| `{...}` arrays              | PHP-incompatible    | Braces can delimit an array literal.                            |
+| Extension                   | Status              | Notes                                                                               |
+|-----------------------------|---------------------|-------------------------------------------------------------------------------------|
+| `defer()`                   | phpscript extension | Runs callbacks when the current execution frame exits.                              |
+| Host-backed APIs            | phpscript extension | Bare bindings such as `Database`, `Database\Migrate`, `SharedMemory`, and `mail()`. |
+| `func` keyword              | phpscript extension | Alias for block-bodied `function`.                                                  |
+| `fn` keyword                | PHP-incompatible    | Alias for block-bodied `function`, not a PHP arrow function.                        |
+| Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.                             |
+| `{...}` arrays              | PHP-incompatible    | Braces can delimit an array literal.                                                |
 
 These features have no equivalent in the PHP language reference or deliberately use syntax differently. Avoid them when source must also run on PHP.
 
@@ -35,6 +35,10 @@ defer($db->rollback);
 ### `Database`
 
 `new Database("name")` connects through the named platform database configured by `PLATFORM_DB_<NAME>` in the process environment or configuration file. It provides `query()`, `get()`, `get_all()`, `insert()`, `replace()`, `update()`, `begin()`, `commit()`, `rollback()`, `insert_id()`, and `rows_affected()`. Database operations automatically add timed database spans to server-status request traces.
+
+### `Database\Migrate`
+
+`new Database\Migrate("name")` targets a named platform database. `load($pattern)` reads migration files from the application filesystem, and `run()` applies matching `*.up.sql` files in filename order. See the [database guide](../../use-cases/database.md#run-migrations).
 
 ### `SharedMemory`
 
@@ -80,7 +84,7 @@ Use `get_defined_functions()`, `get_declared_classes()`, and `get_defined_consta
 
 Embedding hosts opt into runtime services separately:
 
-- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, `Database`, and `SharedMemory`.
+- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, `Database`, `Database\Migrate`, and `SharedMemory`.
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
 - `smtp.Register(rt, sender)` installs the standard library and the bare `mail()` SMTP binding.
 - `runner.Context.Register(rt)` adds request-aware header functions and seeds `$_GET`, `$_POST`, and `$_PATH`.

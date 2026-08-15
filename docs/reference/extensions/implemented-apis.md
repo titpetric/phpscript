@@ -115,6 +115,7 @@ Regenerate it after changing runtime or standard-library registrations.
 ## Classes
 
 - `Database`
+- `Database\Migrate`
 - `Exception`
 - `Session\Manager`
 - `Session\Storage\Disk`

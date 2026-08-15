@@ -18,6 +18,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/startup"
 	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/stdlib/status"
 )
@@ -182,11 +183,15 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 
 	svc := platform.New(opts)
 	var observers []runner.Observer
+	var serverStatus *status.ServerStatus
 	if config.Status.Enabled {
-		serverStatus := status.NewModule(config.Status.Options)
+		serverStatus = status.NewModule(config.Status.Options)
+		observers = append(observers, serverStatus)
+	}
+	svc.Register(startup.NewModule(os.DirFS(root), root, os.Stdout, config.Runner, config.Flatstack.Enabled, observers...))
+	if serverStatus != nil {
 		svc.Use(serverStatus.Middleware)
 		svc.Register(serverStatus)
-		observers = append(observers, serverStatus)
 	}
 	if config.Routes.Enabled {
 		routeOptions := []routesvc.Option{
