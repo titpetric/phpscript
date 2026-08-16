@@ -39,12 +39,16 @@ func (a *legacyArray) Set(key, val any) {
 }
 
 func (a *legacyArray) Append(val any) { a.Set(a.nextID, val) }
+
 func (a *legacyArray) Get(key any) (any, bool) {
 	v, ok := a.values[key]
 	return v, ok
 }
-func (a *legacyArray) Len() int    { return len(a.keys) }
+
+func (a *legacyArray) Len() int { return len(a.keys) }
+
 func (a *legacyArray) Keys() []any { return a.keys }
+
 func (a *legacyArray) Range(fn func(key, val any) bool) {
 	for _, k := range a.keys {
 		if !fn(k, a.values[k]) {
@@ -52,6 +56,7 @@ func (a *legacyArray) Range(fn func(key, val any) bool) {
 		}
 	}
 }
+
 func (a *legacyArray) Map() map[string]any {
 	result := make(map[string]any, len(a.keys))
 	for _, key := range a.keys {
@@ -59,6 +64,7 @@ func (a *legacyArray) Map() map[string]any {
 	}
 	return result
 }
+
 func (a *legacyArray) Clear() {
 	a.keys = nil
 	a.values = map[any]any{}
@@ -652,13 +658,20 @@ func benchLegacyAppend(b *testing.B, n int, presize bool) {
 	}
 }
 
-func BenchmarkArrayAppend5(b *testing.B)             { benchArrayAppend(b, 5, false) }
-func BenchmarkArrayAppend5Legacy(b *testing.B)       { benchLegacyAppend(b, 5, false) }
-func BenchmarkArrayAppend5Sized(b *testing.B)        { benchArrayAppend(b, 5, true) }
-func BenchmarkArrayAppend5SizedLegacy(b *testing.B)  { benchLegacyAppend(b, 5, true) }
-func BenchmarkArrayAppend50(b *testing.B)            { benchArrayAppend(b, 50, false) }
-func BenchmarkArrayAppend50Legacy(b *testing.B)      { benchLegacyAppend(b, 50, false) }
-func BenchmarkArrayAppend50Sized(b *testing.B)       { benchArrayAppend(b, 50, true) }
+func BenchmarkArrayAppend5(b *testing.B) { benchArrayAppend(b, 5, false) }
+
+func BenchmarkArrayAppend5Legacy(b *testing.B) { benchLegacyAppend(b, 5, false) }
+
+func BenchmarkArrayAppend5Sized(b *testing.B) { benchArrayAppend(b, 5, true) }
+
+func BenchmarkArrayAppend5SizedLegacy(b *testing.B) { benchLegacyAppend(b, 5, true) }
+
+func BenchmarkArrayAppend50(b *testing.B) { benchArrayAppend(b, 50, false) }
+
+func BenchmarkArrayAppend50Legacy(b *testing.B) { benchLegacyAppend(b, 50, false) }
+
+func BenchmarkArrayAppend50Sized(b *testing.B) { benchArrayAppend(b, 50, true) }
+
 func BenchmarkArrayAppend50SizedLegacy(b *testing.B) { benchLegacyAppend(b, 50, true) }
 
 // The Ints variants store values in 0..255, which the runtime boxes for free
