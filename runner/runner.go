@@ -471,7 +471,14 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	return rt.includeFile(phpString(path), scope)
 }
 
+// noopTrace is the span closer returned when no observer is registered. It
+// captures nothing, so returning it does not allocate.
+func noopTrace() {}
+
 func (rt *Runtime) trace(scope *Scope, message string) func() {
+	if len(rt.observers) == 0 {
+		return noopTrace
+	}
 	span := rt.traceContext(contextWithScope(rt.ctx, scope), message)
 	return func() {
 		if span != nil {
@@ -481,6 +488,9 @@ func (rt *Runtime) trace(scope *Scope, message string) func() {
 }
 
 func (rt *Runtime) traceRegion(scope *Scope, message string, flags ...model.Flag) func() {
+	if len(rt.observers) == 0 {
+		return noopTrace
+	}
 	ctx := contextWithScope(rt.ctx, scope)
 	rt.traceContext(ctx, message, append(flags, model.OpenSpan)...)
 	return func() {
@@ -930,18 +940,22 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	if obj.Class != nil {
 		scope.Set("__class__", obj.Class.Name)
 	}
-	name := obj.ID
-	if name == "" && obj.Class != nil {
-		name = obj.Class.Name
+	// The span name costs two string builds, so it is only assembled when an
+	// observer is listening.
+	if len(rt.observers) > 0 {
+		name := obj.ID
+		if name == "" && obj.Class != nil {
+			name = obj.Class.Name
+		}
+		if name != "" {
+			name += "."
+		}
+		traceScope := caller
+		if traceScope == nil {
+			traceScope = scope
+		}
+		defer rt.trace(traceScope, name+decl.Name)()
 	}
-	if name != "" {
-		name += "."
-	}
-	traceScope := caller
-	if traceScope == nil {
-		traceScope = scope
-	}
-	defer rt.trace(traceScope, name+decl.Name)()
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}
@@ -986,6 +1000,9 @@ func (rt *Runtime) runDeferred(scope *Scope, mark int) error {
 }
 
 func (rt *Runtime) runShutdown() error {
+	if len(rt.shutdown) == 0 {
+		return nil
+	}
 	var errs []error
 	scope := NewScope()
 	for len(rt.shutdown) > 0 {

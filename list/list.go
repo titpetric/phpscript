@@ -113,19 +113,16 @@ type scanTok struct {
 }
 
 func tokenize(src string) []scanTok {
-	var out []scanTok
-	parser.TokenGetAll(src).Range(func(_, val any) bool {
-		if a, ok := val.(*model.Array); ok {
-			id, _ := a.Get(int64(0))
-			text, _ := a.Get(int64(1))
-			out = append(out, scanTok{id: int(id.(int64)), text: text.(string)})
-			return true
+	toks := parser.TokenGetAll(src)
+	out := make([]scanTok, 0, len(toks))
+	for _, val := range toks {
+		switch tok := val.(type) {
+		case []any:
+			out = append(out, scanTok{id: int(tok[0].(int64)), text: tok[1].(string)})
+		case string:
+			out = append(out, scanTok{text: tok})
 		}
-		if s, ok := val.(string); ok {
-			out = append(out, scanTok{text: s})
-		}
-		return true
-	})
+	}
 	return out
 }
 

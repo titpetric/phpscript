@@ -422,10 +422,9 @@ echo $out;`)
 	rt := runner.New(&out, runner.Options{})
 	rt.RegisterFunc("token_get_all", parser.TokenGetAll)
 	rt.RegisterFunc("token_name", parser.TokenName)
-	rt.RegisterFunc("is_array", func(a any) bool {
-		_, ok := a.(*model.Array)
-		return ok
-	})
+	// Shape-agnostic, like the real stdlib is_array: TokenGetAll returns a
+	// []any of []any, not an *model.Array.
+	rt.RegisterFunc("is_array", model.IsCollection)
 	// minitpl-style wrapped expression with the "." -> "__1" marker.
 	rt.SetGlobal("code", `<?php if ($this->_vars) { ?>`)
 
@@ -462,5 +461,199 @@ func TestClassExistsPropagatesAutoloaderError(t *testing.T) {
 	}
 	if !errors.Is(err, want) {
 		t.Fatalf("got error %v, want %v", err, want)
+	}
+}
+
+// TestRegisterFuncBetweenRuns proves the reusable evaluation environment picks
+// up function-table changes: a Runtime that has already evaluated expressions
+// must see a function registered (or replaced) afterwards.
+func TestRegisterFuncBetweenRuns(t *testing.T) {
+	first, err := parser.Parse(`<?php echo greet("a");`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	second, err := parser.Parse(`<?php echo greet("b") . shout("c");`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	rt.RegisterFunc("greet", func(s string) string { return "hello " + s })
+	if err := rt.Run(first); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out.String() != "hello a" {
+		t.Fatalf("got %q, want %q", out.String(), "hello a")
+	}
+
+	out.Reset()
+	// Replace one function and add another after the environment was built.
+	rt.RegisterFunc("greet", func(s string) string { return "hi " + s })
+	rt.RegisterFunc("shout", strings.ToUpper)
+	if err := rt.Run(second); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out.String() != "hi bC" {
+		t.Fatalf("got %q, want %q", out.String(), "hi bC")
+	}
+}
+
+// TestNestedEvalScopes proves that reused environments never leak a scope: a
+// user function called from inside an expression must see its own frame, and
+// the caller's variables must survive the nested evaluation.
+func TestNestedEvalScopes(t *testing.T) {
+	got := run(t, `<?php
+function inner($x) {
+	$local = $x * 2;
+	return $local;
+}
+function outer($x) {
+	$local = "outer";
+	$sum = inner($x) + inner($x + 1);
+	return $local . ":" . $sum;
+}
+$local = "top";
+echo outer(2) . "|" . $local;`)
+	if got != "outer:10|top" {
+		t.Fatalf("got %q, want %q", got, "outer:10|top")
+	}
+}
+
+// TestLazyEnvInstallsFunctionsOnDemand covers the environments' on-demand
+// population. A registered function is wrapped into an environment the first
+// time an expression evaluated with that environment calls it, so the places a
+// call can hide from a naive "top-level expressions only" scan are what matters:
+// a closure body, a user function body, a method body, a nested/recursive call
+// and a by-reference call.
+func TestLazyEnvInstallsFunctionsOnDemand(t *testing.T) {
+	src := `<?php
+function shout($s) {
+	return strtoupper($s) . strlen($s);
+}
+class Box {
+	public $items = [];
+	public function add($v) {
+		$this->items[] = shout($v);
+		return $this;
+	}
+	public function render() {
+		return implode(",", $this->items);
+	}
+}
+function depth($n) {
+	if ($n <= 0) {
+		return strtoupper("done");
+	}
+	return depth($n - 1) . strlen("x");
+}
+$b = new Box();
+$b->add("a");
+$b->add("bb");
+$sizes = apply(["cc", "d"], function ($x) { return shout($x) . strlen($x); });
+echo $b->render() . "|" . depth(3) . "|" . implode("-", $sizes);`
+
+	prog, err := parser.Parse(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	rt.RegisterFunc("strlen", func(s string) int { return len(s) })
+	rt.RegisterFunc("strtoupper", strings.ToUpper)
+	rt.RegisterFunc("implode", func(sep string, items any) string {
+		var parts []string
+		model.RangeValues(items, func(_, v any) bool {
+			parts = append(parts, fmt.Sprint(v))
+			return true
+		})
+		return strings.Join(parts, sep)
+	})
+	// apply drives a PHP closure from Go, which re-enters Eval with a fresh
+	// environment while the caller's is still live.
+	rt.RegisterFunc("apply", func(items any, fn func(...any) (any, error)) ([]any, error) {
+		var out []any
+		var err error
+		model.RangeValues(items, func(_, v any) bool {
+			var mapped any
+			if mapped, err = fn(v); err != nil {
+				return false
+			}
+			out = append(out, mapped)
+			return true
+		})
+		return out, err
+	})
+	if err := rt.Run(prog); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if want := "A1,BB2|DONE111|CC22-D11"; out.String() != want {
+		t.Fatalf("got %q, want %q", out.String(), want)
+	}
+}
+
+// TestLazyEnvSeesFunctionsRegisteredAfterPooling asserts that an environment
+// which has already been used (and returned to the free list) still resolves a
+// function registered afterwards, and picks up a replacement implementation of a
+// name it had already installed.
+func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
+	warm, err := parser.Parse(`<?php echo greet("a");`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	later, err := parser.Parse(`<?php echo greet("b") . shout("c") . nested();`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	rt.RegisterFunc("greet", func(s string) string { return "hello " + s })
+	if err := rt.Run(warm); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	out.Reset()
+
+	// Registered after every environment this runtime holds has been built,
+	// used and pooled.
+	rt.RegisterFunc("greet", func(s string) string { return "hi " + s })
+	rt.RegisterFunc("shout", strings.ToUpper)
+	rt.RegisterFunc("nested", func() string { return "!" })
+	if err := rt.Run(later); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if want := "hi bC!"; out.String() != want {
+		t.Fatalf("got %q, want %q", out.String(), want)
+	}
+}
+
+// TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList drives evaluation deeper
+// than the pooled environment free list, so environments are built, nested,
+// discarded and reused while a call to a lazily installed function is live at
+// every level.
+func TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList(t *testing.T) {
+	got := run(t, `<?php
+function down($n) {
+	if ($n <= 0) {
+		return strtoupper("x");
+	}
+	return down($n - 1) . strlen("ab");
+}
+echo down(40);`)
+	if want := "X" + strings.Repeat("2", 40); got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+// TestLazyEnvUndefinedFunctionStillErrors asserts the diagnostic for a call to
+// a function that is not registered: it is a runtime error, not a silent nil.
+func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
+	prog, err := parser.Parse(`<?php echo no_such_function(1);`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	rt := runner.New(io.Discard, runner.Options{})
+	if err := rt.Run(prog); err == nil {
+		t.Fatal("calling an unregistered function: want error, got nil")
 	}
 }

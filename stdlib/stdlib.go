@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"math"
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
@@ -98,12 +100,50 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("implode", phpImplode)
 	rt.RegisterFunc("explode", phpExplode)
 	rt.RegisterFunc("htmlspecialchars", func(s string, _ ...any) string {
-		r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&#039;")
-		return r.Replace(s)
+		return htmlSpecialCharsReplacer.Replace(s)
 	})
 	rt.RegisterFunc("sprintf", phpSprintf)
-	rt.RegisterFunc("crc32", func(s string) int64 { return int64(crc32.ChecksumIEEE([]byte(s))) })
+	rt.RegisterFunc("crc32", phpCRC32)
 }
+
+// htmlSpecialCharsReplacer is built once: a strings.Replacer compiles a trie
+// over its pairs, and htmlspecialchars runs once per template variable, so
+// constructing it inside the binding paid for that trie on every call.
+var htmlSpecialCharsReplacer = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	`"`, "&quot;",
+	"'", "&#039;",
+)
+
+// crc32IEEETable is the standard reflected IEEE table, built once.
+var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
+
+// phpCRC32 checksums a string without the []byte(s) conversion the previous
+// implementation paid on every call. Escape analysis confirmed the conversion
+// escaped ("stdlib.go: ([]byte)(s) escapes to heap"): crc32.ChecksumIEEE's
+// argument leaks into the slicing-by-8 and hardware paths, so every crc32()
+// allocated and copied its input. Short strings — every practical use, since
+// crc32 keys and etags are short — run the table loop in place and allocate
+// nothing. Longer ones keep the standard library's implementation, which
+// processes eight bytes at a time and amortises the copy over the input.
+func phpCRC32(s string) int64 {
+	if len(s) > crc32NativeThreshold {
+		return int64(crc32.ChecksumIEEE([]byte(s)))
+	}
+	crc := ^uint32(0)
+	for i := 0; i < len(s); i++ {
+		crc = crc32IEEETable[byte(crc)^s[i]] ^ (crc >> 8)
+	}
+	return int64(^crc)
+}
+
+// crc32NativeThreshold is where the table loop stops winning outright. Below
+// it the loop is several times faster than allocating a copy (8 bytes: 38ns/0
+// allocs against 105ns/1 alloc); at 256 the two are level on this hardware.
+// See BenchmarkCRC32.
+const crc32NativeThreshold = 256
 
 // phpTrim adapts strings.Trim*-style functions to PHP's optional charlist arg.
 func phpTrim(fn func(string, string) string, def string) func(string, ...string) string {
@@ -154,14 +194,18 @@ func phpStrReplace(search, replace, subject any) string {
 	if model.IsCollection(search) {
 		replIsList := model.IsCollection(replace)
 		repl := arrStrings(replace)
+		// A scalar replacement converts once, not once per search term.
+		scalar := ""
+		if !replIsList {
+			scalar = toString(replace)
+		}
 		for i, s := range arrStrings(search) {
-			r := ""
+			r := scalar
 			if replIsList {
+				r = ""
 				if i < len(repl) {
 					r = repl[i]
 				}
-			} else {
-				r = toString(replace)
 			}
 			out = strings.ReplaceAll(out, s, r)
 		}
@@ -250,25 +294,7 @@ func registerArrays(rt *runner.Runtime) {
 		})
 		return out
 	})
-	rt.RegisterFunc("array_merge", func(arrs ...any) *model.Array {
-		size := 0
-		for _, a := range arrs {
-			n, _ := model.LenValues(a)
-			size += n
-		}
-		out := model.NewArraySize(size)
-		for _, a := range arrs {
-			model.RangeValues(a, func(k, v any) bool {
-				if _, isInt := k.(int64); isInt {
-					out.Append(v)
-				} else {
-					out.Set(k, v)
-				}
-				return true
-			})
-		}
-		return out
-	})
+	rt.RegisterFunc("array_merge", phpArrayMerge)
 	rt.RegisterFunc("array_keys", func(a any) []any {
 		n, _ := model.LenValues(a)
 		out := make([]any, 0, n)
@@ -287,10 +313,43 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("usort", phpUsort)
 }
 
+// phpArrayMerge implements array_merge. PHP renumbers integer keys and lets
+// later string keys win.
+//
+// This returns an *model.Array even when every input is a list. Returning a
+// presized []any for that case is tempting — it is the shape
+// `call_user_func_array($fn, array_merge(...))` forwards with no copy — but
+// rule 4 of docs/allocation-performance.md reserves *model.Array for values
+// the script appends to, and `$x = array_merge($a, $b); $x[] = "z"` is
+// ordinary PHP that a Go slice cannot serve (a slice cannot grow through the
+// interface value holding it). Since model.Array gained its list mode, a
+// merged list costs one struct allocation more than the slice and no map at
+// all, so the appendability is close to free. Measured: 8 allocs either way.
+func phpArrayMerge(arrs ...any) any {
+	size := 0
+	for _, a := range arrs {
+		n, _ := model.LenValues(a)
+		size += n
+	}
+
+	out := model.NewArraySize(size)
+	for _, a := range arrs {
+		model.RangeValues(a, func(k, v any) bool {
+			if _, isInt := k.(int64); isInt {
+				out.Append(v)
+			} else {
+				out.Set(k, v)
+			}
+			return true
+		})
+	}
+	return out
+}
+
 // phpCompact builds an associative map from variables in the calling scope.
 // Names that do not exist are omitted, matching PHP's compact().
 func phpCompact(ctx context.Context, names ...string) map[string]any {
-	out := map[string]any{}
+	out := make(map[string]any, len(names))
 	scope, ok := runner.ScopeFromContext(ctx)
 	if !ok {
 		return out
@@ -521,7 +580,7 @@ func jsonEncodeValue(v any) any {
 		if x == nil {
 			return nil
 		}
-		if jsonArrayIsList(x) {
+		if arrayIsList(x) {
 			out := make([]any, 0, x.Len())
 			x.Range(func(_, v any) bool {
 				out = append(out, jsonEncodeValue(v))
@@ -561,7 +620,9 @@ func jsonEncodeValue(v any) any {
 	}
 }
 
-func jsonArrayIsList(a *model.Array) bool {
+// arrayIsList reports whether an *model.Array's keys are the dense int64
+// sequence 0..n-1, i.e. whether it is a PHP list.
+func arrayIsList(a *model.Array) bool {
 	expect := int64(0)
 	isList := true
 	a.Range(func(k, _ any) bool {
@@ -782,11 +843,17 @@ func toString(v any) string {
 		}
 		return ""
 	case int64:
-		return fmt.Sprintf("%d", x)
+		// strconv formats in place; fmt.Sprintf would box x into an any
+		// (an allocation of its own for values over 255) and run the
+		// formatter. toString sits under implode, str_replace, in_array and
+		// array_unique, so it is worth the two lines.
+		return strconv.FormatInt(x, 10)
 	case int:
-		return fmt.Sprintf("%d", x)
+		return strconv.Itoa(x)
 	case float64:
-		return fmt.Sprintf("%v", x)
+		// %v for a float64 is 'g' with the shortest representation that
+		// round-trips, which is exactly what FormatFloat(-1) produces.
+		return strconv.FormatFloat(x, 'g', -1, 64)
 	default:
 		return fmt.Sprintf("%v", x)
 	}
@@ -806,12 +873,44 @@ func toInt(v any) int64 {
 		}
 		return 0
 	case string:
-		var n int64
-		fmt.Sscanf(x, "%d", &n)
-		return n
+		return leadingInt(x)
 	default:
 		return 0
 	}
+}
+
+// leadingInt reads the integer prefix of s the way fmt.Sscanf(s, "%d", &n) did:
+// leading whitespace and an optional sign, then digits, stopping at the first
+// character that is not one ("12abc" is 12, "abc" is 0). Overflow yields 0, the
+// value Sscanf left behind when it failed. Sscanf allocated a scan state, a
+// reader and an argument box on every call; this reads the string in place.
+func leadingInt(s string) int64 {
+	i := 0
+	for i < len(s) {
+		switch s[i] {
+		case ' ', '\t', '\n', '\r', '\v', '\f':
+			i++
+			continue
+		}
+		break
+	}
+	negative := false
+	if i < len(s) && (s[i] == '+' || s[i] == '-') {
+		negative = s[i] == '-'
+		i++
+	}
+	var n int64
+	for ; i < len(s) && s[i] >= '0' && s[i] <= '9'; i++ {
+		digit := int64(s[i] - '0')
+		if n > (math.MaxInt64-digit)/10 {
+			return 0
+		}
+		n = n*10 + digit
+	}
+	if negative {
+		return -n
+	}
+	return n
 }
 
 func truthy(v any) bool {

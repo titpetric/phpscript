@@ -33,15 +33,15 @@ type flatHost struct {
 }
 
 func (h flatHost) Construct(class string, args []any) (any, error) {
-	return h.runtime.helperNew(NewScope())(strings.TrimPrefix(class, "\\"), args...)
+	return h.runtime.helperNew(&scopeRef{scope: NewScope()})(strings.TrimPrefix(class, "\\"), args...)
 }
 
 func (h flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
-	return h.runtime.helperCall(NewScope())(receiver, method, args...)
+	return h.runtime.helperCall(&scopeRef{scope: NewScope()})(receiver, method, args...)
 }
 
 func (h flatHost) GetProperty(receiver any, name string) any {
-	return h.runtime.helperGet(nil)(receiver, name)
+	return h.runtime.helperGet(&scopeRef{})(receiver, name)
 }
 
 func (h flatHost) Echo(value any) error {
@@ -172,5 +172,5 @@ func (h flatHost) Entries(value any) []flatvm.Entry {
 }
 
 func (h flatHost) Call(name, fallback string, args []any) (any, error) {
-	return h.runtime.helperFunc(NewScope())(name, fallback, args...)
+	return h.runtime.helperFunc(&scopeRef{scope: NewScope()})(name, fallback, args...)
 }

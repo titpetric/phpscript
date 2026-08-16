@@ -20,7 +20,8 @@ import "reflect"
 // RangeValues iterates a collection in order, calling fn for each key/value
 // pair until fn returns false. It accepts:
 //
-//	*Array          insertion order, hybrid int64/string keys
+//	*Array          insertion order, hybrid int64/string keys (a list-mode
+//	                Array walks its []any directly, with no map lookup)
 //	slice, array    int64 keys in index order
 //	map             key order is Go's (unordered), keys as declared
 //
@@ -138,6 +139,14 @@ func IsCollection(v any) bool {
 func ToArray(v any) *Array {
 	if arr, ok := v.(*Array); ok && arr != nil {
 		return arr
+	}
+	// A Go slice is already a list: hand its elements straight to a list-mode
+	// Array (one allocation for the copy) instead of paying a Set per element.
+	if items, ok := v.([]any); ok {
+		out := NewArraySize(len(items))
+		out.list = append(out.list, items...)
+		out.nextID = int64(len(items))
+		return out
 	}
 	n, _ := LenValues(v)
 	out := NewArraySize(n)

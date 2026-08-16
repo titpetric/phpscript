@@ -215,7 +215,7 @@ func mapToArray(m map[string]string) *model.Array {
 	if len(m) == 0 {
 		return model.NewArray()
 	}
-	arr := model.NewArray()
+	arr := model.NewArraySize(len(m))
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
