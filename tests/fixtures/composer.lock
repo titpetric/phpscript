@@ -1,0 +1,74 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "2f266b5d4377537260e75108144b718e",
+    "packages": [
+        {
+            "name": "titpetric/minitpl",
+            "version": "dev-master",
+            "dist": {
+                "type": "path",
+                "url": "../../../minitpl",
+                "reference": "3a24b6a73761338a2b56dc053eebb60ec5e20718"
+            },
+            "require": {
+                "php": ">=5.6.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "MiniTPL\\": "code/MiniTPL/"
+                }
+            },
+            "archive": {
+                "exclude": [
+                    "/test",
+                    "/documentation",
+                    "/vendor",
+                    "/git_hooks",
+                    "/phpunit.xml",
+                    "/.gitmodules"
+                ]
+            },
+            "license": [
+                "CC-BY-SA-3.0"
+            ],
+            "authors": [
+                {
+                    "name": "Tit Petric",
+                    "email": "tit.petric@gmail.com",
+                    "homepage": "http://titpetric.github.io",
+                    "role": "developer"
+                }
+            ],
+            "description": "Miniature fully featured PHP template engine",
+            "homepage": "https://github.com/titpetric/minitpl",
+            "keywords": [
+                "minitpl",
+                "php",
+                "small",
+                "smarty",
+                "template",
+                "tiny"
+            ],
+            "transport-options": {
+                "symlink": false,
+                "relative": true
+            }
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": {
+        "titpetric/minitpl": 20
+    },
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": {},
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
+}

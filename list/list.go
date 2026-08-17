@@ -11,11 +11,12 @@ import (
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/route"
+	"github.com/titpetric/phpscript/startup"
 )
 
 // Row is one markdown table row.
 type Row struct {
-	Route    string // e.g. "GET /users/{id}", or empty
+	Route    string // e.g. "GET /users/{id}", "@startup", or empty
 	Filename string // slash-separated path relative to the working directory
 	Classes  string // comma-separated FQNs, or empty
 }
@@ -51,7 +52,14 @@ func File(path string) ([]Row, error) {
 	classCol := strings.Join(classes, ", ")
 	anns := route.Annotations(b)
 	if len(anns) == 0 {
+		// A startup file has no route but is still an entry point: the server
+		// runs it once before listening, so the inventory names it as one.
+		entry := ""
+		if startup.Annotated(b) {
+			entry = "@startup"
+		}
 		return []Row{{
+			Route:    entry,
 			Filename: rel,
 			Classes:  classCol,
 		}}, nil

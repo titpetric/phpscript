@@ -1,0 +1,12 @@
+{
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../../minitpl",
+            "options": { "symlink": false }
+        }
+    ],
+    "require": {
+        "titpetric/minitpl": "@dev"
+    }
+}

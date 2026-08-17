@@ -1,0 +1,5 @@
+routes:
+  enabled: true
+
+env:
+  - "PLATFORM_DB_BOOKMARKS=sqlite://bookmarks.db"

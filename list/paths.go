@@ -93,7 +93,9 @@ func walkRecursive(dir string) ([]string, error) {
 			return err
 		}
 		if d.IsDir() {
-			if d.Name() == ".git" {
+			// vendor/ is composer's install tree: third-party sources, not the
+			// application's own files, and listing them buries the project.
+			if d.Name() == ".git" || d.Name() == "vendor" {
 				return filepath.SkipDir
 			}
 			return nil

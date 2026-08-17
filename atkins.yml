@@ -13,6 +13,7 @@ tasks:
       - goimports-reviser -set-alias -format -imports-order "std,blanked,general,company,project" ./...
       - go fmt ./...
       - go install .
+      - task: composer:install
       - task: go:test
       - task: go:build
       - task: docker:build
@@ -20,12 +21,28 @@ tasks:
       - task: test:introspection
       - task: test:phpscript:run
       - task: test:demos:dbadmin
+      - task: test:demos:example
 
-  # The demo is a compose service, so its venom suite runs against the image
-  # built above. It has its own pipeline because it has to resolve the address
-  # of its container first.
+  # titpetric/minitpl is pulled in per project rather than vendored by hand, so
+  # every tree with a composer.json is installed before the Go tests (the parser
+  # benchmarks read the engine sources) and before the demos are packaged into
+  # the image.
+  composer:install:
+    passthru: true
+    cmds:
+      - for dir in tests/fixtures demos/example; do (cd $dir && composer install --no-interaction); done
+
+  # The demos are compose services, so their venom suites run against the image
+  # built above. They have their own pipelines because they have to resolve the
+  # address of their container first.
   test:demos:dbadmin:
     dir: demos/dbadmin/tests
+    passthru: true
+    cmds:
+      - atkins --final test
+
+  test:demos:example:
+    dir: demos/example/tests
     passthru: true
     cmds:
       - atkins --final test

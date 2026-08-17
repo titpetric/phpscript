@@ -19,6 +19,7 @@ import (
 
 	yaml "gopkg.in/yaml.v3"
 
+	"github.com/titpetric/phpscript/composer"
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
@@ -348,6 +349,13 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	stdlib.Register(rt)
 
 	reqCtx.Register(rt)
+
+	// Fixtures execute with the fixtures directory as their project root, so a
+	// composer.json there gives every .phpt the same vendor autoloading a real
+	// project gets.
+	if err := composer.Register(rt, options.RootFS, "."); err != nil {
+		return "Internal Server Error", reqCtx, err
+	}
 
 	if err := rt.Run(prog); err != nil {
 		if _, ok := runner.IsExit(err); ok {

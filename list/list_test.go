@@ -57,6 +57,36 @@ echo $_PATH["id"];
 	}
 }
 
+func TestFileMarksStartupEntryPoints(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "migrate.php")
+	mustWrite(t, path, `<?php
+// @startup
+
+$migrate = new Database\Migrate("app");
+$migrate->load("./schema/*.up.sql");
+$migrate->run();
+`)
+
+	rows, err := list.File(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Route != "@startup" {
+		t.Fatalf("rows = %+v, want one @startup row", rows)
+	}
+
+	plain := filepath.Join(dir, "bootstrap.php")
+	mustWrite(t, plain, "<?php\n$db = new Database(\"app\");\n")
+	rows, err = list.File(plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0].Route != "" {
+		t.Fatalf("rows = %+v, want one unannotated row", rows)
+	}
+}
+
 func TestMarkdownPrintsFullTable(t *testing.T) {
 	rows := []list.Row{{
 		Route:    "GET /users/{id}/with/a/very/long/path",

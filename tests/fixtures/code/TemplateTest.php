@@ -18,7 +18,7 @@ class TemplateTest extends TestCase
 		$destination = "compiled/".$template;
 		$compiled = "compiled/".$template;
 
-		$tpl = new Template;
+		$tpl = new MiniTPL\Template;
 
 		$tpl->set_paths("templates/");
 		$tpl->set_compile_location("compiled/", false);
@@ -44,7 +44,7 @@ class TemplateTest extends TestCase
 
 	public function testRendering()
 	{
-		$tpl = new Template;
+		$tpl = new MiniTPL\Template;
 
 		$tpl->set_paths("templates/");
 		$tpl->set_compile_location("compile/", false);
@@ -91,7 +91,7 @@ class TemplateTest extends TestCase
 
 	public function testGetVar()
 	{
-		$tpl = new Template;
+		$tpl = new MiniTPL\Template;
 		$tpl->assign("foo", "bar");
 		$this->assertEquals("bar", $tpl->getVar("foo"));
 	}
@@ -99,7 +99,7 @@ class TemplateTest extends TestCase
 	public function testException()
 	{
 		$this->expectException("Exception");
-		$tpl = new Template;
+		$tpl = new MiniTPL\Template;
 		$tpl->set_compile_location("compile/", false);
 		$tpl->set_paths("templates2/");
 		$tpl->load("fail_to_compile.tpl");
@@ -112,7 +112,7 @@ class TemplateTest extends TestCase
 	public function testVars($expression, $expected, $description)
 	{
 		global $tpl;
-		$tpl = new Compiler;
+		$tpl = new MiniTPL\Compiler;
 
 		$result = $tpl->_split_exp($expression);
 		$this->assertEquals($expected, $result);
@@ -121,7 +121,7 @@ class TemplateTest extends TestCase
 	public function testFailure()
 	{
 		$this->expectException("Exception");
-		$tpl = new Template;
+		$tpl = new MiniTPL\Template;
 		$this->assertFalse($tpl->load("missing.tpl"));
 		$tpl->render();
 	}

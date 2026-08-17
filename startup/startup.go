@@ -11,6 +11,7 @@ import (
 
 	"github.com/titpetric/platform"
 
+	"github.com/titpetric/phpscript/composer"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 )
@@ -48,14 +49,21 @@ func (m *Module) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if entry.IsDir() || filepath.Ext(path) != ".php" {
+		if entry.IsDir() {
+			// A composer dependency does not get to run at startup.
+			if entry.Name() == "vendor" {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) != ".php" {
 			return nil
 		}
 		src, err := fs.ReadFile(m.root, path)
 		if err != nil {
 			return err
 		}
-		if !annotated(src) {
+		if !Annotated(src) {
 			return nil
 		}
 		if err := m.run(ctx, path, src); err != nil {
@@ -65,7 +73,10 @@ func (m *Module) Start(ctx context.Context) error {
 	})
 }
 
-func annotated(src []byte) bool {
+// Annotated reports whether src carries an @startup comment, marking a file
+// the server executes once before it listens. `phpscript list` uses it to show
+// startup files alongside routed ones.
+func Annotated(src []byte) bool {
 	for line := range strings.SplitSeq(string(src), "\n") {
 		text := strings.TrimSpace(line)
 		switch {
@@ -121,6 +132,9 @@ func (m *Module) runPHP(ctx context.Context, path string, src []byte) error {
 		stdlib.RegisterFS(rt, m.rootDir)
 	}
 	runner.NewContext().Register(rt)
+	if err := composer.Register(rt, m.root, "."); err != nil {
+		return err
+	}
 
 	rt.UpdateFilename(path)
 	program, err := rt.Load(string(src))

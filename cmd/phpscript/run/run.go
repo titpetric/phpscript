@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path"
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/composer"
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
@@ -51,6 +53,12 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 
 	reqCtx := runner.NewContext()
 	reqCtx.Register(rt)
+
+	// A composer project covering the script makes its vendor packages
+	// resolvable without an include; scripts outside one are unaffected.
+	if err := composer.Register(rt, options.RootFS, path.Dir(args[0])); err != nil {
+		return err
+	}
 
 	if err := rt.Run(prog); err != nil {
 		if exitErr, ok := runner.IsExit(err); ok {

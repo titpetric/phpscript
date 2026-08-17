@@ -42,6 +42,7 @@ import (
 
 	"github.com/titpetric/platform"
 
+	"github.com/titpetric/phpscript/composer"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
@@ -99,6 +100,9 @@ type Service struct {
 	excludedDirs  map[string]struct{}
 	runnerOptions runner.Options
 	flatstack     bool
+	// composer is the project covering the registered root, resolved once so
+	// each per-request runtime replays the same autoload map.
+	composer *composer.Project
 }
 
 // Module loads annotated PHP routes into a platform router.
@@ -184,6 +188,11 @@ func (m *Service) Register(root fs.FS) error {
 	if m.exprCache == nil {
 		m.exprCache = runner.NewExprCache()
 	}
+	project, _, err := composer.Discover(root, ".")
+	if err != nil {
+		return err
+	}
+	m.composer = project
 	// Include paths are relative to one filesystem root. Keep a cache per
 	// Register call so two roots containing the same path cannot share a parsed
 	// program accidentally.
@@ -195,6 +204,12 @@ func (m *Service) Register(root fs.FS) error {
 		}
 		if d.IsDir() {
 			if _, excluded := m.excludedDirs[path]; excluded {
+				return fs.SkipDir
+			}
+			// composer's install tree holds third-party sources. A dependency
+			// does not get to publish routes into the application, and walking
+			// it costs a parse of every vendored file.
+			if d.Name() == "vendor" {
 				return fs.SkipDir
 			}
 		}
@@ -282,6 +297,9 @@ func (m *Service) servePHP(root fs.FS, file string, includeCache *runner.Include
 	ctx.Register(rt)
 	for _, fn := range m.runtimeFuncs {
 		fn(rt)
+	}
+	if m.composer != nil {
+		m.composer.Register(rt, root)
 	}
 	prog, err := rt.LoadFile(file)
 	if err == nil {

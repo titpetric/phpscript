@@ -14,6 +14,19 @@ services:
     volumes:
       - $PWD/demos/dbadmin/:/app
 
+  # The tutorial application. It carries its own config.yml, so it is started
+  # with -f rather than through .env.docker.
+  example:
+    image: titpetric/phpscript:latest
+    command: ["-f", "config.yml", "server", "."]
+    networks:
+      - projects-ingress
+    labels:
+      caddy: example.localhost
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+    volumes:
+      - $PWD/demos/example/:/app
+
 networks:
   projects-ingress:
     external: true

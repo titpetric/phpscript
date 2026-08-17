@@ -112,10 +112,10 @@ func TestModuleRecordsStartupSuccessAndFailure(t *testing.T) {
 }
 
 func TestAnnotatedRequiresCommentAnnotation(t *testing.T) {
-	if annotated([]byte(`<?php echo "// @startup";`)) {
+	if Annotated([]byte(`<?php echo "// @startup";`)) {
 		t.Fatal("annotation inside PHP string was detected")
 	}
-	if !annotated([]byte("<?php\n/**\n * @startup\n */")) {
+	if !Annotated([]byte("<?php\n/**\n * @startup\n */")) {
 		t.Fatal("docblock annotation was not detected")
 	}
 }

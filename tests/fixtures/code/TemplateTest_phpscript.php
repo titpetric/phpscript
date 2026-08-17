@@ -43,7 +43,7 @@ class TemplateTest
 		$destination = "compiled/".$template;
 		$compiled = "compiled/".$template;
 
-		$tpl = new Template;
+		$tpl = new MiniTPL\Template;
 
 		$tpl->set_paths("templates/");
 		$tpl->set_compile_location("compiled/", false);
@@ -69,7 +69,7 @@ class TemplateTest
 
 	public function testRendering()
 	{
-		$tpl = new Template;
+		$tpl = new MiniTPL\Template;
 
 		$tpl->set_paths("templates/");
 		$tpl->set_compile_location("compile/", false);
@@ -115,7 +115,7 @@ class TemplateTest
 
 	public function testGetVar()
 	{
-		$tpl = new Template;
+		$tpl = new MiniTPL\Template;
 		$tpl->assign("foo", "bar");
 		$this->testcase->assertEquals("bar", $tpl->getVar("foo"));
 	}
@@ -124,7 +124,7 @@ class TemplateTest
 	{
 		$caught = false;
 		try {
-			$tpl = new Template;
+			$tpl = new MiniTPL\Template;
 			$tpl->set_compile_location("compile/", false);
 			$tpl->set_paths("templates2/");
 			$tpl->load("fail_to_compile.tpl");
@@ -140,7 +140,7 @@ class TemplateTest
 	#[\PHPUnit\Framework\Attributes\DataProvider('varsProvider')]
 	public function testVars($expression, $expected, $description)
 	{
-		$tpl = new Compiler;
+		$tpl = new MiniTPL\Compiler;
 		$result = $tpl->_split_exp($expression);
 		$this->testcase->assertEquals($expected, $result);
 	}
@@ -149,7 +149,7 @@ class TemplateTest
 	{
 		$caught = false;
 		try {
-			$tpl = new Template;
+			$tpl = new MiniTPL\Template;
 			$this->testcase->assertFalse($tpl->load("missing.tpl"));
 			$tpl->render();
 		} catch ($e) {

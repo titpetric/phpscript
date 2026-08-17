@@ -300,7 +300,12 @@ var byRefArgs = map[string]map[int]bool{
 // By-reference output arguments that are plain variables are emitted as __ref
 // setters so the shim can write the result back into scope.
 func (t *Transpiler) emitCall(n *model.Call) (string, error) {
+	// Inside a namespaced file Name is qualified ("MiniTPL\preg_match_all") and
+	// only Fallback carries the global name the by-reference table is keyed by.
 	refs := byRefArgs[n.Name]
+	if refs == nil && n.Fallback != "" {
+		refs = byRefArgs[n.Fallback]
+	}
 	args := make([]string, 0, len(n.Args))
 	for i, a := range n.Args {
 		if refs[i] {

@@ -188,15 +188,28 @@ func TestLexRejectsUnknownCharacter(t *testing.T) {
 // read-only inputs for the parser benchmarks.
 func fixtureSource(tb testing.TB, name string) string {
 	tb.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "tests", "fixtures", "code", name))
+	return readSource(tb, filepath.Join("..", "tests", "fixtures", "code", name))
+}
+
+// engineSource reads a file of the titpetric/minitpl sources, the parser's
+// largest real-world input. It comes from composer rather than a checked-in
+// copy, so a tree where `composer install` has not run skips these cases.
+func engineSource(tb testing.TB, name string) string {
+	tb.Helper()
+	return readSource(tb, filepath.Join("..", "tests", "fixtures", "vendor", "titpetric", "minitpl", "code", "MiniTPL", name))
+}
+
+func readSource(tb testing.TB, path string) string {
+	tb.Helper()
+	b, err := os.ReadFile(path)
 	if err != nil {
-		tb.Skipf("fixture %s unavailable: %v", name, err)
+		tb.Skipf("fixture %s unavailable: %v", path, err)
 	}
 	return string(b)
 }
 
 func BenchmarkLexCompiler(b *testing.B) {
-	src := fixtureSource(b, "Compiler.php")
+	src := engineSource(b, "Compiler.php")
 	b.SetBytes(int64(len(src)))
 	b.ReportAllocs()
 	for b.Loop() {

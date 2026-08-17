@@ -6,9 +6,12 @@ This is an experimental PHP interpreter. It supports the basic php expression sy
 - [Language reference and PHP compatibility](./docs/reference/README.md)
 - [Installation and usage](./docs/usage.md)
 - [Configuration](./docs/configuration.md)
+- [Composer support](./docs/composer.md)
 - [Testing and extending tests](./docs/testing.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
+- [Building an application](./docs/use-cases/application.md)
 - [Use cases](./docs/use-cases)
+- [Demo applications](./demos)
 
 ## Current state
 
@@ -19,6 +22,11 @@ Several unit focused test fixtures exists, namely:
 3. loading and executing template engine code
 
 This means that phpscript is currently able to use a generic Database client. Our own standard library implements a `Database` class which is integration tested with [./tests/fixtures/test-database.php](./tests/fixtures/test-database.php) over several databases (pgx, mysql, sqlite).
+
+Composer dependencies are resolved from `composer.json` and `vendor/`, so
+[titpetric/minitpl](https://github.com/titpetric/minitpl) runs unmodified from
+packagist rather than from a patched copy in this repository — see
+[Composer support](./docs/composer.md).
 
 ## Building a docker image
 

@@ -15,6 +15,7 @@ import (
 	"github.com/titpetric/cli"
 	"github.com/titpetric/platform"
 
+	"github.com/titpetric/phpscript/composer"
 	"github.com/titpetric/phpscript/config"
 	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
@@ -77,6 +78,10 @@ type handler struct {
 	runnerOptions runner.Options
 	flatstack     bool
 	observers     []runner.Observer
+	// composer is the project serving the document root, resolved once at
+	// mount time and replayed onto each per-request runtime. Nil when the
+	// project has no composer.json.
+	composer *composer.Project
 }
 
 // NewHandler serves annotated project routes and files beneath public/.
@@ -90,6 +95,10 @@ func newHandler(root fs.FS, rootDir string, options runner.Options, flatstack bo
 	if err != nil {
 		return nil, fmt.Errorf("server: public directory: %w", err)
 	}
+	project, _, err := composer.Discover(root, ".")
+	if err != nil {
+		return nil, err
+	}
 	h := &handler{
 		root:          root,
 		rootDir:       rootDir,
@@ -100,6 +109,7 @@ func newHandler(root fs.FS, rootDir string, options runner.Options, flatstack bo
 		runnerOptions: options,
 		flatstack:     flatstack,
 		observers:     observers,
+		composer:      project,
 	}
 	return h, nil
 }
@@ -150,6 +160,9 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	}
 	reqCtx := runner.FromRequest(r)
 	reqCtx.Register(rt)
+	if h.composer != nil {
+		h.composer.Register(rt, h.root)
+	}
 
 	err = rt.Run(prog)
 	for name, values := range reqCtx.ResponseHeaders() {
