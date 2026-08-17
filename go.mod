@@ -12,7 +12,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/titpetric/cli v0.5.0
-	github.com/titpetric/oida v0.0.0-20260816165125-f11d027cb490
+	github.com/titpetric/oida v0.1.0
 	github.com/titpetric/pdo v0.0.0-20260814130052-5c4c128dfa7c
 	github.com/titpetric/platform v0.5.0
 	golang.org/x/term v0.45.0
