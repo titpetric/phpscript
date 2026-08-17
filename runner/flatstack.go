@@ -44,6 +44,20 @@ func (h flatHost) GetProperty(receiver any, name string) any {
 	return h.runtime.helperGet(&scopeRef{})(receiver, name)
 }
 
+// SetProperty writes an object property, the same way the interpreter does:
+// a PHP object carries the value in its property map, and a Go binding assigns
+// the struct field the name resolves to — `$db->is_readonly = true` sets
+// IsReadonly.
+func (h flatHost) SetProperty(receiver any, name string, value any, op string) error {
+	if object, ok := receiver.(*model.Object); ok {
+		object.Props[name] = applyAssignOp(op, object.Props[name], value)
+		return nil
+	}
+	return assignGoField(receiver, name, func(current any) any {
+		return applyAssignOp(op, current, value)
+	})
+}
+
 func (h flatHost) Echo(value any) error {
 	_, err := io.WriteString(h.runtime.out, phpString(value))
 	return err

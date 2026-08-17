@@ -142,12 +142,7 @@ func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 		rv := reflect.ValueOf(base)
 		value := reflect.Indirect(rv)
 		if value.Kind() == reflect.Struct {
-			// Exact match first, then case-insensitive (PHP property access on a Go
-			// struct: `$rec->value` resolves the exported field Value).
-			if f := value.FieldByName(name); f.IsValid() {
-				return f.Interface()
-			}
-			if f := value.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) }); f.IsValid() {
+			if f := fieldByNameFold(value, name); f.IsValid() && f.CanInterface() {
 				return f.Interface()
 			}
 		}
@@ -399,6 +394,23 @@ func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 		}
 	}
 	return reflect.Value{}
+}
+
+// fieldByNameFold finds a struct field the way methodByNameFold finds a method:
+// exact match first (PHP property access on a Go struct, `$rec->value` for the
+// field Value), then case-insensitively, then without underscores so snake_case
+// PHP property names resolve idiomatic Go names (is_readonly -> IsReadonly).
+func fieldByNameFold(value reflect.Value, name string) reflect.Value {
+	if f := value.FieldByName(name); f.IsValid() {
+		return f
+	}
+	if f := value.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) }); f.IsValid() {
+		return f
+	}
+	folded := strings.ReplaceAll(name, "_", "")
+	return value.FieldByNameFunc(func(n string) bool {
+		return strings.EqualFold(strings.ReplaceAll(n, "_", ""), folded)
+	})
 }
 
 // firstReturn reduces a reflect Call result to (value, error) following Go

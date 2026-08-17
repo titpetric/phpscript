@@ -884,12 +884,7 @@ func assignGoField(base any, name string, value func(any) any) error {
 	if object.Kind() != reflect.Struct {
 		return fmt.Errorf("assign: %q is not an object property", name)
 	}
-	field := object.FieldByName(name)
-	if !field.IsValid() {
-		field = object.FieldByNameFunc(func(fieldName string) bool {
-			return strings.EqualFold(fieldName, name)
-		})
-	}
+	field := fieldByNameFold(object, name)
 	if !field.IsValid() || !field.CanSet() || !field.CanInterface() {
 		return fmt.Errorf("assign: %q is not a writable object property", name)
 	}
