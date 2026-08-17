@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-bridget/mig/migrate"
 	"github.com/jmoiron/sqlx"
+
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 // DatabaseMigrate loads and runs SQL migrations against a platform database.
@@ -42,7 +44,15 @@ func (m *DatabaseMigrate) Load(pattern string) error {
 	return nil
 }
 
-// Run applies the loaded migrations.
+// Run applies the loaded migrations. It is one span rather than one per file:
+// migrations run at startup, where what matters is how long the schema took and
+// whether it failed, not a row per statement.
 func (m *DatabaseMigrate) Run(ctx context.Context) error {
-	return migrate.RunWithFS(ctx, m.database, m.migrations, migrate.NewOptions())
+	span := telemetry.StartSpan(ctx, "migrate", telemetry.KindDatabase)
+	defer span.End()
+	span.SetAttribute("migrations", len(m.migrations))
+
+	err := migrate.RunWithFS(ctx, m.database, m.migrations, migrate.NewOptions())
+	span.RecordError(err)
+	return err
 }

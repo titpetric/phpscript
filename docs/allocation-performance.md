@@ -346,7 +346,7 @@ available.
 | `header`                                | nothing                                         | OK                       |
 | `defer`                                 | `error`                                         | OK                       |
 | `register_shutdown_function`            | —                                               | OK                       |
-| `start_span`                            | `*model.RequestSpan`                            | OK — pointer, boxes free |
+| `start_span`                            | `*telemetry.Span`                               | OK — pointer, boxes free |
 
 ### Classes
 

@@ -8,5 +8,5 @@ package stdlib
 import (
 	_ "github.com/titpetric/phpscript/stdlib/ps"
 	_ "github.com/titpetric/phpscript/stdlib/smtp"
-	_ "github.com/titpetric/phpscript/stdlib/status"
+	_ "github.com/titpetric/phpscript/stdlib/span"
 )

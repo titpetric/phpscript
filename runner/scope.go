@@ -3,7 +3,7 @@ package runner
 import (
 	"context"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 type scopeContextKey struct{}
@@ -61,12 +61,12 @@ func (s *Scope) DefinedVars() map[string]any {
 func contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	if filename, ok := scope.Get("__FILE__"); ok {
 		if filename, ok := filename.(string); ok {
-			ctx = model.WithSpanFilename(ctx, filename)
+			ctx = telemetry.WithSpanFilename(ctx, filename)
 		}
 	}
 	if line, ok := scope.Get("__LINE__"); ok {
 		if line, ok := line.(int); ok {
-			ctx = model.WithSpanLine(ctx, line)
+			ctx = telemetry.WithSpanLine(ctx, line)
 		}
 	}
 	return context.WithValue(ctx, scopeContextKey{}, scope)

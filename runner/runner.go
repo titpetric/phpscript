@@ -3,7 +3,6 @@ package runner
 import (
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"io/fs"
 	"path"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 // This file is the statement interpreter. expr-lang evaluates expressions, but
@@ -39,10 +39,10 @@ func (rt *Runtime) SetIncludeResolver(fn IncludeFunc) { rt.include = fn }
 
 // Load parses PHP source into a program.
 func (rt *Runtime) Load(src string) (*model.Program, error) {
-	rt.UpdateStatus(model.StatusReading)
+	rt.UpdateStatus(telemetry.StateReading)
 	program, err := parser.Parse(src)
 	if err != nil {
-		rt.UpdateStatus(model.StatusError)
+		rt.UpdateStatus(telemetry.StateError)
 	}
 	return program, err
 }
@@ -50,15 +50,15 @@ func (rt *Runtime) Load(src string) (*model.Program, error) {
 // LoadFile reads and parses a PHP file from the runtime source FS.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 	rt.UpdateFilename(path)
-	rt.UpdateStatus(model.StatusReading)
+	rt.UpdateStatus(telemetry.StateReading)
 	if rt.opts.RootFS == nil {
-		rt.UpdateStatus(model.StatusError)
+		rt.UpdateStatus(telemetry.StateError)
 		return nil, fmt.Errorf("load %q: no source FS configured", path)
 	}
 	cleanPath := rt.resolveFSPath(path)
 	b, err := fs.ReadFile(rt.opts.RootFS, cleanPath)
 	if err != nil {
-		rt.UpdateStatus(model.StatusError)
+		rt.UpdateStatus(telemetry.StateError)
 		return nil, fmt.Errorf("load %q: %w", path, err)
 	}
 	prog, err := rt.Load(string(b))
@@ -75,21 +75,27 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 		if err == nil {
 			return
 		}
-		rt.UpdateStatus(model.StatusError)
-		if _, exit := IsExit(err); exit {
+		// exit(0) is how a PHP page ends early, not how it fails. The state
+		// feeds the recorded SLA, so only a non-zero code is an error.
+		if exit, ok := IsExit(err); ok {
+			if exit.Code != 0 {
+				rt.UpdateStatus(telemetry.StateError)
+			}
 			return
 		}
+		rt.UpdateStatus(telemetry.StateError)
 		ctx := rt.ctx
 		if rt.entrypoint != "" {
-			ctx = model.WithSpanFilename(ctx, rt.entrypoint)
+			ctx = telemetry.WithSpanFilename(ctx, rt.entrypoint)
 		}
-		ctx = model.WithSpanLine(ctx, rt.currentLine)
-		span := rt.traceContext(ctx, fmt.Sprintf("Error: <code>%s</code>", template.HTMLEscapeString(err.Error())))
-		if span != nil {
-			span.RecordError(err)
-		}
+		ctx = telemetry.WithSpanLine(ctx, rt.currentLine)
+		// The span is named for what happened, not for this instance of it: the
+		// message is the recorded error, which the front end renders under the
+		// span and filters on. A message in the name would make every failure
+		// its own kind of failure.
+		rt.traceContext(ctx, "php error").RecordError(err)
 	}()
-	rt.UpdateStatus(model.StatusProcessing)
+	rt.UpdateStatus(telemetry.StateProcessing)
 	if rt.flat {
 		if handled, flatErr := rt.runFlat(p); handled {
 			err = flatErr
@@ -164,7 +170,7 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 			rt.currentLine = source.Start
 			scope.Set("__LINE__", source.Start)
 		}
-		rt.UpdateStatus(model.StatusProcessing)
+		rt.UpdateStatus(telemetry.StateProcessing)
 		val, fl, err := rt.execOne(s, scope)
 		if err != nil {
 			if _, ok := IsExit(err); ok {
@@ -186,7 +192,7 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	switch n := s.(type) {
 	case *model.InlineHTML:
-		rt.UpdateStatus(model.StatusWriting)
+		rt.UpdateStatus(telemetry.StateWriting)
 		_, err := io.WriteString(rt.out, n.Text)
 		return nil, flowNormal, err
 
@@ -196,7 +202,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 			if err != nil {
 				return nil, flowNormal, err
 			}
-			rt.UpdateStatus(model.StatusWriting)
+			rt.UpdateStatus(telemetry.StateWriting)
 			if _, err := io.WriteString(rt.out, phpString(v)); err != nil {
 				return nil, flowNormal, err
 			}
@@ -475,35 +481,34 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 // captures nothing, so returning it does not allocate.
 func noopTrace() {}
 
-func (rt *Runtime) trace(scope *Scope, message string) func() {
+// trace measures one region of interpreter work: a call, an include, a
+// template. The returned closer ends the span, so callers defer it where the
+// region begins.
+func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) func() {
 	if len(rt.observers) == 0 {
 		return noopTrace
 	}
-	span := rt.traceContext(contextWithScope(rt.ctx, scope), message)
-	return func() {
-		if span != nil {
-			span.End()
-		}
+	span := rt.traceContext(contextWithScope(rt.ctx, scope), message, kind...)
+	if span == nil {
+		return noopTrace
 	}
-}
 
-func (rt *Runtime) traceRegion(scope *Scope, message string, flags ...model.Flag) func() {
-	if len(rt.observers) == 0 {
-		return noopTrace
-	}
-	ctx := contextWithScope(rt.ctx, scope)
-	rt.traceContext(ctx, message, append(flags, model.OpenSpan)...)
+	// Spans started while the region runs nest below it, which is what turns a
+	// flat list of calls and includes into the shape of the request.
+	restore := rt.ctx
+	rt.ctx = span.Context(rt.ctx)
 	return func() {
-		rt.traceContext(ctx, message, append(flags, model.CloseSpan)...)
+		rt.ctx = restore
+		span.End()
 	}
 }
 
 func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
-	var spanType model.Flag
+	kind := telemetry.KindInternal
 	if strings.EqualFold(filepath.Ext(path), ".tpl") {
-		spanType = model.SpanType.Template
+		kind = telemetry.KindTemplate
 	}
-	defer rt.traceRegion(scope, "include "+path, spanType)()
+	defer rt.trace(scope, "include "+path, kind)()
 
 	prog, filename, err := rt.resolveInclude(path)
 	if err != nil {

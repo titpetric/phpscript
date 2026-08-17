@@ -25,6 +25,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 // phpSuperglobals are visible in every scope without a `global` declaration.
@@ -39,7 +40,7 @@ var phpSuperglobals = map[string]struct{}{
 type Runtime struct {
 	out        io.Writer
 	flat       bool
-	status     model.Status
+	status     telemetry.State
 	entrypoint string
 	observers  []Observer
 	funcs      map[string]any
@@ -265,10 +266,13 @@ func (rt *Runtime) Context() context.Context {
 }
 
 // Observer receives lifecycle updates for a Runtime. Implementations must be
-// safe for use by concurrent runtimes.
+// safe for use by concurrent runtimes. A span is returned so the interpreter
+// can measure the region it just reported; a nil span is valid and every
+// method on it does nothing, which is what an observer with no trace in the
+// context returns.
 type Observer interface {
-	UpdateStatus(context.Context, model.Status)
-	Trace(context.Context, string, ...model.Flag) *model.RequestSpan
+	UpdateStatus(context.Context, telemetry.State)
+	Trace(context.Context, string, ...telemetry.Kind) *telemetry.Span
 }
 
 // FilenameObserver optionally receives the entrypoint passed to LoadFile.
@@ -288,33 +292,33 @@ func (rt *Runtime) Observe(observer Observer) {
 	}
 	rt.observers = append(rt.observers, observer)
 	if rt.status == "" {
-		rt.status = model.StatusStarting
+		rt.status = telemetry.StateStarting
 	}
 	observer.UpdateStatus(rt.ctx, rt.status)
 }
 
 // UpdateStatus publishes a lifecycle phase to all registered observers. It is
 // also available to hosts for phases that occur outside PHP execution.
-func (rt *Runtime) UpdateStatus(status model.Status) {
-	if rt.status == status {
+func (rt *Runtime) UpdateStatus(state telemetry.State) {
+	if rt.status == state {
 		return
 	}
-	rt.status = status
+	rt.status = state
 	for _, observer := range rt.observers {
-		observer.UpdateStatus(rt.ctx, status)
+		observer.UpdateStatus(rt.ctx, state)
 	}
 }
 
 // Trace publishes a trace span to registered observers and returns the first
 // mutable span provided by one of them.
-func (rt *Runtime) Trace(message string, flags ...model.Flag) *model.RequestSpan {
-	return rt.traceContext(rt.ctx, message, flags...)
+func (rt *Runtime) Trace(message string, kind ...telemetry.Kind) *telemetry.Span {
+	return rt.traceContext(rt.ctx, message, kind...)
 }
 
-func (rt *Runtime) traceContext(ctx context.Context, message string, flags ...model.Flag) *model.RequestSpan {
-	var span *model.RequestSpan
+func (rt *Runtime) traceContext(ctx context.Context, message string, kind ...telemetry.Kind) *telemetry.Span {
+	var span *telemetry.Span
 	for _, observer := range rt.observers {
-		observed := observer.Trace(ctx, message, flags...)
+		observed := observer.Trace(ctx, message, kind...)
 		if span == nil {
 			span = observed
 		}

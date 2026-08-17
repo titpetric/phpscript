@@ -12,13 +12,15 @@ import (
 
 	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
-	"github.com/titpetric/phpscript/stdlib/status"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 var testFS = fstest.MapFS{
 	"public/index.php":  {Data: []byte(`<?php echo "home";`)},
 	"public/direct.php": {Data: []byte(`<?php echo $_GET["name"];`)},
-	"public/spans.php":  {Data: []byte(`<?php $span = start_span("getUser", "database"); $span->set_attribute("user_id", 42); $span->set_filename("custom.php"); $span->set_line(12); $span->record_error(new Exception("failed", 500)); $span->end(); echo "spans";`)},
+	"public/spans.php":  {Data: []byte(`<?php $span = start_span("getUser", "database"); $span->set_attribute("user_id", 42); $span->set_source("custom.php", 12); $span->record_error(new Exception("failed", 500)); $span->end(); echo "spans";`)},
+	"public/early.php":  {Data: []byte(`<?php echo "early"; exit;`)},
+	"public/failed.php": {Data: []byte(`<?php echo "failed"; exit(1);`)},
 	"public/style.css":  {Data: []byte(`body { color: red; }`)},
 	"public/app.js":     {Data: []byte(`console.log("ok");`)},
 	"public/annotated.php": {Data: []byte(`<?php
@@ -80,37 +82,32 @@ func TestRouteModuleServesAnnotatedRoutes(t *testing.T) {
 	}
 }
 
-func TestHandlerServesServerStatus(t *testing.T) {
-	h, err := newStatusHandler(testFS)
+func TestHandlerServesDebugFrontEnd(t *testing.T) {
+	h, err := newTracedHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodGet, "/debug/server-status", nil)
-	req.Header.Set("Accept", "text/json")
 	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"active_requests":1`) {
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, telemetry.DefaultPath, nil))
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "phpscript") {
 		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
-	}
-	if rr.Header().Get("Request-Id") == "" {
-		t.Fatal("Request-Id header is empty")
 	}
 }
 
-func TestHandlerDoesNotOwnServerStatus(t *testing.T) {
+func TestHandlerDoesNotOwnDebugFrontEnd(t *testing.T) {
 	h, err := NewHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, status.ServerStatusPath, nil))
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, telemetry.DefaultPath, nil))
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
 	}
 }
 
 func TestHandlerRecordsPHPSpan(t *testing.T) {
-	h, err := newStatusHandler(testFS)
+	h, err := newTracedHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,44 +116,91 @@ func TestHandlerRecordsPHPSpan(t *testing.T) {
 	if request.Code != http.StatusOK || request.Body.String() != "spans" {
 		t.Fatalf("status = %d, body = %q", request.Code, request.Body.String())
 	}
-	id := request.Header().Get("Request-Id")
-	overview := httptest.NewRecorder()
-	h.ServeHTTP(overview, httptest.NewRequest(http.MethodGet, "/debug/server-status/log", nil))
-	if overview.Code != http.StatusOK || !strings.Contains(overview.Body.String(), "/debug/server-status/detail/"+id) || !strings.Contains(overview.Body.String(), "GET /spans.php") {
-		t.Fatalf("status = %d, body = %q", overview.Code, overview.Body.String())
+	id := request.Header().Get(telemetry.RequestIDHeader)
+	if id == "" {
+		t.Fatal("Request-Id header is empty")
+	}
+
+	list := httptest.NewRecorder()
+	h.ServeHTTP(list, httptest.NewRequest(http.MethodGet, telemetry.DefaultPath+"/traces", nil))
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), telemetry.DefaultPath+"/trace/"+id) || !strings.Contains(list.Body.String(), "GET /spans.php") {
+		t.Fatalf("status = %d, body = %q", list.Code, list.Body.String())
 	}
 
 	detail := httptest.NewRecorder()
-	h.ServeHTTP(detail, httptest.NewRequest(http.MethodGet, "/debug/server-status/detail/"+id, nil))
+	h.ServeHTTP(detail, httptest.NewRequest(http.MethodGet, telemetry.DefaultPath+"/trace/"+id, nil))
 	if detail.Code != http.StatusOK || !strings.Contains(detail.Body.String(), "getUser") || !strings.Contains(detail.Body.String(), "database") || !strings.Contains(detail.Body.String(), "custom.php:L12") {
 		t.Fatalf("status = %d, body = %q", detail.Code, detail.Body.String())
 	}
 
 	detailJSON := httptest.NewRecorder()
-	detailRequest := httptest.NewRequest(http.MethodGet, "/debug/server-status/detail/"+id, nil)
+	detailRequest := httptest.NewRequest(http.MethodGet, telemetry.DefaultPath+"/trace/"+id, nil)
 	detailRequest.Header.Set("Accept", "application/json")
 	h.ServeHTTP(detailJSON, detailRequest)
-	for _, value := range []string{`"filename":"custom.php"`, `"line":12`, `"attributes":{"user_id":42}`, `"error":"failed"`} {
+	for _, value := range []string{`"name": "getUser"`, `"kind": "database"`, `"filename": "custom.php"`, `"line": 12`, `"user_id": 42`, `"error": "failed"`} {
 		if !strings.Contains(detailJSON.Body.String(), value) {
 			t.Fatalf("JSON detail does not contain %s: %s", value, detailJSON.Body.String())
 		}
 	}
 }
 
-func newStatusHandler(root fstest.MapFS) (http.Handler, error) {
-	serverStatus := status.NewModule(status.NewOptions())
-	var options runner.Options
-	handler, err := newHandler(root, "", options, false, serverStatus)
+// TestHandlerRecordsExitAsFailureOnlyOnANonZeroCode pins what the recorded
+// state means: a page ending with exit() ran to completion, and only a
+// non-zero code is a failure, because the state feeds the reported SLA.
+func TestHandlerRecordsExitAsFailureOnlyOnANonZeroCode(t *testing.T) {
+	for _, test := range []struct {
+		path      string
+		body      string
+		wantError bool
+	}{
+		{path: "/early.php", body: "early"},
+		{path: "/failed.php", body: "failed", wantError: true},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			h, recorder, err := newTracedServer(testFS)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response := httptest.NewRecorder()
+			h.ServeHTTP(response, httptest.NewRequest(http.MethodGet, test.path, nil))
+			if response.Code != http.StatusOK || response.Body.String() != test.body {
+				t.Fatalf("status = %d, body = %q", response.Code, response.Body.String())
+			}
+
+			traces := recorder.Tracer().Traces()
+			if len(traces) != 1 {
+				t.Fatalf("traces = %+v", traces)
+			}
+			if gotError := traces[0].State == telemetry.StateError; gotError != test.wantError {
+				t.Fatalf("state = %q, wantError = %t", traces[0].State, test.wantError)
+			}
+		})
+	}
+}
+
+func newTracedHandler(root fstest.MapFS) (http.Handler, error) {
+	handler, _, err := newTracedServer(root)
+	return handler, err
+}
+
+func newTracedServer(root fstest.MapFS) (http.Handler, *telemetry.Module, error) {
+	options := telemetry.NewOptions()
+	options.ServiceName = "phpscript"
+	recorder, err := telemetry.NewModule(options)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	handler, err := newHandler(root, "", runner.Options{}, false, recorder)
+	if err != nil {
+		return nil, nil, err
 	}
 	router := chi.NewRouter()
-	router.Use(serverStatus.Middleware)
-	if err := serverStatus.Mount(context.Background(), router); err != nil {
-		return nil, err
+	router.Use(recorder.Middleware)
+	if err := recorder.Mount(context.Background(), router); err != nil {
+		return nil, nil, err
 	}
 	router.Handle("/*", handler)
-	return router, nil
+	return router, recorder, nil
 }
 
 func TestHandlerDoesNotExposeProjectFilesOrPublicAnnotations(t *testing.T) {

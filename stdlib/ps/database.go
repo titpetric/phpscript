@@ -4,17 +4,21 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/titpetric/pdo/client"
 
-	"github.com/titpetric/phpscript/stdlib/status"
+	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 // Database adds request tracing to the database binding.
 type Database struct {
 	Bridge *client.Bridge
 	ID     string
+
+	// transaction is the span opened by Begin and ended by Commit or Rollback,
+	// so a transaction reads as one region rather than three markers.
+	transaction *telemetry.Span
 }
 
 type databaseSpanKey struct{}
@@ -26,22 +30,34 @@ func (b *Database) SetID(id string) {
 
 // Insert inserts a dynamically typed named value.
 func (b *Database) Insert(ctx context.Context, table string, value any) (any, error) {
-	return b.Bridge.Insert(b.withSpan(ctx, "Insert"), table, value)
+	ctx, end := b.withSpan(ctx, "Insert")
+	defer end()
+
+	return b.Bridge.Insert(ctx, table, value)
 }
 
 // Replace replaces a row using a dynamically typed named value.
 func (b *Database) Replace(ctx context.Context, table string, value any) (any, error) {
-	return b.Bridge.Replace(b.withSpan(ctx, "Replace"), table, value)
+	ctx, end := b.withSpan(ctx, "Replace")
+	defer end()
+
+	return b.Bridge.Replace(ctx, table, value)
 }
 
 // Update updates a row using dynamically typed named values and key columns.
 func (b *Database) Update(ctx context.Context, table string, value any, keyColumns ...any) (any, error) {
-	return b.Bridge.Update(b.withSpan(ctx, "Update"), table, value, keyColumns...)
+	ctx, end := b.withSpan(ctx, "Update")
+	defer end()
+
+	return b.Bridge.Update(ctx, table, value, keyColumns...)
 }
 
 // Query executes a statement with dynamically typed arguments.
 func (b *Database) Query(ctx context.Context, query string, args ...any) (any, error) {
-	return b.Bridge.Query(b.withSpan(ctx, "Query"), query, args...)
+	ctx, end := b.withSpan(ctx, "Query")
+	defer end()
+
+	return b.Bridge.Query(ctx, query, args...)
 }
 
 // Get returns the first result row.
@@ -59,84 +75,182 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 // It is now arbitrary per iteration rather than fixed per row; scripts that
 // need a stable order should name their columns in the SELECT and index them.
 func (b *Database) Get(ctx context.Context, query string, args ...any) (any, error) {
-	value, err := b.Bridge.Get(b.withSpan(ctx, "Get"), query, args...)
+	ctx, end := b.withSpan(ctx, "Get")
+	defer end()
+
+	value, err := b.Bridge.Get(ctx, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
+		recordRows(ctx, 0)
 		return false, nil
+	}
+	if err == nil {
+		recordRows(ctx, 1)
 	}
 	return value, err
 }
 
 // GetAll returns all result rows. See Get for the row representation.
 func (b *Database) GetAll(ctx context.Context, query string, args ...any) (any, error) {
-	return b.Bridge.GetAll(b.withSpan(ctx, "GetAll"), query, args...)
+	ctx, end := b.withSpan(ctx, "GetAll")
+	defer end()
+
+	value, err := b.Bridge.GetAll(ctx, query, args...)
+	if err == nil {
+		if rows, ok := model.LenValues(value); ok {
+			recordRows(ctx, rows)
+		}
+	}
+	return value, err
 }
 
 // Connect reserves an exclusive connection from the pool.
 func (b *Database) Connect(ctx context.Context) (any, error) {
-	b.span(ctx, "Connect")
+	defer b.span(ctx, "Connect").End()
 	return b.Bridge.Connect(ctx)
 }
 
 // Close releases an exclusive connection back to the pool.
 func (b *Database) Close(ctx context.Context) (any, error) {
-	b.span(ctx, "Close")
+	defer b.span(ctx, "Close").End()
 	return b.Bridge.Close(ctx)
 }
 
-// Begin starts a transaction and opens its tracing span.
+// Begin starts a transaction and opens the span measuring it. The span stays
+// open until Commit or Rollback, so a transaction is one region in the trace
+// rather than an open marker and a close marker to pair up.
 func (b *Database) Begin(ctx context.Context) (any, error) {
-	b.span(ctx, "Begin", status.OpenSpan)
-	return b.Bridge.Begin(ctx)
+	if b.transaction == nil {
+		b.transaction = b.span(ctx, "Begin")
+	}
+	value, err := b.Bridge.Begin(ctx)
+	b.transaction.RecordError(err)
+	return value, err
 }
 
-// Rollback rolls back the active transaction and closes its tracing span.
+// Rollback rolls back the active transaction and ends its span.
 func (b *Database) Rollback(ctx context.Context) (any, error) {
-	b.span(ctx, "Rollback", status.CloseSpan)
-	return b.Bridge.Rollback(ctx)
+	value, err := b.Bridge.Rollback(ctx)
+	b.endTransaction("Rollback", err)
+	return value, err
 }
 
-// Commit commits the active transaction and closes its tracing span.
+// Commit commits the active transaction and ends its span.
 func (b *Database) Commit(ctx context.Context) (any, error) {
-	b.span(ctx, "Commit", status.CloseSpan)
-	return b.Bridge.Commit(ctx)
+	value, err := b.Bridge.Commit(ctx)
+	b.endTransaction("Commit", err)
+	return value, err
+}
+
+// endTransaction ends the span Begin opened, naming it after the outcome.
+func (b *Database) endTransaction(outcome string, err error) {
+	if b.transaction == nil {
+		return
+	}
+	b.transaction.SetName(b.name(outcome))
+	b.transaction.RecordError(err)
+	b.transaction.End()
+	b.transaction = nil
 }
 
 // InsertID returns the ID generated by the last insert.
 func (b *Database) InsertID(ctx context.Context) (any, error) {
-	b.span(ctx, "InsertID")
+	defer b.span(ctx, "InsertID").End()
 	return b.Bridge.InsertID(ctx)
 }
 
 // RowsAffected returns the affected row count from the last write.
 func (b *Database) RowsAffected(ctx context.Context) (any, error) {
-	b.span(ctx, "RowsAffected")
+	defer b.span(ctx, "RowsAffected").End()
 	return b.Bridge.RowsAffected(ctx)
 }
 
+// observe records what the query log reports onto the span of the call that
+// produced it. The span already measures the call, so the statement, the values
+// bound to it and the transaction depth are what this adds. Every method is nil
+// safe, so an uninstrumented run takes the same path.
+//
+// The bound values are recorded, not just their count: a placeholder query
+// says nothing about which row was read, and reading that back is the reason
+// to open the trace at all. They are as sensitive as the columns they filter
+// on, so gate the front end with Options.Authorize before exposing it.
 func (b *Database) observe(ctx context.Context, entry client.QueryLogEntry) {
-	span, _ := ctx.Value(databaseSpanKey{}).(*status.RequestSpan)
-	if span != nil {
-		span.SetMessage(fmt.Sprintf("%s: <code>%s</code>", span.Message, entry.Query))
-		span.SetTime(entry.Started)
-		span.SetDuration(entry.Duration)
-		span.SetAttribute("transaction_depth", entry.TxDepth)
-		if entry.Err != nil {
-			span.RecordError(entry.Err)
+	span, _ := ctx.Value(databaseSpanKey{}).(*telemetry.Span)
+	span.SetAttribute("query", entry.Query)
+	if args, ok := queryArgs(entry.Args); ok {
+		span.SetAttribute("args", args)
+	}
+	span.SetAttribute("transaction_depth", entry.TxDepth)
+	if recordable(entry.Err) {
+		span.RecordError(entry.Err)
+	}
+}
+
+// queryArgs renders the values bound to a statement. The bridge hands over
+// positional arguments as a slice and named ones as the map or struct they came
+// from, so both shapes are kept as they are: the front end renders a slice and
+// a map perfectly well, and flattening them would lose which name held what.
+// An empty set is not recorded, so a query without placeholders has no
+// attribute rather than an empty one.
+func queryArgs(args any) (any, bool) {
+	if args == nil {
+		return nil, false
+	}
+	if values, ok := args.([]any); ok {
+		if len(values) == 0 {
+			return nil, false
 		}
+		return values, true
+	}
+	if n, ok := model.LenValues(args); ok && n == 0 {
+		return nil, false
+	}
+	return args, true
+}
+
+// recordable reports whether an error is worth failing a span over. A query
+// that found no rows and a request the client hung up on are control flow, not
+// failures, and marking them would fail the trace and the recorded SLA with it.
+func recordable(err error) bool {
+	switch {
+	case err == nil:
+		return false
+	case errors.Is(err, sql.ErrNoRows):
+		return false
+	case errors.Is(err, context.Canceled):
+		return false
+	default:
+		return true
 	}
 }
 
-func (b *Database) span(ctx context.Context, method string, flags ...status.Flag) *status.RequestSpan {
-	if b.ID != "" {
-		method = b.ID + "." + method
-	}
-	return status.StartSpan(ctx, method, append([]status.Flag{status.SpanType.Database}, flags...)...)
+// recordRows records how much a read returned on the span carrying it. The row
+// count is the other half of a query: a statement that took 40ms says something
+// different when it returned 3 rows than when it returned 30,000.
+func recordRows(ctx context.Context, rows int) {
+	span, _ := ctx.Value(databaseSpanKey{}).(*telemetry.Span)
+	span.SetAttribute("rows", rows)
 }
 
-func (b *Database) withSpan(ctx context.Context, method string) context.Context {
+// name qualifies a method with the PHP variable holding this client, so two
+// clients in one request are told apart in the trace.
+func (b *Database) name(method string) string {
+	if b.ID == "" {
+		return method
+	}
+	return b.ID + "." + method
+}
+
+// span records one database span for a client call.
+func (b *Database) span(ctx context.Context, method string) *telemetry.Span {
+	return telemetry.StartSpan(ctx, b.name(method), telemetry.KindDatabase)
+}
+
+// withSpan starts a database span and returns a context carrying it for the
+// query log observer, together with the closer that ends it.
+func (b *Database) withSpan(ctx context.Context, method string) (context.Context, func()) {
 	span := b.span(ctx, method)
 	if span == nil {
-		return ctx
+		return ctx, func() {}
 	}
-	return context.WithValue(ctx, databaseSpanKey{}, span)
+	return context.WithValue(span.Context(ctx), databaseSpanKey{}, span), span.End
 }

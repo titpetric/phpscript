@@ -60,8 +60,8 @@ files whose names end in `.up.sql` in filename order. Applied migrations are
 recorded in a `migrations` table and skipped on later server starts.
 
 Loading or applying a migration can raise a PHP exception. An uncaught
-exception aborts startup, and the startup event and error are recorded in
-server-status telemetry when status tracking is enabled.
+exception aborts startup, and the startup step and its error are recorded as a
+background trace when telemetry is enabled.
 
 ## Execute queries
 
@@ -133,9 +133,10 @@ is always passed to `new Database("name")`.
 
 ## Tracing
 
-Database operations automatically contribute database spans to server-status
-traces. Query spans include the SQL statement, execution time, errors, and
-transaction depth.
+Database operations automatically contribute database spans to the trace of the
+request that ran them. A query span measures the call and carries the SQL
+statement, the transaction depth and any error; a transaction is one span from
+`begin()` to `commit()` or `rollback()`. See [Telemetry](../telemetry.md).
 
 ## API summary
 
