@@ -7,40 +7,56 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
-type statusRecorder struct {
-	statuses  []model.Status
+// telemetryRecorder is a runtime observer recording into a trace of its own, so
+// the tests can assert on what the interpreter reported without a server.
+type telemetryRecorder struct {
+	states    []telemetry.State
 	filenames []string
 	traces    []string
-	spans     []*model.RequestSpan
+	spans     []*telemetry.Span
 	included  []int
-	request   model.Request
+	trace     *telemetry.Trace
 }
 
-func (r *statusRecorder) Trace(ctx context.Context, message string, flags ...model.Flag) *model.RequestSpan {
+func newTelemetryRecorder(t *testing.T) *telemetryRecorder {
+	t.Helper()
+
+	tracer, err := telemetry.New(telemetry.NewOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, trace, err := tracer.StartTrace(context.Background(), "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &telemetryRecorder{trace: trace}
+}
+
+func (r *telemetryRecorder) Trace(ctx context.Context, message string, kind ...telemetry.Kind) *telemetry.Span {
 	r.traces = append(r.traces, message)
-	span := model.StartSpan(model.WithRequest(ctx, &r.request), message, flags...)
+	span := telemetry.StartSpan(telemetry.WithTrace(ctx, r.trace), message, kind...)
 	r.spans = append(r.spans, span)
 	return span
 }
 
-func (r *statusRecorder) UpdateStatus(_ context.Context, status model.Status) {
-	r.statuses = append(r.statuses, status)
+func (r *telemetryRecorder) UpdateStatus(_ context.Context, state telemetry.State) {
+	r.states = append(r.states, state)
 }
 
-func (r *statusRecorder) UpdateFilename(_ context.Context, filename string) {
+func (r *telemetryRecorder) UpdateFilename(_ context.Context, filename string) {
 	r.filenames = append(r.filenames, filename)
 }
 
-func (r *statusRecorder) UpdateIncludedFiles(_ context.Context, count int) {
+func (r *telemetryRecorder) UpdateIncludedFiles(_ context.Context, count int) {
 	r.included = append(r.included, count)
 }
 
 func TestRuntimeObserverReceivesExecutionPhases(t *testing.T) {
 	var out strings.Builder
-	recorder := &statusRecorder{}
+	recorder := newTelemetryRecorder(t)
 	rt := New(&out, Options{})
 	rt.Observe(recorder)
 	program, err := rt.Load(`<?php $a = 1; echo $a; ?>`)
@@ -50,26 +66,26 @@ func TestRuntimeObserverReceivesExecutionPhases(t *testing.T) {
 	if err := rt.Run(program); err != nil {
 		t.Fatal(err)
 	}
-	want := []model.Status{model.StatusStarting, model.StatusReading, model.StatusProcessing, model.StatusWriting}
-	if !reflect.DeepEqual(recorder.statuses, want) {
-		t.Fatalf("statuses = %q, want %q", recorder.statuses, want)
+	want := []telemetry.State{telemetry.StateStarting, telemetry.StateReading, telemetry.StateProcessing, telemetry.StateWriting}
+	if !reflect.DeepEqual(recorder.states, want) {
+		t.Fatalf("states = %q, want %q", recorder.states, want)
 	}
 }
 
 func TestRuntimeObserverReceivesParseError(t *testing.T) {
-	recorder := &statusRecorder{}
+	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{})
 	rt.Observe(recorder)
 	if _, err := rt.Load(`<?php echo ;`); err == nil {
 		t.Fatal("expected parse error")
 	}
-	if got := recorder.statuses[len(recorder.statuses)-1]; got != model.StatusError {
-		t.Fatalf("last status = %q, want E", got)
+	if got := recorder.states[len(recorder.states)-1]; got != telemetry.StateError {
+		t.Fatalf("last state = %q, want E", got)
 	}
 }
 
 func TestRuntimeObserverReceivesExecutionErrorSpan(t *testing.T) {
-	recorder := &statusRecorder{}
+	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php": {Data: []byte(`<?php $value = 1; $value["key"] = 2;`)},
 	}})
@@ -81,22 +97,36 @@ func TestRuntimeObserverReceivesExecutionErrorSpan(t *testing.T) {
 	if err := rt.Run(program); err == nil {
 		t.Fatal("expected execution error")
 	}
-	if got := recorder.statuses[len(recorder.statuses)-1]; got != model.StatusError {
-		t.Fatalf("last status = %q, want E", got)
+	if got := recorder.states[len(recorder.states)-1]; got != telemetry.StateError {
+		t.Fatalf("last state = %q, want E", got)
 	}
-	if len(recorder.spans) != 1 || recorder.spans[0].Message != "Error: <code>assign: target is not an array</code>" || recorder.spans[0].Error != "assign: target is not an array" || recorder.spans[0].Filename != "main.php" || recorder.spans[0].Line != 1 {
+	if len(recorder.spans) != 1 {
 		t.Fatalf("error spans = %+v", recorder.spans)
+	}
+	// The message is the recorded error, not part of the span name: names stay
+	// stable so one kind of failure reads as one kind of failure.
+	span := recorder.spans[0]
+	if span.Name != "php error" || span.Error != "assign: target is not an array" || span.Filename != "main.php" || span.Line != 1 {
+		t.Fatalf("error span = %+v", span)
 	}
 }
 
 func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
-	request := &model.Request{}
+	tracer, err := telemetry.New(telemetry.NewOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, trace, err := tracer.StartTrace(context.Background(), "request")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php": {Data: []byte("<?php\n\ninspect_context();")},
 	}})
-	rt.SetContext(model.WithRequest(context.Background(), request))
+	rt.SetContext(ctx)
 	rt.RegisterFunc("inspect_context", func(ctx context.Context) {
-		model.StartSpan(ctx, "inspect")
+		telemetry.StartSpan(ctx, "inspect")
 	})
 	program, err := rt.LoadFile("main.php")
 	if err != nil {
@@ -105,13 +135,15 @@ func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
 	if err := rt.Run(program); err != nil {
 		t.Fatal(err)
 	}
-	if len(request.Spans) != 1 || request.Spans[0].Filename != "main.php" || request.Spans[0].Line != 3 {
-		t.Fatalf("spans = %+v", request.Spans)
+
+	span := findSpan(trace, "inspect")
+	if span == nil || span.Filename != "main.php" || span.Line != 3 {
+		t.Fatalf("spans = %+v", trace.Clone().Spans)
 	}
 }
 
 func TestRuntimeObserverReceivesEntrypointFilename(t *testing.T) {
-	recorder := &statusRecorder{}
+	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"routes/hello.php": {Data: []byte(`<?php echo "hello";`)},
 	}})
@@ -128,7 +160,7 @@ func TestRuntimeObserverReceivesEntrypointFilename(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
-	recorder := &statusRecorder{}
+	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php":   {Data: []byte(`<?php include "one.php"; include "two.php";`)},
 		"one.php":    {Data: []byte(`<?php include "nested.tpl";`)},
@@ -149,31 +181,37 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 	if want := []int{1, 2, 3}; !reflect.DeepEqual(recorder.included, want) {
 		t.Fatalf("included = %v, want %v", recorder.included, want)
 	}
-	if want := []string{"include one.php", "include nested.tpl", "include nested.tpl", "include one.php", "include two.php", "include two.php"}; !reflect.DeepEqual(recorder.traces, want) {
+
+	// One span per include, measured from the include to its return, rather
+	// than an opening and a closing marker to pair up.
+	if want := []string{"include one.php", "include nested.tpl", "include two.php"}; !reflect.DeepEqual(recorder.traces, want) {
 		t.Fatalf("traces = %q, want %q", recorder.traces, want)
 	}
-	if len(recorder.spans) != 6 {
+	if len(recorder.spans) != 3 {
 		t.Fatalf("include spans = %+v", recorder.spans)
 	}
-	for _, i := range []int{0, 1, 4} {
-		if span := recorder.spans[i]; !span.Open || span.Duration <= 0 {
-			t.Fatalf("opening include span = %+v", span)
+	for i, span := range recorder.spans {
+		if !span.Ended() || span.Duration <= 0 {
+			t.Fatalf("include span %d = %+v", i, span)
 		}
 	}
-	for _, i := range []int{2, 3, 5} {
-		if span := recorder.spans[i]; !span.Close || span.Duration != 0 {
-			t.Fatalf("closing include span = %+v", span)
+
+	// A .tpl include is template work; the PHP includes are interpreter work.
+	if got := recorder.spans[1].Kind; got != telemetry.KindTemplate {
+		t.Fatalf("template include kind = %q", got)
+	}
+	for _, i := range []int{0, 2} {
+		if got := recorder.spans[i].Kind; got != telemetry.KindInternal {
+			t.Fatalf("PHP include %d kind = %q", i, got)
 		}
 	}
-	if recorder.spans[1].Type != model.SpanType.Template || recorder.spans[2].Type != model.SpanType.Template {
-		t.Fatalf("template include spans = %+v / %+v", recorder.spans[1], recorder.spans[2])
+
+	// The nested include is recorded below the one that ran it.
+	if parent, child := recorder.spans[0], recorder.spans[1]; child.ParentID != parent.ID {
+		t.Fatalf("nested include parent = %d, want %d", child.ParentID, parent.ID)
 	}
-	for _, i := range []int{0, 3, 4, 5} {
-		if recorder.spans[i].Type != model.SpanType.Internal {
-			t.Fatalf("PHP include span = %+v", recorder.spans[i])
-		}
-	}
-	wantFiles := []string{"main.php", "one.php", "one.php", "main.php", "main.php", "main.php"}
+
+	wantFiles := []string{"main.php", "one.php", "main.php"}
 	for i, filename := range wantFiles {
 		if recorder.spans[i].Filename != filename {
 			t.Fatalf("span %d filename = %q, want %q", i, recorder.spans[i].Filename, filename)
@@ -182,7 +220,7 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesMeasuredConstructor(t *testing.T) {
-	recorder := &statusRecorder{}
+	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php": {Data: []byte(`<?php class Example {} $value = new Example;`)},
 	}})
@@ -203,7 +241,7 @@ func TestRuntimeObserverReceivesMeasuredConstructor(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesMeasuredPHPMethod(t *testing.T) {
-	recorder := &statusRecorder{}
+	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php": {Data: []byte("<?php\ninclude \"Database.php\";\n$db = new Database;\necho $db->get();\n")},
 		"Database.php": {Data: []byte(`<?php
@@ -220,9 +258,9 @@ class Database {
 	if err := rt.Run(program); err != nil {
 		t.Fatal(err)
 	}
-	var methodSpan *model.RequestSpan
+	var methodSpan *telemetry.Span
 	for _, span := range recorder.spans {
-		if span.Message == "db.get" {
+		if span.Name == "db.get" {
 			methodSpan = span
 			break
 		}
@@ -230,4 +268,14 @@ class Database {
 	if methodSpan == nil || methodSpan.Duration <= 0 || methodSpan.Filename != "main.php" || methodSpan.Line != 4 {
 		t.Fatalf("method spans = %+v", recorder.spans)
 	}
+}
+
+// findSpan returns the first span of the trace with the given name.
+func findSpan(trace *telemetry.Trace, name string) *telemetry.Span {
+	for _, span := range trace.Clone().Spans {
+		if span.Name == name {
+			return span
+		}
+	}
+	return nil
 }

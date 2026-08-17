@@ -9,7 +9,7 @@ import (
 	"testing/fstest"
 
 	"github.com/titpetric/phpscript/runner"
-	"github.com/titpetric/phpscript/stdlib/status"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 func TestModuleRunsAnnotatedPHPFilesInPathOrder(t *testing.T) {
@@ -76,27 +76,36 @@ func TestModuleRecordsStartupSuccessAndFailure(t *testing.T) {
 		{name: "failure", source: "<?php\n// @startup\nmissing_function();", wantError: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			serverStatus := status.NewModule(status.NewOptions())
+			recorder, err := telemetry.NewModule(telemetry.NewOptions())
+			if err != nil {
+				t.Fatal(err)
+			}
 			root := fstest.MapFS{"startup.php": {Data: []byte(test.source)}}
-			module := NewModule(root, "", &bytes.Buffer{}, runner.Options{}, false, serverStatus)
+			module := NewModule(root, "", &bytes.Buffer{}, runner.Options{}, false, recorder)
 
-			err := module.Start(context.Background())
+			err = module.Start(context.Background())
 			if (err != nil) != test.wantError {
 				t.Fatalf("error = %v, wantError = %t", err, test.wantError)
 			}
-			snapshot := serverStatus.Snapshot()
+			snapshot := recorder.Snapshot()
 			if snapshot.Total != 1 || snapshot.Active != 0 || len(snapshot.Log) != 1 {
-				t.Fatalf("unexpected status snapshot: %+v", snapshot)
+				t.Fatalf("unexpected telemetry snapshot: %+v", snapshot)
 			}
-			entry := snapshot.Log[0]
-			if entry.Request != "@startup startup.php" || entry.Method != "STARTUP" || entry.Filename != "startup.php" {
-				t.Fatalf("unexpected startup entry: %+v", entry)
+
+			// A startup file is not a request: it records as a background
+			// trace named after the annotation that selected it.
+			trace := snapshot.Log[0]
+			if trace.Name != "@startup startup.php" || trace.HTTP != nil || telemetry.TraceHost(trace) != telemetry.BackgroundHost {
+				t.Fatalf("unexpected startup trace: %+v", trace)
 			}
-			if len(entry.Spans) < 2 || entry.Spans[0].Message != "@startup startup.php" || !entry.Spans[0].Open {
-				t.Fatalf("unexpected startup spans: %+v", entry.Spans)
+			if len(trace.Spans) == 0 || trace.Spans[0].Name != "@startup startup.php" || trace.Spans[0].Filename != "startup.php" {
+				t.Fatalf("unexpected startup spans: %+v", trace.Spans)
 			}
-			if gotError := entry.Spans[0].Error != ""; gotError != test.wantError {
-				t.Fatalf("span error = %q, wantError = %t", entry.Spans[0].Error, test.wantError)
+			if gotError := trace.Spans[0].Error != ""; gotError != test.wantError {
+				t.Fatalf("span error = %q, wantError = %t", trace.Spans[0].Error, test.wantError)
+			}
+			if gotError := trace.Error != ""; gotError != test.wantError {
+				t.Fatalf("trace error = %q, wantError = %t", trace.Error, test.wantError)
 			}
 		})
 	}

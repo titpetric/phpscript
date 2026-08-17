@@ -27,21 +27,24 @@ flatstack:
 routes:
   enabled: true
 
-status:
+telemetry:
   enabled: true
-  options:
-    ring_buffer_size: 100
-    top_requests: 20
-    track_memory_use: true
+  path: "/debug/oida"
+  service_name: "phpscript"
+  ring_buffer_size: 200
+  top_requests: 20
+  sample_rate: 100
+  track_memory_use: true
+  live_stream: true
 
 env:
   - "PLATFORM_DB_APP=sqlite://app.db"
 ```
 
 The external file replaces the embedded YAML as the configuration source.
-Routes and status remain enabled when their sections are omitted because those
-are model defaults; other omitted values use their Go zero values. Start with
-the complete example when you want behavior to be explicit.
+Routes and telemetry remain enabled when their sections are omitted because
+those are model defaults; other omitted values use their Go zero values. Start
+with the complete example when you want behavior to be explicit.
 
 ## Runner
 
@@ -66,18 +69,27 @@ the current native subset and fallback behavior.
 outside `public/` for `// @route` annotations. Static files and directly
 requested PHP entrypoints under `public/` are independent of this setting.
 
-`status.enabled` controls the server status module and its
-`/debug/server-status` endpoints. Its options are:
+`telemetry.enabled` controls request tracing and the debug front end mounted at
+`telemetry.path`. The section is [oida](https://github.com/titpetric/oida)
+options, so every field that library documents is accepted here. The ones that
+matter for a phpscript service are:
 
-| Key                | Default | Purpose                                                                    |
-|--------------------|--------:|----------------------------------------------------------------------------|
-| `ring_buffer_size` |   `100` | Number of completed requests retained for the log and rolling statistics.  |
-| `top_requests`     |    `20` | Maximum request groups returned by rolling statistics.                     |
-| `track_memory_use` |  `true` | Record process-wide allocation and garbage-collection changes per request. |
+| Key                   | Default          | Purpose                                                                  |
+|-----------------------|-----------------:|--------------------------------------------------------------------------|
+| `enabled`             |           `true` | Record traces. When false the middleware passes requests through.        |
+| `path`                |    `/debug/oida` | Mount path of the debug front end.                                       |
+| `service_name`        |      `phpscript` | Name shown in the front end and recorded on every trace.                 |
+| `ring_buffer_size`    |            `200` | Number of completed traces retained for the list and rolling statistics. |
+| `top_requests`        |             `20` | Maximum trace groups returned by rolling statistics.                     |
+| `max_spans_per_trace` |           `1000` | Spans recorded per trace; further spans are counted and dropped.         |
+| `sample_rate`         |            `100` | Percentage of requests traced, `0` to `100`.                             |
+| `track_memory_use`    |           `true` | Record process-wide allocation and garbage-collection changes per trace. |
+| `live_stream`         |           `true` | Serve the live view over server sent events instead of a refresh timer.  |
+| `ignore_paths`        | health endpoints | Paths never traced. Entries ending in `/*` match by prefix.              |
 
 Memory tracking has process-wide sampling overhead and concurrent requests can
-overlap in those measurements. See [Server status middleware](./server-status.md)
-for endpoints, representations, and interpretation.
+overlap in those measurements. See [Telemetry](./telemetry.md) for the views,
+the representations, and what PHP can record.
 
 ## Database connections
 

@@ -21,13 +21,16 @@ func TestLoadConfig(t *testing.T) {
 	if !config.Routes.Enabled {
 		t.Fatal("annotated routes are disabled by default")
 	}
-	if !config.Status.Enabled {
-		t.Fatal("status module is disabled by default")
+	if !config.Telemetry.Enabled {
+		t.Fatal("telemetry is disabled by default")
 	}
-	if config.Status.Options.RingBufferSize != 100 ||
-		config.Status.Options.TopRequests != 20 ||
-		!config.Status.Options.TrackMemoryUse {
-		t.Fatalf("status options = %+v", config.Status.Options)
+	if config.Telemetry.Path != "/debug/oida" ||
+		config.Telemetry.ServiceName != "phpscript" ||
+		config.Telemetry.RingBufferSize != 200 ||
+		config.Telemetry.TopRequests != 20 ||
+		config.Telemetry.SampleRate != 100 ||
+		!config.Telemetry.TrackMemoryUse {
+		t.Fatalf("telemetry options = %+v", config.Telemetry)
 	}
 }
 
@@ -40,7 +43,7 @@ flatstack:
   enabled: true
 routes:
   enabled: false
-status:
+telemetry:
   enabled: false
 env:
   - "PLATFORM_DB_APP=sqlite://app.db"
@@ -52,7 +55,7 @@ env:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if config.Runner.WorkDir != "app" || !config.Flatstack.Enabled || config.Routes.Enabled || config.Status.Enabled {
+	if config.Runner.WorkDir != "app" || !config.Flatstack.Enabled || config.Routes.Enabled || config.Telemetry.Enabled {
 		t.Fatalf("config = %+v", config)
 	}
 	if !reflect.DeepEqual(config.Env, []string{"PLATFORM_DB_APP=sqlite://app.db"}) {

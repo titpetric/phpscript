@@ -33,7 +33,7 @@ func NewSessionManager(storage SessionStorage) (*SessionManager, error) {
 	}
 	return &SessionManager{
 		SessionCookieName: sessionCookieName,
-		storage:           storage,
+		storage:           traceSessionStorage(storage),
 	}, nil
 }
 

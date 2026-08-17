@@ -12,6 +12,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/titpetric/cli v0.5.0
+	github.com/titpetric/oida v0.0.0-20260816165125-f11d027cb490
 	github.com/titpetric/pdo v0.0.0-20260814130052-5c4c128dfa7c
 	github.com/titpetric/platform v0.5.0
 	golang.org/x/term v0.45.0
@@ -22,6 +23,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/XSAM/otelsql v0.43.0 // indirect
+	github.com/a-h/templ v0.3.1020 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect

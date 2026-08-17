@@ -12,6 +12,7 @@ import (
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 type senderKey struct{}
@@ -46,7 +47,34 @@ type Sender interface {
 // Register binds mail() to sender. The standard library itself is registered
 // separately by the embedding host (stdlib.Register).
 func Register(rt *runner.Runtime, sender Sender) {
-	rt.RegisterFunc("mail", sender.Send)
+	rt.RegisterFunc("mail", func(ctx context.Context, recipient, subject, body string) (err error) {
+		done := traceDelivery(ctx, "", recipient, subject, body)
+		defer func() { done(err) }()
+
+		return sender.Send(recipient, subject, body)
+	})
+}
+
+// traceDelivery records one outbound message. Mail leaves the process and is
+// the slowest thing most scripts do, so it is external work rather than
+// internal. The returned function records the outcome on the span and ends it.
+//
+// The recipient and the subject are recorded; the body is not, only its size.
+// A message body is the one part of a delivery that is certain to be private,
+// and a size answers the question a trace is opened to answer.
+func traceDelivery(ctx context.Context, host, recipient, subject, body string) func(error) {
+	span := telemetry.StartSpan(ctx, "mail", telemetry.KindExternal)
+	span.SetAttribute("to", recipient)
+	span.SetAttribute("subject", subject)
+	span.SetAttribute("bytes", len(body))
+	if host != "" {
+		span.SetAttribute("host", host)
+	}
+
+	return func(err error) {
+		span.RecordError(err)
+		span.End()
+	}
 }
 
 // RegisterSMTP installs the SMTP class binding, so `new SMTP` in a script
@@ -125,8 +153,13 @@ func NewSMTP(config Config) *SMTP {
 	return &SMTP{config: config}
 }
 
-// Send sends an email via SMTP
-func (s *SMTP) Send(recipient, subject, body string) error {
+// Send sends an email via SMTP. It takes a context so the delivery is recorded
+// on the trace of the request that asked for it; the runtime injects it, so a
+// script still calls `$smtp->send($to, $subject, $body)`.
+func (s *SMTP) Send(ctx context.Context, recipient, subject, body string) (err error) {
+	done := traceDelivery(ctx, s.config.Host, recipient, subject, body)
+	defer func() { done(err) }()
+
 	if s.sender != nil {
 		return s.sender.Send(recipient, subject, body)
 	}

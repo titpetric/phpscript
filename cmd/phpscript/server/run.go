@@ -20,7 +20,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/startup"
 	"github.com/titpetric/phpscript/stdlib"
-	"github.com/titpetric/phpscript/stdlib/status"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 // Name is the command title.
@@ -157,7 +157,9 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	}
 	if err != nil {
 		if _, ok := runner.IsExit(err); !ok {
-			log.Printf("Error in request %s, %s: %s", r.URL.Path, filename, err)
+			// The trace ID is also the Request-Id header, so a log line and
+			// the recorded trace of the same request find each other.
+			log.Printf("Error in request %s, %s: %s [trace %s]", r.URL.Path, filename, err, telemetry.TraceID(r.Context()))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -183,15 +185,19 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 
 	svc := platform.New(opts)
 	var observers []runner.Observer
-	var serverStatus *status.ServerStatus
-	if config.Status.Enabled {
-		serverStatus = status.NewModule(config.Status.Options)
-		observers = append(observers, serverStatus)
+	var recorder *telemetry.Module
+	if config.Telemetry.Enabled {
+		var err error
+		recorder, err = telemetry.NewModule(config.Telemetry)
+		if err != nil {
+			return err
+		}
+		observers = append(observers, recorder)
 	}
 	svc.Register(startup.NewModule(os.DirFS(root), root, os.Stdout, config.Runner, config.Flatstack.Enabled, observers...))
-	if serverStatus != nil {
-		svc.Use(serverStatus.Middleware)
-		svc.Register(serverStatus)
+	if recorder != nil {
+		svc.Use(recorder.Middleware)
+		svc.Register(recorder)
 	}
 	if config.Routes.Enabled {
 		routeOptions := []routesvc.Option{
