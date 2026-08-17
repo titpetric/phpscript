@@ -8,6 +8,7 @@ This is an experimental PHP interpreter. It supports the basic php expression sy
 - [Configuration](./docs/configuration.md)
 - [Testing and extending tests](./docs/testing.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
+- [Building an application](./docs/use-cases/application.md)
 - [Use cases](./docs/use-cases)
 
 ## Current state
