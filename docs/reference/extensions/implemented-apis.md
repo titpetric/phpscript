@@ -46,6 +46,7 @@ Regenerate it after changing runtime or standard-library registrations.
 
 - `is_array`
 - `is_bool`
+- `is_callable`
 - `is_int`
 - `is_numeric`
 - `is_object`
@@ -70,6 +71,7 @@ Regenerate it after changing runtime or standard-library registrations.
 
 - `apache_request_headers`
 - `basename`
+- `call_user_func`
 - `call_user_func_array`
 - `class_exists`
 - `compact`
@@ -96,6 +98,13 @@ Regenerate it after changing runtime or standard-library registrations.
 - `isset`
 - `ltrim`
 - `mkdir`
+- `ob_end_clean`
+- `ob_end_flush`
+- `ob_get_clean`
+- `ob_get_contents`
+- `ob_get_flush`
+- `ob_get_level`
+- `ob_start`
 - `php_sapi_name`
 - `phpinfo`
 - `putenv`

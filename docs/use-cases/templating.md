@@ -1,23 +1,26 @@
 # Templating
 
 The phpscript engine is capable enough to load a fully featured template
-engine. While the engine required some small modifications due to syntax
-incompatibility, it was easy enough to adjust the syntax to a compatible
-one. The template engines are:
+engine. [titpetric/minitpl](https://github.com/titpetric/minitpl) runs
+unmodified: it is pulled in with composer like in any PHP project, rather than
+copied into this repository and patched.
 
-- [titpetric/minitpl](https://github.com/titpetric/minitpl) - original source
-- [tests/fixtures/code/Template.php](../../tests/fixtures/code/Template.php)
-- [tests/fixtures/code/Compiler.php](../../tests/fixtures/code/Compiler.php)
+```json
+{
+    "require": {
+        "titpetric/minitpl": "^1.2"
+    }
+}
+```
 
-A simple example of using the template engine would be:
+Run `composer install`, then include the autoloader and use the engine:
 
 ```php
 <?php
 
-include("code/Compiler.php");
-include("code/Template.php");
+include("vendor/autoload.php");
 
-$tpl = new Template();
+$tpl = new MiniTPL\Template();
 $tpl->set_paths('templates/');
 $tpl->set_compile_location('cache/', false);
 
@@ -99,7 +102,7 @@ $db = new UserStorage;
 $user = $db->getUserById($id);
 $user_groups = $db->getGroupList();
 
-$tpl = new Template;
+$tpl = new MiniTPL\Template;
 $tpl->load("user_edit.tpl");
 $tpl->assign(compact("user", "user_groups"));
 $tpl->render();
