@@ -1,0 +1,4 @@
+*.db*
+templates/cache/
+venom*.log
+/.claude

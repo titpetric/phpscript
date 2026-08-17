@@ -1,0 +1,35 @@
+# The example application runs as the compose service `example`, which
+# publishes no port, so the suite is pointed at the container address. atkins
+# resolves $(...) itself before bash sees it, so the lookup is written as a
+# pipeline of xargs instead of command substitution.
+
+vars:
+  compose: ../../../compose.yml
+  address: "{{range .NetworkSettings.Networks}}http://{{.IPAddress}}:8080{{end}}"
+
+tasks:
+  default:
+    aliases: [test]
+    desc: "Run the venom suite against the compose example service"
+    passthru: true
+    cmds:
+      - task: restart
+      - task: host
+      - >
+        docker compose -f ${{ compose }} ps -q example
+        | xargs --no-run-if-empty docker inspect -f '${{ address }}'
+        | xargs --no-run-if-empty -I {} venom run venom.yml --var=host={}
+
+  restart:
+    desc: "Reload the service so edited PHP sources are picked up"
+    cmds:
+      - docker compose -f ${{ compose }} restart example
+      - docker compose -f ${{ compose }} exec example true
+
+  host:
+    desc: "Print the address of the example container the suite runs against"
+    cmds:
+      - >
+        docker compose -f ${{ compose }} ps -q example
+        | xargs --no-run-if-empty docker inspect -f '${{ address }}'
+        | grep . || { echo "example container is not running; run 'atkins up' in the repository root" >&2; exit 1; }

@@ -39,6 +39,7 @@ var phpSuperglobals = map[string]struct{}{
 // with registered functions, classes, constructors, and runtime state.
 type Runtime struct {
 	out        io.Writer
+	outStack   []io.Writer
 	flat       bool
 	status     telemetry.State
 	entrypoint string
@@ -68,6 +69,7 @@ type Runtime struct {
 
 	errorHandler func(error)
 	include      IncludeFunc
+	includeHooks map[string]func() (any, error)
 	globals      map[string]any
 	shutdown     []any
 
@@ -191,10 +193,18 @@ func (rt *Runtime) Exit(code int) error {
 	return &ExitError{Code: code}
 }
 
-// Output returns the writer echo statements write to. Builtins that produce
-// output, such as die() with a message, write there so their text joins the
-// response body in the order the script produced it.
+// Output returns the writer script output goes to: echo statements, inline
+// HTML, and any builtin that emits text of its own, such as die() with a
+// message, so their text joins the response body in the order the script
+// produced it.
+//
+// While a redirection is active (PushOutput, which output buffering is built
+// on) this is the innermost writer, so everything the script emits is captured
+// rather than sent on.
 func (rt *Runtime) Output() io.Writer {
+	if n := len(rt.outStack); n > 0 {
+		return rt.outStack[n-1]
+	}
 	return rt.out
 }
 
@@ -440,6 +450,22 @@ func (rt *Runtime) registerUserFunc(name string, fn any) {
 	rt.userFns[name] = struct{}{}
 }
 
+// FunctionExists reports whether name resolves to a host shim or a PHP
+// user-defined function, backing `function_exists`. Template engines guard
+// their generated block functions with it, so an always-false answer would
+// redeclare them on every include.
+func (rt *Runtime) FunctionExists(name string) bool {
+	_, ok := rt.lookupFunc(strings.TrimPrefix(name, "\\"))
+	return ok
+}
+
+// IncludeFile evaluates path as PHP in a fresh scope, the same way an `include`
+// statement would. Hosts that resolve classes outside the interpreter (the
+// composer autoloader) use it to pull a declaration file into the runtime.
+func (rt *Runtime) IncludeFile(path string) (any, error) {
+	return rt.includeFile(path, NewScope())
+}
+
 // DefinedFunctions returns stable snapshots of registered host/internal and
 // PHP user-defined function names.
 func (rt *Runtime) DefinedFunctions() (internal, user []string) {
@@ -484,7 +510,7 @@ func (rt *Runtime) DeclaredClasses() []string {
 // that phpscript does not provide.
 func (rt *Runtime) PHPInfo() error {
 	internal, user := rt.DefinedFunctions()
-	_, err := fmt.Fprintf(rt.out, "phpscript\n\nRuntime => phpscript\nSAPI => %s\nGo Version => %s\nOperating System => %s\nArchitecture => %s\nInclude Path => %s\nWorking Directory => %s\nInternal Functions => %d\nUser Functions => %d\nDeclared Classes => %d\nDefined Constants => %d\n",
+	_, err := fmt.Fprintf(rt.Output(), "phpscript\n\nRuntime => phpscript\nSAPI => %s\nGo Version => %s\nOperating System => %s\nArchitecture => %s\nInclude Path => %s\nWorking Directory => %s\nInternal Functions => %d\nUser Functions => %d\nDeclared Classes => %d\nDefined Constants => %d\n",
 		rt.SAPI(), goruntime.Version(), goruntime.GOOS, goruntime.GOARCH,
 		rt.IncludePath(), rt.WorkDir(), len(internal), len(user),
 		len(rt.DeclaredClasses()), len(rt.constants))
@@ -851,14 +877,7 @@ func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
 	// The frame already holds its arguments as a []any, which the VM indexes and
 	// iterates directly, so func_get_args() hands that slice back rather than
 	// rebuilding it as an *model.Array.
-	env["func_get_args"] = adapt(func() []any {
-		if v, ok := ref.scope.Get(argsKey); ok {
-			if args, ok := v.([]any); ok {
-				return args
-			}
-		}
-		return nil
-	})
+	env["func_get_args"] = adapt(func() []any { return funcGetArgs(ref.scope) })
 	st.gen = gen
 	st.built = true
 }
@@ -1072,9 +1091,38 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 			if fn, ok := rt.lookupFunc(fallback); ok {
 				return rt.invokeWithScopeContext(fn, args, scope)
 			}
+			// Frame-aware builtins live in the evaluation environment rather
+			// than the function table, so the bare-name fast path finds them
+			// but this dispatch would not. Inside a namespaced file every
+			// global call arrives here, so they are resolved explicitly.
+			if v, ok := scopeBuiltin(fallback, scope); ok {
+				return v, nil
+			}
+		}
+		if v, ok := scopeBuiltin(name, scope); ok {
+			return v, nil
 		}
 		return nil, fmt.Errorf("call to undefined function %s()", name)
 	}
+}
+
+// scopeBuiltin resolves the builtins provided per-environment instead of
+// through the function table, under the name a PHP script calls them by.
+func scopeBuiltin(name string, scope *Scope) (any, bool) {
+	if strings.EqualFold(name, "func_get_args") {
+		return funcGetArgs(scope), true
+	}
+	return nil, false
+}
+
+// funcGetArgs returns the arguments of the frame scope belongs to.
+func funcGetArgs(scope *Scope) []any {
+	if v, ok := scope.Get(argsKey); ok {
+		if args, ok := v.([]any); ok {
+			return args
+		}
+	}
+	return nil
 }
 
 func (rt *Runtime) lookupFunc(name string) (any, bool) {

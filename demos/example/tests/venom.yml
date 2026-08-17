@@ -1,0 +1,93 @@
+name: example
+
+# Covers every route the example application registers. Run it with
+# `atkins test` from this directory, which reloads the compose service and
+# resolves the container address for {{.host}}.
+#
+# The suite leaves the database as it found it: each case that adds a bookmark
+# reads back the id it was given and deletes it again, so nothing here depends
+# on the ids a previous run happened to produce.
+
+vars:
+  host: http://example.localhost
+
+testcases:
+  - name: the migration seeded the first bookmark
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.headers.Content-Type ShouldContainSubstring text/html
+          - result.body ShouldContainSubstring phpscript
+          - result.body ShouldContainSubstring github.com/titpetric/phpscript
+
+  - name: a bookmark can be added and deleted
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/bookmarks"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "title=Venom&url=https://github.com/ovh/venom"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Bookmark saved.
+          - result.body ShouldContainSubstring Venom
+        extracts:
+          result.body: "action=\"/bookmarks/(?P<added>[0-9]+)/delete\""
+      - type: http
+        method: POST
+        url: "{{.host}}/bookmarks/{{.added}}/delete"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldNotContainSubstring Venom
+
+  - name: input is required
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/bookmarks"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "title=&url="
+        assertions:
+          - result.body ShouldContainSubstring A title and a URL are required.
+
+  - name: a missing bookmark is reported
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/bookmarks/999999/delete"
+        assertions:
+          - result.body ShouldContainSubstring Bookmark not found.
+
+  - name: markup is escaped
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/bookmarks"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "title=<script>alert(1)</script>&url=https://example.com"
+        assertions:
+          - result.body ShouldContainSubstring &lt;script&gt;
+          - result.body ShouldNotContainSubstring <script>alert(1)</script>
+        extracts:
+          result.body: "action=\"/bookmarks/(?P<escaped>[0-9]+)/delete\""
+      - type: http
+        method: POST
+        url: "{{.host}}/bookmarks/{{.escaped}}/delete"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldNotContainSubstring &lt;script&gt;
+
+  - name: static assets are served from the web root
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/assets/style.css"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.headers.Content-Type ShouldContainSubstring text/css

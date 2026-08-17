@@ -37,6 +37,23 @@ type IncludeFunc func(path string) (*model.Program, error)
 // SetIncludeResolver installs the include/require resolver.
 func (rt *Runtime) SetIncludeResolver(fn IncludeFunc) { rt.include = fn }
 
+// RegisterInclude installs a host implementation of one include target: an
+// include or require of path runs fn instead of parsing the file, and the
+// script sees fn's return value where PHP would see the file's.
+//
+// This is for files the runtime reimplements in Go. composer's generated
+// vendor/autoload.php is the motivating case: it bootstraps a class loader
+// through PHP features the interpreter does not support, while phpscript can
+// read the same composer metadata natively. Binding it here rather than
+// installing the loader at startup keeps the PHP semantics intact — nothing is
+// autoloadable until the script has actually included the autoloader.
+func (rt *Runtime) RegisterInclude(path string, fn func() (any, error)) {
+	if rt.includeHooks == nil {
+		rt.includeHooks = map[string]func() (any, error){}
+	}
+	rt.includeHooks[cleanFSPath(path)] = fn
+}
+
 // Load parses PHP source into a program.
 func (rt *Runtime) Load(src string) (*model.Program, error) {
 	rt.UpdateStatus(telemetry.StateReading)
@@ -193,7 +210,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	switch n := s.(type) {
 	case *model.InlineHTML:
 		rt.UpdateStatus(telemetry.StateWriting)
-		_, err := io.WriteString(rt.out, n.Text)
+		_, err := io.WriteString(rt.Output(), n.Text)
 		return nil, flowNormal, err
 
 	case *model.Echo:
@@ -203,7 +220,7 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 				return nil, flowNormal, err
 			}
 			rt.UpdateStatus(telemetry.StateWriting)
-			if _, err := io.WriteString(rt.out, phpString(v)); err != nil {
+			if _, err := io.WriteString(rt.Output(), phpString(v)); err != nil {
 				return nil, flowNormal, err
 			}
 		}
@@ -509,6 +526,12 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 		kind = telemetry.KindTemplate
 	}
 	defer rt.trace(scope, "include "+path, kind)()
+
+	if hook, ok := rt.includeHooks[cleanFSPath(path)]; ok {
+		rt.included = append(rt.included, cleanFSPath(path))
+		rt.UpdateIncludedFiles(len(rt.included))
+		return hook()
+	}
 
 	prog, filename, err := rt.resolveInclude(path)
 	if err != nil {
