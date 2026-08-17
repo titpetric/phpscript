@@ -27,8 +27,8 @@ YAML file. Without `-f`, the binary uses its embedded defaults. See
 Parse and execute a PHP script in CLI mode.
 
 ```bash
-phpscript run tests/fixtures/test-minitpl.php
-phpscript tests/fixtures/test-minitpl.php
+phpscript run tests/fixtures/test-hello-world.php
+phpscript tests/fixtures/test-hello-world.php
 ```
 
 Use this command for normal script execution and shebang scripts:
