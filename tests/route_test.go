@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/titpetric/phpscript/route"
+	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/ps"
 )
@@ -21,10 +21,10 @@ func TestRouteSharedMemoryFixture(t *testing.T) {
 
 	shm := ps.NewSharedMemory()
 	mux := http.NewServeMux()
-	_, err = route.NewService(root, mux, route.WithRuntimeFunc(func(rt *runner.Runtime) {
+	err = annotations.NewRoute(root, annotations.WithRuntimeFunc(func(rt *runner.Runtime) {
 		rt.SetContext(ps.SharedMemoryContext(rt.Context(), shm))
 		rt.RegisterConstructor("SharedMemory", ps.NewSharedMemoryBinding)
-	}))
+	})).RegisterMux(mux)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,10 +59,10 @@ func Example_routeSharedMemory() {
 
 	shm := ps.NewSharedMemory()
 	mux := http.NewServeMux()
-	_, err = route.NewService(root, mux, route.WithRuntimeFunc(func(rt *runner.Runtime) {
+	err = annotations.NewRoute(root, annotations.WithRuntimeFunc(func(rt *runner.Runtime) {
 		rt.SetContext(ps.SharedMemoryContext(rt.Context(), shm))
 		rt.RegisterConstructor("SharedMemory", ps.NewSharedMemoryBinding)
-	}))
+	})).RegisterMux(mux)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -10,7 +10,7 @@ import (
 
 	chi "github.com/go-chi/chi/v5"
 
-	routesvc "github.com/titpetric/phpscript/route"
+	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
 )
@@ -69,7 +69,7 @@ func TestRouteModuleServesAnnotatedRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	router := chi.NewRouter()
-	routes := routesvc.NewModule(testFS, routesvc.WithExcludedDirectory("public"))
+	routes := annotations.NewRoute(testFS, annotations.WithExcludedDirectory("public"))
 	if err := routes.Mount(context.Background(), router); err != nil {
 		t.Fatal(err)
 	}

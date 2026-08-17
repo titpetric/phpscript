@@ -1,4 +1,4 @@
-package startup
+package annotations_test
 
 import (
 	"bytes"
@@ -8,11 +8,12 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-func TestModuleRunsAnnotatedPHPFilesInPathOrder(t *testing.T) {
+func TestStartupRunsAnnotatedPHPFilesInPathOrder(t *testing.T) {
 	root := fstest.MapFS{
 		"20-second.php": {Data: []byte("<?php\n# @startup:\necho \"second\";")},
 		"10-first.php":  {Data: []byte("<?php\n// @startup\necho \"first,\";")},
@@ -20,9 +21,9 @@ func TestModuleRunsAnnotatedPHPFilesInPathOrder(t *testing.T) {
 		"annotated.txt": {Data: []byte("// @startup")},
 	}
 	var out bytes.Buffer
-	module := NewModule(root, "", &out, runner.Options{}, false)
+	startup := annotations.NewStartup(root, annotations.WithOutput(&out))
 
-	if err := module.Start(context.Background()); err != nil {
+	if err := startup.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if got := out.String(); got != "first,second" {
@@ -30,7 +31,7 @@ func TestModuleRunsAnnotatedPHPFilesInPathOrder(t *testing.T) {
 	}
 }
 
-func TestModuleProvidesProjectFilesystem(t *testing.T) {
+func TestStartupProvidesProjectFilesystem(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(dir+"/startup.php", []byte(`<?php
 /* @startup */
@@ -40,9 +41,9 @@ fclose($file);
 `), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	module := NewModule(os.DirFS(dir), dir, nil, runner.Options{}, false)
+	startup := annotations.NewStartup(os.DirFS(dir), annotations.WithRootDir(dir))
 
-	if err := module.Start(context.Background()); err != nil {
+	if err := startup.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	contents, err := os.ReadFile(dir + "/started.txt")
@@ -54,19 +55,19 @@ fclose($file);
 	}
 }
 
-func TestModuleReturnsAnnotatedScriptError(t *testing.T) {
+func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
 	root := fstest.MapFS{
 		"broken.php": {Data: []byte("<?php\n// @startup\nmissing_function();")},
 	}
-	module := NewModule(root, "", &bytes.Buffer{}, runner.Options{}, false)
+	startup := annotations.NewStartup(root, annotations.WithOutput(&bytes.Buffer{}))
 
-	err := module.Start(context.Background())
+	err := startup.Start(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "startup broken.php") {
 		t.Fatalf("error = %v, want startup file error", err)
 	}
 }
 
-func TestModuleRecordsStartupSuccessAndFailure(t *testing.T) {
+func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		source    string
@@ -81,9 +82,12 @@ func TestModuleRecordsStartupSuccessAndFailure(t *testing.T) {
 				t.Fatal(err)
 			}
 			root := fstest.MapFS{"startup.php": {Data: []byte(test.source)}}
-			module := NewModule(root, "", &bytes.Buffer{}, runner.Options{}, false, recorder)
+			startup := annotations.NewStartup(root,
+				annotations.WithOutput(&bytes.Buffer{}),
+				annotations.WithObservers(recorder),
+			)
 
-			err = module.Start(context.Background())
+			err = startup.Start(context.Background())
 			if (err != nil) != test.wantError {
 				t.Fatalf("error = %v, wantError = %t", err, test.wantError)
 			}
@@ -111,11 +115,25 @@ func TestModuleRecordsStartupSuccessAndFailure(t *testing.T) {
 	}
 }
 
-func TestAnnotatedRequiresCommentAnnotation(t *testing.T) {
-	if annotated([]byte(`<?php echo "// @startup";`)) {
-		t.Fatal("annotation inside PHP string was detected")
+func TestStartupRunsWithRunnerOptions(t *testing.T) {
+	root := fstest.MapFS{"startup.php": {Data: []byte("<?php\n// @startup\necho \"ready\";")}}
+	var out bytes.Buffer
+	startup := annotations.NewStartup(root,
+		annotations.WithOutput(&out),
+		annotations.WithRunnerOptions(runner.Options{}),
+		annotations.WithFlatstack(false),
+	)
+
+	if err := startup.Start(context.Background()); err != nil {
+		t.Fatal(err)
 	}
-	if !annotated([]byte("<?php\n/**\n * @startup\n */")) {
-		t.Fatal("docblock annotation was not detected")
+	if got := out.String(); got != "ready" {
+		t.Fatalf("output = %q, want %q", got, "ready")
+	}
+}
+
+func TestStartupRejectsMissingRootFilesystem(t *testing.T) {
+	if err := annotations.NewStartup(nil).Start(context.Background()); err == nil {
+		t.Fatal("nil root filesystem was accepted")
 	}
 }

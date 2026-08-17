@@ -15,10 +15,9 @@ import (
 	"github.com/titpetric/cli"
 	"github.com/titpetric/platform"
 
+	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/config"
-	routesvc "github.com/titpetric/phpscript/route"
 	"github.com/titpetric/phpscript/runner"
-	"github.com/titpetric/phpscript/startup"
 	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/telemetry"
 )
@@ -194,22 +193,26 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 		}
 		observers = append(observers, recorder)
 	}
-	svc.Register(startup.NewModule(os.DirFS(root), root, os.Stdout, config.Runner, config.Flatstack.Enabled, observers...))
+	// Startup jobs and routed endpoints read the same source tree and execute
+	// PHP the same way, so they share one set of options.
+	annotationOptions := []annotations.Option{
+		annotations.WithRootDir(root),
+		annotations.WithOutput(os.Stdout),
+		annotations.WithRunnerOptions(config.Runner),
+		annotations.WithFlatstack(config.Flatstack.Enabled),
+		annotations.WithObservers(observers...),
+	}
+	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
 	if recorder != nil {
 		svc.Use(recorder.Middleware)
 		svc.Register(recorder)
 	}
 	if config.Routes.Enabled {
-		routeOptions := []routesvc.Option{
-			routesvc.WithExcludedDirectory("public"),
-			routesvc.WithRunnerOptions(config.Runner),
-			routesvc.WithFlatstack(config.Flatstack.Enabled),
-			routesvc.WithObservers(observers...),
-			routesvc.WithRuntimeFunc(func(rt *runner.Runtime) {
-				stdlib.RegisterFS(rt, root)
-			}),
-		}
-		svc.Register(routesvc.NewModule(os.DirFS(root), routeOptions...))
+		// Files under public/ are served directly by the HTTP module below, so
+		// an annotation there must not publish a second, unguarded route.
+		routeOptions := append(annotationOptions[:len(annotationOptions):len(annotationOptions)],
+			annotations.WithExcludedDirectory("public"))
+		svc.Register(annotations.NewRoute(os.DirFS(root), routeOptions...))
 	}
 	svc.Register(NewModule(root, config.Runner, config.Flatstack.Enabled, observers...))
 

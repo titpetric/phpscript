@@ -1,11 +1,16 @@
-package route
+package annotations_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	chi "github.com/go-chi/chi/v5"
+
+	"github.com/titpetric/phpscript/annotations"
 )
 
 var testRouteFileSystem = fstest.MapFS{
@@ -33,15 +38,17 @@ echo "public";
 	"ignored.txt": {Data: []byte(`// @route GET /ignored`)},
 }
 
-func TestServiceRegistersAnnotatedPHPFiles(t *testing.T) {
+func newTestMux(t *testing.T, options ...annotations.Option) *http.ServeMux {
+	t.Helper()
 	mux := http.NewServeMux()
-	svc, err := NewService(testRouteFileSystem, mux)
-	if err != nil {
+	if err := annotations.NewRoute(testRouteFileSystem, options...).RegisterMux(mux); err != nil {
 		t.Fatal(err)
 	}
-	if svc.mux != mux {
-		t.Fatal("NewService did not use provided mux")
-	}
+	return mux
+}
+
+func TestRouteRegistersAnnotatedPHPFiles(t *testing.T) {
+	mux := newTestMux(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/users/42", nil)
 	rr := httptest.NewRecorder()
@@ -55,10 +62,7 @@ func TestServiceRegistersAnnotatedPHPFiles(t *testing.T) {
 }
 
 func TestRootRouteDoesNotMatchSubpaths(t *testing.T) {
-	mux := http.NewServeMux()
-	if _, err := NewService(testRouteFileSystem, mux); err != nil {
-		t.Fatal(err)
-	}
+	mux := newTestMux(t)
 
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/asset.css", nil))
@@ -67,11 +71,8 @@ func TestRootRouteDoesNotMatchSubpaths(t *testing.T) {
 	}
 }
 
-func TestServiceRegistersDefaultGetAndPost(t *testing.T) {
-	mux := http.NewServeMux()
-	if _, err := NewService(testRouteFileSystem, mux); err != nil {
-		t.Fatal(err)
-	}
+func TestRouteRegistersDefaultGetAndPost(t *testing.T) {
+	mux := newTestMux(t)
 
 	body := "name=bob"
 	req := httptest.NewRequest(http.MethodPost, "/submit", strings.NewReader(body))
@@ -87,11 +88,8 @@ func TestServiceRegistersDefaultGetAndPost(t *testing.T) {
 	}
 }
 
-func TestServiceAppliesRedirectStatus(t *testing.T) {
-	mux := http.NewServeMux()
-	if _, err := NewService(testRouteFileSystem, mux); err != nil {
-		t.Fatal(err)
-	}
+func TestRouteAppliesRedirectStatus(t *testing.T) {
+	mux := newTestMux(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/redirect", nil)
 	rr := httptest.NewRecorder()
@@ -104,15 +102,37 @@ func TestServiceAppliesRedirectStatus(t *testing.T) {
 	}
 }
 
-func TestServiceSkipsExcludedDirectory(t *testing.T) {
-	mux := http.NewServeMux()
-	if _, err := NewService(testRouteFileSystem, mux, WithExcludedDirectory("public")); err != nil {
-		t.Fatal(err)
-	}
+func TestRouteSkipsExcludedDirectory(t *testing.T) {
+	mux := newTestMux(t, annotations.WithExcludedDirectory("public"))
 
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/not-registered", nil))
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+	}
+}
+
+// TestRouteMountsOnPlatformRouter pins the second registrar: the same
+// annotations reach a platform router as a lifecycle module.
+func TestRouteMountsOnPlatformRouter(t *testing.T) {
+	router := chi.NewRouter()
+	if err := annotations.NewRoute(testRouteFileSystem).Mount(context.Background(), router); err != nil {
+		t.Fatal(err)
+	}
+
+	rr := httptest.NewRecorder()
+	router.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/users/42", nil))
+	if rr.Code != http.StatusOK || rr.Body.String() != "42" {
+		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+	}
+}
+
+func TestRouteRejectsMissingDestinations(t *testing.T) {
+	route := annotations.NewRoute(testRouteFileSystem)
+	if err := route.RegisterMux(nil); err == nil {
+		t.Fatal("nil mux was accepted")
+	}
+	if err := annotations.NewRoute(nil).RegisterMux(http.NewServeMux()); err == nil {
+		t.Fatal("nil root filesystem was accepted")
 	}
 }

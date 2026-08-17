@@ -112,7 +112,7 @@ They are **not yet independent equivalent engines**:
   include, request, and reflection state.
 - Only the documented subset below executes as native flat bytecode.
 - Every other valid program uses the existing runner interpreter.
-- `route.Service` and the bundled CLI/server currently construct `runner.New`
+- `annotations.Route` and the bundled CLI/server currently construct `runner.New`
   internally. Merely changing a callback type does not make those paths use
   flatstack.
 - `Runtime.OnError` selects the interpreter because its per-statement recovery
@@ -280,7 +280,7 @@ The highest-value next steps are:
 6. Pool operand/local/iterator storage to reduce per-run allocations.
 7. Cache native-rejection decisions and use a structural cache key where
    callers need to reparse identical source frequently.
-8. Let `route.Service` and CLI/server entry points select a runtime factory so
+8. Let `annotations.Route` and CLI/server entry points select a runtime factory so
    they can opt into flatstack instead of always constructing `runner.New`.
 9. Track native-versus-fallback execution in diagnostics so production users
    can measure bytecode coverage without calling `Supports` separately.
