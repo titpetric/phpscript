@@ -1,3 +1,10 @@
+# A -mod=mod inherited from the environment makes every go command fail when the
+# checkout sits in a go.work; clearing it lets go pick the mode itself, which is
+# readonly in a module and the workspace build otherwise.
+env:
+  vars:
+    GOFLAGS: ""
+
 tasks:
   default:
     cmds:
@@ -12,6 +19,16 @@ tasks:
       - task: up
       - task: test:introspection
       - task: test:phpscript:run
+      - task: test:demos:dbadmin
+
+  # The demo is a compose service, so its venom suite runs against the image
+  # built above. It has its own pipeline because it has to resolve the address
+  # of its container first.
+  test:demos:dbadmin:
+    dir: demos/dbadmin/tests
+    passthru: true
+    cmds:
+      - atkins --final test
 
   test:introspection:
     passthru: true

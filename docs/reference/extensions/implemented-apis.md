@@ -100,8 +100,10 @@ Regenerate it after changing runtime or standard-library registrations.
 - `phpinfo`
 - `putenv`
 - `register_shutdown_function`
+- `rsort`
 - `rtrim`
 - `set_include_path`
+- `sort`
 - `sprintf`
 - `start_span`
 - `substr`

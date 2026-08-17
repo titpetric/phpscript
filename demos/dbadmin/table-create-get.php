@@ -14,5 +14,7 @@ if (!in_array($engine, array("sqlite", "pgsql", "mysql"))) {
 
 $title = "Create table";
 
-render($tpl, "create", array("title" => $title, "engine" => $engine));
+$tpl->load("create.tpl");
+$tpl->assign(array("title" => $title, "engine" => $engine));
+$tpl->render();
 $db->close();

@@ -8,27 +8,13 @@ if ($query == "") {
 	die("Enter a SQL statement.");
 }
 
-$statement = $db->query($query);
-$prefix = strtolower(ltrim($query));
-$rows = array();
-$result_columns = array();
-$message = "Statement executed successfully.";
-if (strpos($prefix, "select") === 0 || strpos($prefix, "pragma") === 0 || strpos($prefix, "with") === 0 || strpos($prefix, "explain") === 0) {
-	$row = $statement->fetch();
-	while ($row) {
-		if (count($result_columns) == 0) {
-			$result_columns = array_keys($row);
-		}
-
-		$rows[] = $row;
-		$row = $statement->fetch();
-	}
-
-	$message = "Query completed; " . count($rows) . " row(s) returned.";
-}
-
-$statement->close();
+$result = sql_execute($db, $query);
+$message = $result["message"];
+$rows = $result["rows"];
+$result_columns = $result["result_columns"];
 $title = "SQL console";
 
-render($tpl, "sql", array("title" => $title, "query" => $query, "message" => $message, "rows" => $rows, "result_columns" => $result_columns));
+$tpl->load("sql.tpl");
+$tpl->assign(array("title" => $title, "query" => $query, "message" => $message, "rows" => $rows, "result_columns" => $result_columns));
+$tpl->render();
 $db->close();

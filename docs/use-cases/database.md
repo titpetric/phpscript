@@ -42,26 +42,94 @@ the pool cannot be opened.
 ## Run migrations
 
 `Database\Migrate` applies `*.up.sql` migration files to a named connection.
-Run migrations from an [`@startup`](../usage.md) file so they finish before the
-server starts listening:
+This section sets up migrations for an application from scratch. The
+[dbadmin demo](../../demos/dbadmin) is a working copy of the result.
+
+### Lay out the schema
+
+Keep one migration file per table, named after the table, in a `schema/`
+directory next to the application:
+
+```text
+my-app/
+├── migrate.php
+├── public/
+│   └── index.php
+└── schema/
+    ├── catalogue.up.sql
+    └── users.up.sql
+```
+
+Only files ending in `.up.sql` are applied, in filename order. A file holds the
+`CREATE TABLE` statement for its table, and any rows the application needs to
+start with:
+
+```sql
+-- catalogue holds the records the application starts with.
+
+CREATE TABLE catalogue (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL,
+	category TEXT NOT NULL DEFAULT 'General',
+	created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO catalogue (name, category) VALUES ('SQLite Handbook', 'Books');
+```
+
+Statements are separated by a semicolon at the end of a line, and `--` starts a
+comment. Because comments are stripped before the file is split, avoid `--`
+inside string values.
+
+### Run them at startup
+
+Migrations belong in an [`@startup`](../usage.md) file, so they finish before
+the server accepts requests. Create `migrate.php`:
 
 ```php
 <?php
+
 // @startup
 
 $migrate = new Database\Migrate("app");
-$migrate->load("./schema/*.sql");
+$migrate->load("./schema/*.up.sql");
 $migrate->run();
 ```
 
-`load()` accepts a glob relative to the runtime working directory. It reads the
-matching files from the application filesystem; the migration runner applies
-files whose names end in `.up.sql` in filename order. Applied migrations are
-recorded in a `migrations` table and skipped on later server starts.
+The constructor takes the same connection name as `new Database("app")`, which
+is `PLATFORM_DB_APP` in the environment. Omitting it selects the connection
+named `default`.
+
+`load()` accepts a glob relative to the runtime working directory and reads the
+matching files from the application filesystem. `run()` applies them and
+records what it applied in a `migrations` table, so later server starts skip
+the statements that already ran.
 
 Loading or applying a migration can raise a PHP exception. An uncaught
 exception aborts startup, and the startup step and its error are recorded as a
 background trace when telemetry is enabled.
+
+### Change a schema later
+
+Migration files are append only. Progress is recorded per statement index, so
+adding statements at the end of an existing file is how a table is changed:
+
+```sql
+CREATE TABLE catalogue (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name TEXT NOT NULL,
+	category TEXT NOT NULL DEFAULT 'General',
+	created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO catalogue (name, category) VALUES ('SQLite Handbook', 'Books');
+
+ALTER TABLE catalogue ADD COLUMN notes TEXT;
+```
+
+On the next start, only the `ALTER TABLE` runs. Editing or removing a statement
+that already ran does not re-run it, and leaves databases that applied the old
+version inconsistent with new ones. Add a table by adding a file.
 
 ## Execute queries
 

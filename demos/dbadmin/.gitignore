@@ -1,3 +1,4 @@
-dbadmin.sqlite
-dbadmin.sqlite-shm
-dbadmin.sqlite-wal
+*.db*
+*.sqlite*
+venom*.log
+/.claude

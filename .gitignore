@@ -7,3 +7,11 @@ vendor
 *.test
 *.cov
 /bin
+
+# Build and run artifacts: the templates a demo compiles on first request, and
+# venom's per-run logs. Neither is committed.
+venom*.log
+demos/*/templates/cache/
+
+# Local agent/editor state, never committed.
+/.claude

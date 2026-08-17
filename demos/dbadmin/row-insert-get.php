@@ -8,5 +8,7 @@ $columns = columns_for($db, $table);
 $mode = "Insert";
 $title = "Insert · " . $table;
 
-render($tpl, "row-form", array("title" => $title, "table" => $table, "columns" => $columns, "mode" => $mode, "row" => array()));
+$tpl->load("row-form.tpl");
+$tpl->assign(array("title" => $title, "table" => $table, "columns" => $columns, "mode" => $mode, "row" => array()));
+$tpl->render();
 $db->close();

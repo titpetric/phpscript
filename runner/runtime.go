@@ -191,6 +191,13 @@ func (rt *Runtime) Exit(code int) error {
 	return &ExitError{Code: code}
 }
 
+// Output returns the writer echo statements write to. Builtins that produce
+// output, such as die() with a message, write there so their text joins the
+// response body in the order the script produced it.
+func (rt *Runtime) Output() io.Writer {
+	return rt.out
+}
+
 // New returns a Runtime that writes echo output to w (defaults to os.Stdout).
 func New(w io.Writer, opts Options) *Runtime {
 	if w == nil {

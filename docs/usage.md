@@ -111,6 +111,10 @@ phpscript list ./src/...    # PHP files in ./src and its subdirectories
 phpscript list index.php    # A specific PHP file
 ```
 
+The Route column names the entry point a file provides: a `METHOD /path`
+annotation, or `@startup` for a file the server runs before it listens. Files
+that are only included by others have neither.
+
 ### `phpscript ast <file.php>`
 
 Tokenize a PHP file and print its PHP-style token stream.
@@ -162,12 +166,14 @@ for required setup such as database migrations:
 // @startup
 
 $migrate = new Database\Migrate("app");
-$migrate->load("./schema/*.sql");
+$migrate->load("./schema/*.up.sql");
 $migrate->run();
 ```
 
 Startup files run with the CLI SAPI and the application filesystem. If one
-fails, the server is not started.
+fails, the server is not started. See
+[Run migrations](./use-cases/database.md#run-migrations) for the schema layout
+these files apply.
 
 ```text
 my-app/

@@ -5,14 +5,6 @@ include "include/Template.php";
 $db = new Database("dbadmin");
 $tpl = new Template;
 
-$catalogue = $db->get("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'catalogue'");
-if (!$catalogue) {
-	$db->query("CREATE TABLE catalogue (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'General', notes TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)");
-	$db->query("INSERT INTO catalogue (name, category, notes) VALUES (?, ?, ?)", "SQLite Handbook", "Books", "A sample record you can edit or export.");
-	$db->query("INSERT INTO catalogue (name, category, notes) VALUES (?, ?, ?)", "Desk Lamp", "Equipment", "Created automatically on the first request.");
-	$db->query("INSERT INTO catalogue (name, category, notes) VALUES (?, ?, ?)", "Local database", "Projects", "Explore this demo using the navigation above.");
-}
-
 function h($value) {
 	if ($value === null) {
 		return "<span class=\"null\">NULL</span>";
@@ -64,8 +56,27 @@ function csv_cell($value) {
 	return "\"" . str_replace("\"", "\"\"", "" . $value) . "\"";
 }
 
-function render($tpl, $name, $vars) {
-	$tpl->load($name . ".tpl");
-	$tpl->assign($vars);
-	$tpl->render();
+/**
+ * Runs a console statement and returns the message, rows and column names.
+ *
+ * query() reports success as a boolean, so statements that return rows are
+ * read with get_all() instead. Rows arrive as maps without a column order;
+ * the names are sorted to keep the rendered table stable between requests.
+ */
+function sql_execute($db, $query) {
+	$prefix = strtolower(ltrim($query));
+	$returns_rows = strpos($prefix, "select") === 0 || strpos($prefix, "pragma") === 0 || strpos($prefix, "with") === 0 || strpos($prefix, "explain") === 0;
+	if (!$returns_rows) {
+		$db->query($query);
+		return array("message" => "Statement executed successfully.", "rows" => array(), "result_columns" => array());
+	}
+
+	$rows = $db->get_all($query);
+	$result_columns = array();
+	if (count($rows) > 0) {
+		$result_columns = array_keys($rows[0]);
+		sort($result_columns);
+	}
+
+	return array("message" => "Query completed; " . count($rows) . " row(s) returned.", "rows" => $rows, "result_columns" => $result_columns);
 }

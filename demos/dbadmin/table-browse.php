@@ -49,5 +49,7 @@ $values[] = $offset;
 $rows = call_user_func_array($db->get_all, array_merge(array($select), $values));
 $title = "Browse " . $table;
 
-render($tpl, "browse", array("title" => $title, "table" => $table, "columns" => $columns, "rows" => $rows, "without_rowid" => $without_rowid, "search" => $search, "page" => $page, "limit" => $limit, "total" => $total));
+$tpl->load("browse.tpl");
+$tpl->assign(array("title" => $title, "table" => $table, "columns" => $columns, "rows" => $rows, "without_rowid" => $without_rowid, "search" => $search, "page" => $page, "limit" => $limit, "total" => $total));
+$tpl->render();
 $db->close();

@@ -38,7 +38,7 @@ defer($db->rollback);
 
 ### `Database\Migrate`
 
-`new Database\Migrate("name")` targets a named platform database. `load($pattern)` reads migration files from the application filesystem, and `run()` applies matching `*.up.sql` files in filename order. See the [database guide](../../use-cases/database.md#run-migrations).
+`new Database\Migrate("name")` targets a named platform database. `load($pattern)` reads migration files from the application filesystem, and `run()` applies matching `*.up.sql` files in filename order. Files are append only: applied statements are recorded by index in a `migrations` table, so statements added at the end of an existing file run on the next start. See the [database guide](../../use-cases/database.md#run-migrations).
 
 ### `SharedMemory`
 

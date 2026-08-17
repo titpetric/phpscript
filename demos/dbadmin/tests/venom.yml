@@ -1,0 +1,272 @@
+name: dbadmin
+
+# Every route reported by `phpscript list ./...` is exercised here. Run it with
+# `atkins test` from this directory: that reloads the compose service, resolves
+# the container address and passes it in as {{.host}}.
+#
+# The suite is idempotent. It removes its own leftovers before it starts and
+# does its row editing in a scratch table, so the seeded catalogue rows keep
+# the ids the migration gave them.
+
+vars:
+  host: http://dbadmin.localhost
+
+testcases:
+  - name: remove leftovers from an earlier run
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/sql"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "query=DROP TABLE IF EXISTS venom_rows"
+        assertions:
+          - result.statuscode ShouldEqual 200
+      - type: http
+        method: POST
+        url: "{{.host}}/sql"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "query=DROP TABLE IF EXISTS venom_scratch"
+        assertions:
+          - result.statuscode ShouldEqual 200
+      - type: http
+        method: POST
+        url: "{{.host}}/sql"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "query=DELETE FROM catalogue WHERE name LIKE 'Venom%'"
+        assertions:
+          - result.statuscode ShouldEqual 200
+
+  - name: dashboard lists the migrated table
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring catalogue
+          - result.body ShouldContainSubstring migrations
+          - result.body ShouldContainSubstring Table catalogue
+
+  - name: browse shows the seeded rows
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring SQLite Handbook
+          - result.body ShouldContainSubstring Desk Lamp
+          - result.body ShouldContainSubstring Local database
+          - result.body ShouldContainSubstring 3 matching rows
+
+  - name: browse filters on the search term
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue?q=Handbook"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring SQLite Handbook
+          - result.body ShouldNotContainSubstring Desk Lamp
+
+  - name: browse paginates past the seeded rows
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue?page=2"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring No rows found.
+
+  - name: structure reports columns and the create statement
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue/structure"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring created_at
+          - result.body ShouldContainSubstring CREATE TABLE catalogue
+          - result.body ShouldContainSubstring Danger zone
+
+  - name: export returns csv
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue/export"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.headers.Content-Type ShouldContainSubstring text/csv
+          - result.headers.Content-Disposition ShouldContainSubstring catalogue.csv
+          - result.body ShouldContainSubstring created_at
+          - result.body ShouldContainSubstring SQLite Handbook
+
+  - name: sql console runs its default query
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/sql"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring 3 row(s) returned
+          - result.body ShouldContainSubstring SQLite Handbook
+
+  - name: sql console runs a query from the url
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/sql?query=SELECT+COUNT(*)+AS+total+FROM+catalogue"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring 1 row(s) returned
+          - result.body ShouldContainSubstring total
+
+  - name: sql console executes a posted query
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/sql"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "query=SELECT name FROM catalogue ORDER BY id LIMIT 1"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring 1 row(s) returned
+          - result.body ShouldContainSubstring SQLite Handbook
+
+  - name: create table form offers the dialect presets
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/create"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring New database table
+      - type: http
+        method: GET
+        url: "{{.host}}/table/create?engine=pgsql"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring selected>PostgreSQL
+
+  - name: insert form renders the columns
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue/insert"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Insert row
+          - result.body ShouldContainSubstring value_1
+
+  - name: edit form loads an existing row
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue/row/1/edit"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Update row
+          - result.body ShouldContainSubstring SQLite Handbook
+
+  - name: a table can be created from the form
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/table/create"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "table_name=venom_rows&engine=sqlite&column_count=2&name_1=id&type_1=INTEGER&default_1=&pk_1=1&name_2=label&type_2=TEXT&default_2="
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring CREATE TABLE &quot;venom_rows&quot;
+          - result.body ShouldContainSubstring label
+      - type: http
+        method: GET
+        url: "{{.host}}/"
+        assertions:
+          - result.body ShouldContainSubstring venom_rows
+
+  - name: a row can be inserted, edited and deleted
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/table/venom_rows/insert"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "null_0=1&value_1=Venom probe"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Venom probe
+          - result.body ShouldContainSubstring 1 matching rows
+      - type: http
+        method: POST
+        url: "{{.host}}/table/venom_rows/row/1/edit"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "value_0=1&value_1=Venom probe renamed"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Venom probe renamed
+      - type: http
+        method: POST
+        url: "{{.host}}/table/venom_rows/row/1/delete"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldNotContainSubstring Venom probe
+          - result.body ShouldContainSubstring No rows found.
+
+  - name: a table can be dropped after confirmation
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/table/venom_rows/drop"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "confirmation=venom_rows"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Table catalogue
+          - result.body ShouldNotContainSubstring venom_rows
+
+  - name: dropping requires a matching confirmation
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/table/catalogue/drop"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "confirmation=wrong"
+        assertions:
+          - result.body ShouldContainSubstring Confirmation did not match the table name.
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring 3 matching rows
+
+  - name: unknown and invalid table names are rejected
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/table/nope"
+        assertions:
+          - result.body ShouldContainSubstring Table not found.
+      - type: http
+        method: GET
+        url: "{{.host}}/table/bad-name"
+        assertions:
+          - result.body ShouldContainSubstring Invalid table name.
+
+  - name: static assets are served from the web root
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/assets/style.css"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.headers.Content-Type ShouldContainSubstring text/css

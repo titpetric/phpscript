@@ -311,6 +311,8 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("array_splice", phpArraySplice)
 	rt.RegisterFunc("array_map", phpArrayMap)
 	rt.RegisterFunc("usort", phpUsort)
+	rt.RegisterFunc("sort", phpSort)
+	rt.RegisterFunc("rsort", phpRsort)
 }
 
 // phpArrayMerge implements array_merge. PHP renumbers integer keys and lets
@@ -498,18 +500,58 @@ func phpArrayMap(fn func(...any) (any, error), a any) ([]any, error) {
 
 // phpUsort sorts values in place using cmp, reindexing with integer keys (PHP
 // semantics). cmp is the env-adapted comparator: func(...any)(any,error).
-// A *model.Array is rebuilt as a 0-indexed list; a native Go slice is sorted
-// through its backing array, which the script shares, so both are mutated in
-// place as PHP expects.
 func phpUsort(a any, cmp func(...any) (any, error)) bool {
-	less := func(x, y any) bool {
+	return sortValues(a, func(x, y any) bool {
 		r, err := cmp(x, y)
 		if err != nil {
 			return false
 		}
 		return toInt(r) < 0
-	}
+	})
+}
 
+// phpSort orders a list with PHP's default comparison: numerically when both
+// sides are numeric, by string otherwise. Like sort(), it discards the keys and
+// reindexes the result from zero.
+func phpSort(a any) bool {
+	return sortValues(a, sortLess)
+}
+
+// phpRsort is phpSort in descending order.
+func phpRsort(a any) bool {
+	return sortValues(a, func(x, y any) bool { return sortLess(y, x) })
+}
+
+// sortLess is PHP's default comparison: two numbers compare as numbers, any
+// other pair compares as strings.
+func sortLess(x, y any) bool {
+	xn, xok := numericValue(x)
+	yn, yok := numericValue(y)
+	if xok && yok {
+		return xn < yn
+	}
+	return toString(x) < toString(y)
+}
+
+// numericValue returns v as a float64 if it is one of the runtime's number
+// types. A numeric string is not one of them, so sort() orders "10" before "9"
+// where PHP, which compares two numeric strings as numbers, does not.
+func numericValue(v any) (float64, bool) {
+	switch x := v.(type) {
+	case int:
+		return float64(x), true
+	case int64:
+		return float64(x), true
+	case float64:
+		return x, true
+	}
+	return 0, false
+}
+
+// sortValues reorders a list in place using less. A *model.Array is rebuilt as
+// a 0-indexed list; a native Go slice is sorted through its backing array,
+// which the script shares, so both are mutated in place as PHP expects.
+func sortValues(a any, less func(x, y any) bool) bool {
 	switch target := a.(type) {
 	case nil:
 		return false
@@ -787,20 +829,23 @@ func registerLang(rt *runner.Runtime) {
 	})
 	rt.RegisterFunc("call_user_func_array", phpCallUserFuncArray)
 	rt.RegisterFunc("function_exists", func(string) bool { return false })
-	rt.RegisterFunc("exit", func(code ...any) (any, error) {
+	// PHP's exit/die takes either a status or a message: a string argument is
+	// printed and the script exits with status 0, an integer sets the status.
+	terminate := func(code ...any) (any, error) {
 		status := 0
 		if len(code) > 0 {
-			status = int(toInt(code[0]))
+			if message, ok := code[0].(string); ok {
+				if _, err := io.WriteString(rt.Output(), message); err != nil {
+					return nil, err
+				}
+			} else {
+				status = int(toInt(code[0]))
+			}
 		}
 		return nil, rt.Exit(status)
-	})
-	rt.RegisterFunc("die", func(code ...any) (any, error) {
-		status := 0
-		if len(code) > 0 {
-			status = int(toInt(code[0]))
-		}
-		return nil, rt.Exit(status)
-	})
+	}
+	rt.RegisterFunc("exit", terminate)
+	rt.RegisterFunc("die", terminate)
 }
 
 func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
