@@ -310,8 +310,20 @@ func registerArrays(rt *runner.Runtime) {
 	})
 	rt.RegisterFunc("array_slice", phpArraySlice)
 	rt.RegisterFunc("array_splice", phpArraySplice)
-	rt.RegisterFunc("array_map", phpArrayMap)
-	rt.RegisterFunc("usort", phpUsort)
+	rt.RegisterFunc("array_map", func(fn any, a any) ([]any, error) {
+		callback, ok := rt.Callable(fn)
+		if !ok {
+			return nil, errors.New("array_map(): argument #1 ($callback) must be a valid callback")
+		}
+		return phpArrayMap(callback, a)
+	})
+	rt.RegisterFunc("usort", func(a any, cmp any) (bool, error) {
+		callback, ok := rt.Callable(cmp)
+		if !ok {
+			return false, errors.New("usort(): argument #2 ($callback) must be a valid callback")
+		}
+		return phpUsort(a, callback), nil
+	})
 	rt.RegisterFunc("sort", phpSort)
 	rt.RegisterFunc("rsort", phpRsort)
 }
@@ -1063,8 +1075,22 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return false
 	})
-	rt.RegisterFunc("call_user_func_array", phpCallUserFuncArray)
-	rt.RegisterFunc("function_exists", func(string) bool { return false })
+	rt.RegisterFunc("call_user_func", func(fn any, args ...any) (any, error) {
+		callback, ok := rt.Callable(fn)
+		if !ok {
+			return nil, errors.New("call_user_func(): argument #1 ($callback) must be a valid callback")
+		}
+		return callback(args...)
+	})
+	rt.RegisterFunc("call_user_func_array", func(fn any, args any) (any, error) {
+		callback, ok := rt.Callable(fn)
+		if !ok {
+			return nil, errors.New("call_user_func_array(): argument #1 ($callback) must be a valid callback")
+		}
+		return phpCallUserFuncArray(callback, args)
+	})
+	rt.RegisterFunc("function_exists", func(name string) bool { return rt.FunctionExists(name) })
+	rt.RegisterFunc("is_callable", func(v any) bool { _, ok := rt.Callable(v); return ok })
 	// PHP's exit/die takes either a status or a message: a string argument is
 	// printed and the script exits with status 0, an integer sets the status.
 	terminate := func(code ...any) (any, error) {

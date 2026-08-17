@@ -1,6 +1,7 @@
 package compat
 
 import (
+	"io"
 	"strings"
 
 	"github.com/titpetric/phpscript/runner"
@@ -51,8 +52,10 @@ func (b *buffers) pop(flush bool) (string, bool) {
 	b.rt.PopOutput()
 	if flush {
 		// Writing after the pop targets the enclosing level, which is what
-		// makes nested buffers compose.
-		if _, err := b.rt.Output().Write([]byte(contents)); err != nil {
+		// makes nested buffers compose. WriteString, not Write: a []byte
+		// conversion here would copy the whole page every time a template
+		// engine flushes one.
+		if _, err := io.WriteString(b.rt.Output(), contents); err != nil {
 			return contents, true
 		}
 	}
