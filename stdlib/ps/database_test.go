@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/titpetric/pdo/client"
@@ -99,6 +100,126 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 				t.Fatalf("failed = %t, error = %q", got, span.Error)
 			}
 		})
+	}
+}
+
+// A statement is classified by the keyword it starts with, and the tag it
+// carries is recorded beside it: a trace groups by what a query was for, which
+// the statement text alone does not answer.
+func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
+	span, observe := newObservedSpan(t)
+	observe(client.QueryLogEntry{Query: "/* userGet */ SELECT * FROM user WHERE id = ?"})
+
+	if span.Attributes["query_type"] != "select" || span.Attributes["query_comment"] != "userGet" {
+		t.Fatalf("attributes = %+v", span.Attributes)
+	}
+	// The comment stays in the statement, so `show processlist` shows it too.
+	if span.Attributes["query"] != "/* userGet */ SELECT * FROM user WHERE id = ?" {
+		t.Fatalf("query = %#v", span.Attributes["query"])
+	}
+
+	// An untagged statement has no attribute rather than an empty one.
+	span, observe = newObservedSpan(t)
+	observe(client.QueryLogEntry{Query: "select 1"})
+	if _, ok := span.Attributes["query_comment"]; ok || span.Attributes["query_type"] != "select" {
+		t.Fatalf("attributes = %+v", span.Attributes)
+	}
+}
+
+// The CRUD helpers write by definition, so a read-only client refuses them
+// before a statement is built. The nil Bridge is the assertion that nothing
+// reached the database: running one would panic.
+func TestDatabaseReadonlyRefusesWrites(t *testing.T) {
+	database := &Database{IsReadonly: true}
+	ctx := context.Background()
+
+	for _, test := range []struct {
+		name string
+		call func() (any, error)
+		want string
+	}{
+		{name: "insert", want: "insert", call: func() (any, error) {
+			return database.Insert(ctx, "users", map[string]any{"name": "Ada"})
+		}},
+		{name: "replace", want: "replace", call: func() (any, error) {
+			return database.Replace(ctx, "users", map[string]any{"name": "Ada"})
+		}},
+		{name: "update", want: "update", call: func() (any, error) {
+			return database.Update(ctx, "users", map[string]any{"name": "Ada"}, "id")
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			value, err := test.call()
+			if !errors.Is(err, ErrReadOnly) || !strings.Contains(err.Error(), test.want+" is not allowed") {
+				t.Fatalf("err = %v", err)
+			}
+			if value != nil {
+				t.Fatalf("value = %#v, want nil", value)
+			}
+		})
+	}
+}
+
+// Statements reach the database as text, so the boundary reads the text: what
+// the statement starts with decides, and a tag in front of it does not.
+func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
+	for _, test := range []struct {
+		query   string
+		refused bool
+	}{
+		{query: "select id from users"},
+		{query: "/* userGet */ SELECT * FROM user"},
+		{query: "  \n show tables"},
+		{query: "describe users"},
+		{query: "insert into users (name) values ('Ada')", refused: true},
+		{query: "/* userSave */ UPDATE user SET name = 'Ada'", refused: true},
+		{query: "delete from users", refused: true},
+		{query: "create table t (id integer)", refused: true},
+		{query: "alter table users add column notes text", refused: true},
+		{query: "-- just a comment", refused: true},
+		{query: "", refused: true},
+	} {
+		t.Run(test.query, func(t *testing.T) {
+			database := &Database{IsReadonly: true}
+			err := database.refuseQuery(context.Background(), test.query)
+			if refused := errors.Is(err, ErrReadOnly); refused != test.refused {
+				t.Fatalf("refused = %t, err = %v", refused, err)
+			}
+
+			// The same statement on an unrestricted client is never refused.
+			writable := &Database{}
+			if err := writable.refuseQuery(context.Background(), test.query); err != nil {
+				t.Fatalf("writable client refused %q: %v", test.query, err)
+			}
+		})
+	}
+}
+
+// A refused statement never reaches the query log, so the span carrying the
+// call is where it is recorded — otherwise a boundary that refuses the wrong
+// thing leaves nothing behind to debug it with.
+func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
+	tracer, err := telemetry.New(telemetry.NewOptions())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, trace, err := tracer.StartTrace(context.Background(), "request")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	database := &Database{ID: "db", IsReadonly: true}
+	if _, err := database.Query(ctx, "/* purge */ DELETE FROM user"); !errors.Is(err, ErrReadOnly) {
+		t.Fatalf("err = %v", err)
+	}
+
+	spans := trace.Clone().Spans
+	span := spans[len(spans)-1]
+	if span.Name != "db.Query" || !span.Failed() || !strings.Contains(span.Error, "delete is not allowed") {
+		t.Fatalf("span = %+v", span)
+	}
+	if span.Attributes["query_type"] != "delete" || span.Attributes["query_comment"] != "purge" {
+		t.Fatalf("attributes = %+v", span.Attributes)
 	}
 }
 

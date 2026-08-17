@@ -16,12 +16,52 @@ type Database struct {
 	Bridge *client.Bridge
 	ID     string
 
+	// IsReadonly restricts the client to statements that only read. It is a
+	// property of the client, not of the connection: PHP reads and writes it as
+	// `$db->is_readonly`, and it lives as long as the client does, which for a
+	// served request is the request.
+	//
+	// It refuses insert(), replace() and update() outright, and refuses any
+	// statement passed to query(), get() or get_all() that does not start with
+	// a read-only keyword (see readOnlyStatements). Transactions, connection
+	// pinning and the result accessors stay available, since a read-only
+	// transaction is a read.
+	//
+	// The restriction is a boundary for the code holding this client, not a
+	// sandbox around the script: the script that set it can unset it. A
+	// connection that must not write belongs to a database user without the
+	// grant to, and this marks the code that must not write.
+	IsReadonly bool
+
 	// transaction is the span opened by Begin and ended by Commit or Rollback,
 	// so a transaction reads as one region rather than three markers.
 	transaction *telemetry.Span
 }
 
 type databaseSpanKey struct{}
+
+// ErrReadOnly is what a refusal by a read-only client matches with errors.Is.
+// The runtime surfaces the refusal to PHP as a thrown exception, so a script
+// catches it like any other database error.
+var ErrReadOnly = errors.New("database is read-only")
+
+// readOnlyError is a refusal by a read-only client. It names the statement it
+// refused, and matches ErrReadOnly without wrapping it: the flat backend
+// unwraps a caught error to its root cause, and the caught message has to say
+// which statement was lost rather than only that the client cannot write.
+type readOnlyError struct {
+	refusal string
+}
+
+// Error renders the refusal as the message PHP catches.
+func (e readOnlyError) Error() string {
+	return ErrReadOnly.Error() + ": " + e.refusal
+}
+
+// Is matches the sentinel, so errors.Is(err, ErrReadOnly) holds for a refusal.
+func (e readOnlyError) Is(target error) bool {
+	return target == ErrReadOnly
+}
 
 // SetID records the PHP variable receiving this constructed client.
 func (b *Database) SetID(id string) {
@@ -33,6 +73,9 @@ func (b *Database) Insert(ctx context.Context, table string, value any) (any, er
 	ctx, end := b.withSpan(ctx, "Insert")
 	defer end()
 
+	if err := b.refuseWrite(ctx, "insert"); err != nil {
+		return nil, err
+	}
 	return b.Bridge.Insert(ctx, table, value)
 }
 
@@ -41,6 +84,9 @@ func (b *Database) Replace(ctx context.Context, table string, value any) (any, e
 	ctx, end := b.withSpan(ctx, "Replace")
 	defer end()
 
+	if err := b.refuseWrite(ctx, "replace"); err != nil {
+		return nil, err
+	}
 	return b.Bridge.Replace(ctx, table, value)
 }
 
@@ -49,6 +95,9 @@ func (b *Database) Update(ctx context.Context, table string, value any, keyColum
 	ctx, end := b.withSpan(ctx, "Update")
 	defer end()
 
+	if err := b.refuseWrite(ctx, "update"); err != nil {
+		return nil, err
+	}
 	return b.Bridge.Update(ctx, table, value, keyColumns...)
 }
 
@@ -57,6 +106,9 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 	ctx, end := b.withSpan(ctx, "Query")
 	defer end()
 
+	if err := b.refuseQuery(ctx, query); err != nil {
+		return nil, err
+	}
 	return b.Bridge.Query(ctx, query, args...)
 }
 
@@ -78,6 +130,9 @@ func (b *Database) Get(ctx context.Context, query string, args ...any) (any, err
 	ctx, end := b.withSpan(ctx, "Get")
 	defer end()
 
+	if err := b.refuseQuery(ctx, query); err != nil {
+		return nil, err
+	}
 	value, err := b.Bridge.Get(ctx, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
 		recordRows(ctx, 0)
@@ -94,6 +149,9 @@ func (b *Database) GetAll(ctx context.Context, query string, args ...any) (any, 
 	ctx, end := b.withSpan(ctx, "GetAll")
 	defer end()
 
+	if err := b.refuseQuery(ctx, query); err != nil {
+		return nil, err
+	}
 	value, err := b.Bridge.GetAll(ctx, query, args...)
 	if err == nil {
 		if rows, ok := model.LenValues(value); ok {
@@ -174,8 +232,9 @@ func (b *Database) RowsAffected(ctx context.Context) (any, error) {
 // to open the trace at all. They are as sensitive as the columns they filter
 // on, so gate the front end with Options.Authorize before exposing it.
 func (b *Database) observe(ctx context.Context, entry client.QueryLogEntry) {
-	span, _ := ctx.Value(databaseSpanKey{}).(*telemetry.Span)
+	span := databaseSpan(ctx)
 	span.SetAttribute("query", entry.Query)
+	parseQuery(entry.Query).record(span)
 	if args, ok := queryArgs(entry.Args); ok {
 		span.SetAttribute("args", args)
 	}
@@ -227,8 +286,49 @@ func recordable(err error) bool {
 // count is the other half of a query: a statement that took 40ms says something
 // different when it returned 3 rows than when it returned 30,000.
 func recordRows(ctx context.Context, rows int) {
+	databaseSpan(ctx).SetAttribute("rows", rows)
+}
+
+// databaseSpan returns the span measuring the call in progress, or nil when the
+// run is uninstrumented. Every span method is nil safe, so callers do not check.
+func databaseSpan(ctx context.Context) *telemetry.Span {
 	span, _ := ctx.Value(databaseSpanKey{}).(*telemetry.Span)
-	span.SetAttribute("rows", rows)
+	return span
+}
+
+// refuseWrite reports the error a read-only client returns for a CRUD helper.
+// There is nothing to classify: insert(), replace() and update() write by
+// definition, so they are refused before a statement is built for them.
+func (b *Database) refuseWrite(ctx context.Context, statement string) error {
+	if !b.IsReadonly {
+		return nil
+	}
+	err := readOnlyError{refusal: statement + " is not allowed"}
+	databaseSpan(ctx).RecordError(err)
+	return err
+}
+
+// refuseQuery reports the error a read-only client returns for a statement that
+// is not a read, classifying it by the keyword it starts with.
+//
+// A refused statement never reaches the query log, so what it was is recorded
+// here: a boundary nobody can see being enforced is a boundary nobody can debug
+// when it refuses the wrong thing.
+func (b *Database) refuseQuery(ctx context.Context, query string) error {
+	if !b.IsReadonly {
+		return nil
+	}
+	info := parseQuery(query)
+	if info.isRead() {
+		return nil
+	}
+
+	err := readOnlyError{refusal: info.refusal()}
+	span := databaseSpan(ctx)
+	span.SetAttribute("query", query)
+	info.record(span)
+	span.RecordError(err)
+	return err
 }
 
 // name qualifies a method with the PHP variable holding this client, so two
