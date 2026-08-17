@@ -402,6 +402,11 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 			}
 		}
 		c.emit(instruction{op: opSetIndex, b: boolInt(appendValue), c: boolInt(keep), name: operator})
+	case *model.PropAccess:
+		if err := c.expr(target.Base, path+".target.base"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opSetProperty, b: boolInt(keep), name: target.Name, extra: operator})
 	case *model.ListExpr:
 		return c.listAssignment(target.Elems, keep, path)
 	case *model.ArrayLit:

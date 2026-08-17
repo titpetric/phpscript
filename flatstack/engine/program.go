@@ -27,6 +27,7 @@ const (
 	opConstruct
 	opCallMethod
 	opGetProperty
+	opSetProperty
 	opEcho
 	opIterInit
 	opIterNext
@@ -73,6 +74,7 @@ type Host interface {
 	CallMethod(any, string, []any) (any, error)
 	Call(string, string, []any) (any, error)
 	GetProperty(any, string) any
+	SetProperty(any, string, any, string) error
 	Lookup(string) any
 	Array([]model.ArrayItemValue) any
 	Index(any, any) any

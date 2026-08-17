@@ -356,6 +356,24 @@ func Run(program *Program, host Host) (err error) {
 				return popErr
 			}
 			stack = append(stack, host.GetProperty(receiver, inst.name))
+		case opSetProperty:
+			receiver, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			value, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			if err = host.SetProperty(receiver, inst.name, value, inst.extra); err != nil {
+				if handle(err) {
+					continue
+				}
+				return err
+			}
+			if inst.b != 0 {
+				stack = append(stack, value)
+			}
 		case opEcho:
 			value, popErr := pop()
 			if popErr != nil {
