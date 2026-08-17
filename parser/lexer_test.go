@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -181,27 +179,5 @@ func TestLexLineNumbersAcrossConstructs(t *testing.T) {
 func TestLexRejectsUnknownCharacter(t *testing.T) {
 	if _, err := newLexer("<?php ~").run(); err == nil {
 		t.Fatal("expected an error for an unsupported character")
-	}
-}
-
-// fixtureSource reads a PHP file from the repository fixtures. The fixtures are
-// read-only inputs for the parser benchmarks.
-func fixtureSource(tb testing.TB, name string) string {
-	tb.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "tests", "fixtures", "code", name))
-	if err != nil {
-		tb.Skipf("fixture %s unavailable: %v", name, err)
-	}
-	return string(b)
-}
-
-func BenchmarkLexCompiler(b *testing.B) {
-	src := fixtureSource(b, "Compiler.php")
-	b.SetBytes(int64(len(src)))
-	b.ReportAllocs()
-	for b.Loop() {
-		if _, err := newLexer(src).run(); err != nil {
-			b.Fatal(err)
-		}
 	}
 }

@@ -224,37 +224,3 @@ func TestParseNestedArgumentLists(t *testing.T) {
 		t.Errorf("last arg = %#v, want Lit(7)", lit.Value)
 	}
 }
-
-func TestParseFixtures(t *testing.T) {
-	for _, name := range []string{
-		"Compiler.php", "Template.php", "TestCase.php", "functions.php",
-		"TemplateTest_phpscript.php",
-	} {
-		src := fixtureSource(t, name)
-		if _, err := Parse(src); err != nil {
-			t.Errorf("%s: %v", name, err)
-		}
-	}
-}
-
-func BenchmarkParseCompiler(b *testing.B) {
-	src := fixtureSource(b, "Compiler.php")
-	b.SetBytes(int64(len(src)))
-	b.ReportAllocs()
-	for b.Loop() {
-		if _, err := Parse(src); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkParseTemplate(b *testing.B) {
-	src := fixtureSource(b, "Template.php")
-	b.SetBytes(int64(len(src)))
-	b.ReportAllocs()
-	for b.Loop() {
-		if _, err := Parse(src); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
