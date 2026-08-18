@@ -79,6 +79,7 @@ type Runtime struct {
 	// miss the current scope fall back here (see Eval).
 	constants    map[string]any
 	frozenConsts map[string]any
+	constsShared bool
 
 	// opts holds runtime source root, working directory, and write policy.
 	opts         Options
@@ -276,7 +277,8 @@ func NewFlatStack(w io.Writer, opts Options) *Runtime {
 // FreezeStdlib snapshots constants after host bindings are registered so
 // ResetSession can drop script-defined constants without losing the stdlib.
 func (rt *Runtime) FreezeStdlib() {
-	rt.frozenConsts = maps.Clone(rt.constants)
+	rt.frozenConsts = rt.constants
+	rt.constsShared = true
 }
 
 // ResetSession prepares the runtime to execute another program: new output and
@@ -292,16 +294,17 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 		stdin = strings.NewReader("")
 	}
 	rt.opts.Stdin = stdin
-	rt.userFns = map[string]struct{}{}
-	rt.classes = map[string]*model.Class{}
-	rt.globals = map[string]any{}
+	clear(rt.userFns)
+	clear(rt.classes)
+	clear(rt.globals)
 	rt.shutdown = nil
 	rt.autoloaders = nil
-	rt.classConsts = map[string]map[string]any{}
-	rt.classStatics = map[string]map[string]any{}
+	clear(rt.classConsts)
+	clear(rt.classStatics)
 	rt.entrypoint = ""
 	if rt.frozenConsts != nil {
-		rt.constants = maps.Clone(rt.frozenConsts)
+		rt.constants = rt.frozenConsts
+		rt.constsShared = true
 	}
 }
 
@@ -459,6 +462,10 @@ func (rt *Runtime) SetGlobal(name string, val any) {
 // T_VARIABLE). Constants are visible in every scope, including inside functions
 // and methods, unlike globals, which PHP confines to the global scope.
 func (rt *Runtime) SetConst(name string, val any) {
+	if rt.constsShared && rt.frozenConsts != nil {
+		rt.constants = maps.Clone(rt.frozenConsts)
+		rt.constsShared = false
+	}
 	rt.constants[name] = val
 }
 
