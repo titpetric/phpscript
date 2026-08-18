@@ -187,7 +187,11 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 	var recorder *telemetry.Module
 	if config.Telemetry.Enabled {
 		var err error
-		recorder, err = telemetry.NewModule(config.Telemetry)
+		opts, err := config.Telemetry.Resolved()
+		if err != nil {
+			return err
+		}
+		recorder, err = telemetry.NewModule(opts)
 		if err != nil {
 			return err
 		}

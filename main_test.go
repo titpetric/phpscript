@@ -63,6 +63,33 @@ env:
 	}
 }
 
+func TestLoadConfigTelemetryDisk(t *testing.T) {
+	dir := t.TempDir()
+	filename := filepath.Join(t.TempDir(), "config.yml")
+	if err := os.WriteFile(filename, []byte(`
+telemetry:
+  enabled: true
+  driver: disk
+  storage_path: `+dir+`
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := loadConfig(filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Telemetry.Driver != "disk" || cfg.Telemetry.StoragePath != dir {
+		t.Fatalf("telemetry storage = %+v", cfg.Telemetry)
+	}
+	opts, err := cfg.Telemetry.Resolved()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.Storage == nil {
+		t.Fatal("disk storage not applied")
+	}
+}
+
 func TestParseConfigFile(t *testing.T) {
 	filename, args, err := parseConfigFile([]string{"server", "-f", "config.yml", "app"})
 	if err != nil {
