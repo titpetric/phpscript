@@ -39,6 +39,21 @@ Use this command for normal script execution and shebang scripts:
 echo "Hello world\n";
 ```
 
+### `phpscript info [path...]`
+
+Print the runtime environment, the way `phpinfo()` does in a terminal.
+
+```bash
+phpscript info
+phpscript info -v
+phpscript info ./src
+```
+
+With no path, the command prints the built-in runtime. `-v` / `--verbose`
+adds bound classes (with constructors and methods) and internal functions.
+A path argument uses the same file expansion as `list` and prints markdown
+docs for classes and functions found in that tree.
+
 ### `phpscript lint <path>...`
 
 Lint one or more PHP files or directories.

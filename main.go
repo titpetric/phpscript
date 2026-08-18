@@ -15,6 +15,7 @@ import (
 
 	"github.com/titpetric/phpscript/cmd/phpscript/ast"
 	"github.com/titpetric/phpscript/cmd/phpscript/fmt"
+	"github.com/titpetric/phpscript/cmd/phpscript/info"
 	"github.com/titpetric/phpscript/cmd/phpscript/lint"
 	"github.com/titpetric/phpscript/cmd/phpscript/list"
 	"github.com/titpetric/phpscript/cmd/phpscript/run"
@@ -57,6 +58,7 @@ func start() error {
 	app := cli.NewApp("phpscript")
 	app.AddCommand("ast", ast.Name, ast.NewCommand)
 	app.AddCommand("fmt", fmt.Name, fmt.NewCommand)
+	app.AddCommand("info", info.Name, info.NewCommand)
 	app.AddCommand("lint", lint.Name, lint.NewCommand)
 	app.AddCommand("list", list.Name, list.NewCommand)
 	app.AddCommand("run", run.Name, func() *cli.Command {

@@ -390,6 +390,12 @@ func (rt *Runtime) RegisterConstructor(name string, ctor any) {
 	rt.constructors[name] = ctor
 }
 
+// LookupConstructor returns the host constructor registered for name.
+func (rt *Runtime) LookupConstructor(name string) (any, bool) {
+	fn, ok := rt.constructors[name]
+	return fn, ok
+}
+
 // SetIncludeCache installs a shared include cache. A cache must only be shared
 // by runtimes whose include paths resolve within the same source-root namespace.
 // Passing nil disables include caching.
