@@ -1,8 +1,26 @@
 # SQLite Admin demo
 
-A server-rendered, phpMyAdmin-style SQLite catalogue for phpscript. Controllers are annotated `.php` routes and all HTML views live in `templates/*.tpl`, loaded through the `Template` class. It provides a database overview, searchable and paginated table browsing, schema and index inspection, table creation, row insertion/editing/deletion, confirmed table drops, a direct SQL console, and CSV export.
+A server-rendered, phpMyAdmin-style SQLite catalogue for phpscript. Controllers are annotated `.php` routes and all HTML views live in `templates/*.tpl`, rendered by [titpetric/minitpl](https://github.com/titpetric/minitpl). It provides a database overview, searchable and paginated table browsing, schema and index inspection, table creation, row insertion/editing/deletion, confirmed table drops, a direct SQL console, and CSV export.
 
 The table editor creates up to four initial columns and includes common numeric, text, binary, boolean, and date/time types. Additional schema changes can be made through the SQL console. The demo connection and schema catalogue remain SQLite-backed; the PostgreSQL and MySQL selections validate definitions against those dialect presets.
+
+## Dependencies
+
+The template engine comes from composer, like in any other PHP project. It is
+not vendored into this repository. Install it before the first run:
+
+```sh
+composer install
+```
+
+That writes `vendor/`, which `bootstrap.php` pulls in with
+`require "vendor/autoload.php"`. phpscript interprets composer's generated
+autoloader as ordinary PHP; nothing about it is special-cased in the runtime.
+
+minitpl compiles each template to PHP on first use and caches the result in
+`templates/cache/`, which has to be writable. Both directories are gitignored.
+
+## Running
 
 From this directory, start it with:
 

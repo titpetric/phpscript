@@ -1,9 +1,9 @@
 <?php
 
-include "include/Template.php";
+require "vendor/autoload.php";
 
 $db = new Database("dbadmin");
-$tpl = new Template;
+$tpl = new MiniTPL\Template;
 
 function h($value) {
 	if ($value === null) {

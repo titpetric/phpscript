@@ -1,1 +1,2 @@
-</main><footer>SQLite Admin demo · Runs locally with phpscript</footer></body></html>
+{* Like header.tpl, no trailing newline: the one after the include line in the
+   calling template terminates the page. *}</main><footer>SQLite Admin demo · Runs locally with phpscript</footer></body></html>

@@ -1,0 +1,12 @@
+{
+    "repositories": [{
+        "packagist.org": false
+    },{
+        "name": "minitpl",
+        "type": "vcs",
+        "url": "https://github.com/titpetric/minitpl"
+    }],
+    "require": {
+        "titpetric/minitpl": "^1.2"
+    }
+}

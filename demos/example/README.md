@@ -2,7 +2,7 @@
 
 A bookmark list: the application built step by step in
 [Building an application](../../docs/use-cases/application.md). It is the
-smallest complete phpscript application — a database with migrations, three
+smallest complete phpscript application: a database with migrations, three
 annotated endpoints, a compiled template and a static asset.
 
 ```sh
