@@ -3,7 +3,7 @@
 | PHP language-reference feature                  | Status                | Notes                                                                                              |
 |-------------------------------------------------|-----------------------|----------------------------------------------------------------------------------------------------|
 | `if`, `elseif`, `else`                          | Compatibility         | Brace-delimited branches are supported.                                                            |
-| `while`, `for`, `foreach`                       | Compatibility         | Brace-delimited loops are supported.                                                               |
+| `while`, `for`, `foreach`                       | Compatibility         | Brace-delimited loops are supported, including `foreach ($a as &$v)`.                              |
 | `switch`                                        | Compatibility         | Case fallthrough and `break` are supported.                                                        |
 | `break`, `continue`                             | Partial compatibility | Only the nearest loop/switch can be targeted; numeric levels are unavailable.                      |
 | `return`                                        | Compatibility         | A value is optional.                                                                               |
@@ -45,6 +45,11 @@ while ($ready) {
 `foreach` assignment targets may be variables, indexes, or properties.
 `list(...)` destructuring works in ordinary assignment but not as a `foreach`
 target.
+
+`foreach ($a as &$v)` binds the element rather than a copy of it, so writing to
+`$v` edits `$a`. Only the value half may take `&`; a key cannot. See
+[Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element)
+for what the two spellings cost and where they stop matching PHP.
 
 ## Switch
 

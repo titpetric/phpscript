@@ -7,7 +7,7 @@ compatibility:
   - feature: phpscript extensions
     status: Compatibility
     notes: Documented separately because these APIs and syntax do not exist in PHP.
-  - feature: Fibers, generators, attributes, references, enums, stream contexts and wrappers
+  - feature: Fibers, generators, attributes, enums, stream contexts and wrappers
     status: Not implemented
     notes: Omitted from the sitemap because phpscript has no corresponding feature.
 sitemap:
@@ -18,6 +18,8 @@ sitemap:
         description: PHP tags, inline HTML, statement separators, comments, and shebang scripts.
       - path: types/README.md
         description: Dynamic scalar, array, object, callable, and cast behavior.
+      - path: types/value-semantics.md
+        description: What copies and what is shared, why `&` does nothing, and how binding output parameters work.
       - path: variables/README.md
         description: Assignment, local scope, arrays, properties, and destructuring.
       - path: constants/README.md
@@ -55,5 +57,7 @@ sitemap:
         description: defer, bare host bindings, function keyword aliases, and portability hazards.
       - path: extensions/bindings.md
         description: Exposing Go constructors, functions, methods, contexts, and values to PHP.
+      - path: extensions/regexp.md
+        description: How PCRE patterns are compiled, and what differs between PHP's PCRE and Go's RE2.
       - path: extensions/implemented-apis.md
         description: Generated inventory of functions and classes in the standard CLI runtime.

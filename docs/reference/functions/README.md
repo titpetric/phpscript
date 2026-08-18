@@ -3,11 +3,11 @@
 | PHP language-reference feature | Status                | Notes                                                                                                |
 |--------------------------------|-----------------------|------------------------------------------------------------------------------------------------------|
 | User-defined functions         | Compatibility         | Named functions, parameters, defaults, calls, and returns are supported.                             |
-| Anonymous functions            | Partial compatibility | Closures work, but `use (...)` captures are parsed and ignored.                                      |
+| Anonymous functions            | Compatibility         | Closures, `use (...)` captures, `static function`, and calling a callable value.                     |
 | Arrow functions                | Incompatible syntax   | `fn` introduces a normal block-bodied function/closure; PHP's `fn (...) => ...` form is unavailable. |
 | Arguments by value             | Partial compatibility | Names are bound in a new local scope, but mutable arrays do not have PHP copy-on-write behavior.     |
-| References and variadics       | Not implemented       | `&`, `...`, named arguments, and argument unpacking are unavailable.                                 |
-| Type declarations              | Not implemented       | Parameter and return types are unavailable.                                                          |
+| References and variadics       | Not implemented       | `...`, named arguments and unpacking are unavailable; `&` parses but binds by value.                 |
+| Type declarations              | Parsed, not enforced  | Parameter and return types are accepted and discarded; values are never checked or coerced.          |
 
 ## Defining functions
 
@@ -31,8 +31,42 @@ $callback = function ($value) {
 };
 ```
 
-Closure capture is not implemented. Although `use ($name)` is consumed by the
-parser for source compatibility, `$name` is not copied into the closure scope.
+A `use (...)` list captures by value: the named variables are snapshotted when
+the closure value is created, so a later write to the enclosing variable is not
+visible inside the closure.
+
+```php
+$greeting = "Hello";
+$greet = function ($name) use ($greeting) {
+    return $greeting . ", " . $name;
+};
+$greeting = "Goodbye";
+echo $greet("world");                     // Hello, world
+```
+
+`&$name` is accepted but binds by value like the plain form: the runtime has no
+reference cells, so a closure cannot write back into the frame it came from. The
+same is true of a `&$x` parameter; see [Value semantics](../types/value-semantics.md).
+
+A closure declared inside a method captures `$this`; `static function () {}`
+declares one that does not.
+
+## Calling a callable value
+
+A callable held in a value is invoked directly, whatever holds it:
+
+```php
+$fn($argument);
+$handlers["render"]($argument);
+$this->callback($argument);
+```
+
+Every PHP callable spelling resolves: a closure, `"function_name"`,
+`"Class::method"`, `array($object, "method")`, `array("Class", "method")`, and an
+object with `__invoke`. `Closure::fromCallable()` turns any of them into a
+closure; `Closure::bind()` accepts a null `$newThis` and returns the closure
+unchanged, since phpscript enforces no property visibility for a scope change to
+affect. Rebinding `$this` is reported as an error rather than silently ignored.
 
 ## Calling functions
 

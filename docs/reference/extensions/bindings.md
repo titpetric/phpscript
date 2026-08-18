@@ -89,6 +89,12 @@ Registered functions use the same positional conversion and return/error rules a
 
 The context injected into a free function also contains the active PHP scope; runtime helpers can retrieve it with `runner.ScopeFromContext`. Constructors and Go methods receive the runtime lifecycle context directly, without that scope value.
 
+## Output parameters
+
+A binding returns its result; it cannot write back into a caller's variable, because a PHP variable in this runtime is a name in a frame table rather than a cell a Go function could hold. The one exception is arranged at compile time: `byRefArgs` in `runner/transpile.go` names the argument positions that are outputs, per function, and an argument at such a position that is a plain variable is emitted as a setter closure instead of its value. `preg_match`'s `$matches` is the case that exists.
+
+The table is a package-level variable rather than part of this API, so a host binding cannot currently declare an output parameter. Return a collection instead. See [Value semantics](../types/value-semantics.md#output-parameters) for the mechanism.
+
 ## Context propagation
 
 Two similarly named context types have separate responsibilities:

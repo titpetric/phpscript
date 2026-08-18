@@ -217,7 +217,7 @@ function renderSitemap(array $config, array $documents): string
             }
             $used[$path] = true;
             $document = $documents[$path];
-            $output .= sprintf("- [%s](%s) — %s\n", $document['title'], $path, $link['description']);
+            $output .= sprintf("- [%s](%s) - %s\n", $document['title'], $path, $link['description']);
             foreach ($document['headings'] as $heading) {
                 $indent = str_repeat('  ', max(1, $heading['level'] - 1));
                 $output .= sprintf("%s- [%s](%s#%s)\n", $indent, $heading['text'], $path, $heading['anchor']);

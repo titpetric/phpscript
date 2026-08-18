@@ -48,8 +48,17 @@ phpscript lint tests/fixtures
 phpscript lint path/to/file.php
 ```
 
-The current lint pass reports assignment expressions inside `if` conditions,
-including nested forms such as `if (($row = fn()) !== false) { ... }`.
+The lint pass reports two shapes:
+
+| Finding                                               | Example                         |
+|-------------------------------------------------------|---------------------------------|
+| `assignment in conditional statement`                 | `if (($row = fn()) !== false)`  |
+| `chained assignment binds one value to several names` | `$inlines = $blocks = array();` |
+
+Both are warnings; only a parse error fails the run. The chained-assignment rule
+exists because phpscript arrays are handles rather than values, so the two names
+end up sharing one array where PHP would give each its own. See
+[Value semantics](reference/types/value-semantics.md#arrays-are-handles-not-values).
 
 ### `phpscript test <path>...`
 

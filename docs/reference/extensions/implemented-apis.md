@@ -20,11 +20,14 @@ Regenerate it after changing runtime or standard-library registrations.
 - `str_repeat`
 - `str_replace`
 - `stream_get_contents`
+- `stream_resolve_include_path`
 - `strlen`
 - `strpos`
+- `strrpos`
 - `strstr`
 - `strtolower`
 - `strtoupper`
+- `strtr`
 
 ## JSON
 
@@ -35,6 +38,7 @@ Regenerate it after changing runtime or standard-library registrations.
 
 - `preg_match`
 - `preg_match_all`
+- `preg_quote`
 - `preg_replace`
 
 ## Filesystem
@@ -55,36 +59,50 @@ Regenerate it after changing runtime or standard-library registrations.
 ## Runtime introspection
 
 - `get_all_headers`
+- `get_class`
 - `get_declared_classes`
 - `get_defined_constants`
 - `get_defined_functions`
 - `get_defined_vars`
 - `get_include_path`
 - `get_included_files`
+- `get_object_vars`
+- `get_parent_class`
 
 ## SPL and autoloading
 
 - `spl_autoload`
 - `spl_autoload_register`
+- `spl_autoload_unregister`
+- `spl_object_hash`
+- `spl_object_id`
 
 ## Other
 
+- `Closure::bind`
+- `Closure::fromCallable`
 - `apache_request_headers`
 - `basename`
 - `call_user_func`
 - `call_user_func_array`
 - `class_exists`
 - `compact`
+- `constant`
 - `count`
 - `crc32`
 - `defer`
+- `define`
+- `defined`
 - `die`
 - `dirname`
 - `empty`
+- `error_reporting`
 - `exit`
 - `explode`
+- `extension_loaded`
 - `fclose`
 - `filemtime`
+- `filter_var`
 - `fopen`
 - `function_exists`
 - `fwrite`
@@ -92,11 +110,15 @@ Regenerate it after changing runtime or standard-library registrations.
 - `getenv`
 - `glob`
 - `header`
+- `headers_sent`
 - `htmlspecialchars`
 - `implode`
 - `in_array`
+- `ini_get`
+- `ini_set`
 - `isset`
 - `ltrim`
+- `method_exists`
 - `mkdir`
 - `ob_end_clean`
 - `ob_end_flush`
@@ -106,11 +128,15 @@ Regenerate it after changing runtime or standard-library registrations.
 - `ob_get_level`
 - `ob_start`
 - `php_sapi_name`
+- `php_uname`
 - `phpinfo`
+- `phpversion`
+- `property_exists`
 - `putenv`
 - `register_shutdown_function`
 - `rsort`
 - `rtrim`
+- `set_error_handler`
 - `set_include_path`
 - `sort`
 - `sprintf`
@@ -122,14 +148,36 @@ Regenerate it after changing runtime or standard-library registrations.
 - `trim`
 - `unlink`
 - `usort`
+- `zend_version`
 
 ## Classes
 
+- `ArgumentCountError`
+- `ArithmeticError`
+- `BadFunctionCallException`
+- `BadMethodCallException`
 - `Database`
 - `Database\Migrate`
+- `DivisionByZeroError`
+- `DomainException`
+- `Error`
+- `ErrorException`
 - `Exception`
+- `InvalidArgumentException`
+- `JsonException`
+- `LengthException`
+- `LogicException`
+- `OutOfBoundsException`
+- `OutOfRangeException`
+- `OverflowException`
+- `RangeException`
+- `RuntimeException`
 - `SMTP`
 - `Session\Manager`
 - `Session\Storage\Disk`
 - `Session\Storage\Memory`
 - `SharedMemory`
+- `TypeError`
+- `UnderflowException`
+- `UnexpectedValueException`
+- `ValueError`

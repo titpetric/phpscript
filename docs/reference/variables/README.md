@@ -1,13 +1,13 @@
 # Variables
 
-| PHP language-reference feature  | Status                | Notes                                                                                                          |
-|---------------------------------|-----------------------|----------------------------------------------------------------------------------------------------------------|
-| Basics                          | Compatibility         | Variables use the `$name` form and are created by assignment.                                                  |
-| Predefined variables            | Partial compatibility | Only the request variables documented in [Predefined variables](../predefined-variables/README.md) are seeded. |
-| Variable scope                  | Partial compatibility | Calls have local scope; PHP `global` and static locals are unavailable.                                        |
-| Variable variables              | Not implemented       | Forms such as `$$name` are unavailable.                                                                        |
-| Variables from external sources | Partial compatibility | HTTP query, form, and route values are provided by the request context.                                        |
-| References                      | Not implemented       | `&` is accepted in limited positions but does not create PHP reference semantics.                              |
+| PHP language-reference feature  | Status                | Notes                                                                                                                     |
+|---------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------|
+| Basics                          | Compatibility         | Variables use the `$name` form and are created by assignment.                                                             |
+| Predefined variables            | Partial compatibility | Only the request variables documented in [Predefined variables](../predefined-variables/README.md) are seeded.            |
+| Variable scope                  | Partial compatibility | Calls have local scope; PHP `global` and static locals are unavailable.                                                   |
+| Variable variables              | Not implemented       | Forms such as `$$name` are unavailable.                                                                                   |
+| Variables from external sources | Partial compatibility | HTTP query, form, and route values are provided by the request context.                                                   |
+| References                      | Partial compatibility | `foreach ($a as &$v)` works; `&` elsewhere parses but binds by value. See [Value semantics](../types/value-semantics.md). |
 
 ## Basics
 
@@ -17,8 +17,26 @@ $items = array();
 $items[] = $name;
 ```
 
-Variables, array indexes, object properties, and `list(...)` targets can be
-assigned. The supported compound assignments are `+=`, `-=`, and `.=`.
+Variables, array indexes, object properties, static properties, and `list(...)`
+targets can be assigned. The supported compound assignments are `+=`, `-=`, and
+`.=`.
+
+Writing through an index that does not exist yet creates the arrays on the way
+down, as PHP does:
+
+```php
+$tree = array();
+$tree["one"]["two"] = "deep";      // both levels are created
+```
+
+`unset()` removes a variable, an array entry, an object property, or a static
+property. Removing an array entry does not renumber the entries around it.
+
+```php
+$row = array("a" => 1, "b" => 2, "c" => 3);
+unset($row["b"]);
+echo implode(",", array_keys($row));      // a,c
+```
 
 ## Variable scope
 

@@ -7,10 +7,25 @@
 | Instruction separation         | Compatibility       | Semicolons terminate simple statements; a closing tag also ends PHP mode.                    |
 | Comments                       | Compatibility       | `//`, `#`, and `/* ... */` comments are supported.                                           |
 | Shebang                        | phpscript extension | A leading `#!` line is ignored, allowing executable scripts.                                 |
+| `declare()`                    | Parsed, ignored     | Directives are read and dropped; the runtime has one set of semantics to select from.        |
 
 phpscript accepts files containing PHP blocks and inline text. The closing tag
 is optional at the end of a file. One newline immediately following a closing
 tag is consumed rather than emitted.
+
+## declare()
+
+`declare(strict_types=1);` and the other directives are accepted and ignored.
+There is nothing behind them to select: phpscript does not coerce argument types
+at all, so neither strict nor coercive typing changes what a call does. Files
+written for stock PHP therefore parse and run unchanged.
+
+```php
+<?php
+declare(strict_types=1);
+```
+
+A block form, `declare(ticks=1) { ... }`, runs its block as ordinary code.
 
 ## PHP tags
 
