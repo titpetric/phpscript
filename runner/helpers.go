@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -66,7 +67,7 @@ func helperPair(key, val any) model.ArrayItemValue {
 // helperArray constructs an ordered *model.Array from pairs, mirroring PHP's
 // array() where unkeyed items take the next integer index.
 func helperArray(items ...model.ArrayItemValue) *model.Array {
-	arr := model.NewArray()
+	arr := model.NewArraySize(len(items))
 	for _, it := range items {
 		if it.Key == nil {
 			arr.Append(it.Val)
@@ -187,27 +188,141 @@ func adapt(fn any) func(...any) (any, error) {
 	return func(args ...any) (any, error) { return invokeAny(fn, args) }
 }
 
-// invokeAny calls fn (any Go callable) with args via reflection, coercing
-// arguments to the declared parameter types where convertible.
+// ArgumentCountError reports a call that passed more arguments than the
+// callable declares. PHP raises the same condition as ArgumentCountError; this
+// runtime registers that name alongside every other throwable class, and a
+// returned error is catchable whichever of them a script names.
+type ArgumentCountError struct {
+	Name string
+	Want int
+	Got  int
+}
+
+func (e *ArgumentCountError) Error() string {
+	name := e.Name
+	if name == "" {
+		name = "call"
+	}
+	return fmt.Sprintf("%s() expects at most %s, %d given", name, plural(e.Want, "argument"), e.Got)
+}
+
+// nameArgumentCount fills in the PHP name of an argument count error. invokeAny
+// counts arguments against the Go signature and has no name to report; the name
+// a script typed is known only at the dispatch site.
+func nameArgumentCount(err error, name string) error {
+	var count *ArgumentCountError
+	if errors.As(err, &count) && count.Name == "" {
+		count.Name = name
+	}
+	return err
+}
+
+// buildArgs coerces args to the declared parameter types of t, padding absent
+// trailing parameters with zero values: a Go binding spells PHP's optional
+// parameters as extra ones, so a short call is ordinary. A call with more
+// arguments than t declares is refused, because reflect.Value.Call panics on
+// it and PHP refuses the same call to an internal function.
+func buildArgs(t reflect.Type, args []any, name string) ([]reflect.Value, error) {
+	if !t.IsVariadic() && len(args) > t.NumIn() {
+		return nil, &ArgumentCountError{Name: name, Want: t.NumIn(), Got: len(args)}
+	}
+	in := make([]reflect.Value, 0, len(args))
+	for i, a := range args {
+		in = append(in, coerceArg(a, paramType(t, i)))
+	}
+	for len(in) < t.NumIn() && !(t.IsVariadic() && len(in) >= t.NumIn()-1) {
+		in = append(in, reflect.Zero(t.In(len(in))))
+	}
+	return in, nil
+}
+
+// plural renders a count with its noun, as PHP spells an argument count error.
+func plural(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s", n, noun)
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
+}
+
+// argAt returns the i-th argument, or nil when the script passed fewer
+// arguments than the binding declares. PHP tolerates the short call, and the
+// reflect path pads the same way with zero values.
+func argAt(args []any, i int) any {
+	if i < len(args) {
+		return args[i]
+	}
+	return nil
+}
+
+// invokeFast calls the binding directly when its signature is one of the
+// shapes stdlib registers most, skipping reflect.Value.Call and the []reflect
+// .Value slice it needs. The final return reports whether the signature was
+// recognised; a false sends the caller to the reflect path.
+//
+// Callers must keep this behind invokeAny's panic boundary: a binding that
+// panics here has to surface as a HostPanicError just as it does under
+// reflection, or it unwinds the VM instead of becoming a PHP exception.
+func invokeFast(fn any, args []any) (any, error, bool) {
+	switch f := fn.(type) {
+	case func(...any) (any, error):
+		v, err := f(args...)
+		return v, err, true
+	case func(any) any:
+		return f(argAt(args, 0)), nil, true
+	case func(any) bool:
+		return f(argAt(args, 0)), nil, true
+	case func(any) string:
+		return f(argAt(args, 0)), nil, true
+	case func(any, any) string:
+		return f(argAt(args, 0), argAt(args, 1)), nil, true
+	case func(any, any) any:
+		return f(argAt(args, 0), argAt(args, 1)), nil, true
+	case func(string) string:
+		return f(phpString(argAt(args, 0))), nil, true
+	case func() string:
+		return f(), nil, true
+	case func() any:
+		return f(), nil, true
+	case func(...any) any:
+		return f(args...), nil, true
+	case func(...any) bool:
+		return f(args...), nil, true
+	}
+	return nil, nil, false
+}
+
+// invokeAny calls fn (any Go callable) with args, coercing arguments to the
+// declared parameter types where convertible. Common signatures are dispatched
+// directly by invokeFast; the rest go through reflection.
 func invokeAny(fn any, args []any) (result any, err error) {
+	// The boundary covers both dispatch paths. Registered code is host code,
+	// and a panic crossing into the VM has to arrive as a catchable PHP
+	// exception rather than unwinding the interpreter.
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil
 			err = &HostPanicError{Callable: fmt.Sprintf("%T", fn), Value: recovered}
 		}
 	}()
-	rv := reflect.ValueOf(fn)
-	if rv.Kind() != reflect.Func {
+	ft := reflect.TypeOf(fn)
+	if ft == nil || ft.Kind() != reflect.Func {
 		return nil, fmt.Errorf("not callable: %T", fn)
 	}
-	t := rv.Type()
-	in := make([]reflect.Value, 0, len(args))
-	for i, a := range args {
-		in = append(in, coerceArg(a, paramType(t, i)))
+	// PHP's internal functions reject a call passing more arguments than they
+	// declare, and reflect.Value.Call panics on the same call. Report it as an
+	// ordinary error, before either dispatch path, so the two agree and a
+	// script can catch it. Too few arguments stay legal: a Go binding spells
+	// PHP's optional parameters as extra ones, and they are zero-padded below.
+	if !ft.IsVariadic() && len(args) > ft.NumIn() {
+		return nil, &ArgumentCountError{Want: ft.NumIn(), Got: len(args)}
 	}
-	// Pad missing non-variadic params with zero values (PHP tolerates this).
-	for len(in) < t.NumIn() && !(t.IsVariadic() && len(in) >= t.NumIn()-1) {
-		in = append(in, reflect.Zero(t.In(len(in))))
+	if fast, fastErr, ok := invokeFast(fn, args); ok {
+		return fast, fastErr
+	}
+	rv := reflect.ValueOf(fn)
+	in, err := buildArgs(rv.Type(), args, "")
+	if err != nil {
+		return nil, err
 	}
 	out := rv.Call(in)
 	return firstReturn(out)
@@ -240,6 +355,12 @@ func coerceArg(v any, want reflect.Type) reflect.Value {
 	rv := reflect.ValueOf(v)
 	if rv.Type().AssignableTo(want) {
 		return rv
+	}
+	// A string parameter renders the value the way PHP renders it in a string
+	// context. Go's own conversion is defined for every integer type and means
+	// something else: reflect would turn int64(65) into "A" rather than "65".
+	if want.Kind() == reflect.String {
+		return reflect.ValueOf(phpString(v)).Convert(want)
 	}
 	if rv.Type().ConvertibleTo(want) {
 		return rv.Convert(want)
@@ -362,18 +483,55 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 		m = methodByNameFold(rv, method)
 	}
 	if !m.IsValid() {
+		if value, ok := throwableMethod(base, method); ok {
+			return value, nil
+		}
 		return nil, fmt.Errorf("undefined method %T::%s", base, method)
 	}
 	mt := m.Type()
 	if wantsContext(mt) {
 		args = append([]any{contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope)}, args...)
 	}
-	in := make([]reflect.Value, len(args))
-	for i, a := range args {
-		in[i] = coerceArg(a, paramType(mt, i))
+	in, err := buildArgs(mt, args, method)
+	if err != nil {
+		return nil, err
 	}
 	out := m.Call(in)
 	return firstReturn(out)
+}
+
+// throwableMethod implements PHP's Throwable interface over any Go error.
+//
+// Every throwable class name is registered to one type, so a catch clause binds
+// whatever error reached it: an Exception a script threw, an error a binding
+// returned, or a panic converted at the host boundary. All of them answer the
+// method set a script expects on a caught value. A method the concrete Go type
+// defines wins, which is how *stdlib.Exception reports its own code.
+func throwableMethod(base any, method string) (any, bool) {
+	err, ok := base.(error)
+	if !ok {
+		return nil, false
+	}
+	switch strings.ToLower(strings.ReplaceAll(method, "_", "")) {
+	case "getmessage", "tostring", "__tostring":
+		return err.Error(), true
+	case "getcode":
+		return int64(0), true
+	case "getprevious":
+		if previous := errors.Unwrap(err); previous != nil {
+			return previous, true
+		}
+		return nil, true
+	case "getfile":
+		return "", true
+	case "getline":
+		return int64(0), true
+	case "gettrace":
+		return model.NewArray(), true
+	case "gettraceasstring":
+		return "#0 {main}", true
+	}
+	return nil, false
 }
 
 // methodByNameFold finds an exported method using PHP's case-insensitive

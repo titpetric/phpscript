@@ -65,7 +65,7 @@ $record = $storage->get("color");
 echo $record->value;
 ```
 
-If the first method parameter is exactly `context.Context`, the runtime inserts its lifecycle context before the arguments supplied by PHP. Other arguments are matched positionally. Methods must receive the required argument count; unlike constructors and registered functions, missing method arguments are not padded.
+If the first method parameter is exactly `context.Context`, the runtime inserts its lifecycle context before the arguments supplied by PHP. Other arguments are matched positionally, and omitted trailing arguments are padded with their Go zero values, as they are for constructors and registered functions.
 
 Method returns follow the same exact-`error` and first-non-nil-value rules as constructors. A named concrete type that implements `error`, or an error stored in an `any` return slot, is not recognized as an error slot.
 
@@ -121,10 +121,13 @@ Arguments remain dynamically typed on the PHP side. At the Go boundary the refle
 
 1. converts `nil` to the zero value of the declared target type;
 2. uses a non-nil value directly when assignable to the declared Go type;
-3. uses Go reflection conversion when the source type is convertible; and
-4. otherwise passes the original value to reflection, which fails at runtime if its type does not match the Go signature.
+3. renders the value as PHP renders it in a string context when the target is a string, so `strlen(65)` measures `"65"` rather than Go's conversion of the code point 65 to `"A"`;
+4. uses Go reflection conversion when the source type is convertible; and
+5. otherwise passes the original value to reflection, which fails at runtime if its type does not match the Go signature.
 
-Excess arguments to a non-variadic callable also fail at runtime. Constructors and registered functions pad omitted fixed arguments; methods require the exact remaining argument count after any context injection.
+Omitted trailing arguments are padded with their Go zero values, for constructors, registered functions and methods alike. A Go binding has no optional parameters, so padding is how PHP's optional arguments are spelled.
+
+Passing more arguments than a non-variadic callable declares is refused, with a throwable naming the callable: `strlen() expects at most 1 argument, 2 given`. PHP refuses the same call as `ArgumentCountError` and words it `expects exactly 1 argument`; the wording differs because padding makes every parameter after the first omitted one optional. Every SPL class name is registered to one type, so `catch (Exception $e)`, `catch (Error $e)` and `catch (Throwable $e)` all catch it, and the caught value answers `getMessage()` and the rest of the `Throwable` methods.
 
 This is not a complete PHP-to-Go coercion system. Prefer stable scalar signatures and validate values in the binding when scripts are untrusted.
 

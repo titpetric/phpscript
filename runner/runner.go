@@ -280,6 +280,13 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		if err != nil {
 			return nil, flowNormal, err
 		}
+		// Every throwable class is one Go type, and that instance is an
+		// error, so it propagates as itself. A catch clause then binds the
+		// object a script threw and can call getMessage() on it, rather than
+		// binding a rendering of it. Throwing a bare value still renders.
+		if thrown, ok := v.(error); ok {
+			return nil, flowNormal, thrown
+		}
 		return nil, flowNormal, fmt.Errorf("uncaught exception: %s", phpString(v))
 
 	case *model.Use:

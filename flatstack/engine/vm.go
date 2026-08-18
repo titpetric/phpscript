@@ -3,9 +3,36 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/titpetric/phpscript/model"
 )
+
+type vmScratch struct {
+	stack       []any
+	locals      []any
+	initialized []bool
+}
+
+// release returns the scratch buffers to the pool with every slot zeroed.
+//
+// The clears run to capacity rather than to length. The pool holds these
+// buffers for the life of the process, so a value left above the high-water
+// mark of a later, smaller program stays reachable from the pool and is never
+// collected. stack is passed back in because append may have moved it.
+func (s *vmScratch) release(stack []any) {
+	s.stack = stack[:0]
+	clear(s.stack[:cap(s.stack)])
+	clear(s.locals[:cap(s.locals)])
+	clear(s.initialized[:cap(s.initialized)])
+	scratchPool.Put(s)
+}
+
+var scratchPool = sync.Pool{
+	New: func() any {
+		return &vmScratch{stack: make([]any, 0, 32)}
+	},
+}
 
 type iteratorState struct {
 	entries []Entry
@@ -37,15 +64,22 @@ func Run(program *Program, host Host) (err error) {
 		return nil
 	}
 	pc := 0
-	stack := make([]any, 0, 32)
-	locals := make([]any, len(program.localNames))
-	initialized := make([]bool, len(program.localNames))
+	scratch := scratchPool.Get().(*vmScratch)
+	stack := scratch.stack[:0]
+	nlocal := len(program.localNames)
+	if cap(scratch.locals) < nlocal {
+		scratch.locals = make([]any, nlocal)
+		scratch.initialized = make([]bool, nlocal)
+	}
+	locals := scratch.locals[:nlocal]
+	initialized := scratch.initialized[:nlocal]
+	clear(locals)
+	clear(initialized)
 	iterators := make(map[int]*iteratorState)
 	var handlers []errorHandler
 	var callFrames []callFrame
 	defer func() {
-		clear(stack)
-		clear(locals)
+		scratch.release(stack)
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("flatstack: VM panic at pc %d: %v", pc, recovered)
 		}
@@ -467,7 +501,13 @@ func Run(program *Program, host Host) (err error) {
 			if popErr != nil {
 				return popErr
 			}
-			throwErr := fmt.Errorf("uncaught exception: %v", value)
+			// A thrown throwable is already an error and propagates as
+			// itself, so a catch clause binds the object rather than a
+			// rendering of it. A bare value still renders.
+			throwErr, ok := value.(error)
+			if !ok {
+				throwErr = fmt.Errorf("uncaught exception: %v", value)
+			}
 			if handle(throwErr) {
 				continue
 			}
