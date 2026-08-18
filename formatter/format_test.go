@@ -333,10 +333,11 @@ func TestPathsReturnsChangedFilesAndSkipsTemplates(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	changed, err := formatter.ChangedPaths([]string{dir})
+	results, err := formatter.Paths([]string{dir})
 	if err != nil {
 		t.Fatal(err)
 	}
+	changed := formatter.Changed(results)
 	if len(changed) != 1 || changed[0] != script {
 		t.Fatalf("changed = %v, want [%s]", changed, script)
 	}
@@ -346,6 +347,71 @@ func TestPathsReturnsChangedFilesAndSkipsTemplates(t *testing.T) {
 	}
 	if string(templateAfter) != templateSource {
 		t.Fatalf("template changed: %q", templateAfter)
+	}
+}
+
+// A directory of PHP holds code phpscript does not support yet. Formatting the
+// rest of it is more useful than stopping at the first file that does not
+// parse, so an unreadable file is reported and left alone.
+func TestPathsSkipsFilesItCannotFormat(t *testing.T) {
+	dir := t.TempDir()
+	broken := filepath.Join(dir, "broken.php")
+	script := filepath.Join(dir, "script.php")
+	brokenSource := "<?php\nclass Test extends TestCase {\n}\n"
+	if err := os.WriteFile(broken, []byte(brokenSource), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(script, []byte("<?php\necho  \"body\";\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	results, err := formatter.Paths([]string{dir})
+	if err != nil {
+		t.Fatalf("a file that does not parse must not fail the run: %v", err)
+	}
+	changed := formatter.Changed(results)
+	if len(changed) != 1 || changed[0] != script {
+		t.Fatalf("changed = %v, want [%s]", changed, script)
+	}
+	var skipped []string
+	for _, result := range results {
+		if result.Skipped != nil {
+			skipped = append(skipped, result.Path)
+		}
+	}
+	if len(skipped) != 1 || skipped[0] != broken {
+		t.Fatalf("skipped = %v, want [%s]", skipped, broken)
+	}
+	after, err := os.ReadFile(broken)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != brokenSource {
+		t.Fatalf("skipped file was rewritten: %q", after)
+	}
+}
+
+func TestNeedFormattingLeavesFilesAlone(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "script.php")
+	source := "<?php\necho  \"body\";\n"
+	if err := os.WriteFile(script, []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	results, err := formatter.NeedFormatting([]string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed := formatter.Changed(results); len(changed) != 1 || changed[0] != script {
+		t.Fatalf("changed = %v, want [%s]", changed, script)
+	}
+	after, err := os.ReadFile(script)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != source {
+		t.Fatalf("listing rewrote the file: %q", after)
 	}
 }
 
