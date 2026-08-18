@@ -30,7 +30,7 @@ func Parse(src string) (*model.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Program{Stmts: stmts, Namespace: p.namespace, SourceSpans: p.spans}, nil
+	return &model.Program{Stmts: stmts, Namespace: p.namespace, NamespaceLine: p.namespaceLine, SourceSpans: p.spans}, nil
 }
 
 type parser struct {
@@ -40,11 +40,12 @@ type parser struct {
 	// imports maps the short name (or explicit alias) declared by a `use`
 	// statement to the fully-qualified name it stands for. It stays nil in the
 	// common case of a file with no imports.
-	imports  map[string]string
-	inClass  bool
-	topLevel bool
-	topSeen  bool
-	spans    map[model.Stmt]model.SourceSpan
+	imports       map[string]string
+	inClass       bool
+	topLevel      bool
+	topSeen       bool
+	spans         map[model.Stmt]model.SourceSpan
+	namespaceLine int
 
 	// Chunked node storage and list scratch stacks; see alloc.go.
 	varNodes        nodeChunk[model.Var]
@@ -125,10 +126,10 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 			return nil, err
 		}
 		if s != nil {
-			if top {
+			if top && !isPreambleStmt(s) {
 				p.topSeen = true
 			}
-			if top && p.namespace != "" {
+			if top && p.namespace != "" && !isPreambleStmt(s) {
 				switch s.(type) {
 				case *model.ClassDecl, *model.FuncDecl:
 				default:
@@ -140,6 +141,20 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 		}
 	}
 	return p.stmts.take(mark), nil
+}
+
+// isPreambleStmt reports whether s is a file-preamble statement: an import or
+// a directive rather than code. Both are retained in the AST so the formatter
+// can print them back, and neither counts as the "first statement" that closes
+// the window for a `namespace` declaration, nor as code in a namespaced file.
+func isPreambleStmt(s model.Stmt) bool {
+	switch n := s.(type) {
+	case *model.Use:
+		return true
+	case *model.Declare:
+		return !n.Block
+	}
+	return false
 }
 
 func (p *parser) parseStmt() (model.Stmt, error) {
@@ -217,11 +232,11 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 		case "break":
 			p.next()
 			p.optSemi()
-			return &model.Break{}, nil
+			return &model.Break{Line: t.line}, nil
 		case "continue":
 			p.next()
 			p.optSemi()
-			return &model.Continue{}, nil
+			return &model.Continue{Line: t.line}, nil
 		case "var":
 			// stray top-level `var` is unusual; treat like an expr stmt fallthrough
 		}
@@ -255,6 +270,7 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 		return nil, err
 	}
 	p.namespace = name
+	p.namespaceLine = line
 	return nil, nil
 }
 
@@ -266,9 +282,12 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 // alias the same way, so the leading keyword is simply consumed.
 func (p *parser) parseUse() (model.Stmt, error) {
 	p.next() // use
+	kind := ""
 	if p.isKw("function") || p.isKw("const") {
+		kind = p.cur().val
 		p.next()
 	}
+	var imports []model.UseImport
 	for {
 		name, _, err := p.parseQualifiedName(true)
 		if err != nil {
@@ -289,6 +308,7 @@ func (p *parser) parseUse() (model.Stmt, error) {
 			p.imports = map[string]string{}
 		}
 		p.imports[alias] = name
+		imports = append(imports, model.UseImport{Path: name, Alias: aliasSpelling(name, alias)})
 		if p.isOp(",") {
 			p.next()
 			continue
@@ -296,29 +316,53 @@ func (p *parser) parseUse() (model.Stmt, error) {
 		break
 	}
 	p.optSemi()
-	return nil, nil
+	return &model.Use{Kind: kind, Imports: imports}, nil
 }
 
-// parseDeclare consumes a `declare(directive=value, ...)` block. The runtime
-// has one set of semantics, and neither `strict_types` nor `ticks` varies it,
-// so the directives are read and dropped rather than modelled.
+// aliasSpelling returns the alias to print for an import, which is empty when
+// the alias is just the short name of the path (`use A\B;` binds `B` with no
+// `as` clause in the source).
+func aliasSpelling(path, alias string) string {
+	if i := strings.LastIndexByte(path, '\\'); i >= 0 {
+		path = path[i+1:]
+	}
+	if path == alias {
+		return ""
+	}
+	return alias
+}
+
+// parseDeclare parses `declare(directive=value, ...)`. The runtime has one set
+// of semantics, and neither `strict_types` nor `ticks` varies it, so the
+// directives are recorded for printing and otherwise ignored.
 func (p *parser) parseDeclare() (model.Stmt, error) {
 	p.next() // declare
 	if err := p.eatOp("("); err != nil {
 		return nil, err
 	}
-	depth := 1
-	for depth > 0 {
+	out := &model.Declare{}
+	for !p.isOp(")") {
 		if p.atEOF() {
 			return nil, fmt.Errorf("line %d: unterminated declare()", p.cur().line)
 		}
-		switch {
-		case p.isOp("("):
-			depth++
-		case p.isOp(")"):
-			depth--
+		if p.cur().kind != tIdent {
+			return nil, fmt.Errorf("line %d: expected declare directive, got %s", p.cur().line, p.cur())
 		}
-		p.next()
+		name := p.next().val
+		if err := p.eatOp("="); err != nil {
+			return nil, err
+		}
+		value, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		out.Directives = append(out.Directives, model.DeclareDirective{Name: name, Value: value})
+		if p.isOp(",") {
+			p.next()
+		}
+	}
+	if err := p.eatOp(")"); err != nil {
+		return nil, err
 	}
 	// `declare(ticks=1) { ... }` scopes the directive to a block; the block is
 	// ordinary code and still runs.
@@ -327,10 +371,11 @@ func (p *parser) parseDeclare() (model.Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &model.If{Cond: &model.Lit{Value: true}, Then: body}, nil
+		out.Body, out.Block = body, true
+		return out, nil
 	}
 	p.optSemi()
-	return nil, nil
+	return out, nil
 }
 
 // parseUnset parses `unset($a, $b[$k], $o->p, C::$s)`.
@@ -452,12 +497,14 @@ func (p *parser) parseIf() (model.Stmt, error) {
 	switch {
 	case p.isKw("elseif"):
 		// chain as a nested if in the else branch
+		node.ElseLine = p.cur().line
 		nested, err := p.parseIf()
 		if err != nil {
 			return nil, err
 		}
 		node.Else = []model.Stmt{nested}
 	case p.isKw("else"):
+		node.ElseLine = p.cur().line
 		p.next()
 		if p.isKw("if") {
 			nested, err := p.parseIf()
@@ -655,8 +702,8 @@ func (p *parser) parseThrow() (model.Stmt, error) {
 }
 
 // parseTry parses `try { ... } catch (Type $var) { ... } [finally { ... }]`.
-// The VM has no exception class hierarchy, so catch type filters are consumed
-// but ignored; the first catch clause handles any error.
+// The VM has no exception class hierarchy, so catch type filters are recorded
+// for printing but not matched; the first catch clause handles any error.
 func (p *parser) parseTry() (model.Stmt, error) {
 	p.next() // try
 	body, err := p.parseBlock()
@@ -665,17 +712,14 @@ func (p *parser) parseTry() (model.Stmt, error) {
 	}
 	tr := &model.Try{Body: body}
 	for p.isKw("catch") {
+		catchLine := p.cur().line
 		p.next() // catch
 		if err := p.eatOp("("); err != nil {
 			return nil, err
 		}
-		// Optional exception type filter(s): `Type` or `Type1 | Type2`.
-		for p.cur().kind == tIdent {
-			p.next()
-			if p.isOp("|") {
-				p.next()
-			}
-		}
+		// Exception type filter: `Type`, `A|B` or a qualified `\Ns\Type`.
+		// The runtime ignores it, but PHP requires it, so it is recorded.
+		catchType := p.parseTypeHint()
 		// Optional bound variable: `catch (Exception $e)` or PHP8 `catch (Exception)`.
 		var name string
 		if p.cur().kind == tVar {
@@ -688,9 +732,10 @@ func (p *parser) parseTry() (model.Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		tr.Catches = append(tr.Catches, model.Catch{Var: name, Body: cbody})
+		tr.Catches = append(tr.Catches, model.Catch{Type: catchType, Var: name, Body: cbody, Line: catchLine})
 	}
 	if p.isKw("finally") {
+		tr.FinallyLine = p.cur().line
 		p.next()
 		fbody, err := p.parseBlock()
 		if err != nil {
@@ -720,6 +765,7 @@ func (p *parser) parseSwitch() (model.Stmt, error) {
 	for !p.isOp("}") && !p.atEOF() {
 		switch {
 		case p.isKw("case"):
+			caseLine := p.cur().line
 			p.next()
 			val, err := p.parseExpr()
 			if err != nil {
@@ -734,7 +780,7 @@ func (p *parser) parseSwitch() (model.Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
-			sw.Cases = append(sw.Cases, model.SwitchCase{Value: val, Body: body})
+			sw.Cases = append(sw.Cases, model.SwitchCase{Value: val, Body: body, Line: caseLine})
 		case p.isKw("default"):
 			p.next()
 			if p.isOp(":") {
@@ -795,7 +841,7 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 		return nil, err
 	}
 	fd.Params = params
-	p.skipReturnType()
+	fd.ReturnType = p.parseReturnType()
 	body, err := p.parseBlock()
 	if err != nil {
 		return nil, err
@@ -810,12 +856,13 @@ func (p *parser) parseParams() ([]model.Param, error) {
 	}
 	mark := p.params.mark()
 	for !p.isOp(")") {
-		p.skipParamDecoration()
+		var pr model.Param
+		p.parseParamDecoration(&pr)
 		if p.cur().kind != tVar {
 			p.params.drop(mark)
 			return nil, fmt.Errorf("line %d: expected parameter $var", p.cur().line)
 		}
-		pr := model.Param{Name: p.next().val}
+		pr.Name = p.next().val
 		if p.isOp("=") {
 			p.next()
 			def, err := p.parseExpr()
@@ -838,58 +885,76 @@ func (p *parser) parseParams() ([]model.Param, error) {
 // promotion modifiers, a type hint, the by-reference `&`, and the variadic
 // `...`. The runtime is dynamically typed and has no reference values, so none
 // of it changes how the parameter binds; it only has to be recognised.
-func (p *parser) skipParamDecoration() {
+// parseParamDecoration consumes what may precede a parameter name: the
+// visibility and readonly modifiers of a promoted constructor property, a type
+// hint, `&` for a reference and `...` for a variadic. All of it is recorded on
+// the parameter so the formatter can print the declaration back unchanged.
+func (p *parser) parseParamDecoration(pr *model.Param) {
+	var mods []string
 	for p.isKw("public", "private", "protected", "readonly") {
+		mods = append(mods, p.cur().val)
 		p.next()
 	}
-	p.skipTypeHint()
+	pr.Modifiers = strings.Join(mods, " ")
+	pr.Type = p.parseTypeHint()
 	if p.isOp("&") {
 		p.next()
+		pr.ByRef = true
 	}
 	for p.isOp(".") {
 		p.next()
+		pr.Variadic = true
 	}
 }
 
-// skipTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, and
-// `A|B` unions. It stops at the first token that cannot continue a type, so a
-// parameter list with no hints costs one comparison.
-func (p *parser) skipTypeHint() {
+// parseTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, and
+// `A|B` unions, and returns its spelling. It stops at the first token that
+// cannot continue a type, so a parameter list with no hints costs one
+// comparison.
+//
+// The runtime ignores types, but the formatter rewrites files in place, so a
+// type it cannot see is a type it deletes.
+func (p *parser) parseTypeHint() string {
+	var b strings.Builder
+	take := func() {
+		b.WriteString(p.cur().val)
+		p.next()
+	}
 	for {
 		if p.isOp("?") {
-			p.next()
+			take()
 			continue
 		}
 		if p.isOp("\\") {
-			p.next()
+			take()
 			continue
 		}
 		if p.cur().kind != tIdent {
-			return
+			return b.String()
 		}
-		p.next()
+		take()
 		for p.isOp("\\") {
-			p.next()
+			take()
 			if p.cur().kind == tIdent {
-				p.next()
+				take()
 			}
 		}
 		if p.isOp("|") {
-			p.next()
+			take()
 			continue
 		}
-		return
+		return b.String()
 	}
 }
 
-// skipReturnType consumes a `: Type` return declaration, which sits between a
-// parameter list and its body.
-func (p *parser) skipReturnType() {
+// parseReturnType consumes a `: Type` return declaration, which sits between a
+// parameter list and its body, and returns the type spelling.
+func (p *parser) parseReturnType() string {
 	if !p.isOp(":") {
-		return
+		return ""
 	}
 	p.next()
-	p.skipTypeHint()
+	return p.parseTypeHint()
 }
 
 func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
@@ -932,6 +997,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 			}
 			for i := range consts {
 				consts[i].Visibility = visibility
+				consts[i].Span = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
 			}
 			cd.Consts = append(cd.Consts, consts...)
 		case p.isKw("var"):
@@ -940,6 +1006,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
+			p.setFieldSpans(fields, memberStart)
 			cd.Fields = append(cd.Fields, fields...)
 		case p.isKw("fn", "func", "function"):
 			if methodAbstract {
@@ -963,13 +1030,17 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 		case p.cur().kind == tVar || p.cur().kind == tIdent || p.isOp("?"):
 			// Property declared without `var`, with or without a type hint
 			// (`protected $stack = array();`, `private ?string $dir = null;`).
-			p.skipTypeHint()
+			fieldType := p.parseTypeHint()
 			if p.cur().kind != tVar {
 				return nil, fmt.Errorf("line %d: unexpected token in class body: %s", p.cur().line, p.cur())
 			}
 			fields, err := p.parseFields(visibility)
 			if err != nil {
 				return nil, err
+			}
+			p.setFieldSpans(fields, memberStart)
+			for i := range fields {
+				fields[i].Type = fieldType
 			}
 			// A static property is storage on the class, shared by every
 			// instance, so it is kept apart from the per-instance fields.
@@ -1024,15 +1095,25 @@ func (p *parser) parseAbstractMethod(visibility string, isStatic bool) (*model.F
 	if err != nil {
 		return nil, err
 	}
-	p.skipReturnType()
+	returnType := p.parseReturnType()
 	p.optSemi()
 	return &model.FuncDecl{
 		Name:       name,
 		Params:     params,
+		ReturnType: returnType,
 		Visibility: visibility,
 		Static:     isStatic,
 		Abstract:   true,
 	}, nil
+}
+
+// setFieldSpans records the source lines a property declaration occupies. One
+// declaration can define several properties (`var $a, $b;`), which share it.
+func (p *parser) setFieldSpans(fields []model.Field, start int) {
+	span := model.SourceSpan{Start: start, End: p.toks[p.i-1].line}
+	for i := range fields {
+		fields[i].Span = span
+	}
 }
 
 func (p *parser) parseFields(visibility string) ([]model.Field, error) {

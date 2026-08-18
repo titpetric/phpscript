@@ -86,6 +86,8 @@ matter for a phpscript service are:
 | `track_memory_use`    |           `true` | Record process-wide allocation and garbage-collection changes per trace. |
 | `live_stream`         |           `true` | Serve the live view over server sent events instead of a refresh timer.  |
 | `ignore_paths`        | health endpoints | Paths never traced. Entries ending in `/*` match by prefix.              |
+| `driver`              |         `memory` | Trace store: `memory` (ring buffer) or `disk` (JSON files, restart-safe). |
+| `storage_path`        | `/dev/shm/phpscript-trace-detail` | Folder for `driver: disk`. One `{id}.json` per retained trace. |
 
 Memory tracking has process-wide sampling overhead and concurrent requests can
 overlap in those measurements. See [Telemetry](./telemetry.md) for the views,

@@ -31,6 +31,10 @@ type Expr interface {
 type Program struct {
 	Stmts     []Stmt
 	Namespace string // set when the file declares `namespace Name;`
+	// NamespaceLine is the source line of the namespace declaration, which is
+	// not a statement of its own. The formatter needs it to place the comments
+	// written above it.
+	NamespaceLine int
 	// SourceSpans records original statement lines when Program came from the
 	// parser. Consumers may ignore it; the formatter uses it to retain a single
 	// intentional blank line between statements.
@@ -83,6 +87,11 @@ type If struct {
 	Cond Expr
 	Then []Stmt
 	Else []Stmt // may itself contain a single nested *If for elseif chains
+	// ElseLine is the source line of the `else` or `elseif` keyword, which is
+	// not a statement of its own. It marks where the then arm ends, so the
+	// formatter can tell a comment written above the keyword from one written
+	// below it.
+	ElseLine int
 }
 
 // Foreach is `foreach (Source as [KeyTarget =>] ValTarget) { Body }`.
@@ -134,6 +143,7 @@ type FuncDecl struct {
 	Params     []Param
 	Body       []Stmt
 	Visibility string // "public", "protected", "private", or ""
+	ReturnType string // declared `: Type`, kept for printing only
 	Static     bool
 	Abstract   bool // declaration only; Body is empty
 }
@@ -148,6 +158,38 @@ type ClassDecl struct {
 	Statics  []Field // `static $name = expr` properties, referenced as Class::$name
 	Consts   []Field // class constants (Name + value Expr), referenced as Class::NAME
 	Methods  []*FuncDecl
+}
+
+// Use is `use A\B\C;`, `use A\B\C as D;` or `use function f;`. The parser
+// resolves an import to a fully-qualified name while parsing, so the statement
+// has no effect at runtime. It is still kept in the AST: the formatter rewrites
+// files in place, and a node the printer cannot see is a node it deletes.
+type Use struct {
+	Kind    string // "", "function" or "const"
+	Imports []UseImport
+}
+
+// UseImport is one name of a `use` statement. Alias is set only for the
+// `as` spelling; the short name of Path is implied otherwise.
+type UseImport struct {
+	Path  string
+	Alias string
+}
+
+// Declare is `declare(strict_types=1);` or `declare(ticks=1) { ... }`. The
+// runtime has one set of semantics and no directive varies it, so the
+// directives are recorded for printing and otherwise ignored; a block form
+// still runs its body.
+type Declare struct {
+	Directives []DeclareDirective
+	Body       []Stmt
+	Block      bool // the `declare(...) { ... }` spelling, even with an empty body
+}
+
+// DeclareDirective is one `name=value` pair of a Declare.
+type DeclareDirective struct {
+	Name  string
+	Value Expr
 }
 
 // Unset is `unset($a, $b[$k], $o->p, C::$s)`. Each target is removed from the
@@ -168,16 +210,21 @@ type Throw struct {
 // the first catch clause handles any error raised in Body (a throw or a runtime
 // error from a forwarded Go call). Finally always runs.
 type Try struct {
-	Body    []Stmt
-	Catches []Catch
-	Finally []Stmt
+	Body        []Stmt
+	Catches     []Catch
+	Finally     []Stmt
+	FinallyLine int // source line of the `finally` keyword, for comment placement
 }
 
 // Catch is one `catch (...) { ... }` clause. Var is the bound variable name
 // (without `$`); the caught error is assigned to it so `echo $e` prints it.
+// Type is the declared filter, `Exception` or `A|B`, which the runtime ignores
+// but PHP requires: a catch clause printed without it is a syntax error.
 type Catch struct {
+	Type string
 	Var  string
 	Body []Stmt
+	Line int // source line of the `catch` keyword, for comment placement
 }
 
 // Switch is `switch (Cond) { case V: ...; default: ... }`. Case bodies fall
@@ -188,22 +235,41 @@ type Switch struct {
 	Default []Stmt
 }
 
-// SwitchCase is one `case Value:` arm of a Switch.
+// SwitchCase is one `case Value:` arm of a Switch. Line is the source line of
+// the `case` keyword, which the formatter uses to place comments.
 type SwitchCase struct {
 	Value Expr
 	Body  []Stmt
+	Line  int
 }
 
-// Break exits the nearest loop or switch.
-type Break struct{}
+// Break exits the nearest loop or switch. Line is the source line it was
+// written on, which also gives the node an address of its own: Go hands every
+// zero-sized allocation the same one, and the formatter keys source spans by
+// node.
+type Break struct {
+	Line int
+}
 
-// Continue restarts the nearest loop.
-type Continue struct{}
+// Continue restarts the nearest loop. Line is the source line, for the reason
+// given on Break.
+type Continue struct {
+	Line int
+}
 
 // Param is a single function parameter with an optional default value.
+//
+// The runtime binds a parameter by name and ignores everything declared around
+// it, but the formatter rewrites files in place, so the declaration is kept:
+// Modifiers holds the `public readonly` of a promoted constructor property,
+// Type the type hint, and ByRef and Variadic the `&` and `...` markers.
 type Param struct {
-	Name    string
-	Default Expr // nil if required
+	Name      string
+	Default   Expr // nil if required
+	Modifiers string
+	Type      string
+	ByRef     bool
+	Variadic  bool
 }
 
 // Field is a class property declaration (also reused for class constants).
@@ -211,6 +277,11 @@ type Field struct {
 	Name       string
 	Default    Expr   // nil if none
 	Visibility string // "public", "protected", "private", or ""
+	Type       string // declared type hint, kept for printing only
+	// Span is the source-line range of the declaration when Field came from
+	// the parser. The formatter uses it to keep the blank lines an author put
+	// between groups of properties.
+	Span SourceSpan
 }
 
 func (*InlineHTML) node() {}
@@ -247,6 +318,10 @@ func (*Continue) node() {}
 
 func (*Unset) node() {}
 
+func (*Use) node() {}
+
+func (*Declare) node() {}
+
 func (*InlineHTML) stmt() {}
 
 func (*Echo) stmt() {}
@@ -281,13 +356,24 @@ func (*Continue) stmt() {}
 
 func (*Unset) stmt() {}
 
+func (*Use) stmt() {}
+
+func (*Declare) stmt() {}
+
 // ---------------------------------------------------------------------------
 // Expressions
 // ---------------------------------------------------------------------------
 
 // Lit is a literal scalar: nil, bool, int64, float64 or string.
+//
+// Raw holds the source spelling, quotes included, for a string literal that
+// came from a parsed file. Decoding a string is lossy (`'$a'` and `"\$a"`
+// decode to the same value, and only one of them can be re-encoded from it),
+// so the formatter prints from Raw and falls back to encoding Value for nodes
+// that were built rather than parsed.
 type Lit struct {
 	Value any
+	Raw   string
 }
 
 // Var is a `$name` reference (the `$` is stripped during parsing).
@@ -439,10 +525,11 @@ type Cast struct {
 // uses the `use (...)` capture form, so Uses records the captured names. Static
 // marks `static function(){}`, which PHP declares to have no `$this`.
 type Closure struct {
-	Params []Param
-	Uses   []ClosureUse
-	Body   []Stmt
-	Static bool
+	Params     []Param
+	Uses       []ClosureUse
+	Body       []Stmt
+	ReturnType string // declared `: Type`, kept for printing only
+	Static     bool
 }
 
 // ClosureUse is one entry of a closure's `use (...)` capture list. ByRef marks

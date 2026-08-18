@@ -110,6 +110,14 @@ func (p *parser) newLit(v any) *model.Lit {
 	return n
 }
 
+// newStringLit allocates a string literal, keeping the source spelling so the
+// formatter can print the literal exactly as it was written.
+func (p *parser) newStringLit(v, raw string) *model.Lit {
+	n := p.litNodes.new()
+	n.Value, n.Raw = v, raw
+	return n
+}
+
 func (p *parser) newBinary(op string, left, right model.Expr) *model.Binary {
 	n := p.binaryNodes.new()
 	n.Op, n.Left, n.Right = op, left, right

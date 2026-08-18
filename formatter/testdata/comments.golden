@@ -1,0 +1,47 @@
+<?php
+
+// @route GET /dashboard
+
+// The dashboard renders a summary of the last runs.
+$rows = array();
+
+try {
+	// gather the rows
+	$rows = fetch(); // may be empty
+} catch (\RuntimeException $e) {
+	echo $e->getMessage();
+} catch (Exception|Error $e) {
+	// nothing to show
+}
+
+class Report {
+	/** @var string the report title */
+	private $title;
+
+	/**
+	 * Renders the report.
+	 *
+	 * @return string
+	 */
+	function render() {
+		foreach ($this->rows as $row) {
+			/* one row at a time */
+			echo $row;
+			// end of the loop body
+		}
+
+		switch ($this->format) {
+
+			// the default format
+			case "html":
+				break;
+
+			// plain text is cheaper
+			case "text":
+				break;
+		}
+	}
+	// nothing follows
+}
+
+// end of file

@@ -1,0 +1,22 @@
+<?php
+class Loader {
+	private ?string $dir = null;
+	protected static array $paths = array();
+
+	public function register(string $prefix, ?array $paths = null, bool $prepend = false): void {
+		$filter = function (string $path) use ($prefix): bool {
+			return $path !== $prefix;
+		};
+		$this->apply($filter, $paths);
+	}
+
+	public function apply(callable $filter, &$out, ...$paths) {
+	}
+
+	public function __construct(public readonly string $name, private int $limit = 10) {
+	}
+}
+
+function find(\Acme\Greeting\Formal|string $needle, array &$matches): int|false {
+	return 0;
+}

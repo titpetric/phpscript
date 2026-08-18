@@ -39,6 +39,21 @@ Use this command for normal script execution and shebang scripts:
 echo "Hello world\n";
 ```
 
+### `phpscript info [path...]`
+
+Print the runtime environment, the way `phpinfo()` does in a terminal.
+
+```bash
+phpscript info
+phpscript info -v
+phpscript info ./src
+```
+
+With no path, the command prints the built-in runtime. `-v` / `--verbose`
+adds bound classes (with constructors and methods) and internal functions.
+A path argument uses the same file expansion as `list` and prints markdown
+docs for classes and functions found in that tree.
+
 ### `phpscript lint <path>...`
 
 Lint one or more PHP files or directories.
@@ -71,24 +86,26 @@ phpscript test tests/fixtures
 phpscript test tests/fixtures/array_indexing.phpt
 ```
 
-Use `--count N` to run each fixture N times in one aggregate row, or `--time D`
-to repeatedly run each fixture for at least duration D. When both flags are
-provided, they select benchmark sampling: each fixture prints N rows, and each
-row is an independent sample that runs for at least D. The `Count` column is
-the number of fixture executions completed during that sample. `GC Runs`
-reports completed Go garbage-collection cycles as `N (M%)`, where M is their
-share of the fixture execution count for that row, shown to two decimal places.
+Use `--count N` (`-c`) to run each fixture N times in one aggregate row, or
+`--time D` (`-t`) to repeatedly run each fixture for at least duration D.
+When both flags are provided, they select benchmark sampling: each fixture
+prints N rows, and each row is an independent sample that runs for at least D.
+The `Count` column is the number of fixture executions completed during that
+sample. With `--time`, `P50`/`P95`/`P99` report per-operation latency in
+microseconds so the wall-clock sample window is not mistaken for a single-run
+duration. `GC Runs` reports completed Go garbage-collection cycles as
+`N (M%)`, where M is their share of the fixture execution count for that row,
+shown to two decimal places.
 
 ```bash
-phpscript test --count 5 tests/fixtures
-phpscript test --time 1s tests/fixtures
+phpscript test -c 5 tests/fixtures
+phpscript test -t 1s tests/fixtures
 phpscript test --count 5 --time 1s tests/fixtures
 ```
 
-Use `--profile` to add per-operation allocation and byte counts. `--report`
-and `--report-html` write JSON and HTML reports respectively; reports continue
-to contain one result per fixture even when benchmark sampling prints multiple
-rows.
+Use `--profile` to add per-operation allocation and byte counts. `--json`
+writes a machine-readable report to stdout (no table). `--cpuprofile` and
+`--memprofile` write pprof files for the whole `test` invocation.
 
 ### `phpscript fmt <path>...`
 
@@ -100,11 +117,29 @@ subdirectories. With no path, the command uses the current directory (`.`).
 phpscript fmt script.php
 phpscript fmt ./src        # PHP files directly in ./src
 phpscript fmt ./src/...    # PHP files in ./src and its subdirectories
+phpscript fmt -l ./src/... # list what needs formatting, rewrite nothing
 ```
 
-The formatter uses tabs for indentation, places class opening braces on the
-next line, keeps function and control-statement braces on the same line, and
-normalizes line endings to LF.
+The formatter uses tabs for indentation, keeps class, function and
+control-statement opening braces on the declaration line, and normalizes line
+endings to LF. Class members are printed as constants, then properties, then
+methods, keeping the blank lines written between them. An array literal with
+more than two key/value pairs, or one that does not fit in 100 columns, is
+printed one entry per line with a trailing comma. Comments, the quoting of
+string literals, type hints and imports are kept as they were written.
+
+A file the formatter cannot read in full is reported on standard error and
+left alone, and the remaining files are still formatted:
+
+```
+$ phpscript fmt ./vendor/...
+vendor/titpetric/minitpl/code/MiniTPL/Compiler.php
+skipped vendor/titpetric/minitpl/test/TemplateTest.php: line 3: expected "{", got 3("extends")@3
+```
+
+Before a file is rewritten, its formatted output has to parse and formatting
+it again has to produce the same text. A file that fails either check is
+skipped rather than written.
 
 ### `phpscript list <path>...`
 
@@ -121,8 +156,9 @@ phpscript list index.php    # A specific PHP file
 ```
 
 The Route column names the entry point a file provides: a `METHOD /path`
-annotation, or `@startup` for a file the server runs before it listens. Files
-that are only included by others have neither.
+annotation, `@startup` for a file the server runs before it listens, or
+`@schedule …` for a clock or interval job. Files that are only included by
+others have neither.
 
 ### `phpscript ast <file.php>`
 
@@ -178,6 +214,30 @@ $migrate = new Database\Migrate("app");
 $migrate->load("./schema/*.up.sql");
 $migrate->run();
 ```
+
+`@schedule` annotations start after listen and keep running until shutdown:
+
+```php
+<?php
+// @schedule daily -- prune
+// @schedule every 5 minutes -- sync
+
+switch ($argv[1]) {
+case "prune":
+	break;
+case "sync":
+	break;
+default:
+	echo "Unknown/missing command";
+	exit(1);
+}
+```
+
+Specs: `every N seconds|minutes|hours`, `hourly`, `daily`, `weekly`,
+`monthly`, `every weekday`, `every sunday` (any weekday), `N times per hour|day`.
+Arguments after `--` become `$argv[1:]`. Calendar specs fire at local midnight.
+A tick is skipped if the previous run is still going. Output is stored on the
+oida span as `output`.
 
 Startup files run with the CLI SAPI and the application filesystem. If one
 fails, the server is not started. See

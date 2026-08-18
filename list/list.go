@@ -50,9 +50,8 @@ func File(path string) ([]Row, error) {
 	}
 	classCol := strings.Join(classes, ", ")
 	anns := annotations.ParseRoutes(b)
-	if len(anns) == 0 {
-		// A startup file has no route but is still an entry point: the server
-		// runs it once before listening, so the inventory names it as one.
+	schedules := annotations.ParseSchedules(b)
+	if len(anns) == 0 && len(schedules) == 0 {
 		entry := ""
 		if annotations.HasStartup(b) {
 			entry = "@startup"
@@ -63,10 +62,21 @@ func File(path string) ([]Row, error) {
 			Classes:  classCol,
 		}}, nil
 	}
-	rows := make([]Row, 0, len(anns))
+	rows := make([]Row, 0, len(anns)+len(schedules))
 	for _, a := range anns {
 		rows = append(rows, Row{
 			Route:    a.Method + " " + a.Path,
+			Filename: rel,
+			Classes:  classCol,
+		})
+	}
+	for _, job := range schedules {
+		label := "@schedule " + job.Raw
+		if len(job.Args) > 0 {
+			label += " -- " + strings.Join(job.Args, " ")
+		}
+		rows = append(rows, Row{
+			Route:    label,
 			Filename: rel,
 			Classes:  classCol,
 		})

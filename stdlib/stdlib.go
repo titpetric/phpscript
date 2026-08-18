@@ -1065,9 +1065,6 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("get_declared_classes", func() []string {
 		return rt.DeclaredClasses()
 	})
-	rt.RegisterFunc("phpinfo", func(_ ...any) (bool, error) {
-		return true, rt.PHPInfo()
-	})
 	rt.RegisterFunc("php_sapi_name", func() string {
 		return rt.SAPI()
 	})

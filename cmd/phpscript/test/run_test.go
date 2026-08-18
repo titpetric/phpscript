@@ -1,7 +1,9 @@
 package test_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,33 +16,48 @@ func TestMain(m *testing.M) {
 	tests.TestMain(m)
 }
 
-func TestRunCommand(t *testing.T) {
+func TestRunCommandJSON(t *testing.T) {
 	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cpuPath := filepath.Join(tmpDir, "cpu.pprof")
+	memPath := filepath.Join(tmpDir, "mem.pprof")
 
-	tmpDir, err := os.MkdirTemp("", "phpscript-test-*")
+	old := os.Stdout
+	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
-
-	jsonReport := filepath.Join(tmpDir, "report.json")
-	htmlReport := filepath.Join(tmpDir, "report.html")
-
-	opts := test.Options{
-		Report:     jsonReport,
-		ReportHTML: htmlReport,
+	os.Stdout = w
+	errRun := test.Run(ctx, []string{"../../../tests/fixtures/die_exit.phpt"}, test.Options{
+		JSON:       true,
+		CPUProfile: cpuPath,
+		MemProfile: memPath,
+	})
+	w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	if errRun != nil {
+		t.Fatalf("unexpected error running test command: %v", errRun)
 	}
 
-	err = test.Run(ctx, []string{"../../../tests/fixtures"}, opts)
-	if err != nil {
-		t.Fatalf("unexpected error running test command: %v", err)
+	var report struct {
+		Total   int `json:"total"`
+		Passed  int `json:"passed"`
+		Results []struct {
+			Passed bool `json:"passed"`
+		} `json:"results"`
 	}
-
-	if _, err := os.Stat(jsonReport); os.IsNotExist(err) {
-		t.Fatalf("expected JSON report file at %s", jsonReport)
+	if err := json.Unmarshal(buf.Bytes(), &report); err != nil {
+		t.Fatalf("json: %v\n%s", err, buf.String())
 	}
-
-	if _, err := os.Stat(htmlReport); os.IsNotExist(err) {
-		t.Fatalf("expected HTML report file at %s", htmlReport)
+	if report.Total < 1 || report.Passed < 1 {
+		t.Fatalf("report = %+v", report)
+	}
+	if _, err := os.Stat(cpuPath); err != nil {
+		t.Fatalf("cpuprofile: %v", err)
+	}
+	if _, err := os.Stat(memPath); err != nil {
+		t.Fatalf("memprofile: %v", err)
 	}
 }
