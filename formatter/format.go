@@ -781,16 +781,64 @@ func (p *printer) args(args []model.Expr) string {
 	return strings.Join(parts, ", ")
 }
 
+const (
+	// arrayLitInlineItems is the largest number of key/value pairs an array
+	// literal keeps on one line. Beyond it the literal is expanded one entry
+	// per line, the way gofmt expands a struct literal, because a row of three
+	// or more pairs is where a single line stops being readable and stops
+	// diffing well. A list of values without keys is not a record, so it is
+	// only expanded when it does not fit.
+	arrayLitInlineItems = 2
+
+	// arrayLitWidth is how wide an array literal may be, counted from its own
+	// indent rather than from the start of the line: the statement that holds
+	// the literal is printed around it, so its width is not known here.
+	arrayLitWidth = 100
+
+	// tabWidth is the column width a hard tab is assumed to occupy when
+	// measuring a line against arrayLitWidth.
+	tabWidth = 4
+)
+
 func (p *printer) arrayLit(n *model.ArrayLit) string {
-	parts := make([]string, len(n.Items))
-	for i, it := range n.Items {
-		if it.Key != nil {
-			parts[i] = p.expr(it.Key) + " => " + p.expr(it.Val)
-		} else {
-			parts[i] = p.expr(it.Val)
-		}
+	if len(n.Items) == 0 {
+		return "array()"
 	}
-	return "array(" + strings.Join(parts, ", ") + ")"
+	// Entries are rendered one level in, which is where they are printed when
+	// the literal is expanded. A nested literal that expands therefore carries
+	// the right indent already.
+	p.depth++
+	parts := make([]string, len(n.Items))
+	keyed := false
+	expand := false
+	for i, it := range n.Items {
+		part := p.expr(it.Val)
+		if it.Key != nil {
+			keyed = true
+			part = p.expr(it.Key) + " => " + part
+		}
+		// A nested literal that expanded cannot be folded back into one line.
+		expand = expand || strings.Contains(part, "\n")
+		parts[i] = part
+	}
+	p.depth--
+	inline := "array(" + strings.Join(parts, ", ") + ")"
+	expand = expand ||
+		(keyed && len(n.Items) > arrayLitInlineItems) ||
+		p.depth*tabWidth+len(inline) > arrayLitWidth
+	if !expand {
+		return inline
+	}
+	var b strings.Builder
+	b.WriteString("array(\n")
+	inner := p.indent() + "\t"
+	for _, part := range parts {
+		b.WriteString(inner)
+		b.WriteString(part)
+		b.WriteString(",\n")
+	}
+	b.WriteString(p.indent() + ")")
+	return b.String()
 }
 
 func (p *printer) lit(v any) string {
