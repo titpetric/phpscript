@@ -415,6 +415,18 @@ func TestNeedFormattingLeavesFilesAlone(t *testing.T) {
 	}
 }
 
+func TestShebangScriptIsFormattedAndKeepsItsInterpreterLine(t *testing.T) {
+	in := "#!/usr/bin/env phpscript\n<?php\necho  \"hello\";\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "#!/usr/bin/env phpscript\n<?php\n\necho \"hello\";\n"
+	if out != want {
+		t.Fatalf("unexpected output:\n--- got ---\n%s--- want ---\n%s", out, want)
+	}
+}
+
 func TestSourceNormalizesLineEndings(t *testing.T) {
 	in := "<?php\r\necho \"a\r\nb\";\r\n?>\r\n<p>done</p>\r\n"
 	out, err := formatter.Source(in)

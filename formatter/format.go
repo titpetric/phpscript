@@ -146,6 +146,16 @@ func verify(out string) error {
 
 // Source parses src and pretty-prints the AST.
 func Source(src string) (string, error) {
+	// An executable script starts with an interpreter line, which the lexer
+	// skips. It is put back on the formatted output rather than costing the
+	// script its formatting.
+	if shebang, rest, ok := splitShebang(src); ok {
+		out, err := Source(rest)
+		if err != nil {
+			return "", err
+		}
+		return shebang + "\n" + out, nil
+	}
 	// Files that start outside PHP are templates. Formatting their PHP blocks
 	// independently is not supported yet, so leave the entire file unchanged.
 	if !strings.HasPrefix(src, "<?php") {
@@ -164,6 +174,19 @@ func Source(src string) (string, error) {
 	}
 	out = strings.ReplaceAll(out, "\r\n", "\n")
 	return strings.ReplaceAll(out, "\r", "\n"), nil
+}
+
+// splitShebang separates a leading `#!` interpreter line from the rest of the
+// file. It reports false for a file that does not have one.
+func splitShebang(src string) (shebang, rest string, ok bool) {
+	if !strings.HasPrefix(src, "#!") {
+		return "", src, false
+	}
+	line, rest, found := strings.Cut(src, "\n")
+	if !found {
+		return "", src, false
+	}
+	return strings.TrimRight(line, "\r"), rest, true
 }
 
 // Options controls AST pretty-printing.
