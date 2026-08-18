@@ -2,10 +2,12 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
+	"runtime/pprof"
+	"sort"
 	"time"
 
 	"github.com/titpetric/cli"
@@ -18,25 +20,48 @@ const Name = "Run .phpt test fixtures"
 
 // Options holds CLI flag options for the test command.
 type Options struct {
-	Report     string
-	ReportHTML string
+	JSON       bool
 	Count      int
 	Time       time.Duration
 	Profile    bool
+	CPUProfile string
+	MemProfile string
 }
 
-// NewCommand creates a new test command.
+type jsonFixture struct {
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	Passed      bool   `json:"passed"`
+	Runs        int    `json:"runs"`
+	DurationNs  int64  `json:"duration_ns"`
+	P50Ns       int64  `json:"p50_ns,omitempty"`
+	P95Ns       int64  `json:"p95_ns,omitempty"`
+	P99Ns       int64  `json:"p99_ns,omitempty"`
+	AllocsPerOp uint64 `json:"allocs_per_op,omitempty"`
+	BytesPerOp  uint64 `json:"bytes_per_op,omitempty"`
+	GCRuns      uint32 `json:"gc_runs"`
+	Failure     string `json:"failure_reason,omitempty"`
+}
+
+type jsonReport struct {
+	Total   int           `json:"total"`
+	Passed  int           `json:"passed"`
+	Failed  int           `json:"failed"`
+	Results []jsonFixture `json:"results"`
+}
+
 func NewCommand() *cli.Command {
 	var opts Options
 	return &cli.Command{
 		Name:  "test",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
-			fs.StringVar(&opts.Report, "report", "", "Write JSON test report to specified file")
-			fs.StringVar(&opts.ReportHTML, "report-html", "", "Write HTML test report to specified file")
-			fs.IntVar(&opts.Count, "count", 0, "Run each test N times; with --time, produce N benchmark samples")
-			fs.DurationVar(&opts.Time, "time", 0, "Run each test for this duration per benchmark sample (e.g. 10s)")
+			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
+			fs.IntVarP(&opts.Count, "count", "c", 0, "Run each test N times; with --time, produce N benchmark samples")
+			fs.DurationVarP(&opts.Time, "time", "t", 0, "Run each test for this duration per benchmark sample (e.g. 10s)")
 			fs.BoolVar(&opts.Profile, "profile", false, "Report memory usage per run (allocs/op, B/op)")
+			fs.StringVar(&opts.CPUProfile, "cpuprofile", "", "Write CPU profile to file")
+			fs.StringVar(&opts.MemProfile, "memprofile", "", "Write memory profile to file")
 		},
 		Run: func(ctx context.Context, args []string) error {
 			return Run(ctx, args, opts)
@@ -50,21 +75,29 @@ type fixtureRun struct {
 	DisplayPath string
 	Runs        int
 	Total       time.Duration
+	P50         time.Duration
+	P95         time.Duration
+	P99         time.Duration
 	AllocsPerOp uint64
 	BytesPerOp  uint64
 	GCRuns      uint32
 }
 
-// runFixtureLoop reruns one fixture until the count and time requirements are
-// both met (a single run when neither flag is set). The reported result is the
-// first failing run if any, else the last run.
 func runFixtureLoop(ctx context.Context, fx *tests.Fixture, opts Options) *fixtureRun {
 	out := &fixtureRun{}
+	hint := opts.Count
+	if hint <= 0 {
+		hint = 64
+	}
+	samples := make([]int64, 0, hint)
+
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
 	start := time.Now()
 	for {
+		opStart := time.Now()
 		res := tests.RunFixture(ctx, fx)
+		samples = append(samples, time.Since(opStart).Nanoseconds())
 		out.Runs++
 		if out.Result == nil || (out.Result.Passed && !res.Passed) {
 			out.Result = res
@@ -88,12 +121,29 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, opts Options) *fixtu
 		out.AllocsPerOp = (after.Mallocs - before.Mallocs) / n
 		out.BytesPerOp = (after.TotalAlloc - before.TotalAlloc) / n
 	}
+	if opts.Time > 0 && len(samples) > 0 {
+		sort.Slice(samples, func(i, j int) bool { return samples[i] < samples[j] })
+		out.P50 = time.Duration(percentileNs(samples, 50))
+		out.P95 = time.Duration(percentileNs(samples, 95))
+		out.P99 = time.Duration(percentileNs(samples, 99))
+	}
 	return out
 }
 
-// runFixtureSamples returns one aggregate run normally. When count and time
-// are both set, count selects the number of benchmark samples and each sample
-// runs independently for the requested time.
+func percentileNs(sorted []int64, p int) int64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+	idx := (p*len(sorted) + 99) / 100
+	if idx < 1 {
+		idx = 1
+	}
+	if idx > len(sorted) {
+		idx = len(sorted)
+	}
+	return sorted[idx-1]
+}
+
 func runFixtureSamples(ctx context.Context, fx *tests.Fixture, opts Options) []*fixtureRun {
 	if opts.Count <= 0 || opts.Time <= 0 {
 		return []*fixtureRun{runFixtureLoop(ctx, fx, opts)}
@@ -113,6 +163,21 @@ func runFixtureSamples(ctx context.Context, fx *tests.Fixture, opts Options) []*
 
 // Run executes .phpt test fixtures matching the provided paths or patterns.
 func Run(ctx context.Context, args []string, opts Options) error {
+	if opts.CPUProfile != "" {
+		f, err := os.Create(opts.CPUProfile)
+		if err != nil {
+			return fmt.Errorf("create cpuprofile: %w", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			f.Close()
+			return fmt.Errorf("start cpuprofile: %w", err)
+		}
+		defer func() {
+			pprof.StopCPUProfile()
+			f.Close()
+		}()
+	}
+
 	paths := args
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -124,7 +189,11 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	}
 
 	if len(fixtures) == 0 {
-		fmt.Println("No .phpt test fixtures found.")
+		if !opts.JSON {
+			fmt.Println("No .phpt test fixtures found.")
+		} else {
+			_ = json.NewEncoder(os.Stdout).Encode(jsonReport{Results: []jsonFixture{}})
+		}
 		return nil
 	}
 
@@ -135,10 +204,14 @@ func Run(ctx context.Context, args []string, opts Options) error {
 			displayPaths[i] = fx.Name
 		}
 	}
-	table := newResultTable(os.Stdout, displayPaths, opts)
-	table.writeHeader()
 
-	var results []*tests.TestResult
+	var table resultTable
+	if !opts.JSON {
+		table = newResultTable(os.Stdout, displayPaths, opts)
+		table.writeHeader()
+	}
+
+	var jsonRows []jsonFixture
 	var failedRuns []*fixtureRun
 	var passedCount, failedCount int
 	startAll := time.Now()
@@ -148,7 +221,23 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		var firstFailedRun *fixtureRun
 		for _, fr := range runFixtureSamples(ctx, fx, opts) {
 			fr.DisplayPath = displayPaths[i]
-			table.writeResult(fr)
+			if table != nil {
+				table.writeResult(fr)
+			}
+			jsonRows = append(jsonRows, jsonFixture{
+				Name:        fx.Name,
+				Path:        fr.DisplayPath,
+				Passed:      fr.Result.Passed,
+				Runs:        fr.Runs,
+				DurationNs:  fr.Total.Nanoseconds(),
+				P50Ns:       fr.P50.Nanoseconds(),
+				P95Ns:       fr.P95.Nanoseconds(),
+				P99Ns:       fr.P99.Nanoseconds(),
+				AllocsPerOp: fr.AllocsPerOp,
+				BytesPerOp:  fr.BytesPerOp,
+				GCRuns:      fr.GCRuns,
+				Failure:     fr.Result.FailureReason,
+			})
 
 			if fixtureResult == nil || fixtureResult.Passed {
 				fixtureResult = fr.Result
@@ -157,7 +246,6 @@ func Run(ctx context.Context, args []string, opts Options) error {
 				firstFailedRun = fr
 			}
 		}
-		results = append(results, fixtureResult)
 
 		if fixtureResult.Passed {
 			passedCount++
@@ -166,33 +254,42 @@ func Run(ctx context.Context, args []string, opts Options) error {
 			failedRuns = append(failedRuns, firstFailedRun)
 		}
 	}
-	table.close()
-	table.writeSummary(passedCount, failedCount, len(fixtures), time.Since(startAll))
 
-	for _, fr := range failedRuns {
-		fmt.Printf("FAIL %s (%dms)\n", fr.DisplayPath, fr.Result.DurationMs)
-		if fr.Result.FailureReason != "" {
-			fmt.Printf("  Reason: %s\n", fr.Result.FailureReason)
+	if table != nil {
+		table.close()
+		table.writeSummary(passedCount, failedCount, len(fixtures), time.Since(startAll))
+	}
+
+	if opts.JSON {
+		enc := json.NewEncoder(os.Stdout)
+		if err := enc.Encode(jsonReport{
+			Total:   len(fixtures),
+			Passed:  passedCount,
+			Failed:  failedCount,
+			Results: jsonRows,
+		}); err != nil {
+			return fmt.Errorf("write json: %w", err)
 		}
 	}
 
-	if opts.Report != "" {
-		if err := writeReportFile(opts.Report, func(f *os.File) error {
-			return tests.WriteJSONReport(f, results)
-		}); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing JSON report: %v\n", err)
-		} else {
-			fmt.Printf("Wrote JSON report to %s\n", opts.Report)
+	if !opts.JSON {
+		for _, fr := range failedRuns {
+			fmt.Printf("FAIL %s (%dms)\n", fr.DisplayPath, fr.Result.DurationMs)
+			if fr.Result.FailureReason != "" {
+				fmt.Printf("  Reason: %s\n", fr.Result.FailureReason)
+			}
 		}
 	}
 
-	if opts.ReportHTML != "" {
-		if err := writeReportFile(opts.ReportHTML, func(f *os.File) error {
-			return tests.WriteHTMLReport(f, results)
-		}); err != nil {
-			fmt.Fprintf(os.Stderr, "Error writing HTML report: %v\n", err)
-		} else {
-			fmt.Printf("Wrote HTML report to %s\n", opts.ReportHTML)
+	if opts.MemProfile != "" {
+		f, err := os.Create(opts.MemProfile)
+		if err != nil {
+			return fmt.Errorf("create memprofile: %w", err)
+		}
+		defer f.Close()
+		runtime.GC()
+		if err := pprof.WriteHeapProfile(f); err != nil {
+			return fmt.Errorf("write memprofile: %w", err)
 		}
 	}
 
@@ -201,19 +298,4 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	}
 
 	return nil
-}
-
-func writeReportFile(path string, writeFn func(*os.File) error) error {
-	dir := filepath.Dir(path)
-	if dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
-		}
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return writeFn(f)
 }

@@ -71,24 +71,26 @@ phpscript test tests/fixtures
 phpscript test tests/fixtures/array_indexing.phpt
 ```
 
-Use `--count N` to run each fixture N times in one aggregate row, or `--time D`
-to repeatedly run each fixture for at least duration D. When both flags are
-provided, they select benchmark sampling: each fixture prints N rows, and each
-row is an independent sample that runs for at least D. The `Count` column is
-the number of fixture executions completed during that sample. `GC Runs`
-reports completed Go garbage-collection cycles as `N (M%)`, where M is their
-share of the fixture execution count for that row, shown to two decimal places.
+Use `--count N` (`-c`) to run each fixture N times in one aggregate row, or
+`--time D` (`-t`) to repeatedly run each fixture for at least duration D.
+When both flags are provided, they select benchmark sampling: each fixture
+prints N rows, and each row is an independent sample that runs for at least D.
+The `Count` column is the number of fixture executions completed during that
+sample. With `--time`, `P50`/`P95`/`P99` report per-operation latency in
+microseconds so the wall-clock sample window is not mistaken for a single-run
+duration. `GC Runs` reports completed Go garbage-collection cycles as
+`N (M%)`, where M is their share of the fixture execution count for that row,
+shown to two decimal places.
 
 ```bash
-phpscript test --count 5 tests/fixtures
-phpscript test --time 1s tests/fixtures
+phpscript test -c 5 tests/fixtures
+phpscript test -t 1s tests/fixtures
 phpscript test --count 5 --time 1s tests/fixtures
 ```
 
-Use `--profile` to add per-operation allocation and byte counts. `--report`
-and `--report-html` write JSON and HTML reports respectively; reports continue
-to contain one result per fixture even when benchmark sampling prints multiple
-rows.
+Use `--profile` to add per-operation allocation and byte counts. `--json`
+writes a machine-readable report to stdout (no table). `--cpuprofile` and
+`--memprofile` write pprof files for the whole `test` invocation.
 
 ### `phpscript fmt <path>...`
 
