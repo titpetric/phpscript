@@ -1,4 +1,4 @@
-# Telemetry — the status page becomes oida
+# Telemetry: the status page becomes oida
 
 **2026-08-17.** `stdlib/status`, the hand written request scoreboard, is gone.
 Request tracing now runs on [oida](https://github.com/titpetric/oida), bound

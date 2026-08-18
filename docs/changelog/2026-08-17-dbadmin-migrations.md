@@ -1,4 +1,4 @@
-# dbadmin — schema migrations, and the bugs a test suite found
+# dbadmin: schema migrations, and the bugs a test suite found
 
 **2026-08-17.** The dbadmin demo no longer creates its table from PHP on the
 first request. Its schema lives in `demos/dbadmin/schema/catalogue.up.sql` and
@@ -41,8 +41,8 @@ against the demo as it stood before this change:
   POST and was never reached on GET. Rows now come from `$db->get_all()`, and
   both verbs share one helper, each reading its own superglobal.
 - **`die("message")` printed nothing.** The argument was passed to `toInt` and
-  read as an exit status, so every guard in the demo — `Table not found.`,
-  `Invalid table name.`, `Confirmation did not match the table name.` — returned
+  read as an exit status, so every guard in the demo (`Table not found.`,
+  `Invalid table name.`, `Confirmation did not match the table name.`) returned
   a blank page. `exit`/`die` now follow PHP: a string argument is written to the
   output and exits with status 0, an integer sets the status.
 - **`sort()` did not exist.** Added `sort` and `rsort`, sharing `sortValues`
@@ -56,6 +56,6 @@ unaffected.
 ## Documentation
 
 The `@startup` example in [usage.md](../usage.md) loaded `./schema/*.sql`, a
-glob the runner never applies — only `*.up.sql` files run, so that example
+glob the runner never applies: only `*.up.sql` files run, so that example
 migrated nothing. The demo README started the server with `DB_DSN_DBADMIN`,
 which registers no connection; the prefix is `PLATFORM_DB_`.

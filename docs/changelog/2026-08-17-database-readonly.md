@@ -15,8 +15,8 @@ $db->insert("users", array("name" => "Ada"));          // database is read-only:
 
 It is a property of the client, not configuration of the connection, and not an
 argument to the constructor. A client is request scope, so the restriction is
-too: the request sets it where it stops writing, and reads it back anywhere —
-`if (!$db->is_readonly)`.
+too: the request sets it where it stops writing, and reads it back anywhere
+with `if (!$db->is_readonly)`.
 
 `insert()`, `replace()` and `update()` are refused before a statement is built
 for them: they write by definition, so there is nothing to classify. `query()`,
@@ -40,8 +40,8 @@ $db->get("/* userGet */ select * from user where id = ?", $id);
 ```
 
 It reads the start of the statement and nothing else. A statement has to begin
-with its keyword — `(SELECT 1) UNION (SELECT 2)` is refused rather than guessed
-at — and a second statement smuggled in behind a semicolon is the driver's
+with its keyword, so `(SELECT 1) UNION (SELECT 2)` is refused rather than guessed
+at, and a second statement smuggled in behind a semicolon is the driver's
 business, not the classifier's.
 
 ## What it is, and what it is not
@@ -68,7 +68,8 @@ database span carries two attributes beside the statement:
 The statement text alone does not group a trace: two calls of the same query
 differ by their bound values and by nothing else worth grouping on. The comment
 is left in the statement that reaches the server, so the tag in the trace is the
-tag in `SHOW PROCESSLIST` and in the slow query log — the reason to write one. A
+tag in `SHOW PROCESSLIST` and in the slow query log, which is the reason to
+write one. A
 refused statement never reaches the query log, so its span carries the same
 attributes plus the refusal as its error.
 
@@ -78,11 +79,11 @@ attributes plus the refusal as its error.
 case but not underscores, so it found `Value` for `$rec->value` and nothing for a
 two-word name; it now folds both, the way method lookup has always resolved
 `get_all()` to `GetAll`. Reads and writes share one resolver, and an unexported
-field is no longer a property — reading one used to panic through reflect.
+field is no longer a property; reading one used to panic through reflect.
 
 Assigning a property is also compiled by the flat bytecode backend now. It had no
-opcode for it, so every script writing one — every script that sets
-`is_readonly` — fell back to the interpreter for the whole program.
+opcode for it, so every script writing one, including every script that sets
+`is_readonly`, fell back to the interpreter for the whole program.
 
 ## Verification
 

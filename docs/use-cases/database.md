@@ -54,8 +54,8 @@ $db->query("delete from users");                       // throws
 
 It is a property of the client, not of the connection: the pool is the same
 pool, and what changes is what this client will send down it. The property is
-request scope, like the client holding it — set it where a request stops
-writing, read it back anywhere:
+request scope, like the client holding it. Set it where a request stops
+writing, and read it back anywhere:
 
 ```php
 if (!$db->is_readonly) {
@@ -75,7 +75,7 @@ with, past any comment in front of it. These statements run:
 
 Everything else is refused, including `EXPLAIN`: `EXPLAIN ANALYZE INSERT ...`
 runs the statement it reports on in PostgreSQL, so an explain is not reliably a
-read. `PRAGMA` is refused for the same reason — `PRAGMA journal_mode = WAL`
+read. `PRAGMA` is refused for the same reason: `PRAGMA journal_mode = WAL`
 writes.
 
 The refusal is thrown as an exception naming the statement, so a script can
@@ -93,7 +93,7 @@ try {
 read-only transaction is a read.
 
 Classification reads the start of the statement and nothing else. A statement
-has to begin with its keyword — `(SELECT 1) UNION (SELECT 2)` is refused — and
+has to begin with its keyword, so `(SELECT 1) UNION (SELECT 2)` is refused, and
 nothing stops a second statement smuggled in behind a semicolon on a driver that
 allows more than one per call.
 
@@ -275,7 +275,7 @@ A span also carries what the statement is. `/* userGet */ select * from user`
 records `query_type` as `select` and `query_comment` as `userGet`, and the
 comment stays in the statement that reaches the server, so `SHOW PROCESSLIST`
 shows the same tag. A statement a read-only client refused is recorded the same
-way, with the refusal as the span's error — it never reaches the query log.
+way, with the refusal as the span's error; it never reaches the query log.
 
 ## API summary
 

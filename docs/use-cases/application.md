@@ -24,9 +24,8 @@ example/
 ├── index.php                  # @route GET /
 ├── bookmark-create.php        # @route POST /bookmarks
 ├── bookmark-delete.php        # @route POST /bookmarks/{id}/delete
-├── include/
-│   ├── Compiler.php           # template engine
-│   └── Template.php
+├── composer.json              # requires titpetric/minitpl
+├── vendor/                    # composer install; not committed
 ├── templates/
 │   └── list.tpl               # compiled to templates/cache/ on first use
 └── public/
@@ -295,8 +294,8 @@ instead; see [Testing](../testing.md).
 
 ## Where to go next
 
-- [Routing](routing.md) — annotations, methods and path parameters
-- [Database bindings](database.md) — queries, transactions and migrations
-- [Templating](templating.md) — the template syntax in full
-- [Error handling](error-handling.md) — exceptions from bindings
-- [dbadmin](../../demos/dbadmin) — a larger application built the same way
+- [Routing](routing.md) - annotations, methods and path parameters
+- [Database bindings](database.md) - queries, transactions and migrations
+- [Templating](templating.md) - the template syntax in full
+- [Error handling](error-handling.md) - exceptions from bindings
+- [dbadmin](../../demos/dbadmin) - a larger application built the same way

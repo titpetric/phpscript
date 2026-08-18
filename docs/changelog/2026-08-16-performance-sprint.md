@@ -1,4 +1,4 @@
-# Performance sprint — allocation reduction
+# Performance sprint: allocation reduction
 
 **2026-08-16.** Total allocations across the `.phpt` fixture suite fell by
 **80.6%** (223,063 → 43,356 allocs/op), bytes allocated by **77.4%**, and GC
@@ -20,34 +20,33 @@ phpscript test --profile ./tests/...   # per-fixture allocs/op, B/op, GC runs
 go install .                           # rebuild the binary being measured
 ```
 
-**Round 1 — work the document's TODO list.** Four parallel efforts, each
+**Round 1: work the document's TODO list.** Four parallel efforts, each
 scoped to one package so they could not conflict: `runner` (the `baseEnv`
 rebuild), `model` (list-mode `Array`), `parser` (`TokenGetAll`'s nested array
 shape), `stdlib` (the binding audit's TODO rows). Result: −18.6%.
 
-**Rounds 2 and 3 — follow the profiler instead.** With the document's list
+**Rounds 2 and 3: follow the profiler instead.** With the document's list
 exhausted, the remaining targets came from
 `go test ./tests/ -bench ... -memprofile` over the six heaviest fixtures and
 `go tool pprof -sample_index=alloc_objects`. This is where the largest single
 win came from, and it was not in the document at all. Result: −62% and −16%
 on top of what was already there.
 
-The lesson worth keeping: the audit was a good starting point and a poor
-finishing point. It correctly identified that `runner.baseEnv` dominated, but
+The audit was a good starting point and a poor finishing point. It correctly identified that `runner.baseEnv` dominated, but
 it attributed ~78% of allocations to the *runtime* environment when a
 comparable cost sat in the *compile-time* type environment, unmentioned. Two
 of its TODOs were also worth less than advertised by the time they were
-reached — see "Changes not made" below.
+reached; see "Changes not made" below.
 
 ## Where the wins came from
 
 | Change                                                                                                                                                                                        | Effect                                                                                                                                                                                                                                                     |
 |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `runner`: pooled evaluation environments (`acquireEnv`/`releaseEnv`) reached through a `scopeRef` indirection, plus on-demand installation of only the functions an expression actually calls | `baseEnv` rebuilt the whole env per `Eval`, one closure per registered function. `BenchmarkScriptEnvFullStdlib` and `...Minimal` are now identical at 24 allocs/op (were 649 and 145): a script pays for the functions it calls, not the size of the table |
-| `runner`: cache expr's compile config per function-table generation; derive the type-env nature once instead of per key                                                                       | `expr.Compile(src, expr.Env(typeEnv), ...)` made expr walk a ~95-entry map via `MapKeys`/`MapIndex`/`copyVal` on **every compile** — 64% of all allocations                                                                                                |
+| `runner`: cache expr's compile config per function-table generation; derive the type-env nature once instead of per key                                                                       | `expr.Compile(src, expr.Env(typeEnv), ...)` made expr walk a ~95-entry map via `MapKeys`/`MapIndex`/`copyVal` on **every compile**, 64% of all allocations                                                                                                 |
 | `parser`: operator tokens from a package-level substring table, presized token slice, chunked AST node allocation                                                                             | Parsing a 10.8 KB file: 3197 → 564 allocs (−82%)                                                                                                                                                                                                           |
 | `parser`: `TokenGetAll` returns `[]any` of `[]any` instead of `*model.Array` of `*model.Array`, with pre-boxed id/line tables and chunked triples                                             | 6003 → 1828 allocs on a 5.6 KB template                                                                                                                                                                                                                    |
-| `model`: `Array` list mode — while every key is the dense sequence `0..n-1`, values live in a `[]any` and neither the `map[any]any` nor the key slice is allocated                            | 5-element build 11 → 9 allocs, 50-element 66 → 57, `Range` ~17x faster at zero allocations                                                                                                                                                                 |
+| `model`: `Array` list mode: while every key is the dense sequence `0..n-1`, values live in a `[]any` and neither the `map[any]any` nor the key slice is allocated                             | 5-element build 11 → 9 allocs, 50-element 66 → 57, `Range` ~17x faster at zero allocations                                                                                                                                                                 |
 | `stdlib`: hoisted `htmlspecialchars`' `strings.Replacer` to package scope; `crc32` via a package-level table; `Exception` returns a pointer; `toString`/`toInt` off `fmt`                     | 11 → 2 allocs, 1 → 0 allocs, and `$e->message = "x"` now works                                                                                                                                                                                             |
 
 ## Fixture data
@@ -93,10 +92,10 @@ GC columns are collections observed during the run.
 | `storage_method_error_caught`           |          1141 |       495 |       -57% |        94.9 |       69.0 |       -27% |         0 |     0 |
 | `storage_constructor_error`             |          1034 |       455 |       -56% |       120.4 |       87.1 |       -28% |         0 |     0 |
 | `flatstack_arithmetic`                  |           990 |       418 |       -58% |       118.2 |       82.7 |       -30% |         0 |     0 |
-| `token_get_all`                         |             — |      2930 |          — |           — |      186.7 |          — |         — |     0 |
+| `token_get_all`                         |           n/a |      2930 |        n/a |         n/a |      186.7 |        n/a |       n/a |     0 |
 | **Total (36 common)**                   |    **223063** | **43356** | **-80.6%** | **22936.8** | **5176.6** | **-77.4%** |    **10** | **2** |
 
-`token_get_all.phpt` is new — added during the sprint to pin the PHP-visible
+`token_get_all.phpt` is new, added during the sprint to pin the PHP-visible
 shape of `token_get_all` after it stopped returning `*model.Array`. It is
 excluded from the total so the comparison is like-for-like.
 
@@ -108,7 +107,7 @@ from building the pre-sprint commit (`eba815c`) and running both binaries
 against the same 36 fixtures.
 
 Fixture execution excluding process startup, `ResetCaches()` per iteration so
-every run pays a cold parse and compile — the one-shot CLI case:
+every run pays a cold parse and compile, the one-shot CLI case:
 
 | Fixture                  | before   | after     | speedup  |
 |--------------------------|---------:|----------:|---------:|
@@ -120,9 +119,9 @@ every run pays a cold parse and compile — the one-shot CLI case:
 | `runtime_introspection`  |    542/s |    2259/s |     4.2x |
 | **combined**             | **49/s** | **242/s** | **4.9x** |
 
-End to end, `phpscript test ./tests/...` over the whole suite — including
-process startup, driver connections and fixture I/O — went **91 ms → 63 ms,
-1.44x** (five alternating runs, 89-93 ms versus 61-64 ms).
+End to end, `phpscript test ./tests/...` over the whole suite (including
+process startup, driver connections and fixture I/O) went **91 ms → 63 ms,
+1.44x** on five alternating runs, 89-93 ms versus 61-64 ms.
 
 The gap between 4.9x and 1.44x is the useful part: the interpreter is roughly
 five times faster, but a CLI invocation now spends most of its 63 ms on fixed
@@ -132,15 +131,15 @@ wall-clock is the target.
 ## Changes not made, and why
 
 - **`array_merge` returning `[]any` for all-list inputs.** This was a TODO in
-  the audit, implemented, measured, and reverted. Its premise — that
-  `*model.Array` cost ~5 allocations more — stopped being true when list mode
+  the audit, implemented, measured, and reverted. Its premise, that
+  `*model.Array` cost ~5 allocations more, stopped being true when list mode
   landed in the same round; measured 8 allocs either way. The slice cannot
   serve `$x = array_merge($a, $b); $x[] = "z"`, so the appendability was worth
   more than 40 bytes.
 - **Dropping `expr.Env` entirely.** Tempting, and much faster still, but
   wrong: `expr/parser.parseCall` consults its own `predicates` table before
-  the disabled-builtins list, and only `conf.Config.IsOverridden` — which
-  reads `Config.Env` — stops a name being parsed as expr predicate syntax.
+  the disabled-builtins list, and only `conf.Config.IsOverridden`, which
+  reads `Config.Env`, stops a name being parsed as expr predicate syntax.
   PHP's `count`, `map`, `filter`, `find`, `sum`, `reduce` and `sortBy` all
   collide. `expr.DisableAllBuiltins()` does not cover it. Caching the derived
   config was taken instead, and `runner/compile_test.go::TestCompileMatchesExprEnv`
@@ -155,10 +154,10 @@ wall-clock is the target.
   would need a global lock around every compile, trading a per-`Runtime`
   one-time cost for cross-`Runtime` contention.
 
-One assumption that did not survive contact: the audit called `token_get_all`
+One assumption did not hold up. The audit called `token_get_all`
 "the worst remaining shape" partly because "the minitpl compiler tokenises
 every template". Instrumenting the tokenizer showed `include_minitpl.phpt`
-never calls it — the fixture's template only uses `{name}`, which takes a
+never calls it; the fixture's template only uses `{name}`, which takes a
 different path. The change is still worth having (it is 3.3x on the tokenizer
 and `phpscript fmt`/`list`/`ast` use it), but it is not what made that fixture
 heavy.
@@ -168,8 +167,8 @@ heavy.
 The two largest remaining blocks are both out of reach of this kind of work:
 
 - **expr's own parse and compile pipeline**, ~48% cumulative. This is a
-  *cold-start* cost — `ExprCache` means a long-lived runtime pays it once per
-  distinct expression — so it dominates one-shot CLI runs and not servers.
+  *cold-start* cost (`ExprCache` means a long-lived runtime pays it once per
+  distinct expression), so it dominates one-shot CLI runs and not servers.
   Reducing it means emitting fewer or shorter expressions, not micro-optimising
   a dependency.
 - **`reflect.Value.Call`**, ~43% cumulative. This is the reflection boundary

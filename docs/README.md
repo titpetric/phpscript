@@ -89,7 +89,7 @@ sequenceDiagram
     G-->>U: Flush output, os.Exit
 ```
 
-The excution of PHP scripts via the command line can be done with
+PHP scripts can be run from the command line with
 `phpscript <file.php>` or with using a shebang:
 
 ```php
