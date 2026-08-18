@@ -34,10 +34,10 @@ func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
 	registerStrings(rt)
 	registerArrays(rt)
 	registerJSON(rt)
-	registerRegex(rt)
 	registerLang(rt)
 	registerTokenizer(rt)
 	registerEnvironment(rt)
+	registerPlatform(rt)
 
 	for _, register := range runner.Bindings() {
 		register(rt)

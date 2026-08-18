@@ -146,6 +146,35 @@ func (a *Array) Get(key any) (any, bool) {
 	return v, ok
 }
 
+// Delete removes key, preserving the order of the entries around it (PHP's
+// unset). A list-mode array is promoted first: dropping an element from the
+// middle would leave the remaining keys sparse, which list mode cannot express,
+// and dropping the last one would still leave nextID past the end — which is
+// also what PHP does, since unset never renumbers.
+func (a *Array) Delete(key any) {
+	if a.isList() {
+		i, ok := key.(int64)
+		if !ok || i < 0 || i >= int64(len(a.list)) {
+			return
+		}
+		if i == int64(len(a.list))-1 {
+			a.list = a.list[:i]
+			return
+		}
+		a.promote()
+	}
+	if _, ok := a.values[key]; !ok {
+		return
+	}
+	delete(a.values, key)
+	for i, k := range a.keys {
+		if k == key {
+			a.keys = append(a.keys[:i], a.keys[i+1:]...)
+			break
+		}
+	}
+}
+
 // Len reports the number of entries.
 func (a *Array) Len() int {
 	if a.isList() {
@@ -212,9 +241,14 @@ func (a *Array) Clear() {
 
 // Class is the resolved, runnable form of a ClassDecl: field defaults plus a
 // method table keyed by method name.
+//
+// Statics are the declarations of `static $name = expr` properties; their
+// values live in the runtime (one bag per class, created on first access) so
+// that every instance and every static call observes the same storage.
 type Class struct {
 	Name    string
 	Fields  []Field
+	Statics []Field // static property declarations (Name + default Expr)
 	Consts  []Field // class constants (Name + value Expr)
 	Methods map[string]*FuncDecl
 }

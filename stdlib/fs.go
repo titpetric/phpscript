@@ -1,6 +1,7 @@
 package stdlib
 
 import (
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -130,11 +131,14 @@ func RegisterFS(rt *runner.Runtime, dir string) {
 		}
 		return f
 	})
-	rt.RegisterFunc("fwrite", func(f *os.File, s string) any {
-		if f == nil {
+	// fwrite takes any writer, not just a handle fopen() produced: STDOUT and
+	// STDERR are the process's own streams, and a binding is free to hand PHP
+	// an io.Writer of its own.
+	rt.RegisterFunc("fwrite", func(stream io.Writer, s string) any {
+		if stream == nil {
 			return false
 		}
-		n, err := f.WriteString(s)
+		n, err := io.WriteString(stream, s)
 		if err != nil {
 			return false
 		}

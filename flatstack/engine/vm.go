@@ -10,6 +10,11 @@ import (
 type iteratorState struct {
 	entries []Entry
 	index   int
+	// source and key are what a by-reference loop writes its target back into:
+	// the container the entries came from, and the key of the entry currently
+	// bound to the loop variable.
+	source any
+	key    any
 }
 
 type errorHandler struct {
@@ -390,7 +395,7 @@ func Run(program *Program, host Host) (err error) {
 			if popErr != nil {
 				return popErr
 			}
-			iterators[inst.a] = &iteratorState{entries: host.Entries(value)}
+			iterators[inst.a] = &iteratorState{entries: host.Entries(value), source: value}
 		case opIterNext:
 			iterator := iterators[inst.a]
 			if iterator == nil || iterator.index >= len(iterator.entries) {
@@ -399,10 +404,49 @@ func Run(program *Program, host Host) (err error) {
 			}
 			entry := iterator.entries[iterator.index]
 			iterator.index++
+			iterator.key = entry.Key
 			if inst.b >= 0 {
 				locals[inst.b], initialized[inst.b] = entry.Key, true
 			}
 			locals[inst.c], initialized[inst.c] = entry.Value, true
+		case opIterSet:
+			value, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			iterator := iterators[inst.a]
+			if iterator == nil {
+				return fmt.Errorf("flatstack: pc %d: write-back to a closed iterator", pc)
+			}
+			if err = host.SetEntry(iterator.source, iterator.key, value); err != nil {
+				if handle(err) {
+					continue
+				}
+				return err
+			}
+		case opUnsetLocal:
+			locals[inst.a], initialized[inst.a] = nil, false
+		case opUnsetIndex:
+			index, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			base, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			if err = host.UnsetIndex(base, index); err != nil {
+				if handle(err) {
+					continue
+				}
+				return err
+			}
+		case opCopyValue:
+			value, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			stack = append(stack, model.CopyValue(value))
 		case opIterClose:
 			delete(iterators, inst.a)
 		case opTryPush:

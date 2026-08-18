@@ -87,6 +87,13 @@ type Runtime struct {
 	// classConsts caches evaluated class constants (Class::NAME) per class.
 	classConsts map[string]map[string]any
 
+	// classStatics holds the live value of every `static $name` property, one
+	// bag per class. Unlike a constant a static is mutable and shared, so the
+	// bag is the storage itself rather than a cache: the declaration's default
+	// seeds it the first time the class is touched, and every later read and
+	// write of Class::$name goes through it.
+	classStatics map[string]map[string]any
+
 	mu    sync.Mutex
 	cache map[string]*vm.Program // expr source -> compiled program
 	// exprConf is the expr-lang compile configuration derived from the
@@ -231,6 +238,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		globals:      map[string]any{},
 		constants:    map[string]any{},
 		classConsts:  map[string]map[string]any{},
+		classStatics: map[string]map[string]any{},
 		exprCache:    NewExprCache(),
 		sourceSpans:  map[model.Stmt]model.SourceSpan{},
 		helpers: map[string]func(...any) (any, error){
@@ -559,6 +567,18 @@ func (rt *Runtime) ClassExists(name string, autoload bool) (bool, error) {
 	return rt.hasClass(name), nil
 }
 
+// MethodExists reports whether a declared PHP class has a method by that name,
+// using PHP's case-insensitive method lookup. It answers only for interpreted
+// classes; a host-backed one is reflected over by its caller.
+func (rt *Runtime) MethodExists(class, method string) bool {
+	decl, ok := rt.lookupClass(strings.TrimPrefix(class, "\\"))
+	if !ok {
+		return false
+	}
+	_, ok = lookupPHPMethod(decl, method)
+	return ok
+}
+
 func (rt *Runtime) hasClass(name string) bool {
 	if _, ok := rt.lookupConstructor(name); ok {
 		return true
@@ -634,10 +654,9 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	// assigned to a variable outlives this evaluation.
 	for id, cl := range ce.closures {
 		decl := cl
-		filename, _ := scope.Get("__FILE__")
-		directory, _ := scope.Get("__DIR__")
+		env := captureClosureEnv(decl, scope)
 		st.layer(id, adapt(func(args ...any) (any, error) {
-			return rt.invokeClosure(decl, args, filename, directory)
+			return rt.invokeClosure(decl, args, env)
 		}))
 	}
 
@@ -863,6 +882,9 @@ func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
 	env["__set"] = adapt(rt.helperSet(ref))
 	env["__ref"] = adapt(rt.helperRef(ref))
 	env["__func"] = adapt(rt.helperFunc(ref))
+	env["__static"] = adapt(rt.helperStaticCall(ref))
+	env["__staticprop"] = adapt(rt.helperStaticProp(ref))
+	env["__invoke"] = adapt(rt.helperInvoke(ref))
 	// Expression markers (`__eval`) resolve against the expression currently
 	// evaluated with this environment, which Eval stores on st.
 	env["__eval"] = adapt(func(id string) (any, error) {
@@ -1019,6 +1041,9 @@ func (rt *Runtime) typeEnvBase() map[string]any {
 	env["__set"] = typeEnvStub
 	env["__ref"] = typeEnvStub
 	env["__func"] = typeEnvStub
+	env["__static"] = typeEnvStub
+	env["__staticprop"] = typeEnvStub
+	env["__invoke"] = typeEnvStub
 	env["__eval"] = typeEnvStub
 	env["func_get_args"] = typeEnvStub
 
@@ -1153,10 +1178,12 @@ func (rt *Runtime) helperRef(ref *scopeRef) func(name string) func(any) {
 func (rt *Runtime) helperClassConst(ref *scopeRef) func(class, name string) (any, error) {
 	return func(class, name string) (any, error) {
 		scope := ref.scope
-		if class == "self" || class == "static" {
-			if c, ok := scope.Get("__class__"); ok {
-				class, _ = c.(string)
-			}
+		class = resolveClassName(class, scope)
+		// `Class::class` is the class name itself. PHP resolves it at compile
+		// time, so it does not require the class to be declared — and composer's
+		// generated autoloader relies on that.
+		if name == "class" {
+			return class, nil
 		}
 		if !rt.hasClass(class) {
 			if err := rt.autoload(class, scope); err != nil {

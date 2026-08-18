@@ -96,6 +96,14 @@ func (p *parser) newVar(name string) *model.Var {
 	return n
 }
 
+// newConstRef allocates the Var node for a bare identifier (a constant).
+func (p *parser) newConstRef(name string) *model.Var {
+	n := p.varNodes.new()
+	n.Name = name
+	n.Const = true
+	return n
+}
+
 func (p *parser) newLit(v any) *model.Lit {
 	n := p.litNodes.new()
 	n.Value = v

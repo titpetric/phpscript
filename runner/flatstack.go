@@ -76,6 +76,29 @@ func (h flatHost) Index(base, index any) any { return helperIndex(base, index) }
 
 func (h flatHost) Truthy(value any) bool { return phpTruthy(value) }
 
+// SetEntry implements the by-reference foreach write-back. Only a *model.Array
+// is script-owned storage; a native Go collection a binding returned belongs to
+// the host, so the write is dropped rather than reported — Runtime.execForeach
+// takes the same view.
+func (h flatHost) SetEntry(container, key, value any) error {
+	array, ok := container.(*model.Array)
+	if !ok {
+		return nil
+	}
+	array.Set(normalizeKey(key), value)
+	return nil
+}
+
+// UnsetIndex implements unset($a[$k]) for the bytecode engine.
+func (h flatHost) UnsetIndex(container, key any) error {
+	array, ok := container.(*model.Array)
+	if !ok {
+		return nil
+	}
+	array.Delete(normalizeKey(key))
+	return nil
+}
+
 func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) error {
 	array, ok := base.(*model.Array)
 	if !ok {

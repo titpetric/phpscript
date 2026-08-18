@@ -31,7 +31,11 @@ const (
 	opEcho
 	opIterInit
 	opIterNext
+	opIterSet
 	opIterClose
+	opCopyValue
+	opUnsetLocal
+	opUnsetIndex
 	opTryPush
 	opTryPop
 	opThrow
@@ -79,6 +83,14 @@ type Host interface {
 	Array([]model.ArrayItemValue) any
 	Index(any, any) any
 	SetIndex(any, any, any, bool, string) error
+	// SetEntry writes value into container at key when container is a value the
+	// script owns. A collection a binding returned belongs to the host, so it is
+	// left alone rather than reported as an error — matching what a by-reference
+	// foreach over one does in the interpreter.
+	SetEntry(container, key, value any) error
+	// UnsetIndex removes key from container, PHP's unset($a[$k]). Removing a
+	// key that is not there is not an error.
+	UnsetIndex(container, key any) error
 	Binary(string, any, any) (any, error)
 	Unary(string, any) (any, error)
 	Truthy(any) bool

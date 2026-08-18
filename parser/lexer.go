@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -264,21 +265,7 @@ func (l *lexer) lexString(quote byte) error {
 	for l.pos < len(l.src) {
 		c := l.src[l.pos]
 		if c == '\\' && l.pos+1 < len(l.src) {
-			next := l.src[l.pos+1]
-			switch next {
-			case 'n':
-				b.WriteByte('\n')
-			case 't':
-				b.WriteByte('\t')
-			case 'r':
-				b.WriteByte('\r')
-			case '\\', '"', '\'', '$':
-				b.WriteByte(next)
-			default:
-				b.WriteByte('\\')
-				b.WriteByte(next)
-			}
-			l.advance(2)
+			l.advance(1 + l.writeEscape(&b, quote))
 			continue
 		}
 		if c == quote {
@@ -290,6 +277,111 @@ func (l *lexer) lexString(quote byte) error {
 		l.advanceRune()
 	}
 	return fmt.Errorf("line %d: unterminated string", l.line)
+}
+
+// writeEscape decodes the escape sequence starting at the backslash under
+// l.pos, writes its value to b, and returns how many bytes follow the
+// backslash.
+//
+// The two quote styles have different rules, as they do in PHP. A single-quoted
+// literal recognises only `\\` and `\'`; every other backslash stands for
+// itself, which is what makes `'C:\path'` and a single-quoted regex work. A
+// double-quoted literal recognises the C-style escapes plus the numeric forms
+// — `\x1B`, `\033`, `\u{1F600}` — and keeps the backslash for anything it does
+// not recognise.
+func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
+	next := l.src[l.pos+1]
+	if quote == '\'' {
+		if next == '\\' || next == '\'' {
+			b.WriteByte(next)
+			return 1
+		}
+		b.WriteByte('\\')
+		b.WriteByte(next)
+		return 1
+	}
+	switch next {
+	case 'n':
+		b.WriteByte('\n')
+	case 't':
+		b.WriteByte('\t')
+	case 'r':
+		b.WriteByte('\r')
+	case 'v':
+		b.WriteByte('\v')
+	case 'f':
+		b.WriteByte('\f')
+	case 'e':
+		b.WriteByte(0x1b)
+	case '\\', '"', '\'', '$':
+		b.WriteByte(next)
+	case 'x', 'X':
+		// \xH or \xHH: one or two hex digits, and a lone `\x` is literal.
+		digits := hexRun(l.src[l.pos+2:], 2)
+		if digits == 0 {
+			b.WriteByte('\\')
+			b.WriteByte(next)
+			return 1
+		}
+		value, _ := strconv.ParseUint(l.src[l.pos+2:l.pos+2+digits], 16, 16)
+		b.WriteByte(byte(value))
+		return 1 + digits
+	case 'u':
+		// \u{HHH...}: a codepoint, written out as UTF-8. Without the braces
+		// PHP leaves the sequence alone.
+		if l.pos+2 >= len(l.src) || l.src[l.pos+2] != '{' {
+			b.WriteByte('\\')
+			b.WriteByte(next)
+			return 1
+		}
+		end := strings.IndexByte(l.src[l.pos+3:], '}')
+		digits := hexRun(l.src[l.pos+3:], end)
+		if end <= 0 || digits != end {
+			b.WriteByte('\\')
+			b.WriteByte(next)
+			return 1
+		}
+		value, err := strconv.ParseUint(l.src[l.pos+3:l.pos+3+end], 16, 32)
+		if err != nil {
+			b.WriteByte('\\')
+			b.WriteByte(next)
+			return 1
+		}
+		b.WriteRune(rune(value))
+		return 3 + end
+	case '0', '1', '2', '3', '4', '5', '6', '7':
+		// \NNN: up to three octal digits, taken mod 256 as PHP does.
+		digits := octalRun(l.src[l.pos+1:], 3)
+		value, _ := strconv.ParseUint(l.src[l.pos+1:l.pos+1+digits], 8, 16)
+		b.WriteByte(byte(value))
+		return digits
+	default:
+		b.WriteByte('\\')
+		b.WriteByte(next)
+	}
+	return 1
+}
+
+// hexRun counts the leading hex digits of s, at most limit of them.
+func hexRun(s string, limit int) int {
+	n := 0
+	for n < len(s) && n < limit {
+		c := s[n]
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+			break
+		}
+		n++
+	}
+	return n
+}
+
+// octalRun counts the leading octal digits of s, at most limit of them.
+func octalRun(s string, limit int) int {
+	n := 0
+	for n < len(s) && n < limit && s[n] >= '0' && s[n] <= '7' {
+		n++
+	}
+	return n
 }
 
 // lexOperator emits one operator token, matching multi-character operators

@@ -231,6 +231,27 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 	case *model.ClassConst:
 		return "__classconst(" + strconv.Quote(n.Class) + ", " + strconv.Quote(n.Name) + ")", nil
 
+	case *model.StaticProp:
+		return "__staticprop(" + strconv.Quote(n.Class) + ", " + strconv.Quote(n.Name) + ")", nil
+
+	case *model.StaticCall:
+		args, err := t.emitArgs(n.Args)
+		if err != nil {
+			return "", err
+		}
+		return joinCall("__static", strconv.Quote(n.Class), strconv.Quote(n.Method), args), nil
+
+	case *model.Invoke:
+		callee, err := t.emit(n.Callee)
+		if err != nil {
+			return "", err
+		}
+		args, err := t.emitArgs(n.Args)
+		if err != nil {
+			return "", err
+		}
+		return joinCall("__invoke", callee, "", args), nil
+
 	case *model.Cast:
 		x, err := t.emit(n.X)
 		if err != nil {

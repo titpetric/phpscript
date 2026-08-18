@@ -47,7 +47,7 @@ func (p *parser) parseAssign() (model.Expr, error) {
 // isLValue reports whether e can be assigned to.
 func isLValue(e model.Expr) bool {
 	switch model.UnwrapParenthesized(e).(type) {
-	case *model.Var, *model.Index, *model.PropAccess, *model.ListExpr:
+	case *model.Var, *model.Index, *model.PropAccess, *model.StaticProp, *model.ListExpr:
 		return true
 	}
 	return false
@@ -97,6 +97,18 @@ func (p *parser) parseBinary(minPrec int) (model.Expr, error) {
 		right, err := p.parseBinary(prec + 1)
 		if err != nil {
 			return nil, err
+		}
+		// PHP binds an assignment tighter than the comparison to its left, so
+		// `false !== $pos = strrpos($s, "\\")` assigns and then compares. The
+		// operand parser cannot see this (it stops at the operator), so the
+		// assignment is folded onto the right operand here.
+		if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && isLValue(right) {
+			p.next()
+			value, err := p.parseAssign()
+			if err != nil {
+				return nil, err
+			}
+			right = p.newAssignExpr(right, t.val, value, t.line)
 		}
 		left = p.newBinary(op, left, right)
 	}
@@ -196,6 +208,15 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 				return nil, err
 			}
 			e = p.newIndex(e, idx)
+		case p.isOp("("):
+			// Calling a value rather than a name: `$fn($x)`, `$handlers[0]($x)`,
+			// `(self::$includeFile)($file)`. Named calls never reach here — they
+			// are consumed by parsePrimary.
+			args, err := p.parseArgs()
+			if err != nil {
+				return nil, err
+			}
+			e = &model.Invoke{Callee: e, Args: args}
 		case (p.isOp("++") || p.isOp("--")) && isLValue(e):
 			e = p.newUnary(p.next().val, e, true)
 		default:
@@ -256,6 +277,19 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 // parseIdentExpr handles keyword literals, `new`, `array(...)`, and bare
 // function calls / constants.
 func (p *parser) parseIdentExpr() (model.Expr, error) {
+	// `static function () {}` is a closure declared to have no `$this`. Any
+	// other `static` is the late-static-binding class name and falls through to
+	// the qualified-name path below (`static::method()`).
+	if p.isKw("static") && p.peek(1).kind == tIdent && isFuncKeyword(p.peek(1).val) {
+		p.next() // static
+		p.next() // function
+		cl, err := p.parseClosure()
+		if err != nil {
+			return nil, err
+		}
+		cl.Static = true
+		return cl, nil
+	}
 	t := p.next()
 	switch t.val {
 	case "true", "TRUE", "True":
@@ -267,7 +301,11 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 	case "new":
 		return p.parseNew()
 	case "fn", "func", "function":
-		return p.parseClosure()
+		cl, err := p.parseClosure()
+		if err != nil {
+			return nil, err
+		}
+		return cl, nil
 	case "list":
 		return p.parseList()
 	case "include", "include_once", "require", "require_once":
@@ -290,13 +328,26 @@ func (p *parser) parseIdentExpr() (model.Expr, error) {
 }
 
 func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) {
-	// `Class::CONST` / `self::CONST` class-constant access.
+	// `Class::` introduces a static member: a constant, a static property or a
+	// static method call, told apart by what follows the operator.
 	if p.isOp("::") {
 		p.next()
-		if p.cur().kind != tIdent {
-			return nil, fmt.Errorf("line %d: expected constant name after ::", p.cur().line)
+		class := p.qualify(name, absolute)
+		if p.cur().kind == tVar {
+			return &model.StaticProp{Class: class, Name: p.next().val}, nil
 		}
-		return &model.ClassConst{Class: p.qualify(name, absolute), Name: p.next().val}, nil
+		if p.cur().kind != tIdent {
+			return nil, fmt.Errorf("line %d: expected member name after ::", p.cur().line)
+		}
+		member := p.next().val
+		if p.isOp("(") {
+			args, err := p.parseArgs()
+			if err != nil {
+				return nil, err
+			}
+			return &model.StaticCall{Class: class, Method: member, Args: args}, nil
+		}
+		return &model.ClassConst{Class: class, Name: member}, nil
 	}
 
 	// Function call vs. bare identifier (treated as constant lookup via a Call
@@ -317,28 +368,59 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 	if name == "__NAMESPACE__" {
 		return p.newLit(p.namespace), nil
 	}
-	return p.newVar(name), nil
+	return p.newConstRef(name), nil
+}
+
+// isFuncKeyword reports whether name introduces a function body.
+func isFuncKeyword(name string) bool {
+	return name == "function" || name == "fn" || name == "func"
 }
 
 // parseClosure parses an anonymous function `function(params) [use(...)] { body }`.
-// The `use` capture list, if present, is consumed but ignored.
-func (p *parser) parseClosure() (model.Expr, error) {
+// The `use` capture list names the enclosing variables the closure sees; the
+// runtime binds their values when the closure is created.
+func (p *parser) parseClosure() (*model.Closure, error) {
 	params, err := p.parseParams()
 	if err != nil {
 		return nil, err
 	}
+	var uses []model.ClosureUse
 	if p.isKw("use") {
 		p.next()
-		// consume the use(...) list; captures are not modelled.
-		if _, err := p.parseParams(); err != nil {
+		uses, err = p.parseClosureUses()
+		if err != nil {
 			return nil, err
 		}
 	}
+	p.skipReturnType()
 	body, err := p.parseBlock()
 	if err != nil {
 		return nil, err
 	}
-	return &model.Closure{Params: params, Body: body}, nil
+	return &model.Closure{Params: params, Uses: uses, Body: body}, nil
+}
+
+// parseClosureUses parses a closure's `use ($a, &$b)` capture list.
+func (p *parser) parseClosureUses() ([]model.ClosureUse, error) {
+	if err := p.eatOp("("); err != nil {
+		return nil, err
+	}
+	var uses []model.ClosureUse
+	for !p.isOp(")") {
+		byRef := false
+		if p.isOp("&") {
+			p.next()
+			byRef = true
+		}
+		if p.cur().kind != tVar {
+			return nil, fmt.Errorf("line %d: expected captured $var in use()", p.cur().line)
+		}
+		uses = append(uses, model.ClosureUse{Name: p.next().val, ByRef: byRef})
+		if p.isOp(",") {
+			p.next()
+		}
+	}
+	return uses, p.eatOp(")")
 }
 
 // parseList parses `list($a, $b, ...)` used as an assignment target. Empty

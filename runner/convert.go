@@ -132,6 +132,16 @@ func helperCast(typ string, v any) any {
 
 // phpArith applies + - * / % with the same int coercion used by += and -=.
 func phpArith(op string, a, b any) any {
+	// `+` on two arrays is PHP's union, not addition: every entry of the left
+	// operand, plus the entries of the right whose keys it does not already
+	// have. composer's ClassLoader prepends a loader with it.
+	if op == "+" {
+		if left, ok := a.(*model.Array); ok {
+			if right, ok := b.(*model.Array); ok {
+				return unionArrays(left, right)
+			}
+		}
+	}
 	x, y := toInt(a), toInt(b)
 	switch op {
 	case "+":
@@ -153,6 +163,25 @@ func phpArith(op string, a, b any) any {
 	default:
 		return int64(0)
 	}
+}
+
+// unionArrays implements PHP's array `+`. The left operand wins every key it
+// has; the right contributes only what is missing. Insertion order follows the
+// left array and then the surviving entries of the right, which is what PHP's
+// own union preserves.
+func unionArrays(left, right *model.Array) *model.Array {
+	out := model.NewArraySize(left.Len() + right.Len())
+	left.Range(func(key, val any) bool {
+		out.Set(key, val)
+		return true
+	})
+	right.Range(func(key, val any) bool {
+		if _, exists := out.Get(key); !exists {
+			out.Set(key, val)
+		}
+		return true
+	})
+	return out
 }
 
 // toFloat coerces a value to float64.

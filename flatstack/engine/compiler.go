@@ -10,6 +10,13 @@ type loopContext struct {
 	breaks         []int
 	continues      []int
 	continueTarget int
+	// writeBack emits the instructions a by-reference foreach needs before
+	// control leaves its body: the loop variable is written back into the
+	// element it came from. It is nil for every other loop. `break` and
+	// `return` leave without reaching the end of the body, so they emit it too
+	// — a reference makes the element live, and PHP keeps a write made before
+	// the jump.
+	writeBack func() error
 }
 
 type compiler struct {
@@ -107,6 +114,8 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		return c.forStmt(node, path)
 	case *model.Foreach:
 		return c.foreachStmt(node, path)
+	case *model.Unset:
+		return c.unsetStmt(node, path)
 	case *model.Switch:
 		return c.switchStmt(node, path)
 	case *model.Try:
@@ -128,6 +137,18 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 			}
 		} else {
 			c.emit(instruction{op: opPushConst, a: c.constant(nil)})
+		}
+		// Returning leaves every enclosing loop at once, so each by-reference
+		// foreach on the way out writes its loop variable back first. The
+		// return value is already on the stack and each write-back is stack
+		// balanced, so it stays on top.
+		for i := len(c.loops) - 1; i >= 0; i-- {
+			if c.loops[i].writeBack == nil {
+				continue
+			}
+			if err := c.loops[i].writeBack(); err != nil {
+				return err
+			}
 		}
 		c.emit(instruction{op: opReturn})
 	case *model.Break:
@@ -195,6 +216,12 @@ func (c *compiler) tryStmt(node *model.Try, path string) error {
 func (c *compiler) funcDecl(node *model.FuncDecl, path string) error {
 	jumpAround := c.emit(instruction{op: opJump, target: -1})
 	funcPC := len(c.program.code)
+
+	// A function body is its own control-flow scope: a loop around the
+	// declaration is not a loop this body can break out of or write back to.
+	enclosing := c.loops
+	c.loops = nil
+	defer func() { c.loops = enclosing }()
 
 	for _, param := range node.Params {
 		_ = c.slot(param.Name)
@@ -300,6 +327,33 @@ func (c *compiler) forStmt(node *model.For, path string) error {
 	return nil
 }
 
+// unsetStmt lowers `unset($a, $b[$k])`. A local is cleared in place; an array
+// entry is removed through the host. Property and static-property targets have
+// no instruction yet, so a program using one falls back to the interpreter.
+func (c *compiler) unsetStmt(node *model.Unset, path string) error {
+	for i, target := range node.Targets {
+		targetPath := fmt.Sprintf("%s.target[%d]", path, i)
+		switch t := model.UnwrapParenthesized(target).(type) {
+		case *model.Var:
+			c.emit(instruction{op: opUnsetLocal, a: c.slot(t.Name)})
+		case *model.Index:
+			if t.Index == nil {
+				return unsupported(targetPath, "unset of an append target")
+			}
+			if err := c.expr(t.Base, targetPath+".base"); err != nil {
+				return err
+			}
+			if err := c.expr(t.Index, targetPath+".index"); err != nil {
+				return err
+			}
+			c.emit(instruction{op: opUnsetIndex})
+		default:
+			return unsupported(targetPath, "unset target %T", target)
+		}
+	}
+	return nil
+}
+
 func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 	keyTarget, valueTarget := node.KeyTarget, node.ValTarget
 	if keyTarget == nil && node.KeyVar != "" {
@@ -331,27 +385,75 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 		}
 	}
 	c.emit(instruction{op: opLoad, a: valueSlot})
+	// `foreach ($a as $v)` binds a copy of the element and `foreach ($a as &$v)`
+	// binds the element itself. The copy is only made when the body assigns
+	// through the target, since that is the only way the difference can be
+	// observed, and copying every element of every loop would charge the common
+	// read-only loop for a semantic it does not use.
+	if !node.ByRef && model.AssignsTo(node.Body, valueTarget) {
+		c.emit(instruction{op: opCopyValue})
+	}
 	if err := c.storeTop(valueTarget, path+".value"); err != nil {
 		return err
 	}
-	c.loops = append(c.loops, loopContext{continueTarget: nextPC})
+
+	// writeBack pushes the loop variable and stores it into the element it came
+	// from. It is emitted at each point control leaves the body of a
+	// by-reference loop, and never for a by-value one.
+	var writeBack func() error
+	if node.ByRef {
+		writeBack = func() error {
+			if err := c.expr(valueTarget, path+".writeback"); err != nil {
+				return err
+			}
+			c.emit(instruction{op: opIterSet, a: iterator})
+			return nil
+		}
+	}
+
+	c.loops = append(c.loops, loopContext{continueTarget: -2, writeBack: writeBack})
 	if err := c.block(node.Body, path+".body"); err != nil {
 		return err
 	}
+
+	// Falling off the end of the body and `continue` both resume the loop, so
+	// they share one write-back.
+	continuePC := len(c.program.code)
+	if writeBack != nil {
+		if err := writeBack(); err != nil {
+			return err
+		}
+	}
 	c.emit(instruction{op: opJump, target: nextPC})
+
+	// `break` leaves the loop, and needs its own write-back because it skips
+	// the one above. A by-value loop has none, so its breaks jump straight to
+	// the close and no instruction is emitted here.
+	breakPC := len(c.program.code)
+	if writeBack != nil {
+		if err := writeBack(); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opJump, target: -1})
+	}
+
 	closePC := len(c.program.code)
 	c.emit(instruction{op: opIterClose, a: iterator})
-	endPC := len(c.program.code)
 	c.program.code[next].target = closePC
+	if writeBack != nil {
+		// Patch the jump the break write-back ends with. Without one, breakPC
+		// already is closePC and nothing was emitted.
+		c.program.code[closePC-1].target = closePC
+	}
 	loop := &c.loops[len(c.loops)-1]
+	loop.continueTarget = continuePC
 	for _, patch := range loop.breaks {
-		c.program.code[patch].target = closePC
+		c.program.code[patch].target = breakPC
 	}
 	for _, patch := range loop.continues {
-		c.program.code[patch].target = nextPC
+		c.program.code[patch].target = continuePC
 	}
 	c.loops = c.loops[:len(c.loops)-1]
-	_ = endPC
 	return nil
 }
 

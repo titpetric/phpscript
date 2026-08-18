@@ -37,10 +37,14 @@ type parser struct {
 	toks      []token
 	i         int
 	namespace string
-	inClass   bool
-	topLevel  bool
-	topSeen   bool
-	spans     map[model.Stmt]model.SourceSpan
+	// imports maps the short name (or explicit alias) declared by a `use`
+	// statement to the fully-qualified name it stands for. It stays nil in the
+	// common case of a file with no imports.
+	imports  map[string]string
+	inClass  bool
+	topLevel bool
+	topSeen  bool
+	spans    map[model.Stmt]model.SourceSpan
 
 	// Chunked node storage and list scratch stacks; see alloc.go.
 	varNodes        nodeChunk[model.Var]
@@ -163,6 +167,12 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 		switch t.val {
 		case "namespace":
 			return p.parseNamespace()
+		case "use":
+			return p.parseUse()
+		case "declare":
+			return p.parseDeclare()
+		case "unset":
+			return p.parseUnset()
 		case "echo":
 			return p.parseEcho()
 		case "if":
@@ -248,6 +258,107 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 	return nil, nil
 }
 
+// parseUse records an import: `use A\B\C;` or `use A\B\C as D;`. Imports are a
+// compile-time alias table — the short name (or the alias) resolves to the
+// fully-qualified one — so the statement itself produces no AST node.
+//
+// `use function f;` and `use const C;` name symbols rather than classes; both
+// alias the same way, so the leading keyword is simply consumed.
+func (p *parser) parseUse() (model.Stmt, error) {
+	p.next() // use
+	if p.isKw("function") || p.isKw("const") {
+		p.next()
+	}
+	for {
+		name, _, err := p.parseQualifiedName(true)
+		if err != nil {
+			return nil, fmt.Errorf("line %d: invalid use: %w", p.cur().line, err)
+		}
+		alias := name
+		if i := strings.LastIndexByte(alias, '\\'); i >= 0 {
+			alias = alias[i+1:]
+		}
+		if p.isKw("as") {
+			p.next()
+			if p.cur().kind != tIdent {
+				return nil, fmt.Errorf("line %d: expected alias name after as", p.cur().line)
+			}
+			alias = p.next().val
+		}
+		if p.imports == nil {
+			p.imports = map[string]string{}
+		}
+		p.imports[alias] = name
+		if p.isOp(",") {
+			p.next()
+			continue
+		}
+		break
+	}
+	p.optSemi()
+	return nil, nil
+}
+
+// parseDeclare consumes a `declare(directive=value, ...)` block. The runtime
+// has one set of semantics — `strict_types` and `ticks` do not vary it — so the
+// directives are read and dropped rather than modelled.
+func (p *parser) parseDeclare() (model.Stmt, error) {
+	p.next() // declare
+	if err := p.eatOp("("); err != nil {
+		return nil, err
+	}
+	depth := 1
+	for depth > 0 {
+		if p.atEOF() {
+			return nil, fmt.Errorf("line %d: unterminated declare()", p.cur().line)
+		}
+		switch {
+		case p.isOp("("):
+			depth++
+		case p.isOp(")"):
+			depth--
+		}
+		p.next()
+	}
+	// `declare(ticks=1) { ... }` scopes the directive to a block; the block is
+	// ordinary code and still runs.
+	if p.isOp("{") {
+		body, err := p.parseBlock()
+		if err != nil {
+			return nil, err
+		}
+		return &model.If{Cond: &model.Lit{Value: true}, Then: body}, nil
+	}
+	p.optSemi()
+	return nil, nil
+}
+
+// parseUnset parses `unset($a, $b[$k], $o->p, C::$s)`.
+func (p *parser) parseUnset() (model.Stmt, error) {
+	p.next() // unset
+	if err := p.eatOp("("); err != nil {
+		return nil, err
+	}
+	var targets []model.Expr
+	for !p.isOp(")") {
+		e, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		targets = append(targets, e)
+		if p.isOp(",") {
+			p.next()
+			continue
+		}
+		break
+	}
+	if err := p.eatOp(")"); err != nil {
+		return nil, err
+	}
+	p.optSemi()
+	return &model.Unset{Targets: targets}, nil
+}
+
 // parseQualifiedName consumes Ident (\\ Ident)*. If leading is allowed, an
 // initial namespace separator marks the name as fully qualified.
 func (p *parser) parseQualifiedName(leading bool) (string, bool, error) {
@@ -277,7 +388,21 @@ func (p *parser) parseQualifiedName(leading bool) (string, bool, error) {
 }
 
 func (p *parser) qualify(name string, absolute bool) string {
-	if absolute || p.namespace == "" || name == "self" || name == "static" {
+	if absolute || name == "self" || name == "static" || name == "parent" {
+		return name
+	}
+	// An imported name wins over the current namespace: `use A\B\C;` makes a
+	// later `C` mean `A\B\C`, and `C\D` mean `A\B\C\D`.
+	if len(p.imports) > 0 {
+		head, rest, _ := strings.Cut(name, "\\")
+		if full, ok := p.imports[head]; ok {
+			if rest == "" {
+				return full
+			}
+			return full + "\\" + rest
+		}
+	}
+	if p.namespace == "" {
 		return name
 	}
 	return p.namespace + "\\" + name
@@ -365,20 +490,25 @@ func (p *parser) parseForeach() (model.Stmt, error) {
 		return nil, fmt.Errorf("line %d: expected 'as' in foreach", p.cur().line)
 	}
 	p.next()
-	first, err := p.parseForeachTarget()
+	first, firstByRef, err := p.parseForeachTarget()
 	if err != nil {
 		return nil, err
 	}
-	node := &model.Foreach{Source: src, ValTarget: first}
+	node := &model.Foreach{Source: src, ValTarget: first, ByRef: firstByRef}
 	if v, ok := first.(*model.Var); ok {
 		node.ValVar = v.Name
 	}
 	if p.isOp("=>") {
 		p.next()
-		val, err := p.parseForeachTarget()
+		val, valByRef, err := p.parseForeachTarget()
 		if err != nil {
 			return nil, err
 		}
+		// `&` on the key half is not PHP; only the value can bind by reference.
+		if firstByRef {
+			return nil, fmt.Errorf("line %d: a foreach key cannot be taken by reference", p.cur().line)
+		}
+		node.ByRef = valByRef
 		node.KeyTarget = first
 		node.ValTarget = val
 		node.ValVar = ""
@@ -402,15 +532,22 @@ func (p *parser) parseForeach() (model.Stmt, error) {
 	return node, nil
 }
 
-func (p *parser) parseForeachTarget() (model.Expr, error) {
+// parseForeachTarget parses one `as` target and reports whether it was written
+// `&$v`, which binds the element itself rather than a copy of it.
+func (p *parser) parseForeachTarget() (model.Expr, bool, error) {
+	byRef := false
+	if p.isOp("&") {
+		p.next()
+		byRef = true
+	}
 	target, err := p.parsePostfix()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	if !isLValue(target) {
-		return nil, fmt.Errorf("line %d: expected assignable target in foreach", p.cur().line)
+		return nil, false, fmt.Errorf("line %d: expected assignable target in foreach", p.cur().line)
 	}
-	return target, nil
+	return target, byRef, nil
 }
 
 func (p *parser) parseFor() (model.Stmt, error) {
@@ -658,6 +795,7 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 		return nil, err
 	}
 	fd.Params = params
+	p.skipReturnType()
 	body, err := p.parseBlock()
 	if err != nil {
 		return nil, err
@@ -672,6 +810,7 @@ func (p *parser) parseParams() ([]model.Param, error) {
 	}
 	mark := p.params.mark()
 	for !p.isOp(")") {
+		p.skipParamDecoration()
 		if p.cur().kind != tVar {
 			p.params.drop(mark)
 			return nil, fmt.Errorf("line %d: expected parameter $var", p.cur().line)
@@ -692,6 +831,65 @@ func (p *parser) parseParams() ([]model.Param, error) {
 		}
 	}
 	return p.params.take(mark), p.eatOp(")")
+}
+
+// skipParamDecoration consumes everything PHP allows between the opening
+// parenthesis (or a comma) and a parameter's `$name`: constructor property
+// promotion modifiers, a type hint, the by-reference `&`, and the variadic
+// `...`. The runtime is dynamically typed and has no reference values, so none
+// of it changes how the parameter binds — it only has to be recognised.
+func (p *parser) skipParamDecoration() {
+	for p.isKw("public", "private", "protected", "readonly") {
+		p.next()
+	}
+	p.skipTypeHint()
+	if p.isOp("&") {
+		p.next()
+	}
+	for p.isOp(".") {
+		p.next()
+	}
+}
+
+// skipTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, and
+// `A|B` unions. It stops at the first token that cannot continue a type, so a
+// parameter list with no hints costs one comparison.
+func (p *parser) skipTypeHint() {
+	for {
+		if p.isOp("?") {
+			p.next()
+			continue
+		}
+		if p.isOp("\\") {
+			p.next()
+			continue
+		}
+		if p.cur().kind != tIdent {
+			return
+		}
+		p.next()
+		for p.isOp("\\") {
+			p.next()
+			if p.cur().kind == tIdent {
+				p.next()
+			}
+		}
+		if p.isOp("|") {
+			p.next()
+			continue
+		}
+		return
+	}
+}
+
+// skipReturnType consumes a `: Type` return declaration, which sits between a
+// parameter list and its body.
+func (p *parser) skipReturnType() {
+	if !p.isOp(":") {
+		return
+	}
+	p.next()
+	p.skipTypeHint()
 }
 
 func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
@@ -762,12 +960,22 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 			fd.Static = isStatic
 			p.spans[fd] = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
 			cd.Methods = append(cd.Methods, fd)
-		case p.cur().kind == tVar:
-			// Typed/visibility-prefixed property without `var` (e.g.
-			// `protected $stack = array();`).
+		case p.cur().kind == tVar || p.cur().kind == tIdent || p.isOp("?"):
+			// Property declared without `var`, with or without a type hint
+			// (`protected $stack = array();`, `private ?string $dir = null;`).
+			p.skipTypeHint()
+			if p.cur().kind != tVar {
+				return nil, fmt.Errorf("line %d: unexpected token in class body: %s", p.cur().line, p.cur())
+			}
 			fields, err := p.parseFields(visibility)
 			if err != nil {
 				return nil, err
+			}
+			// A static property is storage on the class, shared by every
+			// instance, so it is kept apart from the per-instance fields.
+			if isStatic {
+				cd.Statics = append(cd.Statics, fields...)
+				continue
 			}
 			cd.Fields = append(cd.Fields, fields...)
 		default:
@@ -816,6 +1024,7 @@ func (p *parser) parseAbstractMethod(visibility string, isStatic bool) (*model.F
 	if err != nil {
 		return nil, err
 	}
+	p.skipReturnType()
 	p.optSemi()
 	return &model.FuncDecl{
 		Name:       name,

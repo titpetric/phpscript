@@ -86,10 +86,16 @@ type If struct {
 }
 
 // Foreach is `foreach (Source as [KeyTarget =>] ValTarget) { Body }`.
+//
+// ByRef records the `as &$v` spelling. It selects between PHP's two loop
+// semantics: by value the target holds a copy of the element, so writing to it
+// leaves the source alone; by reference the target is the element, so writing
+// to it edits the source.
 type Foreach struct {
 	Source    Expr
 	KeyTarget Expr // nil if not captured
 	ValTarget Expr
+	ByRef     bool   // `as &$v`: the target writes back into Source
 	KeyVar    string // deprecated: use KeyTarget
 	ValVar    string // deprecated: use ValTarget
 	Body      []Stmt
@@ -139,8 +145,15 @@ type ClassDecl struct {
 	Name     string
 	Abstract bool
 	Fields   []Field
+	Statics  []Field // `static $name = expr` properties, referenced as Class::$name
 	Consts   []Field // class constants (Name + value Expr), referenced as Class::NAME
 	Methods  []*FuncDecl
+}
+
+// Unset is `unset($a, $b[$k], $o->p, C::$s)`. Each target is removed from the
+// scope, array or property bag holding it.
+type Unset struct {
+	Targets []Expr
 }
 
 // Throw raises an exception. The VM has no exception model; it surfaces as a
@@ -232,6 +245,8 @@ func (*Break) node() {}
 
 func (*Continue) node() {}
 
+func (*Unset) node() {}
+
 func (*InlineHTML) stmt() {}
 
 func (*Echo) stmt() {}
@@ -264,6 +279,8 @@ func (*Break) stmt() {}
 
 func (*Continue) stmt() {}
 
+func (*Unset) stmt() {}
+
 // ---------------------------------------------------------------------------
 // Expressions
 // ---------------------------------------------------------------------------
@@ -274,8 +291,15 @@ type Lit struct {
 }
 
 // Var is a `$name` reference (the `$` is stripped during parsing).
+//
+// A bare identifier — a constant such as `PHP_EOL`, or a magic constant such as
+// `__DIR__` — is also a Var, because both resolve the same way at runtime: the
+// current scope first (which is where the magic constants live), then the
+// constant table. Const records which spelling the source used, so that
+// printing the node back out does not turn `PHP_EOL` into `$PHP_EOL`.
 type Var struct {
-	Name string
+	Name  string
+	Const bool
 }
 
 // ArrayLit is `array(...)`, `[...]` or `{...}` (map/list literal).
@@ -370,10 +394,38 @@ type Ternary struct {
 	Else Expr
 }
 
-// ClassConst is `Class::NAME` / `self::NAME` class-constant access.
+// ClassConst is `Class::NAME` / `self::NAME` class-constant access. The
+// pseudo-constant `Class::class` is spelled with Name "class" and resolves to
+// the fully-qualified class name as a string.
 type ClassConst struct {
 	Class string
 	Name  string
+}
+
+// StaticCall is `Class::method(args...)`, including the `self::` and `static::`
+// spellings. It carries no receiver: the runtime runs the declaration against a
+// class rather than an instance.
+type StaticCall struct {
+	Class  string
+	Method string
+	Args   []Expr
+}
+
+// StaticProp is `Class::$name` / `self::$name` static-property access. Unlike a
+// PropAccess it names storage owned by the class, shared by every instance, so
+// it is both read and assigned through the runtime's per-class static table.
+type StaticProp struct {
+	Class string
+	Name  string
+}
+
+// Invoke calls a callable held in a value rather than named at the call site:
+// `$fn($x)`, `$this->handlers[0]($x)`, `(self::$includeFile)($file)`. The
+// callee is resolved through Runtime.Callable, so every PHP callable spelling
+// (closure, "func", array($obj, "method")) works.
+type Invoke struct {
+	Callee Expr
+	Args   []Expr
 }
 
 // Cast is a type cast like `(bool)$x`, `(int)$x`, `(string)$x`, `(array)$x`.
@@ -382,12 +434,23 @@ type Cast struct {
 	X    Expr
 }
 
-// Closure is an anonymous function expression `function($a,$b){ ... }`. minitpl
-// uses one as the usort() comparator. `use (...)` capture is not supported (the
-// engine's closures capture nothing).
+// Closure is an anonymous function expression `function($a,$b) use ($c){ ... }`.
+// minitpl uses one as the usort() comparator; composer's generated autoloader
+// uses the `use (...)` capture form, so Uses records the captured names. Static
+// marks `static function(){}`, which PHP declares to have no `$this`.
 type Closure struct {
 	Params []Param
+	Uses   []ClosureUse
 	Body   []Stmt
+	Static bool
+}
+
+// ClosureUse is one entry of a closure's `use (...)` capture list. ByRef marks
+// `&$name`; the runtime has no reference values, so a by-reference capture
+// binds the same value a by-value one does.
+type ClosureUse struct {
+	Name  string
+	ByRef bool
 }
 
 // AssignExpr is assignment used as an expression, e.g. the PHP idiom
@@ -441,6 +504,12 @@ func (*AssignExpr) node() {}
 
 func (*ListExpr) node() {}
 
+func (*StaticCall) node() {}
+
+func (*StaticProp) node() {}
+
+func (*Invoke) node() {}
+
 func (*Include) expr() {}
 
 func (*Lit) expr() {}
@@ -476,3 +545,9 @@ func (*Closure) expr() {}
 func (*AssignExpr) expr() {}
 
 func (*ListExpr) expr() {}
+
+func (*StaticCall) expr() {}
+
+func (*StaticProp) expr() {}
+
+func (*Invoke) expr() {}

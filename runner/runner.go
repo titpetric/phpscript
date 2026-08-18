@@ -148,7 +148,7 @@ func (rt *Runtime) hoist(stmts []model.Stmt, filename string) error {
 	classes := map[string]*model.Class{}
 	for _, s := range stmts {
 		if cd, ok := s.(*model.ClassDecl); ok {
-			c := &model.Class{Name: cd.Name, Fields: cd.Fields, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
+			c := &model.Class{Name: cd.Name, Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
 			for _, m := range cd.Methods {
 				m.Filename = filename
 				c.Methods[m.Name] = m
@@ -272,6 +272,9 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	case *model.Continue:
 		return nil, flowContinue, nil
 
+	case *model.Unset:
+		return nil, flowNormal, rt.execUnset(n, scope)
+
 	case *model.Throw:
 		v, err := rt.Eval(n.X, scope)
 		if err != nil {
@@ -305,6 +308,21 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		ret   flow
 		retOK bool
 	)
+	// PHP's two loop semantics. `as &$v` binds the element, so a body that
+	// assigns to the target edits the source; `as $v` binds a copy, so it does
+	// not. Only a *model.Array can be written back to or copied — a collection a
+	// binding returned belongs to the host rather than to the script.
+	//
+	// The copy is made only when the body actually assigns through the target,
+	// because phpscript has no refcount to defer it with: an unconditional copy
+	// would charge every loop for a semantic almost none of them use. The test
+	// runs once per loop, not once per iteration.
+	var writable *model.Array
+	if n.ByRef {
+		writable, _ = src.(*model.Array)
+	}
+	copyValue := !n.ByRef && model.AssignsTo(n.Body, valTarget)
+
 	// iter runs the loop body for one (key, value) pair, returning whether to
 	// continue iterating. It records any error / non-normal flow in the
 	// enclosing variables.
@@ -314,6 +332,9 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 				return false
 			}
 		}
+		if copyValue {
+			v = model.CopyValue(v)
+		}
 		if err = rt.assignTo(valTarget, v, scope); err != nil {
 			return false
 		}
@@ -321,6 +342,14 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		val, fl, err = rt.exec(n.Body, scope)
 		if err != nil {
 			return false
+		}
+		// The write-back happens before the flow is inspected: a reference makes
+		// the element live, so a body that assigns and then breaks or returns
+		// has still edited the source.
+		if writable != nil {
+			if updated, readErr := rt.readLValue(valTarget, scope); readErr == nil {
+				writable.Set(k, updated)
+			}
 		}
 		switch fl {
 		case flowReturn:
@@ -586,15 +615,15 @@ func setScopeFile(scope *Scope, filename string) func() {
 
 func (rt *Runtime) autoload(class string, scope *Scope) error {
 	for _, loader := range rt.autoloaders {
-		callable := loader
-		if name, ok := loader.(string); ok {
-			var found bool
-			callable, found = rt.lookupFunc(name)
-			if !found {
-				return fmt.Errorf("autoload callback %q is not callable", name)
-			}
+		// Every PHP callable spelling reaches here: composer registers
+		// array($this, "loadClass"), its bootstrap registers the
+		// "Class::method" string form, and a plain function name or closure is
+		// just as valid.
+		callable, ok := rt.callableWithScope(loader, scope)
+		if !ok {
+			return fmt.Errorf("autoload callback %v is not callable", loader)
 		}
-		if _, err := rt.invokeWithScopeContext(callable, []any{class}, scope); err != nil {
+		if _, err := callable(class); err != nil {
 			return err
 		}
 		if rt.hasClass(class) {
@@ -602,6 +631,48 @@ func (rt *Runtime) autoload(class string, scope *Scope) error {
 		}
 	}
 	return nil
+}
+
+// UnregisterAutoloader removes a callback from the SPL autoload queue, matching
+// it the way PHP does: by the function, object and method it names rather than
+// by identity, since each `array($this, "loadClass")` is a fresh array.
+func (rt *Runtime) UnregisterAutoloader(callback any) bool {
+	want := autoloaderKey(callback)
+	for i, loader := range rt.autoloaders {
+		if autoloaderKey(loader) != want {
+			continue
+		}
+		rt.autoloaders = append(rt.autoloaders[:i], rt.autoloaders[i+1:]...)
+		return true
+	}
+	return false
+}
+
+// autoloaderKey renders a registered callback as a comparable identity.
+func autoloaderKey(callback any) string {
+	switch value := callback.(type) {
+	case string:
+		return "fn:" + value
+	case *model.Array:
+		if value.Len() != 2 {
+			break
+		}
+		target, _ := value.Get(int64(0))
+		method, _ := value.Get(int64(1))
+		if object, ok := target.(*model.Object); ok {
+			return fmt.Sprintf("method:%p:%v", object, method)
+		}
+		return fmt.Sprintf("static:%v:%v", target, method)
+	}
+	// A closure or a host func has no PHP-visible name, so its code pointer is
+	// the only identity available.
+	if rv := reflect.ValueOf(callback); rv.IsValid() {
+		switch rv.Kind() {
+		case reflect.Func, reflect.Pointer, reflect.Map, reflect.Slice, reflect.UnsafePointer:
+			return fmt.Sprintf("value:%v", rv.Pointer())
+		}
+	}
+	return fmt.Sprintf("value:%v", callback)
 }
 
 // SPLAutoload implements PHP's default autoloader: lowercase the qualified
@@ -714,8 +785,16 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 			return applyAssignOp(n.Op, current, rhs)
 		})
 
+	case *model.StaticProp:
+		bag, err := rt.staticStorage(tgt.Class, scope)
+		if err != nil {
+			return err
+		}
+		bag[tgt.Name] = applyAssignOp(n.Op, bag[tgt.Name], rhs)
+		return nil
+
 	case *model.Index:
-		base, err := rt.Eval(tgt.Base, scope)
+		base, err := rt.container(tgt.Base, scope)
 		if err != nil {
 			return err
 		}
@@ -770,6 +849,82 @@ func bindConstructorID(target, value model.Expr, op string, result any) {
 	}
 }
 
+// container evaluates the base of an index assignment, creating the array PHP
+// would create when nothing is there yet. `$rows[$first][$second] = $v` against
+// an unset $rows makes both levels; the new array has to be written back into
+// the slot that held null, or the write would land in a value nothing holds.
+//
+// Only an assignable base is auto-vivified. A function result or a literal has
+// nowhere to write the array back to, so it is returned as-is and the caller
+// reports the assignment as unsupported.
+func (rt *Runtime) container(base model.Expr, scope *Scope) (any, error) {
+	value, err := rt.Eval(base, scope)
+	if err != nil {
+		return nil, err
+	}
+	if value != nil || !assignable(base) {
+		return value, nil
+	}
+	created := model.NewArray()
+	if err := rt.assignTo(base, created, scope); err != nil {
+		return nil, err
+	}
+	return created, nil
+}
+
+// assignable reports whether e names storage that can be written back to.
+func assignable(e model.Expr) bool {
+	switch model.UnwrapParenthesized(e).(type) {
+	case *model.Var, *model.Index, *model.PropAccess, *model.StaticProp:
+		return true
+	}
+	return false
+}
+
+// execUnset removes each target from the scope, array, property bag or static
+// bag holding it. Unsetting something that was never set is not an error, which
+// is what lets `unset($map[$key])` run unconditionally.
+func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
+	for _, target := range n.Targets {
+		switch tgt := model.UnwrapParenthesized(target).(type) {
+		case *model.Var:
+			scope.Unset(tgt.Name)
+		case *model.PropAccess:
+			base, err := rt.Eval(tgt.Base, scope)
+			if err != nil {
+				return err
+			}
+			if obj, ok := base.(*model.Object); ok {
+				delete(obj.Props, tgt.Name)
+			}
+		case *model.StaticProp:
+			bag, err := rt.staticStorage(tgt.Class, scope)
+			if err != nil {
+				return err
+			}
+			delete(bag, tgt.Name)
+		case *model.Index:
+			if tgt.Index == nil {
+				return fmt.Errorf("unset: [] is not an unset target")
+			}
+			base, err := rt.Eval(tgt.Base, scope)
+			if err != nil {
+				return err
+			}
+			key, err := rt.Eval(tgt.Index, scope)
+			if err != nil {
+				return err
+			}
+			if arr, ok := base.(*model.Array); ok {
+				arr.Delete(normalizeKey(key))
+			}
+		default:
+			return fmt.Errorf("unset: unsupported target %T", target)
+		}
+	}
+	return nil
+}
+
 func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
@@ -785,6 +940,12 @@ func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 			return nil, fmt.Errorf("assign: %q is not an object property", tgt.Name)
 		}
 		return obj.Props[tgt.Name], nil
+	case *model.StaticProp:
+		bag, err := rt.staticStorage(tgt.Class, scope)
+		if err != nil {
+			return nil, err
+		}
+		return bag[tgt.Name], nil
 	case *model.Index:
 		base, err := rt.Eval(tgt.Base, scope)
 		if err != nil {
@@ -825,8 +986,15 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 			return nil
 		}
 		return assignGoField(base, tgt.Name, func(any) any { return val })
+	case *model.StaticProp:
+		bag, err := rt.staticStorage(tgt.Class, scope)
+		if err != nil {
+			return err
+		}
+		bag[tgt.Name] = val
+		return nil
 	case *model.Index:
-		base, err := rt.Eval(tgt.Base, scope)
+		base, err := rt.container(tgt.Base, scope)
 		if err != nil {
 			return err
 		}
@@ -986,16 +1154,62 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	return val, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// invokeClosure runs an anonymous function in a fresh scope. User variables are
-// not captured, but lexical magic constants retain their defining filename.
-func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, filename, directory any) (any, error) {
+// closureEnv is everything a closure carries away from the scope it was written
+// in: the lexical magic constants, the `use (...)` captures, and the bound
+// `$this` (nil for a `static function`, or for one written outside a method).
+// It is built once where the closure value is created, not on each call, which
+// is what makes the capture a snapshot the way PHP's by-value `use` is.
+type closureEnv struct {
+	filename  any
+	directory any
+	captured  map[string]any
+	this      any
+	class     any
+}
+
+// captureClosureEnv snapshots scope for a closure declared in it.
+func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
+	env := closureEnv{}
+	env.filename, _ = scope.Get("__FILE__")
+	env.directory, _ = scope.Get("__DIR__")
+	if !cl.Static {
+		env.this, _ = scope.Get("this")
+		env.class, _ = scope.Get("__class__")
+	}
+	if len(cl.Uses) > 0 {
+		env.captured = make(map[string]any, len(cl.Uses))
+		for _, use := range cl.Uses {
+			// A by-reference capture binds the same value a by-value one does:
+			// the runtime has no reference cells, so the distinction only shows
+			// up in writes the closure makes back to the enclosing frame, which
+			// it cannot do either way.
+			value, _ := scope.Get(use.Name)
+			env.captured[use.Name] = value
+		}
+	}
+	return env
+}
+
+// invokeClosure runs an anonymous function in a fresh scope seeded with its
+// captured environment. Parameters are bound after the captures, so a parameter
+// of the same name shadows the capture, as it does in PHP.
+func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) (any, error) {
 	scope := NewScope()
 	scope.Set(argsKey, args)
-	if filename != nil {
-		scope.Set("__FILE__", filename)
+	if env.filename != nil {
+		scope.Set("__FILE__", env.filename)
 	}
-	if directory != nil {
-		scope.Set("__DIR__", directory)
+	if env.directory != nil {
+		scope.Set("__DIR__", env.directory)
+	}
+	if env.this != nil {
+		scope.Set("this", env.this)
+	}
+	if env.class != nil {
+		scope.Set("__class__", env.class)
+	}
+	for name, value := range env.captured {
+		scope.Set(name, value)
 	}
 	decl := &model.FuncDecl{Params: cl.Params, Body: cl.Body}
 	if err := rt.bindParams(decl, args, scope); err != nil {

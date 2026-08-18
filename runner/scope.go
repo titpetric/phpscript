@@ -38,6 +38,12 @@ func (s *Scope) Set(name string, val any) {
 	s.vars[name] = val
 }
 
+// Unset removes name from the frame (PHP's unset). Removing a name that was
+// never set is not an error.
+func (s *Scope) Unset(name string) {
+	delete(s.vars, name)
+}
+
 // Defer registers a callback to run when the current PHP execution frame
 // returns. Callbacks run in last-in, first-out order.
 func (s *Scope) Defer(callback any) {
