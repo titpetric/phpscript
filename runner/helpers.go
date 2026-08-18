@@ -66,7 +66,7 @@ func helperPair(key, val any) model.ArrayItemValue {
 // helperArray constructs an ordered *model.Array from pairs, mirroring PHP's
 // array() where unkeyed items take the next integer index.
 func helperArray(items ...model.ArrayItemValue) *model.Array {
-	arr := model.NewArray()
+	arr := model.NewArraySize(len(items))
 	for _, it := range items {
 		if it.Key == nil {
 			arr.Append(it.Val)
@@ -189,7 +189,46 @@ func adapt(fn any) func(...any) (any, error) {
 
 // invokeAny calls fn (any Go callable) with args via reflection, coercing
 // arguments to the declared parameter types where convertible.
+func argAt(args []any, i int) any {
+	if i < len(args) {
+		return args[i]
+	}
+	return nil
+}
+
+func invokeFast(fn any, args []any) (any, error, bool) {
+	switch f := fn.(type) {
+	case func(...any) (any, error):
+		v, err := f(args...)
+		return v, err, true
+	case func(any) any:
+		return f(argAt(args, 0)), nil, true
+	case func(any) bool:
+		return f(argAt(args, 0)), nil, true
+	case func(any) string:
+		return f(argAt(args, 0)), nil, true
+	case func(any, any) string:
+		return f(argAt(args, 0), argAt(args, 1)), nil, true
+	case func(any, any) any:
+		return f(argAt(args, 0), argAt(args, 1)), nil, true
+	case func(string) string:
+		return f(phpString(argAt(args, 0))), nil, true
+	case func() string:
+		return f(), nil, true
+	case func() any:
+		return f(), nil, true
+	case func(...any) any:
+		return f(args...), nil, true
+	case func(...any) bool:
+		return f(args...), nil, true
+	}
+	return nil, nil, false
+}
+
 func invokeAny(fn any, args []any) (result any, err error) {
+	if result, err, ok := invokeFast(fn, args); ok {
+		return result, err
+	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil

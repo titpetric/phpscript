@@ -3,9 +3,22 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/titpetric/phpscript/model"
 )
+
+type vmScratch struct {
+	stack       []any
+	locals      []any
+	initialized []bool
+}
+
+var scratchPool = sync.Pool{
+	New: func() any {
+		return &vmScratch{stack: make([]any, 0, 32)}
+	},
+}
 
 type iteratorState struct {
 	entries []Entry
@@ -37,15 +50,25 @@ func Run(program *Program, host Host) (err error) {
 		return nil
 	}
 	pc := 0
-	stack := make([]any, 0, 32)
-	locals := make([]any, len(program.localNames))
-	initialized := make([]bool, len(program.localNames))
+	scratch := scratchPool.Get().(*vmScratch)
+	stack := scratch.stack[:0]
+	nlocal := len(program.localNames)
+	if cap(scratch.locals) < nlocal {
+		scratch.locals = make([]any, nlocal)
+		scratch.initialized = make([]bool, nlocal)
+	}
+	locals := scratch.locals[:nlocal]
+	initialized := scratch.initialized[:nlocal]
+	clear(locals)
+	clear(initialized)
 	iterators := make(map[int]*iteratorState)
 	var handlers []errorHandler
 	var callFrames []callFrame
 	defer func() {
 		clear(stack)
 		clear(locals)
+		scratch.stack = stack[:0]
+		scratchPool.Put(scratch)
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("flatstack: VM panic at pc %d: %v", pc, recovered)
 		}
