@@ -21,6 +21,8 @@ const Name = "Run .phpt test fixtures"
 // Options holds CLI flag options for the test command.
 type Options struct {
 	JSON       bool
+	Matrix     bool
+	Verbose    bool
 	Count      int
 	Time       time.Duration
 	Profile    bool
@@ -31,7 +33,9 @@ type Options struct {
 type jsonFixture struct {
 	Name        string `json:"name"`
 	Path        string `json:"path"`
+	Runner      string `json:"runner,omitempty"`
 	Passed      bool   `json:"passed"`
+	Skipped     bool   `json:"skipped,omitempty"`
 	Runs        int    `json:"runs"`
 	DurationNs  int64  `json:"duration_ns"`
 	P50Ns       int64  `json:"p50_ns,omitempty"`
@@ -57,6 +61,8 @@ func NewCommand() *cli.Command {
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
 			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
+			fs.BoolVar(&opts.Matrix, "matrix", false, "Run every fixture through all runtimes and report a matrix")
+			fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "Report the failure of each runtime below its fixture")
 			fs.IntVarP(&opts.Count, "count", "c", 0, "Run each test N times; with --time, produce N benchmark samples")
 			fs.DurationVarP(&opts.Time, "time", "t", 0, "Run each test for this duration per benchmark sample (e.g. 10s)")
 			fs.BoolVar(&opts.Profile, "profile", false, "Report memory usage per run (allocs/op, B/op)")
@@ -83,7 +89,7 @@ type fixtureRun struct {
 	GCRuns      uint32
 }
 
-func runFixtureLoop(ctx context.Context, fx *tests.Fixture, opts Options) *fixtureRun {
+func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts Options) *fixtureRun {
 	out := &fixtureRun{}
 	hint := opts.Count
 	if hint <= 0 {
@@ -96,7 +102,7 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, opts Options) *fixtu
 	start := time.Now()
 	for {
 		opStart := time.Now()
-		res := tests.RunFixture(ctx, fx)
+		res := tests.RunFixtureOn(ctx, fx, r)
 		samples = append(samples, time.Since(opStart).Nanoseconds())
 		out.Runs++
 		if out.Result == nil || (out.Result.Passed && !res.Passed) {
@@ -144,16 +150,16 @@ func percentileNs(sorted []int64, p int) int64 {
 	return sorted[idx-1]
 }
 
-func runFixtureSamples(ctx context.Context, fx *tests.Fixture, opts Options) []*fixtureRun {
+func runFixtureSamples(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts Options) []*fixtureRun {
 	if opts.Count <= 0 || opts.Time <= 0 {
-		return []*fixtureRun{runFixtureLoop(ctx, fx, opts)}
+		return []*fixtureRun{runFixtureLoop(ctx, fx, r, opts)}
 	}
 
 	sampleOpts := opts
 	sampleOpts.Count = 0
 	runs := make([]*fixtureRun, 0, opts.Count)
 	for range opts.Count {
-		runs = append(runs, runFixtureLoop(ctx, fx, sampleOpts))
+		runs = append(runs, runFixtureLoop(ctx, fx, r, sampleOpts))
 		if ctx.Err() != nil {
 			break
 		}
@@ -205,6 +211,17 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		}
 	}
 
+	if opts.Matrix {
+		failed := runMatrix(ctx, fixtures, displayPaths, opts)
+		if err := writeMemProfile(opts); err != nil {
+			return err
+		}
+		if failed > 0 {
+			return fmt.Errorf("%d fixture(s) failed", failed)
+		}
+		return nil
+	}
+
 	var table resultTable
 	if !opts.JSON {
 		table = newResultTable(os.Stdout, displayPaths, opts)
@@ -219,7 +236,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	for i, fx := range fixtures {
 		var fixtureResult *tests.TestResult
 		var firstFailedRun *fixtureRun
-		for _, fr := range runFixtureSamples(ctx, fx, opts) {
+		for _, fr := range runFixtureSamples(ctx, fx, tests.RunnerRuntime, opts) {
 			fr.DisplayPath = displayPaths[i]
 			if table != nil {
 				table.writeResult(fr)
@@ -227,6 +244,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 			jsonRows = append(jsonRows, jsonFixture{
 				Name:        fx.Name,
 				Path:        fr.DisplayPath,
+				Runner:      string(fr.Result.Runner),
 				Passed:      fr.Result.Passed,
 				Runs:        fr.Runs,
 				DurationNs:  fr.Total.Nanoseconds(),
@@ -281,21 +299,30 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		}
 	}
 
-	if opts.MemProfile != "" {
-		f, err := os.Create(opts.MemProfile)
-		if err != nil {
-			return fmt.Errorf("create memprofile: %w", err)
-		}
-		defer f.Close()
-		runtime.GC()
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			return fmt.Errorf("write memprofile: %w", err)
-		}
+	if err := writeMemProfile(opts); err != nil {
+		return err
 	}
 
 	if failedCount > 0 {
 		return fmt.Errorf("%d fixture(s) failed", failedCount)
 	}
 
+	return nil
+}
+
+// writeMemProfile dumps a heap profile when one was requested.
+func writeMemProfile(opts Options) error {
+	if opts.MemProfile == "" {
+		return nil
+	}
+	f, err := os.Create(opts.MemProfile)
+	if err != nil {
+		return fmt.Errorf("create memprofile: %w", err)
+	}
+	defer f.Close()
+	runtime.GC()
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		return fmt.Errorf("write memprofile: %w", err)
+	}
 	return nil
 }
