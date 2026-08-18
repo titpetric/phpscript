@@ -125,8 +125,8 @@ var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
 // implementation paid on every call. Escape analysis confirmed the conversion
 // escaped ("stdlib.go: ([]byte)(s) escapes to heap"): crc32.ChecksumIEEE's
 // argument leaks into the slicing-by-8 and hardware paths, so every crc32()
-// allocated and copied its input. Short strings — every practical use, since
-// crc32 keys and etags are short — run the table loop in place and allocate
+// allocated and copied its input. Short strings, every practical use since
+// crc32 keys and etags are short, run the table loop in place and allocate
 // nothing. Longer ones keep the standard library's implementation, which
 // processes eight bytes at a time and amortises the copy over the input.
 func phpCRC32(s string) int64 {
@@ -332,8 +332,8 @@ func registerArrays(rt *runner.Runtime) {
 // later string keys win.
 //
 // This returns an *model.Array even when every input is a list. Returning a
-// presized []any for that case is tempting — it is the shape
-// `call_user_func_array($fn, array_merge(...))` forwards with no copy — but
+// presized []any for that case is tempting, because it is the shape
+// `call_user_func_array($fn, array_merge(...))` forwards with no copy, but
 // rule 4 of docs/allocation-performance.md reserves *model.Array for values
 // the script appends to, and `$x = array_merge($a, $b); $x[] = "z"` is
 // ordinary PHP that a Go slice cannot serve (a slice cannot grow through the
@@ -380,7 +380,7 @@ func phpCompact(ctx context.Context, names ...string) map[string]any {
 // phpArraySplice removes (and optionally replaces) a run of elements, returning
 // the removed ones as a []any. It resizes its argument, which a Go slice cannot
 // do through the interface holding it, so this is one of the few shims that
-// genuinely requires a *model.Array — passing anything else is an error rather
+// genuinely requires a *model.Array. Passing anything else is an error rather
 // than a silent no-op.
 func phpArraySplice(target any, offset int64, optional ...any) ([]any, error) {
 	a, ok := target.(*model.Array)
@@ -547,7 +547,7 @@ func sortLess(x, y any) bool {
 //	null vs string  the null becomes "" and the two compare as strings
 //	bool or null    both sides are cast to bool
 //	numbers         two numbers, or a number and a numeric string, or two
-//	                numeric strings, compare numerically — so "9" is less than
+//	                numeric strings, compare numerically, so "9" is less than
 //	                "10", and a list of digits out of explode() sorts the way
 //	                the same list sorts in PHP
 //	anything else   both sides are cast to string and compared bytewise, which
@@ -638,7 +638,7 @@ func isBoolish(v any) bool {
 }
 
 // toBool is PHP's truthiness: "", "0", 0 and 0.0 are false, other scalars true.
-// Arrays never reach it — phpCompare has taken them by then.
+// Arrays never reach it; phpCompare has taken them by then.
 func toBool(v any) bool {
 	switch x := v.(type) {
 	case nil:
@@ -707,7 +707,7 @@ func phpNumeric(v any) (phpNum, bool) {
 // numericString reads s the way PHP's is_numeric_string does: whitespace around
 // an optional sign, digits with an optional fraction and an optional exponent.
 // The syntax is checked here rather than left to strconv, which also accepts
-// hex floats, digit separators, "Inf" and "NaN" — none of which PHP considers
+// hex floats, digit separators, "Inf" and "NaN", none of which PHP considers
 // numeric, so "0x1A" has to sort as a string.
 func numericString(s string) (phpNum, bool) {
 	text := strings.Trim(s, " \t\n\r\v\f")

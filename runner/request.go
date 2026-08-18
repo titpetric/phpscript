@@ -110,7 +110,7 @@ func FromRequest(r *http.Request) Context {
 
 // Register installs the request-aware PHP functions onto rt and seeds the
 // request superglobals. After this, transpiled PHP can call getallheaders() /
-// header() and read $_GET, $_POST, $_PATH — all backed by this Context.
+// header() and read $_GET, $_POST, $_PATH, all backed by this Context.
 func (c Context) Register(rt *Runtime) {
 	// Make request cookies and staged response headers available to bindings
 	// whose methods receive the runtime lifecycle context.

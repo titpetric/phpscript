@@ -146,7 +146,7 @@ func TestCompileMatchesExprEnv(t *testing.T) {
 }
 
 // TestCompileConfigIsRebuiltOnRegistration asserts that a function registered
-// after the first compile is visible to the next one — the config is cached per
+// after the first compile is visible to the next one: the config is cached per
 // function-table generation, not forever.
 func TestCompileConfigIsRebuiltOnRegistration(t *testing.T) {
 	rt := New(io.Discard, Options{})

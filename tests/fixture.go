@@ -535,7 +535,7 @@ var htmlReportTemplate = template.Must(template.New("report").Parse(`<!DOCTYPE h
 				<td><strong>{{.Name}}</strong><br><small style="color:#94a3b8">{{.Description}}</small></td>
 				<td><code>{{.Path}}</code></td>
 				<td>{{.DurationMs}} ms</td>
-				<td>{{if .FailureReason}}<div class="details">{{.FailureReason}}</div>{{else}}—{{end}}</td>
+				<td>{{if .FailureReason}}<div class="details">{{.FailureReason}}</div>{{else}}n/a{{end}}</td>
 			</tr>
 			{{end}}
 		</tbody>

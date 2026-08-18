@@ -292,8 +292,8 @@ type Lit struct {
 
 // Var is a `$name` reference (the `$` is stripped during parsing).
 //
-// A bare identifier — a constant such as `PHP_EOL`, or a magic constant such as
-// `__DIR__` — is also a Var, because both resolve the same way at runtime: the
+// A bare identifier, a constant such as `PHP_EOL` or a magic constant such as
+// `__DIR__`, is also a Var, because both resolve the same way at runtime: the
 // current scope first (which is where the magic constants live), then the
 // constant table. Const records which spelling the source used, so that
 // printing the node back out does not turn `PHP_EOL` into `$PHP_EOL`.
@@ -329,7 +329,7 @@ type PropAccess struct {
 // Call is a free-function call: `name(args...)`.
 //
 // Name is the primary (possibly namespace-qualified) function name. Fallback is
-// the global-namespace name to try if Name is undefined — PHP resolves an
+// the global-namespace name to try if Name is undefined. PHP resolves an
 // unqualified call inside a namespace by first looking in the current namespace
 // and then falling back to the global function of the same short name. Fallback
 // is "" for calls that need no fallback (the common, non-namespaced case), in

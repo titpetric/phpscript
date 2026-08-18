@@ -26,7 +26,7 @@
 // builtins that emit text of their own, such as die() with a message.
 //
 // A function that reports "no buffer is active" returns false, as PHP does,
-// rather than an empty string — the two are distinguishable with ===.
+// rather than an empty string; the two are distinguishable with ===.
 //
 // # Regular expressions
 //

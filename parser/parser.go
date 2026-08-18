@@ -1,7 +1,7 @@
 // Package parser turns PHP source (the limited subset described in the project
 // README) into the shared model AST consumed by the runner.
 //
-// Scope of v0: the parser targets the README's "desired syntax" subset — php
+// Scope of v0: the parser targets the README's "desired syntax" subset: php
 // tags, $-variables, echo, assignment, if/elseif/else, foreach, for, while,
 // function and class declarations, the `function Class::method()` form, method
 // and property access via both `->` and `.`, array/new expressions, and the
@@ -259,8 +259,8 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 }
 
 // parseUse records an import: `use A\B\C;` or `use A\B\C as D;`. Imports are a
-// compile-time alias table — the short name (or the alias) resolves to the
-// fully-qualified one — so the statement itself produces no AST node.
+// compile-time alias table, where the short name (or the alias) resolves to
+// the fully-qualified one, so the statement itself produces no AST node.
 //
 // `use function f;` and `use const C;` name symbols rather than classes; both
 // alias the same way, so the leading keyword is simply consumed.
@@ -300,8 +300,8 @@ func (p *parser) parseUse() (model.Stmt, error) {
 }
 
 // parseDeclare consumes a `declare(directive=value, ...)` block. The runtime
-// has one set of semantics — `strict_types` and `ticks` do not vary it — so the
-// directives are read and dropped rather than modelled.
+// has one set of semantics, and neither `strict_types` nor `ticks` varies it,
+// so the directives are read and dropped rather than modelled.
 func (p *parser) parseDeclare() (model.Stmt, error) {
 	p.next() // declare
 	if err := p.eatOp("("); err != nil {
@@ -837,7 +837,7 @@ func (p *parser) parseParams() ([]model.Param, error) {
 // parenthesis (or a comma) and a parameter's `$name`: constructor property
 // promotion modifiers, a type hint, the by-reference `&`, and the variadic
 // `...`. The runtime is dynamically typed and has no reference values, so none
-// of it changes how the parameter binds — it only has to be recognised.
+// of it changes how the parameter binds; it only has to be recognised.
 func (p *parser) skipParamDecoration() {
 	for p.isKw("public", "private", "protected", "readonly") {
 		p.next()

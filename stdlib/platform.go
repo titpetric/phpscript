@@ -23,7 +23,7 @@ import (
 // composer's generated autoloader is the reason it exists in this shape. It
 // gates on PHP_VERSION_ID, reports through PHP_SAPI/STDERR/PHP_EOL, probes for
 // APCu with function_exists + ini_get + filter_var, and builds its class map
-// with strtr/strrpos — none of which is composer-specific, all of which any
+// with strtr/strrpos. None of that is composer-specific, and all of it is used by any
 // non-trivial PHP library uses.
 
 // phpVersion is the PHP language version phpscript reports. It is not a claim
@@ -394,8 +394,8 @@ func objectIdentity(value any) uintptr {
 }
 
 // splExceptions are the SPL and Error class names a PHP library throws. None of
-// them adds behaviour over Exception — phpscript has no exception hierarchy to
-// filter a catch on — so they all construct the same value, which is what makes
+// them adds behaviour over Exception, and phpscript has no exception hierarchy
+// to filter a catch on, so they all construct the same value, which is what makes
 // `throw new \InvalidArgumentException(...)` work rather than fail on an
 // undefined class.
 var splExceptions = []string{

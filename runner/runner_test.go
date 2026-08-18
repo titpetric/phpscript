@@ -404,7 +404,7 @@ func TestTernary(t *testing.T) {
 
 // TestTokenGetAllFromVM proves the parser's PHP-compatible tokenizer is usable
 // from transpiled PHP code: foreach over the tokens, is_array() to distinguish
-// the array form, $v[0]/$v[1] access, and token_name() — exactly the shape
+// the array form, $v[0]/$v[1] access, and token_name(): exactly the shape
 // minitpl's _split_exp depends on.
 func TestTokenGetAllFromVM(t *testing.T) {
 	prog, err := parser.Parse(`<?php

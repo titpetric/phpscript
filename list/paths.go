@@ -11,9 +11,9 @@ import (
 // ExpandFiles resolves path arguments to a sorted list of PHP file paths.
 // Path forms match Go's package patterns:
 //
-//   - "." or "dir" — .php/.phpt files in that directory only (non-recursive)
-//   - "./..." or "dir/..." — that directory and all subdirectories
-//   - "file.php" — that file
+//   - "." or "dir": .php/.phpt files in that directory only (non-recursive)
+//   - "./..." or "dir/...": that directory and all subdirectories
+//   - "file.php": that file
 //
 // When paths is empty, "." is used.
 func ExpandFiles(paths []string) ([]string, error) {

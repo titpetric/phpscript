@@ -16,7 +16,7 @@ import (
 //   - a single-character string (e.g. "(", ")", ";"), or
 //   - a 3-element array [int id, string text, int line].
 //
-// We reproduce that shape with native Go values — a []any of single-char
+// We reproduce that shape with native Go values: a []any of single-char
 // strings and []any{int64 id, string text, int64 line} triples. The VM reads
 // slices through model.RangeValues / reflection, so the result still flows
 // straight into transpiled PHP code (foreach, $v[0], $v[1], is_array, count,
@@ -187,7 +187,7 @@ func TokenName(id int) string {
 }
 
 // boxedInts holds pre-boxed int64 values so that emitting a token id or a line
-// number costs no allocation. The runtime only interns 0–255 itself
+// number costs no allocation. The runtime only interns 0-255 itself
 // (runtime.staticuint64s); every T_* id is >= 256 and templates run past line
 // 255, so both would otherwise allocate 8 bytes per token.
 var boxedInts = func() [boxedIntMax]any {

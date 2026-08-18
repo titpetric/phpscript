@@ -4,7 +4,7 @@ import "reflect"
 
 // Values flow through phpscript as native Go types (see value.go). A PHP array
 // literal is an *Array, but a value handed back by a forwarded Go function is
-// just as likely to be a []string, a []map[string]any or a map[string]any —
+// just as likely to be a []string, a []map[string]any or a map[string]any:
 // the runtime invokes bindings by reflection and boxes whatever they return.
 //
 // These helpers give every consumer (the runner's foreach and index access, the
@@ -25,7 +25,7 @@ import "reflect"
 //	slice, array    int64 keys in index order
 //	map             key order is Go's (unordered), keys as declared
 //
-// Anything else, nil included, iterates zero times — PHP's foreach over a
+// Anything else, nil included, iterates zero times. PHP's foreach over a
 // non-array warns and continues rather than failing.
 func RangeValues(v any, fn func(key, val any) bool) {
 	switch x := v.(type) {
@@ -135,7 +135,7 @@ func IsCollection(v any) bool {
 // ToArray returns v as an *Array, converting a native collection if needed and
 // passing an existing *Array through untouched. Use it at the point where PHP
 // semantics genuinely require an array (mutation, `$a[] = v`), not to normalise
-// arguments — RangeValues reads every shape without allocating.
+// arguments, since RangeValues reads every shape without allocating.
 func ToArray(v any) *Array {
 	if arr, ok := v.(*Array); ok && arr != nil {
 		return arr

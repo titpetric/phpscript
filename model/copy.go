@@ -7,7 +7,7 @@ package model
 // PHP arrays are values. `foreach ($rows as $row)` hands the body a copy, so
 // `$row["x"] = 1` edits the copy and leaves `$rows` alone; `foreach ($rows as
 // &$row)` hands it the element itself. phpscript's arrays are pointers, so the
-// copy has to be made rather than deferred — there is no refcount to make it
+// copy has to be made rather than deferred: there is no refcount to make it
 // lazy the way PHP's copy-on-write does.
 //
 // Copying every element of every loop would be a large price for a semantic
@@ -19,7 +19,7 @@ package model
 // values and are copied, everything else is a handle or immutable and is
 // returned as it is.
 //
-// The copy reaches nested arrays, because they are values too — PHP's
+// The copy reaches nested arrays, because they are values too, and PHP's
 // `$copy["a"]["b"] = 1` cannot be observed through the original. It stops at
 // objects, which are handles in PHP as well, and at the native Go collections a
 // binding returns, which belong to the host rather than to the script.
@@ -45,8 +45,8 @@ func CopyArray(a *Array) *Array {
 }
 
 // AssignsTo reports whether any statement in body writes through the name that
-// target is rooted at — `$v = …`, `$v["k"] = …`, `$v->p = …`, `$v++`, or a
-// list() destructuring naming it.
+// target is rooted at: `$v = ...`, `$v["k"] = ...`, `$v->p = ...`, `$v++`, or
+// a list() destructuring naming it.
 //
 // It is deliberately a root-name test rather than an exact-shape one. A write
 // to `$v["k"]` has to count: the element it reaches lives inside the value the

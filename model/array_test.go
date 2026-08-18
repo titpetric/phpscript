@@ -247,7 +247,7 @@ func TestArrayListModeOverwrite(t *testing.T) {
 	}
 }
 
-// TestArrayNegativeKey: PHP 7 semantics as this Array models them — a negative
+// TestArrayNegativeKey: PHP 7 semantics as this Array models them. A negative
 // key does not lower the append index (see the `i >= a.nextID` guard).
 func TestArrayNegativeKey(t *testing.T) {
 	a := NewArray()

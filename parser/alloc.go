@@ -11,8 +11,8 @@ import "github.com/titpetric/phpscript/model"
 //
 //   - nodeChunk carves nodes of one concrete type out of a backing array.
 //     Every node keeps its own address, is handed out exactly once and is
-//     never reset or reused, so pointer identity — which runner.compileExpr
-//     relies on for its map[model.Expr]*compiledExpr cache — is preserved.
+//     never reset or reused, so pointer identity is preserved, which
+//     runner.compileExpr relies on for its map[model.Expr]*compiledExpr cache.
 //     The trade is retention: a chunk stays reachable while any node in it
 //     does. That costs nothing here because the AST is retained as a whole
 //     (a *model.Program), and a failed parse drops all of it at once.

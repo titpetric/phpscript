@@ -55,7 +55,7 @@ var multiCharOps = []string{
 
 // singleCharOps lists every one-byte operator. It is a constant, so slicing it
 // (singleOpText below) yields a string header pointing into the binary's
-// read-only data — emitting an operator token allocates nothing, where
+// read-only data. Emitting an operator token allocates nothing, where
 // `string(c)` allocated a fresh 1-byte string per token (rule 7).
 const singleCharOps = "+-*/%.,;()[]{}=<>!&|?:@\\"
 
@@ -88,10 +88,10 @@ var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 
 // bytesPerToken estimates how many source bytes one token consumes, used to
 // presize the token slice (rule 6). Measured over the in-tree PHP fixtures the
-// ratio is 3.7–5.2 bytes per token (whitespace and comments are dropped, so the
+// ratio is 3.7 to 5.2 bytes per token (whitespace and comments are dropped, so the
 // count is well below the tokenizer's). Four is the conservative end: it costs
-// a little slack on comment-heavy files and avoids the doubling — which copies
-// the whole slice — on dense ones.
+// a little slack on comment-heavy files and avoids the doubling, which copies
+// the whole slice, on dense ones.
 const bytesPerToken = 4
 
 func (l *lexer) run() ([]token, error) {
@@ -255,7 +255,7 @@ func (l *lexer) lexString(quote byte) error {
 	}
 
 	// Slow path: the literal contains at least one escape. Presize the builder
-	// (rule 6) — the decoded string is never longer than the raw source up to
+	// (rule 6): the decoded string is never longer than the raw source up to
 	// the next unescaped quote, and the first quote found is a lower bound for
 	// that, so one Grow replaces the 8/16/32 doubling.
 	var b strings.Builder
@@ -287,7 +287,7 @@ func (l *lexer) lexString(quote byte) error {
 // literal recognises only `\\` and `\'`; every other backslash stands for
 // itself, which is what makes `'C:\path'` and a single-quoted regex work. A
 // double-quoted literal recognises the C-style escapes plus the numeric forms
-// — `\x1B`, `\033`, `\u{1F600}` — and keeps the backslash for anything it does
+// (`\x1B`, `\033`, `\u{1F600}`), and keeps the backslash for anything it does
 // not recognise.
 func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 	next := l.src[l.pos+1]

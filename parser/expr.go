@@ -11,7 +11,7 @@ import (
 // subset of PHP operators the runner/transpiler understands.
 //
 // Note: the README forbids assignment inside conditions (no `if ($a = "b")`),
-// so `=` is NOT an expression operator here — assignment is a statement only.
+// so `=` is NOT an expression operator here; assignment is a statement only.
 var binPrec = map[string]int{
 	"||": 1, "&&": 2,
 	"==": 3, "!=": 3, "===": 3, "!==": 3,
@@ -195,7 +195,7 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 		case p.isOp("["):
 			p.next()
 			if p.isOp("]") {
-				// `$a[]` append target — represented as Index with nil index.
+				// `$a[]` append target, represented as Index with nil index.
 				p.next()
 				e = p.newIndex(e, nil)
 				continue
@@ -210,8 +210,8 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			e = p.newIndex(e, idx)
 		case p.isOp("("):
 			// Calling a value rather than a name: `$fn($x)`, `$handlers[0]($x)`,
-			// `(self::$includeFile)($file)`. Named calls never reach here — they
-			// are consumed by parsePrimary.
+			// `(self::$includeFile)($file)`. Named calls never reach here;
+			// they are consumed by parsePrimary.
 			args, err := p.parseArgs()
 			if err != nil {
 				return nil, err

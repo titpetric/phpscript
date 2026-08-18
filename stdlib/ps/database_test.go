@@ -196,7 +196,7 @@ func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 }
 
 // A refused statement never reaches the query log, so the span carrying the
-// call is where it is recorded — otherwise a boundary that refuses the wrong
+// call is where it is recorded. Otherwise a boundary that refuses the wrong
 // thing leaves nothing behind to debug it with.
 func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
 	tracer, err := telemetry.New(telemetry.NewOptions())
@@ -286,7 +286,7 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 	}
 
 	// A row is a Go map, so a script adding a column mutates the row the result
-	// set holds — the same reference semantics the *model.Array copy had.
+	// set holds, the same reference semantics the *model.Array copy had.
 	row.(map[string]any)["columns"] = int64(6)
 	if got := rows.([]map[string]any)[0]["columns"]; got != int64(6) {
 		t.Fatalf("added column = %#v", got)

@@ -113,7 +113,7 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class, method string, ar
 		name := resolveClassName(class, scope)
 		// The host table is consulted by exact name only: it is one map lookup
 		// on the common path, where lookupFunc's case-insensitive fallback
-		// scans the whole function table on every miss — which every call to a
+		// scans the whole function table on every miss, which every call to a
 		// PHP static method would be.
 		if fn, ok := rt.funcs[name+"::"+method]; ok {
 			return rt.invokeWithScopeContext(fn, args, scope)
@@ -139,8 +139,8 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class, method string, ar
 	}
 }
 
-// invokeStatic runs a method with no receiver. `$this` is left unset — PHP
-// rejects it in a static context and so does an unbound scope — while
+// invokeStatic runs a method with no receiver. `$this` is left unset, which
+// PHP rejects in a static context and so does an unbound scope, while
 // `__class__` is bound so that `self::` inside the body resolves back to the
 // same class.
 func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {

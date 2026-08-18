@@ -1,15 +1,15 @@
 package tests
 
 // This file is the reference set of *binding return shapes*. Every function
-// here answers the same question — "how should a forwarded Go function hand a
-// collection back to the PHP VM?" — with a different Go type, so that
+// here answers the same question, "how should a forwarded Go function hand a
+// collection back to the PHP VM?", with a different Go type, so that
 // bindings_test.go can assert both semantics (does the VM understand it?) and
 // cost (how many allocations did it take?).
 //
 // The runtime never requires *model.Array on the way out. Registered functions
 // are invoked through reflection (runner.invokeAny), and the single return
-// value is boxed into `any` by firstReturn. Everything downstream —
-// foreach, `$x[...]`, `$obj->field`, method calls — dispatches on the dynamic
+// value is boxed into `any` by firstReturn. Everything downstream, from
+// foreach to `$x[...]`, `$obj->field` and method calls, dispatches on the dynamic
 // type, with reflection fallbacks for native Go slices, maps and structs.
 // So a binding is free to return the cheapest representation of its data and
 // let the VM reflect over it.
@@ -125,7 +125,7 @@ func registerBindings(rt registrar) {
 	})
 	// bind_list_shared returns the backing slice with no copy at all: zero
 	// allocations for a read-only result. PHP arrays are value types, so this
-	// is only correct when the script does not mutate the result — which is
+	// is only correct when the script does not mutate the result, which is
 	// also true of every *model.Array a binding returns today (those are
 	// handed out by pointer).
 	rt.RegisterFunc("bind_list_shared", func() []string { return bindingWords })
@@ -181,7 +181,7 @@ func registerBindings(rt registrar) {
 	//
 	// A struct pointer is the cheapest possible object: one allocation, no
 	// property map. Returning a value (not a pointer) costs one boxing
-	// allocation, and the copy makes field writes silently useless — prefer
+	// allocation, and the copy makes field writes silently useless, so prefer
 	// pointers for anything PHP might assign to.
 
 	rt.RegisterFunc("bind_record", func() *BindingRecord {

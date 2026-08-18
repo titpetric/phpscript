@@ -13,9 +13,9 @@ type loopContext struct {
 	// writeBack emits the instructions a by-reference foreach needs before
 	// control leaves its body: the loop variable is written back into the
 	// element it came from. It is nil for every other loop. `break` and
-	// `return` leave without reaching the end of the body, so they emit it too
-	// — a reference makes the element live, and PHP keeps a write made before
-	// the jump.
+	// `return` leave without reaching the end of the body, so they emit it
+	// too: a reference makes the element live, and PHP keeps a write made
+	// before the jump.
 	writeBack func() error
 }
 

@@ -11,7 +11,7 @@ import (
 // parsing SQL: the keyword the statement starts with, and the comment a caller
 // tagged it with.
 type queryInfo struct {
-	// Type is the leading keyword, lowercased — "select", "insert", "drop". It
+	// Type is the leading keyword, lowercased: "select", "insert", "drop". It
 	// is empty when the statement holds nothing but comments, or starts with
 	// something that is not a word.
 	Type string
@@ -36,8 +36,8 @@ var readOnlyStatements = map[string]bool{
 
 // parseQuery classifies a statement by its leading text. Comments preceding the
 // statement are skipped rather than treated as the statement, so a query tagged
-// for `show processlist` — `/* userGet */ select ...`, the reason to tag one —
-// still reads as a select.
+// for `show processlist`, as in `/* userGet */ select ...` and the reason to
+// tag one, still reads as a select.
 //
 // This is prefix classification, not a SQL parser: it sees what the statement
 // begins with and nothing else. A statement is expected to be one statement.

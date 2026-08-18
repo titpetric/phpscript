@@ -255,7 +255,7 @@ func TestTranspileMarkers(t *testing.T) {
 }
 
 // TestTranspileCalls pins the function names collected for lazy environment
-// population. Every name emitted as a bare env identifier must be listed —
+// population. Every name emitted as a bare env identifier must be listed:
 // Runtime.Eval installs exactly these and nothing else, so a missed name is a
 // call to nil at runtime. Names routed through the __func helper must not be,
 // since that helper resolves against the function table directly.

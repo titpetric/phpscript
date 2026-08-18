@@ -33,8 +33,8 @@ import (
 //
 // A new array starts in list mode, which is what `$a[] = v` (Append) and a PHP
 // list literal produce, and stays there for as long as every key so far is the
-// dense sequence 0,1,...,n-1. The first key that breaks the invariant — a
-// string key, a negative or sparse integer, an int that is not an int64 —
+// dense sequence 0,1,...,n-1. The first key that breaks the invariant (a
+// string key, a negative or sparse integer, an int that is not an int64)
 // promotes the array to map mode, permanently. See promote.
 //
 // Nothing about the observable behaviour differs between the two modes;
@@ -149,7 +149,7 @@ func (a *Array) Get(key any) (any, bool) {
 // Delete removes key, preserving the order of the entries around it (PHP's
 // unset). A list-mode array is promoted first: dropping an element from the
 // middle would leave the remaining keys sparse, which list mode cannot express,
-// and dropping the last one would still leave nextID past the end — which is
+// and dropping the last one would still leave nextID past the end, which is
 // also what PHP does, since unset never renumbers.
 func (a *Array) Delete(key any) {
 	if a.isList() {

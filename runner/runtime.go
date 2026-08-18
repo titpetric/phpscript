@@ -63,7 +63,7 @@ type Runtime struct {
 
 	// ctx is the request/lifecycle context auto-injected into any registered
 	// callable (constructor, method, function) whose first parameter is a
-	// context.Context — mirroring vuego's wrapContextFunc. It lets PHP call
+	// context.Context, mirroring vuego's wrapContextFunc. It lets PHP call
 	// these symbols without supplying the context argument explicitly.
 	ctx context.Context
 
@@ -74,8 +74,8 @@ type Runtime struct {
 	shutdown     []any
 
 	// constants holds PHP constants (define()/named T_* etc.). Unlike globals,
-	// constants are visible in every scope — including inside functions and
-	// methods — matching PHP's constant semantics. Bare-identifier lookups that
+	// constants are visible in every scope, including inside functions and
+	// methods, matching PHP's constant semantics. Bare-identifier lookups that
 	// miss the current scope fall back here (see Eval).
 	constants map[string]any
 
@@ -424,7 +424,7 @@ func (rt *Runtime) SetGlobal(name string, val any) {
 
 // SetConst registers a PHP constant (e.g. define("FOO", 1) or a built-in like
 // T_VARIABLE). Constants are visible in every scope, including inside functions
-// and methods — unlike globals, which PHP confines to the global scope.
+// and methods, unlike globals, which PHP confines to the global scope.
 func (rt *Runtime) SetConst(name string, val any) {
 	rt.constants[name] = val
 }
@@ -739,8 +739,8 @@ func (rt *Runtime) setCompiledExpr(e model.Expr, ce *compiledExpr) {
 //
 // The function table *is* part of the type env, and must be: expr's parser
 // consults it (conf.Config.IsOverridden) to decide that names shared with
-// expr's own predicate builtins — `count`, `map`, `filter`, `find`, `sum`, ...
-// — are user functions rather than builtin predicate syntax. Disabling the
+// expr's own predicate builtins (`count`, `map`, `filter`, `find`, `sum` and
+// the rest) are user functions rather than builtin predicate syntax. Disabling the
 // builtins is not enough on its own; predicates are parsed before the disabled
 // list is consulted.
 //
@@ -825,8 +825,8 @@ func compileWith(src string, c *conf.Config) (*vm.Program, error) {
 }
 
 // acquireEnv returns an evaluation environment bound to scope. Environments are
-// reused across evaluations: the expensive part — one closure per registered
-// function plus the PHP-semantic helpers — is built once per function-table
+// reused across evaluations: the expensive part, one closure per registered
+// function plus the PHP-semantic helpers, is built once per function-table
 // generation and thereafter only has its scope rebound.
 func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 	rt.envMu.Lock()
@@ -962,8 +962,8 @@ func (rt *Runtime) releaseEnv(st *evalEnv) {
 }
 
 // typeEnvStub is the value every entry of the compile-time type env holds. The
-// type env carries types, never values — expr derives one "nature" per entry and
-// never calls it — and every callable the runtime exposes has been through
+// type env carries types, never values (expr derives one "nature" per entry and
+// never calls it), and every callable the runtime exposes has been through
 // adapt(), so they all share this one signature. A single shared stub therefore
 // describes the whole function table exactly as well as a per-function wrapper
 // would, and costs one closure instead of one per registered function.
@@ -984,14 +984,14 @@ var typeEnvMapType = reflect.TypeOf(map[string]any(nil))
 // This one does not: every entry is typeEnvStub (see above), so every entry's
 // nature is the nature of that one func type. Deriving it once and storing the
 // same value under every key produces a nature that is equal to the one expr
-// builds — TestCompileMatchesExprEnv pins that by comparing emitted bytecode.
+// builds; TestCompileMatchesExprEnv pins that by comparing emitted bytecode.
 //
 // The shared nature.TypeData that all the entries then point at is written to
 // only by nature's own lazy memoisation (NumIn, NumOut, Out, IsVariadic, the
 // method set), all of which are functions of the type alone and therefore
 // identical for every entry. The one field that carries per-name state,
 // TypeData.Func, is set by the checker only for conf.Config.Functions and
-// Builtins — both empty here — never for a nature that came out of the env.
+// Builtins, both empty here, never for a nature that came out of the env.
 func typeEnvNature(cache *nature.Cache, env map[string]any) nature.Nature {
 	n := cache.FromType(typeEnvMapType)
 	if n.TypeData == nil {
@@ -1104,7 +1104,7 @@ func flattenConcat(e model.Expr, out []model.Expr) []model.Expr {
 
 // helperFunc dispatches a (possibly namespace-qualified) free-function call. It
 // looks up name in the runtime function table and, if missing, the global
-// fallback name — matching PHP's namespace resolution where an unqualified call
+// fallback name, matching PHP's namespace resolution where an unqualified call
 // falls back to the global function of the same short name.
 func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ...any) (any, error) {
 	return func(name, fallback string, args ...any) (any, error) {
@@ -1180,7 +1180,7 @@ func (rt *Runtime) helperClassConst(ref *scopeRef) func(class, name string) (any
 		scope := ref.scope
 		class = resolveClassName(class, scope)
 		// `Class::class` is the class name itself. PHP resolves it at compile
-		// time, so it does not require the class to be declared — and composer's
+		// time, so it does not require the class to be declared, and composer's
 		// generated autoloader relies on that.
 		if name == "class" {
 			return class, nil

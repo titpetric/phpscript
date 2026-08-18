@@ -85,7 +85,7 @@ type Host interface {
 	SetIndex(any, any, any, bool, string) error
 	// SetEntry writes value into container at key when container is a value the
 	// script owns. A collection a binding returned belongs to the host, so it is
-	// left alone rather than reported as an error — matching what a by-reference
+	// left alone rather than reported as an error, matching what a by-reference
 	// foreach over one does in the interpreter.
 	SetEntry(container, key, value any) error
 	// UnsetIndex removes key from container, PHP's unset($a[$k]). Removing a

@@ -46,7 +46,7 @@ func (h flatHost) GetProperty(receiver any, name string) any {
 
 // SetProperty writes an object property, the same way the interpreter does:
 // a PHP object carries the value in its property map, and a Go binding assigns
-// the struct field the name resolves to — `$db->is_readonly = true` sets
+// the struct field the name resolves to, so `$db->is_readonly = true` sets
 // IsReadonly.
 func (h flatHost) SetProperty(receiver any, name string, value any, op string) error {
 	if object, ok := receiver.(*model.Object); ok {
@@ -78,7 +78,7 @@ func (h flatHost) Truthy(value any) bool { return phpTruthy(value) }
 
 // SetEntry implements the by-reference foreach write-back. Only a *model.Array
 // is script-owned storage; a native Go collection a binding returned belongs to
-// the host, so the write is dropped rather than reported — Runtime.execForeach
+// the host, so the write is dropped rather than reported. Runtime.execForeach
 // takes the same view.
 func (h flatHost) SetEntry(container, key, value any) error {
 	array, ok := container.(*model.Array)

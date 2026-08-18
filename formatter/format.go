@@ -228,7 +228,7 @@ func (p *printer) stmt(s model.Stmt) {
 			p.line("?>")
 			p.inPHP = false
 		}
-		// Raw HTML outside PHP tags — emit verbatim without indent.
+		// Raw HTML outside PHP tags: emit verbatim without indent.
 		p.buf.WriteString(n.Text)
 	case *model.Echo:
 		args := make([]string, len(n.Args))
@@ -331,7 +331,7 @@ func (p *printer) printIf(n *model.If, elseif bool) {
 			// Write "} elseif ..." without a blank close line.
 			p.ensurePHP()
 			p.buf.WriteString(p.indent() + "} ")
-			// printIf for elseif writes the full line including indent — trim.
+			// printIf for elseif writes the full line including indent, so trim.
 			p.printElseIf(nested)
 			return
 		}
@@ -862,7 +862,7 @@ func leadingComments(src string, attached map[int]bool) []string {
 	for _, val := range parser.TokenGetAll(src) {
 		a, ok := val.([]any)
 		if !ok {
-			// CHAR token — end of preamble.
+			// CHAR token: end of preamble.
 			if seenOpen {
 				break
 			}

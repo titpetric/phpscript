@@ -114,8 +114,8 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 
 // Get returns the first result row.
 //
-// Rows reach PHP as the bridge produced them — a map[string]any per row, a
-// []map[string]any per result set — rather than being copied into a
+// Rows reach PHP as the bridge produced them, a map[string]any per row and a
+// []map[string]any per result set, rather than being copied into a
 // *model.Array. The VM reads both natively: foreach walks them, $row["col"]
 // indexes them, and $row["extra"] = 1 writes to them, since a Go map is a
 // reference type. The copy cost two allocations plus an interface box per

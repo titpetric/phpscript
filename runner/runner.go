@@ -45,7 +45,7 @@ func (rt *Runtime) SetIncludeResolver(fn IncludeFunc) { rt.include = fn }
 // vendor/autoload.php is the motivating case: it bootstraps a class loader
 // through PHP features the interpreter does not support, while phpscript can
 // read the same composer metadata natively. Binding it here rather than
-// installing the loader at startup keeps the PHP semantics intact — nothing is
+// installing the loader at startup keeps the PHP semantics intact: nothing is
 // autoloadable until the script has actually included the autoloader.
 func (rt *Runtime) RegisterInclude(path string, fn func() (any, error)) {
 	if rt.includeHooks == nil {
@@ -310,8 +310,8 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	)
 	// PHP's two loop semantics. `as &$v` binds the element, so a body that
 	// assigns to the target edits the source; `as $v` binds a copy, so it does
-	// not. Only a *model.Array can be written back to or copied — a collection a
-	// binding returned belongs to the host rather than to the script.
+	// not. Only a *model.Array can be written back to or copied; a collection
+	// a binding returned belongs to the host rather than to the script.
 	//
 	// The copy is made only when the body actually assigns through the target,
 	// because phpscript has no refcount to defer it with: an unconditional copy
@@ -756,7 +756,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		return nil
 
 	case *model.ListExpr:
-		// list($a, $b) = $arr — destructure by position (integer keys). The
+		// list($a, $b) = $arr destructures by position (integer keys). The
 		// source is read through helperIndex, so a binding returning a native
 		// []string destructures like an *Array.
 		if !model.IsCollection(rhs) {

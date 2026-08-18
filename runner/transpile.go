@@ -59,7 +59,7 @@ func acquireTranspiler() *Transpiler {
 }
 
 // releaseTranspiler returns t to the pool. The caller must not hold on to the
-// slices returned by Transpile — Reset keeps their backing arrays.
+// slices returned by Transpile, because Reset keeps their backing arrays.
 func releaseTranspiler(t *Transpiler) {
 	t.Reset()
 	transpilers.Put(t)
@@ -354,7 +354,7 @@ func (t *Transpiler) emitCall(n *model.Call) (string, error) {
 }
 
 // joinCall renders `name(lead1, lead2, args...)` into one presized buffer.
-// Empty leading arguments are omitted — nothing the transpiler emits is the
+// Empty leading arguments are omitted, since nothing the transpiler emits is the
 // empty string (a quoted empty PHP string is `""`, two characters).
 func joinCall(name, lead1, lead2 string, args []string) string {
 	size := len(name) + 2
