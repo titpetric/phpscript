@@ -974,7 +974,8 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	}
 	ref := st.ref
 	st.env[name] = func(args ...any) (any, error) {
-		return rt.invokeWithScopeContext(fn, args, ref.scope)
+		result, err := rt.invokeWithScopeContext(fn, args, ref.scope)
+		return result, nameArgumentCount(err, name)
 	}
 }
 
@@ -1156,11 +1157,13 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 	return func(name, fallback string, args ...any) (any, error) {
 		scope := ref.scope
 		if fn, ok := rt.lookupFunc(name); ok {
-			return rt.invokeWithScopeContext(fn, args, scope)
+			result, err := rt.invokeWithScopeContext(fn, args, scope)
+			return result, nameArgumentCount(err, name)
 		}
 		if fallback != "" {
 			if fn, ok := rt.lookupFunc(fallback); ok {
-				return rt.invokeWithScopeContext(fn, args, scope)
+				result, err := rt.invokeWithScopeContext(fn, args, scope)
+				return result, nameArgumentCount(err, fallback)
 			}
 			// Frame-aware builtins live in the evaluation environment rather
 			// than the function table, so the bare-name fast path finds them
