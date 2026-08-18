@@ -12,7 +12,10 @@ types bound there, so the provider is named in one place.
 
 The bundled server enables telemetry by default. Set `telemetry.enabled` to
 `false` in a file passed with `-f` to turn it off; retention, sampling, the
-mount path and memory sampling are configurable in the same section. See
+mount path and memory sampling are configurable in the same section. Set
+`telemetry.driver` to `disk` and `telemetry.storage_path` to a folder (tmpfs
+is fine) so completed traces survive a restart as `{id}.json`. Sampling still
+decides what is recorded; the disk driver only persists what was sampled. See
 [Configuration](./configuration.md#http-modules).
 
 ## Views
