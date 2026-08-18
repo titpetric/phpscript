@@ -41,24 +41,12 @@ func (e *SkipError) Unwrap() error { return e.Reason }
 // one such file should not stop the rest from being formatted. Only reading
 // and writing errors are returned.
 func Paths(paths []string) ([]Result, error) {
-	files, err := list.ExpandFiles(paths)
-	if err != nil {
-		return nil, err
-	}
-	results := make([]Result, 0, len(files))
-	for _, file := range files {
-		changed, err := File(file)
-		skip := &SkipError{}
-		switch {
-		case errors.As(err, &skip):
-			results = append(results, Result{Path: file, Skipped: err})
-		case err != nil:
-			return results, err
-		default:
-			results = append(results, Result{Path: file, Changed: changed})
-		}
-	}
-	return results, nil
+	return walk(paths, true)
+}
+
+// NeedFormatting reports what Paths would do, writing nothing.
+func NeedFormatting(paths []string) ([]Result, error) {
+	return walk(paths, false)
 }
 
 // Changed returns the paths of the files that were rewritten.
@@ -72,28 +60,26 @@ func Changed(results []Result) []string {
 	return out
 }
 
-// NeedFormatting reports what Paths would do without writing anything: a
-// result is marked changed when formatting the file would rewrite it.
-func NeedFormatting(paths []string) ([]Result, error) {
+// walk formats every file selected by paths, writing each one back when write
+// is set. Reading and writing errors end the walk; a file the formatter cannot
+// take responsibility for is recorded as skipped and the walk continues.
+func walk(paths []string, write bool) ([]Result, error) {
 	files, err := list.ExpandFiles(paths)
 	if err != nil {
 		return nil, err
 	}
 	results := make([]Result, 0, len(files))
 	for _, file := range files {
-		in, err := os.ReadFile(file)
-		if err != nil {
+		changed, err := format(file, write)
+		skip := &SkipError{}
+		switch {
+		case errors.As(err, &skip):
+			results = append(results, Result{Path: file, Skipped: err})
+		case err != nil:
 			return results, err
+		default:
+			results = append(results, Result{Path: file, Changed: changed})
 		}
-		out, err := Source(string(in))
-		if err == nil && out != string(in) {
-			err = verify(out)
-		}
-		if err != nil {
-			results = append(results, Result{Path: file, Skipped: &SkipError{Path: file, Reason: err}})
-			continue
-		}
-		results = append(results, Result{Path: file, Changed: out != string(in)})
 	}
 	return results, nil
 }
@@ -101,6 +87,12 @@ func NeedFormatting(paths []string) ([]Result, error) {
 // File formats path in place. Reports whether the file contents changed, and
 // returns a *SkipError for a file left as it is.
 func File(path string) (bool, error) {
+	return format(path, true)
+}
+
+// format formats one file, writing it back when write is set, and reports
+// whether its contents changed.
+func format(path string, write bool) (bool, error) {
 	in, err := os.ReadFile(path)
 	if err != nil {
 		return false, err
@@ -114,6 +106,9 @@ func File(path string) (bool, error) {
 	}
 	if err := verify(out); err != nil {
 		return false, &SkipError{Path: path, Reason: err}
+	}
+	if !write {
+		return true, nil
 	}
 	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
 		return false, err
