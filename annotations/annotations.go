@@ -1,11 +1,12 @@
 // Package annotations discovers annotated PHP files in a source tree and gives
 // them a lifecycle: routed endpoints are served over HTTP, startup jobs run once
-// before the server listens.
+// before the server listens, and scheduled jobs run on an interval.
 //
 // Two annotations are recognised, both written as comments:
 //
 //   - `// @route GET /users/{id}` registers an HTTP endpoint.
 //   - `// @startup` marks a file the server executes before it listens.
+//   - `// @schedule daily -- prune` runs a file on a clock or interval.
 //
 // # Routes
 //
@@ -37,6 +38,15 @@
 // A file carrying `@startup` runs once, in path order, before the server
 // listens. It executes with the CLI SAPI, so it can migrate a schema or warm a
 // cache. An error aborts startup.
+//
+// # Scheduled jobs
+//
+// A file may repeat `@schedule` with an interval spec and optional `-- args`
+// passed as `$argv`. Specs: `every N seconds|minutes|hours`, `hourly`, `daily`,
+// `weekly`, `monthly`, `every weekday`, `every sunday` (any weekday name),
+// `N times per hour|day`. Calendar specs fire at local midnight. A tick is
+// skipped when the previous run is still going. Output is recorded on the
+// oida span as `output`.
 //
 // # Discovery
 //
