@@ -20,6 +20,7 @@ import (
 	yaml "gopkg.in/yaml.v3"
 
 	"github.com/titpetric/phpscript/flatstack"
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
@@ -99,6 +100,12 @@ type Fixture struct {
 	PHP      string `yaml:"-"`
 	Expected string `yaml:"-"`
 	Path     string `yaml:"-"`
+
+	mu        sync.Mutex
+	parsed    *model.Program
+	parsedErr error
+	interp    *runner.Runtime
+	flatRT    *flatstack.Runtime
 }
 
 // TestResult carries execution outcome for a single fixture.
@@ -316,80 +323,95 @@ func RunFixture(ctx context.Context, f *Fixture) *TestResult {
 	return res
 }
 
+func (f *Fixture) program() (*model.Program, error) {
+	if f.parsed != nil || f.parsedErr != nil {
+		return f.parsed, f.parsedErr
+	}
+	f.parsed, f.parsedErr = parser.Parse(f.PHP)
+	return f.parsed, f.parsedErr
+}
+
+func (f *Fixture) stdin() io.Reader {
+	content := f.Request.Stdin
+	if content == "" {
+		content = f.Stdin
+	}
+	if content == "" {
+		return strings.NewReader("")
+	}
+	return strings.NewReader(content)
+}
+
 func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context, error) {
-	prog, err := parser.Parse(f.PHP)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	prog, err := f.program()
 	if err != nil {
 		return "Internal Server Error", runner.Context{}, err
 	}
 
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
-
-	stdinContent := f.Request.Stdin
-	if stdinContent == "" {
-		stdinContent = f.Stdin
+	if f.interp == nil {
+		options := runner.Options{RootFS: testPHPFS(), Stdin: f.stdin()}
+		rt := runner.New(&out, options)
+		rt.SetIncludeCache(includeCache)
+		rt.SetExprCache(exprCache)
+		rt.RegisterConstructor("Storage", NewStorage)
+		rt.RegisterConstructor("FailStorage", NewFailStorage)
+		stdlib.RegisterFS(rt, ".")
+		stdlib.Register(rt)
+		rt.FreezeStdlib()
+		f.interp = rt
+	} else {
+		f.interp.ResetSession(&out, f.stdin())
 	}
+	f.interp.SetContext(ctx)
+	reqCtx.Register(f.interp)
 
-	options := runner.Options{
-		RootFS: testPHPFS(),
-	}
-	if stdinContent != "" {
-		options.Stdin = strings.NewReader(stdinContent)
-	}
-
-	rt := runner.New(&out, options)
-	rt.SetIncludeCache(includeCache)
-	rt.SetExprCache(exprCache)
-	rt.SetContext(ctx)
-
-	rt.RegisterConstructor("Storage", NewStorage)
-	rt.RegisterConstructor("FailStorage", NewFailStorage)
-	stdlib.RegisterFS(rt, ".")
-	stdlib.Register(rt)
-
-	reqCtx.Register(rt)
-
-	if err := rt.Run(prog); err != nil {
+	if err := f.interp.Run(prog); err != nil {
 		if _, ok := runner.IsExit(err); ok {
 			return out.String(), reqCtx, nil
 		}
 		return "Internal Server Error", reqCtx, err
 	}
-
 	return out.String(), reqCtx, nil
 }
 
 func executeFlatstack(ctx context.Context, f *Fixture) (string, error) {
-	prog, err := parser.Parse(f.PHP)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	prog, err := f.program()
 	if err != nil {
 		return "", err
 	}
-	if err := flatstack.Supports(prog); err != nil {
-		return "", fmt.Errorf("flatstack unsupported: %w", err)
+	if f.flatRT == nil {
+		if err := flatstack.Supports(prog); err != nil {
+			return "", fmt.Errorf("flatstack unsupported: %w", err)
+		}
 	}
 
 	var out strings.Builder
-	stdinContent := f.Request.Stdin
-	if stdinContent == "" {
-		stdinContent = f.Stdin
+	if f.flatRT == nil {
+		f.flatRT = newFlatstackTestRuntime(&out, ctx, f.stdin())
+		f.flatRT.FreezeStdlib()
+	} else {
+		f.flatRT.ResetSession(&out, f.stdin())
+		f.flatRT.SetContext(context.WithValue(ctx, tenantKey, "acme"))
 	}
-
-	runtime := newFlatstackTestRuntime(&out, ctx, strings.NewReader(stdinContent))
-	if err := runtime.Run(prog); err != nil {
+	if err := f.flatRT.Run(prog); err != nil {
 		if _, ok := flatstack.IsExit(err); ok {
 			return out.String(), nil
 		}
 		return out.String(), err
 	}
-
 	return out.String(), nil
 }
 
-func newFlatstackTestRuntime(out *strings.Builder, ctx context.Context, input ...*strings.Reader) *flatstack.Runtime {
-	options := flatstack.Options{RootFS: testPHPFS()}
-	if len(input) > 0 {
-		options.Stdin = input[0]
-	}
+func newFlatstackTestRuntime(out *strings.Builder, ctx context.Context, input io.Reader) *flatstack.Runtime {
+	options := flatstack.Options{RootFS: testPHPFS(), Stdin: input}
 	runtime := flatstack.New(out, options)
 	runtime.SetIncludeCache(flatIncludeCache)
 	runtime.SetExprCache(flatExprCache)
