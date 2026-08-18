@@ -127,7 +127,7 @@ Arguments remain dynamically typed on the PHP side. At the Go boundary the refle
 
 Omitted trailing arguments are padded with their Go zero values, for constructors, registered functions and methods alike. A Go binding has no optional parameters, so padding is how PHP's optional arguments are spelled.
 
-Passing more arguments than a non-variadic callable declares is refused, with a throwable naming the callable: `strlen() expects at most 1 argument, 2 given`. PHP refuses the same call as `ArgumentCountError` and words it `expects exactly 1 argument`; the wording differs because padding makes every parameter after the first omitted one optional. Every SPL class name is registered to one type, so `catch (Exception $e)`, `catch (Error $e)` and `catch (Throwable $e)` all catch it.
+Passing more arguments than a non-variadic callable declares is refused, with a throwable naming the callable: `strlen() expects at most 1 argument, 2 given`. PHP refuses the same call as `ArgumentCountError` and words it `expects exactly 1 argument`; the wording differs because padding makes every parameter after the first omitted one optional. Every SPL class name is registered to one type, so `catch (Exception $e)`, `catch (Error $e)` and `catch (Throwable $e)` all catch it, and the caught value answers `getMessage()` and the rest of the `Throwable` methods.
 
 This is not a complete PHP-to-Go coercion system. Prefer stable scalar signatures and validate values in the binding when scripts are untrusted.
 
