@@ -58,8 +58,10 @@ func (h flatHost) SetProperty(receiver any, name string, value any, op string) e
 	})
 }
 
+// Echo writes through the runtime output stack rather than to the base writer,
+// so ob_start captures bytecode output the way it captures interpreted output.
 func (h flatHost) Echo(value any) error {
-	_, err := io.WriteString(h.runtime.out, phpString(value))
+	_, err := io.WriteString(h.runtime.Output(), phpString(value))
 	return err
 }
 
@@ -102,7 +104,15 @@ func (h flatHost) UnsetIndex(container, key any) error {
 func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) error {
 	array, ok := base.(*model.Array)
 	if !ok {
-		return fmt.Errorf("assign: target is not an array")
+		// Native Go collections are writable where Go itself allows it, the
+		// same as in the interpreter: only `$a[] =` needs an *Array, since a
+		// slice cannot grow through the interface holding it.
+		if appendValue {
+			return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
+		}
+		return assignGoIndex(base, key, func(current any) any {
+			return applyAssignOp(op, current, value)
+		})
 	}
 	if appendValue {
 		array.Append(value)
