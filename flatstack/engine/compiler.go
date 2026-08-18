@@ -114,6 +114,12 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		return c.forStmt(node, path)
 	case *model.Foreach:
 		return c.foreachStmt(node, path)
+	case *model.Use:
+		// Imports are resolved while parsing and emit no code.
+	case *model.Declare:
+		// No directive changes how the engine behaves; the block form still
+		// wraps ordinary code.
+		return c.block(node.Body, path+".body")
 	case *model.Unset:
 		return c.unsetStmt(node, path)
 	case *model.Switch:

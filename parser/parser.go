@@ -125,10 +125,10 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 			return nil, err
 		}
 		if s != nil {
-			if top {
+			if top && !isPreambleStmt(s) {
 				p.topSeen = true
 			}
-			if top && p.namespace != "" {
+			if top && p.namespace != "" && !isPreambleStmt(s) {
 				switch s.(type) {
 				case *model.ClassDecl, *model.FuncDecl:
 				default:
@@ -140,6 +140,20 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 		}
 	}
 	return p.stmts.take(mark), nil
+}
+
+// isPreambleStmt reports whether s is a file-preamble statement: an import or
+// a directive rather than code. Both are retained in the AST so the formatter
+// can print them back, and neither counts as the "first statement" that closes
+// the window for a `namespace` declaration, nor as code in a namespaced file.
+func isPreambleStmt(s model.Stmt) bool {
+	switch n := s.(type) {
+	case *model.Use:
+		return true
+	case *model.Declare:
+		return !n.Block
+	}
+	return false
 }
 
 func (p *parser) parseStmt() (model.Stmt, error) {
@@ -266,9 +280,12 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 // alias the same way, so the leading keyword is simply consumed.
 func (p *parser) parseUse() (model.Stmt, error) {
 	p.next() // use
+	kind := ""
 	if p.isKw("function") || p.isKw("const") {
+		kind = p.cur().val
 		p.next()
 	}
+	var imports []model.UseImport
 	for {
 		name, _, err := p.parseQualifiedName(true)
 		if err != nil {
@@ -289,6 +306,7 @@ func (p *parser) parseUse() (model.Stmt, error) {
 			p.imports = map[string]string{}
 		}
 		p.imports[alias] = name
+		imports = append(imports, model.UseImport{Path: name, Alias: aliasSpelling(name, alias)})
 		if p.isOp(",") {
 			p.next()
 			continue
@@ -296,29 +314,53 @@ func (p *parser) parseUse() (model.Stmt, error) {
 		break
 	}
 	p.optSemi()
-	return nil, nil
+	return &model.Use{Kind: kind, Imports: imports}, nil
 }
 
-// parseDeclare consumes a `declare(directive=value, ...)` block. The runtime
-// has one set of semantics, and neither `strict_types` nor `ticks` varies it,
-// so the directives are read and dropped rather than modelled.
+// aliasSpelling returns the alias to print for an import, which is empty when
+// the alias is just the short name of the path (`use A\B;` binds `B` with no
+// `as` clause in the source).
+func aliasSpelling(path, alias string) string {
+	if i := strings.LastIndexByte(path, '\\'); i >= 0 {
+		path = path[i+1:]
+	}
+	if path == alias {
+		return ""
+	}
+	return alias
+}
+
+// parseDeclare parses `declare(directive=value, ...)`. The runtime has one set
+// of semantics, and neither `strict_types` nor `ticks` varies it, so the
+// directives are recorded for printing and otherwise ignored.
 func (p *parser) parseDeclare() (model.Stmt, error) {
 	p.next() // declare
 	if err := p.eatOp("("); err != nil {
 		return nil, err
 	}
-	depth := 1
-	for depth > 0 {
+	out := &model.Declare{}
+	for !p.isOp(")") {
 		if p.atEOF() {
 			return nil, fmt.Errorf("line %d: unterminated declare()", p.cur().line)
 		}
-		switch {
-		case p.isOp("("):
-			depth++
-		case p.isOp(")"):
-			depth--
+		if p.cur().kind != tIdent {
+			return nil, fmt.Errorf("line %d: expected declare directive, got %s", p.cur().line, p.cur())
 		}
-		p.next()
+		name := p.next().val
+		if err := p.eatOp("="); err != nil {
+			return nil, err
+		}
+		value, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		out.Directives = append(out.Directives, model.DeclareDirective{Name: name, Value: value})
+		if p.isOp(",") {
+			p.next()
+		}
+	}
+	if err := p.eatOp(")"); err != nil {
+		return nil, err
 	}
 	// `declare(ticks=1) { ... }` scopes the directive to a block; the block is
 	// ordinary code and still runs.
@@ -327,10 +369,11 @@ func (p *parser) parseDeclare() (model.Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &model.If{Cond: &model.Lit{Value: true}, Then: body}, nil
+		out.Body, out.Block = body, true
+		return out, nil
 	}
 	p.optSemi()
-	return nil, nil
+	return out, nil
 }
 
 // parseUnset parses `unset($a, $b[$k], $o->p, C::$s)`.

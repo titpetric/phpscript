@@ -126,6 +126,13 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 	if len(opts.LeadingComments) > 0 {
 		p.blank()
 	}
+	// `declare` has to come before the namespace declaration, which is printed
+	// from Program.Namespace rather than from the statement list.
+	directives, stmts := splitDeclarePreamble(stmts)
+	if len(directives) > 0 {
+		p.stmts(directives)
+		p.blank()
+	}
 	if prog.Namespace != "" {
 		p.line("namespace " + prog.Namespace + ";")
 		p.blank()
@@ -136,6 +143,19 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 		out += "\n"
 	}
 	return out, p.unsupported
+}
+
+// splitDeclarePreamble separates the leading `declare(...);` statements from
+// the rest of the program. PHP requires them to be the first statement in the
+// file, ahead of the namespace declaration.
+func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
+	for i, s := range stmts {
+		d, ok := s.(*model.Declare)
+		if !ok || d.Block {
+			return stmts[:i], stmts[i:]
+		}
+	}
+	return stmts, nil
 }
 
 type printer struct {
@@ -275,6 +295,10 @@ func (p *printer) stmt(s model.Stmt) {
 		p.line("continue;")
 	case *model.Unset:
 		p.line("unset(" + p.args(n.Targets) + ");")
+	case *model.Use:
+		p.line(p.use(n))
+	case *model.Declare:
+		p.printDeclare(n)
 	default:
 		p.line(p.unsupportedNode("statement", s))
 	}
@@ -308,6 +332,42 @@ func (p *printer) comment(comment string) {
 		}
 		p.line(line)
 	}
+}
+
+// use renders an import statement. The parser resolves imports while parsing,
+// so the statement is inert, but dropping it would rewrite a file into one
+// that no longer states its dependencies.
+func (p *printer) use(n *model.Use) string {
+	out := "use "
+	if n.Kind != "" {
+		out += n.Kind + " "
+	}
+	names := make([]string, 0, len(n.Imports))
+	for _, imp := range n.Imports {
+		name := imp.Path
+		if imp.Alias != "" {
+			name += " as " + imp.Alias
+		}
+		names = append(names, name)
+	}
+	return out + strings.Join(names, ", ") + ";"
+}
+
+func (p *printer) printDeclare(n *model.Declare) {
+	parts := make([]string, 0, len(n.Directives))
+	for _, d := range n.Directives {
+		parts = append(parts, d.Name+"="+p.expr(d.Value))
+	}
+	head := "declare(" + strings.Join(parts, ", ") + ")"
+	if !n.Block {
+		p.line(head + ";")
+		return
+	}
+	p.line(head + " {")
+	p.depth++
+	p.stmts(n.Body)
+	p.depth--
+	p.line("}")
 }
 
 func (p *printer) assign(n *model.Assign) string {

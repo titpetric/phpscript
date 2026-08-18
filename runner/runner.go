@@ -282,6 +282,16 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		}
 		return nil, flowNormal, fmt.Errorf("uncaught exception: %s", phpString(v))
 
+	case *model.Use:
+		// Imports are resolved while parsing; the node exists so the
+		// formatter can print the statement back out.
+		return nil, flowNormal, nil
+
+	case *model.Declare:
+		// No directive changes how the runtime behaves, but the block form
+		// wraps ordinary code, which still runs.
+		return rt.exec(n.Body, scope)
+
 	case *model.FuncDecl, *model.ClassDecl:
 		// Already handled by hoist.
 		return nil, flowNormal, nil

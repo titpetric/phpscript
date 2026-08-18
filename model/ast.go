@@ -150,6 +150,38 @@ type ClassDecl struct {
 	Methods  []*FuncDecl
 }
 
+// Use is `use A\B\C;`, `use A\B\C as D;` or `use function f;`. The parser
+// resolves an import to a fully-qualified name while parsing, so the statement
+// has no effect at runtime. It is still kept in the AST: the formatter rewrites
+// files in place, and a node the printer cannot see is a node it deletes.
+type Use struct {
+	Kind    string // "", "function" or "const"
+	Imports []UseImport
+}
+
+// UseImport is one name of a `use` statement. Alias is set only for the
+// `as` spelling; the short name of Path is implied otherwise.
+type UseImport struct {
+	Path  string
+	Alias string
+}
+
+// Declare is `declare(strict_types=1);` or `declare(ticks=1) { ... }`. The
+// runtime has one set of semantics and no directive varies it, so the
+// directives are recorded for printing and otherwise ignored; a block form
+// still runs its body.
+type Declare struct {
+	Directives []DeclareDirective
+	Body       []Stmt
+	Block      bool // the `declare(...) { ... }` spelling, even with an empty body
+}
+
+// DeclareDirective is one `name=value` pair of a Declare.
+type DeclareDirective struct {
+	Name  string
+	Value Expr
+}
+
 // Unset is `unset($a, $b[$k], $o->p, C::$s)`. Each target is removed from the
 // scope, array or property bag holding it.
 type Unset struct {
@@ -247,6 +279,10 @@ func (*Continue) node() {}
 
 func (*Unset) node() {}
 
+func (*Use) node() {}
+
+func (*Declare) node() {}
+
 func (*InlineHTML) stmt() {}
 
 func (*Echo) stmt() {}
@@ -280,6 +316,10 @@ func (*Break) stmt() {}
 func (*Continue) stmt() {}
 
 func (*Unset) stmt() {}
+
+func (*Use) stmt() {}
+
+func (*Declare) stmt() {}
 
 // ---------------------------------------------------------------------------
 // Expressions
