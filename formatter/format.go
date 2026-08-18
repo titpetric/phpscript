@@ -6,143 +6,13 @@ package formatter
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 
-	"github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 )
-
-// Result is what the formatter did with one file.
-type Result struct {
-	Path    string
-	Changed bool
-	// Skipped is the reason the file was left as it is, and nil when the file
-	// was formatted.
-	Skipped error
-}
-
-// SkipError reports a file the formatter left alone: source it cannot parse,
-// a node it has no spelling for, or output that did not hold up to the checks
-// in File. Formatting rewrites a file in place, so anything the formatter does
-// not fully understand is safer left as it is than rewritten from a partial
-// reading of it.
-type SkipError struct {
-	Path   string
-	Reason error
-}
-
-func (e *SkipError) Error() string { return e.Path + ": " + e.Reason.Error() }
-
-func (e *SkipError) Unwrap() error { return e.Reason }
-
-// Paths formats each path argument in place and reports what happened to every
-// file it looked at. A file it cannot format is skipped rather than failing the
-// run: a directory of PHP holds valid code phpscript does not support yet, and
-// one such file should not stop the rest from being formatted. Only reading
-// and writing errors are returned.
-func Paths(paths []string) ([]Result, error) {
-	files, err := list.ExpandFiles(paths)
-	if err != nil {
-		return nil, err
-	}
-	results := make([]Result, 0, len(files))
-	for _, file := range files {
-		changed, err := File(file)
-		skip := &SkipError{}
-		switch {
-		case errors.As(err, &skip):
-			results = append(results, Result{Path: file, Skipped: err})
-		case err != nil:
-			return results, err
-		default:
-			results = append(results, Result{Path: file, Changed: changed})
-		}
-	}
-	return results, nil
-}
-
-// Changed returns the paths of the files that were rewritten.
-func Changed(results []Result) []string {
-	var out []string
-	for _, r := range results {
-		if r.Changed {
-			out = append(out, r.Path)
-		}
-	}
-	return out
-}
-
-// NeedFormatting reports what Paths would do without writing anything: a
-// result is marked changed when formatting the file would rewrite it.
-func NeedFormatting(paths []string) ([]Result, error) {
-	files, err := list.ExpandFiles(paths)
-	if err != nil {
-		return nil, err
-	}
-	results := make([]Result, 0, len(files))
-	for _, file := range files {
-		in, err := os.ReadFile(file)
-		if err != nil {
-			return results, err
-		}
-		out, err := Source(string(in))
-		if err == nil && out != string(in) {
-			err = verify(out)
-		}
-		if err != nil {
-			results = append(results, Result{Path: file, Skipped: &SkipError{Path: file, Reason: err}})
-			continue
-		}
-		results = append(results, Result{Path: file, Changed: out != string(in)})
-	}
-	return results, nil
-}
-
-// File formats path in place. Reports whether the file contents changed, and
-// returns a *SkipError for a file left as it is.
-func File(path string) (bool, error) {
-	in, err := os.ReadFile(path)
-	if err != nil {
-		return false, err
-	}
-	out, err := Source(string(in))
-	if err != nil {
-		return false, &SkipError{Path: path, Reason: err}
-	}
-	if out == string(in) {
-		return false, nil
-	}
-	if err := verify(out); err != nil {
-		return false, &SkipError{Path: path, Reason: err}
-	}
-	if err := os.WriteFile(path, []byte(out), 0o644); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-// verify checks the two properties formatted output has to hold before it
-// replaces code that works: it parses, and formatting it again does not change
-// it. A printer defect that only shows up on the second pass would otherwise
-// be written to disk on the first.
-func verify(out string) error {
-	if _, err := parser.Parse(out); err != nil {
-		return fmt.Errorf("formatted output does not parse: %w", err)
-	}
-	again, err := Source(out)
-	if err != nil {
-		return fmt.Errorf("formatted output cannot be formatted again: %w", err)
-	}
-	if again != out {
-		return errors.New("formatting is not stable: a second pass changes the output")
-	}
-	return nil
-}
 
 // Source parses src and pretty-prints the AST.
 func Source(src string) (string, error) {
@@ -195,16 +65,6 @@ type Options struct {
 	// holds none of them, so the printer places them by line: a comment is
 	// written out before the first statement that starts below it.
 	Comments []Comment
-}
-
-// Comment is one comment of the source, with the lines it occupied. OwnLine
-// records that nothing but whitespace preceded it, which is what separates a
-// comment written above a statement from one written after it.
-type Comment struct {
-	Text    string
-	Line    int
-	EndLine int
-	OwnLine bool
 }
 
 // Print renders prog as formatted PHP source. Any node the printer has no
@@ -459,75 +319,6 @@ func (p *printer) printStmt(s model.Stmt) {
 	default:
 		p.line(p.unsupportedNode("statement", s))
 	}
-}
-
-// flushComments writes out every comment the author placed above line. A line
-// of zero writes out the rest of them, which is what ends the file.
-func (p *printer) flushComments(line int) {
-	for p.nextComment < len(p.comments) {
-		c := p.comments[p.nextComment]
-		if line > 0 && c.Line >= line {
-			return
-		}
-		p.nextComment++
-		p.comment(c)
-	}
-}
-
-// trailingComment appends the comment written after the code on line, if there
-// is one, to the line just printed.
-func (p *printer) trailingComment(line int) {
-	if line <= 0 || p.nextComment >= len(p.comments) {
-		return
-	}
-	c := p.comments[p.nextComment]
-	if c.OwnLine || c.Line != line {
-		return
-	}
-	p.nextComment++
-	p.appendToLine(" " + c.Text)
-	p.lastLine = c.EndLine
-}
-
-// appendToLine adds text to the end of the line last written.
-func (p *printer) appendToLine(text string) {
-	out := p.buf.Bytes()
-	if len(out) == 0 || out[len(out)-1] != '\n' {
-		p.buf.WriteString(text)
-		return
-	}
-	p.buf.Truncate(p.buf.Len() - 1)
-	p.buf.WriteString(text)
-	p.buf.WriteByte('\n')
-}
-
-// blankFor writes the blank line an author left above the line about to be
-// printed. Nothing is written for the first line of a block, or for a comment
-// that belongs to a statement already printed.
-func (p *printer) blankFor(line int) {
-	if p.lastLine > 0 && line > p.lastLine+1 {
-		p.blank()
-	}
-}
-
-// comment writes one comment at the current indent. The continuation lines of
-// a block comment are re-indented so that the leading asterisks stay under the
-// opening one.
-func (p *printer) comment(c Comment) {
-	p.blankFor(c.Line)
-	lines := strings.Split(strings.ReplaceAll(c.Text, "\r\n", "\n"), "\n")
-	for i, line := range lines {
-		if i > 0 {
-			if trimmed := strings.TrimLeft(line, " \t"); strings.HasPrefix(trimmed, "*") {
-				line = " " + trimmed
-			} else {
-				line = strings.TrimPrefix(line, p.indent())
-			}
-		}
-		p.line(line)
-	}
-	p.lastLine = c.EndLine
-	p.afterComment = true
 }
 
 // use renders an import statement. The parser resolves imports while parsing,
@@ -1276,45 +1067,4 @@ func collapseBlankLines(src string) string {
 		out = out[:len(out)-1]
 	}
 	return strings.Join(out, "\n")
-}
-
-// CollectComments returns every comment of src in source order, with the lines
-// it occupied and whether it stood on a line of its own. The AST holds no
-// comments, so this is what keeps them in a file the formatter rewrites.
-func CollectComments(src string) []Comment {
-	var out []Comment
-	offset := 0
-	for _, val := range parser.TokenGetAll(src) {
-		a, ok := val.([]any)
-		if !ok {
-			offset += len(val.(string))
-			continue
-		}
-		text := a[1].(string)
-		if int(a[0].(int64)) == parser.T_COMMENT {
-			line := int(a[2].(int64))
-			trimmed := strings.TrimRight(text, "\r\n")
-			lineStart := strings.LastIndex(src[:offset], "\n") + 1
-			out = append(out, Comment{
-				Text:    trimmed,
-				Line:    line,
-				EndLine: line + strings.Count(trimmed, "\n"),
-				OwnLine: trimOpenTag(src[lineStart:offset]) == "",
-			})
-		}
-		offset += len(text)
-	}
-	return out
-}
-
-// trimOpenTag returns what precedes a comment on its own line, with an open
-// tag removed: a comment written directly after `<?php` still stands alone.
-func trimOpenTag(prefix string) string {
-	trimmed := strings.TrimSpace(prefix)
-	for _, tag := range []string{"<?php", "<?=", "<?"} {
-		if strings.HasPrefix(trimmed, tag) {
-			return strings.TrimSpace(trimmed[len(tag):])
-		}
-	}
-	return trimmed
 }
