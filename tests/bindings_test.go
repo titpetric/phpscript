@@ -420,7 +420,7 @@ func TestBindingCollectionsAreWritableInPlace(t *testing.T) {
 }
 
 // TestBindingListDestructuring covers list($a, $b) = over a native slice, the
-// idiom explode() feeds in the minitpl compiler.
+// shape explode() returns.
 func TestBindingListDestructuring(t *testing.T) {
 	got := runBinding(t, `<?php list($a, $b) = explode(" as ", "rows as row"); echo $a . "|" . $b;`)
 	if want := "rows|row"; got != want {

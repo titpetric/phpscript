@@ -21,11 +21,8 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"runtime/pprof"
 	"strings"
 	"testing"
-	"time"
 
 	yaml "gopkg.in/yaml.v3"
 
@@ -160,74 +157,6 @@ func TestFixtures(t *testing.T) {
 	}
 }
 
-func BenchmarkMinitpl(b *testing.B) {
-	srcBytes, err := fixturesFS.ReadFile("fixtures/test-minitpl.php")
-	if err != nil {
-		b.Fatal(err)
-	}
-	src := string(srcBytes)
-
-	b.Run("parse", func(b *testing.B) {
-		b.ReportAllocs()
-		for b.Loop() {
-			if _, err := parser.Parse(src); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	prog, err := parser.Parse(src)
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	b.Run("runtime_setup", func(b *testing.B) {
-		b.ReportAllocs()
-		for b.Loop() {
-			var out strings.Builder
-			_ = newTestRuntime(&out, b.Context())
-		}
-	})
-
-	b.Run("run_preparsed", func(b *testing.B) {
-		b.ReportAllocs()
-		for b.Loop() {
-			var out strings.Builder
-			rt := newTestRuntime(&out, b.Context())
-			if err := rt.Run(prog); err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	b.Run("end_to_end_accounting", func(b *testing.B) {
-		b.ReportAllocs()
-		var parseDur, setupDur, runDur time.Duration
-		for b.Loop() {
-			start := time.Now()
-			prog, err := parser.Parse(src)
-			parseDur += time.Since(start)
-			if err != nil {
-				b.Fatal(err)
-			}
-
-			var out strings.Builder
-			start = time.Now()
-			rt := newTestRuntime(&out, b.Context())
-			setupDur += time.Since(start)
-
-			start = time.Now()
-			if err := rt.Run(prog); err != nil {
-				b.Fatal(err)
-			}
-			runDur += time.Since(start)
-		}
-		b.ReportMetric(float64(parseDur.Nanoseconds())/float64(b.N), "parse_ns/op")
-		b.ReportMetric(float64(setupDur.Nanoseconds())/float64(b.N), "setup_ns/op")
-		b.ReportMetric(float64(runDur.Nanoseconds())/float64(b.N), "run_ns/op")
-	})
-}
-
 var bindingBenchmarkSink int
 
 // BenchmarkGoBindingHTTP compares the same constructor and API calls made by a
@@ -313,46 +242,6 @@ echo $storage->tenant() . ":" . $record->value;
 				bindingBenchmarkSink = response.Body.Len()
 			}
 		})
-	}
-}
-
-func TestMinitplProfiles(t *testing.T) {
-	if os.Getenv("PHPSCRIPT_WRITE_PROFILES") != "1" {
-		t.Skip("set PHPSCRIPT_WRITE_PROFILES=1 to write cpu/memory profiles")
-	}
-	srcBytes, err := fixturesFS.ReadFile("fixtures/test-minitpl.php")
-	if err != nil {
-		t.Fatal(err)
-	}
-	src := string(srcBytes)
-	cpu, err := os.Create("minitpl.cpu.pprof")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cpu.Close()
-	if err := pprof.StartCPUProfile(cpu); err != nil {
-		t.Fatal(err)
-	}
-	for i := 0; i < 500; i++ {
-		prog, err := parser.Parse(src)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var out strings.Builder
-		rt := newTestRuntime(&out, t.Context())
-		if err := rt.Run(prog); err != nil {
-			t.Fatal(err)
-		}
-	}
-	pprof.StopCPUProfile()
-
-	mem, err := os.Create("minitpl.mem.pprof")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer mem.Close()
-	if err := pprof.WriteHeapProfile(mem); err != nil {
-		t.Fatal(err)
 	}
 }
 
