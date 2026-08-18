@@ -508,6 +508,7 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 	b.WriteString("(")
 	b.WriteString(p.params(n.Params))
 	b.WriteString(")")
+	b.WriteString(returnType(n.ReturnType))
 	if n.Abstract {
 		b.WriteString(";")
 		p.line(b.String())
@@ -604,7 +605,11 @@ func (p *printer) staticField(f model.Field) string {
 	if visibility == "" {
 		visibility = "public"
 	}
-	out := visibility + " static $" + f.Name
+	out := visibility + " static "
+	if f.Type != "" {
+		out += f.Type + " "
+	}
+	out += "$" + f.Name
 	if f.Default != nil {
 		out += " = " + p.expr(f.Default)
 	}
@@ -618,6 +623,10 @@ func (p *printer) field(f model.Field) string {
 		b.WriteByte(' ')
 	} else {
 		b.WriteString("var ")
+	}
+	if f.Type != "" {
+		b.WriteString(f.Type)
+		b.WriteByte(' ')
 	}
 	b.WriteString("$")
 	b.WriteString(f.Name)
@@ -670,13 +679,35 @@ func (p *printer) printSwitch(n *model.Switch) {
 func (p *printer) params(params []model.Param) string {
 	parts := make([]string, len(params))
 	for i, param := range params {
-		s := "$" + param.Name
+		s := ""
+		if param.Modifiers != "" {
+			s += param.Modifiers + " "
+		}
+		if param.Type != "" {
+			s += param.Type + " "
+		}
+		if param.ByRef {
+			s += "&"
+		}
+		if param.Variadic {
+			s += "..."
+		}
+		s += "$" + param.Name
 		if param.Default != nil {
 			s += " = " + p.expr(param.Default)
 		}
 		parts[i] = s
 	}
 	return strings.Join(parts, ", ")
+}
+
+// returnType renders a `: Type` declaration, which is empty for the many
+// functions that do not declare one.
+func returnType(typ string) string {
+	if typ == "" {
+		return ""
+	}
+	return ": " + typ
 }
 
 func (p *printer) expr(e model.Expr) string {
@@ -763,6 +794,7 @@ func (p *printer) expr(e model.Expr) string {
 			}
 			head += " use (" + strings.Join(captures, ", ") + ")"
 		}
+		head += returnType(n.ReturnType)
 		return head + " " + p.inlineBlock(n.Body)
 	case *model.AssignExpr:
 		op := n.Op

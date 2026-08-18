@@ -392,12 +392,12 @@ func (p *parser) parseClosure() (*model.Closure, error) {
 			return nil, err
 		}
 	}
-	p.skipReturnType()
+	returnType := p.parseReturnType()
 	body, err := p.parseBlock()
 	if err != nil {
 		return nil, err
 	}
-	return &model.Closure{Params: params, Uses: uses, Body: body}, nil
+	return &model.Closure{Params: params, Uses: uses, Body: body, ReturnType: returnType}, nil
 }
 
 // parseClosureUses parses a closure's `use ($a, &$b)` capture list.

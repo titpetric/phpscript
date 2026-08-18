@@ -852,7 +852,7 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 		return nil, err
 	}
 	fd.Params = params
-	p.skipReturnType()
+	fd.ReturnType = p.parseReturnType()
 	body, err := p.parseBlock()
 	if err != nil {
 		return nil, err
@@ -867,12 +867,13 @@ func (p *parser) parseParams() ([]model.Param, error) {
 	}
 	mark := p.params.mark()
 	for !p.isOp(")") {
-		p.skipParamDecoration()
+		var pr model.Param
+		p.parseParamDecoration(&pr)
 		if p.cur().kind != tVar {
 			p.params.drop(mark)
 			return nil, fmt.Errorf("line %d: expected parameter $var", p.cur().line)
 		}
-		pr := model.Param{Name: p.next().val}
+		pr.Name = p.next().val
 		if p.isOp("=") {
 			p.next()
 			def, err := p.parseExpr()
@@ -895,58 +896,76 @@ func (p *parser) parseParams() ([]model.Param, error) {
 // promotion modifiers, a type hint, the by-reference `&`, and the variadic
 // `...`. The runtime is dynamically typed and has no reference values, so none
 // of it changes how the parameter binds; it only has to be recognised.
-func (p *parser) skipParamDecoration() {
+// parseParamDecoration consumes what may precede a parameter name: the
+// visibility and readonly modifiers of a promoted constructor property, a type
+// hint, `&` for a reference and `...` for a variadic. All of it is recorded on
+// the parameter so the formatter can print the declaration back unchanged.
+func (p *parser) parseParamDecoration(pr *model.Param) {
+	var mods []string
 	for p.isKw("public", "private", "protected", "readonly") {
+		mods = append(mods, p.cur().val)
 		p.next()
 	}
-	p.skipTypeHint()
+	pr.Modifiers = strings.Join(mods, " ")
+	pr.Type = p.parseTypeHint()
 	if p.isOp("&") {
 		p.next()
+		pr.ByRef = true
 	}
 	for p.isOp(".") {
 		p.next()
+		pr.Variadic = true
 	}
 }
 
-// skipTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, and
-// `A|B` unions. It stops at the first token that cannot continue a type, so a
-// parameter list with no hints costs one comparison.
-func (p *parser) skipTypeHint() {
+// parseTypeHint consumes an optional type: `?Name`, `\Ns\Name`, `array`, and
+// `A|B` unions, and returns its spelling. It stops at the first token that
+// cannot continue a type, so a parameter list with no hints costs one
+// comparison.
+//
+// The runtime ignores types, but the formatter rewrites files in place, so a
+// type it cannot see is a type it deletes.
+func (p *parser) parseTypeHint() string {
+	var b strings.Builder
+	take := func() {
+		b.WriteString(p.cur().val)
+		p.next()
+	}
 	for {
 		if p.isOp("?") {
-			p.next()
+			take()
 			continue
 		}
 		if p.isOp("\\") {
-			p.next()
+			take()
 			continue
 		}
 		if p.cur().kind != tIdent {
-			return
+			return b.String()
 		}
-		p.next()
+		take()
 		for p.isOp("\\") {
-			p.next()
+			take()
 			if p.cur().kind == tIdent {
-				p.next()
+				take()
 			}
 		}
 		if p.isOp("|") {
-			p.next()
+			take()
 			continue
 		}
-		return
+		return b.String()
 	}
 }
 
-// skipReturnType consumes a `: Type` return declaration, which sits between a
-// parameter list and its body.
-func (p *parser) skipReturnType() {
+// parseReturnType consumes a `: Type` return declaration, which sits between a
+// parameter list and its body, and returns the type spelling.
+func (p *parser) parseReturnType() string {
 	if !p.isOp(":") {
-		return
+		return ""
 	}
 	p.next()
-	p.skipTypeHint()
+	return p.parseTypeHint()
 }
 
 func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
@@ -1022,7 +1041,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 		case p.cur().kind == tVar || p.cur().kind == tIdent || p.isOp("?"):
 			// Property declared without `var`, with or without a type hint
 			// (`protected $stack = array();`, `private ?string $dir = null;`).
-			p.skipTypeHint()
+			fieldType := p.parseTypeHint()
 			if p.cur().kind != tVar {
 				return nil, fmt.Errorf("line %d: unexpected token in class body: %s", p.cur().line, p.cur())
 			}
@@ -1031,6 +1050,9 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 				return nil, err
 			}
 			p.setFieldSpans(fields, memberStart)
+			for i := range fields {
+				fields[i].Type = fieldType
+			}
 			// A static property is storage on the class, shared by every
 			// instance, so it is kept apart from the per-instance fields.
 			if isStatic {
@@ -1084,11 +1106,12 @@ func (p *parser) parseAbstractMethod(visibility string, isStatic bool) (*model.F
 	if err != nil {
 		return nil, err
 	}
-	p.skipReturnType()
+	returnType := p.parseReturnType()
 	p.optSemi()
 	return &model.FuncDecl{
 		Name:       name,
 		Params:     params,
+		ReturnType: returnType,
 		Visibility: visibility,
 		Static:     isStatic,
 		Abstract:   true,

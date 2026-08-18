@@ -134,6 +134,7 @@ type FuncDecl struct {
 	Params     []Param
 	Body       []Stmt
 	Visibility string // "public", "protected", "private", or ""
+	ReturnType string // declared `: Type`, kept for printing only
 	Static     bool
 	Abstract   bool // declaration only; Body is empty
 }
@@ -233,9 +234,18 @@ type Break struct{}
 type Continue struct{}
 
 // Param is a single function parameter with an optional default value.
+//
+// The runtime binds a parameter by name and ignores everything declared around
+// it, but the formatter rewrites files in place, so the declaration is kept:
+// Modifiers holds the `public readonly` of a promoted constructor property,
+// Type the type hint, and ByRef and Variadic the `&` and `...` markers.
 type Param struct {
-	Name    string
-	Default Expr // nil if required
+	Name      string
+	Default   Expr // nil if required
+	Modifiers string
+	Type      string
+	ByRef     bool
+	Variadic  bool
 }
 
 // Field is a class property declaration (also reused for class constants).
@@ -243,6 +253,7 @@ type Field struct {
 	Name       string
 	Default    Expr   // nil if none
 	Visibility string // "public", "protected", "private", or ""
+	Type       string // declared type hint, kept for printing only
 	// Span is the source-line range of the declaration when Field came from
 	// the parser. The formatter uses it to keep the blank lines an author put
 	// between groups of properties.
@@ -490,10 +501,11 @@ type Cast struct {
 // uses the `use (...)` capture form, so Uses records the captured names. Static
 // marks `static function(){}`, which PHP declares to have no `$this`.
 type Closure struct {
-	Params []Param
-	Uses   []ClosureUse
-	Body   []Stmt
-	Static bool
+	Params     []Param
+	Uses       []ClosureUse
+	Body       []Stmt
+	ReturnType string // declared `: Type`, kept for printing only
+	Static     bool
 }
 
 // ClosureUse is one entry of a closure's `use (...)` capture list. ByRef marks
