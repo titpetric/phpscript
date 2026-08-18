@@ -27,6 +27,13 @@
 //
 // A function that reports "no buffer is active" returns false, as PHP does,
 // rather than an empty string — the two are distinguishable with ===.
+//
+// # Regular expressions
+//
+// PHP's preg_* family is PCRE; Go's regexp is RE2, which cannot express
+// backreferences or lookaround. regex.go compiles each pattern with whichever
+// engine can express it, so both `\1` and a linear-time guarantee are
+// available where they apply.
 package compat
 
 import (
@@ -42,6 +49,8 @@ func init() {
 // Register installs symbols into the runtime. Each runtime gets its own buffer
 // stack, so concurrent requests capture their own output.
 func Register(rt *runner.Runtime) {
+	registerRegex(rt)
+
 	buffers := newBuffers(rt)
 
 	// ob_start takes a callback and chunk size in PHP. Neither changes what a

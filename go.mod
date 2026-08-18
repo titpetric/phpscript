@@ -4,6 +4,7 @@ go 1.27rc1
 
 require (
 	github.com/charmbracelet/x/ansi v0.11.8
+	github.com/dlclark/regexp2 v1.12.0
 	github.com/expr-lang/expr v1.17.8
 	github.com/go-bridget/mig v0.4.4
 	github.com/go-chi/chi/v5 v5.3.1
