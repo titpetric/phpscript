@@ -232,6 +232,34 @@ func (a *Array) Map() map[string]any {
 
 // Clear removes all entries and resets list indexing, returning the array to
 // list mode.
+// Int64List reports whether a is a dense list of int64 values and returns a
+// copy of those values.
+func (a *Array) Int64List() ([]int64, bool) {
+	if a == nil || !a.isList() {
+		return nil, false
+	}
+	out := make([]int64, len(a.list))
+	for i, v := range a.list {
+		n, ok := v.(int64)
+		if !ok {
+			return nil, false
+		}
+		out[i] = n
+	}
+	return out, true
+}
+
+// ReplaceInt64List puts vals back as a dense int64 list.
+func (a *Array) ReplaceInt64List(vals []int64) {
+	a.keys = nil
+	a.values = nil
+	a.list = make([]any, len(vals))
+	for i, v := range vals {
+		a.list[i] = v
+	}
+	a.nextID = int64(len(vals))
+}
+
 func (a *Array) Clear() {
 	a.list = nil
 	a.keys = nil
