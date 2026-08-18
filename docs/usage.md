@@ -121,8 +121,9 @@ phpscript list index.php    # A specific PHP file
 ```
 
 The Route column names the entry point a file provides: a `METHOD /path`
-annotation, or `@startup` for a file the server runs before it listens. Files
-that are only included by others have neither.
+annotation, `@startup` for a file the server runs before it listens, or
+`@schedule …` for a clock or interval job. Files that are only included by
+others have neither.
 
 ### `phpscript ast <file.php>`
 
@@ -178,6 +179,30 @@ $migrate = new Database\Migrate("app");
 $migrate->load("./schema/*.up.sql");
 $migrate->run();
 ```
+
+`@schedule` annotations start after listen and keep running until shutdown:
+
+```php
+<?php
+// @schedule daily -- prune
+// @schedule every 5 minutes -- sync
+
+switch ($argv[1]) {
+case "prune":
+	break;
+case "sync":
+	break;
+default:
+	echo "Unknown/missing command";
+	exit(1);
+}
+```
+
+Specs: `every N seconds|minutes|hours`, `hourly`, `daily`, `weekly`,
+`monthly`, `every weekday`, `every sunday` (any weekday), `N times per hour|day`.
+Arguments after `--` become `$argv[1:]`. Calendar specs fire at local midnight.
+A tick is skipped if the previous run is still going. Output is stored on the
+oida span as `output`.
 
 Startup files run with the CLI SAPI and the application filesystem. If one
 fails, the server is not started. See

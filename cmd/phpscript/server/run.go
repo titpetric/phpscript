@@ -203,6 +203,7 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 		annotations.WithObservers(observers...),
 	}
 	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
+	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
 	if recorder != nil {
 		svc.Use(recorder.Middleware)
 		svc.Register(recorder)
