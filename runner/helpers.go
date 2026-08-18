@@ -187,8 +187,9 @@ func adapt(fn any) func(...any) (any, error) {
 	return func(args ...any) (any, error) { return invokeAny(fn, args) }
 }
 
-// invokeAny calls fn (any Go callable) with args via reflection, coercing
-// arguments to the declared parameter types where convertible.
+// argAt returns the i-th argument, or nil when the script passed fewer
+// arguments than the binding declares. PHP tolerates the short call, and the
+// reflect path pads the same way with zero values.
 func argAt(args []any, i int) any {
 	if i < len(args) {
 		return args[i]
@@ -196,6 +197,14 @@ func argAt(args []any, i int) any {
 	return nil
 }
 
+// invokeFast calls the binding directly when its signature is one of the
+// shapes stdlib registers most, skipping reflect.Value.Call and the []reflect
+// .Value slice it needs. The final return reports whether the signature was
+// recognised; a false sends the caller to the reflect path.
+//
+// Callers must keep this behind invokeAny's panic boundary: a binding that
+// panics here has to surface as a HostPanicError just as it does under
+// reflection, or it unwinds the VM instead of becoming a PHP exception.
 func invokeFast(fn any, args []any) (any, error, bool) {
 	switch f := fn.(type) {
 	case func(...any) (any, error):
@@ -225,16 +234,22 @@ func invokeFast(fn any, args []any) (any, error, bool) {
 	return nil, nil, false
 }
 
+// invokeAny calls fn (any Go callable) with args, coercing arguments to the
+// declared parameter types where convertible. Common signatures are dispatched
+// directly by invokeFast; the rest go through reflection.
 func invokeAny(fn any, args []any) (result any, err error) {
-	if result, err, ok := invokeFast(fn, args); ok {
-		return result, err
-	}
+	// The boundary covers both dispatch paths. Registered code is host code,
+	// and a panic crossing into the VM has to arrive as a catchable PHP
+	// exception rather than unwinding the interpreter.
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil
 			err = &HostPanicError{Callable: fmt.Sprintf("%T", fn), Value: recovered}
 		}
 	}()
+	if fast, fastErr, ok := invokeFast(fn, args); ok {
+		return fast, fastErr
+	}
 	rv := reflect.ValueOf(fn)
 	if rv.Kind() != reflect.Func {
 		return nil, fmt.Errorf("not callable: %T", fn)

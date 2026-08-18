@@ -360,6 +360,7 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 		rt.SetExprCache(exprCache)
 		rt.RegisterConstructor("Storage", NewStorage)
 		rt.RegisterConstructor("FailStorage", NewFailStorage)
+		registerPanicBindings(rt)
 		stdlib.RegisterFS(rt, ".")
 		stdlib.Register(rt)
 		rt.FreezeStdlib()
@@ -418,6 +419,7 @@ func newFlatstackTestRuntime(out *strings.Builder, ctx context.Context, input io
 	runtime.SetContext(context.WithValue(ctx, tenantKey, "acme"))
 	runtime.RegisterConstructor("Storage", NewStorage)
 	runtime.RegisterConstructor("FailStorage", NewFailStorage)
+	registerPanicBindings(runtime)
 	stdlib.RegisterFS(runtime, ".")
 	stdlib.Register(runtime)
 	return runtime
