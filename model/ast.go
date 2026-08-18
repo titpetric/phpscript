@@ -326,8 +326,15 @@ func (*Declare) stmt() {}
 // ---------------------------------------------------------------------------
 
 // Lit is a literal scalar: nil, bool, int64, float64 or string.
+//
+// Raw holds the source spelling, quotes included, for a string literal that
+// came from a parsed file. Decoding a string is lossy (`'$a'` and `"\$a"`
+// decode to the same value, and only one of them can be re-encoded from it),
+// so the formatter prints from Raw and falls back to encoding Value for nodes
+// that were built rather than parsed.
 type Lit struct {
 	Value any
+	Raw   string
 }
 
 // Var is a `$name` reference (the `$` is stripped during parsing).

@@ -24,9 +24,16 @@ const (
 )
 
 // token is a single lexical unit with source position for diagnostics.
+//
+// raw is set for string literals only. val holds the decoded value, which is
+// what the runtime needs, but the decoding is lossy: it cannot tell `'$a'`
+// from `"\$a"`, and re-encoding the value picks one spelling for both. The
+// formatter rewrites files in place, so it prints the literal from raw, which
+// is a slice of the source and costs no allocation.
 type token struct {
 	kind tokKind
 	val  string
+	raw  string
 	pos  int
 	line int
 }
@@ -124,6 +131,12 @@ func (l *lexer) skipShebang() {
 
 func (l *lexer) emit(k tokKind, v string) {
 	l.tokens = append(l.tokens, token{kind: k, val: v, pos: l.pos, line: l.line})
+}
+
+// emitString emits a string literal, keeping the source spelling alongside the
+// decoded value.
+func (l *lexer) emitString(val string, start int) {
+	l.tokens = append(l.tokens, token{kind: tString, val: val, raw: l.src[start:l.pos], pos: l.pos, line: l.line})
 }
 
 // lexInlineHTML consumes raw text until the next <?php (or <?) open tag.
@@ -235,6 +248,7 @@ func (l *lexer) lexNumber() {
 }
 
 func (l *lexer) lexString(quote byte) error {
+	open := l.pos
 	l.advanceRune() // opening quote
 
 	// Fast path: a literal with no escape sequence is a substring of the
@@ -249,7 +263,7 @@ func (l *lexer) lexString(quote byte) error {
 			val := l.src[start:i]
 			l.advance(i - start) // keeps the line counter accurate
 			l.advanceRune()      // closing quote
-			l.emit(tString, val)
+			l.emitString(val, open)
 			return nil
 		}
 	}
@@ -270,7 +284,7 @@ func (l *lexer) lexString(quote byte) error {
 		}
 		if c == quote {
 			l.advanceRune()
-			l.emit(tString, b.String())
+			l.emitString(b.String(), open)
 			return nil
 		}
 		b.WriteByte(c)

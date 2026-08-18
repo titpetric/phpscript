@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/formatter"
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 )
 
@@ -121,6 +122,35 @@ function check($values)
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in:\n%s", want, out)
 		}
+	}
+}
+
+func TestQuoteStyleOfStringLiteralsIsKept(t *testing.T) {
+	in := "<?php\n$html = '<span class=\"ok\">OK</span>';\n$row = \"row $index\";\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`$html = '<span class="ok">OK</span>';`,
+		`$row = "row $index";`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("missing %q in:\n%s", want, out)
+		}
+	}
+}
+
+// A literal that was built rather than parsed has no source spelling to keep,
+// so the printer picks the quoting: single quotes when they avoid escaping a
+// dollar sign, which a double-quoted literal would interpolate.
+func TestSyntheticStringLiteralAvoidsInterpolation(t *testing.T) {
+	prog := &model.Program{Stmts: []model.Stmt{
+		&model.Echo{Args: []model.Expr{&model.Lit{Value: `$var "quoted"`}}},
+	}}
+	out := formatter.Print(prog, formatter.Options{})
+	if !strings.Contains(out, `echo '$var "quoted"';`) {
+		t.Fatalf("unexpected quoting:\n%s", out)
 	}
 }
 

@@ -1,0 +1,8 @@
+<?php
+$exitCode = '<span class="badge badge-ok">OK</span>';
+$pattern = '/\$\{([a-z]+)\}/';
+$interpolated = "row $index of $total";
+$escaped = "tab\tnewline\n";
+$mixed = 'it\'s here';
+$empty = '';
+echo $exitCode . $pattern . $interpolated . $escaped . $mixed . $empty;

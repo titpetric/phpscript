@@ -646,6 +646,14 @@ func (p *printer) expr(e model.Expr) string {
 	case nil:
 		return ""
 	case *model.Lit:
+		// A parsed string literal keeps its source spelling: single quotes do
+		// not interpolate and do not escape a double quote, which is what
+		// makes them the readable choice for HTML and for regular expressions.
+		// A literal holding a carriage return is the exception, because the
+		// output has its line endings normalised, which would edit the value.
+		if _, ok := n.Value.(string); ok && n.Raw != "" && !strings.Contains(n.Raw, "\r") {
+			return n.Raw
+		}
 		return p.lit(n.Value)
 	case *model.Var:
 		if n.Const {
@@ -805,12 +813,19 @@ func (p *printer) lit(v any) string {
 	}
 }
 
+// phpQuote spells s as a PHP string literal. It is the fallback for literals
+// that were built rather than parsed, so it has no source spelling to follow:
+// single quotes are used when they avoid escaping, because a double-quoted
+// literal would also have to escape `$` to keep PHP from interpolating it.
 func phpQuote(s string) string {
+	if !strings.ContainsAny(s, "'\\") && strings.ContainsAny(s, "\"$") && !strings.ContainsAny(s, "\n\r\t") {
+		return "'" + s + "'"
+	}
 	var b strings.Builder
 	b.WriteByte('"')
 	for _, r := range s {
 		switch r {
-		case '\\', '"':
+		case '\\', '"', '$':
 			b.WriteByte('\\')
 			b.WriteRune(r)
 		case '\n':

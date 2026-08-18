@@ -242,7 +242,7 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 
 	case tString:
 		p.next()
-		return p.newLit(t.val), nil
+		return p.newStringLit(t.val, t.raw), nil
 
 	case tIdent:
 		return p.parseIdentExpr()
