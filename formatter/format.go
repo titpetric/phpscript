@@ -70,10 +70,16 @@ func Source(src string) (string, error) {
 		return "", err
 	}
 	declarationComments, attachedCommentLines := commentsBeforeDeclarations(src)
-	out := Print(prog, Options{
+	out, unsupported := printProgram(prog, Options{
 		LeadingComments:     leadingComments(src, attachedCommentLines),
 		DeclarationComments: declarationComments,
 	})
+	// Formatting rewrites the file in place, so a node the printer cannot
+	// spell has to stop the rewrite: emitting the placeholder would delete
+	// working code.
+	if len(unsupported) > 0 {
+		return "", fmt.Errorf("cannot format: unsupported %s", strings.Join(unsupported, ", "))
+	}
 	out = strings.ReplaceAll(out, "\r\n", "\n")
 	return strings.ReplaceAll(out, "\r", "\n"), nil
 }
@@ -84,8 +90,16 @@ type Options struct {
 	DeclarationComments map[int][][]string // comment groups keyed by declaration source line
 }
 
-// Print renders prog as formatted PHP source.
+// Print renders prog as formatted PHP source. Any node the printer has no
+// spelling for is rendered as a placeholder comment; use Source, which refuses
+// to rewrite a file in that case.
 func Print(prog *model.Program, opts Options) string {
+	out, _ := printProgram(prog, opts)
+	return out
+}
+
+// printProgram renders prog and reports the nodes it could not render.
+func printProgram(prog *model.Program, opts Options) (string, []string) {
 	startsInPHP := prog.Namespace != "" || len(opts.LeadingComments) > 0 || len(prog.Stmts) == 0
 	if len(prog.Stmts) > 0 {
 		_, startsWithHTML := prog.Stmts[0].(*model.InlineHTML)
@@ -121,16 +135,29 @@ func Print(prog *model.Program, opts Options) string {
 	if !strings.HasSuffix(out, "\n") {
 		out += "\n"
 	}
-	return out
+	return out, p.unsupported
 }
 
 type printer struct {
-	buf                 strings.Builder
-	depth               int
-	namespace           string
-	inPHP               bool
-	spans               map[model.Stmt]model.SourceSpan
+	buf       strings.Builder
+	depth     int
+	namespace string
+	inPHP     bool
+	spans     map[model.Stmt]model.SourceSpan
+	// unsupported records the AST nodes the printer has no spelling for. The
+	// formatter rewrites files in place, so printing a placeholder comment for
+	// one would delete working code; Source reports them as an error instead
+	// and leaves the file alone.
+	unsupported         []string
 	declarationComments map[int][][]string
+}
+
+// unsupportedNode records a node the printer cannot render and returns the
+// placeholder text used in the (discarded) output.
+func (p *printer) unsupportedNode(kind string, node any) string {
+	text := fmt.Sprintf("/* unsupported %s %T */", kind, node)
+	p.unsupported = append(p.unsupported, fmt.Sprintf("%s %T", kind, node))
+	return text
 }
 
 func (p *printer) indent() string {
@@ -246,8 +273,10 @@ func (p *printer) stmt(s model.Stmt) {
 		p.line("break;")
 	case *model.Continue:
 		p.line("continue;")
+	case *model.Unset:
+		p.line("unset(" + p.args(n.Targets) + ");")
 	default:
-		p.line(fmt.Sprintf("/* unsupported statement %T */", s))
+		p.line(p.unsupportedNode("statement", s))
 	}
 }
 
@@ -449,6 +478,10 @@ func (p *printer) printClass(n *model.ClassDecl) {
 		writeBlank()
 		p.line(p.field(f) + ";")
 	}
+	for _, f := range n.Statics {
+		writeBlank()
+		p.line(p.staticField(f) + ";")
+	}
 	for _, c := range n.Consts {
 		writeBlank()
 		vis := ""
@@ -464,6 +497,20 @@ func (p *printer) printClass(n *model.ClassDecl) {
 	}
 	p.depth--
 	p.line("}")
+}
+
+// staticField renders a `static $name` property declaration. The modifier
+// follows the visibility, which is the order PHP's own style guides use.
+func (p *printer) staticField(f model.Field) string {
+	visibility := f.Visibility
+	if visibility == "" {
+		visibility = "public"
+	}
+	out := visibility + " static $" + f.Name
+	if f.Default != nil {
+		out += " = " + p.expr(f.Default)
+	}
+	return out
 }
 
 func (p *printer) field(f model.Field) string {
@@ -541,6 +588,9 @@ func (p *printer) expr(e model.Expr) string {
 	case *model.Lit:
 		return p.lit(n.Value)
 	case *model.Var:
+		if n.Const {
+			return n.Name
+		}
 		return "$" + n.Name
 	case *model.ArrayLit:
 		return p.arrayLit(n)
@@ -583,10 +633,31 @@ func (p *printer) expr(e model.Expr) string {
 		return p.expr(n.Cond) + " ? " + p.expr(n.Then) + " : " + p.expr(n.Else)
 	case *model.ClassConst:
 		return p.typeName(n.Class) + "::" + n.Name
+	case *model.StaticProp:
+		return p.typeName(n.Class) + "::$" + n.Name
+	case *model.StaticCall:
+		return p.typeName(n.Class) + "::" + n.Method + "(" + p.args(n.Args) + ")"
+	case *model.Invoke:
+		return p.expr(n.Callee) + "(" + p.args(n.Args) + ")"
 	case *model.Cast:
 		return "(" + n.Type + ")" + p.expr(n.X)
 	case *model.Closure:
-		return "function(" + p.params(n.Params) + ") " + p.inlineBlock(n.Body)
+		head := "function(" + p.params(n.Params) + ")"
+		if n.Static {
+			head = "static " + head
+		}
+		if len(n.Uses) > 0 {
+			captures := make([]string, 0, len(n.Uses))
+			for _, use := range n.Uses {
+				name := "$" + use.Name
+				if use.ByRef {
+					name = "&" + name
+				}
+				captures = append(captures, name)
+			}
+			head += " use (" + strings.Join(captures, ", ") + ")"
+		}
+		return head + " " + p.inlineBlock(n.Body)
 	case *model.AssignExpr:
 		op := n.Op
 		if op == "[]=" {
@@ -602,7 +673,7 @@ func (p *printer) expr(e model.Expr) string {
 		}
 		return kw + " " + p.expr(n.Path)
 	default:
-		return fmt.Sprintf("/* expr %T */", e)
+		return p.unsupportedNode("expression", e)
 	}
 }
 
