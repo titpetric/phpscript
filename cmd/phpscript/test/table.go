@@ -42,6 +42,7 @@ type terminalTable struct {
 	widths  []int
 	loop    bool
 	profile bool
+	lat     bool
 }
 
 type resultTable interface {
@@ -64,9 +65,13 @@ func newTerminalTable(w io.Writer, filenames []string, opts Options) *terminalTa
 		headers: []string{"Test", "Filename", "Duration (ms)"},
 		loop:    opts.Count > 0 || opts.Time > 0,
 		profile: opts.Profile,
+		lat:     opts.Time > 0,
 	}
 	if t.loop {
 		t.headers = append(t.headers, "Count")
+	}
+	if t.lat {
+		t.headers = append(t.headers, "P50 (µs)", "P95 (µs)", "P99 (µs)")
 	}
 	if t.profile {
 		t.headers = append(t.headers, "Allocs/op", "Bytes/op")
@@ -107,6 +112,13 @@ func (t *terminalTable) writeResult(r *fixtureRun) {
 	}
 	if t.loop {
 		row = append(row, colorWhite+strconv.Itoa(r.Runs)+colorReset)
+	}
+	if t.lat {
+		row = append(row,
+			colorWhite+formatMicros(r.P50)+colorReset,
+			colorWhite+formatMicros(r.P95)+colorReset,
+			colorWhite+formatMicros(r.P99)+colorReset,
+		)
 	}
 	if t.profile {
 		row = append(row,
@@ -175,6 +187,9 @@ func (t *markdownTable) writeResult(r *fixtureRun) {
 	if t.loop {
 		row = append(row, strconv.Itoa(r.Runs))
 	}
+	if t.lat {
+		row = append(row, formatMicros(r.P50), formatMicros(r.P95), formatMicros(r.P99))
+	}
 	if t.profile {
 		row = append(row, strconv.FormatUint(r.AllocsPerOp, 10), strconv.FormatUint(r.BytesPerOp, 10))
 	}
@@ -196,6 +211,10 @@ func (t *markdownTable) writeMarkdownRow(values []string) {
 
 func formatDuration(duration time.Duration) string {
 	return strconv.FormatInt(duration.Milliseconds(), 10)
+}
+
+func formatMicros(d time.Duration) string {
+	return strconv.FormatInt(d.Microseconds(), 10)
 }
 
 func formatGCRuns(gcRuns uint32, runs int) string {

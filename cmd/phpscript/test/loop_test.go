@@ -96,6 +96,7 @@ func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 		{Options{Count: 2}, "| Test | Filename | Duration (ms) | Count | GC Runs |"},
 		{Options{Count: 2, Profile: true}, "| Test | Filename | Duration (ms) | Count | Allocs/op | Bytes/op | GC Runs |"},
 		{Options{Profile: true}, "| Test | Filename | Duration (ms) | Allocs/op | Bytes/op | GC Runs |"},
+		{Options{Time: time.Millisecond}, "| Test | Filename | Duration (ms) | Count | P50 (µs) | P95 (µs) | P99 (µs) | GC Runs |"},
 	}
 	for _, c := range cases {
 		var buf bytes.Buffer
@@ -165,5 +166,18 @@ func TestTerminalSummaryUsesWorktreeStyle(t *testing.T) {
 func TestFormatGCRuns(t *testing.T) {
 	if got, want := formatGCRuns(2, 8), "2 (25.00%)"; got != want {
 		t.Fatalf("formatGCRuns(2, 8) = %q, want %q", got, want)
+	}
+}
+
+func TestPercentileNs(t *testing.T) {
+	samples := []int64{10, 20, 30, 40, 50, 60, 70, 80, 90, 100}
+	if got, want := percentileNs(samples, 50), int64(50); got != want {
+		t.Fatalf("p50 = %d, want %d", got, want)
+	}
+	if got, want := percentileNs(samples, 95), int64(100); got != want {
+		t.Fatalf("p95 = %d, want %d", got, want)
+	}
+	if got := percentileNs(nil, 50); got != 0 {
+		t.Fatalf("empty = %d, want 0", got)
 	}
 }
