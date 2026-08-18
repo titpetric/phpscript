@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/titpetric/phpscript/internal/arrayi64"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
@@ -526,12 +527,37 @@ func phpUsort(a any, cmp func(...any) (any, error)) bool {
 // phpSort orders a list with PHP's default comparison (see phpCompare). Like
 // sort(), it discards the keys and reindexes the result from zero.
 func phpSort(a any) bool {
+	if sortInt64Array(a, false) {
+		return true
+	}
 	return sortValues(a, sortLess)
 }
 
 // phpRsort is phpSort in descending order.
 func phpRsort(a any) bool {
+	if sortInt64Array(a, true) {
+		return true
+	}
 	return sortValues(a, func(x, y any) bool { return sortLess(y, x) })
+}
+
+func sortInt64Array(a any, desc bool) bool {
+	arr, ok := a.(*model.Array)
+	if !ok || arr == nil {
+		return false
+	}
+	vals, ok := arr.Int64List()
+	if !ok {
+		return false
+	}
+	arrayi64.Sort(vals, len(vals))
+	if desc {
+		for i, j := 0, len(vals)-1; i < j; i, j = i+1, j-1 {
+			vals[i], vals[j] = vals[j], vals[i]
+		}
+	}
+	arr.ReplaceInt64List(vals)
+	return true
 }
 
 // sortLess is the boolean sort.SliceStable wants, derived from phpCompare so
