@@ -101,6 +101,8 @@ See the generated [implemented API inventory](implemented-apis.md) for the funct
 
 Use `get_defined_functions()`, `get_declared_classes()`, and `get_defined_constants()` to inspect the exact APIs registered by a host.
 
+New bindings follow [Standard library design conventions](../../stdlib-conventions.md): PHP function names when the call already exists, a single top-level namespace (`HTTP`, `SQL`, `Telemetry`) when the API is ours. `PS\` is not extended.
+
 ## Runtime registration
 
 Embedding hosts opt into runtime services separately:
