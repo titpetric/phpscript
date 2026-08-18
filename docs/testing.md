@@ -6,7 +6,14 @@ Run the full test suite from the repository root:
 go test ./...
 ```
 
-Most language and runtime behavior should be covered by a `.phpt` fixture. Use a Go test in the package that owns the behavior when the assertion needs direct access to Go APIs, parser models, runtime state, concurrency, or error types.
+A change to language or runtime behavior lands with a `.phpt` fixture. Use a Go test in the package that owns the behavior when the assertion needs direct access to Go APIs, parser models, runtime state, concurrency, or error types, and add the fixture as well: a Go test proves the Go code does what its author meant, a fixture proves a script sees it.
+
+A fixture does two jobs, and both are required of it:
+
+1. It states the behavior, so a change that alters the behavior fails a named test instead of surfacing in a benchmark or a demo.
+2. It records what PHP itself produces, so the runtime is measured against the language rather than against its own previous output.
+
+The second job is the one that finds defects. Expected output written from what phpscript currently prints locks in whatever it prints, including the parts that are wrong. Expected output taken from `php` makes the fixture a compatibility check.
 
 ## Go test utilities
 
@@ -123,6 +130,32 @@ Internal Server Error
 
 Files used by `include`, autoloading, templates, or filesystem APIs can be placed below `tests/fixtures`. The fixture runtime exposes that directory as its root filesystem, so fixture code refers to those files with paths relative to it.
 
+### Checking a fixture against PHP
+
+PHP 8.4 is installed as `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section is what `php` prints for the same source, and that is verified rather than assumed. The two `---` lines make the sections addressable:
+
+```bash
+cd tests/fixtures
+awk '/^---$/{n++; next} n==1' sort.phpt > /tmp/fixture.php
+awk '/^---$/{n++; next} n==2' sort.phpt > /tmp/want.txt
+php /tmp/fixture.php > /tmp/got.txt
+diff /tmp/want.txt /tmp/got.txt
+```
+
+An empty diff means the fixture holds phpscript to PHP's behavior. A difference is the fixture's answer to a question worth resolving before it lands: either phpscript is wrong, or the fixture's expectation is.
+
+Write the fixture this way around. Run the source through `php` first, paste that output into the expected section, and then make phpscript produce it. Writing the expected section from phpscript's output tests the runtime against itself.
+
+Three kinds of fixture cannot be checked this way, and none of them is an excuse to skip the check on the ones that can:
+
+| Fixture uses                                                     | Why `php` cannot run it                                                       |
+|------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| A host binding (`Storage`, `Database`, `SharedMemory`, `tenant`) | The name does not exist in PHP; the expected output is the runtime's contract |
+| Runtime introspection (`phpinfo`, `get_included_files`)          | The output names phpscript, or absolute paths that differ per machine         |
+| Host request state (superglobals populated by the harness)       | The harness supplies the request, not the PHP CLI SAPI                        |
+
+A fixture in one of these groups states in its `description` what defines the expected output, because there is no second implementation to appeal to.
+
 ## Testing with flatstack
 
 Every `.phpt` fixture runs through the default runtime. To additionally run a fixture through the native flatstack bytecode runtime, add one metadata field:
@@ -154,4 +187,4 @@ go test ./tests -run 'TestFixtures/string_concatenation'
 go test ./tests -run 'TestFlatstackFixtures/string_concatenation'
 ```
 
-Before submitting a change, run the package tests affected by the change and then the complete suite with `go test ./...`.
+Before submitting a change, run the package tests affected by the change and then the complete suite with `go test ./...`. A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it has been diffed against `php`.

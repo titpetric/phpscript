@@ -115,6 +115,19 @@ renaming it breaks scripts, so the rule is decided before the binding lands.
 documented rather than renamed around: `preg_*` compiles with RE2 or a
 backtracking engine depending on the pattern, and is still called `preg_match`.
 
+Taking PHP's name is a claim about behaviour, so it is settled by a `.phpt`
+fixture whose expected output came from running the same source through `php`,
+not from running it through phpscript. Until that diff is empty the binding
+matches PHP only by intention. Where it cannot match, the fixture records what
+a script does see and the `description` says why, which is what makes the
+difference documented rather than latent. `docs/testing.md` has the procedure.
+
+A binding with no PHP counterpart has no second implementation to compare
+against, so its fixture is the definition of the behaviour rather than a check
+on it. That is a reason to write the fixture carefully, not a reason to skip
+it: `Storage`, `Database` and `SharedMemory` are only specified by the fixtures
+that exercise them.
+
 A PHP-named call still gets its own package when it needs one. `phpinfo` is
 registered from `stdlib/info` because it reports on the runtime rather than
 computing anything, and ships a PHP script beside the binding. The package is
