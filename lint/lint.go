@@ -124,14 +124,24 @@ func lintSource(name, src string) (string, error) {
 func lintStmts(file string, stmts []model.Stmt, out *[]Diagnostic) {
 	for _, s := range stmts {
 		switch n := s.(type) {
+		case *model.Assign:
+			lintChainedAssign(file, n, out)
 		case *model.If:
 			lintCondition(file, n.Cond, out)
 			lintStmts(file, n.Then, out)
 			lintStmts(file, n.Else, out)
 		case *model.For:
+			if n.Init != nil {
+				lintStmts(file, []model.Stmt{n.Init}, out)
+			}
 			if n.Cond != nil {
 				lintCondition(file, n.Cond, out)
 			}
+			if n.Post != nil {
+				lintStmts(file, []model.Stmt{n.Post}, out)
+			}
+			lintStmts(file, n.Body, out)
+		case *model.Foreach:
 			lintStmts(file, n.Body, out)
 		case *model.FuncDecl:
 			lintStmts(file, n.Body, out)
@@ -152,6 +162,28 @@ func lintStmts(file string, stmts []model.Stmt, out *[]Diagnostic) {
 			lintStmts(file, n.Default, out)
 		}
 	}
+}
+
+// lintChainedAssign reports `$a = $b = value`, where one value is bound to two
+// or more names in a single statement.
+//
+// PHP copies an array on assignment, so there the two names end up holding
+// independent arrays. phpscript's arrays are references, so both names see one
+// array and a later write through either is visible through the other — which
+// is a bug the shape hides rather than announces. Objects are handles in both
+// languages and scalars are immutable in both, so for those the chain is only a
+// readability question; the rule does not try to tell the cases apart, because
+// the type of `value` is not known until the statement runs.
+func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
+	chained, ok := model.UnwrapParenthesized(n.Value).(*model.AssignExpr)
+	if !ok {
+		return
+	}
+	*out = append(*out, Diagnostic{
+		File:    file,
+		Line:    chained.Line,
+		Message: "chained assignment binds one value to several names",
+	})
 }
 
 func lintCondition(file string, e model.Expr, out *[]Diagnostic) {

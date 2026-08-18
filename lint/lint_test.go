@@ -95,3 +95,54 @@ done
 		t.Fatalf("diagnostic line = %d, want physical fixture line 5", got)
 	}
 }
+
+func TestFileReportsChainedAssignment(t *testing.T) {
+	src := `<?php
+$inlines = $blocks = array();
+$one = array();
+$a = $b = $c = 1;
+$paren = ($x = 5);
+$obj->left = $obj->right = "v";
+function scoped() { $p = $q = array(); }
+class Holder { function method() { $r = $s = 0; } }
+foreach (array(1) as $v) { $t = $u = 1; }
+for ($i = 0; $i < 1; $i++) { $w = $y = 1; }
+if (true) { $m = $n = 1; }
+`
+	diags, err := lint.File("chain.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+
+	// Every chained statement is reported once, whatever scope it sits in, and
+	// a chain of three names is still one finding rather than one per link.
+	wantLines := []int{2, 4, 5, 6, 7, 8, 9, 10, 11}
+	if len(diags) != len(wantLines) {
+		t.Fatalf("got %d diagnostics, want %d: %+v", len(diags), len(wantLines), diags)
+	}
+	for i, want := range wantLines {
+		if diags[i].Line != want {
+			t.Errorf("diagnostic %d line = %d, want %d (%q)", i, diags[i].Line, want, diags[i].Message)
+		}
+		if got := diags[i].Message; got != "chained assignment binds one value to several names" {
+			t.Errorf("diagnostic %d message = %q", i, got)
+		}
+	}
+}
+
+func TestFileAcceptsSingleAssignment(t *testing.T) {
+	src := `<?php
+$value = array();
+$sum = 1 + 2;
+$result = compute($value);
+$value[] = $sum;
+$value["k"] = $sum;
+`
+	diags, err := lint.File("single.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("got %d diagnostics for unchained assignments: %+v", len(diags), diags)
+	}
+}
