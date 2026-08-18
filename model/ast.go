@@ -221,17 +221,27 @@ type Switch struct {
 	Default []Stmt
 }
 
-// SwitchCase is one `case Value:` arm of a Switch.
+// SwitchCase is one `case Value:` arm of a Switch. Line is the source line of
+// the `case` keyword, which the formatter uses to place comments.
 type SwitchCase struct {
 	Value Expr
 	Body  []Stmt
+	Line  int
 }
 
-// Break exits the nearest loop or switch.
-type Break struct{}
+// Break exits the nearest loop or switch. Line is the source line it was
+// written on, which also gives the node an address of its own: Go hands every
+// zero-sized allocation the same one, and the formatter keys source spans by
+// node.
+type Break struct {
+	Line int
+}
 
-// Continue restarts the nearest loop.
-type Continue struct{}
+// Continue restarts the nearest loop. Line is the source line, for the reason
+// given on Break.
+type Continue struct {
+	Line int
+}
 
 // Param is a single function parameter with an optional default value.
 //

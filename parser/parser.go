@@ -159,7 +159,7 @@ func isPreambleStmt(s model.Stmt) bool {
 func (p *parser) parseStmt() (model.Stmt, error) {
 	start := p.cur().line
 	s, err := p.parseStmtNode()
-	if err == nil && s != nil && hasUniqueAddress(s) {
+	if err == nil && s != nil {
 		end := start
 		if p.i > 0 {
 			end = p.toks[p.i-1].line
@@ -167,20 +167,6 @@ func (p *parser) parseStmt() (model.Stmt, error) {
 		p.spans[s] = model.SourceSpan{Start: start, End: end}
 	}
 	return s, err
-}
-
-// hasUniqueAddress reports whether s can be used as a map key. Go hands every
-// zero-sized allocation the same address, so two `break` statements are the
-// same pointer: recording a span for one records it for all of them, and the
-// formatter then read the line of an unrelated statement and inserted a blank
-// line before it. Neither node spans more than its own line, so dropping the
-// entry loses nothing.
-func hasUniqueAddress(s model.Stmt) bool {
-	switch s.(type) {
-	case *model.Break, *model.Continue:
-		return false
-	}
-	return true
 }
 
 func (p *parser) parseStmtNode() (model.Stmt, error) {
@@ -245,11 +231,11 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 		case "break":
 			p.next()
 			p.optSemi()
-			return &model.Break{}, nil
+			return &model.Break{Line: t.line}, nil
 		case "continue":
 			p.next()
 			p.optSemi()
-			return &model.Continue{}, nil
+			return &model.Continue{Line: t.line}, nil
 		case "var":
 			// stray top-level `var` is unusual; treat like an expr stmt fallthrough
 		}
@@ -777,6 +763,7 @@ func (p *parser) parseSwitch() (model.Stmt, error) {
 	for !p.isOp("}") && !p.atEOF() {
 		switch {
 		case p.isKw("case"):
+			caseLine := p.cur().line
 			p.next()
 			val, err := p.parseExpr()
 			if err != nil {
@@ -791,7 +778,7 @@ func (p *parser) parseSwitch() (model.Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
-			sw.Cases = append(sw.Cases, model.SwitchCase{Value: val, Body: body})
+			sw.Cases = append(sw.Cases, model.SwitchCase{Value: val, Body: body, Line: caseLine})
 		case p.isKw("default"):
 			p.next()
 			if p.isOp(":") {
