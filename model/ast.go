@@ -243,6 +243,10 @@ type Field struct {
 	Name       string
 	Default    Expr   // nil if none
 	Visibility string // "public", "protected", "private", or ""
+	// Span is the source-line range of the declaration when Field came from
+	// the parser. The formatter uses it to keep the blank lines an author put
+	// between groups of properties.
+	Span SourceSpan
 }
 
 func (*InlineHTML) node() {}

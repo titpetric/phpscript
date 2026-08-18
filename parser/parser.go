@@ -975,6 +975,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 			}
 			for i := range consts {
 				consts[i].Visibility = visibility
+				consts[i].Span = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
 			}
 			cd.Consts = append(cd.Consts, consts...)
 		case p.isKw("var"):
@@ -983,6 +984,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
+			p.setFieldSpans(fields, memberStart)
 			cd.Fields = append(cd.Fields, fields...)
 		case p.isKw("fn", "func", "function"):
 			if methodAbstract {
@@ -1014,6 +1016,7 @@ func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
 			if err != nil {
 				return nil, err
 			}
+			p.setFieldSpans(fields, memberStart)
 			// A static property is storage on the class, shared by every
 			// instance, so it is kept apart from the per-instance fields.
 			if isStatic {
@@ -1076,6 +1079,15 @@ func (p *parser) parseAbstractMethod(visibility string, isStatic bool) (*model.F
 		Static:     isStatic,
 		Abstract:   true,
 	}, nil
+}
+
+// setFieldSpans records the source lines a property declaration occupies. One
+// declaration can define several properties (`var $a, $b;`), which share it.
+func (p *parser) setFieldSpans(fields []model.Field, start int) {
+	span := model.SourceSpan{Start: start, End: p.toks[p.i-1].line}
+	for i := range fields {
+		fields[i].Span = span
+	}
 }
 
 func (p *parser) parseFields(visibility string) ([]model.Field, error) {

@@ -7,6 +7,7 @@ package formatter
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/titpetric/phpscript/list"
@@ -520,6 +521,23 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 	p.line("}")
 }
 
+// Class members are grouped: constants, then properties, then methods. The
+// order is what a reader of an unfamiliar class needs first, and it is the
+// order PHP style guides settle on.
+const (
+	groupConst = iota
+	groupProp
+	groupMethod
+)
+
+// classMember is one declaration to print, carrying the group it belongs to
+// and the source lines it occupied, which decide the blank lines around it.
+type classMember struct {
+	group int
+	span  model.SourceSpan
+	print func()
+}
+
 func (p *printer) printClass(n *model.ClassDecl) {
 	head := "class " + shortName(n.Name)
 	if n.Abstract {
@@ -527,33 +545,53 @@ func (p *printer) printClass(n *model.ClassDecl) {
 	}
 	p.line(head + " {")
 	p.depth++
-	first := true
-	writeBlank := func() {
-		if !first {
-			p.blank()
-		}
-		first = false
+	members := make([]classMember, 0, len(n.Consts)+len(n.Fields)+len(n.Statics)+len(n.Methods))
+	for _, c := range n.Consts {
+		members = append(members, classMember{group: groupConst, span: c.Span, print: func() {
+			vis := ""
+			if c.Visibility != "" {
+				vis = c.Visibility + " "
+			}
+			p.line(vis + "const " + c.Name + " = " + p.expr(c.Default) + ";")
+		}})
 	}
 	for _, f := range n.Fields {
-		writeBlank()
-		p.line(p.field(f) + ";")
+		members = append(members, classMember{group: groupProp, span: f.Span, print: func() {
+			p.line(p.field(f) + ";")
+		}})
 	}
 	for _, f := range n.Statics {
-		writeBlank()
-		p.line(p.staticField(f) + ";")
-	}
-	for _, c := range n.Consts {
-		writeBlank()
-		vis := ""
-		if c.Visibility != "" {
-			vis = c.Visibility + " "
-		}
-		p.line(vis + "const " + c.Name + " = " + p.expr(c.Default) + ";")
+		members = append(members, classMember{group: groupProp, span: f.Span, print: func() {
+			p.line(p.staticField(f) + ";")
+		}})
 	}
 	for _, m := range n.Methods {
-		writeBlank()
-		p.printDeclarationComments(m)
-		p.printFunc(m, true)
+		members = append(members, classMember{group: groupMethod, span: p.spans[m], print: func() {
+			p.printDeclarationComments(m)
+			p.printFunc(m, true)
+		}})
+	}
+	// Properties keep the order they were declared in; the parser collects
+	// static ones separately because they are different storage.
+	sort.SliceStable(members, func(i, j int) bool {
+		if members[i].group != members[j].group {
+			return members[i].group < members[j].group
+		}
+		return members[i].span.Start < members[j].span.Start
+	})
+	prev := classMember{group: -1}
+	for _, m := range members {
+		switch {
+		case prev.group == -1:
+		case m.group != prev.group, m.group == groupMethod:
+			p.blank()
+		case m.span.Start > prev.span.End+1:
+			// A blank line the author left between two groups of properties
+			// or constants is theirs to keep.
+			p.blank()
+		}
+		m.print()
+		prev = m
 	}
 	p.depth--
 	p.line("}")
