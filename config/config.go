@@ -2,9 +2,10 @@
 package config
 
 import (
-	_ "embed"
 	"fmt"
 	"strings"
+
+	_ "embed"
 
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
