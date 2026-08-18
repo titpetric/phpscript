@@ -14,6 +14,20 @@ type vmScratch struct {
 	initialized []bool
 }
 
+// release returns the scratch buffers to the pool with every slot zeroed.
+//
+// The clears run to capacity rather than to length. The pool holds these
+// buffers for the life of the process, so a value left above the high-water
+// mark of a later, smaller program stays reachable from the pool and is never
+// collected. stack is passed back in because append may have moved it.
+func (s *vmScratch) release(stack []any) {
+	s.stack = stack[:0]
+	clear(s.stack[:cap(s.stack)])
+	clear(s.locals[:cap(s.locals)])
+	clear(s.initialized[:cap(s.initialized)])
+	scratchPool.Put(s)
+}
+
 var scratchPool = sync.Pool{
 	New: func() any {
 		return &vmScratch{stack: make([]any, 0, 32)}
@@ -65,10 +79,7 @@ func Run(program *Program, host Host) (err error) {
 	var handlers []errorHandler
 	var callFrames []callFrame
 	defer func() {
-		clear(stack)
-		clear(locals)
-		scratch.stack = stack[:0]
-		scratchPool.Put(scratch)
+		scratch.release(stack)
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("flatstack: VM panic at pc %d: %v", pc, recovered)
 		}
