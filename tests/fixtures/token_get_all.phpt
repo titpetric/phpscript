@@ -36,9 +36,8 @@ echo "arrows:" . $arrows . "\n";
 echo "vars:" . implode(",", $variables) . "\n";
 echo "rewritten:" . $tokens[0][0] . "\n";
 ---
-count:13
-arr:3:T_OPEN_TAG:<?php:1
-arr:3:T_WHITESPACE: :1
+count:12
+arr:3:T_OPEN_TAG:<?php :1
 arr:3:T_IF:if:1
 arr:3:T_WHITESPACE: :1
 chr:(
