@@ -1,6 +1,11 @@
 ---
 name: request and response handling
-description: Reads GET, POST, cookie, command-line, and stdin request data and sets response headers.
+runner:
+  php: false
+description: >
+  Reads GET, POST, cookie, command-line, and stdin request data and sets
+  response headers. The harness supplies the request, which the PHP CLI SAPI
+  has no equivalent of.
 
 request:
   args:

@@ -1,5 +1,4 @@
 name: if + foreach + else syntax usage
-flatstack: true
 description: >
   Conditions in php allow to skip braces making the following example a common
   pattern to manage output in case no array data is available to foreach over.

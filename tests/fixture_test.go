@@ -40,9 +40,8 @@ import (
 type fixture struct {
 	Name        string `yaml:"name"`
 	Description string `yaml:"description"`
-	Error       string `yaml:"error"`     // optional: expected error substring
-	Stdin       string `yaml:"stdin"`     // optional: runtime STDIN contents
-	Flatstack   bool   `yaml:"flatstack"` // optional: run through flat bytecode fixtures
+	Error       string `yaml:"error"` // optional: expected error substring
+	Stdin       string `yaml:"stdin"` // optional: runtime STDIN contents
 
 	PHP      string `yaml:"-"`
 	Expected string `yaml:"-"`

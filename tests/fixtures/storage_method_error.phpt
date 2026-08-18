@@ -1,5 +1,6 @@
 name: storage method error (uncaught)
-flatstack: true
+runner:
+  php: false
 description: >
   A method's trailing Go error (omitted from the PHP assignment) is surfaced as
   a thrown error. Uncaught, it aborts execution and the host renders an

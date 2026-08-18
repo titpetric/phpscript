@@ -1,5 +1,6 @@
 name: database read-only client
-flatstack: true
+runner:
+  php: false
 description: >
   $db->is_readonly restricts a client to statements that only read, and refuses
   everything else. The CRUD helpers are refused before a statement is built;

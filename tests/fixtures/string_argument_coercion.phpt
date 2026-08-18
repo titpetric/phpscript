@@ -1,5 +1,4 @@
 name: string arguments coerce the way PHP renders values
-flatstack: true
 description: >
   A value passed where a binding declares a string parameter is rendered the
   way PHP renders it in a string context, so strlen(65) measures "65" and not

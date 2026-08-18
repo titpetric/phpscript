@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -91,9 +92,9 @@ type FixtureResponse struct {
 type Fixture struct {
 	Name        string          `yaml:"name"`
 	Description string          `yaml:"description"`
-	Error       string          `yaml:"error"`     // optional: expected uncaught error substring
-	Stdin       string          `yaml:"stdin"`     // optional: top-level stdin contents
-	Flatstack   bool            `yaml:"flatstack"` // optional: also test on flatstack bytecode
+	Error       string          `yaml:"error"`  // optional: expected uncaught error substring
+	Stdin       string          `yaml:"stdin"`  // optional: top-level stdin contents
+	Runner      FixtureRunners  `yaml:"runner"` // optional: runners the fixture opts out of
 	Request     FixtureRequest  `yaml:"request"`
 	Response    FixtureResponse `yaml:"response"`
 
@@ -119,7 +120,8 @@ type TestResult struct {
 	GotOutput     string `json:"got_output,omitempty"`
 	WantOutput    string `json:"want_output,omitempty"`
 	Error         string `json:"error,omitempty"`
-	FlatstackUsed bool   `json:"flatstack_used,omitempty"`
+	Runner        Runner `json:"runner,omitempty"`
+	Skipped       bool   `json:"skipped,omitempty"`
 }
 
 // ParseFixture splits a .phpt file into its three sections and parses the YAML metadata.
@@ -233,13 +235,21 @@ func loadFixtureFile(path string) (*Fixture, error) {
 	return fx, nil
 }
 
-// RunFixture executes a single fixture against the runner (and flatstack if requested).
+// RunFixture executes a single fixture against the default runtime.
 func RunFixture(ctx context.Context, f *Fixture) *TestResult {
+	return RunFixtureOn(ctx, f, RunnerRuntime)
+}
+
+// RunFixtureOn executes a single fixture against one runner. Every runner is
+// held to the same expected output; the runner only decides how the source is
+// executed.
+func RunFixtureOn(ctx context.Context, f *Fixture, r Runner) *TestResult {
 	start := time.Now()
 	res := &TestResult{
 		Name:        f.Name,
 		Description: f.Description,
 		Path:        f.Path,
+		Runner:      r,
 	}
 
 	if os.Getenv("DB_DSN_SQLITE_TEST") == "" {
@@ -250,73 +260,75 @@ func RunFixture(ctx context.Context, f *Fixture) *TestResult {
 		ctx = context.WithValue(ctx, tenantKey, "acme")
 	}
 
-	out, reqCtx, runErr := executeFixturePHP(ctx, f)
+	var (
+		out      string
+		runErr   error
+		headers  http.Header
+		hostFail string
+	)
+
+	switch r {
+	case RunnerFlatstack:
+		var reqCtx runner.Context
+		out, reqCtx, runErr = executeFlatstack(ctx, f)
+		headers = reqCtx.ResponseHeaders()
+	case RunnerPHP:
+		php, hostErr := executePHP(ctx, f)
+		if hostErr != nil {
+			res.Skipped = errors.Is(hostErr, ErrRunnerUnavailable)
+			res.FailureReason = hostErr.Error()
+			res.Error = hostErr.Error()
+			res.DurationMs = time.Since(start).Milliseconds()
+			return res
+		}
+		out = php.Stdout
+		runErr = phpFatal(php.Stderr)
+		hostFail = php.diagnostics()
+	default:
+		var reqCtx runner.Context
+		out, reqCtx, runErr = executeFixturePHP(ctx, f)
+		headers = reqCtx.ResponseHeaders()
+	}
+
 	res.GotOutput = out
 	res.WantOutput = strings.TrimSuffix(f.Expected, "\n")
 	res.DurationMs = time.Since(start).Milliseconds()
 
 	if f.Error != "" {
 		if runErr == nil {
-			res.Passed = false
 			res.FailureReason = fmt.Sprintf("expected uncaught error containing %q, but execution succeeded with output %q", f.Error, out)
 			return res
 		}
 		if !errorChainContains(runErr, f.Error) {
-			res.Passed = false
 			res.FailureReason = fmt.Sprintf("uncaught error %q does not contain expected substring %q", runErr.Error(), f.Error)
 			res.Error = runErr.Error()
 			return res
 		}
 	} else if runErr != nil {
-		res.Passed = false
 		res.FailureReason = fmt.Sprintf("unexpected uncaught error: %v", runErr)
 		res.Error = runErr.Error()
 		return res
 	}
 
-	// Verify response.headers if specified
-	if len(f.Response.Headers) > 0 {
-		stagedHeaders := reqCtx.ResponseHeaders()
+	// Response headers are staged by the host, so only an in-process runner can
+	// be held to them.
+	if headers != nil {
 		for k, wantVal := range f.Response.Headers {
-			gotVal := stagedHeaders.Get(k)
+			gotVal := headers.Get(k)
 			if gotVal != wantVal {
-				res.Passed = false
 				res.FailureReason = fmt.Sprintf("header mismatch for %s: got %q, want %q", k, gotVal, wantVal)
 				return res
 			}
 		}
 	}
 
-	// Compare stdout
 	gotTrim := strings.TrimSuffix(out, "\n")
 	if gotTrim != res.WantOutput {
-		res.Passed = false
 		res.FailureReason = fmt.Sprintf("output mismatch:\n  got:  %q\n  want: %q", gotTrim, res.WantOutput)
-		return res
-	}
-
-	// If flatstack execution is requested, also run via Flatstack
-	if f.Flatstack {
-		res.FlatstackUsed = true
-		flatOut, flatErr := executeFlatstack(ctx, f)
-		if f.Error != "" {
-			if flatErr == nil {
-				res.Passed = false
-				res.FailureReason = fmt.Sprintf("[flatstack] expected error containing %q, but succeeded", f.Error)
-				return res
-			}
-		} else if flatErr != nil {
-			res.Passed = false
-			res.FailureReason = fmt.Sprintf("[flatstack] unexpected error: %v", flatErr)
-			return res
-		} else {
-			flatTrim := strings.TrimSuffix(flatOut, "\n")
-			if flatTrim != res.WantOutput {
-				res.Passed = false
-				res.FailureReason = fmt.Sprintf("[flatstack] output mismatch:\n  got:  %q\n  want: %q", flatTrim, res.WantOutput)
-				return res
-			}
+		if hostFail != "" {
+			res.FailureReason += "\n  " + hostFail
 		}
+		return res
 	}
 
 	res.Passed = true
@@ -380,43 +392,43 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	return out.String(), reqCtx, nil
 }
 
-func executeFlatstack(ctx context.Context, f *Fixture) (string, error) {
+// executeFlatstack mirrors executeFixturePHP on the flat bytecode runtime, so
+// both in-process runners are held to the same host behavior: an uncaught
+// error produces the host error body, and the fixture request is registered.
+func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	prog, err := f.program()
 	if err != nil {
-		return "", err
-	}
-	if f.flatRT == nil {
-		if err := flatstack.Supports(prog); err != nil {
-			return "", fmt.Errorf("flatstack unsupported: %w", err)
-		}
+		return "Internal Server Error", runner.Context{}, err
 	}
 
 	var out strings.Builder
+	reqCtx := buildFixtureRequestContext(f)
 	if f.flatRT == nil {
-		f.flatRT = newFlatstackTestRuntime(&out, ctx, f.stdin())
+		f.flatRT = newFlatstackTestRuntime(&out, f.stdin())
 		f.flatRT.FreezeStdlib()
 	} else {
 		f.flatRT.ResetSession(&out, f.stdin())
-		f.flatRT.SetContext(context.WithValue(ctx, tenantKey, "acme"))
 	}
+	f.flatRT.SetContext(ctx)
+	reqCtx.Register(f.flatRT)
+
 	if err := f.flatRT.Run(prog); err != nil {
 		if _, ok := flatstack.IsExit(err); ok {
-			return out.String(), nil
+			return out.String(), reqCtx, nil
 		}
-		return out.String(), err
+		return "Internal Server Error", reqCtx, err
 	}
-	return out.String(), nil
+	return out.String(), reqCtx, nil
 }
 
-func newFlatstackTestRuntime(out *strings.Builder, ctx context.Context, input io.Reader) *flatstack.Runtime {
+func newFlatstackTestRuntime(out *strings.Builder, input io.Reader) *flatstack.Runtime {
 	options := flatstack.Options{RootFS: testPHPFS(), Stdin: input}
 	runtime := flatstack.New(out, options)
 	runtime.SetIncludeCache(flatIncludeCache)
 	runtime.SetExprCache(flatExprCache)
-	runtime.SetContext(context.WithValue(ctx, tenantKey, "acme"))
 	runtime.RegisterConstructor("Storage", NewStorage)
 	runtime.RegisterConstructor("FailStorage", NewFailStorage)
 	registerPanicBindings(runtime)

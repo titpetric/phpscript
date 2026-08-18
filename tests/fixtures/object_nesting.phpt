@@ -1,6 +1,10 @@
 name: object and value nesting
+runner:
+  php: false
 description: >
   Test chained property, method, and array access in reads and foreach sources.
+  The classes declare PHP 4 style constructors, which minitpl relies on and
+  PHP 8 removed, so the expected output is phpscript's contract.
 ---
 <?php
 class Leaf {

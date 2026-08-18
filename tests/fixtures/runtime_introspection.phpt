@@ -1,7 +1,10 @@
 name: runtime introspection functions
+runner:
+  php: false
 description: >
   Runtime symbol APIs expose constants, internal and user functions, local
-  variables, and both PHP and host-backed classes.
+  variables, and both PHP and host-backed classes. The symbols named are
+  phpscript's, so PHP has no comparable output.
 ---
 <?php
 

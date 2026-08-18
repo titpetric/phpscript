@@ -1,4 +1,6 @@
 name: session manager and storage bindings
+runner:
+  php: false
 description: Session storage constructors are available to PHP and the manager validates, starts, and reads HTTP-only cookie-backed sessions.
 request:
   cookie:

@@ -1,5 +1,4 @@
 name: sort
-flatstack: true
 description: >
   sort and rsort order a list in place with PHP's comparison operator,
   reindexing the keys from zero: numbers and numeric strings compare as

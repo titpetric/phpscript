@@ -1,5 +1,6 @@
 name: database binding property access
-flatstack: true
+runner:
+  php: false
 description: >
   A property of a Go binding resolves the way its methods do: $db->is_readonly
   reads and writes the field IsReadonly, folding case and underscores the same

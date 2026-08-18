@@ -1,5 +1,6 @@
 name: host panic becomes a catchable exception
-flatstack: true
+runner:
+  php: false
 description: >
   A panic raised inside a registered Go binding is converted into a PHP
   exception at the call boundary, so try/catch handles it and the script keeps
