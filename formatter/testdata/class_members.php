@@ -20,7 +20,7 @@ class Template {
 	}
 }
 
-class Mixed {
+class Grouped {
 	function first() {
 	}
 

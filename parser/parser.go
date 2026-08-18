@@ -30,7 +30,7 @@ func Parse(src string) (*model.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Program{Stmts: stmts, Namespace: p.namespace, SourceSpans: p.spans}, nil
+	return &model.Program{Stmts: stmts, Namespace: p.namespace, NamespaceLine: p.namespaceLine, SourceSpans: p.spans}, nil
 }
 
 type parser struct {
@@ -40,11 +40,12 @@ type parser struct {
 	// imports maps the short name (or explicit alias) declared by a `use`
 	// statement to the fully-qualified name it stands for. It stays nil in the
 	// common case of a file with no imports.
-	imports  map[string]string
-	inClass  bool
-	topLevel bool
-	topSeen  bool
-	spans    map[model.Stmt]model.SourceSpan
+	imports       map[string]string
+	inClass       bool
+	topLevel      bool
+	topSeen       bool
+	spans         map[model.Stmt]model.SourceSpan
+	namespaceLine int
 
 	// Chunked node storage and list scratch stacks; see alloc.go.
 	varNodes        nodeChunk[model.Var]
@@ -269,6 +270,7 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 		return nil, err
 	}
 	p.namespace = name
+	p.namespaceLine = line
 	return nil, nil
 }
 
@@ -495,12 +497,14 @@ func (p *parser) parseIf() (model.Stmt, error) {
 	switch {
 	case p.isKw("elseif"):
 		// chain as a nested if in the else branch
+		node.ElseLine = p.cur().line
 		nested, err := p.parseIf()
 		if err != nil {
 			return nil, err
 		}
 		node.Else = []model.Stmt{nested}
 	case p.isKw("else"):
+		node.ElseLine = p.cur().line
 		p.next()
 		if p.isKw("if") {
 			nested, err := p.parseIf()
@@ -698,8 +702,8 @@ func (p *parser) parseThrow() (model.Stmt, error) {
 }
 
 // parseTry parses `try { ... } catch (Type $var) { ... } [finally { ... }]`.
-// The VM has no exception class hierarchy, so catch type filters are consumed
-// but ignored; the first catch clause handles any error.
+// The VM has no exception class hierarchy, so catch type filters are recorded
+// for printing but not matched; the first catch clause handles any error.
 func (p *parser) parseTry() (model.Stmt, error) {
 	p.next() // try
 	body, err := p.parseBlock()
@@ -708,17 +712,14 @@ func (p *parser) parseTry() (model.Stmt, error) {
 	}
 	tr := &model.Try{Body: body}
 	for p.isKw("catch") {
+		catchLine := p.cur().line
 		p.next() // catch
 		if err := p.eatOp("("); err != nil {
 			return nil, err
 		}
-		// Optional exception type filter(s): `Type` or `Type1 | Type2`.
-		for p.cur().kind == tIdent {
-			p.next()
-			if p.isOp("|") {
-				p.next()
-			}
-		}
+		// Exception type filter: `Type`, `A|B` or a qualified `\Ns\Type`.
+		// The runtime ignores it, but PHP requires it, so it is recorded.
+		catchType := p.parseTypeHint()
 		// Optional bound variable: `catch (Exception $e)` or PHP8 `catch (Exception)`.
 		var name string
 		if p.cur().kind == tVar {
@@ -731,9 +732,10 @@ func (p *parser) parseTry() (model.Stmt, error) {
 		if err != nil {
 			return nil, err
 		}
-		tr.Catches = append(tr.Catches, model.Catch{Var: name, Body: cbody})
+		tr.Catches = append(tr.Catches, model.Catch{Type: catchType, Var: name, Body: cbody, Line: catchLine})
 	}
 	if p.isKw("finally") {
+		tr.FinallyLine = p.cur().line
 		p.next()
 		fbody, err := p.parseBlock()
 		if err != nil {

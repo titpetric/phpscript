@@ -31,6 +31,10 @@ type Expr interface {
 type Program struct {
 	Stmts     []Stmt
 	Namespace string // set when the file declares `namespace Name;`
+	// NamespaceLine is the source line of the namespace declaration, which is
+	// not a statement of its own. The formatter needs it to place the comments
+	// written above it.
+	NamespaceLine int
 	// SourceSpans records original statement lines when Program came from the
 	// parser. Consumers may ignore it; the formatter uses it to retain a single
 	// intentional blank line between statements.
@@ -83,6 +87,11 @@ type If struct {
 	Cond Expr
 	Then []Stmt
 	Else []Stmt // may itself contain a single nested *If for elseif chains
+	// ElseLine is the source line of the `else` or `elseif` keyword, which is
+	// not a statement of its own. It marks where the then arm ends, so the
+	// formatter can tell a comment written above the keyword from one written
+	// below it.
+	ElseLine int
 }
 
 // Foreach is `foreach (Source as [KeyTarget =>] ValTarget) { Body }`.
@@ -201,16 +210,21 @@ type Throw struct {
 // the first catch clause handles any error raised in Body (a throw or a runtime
 // error from a forwarded Go call). Finally always runs.
 type Try struct {
-	Body    []Stmt
-	Catches []Catch
-	Finally []Stmt
+	Body        []Stmt
+	Catches     []Catch
+	Finally     []Stmt
+	FinallyLine int // source line of the `finally` keyword, for comment placement
 }
 
 // Catch is one `catch (...) { ... }` clause. Var is the bound variable name
 // (without `$`); the caught error is assigned to it so `echo $e` prints it.
+// Type is the declared filter, `Exception` or `A|B`, which the runtime ignores
+// but PHP requires: a catch clause printed without it is a syntax error.
 type Catch struct {
+	Type string
 	Var  string
 	Body []Stmt
+	Line int // source line of the `catch` keyword, for comment placement
 }
 
 // Switch is `switch (Cond) { case V: ...; default: ... }`. Case bodies fall

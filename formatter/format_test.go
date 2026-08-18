@@ -245,14 +245,14 @@ func TestExplicitExpressionParenthesesRetained(t *testing.T) {
 	}
 }
 
-func TestTrailingCommentIsNotMovedToFollowingDeclaration(t *testing.T) {
+func TestTrailingCommentStaysOnItsStatement(t *testing.T) {
 	in := "<?php\n$value = 1; // value docs\nfunction helper() {}\n"
 	out, err := formatter.Source(in)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(out, "// value docs") {
-		t.Fatalf("trailing comment was moved to declaration:\n%s", out)
+	if !strings.Contains(out, "$value = 1; // value docs") {
+		t.Fatalf("trailing comment was moved off its statement:\n%s", out)
 	}
 }
 

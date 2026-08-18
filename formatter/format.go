@@ -5,6 +5,7 @@
 package formatter
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"sort"
@@ -70,11 +71,7 @@ func Source(src string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	declarationComments, attachedCommentLines := commentsBeforeDeclarations(src)
-	out, unsupported := printProgram(prog, Options{
-		LeadingComments:     leadingComments(src, attachedCommentLines),
-		DeclarationComments: declarationComments,
-	})
+	out, unsupported := printProgram(prog, Options{Comments: CollectComments(src)})
 	// Formatting rewrites the file in place, so a node the printer cannot
 	// spell has to stop the rewrite: emitting the placeholder would delete
 	// working code.
@@ -87,8 +84,20 @@ func Source(src string) (string, error) {
 
 // Options controls AST pretty-printing.
 type Options struct {
-	LeadingComments     []string           // emitted after <?php, before namespace/stmts
-	DeclarationComments map[int][][]string // comment groups keyed by declaration source line
+	// Comments is every comment of the source file, in source order. The AST
+	// holds none of them, so the printer places them by line: a comment is
+	// written out before the first statement that starts below it.
+	Comments []Comment
+}
+
+// Comment is one comment of the source, with the lines it occupied. OwnLine
+// records that nothing but whitespace preceded it, which is what separates a
+// comment written above a statement from one written after it.
+type Comment struct {
+	Text    string
+	Line    int
+	EndLine int
+	OwnLine bool
 }
 
 // Print renders prog as formatted PHP source. Any node the printer has no
@@ -101,7 +110,7 @@ func Print(prog *model.Program, opts Options) string {
 
 // printProgram renders prog and reports the nodes it could not render.
 func printProgram(prog *model.Program, opts Options) (string, []string) {
-	startsInPHP := prog.Namespace != "" || len(opts.LeadingComments) > 0 || len(prog.Stmts) == 0
+	startsInPHP := prog.Namespace != "" || len(opts.Comments) > 0 || len(prog.Stmts) == 0
 	if len(prog.Stmts) > 0 {
 		_, startsWithHTML := prog.Stmts[0].(*model.InlineHTML)
 		startsInPHP = startsInPHP || !startsWithHTML
@@ -112,19 +121,9 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 			stmts = stmts[:len(stmts)-1]
 		}
 	}
-	declarationComments := make(map[int][][]string, len(opts.DeclarationComments))
-	for line, groups := range opts.DeclarationComments {
-		declarationComments[line] = append([][]string(nil), groups...)
-	}
-	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans, declarationComments: declarationComments}
+	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans, comments: opts.Comments}
 	if startsInPHP {
 		p.line("<?php")
-		p.blank()
-	}
-	for _, c := range opts.LeadingComments {
-		p.line(c)
-	}
-	if len(opts.LeadingComments) > 0 {
 		p.blank()
 	}
 	// `declare` has to come before the namespace declaration, which is printed
@@ -135,10 +134,16 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 		p.blank()
 	}
 	if prog.Namespace != "" {
+		p.flushComments(prog.NamespaceLine)
+		p.blankFor(prog.NamespaceLine)
 		p.line("namespace " + prog.Namespace + ";")
+		p.lastLine = prog.NamespaceLine
 		p.blank()
 	}
 	p.stmts(stmts)
+	// Anything written below the last statement, a trailing note or a
+	// commented-out block, still belongs to the file.
+	p.flushComments(0)
 	out := collapseBlankLines(p.buf.String())
 	if !strings.HasSuffix(out, "\n") {
 		out += "\n"
@@ -160,7 +165,7 @@ func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
 }
 
 type printer struct {
-	buf       strings.Builder
+	buf       bytes.Buffer
 	depth     int
 	namespace string
 	inPHP     bool
@@ -169,8 +174,17 @@ type printer struct {
 	// formatter rewrites files in place, so printing a placeholder comment for
 	// one would delete working code; Source reports them as an error instead
 	// and leaves the file alone.
-	unsupported         []string
-	declarationComments map[int][][]string
+	unsupported []string
+	// comments is the source comment stream, consumed in order: nextComment is
+	// the first one not yet written out. lastLine is the source line of the
+	// last thing written, which is what tells a blank line the author left
+	// from one the printer would be inventing.
+	comments    []Comment
+	nextComment int
+	lastLine    int
+	// afterComment records that a comment was the last thing written, so a
+	// declaration can follow its documentation without a blank line between.
+	afterComment bool
 }
 
 // unsupportedNode records a node the printer cannot render and returns the
@@ -210,6 +224,9 @@ func (p *printer) blank() {
 // retains one source blank line and adds separation after block statements and
 // before a call that follows assignments.
 func (p *printer) stmts(stmts []model.Stmt) {
+	// A block opens with no blank line of its own, whatever the source did
+	// between the brace and the first statement.
+	p.lastLine = 0
 	for i, s := range stmts {
 		if i > 0 && p.blankBetween(stmts[i-1], s) {
 			p.blank()
@@ -218,12 +235,27 @@ func (p *printer) stmts(stmts []model.Stmt) {
 	}
 }
 
-func (p *printer) blankBetween(prev, next model.Stmt) bool {
-	if before, ok := p.spans[next]; ok {
-		if after, ok := p.spans[prev]; ok && before.Start > after.End+1 {
-			return true
-		}
+// body prints the statements of a block one level in, then writes out any
+// comment left between the last statement and end, the line the block closes
+// on. An end of zero leaves those comments for the enclosing block.
+func (p *printer) body(stmts []model.Stmt, end int) {
+	p.depth++
+	p.stmts(stmts)
+	if end > 0 {
+		p.flushComments(end)
 	}
+	p.depth--
+}
+
+// stmtEnd is the line a statement closes on, used to place the comments
+// written inside it.
+func (p *printer) stmtEnd(s model.Stmt) int {
+	return p.spans[s].End
+}
+
+// blankBetween reports the blank lines the printer adds of its own accord.
+// The ones the author wrote are kept by stmt, which compares source lines.
+func (p *printer) blankBetween(prev, next model.Stmt) bool {
 	if _, class := prev.(*model.ClassDecl); class {
 		return false
 	}
@@ -241,7 +273,24 @@ func (p *printer) stmt(s model.Stmt) {
 	if _, ok := s.(*model.InlineHTML); !ok {
 		p.ensurePHP()
 	}
-	p.printDeclarationComments(s)
+	span, placed := p.spans[s]
+	if placed {
+		p.flushComments(span.Start)
+		// A declaration follows its documentation without a gap; anything
+		// else keeps the blank line the author left above it.
+		if !p.afterComment || !isDecl(s) {
+			p.blankFor(span.Start)
+		}
+	}
+	p.printStmt(s)
+	p.afterComment = false
+	if placed {
+		p.trailingComment(span.End)
+		p.lastLine = span.End
+	}
+}
+
+func (p *printer) printStmt(s model.Stmt) {
 	switch n := s.(type) {
 	case *model.InlineHTML:
 		if p.inPHP {
@@ -305,34 +354,73 @@ func (p *printer) stmt(s model.Stmt) {
 	}
 }
 
-func (p *printer) printDeclarationComments(s model.Stmt) {
-	switch s.(type) {
-	case *model.ClassDecl, *model.FuncDecl:
-	default:
-		return
+// flushComments writes out every comment the author placed above line. A line
+// of zero writes out the rest of them, which is what ends the file.
+func (p *printer) flushComments(line int) {
+	for p.nextComment < len(p.comments) {
+		c := p.comments[p.nextComment]
+		if line > 0 && c.Line >= line {
+			return
+		}
+		p.nextComment++
+		p.comment(c)
 	}
-	span, ok := p.spans[s]
-	if !ok {
-		return
-	}
-	groups := p.declarationComments[span.Start]
-	if len(groups) == 0 {
-		return
-	}
-	for _, comment := range groups[0] {
-		p.comment(comment)
-	}
-	p.declarationComments[span.Start] = groups[1:]
 }
 
-func (p *printer) comment(comment string) {
-	lines := strings.Split(strings.ReplaceAll(comment, "\r\n", "\n"), "\n")
+// trailingComment appends the comment written after the code on line, if there
+// is one, to the line just printed.
+func (p *printer) trailingComment(line int) {
+	if line <= 0 || p.nextComment >= len(p.comments) {
+		return
+	}
+	c := p.comments[p.nextComment]
+	if c.OwnLine || c.Line != line {
+		return
+	}
+	p.nextComment++
+	p.appendToLine(" " + c.Text)
+	p.lastLine = c.EndLine
+}
+
+// appendToLine adds text to the end of the line last written.
+func (p *printer) appendToLine(text string) {
+	out := p.buf.Bytes()
+	if len(out) == 0 || out[len(out)-1] != '\n' {
+		p.buf.WriteString(text)
+		return
+	}
+	p.buf.Truncate(p.buf.Len() - 1)
+	p.buf.WriteString(text)
+	p.buf.WriteByte('\n')
+}
+
+// blankFor writes the blank line an author left above the line about to be
+// printed. Nothing is written for the first line of a block, or for a comment
+// that belongs to a statement already printed.
+func (p *printer) blankFor(line int) {
+	if p.lastLine > 0 && line > p.lastLine+1 {
+		p.blank()
+	}
+}
+
+// comment writes one comment at the current indent. The continuation lines of
+// a block comment are re-indented so that the leading asterisks stay under the
+// opening one.
+func (p *printer) comment(c Comment) {
+	p.blankFor(c.Line)
+	lines := strings.Split(strings.ReplaceAll(c.Text, "\r\n", "\n"), "\n")
 	for i, line := range lines {
 		if i > 0 {
-			line = strings.TrimPrefix(line, p.indent())
+			if trimmed := strings.TrimLeft(line, " \t"); strings.HasPrefix(trimmed, "*") {
+				line = " " + trimmed
+			} else {
+				line = strings.TrimPrefix(line, p.indent())
+			}
 		}
 		p.line(line)
 	}
+	p.lastLine = c.EndLine
+	p.afterComment = true
 }
 
 // use renders an import statement. The parser resolves imports while parsing,
@@ -365,9 +453,7 @@ func (p *printer) printDeclare(n *model.Declare) {
 		return
 	}
 	p.line(head + " {")
-	p.depth++
-	p.stmts(n.Body)
-	p.depth--
+	p.body(n.Body, p.stmtEnd(n))
 	p.line("}")
 }
 
@@ -384,9 +470,7 @@ func (p *printer) printIf(n *model.If, elseif bool) {
 		kw = "elseif"
 	}
 	p.line(kw + " (" + p.expr(n.Cond) + ") {")
-	p.depth++
-	p.stmts(n.Then)
-	p.depth--
+	p.body(n.Then, p.thenEnd(n))
 	if len(n.Else) == 1 {
 		if nested, ok := n.Else[0].(*model.If); ok {
 			// Write "} elseif ..." without a blank close line.
@@ -399,19 +483,24 @@ func (p *printer) printIf(n *model.If, elseif bool) {
 	}
 	if len(n.Else) > 0 {
 		p.line("} else {")
-		p.depth++
-		p.stmts(n.Else)
-		p.depth--
+		p.body(n.Else, p.stmtEnd(n))
 	}
 	p.line("}")
+}
+
+// thenEnd is the line the `then` arm of an if closes on: the `else` keyword
+// when there is one, and otherwise the closing brace of the statement.
+func (p *printer) thenEnd(n *model.If) int {
+	if n.ElseLine > 0 {
+		return n.ElseLine
+	}
+	return p.stmtEnd(n)
 }
 
 func (p *printer) printElseIf(n *model.If) {
 	// Continuation after "} " already written without newline finish.
 	p.buf.WriteString("elseif (" + p.expr(n.Cond) + ") {\n")
-	p.depth++
-	p.stmts(n.Then)
-	p.depth--
+	p.body(n.Then, p.thenEnd(n))
 	if len(n.Else) == 1 {
 		if nested, ok := n.Else[0].(*model.If); ok {
 			p.ensurePHP()
@@ -422,9 +511,7 @@ func (p *printer) printElseIf(n *model.If) {
 	}
 	if len(n.Else) > 0 {
 		p.line("} else {")
-		p.depth++
-		p.stmts(n.Else)
-		p.depth--
+		p.body(n.Else, p.stmtEnd(n))
 	}
 	p.line("}")
 }
@@ -444,9 +531,7 @@ func (p *printer) printForeach(n *model.Foreach) {
 	}
 	head += ") {"
 	p.line(head)
-	p.depth++
-	p.stmts(n.Body)
-	p.depth--
+	p.body(n.Body, p.stmtEnd(n))
 	p.line("}")
 }
 
@@ -454,9 +539,7 @@ func (p *printer) printFor(n *model.For) {
 	// while is represented as For with nil Init/Post.
 	if n.Init == nil && n.Post == nil {
 		p.line("while (" + p.expr(n.Cond) + ") {")
-		p.depth++
-		p.stmts(n.Body)
-		p.depth--
+		p.body(n.Body, p.stmtEnd(n))
 		p.line("}")
 		return
 	}
@@ -467,9 +550,7 @@ func (p *printer) printFor(n *model.For) {
 		cond = p.expr(n.Cond)
 	}
 	p.line("for (" + init + "; " + cond + "; " + post + ") {")
-	p.depth++
-	p.stmts(n.Body)
-	p.depth--
+	p.body(n.Body, p.stmtEnd(n))
 	p.line("}")
 }
 
@@ -516,9 +597,7 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 	}
 	b.WriteString(" {")
 	p.line(b.String())
-	p.depth++
-	p.stmts(n.Body)
-	p.depth--
+	p.body(n.Body, p.stmtEnd(n))
 	p.line("}")
 }
 
@@ -568,7 +647,6 @@ func (p *printer) printClass(n *model.ClassDecl) {
 	}
 	for _, m := range n.Methods {
 		members = append(members, classMember{group: groupMethod, span: p.spans[m], print: func() {
-			p.printDeclarationComments(m)
 			p.printFunc(m, true)
 		}})
 	}
@@ -581,19 +659,29 @@ func (p *printer) printClass(n *model.ClassDecl) {
 		return members[i].span.Start < members[j].span.Start
 	})
 	prev := classMember{group: -1}
+	p.lastLine = 0
 	for _, m := range members {
+		p.flushComments(m.span.Start)
 		switch {
 		case prev.group == -1:
 		case m.group != prev.group, m.group == groupMethod:
-			p.blank()
+			if !p.afterComment {
+				p.blank()
+			}
 		case m.span.Start > prev.span.End+1:
 			// A blank line the author left between two groups of properties
 			// or constants is theirs to keep.
-			p.blank()
+			if !p.afterComment {
+				p.blank()
+			}
 		}
 		m.print()
+		p.afterComment = false
+		p.trailingComment(m.span.End)
+		p.lastLine = m.span.End
 		prev = m
 	}
+	p.flushComments(p.stmtEnd(n))
 	p.depth--
 	p.line("}")
 }
@@ -637,22 +725,44 @@ func (p *printer) field(f model.Field) string {
 	return b.String()
 }
 
+// catchClause renders the `(...)` of a catch: a type filter, a bound variable,
+// or both, in whichever combination the source used.
+func catchClause(c model.Catch) string {
+	parts := make([]string, 0, 2)
+	if c.Type != "" {
+		parts = append(parts, c.Type)
+	}
+	if c.Var != "" {
+		parts = append(parts, "$"+c.Var)
+	}
+	return strings.Join(parts, " ")
+}
+
+// tryEnd is the line the try block closes on: the first `catch`, or `finally`
+// when there is no catch clause.
+func tryEnd(n *model.Try) int {
+	if len(n.Catches) > 0 {
+		return n.Catches[0].Line
+	}
+	return n.FinallyLine
+}
+
 func (p *printer) printTry(n *model.Try) {
 	p.line("try {")
-	p.depth++
-	p.stmts(n.Body)
-	p.depth--
-	for _, c := range n.Catches {
-		p.line("} catch ($" + c.Var + ") {")
-		p.depth++
-		p.stmts(c.Body)
-		p.depth--
+	p.body(n.Body, tryEnd(n))
+	for i, c := range n.Catches {
+		p.line("} catch (" + catchClause(c) + ") {")
+		end := p.stmtEnd(n)
+		if i+1 < len(n.Catches) {
+			end = n.Catches[i+1].Line
+		} else if n.FinallyLine > 0 {
+			end = n.FinallyLine
+		}
+		p.body(c.Body, end)
 	}
 	if len(n.Finally) > 0 {
 		p.line("} finally {")
-		p.depth++
-		p.stmts(n.Finally)
-		p.depth--
+		p.body(n.Finally, p.stmtEnd(n))
 	}
 	p.line("}")
 }
@@ -661,17 +771,21 @@ func (p *printer) printSwitch(n *model.Switch) {
 	p.line("switch (" + p.expr(n.Cond) + ") {")
 	p.depth++
 	for _, c := range n.Cases {
+		if c.Line > 0 {
+			p.flushComments(c.Line)
+			p.blankFor(c.Line)
+			p.lastLine = c.Line
+		}
 		p.line("case " + p.expr(c.Value) + ":")
-		p.depth++
-		p.stmts(c.Body)
-		p.depth--
+		// A comment between two arms belongs to the arm below it, so the
+		// bodies leave their trailing comments to the flush above.
+		p.body(c.Body, 0)
 	}
 	if len(n.Default) > 0 {
 		p.line("default:")
-		p.depth++
-		p.stmts(n.Default)
-		p.depth--
+		p.body(n.Default, 0)
 	}
+	p.flushComments(p.stmtEnd(n))
 	p.depth--
 	p.line("}")
 }
@@ -830,9 +944,19 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 	b.WriteString("{\n")
 	p.depth++
 	// Temporarily divert: build body lines with indent.
-	sub := &printer{depth: p.depth, namespace: p.namespace, inPHP: true, spans: p.spans, declarationComments: p.declarationComments}
+	sub := &printer{
+		depth:       p.depth,
+		namespace:   p.namespace,
+		inPHP:       true,
+		spans:       p.spans,
+		comments:    p.comments,
+		nextComment: p.nextComment,
+	}
 	sub.stmts(body)
 	sub.ensurePHP()
+	// The sub-printer consumed part of the shared comment stream.
+	p.nextComment = sub.nextComment
+	p.unsupported = append(p.unsupported, sub.unsupported...)
 	p.depth--
 	b.WriteString(sub.buf.String())
 	b.WriteString(p.indent() + "}")
@@ -1047,122 +1171,43 @@ func collapseBlankLines(src string) string {
 	return strings.Join(out, "\n")
 }
 
-// leadingComments returns // and /* */ comments between the open tag and the
-// first non-comment code token (e.g. // @route annotations).
-func leadingComments(src string, attached map[int]bool) []string {
-	var comments []string
-	seenOpen := false
+// CollectComments returns every comment of src in source order, with the lines
+// it occupied and whether it stood on a line of its own. The AST holds no
+// comments, so this is what keeps them in a file the formatter rewrites.
+func CollectComments(src string) []Comment {
+	var out []Comment
+	offset := 0
 	for _, val := range parser.TokenGetAll(src) {
 		a, ok := val.([]any)
 		if !ok {
-			// CHAR token: end of preamble.
-			if seenOpen {
-				break
-			}
+			offset += len(val.(string))
 			continue
 		}
-		switch int(a[0].(int64)) {
-		case parser.T_OPEN_TAG:
-			seenOpen = true
-		case parser.T_WHITESPACE, parser.T_INLINE_HTML:
-			// keep scanning
-		case parser.T_COMMENT:
-			if seenOpen && !attached[int(a[2].(int64))] {
-				comments = append(comments, strings.TrimRight(a[1].(string), "\r\n"))
-			}
-		default:
-			if seenOpen {
-				return comments
-			}
+		text := a[1].(string)
+		if int(a[0].(int64)) == parser.T_COMMENT {
+			line := int(a[2].(int64))
+			trimmed := strings.TrimRight(text, "\r\n")
+			lineStart := strings.LastIndex(src[:offset], "\n") + 1
+			out = append(out, Comment{
+				Text:    trimmed,
+				Line:    line,
+				EndLine: line + strings.Count(trimmed, "\n"),
+				OwnLine: trimOpenTag(src[lineStart:offset]) == "",
+			})
 		}
+		offset += len(text)
 	}
-	return comments
+	return out
 }
 
-// commentsBeforeDeclarations associates a run of comments with the class or
-// function declaration that follows it. Whitespace, including blank lines, and
-// declaration modifiers may occur between the comment and declaration.
-func commentsBeforeDeclarations(src string) (map[int][][]string, map[int]bool) {
-	type token struct {
-		id          int
-		text        string
-		line        int
-		commentOnly bool
+// trimOpenTag returns what precedes a comment on its own line, with an open
+// tag removed: a comment written directly after `<?php` still stands alone.
+func trimOpenTag(prefix string) string {
+	trimmed := strings.TrimSpace(prefix)
+	for _, tag := range []string{"<?php", "<?=", "<?"} {
+		if strings.HasPrefix(trimmed, tag) {
+			return strings.TrimSpace(trimmed[len(tag):])
+		}
 	}
-	raw := parser.TokenGetAll(src)
-	tokens := make([]token, 0, len(raw))
-	offset := 0
-	for _, val := range raw {
-		a, ok := val.([]any)
-		if !ok {
-			text := val.(string)
-			tokens = append(tokens, token{text: text})
-			offset += len(text)
-			continue
-		}
-		tokenText := a[1].(string)
-		lineStart := strings.LastIndex(src[:offset], "\n") + 1
-		prefix := strings.TrimSpace(src[lineStart:offset])
-		tokens = append(tokens, token{
-			id:          int(a[0].(int64)),
-			text:        tokenText,
-			line:        int(a[2].(int64)),
-			commentOnly: prefix == "" || prefix == "<?php" || prefix == "<?",
-		})
-		offset += len(tokenText)
-	}
-
-	comments := make(map[int][][]string)
-	attached := make(map[int]bool)
-	for i := 0; i < len(tokens); i++ {
-		if tokens[i].id != parser.T_COMMENT || !tokens[i].commentOnly {
-			continue
-		}
-		var group []token
-		j := i
-		for j < len(tokens) {
-			if tokens[j].id == parser.T_COMMENT {
-				group = append(group, tokens[j])
-				j++
-				continue
-			}
-			if tokens[j].id == parser.T_WHITESPACE {
-				j++
-				continue
-			}
-			break
-		}
-		declLine := 0
-		for j < len(tokens) && tokens[j].id == parser.T_STRING && isDeclarationModifier(tokens[j].text) {
-			if declLine == 0 {
-				declLine = tokens[j].line
-			}
-			j++
-			for j < len(tokens) && tokens[j].id == parser.T_WHITESPACE {
-				j++
-			}
-		}
-		if j >= len(tokens) || (tokens[j].id != parser.T_FUNCTION && tokens[j].id != parser.T_CLASS) {
-			continue
-		}
-		if declLine == 0 {
-			declLine = tokens[j].line
-		}
-		texts := make([]string, 0, len(group))
-		for _, c := range group {
-			texts = append(texts, strings.TrimRight(c.text, "\r\n"))
-			attached[c.line] = true
-		}
-		comments[declLine] = append(comments[declLine], texts)
-		i = j - 1
-	}
-	return comments, attached
-}
-
-func isDeclarationModifier(s string) bool {
-	switch strings.ToLower(s) {
-	case "public", "protected", "private", "static", "final", "abstract":
-		return true
-	}
-	return false
+	return trimmed
 }
