@@ -462,6 +462,128 @@ func TestTerminalClosingTagAndWhitespaceTrimmedIdempotently(t *testing.T) {
 	}
 }
 
+func TestStringLiteralQuoteStylePreserved(t *testing.T) {
+	in := "<?php\n$exitCode = '<span class=\"badge badge-ok\">OK</span>';\n$name = \"Tit\";\n"
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `$exitCode = '<span class="badge badge-ok">OK</span>';`) {
+		t.Fatalf("single quotes rewritten:\n%s", out)
+	}
+	if !strings.Contains(out, `$name = "Tit";`) {
+		t.Fatalf("double quotes lost:\n%s", out)
+	}
+	again, err := formatter.Source(out)
+	if err != nil || again != out {
+		t.Fatalf("not idempotent: %v\n%s", err, out)
+	}
+}
+
+func TestArrayKeyValuesExpandPastTwoKeys(t *testing.T) {
+	in := `<?php
+$arr = array("id" => 1, "name" => "Tit Petric", "active" => true);
+$pair = array("id" => 1, "name" => "Tit Petric");
+$one = array("name" => "Tit Petric");
+$monthly = array(
+	"labels" => array(),
+	"datasets" => array(
+		array("label" => "Minimum duration", "backgroundColor" => "#c7d2fe", "borderRadius" => 4, "data" => array()),
+	),
+);
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, `"active" => true);`) {
+		t.Fatalf("3-key array stayed on one line:\n%s", out)
+	}
+	if !strings.Contains(out, "\t\"id\" => 1,\n\t\"name\" => \"Tit Petric\",\n\t\"active\" => true,\n)") {
+		t.Fatalf("3-key array not expanded:\n%s", out)
+	}
+	if !strings.Contains(out, `array("id" => 1, "name" => "Tit Petric")`) {
+		t.Fatalf("2-key array should stay one line:\n%s", out)
+	}
+	if !strings.Contains(out, `array("name" => "Tit Petric")`) {
+		t.Fatalf("1-key array should stay one line:\n%s", out)
+	}
+	if !strings.Contains(out, "\t\t\t\"label\" => \"Minimum duration\",\n") &&
+		!strings.Contains(out, "\t\t\"label\" => \"Minimum duration\",\n") {
+		t.Fatalf("nested 4-key array not expanded:\n%s", out)
+	}
+	again, err := formatter.Source(out)
+	if err != nil || again != out {
+		t.Fatalf("not idempotent: %v\n%s", err, out)
+	}
+}
+
+func TestClassConstVarMethodOrderAndSpacing(t *testing.T) {
+	in := `<?php
+class Compiler {
+	function __construct() {
+	}
+
+	const E_FILENAME_EMPTY = "Filename can't be empty, tried to render %q";
+
+	var $hooks;
+	var $_open_tag;
+	var $_close_tag;
+}
+`
+	want := `<?php
+
+class Compiler {
+	const E_FILENAME_EMPTY = "Filename can't be empty, tried to render %q";
+
+	var $hooks;
+	var $_open_tag;
+	var $_close_tag;
+
+	function __construct() {
+	}
+}
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != want {
+		t.Fatalf("class members:\n--- got ---\n%s--- want ---\n%s", out, want)
+	}
+
+	in2 := `<?php
+class Compiler {
+	var $hooks;
+
+	var $_open_tag;
+	var $_close_tag;
+
+	function __construct() {
+	}
+}
+`
+	want2 := `<?php
+
+class Compiler {
+	var $hooks;
+
+	var $_open_tag;
+	var $_close_tag;
+
+	function __construct() {
+	}
+}
+`
+	out2, err := formatter.Source(in2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out2 != want2 {
+		t.Fatalf("var spacing:\n--- got ---\n%s--- want ---\n%s", out2, want2)
+	}
+}
+
 func TestTrailingWhitespaceTrimmedFromMixedHTML(t *testing.T) {
 	in := "<?php\r\necho \"x\";\r\n?>\r\n<p>x</p>  \r\n"
 	want := "<?php\n\necho \"x\";\n\n?>\n<p>x</p>\n"

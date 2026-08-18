@@ -25,10 +25,11 @@ const (
 
 // token is a single lexical unit with source position for diagnostics.
 type token struct {
-	kind tokKind
-	val  string
-	pos  int
-	line int
+	kind  tokKind
+	val   string
+	pos   int
+	line  int
+	quote byte // opening delimiter of a tString (' or ")
 }
 
 func (t token) String() string { return fmt.Sprintf("%v(%q)@%d", t.kind, t.val, t.line) }
@@ -124,6 +125,10 @@ func (l *lexer) skipShebang() {
 
 func (l *lexer) emit(k tokKind, v string) {
 	l.tokens = append(l.tokens, token{kind: k, val: v, pos: l.pos, line: l.line})
+}
+
+func (l *lexer) emitString(v string, quote byte) {
+	l.tokens = append(l.tokens, token{kind: tString, val: v, pos: l.pos, line: l.line, quote: quote})
 }
 
 // lexInlineHTML consumes raw text until the next <?php (or <?) open tag.
@@ -249,7 +254,7 @@ func (l *lexer) lexString(quote byte) error {
 			val := l.src[start:i]
 			l.advance(i - start) // keeps the line counter accurate
 			l.advanceRune()      // closing quote
-			l.emit(tString, val)
+			l.emitString(val, quote)
 			return nil
 		}
 	}
@@ -270,7 +275,7 @@ func (l *lexer) lexString(quote byte) error {
 		}
 		if c == quote {
 			l.advanceRune()
-			l.emit(tString, b.String())
+			l.emitString(b.String(), quote)
 			return nil
 		}
 		b.WriteByte(c)

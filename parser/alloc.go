@@ -110,6 +110,13 @@ func (p *parser) newLit(v any) *model.Lit {
 	return n
 }
 
+func (p *parser) newStringLit(v string, quote byte) *model.Lit {
+	n := p.litNodes.new()
+	n.Value = v
+	n.Quote = quote
+	return n
+}
+
 func (p *parser) newBinary(op string, left, right model.Expr) *model.Binary {
 	n := p.binaryNodes.new()
 	n.Op, n.Left, n.Right = op, left, right

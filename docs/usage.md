@@ -102,9 +102,11 @@ phpscript fmt ./src        # PHP files directly in ./src
 phpscript fmt ./src/...    # PHP files in ./src and its subdirectories
 ```
 
-The formatter uses tabs for indentation, places class opening braces on the
-next line, keeps function and control-statement braces on the same line, and
-normalizes line endings to LF.
+The formatter uses tabs for indentation, keeps class, function, and
+control-statement braces on the same line, and normalizes line endings to LF.
+String quote style is preserved. Associative arrays with more than two keys
+are expanded one pair per line. Class members print as constants, then
+properties, then methods; blank lines between consecutive properties are kept.
 
 ### `phpscript list <path>...`
 

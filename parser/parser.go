@@ -993,7 +993,7 @@ func (p *parser) parseConsts() ([]model.Field, error) {
 		if p.cur().kind != tIdent {
 			return nil, fmt.Errorf("line %d: expected constant name", p.cur().line)
 		}
-		c := model.Field{Name: p.next().val}
+		c := model.Field{Name: p.next().val, Line: p.toks[p.i-1].line}
 		if err := p.eatOp("="); err != nil {
 			return nil, err
 		}
@@ -1041,7 +1041,7 @@ func (p *parser) parseFields(visibility string) ([]model.Field, error) {
 		if p.cur().kind != tVar {
 			return nil, fmt.Errorf("line %d: expected $field", p.cur().line)
 		}
-		f := model.Field{Name: p.next().val, Visibility: visibility}
+		f := model.Field{Name: p.next().val, Visibility: visibility, Line: p.toks[p.i-1].line}
 		if p.isOp("=") {
 			p.next()
 			def, err := p.parseExpr()

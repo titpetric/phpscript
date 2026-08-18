@@ -211,6 +211,7 @@ type Field struct {
 	Name       string
 	Default    Expr   // nil if none
 	Visibility string // "public", "protected", "private", or ""
+	Line       int    // source line of the declaration (formatter spacing)
 }
 
 func (*InlineHTML) node() {}
@@ -286,8 +287,11 @@ func (*Unset) stmt() {}
 // ---------------------------------------------------------------------------
 
 // Lit is a literal scalar: nil, bool, int64, float64 or string.
+// Quote is the source delimiter for a string (' or "); zero means the
+// printer should pick double quotes.
 type Lit struct {
 	Value any
+	Quote byte
 }
 
 // Var is a `$name` reference (the `$` is stripped during parsing).

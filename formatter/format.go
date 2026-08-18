@@ -467,36 +467,57 @@ func (p *printer) printClass(n *model.ClassDecl) {
 	}
 	p.line(head + " {")
 	p.depth++
-	first := true
-	writeBlank := func() {
-		if !first {
+	prevLine := 0
+	for i, c := range n.Consts {
+		if i > 0 && fieldGap(prevLine, c.Line) {
 			p.blank()
 		}
-		first = false
-	}
-	for _, f := range n.Fields {
-		writeBlank()
-		p.line(p.field(f) + ";")
-	}
-	for _, f := range n.Statics {
-		writeBlank()
-		p.line(p.staticField(f) + ";")
-	}
-	for _, c := range n.Consts {
-		writeBlank()
 		vis := ""
 		if c.Visibility != "" {
 			vis = c.Visibility + " "
 		}
 		p.line(vis + "const " + c.Name + " = " + p.expr(c.Default) + ";")
+		prevLine = c.Line
 	}
-	for _, m := range n.Methods {
-		writeBlank()
+	vars := 0
+	printVar := func(f model.Field, static bool) {
+		if vars == 0 && len(n.Consts) > 0 {
+			p.blank()
+		} else if vars > 0 && fieldGap(prevLine, f.Line) {
+			p.blank()
+		}
+		if static {
+			p.line(p.staticField(f) + ";")
+		} else {
+			p.line(p.field(f) + ";")
+		}
+		prevLine = f.Line
+		vars++
+	}
+	for _, f := range n.Fields {
+		printVar(f, false)
+	}
+	for _, f := range n.Statics {
+		printVar(f, true)
+	}
+	for i, m := range n.Methods {
+		if i == 0 && (len(n.Consts) > 0 || vars > 0) {
+			p.blank()
+		} else if i > 0 {
+			p.blank()
+		}
 		p.printDeclarationComments(m)
 		p.printFunc(m, true)
 	}
 	p.depth--
 	p.line("}")
+}
+
+func fieldGap(prev, next int) bool {
+	if prev == 0 || next == 0 {
+		return false
+	}
+	return next > prev+1
 }
 
 // staticField renders a `static $name` property declaration. The modifier
@@ -586,7 +607,7 @@ func (p *printer) expr(e model.Expr) string {
 	case nil:
 		return ""
 	case *model.Lit:
-		return p.lit(n.Value)
+		return p.lit(n)
 	case *model.Var:
 		if n.Const {
 			return n.Name
@@ -714,19 +735,64 @@ func (p *printer) args(args []model.Expr) string {
 }
 
 func (p *printer) arrayLit(n *model.ArrayLit) string {
+	if shouldExpandArray(n) {
+		return p.arrayLitExpanded(n)
+	}
 	parts := make([]string, len(n.Items))
 	for i, it := range n.Items {
-		if it.Key != nil {
-			parts[i] = p.expr(it.Key) + " => " + p.expr(it.Val)
-		} else {
-			parts[i] = p.expr(it.Val)
-		}
+		parts[i] = p.arrayItem(it)
 	}
 	return "array(" + strings.Join(parts, ", ") + ")"
 }
 
-func (p *printer) lit(v any) string {
-	switch x := v.(type) {
+func arrayKeyCount(n *model.ArrayLit) int {
+	nKeys := 0
+	for _, it := range n.Items {
+		if it.Key != nil {
+			nKeys++
+		}
+	}
+	return nKeys
+}
+
+func shouldExpandArray(n *model.ArrayLit) bool {
+	if arrayKeyCount(n) > 2 {
+		return true
+	}
+	for _, it := range n.Items {
+		child, ok := it.Val.(*model.ArrayLit)
+		if ok && shouldExpandArray(child) {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *printer) arrayItem(it model.ArrayItem) string {
+	if it.Key != nil {
+		return p.expr(it.Key) + " => " + p.expr(it.Val)
+	}
+	return p.expr(it.Val)
+}
+
+func (p *printer) arrayLitExpanded(n *model.ArrayLit) string {
+	var b strings.Builder
+	b.WriteString("array(\n")
+	p.depth++
+	pad := p.indent()
+	for _, it := range n.Items {
+		b.WriteString(pad)
+		b.WriteString(p.arrayItem(it))
+		b.WriteString(",\n")
+	}
+	p.depth--
+	b.WriteString(p.indent())
+	b.WriteString(")")
+	return b.String()
+}
+
+func (p *printer) lit(n *model.Lit) string {
+	switch x := n.Value.(type) {
 	case nil:
 		return "null"
 	case bool:
@@ -739,13 +805,16 @@ func (p *printer) lit(v any) string {
 	case float64:
 		return fmt.Sprintf("%v", x)
 	case string:
-		return phpQuote(x)
+		return phpQuote(x, n.Quote)
 	default:
 		return fmt.Sprintf("%v", x)
 	}
 }
 
-func phpQuote(s string) string {
+func phpQuote(s string, quote byte) string {
+	if quote == '\'' {
+		return phpSingleQuote(s)
+	}
 	var b strings.Builder
 	b.WriteByte('"')
 	for _, r := range s {
@@ -764,6 +833,22 @@ func phpQuote(s string) string {
 		}
 	}
 	b.WriteByte('"')
+	return b.String()
+}
+
+func phpSingleQuote(s string) string {
+	var b strings.Builder
+	b.WriteByte('\'')
+	for _, r := range s {
+		switch r {
+		case '\\', '\'':
+			b.WriteByte('\\')
+			b.WriteRune(r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('\'')
 	return b.String()
 }
 
