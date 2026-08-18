@@ -1,5 +1,4 @@
 name: stdin
-flatstack: true
 description: >
   STDIN is a readable stream backed by the runtime input reader.
 stdin: "name=catalogue&column_count=6"

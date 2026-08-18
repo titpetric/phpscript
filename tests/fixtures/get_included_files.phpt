@@ -1,5 +1,9 @@
 name: get_included_files
-description: get_included_files returns included dirFS filenames.
+runner:
+  php: false
+description: >
+  get_included_files returns included dirFS filenames. The list names the
+  runtime root filesystem, so only phpscript defines the expected output.
 ---
 <?php
 include("modules/menu.php");

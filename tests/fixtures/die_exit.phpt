@@ -1,5 +1,4 @@
 name: die_exit
-flatstack: true
 description: >
   die interrupts execution without producing an HTTP-style host error. A string
   argument is a message and is printed; an integer argument is an exit status.

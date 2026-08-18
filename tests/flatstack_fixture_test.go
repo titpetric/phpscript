@@ -6,7 +6,9 @@ import (
 	"testing"
 )
 
-// TestFlatstackFixtures runs opted-in fixtures through flat bytecode.
+// TestFlatstackFixtures runs every fixture through the flat bytecode runtime,
+// which falls back to the compatibility interpreter for syntax it does not
+// compile yet.
 func TestFlatstackFixtures(t *testing.T) {
 	entries, err := fs.ReadDir(fixturesFS, "fixtures")
 	if err != nil {
@@ -25,12 +27,12 @@ func TestFlatstackFixtures(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !fx.Flatstack {
+		if !fx.Runs(RunnerFlatstack) {
 			continue
 		}
 		selected++
 		t.Run(fx.Name, func(t *testing.T) {
-			res := RunFixture(t.Context(), fx)
+			res := RunFixtureOn(t.Context(), fx, RunnerFlatstack)
 			if !res.Passed {
 				t.Fatalf("flatstack fixture failed: %s", res.FailureReason)
 			}

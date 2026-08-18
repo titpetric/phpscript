@@ -329,6 +329,14 @@ func Run(program *Program, host Host) (err error) {
 				pc = inst.target
 				continue
 			}
+		case opRef:
+			// The setter writes the frame the call was made from; a user
+			// function called in between installs its own locals, and this one
+			// keeps pointing at the caller's.
+			frame, frameInitialized, slot := locals, initialized, inst.a
+			stack = append(stack, func(value any) {
+				frame[slot], frameInitialized[slot] = value, true
+			})
 		case opCall, opConstruct:
 			arguments, argErr := args(inst.a)
 			if argErr != nil {

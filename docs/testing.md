@@ -78,7 +78,7 @@ PHP accesses this constructor as `SharedMemory`. The binding exposes `set` and `
 
 ## `.phpt` fixtures
 
-Fixtures live directly in [`tests/fixtures`](../tests/fixtures). The test harness discovers every file with a `.phpt` extension and runs it through the default `runner` runtime.
+Fixtures live directly in [`tests/fixtures`](../tests/fixtures). The test harness discovers every file with a `.phpt` extension and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of.
 
 Each fixture has three sections separated by a line containing only `---`:
 
@@ -106,13 +106,13 @@ hello world
 
 The YAML metadata supports these fields:
 
-| Field         | Required | Purpose                                                              |
-|---------------|---------:|----------------------------------------------------------------------|
-| `name`        |      yes | Human-readable subtest name.                                         |
-| `description` |      yes | Behavior and intent covered by the fixture.                          |
-| `error`       |       no | Substring that must occur in the chain of an uncaught runtime error. |
-| `stdin`       |       no | String exposed to the script through `STDIN`.                        |
-| `flatstack`   |       no | Set to `true` to run the fixture through flatstack as well.          |
+| Field         | Required | Purpose                                                                    |
+|---------------|---------:|----------------------------------------------------------------------------|
+| `name`        |      yes | Human-readable subtest name.                                               |
+| `description` |      yes | Behavior and intent covered by the fixture.                                |
+| `error`       |       no | Substring that must occur in the chain of an uncaught runtime error.       |
+| `stdin`       |       no | String exposed to the script through `STDIN`.                              |
+| `runner`      |       no | Runtimes the fixture opts out of; see [Runner metadata](#runner-metadata). |
 
 The expected-output section is always checked. Trailing newline differences are ignored, but all other output must match exactly. For an uncaught error, set `error` to a stable identifying substring and normally expect the host response body `Internal Server Error`:
 
@@ -132,7 +132,7 @@ Files used by `include`, autoloading, templates, or filesystem APIs can be place
 
 ### Checking a fixture against PHP
 
-PHP 8.4 is installed as `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section is what `php` prints for the same source, and that is verified rather than assumed. The two `---` lines make the sections addressable:
+PHP 8.4 is installed as `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section is what `php` prints for the same source, and that is verified rather than assumed. `phpscript test --matrix` runs that check for every fixture at once; to see the whole difference for one of them, run the two sides by hand. The two `---` lines make the sections addressable:
 
 ```bash
 cd tests/fixtures
@@ -154,17 +154,36 @@ Three kinds of fixture cannot be checked this way, and none of them is an excuse
 | Runtime introspection (`phpinfo`, `get_included_files`)          | The output names phpscript, or absolute paths that differ per machine         |
 | Host request state (superglobals populated by the harness)       | The harness supplies the request, not the PHP CLI SAPI                        |
 
-A fixture in one of these groups states in its `description` what defines the expected output, because there is no second implementation to appeal to.
+A fixture in one of these groups states in its `description` what defines the expected output, because there is no second implementation to appeal to, and opts the php runtime out with `runner`.
 
-## Testing with flatstack
+## Runner metadata
 
-Every `.phpt` fixture runs through the default runtime. To additionally run a fixture through the native flatstack bytecode runtime, add one metadata field:
+Every fixture runs through every runtime. A fixture that one runtime cannot execute opts that runtime out:
 
 ```yaml
-flatstack: true
+runner:
+  php: false
 ```
 
-No Go-side fixture list needs updating. The flatstack harness discovers the flag automatically. It also calls `flatstack.Supports` before execution, so the test fails if the program would use the compatibility interpreter instead of native flat bytecode. Only add the flag after all syntax and runtime operations used by the fixture are supported by flatstack.
+Both `flatstack` and `php` are accepted, and an omitted key means the runtime is used. The default runtime cannot be opted out of, because its output is what the expected-output section states.
+
+Opt out only where the runtime has nothing to say about the fixture: `php: false` for the three groups above, `flatstack: false` where the bytecode engine cannot execute the program at all. Syntax the bytecode engine does not compile is not a reason on its own, because it falls back to the compatibility interpreter and produces the same output.
+
+## Testing across runtimes
+
+`phpscript test --matrix` runs every fixture through all three runtimes and prints one row per fixture:
+
+```bash
+phpscript test --matrix tests/fixtures
+phpscript test --matrix -v tests/fixtures   # with the failures of each runtime
+```
+
+| Fixture             | Flat stack | Runtime | PHP  |
+|---------------------|------------|---------|------|
+| array_indexing.phpt | PASS       | PASS    | PASS |
+| storage_list.phpt   | PASS       | PASS    | SKIP |
+
+A `SKIP` is a fixture that opted the runtime out, or a `php` binary that is not installed. Any other non-pass fails the run. This is the check that finds a divergence between the two Go runtimes, and between phpscript and PHP itself.
 
 ## Running fixture tests
 
@@ -174,7 +193,7 @@ Run all default-runtime fixtures:
 go test ./tests -run '^TestFixtures$'
 ```
 
-Run all flatstack-enabled fixtures:
+Run every fixture through the flat bytecode runtime:
 
 ```bash
 go test ./tests -run '^TestFlatstackFixtures$'
@@ -187,4 +206,4 @@ go test ./tests -run 'TestFixtures/string_concatenation'
 go test ./tests -run 'TestFlatstackFixtures/string_concatenation'
 ```
 
-Before submitting a change, run the package tests affected by the change and then the complete suite with `go test ./...`. A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it has been diffed against `php`.
+Before submitting a change, run the package tests affected by the change, then the complete suite with `go test ./...`, and then `phpscript test --matrix tests/fixtures`. A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it passes the php column of the matrix.

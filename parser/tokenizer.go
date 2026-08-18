@@ -302,7 +302,14 @@ func (t *phpTokenizer) scanInlineHTML() {
 		startLine = t.line
 		if strings.HasPrefix(t.src[t.pos:], "<?php") {
 			t.consume(5)
-			t.emitArr(T_OPEN_TAG, "<?php", startLine)
+			// PHP folds the one whitespace character that ends the open tag
+			// into the token, so `<?php\n` is a six byte T_OPEN_TAG.
+			text := "<?php"
+			if t.pos < len(t.src) && isOpenTagSpace(t.src[t.pos]) {
+				text += string(t.src[t.pos])
+				t.advance()
+			}
+			t.emitArr(T_OPEN_TAG, text, startLine)
 		} else {
 			t.consume(2)
 			t.emitArr(T_OPEN_TAG, "<?", startLine)
@@ -470,6 +477,11 @@ func (t *phpTokenizer) scanOperator() bool {
 		return true
 	}
 	return false
+}
+
+// isOpenTagSpace reports the whitespace PHP absorbs into T_OPEN_TAG.
+func isOpenTagSpace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
 }
 
 func (t *phpTokenizer) advance() {

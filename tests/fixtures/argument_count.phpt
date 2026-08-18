@@ -1,5 +1,4 @@
 name: a surplus argument is thrown and catchable
-flatstack: true
 description: >
   Passing more arguments than a binding declares is refused rather than
   silently ignored, and the refusal is a throwable a script can catch, so

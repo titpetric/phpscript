@@ -1,9 +1,11 @@
 name: condition syntax
-flatstack: true
+runner:
+  php: false
 description: >
   Covers parenthesized PHP-style if conditions, phpscript's unwrapped short-if
   condition, and runtime compatibility for assignment expressions inside if
   conditions. Use `phpscript lint` to report assignment-in-condition syntax.
+  The short-if form is a phpscript extension that PHP rejects at parse time.
 ---
 <?php
 $foo = false;

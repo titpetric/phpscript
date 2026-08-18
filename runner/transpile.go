@@ -308,28 +308,17 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 	}
 }
 
-// byRefArgs lists, per function, the argument positions that are passed by
-// reference (output parameters). minitpl only needs preg_match_all's $matches.
-var byRefArgs = map[string]map[int]bool{
-	"preg_match_all": {2: true},
-	"preg_match":     {2: true},
-}
-
 // emitCall emits a free-function call. Free functions resolve from the env by
 // name (forwarded Go symbols or user-registered/PHP functions); expr-lang
 // builtins are disabled at compile time so PHP names like `count` never collide.
 // By-reference output arguments that are plain variables are emitted as __ref
 // setters so the shim can write the result back into scope.
 func (t *Transpiler) emitCall(n *model.Call) (string, error) {
-	// Inside a namespaced file Name is qualified ("MiniTPL\preg_match_all") and
-	// only Fallback carries the global name the by-reference table is keyed by.
-	refs := byRefArgs[n.Name]
-	if refs == nil && n.Fallback != "" {
-		refs = byRefArgs[n.Fallback]
-	}
 	args := make([]string, 0, len(n.Args))
 	for i, a := range n.Args {
-		if refs[i] {
+		// Inside a namespaced file Name is qualified ("MiniTPL\preg_match_all")
+		// and only Fallback carries the global name the table is keyed by.
+		if model.ByRefArg(n.Name, n.Fallback, i) {
 			if v, ok := model.UnwrapParenthesized(a).(*model.Var); ok {
 				t.addVar(v.Name)
 				args = append(args, "__ref("+strconv.Quote(v.Name)+")")

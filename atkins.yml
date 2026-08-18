@@ -20,6 +20,7 @@ tasks:
       - task: up
       - task: test:introspection
       - task: test:phpscript:run
+      - task: test:phpscript:matrix
       - task: test:demos:dbadmin
       - task: test:demos:example
 
@@ -54,6 +55,16 @@ tasks:
       - phpscript info
       - cd docs/reference && php README.php > README.md
       - task: mdox:fmt
+
+  # Every fixture runs on all three runtimes, so a divergence between the two
+  # Go runtimes, or between phpscript and php itself, fails the pipeline.
+  test:phpscript:matrix:
+    dir: tests/fixtures
+    passthru: true
+    env:
+      include: .env.testing
+    cmds:
+      - phpscript test --matrix -v
 
   test:phpscript:run:
     dir: tests/fixtures

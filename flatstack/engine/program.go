@@ -24,6 +24,7 @@ const (
 	opJumpFalse
 	opJumpTrue
 	opCall
+	opRef
 	opConstruct
 	opCallMethod
 	opGetProperty

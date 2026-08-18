@@ -1,5 +1,4 @@
 name: user function declaration and call
-flatstack: true
 description: >
   Test that user function declarations, argument binding, return values, and
   calls compile to and execute with flat bytecode.

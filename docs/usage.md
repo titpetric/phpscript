@@ -107,6 +107,27 @@ Use `--profile` to add per-operation allocation and byte counts. `--json`
 writes a machine-readable report to stdout (no table). `--cpuprofile` and
 `--memprofile` write pprof files for the whole `test` invocation.
 
+Use `--matrix` to run every fixture through all three runtimes (the flat
+bytecode engine, the default interpreter, and the `php` binary), reporting one
+row per fixture with a cell per runtime. Every other `test` flag is honored. A
+fixture that opts out of a runtime, and a runtime that is not installed, are
+reported as `SKIP`; anything else that is not a pass fails the run, and the
+command exits non-zero.
+
+```bash
+phpscript test --matrix tests/fixtures
+phpscript test --matrix -v tests/fixtures
+```
+
+| Fixture             | Flat stack | Runtime | PHP  |
+|---------------------|------------|---------|------|
+| array_indexing.phpt | PASS       | PASS    | PASS |
+| storage_list.phpt   | PASS       | PASS    | SKIP |
+
+Add `--verbose` (`-v`) to print the failure of each runtime in continuation
+rows below its fixture. A continuation row leaves the fixture column empty, so
+it reads as part of the row above it.
+
 ### `phpscript fmt <path>...`
 
 Format one or more PHP files or directories in place. A directory path formats

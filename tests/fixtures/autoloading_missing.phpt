@@ -1,5 +1,4 @@
 name: undefined class without autoloader
-flatstack: true
 description: >
   No class autoloader exists unless spl_autoload_register is invoked, so an
   undefined class construction throws an error that PHP code can catch.

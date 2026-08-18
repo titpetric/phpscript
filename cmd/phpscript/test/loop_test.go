@@ -23,7 +23,7 @@ func loopFixture(t *testing.T) *tests.Fixture {
 }
 
 func TestRunFixtureLoopCount(t *testing.T) {
-	fr := runFixtureLoop(context.Background(), loopFixture(t), Options{Count: 5})
+	fr := runFixtureLoop(context.Background(), loopFixture(t), tests.RunnerRuntime, Options{Count: 5})
 	if fr.Runs != 5 {
 		t.Fatalf("Runs = %d, want 5", fr.Runs)
 	}
@@ -33,7 +33,7 @@ func TestRunFixtureLoopCount(t *testing.T) {
 }
 
 func TestRunFixtureLoopTime(t *testing.T) {
-	fr := runFixtureLoop(context.Background(), loopFixture(t), Options{Time: 50 * time.Millisecond})
+	fr := runFixtureLoop(context.Background(), loopFixture(t), tests.RunnerRuntime, Options{Time: 50 * time.Millisecond})
 	if fr.Runs < 2 {
 		t.Fatalf("Runs = %d, want at least 2 within 50ms", fr.Runs)
 	}
@@ -43,14 +43,14 @@ func TestRunFixtureLoopTime(t *testing.T) {
 }
 
 func TestRunFixtureLoopSingleByDefault(t *testing.T) {
-	fr := runFixtureLoop(context.Background(), loopFixture(t), Options{})
+	fr := runFixtureLoop(context.Background(), loopFixture(t), tests.RunnerRuntime, Options{})
 	if fr.Runs != 1 {
 		t.Fatalf("Runs = %d, want 1", fr.Runs)
 	}
 }
 
 func TestRunFixtureLoopProfile(t *testing.T) {
-	fr := runFixtureLoop(context.Background(), loopFixture(t), Options{Count: 3, Profile: true})
+	fr := runFixtureLoop(context.Background(), loopFixture(t), tests.RunnerRuntime, Options{Count: 3, Profile: true})
 	if fr.AllocsPerOp == 0 || fr.BytesPerOp == 0 {
 		t.Fatalf("profile counters empty: allocs=%d bytes=%d", fr.AllocsPerOp, fr.BytesPerOp)
 	}
@@ -61,7 +61,7 @@ func TestRunFixtureSamplesCountAndTime(t *testing.T) {
 		count     = 3
 		benchTime = 10 * time.Millisecond
 	)
-	runs := runFixtureSamples(context.Background(), loopFixture(t), Options{
+	runs := runFixtureSamples(context.Background(), loopFixture(t), tests.RunnerRuntime, Options{
 		Count: count,
 		Time:  benchTime,
 	})

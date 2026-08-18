@@ -1,5 +1,4 @@
 name: foreach by value and by reference
-flatstack: true
 description: >
   `foreach ($a as $v)` binds a copy of the element, so writing through the loop
   variable leaves the source alone; `foreach ($a as &$v)` binds the element, so

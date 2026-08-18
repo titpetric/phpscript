@@ -617,6 +617,13 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 			return unsupported(path, "compact() requires scope reflection")
 		}
 		for i, argument := range node.Args {
+			// An output parameter is handed to the binding as a setter for the
+			// caller's variable, the way the interpreter emits __ref.
+			if variable, ok := model.UnwrapParenthesized(argument).(*model.Var); ok &&
+				model.ByRefArg(node.Name, node.Fallback, i) {
+				c.emit(instruction{op: opRef, a: c.slot(variable.Name)})
+				continue
+			}
 			if err := c.expr(argument, fmt.Sprintf("%s.arg[%d]", path, i)); err != nil {
 				return err
 			}

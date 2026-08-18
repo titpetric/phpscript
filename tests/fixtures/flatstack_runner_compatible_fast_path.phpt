@@ -1,8 +1,9 @@
 name: flatstack runner-compatible fast path
+runner:
+  php: false
 description: >
   A Go-backed constructor, context injection, method calls, and returned struct
   property access all execute through native flat bytecode.
-flatstack: true
 ---
 <?php
 $storage = new Storage;

@@ -1,6 +1,6 @@
 # phpscript - A custom PHP-flavoured runtime written in Go
 
-This is an experimental PHP interpreter. It supports the basic php expression syntax and some parts of the standard library. It's currently very rudimentary and only enables limited functionality.
+This is a PHP interpreter written in Go. It supports the basic php expression syntax and some parts of the standard library. It's currently rudimentary and only enables limited functionality.
 
 - [About phpscript](./docs/README.md)
 - [Language reference and PHP compatibility](./docs/reference/README.md)

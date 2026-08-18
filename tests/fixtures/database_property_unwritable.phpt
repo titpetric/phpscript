@@ -1,5 +1,6 @@
 name: database binding property is not writable
-flatstack: true
+runner:
+  php: false
 description: >
   Only an exported field is a writable property. Assigning anything else throws
   rather than quietly doing nothing: an assignment that looks like it took

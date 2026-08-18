@@ -1,5 +1,4 @@
 name: array indexing
-flatstack: true
 description: >
   Test nested array reads and minitpl-style foreach targets.
 ---

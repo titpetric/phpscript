@@ -1,5 +1,4 @@
 name: a caught throwable answers the Throwable methods
-flatstack: true
 description: >
   throw propagates the object a script threw rather than a rendering of it, so
   a catch clause binds the instance and getMessage() and getCode() report what

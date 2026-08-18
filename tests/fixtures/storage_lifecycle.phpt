@@ -1,5 +1,6 @@
 name: storage lifecycle
-flatstack: true
+runner:
+  php: false
 description: >
   `new Storage` constructs a Go-backed value via the registered constructor
   (with the context auto-injected). get() returns a rich Record struct; its
