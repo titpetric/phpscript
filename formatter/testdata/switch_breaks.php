@@ -1,0 +1,7 @@
+<?php
+switch ($x) {
+	case "a": $y = 1; break;
+	case "b": $y = 2; break;
+
+	case "c": $y = 3; break;
+}

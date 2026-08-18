@@ -159,7 +159,7 @@ func isPreambleStmt(s model.Stmt) bool {
 func (p *parser) parseStmt() (model.Stmt, error) {
 	start := p.cur().line
 	s, err := p.parseStmtNode()
-	if err == nil && s != nil {
+	if err == nil && s != nil && hasUniqueAddress(s) {
 		end := start
 		if p.i > 0 {
 			end = p.toks[p.i-1].line
@@ -167,6 +167,20 @@ func (p *parser) parseStmt() (model.Stmt, error) {
 		p.spans[s] = model.SourceSpan{Start: start, End: end}
 	}
 	return s, err
+}
+
+// hasUniqueAddress reports whether s can be used as a map key. Go hands every
+// zero-sized allocation the same address, so two `break` statements are the
+// same pointer: recording a span for one records it for all of them, and the
+// formatter then read the line of an unrelated statement and inserted a blank
+// line before it. Neither node spans more than its own line, so dropping the
+// entry loses nothing.
+func hasUniqueAddress(s model.Stmt) bool {
+	switch s.(type) {
+	case *model.Break, *model.Continue:
+		return false
+	}
+	return true
 }
 
 func (p *parser) parseStmtNode() (model.Stmt, error) {
