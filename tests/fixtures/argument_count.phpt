@@ -15,7 +15,7 @@ try {
 	echo "not reached\n";
 } catch (Throwable $e) {
 	echo "caught\n";
-	echo strpos("" . $e, "strlen()") !== false ? "names the function\n" : "unnamed\n";
+	echo strpos($e->getMessage(), "strlen()") !== false ? "names the function\n" : "unnamed\n";
 }
 
 echo strlen("abc"), "\n";

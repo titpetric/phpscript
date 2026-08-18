@@ -483,6 +483,9 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 		m = methodByNameFold(rv, method)
 	}
 	if !m.IsValid() {
+		if value, ok := throwableMethod(base, method); ok {
+			return value, nil
+		}
 		return nil, fmt.Errorf("undefined method %T::%s", base, method)
 	}
 	mt := m.Type()
@@ -495,6 +498,40 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 	}
 	out := m.Call(in)
 	return firstReturn(out)
+}
+
+// throwableMethod implements PHP's Throwable interface over any Go error.
+//
+// Every throwable class name is registered to one type, so a catch clause binds
+// whatever error reached it: an Exception a script threw, an error a binding
+// returned, or a panic converted at the host boundary. All of them answer the
+// method set a script expects on a caught value. A method the concrete Go type
+// defines wins, which is how *stdlib.Exception reports its own code.
+func throwableMethod(base any, method string) (any, bool) {
+	err, ok := base.(error)
+	if !ok {
+		return nil, false
+	}
+	switch strings.ToLower(strings.ReplaceAll(method, "_", "")) {
+	case "getmessage", "tostring", "__tostring":
+		return err.Error(), true
+	case "getcode":
+		return int64(0), true
+	case "getprevious":
+		if previous := errors.Unwrap(err); previous != nil {
+			return previous, true
+		}
+		return nil, true
+	case "getfile":
+		return "", true
+	case "getline":
+		return int64(0), true
+	case "gettrace":
+		return model.NewArray(), true
+	case "gettraceasstring":
+		return "#0 {main}", true
+	}
+	return nil, false
 }
 
 // methodByNameFold finds an exported method using PHP's case-insensitive

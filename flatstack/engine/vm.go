@@ -501,7 +501,13 @@ func Run(program *Program, host Host) (err error) {
 			if popErr != nil {
 				return popErr
 			}
-			throwErr := fmt.Errorf("uncaught exception: %v", value)
+			// A thrown throwable is already an error and propagates as
+			// itself, so a catch clause binds the object rather than a
+			// rendering of it. A bare value still renders.
+			throwErr, ok := value.(error)
+			if !ok {
+				throwErr = fmt.Errorf("uncaught exception: %v", value)
+			}
 			if handle(throwErr) {
 				continue
 			}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib"
 )
 
 // runBinding registers fn under name, runs src, and returns what the script
@@ -162,5 +163,72 @@ func TestInvokeMethodArgumentRules(t *testing.T) {
 				t.Fatalf("got %q, want %q", out.String(), test.want)
 			}
 		})
+	}
+}
+
+// Every throwable a catch clause can bind answers the Throwable method set,
+// whether it came from a thrown Exception, a binding that returned an error,
+// or a panic converted at the host boundary.
+func TestThrowableMethods(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   any
+		src  string
+		want string
+	}{
+		{
+			name: "error returned by a binding",
+			fn:   func(v any) (any, error) { return nil, errProbe },
+			src:  `<?php try { boom("x"); } catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "probe failed",
+		},
+		{
+			name: "panic converted at the host boundary",
+			fn:   func(v any) any { panic("exploded") },
+			src:  `<?php try { boom("x"); } catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "host panic in func(interface {}) interface {}: exploded",
+		},
+		{
+			name: "code defaults to zero",
+			fn:   func(v any) (any, error) { return nil, errProbe },
+			src:  `<?php try { boom("x"); } catch (Throwable $e) { echo $e->getCode(); }`,
+			want: "0",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			out, err := runBinding(t, "boom", test.fn, test.src)
+			if err != nil {
+				t.Fatalf("run: %v", err)
+			}
+			if out != test.want {
+				t.Fatalf("got %q, want %q", out, test.want)
+			}
+		})
+	}
+}
+
+var errProbe = probeError("probe failed")
+
+type probeError string
+
+func (e probeError) Error() string { return string(e) }
+
+// A thrown Exception reports the code it was constructed with, rather than the
+// zero the Throwable fallback supplies for a bare Go error. This needs the
+// standard library, which is where the Exception class is registered.
+func TestThrownExceptionKeepsItsCode(t *testing.T) {
+	program, err := parser.Parse(`<?php try { throw new Exception("m", 7); } catch (Throwable $e) { echo $e->getMessage() . ":" . $e->getCode(); }`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out.String() != "m:7" {
+		t.Fatalf("got %q, want %q", out.String(), "m:7")
 	}
 }
