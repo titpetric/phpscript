@@ -1092,6 +1092,20 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return false
 	})
+	rt.RegisterFunc("intdiv", func(num, divisor int64) (int64, error) {
+		if divisor == 0 {
+			return 0, errors.New("Division by zero")
+		}
+		if num == math.MinInt64 && divisor == -1 {
+			return 0, errors.New("Division of PHP_INT_MIN by -1 is not an integer")
+		}
+		return num / divisor, nil
+	})
+	// fdiv is IEEE-754 division: dividing by zero yields INF/-INF/NAN
+	// instead of an error.
+	rt.RegisterFunc("fdiv", func(num, divisor float64) float64 {
+		return num / divisor
+	})
 	rt.RegisterFunc("call_user_func", func(fn any, args ...any) (any, error) {
 		callback, ok := rt.Callable(fn)
 		if !ok {

@@ -106,6 +106,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `explode`
 - `extension_loaded`
 - `fclose`
+- `fdiv`
 - `filemtime`
 - `filter_var`
 - `fopen`
@@ -121,6 +122,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `in_array`
 - `ini_get`
 - `ini_set`
+- `intdiv`
 - `isset`
 - `ltrim`
 - `method_exists`
