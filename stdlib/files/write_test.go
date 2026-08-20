@@ -1,4 +1,4 @@
-package fs_test
+package files_test
 
 import (
 	"os"

@@ -7,7 +7,7 @@ package stdlib
 // bindings to Register.
 import (
 	_ "github.com/titpetric/phpscript/stdlib/compat"
-	_ "github.com/titpetric/phpscript/stdlib/fs"
+	_ "github.com/titpetric/phpscript/stdlib/files"
 	_ "github.com/titpetric/phpscript/stdlib/info"
 	_ "github.com/titpetric/phpscript/stdlib/ps"
 	_ "github.com/titpetric/phpscript/stdlib/smtp"
