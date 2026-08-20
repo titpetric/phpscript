@@ -50,6 +50,7 @@ func init() {
 // stack, so concurrent requests capture their own output.
 func Register(rt *runner.Runtime) {
 	registerRegex(rt)
+	registerDatetime(rt)
 
 	buffers := newBuffers(rt)
 
