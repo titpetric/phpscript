@@ -60,6 +60,7 @@ tasks:
   # Go runtimes, or between phpscript and php itself, fails the pipeline.
   test:phpscript:matrix:
     dir: tests/fixtures
+    tty: true # enable ansi
     passthru: true
     env:
       include: .env.testing
