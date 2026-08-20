@@ -228,7 +228,7 @@ func New(w io.Writer, opts Options) *Runtime {
 	opts.WorkDir = cleanFSPath(opts.WorkDir)
 	rt := &Runtime{
 		out:          w,
-		Env:          environmentSnapshot(),
+		Env:          ScriptEnvironment(opts.Env),
 		opts:         opts,
 		includeCache: NewIncludeCache(),
 		funcs:        map[string]any{},
@@ -256,10 +256,36 @@ func New(w io.Writer, opts Options) *Runtime {
 	return rt
 }
 
-func environmentSnapshot() map[string]string {
-	env := make(map[string]string)
-	for _, entry := range os.Environ() {
+// InfrastructurePrefix names the variables that configure phpscript and the
+// platform it runs on: connection strings, the listen address, the telemetry
+// block. They are the host's configuration, not the script's environment, and a
+// script never sees them.
+//
+// The rule already held for what a configuration file declares: a
+// PLATFORM_DB_* entry registers a connection and is not added to PHP variables.
+// It holds for the process environment for the same reason, and it matters more
+// now that one process serves several sites: a tenant reading the operator's
+// connection strings out of getenv() would make the per-site database boundary
+// pointless.
+const InfrastructurePrefix = "PLATFORM_"
+
+// ScriptEnvironment returns the environment scripts read with getenv().
+//
+// A nil environment means the process environment, which is what a CLI run
+// has. A host that configured one passes it instead, and a virtual host always
+// does, so that a site sees the variables it declared rather than everything
+// the operator's process happens to carry. Either way the infrastructure
+// variables are held back.
+func ScriptEnvironment(environment []string) map[string]string {
+	if environment == nil {
+		environment = os.Environ()
+	}
+	env := make(map[string]string, len(environment))
+	for _, entry := range environment {
 		name, value, _ := strings.Cut(entry, "=")
+		if name == "" || strings.HasPrefix(name, InfrastructurePrefix) {
+			continue
+		}
 		env[name] = value
 	}
 	return env
@@ -450,6 +476,10 @@ func (rt *Runtime) Stdin() io.Reader { return rt.opts.Stdin }
 
 // WorkDir returns the configured working directory inside the source root.
 func (rt *Runtime) WorkDir() string { return rt.opts.WorkDir }
+
+// Database returns the provider named connections resolve through, or nil when
+// the host configured none. The binding decides what nil falls back to.
+func (rt *Runtime) Database() model.DatabaseProvider { return rt.opts.Database }
 
 // WritablePaths returns the configured writable path whitelist.
 func (rt *Runtime) WritablePaths() []string { return append([]string(nil), rt.opts.WritablePaths...) }

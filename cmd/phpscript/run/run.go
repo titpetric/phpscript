@@ -36,6 +36,10 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 	options.SAPI = "cli"
 	options.RootFS = os.DirFS(".")
 	options.Stdin = os.Stdin
+	// A CLI run reads the process environment, with what the configuration
+	// adds on top. runner.ScriptEnvironment holds the infrastructure
+	// variables back.
+	options.Env = append(append([]string{}, os.Environ()...), config.Env...)
 	newRuntime := runner.New
 	if config.Flatstack.Enabled {
 		newRuntime = runner.NewFlatStack
