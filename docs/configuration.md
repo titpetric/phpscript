@@ -74,7 +74,7 @@ created by the bundled server.
 | `upload_max_filesize` |    `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.            |
 | `post_max_size`       |    `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.        |
 | `upload_file_mode`    |  `0644` | Mode `move_uploaded_file()` gives a stored upload. Octal, as `chmod()` takes it.                       |
-| `memory_limit`        |     `0` | Memory one script may allocate, php.ini's. `0` is no limit. Not enforced yet.                          |
+| `memory_limit`        |     `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                           |
 | `time_limit`          |     `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.         |
 | `concurrency_limit`   |     `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                       |
 
@@ -127,10 +127,17 @@ is the point of naming them:
 
 ### Execution limits
 
-`memory_limit`, `time_limit` and `concurrency_limit` are **accepted but not
-enforced**. The keys parse and are carried through to the runtime so a
-configuration written today keeps working when enforcement lands, rather than
-failing to load. Nothing stops a script from exceeding them yet.
+`memory_limit` is enforced. Usage is measured by walking the live variables
+of every execution frame, so it reflects what the script still holds, not
+what it allocated over its lifetime. The walk runs when the script calls
+`memory_get_usage()` and at periodic checkpoints while a limit is set;
+exceeding the limit raises a `RuntimeException` the script may catch. The
+number is an estimate of PHP value payloads, not Go allocator truth, and it
+is far below what PHP reports for the same script (no zval overhead).
+
+`time_limit` and `concurrency_limit` are **accepted but not enforced**. The
+keys parse and are carried through to the runtime so a configuration written
+today keeps working when enforcement lands, rather than failing to load.
 
 `memory_limit` is a size written the way the upload limits are. `time_limit` is
 php.ini's `max_execution_time`, in seconds. `concurrency_limit` has no php.ini

@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	yaml "gopkg.in/yaml.v3"
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/model"
@@ -92,9 +92,10 @@ type FixtureResponse struct {
 type Fixture struct {
 	Name        string          `yaml:"name"`
 	Description string          `yaml:"description"`
-	Error       string          `yaml:"error"`  // optional: expected uncaught error substring
-	Stdin       string          `yaml:"stdin"`  // optional: top-level stdin contents
-	Runner      FixtureRunners  `yaml:"runner"` // optional: runners the fixture opts out of
+	Error       string          `yaml:"error"`   // optional: expected uncaught error substring
+	Stdin       string          `yaml:"stdin"`   // optional: top-level stdin contents
+	Options     runner.Options  `yaml:"options"` // optional: runtime options for both engines (memory_limit, ...)
+	Runner      FixtureRunners  `yaml:"runner"`  // optional: runners the fixture opts out of
 	Request     FixtureRequest  `yaml:"request"`
 	Response    FixtureResponse `yaml:"response"`
 
@@ -122,6 +123,15 @@ type TestResult struct {
 	Error         string `json:"error,omitempty"`
 	Runner        Runner `json:"runner,omitempty"`
 	Skipped       bool   `json:"skipped,omitempty"`
+}
+
+// runnerOptions returns the fixture's options: frontmatter with the
+// harness-owned fields filled in.
+func (f *Fixture) runnerOptions() runner.Options {
+	options := f.Options
+	options.RootFS = testPHPFS()
+	options.Stdin = f.stdin()
+	return options
 }
 
 // ParseFixture splits a .phpt file into its three sections and parses the YAML metadata.
@@ -366,7 +376,7 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
 	if f.interp == nil {
-		options := runner.Options{RootFS: testPHPFS(), Stdin: f.stdin()}
+		options := f.runnerOptions()
 		rt := runner.New(&out, options)
 		rt.SetIncludeCache(includeCache)
 		rt.SetExprCache(exprCache)
@@ -407,7 +417,7 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
 	if f.flatRT == nil {
-		f.flatRT = newFlatstackTestRuntime(&out, f.stdin())
+		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions())
 		f.flatRT.FreezeStdlib()
 	} else {
 		f.flatRT.ResetSession(&out, f.stdin())
@@ -424,8 +434,7 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	return out.String(), reqCtx, nil
 }
 
-func newFlatstackTestRuntime(out *strings.Builder, input io.Reader) *flatstack.Runtime {
-	options := flatstack.Options{RootFS: testPHPFS(), Stdin: input}
+func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options) *flatstack.Runtime {
 	runtime := flatstack.New(out, options)
 	runtime.SetIncludeCache(flatIncludeCache)
 	runtime.SetExprCache(flatExprCache)

@@ -234,8 +234,19 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	defer reqCtx.Cleanup()
 	h.serverVars(reqCtx, r, filename)
 	reqCtx.Register(rt)
+	// The parsed request and the response writer live for this request too;
+	// Register accounted the Context, these are the host structures around it.
+	rt.AccountRequest(r, w)
 
 	err = rt.Run(prog)
+	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {
+		// The script's frames are gone once Run returns, so the peak is the
+		// request's memory footprint; a fresh usage walk would be baseline.
+		trace.Root().SetAttribute("memory_usage", rt.MemoryPeak())
+		if rt.MemoryLimit() > 0 {
+			trace.Root().SetAttribute("memory_limit", rt.MemoryLimit().Bytes())
+		}
+	}
 	for name, values := range reqCtx.ResponseHeaders() {
 		w.Header()[name] = values
 	}

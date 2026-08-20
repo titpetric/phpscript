@@ -125,7 +125,10 @@ Regenerate it after changing runtime or standard-library registrations.
 - `intdiv`
 - `isset`
 - `ltrim`
+- `memory_get_peak_usage`
+- `memory_get_usage`
 - `method_exists`
+- `microtime`
 - `mkdir`
 - `move_uploaded_file`
 - `ob_end_clean`
@@ -151,6 +154,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `sprintf`
 - `start_span`
 - `substr`
+- `time`
 - `token_get_all`
 - `token_name`
 - `touch`

@@ -33,11 +33,11 @@ type flatHost struct {
 }
 
 func (h flatHost) Construct(class string, args []any) (any, error) {
-	return h.runtime.helperNew(&scopeRef{scope: NewScope()})(strings.TrimPrefix(class, "\\"), args...)
+	return h.runtime.helperNew(&scopeRef{scope: h.runtime.newScope()})(strings.TrimPrefix(class, "\\"), args...)
 }
 
 func (h flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
-	return h.runtime.helperCall(&scopeRef{scope: NewScope()})(receiver, method, args...)
+	return h.runtime.helperCall(&scopeRef{scope: h.runtime.newScope()})(receiver, method, args...)
 }
 
 func (h flatHost) GetProperty(receiver any, name string) any {
@@ -224,5 +224,26 @@ func (h flatHost) Entries(value any) []flatvm.Entry {
 }
 
 func (h flatHost) Call(name, fallback string, args []any) (any, error) {
-	return h.runtime.helperFunc(&scopeRef{scope: NewScope()})(name, fallback, args...)
+	return h.runtime.helperFunc(&scopeRef{scope: h.runtime.newScope()})(name, fallback, args...)
+}
+
+// MemoryCheckInterval reports how often the VM should poll the memory limit;
+// zero when no limit is configured.
+func (h flatHost) MemoryCheckInterval() int {
+	if h.runtime.opts.MemoryLimit <= 0 {
+		return 0
+	}
+	return memCheckInstructions
+}
+
+func (h flatHost) PushLiveWalker(walk func(yield func(any))) {
+	h.runtime.vmWalkers = append(h.runtime.vmWalkers, walk)
+}
+
+func (h flatHost) PopLiveWalker() {
+	h.runtime.vmWalkers = h.runtime.vmWalkers[:len(h.runtime.vmWalkers)-1]
+}
+
+func (h flatHost) CheckMemory() error {
+	return h.runtime.checkMemory()
 }

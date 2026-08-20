@@ -111,3 +111,15 @@ precision-14 float rendering), with the following exceptions:
 - `/` and `%` by zero evaluate to `0` instead of throwing
   `DivisionByZeroError`. `intdiv()` does throw on a zero divisor;
   `fdiv()` returns `INF`/`-INF`/`NAN` as in PHP.
+
+Memory reporting differs from PHP's allocator view:
+
+- `memory_get_usage()` estimates the payload of live PHP values by walking
+  every execution frame, so absolute numbers are far below PHP's (no zval or
+  allocator overhead). Relative behavior matches: growth, `unset`, and frame
+  release move the number the way PHP's does.
+- `memory_get_peak_usage()` is sampled at walk points (usage calls and
+  `memory_limit` checkpoints). An allocation both made and released between
+  walks does not raise the peak, unlike PHP's allocator-level high-water mark.
+- Exceeding `memory_limit` raises a catchable `RuntimeException`; PHP treats
+  it as a fatal error that `catch` cannot intercept.

@@ -36,3 +36,18 @@ func (e *Exception) GetMessage() string {
 func (e *Exception) Error() string {
 	return e.Message
 }
+
+// RuntimeException represents PHP's RuntimeException.
+type RuntimeException struct {
+	Exception
+}
+
+// NewRuntimeException returns a new allocation for a RuntimeException.
+func NewRuntimeException(message string, code int) (*RuntimeException, error) {
+	return &RuntimeException{
+		Exception: Exception{
+			Message: message,
+			Code:    code,
+		},
+	}, nil
+}
