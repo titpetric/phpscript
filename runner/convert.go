@@ -203,14 +203,25 @@ func phpArith(op string, a, b any) any {
 			return float64(0)
 		}
 	}
+	// Integer arithmetic that overflows becomes float in PHP, so
+	// PHP_INT_MAX + 1 is 9.2233720368548E+18, not a wrapped negative.
 	x, y := toInt(a), toInt(b)
 	switch op {
 	case "+":
-		return x + y
+		if z, ok := addInt(x, y); ok {
+			return z
+		}
+		return float64(x) + float64(y)
 	case "-":
-		return x - y
+		if z, ok := subInt(x, y); ok {
+			return z
+		}
+		return float64(x) - float64(y)
 	case "*":
-		return x * y
+		if z, ok := mulInt(x, y); ok {
+			return z
+		}
+		return float64(x) * float64(y)
 	case "/":
 		if y == 0 {
 			return int64(0)
@@ -223,6 +234,32 @@ func phpArith(op string, a, b any) any {
 	default:
 		return int64(0)
 	}
+}
+
+// addInt, subInt and mulInt perform int64 arithmetic, reporting false on
+// overflow so phpArith can fall back to float the way PHP does.
+func addInt(x, y int64) (int64, bool) {
+	z := x + y
+	if (y > 0 && z < x) || (y < 0 && z > x) {
+		return 0, false
+	}
+	return z, true
+}
+
+func subInt(x, y int64) (int64, bool) {
+	z := x - y
+	if (y < 0 && z < x) || (y > 0 && z > x) {
+		return 0, false
+	}
+	return z, true
+}
+
+func mulInt(x, y int64) (int64, bool) {
+	z := x * y
+	if x != 0 && (z/x != y || (x == -1 && y == math.MinInt64)) {
+		return 0, false
+	}
+	return z, true
 }
 
 // isFloat reports whether the value is a PHP float operand.
