@@ -20,6 +20,9 @@ otherwise the command exits with an error.
 runner:
   work_dir: "."
   writable_paths: []
+  upload_max_filesize: 2M
+  post_max_size: 8M
+  upload_file_mode: "0644"
 
 flatstack:
   enabled: false
@@ -57,10 +60,55 @@ leaves out keeps what the embedded file says.
 `runner` applies to the `run` and `server` commands and to annotated routes
 created by the bundled server.
 
-| Key              | Default | Purpose                                                                                                  |
-|------------------|--------:|----------------------------------------------------------------------------------------------------------|
-| `work_dir`       |     `.` | Directory inside the runtime source filesystem used to resolve relative script and include paths.        |
-| `writable_paths` |    `[]` | Writable-path allowlist exposed to filesystem integrations. An empty list adds no allowlist restriction. |
+| Key                   | Default | Purpose                                                                                                  |
+|-----------------------|--------:|----------------------------------------------------------------------------------------------------------|
+| `work_dir`            |     `.` | Directory inside the runtime source filesystem used to resolve relative script and include paths.        |
+| `writable_paths`      |    `[]` | Writable-path allowlist exposed to filesystem integrations. An empty list adds no allowlist restriction. |
+| `upload_max_filesize` |    `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.              |
+| `post_max_size`       |    `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.          |
+| `upload_file_mode`    |  `0644` | Mode `move_uploaded_file()` gives a stored upload. Octal, as `chmod()` takes it.                         |
+
+### Sizes
+
+`upload_max_filesize` and `post_max_size` are php.ini's, with php.ini's
+defaults. A size is written as a bare number of bytes or as a number with an
+`M` suffix for megabytes; php.ini's `K` and `G` shorthands are rejected rather
+than guessed at, and a value that does not parse fails the configuration file.
+`0` means no limit.
+
+```yaml
+runner:
+  upload_max_filesize: 20M
+  post_max_size: 25165824
+```
+
+### Upload file mode
+
+An upload arrives in a temporary file readable by nobody but the process that
+wrote it, so `move_uploaded_file()` applies a mode when it stores one.
+`upload_file_mode` is that mode, written in octal the way `chmod()` takes it,
+with or without the leading zero. PHP has no setting for this, it leaves the
+mode to the process umask; naming it here means an upload lands the same way
+whatever the umask of the process is.
+
+```yaml
+runner:
+  upload_file_mode: "0640"  # owner writes, group reads, nobody else
+```
+
+The default, `0644`, is what a umask of 022 produces and what a web server in
+front of the application expects to be able to read. A service that serves
+uploads itself, or hands them to a worker in the same group, has no reason to
+make them world readable: `0640`, or `0600` for files only this process should
+open.
+
+A request over either size limit is not something a script can catch: it happened
+before the script started, and all a script sees is an empty superglobal or an
+`UPLOAD_ERR_INI_SIZE` entry in `$_FILES`. The reason is reported to the Go host
+through `Runtime.RecordError`, which puts it on the request trace and passes it
+to a handler installed with `Runtime.OnError`. See
+[Errors](reference/errors/README.md#errors-a-script-cannot-catch) and
+[`$_FILES`](reference/predefined-variables/README.md#_files).
 
 ## Runtime backend
 

@@ -423,14 +423,8 @@ func (t *phpTokenizer) scanIdent() {
 func (t *phpTokenizer) scanNumber() {
 	start := t.pos
 	startLine := t.line
-	isFloat := false
-	for t.pos < len(t.src) {
-		c := t.src[t.pos]
-		if c == '.' {
-			isFloat = true
-		} else if !unicode.IsDigit(rune(c)) {
-			break
-		}
+	end, isFloat := scanNumber(t.src, t.pos)
+	for t.pos < end {
 		t.advance()
 	}
 	id := T_LNUMBER

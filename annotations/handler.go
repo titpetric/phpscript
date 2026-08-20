@@ -43,7 +43,11 @@ func (h *handler) file(name string) http.Handler {
 
 func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	var out strings.Builder
-	request := runner.FromRequest(r)
+	request := runner.FromRequestOptions(r, h.config.runnerOptions)
+	// Uploaded parts are copied to temporary files for the script to read; they
+	// belong to this request and nothing outlives it.
+	defer request.Cleanup()
+
 	rt := h.config.newRuntime(r.Context(), h.root, &out, "http", func(rt *runner.Runtime) {
 		rt.SetIncludeCache(h.includeCache)
 		rt.SetExprCache(h.exprCache)

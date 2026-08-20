@@ -87,6 +87,20 @@ func registerPlatformConstants(rt *phprunner.Runtime) {
 	rt.SetConst("FILTER_VALIDATE_FLOAT", int64(259))
 	rt.SetConst("FILTER_NULL_ON_FAILURE", int64(134217728))
 
+	// $_FILES error codes. A script compares against these whether or not the
+	// runtime can produce them, so all of PHP's are defined; the request
+	// runtime sets OK, INI_SIZE, NO_FILE, NO_TMP_DIR and CANT_WRITE, since
+	// FORM_SIZE is a per-form limit, PARTIAL is an aborted transfer, and
+	// EXTENSION comes from extensions phpscript has no equivalent of.
+	rt.SetConst("UPLOAD_ERR_OK", int64(phprunner.UploadErrOK))
+	rt.SetConst("UPLOAD_ERR_INI_SIZE", int64(phprunner.UploadErrIniSize))
+	rt.SetConst("UPLOAD_ERR_FORM_SIZE", int64(2))
+	rt.SetConst("UPLOAD_ERR_PARTIAL", int64(3))
+	rt.SetConst("UPLOAD_ERR_NO_FILE", int64(phprunner.UploadErrNoFile))
+	rt.SetConst("UPLOAD_ERR_NO_TMP_DIR", int64(phprunner.UploadErrNoTmpDir))
+	rt.SetConst("UPLOAD_ERR_CANT_WRITE", int64(phprunner.UploadErrCantWrite))
+	rt.SetConst("UPLOAD_ERR_EXTENSION", int64(8))
+
 	rt.SetConst("E_ALL", int64(32767))
 	rt.SetConst("E_ERROR", int64(1))
 	rt.SetConst("E_WARNING", int64(2))

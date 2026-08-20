@@ -24,4 +24,19 @@ type Options struct {
 	// WritablePaths optionally restricts filesystem writes. When empty, writes are
 	// left to normal OS/user permissions. Enforcement is done by filesystem shims.
 	WritablePaths []string `yaml:"writable_paths"`
+
+	// UploadMaxFilesize is the largest file part a request may carry, PHP's
+	// upload_max_filesize. A part over it is reported to the script as
+	// UPLOAD_ERR_INI_SIZE and is not stored. Zero is no limit.
+	UploadMaxFilesize Size `yaml:"upload_max_filesize"`
+
+	// PostMaxSize is the largest request body that is parsed at all, PHP's
+	// post_max_size. A body over it leaves both $_POST and $_FILES empty, as it
+	// does in PHP. Zero is no limit.
+	PostMaxSize Size `yaml:"post_max_size"`
+
+	// UploadFileMode is the mode move_uploaded_file() gives a stored upload.
+	// Zero means DefaultUploadFileMode; a host that serves uploads to nobody
+	// but itself sets something tighter, 0600 or 0640.
+	UploadFileMode FileMode `yaml:"upload_file_mode"`
 }

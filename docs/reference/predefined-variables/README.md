@@ -1,23 +1,31 @@
 # Predefined variables
 
-| PHP predefined variable                        | Status                | Notes                                                          |
-|------------------------------------------------|-----------------------|----------------------------------------------------------------|
-| `$_GET`                                        | Compatibility         | First query-string value for each key.                         |
-| `$_POST`                                       | Partial compatibility | First parsed form value for each key; uploads are unavailable. |
-| `$_PATH`                                       | phpscript extension   | Route wildcard values from the matched Go HTTP pattern.        |
-| `$GLOBALS`, `$_SERVER`, `$_FILES`, `$_REQUEST` | Not implemented       | Not seeded by the request runtime.                             |
-| `$_SESSION`, `$_ENV`, `$_COOKIE`               | Not implemented       | Not seeded by the request runtime.                             |
-| `$argc`, `$argv`                               | Not implemented       | CLI arguments are not exposed as PHP predefined variables.     |
-| `$php_errormsg`, `$http_response_header`       | Not implemented       | PHP error and stream globals are unavailable.                  |
+| PHP predefined variable                  | Status                | Notes                                                              |
+|------------------------------------------|-----------------------|--------------------------------------------------------------------|
+| `$_GET`                                  | Compatibility         | Last query-string value for each key.                              |
+| `$_POST`                                 | Compatibility         | Last parsed form value for each key, urlencoded or multipart.      |
+| `$_FILES`                                | Partial compatibility | File parts of a multipart body, with php.ini's size limits.        |
+| `$_COOKIE`                               | Compatibility         | One value per cookie sent with the request.                        |
+| `$_SERVER`                               | Partial compatibility | Method, URI, query, host, protocol, peer address, and `HTTP_*`.    |
+| `$_ENV`                                  | Partial compatibility | Seeded empty. Only a Go host fills it; `getenv()` is unrelated.    |
+| `$argc`, `$argv`                         | Partial compatibility | Seeded for scheduled jobs. CLI arguments are not passed to either. |
+| `$_PATH`                                 | phpscript extension   | Route wildcard values from the matched Go HTTP pattern.            |
+| `$GLOBALS`, `$_REQUEST`, `$_SESSION`     | Not implemented       | Reserved names, never seeded, so they read as null.                |
+| `$php_errormsg`, `$http_response_header` | Not implemented       | PHP error and stream globals are unavailable.                      |
 
 These arrays are installed only when a Go host creates and registers a request
 context. Their values are ordinary phpscript arrays, while their reserved names
 remain visible in function scopes like PHP superglobals.
 
+A context built from an HTTP request fills what that request carries. A context
+built without one, which is what the `phpscript` CLI and a startup job use,
+installs the same arrays empty, so a script reads them rather than failing on
+an undefined name.
+
 ## `$_GET`
 
-Contains URL query parameters. Repeated values are flattened to the first
-value.
+Contains URL query parameters, one string per key. A key sent more than once
+keeps the last value, as it does in PHP.
 
 ```php
 $page = $_GET["page"];
@@ -25,7 +33,105 @@ $page = $_GET["page"];
 
 ## `$_POST`
 
-Contains parsed form-body values, also flattened to one string per key.
+Contains parsed form-body values, also one string per key and also last one
+wins. Both body encodings a browser form produces are decoded:
+`application/x-www-form-urlencoded` and `multipart/form-data`. The value parts
+of a multipart body land here; its file parts land in `$_FILES`.
+
+## `$_FILES`
+
+Contains the file parts of a `multipart/form-data` body, keyed by form field
+name, each with PHP's keys:
+
+```php
+$file = $_FILES["avatar"];
+if ($file["error"] === 0) {
+    move_uploaded_file($file["tmp_name"], "uploads/" . $file["name"]);
+}
+```
+
+| Key         | Value                                                            |
+|-------------|------------------------------------------------------------------|
+| `name`      | Client-supplied file name, with any directory part stripped.     |
+| `full_path` | Client-supplied file name as sent, directory part included.      |
+| `type`      | Client-supplied content type. It is not verified.                |
+| `tmp_name`  | Absolute path of the server-side temporary copy.                 |
+| `error`     | `UPLOAD_ERR_OK` (0), or 1, 4, 6, 7 when the part was not stored. |
+| `size`      | Bytes written to `tmp_name`.                                     |
+
+A field named `files[]` collects every file sent under it, and its entry holds
+one array per key rather than one value: `$_FILES["files"]["name"][0]`. Any
+other field takes the last file sent under it, the way a repeated form value
+assigns over the one before it.
+
+The temporary copy lives for the duration of one request; a host handler
+removes it after the response is written. `move_uploaded_file()` puts an upload
+somewhere permanent, and refuses any path the request did not produce, as does
+`is_uploaded_file()`. Both are installed with the rest of the filesystem shims,
+so the destination is resolved against the same root.
+
+A stored upload is given the `upload_file_mode` of the runner, `0644` by
+default, because the temporary copy it came from is readable by nobody but this
+process. See [Configuration](../../configuration.md#upload-file-mode).
+
+### Size limits
+
+`upload_max_filesize` and `post_max_size` are configuration keys of the runner,
+written and defaulted as php.ini writes them; see
+[Configuration](../../configuration.md#sizes). A file part over
+`upload_max_filesize` is not stored and its entry carries
+`UPLOAD_ERR_INI_SIZE`, so the rest of the form still reaches the script. A body
+over `post_max_size` is not parsed at all, so both `$_POST` and `$_FILES` are
+empty.
+
+An entry for a part that was not stored, for any of the error codes, describes
+only what the client sent: `name` and `full_path` are filled, `type` and
+`tmp_name` are empty and `size` is `0`.
+
+Neither is catchable: they happen before the script runs. The Go host is told
+why through `Runtime.RecordError`; see
+[Errors a script cannot catch](../errors/README.md#errors-a-script-cannot-catch).
+
+PHP's per-form `MAX_FILE_SIZE` field, and the `UPLOAD_ERR_FORM_SIZE` and
+`UPLOAD_ERR_PARTIAL` codes that go with it, are not implemented.
+
+## `$_COOKIE`
+
+Contains one value per cookie sent with the request, keyed by cookie name.
+Setting a cookie is `header("Set-Cookie: ...")`; there is no `setcookie()`.
+
+## `$_SERVER`
+
+Contains the part of PHP's server array that an HTTP request answers for on its
+own:
+
+| Key                                             | Value                                                    |
+|-------------------------------------------------|----------------------------------------------------------|
+| `REQUEST_METHOD`, `REQUEST_URI`, `QUERY_STRING` | The request line, as the Go server parsed it.            |
+| `HTTP_HOST`, `SERVER_PROTOCOL`, `REMOTE_ADDR`   | Host header, protocol version, and the peer address.     |
+| `HTTP_*`                                        | One key per request header, upper-cased with `-` as `_`. |
+
+`REMOTE_ADDR` is Go's `Request.RemoteAddr`, which carries the port as
+`address:port` where PHP carries the address alone and puts the port in
+`REMOTE_PORT`.
+
+The keys PHP fills from its own SAPI and script resolution, `SCRIPT_NAME`,
+`SCRIPT_FILENAME`, `DOCUMENT_ROOT`, `SERVER_NAME`, `SERVER_PORT`,
+`REQUEST_TIME` and the rest, are absent.
+
+## `$_ENV`
+
+Installed, and empty unless a Go host puts something in the request context it
+registers. It is not the process environment: `getenv()` and `putenv()` read
+and write a separate map seeded from the process, and neither one is visible in
+`$_ENV`.
+
+## `$argc` and `$argv`
+
+Installed, and filled for a scheduled job: `$argv[0]` is the file, and what
+follows is whatever its `// @schedule` annotation put after `--`. Everywhere
+else they are `0` and an empty array; the arguments passed to the `phpscript`
+CLI are not among them.
 
 ## `$_PATH`
 
@@ -38,5 +144,6 @@ $id = $_PATH["id"];
 
 ## Request headers
 
-Headers are not exposed through `$_SERVER`. Use `getallheaders()`,
-`get_all_headers()`, or `apache_request_headers()`.
+Request headers reach a script two ways: as `HTTP_*` keys in `$_SERVER`, and
+through `getallheaders()`, `get_all_headers()`, or `apache_request_headers()`,
+which return them under their canonical names.

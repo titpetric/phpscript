@@ -75,11 +75,18 @@ The supported error model and values supplied by the runtime or request host.
 
 - [Errors](errors/README.md) - Parse failures, runtime errors, and the host error callback.
   - [Handling errors](errors/README.md#handling-errors)
+  - [Errors a script cannot catch](errors/README.md#errors-a-script-cannot-catch)
 - [Exceptions](exceptions/README.md) - Throwing, catching, finally blocks, and differences from PHP exception dispatch.
   - [Throwing and catching](exceptions/README.md#throwing-and-catching)
-- [Predefined variables](predefined-variables/README.md) - Request query, form, and route variables, plus unsupported PHP superglobals.
+- [Predefined variables](predefined-variables/README.md) - Request query, form, upload, cookie, server and route variables, and the superglobals that stay empty.
   - [`$_GET`](predefined-variables/README.md#_get)
   - [`$_POST`](predefined-variables/README.md#_post)
+  - [`$_FILES`](predefined-variables/README.md#_files)
+    - [Size limits](predefined-variables/README.md#size-limits)
+  - [`$_COOKIE`](predefined-variables/README.md#_cookie)
+  - [`$_SERVER`](predefined-variables/README.md#_server)
+  - [`$_ENV`](predefined-variables/README.md#_env)
+  - [`$argc` and `$argv`](predefined-variables/README.md#argc-and-argv)
   - [`$_PATH`](predefined-variables/README.md#_path)
   - [Request headers](predefined-variables/README.md#request-headers)
 - [Predefined interfaces and classes](predefined-interfaces-and-classes/README.md) - Exception and closure behavior, plus absent PHP runtime types.

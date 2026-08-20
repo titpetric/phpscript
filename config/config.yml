@@ -1,6 +1,14 @@
 runner:
   work_dir: "."
   writable_paths: []
+  # Upload limits, spelled and defaulted as php.ini spells them. A bare number
+  # is bytes and an M suffix is megabytes; nothing else parses, and 0 is no
+  # limit.
+  upload_max_filesize: 2M
+  post_max_size: 8M
+  # The mode move_uploaded_file() gives a stored upload. Octal, as chmod takes
+  # it; the temporary copy an upload arrives in is private to the process.
+  upload_file_mode: "0644"
 
 flatstack:
   enabled: false

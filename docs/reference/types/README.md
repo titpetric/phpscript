@@ -23,8 +23,19 @@ $ratio = 1.5;
 $name = "Ada";
 ```
 
-Integer literals are decimal. PHP hexadecimal, binary, octal, exponent, and
-numeric-separator syntax is not implemented.
+Integer literals are written in any of PHP's bases, and the underscore
+separator groups digits in all of them. A float takes a fractional part, an
+exponent, or both. An integer literal too large for an int becomes a float, as
+it does in PHP.
+
+```php
+$decimal = 1_000_000;
+$hex = 0x1F;        // 31
+$binary = 0b1010;   // 10
+$octal = 0o17;      // 15, also written 017
+$mode = 0644;       // 420, the form a chmod() argument takes
+$float = 1.5e3;     // 1500.0
+```
 
 ## Arrays
 

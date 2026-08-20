@@ -100,17 +100,7 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 			}
 			return
 		}
-		rt.UpdateStatus(telemetry.StateError)
-		ctx := rt.ctx
-		if rt.entrypoint != "" {
-			ctx = telemetry.WithSpanFilename(ctx, rt.entrypoint)
-		}
-		ctx = telemetry.WithSpanLine(ctx, rt.currentLine)
-		// The span is named for what happened, not for this instance of it: the
-		// message is the recorded error, which the front end renders under the
-		// span and filters on. A message in the name would make every failure
-		// its own kind of failure.
-		rt.traceContext(ctx, "php error").RecordError(err)
+		rt.recordTraceError(err)
 	}()
 	rt.UpdateStatus(telemetry.StateProcessing)
 	if rt.flat {
@@ -121,6 +111,43 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 	}
 	err = rt.runInterpreted(p)
 	return err
+}
+
+// RecordError reports err on the trace of the request this runtime is serving,
+// as the failure of the script it is running. Run calls it for the error a
+// script ends with; a host calls it for a failure that happened outside the
+// script, before or around it, which the script therefore has no throw to
+// catch: a request body refused for its size, say.
+//
+// It records and returns. It does not unwind PHP execution, so nothing about it
+// is visible to a script through try/catch; a Go host observes it on the trace,
+// or through the handler installed with OnError.
+func (rt *Runtime) RecordError(err error) {
+	if err == nil {
+		return
+	}
+	rt.recordTraceError(err)
+	if rt.errorHandler != nil {
+		rt.errorHandler(err)
+	}
+}
+
+// recordTraceError is the trace half of RecordError, and the whole of what Run
+// does with the error a script ended with: that one is already on its way to
+// the host as a return value, so routing it to the error handler as well would
+// report it twice.
+func (rt *Runtime) recordTraceError(err error) {
+	rt.UpdateStatus(telemetry.StateError)
+	ctx := rt.ctx
+	if rt.entrypoint != "" {
+		ctx = telemetry.WithSpanFilename(ctx, rt.entrypoint)
+	}
+	ctx = telemetry.WithSpanLine(ctx, rt.currentLine)
+	// The span is named for what happened, not for this instance of it: the
+	// message is the recorded error, which the front end renders under the
+	// span and filters on. A message in the name would make every failure its
+	// own kind of failure.
+	rt.traceContext(ctx, "php error").RecordError(err)
 }
 
 func (rt *Runtime) runInterpreted(p *model.Program) error {

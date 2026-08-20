@@ -25,10 +25,11 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// Register installs the pure (non-filesystem) shims, PHP constants, every
+// Register installs the shims, PHP constants, every
 // binding contributed by an imported binding package (see
 // runner.RegisterBinding and imports.go), and any additional bindings passed by
-// the caller. Use RegisterFS to add filesystem IO bound to a root directory.
+// the caller. The filesystem shims come in that way too, rooted at the process
+// working directory; use RegisterFS to bind them to another root.
 func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
 	rt.RegisterConstructor("Exception", NewException)
 
@@ -993,13 +994,6 @@ func registerLang(rt *runner.Runtime) {
 	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
 	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
 	rt.SetConst("STDIN", rt.Stdin())
-	rt.RegisterFunc("stream_get_contents", func(stream io.Reader, _ ...any) (string, error) {
-		v, err := io.ReadAll(stream)
-		if err != nil {
-			return "", err
-		}
-		return string(v), nil
-	})
 	rt.RegisterFunc("spl_autoload_register", func(args ...any) (bool, error) {
 		var callback any = rt.SPLAutoload
 		if len(args) > 0 && args[0] != nil {

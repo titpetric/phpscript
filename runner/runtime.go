@@ -454,6 +454,15 @@ func (rt *Runtime) WorkDir() string { return rt.opts.WorkDir }
 // WritablePaths returns the configured writable path whitelist.
 func (rt *Runtime) WritablePaths() []string { return append([]string(nil), rt.opts.WritablePaths...) }
 
+// UploadFileMode returns the mode move_uploaded_file() gives a stored upload,
+// which is DefaultUploadFileMode unless the host configured one.
+func (rt *Runtime) UploadFileMode() FileMode {
+	if rt.opts.UploadFileMode == 0 {
+		return DefaultUploadFileMode
+	}
+	return rt.opts.UploadFileMode
+}
+
 // IncludedFiles returns the cleaned dirFS filenames included by this runtime.
 func (rt *Runtime) IncludedFiles() []string { return append([]string(nil), rt.included...) }
 

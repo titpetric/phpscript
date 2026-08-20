@@ -1,10 +1,13 @@
 package tests
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -47,6 +50,56 @@ func TestRouteSharedMemoryFixture(t *testing.T) {
 	mux.ServeHTTP(statsRR, httptest.NewRequest(http.MethodGet, "/stats/requests", nil))
 	if statsRR.Code != http.StatusOK || statsRR.Body.String() != "2" {
 		t.Fatalf("stats status/body = %d/%q", statsRR.Code, statsRR.Body.String())
+	}
+}
+
+// TestRouteFileUpload drives a file upload through the routed handler, the path
+// a browser form takes: the multipart body has to reach both superglobals, and
+// the temporary copy has to be gone once the response is written.
+func TestRouteFileUpload(t *testing.T) {
+	root, err := fs.Sub(fixturesFS, "fixtures/route")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mux := http.NewServeMux()
+	if err := annotations.NewRoute(root).RegisterMux(mux); err != nil {
+		t.Fatal(err)
+	}
+
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	if err := w.WriteField("title", "q3"); err != nil {
+		t.Fatal(err)
+	}
+	part, err := w.CreateFormFile("report", "report.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := part.Write([]byte("a,b,c")); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/upload", &body)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+	}
+	fields := strings.Split(rr.Body.String(), "|")
+	if len(fields) != 5 {
+		t.Fatalf("body = %q, want 5 fields", rr.Body.String())
+	}
+	if got, want := strings.Join(fields[:4], "|"), "q3|report.csv|5|0"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+	if _, err := os.Stat(fields[4]); !os.IsNotExist(err) {
+		t.Fatalf("tmp_name %q after response: err = %v, want not-exist", fields[4], err)
 	}
 }
 

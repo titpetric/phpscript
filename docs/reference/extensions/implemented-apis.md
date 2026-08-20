@@ -55,6 +55,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `is_numeric`
 - `is_object`
 - `is_string`
+- `is_uploaded_file`
 
 ## Runtime introspection
 
@@ -85,9 +86,13 @@ Regenerate it after changing runtime or standard-library registrations.
 - `basename`
 - `call_user_func`
 - `call_user_func_array`
+- `chgrp`
+- `chmod`
+- `chown`
 - `class_exists`
 - `compact`
 - `constant`
+- `copy`
 - `count`
 - `crc32`
 - `defer`
@@ -120,6 +125,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `ltrim`
 - `method_exists`
 - `mkdir`
+- `move_uploaded_file`
 - `ob_end_clean`
 - `ob_end_flush`
 - `ob_get_clean`
@@ -134,6 +140,7 @@ Regenerate it after changing runtime or standard-library registrations.
 - `property_exists`
 - `putenv`
 - `register_shutdown_function`
+- `rename`
 - `rsort`
 - `rtrim`
 - `set_error_handler`

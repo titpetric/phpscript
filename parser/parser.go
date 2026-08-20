@@ -10,6 +10,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -1206,12 +1207,25 @@ func (p *parser) optSemi() {
 	}
 }
 
-// numLit parses an int/float token into a literal value.
+// numLit parses an int/float token into a literal value. The underscore digit
+// separator is not part of the value, and base 0 covers the prefixes PHP and
+// Go spell the same way: 0x, 0b, 0o, and a leading zero for octal.
 func numLit(t token) (any, error) {
+	val := t.val
+	if strings.ContainsRune(val, '_') {
+		val = strings.ReplaceAll(val, "_", "")
+	}
 	if t.kind == tFloat {
-		f, err := strconv.ParseFloat(t.val, 64)
+		f, err := strconv.ParseFloat(val, 64)
 		return f, err
 	}
-	i, err := strconv.ParseInt(t.val, 10, 64)
+	i, err := strconv.ParseInt(val, 0, 64)
+	if errors.Is(err, strconv.ErrRange) {
+		// PHP widens an integer literal too large for an int to a float
+		// instead of rejecting the program.
+		if f, ferr := strconv.ParseFloat(val, 64); ferr == nil {
+			return f, nil
+		}
+	}
 	return i, err
 }

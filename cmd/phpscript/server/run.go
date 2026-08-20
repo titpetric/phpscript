@@ -147,7 +147,10 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	if h.rootDir != "" {
 		stdlib.RegisterFS(rt, h.rootDir)
 	}
-	reqCtx := runner.FromRequest(r)
+	reqCtx := runner.FromRequestOptions(r, options)
+	// Uploaded parts are copied to temporary files for the script to read; they
+	// belong to this request and nothing outlives it.
+	defer reqCtx.Cleanup()
 	reqCtx.Register(rt)
 
 	err = rt.Run(prog)

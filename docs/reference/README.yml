@@ -47,7 +47,7 @@ sitemap:
       - path: exceptions/README.md
         description: Throwing, catching, finally blocks, and differences from PHP exception dispatch.
       - path: predefined-variables/README.md
-        description: Request query, form, and route variables, plus unsupported PHP superglobals.
+        description: Request query, form, upload, cookie, server and route variables, and the superglobals that stay empty.
       - path: predefined-interfaces-and-classes/README.md
         description: Exception and closure behavior, plus absent PHP runtime types.
   - section: phpscript extensions

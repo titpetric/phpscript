@@ -2,13 +2,50 @@ package runner
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
 )
+
+// PHP's UPLOAD_ERR_* codes, as they appear in a $_FILES entry. Only the ones
+// this runtime can produce are named; 2, 3 and 8 come from a per-form limit and
+// from extensions that phpscript has no equivalent of.
+const (
+	UploadErrOK        = 0
+	UploadErrIniSize   = 1
+	UploadErrNoFile    = 4
+	UploadErrNoTmpDir  = 6
+	UploadErrCantWrite = 7
+)
+
+// maxMultipartMemory bounds how much of a multipart body net/http keeps in
+// memory before spilling parts to disk. It matches the net/http default.
+const maxMultipartMemory = 32 << 20
+
+// UploadedFile is one file part of a multipart request body, in the shape a
+// PHP $_FILES entry exposes. TmpName is the absolute path of the server-side
+// copy, which lives until Cleanup runs or the script moves it away.
+type UploadedFile struct {
+	Name string // client-supplied file name, without any directory part
+	// FullPath is the file name as the client sent it, directory part and all,
+	// which a directory upload uses to say where in the tree a file sat. PHP
+	// 8.1 added it; like Name, it is the client's word and not a path on this
+	// host.
+	FullPath string
+	Type     string // client-supplied content type
+	TmpName  string // path of the temporary copy, empty when Error is set
+	Size     int64
+	Error    int // an UPLOAD_ERR_* code, UploadErrOK when the part was stored
+}
 
 // Context carries HTTP request data exposed to PHP as superglobals, header
 // functions, and staged response headers.
@@ -22,11 +59,20 @@ type Context struct {
 	Headers map[string]string
 	Argv    []string
 
+	// Files holds the file parts of a multipart body keyed by form field name,
+	// in the order they were sent. A field carries more than one file when the
+	// form repeats it, which HTML spells as a "name[]" field.
+	Files map[string][]*UploadedFile
+
 	// response collects headers set by the PHP header() function. It is an
 	// http.Header (a map, hence reference-shared across copies of Context) so a
 	// host handler can flush it onto the response after execution.
 	response http.Header
 	status   *int
+	// errors holds what went wrong with the request itself, before any script
+	// ran: a body refused for its size. It is a pointer for the same reason
+	// status is, so a copy of a Context reports what another copy recorded.
+	errors *[]error
 }
 
 type requestContextKey struct{}
@@ -34,7 +80,9 @@ type requestContextKey struct{}
 // NewContext returns an allocated empty Context value.
 func NewContext() Context {
 	status := 0
+	var errs []error
 	return Context{
+		errors:   &errs,
 		Get:      map[string]string{},
 		Post:     map[string]string{},
 		Path:     map[string]string{},
@@ -43,6 +91,7 @@ func NewContext() Context {
 		Env:      map[string]string{},
 		Headers:  map[string]string{},
 		Argv:     []string{},
+		Files:    map[string][]*UploadedFile{},
 		response: http.Header{},
 		status:   &status,
 	}
@@ -51,26 +100,40 @@ func NewContext() Context {
 // pathVarRE matches Go 1.22+ ServeMux wildcard segments, e.g. {id} or {rest...}.
 var pathVarRE = regexp.MustCompile(`\{([a-zA-Z_][a-zA-Z0-9_]*)(\.\.\.)?\}`)
 
-// FromRequest builds a Context from an HTTP request. Query and form values are
-// flattened to their first value (PHP's scalar superglobal shape); path values
-// are pulled out of the matched ServeMux pattern via r.PathValue.
+// FromRequest builds a Context from an HTTP request with no size limits on the
+// body. A host that has runtime options, which is every host that reads a
+// configuration file, uses FromRequestOptions instead.
 func FromRequest(r *http.Request) Context {
+	return FromRequestOptions(r, Options{})
+}
+
+// FromRequestOptions builds a Context from an HTTP request. Query and form
+// values are flattened to one value per key (PHP's scalar superglobal shape);
+// path values are pulled out of the matched ServeMux pattern via r.PathValue.
+//
+// A key sent more than once keeps the last value, which is what PHP's own
+// parser does: each repetition assigns over the one before it.
+//
+// The upload_max_filesize and post_max_size options limit what the body may
+// carry; see enforcement in the form-body section below.
+func FromRequestOptions(r *http.Request, opts Options) Context {
 	c := NewContext()
 
 	// Query string ($_GET).
 	for k, v := range r.URL.Query() {
 		if len(v) > 0 {
-			c.Get[k] = v[0]
+			c.Get[k] = v[len(v)-1]
 		}
 	}
 
-	// Form body ($_POST). ParseForm is idempotent and a no-op for bodyless
-	// requests, so calling it unconditionally is safe.
-	_ = r.ParseForm()
-	for k, v := range r.PostForm {
-		if len(v) > 0 {
-			c.Post[k] = v[0]
-		}
+	// Form body ($_POST) and file uploads ($_FILES). A body over post_max_size
+	// is not parsed at all: PHP leaves both superglobals empty rather than
+	// giving a script half a form, and says so in its log.
+	if opts.PostMaxSize.Exceeds(r.ContentLength) {
+		c.recordError(fmt.Errorf("POST Content-Length of %d bytes exceeds the post_max_size limit of %d bytes",
+			r.ContentLength, opts.PostMaxSize.Bytes()))
+	} else {
+		c.parseBody(r, opts)
 	}
 
 	// Cookies ($_COOKIE).
@@ -108,6 +171,196 @@ func FromRequest(r *http.Request) Context {
 	return c
 }
 
+// isMultipart reports whether the request body is a multipart form, the one
+// body shape ParseForm does not decode by itself.
+func isMultipart(r *http.Request) bool {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if err != nil {
+		return false
+	}
+	return mediaType == "multipart/form-data"
+}
+
+// parseBody decodes the request body into $_POST and $_FILES. ParseForm only
+// decodes an urlencoded body; a multipart one leaves it with an empty PostForm,
+// which is why a form with a file input used to arrive empty. Only the content
+// type says which of the two a request carries. Both calls are idempotent and a
+// no-op for bodyless requests, so neither needs a method check.
+func (c Context) parseBody(r *http.Request, opts Options) {
+	capBody(r, opts.PostMaxSize)
+
+	var err error
+	if isMultipart(r) {
+		if err = r.ParseMultipartForm(maxMultipartMemory); err == nil {
+			c.collectUploads(r, opts.UploadMaxFilesize)
+		}
+	} else {
+		err = r.ParseForm()
+	}
+
+	// A body that did not announce its length is only found to be too large
+	// once it has been read past the cap. Whatever was decoded before that
+	// point is dropped, so this ends the same way an announced one does.
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		c.recordError(fmt.Errorf("POST body exceeds the post_max_size limit of %d bytes", tooLarge.Limit))
+		return
+	}
+
+	for k, v := range r.PostForm {
+		if len(v) > 0 {
+			c.Post[k] = v[len(v)-1]
+		}
+	}
+}
+
+// capBody limits how much of a body of unannounced length is read, so a
+// chunked request cannot get past post_max_size by not saying how large it is.
+func capBody(r *http.Request, limit Size) {
+	if limit <= 0 || r.Body == nil || r.ContentLength >= 0 {
+		return
+	}
+	r.Body = http.MaxBytesReader(nil, r.Body, limit.Bytes())
+}
+
+// collectUploads copies every file part of a parsed multipart body to a
+// temporary file and records it on the context. PHP hands a script a path on
+// disk rather than a stream, so the copy happens up front; Cleanup removes
+// whatever the script did not move away.
+func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
+	if r.MultipartForm == nil {
+		return
+	}
+	for field, headers := range r.MultipartForm.File {
+		for _, header := range headers {
+			upload := saveUpload(header, maxFileSize)
+			if upload.Error == UploadErrIniSize {
+				c.recordError(fmt.Errorf("uploaded file %q of %d bytes exceeds the upload_max_filesize limit of %d bytes",
+					upload.Name, header.Size, maxFileSize.Bytes()))
+			}
+			c.Files[field] = append(c.Files[field], upload)
+		}
+	}
+	// net/http spills the parts it could not hold in memory into temporary
+	// files of its own. Every one of them has been copied by now, so the
+	// originals go before the handler has a chance to forget about them.
+	_ = r.MultipartForm.RemoveAll()
+}
+
+// saveUpload writes one file part to its own temporary file. A failure is
+// reported the way PHP reports it, as an error code on the entry, because a
+// script reads $_FILES[...]["error"] rather than catching anything.
+func saveUpload(header *multipart.FileHeader, maxFileSize Size) *UploadedFile {
+	upload := &UploadedFile{
+		Name:     uploadBaseName(header.Filename),
+		FullPath: header.Filename,
+		Type:     header.Header.Get("Content-Type"),
+		Size:     header.Size,
+		Error:    UploadErrOK,
+	}
+	// A part PHP refuses before it reads it keeps only the two names the
+	// client sent: no type, no size, no temporary file.
+	if upload.Name == "" {
+		return upload.refuse(UploadErrNoFile)
+	}
+	if maxFileSize.Exceeds(header.Size) {
+		return upload.refuse(UploadErrIniSize)
+	}
+
+	src, err := header.Open()
+	if err != nil {
+		return upload.refuse(UploadErrCantWrite)
+	}
+	defer src.Close()
+
+	dst, err := os.CreateTemp("", "phpscript-upload-*")
+	if err != nil {
+		return upload.refuse(UploadErrNoTmpDir)
+	}
+	size, err := io.Copy(dst, src)
+	if cerr := dst.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		_ = os.Remove(dst.Name())
+		return upload.refuse(UploadErrCantWrite)
+	}
+
+	upload.TmpName = dst.Name()
+	upload.Size = size
+	return upload
+}
+
+// refuse marks an upload as not stored, in the shape PHP gives an entry it
+// refused: the error code, and nothing that describes content there is none of.
+func (u *UploadedFile) refuse(code int) *UploadedFile {
+	u.Type = ""
+	u.TmpName = ""
+	u.Size = 0
+	u.Error = code
+	return u
+}
+
+// uploadBaseName strips the directory part a client may have sent along with
+// the file name. The separator is the client's, not this host's, so both are
+// cut; PHP keeps the base name only.
+func uploadBaseName(name string) string {
+	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
+		name = name[i+1:]
+	}
+	return name
+}
+
+// Cleanup removes the temporary files created for the uploaded parts of a
+// request. A host handler defers it for the lifetime of one request; a file the
+// script moved with move_uploaded_file is already gone and is skipped.
+func (c Context) Cleanup() {
+	for _, files := range c.Files {
+		for _, file := range files {
+			if file.TmpName != "" {
+				_ = os.Remove(file.TmpName)
+			}
+		}
+	}
+}
+
+// IsUpload reports whether path is the temporary file of a part of this
+// request. It backs is_uploaded_file() and move_uploaded_file(), which in PHP
+// refuse any path the request did not produce. A path the script has already
+// moved away is no longer one of them, so the copy has to still be there.
+func (c Context) IsUpload(path string) bool {
+	for _, files := range c.Files {
+		for _, file := range files {
+			if file.TmpName != "" && file.TmpName == path {
+				_, err := os.Stat(path)
+				return err == nil
+			}
+		}
+	}
+	return false
+}
+
+// recordError notes something the request itself got wrong. See Errors.
+func (c Context) recordError(err error) {
+	if c.errors == nil || err == nil {
+		return
+	}
+	*c.errors = append(*c.errors, err)
+}
+
+// Errors returns what the request got wrong before any script ran, which today
+// is a body or a file part refused for its size. A script has no way to catch
+// these: they happened outside it, and the only sign of them it gets is the
+// empty superglobal or the UPLOAD_ERR_INI_SIZE entry they left behind. Register
+// reports each one to the runtime through Runtime.RecordError, so a Go host
+// sees them on the request trace or through Runtime.OnError.
+func (c Context) Errors() []error {
+	if c.errors == nil {
+		return nil
+	}
+	return *c.errors
+}
+
 // Register installs the request-aware PHP functions onto rt and seeds the
 // request superglobals. After this, transpiled PHP can call getallheaders() /
 // header() and read $_GET, $_POST, $_PATH, all backed by this Context.
@@ -131,6 +384,7 @@ func (c Context) Register(rt *Runtime) {
 	rt.SetGlobal("_SERVER", mapToArray(c.Server))
 	rt.SetGlobal("_ENV", mapToArray(c.Env))
 	rt.SetGlobal("_PATH", mapToArray(c.Path))
+	rt.SetGlobal("_FILES", c.filesArray())
 
 	argvArr := model.NewArray()
 	for i, arg := range c.Argv {
@@ -138,6 +392,13 @@ func (c Context) Register(rt *Runtime) {
 	}
 	rt.SetGlobal("argv", argvArr)
 	rt.SetGlobal("argc", int64(len(c.Argv)))
+
+	// What the request got wrong is the runtime's to report, not the script's
+	// to catch: it happened before the script started, so there is nothing for
+	// a try/catch to wrap. See Errors.
+	for _, err := range c.Errors() {
+		rt.RecordError(err)
+	}
 }
 
 // GetAllHeaders implements PHP getallheaders(): an associative array of the
@@ -206,6 +467,81 @@ func (c Context) ResponseStatus() int {
 		return 0
 	}
 	return *c.status
+}
+
+// uploadKeys is the key set of a $_FILES entry, in the order PHP writes it.
+var uploadKeys = [...]string{"name", "full_path", "type", "tmp_name", "error", "size"}
+
+// uploadValue reads one key of a $_FILES entry off an upload, so the scalar and
+// the parallel-array shapes cannot disagree about what a key holds.
+func uploadValue(file *UploadedFile, key string) any {
+	switch key {
+	case "name":
+		return file.Name
+	case "full_path":
+		return file.FullPath
+	case "type":
+		return file.Type
+	case "tmp_name":
+		return file.TmpName
+	case "error":
+		return int64(file.Error)
+	case "size":
+		return file.Size
+	}
+	return nil
+}
+
+// filesArray renders $_FILES. A field named "files[]" takes PHP's parallel
+// array shape, $_FILES["files"]["name"][0]; any other field takes the scalar
+// shape, $_FILES["file"]["name"], and keeps the last file sent under it, the
+// way a repeated form value assigns over the one before it.
+func (c Context) filesArray() *model.Array {
+	if len(c.Files) == 0 {
+		return model.NewArray()
+	}
+	fields := make([]string, 0, len(c.Files))
+	for field := range c.Files {
+		fields = append(fields, field)
+	}
+	sort.Strings(fields)
+
+	arr := model.NewArraySize(len(fields))
+	for _, field := range fields {
+		files := c.Files[field]
+		if len(files) == 0 {
+			continue
+		}
+		if name, isList := strings.CutSuffix(field, "[]"); isList {
+			arr.Set(name, uploadListArray(files))
+			continue
+		}
+		arr.Set(field, uploadArray(files[len(files)-1]))
+	}
+	return arr
+}
+
+// uploadArray renders one upload as PHP's keyed array.
+func uploadArray(file *UploadedFile) *model.Array {
+	arr := model.NewArraySize(len(uploadKeys))
+	for _, key := range uploadKeys {
+		arr.Set(key, uploadValue(file, key))
+	}
+	return arr
+}
+
+// uploadListArray renders a list field: the same keys, each holding one value
+// per file rather than a single value.
+func uploadListArray(files []*UploadedFile) *model.Array {
+	arr := model.NewArraySize(len(uploadKeys))
+	for _, key := range uploadKeys {
+		column := model.NewArraySize(len(files))
+		for i, file := range files {
+			column.Set(int64(i), uploadValue(file, key))
+		}
+		arr.Set(key, column)
+	}
+	return arr
 }
 
 // mapToArray converts a string map into a PHP associative array with stable,

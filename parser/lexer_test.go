@@ -143,9 +143,17 @@ func TestLexOperatorPositionsAndLines(t *testing.T) {
 		line int
 	}
 	wants := []want{
-		{tVar, "a", 2}, {tOp, "->", 2}, {tIdent, "b", 2}, {tOp, ";", 2},
-		{tVar, "c", 3}, {tOp, "[", 3}, {tInt, "1", 3}, {tOp, "]", 3},
-		{tOp, "=", 3}, {tInt, "2", 3}, {tOp, ";", 3},
+		{tVar, "a", 2},
+		{tOp, "->", 2},
+		{tIdent, "b", 2},
+		{tOp, ";", 2},
+		{tVar, "c", 3},
+		{tOp, "[", 3},
+		{tInt, "1", 3},
+		{tOp, "]", 3},
+		{tOp, "=", 3},
+		{tInt, "2", 3},
+		{tOp, ";", 3},
 		{tEOF, "", 4},
 	}
 	if len(toks) != len(wants) {
@@ -179,5 +187,98 @@ func TestLexLineNumbersAcrossConstructs(t *testing.T) {
 func TestLexRejectsUnknownCharacter(t *testing.T) {
 	if _, err := newLexer("<?php ~").run(); err == nil {
 		t.Fatal("expected an error for an unsupported character")
+	}
+}
+
+// TestLexNumberLiterals covers PHP's integer and float spellings. The lexer
+// decides where a literal ends and whether it is a float; what base a prefix
+// means is numLit's job, which TestNumLitBases covers.
+func TestLexNumberLiterals(t *testing.T) {
+	cases := []struct {
+		src  string
+		kind tokKind
+		val  string
+	}{
+		{"1", tInt, "1"},
+		{"017", tInt, "017"},
+		{"0x1F", tInt, "0x1F"},
+		{"0XdeadBEEF", tInt, "0XdeadBEEF"},
+		{"0b1010", tInt, "0b1010"},
+		{"0o17", tInt, "0o17"},
+		{"1_000_000", tInt, "1_000_000"},
+		{"1.5", tFloat, "1.5"},
+		{"1.", tFloat, "1."},
+		{"1e3", tFloat, "1e3"},
+		{"1E-3", tFloat, "1E-3"},
+		{"1.5e+10", tFloat, "1.5e+10"},
+		// A hex literal owns its digits: the "e" in 0x1e is one of them, not
+		// the start of an exponent.
+		{"0x1e", tInt, "0x1e"},
+	}
+	for _, c := range cases {
+		toks := lexAll(t, "<?php "+c.src)
+		if len(toks) != 2 {
+			t.Errorf("%q: got %d tokens, want 2: %v", c.src, len(toks), toks)
+			continue
+		}
+		if toks[0].kind != c.kind || toks[0].val != c.val {
+			t.Errorf("%q: got %v(%q), want %v(%q)", c.src, toks[0].kind, toks[0].val, c.kind, c.val)
+		}
+	}
+}
+
+// TestLexNumberBoundaries checks where a number stops, for the spellings that
+// end next to something the lexer must not swallow.
+func TestLexNumberBoundaries(t *testing.T) {
+	cases := []struct {
+		src  string
+		want []string
+	}{
+		// A prefix with no digits after it is the integer 0 and an identifier.
+		{"0xg", []string{"0", "xg"}},
+		{"1 . 2", []string{"1", ".", "2"}},
+		{"0b12", []string{"0b1", "2"}},
+	}
+	for _, c := range cases {
+		toks := lexAll(t, "<?php "+c.src)
+		var got []string
+		for _, tok := range toks[:len(toks)-1] {
+			got = append(got, tok.val)
+		}
+		if strings.Join(got, "|") != strings.Join(c.want, "|") {
+			t.Errorf("%q: got %v, want %v", c.src, got, c.want)
+		}
+	}
+}
+
+// TestNumLitBases checks the values the parser hands the runtime, including the
+// literal too large for an int, which PHP widens to a float rather than
+// rejecting.
+func TestNumLitBases(t *testing.T) {
+	cases := []struct {
+		src  string
+		want any
+	}{
+		{"1", int64(1)},
+		{"017", int64(15)},
+		{"0o17", int64(15)},
+		{"0x1F", int64(31)},
+		{"0b1010", int64(10)},
+		{"1_000_000", int64(1000000)},
+		{"1.5", 1.5},
+		{"1e3", float64(1000)},
+		{"1_000.5", 1000.5},
+		{"9223372036854775808", float64(9223372036854775808)},
+	}
+	for _, c := range cases {
+		toks := lexAll(t, "<?php "+c.src)
+		got, err := numLit(toks[0])
+		if err != nil {
+			t.Errorf("%q: %v", c.src, err)
+			continue
+		}
+		if got != c.want {
+			t.Errorf("%q: got %#v, want %#v", c.src, got, c.want)
+		}
 	}
 }

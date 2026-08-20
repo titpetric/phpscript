@@ -230,21 +230,88 @@ func (l *lexer) lexIdent() {
 
 func (l *lexer) lexNumber() {
 	start := l.pos
-	isFloat := false
-	for l.pos < len(l.src) {
-		c := l.src[l.pos]
-		if c == '.' {
-			isFloat = true
-		} else if !unicode.IsDigit(rune(c)) {
-			break
-		}
-		l.advanceRune()
-	}
+	end, isFloat := scanNumber(l.src, l.pos)
+	l.advance(end - start)
 	if isFloat {
 		l.emit(tFloat, l.src[start:l.pos])
 	} else {
 		l.emit(tInt, l.src[start:l.pos])
 	}
+}
+
+// scanNumber returns the end offset of the numeric literal starting at pos,
+// and whether it is a float. It covers PHP's literal spellings: hexadecimal,
+// binary and octal integers (both the 0o form and the legacy leading zero),
+// decimal integers, floats with a fractional part or an exponent, and the
+// underscore digit separator. Which base a prefix means is left to numLit;
+// this only decides where the literal ends.
+//
+// It is shared by the lexer and the token_get_all tokenizer so the two agree
+// on what one number token is.
+func scanNumber(src string, pos int) (end int, isFloat bool) {
+	// A base prefix takes the whole literal: an "e" inside 0x1e is a hex
+	// digit, not an exponent, so these are matched before anything else.
+	if src[pos] == '0' && pos+1 < len(src) {
+		var isBaseDigit func(byte) bool
+		switch src[pos+1] {
+		case 'x', 'X':
+			isBaseDigit = isHexDigit
+		case 'b', 'B':
+			isBaseDigit = isBinDigit
+		case 'o', 'O':
+			isBaseDigit = isOctDigit
+		}
+		if isBaseDigit != nil {
+			p := pos + 2
+			for p < len(src) && (isBaseDigit(src[p]) || src[p] == '_') {
+				p++
+			}
+			// A prefix with no digit after it is not a literal; "0" is, and
+			// what follows is left for the next token.
+			if p > pos+2 {
+				return p, false
+			}
+		}
+	}
+
+	p := pos
+	for p < len(src) && (isDecDigit(src[p]) || src[p] == '_') {
+		p++
+	}
+	// PHP reads a trailing dot as part of the number ("1." is a float), which
+	// is why a concatenation after an integer needs the space PHP requires.
+	if p < len(src) && src[p] == '.' {
+		isFloat = true
+		p++
+		for p < len(src) && (isDecDigit(src[p]) || src[p] == '_') {
+			p++
+		}
+	}
+	if p < len(src) && (src[p] == 'e' || src[p] == 'E') {
+		q := p + 1
+		if q < len(src) && (src[q] == '+' || src[q] == '-') {
+			q++
+		}
+		if q < len(src) && isDecDigit(src[q]) {
+			for q < len(src) && (isDecDigit(src[q]) || src[q] == '_') {
+				q++
+			}
+			// An exponent makes the literal a float on its own: 1e3 is a
+			// float in PHP even though it has no fractional part.
+			p, isFloat = q, true
+		}
+	}
+	return p, isFloat
+}
+
+func isDecDigit(c byte) bool { return c >= '0' && c <= '9' }
+
+func isOctDigit(c byte) bool { return c >= '0' && c <= '7' }
+
+func isBinDigit(c byte) bool { return c == '0' || c == '1' }
+
+func isHexDigit(c byte) bool {
+	return isDecDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 }
 
 func (l *lexer) lexString(quote byte) error {
