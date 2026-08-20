@@ -169,22 +169,22 @@ Namespaces are registered with escaped Go strings:
 
 ### What is registered today
 
-| PHP name                     | Go package    | What it is                                                          |
-|------------------------------|---------------|---------------------------------------------------------------------|
-| `Exception` and the SPL set  | `stdlib`      | PHP's exception hierarchy over one Go type                          |
-| `Database`                   | `stdlib/ps`   | A connection from the host platform, queried through the pdo bridge |
-| `Database\Migrate`           | `stdlib/ps`   | Loads a migration set and runs it                                   |
-| `Session\Manager`            | `stdlib/ps`   | Starts, reads and validates a session                               |
-| `Session\Storage\Memory`     | `stdlib/ps`   | Session storage backed by process memory                            |
-| `Session\Storage\Disk`       | `stdlib/ps`   | Session storage backed by files                                     |
-| `SharedMemory`               | `stdlib/ps`   | A key value store shared across requests                            |
-| `SMTP`                       | `stdlib/smtp` | A configured sender, also behind `mail`                             |
-| `mail`                       | `stdlib/smtp` | PHP's `mail`, sent through the bound sender                         |
-| `defer`                      | `stdlib/ps`   | Runs a callback when the script ends                                |
-| `register_shutdown_function` | `stdlib/ps`   | PHP's shutdown hook                                                 |
+| PHP name                     | Go package         | What it is                                                          |
+|------------------------------|--------------------|---------------------------------------------------------------------|
+| `Exception` and the SPL set  | `stdlib`           | PHP's exception hierarchy over one Go type                          |
+| `Database`                   | `stdlib/ps`        | A connection from the host platform, queried through the pdo bridge |
+| `Database\Migrate`           | `stdlib/ps`        | Loads a migration set and runs it                                   |
+| `Session\Manager`            | `stdlib/ps`        | Starts, reads and validates a session                               |
+| `Session\Storage\Memory`     | `stdlib/ps`        | Session storage backed by process memory                            |
+| `Session\Storage\Disk`       | `stdlib/ps`        | Session storage backed by files                                     |
+| `SharedMemory`               | `stdlib/ps`        | A key value store shared across requests                            |
+| `SMTP`                       | `stdlib/smtp`      | A configured sender, also behind `mail`                             |
+| `mail`                       | `stdlib/smtp`      | PHP's `mail`, sent through the bound sender                         |
+| `defer`                      | `stdlib/ps`        | Runs a callback when the script ends                                |
+| `register_shutdown_function` | `stdlib/ps`        | PHP's shutdown hook                                                 |
 | `start_span`                 | `stdlib/span`      | Opens a telemetry span the script ends itself                       |
 | `phpinfo`                    | `stdlib/info`      | Reports the runtime, as `phpscript info` runs it                    |
-| `memory_get_usage`           | `stdlib/internals` | Reports request-scoped memory allocations in bytes                  |
+| `memory_get_usage`           | `stdlib/internals` | Reports the live memory of the running script in bytes              |
 
 This is the convention, not an aspiration: each of these names is what the
 fixtures and both demos type, `new Database("dbadmin")` and
