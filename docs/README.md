@@ -102,3 +102,12 @@ echo "Hello world\n";
 The CLI can still bundle internal APIs for use in PHP, however you then
 need to provide your own script binary that adds the bindings to be used
 by the API bridge.
+
+## Known divergences from PHP
+
+Arithmetic follows PHP semantics (int/float coercion, overflow to float,
+precision-14 float rendering), with the following exceptions:
+
+- `/` and `%` by zero evaluate to `0` instead of throwing
+  `DivisionByZeroError`. `intdiv()` does throw on a zero divisor;
+  `fdiv()` returns `INF`/`-INF`/`NAN` as in PHP.
