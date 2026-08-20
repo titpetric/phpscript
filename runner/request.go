@@ -7,11 +7,14 @@ import (
 	"io"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -142,12 +145,7 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	}
 
 	// Server variables ($_SERVER).
-	c.Server["REQUEST_METHOD"] = r.Method
-	c.Server["REQUEST_URI"] = r.URL.RequestURI()
-	c.Server["QUERY_STRING"] = r.URL.RawQuery
-	c.Server["HTTP_HOST"] = r.Host
-	c.Server["SERVER_PROTOCOL"] = r.Proto
-	c.Server["REMOTE_ADDR"] = r.RemoteAddr
+	c.serverVars(r)
 
 	// Path values from the matched route pattern, e.g. "GET /users/{id}".
 	// The stdlib exposes individual values via r.PathValue but no enumeration,
@@ -169,6 +167,87 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	}
 
 	return c
+}
+
+// serverVars fills $_SERVER with the part of PHP's server array that the
+// request itself answers for. Every value is a string, which is what $_SERVER
+// holds, with the two exceptions serverArray types back.
+//
+// The keys PHP fills from the SAPI and from resolving a URL to a file on disk
+// (DOCUMENT_ROOT, SCRIPT_NAME, SCRIPT_FILENAME, PHP_SELF, PATH_INFO,
+// SERVER_NAME, SERVER_PORT, SERVER_SOFTWARE) are not here: none of them follow
+// from an *http.Request. A real PHP answers SERVER_NAME and SERVER_PORT from
+// the socket it accepted on and not from the Host header, so a request whose
+// Host names something else still reports the listening address; the host that
+// owns the listener is the one that can say. Set them on Context.Server after
+// building the context.
+func (c Context) serverVars(r *http.Request) {
+	c.Server["REQUEST_METHOD"] = r.Method
+	c.Server["REQUEST_URI"] = r.URL.RequestURI()
+	c.Server["QUERY_STRING"] = r.URL.RawQuery
+	c.Server["HTTP_HOST"] = r.Host
+	c.Server["SERVER_PROTOCOL"] = r.Proto
+
+	// PHP splits the peer address in two, the address in REMOTE_ADDR and the
+	// port in REMOTE_PORT, where Go keeps both in RemoteAddr as "address:port".
+	// An IPv6 address arrives bracketed and leaves without, as PHP writes it.
+	// A Go host is free to put anything in the field, so one that does not
+	// parse is passed through whole and leaves REMOTE_PORT unset.
+	if addr, port, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		c.Server["REMOTE_ADDR"] = addr
+		c.Server["REMOTE_PORT"] = port
+	} else if r.RemoteAddr != "" {
+		c.Server["REMOTE_ADDR"] = r.RemoteAddr
+	}
+
+	// The scheme is the one this process is serving, r.TLS, and not the one
+	// X-Forwarded-Proto claims: that header is the client's to send, and a
+	// script deciding on it whether it is talking over TLS would be deciding on
+	// what the client said. A host behind a proxy that terminates TLS is the
+	// one that knows the proxy is trusted, and sets the two keys itself.
+	// HTTPS is unset on a plain request rather than "off", which is why an
+	// isset($_SERVER["HTTPS"]) test works in PHP.
+	c.Server["REQUEST_SCHEME"] = "http"
+	if r.TLS != nil {
+		c.Server["REQUEST_SCHEME"] = "https"
+		c.Server["HTTPS"] = "on"
+	}
+
+	// CONTENT_TYPE and CONTENT_LENGTH mirror the two headers, and appear only
+	// when the request sent them. PHP sets CONTENT_TYPE for any request
+	// carrying the header, a bodyless GET included.
+	if contentType := r.Header.Get("Content-Type"); contentType != "" {
+		c.Server["CONTENT_TYPE"] = contentType
+	}
+	if length, ok := contentLength(r); ok {
+		c.Server["CONTENT_LENGTH"] = length
+	}
+
+	// REQUEST_TIME_FLOAT is when the request started, to the microsecond, and
+	// REQUEST_TIME the whole second of it. Both are read here rather than per
+	// key so the two cannot disagree about which second the request began in.
+	start := time.Now()
+	c.Server["REQUEST_TIME"] = strconv.FormatInt(start.Unix(), 10)
+	c.Server["REQUEST_TIME_FLOAT"] = strconv.FormatFloat(float64(start.UnixMicro())/1e6, 'f', 6, 64)
+}
+
+// contentLength renders the CONTENT_LENGTH value of a request and reports
+// whether it has one. PHP takes the key from the Content-Length header, so a
+// chunked body, which announces no length, has no CONTENT_LENGTH, while a body
+// of zero bytes that announced itself has "0".
+//
+// Go parses the header into Request.ContentLength (-1 when unknown) and leaves
+// the header in place, so the header says whether the client sent one. A
+// request built in process, as httptest.NewRequest does, has the field without
+// the header; a positive length there is a body all the same.
+func contentLength(r *http.Request) (string, bool) {
+	if r.ContentLength < 0 {
+		return "", false
+	}
+	if _, sent := r.Header["Content-Length"]; !sent && r.ContentLength == 0 {
+		return "", false
+	}
+	return strconv.FormatInt(r.ContentLength, 10), true
 }
 
 // isMultipart reports whether the request body is a multipart form, the one
@@ -381,7 +460,7 @@ func (c Context) Register(rt *Runtime) {
 	rt.SetGlobal("_GET", mapToArray(c.Get))
 	rt.SetGlobal("_POST", mapToArray(c.Post))
 	rt.SetGlobal("_COOKIE", mapToArray(c.Cookie))
-	rt.SetGlobal("_SERVER", mapToArray(c.Server))
+	rt.SetGlobal("_SERVER", c.serverArray())
 	rt.SetGlobal("_ENV", mapToArray(c.Env))
 	rt.SetGlobal("_PATH", mapToArray(c.Path))
 	rt.SetGlobal("_FILES", c.filesArray())
@@ -540,6 +619,21 @@ func uploadListArray(files []*UploadedFile) *model.Array {
 			column.Set(int64(i), uploadValue(file, key))
 		}
 		arr.Set(key, column)
+	}
+	return arr
+}
+
+// serverArray renders $_SERVER. Context.Server holds every value as a string
+// because that is what all but two of PHP's server keys are; the two that are
+// not, REQUEST_TIME as an integer and REQUEST_TIME_FLOAT as a float, get their
+// type back here, so a script comparing either with === sees what PHP gives it.
+func (c Context) serverArray() *model.Array {
+	arr := mapToArray(c.Server)
+	if seconds, err := strconv.ParseInt(c.Server["REQUEST_TIME"], 10, 64); err == nil {
+		arr.Set("REQUEST_TIME", seconds)
+	}
+	if exact, err := strconv.ParseFloat(c.Server["REQUEST_TIME_FLOAT"], 64); err == nil {
+		arr.Set("REQUEST_TIME_FLOAT", exact)
 	}
 	return arr
 }

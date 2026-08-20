@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
@@ -281,6 +283,205 @@ echo read_job();
 	out, _ := runReq(t, httptest.NewRequest("GET", "/", nil), src)
 	if out != "" {
 		t.Fatalf("got %q, want empty string", out)
+	}
+}
+
+// wantServer checks the $_SERVER keys a request produced. A want value of ""
+// asserts the key is absent, which is how PHP says "not this kind of request":
+// no HTTPS on a plain one, no CONTENT_LENGTH on a chunked one.
+func wantServer(t *testing.T, server map[string]string, want map[string]string) {
+	t.Helper()
+	for key, value := range want {
+		got, ok := server[key]
+		if value == "" {
+			if ok {
+				t.Errorf("$_SERVER[%s] = %q, want it unset", key, got)
+			}
+			continue
+		}
+		if got != value {
+			t.Errorf("$_SERVER[%s] = %q, want %q", key, got, value)
+		}
+	}
+}
+
+// TestServerVarsPlainGet covers the keys a bodyless HTTP request produces. The
+// expected shape is what php 8.5's built-in server writes for the same request,
+// less the keys that need a document root and a script file.
+func TestServerVarsPlainGet(t *testing.T) {
+	r := httptest.NewRequest("GET", "/index.php?a=1&b=two", nil)
+	r.RemoteAddr = "127.0.0.1:56138"
+
+	ctx := runner.FromRequest(r)
+	wantServer(t, ctx.Server, map[string]string{
+		"REQUEST_METHOD":  "GET",
+		"REQUEST_URI":     "/index.php?a=1&b=two",
+		"QUERY_STRING":    "a=1&b=two",
+		"SERVER_PROTOCOL": "HTTP/1.1",
+		"HTTP_HOST":       "example.com",
+		"REMOTE_ADDR":     "127.0.0.1",
+		"REMOTE_PORT":     "56138",
+		"REQUEST_SCHEME":  "http",
+		// A request with no body and no headers describing one has neither
+		// key, and a plain request has no HTTPS at all.
+		"HTTPS":          "",
+		"CONTENT_TYPE":   "",
+		"CONTENT_LENGTH": "",
+	})
+}
+
+// TestServerVarsRemoteAddr covers the split of Go's "address:port" into the two
+// keys PHP has for it. An IPv6 peer arrives bracketed and is written the way
+// PHP writes it, without brackets.
+func TestServerVarsRemoteAddr(t *testing.T) {
+	cases := []struct {
+		remote string
+		addr   string
+		port   string
+	}{
+		{remote: "127.0.0.1:56138", addr: "127.0.0.1", port: "56138"},
+		{remote: "[::1]:37154", addr: "::1", port: "37154"},
+		// A Go host may put anything in the field; one without a port is kept
+		// whole rather than guessed at.
+		{remote: "unix-socket", addr: "unix-socket", port: ""},
+		{remote: "", addr: "", port: ""},
+	}
+	for _, tc := range cases {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.RemoteAddr = tc.remote
+		ctx := runner.FromRequest(r)
+		wantServer(t, ctx.Server, map[string]string{
+			"REMOTE_ADDR": tc.addr,
+			"REMOTE_PORT": tc.port,
+		})
+	}
+}
+
+// TestServerVarsContentHeaders covers the two keys that describe a body. PHP
+// mirrors the headers rather than the body, so a GET that sent a content type
+// has CONTENT_TYPE, and a body of zero bytes that announced its length has
+// CONTENT_LENGTH "0".
+func TestServerVarsContentHeaders(t *testing.T) {
+	r := httptest.NewRequest("POST", "/submit", strings.NewReader("name=bob&x=1"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	ctx := runner.FromRequest(r)
+	wantServer(t, ctx.Server, map[string]string{
+		"REQUEST_METHOD": "POST",
+		"CONTENT_TYPE":   "application/x-www-form-urlencoded",
+		"CONTENT_LENGTH": "12",
+		// PHP mirrors every header into HTTP_*, these two included.
+		"HTTP_CONTENT_TYPE": "application/x-www-form-urlencoded",
+	})
+
+	// A content type without a body still reaches CONTENT_TYPE.
+	r = httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Content-Type", "text/plain")
+	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+		"CONTENT_TYPE":   "text/plain",
+		"CONTENT_LENGTH": "",
+	})
+
+	// An announced empty body has a length; PHP writes the "0".
+	r = httptest.NewRequest("POST", "/", strings.NewReader(""))
+	r.Header.Set("Content-Type", "text/plain")
+	r.Header.Set("Content-Length", "0")
+	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+		"CONTENT_LENGTH": "0",
+	})
+
+	// A chunked body announces no length, and PHP leaves the key out.
+	r = httptest.NewRequest("POST", "/", strings.NewReader("hello"))
+	r.Header.Set("Content-Type", "text/plain")
+	r.ContentLength = -1
+	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+		"CONTENT_TYPE":   "text/plain",
+		"CONTENT_LENGTH": "",
+	})
+}
+
+// TestServerVarsTLS covers a request this process accepted over TLS. PHP sets
+// HTTPS only then, and to "on"; an X-Forwarded-Proto is the client's word and
+// changes neither key.
+func TestServerVarsTLS(t *testing.T) {
+	mux := http.NewServeMux()
+	var got *http.Request
+	mux.HandleFunc("/", func(_ http.ResponseWriter, r *http.Request) { got = r })
+	srv := httptest.NewTLSServer(mux)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	wantServer(t, runner.FromRequest(got).Server, map[string]string{
+		"REQUEST_SCHEME": "https",
+		"HTTPS":          "on",
+	})
+
+	plain := httptest.NewRequest("GET", "/", nil)
+	plain.Header.Set("X-Forwarded-Proto", "https")
+	wantServer(t, runner.FromRequest(plain).Server, map[string]string{
+		"REQUEST_SCHEME": "http",
+		"HTTPS":          "",
+		// The header is still readable, as any other header is.
+		"HTTP_X_FORWARDED_PROTO": "https",
+	})
+}
+
+// TestServerVarsRequestTime covers the request start time. The seconds key is
+// the whole second of the float one, and PHP types the first as an integer and
+// the second as a float rather than as the strings every other key holds.
+func TestServerVarsRequestTime(t *testing.T) {
+	before := time.Now()
+	ctx := runner.FromRequest(httptest.NewRequest("GET", "/", nil))
+	after := time.Now()
+
+	seconds, err := strconv.ParseInt(ctx.Server["REQUEST_TIME"], 10, 64)
+	if err != nil {
+		t.Fatalf("REQUEST_TIME = %q: %v", ctx.Server["REQUEST_TIME"], err)
+	}
+	if seconds < before.Unix() || seconds > after.Unix() {
+		t.Fatalf("REQUEST_TIME = %d, want between %d and %d", seconds, before.Unix(), after.Unix())
+	}
+	exact, err := strconv.ParseFloat(ctx.Server["REQUEST_TIME_FLOAT"], 64)
+	if err != nil {
+		t.Fatalf("REQUEST_TIME_FLOAT = %q: %v", ctx.Server["REQUEST_TIME_FLOAT"], err)
+	}
+	if int64(exact) != seconds {
+		t.Fatalf("REQUEST_TIME_FLOAT = %f, want the same second as REQUEST_TIME %d", exact, seconds)
+	}
+
+	out := runCtx(t, ctx, `<?php
+echo is_int($_SERVER["REQUEST_TIME"]) ? "int" : "not-int", "|";
+$float = $_SERVER["REQUEST_TIME_FLOAT"];
+echo !is_int($float) && !is_string($float) && is_numeric($float) ? "float" : "not-float", "|";
+echo $_SERVER["REQUEST_TIME"] === (int)$_SERVER["REQUEST_TIME_FLOAT"] ? "same-second" : "differs";`)
+	if want := "int|float|same-second"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// TestServerSuperglobalStrings pins that every other key reaches a script as a
+// string, which is what $_SERVER holds.
+func TestServerSuperglobalStrings(t *testing.T) {
+	r := httptest.NewRequest("POST", "/submit?a=1", strings.NewReader("name=bob"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.RemoteAddr = "127.0.0.1:56138"
+
+	out := runCtx(t, runner.FromRequest(r), `<?php
+$keys = ["REQUEST_METHOD", "REQUEST_URI", "QUERY_STRING", "SERVER_PROTOCOL", "HTTP_HOST",
+	"REMOTE_ADDR", "REMOTE_PORT", "REQUEST_SCHEME", "CONTENT_TYPE", "CONTENT_LENGTH"];
+foreach ($keys as $key) {
+	if (!is_string($_SERVER[$key])) {
+		echo $key, " is not a string\n";
+	}
+}
+echo $_SERVER["REMOTE_PORT"], "|", $_SERVER["CONTENT_LENGTH"], "|", $_SERVER["REQUEST_SCHEME"];`)
+	if want := "56138|8|http"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
 	}
 }
 

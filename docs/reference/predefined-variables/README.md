@@ -6,7 +6,7 @@
 | `$_POST`                                 | Compatibility         | Last parsed form value for each key, urlencoded or multipart.      |
 | `$_FILES`                                | Partial compatibility | File parts of a multipart body, with php.ini's size limits.        |
 | `$_COOKIE`                               | Compatibility         | One value per cookie sent with the request.                        |
-| `$_SERVER`                               | Partial compatibility | Method, URI, query, host, protocol, peer address, and `HTTP_*`.    |
+| `$_SERVER`                               | Partial compatibility | The request line, peer, scheme, timing, `HTTP_*`, and the script.  |
 | `$_ENV`                                  | Partial compatibility | Seeded empty. Only a Go host fills it; `getenv()` is unrelated.    |
 | `$argc`, `$argv`                         | Partial compatibility | Seeded for scheduled jobs. CLI arguments are not passed to either. |
 | `$_PATH`                                 | phpscript extension   | Route wildcard values from the matched Go HTTP pattern.            |
@@ -105,19 +105,34 @@ Setting a cookie is `header("Set-Cookie: ...")`; there is no `setcookie()`.
 Contains the part of PHP's server array that an HTTP request answers for on its
 own:
 
-| Key                                             | Value                                                    |
-|-------------------------------------------------|----------------------------------------------------------|
-| `REQUEST_METHOD`, `REQUEST_URI`, `QUERY_STRING` | The request line, as the Go server parsed it.            |
-| `HTTP_HOST`, `SERVER_PROTOCOL`, `REMOTE_ADDR`   | Host header, protocol version, and the peer address.     |
-| `HTTP_*`                                        | One key per request header, upper-cased with `-` as `_`. |
+| Key                                             | Value                                                             |
+|-------------------------------------------------|-------------------------------------------------------------------|
+| `REQUEST_METHOD`, `REQUEST_URI`, `QUERY_STRING` | The request line, as the Go server parsed it.                     |
+| `HTTP_HOST`, `SERVER_PROTOCOL`                  | Host header and protocol version.                                 |
+| `REMOTE_ADDR`, `REMOTE_PORT`                    | The peer address and port, split as PHP splits them.              |
+| `REQUEST_SCHEME`, `HTTPS`                       | `http` or `https`. `HTTPS` is `on` over TLS and absent otherwise. |
+| `CONTENT_TYPE`, `CONTENT_LENGTH`                | Present when the request announced them, as in PHP.               |
+| `REQUEST_TIME`, `REQUEST_TIME_FLOAT`            | When the request was received. An integer and a float.            |
+| `HTTP_*`                                        | One key per request header, upper-cased with `-` as `_`.          |
 
-`REMOTE_ADDR` is Go's `Request.RemoteAddr`, which carries the port as
-`address:port` where PHP carries the address alone and puts the port in
-`REMOTE_PORT`.
+`phpscript server` adds the keys that depend on where the site lives, which the
+request alone does not say:
 
-The keys PHP fills from its own SAPI and script resolution, `SCRIPT_NAME`,
-`SCRIPT_FILENAME`, `DOCUMENT_ROOT`, `SERVER_NAME`, `SERVER_PORT`,
-`REQUEST_TIME` and the rest, are absent.
+| Key                          | Value                                                             |
+|------------------------------|-------------------------------------------------------------------|
+| `DOCUMENT_ROOT`              | The served directory of the application root.                     |
+| `SCRIPT_NAME`, `PHP_SELF`    | The entrypoint as a URL path.                                     |
+| `SCRIPT_FILENAME`            | The entrypoint on disk.                                           |
+| `SERVER_NAME`, `SERVER_PORT` | The name the request arrived under, and its port when it had one. |
+| `SERVER_SOFTWARE`            | `phpscript`.                                                      |
+
+`SERVER_NAME` is the requested host rather than the listening socket PHP reads
+it from, because this server routes by `Host`: the name a request arrived under
+is the site it reached. `X-Forwarded-Proto` is not consulted for
+`REQUEST_SCHEME`, since a client can send it; a host behind a proxy it trusts
+sets the two scheme keys itself.
+
+`GATEWAY_INTERFACE` and `PATH_INFO` are absent.
 
 ## `$_ENV`
 
