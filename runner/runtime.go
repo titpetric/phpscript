@@ -122,7 +122,19 @@ type Runtime struct {
 
 	sourceSpans map[model.Stmt]model.SourceSpan
 	currentLine int
-	memUsage    int64
+
+	// frames is the stack of live interpreter frames, global frame first;
+	// vmWalkers enumerate the live values of any flat VM currently running.
+	// Together with globals and classStatics they are the roots MemoryWalk
+	// measures.
+	frames    []*Scope
+	vmWalkers []func(yield func(any))
+
+	memBase    int64 // host request overhead accounted at the boundary (AccountRequest)
+	memUsage   int64 // cached result of the last MemoryWalk
+	memPeak    int64 // high-water mark, refreshed at every walk
+	memTick    int   // statements since the last checkpoint walk
+	memPending int64 // shallow bytes host calls produced since the last walk
 }
 
 // maxFreeEnvs bounds the per-Runtime free list of evaluation environments. Each
@@ -330,6 +342,11 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	clear(rt.classConsts)
 	clear(rt.classStatics)
 	rt.entrypoint = ""
+	rt.memBase = 0
+	rt.memUsage = 0
+	rt.memPeak = 0
+	rt.memTick = 0
+	rt.memPending = 0
 	if rt.frozenConsts != nil {
 		rt.constants = rt.frozenConsts
 		rt.constsShared = true
@@ -398,12 +415,19 @@ func (rt *Runtime) UpdateStatus(state telemetry.State) {
 	}
 }
 
-// MemoryUsage returns the current request-scoped memory estimation in bytes.
+// MemoryUsage returns the current request-scoped memory estimation in bytes,
+// computed by a fresh walk of the live roots.
 func (rt *Runtime) MemoryUsage() int64 {
-	if rt.memUsage < runtimeBaseline {
-		return runtimeBaseline
-	}
-	return rt.memUsage
+	return rt.MemoryWalk()
+}
+
+// MemoryPeak returns the high-water usage mark. Peak is sampled at walk
+// points (memory_get_usage calls and limit checkpoints), so an allocation
+// both made and released between walks does not raise it, unlike PHP's
+// allocator-level peak.
+func (rt *Runtime) MemoryPeak() int64 {
+	rt.MemoryWalk()
+	return rt.memPeak
 }
 
 // MemoryLimit returns the configured memory limit.
@@ -411,34 +435,77 @@ func (rt *Runtime) MemoryLimit() Size {
 	return rt.opts.MemoryLimit
 }
 
-// Alloc increments the request-scoped memory counter and returns an error
-// if the configured MemoryLimit is exceeded.
-func (rt *Runtime) Alloc(n int64) error {
-	if n <= 0 {
+// MemoryWalk recomputes live usage from the roots — the interpreter frame
+// stack, globals, class statics, and any running flat VM's live values.
+// A visited set keyed on container identity counts a value reachable through
+// several variables once and terminates cycles. The result refreshes the
+// cached usage and the peak.
+func (rt *Runtime) MemoryWalk() int64 {
+	visited := make(visitedSet)
+	total := runtimeBaseline + rt.memBase
+	for _, scope := range rt.frames {
+		for name, val := range scope.vars {
+			// Double-underscore slots are interpreter bookkeeping, not PHP
+			// variables (the DefinedVars rule).
+			if len(name) >= 2 && name[:2] == "__" {
+				continue
+			}
+			total += 16 + int64(len(name)) + DeepSize(val, visited)
+		}
+	}
+	for _, val := range rt.globals {
+		total += DeepSize(val, visited)
+	}
+	for _, bag := range rt.classStatics {
+		for name, val := range bag {
+			total += 16 + int64(len(name)) + DeepSize(val, visited)
+		}
+	}
+	for _, walk := range rt.vmWalkers {
+		walk(func(v any) {
+			total += DeepSize(v, visited)
+		})
+	}
+	rt.memUsage = total
+	rt.memPending = 0
+	if total > rt.memPeak {
+		rt.memPeak = total
+	}
+	return total
+}
+
+// lastMemoryUsage returns the cached result of the last walk. Trace spans
+// record this rather than pay for a walk apiece.
+func (rt *Runtime) lastMemoryUsage() int64 {
+	if rt.memUsage < runtimeBaseline {
+		return runtimeBaseline
+	}
+	return rt.memUsage
+}
+
+// checkMemory walks and reports a RuntimeException when the configured
+// MemoryLimit is exceeded. Without a limit it is a no-op.
+func (rt *Runtime) checkMemory() error {
+	if rt.opts.MemoryLimit <= 0 {
 		return nil
 	}
-	rt.memUsage += n
-	if rt.opts.MemoryLimit.Exceeds(rt.memUsage) {
-		return fmt.Errorf("Allowed memory size of %d bytes exhausted (tried to allocate %d bytes)", rt.opts.MemoryLimit.Bytes(), n)
+	if usage := rt.MemoryWalk(); rt.opts.MemoryLimit.Exceeds(usage) {
+		return NewRuntimeException(fmt.Sprintf("Allowed memory size of %d bytes exhausted (%d bytes in use)", rt.opts.MemoryLimit.Bytes(), usage), 0)
 	}
 	return nil
 }
 
-// Free decrements the request-scoped memory counter.
-func (rt *Runtime) Free(n int64) {
-	if n <= 0 {
-		return
-	}
-	if rt.memUsage-n >= runtimeBaseline {
-		rt.memUsage -= n
-	} else {
-		rt.memUsage = runtimeBaseline
-	}
+func (rt *Runtime) pushFrame(s *Scope) {
+	rt.frames = append(rt.frames, s)
 }
 
-// newScope creates a fresh Scope attached to this Runtime.
+func (rt *Runtime) popFrame() {
+	rt.frames = rt.frames[:len(rt.frames)-1]
+}
+
+// newScope creates a fresh Scope.
 func (rt *Runtime) newScope() *Scope {
-	return NewScopeWithRuntime(rt)
+	return NewScope()
 }
 
 // Trace publishes a trace span to registered observers and returns the first
@@ -456,7 +523,7 @@ func (rt *Runtime) traceContext(ctx context.Context, message string, kind ...tel
 		}
 	}
 	if span != nil {
-		span.SetAttribute("memory_usage", rt.MemoryUsage())
+		span.SetAttribute("memory_usage", rt.lastMemoryUsage())
 	}
 	return span
 }

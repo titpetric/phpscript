@@ -227,14 +227,23 @@ func (h flatHost) Call(name, fallback string, args []any) (any, error) {
 	return h.runtime.helperFunc(&scopeRef{scope: h.runtime.newScope()})(name, fallback, args...)
 }
 
-func (h flatHost) TrackLocal(oldVal, newVal any) error {
-	oldSize := EstimateValueSize(oldVal)
-	newSize := EstimateValueSize(newVal)
-	diff := newSize - oldSize
-	if diff > 0 {
-		return h.runtime.Alloc(diff)
-	} else if diff < 0 {
-		h.runtime.Free(-diff)
+// MemoryCheckInterval reports how often the VM should poll the memory limit;
+// zero when no limit is configured.
+func (h flatHost) MemoryCheckInterval() int {
+	if h.runtime.opts.MemoryLimit <= 0 {
+		return 0
 	}
-	return nil
+	return memCheckInstructions
+}
+
+func (h flatHost) PushLiveWalker(walk func(yield func(any))) {
+	h.runtime.vmWalkers = append(h.runtime.vmWalkers, walk)
+}
+
+func (h flatHost) PopLiveWalker() {
+	h.runtime.vmWalkers = h.runtime.vmWalkers[:len(h.runtime.vmWalkers)-1]
+}
+
+func (h flatHost) CheckMemory() error {
+	return h.runtime.checkMemory()
 }

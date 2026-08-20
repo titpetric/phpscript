@@ -153,6 +153,8 @@ func (rt *Runtime) recordTraceError(err error) {
 func (rt *Runtime) runInterpreted(p *model.Program) error {
 	rt.addSourceSpans(p)
 	scope := rt.newScope()
+	rt.pushFrame(scope)
+	defer rt.popFrame()
 	for name, val := range rt.globals {
 		scope.Set(name, val)
 	}
@@ -210,6 +212,17 @@ func (rt *Runtime) hoist(stmts []model.Stmt, filename string) error {
 // exec runs a statement list, propagating return flow.
 func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 	for _, s := range stmts {
+		if rt.opts.MemoryLimit > 0 {
+			if rt.memTick++; rt.memTick >= memCheckStatements {
+				rt.memTick = 0
+				if err := rt.checkMemory(); err != nil {
+					// Returned directly rather than through the errorHandler
+					// path below: exhaustion must unwind the frame, while an
+					// enclosing try still catches it in execTry.
+					return nil, flowNormal, err
+				}
+			}
+		}
 		if source, ok := rt.sourceSpans[s]; ok {
 			rt.currentLine = source.Start
 			scope.Set("__LINE__", source.Start)
@@ -848,9 +861,6 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 	case *model.Var:
 		cur, _ := scope.Get(tgt.Name)
 		scope.Set(tgt.Name, applyAssignOp(n.Op, cur, rhs))
-		if rt.opts.MemoryLimit.Exceeds(rt.memUsage) {
-			return NewRuntimeException(fmt.Sprintf("Allowed memory size of %d bytes exhausted (tried to allocate on variable $%s)", rt.opts.MemoryLimit.Bytes(), tgt.Name), 0)
-		}
 		return nil
 
 	case *model.ListExpr:
@@ -1073,9 +1083,6 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
 		scope.Set(tgt.Name, val)
-		if rt.opts.MemoryLimit.Exceeds(rt.memUsage) {
-			return NewRuntimeException(fmt.Sprintf("Allowed memory size of %d bytes exhausted (tried to allocate on variable $%s)", rt.opts.MemoryLimit.Bytes(), tgt.Name), 0)
-		}
 		return nil
 	case *model.PropAccess:
 		base, err := rt.Eval(tgt.Base, scope)
@@ -1206,6 +1213,8 @@ func applyAssignOp(op string, cur, rhs any) any {
 // invokeFunc runs a user-defined function in a fresh scope.
 func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 	scope := rt.newScope()
+	rt.pushFrame(scope)
+	defer rt.popFrame()
 	if decl.Filename != "" {
 		setScopeFile(scope, decl.Filename)
 	}
@@ -1222,6 +1231,8 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 // defined and is used for spans created from within that body.
 func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.newScope()
+	rt.pushFrame(scope)
+	defer rt.popFrame()
 	if decl.Filename != "" {
 		setScopeFile(scope, decl.Filename)
 	}
@@ -1294,6 +1305,8 @@ func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
 // of the same name shadows the capture, as it does in PHP.
 func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) (any, error) {
 	scope := rt.newScope()
+	rt.pushFrame(scope)
+	defer rt.popFrame()
 	scope.Set(argsKey, args)
 	if env.filename != nil {
 		scope.Set("__FILE__", env.filename)
@@ -1341,6 +1354,8 @@ func (rt *Runtime) runShutdown() error {
 	}
 	var errs []error
 	scope := rt.newScope()
+	rt.pushFrame(scope)
+	defer rt.popFrame()
 	for len(rt.shutdown) > 0 {
 		callback := rt.shutdown[0]
 		rt.shutdown[0] = nil

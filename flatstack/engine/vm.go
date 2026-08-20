@@ -58,6 +58,23 @@ type callFrame struct {
 	initialized []bool
 }
 
+// MemoryHost is an optional Host extension for memory accounting, discovered
+// by type assertion like the other optional host capabilities. A host that
+// implements it can enumerate the VM's live values while Run executes, and
+// have execution interrupted when its memory limit is exceeded.
+type MemoryHost interface {
+	// MemoryCheckInterval returns the number of instructions between memory
+	// checks; zero disables checking. Live-value registration happens either
+	// way, so usage queries still see VM state.
+	MemoryCheckInterval() int
+	// PushLiveWalker registers an enumerator over every live VM value;
+	// PopLiveWalker removes it. Calls nest across nested Run invocations.
+	PushLiveWalker(func(yield func(any)))
+	PopLiveWalker()
+	// CheckMemory reports the limit error, if any.
+	CheckMemory() error
+}
+
 // Run executes a previously validated flat instruction stream.
 func Run(program *Program, host Host) (err error) {
 	if program == nil {
@@ -126,7 +143,51 @@ func Run(program *Program, host Host) (err error) {
 		return true
 	}
 
+	memHost, hasMemHost := host.(MemoryHost)
+	memInterval, memTick := 0, 0
+	if hasMemHost {
+		memInterval = memHost.MemoryCheckInterval()
+		// The walker closes over the loop variables themselves, so slice
+		// reassignment by append/opCall/opReturn stays visible to it.
+		memHost.PushLiveWalker(func(yield func(any)) {
+			for _, value := range stack {
+				yield(value)
+			}
+			for i := range locals {
+				if initialized[i] {
+					yield(locals[i])
+				}
+			}
+			for _, frame := range callFrames {
+				for i := range frame.locals {
+					if frame.initialized[i] {
+						yield(frame.locals[i])
+					}
+				}
+			}
+			for _, iterator := range iterators {
+				yield(iterator.source)
+				for _, entry := range iterator.entries {
+					yield(entry.Key)
+					yield(entry.Value)
+				}
+			}
+		})
+		defer memHost.PopLiveWalker()
+	}
+
 	for pc < len(program.code) {
+		if memInterval > 0 {
+			if memTick++; memTick >= memInterval {
+				memTick = 0
+				if memErr := memHost.CheckMemory(); memErr != nil {
+					if handle(memErr) {
+						continue
+					}
+					return memErr
+				}
+			}
+		}
 		inst := program.code[pc]
 		switch inst.op {
 		case opPushConst:
@@ -164,15 +225,6 @@ func Run(program *Program, host Host) (err error) {
 			}
 			if identifiable, ok := value.(interface{ SetID(string) }); ok && inst.extra != "" {
 				identifiable.SetID(inst.extra)
-			}
-			if tracker, ok := host.(interface{ TrackLocal(any, any) error }); ok {
-				var oldVal any
-				if initialized[inst.a] {
-					oldVal = locals[inst.a]
-				}
-				if trackErr := tracker.TrackLocal(oldVal, value); trackErr != nil {
-					return trackErr
-				}
 			}
 			locals[inst.a], initialized[inst.a] = value, true
 			if inst.b != 0 {
@@ -476,11 +528,6 @@ func Run(program *Program, host Host) (err error) {
 				return err
 			}
 		case opUnsetLocal:
-			if tracker, ok := host.(interface{ TrackLocal(any, any) error }); ok {
-				if initialized[inst.a] {
-					_ = tracker.TrackLocal(locals[inst.a], nil)
-				}
-			}
 			locals[inst.a], initialized[inst.a] = nil, false
 		case opUnsetIndex:
 			index, popErr := pop()

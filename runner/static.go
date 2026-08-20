@@ -145,6 +145,8 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class, method string, ar
 // same class.
 func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.newScope()
+	rt.pushFrame(scope)
+	defer rt.popFrame()
 	if decl.Filename != "" {
 		setScopeFile(scope, decl.Filename)
 	}

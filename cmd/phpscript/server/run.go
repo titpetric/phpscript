@@ -237,7 +237,9 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 
 	err = rt.Run(prog)
 	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {
-		trace.Root().SetAttribute("memory_usage", rt.MemoryUsage())
+		// The script's frames are gone once Run returns, so the peak is the
+		// request's memory footprint; a fresh usage walk would be baseline.
+		trace.Root().SetAttribute("memory_usage", rt.MemoryPeak())
 		if rt.MemoryLimit() > 0 {
 			trace.Root().SetAttribute("memory_limit", rt.MemoryLimit().Bytes())
 		}

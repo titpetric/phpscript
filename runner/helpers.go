@@ -41,9 +41,21 @@ func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any
 		full := make([]any, 0, len(args)+1)
 		full = append(full, contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope))
 		full = append(full, args...)
-		return invokeAny(fn, full)
+		args = full
 	}
-	return invokeAny(fn, args)
+	result, err := invokeAny(fn, args)
+	if err == nil && rt.opts.MemoryLimit > 0 {
+		// Burst guard: a single host call can allocate far more than the
+		// per-statement checkpoint interval sees (str_repeat, file reads).
+		// The shallow estimate only decides when to walk early; the walk is
+		// the truth and resets the pending counter.
+		if rt.memPending += EstimateValueSize(result); rt.memPending > rt.opts.MemoryLimit.Bytes()/8 {
+			if memErr := rt.checkMemory(); memErr != nil {
+				return nil, memErr
+			}
+		}
+	}
+	return result, err
 }
 
 // This file implements the PHP-semantic helpers injected into every expr env.

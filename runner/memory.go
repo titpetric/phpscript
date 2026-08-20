@@ -10,6 +10,14 @@ import (
 // runtimeBaseline is the baseline memory overhead of the Runtime struct before script execution.
 var runtimeBaseline = int64(unsafe.Sizeof(Runtime{}))
 
+// Memory-limit checkpoint intervals. A checkpoint walks every live value, so
+// it cannot run per step; statements are far heavier than VM instructions,
+// hence the distinct intervals. Both apply only when a MemoryLimit is set.
+const (
+	memCheckStatements   = 256
+	memCheckInstructions = 4096
+)
+
 // RuntimeException represents a PHP RuntimeException raised by the runner.
 type RuntimeException struct {
 	Message string `json:"message"`
@@ -33,6 +41,67 @@ func NewRuntimeException(message string, code int) *RuntimeException {
 	return &RuntimeException{
 		Message: message,
 		Code:    code,
+	}
+}
+
+// visitedSet dedups containers by pointer identity during a deep walk, so an
+// array or object reachable through several variables is counted once and
+// self-referential containers terminate.
+type visitedSet map[any]struct{}
+
+// DeepSize estimates the bytes held by a PHP value, recursing into
+// script-owned containers. A container already in visited costs nothing.
+// Native Go values returned by bindings are host-owned and get a shallow
+// size, the same ownership rule flatHost.SetEntry applies.
+func DeepSize(v any, visited visitedSet) int64 {
+	switch x := v.(type) {
+	case *model.Array:
+		if x == nil {
+			return 0
+		}
+		if _, seen := visited[x]; seen {
+			return 0
+		}
+		visited[x] = struct{}{}
+		total := int64(64)
+		x.Range(func(key, val any) bool {
+			total += DeepSize(key, visited) + DeepSize(val, visited)
+			return true
+		})
+		return total
+	case *model.Object:
+		if x == nil {
+			return 0
+		}
+		if _, seen := visited[x]; seen {
+			return 0
+		}
+		visited[x] = struct{}{}
+		total := int64(64)
+		for k, val := range x.Props {
+			total += 16 + int64(len(k)) + DeepSize(val, visited)
+		}
+		return total
+	case []any:
+		total := int64(24)
+		for _, item := range x {
+			total += DeepSize(item, visited)
+		}
+		return total
+	case map[string]any:
+		total := int64(48)
+		for k, val := range x {
+			total += 16 + int64(len(k)) + DeepSize(val, visited)
+		}
+		return total
+	case map[any]any:
+		total := int64(48)
+		for k, val := range x {
+			total += DeepSize(k, visited) + DeepSize(val, visited)
+		}
+		return total
+	default:
+		return EstimateValueSize(v)
 	}
 }
 
