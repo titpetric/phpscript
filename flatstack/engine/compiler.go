@@ -702,7 +702,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		c.program.code[branch].target = len(c.program.code)
 		c.emit(instruction{op: opPushConst, a: c.constant(constant)})
 		c.program.code[end].target = len(c.program.code)
-	case ".", "+", "-", "*", "/", "%", "==", "!=", "===", "!==", "<", "<=", ">", ">=":
+	case ".", "+", "-", "*", "/", "%", "**", "==", "!=", "===", "!==", "<", "<=", ">", ">=":
 		if err := c.expr(node.Left, path+".left"); err != nil {
 			return err
 		}

@@ -414,6 +414,8 @@ func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 		return concat(`__arith("/", `, l, ", ", r, ")"), nil
 	case "%":
 		return concat(`__arith("%", `, l, ", ", r, ")"), nil
+	case "**":
+		return concat(`__arith("**", `, l, ", ", r, ")"), nil
 	case "==":
 		return concat("(", l, ") == (", r, ")"), nil
 	case "!=":

@@ -184,6 +184,9 @@ func phpArith(op string, a, b any) any {
 		}
 		return toInt(a) % y
 	}
+	if op == "**" {
+		return phpPow(a, b)
+	}
 	// A float operand makes the whole expression float, as in PHP.
 	if isFloat(a) || isFloat(b) {
 		x, y := toFloat(a), toFloat(b)
@@ -260,6 +263,37 @@ func mulInt(x, y int64) (int64, bool) {
 		return 0, false
 	}
 	return z, true
+}
+
+// phpPow implements `**`. Two int operands with a non-negative exponent stay
+// int (2 ** 10 is int 1024) unless the result overflows; a float operand or a
+// negative exponent makes the result float, as in PHP.
+func phpPow(a, b any) any {
+	if isFloat(a) || isFloat(b) {
+		return math.Pow(toFloat(a), toFloat(b))
+	}
+	base, exp := toInt(a), toInt(b)
+	if exp < 0 {
+		return math.Pow(float64(base), float64(exp))
+	}
+	result, sq := int64(1), base
+	for e := exp; e > 0; e >>= 1 {
+		if e&1 == 1 {
+			r, ok := mulInt(result, sq)
+			if !ok {
+				return math.Pow(float64(base), float64(exp))
+			}
+			result = r
+		}
+		if e > 1 {
+			s, ok := mulInt(sq, sq)
+			if !ok {
+				return math.Pow(float64(base), float64(exp))
+			}
+			sq = s
+		}
+	}
+	return result
 }
 
 // isFloat reports whether the value is a PHP float operand.

@@ -1139,7 +1139,7 @@ func applyAssignOp(op string, cur, rhs any) any {
 		return rhs
 	case ".=":
 		return phpString(cur) + phpString(rhs)
-	case "+=", "-=", "*=", "/=", "%=":
+	case "+=", "-=", "*=", "/=", "%=", "**=":
 		return phpArith(strings.TrimSuffix(op, "="), cur, rhs)
 	default:
 		return rhs

@@ -136,7 +136,7 @@ func (h flatHost) Binary(op string, left, right any) (any, error) {
 	switch op {
 	case ".":
 		return helperConcat(left, right), nil
-	case "+", "-", "*", "/", "%":
+	case "+", "-", "*", "/", "%", "**":
 		return phpArith(op, left, right), nil
 	case "==":
 		return phpLooseEqual(left, right), nil
