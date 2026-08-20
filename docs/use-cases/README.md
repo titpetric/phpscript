@@ -8,6 +8,7 @@ PHP, it can be pretty much used in the same ways as you would use PHP.
 - [Usage of Go bindings](bindings.md)
 - [Error handling](error-handling.md)
 - [Routing](routing.md)
+- [Virtual hosting](virtual-hosting.md)
 - [Database bindings](database.md)
 - [Shared memory bindings](shared-memory.md)
 - [Templating](templating.md)
