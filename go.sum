@@ -16,8 +16,8 @@ github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkp
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/expr-lang/expr v1.17.8 h1:W1loDTT+0PQf5YteHSTpju2qfUfNoBt4yw9+wOEU9VM=
 github.com/expr-lang/expr v1.17.8/go.mod h1:8/vRC7+7HBzESEqt5kKpYXxrxkr31SaO8r40VO/1IT4=
-github.com/go-bridget/mig v0.5.0 h1:oFa6A1YudwsKDgFwpTnAn/pn71Nk3viNMrdgJf3d5MU=
-github.com/go-bridget/mig v0.5.0/go.mod h1:RHF7/ELYRIndAGfwO7BR6IL1D3Zpo/9Mc8Vfex0P67s=
+github.com/go-bridget/mig v0.5.1 h1:kgFxVBfqb7rCEhOBtg3/6MadVmclqQiZNY3n3Vpvjvk=
+github.com/go-bridget/mig v0.5.1/go.mod h1:2FCKqAjPsIliG3aVNAMC2oyZgQXShDPSdJ5uQOjuLMc=
 github.com/go-chi/chi/v5 v5.3.2 h1:5YQkICvTCSZ25hoRsyJazN0scjzKGiu4VAUc7H1o1nY=
 github.com/go-chi/chi/v5 v5.3.2/go.mod h1:R+tYY2hNuVUUjxoPtqUdgBqevM9s9njzkTLutVsOCto=
 github.com/go-sql-driver/mysql v1.8.1/go.mod h1:wEBSXgmK//2ZFJyE+qWnIsVGmvmEKlqwuVSjsCm7DZg=
@@ -77,8 +77,8 @@ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UV
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
 github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
-github.com/titpetric/cli v0.5.0 h1:karW+EjPh7Gok1831Csw0qbeAuUyh7nUtBWeZmyv6U8=
-github.com/titpetric/cli v0.5.0/go.mod h1:6tMT3+Bz3MjEDdXhQ9fzai19U2LDT+hmrOYDkpE1f7A=
+github.com/titpetric/cli v0.6.0 h1:r5GJrPCxIgVm2sy3zCs5SNmCbX9WA5x3Rp785ge7VUE=
+github.com/titpetric/cli v0.6.0/go.mod h1:W14SqTVk7wJT3FWuISXN4YsL75e0vOS6ED+9IxdlEnU=
 github.com/titpetric/oida v0.2.0 h1:5ktYyuU6TqZ6+T4gvZo5ZO/BIXSIZ4HMbG+AH5UFX8M=
 github.com/titpetric/oida v0.2.0/go.mod h1:QUyXI0CPK5XtpV6TS/2mKYnxg7704KnTyOH3dhgq83o=
 github.com/titpetric/pdo v0.2.1 h1:6nJaf+xqPxKhbNTp0bk/SG0mMa+zSuCEK6oBvsjDzt8=

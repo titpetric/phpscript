@@ -6,16 +6,16 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/dlclark/regexp2 v1.12.0
 	github.com/expr-lang/expr v1.17.8
-	github.com/go-bridget/mig v0.5.0
+	github.com/go-bridget/mig v0.5.1
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-sql-driver/mysql v1.10.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/titpetric/cli v0.5.0
+	github.com/titpetric/cli v0.6.0
 	github.com/titpetric/oida v0.2.0
 	github.com/titpetric/pdo v0.2.1
-	github.com/titpetric/platform v0.6.1
+	github.com/titpetric/platform v0.6.2
 	golang.org/x/term v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.57.0
