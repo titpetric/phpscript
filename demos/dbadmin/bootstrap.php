@@ -1,9 +1,27 @@
 <?php
-
 require "vendor/autoload.php";
+
+$request_start_time = microtime(true);
 
 $db = new Database("dbadmin");
 $tpl = new MiniTPL\Template;
+
+function format_memory_bytes($bytes) {
+	if ($bytes >= 1048576) {
+		return sprintf("%.2f MB", $bytes / 1048576);
+	}
+	if ($bytes >= 1024) {
+		return sprintf("%.2f KB", $bytes / 1024);
+	}
+	return $bytes . " B";
+}
+
+function render_footer_stats() {
+	global $request_start_time;
+	$duration = microtime(true) - $request_start_time;
+	$memory = memory_get_usage();
+	return sprintf("page rendered in %.4f seconds, used %s memory", $duration, format_memory_bytes($memory));
+}
 
 function h($value) {
 	if ($value === null) {

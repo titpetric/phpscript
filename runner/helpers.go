@@ -165,7 +165,7 @@ func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...
 	return func(args ...any) (any, error) {
 		callScope := scope
 		if callScope == nil {
-			callScope = NewScope()
+			callScope = rt.newScope()
 		}
 		return rt.callGoMethod(base, method, args, callScope)
 	}

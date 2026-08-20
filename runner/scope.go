@@ -20,11 +20,22 @@ type envContextKey struct{}
 type Scope struct {
 	vars     map[string]any
 	deferred []any
+	rt       *Runtime
 }
 
 // NewScope returns an empty scope.
 func NewScope() *Scope {
 	return &Scope{vars: map[string]any{}}
+}
+
+// NewScopeWithRuntime returns an empty scope attached to a Runtime.
+func NewScopeWithRuntime(rt *Runtime) *Scope {
+	return &Scope{vars: map[string]any{}, rt: rt}
+}
+
+// SetRuntime attaches a Runtime to this scope for memory accounting.
+func (s *Scope) SetRuntime(rt *Runtime) {
+	s.rt = rt
 }
 
 // Get returns the value of name and whether it is set.
@@ -33,15 +44,34 @@ func (s *Scope) Get(name string) (any, bool) {
 	return v, ok
 }
 
-// Set stores name=val.
+// Set stores name=val and accounts for the memory delta.
 func (s *Scope) Set(name string, val any) {
+	if s.rt != nil {
+		oldVal, hadOld := s.vars[name]
+		oldSize := int64(0)
+		if hadOld {
+			oldSize = EstimateValueSize(oldVal)
+		}
+		newSize := EstimateValueSize(val)
+		diff := newSize - oldSize
+		if diff > 0 {
+			_ = s.rt.Alloc(diff)
+		} else if diff < 0 {
+			s.rt.Free(-diff)
+		}
+	}
 	s.vars[name] = val
 }
 
 // Unset removes name from the frame (PHP's unset). Removing a name that was
 // never set is not an error.
 func (s *Scope) Unset(name string) {
-	delete(s.vars, name)
+	if oldVal, ok := s.vars[name]; ok {
+		if s.rt != nil {
+			s.rt.Free(EstimateValueSize(oldVal))
+		}
+		delete(s.vars, name)
+	}
 }
 
 // Defer registers a callback to run when the current PHP execution frame

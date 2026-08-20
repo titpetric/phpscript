@@ -152,7 +152,7 @@ func (rt *Runtime) recordTraceError(err error) {
 
 func (rt *Runtime) runInterpreted(p *model.Program) error {
 	rt.addSourceSpans(p)
-	scope := NewScope()
+	scope := rt.newScope()
 	for name, val := range rt.globals {
 		scope.Set(name, val)
 	}
@@ -477,27 +477,30 @@ func (rt *Runtime) execFor(n *model.For, scope *Scope) (any, flow, error) {
 }
 
 // execTry runs the try body; if it raises an error (a throw or a runtime error
-// from a forwarded Go call), the first catch clause handles it with the error
+// from a forwarded Go call), the matching catch clause handles it with the error
 // bound to its variable (so `echo $e` prints the message). A finally block, if
-// present, always runs. There is no exception class hierarchy, so the first
-// catch catches everything.
+// present, always runs.
 func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 	val, fl, err := rt.exec(n.Body, scope)
 	if err != nil && len(n.Catches) > 0 {
-		c := n.Catches[0]
-		if c.Var != "" {
-			// Bind the root cause so PHP sees the original message, not the
-			// transpiler's "eval ..."/"compile ..." wrapping.
-			for {
-				if unwrapped := errors.Unwrap(err); unwrapped != nil {
-					err = unwrapped
-					continue
+		rootErr := err
+		for {
+			if unwrapped := errors.Unwrap(rootErr); unwrapped != nil {
+				rootErr = unwrapped
+				continue
+			}
+			break
+		}
+
+		for _, c := range n.Catches {
+			if matchCatchType(c.Type, rootErr) {
+				if c.Var != "" {
+					scope.Set(c.Var, rootErr)
 				}
+				val, fl, err = rt.exec(c.Body, scope)
 				break
 			}
-			scope.Set(c.Var, err)
 		}
-		val, fl, err = rt.exec(c.Body, scope)
 	}
 	if len(n.Finally) > 0 {
 		fVal, fFl, fErr := rt.exec(n.Finally, scope)
@@ -510,6 +513,54 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 		}
 	}
 	return val, fl, err
+}
+
+func matchCatchType(declaredType string, rootErr error) bool {
+	declaredType = strings.TrimSpace(declaredType)
+	if declaredType == "" {
+		return true
+	}
+	errTypeName := errorClassName(rootErr)
+	parts := strings.Split(declaredType, "|")
+	for _, part := range parts {
+		t := strings.TrimPrefix(strings.TrimSpace(part), "\\")
+		if t == "" || t == "Throwable" {
+			return true
+		}
+		if t == "Exception" {
+			// In PHP, Exception catches all Exceptions (including RuntimeException).
+			// If engine error, it also catches for backwards-compatibility.
+			if errTypeName != "TypeError" && errTypeName != "ValueError" && errTypeName != "ArithmeticError" && errTypeName != "DivisionByZeroError" && errTypeName != "ArgumentCountError" {
+				return true
+			}
+		}
+		if t == "Error" {
+			if errTypeName == "Error" || strings.HasSuffix(errTypeName, "Error") {
+				return true
+			}
+		}
+		if strings.EqualFold(t, errTypeName) {
+			return true
+		}
+	}
+	return false
+}
+
+func errorClassName(err error) string {
+	if err == nil {
+		return ""
+	}
+	t := reflect.TypeOf(err)
+	for t != nil && t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t != nil {
+		name := t.Name()
+		if name != "" && name != "errorString" && name != "wrapError" && name != "joinError" {
+			return name
+		}
+	}
+	return "Error"
 }
 
 // execSwitch evaluates the discriminant and runs matching case bodies with PHP
@@ -737,7 +788,7 @@ func (rt *Runtime) SPLAutoload(class string) error {
 			if _, err := fs.Stat(rt.opts.RootFS, cleanPath); err != nil {
 				continue
 			}
-			_, err := rt.includeFile(filename, NewScope())
+			_, err := rt.includeFile(filename, rt.newScope())
 			return err
 		}
 	}
@@ -797,6 +848,9 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 	case *model.Var:
 		cur, _ := scope.Get(tgt.Name)
 		scope.Set(tgt.Name, applyAssignOp(n.Op, cur, rhs))
+		if rt.opts.MemoryLimit.Exceeds(rt.memUsage) {
+			return NewRuntimeException(fmt.Sprintf("Allowed memory size of %d bytes exhausted (tried to allocate on variable $%s)", rt.opts.MemoryLimit.Bytes(), tgt.Name), 0)
+		}
 		return nil
 
 	case *model.ListExpr:
@@ -1019,6 +1073,9 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
 		scope.Set(tgt.Name, val)
+		if rt.opts.MemoryLimit.Exceeds(rt.memUsage) {
+			return NewRuntimeException(fmt.Sprintf("Allowed memory size of %d bytes exhausted (tried to allocate on variable $%s)", rt.opts.MemoryLimit.Bytes(), tgt.Name), 0)
+		}
 		return nil
 	case *model.PropAccess:
 		base, err := rt.Eval(tgt.Base, scope)
@@ -1148,7 +1205,7 @@ func applyAssignOp(op string, cur, rhs any) any {
 
 // invokeFunc runs a user-defined function in a fresh scope.
 func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
-	scope := NewScope()
+	scope := rt.newScope()
 	if decl.Filename != "" {
 		setScopeFile(scope, decl.Filename)
 	}
@@ -1164,7 +1221,7 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 // the caller scope; the fresh scope below identifies where the method body is
 // defined and is used for spans created from within that body.
 func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
-	scope := NewScope()
+	scope := rt.newScope()
 	if decl.Filename != "" {
 		setScopeFile(scope, decl.Filename)
 	}
@@ -1236,7 +1293,7 @@ func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
 // captured environment. Parameters are bound after the captures, so a parameter
 // of the same name shadows the capture, as it does in PHP.
 func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) (any, error) {
-	scope := NewScope()
+	scope := rt.newScope()
 	scope.Set(argsKey, args)
 	if env.filename != nil {
 		scope.Set("__FILE__", env.filename)
@@ -1283,7 +1340,7 @@ func (rt *Runtime) runShutdown() error {
 		return nil
 	}
 	var errs []error
-	scope := NewScope()
+	scope := rt.newScope()
 	for len(rt.shutdown) > 0 {
 		callback := rt.shutdown[0]
 		rt.shutdown[0] = nil

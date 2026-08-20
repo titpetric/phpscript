@@ -10,6 +10,7 @@ import (
 	_ "github.com/titpetric/phpscript/stdlib/database"
 	_ "github.com/titpetric/phpscript/stdlib/files"
 	_ "github.com/titpetric/phpscript/stdlib/info"
+	_ "github.com/titpetric/phpscript/stdlib/internals"
 	_ "github.com/titpetric/phpscript/stdlib/ps"
 	_ "github.com/titpetric/phpscript/stdlib/smtp"
 	_ "github.com/titpetric/phpscript/stdlib/span"

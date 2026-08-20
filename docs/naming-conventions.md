@@ -182,8 +182,9 @@ Namespaces are registered with escaped Go strings:
 | `mail`                       | `stdlib/smtp` | PHP's `mail`, sent through the bound sender                         |
 | `defer`                      | `stdlib/ps`   | Runs a callback when the script ends                                |
 | `register_shutdown_function` | `stdlib/ps`   | PHP's shutdown hook                                                 |
-| `start_span`                 | `stdlib/span` | Opens a telemetry span the script ends itself                       |
-| `phpinfo`                    | `stdlib/info` | Reports the runtime, as `phpscript info` runs it                    |
+| `start_span`                 | `stdlib/span`      | Opens a telemetry span the script ends itself                       |
+| `phpinfo`                    | `stdlib/info`      | Reports the runtime, as `phpscript info` runs it                    |
+| `memory_get_usage`           | `stdlib/internals` | Reports request-scoped memory allocations in bytes                  |
 
 This is the convention, not an aspiration: each of these names is what the
 fixtures and both demos type, `new Database("dbadmin")` and

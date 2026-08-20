@@ -438,7 +438,11 @@ var splExceptions = []string{
 
 func registerExceptions(rt *phprunner.Runtime) {
 	for _, name := range splExceptions {
-		rt.RegisterConstructor(name, NewException)
+		if name == "RuntimeException" {
+			rt.RegisterConstructor(name, NewRuntimeException)
+		} else {
+			rt.RegisterConstructor(name, NewException)
+		}
 	}
 }
 

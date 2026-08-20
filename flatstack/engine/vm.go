@@ -165,6 +165,15 @@ func Run(program *Program, host Host) (err error) {
 			if identifiable, ok := value.(interface{ SetID(string) }); ok && inst.extra != "" {
 				identifiable.SetID(inst.extra)
 			}
+			if tracker, ok := host.(interface{ TrackLocal(any, any) error }); ok {
+				var oldVal any
+				if initialized[inst.a] {
+					oldVal = locals[inst.a]
+				}
+				if trackErr := tracker.TrackLocal(oldVal, value); trackErr != nil {
+					return trackErr
+				}
+			}
 			locals[inst.a], initialized[inst.a] = value, true
 			if inst.b != 0 {
 				stack = append(stack, value)
@@ -467,6 +476,11 @@ func Run(program *Program, host Host) (err error) {
 				return err
 			}
 		case opUnsetLocal:
+			if tracker, ok := host.(interface{ TrackLocal(any, any) error }); ok {
+				if initialized[inst.a] {
+					_ = tracker.TrackLocal(locals[inst.a], nil)
+				}
+			}
 			locals[inst.a], initialized[inst.a] = nil, false
 		case opUnsetIndex:
 			index, popErr := pop()

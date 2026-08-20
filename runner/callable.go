@@ -22,7 +22,7 @@ import (
 // The second return reports whether v was callable at all; callers turn that
 // into PHP's "not a valid callback" error with their own function name.
 func (rt *Runtime) Callable(v any) (func(...any) (any, error), bool) {
-	return rt.callableWithScope(v, NewScope())
+	return rt.callableWithScope(v, rt.newScope())
 }
 
 func (rt *Runtime) callableWithScope(v any, scope *Scope) (func(...any) (any, error), bool) {

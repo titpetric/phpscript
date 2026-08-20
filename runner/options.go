@@ -57,22 +57,20 @@ type Options struct {
 
 	// MemoryLimit is the memory one script may allocate, PHP's memory_limit.
 	// Zero is no limit.
-	//
-	// NOT ENFORCED YET. The key is accepted and carried so a configuration
-	// written today keeps working when enforcement lands, rather than
-	// failing to parse.
 	MemoryLimit Size `yaml:"memory_limit"`
 
 	// TimeLimit is how long one script may run before it is stopped, in
 	// seconds, PHP's max_execution_time. Zero is no limit.
 	//
-	// NOT ENFORCED YET. See MemoryLimit.
+	// NOT ENFORCED YET. The key is accepted and carried so a configuration
+	// written today keeps working when enforcement lands, rather than
+	// failing to parse.
 	TimeLimit int `yaml:"time_limit"`
 
 	// ConcurrencyLimit is how many scripts may execute at once. Zero is no
 	// limit. It has no equivalent in php.ini, where the SAPI owns it; here
 	// one process serves several sites and each gets its own share.
 	//
-	// NOT ENFORCED YET. See MemoryLimit.
+	// NOT ENFORCED YET. See TimeLimit.
 	ConcurrencyLimit int `yaml:"concurrency_limit"`
 }

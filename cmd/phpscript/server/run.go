@@ -236,6 +236,12 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	reqCtx.Register(rt)
 
 	err = rt.Run(prog)
+	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {
+		trace.Root().SetAttribute("memory_usage", rt.MemoryUsage())
+		if rt.MemoryLimit() > 0 {
+			trace.Root().SetAttribute("memory_limit", rt.MemoryLimit().Bytes())
+		}
+	}
 	for name, values := range reqCtx.ResponseHeaders() {
 		w.Header()[name] = values
 	}

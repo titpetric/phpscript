@@ -144,7 +144,7 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class, method string, ar
 // `__class__` is bound so that `self::` inside the body resolves back to the
 // same class.
 func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
-	scope := NewScope()
+	scope := rt.newScope()
 	if decl.Filename != "" {
 		setScopeFile(scope, decl.Filename)
 	}

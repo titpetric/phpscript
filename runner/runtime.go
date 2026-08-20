@@ -122,6 +122,7 @@ type Runtime struct {
 
 	sourceSpans map[model.Stmt]model.SourceSpan
 	currentLine int
+	memUsage    int64
 }
 
 // maxFreeEnvs bounds the per-Runtime free list of evaluation environments. Each
@@ -252,6 +253,7 @@ func New(w io.Writer, opts Options) *Runtime {
 			"__cast":   adapt(helperCast),
 			"__arith":  adapt(phpArith),
 		},
+		memUsage: runtimeBaseline,
 	}
 	return rt
 }
@@ -396,6 +398,49 @@ func (rt *Runtime) UpdateStatus(state telemetry.State) {
 	}
 }
 
+// MemoryUsage returns the current request-scoped memory estimation in bytes.
+func (rt *Runtime) MemoryUsage() int64 {
+	if rt.memUsage < runtimeBaseline {
+		return runtimeBaseline
+	}
+	return rt.memUsage
+}
+
+// MemoryLimit returns the configured memory limit.
+func (rt *Runtime) MemoryLimit() Size {
+	return rt.opts.MemoryLimit
+}
+
+// Alloc increments the request-scoped memory counter and returns an error
+// if the configured MemoryLimit is exceeded.
+func (rt *Runtime) Alloc(n int64) error {
+	if n <= 0 {
+		return nil
+	}
+	rt.memUsage += n
+	if rt.opts.MemoryLimit.Exceeds(rt.memUsage) {
+		return fmt.Errorf("Allowed memory size of %d bytes exhausted (tried to allocate %d bytes)", rt.opts.MemoryLimit.Bytes(), n)
+	}
+	return nil
+}
+
+// Free decrements the request-scoped memory counter.
+func (rt *Runtime) Free(n int64) {
+	if n <= 0 {
+		return
+	}
+	if rt.memUsage-n >= runtimeBaseline {
+		rt.memUsage -= n
+	} else {
+		rt.memUsage = runtimeBaseline
+	}
+}
+
+// newScope creates a fresh Scope attached to this Runtime.
+func (rt *Runtime) newScope() *Scope {
+	return NewScopeWithRuntime(rt)
+}
+
 // Trace publishes a trace span to registered observers and returns the first
 // mutable span provided by one of them.
 func (rt *Runtime) Trace(message string, kind ...telemetry.Kind) *telemetry.Span {
@@ -409,6 +454,9 @@ func (rt *Runtime) traceContext(ctx context.Context, message string, kind ...tel
 		if span == nil {
 			span = observed
 		}
+	}
+	if span != nil {
+		span.SetAttribute("memory_usage", rt.MemoryUsage())
 	}
 	return span
 }
@@ -556,7 +604,7 @@ func (rt *Runtime) FunctionExists(name string) bool {
 // statement would. Hosts that resolve classes outside the interpreter (the
 // composer autoloader) use it to pull a declaration file into the runtime.
 func (rt *Runtime) IncludeFile(path string) (any, error) {
-	return rt.includeFile(path, NewScope())
+	return rt.includeFile(path, rt.newScope())
 }
 
 // DefinedFunctions returns stable snapshots of registered host/internal and
@@ -646,7 +694,7 @@ func (rt *Runtime) ClassExists(name string, autoload bool) (bool, error) {
 	if !autoload {
 		return false, nil
 	}
-	if err := rt.autoload(name, NewScope()); err != nil {
+	if err := rt.autoload(name, rt.newScope()); err != nil {
 		return false, err
 	}
 	return rt.hasClass(name), nil
