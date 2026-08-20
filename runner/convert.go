@@ -1,7 +1,9 @@
 package runner
 
 import (
+	"math"
 	"strconv"
+	"strings"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -26,9 +28,7 @@ func phpString(v any) string {
 	case int64:
 		return strconv.FormatInt(x, 10)
 	case float64:
-		// PHP renders floats with precision=14 significant digits, so
-		// 0.1*0.2 echoes as 0.02, not the round-tripping 0.020000000000000004.
-		return strconv.FormatFloat(x, 'g', 14, 64)
+		return phpFloatString(x)
 	case error:
 		// A caught exception ($e in catch) renders as its message, so
 		// `echo $e` prints the error text.
@@ -36,6 +36,38 @@ func phpString(v any) string {
 	default:
 		return ""
 	}
+}
+
+// phpFloatString renders a float the way PHP's echo does: precision=14
+// significant digits, so 0.1*0.2 echoes as 0.02, not the round-tripping
+// 0.020000000000000004. PHP's exponent form differs from Go's: the mantissa
+// always carries a decimal point and the exponent has no leading zero, so
+// 1e20 echoes as 1.0E+20, not 1E+20 or 1e+20.
+func phpFloatString(x float64) string {
+	switch {
+	case math.IsInf(x, 1):
+		return "INF"
+	case math.IsInf(x, -1):
+		return "-INF"
+	case math.IsNaN(x):
+		return "NAN"
+	}
+	s := strconv.FormatFloat(x, 'G', 14, 64)
+	if i := strings.IndexByte(s, 'E'); i >= 0 {
+		mant, exp := s[:i], s[i+1:]
+		if !strings.Contains(mant, ".") {
+			mant += ".0"
+		}
+		sign := ""
+		if exp != "" && (exp[0] == '+' || exp[0] == '-') {
+			sign, exp = exp[:1], exp[1:]
+		}
+		if trimmed := strings.TrimLeft(exp, "0"); trimmed != "" {
+			exp = trimmed
+		}
+		s = mant + "E" + sign + exp
+	}
+	return s
 }
 
 // phpTruthy implements PHP's notion of truthiness for if/while/ternary.

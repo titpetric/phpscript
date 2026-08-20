@@ -186,6 +186,11 @@ func (h flatHost) Unary(op string, value any) (any, error) {
 	case "+":
 		return phpArith("+", int64(0), value), nil
 	case "-":
+		// Negate floats directly rather than via `0 - x`, which loses the
+		// sign of zero: PHP echoes -0.0 as -0.
+		if f, ok := value.(float64); ok {
+			return -f, nil
+		}
 		return phpArith("-", int64(0), value), nil
 	default:
 		return nil, fmt.Errorf("unsupported unary operator %q", op)

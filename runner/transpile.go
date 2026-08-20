@@ -494,7 +494,13 @@ func litSource(v any) string {
 	case int64:
 		return strconv.FormatInt(x, 10)
 	case float64:
-		return strconv.FormatFloat(x, 'g', -1, 64)
+		// Keep a float marker so expr sees a float literal: `0.0` rendered as
+		// bare `0` would become an int and `-0.0` would echo as 0, not -0.
+		s := strconv.FormatFloat(x, 'g', -1, 64)
+		if !strings.ContainsAny(s, ".eE") {
+			s += ".0"
+		}
+		return s
 	default:
 		return fmt.Sprintf("%v", x)
 	}
