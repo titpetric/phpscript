@@ -244,7 +244,7 @@ the change instead of asserting it.
 Every registered function and class, its return shape, and whether it is
 optimal. Regenerate the function list with
 `phpscript scripts/list-apis.php`; discover Go signatures with
-`go doc -short -u ./stdlib` (see also `go doc ./stdlib/ps.Database`).
+`go doc -short -u ./stdlib` (see also `go doc ./stdlib/database.Database`).
 
 Legend: **OK**: optimal, nothing to do. **OK (by design)**: allocates, but the
 allocation buys required semantics. **TODO**: a real improvement is available.

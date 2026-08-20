@@ -6,12 +6,12 @@ import (
 	"os"
 
 	_ "embed"
+
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
 	"github.com/titpetric/cli"
-	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/cmd/phpscript/ast"
 	"github.com/titpetric/phpscript/cmd/phpscript/fmt"
@@ -23,6 +23,7 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/test"
 	"github.com/titpetric/phpscript/cmd/phpscript/version"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/stdlib/database"
 )
 
 func main() {
@@ -41,12 +42,15 @@ func start() error {
 		return err
 	}
 
-	platform.SetupConnections(appConfig.Env)
+	// The process environment comes first so `phpscript run` keeps the
+	// connections it had, with config/config.yml env overriding them.
+	env := append(append([]string{}, os.Environ()...), appConfig.Env...)
+	database.Default = database.New(env)
 
 	if os.Getenv("DEBUG") != "" {
 		log.Println("sql_drivers", sql.Drivers())
 
-		if val, ok := platform.Database.(model.ExtendedDatabaseProvider); ok {
+		if val, ok := database.Default.(model.ExtendedDatabaseProvider); ok {
 			connectionList := val.List()
 			log.Println("connections", len(connectionList))
 			for k, v := range connectionList {

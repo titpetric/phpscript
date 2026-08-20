@@ -52,7 +52,7 @@ func TestSessionStorageRecordsSpans(t *testing.T) {
 
 	// A session that is not there is a miss, not a failure: it must not fail
 	// the trace, and the session ID must never reach the front end.
-	if spans[2].Attributes["hit"] != false || spans[2].Failed() {
+	if spans[2].Attributes["hit"] != false || spans[2].Err() != nil {
 		t.Fatalf("miss span = %+v", spans[2])
 	}
 	for _, span := range spans {

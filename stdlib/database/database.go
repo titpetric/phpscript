@@ -1,4 +1,4 @@
-package ps
+package database
 
 import (
 	"context"
@@ -239,7 +239,7 @@ func (b *Database) observe(ctx context.Context, entry client.QueryLogEntry) {
 		span.SetAttribute("args", args)
 	}
 	span.SetAttribute("transaction_depth", entry.TxDepth)
-	if recordable(entry.Err) {
+	if telemetry.Recordable(entry.Err) {
 		span.RecordError(entry.Err)
 	}
 }
@@ -264,22 +264,6 @@ func queryArgs(args any) (any, bool) {
 		return nil, false
 	}
 	return args, true
-}
-
-// recordable reports whether an error is worth failing a span over. A query
-// that found no rows and a request the client hung up on are control flow, not
-// failures, and marking them would fail the trace and the recorded SLA with it.
-func recordable(err error) bool {
-	switch {
-	case err == nil:
-		return false
-	case errors.Is(err, sql.ErrNoRows):
-		return false
-	case errors.Is(err, context.Canceled):
-		return false
-	default:
-		return true
-	}
 }
 
 // recordRows records how much a read returned on the span carrying it. The row

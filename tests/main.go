@@ -5,9 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/stdlib/database"
 )
 
 func TestMain(m *testing.M) {
@@ -16,15 +15,17 @@ func TestMain(m *testing.M) {
 }
 
 func setTestEnv() {
-	env := []string{
+	// The process environment comes first, as it did when the connections
+	// were set up by the platform package; the test DSNs override it.
+	env := append(append([]string{}, os.Environ()...),
 		"PLATFORM_DB_SQLITE_TEST=sqlite://file:phpscript-test?mode=memory&cache=shared",
 		"PLATFORM_DB_POSTGRES_TEST=postgres://postgres:test@localhost:15432/postgres?sslmode=disable",
 		"PLATFORM_DB_MYSQL_TEST=mysql://root:test@tcp(localhost:13306)/mysql",
-	}
+	)
 
-	platform.SetupConnections(env)
+	database.Default = database.New(env)
 
-	if val, ok := platform.Database.(model.ExtendedDatabaseProvider); ok {
+	if val, ok := database.Default.(model.ExtendedDatabaseProvider); ok {
 		connectionList := val.List()
 		log.Println("connections", len(connectionList))
 		for k, v := range connectionList {

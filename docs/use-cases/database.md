@@ -319,8 +319,8 @@ foreach ($users as $row) {
 
 ## References
 
-- [Go `stdlib/ps.Database`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps#Database)
-- [Go `stdlib/ps.DatabaseMigrate`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps#DatabaseMigrate)
+- [Go `stdlib/database.Database`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/database#Database)
+- [Go `stdlib/database.DatabaseMigrate`](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/database#DatabaseMigrate)
 - [tests/fixtures/database_migrate.phpt](../../tests/fixtures/database_migrate.phpt)
 - [tests/fixtures/database_readonly.phpt](../../tests/fixtures/database_readonly.phpt)
 - [tests/fixtures/platform_database.phpt](../../tests/fixtures/platform_database.phpt)

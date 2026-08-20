@@ -40,7 +40,7 @@ func (s *tracedSessionStorage) Load(ctx context.Context, id string) ([]byte, err
 	data, err := s.storage.Load(ctx, id)
 	span.SetAttribute("hit", err == nil)
 	span.SetAttribute("bytes", len(data))
-	if recordable(err) && !missing(err) {
+	if telemetry.Recordable(err) && !missing(err) {
 		span.RecordError(err)
 	}
 	return data, err
@@ -63,7 +63,7 @@ func (s *tracedSessionStorage) Delete(ctx context.Context, id string) error {
 	defer span.End()
 
 	err := s.storage.Delete(ctx, id)
-	if recordable(err) && !missing(err) {
+	if telemetry.Recordable(err) && !missing(err) {
 		span.RecordError(err)
 	}
 	return err

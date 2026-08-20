@@ -1,4 +1,4 @@
-package ps
+package database
 
 import (
 	"context"
@@ -96,7 +96,7 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 			span, observe := newObservedSpan(t)
 			observe(client.QueryLogEntry{Query: "select 1", Err: test.err})
 
-			if got := span.Failed(); got != test.wantError {
+			if got := span.Err() != nil; got != test.wantError {
 				t.Fatalf("failed = %t, error = %q", got, span.Error)
 			}
 		})
@@ -215,7 +215,7 @@ func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
 
 	spans := trace.Clone().Spans
 	span := spans[len(spans)-1]
-	if span.Name != "db.Query" || !span.Failed() || !strings.Contains(span.Error, "delete is not allowed") {
+	if span.Name != "db.Query" || span.Err() == nil || !strings.Contains(span.Error, "delete is not allowed") {
 		t.Fatalf("span = %+v", span)
 	}
 	if span.Attributes["query_type"] != "delete" || span.Attributes["query_comment"] != "purge" {
