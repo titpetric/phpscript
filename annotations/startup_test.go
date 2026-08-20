@@ -55,6 +55,8 @@ fclose($file);
 	}
 }
 
+// Start reports what failed and names the file it failed in. Whether that is
+// fatal is the caller's decision, not this module's.
 func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
 	root := fstest.MapFS{
 		"broken.php": {Data: []byte("<?php\n// @startup\nmissing_function();")},
@@ -63,18 +65,44 @@ func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
 
 	err := startup.Start(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "startup broken.php") {
-		t.Fatalf("error = %v, want startup file error", err)
+		t.Fatalf("error = %v, want the failing file named", err)
+	}
+}
+
+// The scanner walks in path order, so a failure in the first file must not stop
+// the second from running: the jobs of one tree are independent, and every
+// failure is joined into the returned error rather than only the first.
+func TestStartupRunsEveryJobAndJoinsFailures(t *testing.T) {
+	root := fstest.MapFS{
+		"10-broken.php": {Data: []byte("<?php\n// @startup\nmissing_function();")},
+		"20-after.php":  {Data: []byte("<?php\n// @startup\necho \"after\";")},
+		"30-broken.php": {Data: []byte("<?php\n// @startup\nalso_missing();")},
+	}
+	var out bytes.Buffer
+	startup := annotations.NewStartup(root, annotations.WithOutput(&out))
+
+	err := startup.Start(context.Background())
+	if err == nil {
+		t.Fatal("error = nil, want both failures")
+	}
+	for _, want := range []string{"startup 10-broken.php", "startup 30-broken.php"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("error = %v, want it to name %s", err, want)
+		}
+	}
+	if got := out.String(); got != "after" {
+		t.Fatalf("output = %q, want the job between the failures to have run", got)
 	}
 }
 
 func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 	for _, test := range []struct {
-		name      string
-		source    string
-		wantError bool
+		name        string
+		source      string
+		wantFailure bool
 	}{
 		{name: "success", source: "<?php\n// @startup\necho 'ready';"},
-		{name: "failure", source: "<?php\n// @startup\nmissing_function();", wantError: true},
+		{name: "failure", source: "<?php\n// @startup\nmissing_function();", wantFailure: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			tracer, err := telemetry.New(telemetry.NewOptions())
@@ -88,9 +116,10 @@ func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 				annotations.WithObservers(recorder),
 			)
 
-			err = startup.Start(context.Background())
-			if (err != nil) != test.wantError {
-				t.Fatalf("error = %v, wantError = %t", err, test.wantError)
+			// The job is recorded on its own trace either way, and a failure
+			// is also returned.
+			if gotError := startup.Start(context.Background()) != nil; gotError != test.wantFailure {
+				t.Fatalf("returned error = %t, wantFailure = %t", gotError, test.wantFailure)
 			}
 			snapshot := recorder.Snapshot()
 			if snapshot.Total != 1 || snapshot.Active != 0 || len(snapshot.Log) != 1 {
@@ -106,11 +135,11 @@ func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 			if len(trace.Spans) == 0 || trace.Spans[0].Name != "@startup startup.php" || trace.Spans[0].Filename != "startup.php" {
 				t.Fatalf("unexpected startup spans: %+v", trace.Spans)
 			}
-			if gotError := trace.Spans[0].Error != ""; gotError != test.wantError {
-				t.Fatalf("span error = %q, wantError = %t", trace.Spans[0].Error, test.wantError)
+			if gotError := trace.Spans[0].Error != ""; gotError != test.wantFailure {
+				t.Fatalf("span error = %q, wantFailure = %t", trace.Spans[0].Error, test.wantFailure)
 			}
-			if gotError := trace.Error != ""; gotError != test.wantError {
-				t.Fatalf("trace error = %q, wantError = %t", trace.Error, test.wantError)
+			if gotError := trace.Error != ""; gotError != test.wantFailure {
+				t.Fatalf("trace error = %q, wantFailure = %t", trace.Error, test.wantFailure)
 			}
 		})
 	}

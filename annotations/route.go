@@ -20,10 +20,11 @@ type Route struct {
 
 // NewRoute creates a route module reading annotated endpoints from root.
 func NewRoute(root fs.FS, options ...Option) *Route {
+	cfg := newConfig(options...)
 	return &Route{
-		UnimplementedModule: *platform.NewUnimplementedModule("phproute"),
+		UnimplementedModule: *platform.NewUnimplementedModule(cfg.moduleName("phproute")),
 		root:                root,
-		config:              newConfig(options...),
+		config:              cfg,
 	}
 }
 

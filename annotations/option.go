@@ -22,6 +22,16 @@ type config struct {
 	runtimeFuncs  []RuntimeFunc
 	exprCache     *runner.ExprCache
 	excludedDirs  map[string]struct{}
+	moduleSuffix  string
+}
+
+// moduleName returns the platform module name for base, suffixed when the
+// caller asked for one.
+func (c config) moduleName(base string) string {
+	if c.moduleSuffix == "" {
+		return base
+	}
+	return base + ":" + c.moduleSuffix
 }
 
 func newConfig(options ...Option) config {
@@ -87,6 +97,16 @@ func WithRuntimeFunc(fn RuntimeFunc) Option {
 func WithExprCache(cache *runner.ExprCache) Option {
 	return func(c *config) {
 		c.exprCache = cache
+	}
+}
+
+// WithModuleSuffix distinguishes the platform modules of one source tree from
+// another's. A server running several virtual hosts registers a module set per
+// site, and platform.Options.Modules addresses modules by name, so the names
+// have to differ.
+func WithModuleSuffix(suffix string) Option {
+	return func(c *config) {
+		c.moduleSuffix = strings.TrimSpace(suffix)
 	}
 }
 

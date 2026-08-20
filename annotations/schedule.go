@@ -32,10 +32,11 @@ type scheduledJob struct {
 
 // NewScheduler creates a schedule module reading jobs from root.
 func NewScheduler(root fs.FS, options ...Option) *Scheduler {
+	cfg := newConfig(options...)
 	return &Scheduler{
-		UnimplementedModule: *platform.NewUnimplementedModule("phpschedule"),
+		UnimplementedModule: *platform.NewUnimplementedModule(cfg.moduleName("phpschedule")),
 		root:                root,
-		config:              newConfig(options...),
+		config:              cfg,
 		now:                 time.Now,
 	}
 }
