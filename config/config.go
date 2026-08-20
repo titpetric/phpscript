@@ -25,6 +25,17 @@ type Config struct {
 	Server    Server         `yaml:"server"`
 	Telemetry Telemetry      `yaml:"telemetry"`
 	Env       []string       `yaml:"env"`
+
+	// DocumentRoot is the directory beneath the application root that is
+	// served over HTTP. It is "public" and almost never worth setting; it
+	// exists for a site whose tree already names that directory something
+	// else.
+	DocumentRoot string `yaml:"document_root"`
+
+	// VirtualHost is the list of sites this server routes by domain. Each
+	// entry names an application root whose phpscript.yml is the
+	// configuration that site runs under.
+	VirtualHost []VirtualHost `yaml:"virtualhost"`
 }
 
 // PlatformOptions returns the platform options `phpscript server` runs under.

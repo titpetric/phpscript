@@ -9,6 +9,16 @@ runner:
   # The mode move_uploaded_file() gives a stored upload. Octal, as chmod takes
   # it; the temporary copy an upload arrives in is private to the process.
   upload_file_mode: "0644"
+  # Execution limits. NOT ENFORCED YET: the keys parse and are carried so a
+  # configuration written today keeps working when enforcement lands. 0 is no
+  # limit for all three. memory_limit is php.ini's, spelled the same way as
+  # the upload limits above; time_limit is php.ini's max_execution_time, in
+  # seconds; concurrency_limit is how many scripts may run at once and has no
+  # php.ini equivalent, because there the SAPI owns it and here one process
+  # serves several sites.
+  memory_limit: 0
+  time_limit: 0
+  concurrency_limit: 0
 
 flatstack:
   enabled: false
@@ -35,6 +45,16 @@ telemetry:
   track_memory_use: true
   live_stream: true
   driver: memory
+
+# The directory beneath an application root that is served over HTTP. Sites
+# are expected to leave this alone; it is here for a tree that already calls
+# that directory something other than public.
+document_root: public
+
+# The sites this server answers for, one entry per domain. Each root holds a
+# phpscript.yml with the routes, telemetry, runner limits and env that site
+# runs under; the entry only says which domain reaches it and where it lives.
+virtualhost: []
 
 env:
   - "PLATFORM_DB_SQLITE_TEST=sqlite://:memory:"
