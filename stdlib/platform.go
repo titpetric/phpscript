@@ -143,18 +143,24 @@ func osFamily() string {
 }
 
 func registerPlatformFuncs(rt *phprunner.Runtime) {
-	rt.RegisterFunc("phpversion", func(_ ...any) any { return phpVersion })
-	rt.RegisterFunc("php_uname", func(_ ...any) string { return osName() })
+	// phpversion returns "8.4.0", the PHP language version phpscript reports; an $extension argument is ignored.
+	rt.RegisterFunc("phpversion", func(extension ...any) any { return phpVersion })
+	// php_uname returns the host operating system name, the same value as PHP_OS; a $mode argument is ignored.
+	rt.RegisterFunc("php_uname", func(mode ...any) string { return osName() })
+	// zend_version returns the same version string as phpversion(); phpscript has no separate engine version.
 	rt.RegisterFunc("zend_version", func() string { return phpVersion })
 
-	rt.RegisterFunc("define", func(name string, value any, _ ...any) bool {
-		rt.SetConst(name, value)
+	// define defines constant $constant_name with value $value and returns true; the case-insensitivity flag is ignored.
+	rt.RegisterFunc("define", func(constantName string, value any, _ ...any) bool {
+		rt.SetConst(constantName, value)
 		return true
 	})
-	rt.RegisterFunc("defined", func(name string) bool {
-		_, ok := rt.Const(name)
+	// defined reports whether constant $constant_name is defined.
+	rt.RegisterFunc("defined", func(constantName string) bool {
+		_, ok := rt.Const(constantName)
 		return ok
 	})
+	// constant returns the value of constant $name; an undefined name is an error.
 	rt.RegisterFunc("constant", func(name string) (any, error) {
 		if value, ok := rt.Const(name); ok {
 			return value, nil
@@ -170,14 +176,19 @@ func registerPlatformFuncs(rt *phprunner.Runtime) {
 	// itself does for an unknown one, and it is the answer library code treats
 	// as "this extension is not configured".
 	rt.RegisterFunc("ini_get", func(_ string) any { return false })
-	rt.RegisterFunc("ini_set", func(_ string, _ any) any { return false })
-	rt.RegisterFunc("error_reporting", func(_ ...any) int64 { return 0 })
-	rt.RegisterFunc("set_error_handler", func(_ ...any) any { return nil })
-	rt.RegisterFunc("extension_loaded", func(_ string) bool { return false })
+	// ini_set accepts and ignores $option and $value and returns false; phpscript has no php.ini to change.
+	rt.RegisterFunc("ini_set", func(option string, value any) any { return false })
+	// error_reporting always returns 0 and ignores $error_level; the reporting level is not configurable.
+	rt.RegisterFunc("error_reporting", func(errorLevel ...any) int64 { return 0 })
+	// set_error_handler accepts and ignores $callback and returns null; the handler is never invoked.
+	rt.RegisterFunc("set_error_handler", func(callback ...any) any { return nil })
+	// extension_loaded returns false for every $extension name; phpscript loads no extensions.
+	rt.RegisterFunc("extension_loaded", func(extension string) bool { return false })
 
 	rt.RegisterFunc("filter_var", phpFilterVar)
 
 	rt.RegisterFunc("strtr", phpStrtr)
+	// strrpos returns the byte position of the last occurrence of $needle in $haystack, or false if it does not occur; a negative $offset is treated as 0.
 	rt.RegisterFunc("strrpos", func(haystack, needle string, offset ...int64) any {
 		start := 0
 		if len(offset) > 0 && offset[0] > 0 {
@@ -193,13 +204,15 @@ func registerPlatformFuncs(rt *phprunner.Runtime) {
 		return int64(i + start)
 	})
 
+	// spl_autoload_unregister removes autoloader $callback and reports whether it was registered.
 	rt.RegisterFunc("spl_autoload_unregister", func(callback any) bool {
 		return rt.UnregisterAutoloader(callback)
 	})
-	rt.RegisterFunc("stream_resolve_include_path", func(name string) any {
-		if filepath.IsAbs(name) {
-			if _, err := os.Stat(name); err == nil {
-				return name
+	// stream_resolve_include_path resolves $filename against the include path and returns the first path that exists, or false when none does.
+	rt.RegisterFunc("stream_resolve_include_path", func(filename string) any {
+		if filepath.IsAbs(filename) {
+			if _, err := os.Stat(filename); err == nil {
+				return filename
 			}
 			return false
 		}
@@ -207,7 +220,7 @@ func registerPlatformFuncs(rt *phprunner.Runtime) {
 			if dir == "" {
 				dir = "."
 			}
-			candidate := path.Join(filepath.ToSlash(dir), name)
+			candidate := path.Join(filepath.ToSlash(dir), filename)
 			if _, err := os.Stat(candidate); err == nil {
 				return candidate
 			}
@@ -250,8 +263,9 @@ func phpFilterVar(value any, args ...any) any {
 	}
 }
 
-// phpStrtr implements both spellings: strtr($s, $from, $to) replaces bytes
-// positionally, strtr($s, $pairs) replaces substrings, longest match first.
+// phpStrtr implements both spellings: strtr($subject, $from, $to) replaces
+// bytes positionally, strtr($subject, $pairs) replaces substrings, longest
+// match first.
 func phpStrtr(subject string, args ...any) string {
 	if len(args) == 0 {
 		return subject
@@ -308,22 +322,25 @@ func phpStrtr(subject string, args ...any) string {
 }
 
 func registerReflection(rt *phprunner.Runtime) {
-	rt.RegisterFunc("get_class", func(args ...any) any {
-		if len(args) == 0 || args[0] == nil {
+	// get_class returns the class name of $object, or false when $object is missing or null.
+	rt.RegisterFunc("get_class", func(object ...any) any {
+		if len(object) == 0 || object[0] == nil {
 			return false
 		}
-		return classNameOf(args[0])
+		return classNameOf(object[0])
 	})
+	// get_parent_class always returns false; phpscript does not track a parent class.
 	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
-	rt.RegisterFunc("get_object_vars", func(value any) *model.Array {
+	// get_object_vars returns the properties of $object as an array, declared fields first; a non-object yields an empty array.
+	rt.RegisterFunc("get_object_vars", func(object any) *model.Array {
 		out := model.NewArray()
-		if object, ok := value.(*model.Object); ok {
-			for _, field := range object.Class.Fields {
-				if v, ok := object.Props[field.Name]; ok {
+		if obj, ok := object.(*model.Object); ok {
+			for _, field := range obj.Class.Fields {
+				if v, ok := obj.Props[field.Name]; ok {
 					out.Set(field.Name, v)
 				}
 			}
-			for name, v := range object.Props {
+			for name, v := range obj.Props {
 				if _, seen := out.Get(name); !seen {
 					out.Set(name, v)
 				}
@@ -331,14 +348,15 @@ func registerReflection(rt *phprunner.Runtime) {
 		}
 		return out
 	})
-	rt.RegisterFunc("method_exists", func(target any, method string) bool {
-		if name, ok := target.(string); ok {
+	// method_exists reports whether $object_or_class, an object or a class name, has method $method.
+	rt.RegisterFunc("method_exists", func(objectOrClass any, method string) bool {
+		if name, ok := objectOrClass.(string); ok {
 			return rt.MethodExists(name, method)
 		}
-		if object, ok := target.(*model.Object); ok && object.Class != nil {
+		if object, ok := objectOrClass.(*model.Object); ok && object.Class != nil {
 			return rt.MethodExists(object.Class.Name, method)
 		}
-		value := reflect.ValueOf(target)
+		value := reflect.ValueOf(objectOrClass)
 		if !value.IsValid() {
 			return false
 		}
@@ -349,8 +367,9 @@ func registerReflection(rt *phprunner.Runtime) {
 		}
 		return false
 	})
-	rt.RegisterFunc("property_exists", func(target any, property string) bool {
-		object, ok := target.(*model.Object)
+	// property_exists reports whether object $object_or_class has property $property, set or declared; a class name is not accepted and returns false.
+	rt.RegisterFunc("property_exists", func(objectOrClass any, property string) bool {
+		object, ok := objectOrClass.(*model.Object)
 		if !ok {
 			return false
 		}
@@ -373,8 +392,9 @@ func registerReflection(rt *phprunner.Runtime) {
 	rt.RegisterFunc("spl_object_hash", func(value any) string {
 		return fmt.Sprintf("%032x", objectIdentity(value))
 	})
-	rt.RegisterFunc("spl_object_id", func(value any) int64 {
-		return int64(objectIdentity(value))
+	// spl_object_id returns a numeric identity for $object, stable for as long as the object is alive.
+	rt.RegisterFunc("spl_object_id", func(object any) int64 {
+		return int64(objectIdentity(object))
 	})
 }
 
@@ -460,6 +480,7 @@ func registerClosure(rt *phprunner.Runtime) {
 		}
 		return closure, nil
 	})
+	// Closure::fromCallable returns the closure for $callback; a value that is not callable is an error.
 	rt.RegisterFunc("Closure::fromCallable", func(callback any) (any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {

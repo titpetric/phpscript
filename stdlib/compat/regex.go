@@ -48,19 +48,19 @@ func registerRegex(rt *runner.Runtime) {
 // is worse than one that reports no match.
 const backtrackTimeout = time.Second
 
-// phpPregMatchAll implements preg_match_all($pattern, $subject, &$matches) in
-// PREG_PATTERN_ORDER: matches[0]=full matches, matches[g]=group g captures. The
-// third parameter is a setter (the runner's by-reference wrapper).
+// phpPregMatchAll implements preg_match_all($pattern, $subject, &$matches),
+// filling $matches in PREG_PATTERN_ORDER: $matches[0] holds the full matches
+// and $matches[g] the captures of group g. Returns the number of matches.
 //
 // $matches is written as a []any of []string columns. Both levels are indexed
 // and iterated by the VM exactly like nested PHP arrays, and the columns are
 // plain string slices, so a match set of g groups over n matches costs g+1
 // allocations instead of the 2(g+1) plus 2n interface boxes an *model.Array
 // pair would.
-func (c *regexpCache) phpPregMatchAll(pattern, subject string, set ...func(any)) int64 {
+func (c *regexpCache) phpPregMatchAll(pattern, subject string, matches ...func(any)) int64 {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
-		writeRef(set, []any(nil))
+		writeRef(matches, []any(nil))
 		return 0
 	}
 	all := re.findAll(subject)
@@ -76,24 +76,24 @@ func (c *regexpCache) phpPregMatchAll(pattern, subject string, set ...func(any))
 		}
 		out = append(out, col)
 	}
-	writeRef(set, out)
+	writeRef(matches, out)
 	return int64(len(all))
 }
 
-// phpPregMatch implements preg_match returning 0/1 and optionally filling
-// $matches with the first match's groups.
-func (c *regexpCache) phpPregMatch(pattern, subject string, set ...func(any)) int64 {
+// phpPregMatch implements preg_match($pattern, $subject, &$matches), returning
+// 0/1 and optionally filling $matches with the first match's groups.
+func (c *regexpCache) phpPregMatch(pattern, subject string, matches ...func(any)) int64 {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
-		writeRef(set, []string(nil))
+		writeRef(matches, []string(nil))
 		return 0
 	}
 	m := re.find(subject)
 	if m == nil {
-		writeRef(set, []string(nil))
+		writeRef(matches, []string(nil))
 		return 0
 	}
-	writeRef(set, m)
+	writeRef(matches, m)
 	return 1
 }
 

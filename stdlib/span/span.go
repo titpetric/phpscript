@@ -25,5 +25,8 @@ func init() {
 
 // Register installs symbols into the runtime.
 func Register(rt *runner.Runtime) {
+	// start_span opens a telemetry span named $name, of kind $kind when given,
+	// and returns it; the script closes it with $span->end(). Without a trace
+	// in the context, the returned span's methods do nothing.
 	rt.RegisterFunc("start_span", telemetry.StartSpan)
 }

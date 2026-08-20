@@ -51,7 +51,7 @@ tasks:
   test:introspection:
     passthru: true
     cmds:
-      - ./scripts/list-apis.php > docs/reference/extensions/implemented-apis.md
+      - go run ./scripts/list-apis > docs/reference/extensions/implemented-apis.md
       - phpscript info
       - cd docs/reference && php README.php > README.md
       - task: mdox:fmt

@@ -1,7 +1,7 @@
 package files
 
 import (
-	"path"
+	stdpath "path"
 	"path/filepath"
 	"strings"
 
@@ -12,10 +12,12 @@ import (
 // shape of a path and never touch the filesystem, so they are not bound to the
 // root and work the same on a path that does not exist.
 func registerPaths(rt *runner.Runtime) {
-	rt.RegisterFunc("dirname", func(p string) string {
-		return path.Dir(strings.TrimRight(filepath.ToSlash(p), "/"))
+	// dirname returns the parent directory of $path; the $levels argument is not accepted.
+	rt.RegisterFunc("dirname", func(path string) string {
+		return stdpath.Dir(strings.TrimRight(filepath.ToSlash(path), "/"))
 	})
-	rt.RegisterFunc("basename", func(p string) string {
-		return path.Base(filepath.ToSlash(p))
+	// basename returns the trailing name component of $path; the $suffix argument is not accepted.
+	rt.RegisterFunc("basename", func(path string) string {
+		return stdpath.Base(filepath.ToSlash(path))
 	})
 }

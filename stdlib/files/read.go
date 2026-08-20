@@ -14,54 +14,58 @@ import (
 // ships, and falls back to the host filesystem for what only exists there, such
 // as a file an earlier write produced.
 func registerReads(rt *runner.Runtime, r root) {
-	rt.RegisterFunc("glob", func(p string) ([]string, error) {
+	// glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host.
+	rt.RegisterFunc("glob", func(pattern string) ([]string, error) {
 		source := r.sourceFS()
 		if source == nil {
-			return filepath.Glob(r.resolve(p))
+			return filepath.Glob(r.resolve(pattern))
 		}
-		return iofs.Glob(source, p)
+		return iofs.Glob(source, pattern)
 	})
 
-	rt.RegisterFunc("file_get_contents", func(p string) any {
-		if filepath.IsAbs(p) {
-			b, err := os.ReadFile(path.Clean(p))
+	// file_get_contents returns the contents of $filename as a string, or false on failure; a relative path is tried in the source filesystem first, then on the host.
+	rt.RegisterFunc("file_get_contents", func(filename string) any {
+		if filepath.IsAbs(filename) {
+			b, err := os.ReadFile(path.Clean(filename))
 			if err != nil {
 				return false
 			}
 			return string(b)
 		}
 		if source := r.sourceFS(); source != nil {
-			if b, err := iofs.ReadFile(source, r.resolve(p)); err == nil {
+			if b, err := iofs.ReadFile(source, r.resolve(filename)); err == nil {
 				return string(b)
 			}
 		}
-		b, err := os.ReadFile(r.resolve(p))
+		b, err := os.ReadFile(r.resolve(filename))
 		if err != nil {
 			return false
 		}
 		return string(b)
 	})
-	rt.RegisterFunc("file_exists", func(p string) bool {
-		if filepath.IsAbs(p) {
-			_, err := os.Stat(path.Clean(p))
+	// file_exists reports whether $filename exists, in the source filesystem or on the host.
+	rt.RegisterFunc("file_exists", func(filename string) bool {
+		if filepath.IsAbs(filename) {
+			_, err := os.Stat(path.Clean(filename))
 			return err == nil
 		}
-		if _, err := r.statSource(p); err == nil {
+		if _, err := r.statSource(filename); err == nil {
 			return true
 		}
-		_, err := os.Stat(r.resolve(p))
+		_, err := os.Stat(r.resolve(filename))
 		return err == nil
 	})
-	rt.RegisterFunc("filemtime", func(p string) int64 {
-		if filepath.IsAbs(p) {
-			if st, err := os.Stat(path.Clean(p)); err == nil {
+	// filemtime returns the modification time of $filename as a Unix timestamp, or 0 when the file cannot be found; PHP returns false there.
+	rt.RegisterFunc("filemtime", func(filename string) int64 {
+		if filepath.IsAbs(filename) {
+			if st, err := os.Stat(path.Clean(filename)); err == nil {
 				return st.ModTime().Unix()
 			}
 		}
-		if st, err := r.statSource(p); err == nil {
+		if st, err := r.statSource(filename); err == nil {
 			return st.ModTime().Unix()
 		}
-		if st, err := os.Stat(r.resolve(p)); err == nil {
+		if st, err := os.Stat(r.resolve(filename)); err == nil {
 			return st.ModTime().Unix()
 		}
 		return 0

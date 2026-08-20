@@ -666,6 +666,14 @@ func (rt *Runtime) RegisterFunc(name string, fn any) {
 	rt.envMu.Unlock()
 }
 
+// LookupFunc returns the host function registered for name. Introspection
+// tooling uses it to reflect over a binding's Go signature; a PHP user-defined
+// function resolves too, as whatever callable the runtime stored for it.
+func (rt *Runtime) LookupFunc(name string) (any, bool) {
+	fn, ok := rt.funcs[name]
+	return fn, ok
+}
+
 func (rt *Runtime) registerUserFunc(name string, fn any) {
 	rt.RegisterFunc(name, fn)
 	rt.userFns[name] = struct{}{}

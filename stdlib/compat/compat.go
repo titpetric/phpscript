@@ -51,7 +51,12 @@ func init() {
 func Register(rt *runner.Runtime) {
 	registerRegex(rt)
 	registerDatetime(rt)
+	registerBuffers(rt)
+}
 
+// registerBuffers installs the ob_* output buffering functions. Each runtime
+// gets its own buffer stack, so concurrent requests capture their own output.
+func registerBuffers(rt *runner.Runtime) {
 	buffers := newBuffers(rt)
 
 	// ob_start takes a callback and chunk size in PHP. Neither changes what a
@@ -60,7 +65,9 @@ func Register(rt *runner.Runtime) {
 		buffers.push()
 		return true
 	})
+	// ob_get_level returns the number of active output buffers.
 	rt.RegisterFunc("ob_get_level", buffers.level)
+	// ob_get_contents returns the active buffer's contents without closing it.
 	rt.RegisterFunc("ob_get_contents", func() any {
 		contents, ok := buffers.contents()
 		if !ok {
@@ -68,6 +75,7 @@ func Register(rt *runner.Runtime) {
 		}
 		return contents
 	})
+	// ob_get_clean closes the active buffer and returns its contents.
 	rt.RegisterFunc("ob_get_clean", func() any {
 		contents, ok := buffers.pop(false)
 		if !ok {
@@ -75,14 +83,17 @@ func Register(rt *runner.Runtime) {
 		}
 		return contents
 	})
+	// ob_end_clean closes the active buffer and discards its contents.
 	rt.RegisterFunc("ob_end_clean", func() bool {
 		_, ok := buffers.pop(false)
 		return ok
 	})
+	// ob_end_flush closes the active buffer and writes its contents to the output below it.
 	rt.RegisterFunc("ob_end_flush", func() bool {
 		_, ok := buffers.pop(true)
 		return ok
 	})
+	// ob_get_flush closes the active buffer, writes its contents to the output below it, and returns them.
 	rt.RegisterFunc("ob_get_flush", func() any {
 		contents, ok := buffers.pop(true)
 		if !ok {

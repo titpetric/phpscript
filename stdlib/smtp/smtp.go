@@ -83,7 +83,7 @@ func RegisterSMTP(rt *runner.Runtime) {
 	rt.RegisterConstructor("SMTP", NewSMTPBinding)
 }
 
-// NewSMTPBinding is the constructor callback registered for SMTP. It takes the
+// NewSMTPBinding is a mail sender configured for one SMTP server. It takes the
 // connection settings as an associative array:
 //
 //	$smtp = new SMTP(array(

@@ -11,6 +11,7 @@ import (
 // PHP's date/format family is not implemented; these are the two functions a
 // script needs to measure its own execution.
 func registerDatetime(rt *runner.Runtime) {
+	// time returns the current Unix timestamp in seconds.
 	rt.RegisterFunc("time", func() int64 {
 		return time.Now().Unix()
 	})

@@ -11,12 +11,13 @@ import (
 // registerStreams installs the file-handle functions. A handle is the *os.File
 // fopen() returns; PHP calls it a resource.
 func registerStreams(rt *runner.Runtime, r root) {
-	rt.RegisterFunc("fopen", func(p, mode string) (any, error) {
-		name := r.resolve(p)
+	// fopen opens $filename in $mode and returns a handle, or false on failure; a mode that can write is refused outside writable_paths.
+	rt.RegisterFunc("fopen", func(filename, mode string) (any, error) {
+		name := r.resolve(filename)
 		// Only a mode that can write is held to writable_paths. Opening a
 		// file for reading is a read wherever it lives.
 		if writes(mode) {
-			if _, err := r.resolveWrite("fopen", p); err != nil {
+			if _, err := r.resolveWrite("fopen", filename); err != nil {
 				return false, err
 			}
 		}
@@ -39,6 +40,7 @@ func registerStreams(rt *runner.Runtime, r root) {
 		}
 		return int64(n)
 	})
+	// fclose closes a handle fopen() returned and reports whether the close succeeded.
 	rt.RegisterFunc("fclose", func(f *os.File) bool {
 		if f == nil {
 			return false
