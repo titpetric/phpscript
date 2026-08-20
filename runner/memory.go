@@ -100,6 +100,23 @@ func DeepSize(v any, visited visitedSet) int64 {
 			total += DeepSize(k, visited) + DeepSize(val, visited)
 		}
 		return total
+	case map[string]string:
+		total := int64(48)
+		for k, val := range x {
+			total += 32 + int64(len(k)) + int64(len(val))
+		}
+		return total
+	case map[string][]string:
+		total := int64(48)
+		for k, vals := range x {
+			total += 16 + int64(len(k)) + 24
+			for _, val := range vals {
+				total += 16 + int64(len(val))
+			}
+		}
+		return total
+	case Context:
+		return x.memoryFootprint(visited)
 	default:
 		return EstimateValueSize(v)
 	}

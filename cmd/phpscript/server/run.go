@@ -234,6 +234,9 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	defer reqCtx.Cleanup()
 	h.serverVars(reqCtx, r, filename)
 	reqCtx.Register(rt)
+	// The parsed request and the response writer live for this request too;
+	// Register accounted the Context, these are the host structures around it.
+	rt.AccountRequest(r, w)
 
 	err = rt.Run(prog)
 	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {

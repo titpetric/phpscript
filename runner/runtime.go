@@ -435,6 +435,19 @@ func (rt *Runtime) MemoryLimit() Size {
 	return rt.opts.MemoryLimit
 }
 
+// AccountRequest folds the size of host-owned request-lifetime values into
+// the baseline the memory walk starts from: the request Context, the parsed
+// *http.Request, the response writer. It is called once per value at the
+// point a request crosses into the runtime; the walk then adds live script
+// values on top. It is an estimate of what the request costs before any PHP
+// evaluates, not an audit of every host allocation.
+func (rt *Runtime) AccountRequest(values ...any) {
+	visited := make(visitedSet)
+	for _, v := range values {
+		rt.memBase += DeepSize(v, visited)
+	}
+}
+
 // MemoryWalk recomputes live usage from the roots — the interpreter frame
 // stack, globals, class statics, and any running flat VM's live values.
 // A visited set keyed on container identity counts a value reachable through

@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -440,10 +441,33 @@ func (c Context) Errors() []error {
 	return *c.errors
 }
 
+// memoryFootprint estimates the bytes this Context holds on the host side of
+// the request boundary: the superglobal source maps, headers, arguments and
+// upload metadata. The superglobal arrays Register seeds into the runtime are
+// separate copies the walk counts on its own.
+func (c Context) memoryFootprint(visited visitedSet) int64 {
+	total := int64(unsafe.Sizeof(c))
+	for _, m := range []map[string]string{c.Get, c.Post, c.Path, c.Cookie, c.Server, c.Env, c.Headers} {
+		total += DeepSize(m, visited)
+	}
+	total += DeepSize(c.Argv, visited)
+	total += DeepSize(map[string][]string(c.response), visited)
+	for name, files := range c.Files {
+		total += 16 + int64(len(name)) + 24
+		for _, file := range files {
+			total += DeepSize(file, visited)
+		}
+	}
+	return total
+}
+
 // Register installs the request-aware PHP functions onto rt and seeds the
 // request superglobals. After this, transpiled PHP can call getallheaders() /
 // header() and read $_GET, $_POST, $_PATH, all backed by this Context.
 func (c Context) Register(rt *Runtime) {
+	// The request has crossed into the runtime: fold its host-side size into
+	// the memory baseline for the rest of this request's lifetime.
+	rt.AccountRequest(c)
 	// Make request cookies and staged response headers available to bindings
 	// whose methods receive the runtime lifecycle context.
 	rt.SetContext(context.WithValue(rt.Context(), requestContextKey{}, c))
