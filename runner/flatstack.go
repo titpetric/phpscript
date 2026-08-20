@@ -25,19 +25,38 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		}
 		rt.exprCache.setFlat(ast, program)
 	}
-	return true, flatvm.Run(program, flatHost{runtime: rt})
+	if err := rt.hoist(ast.Stmts, rt.entrypoint); err != nil {
+		return false, nil
+	}
+	return true, flatvm.Run(program, &flatHost{runtime: rt})
 }
 
 type flatHost struct {
 	runtime *Runtime
+	locals  map[string]any
+}
+
+func (h flatHost) boundScope() *Scope {
+	scope := h.runtime.newScope()
+	for name, value := range h.locals {
+		scope.Set(name, value)
+	}
+	return scope
 }
 
 func (h flatHost) Construct(class string, args []any) (any, error) {
-	return h.runtime.helperNew(&scopeRef{scope: h.runtime.newScope()})(strings.TrimPrefix(class, "\\"), args...)
+	return h.runtime.helperNew(&scopeRef{scope: h.boundScope()})(strings.TrimPrefix(class, "\\"), args...)
 }
 
-func (h flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
-	return h.runtime.helperCall(&scopeRef{scope: h.runtime.newScope()})(receiver, method, args...)
+func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
+	scope := h.boundScope()
+	result, err := h.runtime.helperCall(&scopeRef{scope: scope})(receiver, method, args...)
+	h.pullScope(scope)
+	return result, err
+}
+
+func (h flatHost) SetGlobal(name string, value any) {
+	h.runtime.globals[name] = value
 }
 
 func (h flatHost) GetProperty(receiver any, name string) any {
@@ -223,8 +242,73 @@ func (h flatHost) Entries(value any) []flatvm.Entry {
 	return entries
 }
 
-func (h flatHost) Call(name, fallback string, args []any) (any, error) {
-	return h.runtime.helperFunc(&scopeRef{scope: h.runtime.newScope()})(name, fallback, args...)
+func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
+	scope := h.boundScope()
+	result, err := h.runtime.helperFunc(&scopeRef{scope: scope})(fnName, fallback, args...)
+	h.pullScope(scope)
+	return result, err
+}
+
+func (h *flatHost) pullScope(scope *Scope) {
+	if h.locals == nil {
+		h.locals = map[string]any{}
+	}
+	for name, value := range scope.vars {
+		if name == "__FILE__" || name == "__DIR__" {
+			continue
+		}
+		h.locals[name] = value
+	}
+}
+
+func (h *flatHost) TakeLocals() map[string]any {
+	return h.locals
+}
+
+func (h *flatHost) BindLocals(vars map[string]any) {
+	h.locals = vars
+}
+
+func (h *flatHost) RegisterUserFunc(name string) {
+	h.runtime.userFns[name] = struct{}{}
+}
+
+func (h flatHost) RegisterClass(class *model.Class) {
+	for _, method := range class.Methods {
+		if method != nil && method.Filename == "" {
+			method.Filename = h.runtime.entrypoint
+		}
+	}
+	h.runtime.RegisterClass(class)
+}
+
+func (h flatHost) Include(path any, keyword string, once bool, vars map[string]any) (any, map[string]any, error) {
+	filename := phpString(path)
+	if once {
+		clean := cleanFSPath(filename)
+		for _, included := range h.runtime.included {
+			if included == clean {
+				return true, vars, nil
+			}
+		}
+	}
+	scope := h.runtime.newScope()
+	for name, value := range vars {
+		scope.Set(name, value)
+	}
+	result, err := h.runtime.includeFile(filename, scope)
+	if err != nil {
+		return nil, nil, err
+	}
+	exported := make(map[string]any, len(scope.vars))
+	for name, value := range scope.vars {
+		if name == "__FILE__" || name == "__DIR__" {
+			continue
+		}
+		exported[name] = value
+	}
+	_ = keyword
+	return result, exported, nil
 }
 
 // MemoryCheckInterval reports how often the VM should poll the memory limit;

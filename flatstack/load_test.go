@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/flatstack"
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/tests"
 )
@@ -84,6 +85,9 @@ func TestFlatstackNativeLanguageCoverage(t *testing.T) {
 		{"foreach variables", `<?php foreach (array("a" => 1, "b" => 2) as $k => $v) echo $k . $v;`, "a1b2"},
 		{"foreach index targets", `<?php $state = array(); foreach (array("x" => 7) as $state["k"] => $state["v"]) echo $state["k"] . $state["v"];`, "x7"},
 		{"elvis evaluates condition once", `<?php $value = "kept"; echo $value ?: "fallback";`, "kept"},
+		{"php class declaration", `<?php class Greeter { function hello() { echo "hi"; } } $g = new Greeter; $g->hello();`, "hi"},
+		{"class method calls user function", `<?php function tag() { echo "F"; } class C { function m() { tag(); } } $o = new C; $o->m();`, "F"},
+		{"class method this property", `<?php class Box { public $n = 3; function show() { echo $this->n; } } $b = new Box; $b->show();`, "3"},
 	}
 
 	for _, test := range tests {
@@ -104,6 +108,77 @@ func TestFlatstackNativeLanguageCoverage(t *testing.T) {
 				t.Fatalf("output = %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+func TestFlatstackNativeInclude(t *testing.T) {
+	program, err := parser.Parse(`<?php $message = include("plugin.php"); echo $message;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("expected native bytecode support: %v", err)
+	}
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	runtime.SetIncludeResolver(func(path string) (*model.Program, error) {
+		if path != "plugin.php" {
+			t.Fatalf("include path = %q", path)
+		}
+		return parser.Parse(`<?php return "Hello world!";`)
+	})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "Hello world!" {
+		t.Fatalf("output = %q, want %q", got, "Hello world!")
+	}
+}
+
+func TestFlatstackIncludeDefinesCallerVar(t *testing.T) {
+	program, err := parser.Parse(`<?php include("defs.php"); echo $x;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	runtime.SetIncludeResolver(func(path string) (*model.Program, error) {
+		return parser.Parse(`<?php $x = "z";`)
+	})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "z" {
+		t.Fatalf("output = %q, want z", got)
+	}
+}
+
+func TestFlatstackIncludeOnce(t *testing.T) {
+	program, err := parser.Parse(`<?php include_once("once.php"); include_once("once.php");`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+	var hits atomic.Int64
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	runtime.SetIncludeResolver(func(path string) (*model.Program, error) {
+		hits.Add(1)
+		return parser.Parse(`<?php echo "x";`)
+	})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if hits.Load() != 1 {
+		t.Fatalf("include_once resolved %d times, want 1", hits.Load())
+	}
+	if got := output.String(); got != "x" {
+		t.Fatalf("output = %q, want x", got)
 	}
 }
 
@@ -132,14 +207,14 @@ $storage->get("missing");
 func TestFlatstackRejectsWholeProgramBeforeSideEffects(t *testing.T) {
 	program, err := parser.Parse(`<?php
 $storage = new Storage;
-class UnsupportedClass {}
+$fn = function() { return 1; };
 echo 42;
 `)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := flatstack.Supports(program); err == nil {
-		t.Fatal("program with a class declaration should require interpreter fallback")
+		t.Fatal("program with a closure should require interpreter fallback")
 	}
 
 	var constructions atomic.Int64

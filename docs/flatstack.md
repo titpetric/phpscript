@@ -141,7 +141,9 @@ Flat bytecode currently supports these statements:
 - `if`/`else`
 - `for`/`while` and `foreach`, including nested `break` and `continue`
 - `switch`, fallthrough, and `break`
-- `try`/`catch` and `throw` (a `finally` block still selects fallback)
+- `try`/`catch`/`finally` and `throw`
+- Top-level PHP class declarations (`new` and method calls already native)
+- `include` / `include_once` / `require` as statements or expressions
 
 It supports these expressions:
 
@@ -174,13 +176,13 @@ not a claim that half of the PHP language is implemented.
 The complete program atomically selects fallback when it contains any currently
 unsupported form. The major remaining forms are:
 
-- User function declarations/calls and `return`
-- PHP class declarations, property writes, class constants, and property
-  increment/decrement
-- Includes as statements or expressions
+- Property increment/decrement and class-constant / static-property forms
 - Closures and callback bodies
-- `finally`
+- `try` without a `catch` clause
 - Casts and destructuring/list assignment
+- PHP constructors (`__construct`) still run in the interpreter
+- Nested `class` declarations (same as the interpreter hoist)
+- Included files still execute through the interpreter
 
 These are not called "unsupported programs" at the public runtime boundary:
 they are valid phpscript programs and execute through runner. "Unsupported" in

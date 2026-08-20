@@ -3,6 +3,7 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/titpetric/phpscript/model"
@@ -92,6 +93,19 @@ func Run(program *Program, host Host) (err error) {
 	initialized := scratch.initialized[:nlocal]
 	clear(locals)
 	clear(initialized)
+	if registrar, ok := host.(interface{ RegisterClass(*model.Class) }); ok {
+		for _, class := range program.classes {
+			registrar.RegisterClass(class)
+		}
+	}
+	if registrar, ok := host.(interface{ RegisterUserFunc(string) }); ok {
+		for name := range program.userFuncs {
+			if strings.Contains(name, "::") {
+				continue
+			}
+			registrar.RegisterUserFunc(name)
+		}
+	}
 	iterators := make(map[int]*iteratorState)
 	var handlers []errorHandler
 	var callFrames []callFrame
@@ -403,6 +417,7 @@ func Run(program *Program, host Host) (err error) {
 			if argErr != nil {
 				return argErr
 			}
+			bindHostLocals(host, program, locals, initialized)
 			var value any
 			if inst.op == opCall {
 				if def, ok := program.userFuncs[inst.name]; ok {
@@ -431,6 +446,7 @@ func Run(program *Program, host Host) (err error) {
 					continue
 				}
 				value, err = host.Call(inst.name, inst.extra, arguments)
+				applyHostLocals(host, program, locals, initialized)
 			} else {
 				value, err = host.Construct(inst.name, arguments)
 			}
@@ -446,11 +462,39 @@ func Run(program *Program, host Host) (err error) {
 			if argErr != nil {
 				return argErr
 			}
+			bindHostLocals(host, program, locals, initialized)
 			receiver, popErr := pop()
 			if popErr != nil {
 				return popErr
 			}
+			if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
+				key := obj.Class.Name + "::" + inst.name
+				if def, ok := program.userFuncs[key]; ok {
+					callFrames = append(callFrames, callFrame{
+						returnPC:    pc,
+						locals:      locals,
+						initialized: initialized,
+					})
+					locals = make([]any, len(program.localNames))
+					initialized = make([]bool, len(program.localNames))
+					bound := append([]any{receiver}, arguments...)
+					for i, paramName := range def.params {
+						if i >= len(bound) {
+							break
+						}
+						for s, name := range program.localNames {
+							if name == paramName {
+								locals[s], initialized[s] = bound[i], true
+								break
+							}
+						}
+					}
+					pc = def.entryPC
+					continue
+				}
+			}
 			value, callErr := host.CallMethod(receiver, inst.name, arguments)
+			applyHostLocals(host, program, locals, initialized)
 			if callErr != nil {
 				if handle(callErr) {
 					continue
@@ -597,10 +641,140 @@ func Run(program *Program, host Host) (err error) {
 				stack = append(stack, retVal)
 				return nil
 			}
+		case opEnsureArray:
+			value, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
+				value = host.Array(nil)
+			}
+			stack = append(stack, value)
+		case opVivifyIndex:
+			index, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			base, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			value := host.Index(base, index)
+			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
+				value = host.Array(nil)
+				if err = host.SetIndex(base, index, value, false, "="); err != nil {
+					if handle(err) {
+						continue
+					}
+					return err
+				}
+			}
+			stack = append(stack, value)
+		case opVivifyProperty:
+			receiver, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			value := host.GetProperty(receiver, inst.name)
+			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
+				value = host.Array(nil)
+				if err = host.SetProperty(receiver, inst.name, value, "="); err != nil {
+					if handle(err) {
+						continue
+					}
+					return err
+				}
+			}
+			stack = append(stack, value)
+		case opInclude:
+			pathValue, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			vars := make(map[string]any, len(program.localNames))
+			for i, name := range program.localNames {
+				if initialized[i] && (len(name) == 0 || name[0] != 0) {
+					vars[name] = locals[i]
+				}
+			}
+			includer, ok := host.(interface {
+				Include(path any, keyword string, once bool, vars map[string]any) (any, map[string]any, error)
+			})
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement include", pc)
+			}
+			value, exported, includeErr := includer.Include(pathValue, inst.name, inst.a != 0, vars)
+			if includeErr != nil {
+				if handle(includeErr) {
+					continue
+				}
+				return includeErr
+			}
+			applyNamedValues(host, program, locals, initialized, exported, len(callFrames) == 0)
+			stack = append(stack, value)
 		default:
 			return fmt.Errorf("flatstack: pc %d: invalid opcode %d", pc, inst.op)
 		}
 		pc++
 	}
 	return nil
+}
+
+func bindHostLocals(host Host, program *Program, locals []any, initialized []bool) {
+	binder, ok := host.(interface{ BindLocals(map[string]any) })
+	if !ok {
+		return
+	}
+	vars := make(map[string]any, len(program.localNames))
+	for i, name := range program.localNames {
+		if initialized[i] && (len(name) == 0 || name[0] != 0) {
+			vars[name] = locals[i]
+		}
+	}
+	binder.BindLocals(vars)
+}
+
+func applyHostLocals(host Host, program *Program, locals []any, initialized []bool) {
+	taker, ok := host.(interface{ TakeLocals() map[string]any })
+	if !ok {
+		return
+	}
+	applyNamedValues(host, program, locals, initialized, taker.TakeLocals(), false)
+}
+
+func applyNamedValues(host Host, program *Program, locals []any, initialized []bool, names map[string]any, extrasToGlobal bool) {
+	if names == nil {
+		return
+	}
+	for name, value := range names {
+		if len(name) == 0 || name[0] == 0 {
+			continue
+		}
+		found := false
+		for i, localName := range program.localNames {
+			if localName == name {
+				locals[i], initialized[i] = value, true
+				found = true
+				break
+			}
+		}
+		if !found && extrasToGlobal {
+			if setter, ok := host.(interface{ SetGlobal(string, any) }); ok {
+				setter.SetGlobal(name, value)
+			}
+		}
+	}
+}
+
+func phpEmptyContainer(value any) bool {
+	if value == nil {
+		return true
+	}
+	if b, ok := value.(bool); ok && !b {
+		return true
+	}
+	if s, ok := value.(string); ok && s == "" {
+		return true
+	}
+	return false
 }
