@@ -2,22 +2,22 @@
 // namespace: traces and spans recorded in process, with a server side rendered
 // front end mounted at /debug/oida.
 //
-// This is the only package allowed to import oida. Everything else in
-// phpscript instruments through the symbols bound here, so the provider is
-// named in one place and a replacement is one package wide change rather than
-// a repository wide one. The bindings are type aliases and thin wrappers, so
-// a *telemetry.Span is a *oida.Span: nothing is copied or adapted at runtime.
+// This is the only package in phpscript that imports oida. Everything else
+// instruments through the symbols bound here, so no call site names the
+// provider. The bindings are type aliases and thin wrappers, so a
+// *telemetry.Span is a *oida.Span: nothing is copied or adapted at runtime.
 //
-// A host wires it in three calls:
+// That covers the call sites, not the whole dependency. The recorder and the
+// front end belong to the host platform, which names oida itself, so replacing
+// the provider means replacing it there as well. A host hands over the tracer
+// that platform built:
 //
-//	module, err := telemetry.NewModule(telemetry.NewOptions())
-//	if err != nil {
-//		return err
+//	var recorder *platform.TelemetryModule
+//	if svc.Find(&recorder) {
+//		module = telemetry.NewModule(recorder.Tracer())
 //	}
-//	svc.Use(module.Middleware)
-//	svc.Register(module)
 //
-// The module is also a runner.Observer, so a Runtime handed to it reports its
+// The module is a runner.Observer, so a Runtime handed to it reports its
 // scoreboard state and its spans onto the trace of the request that is running:
 //
 //	rt.SetContext(r.Context())

@@ -179,24 +179,24 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 		root = args[0]
 	}
 
-	opts := platform.NewOptions()
-	opts.ServerAddr = ":8080"
-
-	svc := platform.New(opts)
-	var observers []runner.Observer
-	var recorder *telemetry.Module
-	if config.Telemetry.Enabled {
-		var err error
-		opts, err := config.Telemetry.Resolved()
-		if err != nil {
-			return err
-		}
-		recorder, err = telemetry.NewModule(opts)
-		if err != nil {
-			return err
-		}
-		observers = append(observers, recorder)
+	options, err := config.PlatformOptions()
+	if err != nil {
+		return err
 	}
+
+	svc := platform.New(options)
+
+	// The platform records, phpscript observes. Its recorder owns the tracer
+	// and its middleware is what puts a trace in the request context, so the
+	// interpreter reports onto that trace instead of into a second recorder of
+	// its own. Telemetry turned off leaves no recorder to find, and the
+	// observers stay empty.
+	var observers []runner.Observer
+	var recorder *platform.TelemetryModule
+	if svc.Find(&recorder) {
+		observers = append(observers, telemetry.NewModule(recorder.Tracer()))
+	}
+
 	// Startup jobs and routed endpoints read the same source tree and execute
 	// PHP the same way, so they share one set of options.
 	annotationOptions := []annotations.Option{
@@ -208,10 +208,6 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 	}
 	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
 	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
-	if recorder != nil {
-		svc.Use(recorder.Middleware)
-		svc.Register(recorder)
-	}
 	if config.Routes.Enabled {
 		// Files under public/ are served directly by the HTTP module below, so
 		// an annotation there must not publish a second, unguarded route.
@@ -221,8 +217,7 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 	}
 	svc.Register(NewModule(root, config.Runner, config.Flatstack.Enabled, observers...))
 
-	err := svc.Start(ctx)
-	if err != nil {
+	if err := svc.Start(ctx); err != nil {
 		return err
 	}
 

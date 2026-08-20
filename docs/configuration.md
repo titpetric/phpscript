@@ -27,6 +27,11 @@ flatstack:
 routes:
   enabled: true
 
+server:
+  addr: ":8080"
+  quiet: false
+  modules: []
+
 telemetry:
   enabled: true
   path: "/debug/oida"
@@ -41,10 +46,11 @@ env:
   - "PLATFORM_DB_APP=sqlite://app.db"
 ```
 
-The external file replaces the embedded YAML as the configuration source.
-Routes and telemetry remain enabled when their sections are omitted because
-those are model defaults; other omitted values use their Go zero values. Start
-with the complete example when you want behavior to be explicit.
+Apart from the `env` entry, this is the embedded
+[`config/config.yml`](../config/config.yml) verbatim. That file holds every
+default phpscript has; nothing is defaulted in Go. A file passed with `-f` is
+read on top of it, so it only has to name the keys it changes, and a section it
+leaves out keeps what the embedded file says.
 
 ## Runner
 
@@ -63,16 +69,47 @@ bytecode backend. Programs outside its native subset transparently use the
 compatible runner implementation. See [Flat-stack runtime](./flatstack.md) for
 the current native subset and fallback behavior.
 
+## Server
+
+`server` configures the [platform](https://github.com/titpetric/platform) that
+`phpscript server` runs on, and applies to that command only.
+
+| Key       | Default | Purpose                                                             |
+|-----------|--------:|---------------------------------------------------------------------|
+| `addr`    | `:8080` | Address the HTTP server listens on.                                 |
+| `quiet`   | `false` | Turn down platform lifecycle logging.                               |
+| `modules` |    `[]` | Load only the platform modules named here. An empty list loads all. |
+
+This section, together with `telemetry` below, is the only source of the
+platform's options. phpscript builds them from the configuration file, so the
+platform's own `PLATFORM_SERVER_ADDR`, `PLATFORM_MODULES` and
+`PLATFORM_TELEMETRY_*` environment variables are not read. The `PLATFORM_DB_*`
+variables are unrelated to this and still are; see
+[Database connections](#database-connections).
+
 ## HTTP modules
 
 `routes.enabled` controls whether `phpscript server` recursively scans PHP files
 outside `public/` for `// @route` annotations. Static files and directly
 requested PHP entrypoints under `public/` are independent of this setting.
 
+## Telemetry
+
 `telemetry.enabled` controls request tracing and the debug front end mounted at
 `telemetry.path`. The section is [oida](https://github.com/titpetric/oida)
-options, so every field that library documents is accepted here. The ones that
-matter for a phpscript service are:
+options, so every field that library documents is accepted here, plus `driver`
+and `storage_path`, which phpscript adds.
+
+There is one recorder and the platform owns it: given this section it builds
+the tracer, wraps every module it runs in the tracing middleware and mounts the
+front end. That is why this is not part of the `server` block above even though
+the platform is what consumes it, and why it applies to `phpscript server`
+alone. phpscript registers no recorder of its own. It reports interpreter work,
+the includes, calls and templates of a request and the spans a script starts
+itself, onto the trace that middleware already started, which is why that work
+shows up on the same front end as the request that caused it.
+
+The fields that matter for a phpscript service are:
 
 | Key                   | Default                           | Purpose                                                                   |
 |-----------------------|----------------------------------:|---------------------------------------------------------------------------|

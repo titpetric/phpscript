@@ -5,10 +5,17 @@ work inside it becomes spans. Includes, PHP calls, templates, database queries
 and anything a script measures itself land in the same timeline, served by a
 front end at `/debug/oida`.
 
-The recorder is [oida](https://github.com/titpetric/oida). phpscript binds it
-into `telemetry/`, which is the only package allowed to import it: every other
-package instruments through `telemetry.Start`, `telemetry.StartSpan` and the
-types bound there, so the provider is named in one place.
+The recorder is [oida](https://github.com/titpetric/oida), and there is one per
+service: the [platform](https://github.com/titpetric/platform) builds the
+tracer, wraps every module it runs in the tracing middleware and mounts the
+front end. phpscript registers no recorder next to it. It observes the
+interpreter onto the traces that one starts, which is why interpreter work
+appears on the same page as the request that caused it.
+
+phpscript binds oida into `telemetry/`, the only package here that imports it:
+everything else instruments through `telemetry.StartSpan` and the types bound
+there, so no call site names the provider. That covers the call sites and not
+the whole dependency, since the platform names oida itself.
 
 The bundled server enables telemetry by default. Set `telemetry.enabled` to
 `false` in a file passed with `-f` to turn it off; retention, sampling, the
@@ -16,7 +23,7 @@ mount path and memory sampling are configurable in the same section. Set
 `telemetry.driver` to `disk` and `telemetry.storage_path` to a folder (tmpfs
 is fine) so completed traces survive a restart as `{id}.json`. Sampling still
 decides what is recorded; the disk driver only persists what was sampled. See
-[Configuration](./configuration.md#http-modules).
+[Configuration](./configuration.md#telemetry).
 
 ## Views
 
@@ -38,23 +45,23 @@ everything else gets HTML.
 
 ## Integration
 
-One `telemetry.Module` is the middleware, the platform module and the runtime
-observer:
+`telemetry.Module` is the runtime observer. It is handed the tracer the
+platform recorder built, and a runtime handed the module reports onto the trace
+of the request that is running:
 
 ```go
-recorder, err := telemetry.NewModule(config.Telemetry)
-if err != nil {
-	return err
+var observer *telemetry.Module
+var recorder *platform.TelemetryModule
+if svc.Find(&recorder) {
+	observer = telemetry.NewModule(recorder.Tracer())
 }
-svc.Use(recorder.Middleware)
-svc.Register(recorder)
 
 rt.SetContext(r.Context())
-rt.Observe(recorder)
+rt.Observe(observer)
 ```
 
-The middleware records the request, the platform module mounts the front end,
-and the observer forwards what the interpreter reports onto the running trace:
+The platform's middleware records the request and starts the trace. The
+observer forwards what the interpreter reports onto it:
 
 - `UpdateStatus` moves the trace through the scoreboard states.
 - `UpdateFilename` records the PHP entrypoint the request resolved to.
@@ -70,8 +77,9 @@ It is the trace identifier, so a log line carrying it links straight to
 
 Statistics group by routed pattern where one is meaningful, so `/hello/Ada` and
 `/hello/Grace` aggregate into `GET /hello/{name}`. The PHP file server is
-mounted on a catch-all, and requests it serves group by path instead, which is
-the PHP file that ran.
+mounted on a catch-all, and the platform drops that pattern rather than
+grouping every page it serves under it, so those requests group by path, which
+is the PHP file that ran.
 
 ## Spans from PHP
 
@@ -84,10 +92,10 @@ $span->set_attribute("user_id", 42);
 $span->end();
 ```
 
-The span is the Go span, so its methods are `end()`, `set_name()`,
-`set_source()`, `set_attribute()` and `record_error()`. Source location is
-filled in from the line of PHP that started the span, so `set_source()` is only
-needed to point somewhere else.
+The span is the Go span, so its methods are the Go methods spelled the way PHP
+spells them: `end()`, `set_name()`, `set_source()`, `set_attribute()` and
+`record_error()`. Source location is filled in from the line of PHP that
+started the span, so `set_source()` is only needed to point somewhere else.
 
 Kinds are `internal` (the default), `http`, `database`, `external`, `template`,
 `cache` and `queue`. The set is open: an unrecognized string is a valid kind and
@@ -180,6 +188,16 @@ and native allocations.
 
 ## Access control
 
-The front end is not authenticated by default. Set `Options.Authorize` before
-exposing it on a public listener; it gates every route the front end serves,
-including its assets.
+The front end is not authenticated, and `phpscript server` has no setting that
+changes it. oida gates every route it serves, assets included, behind
+`Options.Authorize`, but that field is a Go function rather than a value, so
+the configuration file cannot carry it and the bundled server never sets one.
+
+For a service run with `phpscript server`, that leaves three options: keep the
+listener off a public interface, put a proxy that authenticates in front of
+`/debug/oida`, or set `telemetry.enabled` to `false`. Traces carry the values
+bound to database queries, so the page is as sensitive as the columns those
+queries filter on.
+
+A Go host that embeds the platform rather than running the bundled server sets
+`Authorize` on the options it hands `platform.New`.

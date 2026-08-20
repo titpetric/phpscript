@@ -24,6 +24,9 @@ func TestLoadConfig(t *testing.T) {
 	if !config.Telemetry.Enabled {
 		t.Fatal("telemetry is disabled by default")
 	}
+	if config.Server.Addr != ":8080" {
+		t.Fatalf("server options = %+v", config.Server)
+	}
 	if config.Telemetry.Path != "/debug/oida" ||
 		config.Telemetry.ServiceName != "phpscript" ||
 		config.Telemetry.RingBufferSize != 200 ||

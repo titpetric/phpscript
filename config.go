@@ -11,22 +11,20 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
+// loadConfig returns the defaults from the embedded config/config.yml, with
+// the file passed on the command line read over them, so that file only has to
+// name what it changes.
 func loadConfig(filename string) (config.Config, error) {
 	result := config.New()
-	data := config.DefaultRuntimeConfig
-	if filename != "" {
-		var err error
-		data, err = os.ReadFile(filename)
-		if err != nil {
-			return result, fmt.Errorf("read config %q: %w", filename, err)
-		}
+	if filename == "" {
+		return result, nil
+	}
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return result, fmt.Errorf("read config %q: %w", filename, err)
 	}
 	if err := yaml.Unmarshal(data, &result); err != nil {
-		source := "embedded config"
-		if filename != "" {
-			source = filename
-		}
-		log.Printf("Could not parse %s: %v", source, err)
+		log.Printf("Could not parse %s: %v", filename, err)
 		return result, err
 	}
 	return result, nil

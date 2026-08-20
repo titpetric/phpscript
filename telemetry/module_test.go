@@ -11,24 +11,33 @@ import (
 	chi "github.com/go-chi/chi/v5"
 )
 
-func newTestModule(t *testing.T) *Module {
+// newTestModule stands in for the host: it builds the recorder the platform
+// would build and hands the module its tracer.
+func newTestModule(t *testing.T) (*Module, Options) {
 	t.Helper()
 
 	options := NewOptions()
 	options.ServiceName = "phpscript"
-	module, err := NewModule(options)
+	options.RouteFunc = func(r *http.Request) string {
+		if routeContext := chi.RouteContext(r.Context()); routeContext != nil {
+			return routeContext.RoutePattern()
+		}
+		return ""
+	}
+	tracer, err := New(options)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return module
+	options.Tracer = tracer
+	return NewModule(tracer), options
 }
 
 func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
-	module := newTestModule(t)
+	module, options := newTestModule(t)
 
 	router := chi.NewRouter()
-	router.Use(module.Middleware)
-	if err := module.Mount(context.Background(), router); err != nil {
+	router.Use(TracingMiddleware(options))
+	if err := Mount(router, options); err != nil {
 		t.Fatal(err)
 	}
 	router.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +85,7 @@ func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
 }
 
 func TestModuleObservesRuntimeReports(t *testing.T) {
-	module := newTestModule(t)
+	module, _ := newTestModule(t)
 
 	ctx, trace, err := module.Tracer().StartTrace(context.Background(), "GET /index.php")
 	if err != nil {
@@ -106,7 +115,7 @@ func TestModuleObservesRuntimeReports(t *testing.T) {
 }
 
 func TestModuleTracksLifecycleWork(t *testing.T) {
-	module := newTestModule(t)
+	module, _ := newTestModule(t)
 	failure := errors.New("startup failed")
 
 	err := module.TrackLifecycle(context.Background(), "@startup boot.php", "boot.php", func(ctx context.Context) error {

@@ -77,10 +77,11 @@ func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 		{name: "failure", source: "<?php\n// @startup\nmissing_function();", wantError: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			recorder, err := telemetry.NewModule(telemetry.NewOptions())
+			tracer, err := telemetry.New(telemetry.NewOptions())
 			if err != nil {
 				t.Fatal(err)
 			}
+			recorder := telemetry.NewModule(tracer)
 			root := fstest.MapFS{"startup.php": {Data: []byte(test.source)}}
 			startup := annotations.NewStartup(root,
 				annotations.WithOutput(&bytes.Buffer{}),

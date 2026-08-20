@@ -8,6 +8,15 @@ flatstack:
 routes:
   enabled: true
 
+server:
+  addr: ":8080"
+  quiet: false
+  modules: []
+
+# The platform is the recorder: it wraps every module in the tracing
+# middleware and mounts the debug front end under path. phpscript adds no
+# recorder of its own, it reports interpreter work onto the trace the
+# middleware started, so it shows up on the same front end.
 telemetry:
   enabled: true
   path: "/debug/oida"

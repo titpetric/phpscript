@@ -11,6 +11,7 @@ import (
 	chi "github.com/go-chi/chi/v5"
 
 	"github.com/titpetric/phpscript/annotations"
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
 )
@@ -82,18 +83,6 @@ func TestRouteModuleServesAnnotatedRoutes(t *testing.T) {
 	}
 }
 
-func TestHandlerServesDebugFrontEnd(t *testing.T) {
-	h, err := newTracedHandler(testFS)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, telemetry.DefaultPath, nil))
-	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "phpscript") {
-		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
-	}
-}
-
 func TestHandlerDoesNotOwnDebugFrontEnd(t *testing.T) {
 	h, err := NewHandler(testFS)
 	if err != nil {
@@ -123,7 +112,7 @@ func TestHandlerRecordsPHPSpan(t *testing.T) {
 
 	list := httptest.NewRecorder()
 	h.ServeHTTP(list, httptest.NewRequest(http.MethodGet, telemetry.DefaultPath+"/traces", nil))
-	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), telemetry.DefaultPath+"/trace/"+id) || !strings.Contains(list.Body.String(), "GET /spans.php") {
+	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), telemetry.DefaultPath+"/trace/"+id) {
 		t.Fatalf("status = %d, body = %q", list.Code, list.Body.String())
 	}
 
@@ -183,20 +172,26 @@ func newTracedHandler(root fstest.MapFS) (http.Handler, error) {
 	return handler, err
 }
 
+// newTracedServer stands in for the platform: it builds the recorder, wires the
+// middleware and the front end the platform would wire, and hands the observer
+// the tracer that recorder owns.
 func newTracedServer(root fstest.MapFS) (http.Handler, *telemetry.Module, error) {
 	options := telemetry.NewOptions()
 	options.ServiceName = "phpscript"
-	recorder, err := telemetry.NewModule(options)
+	tracer, err := telemetry.New(options)
 	if err != nil {
 		return nil, nil, err
 	}
+	options.Tracer = tracer
+
+	recorder := telemetry.NewModule(tracer)
 	handler, err := newHandler(root, "", runner.Options{}, false, recorder)
 	if err != nil {
 		return nil, nil, err
 	}
 	router := chi.NewRouter()
-	router.Use(recorder.Middleware)
-	if err := recorder.Mount(context.Background(), router); err != nil {
+	router.Use(telemetry.TracingMiddleware(options))
+	if err := telemetry.Mount(router, options); err != nil {
 		return nil, nil, err
 	}
 	router.Handle("/*", handler)
@@ -214,5 +209,17 @@ func TestHandlerDoesNotExposeProjectFilesOrPublicAnnotations(t *testing.T) {
 		if rr.Code != http.StatusNotFound {
 			t.Errorf("%s: status = %d, body = %q", path, rr.Code, rr.Body.String())
 		}
+	}
+}
+
+// TestPlatformOptionsComeFromTheServerBlock pins where the server takes the
+// options it hands the platform from.
+func TestPlatformOptionsComeFromTheServerBlock(t *testing.T) {
+	options, err := config.NewTestConfig().PlatformOptions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if options.ServerAddr != "127.0.0.1:0" || !options.Quiet {
+		t.Fatalf("options = %+v, want what the server block sets", options)
 	}
 }

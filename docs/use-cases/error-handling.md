@@ -79,7 +79,7 @@ An embedding host can register a runtime callback for statement errors.
 
 ```go
 rt.OnError(func(err error) {
-	telemetry.ObserveError(err)
+	telemetry.SpanFromContext(rt.Context()).RecordError(err)
 })
 ```
 
@@ -87,7 +87,9 @@ The callback consumes each non-exit statement error and execution continues.
 It can therefore prevent an enclosing PHP `try`/`catch` from receiving the
 error; omit `OnError` when PHP code should control propagation.
 
-The runtime context is accessible over `rt.Context()`.
+The runtime context is accessible over `rt.Context()`, which is what carries
+the running span. `SpanFromContext` returns nil outside a trace and every span
+method tolerates that, so the callback needs no guard.
 
 ## References
 
