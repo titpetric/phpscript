@@ -503,35 +503,46 @@ func TestArrayMatchesLegacyImplementation(t *testing.T) {
 			{kind: "set", key: "k", val: "v"}, {kind: "append", val: "a"}, {kind: "append", val: "b"},
 		},
 		"sparse": {
-			{kind: "set", key: int64(5), val: "a"}, {kind: "append", val: "b"},
+			{kind: "set", key: int64(5), val: "a"},
+			{kind: "append", val: "b"},
 			{kind: "set", key: int64(2), val: "c"},
 		},
 		"reverse order": {
-			{kind: "set", key: int64(2), val: "c"}, {kind: "set", key: int64(1), val: "b"},
+			{kind: "set", key: int64(2), val: "c"},
+			{kind: "set", key: int64(1), val: "b"},
 			{kind: "set", key: int64(0), val: "a"},
 		},
 		"overwrite in place": {
-			{kind: "append", val: "a"}, {kind: "append", val: "b"},
-			{kind: "set", key: int64(0), val: "A"}, {kind: "append", val: "c"},
+			{kind: "append", val: "a"},
+			{kind: "append", val: "b"},
+			{kind: "set", key: int64(0), val: "A"},
+			{kind: "append", val: "c"},
 		},
 		"duplicate key": {
 			{kind: "set", key: int64(0), val: "a"}, {kind: "set", key: int64(0), val: "b"},
 		},
 		"negative key": {
-			{kind: "set", key: int64(-2), val: "n"}, {kind: "append", val: "a"},
+			{kind: "set", key: int64(-2), val: "n"},
+			{kind: "append", val: "a"},
 			{kind: "set", key: int64(-2), val: "N"},
 		},
 		"non-int64 numeric keys": {
-			{kind: "set", key: int(1), val: "int"}, {kind: "set", key: "1", val: "string"},
+			{kind: "set", key: int(1), val: "int"},
+			{kind: "set", key: "1", val: "string"},
 			{kind: "append", val: "a"},
 		},
 		"clear then rebuild": {
-			{kind: "append", val: "a"}, {kind: "set", key: "k", val: "v"},
-			{kind: "clear"}, {kind: "append", val: "x"}, {kind: "append", val: "y"},
+			{kind: "append", val: "a"},
+			{kind: "set", key: "k", val: "v"},
+			{kind: "clear"},
+			{kind: "append", val: "x"},
+			{kind: "append", val: "y"},
 		},
 		"clear a list then use string keys": {
-			{kind: "append", val: "a"}, {kind: "clear"},
-			{kind: "set", key: "k", val: "v"}, {kind: "append", val: "b"},
+			{kind: "append", val: "a"},
+			{kind: "clear"},
+			{kind: "set", key: "k", val: "v"},
+			{kind: "append", val: "b"},
 		},
 		"append past 255 boxes": {
 			{kind: "set", key: int64(300), val: "a"}, {kind: "append", val: "b"},
@@ -541,8 +552,10 @@ func TestArrayMatchesLegacyImplementation(t *testing.T) {
 		},
 	}
 
-	probes := []any{int64(-2), int64(0), int64(1), int64(2), int64(5), int64(300), int64(301),
-		int(0), int(1), "0", "1", "k", "missing", float64(0)}
+	probes := []any{
+		int64(-2), int64(0), int64(1), int64(2), int64(5), int64(300), int64(301),
+		int(0), int(1), "0", "1", "k", "missing", float64(0),
+	}
 
 	for name, ops := range sequences {
 		t.Run(name, func(t *testing.T) {
