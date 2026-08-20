@@ -26,7 +26,9 @@ func phpString(v any) string {
 	case int64:
 		return strconv.FormatInt(x, 10)
 	case float64:
-		return strconv.FormatFloat(x, 'g', -1, 64)
+		// PHP renders floats with precision=14 significant digits, so
+		// 0.1*0.2 echoes as 0.02, not the round-tripping 0.020000000000000004.
+		return strconv.FormatFloat(x, 'g', 14, 64)
 	case error:
 		// A caught exception ($e in catch) renders as its message, so
 		// `echo $e` prints the error text.
@@ -142,6 +144,33 @@ func phpArith(op string, a, b any) any {
 			}
 		}
 	}
+	// `%` casts both operands to int, as PHP's modulo does.
+	if op == "%" {
+		y := toInt(b)
+		if y == 0 {
+			return int64(0)
+		}
+		return toInt(a) % y
+	}
+	// A float operand makes the whole expression float, as in PHP.
+	if isFloat(a) || isFloat(b) {
+		x, y := toFloat(a), toFloat(b)
+		switch op {
+		case "+":
+			return x + y
+		case "-":
+			return x - y
+		case "*":
+			return x * y
+		case "/":
+			if y == 0 {
+				return float64(0)
+			}
+			return x / y
+		default:
+			return float64(0)
+		}
+	}
 	x, y := toInt(a), toInt(b)
 	switch op {
 	case "+":
@@ -154,15 +183,20 @@ func phpArith(op string, a, b any) any {
 		if y == 0 {
 			return int64(0)
 		}
-		return x / y
-	case "%":
-		if y == 0 {
-			return int64(0)
+		// Integer division that does not divide evenly is float in PHP.
+		if x%y != 0 {
+			return float64(x) / float64(y)
 		}
-		return x % y
+		return x / y
 	default:
 		return int64(0)
 	}
+}
+
+// isFloat reports whether the value is a PHP float operand.
+func isFloat(v any) bool {
+	_, ok := v.(float64)
+	return ok
 }
 
 // unionArrays implements PHP's array `+`. The left operand wins every key it

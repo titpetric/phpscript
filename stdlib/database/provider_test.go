@@ -7,8 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func TestDatabaseProviderConnect(t *testing.T) {
