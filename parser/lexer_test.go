@@ -68,7 +68,7 @@ func TestLexOperatorGreedy(t *testing.T) {
 		{">>=", []string{">>="}},
 		{">=", []string{">="}},
 		{"**=", []string{"**="}},
-		{"**", []string{"*", "*"}},
+		{"**", []string{"**"}},
 		{"->", []string{"->"}},
 		{"-", []string{"-"}},
 		{"--", []string{"--"}},

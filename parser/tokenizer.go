@@ -86,6 +86,8 @@ const (
 	T_INCLUDE_ONCE
 	T_REQUIRE
 	T_REQUIRE_ONCE
+	T_POW       // **
+	T_POW_EQUAL // **=
 )
 
 // tokenNames maps each T_* id to its PHP name (what token_name returns).
@@ -137,6 +139,8 @@ var tokenNames = map[int]string{
 	T_INCLUDE_ONCE:             "T_INCLUDE_ONCE",
 	T_REQUIRE:                  "T_REQUIRE",
 	T_REQUIRE_ONCE:             "T_REQUIRE_ONCE",
+	T_POW:                      "T_POW",
+	T_POW_EQUAL:                "T_POW_EQUAL",
 }
 
 // tokenKeywords maps lowercase identifiers to their keyword token id. Anything
@@ -158,6 +162,8 @@ var tokenMultiOps = []struct {
 }{
 	{"===", T_IS_IDENTICAL},
 	{"!==", T_IS_NOT_IDENTICAL},
+	{"**=", T_POW_EQUAL},
+	{"**", T_POW},
 	{"==", T_IS_EQUAL},
 	{"!=", T_IS_NOT_EQUAL},
 	{"<=", T_IS_SMALLER_OR_EQUAL},

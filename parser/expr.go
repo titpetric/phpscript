@@ -161,7 +161,27 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		p.next()
 		return p.parseUnary()
 	}
-	return p.parsePostfix()
+	return p.parsePow()
+}
+
+// parsePow parses `base ** exponent`. PHP's `**` binds tighter than unary
+// minus (`-2 ** 2` is -4) and is right-associative with a unary-capable
+// exponent (`2 ** -1`, `2 ** 3 ** 2`), which is why it sits between
+// parseUnary and parsePostfix rather than in the binPrec table.
+func (p *parser) parsePow() (model.Expr, error) {
+	base, err := p.parsePostfix()
+	if err != nil {
+		return nil, err
+	}
+	if p.isOp("**") {
+		p.next()
+		exp, err := p.parseUnary()
+		if err != nil {
+			return nil, err
+		}
+		return p.newBinary("**", base, exp), nil
+	}
+	return base, nil
 }
 
 // parsePostfix parses a primary followed by any chain of ->method(), ->prop,
