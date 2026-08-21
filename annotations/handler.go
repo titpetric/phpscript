@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/telemetry"
 )
 
 // handler executes routed PHP endpoints, one request at a time.
@@ -54,9 +55,22 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 		request.Register(rt)
 	})
 
+	// The parsed request and the response writer live for this request too;
+	// Register accounted the Context, these are the host structures around it.
+	rt.AccountRequest(r, w)
+
 	program, err := rt.LoadFile(file)
 	if err == nil {
 		err = rt.Run(program)
+	}
+
+	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {
+		// The script's frames are gone once Run returns, so the peak is the
+		// request's memory footprint; a fresh usage walk would be baseline.
+		trace.Root().SetAttribute("memory_usage", rt.MemoryPeak())
+		if rt.MemoryLimit() > 0 {
+			trace.Root().SetAttribute("memory_limit", rt.MemoryLimit().Bytes())
+		}
 	}
 
 	for name, values := range request.ResponseHeaders() {
