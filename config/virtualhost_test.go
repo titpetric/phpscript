@@ -203,11 +203,40 @@ func TestVirtualHostDocumentRootPrecedence(t *testing.T) {
 }
 
 // TestVirtualHostNormalize pins the comparison a Host header gets: lowercase,
-// no trailing dot.
+// no trailing dot, and every name the entry lists.
 func TestVirtualHostNormalize(t *testing.T) {
-	host := config.VirtualHost{Domain: " Site.TEST. "}.Normalize()
-	if host.Domain != "site.test" {
-		t.Errorf("domain = %q, want site.test", host.Domain)
+	for _, test := range []struct {
+		domain string
+		want   string
+	}{
+		{domain: " Site.TEST. ", want: "site.test"},
+		{domain: "Site.test   WWW.Site.TEST.", want: "site.test www.site.test"},
+		{domain: "site.test\twww.site.test\n", want: "site.test www.site.test"},
+		{domain: "   ", want: ""},
+	} {
+		t.Run(test.domain, func(t *testing.T) {
+			host := config.VirtualHost{Domain: test.domain}.Normalize()
+			if host.Domain != test.want {
+				t.Errorf("domain = %q, want %q", host.Domain, test.want)
+			}
+		})
+	}
+}
+
+// TestVirtualHostDomains pins the split: every name the entry answers for, in
+// the order it listed them, with the first as the site's own name.
+func TestVirtualHostDomains(t *testing.T) {
+	host := config.VirtualHost{Domain: "Site.TEST. www.site.test"}
+
+	want := []string{"site.test", "www.site.test"}
+	if got := host.Domains(); !reflect.DeepEqual(got, want) {
+		t.Errorf("domains = %v, want %v", got, want)
+	}
+	if got := host.Name(); got != "site.test" {
+		t.Errorf("name = %q, want site.test", got)
+	}
+	if got := (config.VirtualHost{}).Name(); got != "" {
+		t.Errorf("name = %q, want empty", got)
 	}
 }
 
@@ -255,6 +284,46 @@ func TestValidateVirtualHosts(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), "one.test") {
 			t.Errorf("err = %q, want it to name the domain", err.Error())
+		}
+	})
+
+	t.Run("duplicate names in one entry", func(t *testing.T) {
+		base := config.New()
+		base.VirtualHost = []config.VirtualHost{
+			{Domain: "one.test www.one.test ONE.test", Root: site(t, "routes:\n  enabled: true\n")},
+		}
+		err := base.ValidateVirtualHosts()
+		if err == nil {
+			t.Fatal("an entry listed a name twice")
+		}
+		if !strings.Contains(err.Error(), "one.test") {
+			t.Errorf("err = %q, want it to name the domain", err.Error())
+		}
+	})
+
+	t.Run("two entries claim one name", func(t *testing.T) {
+		base := config.New()
+		base.VirtualHost = []config.VirtualHost{
+			{Domain: "one.test www.example.test", Root: site(t, "routes:\n  enabled: true\n")},
+			{Domain: "two.test WWW.Example.test.", Root: site(t, "routes:\n  enabled: true\n")},
+		}
+		err := base.ValidateVirtualHosts()
+		if err == nil {
+			t.Fatal("two entries claimed one name")
+		}
+		// The error names the entry that lost, and the name it wanted.
+		if !strings.Contains(err.Error(), "two.test") || !strings.Contains(err.Error(), "www.example.test") {
+			t.Errorf("err = %q", err.Error())
+		}
+	})
+
+	t.Run("several names on one entry", func(t *testing.T) {
+		base := config.New()
+		base.VirtualHost = []config.VirtualHost{
+			{Domain: "one.test www.one.test", Root: site(t, "routes:\n  enabled: true\n")},
+		}
+		if err := base.ValidateVirtualHosts(); err != nil {
+			t.Fatal(err)
 		}
 	})
 

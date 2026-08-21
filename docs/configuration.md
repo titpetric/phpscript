@@ -302,27 +302,29 @@ variables named `PLATFORM_DB_*` are also registered when phpscript starts.
 ## Virtual hosts
 
 `virtualhost` lists the sites one `phpscript server` answers for, one entry per
-domain. While the list is empty the server serves a single application root, the
+site. While the list is empty the server serves a single application root, the
 one named on the command line. While it is not, the `Host` header selects the
 site, and an application root on the command line is an error: the entries name
 their own roots and a further one has no site to belong to.
 
 | Key             | Default  | Purpose                                                                                     |
 |-----------------|---------:|---------------------------------------------------------------------------------------------|
-| `domain`        | required | The `Host` header this entry answers for.                                                   |
-| `aliases`       |     `[]` | Further `Host` headers reaching the same site.                                              |
+| `domain`        | required | The `Host` headers this entry answers for, separated by spaces.                             |
 | `root`          | required | The application root, the directory holding the site's `phpscript.yml`.                     |
 | `document_root` | `public` | Directory beneath `root` served over HTTP. It wins over the site's own `document_root` key. |
 
-An alias is another name for a site, not another copy of it. The site is built
-once, and every name shares its routes, its recorder and its connections:
+A site answering to more than one name lists them all in `domain`. They are
+names for one site, not copies of it: the site is built once, and every name
+shares its routes, its recorder and its connections:
 
 ```yaml
 virtualhost:
-  - domain: example.com
-    aliases: ["www.example.com"]
+  - domain: example.com www.example.com
     root: /srv/example
 ```
+
+The first name is the site's own. It is what errors report the site as, and what
+the names of the modules it registers carry.
 
 Listing the same name twice, in one entry or across two, is a startup error: the
 second would silently win.
@@ -437,7 +439,7 @@ entry fails startup rather than one request:
 | Check                                                      | Failure |
 |------------------------------------------------------------|---------|
 | `domain` and `root` are set                                | error   |
-| No `domain` or `aliases` entry names the same host twice   | error   |
+| No host is named twice, in one `domain` or across two      | error   |
 | `root` exists and is a directory                           | error   |
 | `root/phpscript.yml` exists and parses                     | error   |
 | The site does not set `server` or `virtualhost`            | error   |

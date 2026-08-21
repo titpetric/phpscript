@@ -204,16 +204,17 @@ curl -H 'Host: blog.example.com' http://127.0.0.1:8080/feed
 # {"posts":[]}
 ```
 
-A site that answers to more than one name lists the extras as `aliases`. It is
-built once and every name reaches the same handler, sharing its routes, its
-recorder and its connections:
+A site that answers to more than one name lists them all in `domain`, separated
+by spaces. It is built once and every name reaches the same handler, sharing its
+routes, its recorder and its connections:
 
 ```yaml
 virtualhost:
-  - domain: shop.example.com
-    aliases: ["www.shop.example.com"]
+  - domain: shop.example.com www.shop.example.com
     root: shop
 ```
+
+The first name is the site's own, the one errors and module names report it as.
 
 Matching is exact, but a `Host` is compared lowercased, without its port and
 without a trailing dot, so all three of these reach `shop`:

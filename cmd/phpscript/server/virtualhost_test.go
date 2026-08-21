@@ -80,7 +80,7 @@ echo "uploaded route";
 
 	appConfig := config.NewTestConfig()
 	appConfig.VirtualHost = []config.VirtualHost{
-		{Domain: "shop.example.com", Aliases: []string{"WWW.Shop.Example.com", "shop.test."}, Root: shop},
+		{Domain: "shop.example.com WWW.Shop.Example.com shop.test.", Root: shop},
 		{Domain: "Blog.Example.COM", Root: blog},
 	}
 
@@ -222,10 +222,10 @@ func TestVirtualHostDatabasesAreIsolated(t *testing.T) {
 	}
 }
 
-// TestVirtualHostAliasesReachTheSameSite pins that an alias is another name for
-// a site, not another copy of it: one build, one set of modules, and the same
-// handler behind every name.
-func TestVirtualHostAliasesReachTheSameSite(t *testing.T) {
+// TestVirtualHostDomainsReachTheSameSite pins that a further name in the domain
+// list is another name for a site, not another copy of it: one build, one set of
+// modules, and the same handler behind every name.
+func TestVirtualHostDomainsReachTheSameSite(t *testing.T) {
 	handler, modules, _ := newVirtualHostServer(t)
 
 	for _, host := range []string{
@@ -243,13 +243,13 @@ func TestVirtualHostAliasesReachTheSameSite(t *testing.T) {
 		})
 	}
 
-	// An alias registers no second site, so the module count is unchanged:
-	// two sites, one startup and one schedule module each.
+	// A further name registers no second site, so the module count is
+	// unchanged: two sites, one startup and one schedule module each.
 	if len(modules) != 4 {
-		t.Fatalf("modules = %d, want 4; an alias must not build a second site", len(modules))
+		t.Fatalf("modules = %d, want 4; a second name must not build a second site", len(modules))
 	}
 
-	// A route declared by the site answers on its aliases too.
+	// A route declared by the site answers on its other names too.
 	if response := get(t, handler, "shop.test", "/hello/Ada"); response.Body.String() != "hello Ada" {
 		t.Fatalf("body = %q", response.Body.String())
 	}

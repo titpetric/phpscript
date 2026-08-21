@@ -388,8 +388,8 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config) (http.Handl
 		}
 		modules = append(modules, siteModules...)
 
-		// Every name the entry answers for reaches the same handler. An
-		// alias is another way to spell the site, not another copy of it,
+		// Every name the entry lists reaches the same handler. A further
+		// name is another way to spell the site, not another copy of it,
 		// so it shares the site's routes, recorder and connections.
 		for _, domain := range host.Domains() {
 			sites[domain] = handler
@@ -408,23 +408,27 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config) (http.Handl
 func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config) (http.Handler, []platform.Module, error) {
 	router := chi.NewRouter()
 
+	// A site answering to several names is still one site, reported and named
+	// after the first of them.
+	name := host.Name()
+
 	// The site owns its telemetry block, so it owns the tracer and the debug
 	// front end that block describes. chi wants every middleware before the
 	// first route, so this comes first.
 	var observers []runner.Observer
 	telemetryOptions, err := siteConfig.Telemetry.Resolved()
 	if err != nil {
-		return nil, nil, fmt.Errorf("virtualhost %q: %w", host.Domain, err)
+		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
 	if telemetryOptions.Enabled {
 		tracer, err := telemetry.New(telemetryOptions)
 		if err != nil {
-			return nil, nil, fmt.Errorf("virtualhost %q: telemetry: %w", host.Domain, err)
+			return nil, nil, fmt.Errorf("virtualhost %q: telemetry: %w", name, err)
 		}
 		telemetryOptions.Tracer = tracer
 		router.Use(telemetry.TracingMiddleware(telemetryOptions))
 		if err := telemetry.Mount(router, telemetryOptions); err != nil {
-			return nil, nil, fmt.Errorf("virtualhost %q: telemetry: %w", host.Domain, err)
+			return nil, nil, fmt.Errorf("virtualhost %q: telemetry: %w", name, err)
 		}
 		observers = append(observers, telemetry.NewModule(tracer))
 	}
@@ -441,19 +445,19 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	runnerOptions.Env = siteConfig.Env
 
 	documentRoot := documentRoot(siteConfig)
-	annotationOptions := annotationOptions(siteConfig, runnerOptions, observers, host.Root, host.Domain)
+	annotationOptions := annotationOptions(siteConfig, runnerOptions, observers, host.Root, name)
 
 	root := os.DirFS(host.Root)
 	if siteConfig.Routes.Enabled {
 		routes := annotations.NewRoute(root, routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)...)
 		if err := routes.Mount(ctx, router); err != nil {
-			return nil, nil, fmt.Errorf("virtualhost %q: %w", host.Domain, err)
+			return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 		}
 	}
 
 	files, err := newHandler(root, host.Root, documentRoot, runnerOptions, siteConfig.Flatstack.Enabled, observers...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("virtualhost %q: %w", host.Domain, err)
+		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
 	router.Handle("/*", files)
 

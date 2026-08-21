@@ -22,15 +22,14 @@ var tenantKeys = []string{"server", "virtualhost"}
 // these fields; everything else about the site comes from the phpscript.yml in
 // Root, which the site's own author writes.
 type VirtualHost struct {
-	// Domain is the Host header this entry answers for.
+	// Domain is the Host headers this entry answers for, separated by
+	// spaces. Every name reaches the same site, not a copy of it: one
+	// application root, one configuration, one set of connections and one
+	// recorder, no matter which name a request arrived under. The usual case
+	// is a bare domain and its www form, "example.com www.example.com".
+	//
+	// The first name is the site's own, the one it is reported under.
 	Domain string `yaml:"domain"`
-
-	// Aliases are further Host headers reaching the same site. They are the
-	// same site, not copies of it: one application root, one configuration,
-	// one set of connections and one recorder, no matter which name a
-	// request arrived under. The usual case is a bare domain and its www
-	// form.
-	Aliases []string `yaml:"aliases"`
 
 	// Root is the application root, the directory holding the site's
 	// phpscript.yml.
@@ -43,23 +42,37 @@ type VirtualHost struct {
 	DocumentRoot string `yaml:"document_root"`
 }
 
-// Normalize lowercases every name the entry answers for and trims a trailing
-// dot, so a Host header compares equal to a configured domain.
+// Normalize rewrites Domain as the list Domains returns, so an entry carries
+// the names a Host header is compared against rather than the spelling the
+// operator used.
 func (v VirtualHost) Normalize() VirtualHost {
-	v.Domain = normalizeDomain(v.Domain)
-	if len(v.Aliases) > 0 {
-		aliases := make([]string, 0, len(v.Aliases))
-		for _, alias := range v.Aliases {
-			aliases = append(aliases, normalizeDomain(alias))
-		}
-		v.Aliases = aliases
-	}
+	v.Domain = strings.Join(v.Domains(), " ")
 	return v
 }
 
-// Domains returns every name this entry answers for, the domain first.
+// Domains returns every name this entry answers for, in the order Domain lists
+// them, lowercased and without a trailing dot so a Host header compares equal
+// to a configured name.
 func (v VirtualHost) Domains() []string {
-	return append([]string{v.Domain}, v.Aliases...)
+	fields := strings.Fields(v.Domain)
+	domains := make([]string, 0, len(fields))
+	for _, field := range fields {
+		if domain := normalizeDomain(field); domain != "" {
+			domains = append(domains, domain)
+		}
+	}
+	return domains
+}
+
+// Name is the first name the entry lists. It is what the site is reported under
+// in errors and in the names of the modules it registers, so that a site
+// answering to several names is still one identifiable site.
+func (v VirtualHost) Name() string {
+	domains := v.Domains()
+	if len(domains) == 0 {
+		return ""
+	}
+	return domains[0]
 }
 
 func normalizeDomain(domain string) string {
@@ -77,25 +90,26 @@ func (v VirtualHost) Load(base Config) (Config, error) {
 // tell a setting the site asked for from one it inherited from base.
 func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	filename := filepath.Join(v.Root, VirtualHostConfigFile)
+	name := v.Name()
 
 	// A missing file is an error rather than a fall back to the operator's
 	// defaults. The file is the site's contract, and a site served under
 	// settings it never wrote is the failure mode worth avoiding.
 	data, err := os.ReadFile(filename)
 	if err != nil {
-		return base, nil, fmt.Errorf("virtualhost %q: %w", v.Domain, err)
+		return base, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
 
 	var declared map[string]any
 	if err := yaml.Unmarshal(data, &declared); err != nil {
-		return base, nil, fmt.Errorf("virtualhost %q: %s: %w", v.Domain, filename, err)
+		return base, nil, fmt.Errorf("virtualhost %q: %s: %w", name, filename, err)
 	}
 
 	// Reject rather than drop what a site may not set, so a site author never
 	// believes they moved the listen address or nested a site of their own.
 	for _, key := range tenantKeys {
 		if _, ok := declared[key]; ok {
-			return base, declared, fmt.Errorf("virtualhost %q: %s: %q is set by the operator, not by the site", v.Domain, filename, key)
+			return base, declared, fmt.Errorf("virtualhost %q: %s: %q is set by the operator, not by the site", name, filename, key)
 		}
 	}
 
@@ -103,7 +117,7 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	// struct, so the file only has to name what it changes.
 	result := base
 	if err := yaml.Unmarshal(data, &result); err != nil {
-		return base, declared, fmt.Errorf("virtualhost %q: %s: %w", v.Domain, filename, err)
+		return base, declared, fmt.Errorf("virtualhost %q: %s: %w", name, filename, err)
 	}
 
 	// Belt and braces over the rejection above: whatever the file contained,
@@ -140,27 +154,25 @@ func (c Config) ValidateVirtualHosts() error {
 
 	for _, host := range c.VirtualHost {
 		host = host.Normalize()
-		if host.Domain == "" {
+		name := host.Name()
+		if name == "" {
 			return fmt.Errorf("virtualhost: domain is required")
 		}
-		// An alias is a name like any other: two entries cannot both claim
-		// one, and an entry cannot list its own domain twice, because the
+		// Every name in the list is a name like any other: two entries cannot
+		// both claim one, and an entry cannot list a name twice, because the
 		// mux has one handler per name and the second would win silently.
 		for _, domain := range host.Domains() {
-			if domain == "" {
-				return fmt.Errorf("virtualhost %q: alias is empty", host.Domain)
-			}
 			if domains[domain] {
-				return fmt.Errorf("virtualhost %q: domain %q is configured twice", host.Domain, domain)
+				return fmt.Errorf("virtualhost %q: domain %q is configured twice", name, domain)
 			}
 			domains[domain] = true
 		}
 
 		if host.Root == "" {
-			return fmt.Errorf("virtualhost %q: root is required", host.Domain)
+			return fmt.Errorf("virtualhost %q: root is required", name)
 		}
 		if err := statDir(host.Root); err != nil {
-			return fmt.Errorf("virtualhost %q: root: %w", host.Domain, err)
+			return fmt.Errorf("virtualhost %q: root: %w", name, err)
 		}
 
 		loaded, declared, err := host.load(c)
@@ -169,15 +181,15 @@ func (c Config) ValidateVirtualHosts() error {
 		}
 
 		if err := statDir(filepath.Join(host.Root, loaded.DocumentRoot)); err != nil {
-			return fmt.Errorf("virtualhost %q: document root: %w", host.Domain, err)
+			return fmt.Errorf("virtualhost %q: document root: %w", name, err)
 		}
 
 		if strings.EqualFold(strings.TrimSpace(loaded.Telemetry.Driver), "disk") {
 			path := loaded.Telemetry.StoragePath
 			if other, ok := storagePaths[path]; ok {
-				return fmt.Errorf("virtualhost %q: telemetry storage_path %q is already used by %q", host.Domain, path, other)
+				return fmt.Errorf("virtualhost %q: telemetry storage_path %q is already used by %q", name, path, other)
 			}
-			storagePaths[path] = host.Domain
+			storagePaths[path] = name
 		}
 
 		// The platform mounts its dashboard on the root router, which shadows
@@ -185,7 +197,7 @@ func (c Config) ValidateVirtualHosts() error {
 		// path gets a dashboard nothing can reach. A site that names no path
 		// of its own is not asking for one and is left alone.
 		if c.Telemetry.Enabled && declares(declared, "telemetry", "path") && loaded.Telemetry.Path == c.Telemetry.Path {
-			return fmt.Errorf("virtualhost %q: telemetry path %q is the path the server mounts its own dashboard on", host.Domain, loaded.Telemetry.Path)
+			return fmt.Errorf("virtualhost %q: telemetry path %q is the path the server mounts its own dashboard on", name, loaded.Telemetry.Path)
 		}
 	}
 
