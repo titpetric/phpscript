@@ -3,6 +3,7 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/titpetric/phpscript/model"
@@ -50,12 +51,14 @@ type errorHandler struct {
 	start      int
 	end        int
 	stackDepth int
+	frameDepth int
 }
 
 type callFrame struct {
 	returnPC    int
 	locals      []any
 	initialized []bool
+	extras      map[string]any
 }
 
 // MemoryHost is an optional Host extension for memory accounting, discovered
@@ -92,6 +95,12 @@ func Run(program *Program, host Host) (err error) {
 	initialized := scratch.initialized[:nlocal]
 	clear(locals)
 	clear(initialized)
+	if registrar, ok := host.(interface{ RegisterClass(*model.Class) }); ok {
+		for _, class := range program.classes {
+			registrar.RegisterClass(class)
+		}
+	}
+	extras := map[string]any{}
 	iterators := make(map[int]*iteratorState)
 	var handlers []errorHandler
 	var callFrames []callFrame
@@ -133,10 +142,20 @@ func Run(program *Program, host Host) (err error) {
 			clear(stack[handler.stackDepth:])
 			stack = stack[:handler.stackDepth]
 		}
+		for len(callFrames) > handler.frameDepth {
+			frame := callFrames[len(callFrames)-1]
+			callFrames = callFrames[:len(callFrames)-1]
+			locals = frame.locals
+			initialized = frame.initialized
+			extras = frame.extras
+			if extras == nil {
+				extras = map[string]any{}
+			}
+		}
 		for errors.Unwrap(runErr) != nil {
 			runErr = errors.Unwrap(runErr)
 		}
-		if handler.local >= 0 {
+		if handler.local >= 0 && handler.local < len(locals) {
 			locals[handler.local], initialized[handler.local] = runErr, true
 		}
 		pc = handler.target
@@ -204,6 +223,8 @@ func Run(program *Program, host Host) (err error) {
 		case opLoad:
 			if initialized[inst.a] {
 				stack = append(stack, locals[inst.a])
+			} else if extra, ok := extras[program.localNames[inst.a]]; ok {
+				stack = append(stack, extra)
 			} else {
 				stack = append(stack, host.Lookup(program.localNames[inst.a]))
 			}
@@ -403,16 +424,19 @@ func Run(program *Program, host Host) (err error) {
 			if argErr != nil {
 				return argErr
 			}
+			bindHostLocals(host, program, locals, initialized, extras)
 			var value any
 			if inst.op == opCall {
-				if def, ok := program.userFuncs[inst.name]; ok {
+				if def, ok := lookupUserFunc(program.userFuncs, inst.name); ok {
 					callFrames = append(callFrames, callFrame{
 						returnPC:    pc,
 						locals:      locals,
 						initialized: initialized,
+						extras:      extras,
 					})
 					locals = make([]any, len(program.localNames))
 					initialized = make([]bool, len(program.localNames))
+					extras = map[string]any{}
 					for i, paramName := range def.params {
 						if i < len(arguments) {
 							slot := -1
@@ -431,8 +455,10 @@ func Run(program *Program, host Host) (err error) {
 					continue
 				}
 				value, err = host.Call(inst.name, inst.extra, arguments)
+				applyHostLocals(host, program, locals, initialized, extras)
 			} else {
 				value, err = host.Construct(inst.name, arguments)
+				applyHostLocals(host, program, locals, initialized, extras)
 			}
 			if err != nil {
 				if handle(err) {
@@ -446,11 +472,41 @@ func Run(program *Program, host Host) (err error) {
 			if argErr != nil {
 				return argErr
 			}
+			bindHostLocals(host, program, locals, initialized, extras)
 			receiver, popErr := pop()
 			if popErr != nil {
 				return popErr
 			}
+			if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
+				key := obj.Class.Name + "::" + inst.name
+				if def, ok := lookupUserFunc(program.userFuncs, key); ok {
+					callFrames = append(callFrames, callFrame{
+						returnPC:    pc,
+						locals:      locals,
+						initialized: initialized,
+						extras:      extras,
+					})
+					locals = make([]any, len(program.localNames))
+					initialized = make([]bool, len(program.localNames))
+					extras = map[string]any{}
+					bound := append([]any{receiver}, arguments...)
+					for i, paramName := range def.params {
+						if i >= len(bound) {
+							break
+						}
+						for s, name := range program.localNames {
+							if name == paramName {
+								locals[s], initialized[s] = bound[i], true
+								break
+							}
+						}
+					}
+					pc = def.entryPC
+					continue
+				}
+			}
 			value, callErr := host.CallMethod(receiver, inst.name, arguments)
+			applyHostLocals(host, program, locals, initialized, extras)
 			if callErr != nil {
 				if handle(callErr) {
 					continue
@@ -559,6 +615,7 @@ func Run(program *Program, host Host) (err error) {
 				start:      pc + 1,
 				end:        inst.b,
 				stackDepth: len(stack),
+				frameDepth: len(callFrames),
 			})
 		case opTryPop:
 			if len(handlers) == 0 {
@@ -592,15 +649,160 @@ func Run(program *Program, host Host) (err error) {
 				pc = lastFrame.returnPC
 				locals = lastFrame.locals
 				initialized = lastFrame.initialized
+				extras = lastFrame.extras
+				if extras == nil {
+					extras = map[string]any{}
+				}
 				stack = append(stack, retVal)
 			} else {
 				stack = append(stack, retVal)
 				return nil
 			}
+		case opEnsureArray:
+			value, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
+				value = host.Array(nil)
+			}
+			stack = append(stack, value)
+		case opVivifyIndex:
+			index, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			base, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			value := host.Index(base, index)
+			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
+				value = host.Array(nil)
+				if err = host.SetIndex(base, index, value, false, "="); err != nil {
+					if handle(err) {
+						continue
+					}
+					return err
+				}
+			}
+			stack = append(stack, value)
+		case opVivifyProperty:
+			receiver, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			value := host.GetProperty(receiver, inst.name)
+			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
+				value = host.Array(nil)
+				if err = host.SetProperty(receiver, inst.name, value, "="); err != nil {
+					if handle(err) {
+						continue
+					}
+					return err
+				}
+			}
+			stack = append(stack, value)
+		case opInclude:
+			pathValue, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			vars := make(map[string]any, len(program.localNames)+len(extras))
+			for i, name := range program.localNames {
+				if initialized[i] && (len(name) == 0 || name[0] != 0) {
+					vars[name] = locals[i]
+				}
+			}
+			for name, value := range extras {
+				if _, ok := vars[name]; !ok {
+					vars[name] = value
+				}
+			}
+			includer, ok := host.(interface {
+				Include(path any, keyword string, once bool, vars map[string]any) (any, map[string]any, error)
+			})
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement include", pc)
+			}
+			value, exported, includeErr := includer.Include(pathValue, inst.name, inst.a != 0, vars)
+			if includeErr != nil {
+				if handle(includeErr) {
+					continue
+				}
+				return includeErr
+			}
+			applyNamedValues(program, locals, initialized, extras, exported)
+			stack = append(stack, value)
 		default:
 			return fmt.Errorf("flatstack: pc %d: invalid opcode %d", pc, inst.op)
 		}
 		pc++
 	}
 	return nil
+}
+
+func bindHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any) {
+	binder, ok := host.(interface{ BindLocals(map[string]any) })
+	if !ok {
+		return
+	}
+	vars := make(map[string]any, len(program.localNames)+len(extras))
+	for i, name := range program.localNames {
+		if initialized[i] && (len(name) == 0 || name[0] != 0) {
+			vars[name] = locals[i]
+		}
+	}
+	for name, value := range extras {
+		if _, ok := vars[name]; !ok {
+			vars[name] = value
+		}
+	}
+	binder.BindLocals(vars)
+}
+
+func applyHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any) {
+	taker, ok := host.(interface{ TakeLocals() map[string]any })
+	if !ok {
+		return
+	}
+	applyNamedValues(program, locals, initialized, extras, taker.TakeLocals())
+}
+
+func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any) {
+	if names == nil {
+		return
+	}
+	for name, value := range names {
+		if len(name) == 0 || name[0] == 0 {
+			continue
+		}
+		found := false
+		for i, localName := range program.localNames {
+			if localName == name {
+				locals[i], initialized[i] = value, true
+				found = true
+				break
+			}
+		}
+		if !found && extras != nil {
+			extras[name] = value
+		}
+	}
+}
+
+func lookupUserFunc(funcs map[string]userFuncDef, key string) (userFuncDef, bool) {
+	if def, ok := funcs[key]; ok {
+		return def, true
+	}
+	for name, def := range funcs {
+		if strings.EqualFold(name, key) {
+			return def, true
+		}
+	}
+	return userFuncDef{}, false
+}
+
+func phpEmptyContainer(value any) bool {
+	return value == nil
 }

@@ -37,6 +37,20 @@ func Compile(ast *model.Program) (program *Program, err error) {
 	}()
 	c := &compiler{locals: make(map[string]int)}
 	if ast != nil {
+		c.collectClasses(ast.Stmts)
+		for _, class := range c.program.classes {
+			for _, method := range class.Methods {
+				if method == nil {
+					continue
+				}
+				if method.Name == "__construct" || method.Name == class.Name {
+					continue
+				}
+				if err := c.classMethod(class.Name, method, "class."+class.Name+"."+method.Name); err != nil {
+					return nil, err
+				}
+			}
+		}
 		for i, stmt := range ast.Stmts {
 			if err := c.stmt(stmt, fmt.Sprintf("stmt[%d]", i)); err != nil {
 				return nil, err
@@ -131,9 +145,23 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 			return err
 		}
 		c.emit(instruction{op: opThrow})
+	case *model.ClassDecl:
+		// Top-level classes are hoisted before execution. Nested declarations
+		// are a no-op here, matching the interpreter.
+	case *model.Include:
+		if err := c.include(node, path); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opPop})
 	case *model.FuncDecl:
 		if node.Class != "" {
-			return unsupported(path, "class method decl %s::%s", node.Class, node.Name)
+			for _, class := range c.program.classes {
+				if class.Name == node.Class {
+					class.Methods[node.Name] = node
+					break
+				}
+			}
+			return c.classMethod(node.Class, node, path)
 		}
 		return c.funcDecl(node, path)
 	case *model.Return:
@@ -183,9 +211,98 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 	return nil
 }
 
+func (c *compiler) collectClasses(stmts []model.Stmt) {
+	for _, stmt := range stmts {
+		decl, ok := stmt.(*model.ClassDecl)
+		if !ok {
+			continue
+		}
+		class := &model.Class{
+			Name:    decl.Name,
+			Fields:  decl.Fields,
+			Statics: decl.Statics,
+			Consts:  decl.Consts,
+			Methods: make(map[string]*model.FuncDecl, len(decl.Methods)),
+		}
+		for _, method := range decl.Methods {
+			class.Methods[method.Name] = method
+		}
+		c.program.classes = append(c.program.classes, class)
+	}
+}
+
+func (c *compiler) classMethod(className string, node *model.FuncDecl, path string) error {
+	jumpAround := c.emit(instruction{op: opJump, target: -1})
+	funcPC := len(c.program.code)
+	enclosing := c.loops
+	c.loops = nil
+	defer func() { c.loops = enclosing }()
+	params := make([]string, 0, 1+len(node.Params))
+	params = append(params, "this")
+	_ = c.slot("this")
+	for _, param := range node.Params {
+		params = append(params, param.Name)
+		_ = c.slot(param.Name)
+	}
+	if err := c.block(node.Body, path+".body"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opPushConst, a: c.constant(nil)})
+	c.emit(instruction{op: opReturn})
+	c.program.code[jumpAround].target = len(c.program.code)
+	if c.program.userFuncs == nil {
+		c.program.userFuncs = make(map[string]userFuncDef)
+	}
+	c.program.userFuncs[className+"::"+node.Name] = userFuncDef{entryPC: funcPC, params: params}
+	return nil
+}
+
+func (c *compiler) ensureContainer(expr model.Expr, path string) error {
+	switch node := model.UnwrapParenthesized(expr).(type) {
+	case *model.Var:
+		c.emit(instruction{op: opLoad, a: c.slot(node.Name)})
+		c.emit(instruction{op: opEnsureArray})
+		c.emit(instruction{op: opDup})
+		c.emit(instruction{op: opStore, a: c.slot(node.Name)})
+		return nil
+	case *model.Index:
+		if node.Index == nil {
+			return unsupported(path, "append container")
+		}
+		if err := c.ensureContainer(node.Base, path+".base"); err != nil {
+			return err
+		}
+		if err := c.expr(node.Index, path+".index"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opVivifyIndex})
+		return nil
+	case *model.PropAccess:
+		if err := c.expr(node.Base, path+".base"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opVivifyProperty, name: node.Name})
+		return nil
+	default:
+		return c.expr(expr, path)
+	}
+}
+
+func (c *compiler) include(node *model.Include, path string) error {
+	if err := c.expr(node.Path, path+".path"); err != nil {
+		return err
+	}
+	once := 0
+	if node.Once {
+		once = 1
+	}
+	c.emit(instruction{op: opInclude, a: once, name: node.Keyword})
+	return nil
+}
+
 func (c *compiler) tryStmt(node *model.Try, path string) error {
-	if len(node.Catches) == 0 && len(node.Finally) == 0 {
-		return unsupported(path, "try without catch or finally")
+	if len(node.Catches) == 0 {
+		return unsupported(path, "try without catch")
 	}
 	catchSlot := -1
 	var catch *model.Catch
@@ -500,7 +617,7 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 		}
 		c.emit(instruction{op: opStore, a: c.slot(target.Name), b: boolInt(keep), name: operator, extra: constructorID})
 	case *model.Index:
-		if err := c.expr(target.Base, path+".target.base"); err != nil {
+		if err := c.ensureContainer(target.Base, path+".target.base"); err != nil {
 			return err
 		}
 		appendValue := target.Index == nil || operator == "[]="
@@ -656,6 +773,8 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 			return unsupported(path, "assignment expression operator %q", node.Op)
 		}
 		return c.assignment(node.Target, node.Op, node.Value, true, path)
+	case *model.Include:
+		return c.include(node, path)
 	default:
 		return unsupported(path, "expression %T", expr)
 	}

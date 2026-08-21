@@ -141,7 +141,10 @@ Flat bytecode currently supports these statements:
 - `if`/`else`
 - `for`/`while` and `foreach`, including nested `break` and `continue`
 - `switch`, fallthrough, and `break`
-- `try`/`catch` and `throw` (a `finally` block still selects fallback)
+- `try`/`catch`/`finally` and `throw`
+- Top-level PHP class declarations and free function declarations
+- `include` / `include_once` / `require` as statements or expressions
+- `list()` / array destructuring assignment
 
 It supports these expressions:
 
@@ -174,13 +177,15 @@ not a claim that half of the PHP language is implemented.
 The complete program atomically selects fallback when it contains any currently
 unsupported form. The major remaining forms are:
 
-- User function declarations/calls and `return`
-- PHP class declarations, property writes, class constants, and property
-  increment/decrement
-- Includes as statements or expressions
+- Property increment/decrement and class-constant / static-property forms
 - Closures and callback bodies
-- `finally`
-- Casts and destructuring/list assignment
+- `try` without a `catch` clause
+- Casts
+- PHP constructors (`__construct`) still run in the interpreter
+- Nested `class` declarations (no-op, same as the interpreter hoist; PHP registers them at runtime)
+- Included files still execute through the interpreter
+- `include` and `require` both fail the request on a missing file (PHP `include` is a warning)
+- A host without Include fails at `opInclude`, after earlier opcodes have run
 
 These are not called "unsupported programs" at the public runtime boundary:
 they are valid phpscript programs and execute through runner. "Unsupported" in
@@ -271,11 +276,10 @@ go test ./tests -run '^$' -fuzz '^FuzzFlatstackImportSwapFallback$' -fuzztime=30
 
 The highest-value next steps are:
 
-1. Add bytecode call frames for user functions, returns, and closures.
-2. Add PHP class declarations, object-property writes, and class constants.
-3. Integrate include compilation/execution while preserving include scope,
-   include-once state, return values, and autoload semantics.
-4. Complete exception `finally` semantics and remaining lvalue/cast forms.
+1. Compile included files to bytecode instead of the interpreter.
+2. Compile PHP constructors on the native path.
+3. Nested `class` declarations at runtime (PHP semantics).
+4. Complete exception `finally` semantics on `return`/`throw` and remaining lvalue/cast forms.
 5. Add instruction, call-depth, and deadline budgets to native execution.
 6. Pool operand/local/iterator storage to reduce per-run allocations.
 7. Cache native-rejection decisions and use a structural cache key where

@@ -748,6 +748,18 @@ func (rt *Runtime) PHPInfo() error {
 
 // RegisterClass adds a resolved class to the class table so `new Name` works.
 func (rt *Runtime) RegisterClass(c *model.Class) {
+	if existing, ok := rt.classes[c.Name]; ok && existing != nil {
+		if existing.Methods == nil {
+			existing.Methods = map[string]*model.FuncDecl{}
+		}
+		for name, method := range c.Methods {
+			existing.Methods[name] = method
+		}
+		if len(c.Fields) > 0 {
+			existing.Fields = c.Fields
+		}
+		return
+	}
 	rt.classes[c.Name] = c
 }
 

@@ -41,6 +41,10 @@ const (
 	opTryPop
 	opThrow
 	opReturn
+	opInclude
+	opEnsureArray
+	opVivifyIndex
+	opVivifyProperty
 )
 
 type instruction struct {
@@ -64,6 +68,7 @@ type Program struct {
 	constants  []any
 	localNames []string
 	userFuncs  map[string]userFuncDef
+	classes    []*model.Class
 }
 
 // Entry is one key/value pair produced for foreach.
