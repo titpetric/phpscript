@@ -44,8 +44,11 @@ func (h flatHost) boundScope() *Scope {
 	return scope
 }
 
-func (h flatHost) Construct(class string, args []any) (any, error) {
-	return h.runtime.helperNew(&scopeRef{scope: h.boundScope()})(strings.TrimPrefix(class, "\\"), args...)
+func (h *flatHost) Construct(class string, args []any) (any, error) {
+	scope := h.boundScope()
+	result, err := h.runtime.helperNew(&scopeRef{scope: scope})(strings.TrimPrefix(class, "\\"), args...)
+	h.pullScope(scope)
+	return result, err
 }
 
 func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
@@ -269,10 +272,6 @@ func (h *flatHost) BindLocals(vars map[string]any) {
 	h.locals = vars
 }
 
-func (h *flatHost) RegisterUserFunc(name string) {
-	h.runtime.userFns[name] = struct{}{}
-}
-
 func (h flatHost) RegisterClass(class *model.Class) {
 	for _, method := range class.Methods {
 		if method != nil && method.Filename == "" {
@@ -285,9 +284,9 @@ func (h flatHost) RegisterClass(class *model.Class) {
 func (h flatHost) Include(path any, keyword string, once bool, vars map[string]any) (any, map[string]any, error) {
 	filename := phpString(path)
 	if once {
-		clean := cleanFSPath(filename)
+		want := cleanFSPath(filename)
 		for _, included := range h.runtime.included {
-			if included == clean {
+			if included == want || cleanFSPath(included) == want {
 				return true, vars, nil
 			}
 		}

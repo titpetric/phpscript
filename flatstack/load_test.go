@@ -88,6 +88,8 @@ func TestFlatstackNativeLanguageCoverage(t *testing.T) {
 		{"php class declaration", `<?php class Greeter { function hello() { echo "hi"; } } $g = new Greeter; $g->hello();`, "hi"},
 		{"class method calls user function", `<?php function tag() { echo "F"; } class C { function m() { tag(); } } $o = new C; $o->m();`, "F"},
 		{"class method this property", `<?php class Box { public $n = 3; function show() { echo $this->n; } } $b = new Box; $b->show();`, "3"},
+		{"throw from user function caught", `<?php function boom() { throw "x"; } try { boom(); echo "no"; } catch (Exception $e) { echo "ok"; }`, "ok"},
+		{"method call is case insensitive", `<?php class Greeter { function hello() { echo "hi"; } } $g = new Greeter; $g->Hello();`, "hi"},
 	}
 
 	for _, test := range tests {
@@ -179,6 +181,76 @@ func TestFlatstackIncludeOnce(t *testing.T) {
 	}
 	if got := output.String(); got != "x" {
 		t.Fatalf("output = %q, want x", got)
+	}
+}
+
+func TestFlatstackIncludeChainSeesPriorIncludeVars(t *testing.T) {
+	program, err := parser.Parse(`<?php include("a.php"); include("b.php");`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	runtime.SetIncludeResolver(func(path string) (*model.Program, error) {
+		if path == "a.php" {
+			return parser.Parse(`<?php $x = "A";`)
+		}
+		return parser.Parse(`<?php echo $x;`)
+	})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "A" {
+		t.Fatalf("output = %q, want A", got)
+	}
+}
+
+func TestFlatstackIncludeDoesNotLeakAcrossRuns(t *testing.T) {
+	first, err := parser.Parse(`<?php include("leak.php");`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := parser.Parse(`<?php echo $leak;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	runtime.SetIncludeResolver(func(path string) (*model.Program, error) {
+		return parser.Parse(`<?php $leak = "L";`)
+	})
+	if err := runtime.Run(first); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.Run(second); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "" {
+		t.Fatalf("output = %q, want empty (no leak across Run)", got)
+	}
+}
+
+func TestFlatstackIncludeInFunctionDoesNotLeakToCaller(t *testing.T) {
+	program, err := parser.Parse(`<?php function load() { include("in.php"); } load(); echo $x;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatal(err)
+	}
+	var output strings.Builder
+	runtime := flatstack.New(&output, flatstack.Options{})
+	runtime.SetIncludeResolver(func(path string) (*model.Program, error) {
+		return parser.Parse(`<?php $x = "A";`)
+	})
+	if err := runtime.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "" {
+		t.Fatalf("output = %q, want empty (include vars stay in the function)", got)
 	}
 }
 

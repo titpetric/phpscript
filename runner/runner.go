@@ -628,7 +628,16 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return rt.includeFile(phpString(path), scope)
+	filename := phpString(path)
+	if n.Once {
+		want := cleanFSPath(filename)
+		for _, included := range rt.included {
+			if included == want || cleanFSPath(included) == want {
+				return true, nil
+			}
+		}
+	}
+	return rt.includeFile(filename, scope)
 }
 
 // noopTrace is the span closer returned when no observer is registered. It

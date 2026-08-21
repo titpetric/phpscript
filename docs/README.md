@@ -123,3 +123,10 @@ Memory reporting differs from PHP's allocator view:
   walks does not raise the peak, unlike PHP's allocator-level high-water mark.
 - Exceeding `memory_limit` raises a catchable `RuntimeException`; PHP treats
   it as a fatal error that `catch` cannot intercept.
+
+Includes:
+
+- `include` and `require` both abort the request when the file cannot be
+  loaded; PHP `include` emits a warning and continues.
+- Nested `class` declarations are a no-op (not registered), matching the
+  interpreter hoist; PHP registers them when the statement runs.

@@ -155,6 +155,12 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		c.emit(instruction{op: opPop})
 	case *model.FuncDecl:
 		if node.Class != "" {
+			for _, class := range c.program.classes {
+				if class.Name == node.Class {
+					class.Methods[node.Name] = node
+					break
+				}
+			}
 			return c.classMethod(node.Class, node, path)
 		}
 		return c.funcDecl(node, path)
