@@ -11,6 +11,9 @@ import (
 
 // Register installs the Database and Database\Migrate bindings on rt.
 func Register(rt *runner.Runtime) {
+	// Database is the database client scripts query. $name selects a connection
+	// registered with the host; the constructor throws when the name is not
+	// registered or the pool cannot be opened.
 	rt.RegisterConstructor("Database", func(ctx context.Context, name string) (*Database, error) {
 		handle, err := provider(rt).Connect(ctx, name)
 		if err != nil {
@@ -27,6 +30,8 @@ func Register(rt *runner.Runtime) {
 
 // RegisterMigrate installs the Database\Migrate binding.
 func RegisterMigrate(rt *runner.Runtime) {
+	// Database\Migrate loads a set of SQL migrations from the script filesystem
+	// and runs them against the named connection.
 	rt.RegisterConstructor("Database\\Migrate", func(ctx context.Context, names ...string) (*DatabaseMigrate, error) {
 		database, err := provider(rt).Open(ctx, names...)
 		if err != nil {

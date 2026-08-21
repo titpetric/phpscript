@@ -112,21 +112,19 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 	return b.Bridge.Query(ctx, query, args...)
 }
 
-// Get returns the first result row.
+// Get returns the first result row, or false when the query matches no rows.
 //
-// Rows reach PHP as the bridge produced them, a map[string]any per row and a
-// []map[string]any per result set, rather than being copied into a
-// *model.Array. The VM reads both natively: foreach walks them, $row["col"]
-// indexes them, and $row["extra"] = 1 writes to them, since a Go map is a
-// reference type. The copy cost two allocations plus an interface box per
-// column on every row of every query.
-//
-// The one thing a map does not carry is column order, and neither did the
-// *model.Array: the bridge's map had already lost it, so
-// `foreach ($row as $column => $value)` has always produced an arbitrary order.
-// It is now arbitrary per iteration rather than fixed per row; scripts that
-// need a stable order should name their columns in the SELECT and index them.
+// A row is a native map: foreach walks it, $row["col"] indexes it, and
+// $row["extra"] = 1 writes to it. A map carries no column order, so
+// `foreach ($row as $column => $value)` visits columns in arbitrary order;
+// a script that needs a stable order names its columns in the SELECT and
+// indexes them.
 func (b *Database) Get(ctx context.Context, query string, args ...any) (any, error) {
+	// Rows reach PHP as the bridge produced them, a map[string]any per row and
+	// a []map[string]any per result set, rather than being copied into a
+	// *model.Array; the copy cost two allocations plus an interface box per
+	// column on every row of every query, and the bridge's map had already
+	// lost the column order the copy would have fixed.
 	ctx, end := b.withSpan(ctx, "Get")
 	defer end()
 

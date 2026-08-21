@@ -472,12 +472,17 @@ func (c Context) Register(rt *Runtime) {
 	// whose methods receive the runtime lifecycle context.
 	rt.SetContext(context.WithValue(rt.Context(), requestContextKey{}, c))
 
-	// PHP header inspection.
+	// getallheaders returns the request headers as an associative array keyed
+	// by canonical header name.
 	rt.RegisterFunc("getallheaders", c.GetAllHeaders)
-	rt.RegisterFunc("get_all_headers", c.GetAllHeaders) // README spelling / alias
+	// get_all_headers is an alias spelling of getallheaders.
+	rt.RegisterFunc("get_all_headers", c.GetAllHeaders)
+	// apache_request_headers is an alias of getallheaders.
 	rt.RegisterFunc("apache_request_headers", c.GetAllHeaders)
 
-	// PHP response header emission.
+	// header stages the "Name: value" response header in $header, written to
+	// the response after the script finishes. $replace (default true) overwrites
+	// an existing header of the same name; $code stages the response status.
 	rt.RegisterFunc("header", c.Header)
 
 	// Superglobals as ordinary PHP arrays.

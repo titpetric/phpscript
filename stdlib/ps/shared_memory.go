@@ -31,7 +31,9 @@ func SharedMemoryContext(ctx context.Context, s *SharedMemory) context.Context {
 	return context.WithValue(ctx, sharedMemoryKey{}, s)
 }
 
-// NewSharedMemoryBinding is the constructor callback registered for SharedMemory.
+// NewSharedMemoryBinding is a key-value and counter store shared across
+// requests: `new SharedMemory` returns the store the host bound into the
+// runtime context, or a fresh empty store when none is bound.
 func NewSharedMemoryBinding(ctx context.Context) (*SharedMemory, error) {
 	s, _ := ctx.Value(sharedMemoryKey{}).(*SharedMemory)
 	if s == nil {

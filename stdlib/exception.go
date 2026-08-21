@@ -37,7 +37,8 @@ func (e *Exception) Error() string {
 	return e.Message
 }
 
-// RuntimeException represents PHP's RuntimeException.
+// RuntimeException is PHP's RuntimeException, carried as its own Go type so
+// a `catch (RuntimeException $e)` can tell it apart from Exception.
 type RuntimeException struct {
 	Exception
 }

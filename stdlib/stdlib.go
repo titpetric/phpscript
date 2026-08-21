@@ -31,6 +31,7 @@ import (
 // the caller. The filesystem shims come in that way too, rooted at the process
 // working directory; use RegisterFS to bind them to another root.
 func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
+	// Exception is PHP's base exception class; the SPL exception and Error classes are backed by the same type, so a catch cannot filter by subclass.
 	rt.RegisterConstructor("Exception", NewException)
 
 	registerStrings(rt)
@@ -50,6 +51,7 @@ func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
 }
 
 func registerEnvironment(rt *runner.Runtime) {
+	// putenv sets an environment variable from a "NAME=value" string, or unsets a bare "NAME"; it always returns true.
 	rt.RegisterFunc("putenv", func(name string, values ...string) bool {
 		if len(values) > 0 {
 			rt.Env[name] = values[0]
@@ -62,6 +64,7 @@ func registerEnvironment(rt *runner.Runtime) {
 		}
 		return true
 	})
+	// getenv returns the value of the environment variable $name, or false when it is not set.
 	rt.RegisterFunc("getenv", func(name string) any {
 		value, ok := rt.Env[name]
 		if !ok {
@@ -76,14 +79,21 @@ func registerEnvironment(rt *runner.Runtime) {
 // ---------------------------------------------------------------------------
 
 func registerStrings(rt *runner.Runtime) {
-	rt.RegisterFunc("strlen", func(s string) int64 { return int64(len(s)) })
+	// strlen returns the length of $str in bytes.
+	rt.RegisterFunc("strlen", func(str string) int64 { return int64(len(str)) })
+	// strtoupper returns $string uppercased; unlike PHP's ASCII-only mapping, non-ASCII letters are converted too.
 	rt.RegisterFunc("strtoupper", strings.ToUpper)
+	// strtolower returns $string lowercased; unlike PHP's ASCII-only mapping, non-ASCII letters are converted too.
 	rt.RegisterFunc("strtolower", strings.ToLower)
+	// trim strips whitespace, or the characters listed in $characters, from both ends of $string.
 	rt.RegisterFunc("trim", phpTrim(strings.Trim, " \t\n\r\x00\x0B"))
+	// rtrim strips whitespace, or the characters listed in $characters, from the end of $string.
 	rt.RegisterFunc("rtrim", phpTrim(strings.TrimRight, " \t\n\r\x00\x0B"))
+	// ltrim strips whitespace, or the characters listed in $characters, from the start of $string.
 	rt.RegisterFunc("ltrim", phpTrim(strings.TrimLeft, " \t\n\r\x00\x0B"))
 
 	rt.RegisterFunc("substr", phpSubstr)
+	// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; there is no $offset parameter.
 	rt.RegisterFunc("strpos", func(haystack, needle string) any {
 		i := strings.Index(haystack, needle)
 		if i < 0 {
@@ -91,6 +101,7 @@ func registerStrings(rt *runner.Runtime) {
 		}
 		return int64(i)
 	})
+	// strstr returns $haystack from the first occurrence of $needle to the end, or false when it does not occur; there is no $before_needle parameter.
 	rt.RegisterFunc("strstr", func(haystack, needle string) any {
 		i := strings.Index(haystack, needle)
 		if i < 0 {
@@ -99,13 +110,18 @@ func registerStrings(rt *runner.Runtime) {
 		return haystack[i:]
 	})
 	rt.RegisterFunc("str_replace", phpStrReplace)
-	rt.RegisterFunc("str_repeat", func(s string, n int64) string { return strings.Repeat(s, int(n)) })
+	// str_repeat returns $str repeated $times times.
+	rt.RegisterFunc("str_repeat", func(str string, times int64) string { return strings.Repeat(str, int(times)) })
+	// implode returns the values of $array joined with $separator; with a single array argument the separator is "".
 	rt.RegisterFunc("implode", phpImplode)
+	// explode splits $str on $separator into a list; a positive $limit caps the parts, the last one holding the rest, and other limits are ignored.
 	rt.RegisterFunc("explode", phpExplode)
-	rt.RegisterFunc("htmlspecialchars", func(s string, _ ...any) string {
+	// htmlspecialchars escapes &, <, >, double and single quotes as HTML entities; the $flags and later arguments are accepted and ignored.
+	rt.RegisterFunc("htmlspecialchars", func(s string, flags ...any) string {
 		return htmlSpecialCharsReplacer.Replace(s)
 	})
 	rt.RegisterFunc("sprintf", phpSprintf)
+	// crc32 returns the CRC-32 checksum of $str as an integer.
 	rt.RegisterFunc("crc32", phpCRC32)
 }
 
@@ -123,7 +139,7 @@ var htmlSpecialCharsReplacer = strings.NewReplacer(
 // crc32IEEETable is the standard reflected IEEE table, built once.
 var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
 
-// phpCRC32 checksums a string without the []byte(s) conversion the previous
+// phpCRC32 checksums a string without the []byte(str) conversion the previous
 // implementation paid on every call. Escape analysis confirmed the conversion
 // escaped ("stdlib.go: ([]byte)(s) escapes to heap"): crc32.ChecksumIEEE's
 // argument leaks into the slicing-by-8 and hardware paths, so every crc32()
@@ -131,13 +147,13 @@ var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
 // crc32 keys and etags are short, run the table loop in place and allocate
 // nothing. Longer ones keep the standard library's implementation, which
 // processes eight bytes at a time and amortises the copy over the input.
-func phpCRC32(s string) int64 {
-	if len(s) > crc32NativeThreshold {
-		return int64(crc32.ChecksumIEEE([]byte(s)))
+func phpCRC32(str string) int64 {
+	if len(str) > crc32NativeThreshold {
+		return int64(crc32.ChecksumIEEE([]byte(str)))
 	}
 	crc := ^uint32(0)
-	for i := 0; i < len(s); i++ {
-		crc = crc32IEEETable[byte(crc)^s[i]] ^ (crc >> 8)
+	for i := 0; i < len(str); i++ {
+		crc = crc32IEEETable[byte(crc)^str[i]] ^ (crc >> 8)
 	}
 	return int64(^crc)
 }
@@ -217,25 +233,26 @@ func phpStrReplace(search, replace, subject any) string {
 	return strings.ReplaceAll(out, toString(search), toString(replace))
 }
 
-func phpImplode(a, b any) string {
-	// implode($glue, $array) or implode($array).
-	if model.IsCollection(a) {
-		return strings.Join(arrStrings(a), "")
+func phpImplode(separator, array any) string {
+	// implode($separator, $array) or implode($array), where the single
+	// array argument arrives in $separator.
+	if model.IsCollection(separator) {
+		return strings.Join(arrStrings(separator), "")
 	}
 	// A []string joins without the per-element conversion arrStrings would do.
-	if parts, ok := b.([]string); ok {
-		return strings.Join(parts, toString(a))
+	if parts, ok := array.([]string); ok {
+		return strings.Join(parts, toString(separator))
 	}
-	return strings.Join(arrStrings(b), toString(a))
+	return strings.Join(arrStrings(array), toString(separator))
 }
 
 // phpExplode returns the parts as a []string: strings.Split already allocated
 // exactly that, so handing it straight to the VM costs nothing beyond the split
 // itself. The VM indexes, iterates and destructures it like any array.
-func phpExplode(delim, s string, limit ...int64) []string {
-	parts := strings.Split(s, delim)
+func phpExplode(separator, str string, limit ...int64) []string {
+	parts := strings.Split(str, separator)
 	if len(limit) > 0 && limit[0] > 0 && int64(len(parts)) > limit[0] {
-		tail := strings.Join(parts[limit[0]-1:], delim)
+		tail := strings.Join(parts[limit[0]-1:], separator)
 		parts = parts[:limit[0]]
 		parts[limit[0]-1] = tail
 	}
@@ -268,11 +285,13 @@ func phpSprintf(format string, args ...any) string {
 // carries PHP's ordered hybrid-key semantics.
 func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("compact", phpCompact)
-	rt.RegisterFunc("count", func(a any) int64 {
-		n, _ := model.LenValues(a)
+	// count returns the number of elements in $array; non-array values count as 0.
+	rt.RegisterFunc("count", func(array any) int64 {
+		n, _ := model.LenValues(array)
 		return int64(n)
 	})
-	rt.RegisterFunc("in_array", func(needle, haystack any, _ ...any) bool {
+	// in_array reports whether $needle occurs in $haystack, comparing values as strings; the $strict argument is accepted and ignored.
+	rt.RegisterFunc("in_array", func(needle, haystack any, strict ...any) bool {
 		found := false
 		model.RangeValues(haystack, func(_, v any) bool {
 			if toString(v) == toString(needle) {
@@ -283,11 +302,12 @@ func registerArrays(rt *runner.Runtime) {
 		})
 		return found
 	})
-	rt.RegisterFunc("array_unique", func(a any, _ ...any) *model.Array {
-		n, _ := model.LenValues(a)
+	// array_unique returns $array with duplicate values removed, comparing values as strings and keeping the first occurrence and its key; the $flags argument is accepted and ignored.
+	rt.RegisterFunc("array_unique", func(array any, flags ...any) *model.Array {
+		n, _ := model.LenValues(array)
 		out := model.NewArraySize(n)
 		seen := make(map[string]bool, n)
-		model.RangeValues(a, func(k, v any) bool {
+		model.RangeValues(array, func(k, v any) bool {
 			s := toString(v)
 			if !seen[s] {
 				seen[s] = true
@@ -297,36 +317,45 @@ func registerArrays(rt *runner.Runtime) {
 		})
 		return out
 	})
+	// array_merge merges the given arrays into one; integer keys are renumbered and later string keys overwrite earlier ones.
 	rt.RegisterFunc("array_merge", phpArrayMerge)
-	rt.RegisterFunc("array_keys", func(a any) []any {
-		n, _ := model.LenValues(a)
+	// array_keys returns the keys of $array as a list; there is no $filter_value parameter.
+	rt.RegisterFunc("array_keys", func(array any) []any {
+		n, _ := model.LenValues(array)
 		out := make([]any, 0, n)
-		model.RangeValues(a, func(k, _ any) bool { out = append(out, k); return true })
+		model.RangeValues(array, func(k, _ any) bool { out = append(out, k); return true })
 		return out
 	})
-	rt.RegisterFunc("array_values", func(a any) []any {
-		n, _ := model.LenValues(a)
+	// array_values returns the values of $array as a list indexed from zero.
+	rt.RegisterFunc("array_values", func(array any) []any {
+		n, _ := model.LenValues(array)
 		out := make([]any, 0, n)
-		model.RangeValues(a, func(_, v any) bool { out = append(out, v); return true })
+		model.RangeValues(array, func(_, v any) bool { out = append(out, v); return true })
 		return out
 	})
+	// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end; keys are discarded and reindexed from zero, and a negative $length yields an empty array.
 	rt.RegisterFunc("array_slice", phpArraySlice)
+	// array_splice removes $length elements of $array at $offset, inserts $replacement in their place, and returns the removed elements; a value that is not a script array is an error.
 	rt.RegisterFunc("array_splice", phpArraySplice)
-	rt.RegisterFunc("array_map", func(fn any, a any) ([]any, error) {
-		callback, ok := rt.Callable(fn)
+	// array_map returns a list of $callback applied to each value of $array; a single array is accepted and keys are not preserved.
+	rt.RegisterFunc("array_map", func(callback any, array any) ([]any, error) {
+		fn, ok := rt.Callable(callback)
 		if !ok {
 			return nil, errors.New("array_map(): argument #1 ($callback) must be a valid callback")
 		}
-		return phpArrayMap(callback, a)
+		return phpArrayMap(fn, array)
 	})
-	rt.RegisterFunc("usort", func(a any, cmp any) (bool, error) {
-		callback, ok := rt.Callable(cmp)
+	// usort sorts $array in place using the $callback comparator, reindexing the keys from zero.
+	rt.RegisterFunc("usort", func(array any, callback any) (bool, error) {
+		fn, ok := rt.Callable(callback)
 		if !ok {
 			return false, errors.New("usort(): argument #2 ($callback) must be a valid callback")
 		}
-		return phpUsort(a, callback), nil
+		return phpUsort(array, fn), nil
 	})
+	// sort sorts $array in place ascending with PHP's default comparison, discarding the keys and reindexing from zero.
 	rt.RegisterFunc("sort", phpSort)
+	// rsort sorts $array in place descending with PHP's default comparison, discarding the keys and reindexing from zero.
 	rt.RegisterFunc("rsort", phpRsort)
 }
 
@@ -384,10 +413,10 @@ func phpCompact(ctx context.Context, names ...string) map[string]any {
 // do through the interface holding it, so this is one of the few shims that
 // genuinely requires a *model.Array. Passing anything else is an error rather
 // than a silent no-op.
-func phpArraySplice(target any, offset int64, optional ...any) ([]any, error) {
-	a, ok := target.(*model.Array)
+func phpArraySplice(array any, offset int64, optional ...any) ([]any, error) {
+	a, ok := array.(*model.Array)
 	if !ok || a == nil {
-		return nil, fmt.Errorf("array_splice: expected an array, got %T", target)
+		return nil, fmt.Errorf("array_splice: expected an array, got %T", array)
 	}
 
 	vals := arrValues(a)
@@ -467,8 +496,8 @@ func phpArraySpliceReplacement(rep any) []any {
 // phpArraySlice returns the selected run as a []any. PHP's array_slice
 // reindexes integer keys, which this shim has always done for every key, so a
 // list is a faithful representation of the result.
-func phpArraySlice(a any, offset int64, length ...int64) []any {
-	vals := arrValues(a)
+func phpArraySlice(array any, offset int64, length ...int64) []any {
+	vals := arrValues(array)
 	start := int(offset)
 	if start < 0 {
 		start += len(vals)
@@ -527,19 +556,19 @@ func phpUsort(a any, cmp func(...any) (any, error)) bool {
 
 // phpSort orders a list with PHP's default comparison (see phpCompare). Like
 // sort(), it discards the keys and reindexes the result from zero.
-func phpSort(a any) bool {
-	if sortInt64Array(a, false) {
+func phpSort(array any) bool {
+	if sortInt64Array(array, false) {
 		return true
 	}
-	return sortValues(a, sortLess)
+	return sortValues(array, sortLess)
 }
 
 // phpRsort is phpSort in descending order.
-func phpRsort(a any) bool {
-	if sortInt64Array(a, true) {
+func phpRsort(array any) bool {
+	if sortInt64Array(array, true) {
 		return true
 	}
-	return sortValues(a, func(x, y any) bool { return sortLess(y, x) })
+	return sortValues(array, func(x, y any) bool { return sortLess(y, x) })
 }
 
 func sortInt64Array(a any, desc bool) bool {
@@ -863,21 +892,23 @@ func sortValues(a any, less func(x, y any) bool) bool {
 // ---------------------------------------------------------------------------
 
 func registerJSON(rt *runner.Runtime) {
+	// json_encode returns the JSON encoding of $value; there is no $flags parameter and an encoding failure raises an error instead of returning false.
 	rt.RegisterFunc("json_encode", phpJSONEncode)
+	// json_decode parses the JSON in $text; objects always decode to arrays (as if $associative were true) and invalid input raises an error instead of returning null.
 	rt.RegisterFunc("json_decode", phpJSONDecode)
 }
 
-func phpJSONEncode(v any) (any, error) {
-	b, err := json.Marshal(jsonEncodeValue(v))
+func phpJSONEncode(value any) (any, error) {
+	b, err := json.Marshal(jsonEncodeValue(value))
 	if err != nil {
 		return nil, err
 	}
 	return string(b), nil
 }
 
-func phpJSONDecode(s string) (any, error) {
+func phpJSONDecode(text string) (any, error) {
 	var v any
-	dec := json.NewDecoder(strings.NewReader(s))
+	dec := json.NewDecoder(strings.NewReader(text))
 	dec.UseNumber()
 	if err := dec.Decode(&v); err != nil {
 		return nil, err
@@ -994,6 +1025,7 @@ func registerLang(rt *runner.Runtime) {
 	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
 	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
 	rt.SetConst("STDIN", rt.Stdin())
+	// spl_autoload_register registers $callback as an autoloader, or the default spl_autoload when $callback is null or omitted; $prepend puts it first and $throw is ignored.
 	rt.RegisterFunc("spl_autoload_register", func(args ...any) (bool, error) {
 		var callback any = rt.SPLAutoload
 		if len(args) > 0 && args[0] != nil {
@@ -1003,21 +1035,24 @@ func registerLang(rt *runner.Runtime) {
 		rt.RegisterAutoloader(callback, prepend)
 		return true, nil
 	})
-	rt.RegisterFunc("spl_autoload", func(class string, _ ...any) error {
+	// spl_autoload loads $class by including the lowercased class name plus ".php" from the include path; the $file_extensions argument is accepted and ignored.
+	rt.RegisterFunc("spl_autoload", func(class string, fileExtensions ...any) error {
 		return rt.SPLAutoload(class)
 	})
-	rt.RegisterFunc("class_exists", func(name string, autoload ...bool) (bool, error) {
+	// class_exists reports whether class $class is defined, running the autoloader first unless $autoload is false.
+	rt.RegisterFunc("class_exists", func(class string, autoload ...bool) (bool, error) {
 		load := true
 		if len(autoload) > 0 {
 			load = autoload[0]
 		}
-		return rt.ClassExists(name, load)
+		return rt.ClassExists(class, load)
 	})
 	rt.RegisterFunc("set_include_path", rt.SetIncludePath)
 	rt.RegisterFunc("get_include_path", rt.IncludePath)
-	// The introspection shims keep returning *model.Array: their whole value is
-	// a stable, name-sorted listing, which a Go map cannot express.
+	// get_defined_constants returns the defined constants as a name-sorted array; with $categorize true they are grouped under a single "Core" key.
 	rt.RegisterFunc("get_defined_constants", func(categorize ...bool) *model.Array {
+		// The introspection shims keep returning *model.Array: their whole value
+		// is a stable, name-sorted listing, which a Go map cannot express.
 		defined := rt.DefinedConstants()
 		constants := model.NewArraySize(len(defined))
 		names := make([]string, 0, len(defined))
@@ -1035,10 +1070,12 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return constants
 	})
-	rt.RegisterFunc("get_defined_functions", func(_ ...bool) map[string][]string {
+	// get_defined_functions returns an array with "internal" and "user" lists of function names; the $exclude_disabled argument is accepted and ignored.
+	rt.RegisterFunc("get_defined_functions", func(excludeDisabled ...bool) map[string][]string {
 		internal, user := rt.DefinedFunctions()
 		return map[string][]string{"internal": internal, "user": user}
 	})
+	// get_defined_vars returns the variables defined in the calling scope as an array sorted by name, not in definition order.
 	rt.RegisterFunc("get_defined_vars", func(ctx context.Context) *model.Array {
 		scope, ok := runner.ScopeFromContext(ctx)
 		if !ok {
@@ -1056,12 +1093,15 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return vars
 	})
+	// get_declared_classes returns the names of the declared classes.
 	rt.RegisterFunc("get_declared_classes", func() []string {
 		return rt.DeclaredClasses()
 	})
+	// php_sapi_name returns the name of the SAPI the script runs under, such as "cli".
 	rt.RegisterFunc("php_sapi_name", func() string {
 		return rt.SAPI()
 	})
+	// isset reports whether every argument is set and not null.
 	rt.RegisterFunc("isset", func(args ...any) bool {
 		for _, a := range args {
 			if a == nil {
@@ -1070,28 +1110,36 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return true
 	})
-	rt.RegisterFunc("empty", func(a any) bool { return !truthy(a) })
+	// empty reports whether $value is empty: null, false, "", "0", 0, 0.0 or an empty array.
+	rt.RegisterFunc("empty", func(value any) bool { return !truthy(value) })
 	// A binding's []string is as much a PHP array as an *model.Array is, so
 	// is_array() answers for the whole value model, not one Go type.
 	rt.RegisterFunc("is_array", model.IsCollection)
-	rt.RegisterFunc("is_int", func(a any) bool {
-		switch a.(type) {
+	// is_int reports whether $value is an integer.
+	rt.RegisterFunc("is_int", func(value any) bool {
+		switch value.(type) {
 		case int, int64:
 			return true
 		}
 		return false
 	})
-	rt.RegisterFunc("is_string", func(a any) bool { _, ok := a.(string); return ok })
-	rt.RegisterFunc("is_bool", func(a any) bool { _, ok := a.(bool); return ok })
-	rt.RegisterFunc("is_object", func(a any) bool { _, ok := a.(*model.Object); return ok })
+	// is_string reports whether $value is a string.
+	rt.RegisterFunc("is_string", func(value any) bool { _, ok := value.(string); return ok })
+	// is_bool reports whether $value is a boolean.
+	rt.RegisterFunc("is_bool", func(value any) bool { _, ok := value.(bool); return ok })
+	// is_object reports whether $value is an object.
+	rt.RegisterFunc("is_object", func(value any) bool { _, ok := value.(*model.Object); return ok })
+	// get_included_files returns the names of the files included or required so far.
 	rt.RegisterFunc("get_included_files", func() []string { return rt.IncludedFiles() })
-	rt.RegisterFunc("is_numeric", func(a any) bool {
-		switch a.(type) {
+	// is_numeric reports whether $value is an int or a float; unlike PHP, numeric strings return false.
+	rt.RegisterFunc("is_numeric", func(value any) bool {
+		switch value.(type) {
 		case int64, int, float64:
 			return true
 		}
 		return false
 	})
+	// intdiv returns the integer quotient of $num divided by $divisor; division by zero and PHP_INT_MIN by -1 are errors.
 	rt.RegisterFunc("intdiv", func(num, divisor int64) (int64, error) {
 		if divisor == 0 {
 			return 0, errors.New("Division by zero")
@@ -1106,22 +1154,26 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("fdiv", func(num, divisor float64) float64 {
 		return num / divisor
 	})
-	rt.RegisterFunc("call_user_func", func(fn any, args ...any) (any, error) {
-		callback, ok := rt.Callable(fn)
+	// call_user_func calls $callback with the given arguments and returns its result.
+	rt.RegisterFunc("call_user_func", func(callback any, args ...any) (any, error) {
+		fn, ok := rt.Callable(callback)
 		if !ok {
 			return nil, errors.New("call_user_func(): argument #1 ($callback) must be a valid callback")
 		}
-		return callback(args...)
+		return fn(args...)
 	})
-	rt.RegisterFunc("call_user_func_array", func(fn any, args any) (any, error) {
-		callback, ok := rt.Callable(fn)
+	// call_user_func_array calls $callback with the values of $args as its arguments and returns its result.
+	rt.RegisterFunc("call_user_func_array", func(callback any, args any) (any, error) {
+		fn, ok := rt.Callable(callback)
 		if !ok {
 			return nil, errors.New("call_user_func_array(): argument #1 ($callback) must be a valid callback")
 		}
-		return phpCallUserFuncArray(callback, args)
+		return phpCallUserFuncArray(fn, args)
 	})
+	// function_exists reports whether a function named $function is defined.
 	rt.RegisterFunc("function_exists", func(name string) bool { return rt.FunctionExists(name) })
-	rt.RegisterFunc("is_callable", func(v any) bool { _, ok := rt.Callable(v); return ok })
+	// is_callable reports whether $value can be called as a function; there are no $syntax_only or $callable_name parameters.
+	rt.RegisterFunc("is_callable", func(value any) bool { _, ok := rt.Callable(value); return ok })
 	// PHP's exit/die takes either a status or a message: a string argument is
 	// printed and the script exits with status 0, an integer sets the status.
 	terminate := func(code ...any) (any, error) {
@@ -1137,7 +1189,9 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return nil, rt.Exit(status)
 	}
+	// exit terminates the script; a string $status is printed before exiting with code 0, an int $status becomes the exit code.
 	rt.RegisterFunc("exit", terminate)
+	// die terminates the script exactly like exit; a string $status is printed before exiting with code 0, an int $status becomes the exit code.
 	rt.RegisterFunc("die", terminate)
 }
 
@@ -1156,6 +1210,7 @@ func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
 
 func registerTokenizer(rt *runner.Runtime) {
 	rt.RegisterFunc("token_get_all", parser.TokenGetAll)
+	// token_name returns the name of token $id, such as "T_VARIABLE"; an unknown id returns "UNKNOWN".
 	rt.RegisterFunc("token_name", func(id int64) string { return parser.TokenName(int(id)) })
 
 	// Bare T_* constants used by Compiler::_split_exp. They are constants, not

@@ -11,12 +11,14 @@ import (
 // so a script reaches it by the absolute tmp_name it was handed; both functions
 // refuse a path this request did not produce, as PHP does.
 func registerUploads(rt *runner.Runtime, r root) {
-	isUpload := func(p string) bool {
+	isUpload := func(filename string) bool {
 		request, ok := runner.RequestContext(rt.Context())
-		return ok && request.IsUpload(p)
+		return ok && request.IsUpload(filename)
 	}
 
-	rt.RegisterFunc("is_uploaded_file", isUpload)
+	// is_uploaded_file reports whether $filename is a file the current request uploaded.
+	rt.RegisterFunc("is_uploaded_file", func(filename string) bool { return isUpload(filename) })
+	// move_uploaded_file moves uploaded file $from to $to; a $from this request did not upload returns false, and a $to outside writable_paths is refused.
 	rt.RegisterFunc("move_uploaded_file", func(from, to string) (bool, error) {
 		if !isUpload(from) {
 			return false, nil

@@ -18,22 +18,25 @@ import (
 // system refused is a runtime condition a script handles by checking the
 // result; a write the configuration never allowed is a mistake worth raising.
 func registerWrites(rt *runner.Runtime, r root) {
-	rt.RegisterFunc("mkdir", func(p string, _ ...any) (bool, error) {
-		name, err := r.resolveWrite("mkdir", p)
+	// mkdir creates $directory and any missing parents; $permissions and $recursive are ignored, and a path outside writable_paths is refused.
+	rt.RegisterFunc("mkdir", func(directory string, permissions ...any) (bool, error) {
+		name, err := r.resolveWrite("mkdir", directory)
 		if err != nil {
 			return false, err
 		}
 		return os.MkdirAll(name, 0o755) == nil, nil
 	})
-	rt.RegisterFunc("unlink", func(p string) (bool, error) {
-		name, err := r.resolveWrite("unlink", p)
+	// unlink deletes $filename and reports success; a path outside writable_paths is refused.
+	rt.RegisterFunc("unlink", func(filename string) (bool, error) {
+		name, err := r.resolveWrite("unlink", filename)
 		if err != nil {
 			return false, err
 		}
 		return os.Remove(name) == nil, nil
 	})
-	rt.RegisterFunc("touch", func(p string, mtime ...int64) (bool, error) {
-		name, err := r.resolveWrite("touch", p)
+	// touch creates $filename if it is missing and sets its access and modification times to $mtime, or to now; a path outside writable_paths is refused.
+	rt.RegisterFunc("touch", func(filename string, mtime ...int64) (bool, error) {
+		name, err := r.resolveWrite("touch", filename)
 		if err != nil {
 			return false, err
 		}
@@ -77,8 +80,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 	// A PHP mode argument is a raw Unix mode, usually written as the octal
 	// literal 0644, and runner.FileMode is the same number: both ends of the
 	// configuration and the script agree on what a mode is.
-	rt.RegisterFunc("chmod", func(p string, mode int64) (bool, error) {
-		name, err := r.resolveWrite("chmod", p)
+	rt.RegisterFunc("chmod", func(filename string, mode int64) (bool, error) {
+		name, err := r.resolveWrite("chmod", filename)
 		if err != nil {
 			return false, err
 		}
@@ -86,8 +89,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 	})
 	// PHP takes either a name or a numeric id for both of these, and leaves the
 	// other half of the ownership alone, which is what -1 means to Chown.
-	rt.RegisterFunc("chown", func(p string, owner any) (bool, error) {
-		name, err := r.resolveWrite("chown", p)
+	rt.RegisterFunc("chown", func(filename string, owner any) (bool, error) {
+		name, err := r.resolveWrite("chown", filename)
 		if err != nil {
 			return false, err
 		}
@@ -97,8 +100,9 @@ func registerWrites(rt *runner.Runtime, r root) {
 		}
 		return os.Chown(name, uid, -1) == nil, nil
 	})
-	rt.RegisterFunc("chgrp", func(p string, group any) (bool, error) {
-		name, err := r.resolveWrite("chgrp", p)
+	// chgrp changes the group of $filename to $group, a name or a numeric id, leaving the owner alone.
+	rt.RegisterFunc("chgrp", func(filename string, group any) (bool, error) {
+		name, err := r.resolveWrite("chgrp", filename)
 		if err != nil {
 			return false, err
 		}
