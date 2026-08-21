@@ -107,12 +107,90 @@ func toInt(v any) int64 {
 		return x
 	case float64:
 		return int64(x)
+	case bool:
+		if x {
+			return 1
+		}
+		return 0
 	case string:
-		i, _ := strconv.ParseInt(x, 10, 64)
-		return i
+		return stringToInt(x)
 	default:
 		return 0
 	}
+}
+
+// numericPrefix returns the longest leading substring of s that reads as a
+// PHP number, and whether it uses float syntax. PHP's string-to-number
+// coercion takes this prefix and ignores the rest: (int)"12abc" is 12,
+// (float)"2.5kg" is 2.5. An empty prefix means the string has no leading
+// number.
+func numericPrefix(s string) (prefix string, isFloat bool) {
+	i := 0
+	for i < len(s) && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r' || s[i] == '\v' || s[i] == '\f') {
+		i++
+	}
+	start := i
+	if i < len(s) && (s[i] == '+' || s[i] == '-') {
+		i++
+	}
+	intDigits := 0
+	for i < len(s) && s[i] >= '0' && s[i] <= '9' {
+		i++
+		intDigits++
+	}
+	end := i
+	fracDigits := 0
+	if i < len(s) && s[i] == '.' {
+		j := i + 1
+		for j < len(s) && s[j] >= '0' && s[j] <= '9' {
+			j++
+			fracDigits++
+		}
+		if intDigits > 0 || fracDigits > 0 {
+			i, end, isFloat = j, j, true
+		}
+	}
+	if intDigits+fracDigits == 0 {
+		return "", false
+	}
+	if i < len(s) && (s[i] == 'e' || s[i] == 'E') {
+		j := i + 1
+		if j < len(s) && (s[j] == '+' || s[j] == '-') {
+			j++
+		}
+		expDigits := 0
+		for j < len(s) && s[j] >= '0' && s[j] <= '9' {
+			j++
+			expDigits++
+		}
+		if expDigits > 0 {
+			end, isFloat = j, true
+		}
+	}
+	return s[start:end], isFloat
+}
+
+// stringToInt implements PHP's string-to-int coercion: the integer value of
+// the leading number, with float syntax truncated toward zero and an
+// out-of-range integer saturated the way C's strtol (which PHP's cast uses)
+// saturates.
+func stringToInt(s string) int64 {
+	prefix, isFloat := numericPrefix(s)
+	if prefix == "" {
+		return 0
+	}
+	if !isFloat {
+		i, err := strconv.ParseInt(prefix, 10, 64)
+		if err == nil {
+			return i
+		}
+		if strings.HasPrefix(prefix, "-") {
+			return math.MinInt64
+		}
+		return math.MaxInt64
+	}
+	f, _ := strconv.ParseFloat(prefix, 64)
+	return int64(f)
 }
 
 // phpLooseEqual approximates PHP's `==` for switch/case matching: numeric
@@ -336,7 +414,11 @@ func toFloat(v any) float64 {
 		}
 		return 0
 	case string:
-		f, _ := strconv.ParseFloat(x, 64)
+		prefix, _ := numericPrefix(x)
+		if prefix == "" {
+			return 0
+		}
+		f, _ := strconv.ParseFloat(prefix, 64)
 		return f
 	default:
 		return 0
