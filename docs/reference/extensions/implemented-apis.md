@@ -272,7 +272,11 @@ function is_numeric(mixed $value): bool
 ```
 
 ```php
-// is_object reports whether $value is an object.
+/**
+ * is_object reports whether $value is an object. A value a Go binding
+ * returned is one: a script constructs it with new, calls its methods and
+ * reads its properties the same way it does an interpreted object.
+ */
 function is_object(mixed $value): bool
 ```
 
