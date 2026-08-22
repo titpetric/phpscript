@@ -15,7 +15,8 @@ type exception struct {
 }
 
 func (e *exception) Error() string { return e.message }
-func (e *exception) GetCode() int  { return e.code }
+
+func (e *exception) GetCode() int { return e.code }
 
 // TestAcceptsHTML pins that only an explicit request for HTML counts as one.
 // "*/*" matches every type there is, and it is what curl and fetch() send, so
