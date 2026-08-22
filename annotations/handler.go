@@ -1,10 +1,10 @@
 package annotations
 
 import (
-	"io"
+	"bytes"
 	"io/fs"
+	"log"
 	"net/http"
-	"strings"
 
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
@@ -43,7 +43,7 @@ func (h *handler) file(name string) http.Handler {
 }
 
 func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
-	var out strings.Builder
+	var out bytes.Buffer
 	request := runner.FromRequestOptions(r, h.config.runnerOptions)
 	// Uploaded parts are copied to temporary files for the script to read; they
 	// belong to this request and nothing outlives it.
@@ -73,17 +73,32 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 		}
 	}
 
-	for name, values := range request.ResponseHeaders() {
-		w.Header()[name] = values
+	status := request.StatusFor(err)
+	body := out.Bytes()
+
+	// What went wrong, for a host error page to do as it likes with. It is set
+	// only for a failure, and a failure discards whatever the endpoint echoed
+	// before it: half an answer is not one.
+	var notes string
+	if _, exited := runner.IsExit(err); err != nil && !exited {
+		// The trace ID is also the Request-Id header, so a log line and the
+		// recorded trace of the same request find each other.
+		log.Printf("Error in request %s, %s: %s [trace %s]", r.URL.Path, file, err, telemetry.TraceID(r.Context()))
+		notes, body = err.Error(), nil
 	}
-	if err != nil {
-		if _, ok := runner.IsExit(err); !ok {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+
+	// An endpoint that answered for itself keeps its answer. Answered is what an
+	// API relies on to stay an API: a payload, or a Content-Type, and the host's
+	// HTML page stays out of it.
+	if h.config.errorPages != nil && status >= 400 && !request.Answered(body) &&
+		h.config.errorPages(w, r, status, notes) {
+		return
 	}
-	if status := request.ResponseStatus(); status != 0 {
-		w.WriteHeader(status)
+	if notes != "" {
+		// No page, so the status is the whole answer. The detail is in the log
+		// and on the trace, not in a body the client reads.
+		http.Error(w, http.StatusText(status), status)
+		return
 	}
-	_, _ = io.WriteString(w, out.String())
+	request.WriteResponse(w, status, body)
 }

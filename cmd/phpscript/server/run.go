@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
 	"log"
 	"net"
@@ -98,7 +97,7 @@ func NewHandler(root fs.FS) (http.Handler, error) {
 	return newHandler(root, "", DefaultDocumentRoot, options, false)
 }
 
-func newHandler(root fs.FS, rootDir, documentRoot string, options runner.Options, flatstack bool, observers ...runner.Observer) (http.Handler, error) {
+func newHandler(root fs.FS, rootDir, documentRoot string, options runner.Options, flatstack bool, observers ...runner.Observer) (*handler, error) {
 	if documentRoot == "" {
 		documentRoot = DefaultDocumentRoot
 	}
@@ -151,6 +150,11 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	info, err := fs.Stat(h.public, filename)
 	if err != nil {
+		// Nothing ran and nothing matched, so this is the site's 404 to answer
+		// if it has one. See serveErrorPage for who gets it.
+		if h.serveErrorPage(w, r, http.StatusNotFound, "") {
+			return
+		}
 		http.NotFound(w, r)
 		return
 	}
@@ -201,7 +205,15 @@ func (h *handler) serverVars(request runner.Context, r *http.Request, filename s
 	request.Server["SERVER_NAME"] = strings.TrimSuffix(strings.ToLower(host), ".")
 }
 
-func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename string) {
+// run executes one PHP entrypoint of this site and returns the response it
+// produced: the request context holding the headers and status the script
+// staged, the body it buffered, and whatever it ended with.
+//
+// Nothing reaches w. The caller is what decides the response, which is what
+// lets an error be answered with the site's own page rather than with the
+// error's own words. vars, when set, adds $_SERVER entries the entrypoint needs
+// beyond the ones the request and the site answer for.
+func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, vars func(runner.Context)) (runner.Context, []byte, error) {
 	var out bytes.Buffer
 
 	options := h.runnerOptions
@@ -218,11 +230,6 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	for _, observer := range h.observers {
 		rt.Observe(observer)
 	}
-	prog, err := rt.LoadFile(filename)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 
 	stdlib.Register(rt)
 	if h.rootDir != "" {
@@ -233,12 +240,19 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 	// belong to this request and nothing outlives it.
 	defer reqCtx.Cleanup()
 	h.serverVars(reqCtx, r, filename)
+	if vars != nil {
+		vars(reqCtx)
+	}
 	reqCtx.Register(rt)
 	// The parsed request and the response writer live for this request too;
 	// Register accounted the Context, these are the host structures around it.
 	rt.AccountRequest(r, w)
 
-	err = rt.Run(prog)
+	prog, err := rt.LoadFile(filename)
+	if err == nil {
+		err = rt.Run(prog)
+	}
+
 	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {
 		// The script's frames are gone once Run returns, so the peak is the
 		// request's memory footprint; a fresh usage walk would be baseline.
@@ -247,25 +261,43 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 			trace.Root().SetAttribute("memory_limit", rt.MemoryLimit().Bytes())
 		}
 	}
-	for name, values := range reqCtx.ResponseHeaders() {
-		w.Header()[name] = values
+	return reqCtx, out.Bytes(), err
+}
+
+func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename string) {
+	reqCtx, body, err := h.run(w, r, filename, nil)
+	status := reqCtx.StatusFor(err)
+
+	// What went wrong, for the site's error page to do as it likes with. It is
+	// set only for a failure, and a failure discards whatever the script echoed
+	// before it: half a page is not an answer.
+	var notes string
+	if _, exited := runner.IsExit(err); err != nil && !exited {
+		// The trace ID is also the Request-Id header, so a log line and the
+		// recorded trace of the same request find each other.
+		log.Printf("Error in request %s, %s: %s [trace %s]", r.URL.Path, filename, err, telemetry.TraceID(r.Context()))
+		notes, body = err.Error(), nil
 	}
-	if err != nil {
-		if _, ok := runner.IsExit(err); !ok {
-			// The trace ID is also the Request-Id header, so a log line and
-			// the recorded trace of the same request find each other.
-			log.Printf("Error in request %s, %s: %s [trace %s]", r.URL.Path, filename, err, telemetry.TraceID(r.Context()))
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+
+	if status >= 400 && !reqCtx.Answered(body) && h.serveErrorPage(w, r, status, notes) {
+		return
 	}
-	if w.Header().Get("Content-Type") == "" {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if notes != "" {
+		serveStatus(w, status)
+		return
 	}
-	if status := reqCtx.ResponseStatus(); status != 0 {
-		w.WriteHeader(status)
-	}
-	_, _ = io.WriteString(w, out.String())
+	reqCtx.SetDefaultHeader("Content-Type", "text/html; charset=utf-8")
+	reqCtx.WriteResponse(w, status, body)
+}
+
+// serveStatus answers with the status and its standard text, and no more.
+//
+// What actually went wrong is in the log line and on the request trace, both
+// addressed by the same request id. It used to be in the response body as well,
+// where it is a description of the site's own internals handed to whoever
+// asked for it.
+func serveStatus(w http.ResponseWriter, status int) {
+	http.Error(w, http.StatusText(status), status)
 }
 
 // Run starts the platform lifecycle and waits for shutdown.
@@ -337,15 +369,19 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	// unapplied is worse than one that did not come up.
 	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
 	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
-	if appConfig.Routes.Enabled {
-		svc.Register(annotations.NewRoute(os.DirFS(root), routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)...))
-	}
 
-	module, err := NewModule(root, documentRoot, runnerOptions, appConfig.Flatstack.Enabled, observers...)
+	files, err := newHandler(os.DirFS(root), root, documentRoot, runnerOptions, appConfig.Flatstack.Enabled, observers...)
 	if err != nil {
 		return err
 	}
-	svc.Register(module)
+	// The routed endpoints are handed the file handler's error pages: they live
+	// under the site's document root, which is the file handler's to look in.
+	if appConfig.Routes.Enabled {
+		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
+		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
+		svc.Register(annotations.NewRoute(os.DirFS(root), options...))
+	}
+	svc.Register(newModule("phpserver", files))
 	return nil
 }
 
@@ -448,17 +484,23 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	annotationOptions := annotationOptions(siteConfig, runnerOptions, observers, host.Root, name)
 
 	root := os.DirFS(host.Root)
+	files, err := newHandler(root, host.Root, documentRoot, runnerOptions, siteConfig.Flatstack.Enabled, observers...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
+	}
+
+	// A site's error pages are its own: they are found under its document root
+	// and rendered by its own handler, so nothing a site puts up is reachable
+	// from another domain.
 	if siteConfig.Routes.Enabled {
-		routes := annotations.NewRoute(root, routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)...)
+		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
+		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
+		routes := annotations.NewRoute(root, options...)
 		if err := routes.Mount(ctx, router); err != nil {
 			return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 		}
 	}
 
-	files, err := newHandler(root, host.Root, documentRoot, runnerOptions, siteConfig.Flatstack.Enabled, observers...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
-	}
 	router.Handle("/*", files)
 
 	// A site's startup failure is its own. It is recorded on that site's

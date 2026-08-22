@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/titpetric/phpscript/runner"
@@ -23,7 +24,17 @@ type config struct {
 	exprCache     *runner.ExprCache
 	excludedDirs  map[string]struct{}
 	moduleSuffix  string
+	errorPages    ErrorPageFunc
 }
+
+// ErrorPageFunc renders a host's own page for an error response and reports
+// whether it did. status is the status the endpoint ended on and notes is what
+// went wrong, empty unless the endpoint failed.
+//
+// A routed endpoint is a file outside the document root, so it has no error
+// page of its own to find; the host that owns the document root supplies one of
+// these. A false answer, and a nil func, leave the response to the endpoint.
+type ErrorPageFunc func(w http.ResponseWriter, r *http.Request, status int, notes string) bool
 
 // moduleName returns the platform module name for base, suffixed when the
 // caller asked for one.
@@ -107,6 +118,14 @@ func WithExprCache(cache *runner.ExprCache) Option {
 func WithModuleSuffix(suffix string) Option {
 	return func(c *config) {
 		c.moduleSuffix = strings.TrimSpace(suffix)
+	}
+}
+
+// WithErrorPages lets a host answer a routed endpoint's error response with a
+// page of its own. Startup and scheduled jobs answer to nobody and ignore it.
+func WithErrorPages(fn ErrorPageFunc) Option {
+	return func(c *config) {
+		c.errorPages = fn
 	}
 }
 

@@ -35,9 +35,19 @@ function getallheaders(): array
 /**
  * header stages the "Name: value" response header in $header, written to
  * the response after the script finishes. $replace (default true) overwrites
- * an existing header of the same name; $code stages the response status.
+ * an existing header of the same name; $code stages the response status. A
+ * status line, "HTTP/1.0 404 Not Found", stages the status it names.
  */
 function header(string $header, mixed ...$opts): void
+```
+
+```php
+/**
+ * http_response_code stages the response status in $response_code and
+ * returns the one it replaced; called without one it returns the status the
+ * response will be sent with.
+ */
+function http_response_code(mixed ...$opts): mixed
 ```
 
 ### stdlib

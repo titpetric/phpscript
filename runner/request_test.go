@@ -28,12 +28,19 @@ func runReq(t *testing.T, r *http.Request, src string) (string, http.Header) {
 // that inspect the same context from both PHP and Go.
 func runCtx(t *testing.T, ctx runner.Context, src string) string {
 	t.Helper()
+	return runSAPI(t, ctx, "", src)
+}
+
+// runSAPI is runCtx under a named SAPI, for the cases that answer differently
+// on the command line than they do for a request.
+func runSAPI(t *testing.T, ctx runner.Context, sapi, src string) string {
+	t.Helper()
 	prog, err := parser.Parse(src)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	var out strings.Builder
-	rt := runner.New(&out, runner.Options{})
+	rt := runner.New(&out, runner.Options{SAPI: sapi})
 	stdlib.Register(rt)
 	ctx.Register(rt)
 	if err := rt.Run(prog); err != nil {
@@ -517,6 +524,127 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 	}
 	if got := ctx.ResponseStatus(); got != http.StatusFound {
 		t.Fatalf("status = %d, want %d", got, http.StatusFound)
+	}
+}
+
+// TestStatusLineHeaderSetsStatus pins the other spelling header() takes.
+// "HTTP/1.0 404 Not Found" carries no name and no value, only a status, and it
+// used to be dropped on the floor for want of a name:value shape.
+func TestStatusLineHeaderSetsStatus(t *testing.T) {
+	tests := []struct {
+		header string
+		want   int
+	}{
+		{header: `HTTP/1.0 404 Not Found`, want: http.StatusNotFound},
+		{header: `HTTP/1.1 503 Service Unavailable`, want: http.StatusServiceUnavailable},
+		{header: `HTTP/1.1 204`, want: http.StatusNoContent},
+
+		// Not status lines. The first is a header named Status, the rest name
+		// no status this response could be sent with.
+		{header: `Status: 404`, want: 0},
+		{header: `not a header at all`, want: 0},
+		{header: `HTTP/1.1 twenty`, want: 0},
+		{header: `HTTP/1.1 99`, want: 0},
+		{header: `HTTP/1.1`, want: 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.header, func(t *testing.T) {
+			ctx := runner.NewContext()
+			runCtx(t, ctx, `<?php header(`+strconv.Quote(test.header)+`);`)
+			if got := ctx.ResponseStatus(); got != test.want {
+				t.Fatalf("status = %d, want %d", got, test.want)
+			}
+		})
+	}
+}
+
+// TestHTTPResponseCode pins PHP's two answers. A web request starts out
+// answering 200, so there is always a status to report and always a previous
+// one to hand back. On the command line a script starts with none, which is
+// what the false and the true are: nothing to report, and no previous status to
+// return for the first one set.
+//
+// json_encode keeps the types visible; phpscript has no var_dump.
+func TestHTTPResponseCode(t *testing.T) {
+	const src = `<?php
+echo json_encode([
+	http_response_code(),
+	http_response_code(404),
+	http_response_code(),
+	http_response_code(503),
+]);`
+
+	tests := []struct {
+		sapi string
+		want string
+	}{
+		{sapi: "cgi-phpscript", want: "[200,200,404,404]"},
+		{sapi: "http", want: "[200,200,404,404]"},
+		{sapi: "cli", want: "[false,true,404,404]"},
+		// A host that named no SAPI is not serving a request, so it starts out
+		// the way the command line does.
+		{sapi: "", want: "[false,true,404,404]"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.sapi, func(t *testing.T) {
+			ctx := runner.NewContext()
+			if got := runSAPI(t, ctx, test.sapi, src); got != test.want {
+				t.Fatalf("output = %q, want %q", got, test.want)
+			}
+			if got := ctx.ResponseStatus(); got != http.StatusServiceUnavailable {
+				t.Fatalf("staged status = %d, want 503", got)
+			}
+		})
+	}
+}
+
+// TestHTTPResponseCodeIgnoresANonStatus pins that a zero, and anything that is
+// not a number at all, is not a status: PHP reads the call as the reporting one
+// and leaves the response where it was.
+func TestHTTPResponseCodeIgnoresANonStatus(t *testing.T) {
+	ctx := runner.NewContext()
+	got := runSAPI(t, ctx, "cgi-phpscript", `<?php
+http_response_code(404);
+echo json_encode([
+	http_response_code(0),
+	http_response_code(null),
+	http_response_code(false),
+	http_response_code("nonsense"),
+	http_response_code(),
+]);`)
+	if want := "[404,404,404,404,404]"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+	if status := ctx.ResponseStatus(); status != http.StatusNotFound {
+		t.Fatalf("staged status = %d, want 404", status)
+	}
+}
+
+// TestStatusArgumentIsCoerced pins PHP's coercion of the int parameter both
+// functions take. It matters for an error page: $_SERVER holds every value as
+// a string, so a page handing REDIRECT_STATUS back is handing over "404".
+func TestStatusArgumentIsCoerced(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want int
+	}{
+		{name: "numeric string", src: `<?php http_response_code("404");`, want: http.StatusNotFound},
+		{name: "float", src: `<?php http_response_code(503.0);`, want: http.StatusServiceUnavailable},
+		{name: "header code as a string", src: `<?php header("X-Reason: gone", true, "410");`, want: http.StatusGone},
+		{name: "header code of zero names none", src: `<?php header("X-Reason: fine", true, 0);`, want: 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := runner.NewContext()
+			runSAPI(t, ctx, "cgi-phpscript", test.src)
+			if got := ctx.ResponseStatus(); got != test.want {
+				t.Fatalf("status = %d, want %d", got, test.want)
+			}
+		})
 	}
 }
 

@@ -212,6 +212,14 @@ CSS, JavaScript, images, and other non-PHP files are served directly from
 to `public/index.php` when no annotated route handles it. Files outside
 `public/` are never directly exposed.
 
+A file in `public/` named after a status answers for it: `public/404.php` is
+what a visitor following a dead link sees, and `public/503.php` answers a
+`throw new Exception("...", 503)`. Writing the file is all there is to it, and a
+site with no such file answers the way it did before. Programs are not sent one:
+a `fetch()`, an API client and curl get the plain status, as does any endpoint
+that wrote a body or declared a `Content-Type`. See [Error
+pages](use-cases/error-handling.md#error-pages).
+
 PHP files outside `public/` are scanned recursively for
 `// @route METHOD /path/{param}` annotations. Those routes execute with the
 application directory as their source filesystem, so they can include shared

@@ -482,8 +482,16 @@ func (c Context) Register(rt *Runtime) {
 
 	// header stages the "Name: value" response header in $header, written to
 	// the response after the script finishes. $replace (default true) overwrites
-	// an existing header of the same name; $code stages the response status.
+	// an existing header of the same name; $code stages the response status. A
+	// status line, "HTTP/1.0 404 Not Found", stages the status it names.
 	rt.RegisterFunc("header", c.Header)
+
+	// http_response_code stages the response status in $response_code and
+	// returns the one it replaced; called without one it returns the status the
+	// response will be sent with.
+	rt.RegisterFunc("http_response_code", func(opts ...any) any {
+		return c.HTTPResponseCode(rt.SAPI(), opts...)
+	})
 
 	// Superglobals as ordinary PHP arrays.
 	rt.SetGlobal("_GET", mapToArray(c.Get))
@@ -521,8 +529,11 @@ func (c Context) GetAllHeaders() *model.Array {
 func (c Context) Header(header string, opts ...any) {
 	name, value, ok := strings.Cut(header, ":")
 	if !ok {
-		// Status-line / valueless headers (e.g. "HTTP/1.0 404 Not Found") have
-		// no name:value shape; ignore for the simple model.
+		// A status line, "HTTP/1.0 404 Not Found", is the other thing header()
+		// takes. It has no name:value shape, and what it carries is the status.
+		if code, ok := parseStatusLine(header); ok {
+			*c.status = code
+		}
 		return
 	}
 	name = strings.TrimSpace(name)
@@ -540,14 +551,73 @@ func (c Context) Header(header string, opts ...any) {
 	if strings.EqualFold(name, "Location") && c.ResponseStatus() == 0 {
 		*c.status = http.StatusFound
 	}
+	// $code is an int parameter, so PHP coerces what it is given, and zero is
+	// the value that means the call named no status.
 	if len(opts) > 1 {
-		switch code := opts[1].(type) {
-		case int:
-			*c.status = code
-		case int64:
+		if code := toInt(opts[1]); code != 0 {
 			*c.status = int(code)
 		}
 	}
+}
+
+// parseStatusLine reads the status out of a "HTTP/1.0 404 Not Found" line, the
+// spelling header() takes instead of a name and a value.
+//
+// Neither the protocol nor the reason phrase reaches the response. Go writes
+// the protocol it is actually serving and the reason phrase that belongs to the
+// code, so all the line can contribute is the number in the middle.
+func parseStatusLine(header string) (int, bool) {
+	if !strings.HasPrefix(header, "HTTP/") {
+		return 0, false
+	}
+	fields := strings.Fields(header)
+	if len(fields) < 2 {
+		return 0, false
+	}
+	code, err := strconv.Atoi(fields[1])
+	if err != nil || code < 100 || code > 599 {
+		return 0, false
+	}
+	return code, true
+}
+
+// HTTPResponseCode implements PHP http_response_code([$response_code]).
+//
+// With no argument it reports the status this response will be sent with, and
+// with one it stages that status and reports the one it replaced.
+//
+// PHP answers false rather than a number while no status has been chosen, and
+// true rather than a number for the first one set, having none to hand back. On
+// a web SAPI neither happens: a request starts out answering 200. sapi is the
+// SAPI name the runtime runs under, and only the command line, or a host that
+// named no SAPI at all, starts without a status.
+func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
+	previous := c.ResponseStatus()
+	if previous == 0 && sapi != "" && sapi != "cli" {
+		previous = http.StatusOK
+	}
+
+	// The parameter is an int, so PHP coerces what it is given, and $_SERVER
+	// holds every value as a string: a page passing REDIRECT_STATUS straight
+	// back is passing "404" and means 404.
+	code := 0
+	if len(opts) > 0 {
+		code = int(toInt(opts[0]))
+	}
+	// A zero, a null and a false are not a status. PHP treats the call as the
+	// reporting one, which is what any of them amounts to here.
+	if code == 0 {
+		if previous == 0 {
+			return false
+		}
+		return int64(previous)
+	}
+
+	*c.status = code
+	if previous == 0 {
+		return true
+	}
+	return int64(previous)
 }
 
 // ResponseHeaders returns the headers staged by the PHP header() function so a

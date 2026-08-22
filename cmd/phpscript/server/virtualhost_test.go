@@ -217,8 +217,11 @@ func TestVirtualHostDatabasesAreIsolated(t *testing.T) {
 	if response.Code != http.StatusInternalServerError {
 		t.Fatalf("blog: status = %d, body = %q", response.Code, response.Body.String())
 	}
-	if !strings.Contains(response.Body.String(), "no configuration found for database") {
-		t.Fatalf("blog: body = %q, want the connection to be unknown to it", response.Body.String())
+	// The failure is the point and so is the silence about it: what blog asked
+	// for and did not get is in the log and on the trace, not in a body its
+	// visitors read. See serveStatus.
+	if strings.Contains(response.Body.String(), "no configuration found for database") {
+		t.Fatalf("blog: body = %q, want the failure not to name the site's internals", response.Body.String())
 	}
 }
 

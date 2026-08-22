@@ -235,6 +235,13 @@ reaching above the served directory still resolves inside the project. The
 directory is also excluded from route scanning, so an annotation in a file that
 is already served directly does not publish a second, unguarded route.
 
+It is also where a site's error pages live. A file named after a status,
+`404.php`, `503.html`, or `error.php` for the ones a site does not name, is what
+answers for it, and writing the file is the whole of turning it on. That is a
+convention rather than a setting, and there is no key here for it; see [Error
+pages](use-cases/error-handling.md#error-pages) for what a page is given and
+which requests get one.
+
 ## Telemetry
 
 `telemetry.enabled` controls request tracing and the debug front end mounted at
