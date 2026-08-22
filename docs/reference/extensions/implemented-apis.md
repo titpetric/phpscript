@@ -965,9 +965,9 @@ Registered from `stdlib/http`.
 
 ```php
 /**
- * HTTP\Client sends requests. It takes its settings as an associative array,
- * and with no argument gives a client with a 30 second timeout that follows
- * redirects.
+ * HTTP\Client sends requests, one at a time with send() or all at once with
+ * parallel(). It takes its settings as an associative array, and with no
+ * argument gives a client with a 30 second timeout that follows redirects.
  */
 class HTTP\Client
 {
@@ -975,6 +975,19 @@ class HTTP\Client
 
     // get sends a GET request to $url and returns the response.
     public function get(string $url): mixed {}
+
+    /**
+     * parallel sends every request in $requests at once and returns the responses
+     * under the same keys, so the call takes as long as the slowest request rather
+     * than the sum. $requests is an array of HTTP\Request keyed by a name the
+     * script chooses, each bounded by the client's timeout.
+     * 
+     * One request failing does not fail the others and does not throw: that
+     * response reports $response->ok() as false and $response->err() as the reason,
+     * so a script sees every outcome. A throw means the argument was not an array
+     * of requests.
+     */
+    public function parallel(mixed $requests): array {}
 
     // post sends a POST request to $url with $body and returns the response.
     public function post(string $url, string ...$body): mixed {}
@@ -993,57 +1006,58 @@ Registered from `stdlib/http`.
 
 ```php
 /**
- * HTTP\Request is one outbound request: a method, a URL, and an optional body.
- * Building it sends nothing; a client does that with $client->send($request).
+ * HTTP\Request is one outbound request. It is a net/http request, so a script
+ * reads and writes it the way Go does: $request->method, $request->host,
+ * $request->url->path, and $request->header->set($name, $value). Building one
+ * sends nothing; a client does that with $client->send($request).
  */
 class HTTP\Request
 {
     public function __construct(string $method, string $url, string ...$body) {}
 
-    /**
-     * add_header adds a request header, keeping any value already set for it, and
-     * returns the request so calls can be chained.
-     */
-    public function add_header(string $name, string $value): mixed {}
+    public function add_cookie(object $value2): void {}
 
-    // body returns the request body.
-    public function body(): string {}
+    public function basic_auth(): string|string|bool {}
 
-    /**
-     * header returns the value of the named request header, or an empty string when
-     * it is not set. Header names are matched case-insensitively.
-     */
-    public function header(string $name): string {}
+    public function clone(): object {}
 
-    /**
-     * headers returns the request headers as an array of name to value. A header
-     * set more than once is joined with ", ".
-     */
-    public function headers(): array {}
+    public function context(): object {}
 
-    // method returns the request method.
-    public function method(): string {}
+    public function cookie(string $string): object {}
 
-    /**
-     * set_body replaces the request body and returns the request so calls can be
-     * chained.
-     */
-    public function set_body(string $body): mixed {}
+    public function cookies(): array {}
 
-    /**
-     * set_header sets a request header, replacing any value already set for it, and
-     * returns the request so calls can be chained.
-     */
-    public function set_header(string $name, string $value): mixed {}
+    public function cookies_named(string $string): array {}
 
-    /**
-     * set_query sets a query parameter on the request URL, replacing any value
-     * already set for it, and returns the request so calls can be chained.
-     */
-    public function set_query(string $name, string $value): mixed {}
+    public function form_file(string $string): object|object {}
 
-    // url returns the request URL, including any query parameters set on it.
-    public function url(): string {}
+    public function form_value(string $string): string {}
+
+    public function multipart_reader(): object {}
+
+    public function parse_form(): void {}
+
+    public function parse_multipart_form(int $num): void {}
+
+    public function path_value(string $string): string {}
+
+    public function post_form_value(string $string): string {}
+
+    public function proto_at_least(int $num1, int $num2): bool {}
+
+    public function referer(): string {}
+
+    public function set_basic_auth(string $string1, string $string2): void {}
+
+    public function set_path_value(string $string1, string $string2): void {}
+
+    public function user_agent(): string {}
+
+    public function with_context(): object {}
+
+    public function write(object $value2): void {}
+
+    public function write_proxy(object $value2): void {}
 }
 ```
 

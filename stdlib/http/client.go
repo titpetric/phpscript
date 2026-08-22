@@ -3,10 +3,13 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	nethttp "net/http"
+	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/titpetric/phpscript/model"
@@ -23,8 +26,9 @@ const DefaultTimeout = 30 * time.Second
 // server into an out-of-memory error.
 const maxResponseBody = 32 << 20 // 32 MiB
 
-// Client is the PHP-visible HTTP\Client. As with Request, the net/http client
-// is a named unexported field so that a script reaches only the methods below.
+// Client is the PHP-visible HTTP\Client. The net/http client is a named
+// unexported field rather than an embedded one, so a script reaches the methods
+// below and nothing else net/http exports.
 type Client struct {
 	client  *nethttp.Client
 	base    string
@@ -110,27 +114,98 @@ type clientConfig struct {
 
 // Send sends $request and returns the response. A transport failure or a
 // timeout throws; an HTTP error status does not, so check $response->status().
-func (c *Client) Send(ctx context.Context, request *Request) (*Response, error) {
+func (c *Client) Send(ctx context.Context, request *nethttp.Request) (*Response, error) {
 	if request == nil {
 		return nil, fmt.Errorf("HTTP\\Client: send expects an HTTP\\Request")
 	}
-
-	built, err := request.build(ctx, c.base)
+	response, err := c.send(ctx, request)
 	if err != nil {
 		return nil, err
 	}
-	for name, value := range c.headers {
-		if built.Header.Get(name) == "" {
-			built.Header.Set(name, value)
-		}
+	return response, nil
+}
+
+// Get sends a GET request to $url and returns the response.
+func (c *Client) Get(ctx context.Context, url string) (*Response, error) {
+	request, err := NewRequest(ctx, nethttp.MethodGet, url)
+	if err != nil {
+		return nil, err
+	}
+	return c.Send(ctx, request)
+}
+
+// Post sends a POST request to $url with $body and returns the response.
+func (c *Client) Post(ctx context.Context, url string, body ...string) (*Response, error) {
+	request, err := NewRequest(ctx, nethttp.MethodPost, url, body...)
+	if err != nil {
+		return nil, err
+	}
+	return c.Send(ctx, request)
+}
+
+// Parallel sends every request in $requests at once and returns the responses
+// under the same keys, so the call takes as long as the slowest request rather
+// than the sum. $requests is an array of HTTP\Request keyed by a name the
+// script chooses, each bounded by the client's timeout.
+//
+// One request failing does not fail the others and does not throw: that
+// response reports $response->ok() as false and $response->err() as the reason,
+// so a script sees every outcome. A throw means the argument was not an array
+// of requests.
+func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Response, error) {
+	pending, err := toRequestMap(requests)
+	if err != nil {
+		return nil, err
+	}
+	if len(pending) == 0 {
+		return map[string]*Response{}, nil
+	}
+
+	span := telemetry.StartSpan(ctx, "http.parallel", telemetry.KindExternal)
+	span.SetAttribute("requests", len(pending))
+	defer span.End()
+
+	results := make(map[string]*Response, len(pending))
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
+	for name, request := range pending {
+		wg.Add(1)
+		go func(name string, request *nethttp.Request) {
+			defer wg.Done()
+			response, err := c.send(ctx, request)
+			if err != nil {
+				// A failure is reported on the response rather than returned,
+				// so one unreachable host does not hide the results of every
+				// other request in the batch.
+				response = &Response{err: err.Error()}
+			}
+			mu.Lock()
+			results[name] = response
+			mu.Unlock()
+		}(name, request)
+	}
+	wg.Wait()
+
+	return results, nil
+}
+
+// send performs one request against the client's configuration. Send and
+// Parallel share it so a batched request is configured the same as a single
+// one.
+func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response, error) {
+	prepared, err := c.prepare(ctx, request)
+	if err != nil {
+		return nil, err
 	}
 
 	span := telemetry.StartSpan(ctx, "http", telemetry.KindExternal)
-	span.SetAttribute("method", built.Method)
-	span.SetAttribute("host", built.URL.Host)
+	span.SetAttribute("method", prepared.Method)
+	span.SetAttribute("host", prepared.URL.Host)
 	defer span.End()
 
-	response, err := c.client.Do(built)
+	response, err := c.client.Do(prepared)
 	if err != nil {
 		span.RecordError(err)
 		return nil, fmt.Errorf("HTTP\\Client: %w", err)
@@ -155,20 +230,63 @@ func (c *Client) Send(ctx context.Context, request *Request) (*Response, error) 
 	}, nil
 }
 
-// Get sends a GET request to $url and returns the response.
-func (c *Client) Get(ctx context.Context, url string) (*Response, error) {
-	request, err := NewRequest(ctx, nethttp.MethodGet, url)
-	if err != nil {
-		return nil, err
+// prepare resolves a request against the client's base URL and default
+// headers. It clones rather than mutating, so the same request value can be
+// sent by two clients, and so Parallel does not write to a request another
+// goroutine is reading.
+func (c *Client) prepare(ctx context.Context, request *nethttp.Request) (*nethttp.Request, error) {
+	prepared := request.Clone(ctx)
+
+	if c.base != "" && !prepared.URL.IsAbs() {
+		base, err := url.Parse(c.base)
+		if err != nil {
+			return nil, fmt.Errorf("HTTP\\Client: base_url: %w", err)
+		}
+		prepared.URL = base.ResolveReference(prepared.URL)
+		prepared.Host = prepared.URL.Host
 	}
-	return c.Send(ctx, request)
+	if !prepared.URL.IsAbs() {
+		return nil, fmt.Errorf("HTTP\\Client: %q is relative and no base_url is set", prepared.URL.String())
+	}
+
+	for name, value := range c.headers {
+		if prepared.Header.Get(name) == "" {
+			prepared.Header.Set(name, value)
+		}
+	}
+	return prepared, nil
 }
 
-// Post sends a POST request to $url with $body and returns the response.
-func (c *Client) Post(ctx context.Context, url string, body ...string) (*Response, error) {
-	request, err := NewRequest(ctx, nethttp.MethodPost, url, body...)
+// toRequestMap reads the argument Parallel takes. A script passes a PHP array
+// of HTTP\Request keyed by name; a Go caller passes the map directly.
+func toRequestMap(requests any) (map[string]*nethttp.Request, error) {
+	switch value := requests.(type) {
+	case nil:
+		return nil, fmt.Errorf("HTTP\\Client: parallel expects an array of HTTP\\Request")
+	case map[string]*nethttp.Request:
+		return value, nil
+	}
+
+	if !model.IsCollection(requests) {
+		return nil, fmt.Errorf("HTTP\\Client: parallel expects an array of HTTP\\Request, got %T", requests)
+	}
+
+	out := map[string]*nethttp.Request{}
+	var err error
+	model.RangeValues(requests, func(key, value any) bool {
+		request, ok := value.(*nethttp.Request)
+		if !ok {
+			err = fmt.Errorf("HTTP\\Client: parallel: %q is %T, want an HTTP\\Request", toString(key), value)
+			return false
+		}
+		out[toString(key)] = request
+		return true
+	})
 	if err != nil {
 		return nil, err
 	}
-	return c.Send(ctx, request)
+	if len(out) == 0 {
+		return nil, errors.New("HTTP\\Client: parallel was given no requests")
+	}
+	return out, nil
 }

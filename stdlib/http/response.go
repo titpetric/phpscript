@@ -6,21 +6,32 @@ import (
 	nethttp "net/http"
 )
 
-// Response is the PHP-visible result of sending a request. The body is read in
-// full when the response is constructed, because a script has no stream to
-// close; see Client.Send.
+// Response is the PHP-visible result of sending a request.
+//
+// This one is a facade rather than a net/http response, for two reasons. The
+// body is read in full when the response is constructed, because a script has
+// no stream to close and an unread net/http body leaks its connection. And
+// ok() and json() are the two things a script does with a response that
+// net/http has no equivalent for.
 type Response struct {
 	status int64
 	header nethttp.Header
 	body   string
+	err    string
 }
 
 // Status returns the HTTP status code. It is an int, so it compares against a
-// literal: $response->status() == 200.
+// literal: $response->status() == 200. A request that never got a response
+// reports 0; see err().
 func (r *Response) Status() int64 { return r.status }
 
-// OK reports whether the status is in the 2xx range.
-func (r *Response) OK() bool { return r.status >= 200 && r.status < 300 }
+// OK reports whether the request got a response with a 2xx status.
+func (r *Response) OK() bool { return r.err == "" && r.status >= 200 && r.status < 300 }
+
+// Err returns why the request failed, or an empty string when it did not. Only
+// parallel() produces a failed response: send() throws instead, because there
+// is one outcome to report rather than several.
+func (r *Response) Err() string { return r.err }
 
 // Body returns the response body as a string.
 func (r *Response) Body() string { return r.body }

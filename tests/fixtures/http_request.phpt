@@ -1,41 +1,40 @@
 name: http request and client construction
 description: >
   HTTP\Request and HTTP\Client are host bindings with no PHP counterpart, so
-  the expected output is the runtime's contract rather than PHP's. Only
-  construction and introspection are covered: building a request sends
-  nothing, so this stays offline. Sending is tested against httptest in
-  stdlib/http/client_test.go, because a fixture that reached the network would
-  fail whenever the network did.
+  the expected output is the runtime's contract rather than PHP's. A request is
+  a net/http request, so this covers the Go spellings a script uses to read and
+  write one. Only construction and introspection are covered: building a
+  request sends nothing, so this stays offline. Sending, including parallel(),
+  is tested against httptest in stdlib/http/client_test.go, because a fixture
+  that reached the network would fail whenever the network did.
 runner:
   php: false
 ---
 <?php
 
-$request = new HTTP\Request("get", "https://example.invalid/users");
-echo $request->method() . "\n";
-echo $request->url() . "\n";
+$request = new HTTP\Request("GET", "https://example.invalid/users?page=1");
 
-// The setters return the request, so they chain.
-$request->set_header("Accept", "application/json")
-        ->set_query("page", "2")
-        ->set_body("payload");
+// A request is a net/http request, so its fields are read the way Go names
+// them, matched case-insensitively.
+echo $request->method . "\n";
+echo $request->host . "\n";
+echo $request->url->path . "\n";
+echo $request->url->string() . "\n";
+echo $request->proto . "\n";
 
-echo $request->url() . "\n";
-echo $request->header("accept") . "\n";
-echo $request->body() . "\n";
+// Headers go through net/http's own Header methods.
+$request->header->set("Accept", "application/json");
+$request->header->add("X-Trace", "abc");
+echo $request->header->get("accept") . "\n";
 
-$headers = $request->headers();
-echo $headers["Accept"] . "\n";
-
-// A body is optional, and the method is normalised.
-$post = new HTTP\Request("post", "https://example.invalid/users", '{"name":"ada"}');
-echo $post->method() . "\n";
-echo $post->body() . "\n";
+// A body is optional, and its length is set on the request.
+$post = new HTTP\Request("POST", "https://example.invalid/users", '{"name":"ada"}');
+echo $post->method . "\n";
+echo $post->contentlength . "\n";
 
 // A client with no options is valid: it has a default timeout and follows
 // redirects. Constructing without a throw is the assertion; note that a
-// Go-backed binding is not is_object(), which holds for every host class and
-// not just this one.
+// Go-backed binding is not is_object(), which holds for every host class.
 try {
     new HTTP\Client();
     echo "client\n";
@@ -71,17 +70,28 @@ try {
 } catch (Exception $e) {
     echo "rejected\n";
 }
+
+// parallel() takes an array of HTTP\Request keyed by name. Anything else is
+// reported before a connection is opened.
+$client = new HTTP\Client();
+try {
+    $client->parallel(array("users" => "not a request"));
+    echo "accepted\n";
+} catch (Exception $e) {
+    echo "rejected\n";
+}
 ?>
 ---
 GET
-https://example.invalid/users
-https://example.invalid/users?page=2
-application/json
-payload
+example.invalid
+/users
+https://example.invalid/users?page=1
+HTTP/1.1
 application/json
 POST
-{"name":"ada"}
+14
 client
 configured
+rejected
 rejected
 rejected
