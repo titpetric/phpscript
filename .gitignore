@@ -13,6 +13,7 @@ vendor
 # venom's per-run logs. Neither is committed.
 venom*.log
 demos/*/templates/cache/
+*.so
 
 # Local agent/editor state, never committed.
 /.claude

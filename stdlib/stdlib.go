@@ -1127,8 +1127,10 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("is_string", func(value any) bool { _, ok := value.(string); return ok })
 	// is_bool reports whether $value is a boolean.
 	rt.RegisterFunc("is_bool", func(value any) bool { _, ok := value.(bool); return ok })
-	// is_object reports whether $value is an object.
-	rt.RegisterFunc("is_object", func(value any) bool { _, ok := value.(*model.Object); return ok })
+	// is_object reports whether $value is an object. A value a Go binding
+	// returned is one: a script constructs it with new, calls its methods and
+	// reads its properties the same way it does an interpreted object.
+	rt.RegisterFunc("is_object", isObject)
 	// get_included_files returns the names of the files included or required so far.
 	rt.RegisterFunc("get_included_files", func() []string { return rt.IncludedFiles() })
 	// is_numeric reports whether $value is an int or a float; unlike PHP, numeric strings return false.
@@ -1357,4 +1359,35 @@ func arrValues(a any) []any {
 	out := make([]any, 0, n)
 	model.RangeValues(a, func(_, v any) bool { out = append(out, v); return true })
 	return out
+}
+
+// isObject reports whether value is what PHP calls an object, backing
+// is_object.
+//
+// An interpreted object is one. So is a value a Go binding handed over: a
+// script constructs it with new, calls its methods and reads its properties
+// the same way, and get_class, method_exists and spl_object_id all reflect
+// over it to answer.
+//
+// A collection is an array rather than an object, which is why the check comes
+// before the struct test: *model.Array is itself a pointer to a struct.
+func isObject(value any) bool {
+	if value == nil {
+		return false
+	}
+	if _, ok := value.(*model.Object); ok {
+		return true
+	}
+	if model.IsCollection(value) {
+		return false
+	}
+
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return false
+		}
+		rv = rv.Elem()
+	}
+	return rv.Kind() == reflect.Struct
 }
