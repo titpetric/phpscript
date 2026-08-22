@@ -11,6 +11,7 @@ PHP, it can be pretty much used in the same ways as you would use PHP.
 - [Routing](routing.md)
 - [Virtual hosting](virtual-hosting.md)
 - [Database bindings](database.md)
+- [HTTP client bindings](http-client.md)
 - [Shared memory bindings](shared-memory.md)
 - [Templating](templating.md)
 
