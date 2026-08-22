@@ -959,6 +959,94 @@ class Exception
 
 Also registered with this constructor: `ArgumentCountError`, `ArithmeticError`, `BadFunctionCallException`, `BadMethodCallException`, `DivisionByZeroError`, `DomainException`, `Error`, `ErrorException`, `InvalidArgumentException`, `JsonException`, `LengthException`, `LogicException`, `OutOfBoundsException`, `OutOfRangeException`, `OverflowException`, `RangeException`, `TypeError`, `UnderflowException`, `UnexpectedValueException`, `ValueError`.
 
+### `HTTP\Client`
+
+Registered from `stdlib/http`.
+
+```php
+/**
+ * HTTP\Client sends requests. It takes its settings as an associative array,
+ * and with no argument gives a client with a 30 second timeout that follows
+ * redirects.
+ */
+class HTTP\Client
+{
+    public function __construct(mixed $options) {}
+
+    // get sends a GET request to $url and returns the response.
+    public function get(string $url): mixed {}
+
+    // post sends a POST request to $url with $body and returns the response.
+    public function post(string $url, string ...$body): mixed {}
+
+    /**
+     * send sends $request and returns the response. A transport failure or a
+     * timeout throws; an HTTP error status does not, so check $response->status().
+     */
+    public function send(mixed $request): mixed {}
+}
+```
+
+### `HTTP\Request`
+
+Registered from `stdlib/http`.
+
+```php
+/**
+ * HTTP\Request is one outbound request: a method, a URL, and an optional body.
+ * Building it sends nothing; a client does that with $client->send($request).
+ */
+class HTTP\Request
+{
+    public function __construct(string $method, string $url, string ...$body) {}
+
+    /**
+     * add_header adds a request header, keeping any value already set for it, and
+     * returns the request so calls can be chained.
+     */
+    public function add_header(string $name, string $value): mixed {}
+
+    // body returns the request body.
+    public function body(): string {}
+
+    /**
+     * header returns the value of the named request header, or an empty string when
+     * it is not set. Header names are matched case-insensitively.
+     */
+    public function header(string $name): string {}
+
+    /**
+     * headers returns the request headers as an array of name to value. A header
+     * set more than once is joined with ", ".
+     */
+    public function headers(): array {}
+
+    // method returns the request method.
+    public function method(): string {}
+
+    /**
+     * set_body replaces the request body and returns the request so calls can be
+     * chained.
+     */
+    public function set_body(string $body): mixed {}
+
+    /**
+     * set_header sets a request header, replacing any value already set for it, and
+     * returns the request so calls can be chained.
+     */
+    public function set_header(string $name, string $value): mixed {}
+
+    /**
+     * set_query sets a query parameter on the request URL, replacing any value
+     * already set for it, and returns the request so calls can be chained.
+     */
+    public function set_query(string $name, string $value): mixed {}
+
+    // url returns the request URL, including any query parameters set on it.
+    public function url(): string {}
+}
+```
+
 ### `RuntimeException`
 
 Registered from `stdlib`.
