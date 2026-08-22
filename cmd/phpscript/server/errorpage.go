@@ -16,15 +16,20 @@ import (
 // they answer for, so a site puts one up by writing it and takes it down by
 // deleting it. There is nothing to configure and nothing to switch on.
 //
-// error.php comes last so one page can cover the statuses a site does not care
-// to distinguish; it reads the status out of $_SERVER["REDIRECT_STATUS"].
+// The error pages come last so one page can cover the statuses a site does not
+// care to distinguish. error.php reads the status it is answering for out of
+// $_SERVER["REDIRECT_STATUS"]; error.html cannot name it, and is the one page a
+// site of static files has to answer every failure with.
+//
+// The .php name is preferred at each step, so a site that adds a 404.php beside
+// a hand written 404.html starts serving the new one by writing it.
 //
 // The names are not nested. A directory of its own for /api could only add a
 // page, never remove one, so it cannot say "no page here" — the thing an API
 // actually wants. That is decided per request instead; see serveErrorPage.
-func errorPageNames(status int) [3]string {
+func errorPageNames(status int) [4]string {
 	code := strconv.Itoa(status)
-	return [3]string{code + ".php", code + ".html", "error.php"}
+	return [4]string{code + ".php", code + ".html", "error.php", "error.html"}
 }
 
 // errorPage returns the file that answers for status, named relative to the

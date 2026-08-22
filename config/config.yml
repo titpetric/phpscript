@@ -51,6 +51,11 @@ telemetry:
 # that directory something other than public.
 document_root: public
 
+# Answer a directory that has no index.php or index.html with a listing of
+# what is in it, as nginx's `autoindex on;` does. Off by default: a directory
+# with no index page is a 404, not an invitation to browse the files below it.
+autoindex: false
+
 # The sites this server answers for, one entry per domain. Each root holds a
 # phpscript.yml with the routes, telemetry, runner limits and env that site
 # runs under; the entry only says which domain reaches it and where it lives.

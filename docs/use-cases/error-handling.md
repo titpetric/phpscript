@@ -131,9 +131,22 @@ public/
 └── error.php
 ```
 
-`404.php` answers for a 404, `404.html` is used when there is no `404.php`, and
-`error.php` answers for any status the first two do not name. Deleting the file
-is how a site stops using one.
+Four names are tried for a status, in this order:
+
+| File         | Answers for                              |
+|--------------|------------------------------------------|
+| `404.php`    | That status, rendered by the interpreter |
+| `404.html`   | That status, served as it is on disk     |
+| `error.php`  | Any status the two above do not name     |
+| `error.html` | The same, for a site with no PHP in it   |
+
+The `.php` name is preferred at each step, so a site that adds a `404.php`
+beside a hand written `404.html` starts serving the new one by writing it.
+Deleting the file is how a site stops using one.
+
+`error.php` reads the status it is answering for out of
+`$_SERVER["REDIRECT_STATUS"]`. `error.html` cannot name it, and is the one page
+a site of static files has to answer every failure with.
 
 The page is given the request that failed, in the `$_SERVER` keys Apache fills
 in for an `ErrorDocument`:

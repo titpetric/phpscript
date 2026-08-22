@@ -73,6 +73,27 @@ telemetry:
 	}
 }
 
+// TestVirtualHostAutoindexIsTheSitesOwn pins where directory listings are
+// decided. They describe what one site publishes, not how the process listens,
+// so the key is the site's to set and it is off for a site that says nothing.
+func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
+	base := config.New()
+	if base.Autoindex {
+		t.Error("autoindex = true, want off unless a site asks for it")
+	}
+
+	root := writeSite(t, "autoindex: true\n")
+	host := config.VirtualHost{Domain: "files.test", Root: root}
+
+	result, err := host.Load(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Autoindex {
+		t.Error("autoindex = false, the site file turned it on")
+	}
+}
+
 // TestVirtualHostLoadRejectsServer pins that a site cannot move the listen
 // address, and that it is told so rather than having the block dropped.
 func TestVirtualHostLoadRejectsServer(t *testing.T) {

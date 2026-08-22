@@ -31,7 +31,7 @@ var errorPageFS = fstest.MapFS{
 
 func newErrorPageHandler(t *testing.T, files fstest.MapFS) *handler {
 	t.Helper()
-	h, err := newHandler(files, "", DefaultDocumentRoot, runner.Options{}, false)
+	h, err := newHandler(files, "", DefaultDocumentRoot, runner.Options{}, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,8 +242,8 @@ func TestErrorPageRunsOnce(t *testing.T) {
 }
 
 // TestErrorPageFallsBackThroughTheNameList pins the lookup: the status named in
-// PHP, then the status named in HTML, then error.php for a site that keeps one
-// page for several statuses.
+// PHP, then the status named in HTML, then error.php and error.html for a site
+// that keeps one page for several statuses.
 func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
 	navigation := map[string]string{"Accept": browserAccept}
 
@@ -267,6 +267,28 @@ func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
 		})
 		rr := fetch(h, http.MethodGet, "/gone.php", navigation)
 		if rr.Code != http.StatusServiceUnavailable || rr.Body.String() != "error 503" {
+			t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+		}
+	})
+
+	t.Run("error.html covers a site with no PHP in it", func(t *testing.T) {
+		h := newErrorPageHandler(t, fstest.MapFS{
+			"public/index.html": {Data: []byte(`<h1>home</h1>`)},
+			"public/error.html": {Data: []byte(`<h1>something went wrong</h1>`)},
+		})
+		rr := fetch(h, http.MethodGet, "/missing", navigation)
+		if rr.Code != http.StatusNotFound || rr.Body.String() != "<h1>something went wrong</h1>" {
+			t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+		}
+	})
+
+	t.Run("the status named in HTML wins over the catch-all", func(t *testing.T) {
+		h := newErrorPageHandler(t, fstest.MapFS{
+			"public/404.html":  {Data: []byte(`<h1>gone</h1>`)},
+			"public/error.php": {Data: []byte(`<?php echo "error " . $_SERVER["REDIRECT_STATUS"];`)},
+		})
+		rr := fetch(h, http.MethodGet, "/missing", navigation)
+		if rr.Code != http.StatusNotFound || rr.Body.String() != "<h1>gone</h1>" {
 			t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
 		}
 	})
@@ -332,7 +354,7 @@ func TestErrorPageInAWritableDirectoryIsNotRun(t *testing.T) {
 		fstest.MapFS{"public/404.php": {Data: []byte(`<?php echo "uploaded";`)}},
 		"/srv/site", DefaultDocumentRoot,
 		runner.Options{WritablePaths: []string{"public"}},
-		false,
+		false, false,
 	)
 	if err != nil {
 		t.Fatal(err)

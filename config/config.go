@@ -32,6 +32,12 @@ type Config struct {
 	// else.
 	DocumentRoot string `yaml:"document_root"`
 
+	// Autoindex answers a directory that has no index page with a listing of
+	// what is in it, the way nginx's autoindex does. It is off, because
+	// publishing every file below the document root is a decision a site
+	// makes and not one it should arrive at by leaving an index.html out.
+	Autoindex bool `yaml:"autoindex"`
+
 	// VirtualHost is the list of sites this server routes by domain. Each
 	// entry names an application root whose phpscript.yml is the
 	// configuration that site runs under.

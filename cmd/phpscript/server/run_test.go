@@ -185,7 +185,7 @@ func newTracedServer(root fstest.MapFS) (http.Handler, *telemetry.Module, error)
 	options.Tracer = tracer
 
 	recorder := telemetry.NewModule(tracer)
-	handler, err := newHandler(root, "", DefaultDocumentRoot, runner.Options{}, false, recorder)
+	handler, err := newHandler(root, "", DefaultDocumentRoot, runner.Options{}, false, false, recorder)
 	if err != nil {
 		return nil, nil, err
 	}

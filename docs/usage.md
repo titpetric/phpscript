@@ -208,9 +208,13 @@ phpscript server ./my-app
 ```
 
 CSS, JavaScript, images, and other non-PHP files are served directly from
-`public/`. PHP files in `public/` are executable by filename, and `/` resolves
-to `public/index.php` when no annotated route handles it. Files outside
-`public/` are never directly exposed.
+`public/`. PHP files in `public/` are executable by filename, and a request that
+names a directory resolves to its `index.php`, or to its `index.html` when there
+is no `index.php`: `/` is `public/index.php` or `public/index.html`, and `/docs/`
+is `public/docs/index.php` or `public/docs/index.html`. A directory with neither
+is a 404 unless the configuration sets `autoindex: true`, which answers it with a
+generated listing instead. Files outside `public/` are never directly exposed.
+See [Serving static files](use-cases/static-files.md).
 
 A file in `public/` named after a status answers for it: `public/404.php` is
 what a visitor following a dead link sees, and `public/503.php` answers a

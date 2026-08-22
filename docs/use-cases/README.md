@@ -7,6 +7,7 @@ PHP, it can be pretty much used in the same ways as you would use PHP.
 - [Building an application](application.md)
 - [Usage of Go bindings](bindings.md)
 - [Error handling](error-handling.md)
+- [Serving static files](static-files.md)
 - [Routing](routing.md)
 - [Virtual hosting](virtual-hosting.md)
 - [Database bindings](database.md)

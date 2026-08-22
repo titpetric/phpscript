@@ -51,8 +51,8 @@ type Module struct {
 }
 
 // NewModule creates the HTTP module serving one application root.
-func NewModule(root, documentRoot string, options runner.Options, flatstack bool, observers ...runner.Observer) (*Module, error) {
-	handler, err := newHandler(os.DirFS(root), root, documentRoot, options, flatstack, observers...)
+func NewModule(root, documentRoot string, options runner.Options, flatstack, autoindex bool, observers ...runner.Observer) (*Module, error) {
+	handler, err := newHandler(os.DirFS(root), root, documentRoot, options, flatstack, autoindex, observers...)
 	if err != nil {
 		return nil, err
 	}
@@ -79,12 +79,15 @@ type handler struct {
 	rootDir       string
 	documentRoot  string
 	public        fs.FS
-	static        http.Handler
 	includeCache  *runner.IncludeCache
 	exprCache     *runner.ExprCache
 	runnerOptions runner.Options
 	flatstack     bool
 	observers     []runner.Observer
+
+	// autoindex answers a directory with no index page with a listing of
+	// what is in it. See serveAutoindex.
+	autoindex bool
 
 	// writable is where scripts may write, resolved against the application
 	// root. Nothing in one of these directories is executed.
@@ -94,10 +97,10 @@ type handler struct {
 // NewHandler serves annotated project routes and files beneath public/.
 func NewHandler(root fs.FS) (http.Handler, error) {
 	var options runner.Options
-	return newHandler(root, "", DefaultDocumentRoot, options, false)
+	return newHandler(root, "", DefaultDocumentRoot, options, false, false)
 }
 
-func newHandler(root fs.FS, rootDir, documentRoot string, options runner.Options, flatstack bool, observers ...runner.Observer) (*handler, error) {
+func newHandler(root fs.FS, rootDir, documentRoot string, options runner.Options, flatstack, autoindex bool, observers ...runner.Observer) (*handler, error) {
 	if documentRoot == "" {
 		documentRoot = DefaultDocumentRoot
 	}
@@ -110,11 +113,11 @@ func newHandler(root fs.FS, rootDir, documentRoot string, options runner.Options
 		rootDir:       rootDir,
 		documentRoot:  documentRoot,
 		public:        public,
-		static:        http.FileServer(http.FS(public)),
 		includeCache:  runner.NewIncludeCache(),
 		exprCache:     runner.NewExprCache(),
 		runnerOptions: options,
 		flatstack:     flatstack,
+		autoindex:     autoindex,
 		observers:     observers,
 		writable:      files.WritableRoots(rootDir, options.WritablePaths),
 	}
@@ -145,20 +148,38 @@ func (h *handler) executes(filename string) bool {
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	filename := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
-	if filename == "" || filename == "." {
-		filename = "index.php"
+	if filename == "" {
+		filename = "."
 	}
 	info, err := fs.Stat(h.public, filename)
 	if err != nil {
-		// Nothing ran and nothing matched, so this is the site's 404 to answer
-		// if it has one. See serveErrorPage for who gets it.
-		if h.serveErrorPage(w, r, http.StatusNotFound, "") {
-			return
-		}
-		http.NotFound(w, r)
+		h.serveNotFound(w, r)
 		return
 	}
-	if !info.IsDir() && path.Ext(filename) == ".php" {
+
+	// A directory is answered by its index page. One with no index page is a
+	// 404 rather than a listing of the files below it, unless the site turned
+	// autoindex on and asked for exactly that.
+	if info.IsDir() {
+		// A directory named without its trailing slash is redirected first, so
+		// the relative links in the page that answers resolve below it and not
+		// beside it.
+		if !strings.HasSuffix(r.URL.Path, "/") {
+			redirectToDirectory(w, r)
+			return
+		}
+		index, ok := h.indexPage(filename)
+		if !ok {
+			if h.serveAutoindex(w, r, filename) {
+				return
+			}
+			h.serveNotFound(w, r)
+			return
+		}
+		filename = index
+	}
+
+	if path.Ext(filename) == ".php" {
 		// The entrypoint is named relative to the application root, not the
 		// document root, so an include reaching above the served directory
 		// still resolves inside the project.
@@ -169,7 +190,34 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		// A .php file in a writable directory is served, never run.
 	}
-	h.static.ServeHTTP(w, r)
+
+	// The name is served rather than the URL path, because a directory's index
+	// page is a file the request did not name.
+	http.ServeFileFS(w, r, h.public, filename)
+}
+
+// serveNotFound answers a request that resolved to nothing: the site's own page
+// when it has one, and the plain status otherwise. See serveErrorPage for who
+// gets the page.
+func (h *handler) serveNotFound(w http.ResponseWriter, r *http.Request) {
+	if h.serveErrorPage(w, r, http.StatusNotFound, "") {
+		return
+	}
+	http.NotFound(w, r)
+}
+
+// redirectToDirectory sends a request that named a directory without its
+// trailing slash to the same path carrying one, query string and all.
+//
+// The location is relative, as the one http.FileServer writes is: an absolute
+// path would be wrong under a mount that stripped a prefix off the request.
+func redirectToDirectory(w http.ResponseWriter, r *http.Request) {
+	target := path.Base(r.URL.Path) + "/"
+	if query := r.URL.RawQuery; query != "" {
+		target += "?" + query
+	}
+	w.Header().Set("Location", target)
+	w.WriteHeader(http.StatusMovedPermanently)
 }
 
 // serverVars adds the $_SERVER entries only the server knows: where the site
@@ -370,7 +418,7 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
 	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
 
-	files, err := newHandler(os.DirFS(root), root, documentRoot, runnerOptions, appConfig.Flatstack.Enabled, observers...)
+	files, err := newHandler(os.DirFS(root), root, documentRoot, runnerOptions, appConfig.Flatstack.Enabled, appConfig.Autoindex, observers...)
 	if err != nil {
 		return err
 	}
@@ -484,7 +532,7 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	annotationOptions := annotationOptions(siteConfig, runnerOptions, observers, host.Root, name)
 
 	root := os.DirFS(host.Root)
-	files, err := newHandler(root, host.Root, documentRoot, runnerOptions, siteConfig.Flatstack.Enabled, observers...)
+	files, err := newHandler(root, host.Root, documentRoot, runnerOptions, siteConfig.Flatstack.Enabled, siteConfig.Autoindex, observers...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
