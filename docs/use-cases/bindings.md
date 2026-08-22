@@ -63,7 +63,7 @@ ps.RegisterSharedMemory(rt)
 
 The bindings can now be used from PHP. Using the `@route` hints, a request handler can look like this:
 
-```
+```php
 <?php
 
 // @route POST /kv/{key}

@@ -154,6 +154,8 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [`Database`](extensions/implemented-apis.md#database)
     - [`Database\Migrate`](extensions/implemented-apis.md#databasemigrate)
     - [`Exception`](extensions/implemented-apis.md#exception)
+    - [`HTTP\Client`](extensions/implemented-apis.md#httpclient)
+    - [`HTTP\Request`](extensions/implemented-apis.md#httprequest)
     - [`RuntimeException`](extensions/implemented-apis.md#runtimeexception)
     - [`SMTP`](extensions/implemented-apis.md#smtp)
     - [`Session\Manager`](extensions/implemented-apis.md#sessionmanager)

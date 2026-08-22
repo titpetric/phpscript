@@ -9,6 +9,7 @@ import (
 	_ "github.com/titpetric/phpscript/stdlib/compat"
 	_ "github.com/titpetric/phpscript/stdlib/database"
 	_ "github.com/titpetric/phpscript/stdlib/files"
+	_ "github.com/titpetric/phpscript/stdlib/http"
 	_ "github.com/titpetric/phpscript/stdlib/info"
 	_ "github.com/titpetric/phpscript/stdlib/internals"
 	_ "github.com/titpetric/phpscript/stdlib/ps"

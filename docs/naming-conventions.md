@@ -221,7 +221,7 @@ with the names they get when they arrive.
 
 | Area          | PHP does it with | phpscript name                       | State                                                      |
 |---------------|------------------|--------------------------------------|------------------------------------------------------------|
-| HTTP client   | `curl_*`         | `HTTP\Client`, `HTTP\Request`        | Not implemented                                            |
+| HTTP client   | `curl_*`         | `HTTP\Client`, `HTTP\Request`        | Implemented                                                |
 | JSON          | `json_encode`    | `json_encode`, `json_decode`         | Implemented, PHP-compatible                                |
 | YAML          | `yaml_*`         | `yaml_parse`, `yaml_emit`            | Not implemented, aim for PHP-compatible                    |
 | Databases     | PDO              | `Database`                           | Implemented                                                |
@@ -258,8 +258,8 @@ rest.
 `stdlib/ps` is where the phpscript-specific extensions live: the bindings that
 are each too small to be worth a package. It holds `Session\*`, `SharedMemory`,
 `defer` and `register_shutdown_function` today. An area that grows past that gets its own
-package, as `stdlib/smtp` and `stdlib/span` did and as `Database` did when it
-moved to `stdlib/database`. Moving one costs nothing a script can see, because
+package, as `stdlib/smtp`, `stdlib/span` and `stdlib/http` did and as `Database`
+did when it moved to `stdlib/database`. Moving one costs nothing a script can see, because
 the Go package a binding lives in is not part of what a script types.
 
 Renaming a registered class is the expensive change, which is why the rule is

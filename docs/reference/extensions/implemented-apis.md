@@ -959,6 +959,108 @@ class Exception
 
 Also registered with this constructor: `ArgumentCountError`, `ArithmeticError`, `BadFunctionCallException`, `BadMethodCallException`, `DivisionByZeroError`, `DomainException`, `Error`, `ErrorException`, `InvalidArgumentException`, `JsonException`, `LengthException`, `LogicException`, `OutOfBoundsException`, `OutOfRangeException`, `OverflowException`, `RangeException`, `TypeError`, `UnderflowException`, `UnexpectedValueException`, `ValueError`.
 
+### `HTTP\Client`
+
+Registered from `stdlib/http`.
+
+```php
+/**
+ * HTTP\Client sends requests, one at a time with send() or all at once with
+ * parallel(). It takes its settings as an associative array, and with no
+ * argument gives a client with a 30 second timeout that follows redirects.
+ */
+class HTTP\Client
+{
+    public function __construct(mixed $options) {}
+
+    // get sends a GET request to $url and returns the response.
+    public function get(string $url): mixed {}
+
+    /**
+     * parallel sends every request in $requests at once and returns the responses
+     * under the same keys, so the call takes as long as the slowest request rather
+     * than the sum. $requests is an array of HTTP\Request keyed by a name the
+     * script chooses, each bounded by the client's timeout.
+     * 
+     * One request failing does not fail the others and does not throw: that
+     * response reports $response->ok() as false and $response->err() as the reason,
+     * so a script sees every outcome. A throw means the argument was not an array
+     * of requests.
+     */
+    public function parallel(mixed $requests): array {}
+
+    // post sends a POST request to $url with $body and returns the response.
+    public function post(string $url, string ...$body): mixed {}
+
+    /**
+     * send sends $request and returns the response. A transport failure or a
+     * timeout throws; an HTTP error status does not, so check $response->status().
+     */
+    public function send(mixed $request): mixed {}
+}
+```
+
+### `HTTP\Request`
+
+Registered from `stdlib/http`.
+
+```php
+/**
+ * HTTP\Request is one outbound request. It is a net/http request, so a script
+ * reads and writes it the way Go does: $request->method, $request->host,
+ * $request->url->path, and $request->header->set($name, $value). Building one
+ * sends nothing; a client does that with $client->send($request).
+ */
+class HTTP\Request
+{
+    public function __construct(string $method, string $url, string ...$body) {}
+
+    public function add_cookie(object $value2): void {}
+
+    public function basic_auth(): string|string|bool {}
+
+    public function clone(): object {}
+
+    public function context(): object {}
+
+    public function cookie(string $string): object {}
+
+    public function cookies(): array {}
+
+    public function cookies_named(string $string): array {}
+
+    public function form_file(string $string): object|object {}
+
+    public function form_value(string $string): string {}
+
+    public function multipart_reader(): object {}
+
+    public function parse_form(): void {}
+
+    public function parse_multipart_form(int $num): void {}
+
+    public function path_value(string $string): string {}
+
+    public function post_form_value(string $string): string {}
+
+    public function proto_at_least(int $num1, int $num2): bool {}
+
+    public function referer(): string {}
+
+    public function set_basic_auth(string $string1, string $string2): void {}
+
+    public function set_path_value(string $string1, string $string2): void {}
+
+    public function user_agent(): string {}
+
+    public function with_context(): object {}
+
+    public function write(object $value2): void {}
+
+    public function write_proxy(object $value2): void {}
+}
+```
+
 ### `RuntimeException`
 
 Registered from `stdlib`.
