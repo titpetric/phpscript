@@ -33,8 +33,9 @@ echo $post->method . "\n";
 echo $post->contentlength . "\n";
 
 // A client with no options is valid: it has a default timeout and follows
-// redirects. Constructing without a throw is the assertion; note that a
-// Go-backed binding is not is_object(), which holds for every host class.
+// redirects. Constructing without a throw is what this asserts, because the
+// settings it applies are only observable once a request is sent, which
+// stdlib/http/client_test.go covers.
 try {
     new HTTP\Client();
     echo "client\n";
