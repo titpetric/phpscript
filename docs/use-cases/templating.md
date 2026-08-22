@@ -90,7 +90,8 @@ Even a simple CMS may:
 
 For example, an edit form for an user may:
 
-```<?php
+```php
+<?php
 
 // @route GET /user/{id}/edit
 
@@ -110,7 +111,8 @@ $tpl->render();
 
 And a POST endpoint:
 
-```<?php
+```php
+<?php
 
 // @route POST /user/{id}/edit
 
