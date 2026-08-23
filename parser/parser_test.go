@@ -288,3 +288,45 @@ func TestParseReadonlyAsCallable(t *testing.T) {
 		t.Fatalf("got %#v, want Call(readonly)", prog.Stmts[0])
 	}
 }
+
+// `extends` and `implements` are recorded on the AST but confer no
+// inheritance; the parser's only job is to keep the names.
+func TestParseClassHeritage(t *testing.T) {
+	prog := mustParse(t, "<?php\nnamespace App;\n\nuse Vendor\\Framework\\TestCase;\n\nfinal class Suite extends TestCase implements \\Countable, Local {}\n")
+	cd, ok := prog.Stmts[len(prog.Stmts)-1].(*model.ClassDecl)
+	if !ok {
+		t.Fatalf("got %T, want *model.ClassDecl", prog.Stmts[len(prog.Stmts)-1])
+	}
+	if cd.Parent != `Vendor\Framework\TestCase` {
+		t.Errorf("parent = %q, want Vendor\\Framework\\TestCase", cd.Parent)
+	}
+	want := []string{"Countable", `App\Local`}
+	if len(cd.Implements) != len(want) {
+		t.Fatalf("implements = %v, want %v", cd.Implements, want)
+	}
+	for i, name := range want {
+		if cd.Implements[i] != name {
+			t.Errorf("implements[%d] = %q, want %q", i, cd.Implements[i], name)
+		}
+	}
+}
+
+func TestParseClassHeritageOmitted(t *testing.T) {
+	cd := mustParse(t, `<?php class Plain {}`).Stmts[0].(*model.ClassDecl)
+	if cd.Parent != "" || cd.Implements != nil {
+		t.Errorf("parent/implements = %q/%v, want empty", cd.Parent, cd.Implements)
+	}
+}
+
+func TestParseClassHeritageRejected(t *testing.T) {
+	cases := map[string]string{
+		"class A extends {}":      "expected class name after extends",
+		"class A implements {}":   "expected interface name after implements",
+		"class A implements B, {": "expected interface name after implements",
+	}
+	for src, want := range cases {
+		if _, err := Parse("<?php " + src); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want one containing %q", src, err, want)
+		}
+	}
+}

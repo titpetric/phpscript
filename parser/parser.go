@@ -7,6 +7,9 @@
 // and property access via both `->` and `.`, array/new expressions, and the
 // usual operators. It intentionally does not implement the full PHP grammar
 // (see the README "omissions" list: inheritance, interfaces, traits, etc.).
+// `extends` and `implements` are an exception in one direction only: they are
+// parsed and recorded on the AST so files carrying them lint and reformat, but
+// nothing downstream inherits.
 package parser
 
 import (
@@ -1019,6 +1022,37 @@ func (p *parser) parseModifiedClass() (model.Stmt, error) {
 	return p.parseClass(mods)
 }
 
+// parseClassHeritage consumes `extends Name` and `implements A, B` and records
+// the names on cd. Recording is all it does: the runtime has no inheritance, so
+// a parent contributes no members and an interface is not checked. The names
+// are kept because the formatter rewrites files in place and would otherwise
+// drop them.
+func (p *parser) parseClassHeritage(cd *model.ClassDecl) error {
+	if p.isKw("extends") {
+		p.next()
+		name, absolute, err := p.parseQualifiedName(true)
+		if err != nil {
+			return fmt.Errorf("line %d: expected class name after extends: %w", p.cur().line, err)
+		}
+		cd.Parent = p.qualify(name, absolute)
+	}
+	if !p.isKw("implements") {
+		return nil
+	}
+	p.next()
+	for {
+		name, absolute, err := p.parseQualifiedName(true)
+		if err != nil {
+			return fmt.Errorf("line %d: expected interface name after implements: %w", p.cur().line, err)
+		}
+		cd.Implements = append(cd.Implements, p.qualify(name, absolute))
+		if !p.isOp(",") {
+			return nil
+		}
+		p.next()
+	}
+}
+
 func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 	p.next() // class
 	if p.cur().kind != tIdent {
@@ -1029,6 +1063,9 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 		Abstract: mods.abstract,
 		Final:    mods.final,
 		Readonly: mods.readonly,
+	}
+	if err := p.parseClassHeritage(cd); err != nil {
+		return nil, err
 	}
 	wasInClass := p.inClass
 	p.inClass = true

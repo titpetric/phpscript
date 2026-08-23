@@ -152,15 +152,22 @@ type FuncDecl struct {
 // inheritance. The `abstract`, `final` and `readonly` modifiers are tolerated
 // (parsed) but not enforced (README omits abstract classes; minitpl's Hook is
 // abstract only to declare constants).
+//
+// Parent and Implements are recorded for the same reason: a file the formatter
+// rewrites must print back what it read, and a name the AST cannot hold is a
+// name the formatter deletes. Neither confers inheritance -- see the "Known
+// divergences from PHP" section of docs/README.md.
 type ClassDecl struct {
-	Name     string
-	Abstract bool
-	Final    bool
-	Readonly bool
-	Fields   []Field
-	Statics  []Field // `static $name = expr` properties, referenced as Class::$name
-	Consts   []Field // class constants (Name + value Expr), referenced as Class::NAME
-	Methods  []*FuncDecl
+	Name       string
+	Parent     string   // `extends Name`, recorded but not inherited from
+	Implements []string // `implements A, B`, recorded but not checked
+	Abstract   bool
+	Final      bool
+	Readonly   bool
+	Fields     []Field
+	Statics    []Field // `static $name = expr` properties, referenced as Class::$name
+	Consts     []Field // class constants (Name + value Expr), referenced as Class::NAME
+	Methods    []*FuncDecl
 }
 
 // Use is `use A\B\C;`, `use A\B\C as D;` or `use function f;`. The parser

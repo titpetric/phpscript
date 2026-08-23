@@ -124,6 +124,20 @@ Memory reporting differs from PHP's allocator view:
 - Exceeding `memory_limit` raises a catchable `RuntimeException`; PHP treats
   it as a fatal error that `catch` cannot intercept.
 
+Classes:
+
+- `extends` and `implements` are parsed and recorded on the class, and confer
+  nothing. A class gets no members from its parent: no inherited methods, no
+  inherited properties or constants, no `parent::`, no constructor to fall back
+  on, and `catch` cannot filter on a base class or an interface. Nothing checks
+  that the parent or the interface exists, or that the class satisfies it.
+  A class that relies on anything it did not declare itself will not run here,
+  even though it parses and lints; declare the members it uses.
+- `abstract`, `final` and `readonly` on a class are parsed and printed back,
+  and none of them is enforced. An abstract class can be instantiated, a final
+  one carries no restriction of its own, and a readonly class does not make its
+  properties readonly.
+
 Includes:
 
 - `include` and `require` both abort the request when the file cannot be

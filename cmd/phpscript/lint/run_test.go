@@ -10,7 +10,7 @@ import (
 
 func TestRunPrintsMarkdownResultsAndSummary(t *testing.T) {
 	dir := t.TempDir()
-	writeLintFile(t, dir, "fail.php", `<?php class Foo extends Bar {}`)
+	writeLintFile(t, dir, "fail.php", `<?php class Foo {`)
 	writeLintFile(t, dir, "pass.php", `<?php echo "ok";`)
 	writeLintFile(t, dir, "warn.php", `<?php if ($value = true) {}`)
 

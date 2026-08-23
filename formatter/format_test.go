@@ -357,7 +357,7 @@ func TestPathsSkipsFilesItCannotFormat(t *testing.T) {
 	dir := t.TempDir()
 	broken := filepath.Join(dir, "broken.php")
 	script := filepath.Join(dir, "script.php")
-	brokenSource := "<?php\nclass Test extends TestCase {\n}\n"
+	brokenSource := "<?php\nclass Test {\n"
 	if err := os.WriteFile(broken, []byte(brokenSource), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -623,4 +623,59 @@ readonly final class Both {
 	if again != out {
 		t.Fatalf("output is not idempotent:\nfirst:\n%s\nsecond:\n%s", out, again)
 	}
+}
+
+func TestClassHeritageRoundTrip(t *testing.T) {
+	in := `<?php
+namespace App;
+
+use Vendor\Framework\TestCase;
+
+final class Suite extends TestCase implements \Countable, Local {
+	function count(): int {
+		return 1;
+	}
+}
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A parent imported from another namespace prints fully qualified, which
+	// is what `new` already does and does not depend on the use statement
+	// surviving.
+	want := `final class Suite extends \Vendor\Framework\TestCase implements \Countable, Local {`
+	if !strings.Contains(out, want) {
+		t.Fatalf("missing %q in:\n%s", want, out)
+	}
+	again, err := formatter.Source(out)
+	if err != nil {
+		t.Fatalf("formatted output does not reformat: %v\n%s", err, out)
+	}
+	if again != out {
+		t.Fatalf("output is not idempotent:\nfirst:\n%s\nsecond:\n%s", out, again)
+	}
+	cd := parseClassDecl(t, out)
+	if cd.Parent != `Vendor\Framework\TestCase` {
+		t.Errorf("reparsed parent = %q, want Vendor\\Framework\\TestCase", cd.Parent)
+	}
+	if len(cd.Implements) != 2 || cd.Implements[0] != "Countable" || cd.Implements[1] != `App\Local` {
+		t.Errorf("reparsed implements = %v, want [Countable App\\Local]", cd.Implements)
+	}
+}
+
+// parseClassDecl returns the single class declaration in src.
+func parseClassDecl(t *testing.T, src string) *model.ClassDecl {
+	t.Helper()
+	prog, err := parser.Parse(src)
+	if err != nil {
+		t.Fatalf("parse: %v\n%s", err, src)
+	}
+	for _, s := range prog.Stmts {
+		if cd, ok := s.(*model.ClassDecl); ok {
+			return cd
+		}
+	}
+	t.Fatalf("no class declaration in:\n%s", src)
+	return nil
 }

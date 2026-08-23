@@ -23,10 +23,11 @@ func TestFlatstackLinterCompatibility(t *testing.T) {
 		t.Fatalf("expected compatible message, got %s", diag.Message)
 	}
 
+	// compact() needs to read the caller scope by name, which the bytecode
+	// engine has no representation for.
 	unsupportedSrc := `<?php
-	class Foo extends Bar {
-		public function baz() {}
-	}
+	$a = 1;
+	$out = compact("a");
 	?>`
 
 	diag, err = lint.FlatstackFile("unsupported.php", unsupportedSrc)
@@ -35,14 +36,14 @@ func TestFlatstackLinterCompatibility(t *testing.T) {
 	}
 
 	if diag.Message == "[flatstack compatible] 100% compatible with flatstack bytecode engine" {
-		t.Fatalf("expected unsupported diagnostic for class inheritance, got %s", diag.Message)
+		t.Fatalf("expected unsupported diagnostic for compact(), got %s", diag.Message)
 	}
 }
 
 func TestPathsReportsParseErrorsAndContinues(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
-		"invalid.php": `<?php class Foo extends Bar {}`,
+		"invalid.php": `<?php class Foo {`,
 		"lint.php":    `<?php if ($value = true) {}`,
 	}
 	for name, src := range files {

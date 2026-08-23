@@ -530,6 +530,17 @@ func (p *printer) printClass(n *model.ClassDecl) {
 	if n.Abstract {
 		head = "abstract " + head
 	}
+	if n.Parent != "" {
+		head += " extends " + p.typeName(n.Parent)
+	}
+	for i, name := range n.Implements {
+		if i == 0 {
+			head += " implements "
+		} else {
+			head += ", "
+		}
+		head += p.typeName(name)
+	}
 	p.line(head + " {")
 	p.depth++
 	members := make([]classMember, 0, len(n.Consts)+len(n.Fields)+len(n.Statics)+len(n.Methods))
