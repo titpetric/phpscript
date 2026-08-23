@@ -196,6 +196,18 @@ func (e *ExitError) Error() string {
 	return fmt.Sprintf("exit(%d)", e.Code)
 }
 
+// ScriptExit reports the status a script ended with, and marks this error as
+// an ending rather than a failure.
+//
+// It exists so a package that cannot name *ExitError can still recognise one:
+// runner imports flatstack/engine, so engine cannot import runner back, and
+// the VM has to know an exit when it unwinds one past a catch clause. Asking
+// the error what it is keeps that seam an interface rather than a string
+// comparison on the message.
+func (e *ExitError) ScriptExit() int {
+	return e.Code
+}
+
 // SAPI returns the configured SAPI string.
 func (rt *Runtime) SAPI() string {
 	return rt.opts.SAPI

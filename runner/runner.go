@@ -493,8 +493,20 @@ func (rt *Runtime) execFor(n *model.For, scope *Scope) (any, flow, error) {
 // from a forwarded Go call), the matching catch clause handles it with the error
 // bound to its variable (so `echo $e` prints the message). A finally block, if
 // present, always runs.
+//
+// exit() and die() are not errors and are not catchable, which is what PHP
+// does: `try { exit(); } catch (Throwable $e) {}` ends the script there. They
+// travel as an error here only because that is how the interpreter unwinds, so
+// the try has to recognise the sentinel and get out of the way. A catch that
+// could swallow an exit would turn `header("Location: ...") ; exit();` inside a
+// try into a page that carries on running after the redirect was staged.
 func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 	val, fl, err := rt.exec(n.Body, scope)
+	if _, exiting := IsExit(err); exiting {
+		// finally is skipped too: PHP runs no finally block on exit.
+		return val, fl, err
+	}
+
 	if err != nil && len(n.Catches) > 0 {
 		rootErr := err
 		for {
