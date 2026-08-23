@@ -1,6 +1,8 @@
 package core
 
 import (
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
@@ -137,6 +139,80 @@ func TestPHPArrayMergeResultIsAppendable(t *testing.T) {
 	}
 	if v, ok := out.Get(int64(2)); !ok || v != "z" {
 		t.Errorf("appended element = %v (%v), want z", v, ok)
+	}
+}
+
+// TestArrayMutatorsRejectNonArrays covers the one case a .phpt fixture cannot:
+// the four mutators resize their argument, so they require a *model.Array and
+// must say so rather than silently mutating a copy the script never sees. PHP
+// has no way to hand them a Go slice, so only a Go test can reach this path.
+func TestArrayMutatorsRejectNonArrays(t *testing.T) {
+	// The shapes a binding hands back in place of a *model.Array.
+	inputs := []any{nil, (*model.Array)(nil), []any{"a"}, []string{"a"}, "str"}
+
+	mutators := []struct {
+		name string
+		call func(any) error
+	}{
+		{"array_shift", func(v any) error { _, err := phpArrayShift(v); return err }},
+		{"array_pop", func(v any) error { _, err := phpArrayPop(v); return err }},
+		{"array_unshift", func(v any) error { _, err := phpArrayUnshift(v, "x"); return err }},
+		{"array_push", func(v any) error { _, err := phpArrayPush(v, "x"); return err }},
+	}
+
+	for _, m := range mutators {
+		t.Run(m.name, func(t *testing.T) {
+			for _, in := range inputs {
+				err := m.call(in)
+				if err == nil {
+					t.Errorf("%s(%T) = nil error, want a rejection", m.name, in)
+					continue
+				}
+				if !strings.HasPrefix(err.Error(), m.name+":") {
+					t.Errorf("%s(%T) error = %q, want it named by the function", m.name, in, err)
+				}
+			}
+			// The same call on a real array must still work.
+			a := model.NewArray()
+			a.Append("a")
+			if err := m.call(a); err != nil {
+				t.Errorf("%s(*model.Array) = %v, want no error", m.name, err)
+			}
+		})
+	}
+}
+
+// TestArrayFindStrict pins the comparison in_array and array_search share: the
+// loose path is phpval.Compare, so PHP 8's "a non-numeric string does not equal
+// 0" holds, and the strict path compares the Go type first.
+func TestArrayFindStrict(t *testing.T) {
+	cases := []struct {
+		name    string
+		needle  any
+		hay     any
+		strict  bool
+		wantKey any
+		wantOK  bool
+	}{
+		{name: "numeric string matches int", needle: "1", hay: []any{int64(1)}, wantKey: int64(0), wantOK: true},
+		{name: "numeric string is not identical to int", needle: "1", hay: []any{int64(1)}, strict: true},
+		{name: "zero does not match a word", needle: int64(0), hay: []any{"a"}},
+		{name: "string key is returned", needle: "b", hay: map[string]any{"y": "b"}, wantKey: "y", wantOK: true},
+		{name: "int and float differ under strict", needle: int64(1), hay: []any{1.0}, strict: true},
+		{name: "nested array compares by value", needle: []any{"a"}, hay: []any{[]any{"a"}}, strict: true, wantKey: int64(0), wantOK: true},
+		{name: "null only matches null under strict", needle: nil, hay: []any{"", nil}, strict: true, wantKey: int64(1), wantOK: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			key, ok := arrayFind(tc.needle, tc.hay, tc.strict)
+			if ok != tc.wantOK {
+				t.Fatalf("found = %v, want %v", ok, tc.wantOK)
+			}
+			if ok && !reflect.DeepEqual(key, tc.wantKey) {
+				t.Errorf("key = %#v, want %#v", key, tc.wantKey)
+			}
+		})
 	}
 }
 

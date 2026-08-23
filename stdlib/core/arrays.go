@@ -31,18 +31,10 @@ func registerArrays(rt *runner.Runtime) {
 		n, _ := model.LenValues(array)
 		return int64(n)
 	})
-	// in_array reports whether $needle occurs in $haystack, comparing values as strings; the $strict argument is accepted and ignored.
-	rt.RegisterFunc("in_array", func(needle, haystack any, strict ...any) bool {
-		found := false
-		model.RangeValues(haystack, func(_, v any) bool {
-			if phpval.String(v) == phpval.String(needle) {
-				found = true
-				return false
-			}
-			return true
-		})
-		return found
-	})
+	// in_array reports whether $needle occurs in $haystack, comparing loosely with PHP 8 rules unless $strict is true, which compares types as well as values.
+	rt.RegisterFunc("in_array", phpInArray)
+	// array_search returns the key of the first $haystack element equal to $needle, or false when there is none; comparison is loose unless $strict is true.
+	rt.RegisterFunc("array_search", phpArraySearch)
 	// array_unique returns $array with duplicate values removed, comparing values as strings and keeping the first occurrence and its key; the $flags argument is accepted and ignored.
 	rt.RegisterFunc("array_unique", func(array any, flags ...any) *model.Array {
 		n, _ := model.LenValues(array)
@@ -78,6 +70,14 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("array_slice", phpArraySlice)
 	// array_splice removes $length elements of $array at $offset, inserts $replacement in their place, and returns the removed elements; a value that is not a script array is an error.
 	rt.RegisterFunc("array_splice", phpArraySplice)
+	// array_shift removes the first element of $array and returns it, renumbering the integer keys from zero and leaving string keys alone; an empty array returns null and a value that is not a script array is an error.
+	rt.RegisterFunc("array_shift", phpArrayShift)
+	// array_unshift prepends the given values to $array and returns the new element count, renumbering the integer keys from zero and leaving string keys alone; a value that is not a script array is an error.
+	rt.RegisterFunc("array_unshift", phpArrayUnshift)
+	// array_pop removes the last element of $array and returns it, leaving the remaining keys as they were; an empty array returns null and a value that is not a script array is an error.
+	rt.RegisterFunc("array_pop", phpArrayPop)
+	// array_push appends the given values to $array at the next integer keys and returns the new element count; a value that is not a script array is an error.
+	rt.RegisterFunc("array_push", phpArrayPush)
 	// array_map returns a list of $callback applied to each value of $array; a single array is accepted and keys are not preserved.
 	rt.RegisterFunc("array_map", func(callback any, array any) ([]any, error) {
 		fn, ok := rt.Callable(callback)
@@ -232,6 +232,176 @@ func phpArraySpliceReplacement(rep any) []any {
 		return phpval.Values(rep)
 	}
 	return []any{rep}
+}
+
+// arrayEntry is one key/value pair of a snapshot taken before the array is
+// rewritten, so the replay is never iterating the storage it overwrites.
+type arrayEntry struct {
+	key any
+	val any
+}
+
+// arrayTarget is the shared guard of the four mutators. They resize their
+// argument, and a Go slice cannot grow through the interface value holding it,
+// so - like array_splice, whose precedent this follows - they require the one
+// shape that can: a *model.Array. A native slice from a binding (explode(),
+// array_keys()) is rejected loudly rather than mutated into a copy the script
+// never sees. See "Known divergences from PHP" in docs/README.md.
+func arrayTarget(name string, array any) (*model.Array, error) {
+	a, ok := array.(*model.Array)
+	if !ok || a == nil {
+		return nil, fmt.Errorf("%s: expected an array, got %T", name, array)
+	}
+	return a, nil
+}
+
+// arrayEntries snapshots the array in insertion order.
+func arrayEntries(a *model.Array) []arrayEntry {
+	out := make([]arrayEntry, 0, a.Len())
+	a.Range(func(k, v any) bool {
+		out = append(out, arrayEntry{key: k, val: v})
+		return true
+	})
+	return out
+}
+
+// arrayReplay appends entries to a, which the caller has cleared. With
+// renumber set it applies PHP's re-keying rule for array_shift and
+// array_unshift: integer keys are handed out again from zero through Append,
+// string keys keep their name. Without it every key is restored as it was,
+// which is what array_pop needs.
+func arrayReplay(a *model.Array, entries []arrayEntry, renumber bool) {
+	for _, e := range entries {
+		if _, isInt := e.key.(int64); isInt && renumber {
+			a.Append(e.val)
+			continue
+		}
+		a.Set(e.key, e.val)
+	}
+}
+
+// phpArrayShift removes the first element and renumbers what is left.
+func phpArrayShift(array any) (any, error) {
+	a, err := arrayTarget("array_shift", array)
+	if err != nil {
+		return nil, err
+	}
+	entries := arrayEntries(a)
+	if len(entries) == 0 {
+		return nil, nil
+	}
+	a.Clear()
+	arrayReplay(a, entries[1:], true)
+	return entries[0].val, nil
+}
+
+// phpArrayUnshift prepends values and renumbers, returning the new count.
+func phpArrayUnshift(array any, values ...any) (int64, error) {
+	a, err := arrayTarget("array_unshift", array)
+	if err != nil {
+		return 0, err
+	}
+	entries := arrayEntries(a)
+	a.Clear()
+	// Appending the new values first leaves them holding keys 0..n-1, so the
+	// replay continues the numbering rather than starting over.
+	for _, v := range values {
+		a.Append(v)
+	}
+	arrayReplay(a, entries, true)
+	return int64(a.Len()), nil
+}
+
+// phpArrayPop removes the last element, keeping the keys of the rest. Unlike
+// shift and unshift it does not renumber: PHP leaves the surviving keys alone,
+// so popping 9 from [5 => a, 9 => c] leaves [5 => a] rather than [0 => a].
+//
+// The append index is Array.Pop's business, since it is the one piece of state
+// a shim cannot reach.
+func phpArrayPop(array any) (any, error) {
+	a, err := arrayTarget("array_pop", array)
+	if err != nil {
+		return nil, err
+	}
+	_, value, ok := a.Pop()
+	if !ok {
+		return nil, nil
+	}
+	return value, nil
+}
+
+// phpArrayPush appends values at the next integer keys, returning the new
+// count. Unlike the other three it does not re-key: PHP leaves the existing
+// keys and the append index alone.
+func phpArrayPush(array any, values ...any) (int64, error) {
+	a, err := arrayTarget("array_push", array)
+	if err != nil {
+		return 0, err
+	}
+	for _, v := range values {
+		a.Append(v)
+	}
+	return int64(a.Len()), nil
+}
+
+// phpInArray reports whether needle occurs in haystack.
+func phpInArray(needle, haystack any, strict ...any) bool {
+	_, found := arrayFind(needle, haystack, arrayStrict(strict))
+	return found
+}
+
+// phpArraySearch returns the key of the first match, or false. The return type
+// is PHP's union rather than an int: a string-keyed array searches to a string
+// key, and key int64(0) is only told apart from false with ===.
+func phpArraySearch(needle, haystack any, strict ...any) any {
+	key, found := arrayFind(needle, haystack, arrayStrict(strict))
+	if !found {
+		return false
+	}
+	return key
+}
+
+// arrayStrict reads the optional $strict argument the two searches share.
+func arrayStrict(strict []any) bool {
+	return len(strict) > 0 && phpval.Truthy(strict[0])
+}
+
+// arrayFind backs both in_array and array_search so the pair cannot disagree
+// about what a match is. Loose matching goes through phpval.Compare, the
+// runtime's canonical comparison, which is where PHP 8's rule that a
+// non-numeric string does not equal 0 comes from.
+func arrayFind(needle, haystack any, strict bool) (any, bool) {
+	var key any
+	found := false
+	model.RangeValues(haystack, func(k, v any) bool {
+		if strict {
+			if !arrayIdentical(needle, v) {
+				return true
+			}
+		} else if phpval.Compare(needle, v) != 0 {
+			return true
+		}
+		key, found = k, true
+		return false
+	})
+	return key, found
+}
+
+// arrayIdentical is PHP's === at value level: the types must match before the
+// values are looked at. Go's == would panic on a slice or a map, so values it
+// cannot compare directly fall back to reflect.DeepEqual.
+func arrayIdentical(x, y any) bool {
+	if x == nil || y == nil {
+		return x == nil && y == nil
+	}
+	tx := reflect.TypeOf(x)
+	if tx != reflect.TypeOf(y) {
+		return false
+	}
+	if tx.Comparable() {
+		return x == y
+	}
+	return reflect.DeepEqual(x, y)
 }
 
 // phpArraySlice returns the selected run as a []any. PHP's array_slice

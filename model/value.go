@@ -175,6 +175,28 @@ func (a *Array) Delete(key any) {
 	}
 }
 
+// Pop removes the last entry and returns its key and value, PHP's array_pop.
+//
+// It lives here rather than in the shim because of the append index, which is
+// the one piece of state a caller cannot reach. PHP decrements it only when the
+// removed key was the one it was about to hand out, so popping 9 from
+// [5 => a, 9 => c] leaves the next append at 9, while popping 5 from
+// [5 => a, 9 => c] leaves it at 10. Rebuilding the array from its entries
+// cannot express that, because it loses the counter.
+func (a *Array) Pop() (any, any, bool) {
+	if a.Len() == 0 {
+		return nil, nil, false
+	}
+	keys := a.Keys()
+	key := keys[len(keys)-1]
+	value, _ := a.Get(key)
+	a.Delete(key)
+	if i, ok := key.(int64); ok && i == a.nextID-1 {
+		a.nextID = i
+	}
+	return key, value, true
+}
+
 // Len reports the number of entries.
 func (a *Array) Len() int {
 	if a.isList() {
