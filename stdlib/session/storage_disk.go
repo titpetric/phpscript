@@ -1,4 +1,4 @@
-package ps
+package session
 
 import (
 	"context"
@@ -10,14 +10,14 @@ import (
 	"time"
 )
 
-// SessionStorageDisk stores sessions in a local folder.
-type SessionStorageDisk struct {
+// StorageDisk stores sessions in a local folder.
+type StorageDisk struct {
 	storagePath string
 }
 
-// NewSessionStorageDisk creates the storage folder and verifies that it is
+// NewStorageDisk creates the storage folder and verifies that it is
 // writable. With no path, it uses the operating system's temporary directory.
-func NewSessionStorageDisk(storagePaths ...string) (*SessionStorageDisk, error) {
+func NewStorageDisk(storagePaths ...string) (*StorageDisk, error) {
 	storagePath := filepath.Join(os.TempDir(), "phpscript-sessions")
 	if len(storagePaths) > 0 {
 		storagePath = storagePaths[0]
@@ -42,10 +42,10 @@ func NewSessionStorageDisk(storagePaths ...string) (*SessionStorageDisk, error) 
 		return nil, fmt.Errorf("remove session storage probe: %w", err)
 	}
 
-	return &SessionStorageDisk{storagePath: storagePath}, nil
+	return &StorageDisk{storagePath: storagePath}, nil
 }
 
-func (s *SessionStorageDisk) sessionPath(id string) (string, error) {
+func (s *StorageDisk) sessionPath(id string) (string, error) {
 	if id == "" || id == "." || filepath.Base(id) != id {
 		return "", fmt.Errorf("invalid session ID %q", id)
 	}
@@ -53,7 +53,7 @@ func (s *SessionStorageDisk) sessionPath(id string) (string, error) {
 }
 
 // Load retrieves a session from disk.
-func (s *SessionStorageDisk) Load(ctx context.Context, id string) ([]byte, error) {
+func (s *StorageDisk) Load(ctx context.Context, id string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (s *SessionStorageDisk) Load(ctx context.Context, id string) ([]byte, error
 }
 
 // Save atomically writes a session to disk.
-func (s *SessionStorageDisk) Save(ctx context.Context, id string, data []byte) error {
+func (s *StorageDisk) Save(ctx context.Context, id string, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (s *SessionStorageDisk) Save(ctx context.Context, id string, data []byte) e
 }
 
 // Delete removes a session from disk.
-func (s *SessionStorageDisk) Delete(ctx context.Context, id string) error {
+func (s *StorageDisk) Delete(ctx context.Context, id string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -111,7 +111,7 @@ func (s *SessionStorageDisk) Delete(ctx context.Context, id string) error {
 }
 
 // Prune removes sessions that have not been saved within maxAge.
-func (s *SessionStorageDisk) Prune(ctx context.Context, maxAge time.Duration) error {
+func (s *StorageDisk) Prune(ctx context.Context, maxAge time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -141,4 +141,4 @@ func (s *SessionStorageDisk) Prune(ctx context.Context, maxAge time.Duration) er
 	return nil
 }
 
-var _ SessionStorage = (*SessionStorageDisk)(nil)
+var _ Storage = (*StorageDisk)(nil)

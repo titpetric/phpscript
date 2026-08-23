@@ -1,4 +1,4 @@
-package ps
+package core
 
 import (
 	"context"
@@ -40,6 +40,11 @@ func NewSharedMemoryBinding(ctx context.Context) (*SharedMemory, error) {
 		return NewSharedMemory(), nil
 	}
 	return s, nil
+}
+
+// init contributes the SharedMemory binding to stdlib.Register.
+func init() {
+	runner.RegisterBinding(RegisterSharedMemory)
 }
 
 // RegisterSharedMemory installs SharedMemory in the runtime.

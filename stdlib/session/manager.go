@@ -1,4 +1,4 @@
-package ps
+package session
 
 import (
 	"context"
@@ -13,32 +13,32 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-const sessionCookieName = "session"
+const defaultCookieName = "session"
 
-// SessionManager associates an HTTP-only cookie with data in SessionStorage.
+// Manager associates an HTTP-only cookie with data in Storage.
 // The cookie contains only an opaque, randomly generated session ID.
-type SessionManager struct {
+type Manager struct {
 	// SessionCookieName is the mutable name used to read and write the session
 	// cookie. PHP may change it with `$session->SessionCookieName = "sid"`.
 	SessionCookieName string
 
-	storage   SessionStorage
+	storage   Storage
 	sessionID string
 }
 
-// NewSessionManager creates a manager backed by storage.
-func NewSessionManager(storage SessionStorage) (*SessionManager, error) {
+// NewManager creates a manager backed by storage.
+func NewManager(storage Storage) (*Manager, error) {
 	if storage == nil {
 		return nil, errors.New("session storage is nil")
 	}
-	return &SessionManager{
-		SessionCookieName: sessionCookieName,
-		storage:           traceSessionStorage(storage),
+	return &Manager{
+		SessionCookieName: defaultCookieName,
+		storage:           traceStorage(storage),
 	}, nil
 }
 
 // Start creates a new session, stores userID, and stages its HTTP-only cookie.
-func (s *SessionManager) Start(ctx context.Context, userID any) error {
+func (s *Manager) Start(ctx context.Context, userID any) error {
 	request, ok := runner.RequestContext(ctx)
 	if !ok {
 		return errors.New("session manager requires an HTTP request context")
@@ -65,7 +65,7 @@ func (s *SessionManager) Start(ctx context.Context, userID any) error {
 }
 
 // Get returns the user ID stored for the current session cookie.
-func (s *SessionManager) Get(ctx context.Context) (string, error) {
+func (s *Manager) Get(ctx context.Context) (string, error) {
 	id, ok := s.currentID(ctx)
 	if !ok {
 		return "", errors.New("invalid or missing session cookie")
@@ -79,7 +79,7 @@ func (s *SessionManager) Get(ctx context.Context) (string, error) {
 
 // Valid reports whether the request has a well-formed cookie whose session is
 // present in storage. Missing and malformed cookies are invalid, not errors.
-func (s *SessionManager) Valid(ctx context.Context) (bool, error) {
+func (s *Manager) Valid(ctx context.Context) (bool, error) {
 	id, ok := s.currentID(ctx)
 	if !ok {
 		return false, nil
@@ -93,7 +93,7 @@ func (s *SessionManager) Valid(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-func (s *SessionManager) currentID(ctx context.Context) (string, bool) {
+func (s *Manager) currentID(ctx context.Context) (string, bool) {
 	if s.sessionID != "" {
 		return s.sessionID, true
 	}

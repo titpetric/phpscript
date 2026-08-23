@@ -1,4 +1,4 @@
-package ps_test
+package session_test
 
 import (
 	"bytes"
@@ -10,18 +10,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/titpetric/phpscript/stdlib/ps"
+	"github.com/titpetric/phpscript/stdlib/session"
 )
 
 func TestSessionStorageImplementations(t *testing.T) {
-	disk, err := ps.NewSessionStorageDisk(filepath.Join(t.TempDir(), "sessions"))
+	disk, err := session.NewStorageDisk(filepath.Join(t.TempDir(), "sessions"))
 	if err != nil {
-		t.Fatalf("NewSessionStorageDisk: %v", err)
+		t.Fatalf("NewStorageDisk: %v", err)
 	}
 
-	storages := map[string]ps.SessionStorage{
+	storages := map[string]session.Storage{
 		"disk":   disk,
-		"memory": ps.NewSessionStorageMemory(),
+		"memory": session.NewStorageMemory(),
 	}
 	for name, storage := range storages {
 		t.Run(name, func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestSessionStorageHonorsCanceledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	storage := ps.NewSessionStorageMemory()
+	storage := session.NewStorageMemory()
 	if err := storage.Save(ctx, "id", nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Save error = %v, want context.Canceled", err)
 	}
@@ -75,11 +75,11 @@ func TestSessionStorageDiskRejectsInvalidPathAndID(t *testing.T) {
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ps.NewSessionStorageDisk(file); err == nil {
-		t.Fatal("NewSessionStorageDisk with file path returned nil error")
+	if _, err := session.NewStorageDisk(file); err == nil {
+		t.Fatal("NewStorageDisk with file path returned nil error")
 	}
 
-	storage, err := ps.NewSessionStorageDisk(t.TempDir())
+	storage, err := session.NewStorageDisk(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}

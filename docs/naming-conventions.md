@@ -98,11 +98,19 @@ func Register(rt *runner.Runtime) {
 without `stdlib` and passes its own installers to `Register`.
 
 Inside a package, a file is named for the area it covers: `stdlib/compat/`
-holds `regex.go` and `buffers.go`, `stdlib/ps/` holds `session_storage_disk.go`
-and `shared_memory.go`. The pattern for a multi-file subject is
+holds `regex.go` and `buffers.go`, `stdlib/core/` holds `strings.go`,
+`arrays.go` and `shared_memory.go`. The pattern for a multi-file subject is
 `<subject>_<aspect>.go`, sorted together by the subject. A package that covers
 one subject drops the prefix, since the package name already carries it:
-`stdlib/database/` holds `query.go` and `migrate.go`, not `database_query.go`.
+`stdlib/database/` holds `query.go` and `migrate.go`, not `database_query.go`,
+and `stdlib/session/` holds `manager.go` and `storage_disk.go`.
+
+In `stdlib/core` each of those files also carries its own `init()`, registering
+only its own area. That is what keeps the files independent: an area is added,
+moved or dropped without touching another file, and no file in the package
+depends on another. The coercion they all need lives in `internal/phpval`
+rather than in a shared file beside them, because a shared file is the coupling
+the split exists to remove.
 
 ## PHP-visible names
 
@@ -141,9 +149,10 @@ being used, not what implements it: `Database` is the canonical database client
 because a database is what a script has a handle to, and it is not renamed after
 the Go package behind it or after the driver it connects through. There is no
 project-wide prefix on a registered name. The Go package is an implementation
-detail and does not appear: `stdlib/ps` holds `Session\*` and `SharedMemory`
-without either of them spelling `ps`, and `Database` kept its name when it moved
-to `stdlib/database`.
+detail and does not appear: `Session\Manager` comes from a package called
+`session` and `SharedMemory` from one called `core`, without either name
+spelling its package, and `Database` kept its name when it moved to
+`stdlib/database`.
 
 A second segment is for a family under the subject, and only when there is one.
 `Session\Storage\Memory` and `Session\Storage\Disk` are two implementations of
@@ -240,11 +249,18 @@ package.
 
 No registered name has to change; the migration outstanding is on the Go side.
 
-**Move PHP's own library into `stdlib/compat`.** The functions PHP defines are
-spread across `stdlib/stdlib.go` and `stdlib/platform.go`, with only output
-buffering and `preg_*` moved into `compat` so far. The rest follows by area, one
-file at a time, leaving `stdlib` holding `Register`, `RegisterFS` and the
-exception type.
+**Move PHP's own library out of `stdlib/stdlib.go`.** The functions PHP defines
+were spread across `stdlib/stdlib.go` and `stdlib/platform.go`. They split two
+ways, and the line is behavioural rather than historical. `stdlib/compat` holds
+the surface whose behaviour is the interpreter's: output buffering, `preg_*`,
+the date functions, things defined by what the engine does rather than by what
+they compute. `stdlib/core` holds the surface that computes: `strlen`,
+`array_merge`, `json_encode`. Either way `stdlib` keeps only `Register`,
+`RegisterFS` and the exception type.
+
+The exception type stays because `Register` installs it before anything else,
+and `stdlib` blank-imports `core`, so moving the registration there would make
+a cycle.
 
 Some of PHP's surface stays in `runner` rather than moving. `func_get_args`
 returns the current frame's arguments, which only the runtime holds, so it is
@@ -255,12 +271,14 @@ also read the calling scope, but they reach it through
 `runner.ScopeFromContext`, so they are ordinary registrations and move with the
 rest.
 
-`stdlib/ps` is where the phpscript-specific extensions live: the bindings that
-are each too small to be worth a package. It holds `Session\*`, `SharedMemory`,
-`defer` and `register_shutdown_function` today. An area that grows past that gets its own
-package, as `stdlib/smtp`, `stdlib/span` and `stdlib/http` did and as `Database`
-did when it moved to `stdlib/database`. Moving one costs nothing a script can see, because
-the Go package a binding lives in is not part of what a script types.
+`stdlib/core` is the catch-all: the areas of PHP's own library that compute,
+plus the phpscript extensions each too small to be worth a package,
+`SharedMemory`, `defer` and `register_shutdown_function`. An area that grows
+past that gets its own package, as `stdlib/smtp`, `stdlib/span` and
+`stdlib/http` did, as `Database` did when it moved to `stdlib/database`, and as
+`Session\*` did when it moved to `stdlib/session`. Moving one costs nothing a
+script can see, because the Go package a binding lives in is not part of what a
+script types.
 
 Renaming a registered class is the expensive change, which is why the rule is
 applied before a binding lands rather than after. If one is ever needed, the new

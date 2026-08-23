@@ -1,4 +1,4 @@
-package ps
+package session
 
 import (
 	"context"
@@ -9,31 +9,31 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// tracedSessionStorage records a span per session store operation. It decorates
+// tracedStorage records a span per session store operation. It decorates
 // whichever backend a script constructed, so memory and disk are instrumented
 // once here rather than in each implementation, and the trace shows which one a
 // request paid for.
 //
 // The session ID is never recorded. It is the credential in the cookie, and the
 // debug front end is a place it must not turn up.
-type tracedSessionStorage struct {
-	storage SessionStorage
+type tracedStorage struct {
+	storage Storage
 }
 
-var _ SessionStorage = (*tracedSessionStorage)(nil)
+var _ Storage = (*tracedStorage)(nil)
 
-// traceSessionStorage wraps storage for recording. A storage that is already
+// traceStorage wraps storage for recording. A storage that is already
 // traced, which is what a manager built from another manager's storage would
 // hand over, is returned as it is.
-func traceSessionStorage(storage SessionStorage) SessionStorage {
-	if _, ok := storage.(*tracedSessionStorage); ok {
+func traceStorage(storage Storage) Storage {
+	if _, ok := storage.(*tracedStorage); ok {
 		return storage
 	}
-	return &tracedSessionStorage{storage: storage}
+	return &tracedStorage{storage: storage}
 }
 
 // Load reads session data, recording whether the session was there.
-func (s *tracedSessionStorage) Load(ctx context.Context, id string) ([]byte, error) {
+func (s *tracedStorage) Load(ctx context.Context, id string) ([]byte, error) {
 	span := telemetry.StartSpan(ctx, "session load", telemetry.KindCache)
 	defer span.End()
 
@@ -47,7 +47,7 @@ func (s *tracedSessionStorage) Load(ctx context.Context, id string) ([]byte, err
 }
 
 // Save writes session data.
-func (s *tracedSessionStorage) Save(ctx context.Context, id string, data []byte) error {
+func (s *tracedStorage) Save(ctx context.Context, id string, data []byte) error {
 	span := telemetry.StartSpan(ctx, "session save", telemetry.KindCache)
 	defer span.End()
 	span.SetAttribute("bytes", len(data))
@@ -58,7 +58,7 @@ func (s *tracedSessionStorage) Save(ctx context.Context, id string, data []byte)
 }
 
 // Delete drops a session.
-func (s *tracedSessionStorage) Delete(ctx context.Context, id string) error {
+func (s *tracedStorage) Delete(ctx context.Context, id string) error {
 	span := telemetry.StartSpan(ctx, "session delete", telemetry.KindCache)
 	defer span.End()
 
@@ -77,7 +77,7 @@ func missing(err error) bool {
 }
 
 // Prune drops sessions older than maxAge.
-func (s *tracedSessionStorage) Prune(ctx context.Context, maxAge time.Duration) error {
+func (s *tracedStorage) Prune(ctx context.Context, maxAge time.Duration) error {
 	span := telemetry.StartSpan(ctx, "session prune", telemetry.KindCache)
 	defer span.End()
 	span.SetAttribute("max_age", maxAge.String())

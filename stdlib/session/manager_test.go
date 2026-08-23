@@ -1,4 +1,4 @@
-package ps_test
+package session_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/runner"
-	"github.com/titpetric/phpscript/stdlib/ps"
+	"github.com/titpetric/phpscript/stdlib/session"
 )
 
 func sessionContext(t *testing.T, cookies map[string]string) (context.Context, runner.Context) {
@@ -20,8 +20,8 @@ func sessionContext(t *testing.T, cookies map[string]string) (context.Context, r
 }
 
 func TestSessionManagerLifecycle(t *testing.T) {
-	storage := ps.NewSessionStorageMemory()
-	manager, err := ps.NewSessionManager(storage)
+	storage := session.NewStorageMemory()
+	manager, err := session.NewManager(storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestSessionManagerLifecycle(t *testing.T) {
 		t.Fatalf("session cookie = %#v; want sid, HttpOnly, Path=/, SameSite=Lax", cookie)
 	}
 
-	next, err := ps.NewSessionManager(storage)
+	next, err := session.NewManager(storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,12 +71,12 @@ func TestSessionManagerLifecycle(t *testing.T) {
 }
 
 func TestSessionManagerUsesAuthorizeHeader(t *testing.T) {
-	storage := ps.NewSessionStorageMemory()
+	storage := session.NewStorageMemory()
 	id := strings.Repeat("a", 64)
 	if err := storage.Save(t.Context(), id, []byte("header-user")); err != nil {
 		t.Fatal(err)
 	}
-	manager, err := ps.NewSessionManager(storage)
+	manager, err := session.NewManager(storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestSessionManagerUsesAuthorizeHeader(t *testing.T) {
 }
 
 func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
-	storage := ps.NewSessionStorageMemory()
+	storage := session.NewStorageMemory()
 	for name, value := range map[string]string{
 		"missing":   "",
 		"short":     "abc123",
@@ -100,7 +100,7 @@ func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
 		"unknown":   strings.Repeat("a", 64),
 	} {
 		t.Run(name, func(t *testing.T) {
-			manager, err := ps.NewSessionManager(storage)
+			manager, err := session.NewManager(storage)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -114,7 +114,7 @@ func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
 }
 
 func TestNewSessionManagerValidatesConfiguration(t *testing.T) {
-	if _, err := ps.NewSessionManager(nil); err == nil {
+	if _, err := session.NewManager(nil); err == nil {
 		t.Fatal("nil storage was accepted")
 	}
 }

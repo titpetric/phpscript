@@ -1,4 +1,4 @@
-package ps
+package session
 
 import (
 	"context"
@@ -17,7 +17,7 @@ func TestSessionStorageRecordsSpans(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	manager, err := NewSessionManager(NewSessionStorageMemory())
+	manager, err := NewManager(NewStorageMemory())
 	if err != nil {
 		t.Fatal(err)
 	}

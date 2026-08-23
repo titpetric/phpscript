@@ -13,7 +13,7 @@ import (
 
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/runner"
-	"github.com/titpetric/phpscript/stdlib/ps"
+	"github.com/titpetric/phpscript/stdlib/core"
 )
 
 func TestRouteSharedMemoryFixture(t *testing.T) {
@@ -22,11 +22,11 @@ func TestRouteSharedMemoryFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	shm := ps.NewSharedMemory()
+	shm := core.NewSharedMemory()
 	mux := http.NewServeMux()
 	err = annotations.NewRoute(root, annotations.WithRuntimeFunc(func(rt *runner.Runtime) {
-		rt.SetContext(ps.SharedMemoryContext(rt.Context(), shm))
-		rt.RegisterConstructor("SharedMemory", ps.NewSharedMemoryBinding)
+		rt.SetContext(core.SharedMemoryContext(rt.Context(), shm))
+		rt.RegisterConstructor("SharedMemory", core.NewSharedMemoryBinding)
 	})).RegisterMux(mux)
 	if err != nil {
 		t.Fatal(err)
@@ -110,11 +110,11 @@ func Example_routeSharedMemory() {
 		return
 	}
 
-	shm := ps.NewSharedMemory()
+	shm := core.NewSharedMemory()
 	mux := http.NewServeMux()
 	err = annotations.NewRoute(root, annotations.WithRuntimeFunc(func(rt *runner.Runtime) {
-		rt.SetContext(ps.SharedMemoryContext(rt.Context(), shm))
-		rt.RegisterConstructor("SharedMemory", ps.NewSharedMemoryBinding)
+		rt.SetContext(core.SharedMemoryContext(rt.Context(), shm))
+		rt.RegisterConstructor("SharedMemory", core.NewSharedMemoryBinding)
 	})).RegisterMux(mux)
 	if err != nil {
 		fmt.Println(err)

@@ -1,4 +1,4 @@
-package ps
+package session
 
 import (
 	"context"
@@ -12,19 +12,19 @@ type memorySession struct {
 	savedAt time.Time
 }
 
-// SessionStorageMemory stores sessions in memory. Its contents are not durable.
-type SessionStorageMemory struct {
+// StorageMemory stores sessions in memory. Its contents are not durable.
+type StorageMemory struct {
 	mu       sync.RWMutex
 	sessions map[string]memorySession
 }
 
-// NewSessionStorageMemory creates empty in-memory session storage.
-func NewSessionStorageMemory() *SessionStorageMemory {
-	return &SessionStorageMemory{sessions: make(map[string]memorySession)}
+// NewStorageMemory creates empty in-memory session storage.
+func NewStorageMemory() *StorageMemory {
+	return &StorageMemory{sessions: make(map[string]memorySession)}
 }
 
 // Load retrieves a copy of a session's data.
-func (s *SessionStorageMemory) Load(ctx context.Context, id string) ([]byte, error) {
+func (s *StorageMemory) Load(ctx context.Context, id string) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (s *SessionStorageMemory) Load(ctx context.Context, id string) ([]byte, err
 }
 
 // Save stores a copy of the session data.
-func (s *SessionStorageMemory) Save(ctx context.Context, id string, data []byte) error {
+func (s *StorageMemory) Save(ctx context.Context, id string, data []byte) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (s *SessionStorageMemory) Save(ctx context.Context, id string, data []byte)
 }
 
 // Delete removes a session from memory.
-func (s *SessionStorageMemory) Delete(ctx context.Context, id string) error {
+func (s *StorageMemory) Delete(ctx context.Context, id string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (s *SessionStorageMemory) Delete(ctx context.Context, id string) error {
 }
 
 // Prune removes sessions that have not been saved within maxAge.
-func (s *SessionStorageMemory) Prune(ctx context.Context, maxAge time.Duration) error {
+func (s *StorageMemory) Prune(ctx context.Context, maxAge time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -87,4 +87,4 @@ func (s *SessionStorageMemory) Prune(ctx context.Context, maxAge time.Duration) 
 	return nil
 }
 
-var _ SessionStorage = (*SessionStorageMemory)(nil)
+var _ Storage = (*StorageMemory)(nil)

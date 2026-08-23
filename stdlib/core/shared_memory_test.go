@@ -1,4 +1,4 @@
-package ps_test
+package core_test
 
 import (
 	"bytes"
@@ -8,11 +8,11 @@ import (
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/stdlib"
-	"github.com/titpetric/phpscript/stdlib/ps"
+	"github.com/titpetric/phpscript/stdlib/core"
 )
 
 func TestSharedMemoryBindingAcrossRequests(t *testing.T) {
-	shm := ps.NewSharedMemory()
+	shm := core.NewSharedMemory()
 	runRequest := func(src string) string {
 		t.Helper()
 
@@ -23,7 +23,7 @@ func TestSharedMemoryBindingAcrossRequests(t *testing.T) {
 
 		buf := new(bytes.Buffer)
 		rt := flatstack.New(buf, flatstack.Options{})
-		rt.SetContext(ps.SharedMemoryContext(context.Background(), shm))
+		rt.SetContext(core.SharedMemoryContext(context.Background(), shm))
 		stdlib.Register(rt)
 
 		if err := rt.Run(prog); err != nil {

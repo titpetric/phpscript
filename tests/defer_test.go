@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
-	"github.com/titpetric/phpscript/stdlib/ps"
+	"github.com/titpetric/phpscript/stdlib/core"
 )
 
 func runPHP(t *testing.T, rt *runner.Runtime, source string) {
@@ -26,7 +26,7 @@ func runPHP(t *testing.T, rt *runner.Runtime, source string) {
 func TestDeferRunsAtFrameReturnInLIFOOrder(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
-	ps.RegisterDefer(rt)
+	core.RegisterDefer(rt)
 
 	runPHP(t, rt, `<?php
 function work() {
@@ -56,7 +56,7 @@ func (r *closeRecorder) Close() {
 func TestDeferAcceptsNativeBoundMethodReference(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
-	ps.RegisterDefer(rt)
+	core.RegisterDefer(rt)
 	rt.RegisterConstructor("Resource", func() *closeRecorder {
 		return &closeRecorder{out: &out}
 	})
@@ -78,7 +78,7 @@ echo "-after";`)
 func TestDeferUsesIncludeFileBoundary(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
-	ps.RegisterDefer(rt)
+	core.RegisterDefer(rt)
 	rt.SetIncludeResolver(func(path string) (*model.Program, error) {
 		return parser.Parse(`<?php
 echo "child";
@@ -114,7 +114,7 @@ func (r *reentrantRecorder) Old() {
 func TestDeferRegisteredDuringUnwindRunsWithoutReplacingOlderCallback(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
-	ps.RegisterDefer(rt)
+	core.RegisterDefer(rt)
 	rt.RegisterConstructor("Recorder", func() *reentrantRecorder {
 		return &reentrantRecorder{out: &out}
 	})
@@ -135,7 +135,7 @@ func TestDeferRejectsTypedNilCallback(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	rt := runner.New(nil, runner.Options{})
-	ps.RegisterDefer(rt)
+	core.RegisterDefer(rt)
 	var callback func()
 	rt.SetGlobal("callback", callback)
 
@@ -154,7 +154,7 @@ echo __FILE__ . "-body";
 `)},
 	}
 	rt := runner.New(&out, runner.Options{RootFS: root})
-	ps.RegisterShutdown(rt)
+	core.RegisterShutdown(rt)
 	program, err := rt.LoadFile("main.php")
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +180,7 @@ register_shutdown_function(function() { echo "-" . __FILE__ . "-close"; });
 `)},
 	}
 	rt := runner.New(&out, runner.Options{RootFS: root})
-	ps.RegisterShutdown(rt)
+	core.RegisterShutdown(rt)
 	program, err := rt.LoadFile("main.php")
 	if err != nil {
 		t.Fatal(err)

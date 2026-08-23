@@ -60,10 +60,10 @@ class SharedMemory {
 Without a host-provided instance, each `new SharedMemory` creates an empty store. To retain state between HTTP requests or other PHP runtimes, create one store in Go and add it to every runtime's context:
 
 ```go
-shm := ps.NewSharedMemory()
+shm := core.NewSharedMemory()
 
 // Run this while configuring each new runtime.
-rt.SetContext(ps.SharedMemoryContext(rt.Context(), shm))
+rt.SetContext(core.SharedMemoryContext(rt.Context(), shm))
 stdlib.Register(rt)
 ```
 
@@ -79,6 +79,6 @@ The Go store synchronizes concurrent access, so the same instance can safely be 
 
 ## References
 
-- [Go `SharedMemory` API](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/ps#SharedMemory)
-- [Shared memory implementation](../../stdlib/ps/shared_memory.go)
-- [Cross-request test](../../stdlib/ps/shared_memory_test.go)
+- [Go `SharedMemory` API](https://pkg.go.dev/github.com/titpetric/phpscript@main/stdlib/core#SharedMemory)
+- [Shared memory implementation](../../stdlib/core/shared_memory.go)
+- [Cross-request test](../../stdlib/core/shared_memory_test.go)

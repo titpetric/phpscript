@@ -42,23 +42,23 @@ The latter example for `ex2` will produce the `0` code (zero value for the argum
 
 ## Shared memory
 
-The PHP runtime is request driven. The `stdlib/ps` package provides a concurrency-safe `SharedMemory` binding for retaining process-local state between runtimes.
+The PHP runtime is request driven. The `stdlib/core` package provides a concurrency-safe `SharedMemory` binding for retaining process-local state between runtimes.
 
-- `ps.NewSharedMemory() *ps.SharedMemory`
+- `core.NewSharedMemory() *core.SharedMemory`
 - `func (m *SharedMemory) Set(_ context.Context, key, value string)`
 - `func (m *SharedMemory) Get(_ context.Context, key string) string`
 
 Two utility functions bind the same instance to multiple runtimes:
 
-- `ps.SharedMemoryContext(context.Context, *ps.SharedMemory) context.Context`
-- `ps.NewSharedMemoryBinding(ctx context.Context) (*ps.SharedMemory, error)`
+- `core.SharedMemoryContext(context.Context, *core.SharedMemory) context.Context`
+- `core.NewSharedMemoryBinding(ctx context.Context) (*core.SharedMemory, error)`
 
 Register the standard-library constructor as follows:
 
 ```go
-shm := ps.NewSharedMemory()
-rt.SetContext(ps.SharedMemoryContext(rt.Context(), shm))
-ps.RegisterSharedMemory(rt)
+shm := core.NewSharedMemory()
+rt.SetContext(core.SharedMemoryContext(rt.Context(), shm))
+core.RegisterSharedMemory(rt)
 ```
 
 The bindings can now be used from PHP. Using the `@route` hints, a request handler can look like this:
@@ -80,5 +80,5 @@ echo "ok";
 
 - [PHP exception class](https://www.php.net/manual/en/class.exception.php)
 - [stdlib/Exception type](../../stdlib/exception.go)
-- [stdlib/ps SharedMemory type](../../stdlib/ps/shared_memory.go)
+- [stdlib/core SharedMemory type](../../stdlib/core/shared_memory.go)
 - [Request routing](routing.md)

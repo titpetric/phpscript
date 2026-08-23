@@ -1,12 +1,12 @@
-package ps
+package session
 
 import (
 	"context"
 	"time"
 )
 
-// SessionStorage persists opaque session data by ID.
-type SessionStorage interface {
+// Storage persists opaque session data by ID.
+type Storage interface {
 	Load(ctx context.Context, id string) ([]byte, error)
 	Save(ctx context.Context, id string, data []byte) error
 	Delete(ctx context.Context, id string) error
