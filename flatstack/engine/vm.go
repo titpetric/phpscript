@@ -68,6 +68,7 @@ type callFrame struct {
 	locals      []any
 	initialized []bool
 	extras      map[string]any
+	refWrites   []bool
 }
 
 // MemoryHost is an optional Host extension for memory accounting, discovered
@@ -110,6 +111,14 @@ func Run(program *Program, host Host) (err error) {
 		}
 	}
 	extras := map[string]any{}
+	// refWrites marks the local slots an opRef setter wrote during the host
+	// call in flight. bindHostLocals hands the host a snapshot of the locals
+	// taken before the call, and the host hands it back afterwards; writing a
+	// marked slot back from that snapshot would restore the value the output
+	// parameter just replaced. Allocated on the first opRef, so a program
+	// without by-reference calls pays nothing, and per frame, so a nested call
+	// cannot see the caller's marks.
+	var refWrites []bool
 	iterators := make(map[int]*iteratorState)
 	var handlers []errorHandler
 	var callFrames []callFrame
@@ -165,6 +174,7 @@ func Run(program *Program, host Host) (err error) {
 			locals = frame.locals
 			initialized = frame.initialized
 			extras = frame.extras
+			refWrites = frame.refWrites
 			if extras == nil {
 				extras = map[string]any{}
 			}
@@ -432,9 +442,13 @@ func Run(program *Program, host Host) (err error) {
 			// The setter writes the frame the call was made from; a user
 			// function called in between installs its own locals, and this one
 			// keeps pointing at the caller's.
-			frame, frameInitialized, slot := locals, initialized, inst.a
+			if refWrites == nil {
+				refWrites = make([]bool, len(locals))
+			}
+			frame, frameInitialized, frameRefWrites, slot := locals, initialized, refWrites, inst.a
 			stack = append(stack, func(value any) {
 				frame[slot], frameInitialized[slot] = value, true
+				frameRefWrites[slot] = true
 			})
 		case opCall, opConstruct:
 			arguments, argErr := args(inst.a)
@@ -450,10 +464,12 @@ func Run(program *Program, host Host) (err error) {
 						locals:      locals,
 						initialized: initialized,
 						extras:      extras,
+						refWrites:   refWrites,
 					})
 					locals = make([]any, len(program.localNames))
 					initialized = make([]bool, len(program.localNames))
 					extras = map[string]any{}
+					refWrites = nil
 					for i, paramName := range def.params {
 						if i < len(arguments) {
 							slot := -1
@@ -472,11 +488,12 @@ func Run(program *Program, host Host) (err error) {
 					continue
 				}
 				value, err = host.Call(inst.name, inst.extra, arguments)
-				applyHostLocals(host, program, locals, initialized, extras)
+				applyHostLocals(host, program, locals, initialized, extras, refWrites)
 			} else {
 				value, err = host.Construct(inst.name, arguments)
-				applyHostLocals(host, program, locals, initialized, extras)
+				applyHostLocals(host, program, locals, initialized, extras, refWrites)
 			}
+			clear(refWrites)
 			if err != nil {
 				if handle(err) {
 					continue
@@ -502,10 +519,12 @@ func Run(program *Program, host Host) (err error) {
 						locals:      locals,
 						initialized: initialized,
 						extras:      extras,
+						refWrites:   refWrites,
 					})
 					locals = make([]any, len(program.localNames))
 					initialized = make([]bool, len(program.localNames))
 					extras = map[string]any{}
+					refWrites = nil
 					bound := append([]any{receiver}, arguments...)
 					for i, paramName := range def.params {
 						if i >= len(bound) {
@@ -523,7 +542,8 @@ func Run(program *Program, host Host) (err error) {
 				}
 			}
 			value, callErr := host.CallMethod(receiver, inst.name, arguments)
-			applyHostLocals(host, program, locals, initialized, extras)
+			applyHostLocals(host, program, locals, initialized, extras, refWrites)
+			clear(refWrites)
 			if callErr != nil {
 				if handle(callErr) {
 					continue
@@ -667,6 +687,7 @@ func Run(program *Program, host Host) (err error) {
 				locals = lastFrame.locals
 				initialized = lastFrame.initialized
 				extras = lastFrame.extras
+				refWrites = lastFrame.refWrites
 				if extras == nil {
 					extras = map[string]any{}
 				}
@@ -749,7 +770,7 @@ func Run(program *Program, host Host) (err error) {
 				}
 				return includeErr
 			}
-			applyNamedValues(program, locals, initialized, extras, exported)
+			applyNamedValues(program, locals, initialized, extras, exported, refWrites)
 			stack = append(stack, value)
 		default:
 			return fmt.Errorf("flatstack: pc %d: invalid opcode %d", pc, inst.op)
@@ -778,15 +799,18 @@ func bindHostLocals(host Host, program *Program, locals []any, initialized []boo
 	binder.BindLocals(vars)
 }
 
-func applyHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any) {
+func applyHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any, refWrites []bool) {
 	taker, ok := host.(interface{ TakeLocals() map[string]any })
 	if !ok {
 		return
 	}
-	applyNamedValues(program, locals, initialized, extras, taker.TakeLocals())
+	applyNamedValues(program, locals, initialized, extras, taker.TakeLocals(), refWrites)
 }
 
-func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any) {
+// applyNamedValues writes host-visible variables back into their slots. A slot
+// marked in refWrites keeps what the by-reference setter put there: names is a
+// snapshot from before the call, so it still carries the old value.
+func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any, refWrites []bool) {
 	if names == nil {
 		return
 	}
@@ -797,7 +821,9 @@ func applyNamedValues(program *Program, locals []any, initialized []bool, extras
 		found := false
 		for i, localName := range program.localNames {
 			if localName == name {
-				locals[i], initialized[i] = value, true
+				if i >= len(refWrites) || !refWrites[i] {
+					locals[i], initialized[i] = value, true
+				}
 				found = true
 				break
 			}
