@@ -1,6 +1,7 @@
 package runner_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -230,5 +231,107 @@ func TestThrownExceptionKeepsItsCode(t *testing.T) {
 	}
 	if out.String() != "m:7" {
 		t.Fatalf("got %q, want %q", out.String(), "m:7")
+	}
+}
+
+// An argument that converts to no declared parameter type is refused before
+// reflect.Value.Call sees it, as a PHP TypeError naming the function, the
+// position and the types involved, rather than a host panic a script cannot
+// distinguish from a bug in the binding.
+func TestInvokeUnconvertibleArgument(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   any
+		src  string
+		want string
+	}{
+		{
+			name: "array for an int parameter",
+			fn:   func(s string, limit int64) string { return s },
+			src:  `<?php try { shout("a", array()); } catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "shout(): Argument #2 must be of type int, array given",
+		},
+		{
+			name: "int for a callable parameter",
+			fn:   func(s string, out ...func(any)) string { return s },
+			src:  `<?php try { shout("a", 1); } catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "shout(): Argument #2 must be of type callable, int given",
+		},
+		{
+			// The injected runtime context sits ahead of the script's
+			// arguments and does not count towards the reported position.
+			name: "position skips an injected context",
+			fn:   func(ctx context.Context, s string, limit int64) string { return s },
+			src:  `<?php try { shout("a", array()); } catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "shout(): Argument #2 must be of type int, array given",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			out, err := runBinding(t, "shout", test.fn, test.src)
+			if err != nil {
+				t.Fatalf("run: %v", err)
+			}
+			if out != test.want {
+				t.Fatalf("got %q, want %q", out, test.want)
+			}
+		})
+	}
+}
+
+// Calling a function no table knows reports the condition the way the flatstack
+// engine reports it, rather than the VM's "cannot call nil".
+func TestUndefinedFunctionMessage(t *testing.T) {
+	program, err := parser.Parse(`<?php nope();`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	runErr := runner.New(&out, runner.Options{}).Run(program)
+	if runErr == nil {
+		t.Fatal("want an error, got nil")
+	}
+	if !strings.Contains(runErr.Error(), "call to undefined function nope()") {
+		t.Fatalf("err = %v", runErr)
+	}
+}
+
+// The stub installed for an unknown name must not outlive the declaration of a
+// function by that name. Registering one moves the function-table generation,
+// which is what makes the evaluation environment (and the stub in it) rebuild.
+func TestUndefinedFunctionStubIsNotSticky(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+
+	// The call site is compiled and evaluated while the name is unknown, so the
+	// environment holds the stub before the declaration below runs.
+	miss, err := parser.Parse(`<?php try { greet(); } catch (Throwable $e) { echo "undefined\n"; }`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := rt.Run(miss); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	declared, err := parser.Parse("<?php function greet() { return \"hi\"; } echo greet(), \"\\n\";")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := rt.Run(declared); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	// A host binding registered after the miss resolves for the same reason.
+	rt.RegisterFunc("shout", func(s string) string { return s })
+	shout, err := parser.Parse(`<?php echo shout("ho"), "\n";`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := rt.Run(shout); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	if got, want := out.String(), "undefined\nhi\nho\n"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
 	}
 }

@@ -218,29 +218,143 @@ func (e *ArgumentCountError) Error() string {
 	return fmt.Sprintf("%s() expects at most %s, %d given", name, plural(e.Want, "argument"), e.Got)
 }
 
-// nameArgumentCount fills in the PHP name of an argument count error. invokeAny
-// counts arguments against the Go signature and has no name to report; the name
-// a script typed is known only at the dispatch site.
-func nameArgumentCount(err error, name string) error {
+// TypeError reports an argument that cannot be converted to the type the
+// callable's parameter declares. PHP raises TypeError for the same call, and
+// the Go type name is what a script sees as the class, so this is named for
+// the PHP class rather than for what it holds: `catch (TypeError $e)` has to
+// match it, and `catch (Exception $e)` has to not.
+type TypeError struct {
+	Name     string
+	Position int
+	Want     string
+	Got      string
+}
+
+// Error renders the message PHP's TypeError carries for the same call.
+func (e *TypeError) Error() string {
+	name := e.Name
+	if name == "" {
+		name = "call"
+	}
+	// PHP also names the parameter ("Argument #3 ($limit)"). A Go binding's
+	// parameter names are not recoverable through reflect, so the position
+	// stands alone.
+	return fmt.Sprintf("%s(): Argument #%d must be of type %s, %s given", name, e.Position, e.Want, e.Got)
+}
+
+// nameCallError fills in the PHP name of an error raised while building a call.
+// invokeAny works from the Go signature alone and has no name to report; the
+// name a script typed is known only at the dispatch site.
+func nameCallError(err error, name string) error {
 	var count *ArgumentCountError
 	if errors.As(err, &count) && count.Name == "" {
 		count.Name = name
+		return err
+	}
+	var mismatch *TypeError
+	if errors.As(err, &mismatch) && mismatch.Name == "" {
+		mismatch.Name = name
 	}
 	return err
+}
+
+// phpParamTypeName spells a declared Go parameter type the way PHP names the
+// type in a TypeError ("must be of type int"). It describes a *parameter*, so
+// it is deliberately separate from phpDebugType, which describes a value, and
+// from gettype's legacy names (integer/double/boolean) in stdlib: neither table
+// may be folded into the other.
+func phpParamTypeName(t reflect.Type) string {
+	if t == nil {
+		return "mixed"
+	}
+	if t == reflect.TypeOf((*model.Array)(nil)) {
+		return "array"
+	}
+	switch t.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return "int"
+	case reflect.Float32, reflect.Float64:
+		return "float"
+	case reflect.String:
+		return "string"
+	case reflect.Bool:
+		return "bool"
+	case reflect.Slice, reflect.Map, reflect.Array:
+		return "array"
+	case reflect.Func:
+		return "callable"
+	case reflect.Interface:
+		return "mixed"
+	}
+	return t.String()
+}
+
+// phpDebugType names a value the way PHP's get_debug_type() does ("array
+// given"). It describes a *value*, so it is deliberately separate from
+// phpParamTypeName, which describes a declared parameter type, and from
+// gettype's legacy names (integer/double/boolean) in stdlib: neither table may
+// be folded into the other.
+func phpDebugType(v any) string {
+	switch value := v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "bool"
+	case string:
+		return "string"
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return "int"
+	case float32, float64:
+		return "float"
+	case *model.Array:
+		return "array"
+	case *model.Object:
+		if value.Class != nil {
+			return value.Class.Name
+		}
+		return "object"
+	}
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Slice, reflect.Map, reflect.Array:
+		return "array"
+	case reflect.Func:
+		return "Closure"
+	}
+	return rv.Type().String()
 }
 
 // buildArgs coerces args to the declared parameter types of t, padding absent
 // trailing parameters with zero values: a Go binding spells PHP's optional
 // parameters as extra ones, so a short call is ordinary. A call with more
 // arguments than t declares is refused, because reflect.Value.Call panics on
-// it and PHP refuses the same call to an internal function.
+// it and PHP refuses the same call to an internal function. An argument that
+// converts to no declared type is refused for the same reason: reflect.Value
+// .Call panics on it, and PHP raises a catchable TypeError.
 func buildArgs(t reflect.Type, args []any, name string) ([]reflect.Value, error) {
 	if !t.IsVariadic() && len(args) > t.NumIn() {
 		return nil, &ArgumentCountError{Name: name, Want: t.NumIn(), Got: len(args)}
 	}
 	in := make([]reflect.Value, 0, len(args))
+	// The runtime context, when a binding asks for one, is injected ahead of
+	// the script's arguments and so does not count towards the PHP position.
+	offset := 1
+	if wantsContext(t) {
+		offset = 0
+	}
 	for i, a := range args {
-		in = append(in, coerceArg(a, paramType(t, i)))
+		want := paramType(t, i)
+		v, ok := coerceArg(a, want)
+		if !ok {
+			return nil, &TypeError{
+				Name:     name,
+				Position: i + offset,
+				Want:     phpParamTypeName(want),
+				Got:      phpDebugType(a),
+			}
+		}
+		in = append(in, v)
 	}
 	for len(in) < t.NumIn() && !(t.IsVariadic() && len(in) >= t.NumIn()-1) {
 		in = append(in, reflect.Zero(t.In(len(in))))
@@ -356,28 +470,30 @@ func paramType(t reflect.Type, i int) reflect.Type {
 }
 
 // coerceArg converts a value to the target parameter type where a cheap
-// conversion makes it assignable; otherwise it is passed through.
-func coerceArg(v any, want reflect.Type) reflect.Value {
+// conversion makes it assignable. The final return reports whether it did: a
+// false means the value cannot be passed, and the caller turns that into a PHP
+// TypeError rather than letting reflect.Value.Call panic on it.
+func coerceArg(v any, want reflect.Type) (reflect.Value, bool) {
 	if want == nil {
-		return reflect.ValueOf(v)
+		return reflect.ValueOf(v), true
 	}
 	if v == nil {
-		return reflect.Zero(want)
+		return reflect.Zero(want), true
 	}
 	rv := reflect.ValueOf(v)
 	if rv.Type().AssignableTo(want) {
-		return rv
+		return rv, true
 	}
 	// A string parameter renders the value the way PHP renders it in a string
 	// context. Go's own conversion is defined for every integer type and means
 	// something else: reflect would turn int64(65) into "A" rather than "65".
 	if want.Kind() == reflect.String {
-		return reflect.ValueOf(phpString(v)).Convert(want)
+		return reflect.ValueOf(phpString(v)).Convert(want), true
 	}
 	if rv.Type().ConvertibleTo(want) {
-		return rv.Convert(want)
+		return rv.Convert(want), true
 	}
-	return rv
+	return reflect.Value{}, false
 }
 
 // helperCall implements `base->method(args...)`. It dispatches PHP methods on

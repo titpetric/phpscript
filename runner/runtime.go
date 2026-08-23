@@ -885,24 +885,28 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	base := st.env
 	defer rt.releaseEnv(st)
 
-	// Registered functions are installed on demand: an environment carries the
-	// PHP-semantic helpers plus whatever the expressions evaluated with it have
-	// called so far, rather than a closure per entry of the function table. The
-	// installed closures persist across evaluations (see installFunc).
-	for _, name := range ce.calls {
-		rt.installFunc(st, name)
-	}
-
 	// Anonymous functions become callables in the env (bound by their synthetic
 	// identifier) so transpiled code can pass them, e.g. usort's comparator. They
 	// capture the scope directly rather than reading it through st: a closure
 	// assigned to a variable outlives this evaluation.
+	//
+	// They are layered before the calls below: an immediately invoked closure
+	// appears in ce.calls under its synthetic identifier, which is in no
+	// function table, and installFunc would stub it as undefined.
 	for id, cl := range ce.closures {
 		decl := cl
 		env := captureClosureEnv(decl, scope)
 		st.layer(id, adapt(func(args ...any) (any, error) {
 			return rt.invokeClosure(decl, args, env)
 		}))
+	}
+
+	// Registered functions are installed on demand: an environment carries the
+	// PHP-semantic helpers plus whatever the expressions evaluated with it have
+	// called so far, rather than a closure per entry of the function table. The
+	// installed closures persist across evaluations (see installFunc).
+	for _, name := range ce.calls {
+		rt.installFunc(st, name)
 	}
 
 	// Run env: same functions/helpers, but variables carry their real values.
@@ -1156,10 +1160,14 @@ func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
 // whenever the generation moves, which is exactly when a name could have been
 // re-registered with a different implementation.
 //
-// A name that is not in the function table installs nothing. Calling it is then
-// a runtime error from the VM ("cannot call nil"), which is what an undefined
-// PHP function has done since the compile-time type env stopped listing
-// expression-local identifiers (see compile).
+// A name that is in no function table installs a stub that reports the call as
+// undefined, so this engine and flatstack (see helperFunc) give a script the
+// same message instead of the VM's "cannot call nil". The stub is bound to the
+// current generation like any other entry: declaring the function afterwards
+// re-registers it, which moves the generation and rebuilds the environment.
+//
+// Names resolve case-insensitively, as PHP function names do and as helperFunc
+// resolves them.
 //
 // Like buildEnv, the closure reads the scope through st.ref at call time rather
 // than capturing it.
@@ -1167,14 +1175,17 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	if _, ok := st.env[name]; ok {
 		return
 	}
-	fn, ok := rt.funcs[name]
+	ref := st.ref
+	fn, ok := rt.lookupFunc(name)
 	if !ok {
+		st.env[name] = func(...any) (any, error) {
+			return nil, fmt.Errorf("call to undefined function %s()", name)
+		}
 		return
 	}
-	ref := st.ref
 	st.env[name] = func(args ...any) (any, error) {
 		result, err := rt.invokeWithScopeContext(fn, args, ref.scope)
-		return result, nameArgumentCount(err, name)
+		return result, nameCallError(err, name)
 	}
 }
 
@@ -1357,12 +1368,12 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 		scope := ref.scope
 		if fn, ok := rt.lookupFunc(name); ok {
 			result, err := rt.invokeWithScopeContext(fn, args, scope)
-			return result, nameArgumentCount(err, name)
+			return result, nameCallError(err, name)
 		}
 		if fallback != "" {
 			if fn, ok := rt.lookupFunc(fallback); ok {
 				result, err := rt.invokeWithScopeContext(fn, args, scope)
-				return result, nameArgumentCount(err, fallback)
+				return result, nameCallError(err, fallback)
 			}
 			// Frame-aware builtins live in the evaluation environment rather
 			// than the function table, so the bare-name fast path finds them

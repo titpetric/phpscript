@@ -1165,16 +1165,16 @@ func assignGoIndex(base, key any, value func(current any) any) error {
 		if rv.IsNil() {
 			return fmt.Errorf("assign: cannot write to a nil %T", base)
 		}
-		mapKey := coerceArg(normalizeKey(key), rv.Type().Key())
-		if !mapKey.IsValid() || !mapKey.Type().AssignableTo(rv.Type().Key()) {
+		mapKey, ok := coerceArg(normalizeKey(key), rv.Type().Key())
+		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
 			return fmt.Errorf("assign: cannot use %T as a key of %T", key, base)
 		}
 		var current any
 		if existing := rv.MapIndex(mapKey); existing.IsValid() {
 			current = existing.Interface()
 		}
-		next := coerceArg(value(current), rv.Type().Elem())
-		if !next.IsValid() || !next.Type().AssignableTo(rv.Type().Elem()) {
+		next, ok := coerceArg(value(current), rv.Type().Elem())
+		if !ok || !next.Type().AssignableTo(rv.Type().Elem()) {
 			return fmt.Errorf("assign: cannot assign to an element of %T", base)
 		}
 		rv.SetMapIndex(mapKey, next)
@@ -1185,8 +1185,8 @@ func assignGoIndex(base, key any, value func(current any) any) error {
 			return fmt.Errorf("assign: index %d is out of range for %T", index, base)
 		}
 		element := rv.Index(int(index))
-		next := coerceArg(value(element.Interface()), element.Type())
-		if !element.CanSet() || !next.IsValid() || !next.Type().AssignableTo(element.Type()) {
+		next, ok := coerceArg(value(element.Interface()), element.Type())
+		if !element.CanSet() || !ok || !next.Type().AssignableTo(element.Type()) {
 			return fmt.Errorf("assign: cannot assign to an element of %T", base)
 		}
 		element.Set(next)
@@ -1209,8 +1209,8 @@ func assignGoField(base any, name string, value func(any) any) error {
 		return fmt.Errorf("assign: %q is not a writable object property", name)
 	}
 	raw := value(field.Interface())
-	next := coerceArg(raw, field.Type())
-	if !next.IsValid() || !next.Type().AssignableTo(field.Type()) {
+	next, ok := coerceArg(raw, field.Type())
+	if !ok || !next.Type().AssignableTo(field.Type()) {
 		return fmt.Errorf("assign: cannot assign %T to property %q", raw, name)
 	}
 	field.Set(next)
