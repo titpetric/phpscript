@@ -234,7 +234,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	}
 	groups := groupFixtures(fixtures, displayPaths)
 
-	report, err := openReport(args, opts)
+	report, err := openReport(opts, args)
 	if err != nil {
 		return err
 	}

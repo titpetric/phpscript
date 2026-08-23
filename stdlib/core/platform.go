@@ -1,4 +1,4 @@
-package stdlib
+package core
 
 import (
 	"fmt"
@@ -6,15 +6,19 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
-	phprunner "github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner"
 )
+
+// init contributes the platform constants and functions to stdlib.Register.
+func init() {
+	runner.RegisterBinding(registerPlatform)
+}
 
 // This file provides the platform surface a PHP program written for stock PHP
 // expects to find before it does anything interesting: the PHP_* constants, the
@@ -39,15 +43,12 @@ const (
 	phpVersionID      = phpVersionMajor*10000 + phpVersionMinor*100 + phpVersionRelease
 )
 
-func registerPlatform(rt *phprunner.Runtime) {
+func registerPlatform(rt *runner.Runtime) {
 	registerPlatformConstants(rt)
 	registerPlatformFuncs(rt)
-	registerReflection(rt)
-	registerExceptions(rt)
-	registerClosure(rt)
 }
 
-func registerPlatformConstants(rt *phprunner.Runtime) {
+func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("PHP_VERSION", phpVersion)
 	rt.SetConst("PHP_MAJOR_VERSION", int64(phpVersionMajor))
 	rt.SetConst("PHP_MINOR_VERSION", int64(phpVersionMinor))
@@ -93,13 +94,13 @@ func registerPlatformConstants(rt *phprunner.Runtime) {
 	// runtime sets OK, INI_SIZE, NO_FILE, NO_TMP_DIR and CANT_WRITE, since
 	// FORM_SIZE is a per-form limit, PARTIAL is an aborted transfer, and
 	// EXTENSION comes from extensions phpscript has no equivalent of.
-	rt.SetConst("UPLOAD_ERR_OK", int64(phprunner.UploadErrOK))
-	rt.SetConst("UPLOAD_ERR_INI_SIZE", int64(phprunner.UploadErrIniSize))
+	rt.SetConst("UPLOAD_ERR_OK", int64(runner.UploadErrOK))
+	rt.SetConst("UPLOAD_ERR_INI_SIZE", int64(runner.UploadErrIniSize))
 	rt.SetConst("UPLOAD_ERR_FORM_SIZE", int64(2))
 	rt.SetConst("UPLOAD_ERR_PARTIAL", int64(3))
-	rt.SetConst("UPLOAD_ERR_NO_FILE", int64(phprunner.UploadErrNoFile))
-	rt.SetConst("UPLOAD_ERR_NO_TMP_DIR", int64(phprunner.UploadErrNoTmpDir))
-	rt.SetConst("UPLOAD_ERR_CANT_WRITE", int64(phprunner.UploadErrCantWrite))
+	rt.SetConst("UPLOAD_ERR_NO_FILE", int64(runner.UploadErrNoFile))
+	rt.SetConst("UPLOAD_ERR_NO_TMP_DIR", int64(runner.UploadErrNoTmpDir))
+	rt.SetConst("UPLOAD_ERR_CANT_WRITE", int64(runner.UploadErrCantWrite))
 	rt.SetConst("UPLOAD_ERR_EXTENSION", int64(8))
 
 	rt.SetConst("E_ALL", int64(32767))
@@ -143,7 +144,7 @@ func osFamily() string {
 	}
 }
 
-func registerPlatformFuncs(rt *phprunner.Runtime) {
+func registerPlatformFuncs(rt *runner.Runtime) {
 	// phpversion returns "8.4.0", the PHP language version phpscript reports; an $extension argument is ignored.
 	rt.RegisterFunc("phpversion", func(extension ...any) any { return phpVersion })
 	// php_uname returns the host operating system name, the same value as PHP_OS; a $mode argument is ignored.
@@ -320,175 +321,6 @@ func phpStrtr(subject string, args ...any) string {
 		i += len(best)
 	}
 	return out.String()
-}
-
-func registerReflection(rt *phprunner.Runtime) {
-	// get_class returns the class name of $object, or false when $object is missing or null.
-	rt.RegisterFunc("get_class", func(object ...any) any {
-		if len(object) == 0 || object[0] == nil {
-			return false
-		}
-		return classNameOf(object[0])
-	})
-	// get_parent_class always returns false; phpscript does not track a parent class.
-	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
-	// get_object_vars returns the properties of $object as an array, declared fields first; a non-object yields an empty array.
-	rt.RegisterFunc("get_object_vars", func(object any) *model.Array {
-		out := model.NewArray()
-		if obj, ok := object.(*model.Object); ok {
-			for _, field := range obj.Class.Fields {
-				if v, ok := obj.Props[field.Name]; ok {
-					out.Set(field.Name, v)
-				}
-			}
-			for name, v := range obj.Props {
-				if _, seen := out.Get(name); !seen {
-					out.Set(name, v)
-				}
-			}
-		}
-		return out
-	})
-	// method_exists reports whether $object_or_class, an object or a class name, has method $method.
-	rt.RegisterFunc("method_exists", func(objectOrClass any, method string) bool {
-		if name, ok := objectOrClass.(string); ok {
-			return rt.MethodExists(name, method)
-		}
-		if object, ok := objectOrClass.(*model.Object); ok && object.Class != nil {
-			return rt.MethodExists(object.Class.Name, method)
-		}
-		value := reflect.ValueOf(objectOrClass)
-		if !value.IsValid() {
-			return false
-		}
-		for i := 0; i < value.NumMethod(); i++ {
-			if strings.EqualFold(value.Type().Method(i).Name, method) {
-				return true
-			}
-		}
-		return false
-	})
-	// property_exists reports whether object $object_or_class has property $property, set or declared; a class name is not accepted and returns false.
-	rt.RegisterFunc("property_exists", func(objectOrClass any, property string) bool {
-		object, ok := objectOrClass.(*model.Object)
-		if !ok {
-			return false
-		}
-		if _, ok := object.Props[property]; ok {
-			return true
-		}
-		if object.Class == nil {
-			return false
-		}
-		for _, field := range object.Class.Fields {
-			if field.Name == property {
-				return true
-			}
-		}
-		return false
-	})
-	// PHP hands out an opaque, per-object identity. A pointer is exactly that,
-	// and it is stable for as long as the object is alive, which is the only
-	// guarantee PHP makes either.
-	rt.RegisterFunc("spl_object_hash", func(value any) string {
-		return fmt.Sprintf("%032x", objectIdentity(value))
-	})
-	// spl_object_id returns a numeric identity for $object, stable for as long as the object is alive.
-	rt.RegisterFunc("spl_object_id", func(object any) int64 {
-		return int64(objectIdentity(object))
-	})
-}
-
-// classNameOf reports the PHP class name of a value: the declared name for an
-// interpreted object, and the Go type name for a host-backed one.
-func classNameOf(value any) string {
-	if object, ok := value.(*model.Object); ok && object.Class != nil {
-		return object.Class.Name
-	}
-	t := reflect.TypeOf(value)
-	for t != nil && t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	if t == nil {
-		return ""
-	}
-	return t.Name()
-}
-
-// objectIdentity returns a stable numeric identity for an object value.
-func objectIdentity(value any) uintptr {
-	rv := reflect.ValueOf(value)
-	if !rv.IsValid() {
-		return 0
-	}
-	switch rv.Kind() {
-	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.UnsafePointer, reflect.Func:
-		return rv.Pointer()
-	}
-	return 0
-}
-
-// splExceptions are the SPL and Error class names a PHP library throws. None of
-// them adds behaviour over Exception, and phpscript has no exception hierarchy
-// to filter a catch on, so they all construct the same value, which is what makes
-// `throw new \InvalidArgumentException(...)` work rather than fail on an
-// undefined class.
-var splExceptions = []string{
-	"ErrorException",
-	"RuntimeException",
-	"LogicException",
-	"InvalidArgumentException",
-	"DomainException",
-	"LengthException",
-	"OutOfRangeException",
-	"OutOfBoundsException",
-	"RangeException",
-	"OverflowException",
-	"UnderflowException",
-	"UnexpectedValueException",
-	"BadFunctionCallException",
-	"BadMethodCallException",
-	"JsonException",
-	"Error",
-	"TypeError",
-	"ValueError",
-	"ArithmeticError",
-	"DivisionByZeroError",
-	"ArgumentCountError",
-}
-
-func registerExceptions(rt *phprunner.Runtime) {
-	for _, name := range splExceptions {
-		if name == "RuntimeException" {
-			rt.RegisterConstructor(name, NewRuntimeException)
-		} else {
-			rt.RegisterConstructor(name, NewException)
-		}
-	}
-}
-
-func registerClosure(rt *phprunner.Runtime) {
-	// Closure::bind rebinds a closure's scope. phpscript enforces no property
-	// visibility, so a scope change has nothing to alter and the closure is
-	// returned as it is. Rebinding `$this` would change what the body sees and
-	// is therefore refused rather than silently ignored.
-	rt.RegisterFunc("Closure::bind", func(closure any, args ...any) (any, error) {
-		if len(args) > 0 && args[0] != nil {
-			return nil, fmt.Errorf("Closure::bind(): rebinding $this is not supported")
-		}
-		if _, ok := rt.Callable(closure); !ok {
-			return nil, fmt.Errorf("Closure::bind(): argument #1 ($closure) must be a closure")
-		}
-		return closure, nil
-	})
-	// Closure::fromCallable returns the closure for $callback; a value that is not callable is an error.
-	rt.RegisterFunc("Closure::fromCallable", func(callback any) (any, error) {
-		fn, ok := rt.Callable(callback)
-		if !ok {
-			return nil, fmt.Errorf("Closure::fromCallable(): argument #1 ($callback) is not callable")
-		}
-		return fn, nil
-	})
 }
 
 // toInt64 coerces a filter argument to its integer form.

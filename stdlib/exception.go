@@ -1,5 +1,7 @@
 package stdlib
 
+import "github.com/titpetric/phpscript/runner"
+
 // Exception holds an error code and error message.
 type Exception struct {
 	Message string `json:"message"`
@@ -51,4 +53,45 @@ func NewRuntimeException(message string, code int) (*RuntimeException, error) {
 			Code:    code,
 		},
 	}, nil
+}
+
+// splExceptions are the SPL and Error class names a PHP library throws. None of
+// them adds behaviour over Exception, and phpscript has no exception hierarchy
+// to filter a catch on, so they all construct the same value, which is what makes
+// `throw new \InvalidArgumentException(...)` work rather than fail on an
+// undefined class.
+var splExceptions = []string{
+	"ErrorException",
+	"RuntimeException",
+	"LogicException",
+	"InvalidArgumentException",
+	"DomainException",
+	"LengthException",
+	"OutOfRangeException",
+	"OutOfBoundsException",
+	"RangeException",
+	"OverflowException",
+	"UnderflowException",
+	"UnexpectedValueException",
+	"BadFunctionCallException",
+	"BadMethodCallException",
+	"JsonException",
+	"Error",
+	"TypeError",
+	"ValueError",
+	"ArithmeticError",
+	"DivisionByZeroError",
+	"ArgumentCountError",
+}
+
+func registerExceptions(rt *runner.Runtime) {
+	// Exception is PHP's base exception class; the SPL exception and Error classes are backed by the same type, so a catch cannot filter by subclass.
+	rt.RegisterConstructor("Exception", NewException)
+	for _, name := range splExceptions {
+		if name == "RuntimeException" {
+			rt.RegisterConstructor(name, NewRuntimeException)
+		} else {
+			rt.RegisterConstructor(name, NewException)
+		}
+	}
 }

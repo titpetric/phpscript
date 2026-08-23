@@ -82,7 +82,7 @@ func writeReportHeader(w io.Writer, argv []string) {
 // openReport creates the -o markdown sink and writes its header. It runs
 // before the first fixture, so an unwritable path fails the command
 // immediately rather than after the whole suite has executed.
-func openReport(args []string, opts Options) (*os.File, error) {
+func openReport(opts Options, args []string) (*os.File, error) {
 	if opts.Output == "" {
 		return nil, nil
 	}
@@ -90,12 +90,12 @@ func openReport(args []string, opts Options) (*os.File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create output: %w", err)
 	}
-	writeReportHeader(file, reportArgs(args, opts))
+	writeReportHeader(file, reportArgs(opts, args))
 	return file, nil
 }
 
 // reportArgs reconstructs the test invocation for the provenance comment.
-func reportArgs(args []string, opts Options) []string {
+func reportArgs(opts Options, args []string) []string {
 	argv := []string{"test"}
 	if opts.Matrix {
 		argv = append(argv, "--matrix")
