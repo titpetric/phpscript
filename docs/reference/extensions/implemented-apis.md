@@ -50,7 +50,124 @@ function header(string $header, mixed ...$opts): void
 function http_response_code(mixed ...$opts): mixed
 ```
 
-### stdlib
+### stdlib/compat
+
+#### buffers
+
+```php
+// ob_end_clean closes the active buffer and discards its contents.
+function ob_end_clean(): bool
+```
+
+```php
+// ob_end_flush closes the active buffer and writes its contents to the output below it.
+function ob_end_flush(): bool
+```
+
+```php
+// ob_get_clean closes the active buffer and returns its contents.
+function ob_get_clean(): mixed
+```
+
+```php
+// ob_get_contents returns the active buffer's contents without closing it.
+function ob_get_contents(): mixed
+```
+
+```php
+// ob_get_flush closes the active buffer, writes its contents to the output below it, and returns them.
+function ob_get_flush(): mixed
+```
+
+```php
+// ob_get_level returns the number of active output buffers.
+function ob_get_level(): int
+```
+
+```php
+/**
+ * ob_start takes a callback and chunk size in PHP. Neither changes what a
+ * template engine sees, so they are accepted and ignored.
+ */
+function ob_start(mixed ...$unused): bool
+```
+
+#### datetime
+
+```php
+/**
+ * microtime(true) returns seconds as a float; the argumentless form
+ * returns PHP's historical "msec sec" string.
+ */
+function microtime(bool ...$as_float): mixed
+```
+
+```php
+// time returns the current Unix timestamp in seconds.
+function time(): int
+```
+
+#### regex
+
+```php
+/**
+ * preg_match implements preg_match($pattern, $subject, &$matches), returning
+ * 0/1 and optionally filling $matches with the first match's groups.
+ */
+function preg_match(string $pattern, string $subject, &$matches = null): int
+```
+
+```php
+/**
+ * preg_match_all implements preg_match_all($pattern, $subject, &$matches),
+ * filling $matches in PREG_PATTERN_ORDER: $matches[0] holds the full matches
+ * and $matches[g] the captures of group g. Returns the number of matches.
+ * 
+ * $matches is written as a []any of []string columns. Both levels are indexed
+ * and iterated by the VM exactly like nested PHP arrays, and the columns are
+ * plain string slices, so a match set of g groups over n matches costs g+1
+ * allocations instead of the 2(g+1) plus 2n interface boxes an *model.Array
+ * pair would.
+ */
+function preg_match_all(string $pattern, string $subject, &$matches = null): int
+```
+
+```php
+/**
+ * preg_quote escapes the characters that are special in a PCRE pattern, so a
+ * literal can be spliced into one.
+ */
+function preg_quote(string $subject, string ...$delimiter): string
+```
+
+```php
+/**
+ * preg_replace implements preg_replace($pattern, $replacement, $subject) for
+ * string arguments, converting PHP backreference syntax (\1 / $1) in the
+ * replacement to the ${1} form both engines expand.
+ */
+function preg_replace(string $pattern, string $replacement, string $subject): string
+```
+
+### stdlib/core
+
+#### other
+
+```php
+/**
+ * defer runs $callback when the enclosing function returns, or when the
+ * script ends at top level; deferred callbacks run last-in, first-out.
+ */
+function defer(callable $callback): void
+```
+
+```php
+/**
+ * register_shutdown_function runs $callback after the script finishes,
+ * including after exit or an execution error, in registration order.
+ */
+function register_shutdown_function(callable $callback): void
+```
 
 #### arrays
 
@@ -561,105 +678,6 @@ function token_get_all(string $src): array
 function token_name(int $id): string
 ```
 
-### stdlib/compat
-
-#### buffers
-
-```php
-// ob_end_clean closes the active buffer and discards its contents.
-function ob_end_clean(): bool
-```
-
-```php
-// ob_end_flush closes the active buffer and writes its contents to the output below it.
-function ob_end_flush(): bool
-```
-
-```php
-// ob_get_clean closes the active buffer and returns its contents.
-function ob_get_clean(): mixed
-```
-
-```php
-// ob_get_contents returns the active buffer's contents without closing it.
-function ob_get_contents(): mixed
-```
-
-```php
-// ob_get_flush closes the active buffer, writes its contents to the output below it, and returns them.
-function ob_get_flush(): mixed
-```
-
-```php
-// ob_get_level returns the number of active output buffers.
-function ob_get_level(): int
-```
-
-```php
-/**
- * ob_start takes a callback and chunk size in PHP. Neither changes what a
- * template engine sees, so they are accepted and ignored.
- */
-function ob_start(mixed ...$unused): bool
-```
-
-#### datetime
-
-```php
-/**
- * microtime(true) returns seconds as a float; the argumentless form
- * returns PHP's historical "msec sec" string.
- */
-function microtime(bool ...$as_float): mixed
-```
-
-```php
-// time returns the current Unix timestamp in seconds.
-function time(): int
-```
-
-#### regex
-
-```php
-/**
- * preg_match implements preg_match($pattern, $subject, &$matches), returning
- * 0/1 and optionally filling $matches with the first match's groups.
- */
-function preg_match(string $pattern, string $subject, &$matches = null): int
-```
-
-```php
-/**
- * preg_match_all implements preg_match_all($pattern, $subject, &$matches),
- * filling $matches in PREG_PATTERN_ORDER: $matches[0] holds the full matches
- * and $matches[g] the captures of group g. Returns the number of matches.
- * 
- * $matches is written as a []any of []string columns. Both levels are indexed
- * and iterated by the VM exactly like nested PHP arrays, and the columns are
- * plain string slices, so a match set of g groups over n matches costs g+1
- * allocations instead of the 2(g+1) plus 2n interface boxes an *model.Array
- * pair would.
- */
-function preg_match_all(string $pattern, string $subject, &$matches = null): int
-```
-
-```php
-/**
- * preg_quote escapes the characters that are special in a PCRE pattern, so a
- * literal can be spliced into one.
- */
-function preg_quote(string $subject, string ...$delimiter): string
-```
-
-```php
-/**
- * preg_replace implements preg_replace($pattern, $replacement, $subject) for
- * string arguments, converting PHP backreference syntax (\1 / $1) in the
- * replacement to the ${1} form both engines expand.
- */
-function preg_replace(string $pattern, string $replacement, string $subject): string
-```
-
 ### stdlib/crypto
 
 ```php
@@ -868,24 +886,6 @@ function memory_get_peak_usage(bool ...$real_usage): int
  * estimate has no allocator/used distinction.
  */
 function memory_get_usage(bool ...$real_usage): int
-```
-
-### stdlib/ps
-
-```php
-/**
- * defer runs $callback when the enclosing function returns, or when the
- * script ends at top level; deferred callbacks run last-in, first-out.
- */
-function defer(callable $callback): void
-```
-
-```php
-/**
- * register_shutdown_function runs $callback after the script finishes,
- * including after exit or an execution error, in registration order.
- */
-function register_shutdown_function(callable $callback): void
 ```
 
 ### stdlib/span
@@ -1167,7 +1167,7 @@ class SMTP
 
 ### `Session\Manager`
 
-Registered from `stdlib/ps`.
+Registered from `stdlib/session`.
 
 ```php
 // Session\Manager starts, reads and validates the request's session against the given $storage.
@@ -1191,7 +1191,7 @@ class Session\Manager
 
 ### `Session\Storage\Disk`
 
-Registered from `stdlib/ps`.
+Registered from `stdlib/session`.
 
 ```php
 // Session\Storage\Disk is session storage backed by files under $storage_path; with no path it uses the operating system's temporary directory.
@@ -1215,7 +1215,7 @@ class Session\Storage\Disk
 
 ### `Session\Storage\Memory`
 
-Registered from `stdlib/ps`.
+Registered from `stdlib/session`.
 
 ```php
 // Session\Storage\Memory is session storage backed by process memory; sessions vanish when the process exits.
@@ -1239,7 +1239,7 @@ class Session\Storage\Memory
 
 ### `SharedMemory`
 
-Registered from `stdlib/ps`.
+Registered from `stdlib/core`.
 
 ```php
 /**
