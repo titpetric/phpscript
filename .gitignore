@@ -17,3 +17,5 @@ demos/*/templates/cache/
 
 # Local agent/editor state, never committed.
 /.claude
+
+memprobe*

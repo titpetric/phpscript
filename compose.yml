@@ -6,8 +6,18 @@ services:
   phpscript:
     image: titpetric/phpscript:latest
     env_file: .env.docker
+    # Two networks: the ingress one publishes it, and the project default is
+    # where mysql and postgres are. dbadmin opens connections to both, and a
+    # service that cannot resolve them reports every driver but sqlite as
+    # unreachable.
     networks:
       - projects-ingress
+      - default
+    depends_on:
+      mysql:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     labels:
       caddy: dbadmin.localhost
       caddy.reverse_proxy: "{{upstreams 8080}}"
