@@ -18,7 +18,6 @@ package tests
 import (
 	"context"
 	"errors"
-	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -97,7 +96,7 @@ func newTestRuntime(out *strings.Builder, ctx context.Context, input ...*strings
 		options.Stdin = input[0]
 	}
 	rt := runner.New(out, options)
-	rt.SetIncludeCache(includeCache)
+	rt.SetIncludeCache(includeCacheFor("fixtures"))
 	rt.SetExprCache(exprCache)
 	rt.SetContext(context.WithValue(ctx, tenantKey, "acme"))
 	rt.RegisterConstructor("Storage", NewStorage)
@@ -108,41 +107,37 @@ func newTestRuntime(out *strings.Builder, ctx context.Context, input ...*strings
 	return rt
 }
 
-// TestFixtures discovers every fixtures/*.phpt file, runs it, and asserts the
-// program output (or the expected error). It also prints a summary table.
+// TestFixtures discovers every fixtures/<area>/*.phpt file, runs it, and
+// asserts the program output (or the expected error). It also prints a summary
+// table, grouped the way the fixture tree is.
 func TestFixtures(t *testing.T) {
-	entries, err := fs.ReadDir(fixturesFS, "fixtures")
+	areas, err := embeddedFixtures()
 	if err != nil {
-		t.Fatalf("read fixtures: %v", err)
+		t.Fatalf("discover fixtures: %v", err)
+	}
+	if len(areas) == 0 {
+		t.Fatal("no fixtures discovered")
 	}
 
 	type result struct {
+		area   string
 		name   string
 		passed bool
 	}
 	var results []result
 
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".phpt") {
-			continue
-		}
-		data, err := fixturesFS.ReadFile("fixtures/" + e.Name())
-		if err != nil {
-			t.Fatalf("read %s: %v", e.Name(), err)
-		}
-		fx, err := ParseFixture(data, "fixtures/"+e.Name())
-		if err != nil {
-			t.Fatalf("parse %s: %v", e.Name(), err)
-		}
-
-		passed := t.Run(fx.Name, func(t *testing.T) {
-			res := RunFixture(t.Context(), fx)
-			if !res.Passed {
-				t.Fatalf("fixture failed: %s", res.FailureReason)
+	for _, area := range areas {
+		t.Run(area.Name, func(t *testing.T) {
+			for _, fx := range area.Fixtures {
+				passed := t.Run(fx.Name, func(t *testing.T) {
+					res := RunFixture(t.Context(), fx)
+					if !res.Passed {
+						t.Fatalf("fixture failed: %s", res.FailureReason)
+					}
+				})
+				results = append(results, result{area.Name, fx.Name, passed})
 			}
 		})
-
-		results = append(results, result{fx.Name, passed})
 	}
 
 	// Summary table.
@@ -152,7 +147,7 @@ func TestFixtures(t *testing.T) {
 		if !r.passed {
 			status = "FAIL"
 		}
-		t.Logf("  [%s] %s", status, r.name)
+		t.Logf("  [%s] %s/%s", status, r.area, r.name)
 	}
 }
 

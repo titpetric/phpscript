@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -34,20 +35,49 @@ var phpFS fs.FS
 
 var phpFSOnce sync.Once
 
-var includeCache = runner.NewIncludeCache()
-
 var exprCache = runner.NewExprCache()
-
-var flatIncludeCache = flatstack.NewIncludeCache()
 
 var flatExprCache = flatstack.NewExprCache()
 
+// An include cache is keyed by the path as the script wrote it, so one cache
+// shared across fixture areas would serve syntax/code/functions.php to a
+// fixture in another area that includes its own code/functions.php. The caches
+// are therefore per include root, which is the directory holding the fixture.
+var (
+	includeCaches     sync.Map // string -> *runner.IncludeCache
+	flatIncludeCaches sync.Map // string -> *flatstack.IncludeCache
+)
+
+func includeCacheFor(dir string) *runner.IncludeCache {
+	if cache, ok := includeCaches.Load(dir); ok {
+		return cache.(*runner.IncludeCache)
+	}
+	cache, _ := includeCaches.LoadOrStore(dir, runner.NewIncludeCache())
+	return cache.(*runner.IncludeCache)
+}
+
+func flatIncludeCacheFor(dir string) *flatstack.IncludeCache {
+	if cache, ok := flatIncludeCaches.Load(dir); ok {
+		return cache.(*flatstack.IncludeCache)
+	}
+	cache, _ := flatIncludeCaches.LoadOrStore(dir, flatstack.NewIncludeCache())
+	return cache.(*flatstack.IncludeCache)
+}
+
 // ResetCaches clears all global shared caches between test suites.
 func ResetCaches() {
-	includeCache.Clear()
 	exprCache.Clear()
-	flatIncludeCache.Clear()
 	flatExprCache.Clear()
+	includeCaches.Range(func(key, value any) bool {
+		value.(*runner.IncludeCache).Clear()
+		includeCaches.Delete(key)
+		return true
+	})
+	flatIncludeCaches.Range(func(key, value any) bool {
+		value.(*flatstack.IncludeCache).Clear()
+		flatIncludeCaches.Delete(key)
+		return true
+	})
 }
 
 func testPHPFS() fs.FS {
@@ -59,6 +89,59 @@ func testPHPFS() fs.FS {
 		}
 	})
 	return phpFS
+}
+
+// fixtureArea is the fixtures of one area directory, in discovery order.
+type fixtureArea struct {
+	Name     string
+	Fixtures []*Fixture
+}
+
+// embeddedFixtures walks the embedded tree and groups every .phpt by the area
+// directory holding it. A fixture's include root is that directory, which is
+// also where the php runner executes, so all three runners resolve a relative
+// include to the same file.
+func embeddedFixtures() ([]fixtureArea, error) {
+	index := map[string]int{}
+	var areas []fixtureArea
+
+	err := fs.WalkDir(fixturesFS, "fixtures", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(p, ".phpt") {
+			return nil
+		}
+
+		data, err := fixturesFS.ReadFile(p)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", p, err)
+		}
+		fx, err := ParseFixture(data, p)
+		if err != nil {
+			return fmt.Errorf("parse %s: %w", p, err)
+		}
+
+		dir := path.Dir(p)
+		root, err := fs.Sub(fixturesFS, dir)
+		if err != nil {
+			return fmt.Errorf("sub %s: %w", dir, err)
+		}
+		fx.SetRootFS(root)
+
+		name := path.Base(dir)
+		if _, ok := index[name]; !ok {
+			index[name] = len(areas)
+			areas = append(areas, fixtureArea{Name: name})
+		}
+		at := index[name]
+		areas[at].Fixtures = append(areas[at].Fixtures, fx)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return areas, nil
 }
 
 func errorChainContains(err error, substr string) bool {
@@ -103,6 +186,7 @@ type Fixture struct {
 	Expected string `yaml:"-"`
 	Path     string `yaml:"-"`
 
+	rootFS    fs.FS
 	mu        sync.Mutex
 	parsed    *model.Program
 	parsedErr error
@@ -125,11 +209,28 @@ type TestResult struct {
 	Skipped       bool   `json:"skipped,omitempty"`
 }
 
+// SetRootFS binds the filesystem a fixture's includes resolve against. The
+// directory holding the .phpt is the right answer for every caller: it is what
+// the php runner uses as its working directory, so all three runners resolve a
+// relative include to the same file.
+func (f *Fixture) SetRootFS(root fs.FS) {
+	f.rootFS = root
+}
+
+// RootDir returns the directory holding the fixture, which is both its include
+// root and where the php runner executes.
+func (f *Fixture) RootDir() string {
+	return filepath.Dir(f.Path)
+}
+
 // runnerOptions returns the fixture's options: frontmatter with the
 // harness-owned fields filled in.
 func (f *Fixture) runnerOptions() runner.Options {
 	options := f.Options
-	options.RootFS = testPHPFS()
+	options.RootFS = f.rootFS
+	if options.RootFS == nil {
+		options.RootFS = testPHPFS()
+	}
 	options.Stdin = f.stdin()
 	return options
 }
@@ -242,6 +343,7 @@ func loadFixtureFile(path string) (*Fixture, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
+	fx.SetRootFS(os.DirFS(filepath.Dir(path)))
 	return fx, nil
 }
 
@@ -378,12 +480,12 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	if f.interp == nil {
 		options := f.runnerOptions()
 		rt := runner.New(&out, options)
-		rt.SetIncludeCache(includeCache)
+		rt.SetIncludeCache(includeCacheFor(f.RootDir()))
 		rt.SetExprCache(exprCache)
 		rt.RegisterConstructor("Storage", NewStorage)
 		rt.RegisterConstructor("FailStorage", NewFailStorage)
 		registerPanicBindings(rt)
-		stdlib.RegisterFS(rt, ".")
+		stdlib.RegisterFS(rt, f.RootDir())
 		stdlib.Register(rt)
 		rt.FreezeStdlib()
 		f.interp = rt
@@ -417,7 +519,7 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
 	if f.flatRT == nil {
-		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions())
+		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions(), f.RootDir())
 		f.flatRT.FreezeStdlib()
 	} else {
 		f.flatRT.ResetSession(&out, f.stdin())
@@ -434,14 +536,14 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	return out.String(), reqCtx, nil
 }
 
-func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options) *flatstack.Runtime {
+func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, rootDir string) *flatstack.Runtime {
 	runtime := flatstack.New(out, options)
-	runtime.SetIncludeCache(flatIncludeCache)
+	runtime.SetIncludeCache(flatIncludeCacheFor(rootDir))
 	runtime.SetExprCache(flatExprCache)
 	runtime.RegisterConstructor("Storage", NewStorage)
 	runtime.RegisterConstructor("FailStorage", NewFailStorage)
 	registerPanicBindings(runtime)
-	stdlib.RegisterFS(runtime, ".")
+	stdlib.RegisterFS(runtime, rootDir)
 	stdlib.Register(runtime)
 	return runtime
 }

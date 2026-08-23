@@ -13,6 +13,11 @@ vendor
 # venom's per-run logs. Neither is committed.
 venom*.log
 demos/*/templates/cache/
+
+# The matrix runner writes a hidden temp script next to each fixture for the
+# php runner, and the filesystem fixture writes into its own area folder.
+tests/fixtures/**/.*.php
+tests/fixtures/**/filesystem_fixture_*.txt
 *.so
 
 # Local agent/editor state, never committed.

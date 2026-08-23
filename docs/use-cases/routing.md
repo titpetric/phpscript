@@ -24,7 +24,7 @@ routes:
 The route test fixture uses this source tree:
 
 ```text
-tests/fixtures/route/
+tests/fixtures/routing/
 ├── kv/
 │   ├── get.php
 │   └── post.php
@@ -59,7 +59,7 @@ PHP endpoint files handle:
 
 Each HTTP request gets a fresh PHP VM. Host applications can bind Go values into
 each VM to provide shared process state or services. The example fixture under
-`tests/fixtures/route` uses `SharedMemory`, a Go struct registered as the PHP class
+`tests/fixtures/routing` uses `SharedMemory`, a Go struct registered as the PHP class
 `SharedMemory`, to provide a small key/value store and counters:
 
 - `POST /kv/{key}` writes `$_POST["value"]` into shared memory.
@@ -140,4 +140,4 @@ services, and bindings. Every request gets a fresh PHP runtime, but
 
 - [Route tests](../../tests/route_test.go)
 - [SharedMemory binding](../../stdlib/ps/shared_memory.go)
-- [Route fixtures](../../tests/fixtures/route)
+- [Route fixtures](../../tests/fixtures/routing)

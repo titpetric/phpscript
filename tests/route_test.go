@@ -17,7 +17,7 @@ import (
 )
 
 func TestRouteSharedMemoryFixture(t *testing.T) {
-	root, err := fs.Sub(fixturesFS, "fixtures/route")
+	root, err := fs.Sub(fixturesFS, "fixtures/routing")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestRouteSharedMemoryFixture(t *testing.T) {
 // a browser form takes: the multipart body has to reach both superglobals, and
 // the temporary copy has to be gone once the response is written.
 func TestRouteFileUpload(t *testing.T) {
-	root, err := fs.Sub(fixturesFS, "fixtures/route")
+	root, err := fs.Sub(fixturesFS, "fixtures/routing")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestRouteFileUpload(t *testing.T) {
 }
 
 func Example_routeSharedMemory() {
-	root, err := fs.Sub(fixturesFS, "fixtures/route")
+	root, err := fs.Sub(fixturesFS, "fixtures/routing")
 	if err != nil {
 		fmt.Println(err)
 		return

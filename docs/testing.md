@@ -78,7 +78,11 @@ PHP accesses this constructor as `SharedMemory`. The binding exposes `set` and `
 
 ## `.phpt` fixtures
 
-Fixtures live directly in [`tests/fixtures`](../tests/fixtures). The test harness discovers every file with a `.phpt` extension and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of.
+Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `exceptions`, `flatstack`, `functions`, `includes`, `oop`, `runtime`, `stdlib`, `strings` and `syntax`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it.
+
+A fixture's own folder is its include root. That is what lets all three runtimes agree: the `php` runner executes with its working directory set to the folder holding the fixture, and both Go runtimes are rooted at the same folder, so a relative path in the fixture names the same file whichever runtime reads it.
+
+Because the folder is the unit of discovery, a bare directory path is not recursive. `phpscript test ./...` is what runs a tree; `phpscript test .` matches only the fixtures sitting directly in that directory, and reports an error rather than success when it matches none.
 
 Each fixture has three sections separated by a line containing only `---`:
 
@@ -128,14 +132,14 @@ throw new Exception("boom");
 Internal Server Error
 ```
 
-Files used by `include`, autoloading, templates, or filesystem APIs can be placed below `tests/fixtures`. The fixture runtime exposes that directory as its root filesystem, so fixture code refers to those files with paths relative to it.
+Files used by `include`, autoloading, templates, or filesystem APIs sit inside the area folder that uses them, and fixture code names them relative to that folder: `autoloading/psr4/loader.php` is `psr4/loader.php` to a fixture in `autoloading`. Keeping the support files with their fixture is what keeps the include root a single directory, and a support file that two areas need is copied rather than shared, because an include path that climbs out of the fixture's folder is rejected.
 
 ### Checking a fixture against PHP
 
-PHP 8.4 is installed as `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section is what `php` prints for the same source, and that is verified rather than assumed. `phpscript test --matrix` runs that check for every fixture at once; to see the whole difference for one of them, run the two sides by hand. The two `---` lines make the sections addressable:
+PHP 8.5 is installed as `/usr/bin/php`. Where a fixture uses only language features and PHP's own library, its expected-output section is what `php` prints for the same source, and that is verified rather than assumed. `phpscript test --matrix` runs that check for every fixture at once; to see the whole difference for one of them, run the two sides by hand. The two `---` lines make the sections addressable:
 
 ```bash
-cd tests/fixtures
+cd tests/fixtures/arrays
 awk '/^---$/{n++; next} n==1' sort.phpt > /tmp/fixture.php
 awk '/^---$/{n++; next} n==2' sort.phpt > /tmp/want.txt
 php /tmp/fixture.php > /tmp/got.txt
@@ -171,19 +175,37 @@ Opt out only where the runtime has nothing to say about the fixture: `php: false
 
 ## Testing across runtimes
 
-`phpscript test --matrix` runs every fixture through all three runtimes and prints one row per fixture:
+`phpscript test --matrix` runs every fixture through all three runtimes and prints one table per area, with the area name as the header of the fixture column:
 
 ```bash
-phpscript test --matrix tests/fixtures
-phpscript test --matrix -v tests/fixtures   # with the failures of each runtime
+phpscript test --matrix tests/fixtures/...
+phpscript test --matrix -v tests/fixtures/...   # with the failures of each runtime
 ```
 
-| Fixture             | Flat stack | Runtime | PHP  |
+| arrays              | Flat stack | Runtime | PHP  |
 |---------------------|------------|---------|------|
 | array_indexing.phpt | PASS       | PASS    | PASS |
-| storage_list.phpt   | PASS       | PASS    | SKIP |
+| sort.phpt           | PASS       | PASS    | PASS |
+
+| bindings          | Flat stack | Runtime | PHP  |
+|-------------------|------------|---------|------|
+| storage_list.phpt | PASS       | PASS    | SKIP |
+
+Each table is followed by that area's subtotal, and the run ends with the total.
 
 A `SKIP` is a fixture that opted the runtime out, or a `php` binary that is not installed. Any other non-pass fails the run. This is the check that finds a divergence between the two Go runtimes, and between phpscript and PHP itself.
+
+### Writing the report to a file
+
+`-o` writes the same tables as Markdown while the terminal output continues as normal:
+
+```bash
+phpscript test --matrix -o ../../docs/test-fixtures.md ./...
+```
+
+That is what produces [test-fixtures.md](./test-fixtures.md), which `atkins test:phpscript:report` regenerates on every pipeline run. The report ends with a summary table whose total is the sum of the per-area rows.
+
+`--profile`, `--count` and `--time` add their cost columns to the Markdown as well as the terminal. A matrix row has one cost column and three runners, so the numbers are the default runtime's: the matrix compares correctness across runtimes and cost on the runtime the other two are measured against, and `--json` keeps the per-runtime figures. The checked-in report is generated without them, because a timing that differs by a millisecond per run would be a diff in every commit.
 
 ## Running fixture tests
 
@@ -199,11 +221,12 @@ Run every fixture through the flat bytecode runtime:
 go test ./tests -run '^TestFlatstackFixtures$'
 ```
 
-Use the fixture name to focus on one subtest:
+Subtests are nested under their area, so a `-run` pattern can select either:
 
 ```bash
-go test ./tests -run 'TestFixtures/string_concatenation'
-go test ./tests -run 'TestFlatstackFixtures/string_concatenation'
+go test ./tests -run 'TestFixtures/arrays'       # one area
+go test ./tests -run 'TestFixtures/arrays/sort'  # one fixture
+go test ./tests -run 'TestFlatstackFixtures/arrays/sort'
 ```
 
-Before submitting a change, run the package tests affected by the change, then the complete suite with `go test ./...`, and then `phpscript test --matrix tests/fixtures`. A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it passes the php column of the matrix.
+Before submitting a change, run the package tests affected by the change, then the complete suite with `go test ./...`, and then `phpscript test --matrix tests/fixtures/...`. A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it passes the php column of the matrix.

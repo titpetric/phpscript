@@ -22,7 +22,7 @@ created next to the sources on first start.
 
 `include/Compiler.php` and `include/Template.php` are
 [minitpl](https://github.com/titpetric/minitpl), vendored from
-[tests/fixtures/code](../../tests/fixtures/code) and formatted with
+[tests/fixtures/syntax/code](../../tests/fixtures/syntax/code) and formatted with
 `phpscript fmt`. They compile `templates/*.tpl` into PHP under
 `templates/cache/` on first use. The engine assigns inside `if` conditions, so
 `phpscript lint` reports warnings on those two files.

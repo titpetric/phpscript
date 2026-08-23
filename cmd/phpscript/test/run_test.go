@@ -28,7 +28,7 @@ func TestRunCommandJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Stdout = w
-	errRun := test.Run(ctx, []string{"../../../tests/fixtures/die_exit.phpt"}, test.Options{
+	errRun := test.Run(ctx, []string{"../../../tests/fixtures/exceptions/die_exit.phpt"}, test.Options{
 		JSON:       true,
 		CPUProfile: cpuPath,
 		MemProfile: memPath,
