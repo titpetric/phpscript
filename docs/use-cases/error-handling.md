@@ -115,6 +115,24 @@ Any other code is the script's own numbering rather than an HTTP status, so a
 `die()` are not failures: a script that ends early answers with the status it
 set, as it does in PHP.
 
+They are also not catchable, which matters more than it sounds. This is the
+redirect every application writes:
+
+```php
+try {
+	$order = $orders->place($cart);
+	header("Location: /orders/" . $order["id"]);
+	exit();
+} catch (Exception $e) {
+	$errors[] = $e->getMessage();
+}
+```
+
+The `exit()` ends the request there. A runtime where a catch clause could
+swallow it would carry on into the error branch and render a page under a
+`Location` header that was already staged. `finally` does not run either, for
+the same reason it does not in PHP.
+
 A response that failed carries the status and nothing else. What went wrong is
 in the server log and on the request trace, both addressed by the request id the
 response carries, and not in a body the client reads back.

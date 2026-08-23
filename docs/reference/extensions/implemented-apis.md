@@ -660,6 +660,60 @@ function preg_quote(string $subject, string ...$delimiter): string
 function preg_replace(string $pattern, string $replacement, string $subject): string
 ```
 
+### stdlib/crypto
+
+```php
+/**
+ * password_get_info returns the algorithm and options $hash records, as
+ * PHP's does: an unrecognised hash reports algo "" rather than failing.
+ */
+function password_get_info(string $hash): array
+```
+
+```php
+/**
+ * password_hash returns a bcrypt hash of $password, salted from the
+ * system CSPRNG. $algo is accepted and must name bcrypt, which is the
+ * only algorithm implemented; $options takes a "cost" between 4 and 31.
+ */
+function password_hash(string $password, mixed ...$opts): string
+```
+
+```php
+/**
+ * password_needs_rehash reports whether $hash was made with a different
+ * algorithm or cost than $algo and $options ask for, which is how a
+ * login upgrades a stored hash without asking for the password twice.
+ */
+function password_needs_rehash(string $hash, mixed ...$opts): bool
+```
+
+```php
+/**
+ * password_verify reports whether $password produced $hash. A hash that
+ * is empty or malformed is false, not an error: a login form asks a
+ * question, and "no" is an answer.
+ */
+function password_verify(string $password, string $hash): bool
+```
+
+### stdlib/database
+
+```php
+// Database::connections returns the names this script can open, sorted.
+Database::connections(): array
+```
+
+```php
+/**
+ * Database::register adds the connection $name to the set new Database()
+ * resolves against, with $dsn in "<driver>://<dsn>" form. Registering a
+ * name that already means the same thing does nothing; registering it
+ * with a different DSN closes the pool opened for the old one.
+ */
+Database::register(string $name, string $dsn): bool
+```
+
 ### stdlib/files
 
 #### paths

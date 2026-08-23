@@ -140,6 +140,8 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [buffers](extensions/implemented-apis.md#buffers)
       - [datetime](extensions/implemented-apis.md#datetime)
       - [regex](extensions/implemented-apis.md#regex)
+    - [stdlib/crypto](extensions/implemented-apis.md#stdlibcrypto)
+    - [stdlib/database](extensions/implemented-apis.md#stdlibdatabase)
     - [stdlib/files](extensions/implemented-apis.md#stdlibfiles)
       - [paths](extensions/implemented-apis.md#paths)
       - [reads](extensions/implemented-apis.md#reads)

@@ -39,6 +39,43 @@ $db = new Database("app");
 The constructor throws an exception if the connection name is not registered or
 the pool cannot be opened.
 
+## Connections an application owns
+
+Connection names normally come from the environment the host started with,
+which is right when the operator owns the list. An application that keeps its
+connections in a table owns the list itself, and `putenv` will not do: it writes
+to the script environment, and the provider is built once, before the first
+request, from the host's.
+
+`Database::register()` adds one:
+
+```php
+Database::register("reports", "postgres://user:pass@host/reports?sslmode=disable");
+
+$db = new Database("reports");
+```
+
+The name is lowercased, as it is when it comes from `PLATFORM_DB_REPORTS`.
+Registering a name that already means the same thing does nothing; registering
+it with a different DSN closes the pool that was opened for the old one, so an
+edited connection takes effect on the next request rather than the next
+restart.
+
+A virtual host registers into its own provider, so one site cannot reach
+another's databases by naming them.
+
+`Database::connections()` returns the names the script can open, sorted:
+
+```php
+foreach (Database::connections() as $name) {
+	echo $name, "\n";
+}
+```
+
+The [dbadmin demo](../../demos/dbadmin) is built on this: its `connection` table
+holds a name and a DSN per row, and `connection_dao::open()` registers the DSN
+before asking for a client.
+
 ## Read-only clients
 
 `$db->is_readonly` restricts a client to statements that only read, so a page
@@ -206,6 +243,30 @@ $db->query("create table if not exists users (id integer primary key, name text)
 $db->query("delete from users where id = ?", 10);
 ```
 
+A `?` is the placeholder whatever the driver is. A statement that is given
+arguments is rebound to the style the driver reads, so the same PHP runs on
+sqlite, mysql and postgres, which numbers its placeholders `$1`, `$2`. A
+statement with no arguments is passed through as it was written: rebinding
+scans rather than parses, and a `?` inside a string literal is not a
+placeholder.
+
+**One value that is an array is bound by name, not by position.** A single
+argument that is an array or a map is taken as a set of named parameters for a
+`:name` query, which is what makes `insert()` and friends work. A statement
+that binds exactly one value, and that value is an array, therefore becomes a
+named query and fails somewhere else:
+
+```php
+// Refused: one argument, and it is an array.
+$db->get("select * from users where id = ?", $ids);
+
+// Bind the scalar.
+$db->get("select * from users where id = ?", $ids[0]);
+```
+
+Code that builds its argument list at runtime should check for it, as dbadmin's
+`driver_dao::bind()` does, rather than let sqlx report it.
+
 `get` returns the first row as an associative array, or `false` when there are
 no rows. `get_all` returns every row as an array of associative arrays:
 
@@ -283,6 +344,7 @@ The binding provides these methods:
 
 `Database`:
 
+- `Database::register($name, $dsn)` and `Database::connections()`, the statics
 - `$db->is_readonly`, a readable and writable property restricting the client to reads
 - `insert($table, $values)`
 - `replace($table, $values)`
