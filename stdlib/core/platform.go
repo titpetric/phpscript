@@ -190,20 +190,35 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 	rt.RegisterFunc("filter_var", phpFilterVar)
 
 	rt.RegisterFunc("strtr", phpStrtr)
-	// strrpos returns the byte position of the last occurrence of $needle in $haystack, or false if it does not occur; a negative $offset is treated as 0.
+	// strrpos returns the byte position of the last occurrence of $needle in $haystack, or false if it does not occur; a positive $offset skips that many leading bytes and a negative one requires the match to start that many bytes before the end.
 	rt.RegisterFunc("strrpos", func(haystack, needle string, offset ...int64) any {
-		start := 0
-		if len(offset) > 0 && offset[0] > 0 {
-			start = int(offset[0])
-			if start > len(haystack) {
+		if len(offset) == 0 || offset[0] == 0 {
+			return lastIndexOrFalse(strings.LastIndex(haystack, needle))
+		}
+		if o := offset[0]; o > 0 {
+			if o > int64(len(haystack)) {
 				return false
 			}
+			i := strings.LastIndex(haystack[o:], needle)
+			if i < 0 {
+				return false
+			}
+			return int64(i) + o
 		}
-		i := strings.LastIndex(haystack[start:], needle)
-		if i < 0 {
-			return false
+		// A negative offset caps where the match may start, counted from the
+		// end. PHP 8 raises a ValueError when that runs past the start of the
+		// haystack; phpscript clamps to 0. A match inside the prefix ending
+		// one needle past the cap starts at or before it, so LastIndex over
+		// that prefix answers directly.
+		last := int64(len(haystack)) + offset[0]
+		if last < 0 {
+			last = 0
 		}
-		return int64(i + start)
+		end := last + int64(len(needle))
+		if end > int64(len(haystack)) {
+			end = int64(len(haystack))
+		}
+		return lastIndexOrFalse(strings.LastIndex(haystack[:end], needle))
 	})
 
 	// spl_autoload_unregister removes autoloader $callback and reports whether it was registered.
@@ -263,6 +278,15 @@ func phpFilterVar(value any, args ...any) any {
 	default:
 		return value
 	}
+}
+
+// lastIndexOrFalse maps a strings.LastIndex result onto the int|false union
+// strrpos returns, since PHP callers compare the miss with === false.
+func lastIndexOrFalse(i int) any {
+	if i < 0 {
+		return false
+	}
+	return int64(i)
 }
 
 // phpStrtr implements both spellings: strtr($subject, $from, $to) replaces

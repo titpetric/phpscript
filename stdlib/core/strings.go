@@ -30,14 +30,31 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("ltrim", phpTrim(strings.TrimLeft, " \t\n\r\x00\x0B"))
 
 	rt.RegisterFunc("substr", phpSubstr)
-	// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; there is no $offset parameter.
-	rt.RegisterFunc("strpos", func(haystack, needle string) any {
-		i := strings.Index(haystack, needle)
-		if i < 0 {
-			return false
-		}
-		return int64(i)
-	})
+	// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+	rt.RegisterFunc("strpos", phpStrpos)
+	// stripos returns the byte offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+	rt.RegisterFunc("stripos", phpStripos)
+	// strripos returns the byte offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many bytes before the end.
+	rt.RegisterFunc("strripos", phpStrripos)
+	// substr_count returns the number of non-overlapping occurrences of $needle in $haystack, restricted to the window $offset and $length describe.
+	rt.RegisterFunc("substr_count", phpSubstrCount)
+	// substr_replace returns $string with the bytes from $offset for $length replaced by $replace; a negative $offset counts from the end and a negative $length is a distance from it. Array arguments are not supported.
+	rt.RegisterFunc("substr_replace", phpSubstrReplace)
+	// str_contains reports whether $needle occurs in $haystack; an empty needle is contained in every string.
+	rt.RegisterFunc("str_contains", phpStrContains)
+	// str_starts_with reports whether $haystack begins with $needle.
+	rt.RegisterFunc("str_starts_with", phpStrStartsWith)
+	// str_ends_with reports whether $haystack ends with $needle.
+	rt.RegisterFunc("str_ends_with", phpStrEndsWith)
+	// strrev returns $string with its bytes in reverse order; multi-byte characters are not preserved, matching PHP.
+	rt.RegisterFunc("strrev", phpStrrev)
+	// str_split returns $string cut into chunks of $length bytes, the last one shorter when the string does not divide evenly; an empty string yields an empty array.
+	rt.RegisterFunc("str_split", phpStrSplit)
+	rt.SetConst("STR_PAD_RIGHT", int64(strPadRight))
+	rt.SetConst("STR_PAD_LEFT", int64(strPadLeft))
+	rt.SetConst("STR_PAD_BOTH", int64(strPadBoth))
+	// str_pad returns $string padded with $pad_string to $length bytes on the side $pad_type selects; a $length below the current one is a no-op.
+	rt.RegisterFunc("str_pad", phpStrPad)
 	// strstr returns $haystack from the first occurrence of $needle to the end, or false when it does not occur; there is no $before_needle parameter.
 	rt.RegisterFunc("strstr", func(haystack, needle string) any {
 		i := strings.Index(haystack, needle)
@@ -141,6 +158,272 @@ func phpSubstr(s string, start int64, length ...int64) string {
 		return ""
 	}
 	return s[start:end]
+}
+
+// STR_PAD_* selectors, as PHP numbers them.
+const (
+	strPadLeft  = 0
+	strPadRight = 1
+	strPadBoth  = 2
+)
+
+// phpStrpos implements strpos($haystack, $needle[, $offset]).
+func phpStrpos(haystack, needle string, offset ...int64) any {
+	start, ok := searchStart(len(haystack), offset)
+	if !ok {
+		return false
+	}
+	i := strings.Index(haystack[start:], needle)
+	if i < 0 {
+		return false
+	}
+	return int64(i + start)
+}
+
+// phpStripos implements stripos($haystack, $needle[, $offset]). Both operands
+// are folded so the returned offset still indexes the original haystack.
+func phpStripos(haystack, needle string, offset ...int64) any {
+	return phpStrpos(asciiLower(haystack), asciiLower(needle), offset...)
+}
+
+// phpStrripos implements strripos($haystack, $needle[, $offset]).
+func phpStrripos(haystack, needle string, offset ...int64) any {
+	i := searchLast(asciiLower(haystack), asciiLower(needle), offset)
+	if i < 0 {
+		return false
+	}
+	return int64(i)
+}
+
+// searchStart resolves the strpos-family $offset against a haystack of n
+// bytes. A negative offset counts from the end; PHP 8 raises a ValueError when
+// it lands before the start, which phpscript clamps to 0 instead. The bool is
+// false when the offset is past the end, where the search cannot match.
+func searchStart(n int, offset []int64) (int, bool) {
+	if len(offset) == 0 {
+		return 0, true
+	}
+	start := offset[0]
+	if start < 0 {
+		start += int64(n)
+		if start < 0 {
+			start = 0
+		}
+	}
+	if start > int64(n) {
+		return 0, false
+	}
+	return int(start), true
+}
+
+// searchLast is the strrpos-family search: the last match at or before the
+// window $offset describes, or -1. A positive offset skips that many leading
+// bytes, a negative one caps where the match may start, counted from the end.
+// PHP 8 raises a ValueError when either runs off the haystack; phpscript
+// clamps a negative overrun to the start and reports no match past the end.
+func searchLast(haystack, needle string, offset []int64) int {
+	if len(offset) == 0 || offset[0] == 0 {
+		return strings.LastIndex(haystack, needle)
+	}
+	if o := offset[0]; o > 0 {
+		if o > int64(len(haystack)) {
+			return -1
+		}
+		i := strings.LastIndex(haystack[o:], needle)
+		if i < 0 {
+			return -1
+		}
+		return i + int(o)
+	}
+	last := int64(len(haystack)) + offset[0]
+	if last < 0 {
+		last = 0
+	}
+	// A match inside the prefix that ends one needle past the cap starts at
+	// or before it, so LastIndex over that prefix answers directly.
+	end := last + int64(len(needle))
+	if end > int64(len(haystack)) {
+		end = int64(len(haystack))
+	}
+	return strings.LastIndex(haystack[:end], needle)
+}
+
+// asciiLower folds A-Z only. strings.ToLower is Unicode-aware and can change a
+// string's byte length, which would shift the offsets the case-insensitive
+// search functions report; PHP folds the ASCII range and nothing else.
+func asciiLower(s string) string {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c >= 'A' && c <= 'Z' {
+			b := []byte(s)
+			for ; i < len(b); i++ {
+				if c := b[i]; c >= 'A' && c <= 'Z' {
+					b[i] = c + 'a' - 'A'
+				}
+			}
+			return string(b)
+		}
+	}
+	return s
+}
+
+// The three PHP 8 substring predicates are one-line wrappers so the published
+// signature names $haystack and $needle rather than the standard library's
+// positional parameters.
+func phpStrContains(haystack, needle string) bool { return strings.Contains(haystack, needle) }
+
+func phpStrStartsWith(haystack, needle string) bool { return strings.HasPrefix(haystack, needle) }
+
+func phpStrEndsWith(haystack, needle string) bool { return strings.HasSuffix(haystack, needle) }
+
+// phpStrrev reverses bytes. PHP's strrev is byte-wise too, so a multi-byte
+// character comes out as its bytes in reverse.
+func phpStrrev(str string) string {
+	b := []byte(str)
+	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
+		b[i], b[j] = b[j], b[i]
+	}
+	return string(b)
+}
+
+// phpStrSplit returns the chunks as a []string for the reason phpExplode does:
+// the loop allocates exactly that slice and the VM indexes it like any array.
+func phpStrSplit(str string, length ...int64) []string {
+	// PHP 8.2 returns an empty array for an empty subject; older versions
+	// returned a single empty chunk.
+	if str == "" {
+		return []string{}
+	}
+	n := int64(1)
+	// PHP 8 raises a ValueError below 1; phpscript clamps.
+	if len(length) > 0 && length[0] > 1 {
+		n = length[0]
+	}
+	size := int64(len(str))
+	out := make([]string, 0, (size+n-1)/n)
+	for i := int64(0); i < size; i += n {
+		end := i + n
+		if end > size {
+			end = size
+		}
+		out = append(out, str[i:end])
+	}
+	return out
+}
+
+// phpStrPad implements str_pad($string, $length, $pad_string, $pad_type). Go
+// allows one variadic, so both optional arguments arrive together: the pad
+// string first, the STR_PAD_* selector second.
+func phpStrPad(str string, length int64, optional ...any) string {
+	pad := " "
+	if len(optional) > 0 {
+		pad = phpval.String(optional[0])
+	}
+	padType := int64(strPadRight)
+	if len(optional) > 1 {
+		padType = phpval.Int(optional[1])
+	}
+	diff := length - int64(len(str))
+	if diff <= 0 || pad == "" {
+		return str
+	}
+	switch padType {
+	case strPadLeft:
+		return padTo(pad, int(diff)) + str
+	case strPadBoth:
+		// An odd remainder goes to the right, as PHP halves downwards.
+		left := diff / 2
+		return padTo(pad, int(left)) + str + padTo(pad, int(diff-left))
+	default:
+		return str + padTo(pad, int(diff))
+	}
+}
+
+// padTo repeats pad to exactly n bytes, cutting the last repetition short.
+func padTo(pad string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.Repeat(pad, n/len(pad)+1)[:n]
+}
+
+// phpSubstrCount implements substr_count($haystack, $needle[, $offset[, $length]]).
+// strings.Count is non-overlapping, which is what PHP counts.
+func phpSubstrCount(haystack, needle string, optional ...any) int64 {
+	// PHP 8 raises a ValueError on an empty needle.
+	if needle == "" {
+		return 0
+	}
+	return int64(strings.Count(substrWindow(haystack, optional), needle))
+}
+
+// substrWindow cuts the haystack down to the optional $offset and $length. A
+// negative offset counts from the end and a negative length stops that many
+// bytes before it. PHP 8 raises a ValueError when either leaves the string;
+// phpscript clamps.
+func substrWindow(haystack string, optional []any) string {
+	n := int64(len(haystack))
+	start := int64(0)
+	if len(optional) > 0 {
+		start = phpval.Int(optional[0])
+		if start < 0 {
+			start += n
+		}
+	}
+	if start < 0 {
+		start = 0
+	}
+	if start > n {
+		start = n
+	}
+	end := n
+	// An explicit null length means "to the end", same as omitting it.
+	if len(optional) > 1 && optional[1] != nil {
+		if l := phpval.Int(optional[1]); l < 0 {
+			end = n + l
+		} else {
+			end = start + l
+		}
+	}
+	if end > n {
+		end = n
+	}
+	if end < start {
+		end = start
+	}
+	return haystack[start:end]
+}
+
+// phpSubstrReplace implements substr_replace($string, $replace, $offset[, $length]).
+// PHP clamps an out-of-range offset here rather than raising, so this does too.
+func phpSubstrReplace(str, replace string, offset int64, length ...int64) string {
+	n := int64(len(str))
+	start := offset
+	if start < 0 {
+		start += n
+		if start < 0 {
+			start = 0
+		}
+	}
+	if start > n {
+		start = n
+	}
+	end := n
+	if len(length) > 0 {
+		// A negative length is a distance from the end of the string, not
+		// a count of bytes to drop.
+		if l := length[0]; l < 0 {
+			end = n + l
+		} else {
+			end = start + l
+		}
+	}
+	if end > n {
+		end = n
+	}
+	if end < start {
+		end = start
+	}
+	return str[:start] + replace + str[end:]
 }
 
 // phpStrReplace implements str_replace where search may be a string or a
