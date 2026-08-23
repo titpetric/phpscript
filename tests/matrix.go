@@ -61,15 +61,19 @@ type phpRun struct {
 }
 
 // executePHP runs the fixture source through the php binary. The script is
-// written next to the fixture so relative includes and __DIR__ resolve the way
-// they do for the runtime, whose root filesystem is the fixture directory.
+// written into the fixture's include root so relative includes and __DIR__
+// resolve the way they do for the two Go runtimes, which are rooted there.
 func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	binary, err := exec.LookPath("php")
 	if err != nil {
 		return phpRun{}, fmt.Errorf("php: %w", ErrRunnerUnavailable)
 	}
 
-	dir := filepath.Dir(f.Path)
+	// php runs in the fixture's include root, which is the directory holding
+	// it unless it named a root of its own. That is the same root both Go
+	// runtimes resolve against, so a relative require reaches the same file on
+	// all three.
+	dir := f.RootDir()
 	if f.Path == "" {
 		dir = "."
 	}

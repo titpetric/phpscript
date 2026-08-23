@@ -117,6 +117,7 @@ The YAML metadata supports these fields:
 | `error`       |       no | Substring that must occur in the chain of an uncaught runtime error.       |
 | `stdin`       |       no | String exposed to the script through `STDIN`.                              |
 | `runner`      |       no | Runtimes the fixture opts out of; see [Runner metadata](#runner-metadata). |
+| `root`        |       no | Include root, relative to the fixture's own directory.                     |
 
 The expected-output section is always checked. Trailing newline differences are ignored, but all other output must match exactly. For an uncaught error, set `error` to a stable identifying substring and normally expect the host response body `Internal Server Error`:
 
@@ -131,6 +132,20 @@ throw new Exception("boom");
 ---
 Internal Server Error
 ```
+
+A fixture that needs a tree phpscript does not embed names one with `root:`, resolved against the fixture's own directory. The runtime then reads that tree from disk instead of the embedded copy, and the `php` runner executes there too, so all three runners still agree. This is what lets a fixture load a composer `vendor/autoload.php`:
+
+```phpt
+name: renders a template
+description: >
+  ...
+root: ..
+---
+<?php
+require 'vendor/autoload.php';
+```
+
+Such a fixture gets its own include cache, because a cache is keyed by the path as the script wrote it and a fixture reaching a different tree must not be served a program cached for the embedded one.
 
 Files used by `include`, autoloading, templates, or filesystem APIs sit inside the area folder that uses them, and fixture code names them relative to that folder: `autoloading/psr4/loader.php` is `psr4/loader.php` to a fixture in `autoloading`. Keeping the support files with their fixture is what keeps the include root a single directory, and a support file that two areas need is copied rather than shared, because an include path that climbs out of the fixture's folder is rejected.
 

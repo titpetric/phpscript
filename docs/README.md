@@ -124,6 +124,22 @@ Memory reporting differs from PHP's allocator view:
 - Exceeding `memory_limit` raises a catchable `RuntimeException`; PHP treats
   it as a fatal error that `catch` cannot intercept.
 
+Strings:
+
+- A negative `$offset` past the start of the subject, a `substr_count()` window
+  outside it, a `str_split()` length below 1 and an empty `str_pad()` pad string
+  are clamped rather than raising the `ValueError` PHP 8 raises.
+- `substr_replace()` does not accept array arguments.
+
+Arrays:
+
+- `array_shift()`, `array_unshift()`, `array_pop()`, `array_push()` and
+  `array_splice()` require a script array. They resize their argument, and a
+  Go slice cannot grow through the interface value holding it, so a value a
+  binding returned as a native slice (`explode()`, `array_keys()`) is an error
+  rather than a mutation the script cannot observe. Assign it to a variable
+  built by the script first: `$parts = array_merge(explode(",", $s));`.
+
 Namespaces:
 
 - A file that declares a `namespace` may only declare classes and functions.

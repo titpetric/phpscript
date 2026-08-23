@@ -178,6 +178,7 @@ type Fixture struct {
 	Error       string          `yaml:"error"`   // optional: expected uncaught error substring
 	Stdin       string          `yaml:"stdin"`   // optional: top-level stdin contents
 	Options     runner.Options  `yaml:"options"` // optional: runtime options for both engines (memory_limit, ...)
+	Root        string          `yaml:"root"`    // optional: include root, relative to the fixture's own directory
 	Runner      FixtureRunners  `yaml:"runner"`  // optional: runners the fixture opts out of
 	Request     FixtureRequest  `yaml:"request"`
 	Response    FixtureResponse `yaml:"response"`
@@ -186,12 +187,14 @@ type Fixture struct {
 	Expected string `yaml:"-"`
 	Path     string `yaml:"-"`
 
-	rootFS    fs.FS
-	mu        sync.Mutex
-	parsed    *model.Program
-	parsedErr error
-	interp    *runner.Runtime
-	flatRT    *flatstack.Runtime
+	rootFS             fs.FS
+	privateInclude     *runner.IncludeCache
+	privateFlatInclude *flatstack.IncludeCache
+	mu                 sync.Mutex
+	parsed             *model.Program
+	parsedErr          error
+	interp             *runner.Runtime
+	flatRT             *flatstack.Runtime
 }
 
 // TestResult carries execution outcome for a single fixture.
@@ -217,10 +220,46 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 	f.rootFS = root
 }
 
-// RootDir returns the directory holding the fixture, which is both its include
-// root and where the php runner executes.
+// RootDir returns the directory a fixture's includes resolve against. That is
+// the directory holding it, which is also where the php runner executes, unless
+// the fixture named another one with `root:`.
 func (f *Fixture) RootDir() string {
-	return filepath.Dir(f.Path)
+	dir := filepath.Dir(f.Path)
+	if f.Root == "" {
+		return dir
+	}
+	return filepath.Join(dir, f.Root)
+}
+
+// realRoot reports whether the fixture asked for a directory on disk rather
+// than the embedded tree. Such a fixture gets its own include caches: those are
+// keyed by the path as the script wrote it, so a fixture reaching a different
+// tree must not be served a program cached for the embedded one.
+func (f *Fixture) realRoot() bool {
+	return f.Root != ""
+}
+
+// includeCache is the include cache for the fixture's root. A fixture reaching
+// a real tree gets a private one rather than sharing by directory name.
+func (f *Fixture) includeCache() *runner.IncludeCache {
+	if f.realRoot() {
+		if f.privateInclude == nil {
+			f.privateInclude = runner.NewIncludeCache()
+		}
+		return f.privateInclude
+	}
+	return includeCacheFor(f.RootDir())
+}
+
+// flatIncludeCache is includeCache for the bytecode runtime.
+func (f *Fixture) flatIncludeCache() *flatstack.IncludeCache {
+	if f.realRoot() {
+		if f.privateFlatInclude == nil {
+			f.privateFlatInclude = flatstack.NewIncludeCache()
+		}
+		return f.privateFlatInclude
+	}
+	return flatIncludeCacheFor(f.RootDir())
 }
 
 // runnerOptions returns the fixture's options: frontmatter with the
@@ -228,6 +267,12 @@ func (f *Fixture) RootDir() string {
 func (f *Fixture) runnerOptions() runner.Options {
 	options := f.Options
 	options.RootFS = f.rootFS
+	if f.realRoot() {
+		// A fixture that names a root wants the real filesystem: it is reaching
+		// for a tree phpscript does not embed, a vendor directory being the
+		// motivating case.
+		options.RootFS = os.DirFS(f.RootDir())
+	}
 	if options.RootFS == nil {
 		options.RootFS = testPHPFS()
 	}
@@ -480,13 +525,19 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	if f.interp == nil {
 		options := f.runnerOptions()
 		rt := runner.New(&out, options)
-		rt.SetIncludeCache(includeCacheFor(f.RootDir()))
+		rt.SetIncludeCache(f.includeCache())
 		rt.SetExprCache(exprCache)
 		rt.RegisterConstructor("Storage", NewStorage)
 		rt.RegisterConstructor("FailStorage", NewFailStorage)
 		registerPanicBindings(rt)
 		stdlib.RegisterFS(rt, f.RootDir())
 		stdlib.Register(rt)
+		// The harness parses and runs the fixture directly rather than going
+		// through LoadFile, so nothing else sets the entrypoint and __FILE__
+		// and __DIR__ would both be empty. An empty __DIR__ silently turns
+		// __DIR__ . "/x" into "/x", which is then rejected as escaping the
+		// root: a confusing two-step failure a long way from its cause.
+		rt.UpdateFilename(f.Path)
 		rt.FreezeStdlib()
 		f.interp = rt
 	} else {
@@ -519,7 +570,7 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
 	if f.flatRT == nil {
-		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions(), f.RootDir())
+		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions(), f.RootDir(), f.Path, f.flatIncludeCache())
 		f.flatRT.FreezeStdlib()
 	} else {
 		f.flatRT.ResetSession(&out, f.stdin())
@@ -536,15 +587,16 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	return out.String(), reqCtx, nil
 }
 
-func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, rootDir string) *flatstack.Runtime {
+func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, rootDir, entrypoint string, flatIncludeCache *flatstack.IncludeCache) *flatstack.Runtime {
 	runtime := flatstack.New(out, options)
-	runtime.SetIncludeCache(flatIncludeCacheFor(rootDir))
+	runtime.SetIncludeCache(flatIncludeCache)
 	runtime.SetExprCache(flatExprCache)
 	runtime.RegisterConstructor("Storage", NewStorage)
 	runtime.RegisterConstructor("FailStorage", NewFailStorage)
 	registerPanicBindings(runtime)
 	stdlib.RegisterFS(runtime, rootDir)
 	stdlib.Register(runtime)
+	runtime.UpdateFilename(entrypoint)
 	return runtime
 }
 
