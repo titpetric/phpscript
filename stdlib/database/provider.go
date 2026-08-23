@@ -79,6 +79,9 @@ func New(environment []string) *DatabaseProvider {
 
 // List will return the list of credential names.
 func (r *DatabaseProvider) List() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	result := make([]string, 0, len(r.credentials))
 	for k := range r.credentials {
 		result = append(result, k)
@@ -87,10 +90,37 @@ func (r *DatabaseProvider) List() []string {
 }
 
 // Register will add a new named credential into the provider.
-// The function is not concurrency safe, database credentials
-// can't be changed during the lifetime of the provider.
+//
+// A host that keeps its connections in a database registers them per request,
+// from whichever goroutine is serving it, so the credentials map is guarded
+// like the pool cache beside it.
+//
+// Re-registering a name with the same configuration is free. Re-registering it
+// with a different one drops the pool that was opened for the old credentials:
+// the cache is keyed by name, and a name that now means a different database
+// must not keep answering with the old one.
 func (r *DatabaseProvider) Register(name string, config string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if existing, ok := r.credentials[name]; ok && existing == config {
+		return
+	}
+
 	r.credentials[name] = config
+	if db, ok := r.cache[name]; ok {
+		delete(r.cache, name)
+		db.Close()
+	}
+}
+
+// credential reads a named credential under the lock.
+func (r *DatabaseProvider) credential(name string) (string, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	value, ok := r.credentials[name]
+	return value, ok
 }
 
 // Connect issues a PingContext to verify a live connection before returning.
@@ -143,7 +173,7 @@ func (r *DatabaseProvider) with(connector func(string, string) (*sqlx.DB, error)
 	}
 
 	for _, name := range names {
-		if value, ok := r.credentials[name]; ok {
+		if value, ok := r.credential(name); ok {
 			driver, dsn := r.parseCredential(value)
 			client, err := connector(driver, dsn)
 			if err != nil {

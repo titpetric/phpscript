@@ -2,6 +2,9 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/titpetric/pdo/client"
 
@@ -26,6 +29,51 @@ func Register(rt *runner.Runtime) {
 	})
 
 	RegisterMigrate(rt)
+	RegisterConnections(rt)
+}
+
+// RegisterConnections installs the statics that let a script see and extend
+// the set of connections it can open.
+//
+// Connection names normally come from the environment the host was started
+// with, which is right when the operator owns the list. An application that
+// keeps its connections in a table owns the list itself, and has nowhere to
+// put them: the provider is built once, before the first request, and putenv
+// writes to the script environment, which the provider never reads.
+func RegisterConnections(rt *runner.Runtime) {
+	// Database::connections returns the names this script can open, sorted.
+	rt.RegisterFunc("Database::connections", func() ([]string, error) {
+		extended, ok := provider(rt).(model.ExtendedDatabaseProvider)
+		if !ok {
+			return nil, fmt.Errorf("Database::connections(): connections cannot be listed")
+		}
+		names := extended.List()
+		sort.Strings(names)
+		return names, nil
+	})
+
+	// Database::register adds the connection $name to the set new Database()
+	// resolves against, with $dsn in "<driver>://<dsn>" form. Registering a
+	// name that already means the same thing does nothing; registering it
+	// with a different DSN closes the pool opened for the old one.
+	rt.RegisterFunc("Database::register", func(name string, dsn string) (bool, error) {
+		if name == "" {
+			return false, fmt.Errorf("Database::register(): argument #1 ($name) must not be empty")
+		}
+		if dsn == "" {
+			return false, fmt.Errorf("Database::register(): argument #2 ($dsn) must not be empty")
+		}
+
+		extended, ok := provider(rt).(model.ExtendedDatabaseProvider)
+		if !ok {
+			return false, fmt.Errorf("Database::register(): connections cannot be registered")
+		}
+
+		// A virtual host resolves through its own provider, so a site
+		// registering a connection cannot reach another site's.
+		extended.Register(strings.ToLower(name), dsn)
+		return true, nil
+	})
 }
 
 // RegisterMigrate installs the Database\Migrate binding.
