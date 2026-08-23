@@ -112,6 +112,20 @@ precision-14 float rendering), with the following exceptions:
   `DivisionByZeroError`. `intdiv()` does throw on a zero divisor;
   `fdiv()` returns `INF`/`-INF`/`NAN` as in PHP.
 
+The bitwise operators `&`, `|`, `^`, `<<`, `>>` and `~` follow PHP's
+precedence and semantics: operands are cast to int, `&`/`|`/`^` between two
+strings work byte by byte and yield a string, shifts are int64 operations
+where a count of 64 or more gives `0` (or `-1` for `>>` on a negative left
+operand), and a negative shift count raises the same `ArithmeticError` PHP
+raises. Two divergences:
+
+- An operand PHP 8 refuses outright is cast rather than rejected. `~null` is
+  `-1` and `~true` is `-2` where PHP raises `TypeError`, and an array operand
+  of a binary bitwise operator counts as `0` rather than raising
+  `TypeError: Unsupported operand types`.
+- Casting a leading-numeric string (`"12abc" & 3`) does not emit PHP's
+  "A non-numeric value encountered" warning. The value is the same.
+
 Memory reporting differs from PHP's allocator view:
 
 - `memory_get_usage()` estimates the payload of live PHP values by walking

@@ -35,6 +35,24 @@ func resolveClassName(class string, scope *Scope) string {
 	return strings.TrimPrefix(class, "\\")
 }
 
+// classDefaultScope is the scope a class's declared defaults are evaluated in.
+// A default is written inside the class body, so `self::X` in one has to
+// resolve to that class; the scope the `new` happened to be written in knows
+// nothing about it.
+func (rt *Runtime) classDefaultScope(class *model.Class, caller *Scope) *Scope {
+	scope := rt.newScope()
+	if caller != nil {
+		if file, ok := caller.Get("__FILE__"); ok {
+			scope.Set("__FILE__", file)
+		}
+		if dir, ok := caller.Get("__DIR__"); ok {
+			scope.Set("__DIR__", dir)
+		}
+	}
+	scope.Set("__class__", class.Name)
+	return scope
+}
+
 // staticBag returns the live static-property storage for a class, seeding it
 // from the declared defaults on first access. The bag is keyed by the class's
 // canonical name so a case-insensitive lookup and the declaration share it.
@@ -43,10 +61,11 @@ func (rt *Runtime) staticBag(class *model.Class, scope *Scope) (map[string]any, 
 		return bag, nil
 	}
 	bag := make(map[string]any, len(class.Statics))
+	defaults := rt.classDefaultScope(class, scope)
 	for _, field := range class.Statics {
 		var value any
 		if field.Default != nil {
-			evaluated, err := rt.Eval(field.Default, scope)
+			evaluated, err := rt.Eval(field.Default, defaults)
 			if err != nil {
 				return nil, fmt.Errorf("static %s::$%s: %w", class.Name, field.Name, err)
 			}

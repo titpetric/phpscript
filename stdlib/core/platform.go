@@ -103,7 +103,10 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("UPLOAD_ERR_CANT_WRITE", int64(runner.UploadErrCantWrite))
 	rt.SetConst("UPLOAD_ERR_EXTENSION", int64(8))
 
-	rt.SetConst("E_ALL", int64(32767))
+	// E_ALL is not every bit set: PHP 8 dropped E_STRICT (2048) from it, so the
+	// value is 30719 rather than 32767. The difference is only visible once a
+	// script can write E_ALL & ~E_NOTICE, which needs the bitwise operators.
+	rt.SetConst("E_ALL", int64(30719))
 	rt.SetConst("E_ERROR", int64(1))
 	rt.SetConst("E_WARNING", int64(2))
 	rt.SetConst("E_NOTICE", int64(8))

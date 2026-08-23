@@ -17,9 +17,10 @@
 // RE2 stays the default: it is the faster of the two and cannot backtrack
 // catastrophically, which is also why the fallback carries a match timeout.
 //
-// A third omission decides the engine at match time rather than at compile
-// time. PHP's $offset moves where a match starts without moving where the
-// subject begins, so `^` and `\b` still see the real start of the string.
+// A third gap is in RE2's API rather than in its syntax, and so decides the
+// engine per call rather than per pattern. PHP's $offset moves where a match
+// starts without moving where the subject begins, so `^` and `\b` still see
+// the real start of the string.
 // Slicing subject[offset:] and adding the offset back gets both wrong, and RE2
 // has no entry point that takes a start position. regexp2's
 // FindStringMatchStartingAt does, so a non-zero $offset is routed to the
@@ -77,8 +78,9 @@ func registerRegex(rt *runner.Runtime) {
 }
 
 // The PREG_* flag bits, with the values PHP defines. A script passes them as
-// ordinary integers, so the values are the interface and not an implementation
-// detail: PREG_OFFSET_CAPTURE|PREG_SET_ORDER has to arrive here as 258.
+// ordinary integers and combines them by adding, so the values are part of the
+// interface rather than an implementation detail: a $flags of 258 has to mean
+// set order with offset capture.
 const (
 	pregPatternOrder    = 1
 	pregSetOrder        = 2
@@ -258,11 +260,11 @@ func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...an
 		if max >= 0 && replaced >= max {
 			break
 		}
+		b.WriteString(subject[last:idx[0]])
 		value, err := callback(matchGroups(subject, idx, groups, bits))
 		if err != nil {
 			return nil, err
 		}
-		b.WriteString(subject[last:idx[0]])
 		b.WriteString(phpval.String(value))
 		last = idx[1]
 		replaced++
@@ -277,10 +279,11 @@ func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...an
 // that does not compile.
 //
 // $limit caps the number of pieces, the last of which holds the unsplit
-// remainder; 0, -1 and an omitted argument all mean no limit. Only a piece
-// that reaches the result counts against it, which is what makes
-// PREG_SPLIT_NO_EMPTY and $limit compose the way PHP's do: an empty piece that
-// NO_EMPTY drops leaves the limit where it was.
+// remainder; 0, -1 and an omitted argument all mean no limit, and any other
+// negative value splits nothing, which is PHP's behaviour and not a reading of
+// it. Only a piece that reaches the result counts against the limit, which is
+// what makes PREG_SPLIT_NO_EMPTY and $limit compose the way PHP's do: an empty
+// piece that NO_EMPTY drops leaves the limit where it was.
 func (c *regexpCache) phpPregSplit(pattern, subject string, limit any, flags any) any {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
