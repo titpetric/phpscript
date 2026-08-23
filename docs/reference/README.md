@@ -137,6 +137,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [environment](extensions/implemented-apis.md#environment)
       - [json](extensions/implemented-apis.md#json)
       - [lang](extensions/implemented-apis.md#lang)
+      - [output](extensions/implemented-apis.md#output)
       - [platform funcs](extensions/implemented-apis.md#platform-funcs)
       - [reflection](extensions/implemented-apis.md#reflection)
       - [strings](extensions/implemented-apis.md#strings)

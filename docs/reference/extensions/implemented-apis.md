@@ -110,43 +110,33 @@ function time(): int
 #### regex
 
 ```php
-/**
- * preg_match implements preg_match($pattern, $subject, &$matches), returning
- * 0/1 and optionally filling $matches with the first match's groups.
- */
-function preg_match(string $pattern, string $subject, &$matches = null): int
+// preg_match fills $matches with the first match of $pattern in $subject and returns 1, 0 when there is no match, optionally starting at byte $offset; a pattern that does not compile, or an $offset outside $subject, returns false.
+function preg_match(string $pattern, string $subject, &$matches, mixed $flags, mixed $offset): mixed
 ```
 
 ```php
-/**
- * preg_match_all implements preg_match_all($pattern, $subject, &$matches),
- * filling $matches in PREG_PATTERN_ORDER: $matches[0] holds the full matches
- * and $matches[g] the captures of group g. Returns the number of matches.
- * 
- * $matches is written as a []any of []string columns. Both levels are indexed
- * and iterated by the VM exactly like nested PHP arrays, and the columns are
- * plain string slices, so a match set of g groups over n matches costs g+1
- * allocations instead of the 2(g+1) plus 2n interface boxes an *model.Array
- * pair would.
- */
-function preg_match_all(string $pattern, string $subject, &$matches = null): int
+// preg_match_all fills $matches with every match of $pattern in $subject and returns how many there were, in PREG_PATTERN_ORDER unless $flags selects PREG_SET_ORDER, optionally starting at byte $offset; a pattern that does not compile returns false and leaves $matches alone.
+function preg_match_all(string $pattern, string $subject, &$matches, mixed $flags, mixed $offset): mixed
 ```
 
 ```php
-/**
- * preg_quote escapes the characters that are special in a PCRE pattern, so a
- * literal can be spliced into one.
- */
+// preg_quote escapes the characters that are special in a PCRE pattern, plus $delimiter, so a literal can be spliced into one.
 function preg_quote(string $subject, string ...$delimiter): string
 ```
 
 ```php
-/**
- * preg_replace implements preg_replace($pattern, $replacement, $subject) for
- * string arguments, converting PHP backreference syntax (\1 / $1) in the
- * replacement to the ${1} form both engines expand.
- */
+// preg_replace replaces every match of $pattern in $subject with $replacement, in which \1 and $1 both name a capture group.
 function preg_replace(string $pattern, string $replacement, string $subject): string
+```
+
+```php
+// preg_replace_callback replaces every match of $pattern in $subject with what $callback returns for it, calling $callback once per match in document order with the match array, at most $limit times, and reporting the number of replacements through $count.
+function preg_replace_callback(string $pattern, callable $callback, string $subject, mixed $limit, &$count, mixed $flags): mixed
+```
+
+```php
+// preg_split splits $subject on every match of $pattern into at most $limit pieces, the last of which holds the remainder; $flags selects PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and PREG_SPLIT_OFFSET_CAPTURE.
+function preg_split(string $pattern, string $subject, mixed $limit, mixed $flags): mixed
 ```
 
 ### stdlib/core
@@ -187,6 +177,26 @@ function array_merge(mixed ...$arrs): mixed
 ```
 
 ```php
+// array_pop removes the last element of $array and returns it, leaving the remaining keys as they were; an empty array returns null and a value that is not a script array is an error.
+function array_pop(mixed $array): mixed
+```
+
+```php
+// array_push appends the given values to $array at the next integer keys and returns the new element count; a value that is not a script array is an error.
+function array_push(mixed $array, mixed ...$values): int
+```
+
+```php
+// array_search returns the key of the first $haystack element equal to $needle, or false when there is none; comparison is loose unless $strict is true.
+function array_search(mixed $needle, mixed $haystack, mixed ...$strict): mixed
+```
+
+```php
+// array_shift removes the first element of $array and returns it, renumbering the integer keys from zero and leaving string keys alone; an empty array returns null and a value that is not a script array is an error.
+function array_shift(mixed $array): mixed
+```
+
+```php
 // array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end; keys are discarded and reindexed from zero, and a negative $length yields an empty array.
 function array_slice(mixed $array, int $offset, int ...$length): array
 ```
@@ -199,6 +209,11 @@ function array_splice(mixed $array, int $offset, mixed ...$optional): array
 ```php
 // array_unique returns $array with duplicate values removed, comparing values as strings and keeping the first occurrence and its key; the $flags argument is accepted and ignored.
 function array_unique(mixed $array, mixed ...$flags): array
+```
+
+```php
+// array_unshift prepends the given values to $array and returns the new element count, renumbering the integer keys from zero and leaving string keys alone; a value that is not a script array is an error.
+function array_unshift(mixed $array, mixed ...$values): int
 ```
 
 ```php
@@ -220,7 +235,7 @@ function count(mixed $array): int
 ```
 
 ```php
-// in_array reports whether $needle occurs in $haystack, comparing values as strings; the $strict argument is accepted and ignored.
+// in_array reports whether $needle occurs in $haystack, comparing loosely with PHP 8 rules unless $strict is true, which compares types as well as values.
 function in_array(mixed $needle, mixed $haystack, mixed ...$strict): bool
 ```
 
@@ -535,7 +550,7 @@ function stream_resolve_include_path(string $filename): mixed
 ```
 
 ```php
-// strrpos returns the byte position of the last occurrence of $needle in $haystack, or false if it does not occur; a negative $offset is treated as 0.
+// strrpos returns the byte position of the last occurrence of $needle in $haystack, or false if it does not occur; a positive $offset skips that many leading bytes and a negative one requires the match to start that many bytes before the end.
 function strrpos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
@@ -635,6 +650,21 @@ function sprintf(string $format, mixed ...$args): string
 ```
 
 ```php
+// str_contains reports whether $needle occurs in $haystack; an empty needle is contained in every string.
+function str_contains(string $haystack, string $needle): bool
+```
+
+```php
+// str_ends_with reports whether $haystack ends with $needle.
+function str_ends_with(string $haystack, string $needle): bool
+```
+
+```php
+// str_pad returns $string padded with $pad_string to $length bytes on the side $pad_type selects; a $length below the current one is a no-op.
+function str_pad(string $str, int $length, mixed ...$optional): string
+```
+
+```php
 // str_repeat returns $str repeated $times times.
 function str_repeat(string $str, int $times): string
 ```
@@ -648,13 +678,38 @@ function str_replace(mixed $search, mixed $replace, mixed $subject): string
 ```
 
 ```php
+// str_split returns $string cut into chunks of $length bytes, the last one shorter when the string does not divide evenly; an empty string yields an empty array.
+function str_split(string $str, int ...$length): array
+```
+
+```php
+// str_starts_with reports whether $haystack begins with $needle.
+function str_starts_with(string $haystack, string $needle): bool
+```
+
+```php
+// stripos returns the byte offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+function stripos(string $haystack, string $needle, int ...$offset): mixed
+```
+
+```php
 // strlen returns the length of $str in bytes.
 function strlen(string $str): int
 ```
 
 ```php
-// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; there is no $offset parameter.
-function strpos(string $haystack, string $needle): mixed
+// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+function strpos(string $haystack, string $needle, int ...$offset): mixed
+```
+
+```php
+// strrev returns $string with its bytes in reverse order; multi-byte characters are not preserved, matching PHP.
+function strrev(string $str): string
+```
+
+```php
+// strripos returns the byte offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many bytes before the end.
+function strripos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
 ```php
@@ -678,6 +733,16 @@ function strtoupper(string $string): string
  * offset/length semantics.
  */
 function substr(string $s, int $start, int ...$length): string
+```
+
+```php
+// substr_count returns the number of non-overlapping occurrences of $needle in $haystack, restricted to the window $offset and $length describe.
+function substr_count(string $haystack, string $needle, mixed ...$optional): int
+```
+
+```php
+// substr_replace returns $string with the bytes from $offset for $length replaced by $replace; a negative $offset counts from the end and a negative $length is a distance from it. Array arguments are not supported.
+function substr_replace(string $str, string $replace, int $offset, int ...$length): string
 ```
 
 ```php
