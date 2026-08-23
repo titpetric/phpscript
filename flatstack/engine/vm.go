@@ -55,8 +55,13 @@ type iteratorState struct {
 }
 
 type errorHandler struct {
-	target     int
-	local      int
+	// target is the finally block of the try, entered either by a matching
+	// catch clause falling through it or by an unmatched error on its way out.
+	target int
+	// group indexes Program.catchGroups; pending is the hidden local an
+	// unmatched error waits in while the finally block runs.
+	group      int
+	pending    int
 	start      int
 	end        int
 	stackDepth int
@@ -179,12 +184,46 @@ func Run(program *Program, host Host) (err error) {
 				extras = map[string]any{}
 			}
 		}
+		// A catch clause binds the throwable itself, not whatever forwarded
+		// it, and the host matches the declared type against the same value.
 		for errors.Unwrap(runErr) != nil {
 			runErr = errors.Unwrap(runErr)
 		}
-		if handler.local >= 0 && handler.local < len(locals) {
-			locals[handler.local], initialized[handler.local] = runErr, true
+		var clauses []catchClause
+		if handler.group >= 0 {
+			clauses = program.catchGroups[handler.group]
 		}
+		for _, clause := range clauses {
+			if !host.MatchCatch(clause.declaredType, runErr) {
+				continue
+			}
+			if clause.local >= 0 && clause.local < len(locals) {
+				locals[clause.local], initialized[clause.local] = runErr, true
+			}
+			// A throw out of the clause body is this try's to see through
+			// its finally block, but not to catch: PHP does not re-enter a
+			// sibling clause. group -1 is a handler with no clauses, armed
+			// over the clause bodies and dropped by the jump that leaves
+			// them for the finally block.
+			handlers = append(handlers, errorHandler{
+				target:     handler.target,
+				group:      -1,
+				pending:    handler.pending,
+				start:      clause.target,
+				end:        handler.target - 1,
+				stackDepth: handler.stackDepth,
+				frameDepth: handler.frameDepth,
+			})
+			pc = clause.target
+			return true
+		}
+		// No clause declared a type that matches. The error keeps
+		// propagating, but this try's finally block still has to run first,
+		// so park it and let opRethrow pick it up on the other side.
+		if handler.pending < 0 || handler.pending >= len(locals) {
+			return false
+		}
+		locals[handler.pending], initialized[handler.pending] = runErr, true
 		pc = handler.target
 		return true
 	}
@@ -648,7 +687,8 @@ func Run(program *Program, host Host) (err error) {
 		case opTryPush:
 			handlers = append(handlers, errorHandler{
 				target:     inst.target,
-				local:      inst.a,
+				group:      inst.a,
+				pending:    inst.c,
 				start:      pc + 1,
 				end:        inst.b,
 				stackDepth: len(stack),
@@ -675,6 +715,22 @@ func Run(program *Program, host Host) (err error) {
 				continue
 			}
 			return throwErr
+		case opRethrow:
+			// Sits after every finally block. It fires only for an error no
+			// catch clause of that try matched, which the handler parked here
+			// so the finally block could run on the way out.
+			if !initialized[inst.a] {
+				break
+			}
+			pending, _ := locals[inst.a].(error)
+			locals[inst.a], initialized[inst.a] = nil, false
+			if pending == nil {
+				break
+			}
+			if handle(pending) {
+				continue
+			}
+			return pending
 		case opReturn:
 			retVal, popErr := pop()
 			if popErr != nil {

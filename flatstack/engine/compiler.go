@@ -300,39 +300,62 @@ func (c *compiler) include(node *model.Include, path string) error {
 	return nil
 }
 
+// tryStmt lays out a try as: body, then one block per catch clause, then the
+// finally block. Every clause is compiled with its own declared type, variable
+// slot and body, and the VM enters the first one whose type matches; the clause
+// list, not the instruction stream, decides that.
+//
+// A clause that ran, and a body that completed, jump to the finally block. An
+// error no clause matched goes there too, after the VM parks it in a hidden
+// local, so the finally block runs before opRethrow resumes the search in the
+// enclosing try. That local is an ordinary slot, so it is per call frame and a
+// recursive call cannot see an outer frame's pending error.
 func (c *compiler) tryStmt(node *model.Try, path string) error {
 	if len(node.Catches) == 0 {
 		return unsupported(path, "try without catch")
 	}
-	catchSlot := -1
-	var catch *model.Catch
-	if len(node.Catches) > 0 {
-		catch = &node.Catches[0]
+	group := len(c.program.catchGroups)
+	pendingSlot := c.slot(fmt.Sprintf("\x00try-pending-%d", group))
+	clauses := make([]catchClause, len(node.Catches))
+	for i, catch := range node.Catches {
+		clauses[i] = catchClause{declaredType: catch.Type, local: -1, target: -1}
 		if catch.Var != "" {
-			catchSlot = c.slot(catch.Var)
+			clauses[i].local = c.slot(catch.Var)
 		}
 	}
-	push := c.emit(instruction{op: opTryPush, a: catchSlot, target: -1})
+	c.program.catchGroups = append(c.program.catchGroups, clauses)
+
+	push := c.emit(instruction{op: opTryPush, a: group, c: pendingSlot, target: -1})
 	if err := c.block(node.Body, path+".body"); err != nil {
 		return err
 	}
 	pop := c.emit(instruction{op: opTryPop})
 	c.program.code[push].b = pop
-	endJump := c.emit(instruction{op: opJump, target: -1})
+	// Every completed path leaves through one of these jumps, patched to the
+	// finally block once its address is known.
+	exits := []int{c.emit(instruction{op: opJump, target: -1})}
 
-	c.program.code[push].target = len(c.program.code)
-	if catch != nil {
-		if err := c.block(catch.Body, path+".catch"); err != nil {
+	for i := range node.Catches {
+		clauses[i].target = len(c.program.code)
+		if err := c.block(node.Catches[i].Body, fmt.Sprintf("%s.catch[%d]", path, i)); err != nil {
 			return err
 		}
+		exits = append(exits, c.emit(instruction{op: opJump, target: -1}))
 	}
+
 	finallyTarget := len(c.program.code)
-	c.program.code[endJump].target = finallyTarget
+	for _, jump := range exits {
+		c.program.code[jump].target = finallyTarget
+	}
+	c.program.code[push].target = finallyTarget
 	if len(node.Finally) > 0 {
 		if err := c.block(node.Finally, path+".finally"); err != nil {
 			return err
 		}
 	}
+	// Reached on every path out of the try, and a no-op unless the VM parked
+	// an unmatched error in pendingSlot.
+	c.emit(instruction{op: opRethrow, a: pendingSlot})
 	return nil
 }
 

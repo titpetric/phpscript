@@ -154,6 +154,13 @@ func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) er
 	return nil
 }
 
+// MatchCatch answers the bytecode engine's clause selection with the rules the
+// interpreter uses, so `catch (Exception $e)` declines a TypeError on both
+// backends instead of only on one.
+func (h flatHost) MatchCatch(declaredType string, err error) bool {
+	return matchCatchType(declaredType, err)
+}
+
 func (h flatHost) Binary(op string, left, right any) (any, error) {
 	switch op {
 	case ".":

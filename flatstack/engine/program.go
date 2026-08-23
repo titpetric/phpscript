@@ -40,6 +40,7 @@ const (
 	opTryPush
 	opTryPop
 	opThrow
+	opRethrow
 	opReturn
 	opInclude
 	opEnsureArray
@@ -62,6 +63,15 @@ type userFuncDef struct {
 	params  []string
 }
 
+// catchClause is one compiled `catch (Type $var) { ... }`. declaredType is kept
+// verbatim, including the `A|B` union form, because the host owns the matching
+// rules; local is -1 when the clause binds no variable.
+type catchClause struct {
+	declaredType string
+	local        int
+	target       int
+}
+
 // Program is immutable bytecode compiled from a complete model.Program.
 type Program struct {
 	code       []instruction
@@ -69,6 +79,9 @@ type Program struct {
 	localNames []string
 	userFuncs  map[string]userFuncDef
 	classes    []*model.Class
+	// catchGroups holds the clause list of every compiled try, in source
+	// order; opTryPush carries the index of its own group.
+	catchGroups [][]catchClause
 }
 
 // Entry is one key/value pair produced for foreach.
@@ -97,6 +110,11 @@ type Host interface {
 	// UnsetIndex removes key from container, PHP's unset($a[$k]). Removing a
 	// key that is not there is not an error.
 	UnsetIndex(container, key any) error
+	// MatchCatch reports whether a catch clause declaring declaredType handles
+	// err. The class hierarchy, the `A|B` union form and the rule that
+	// `catch (Exception)` does not catch an engine error all live in the host,
+	// so both backends select the same clause.
+	MatchCatch(declaredType string, err error) bool
 	Binary(string, any, any) (any, error)
 	Unary(string, any) (any, error)
 	Truthy(any) bool
