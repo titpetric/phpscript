@@ -305,10 +305,16 @@ func Run(program *Program, host Host) (err error) {
 					current = locals[inst.a]
 				}
 				operator := inst.name[:len(inst.name)-1]
-				value, err = host.Binary(operator, current, value)
-				if err != nil {
-					return err
+				updated, binaryErr := host.Binary(operator, current, value)
+				if binaryErr != nil {
+					// A compound assignment can fail the same way the binary
+					// operator can ($x >>= -1), and it is as catchable.
+					if handle(binaryErr) {
+						continue
+					}
+					return binaryErr
 				}
+				value = updated
 			}
 			if identifiable, ok := value.(interface{ SetID(string) }); ok && inst.extra != "" {
 				identifiable.SetID(inst.extra)
@@ -449,6 +455,21 @@ func Run(program *Program, host Host) (err error) {
 					continue
 				}
 				return err
+			}
+			stack = append(stack, value)
+		case opCast:
+			value, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			stack = append(stack, host.Cast(inst.name, value))
+		case opClassConst:
+			value, constErr := host.ClassConst(inst.name, inst.extra)
+			if constErr != nil {
+				if handle(constErr) {
+					continue
+				}
+				return constErr
 			}
 			stack = append(stack, value)
 		case opTruthy:

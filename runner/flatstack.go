@@ -72,10 +72,14 @@ func (h flatHost) GetProperty(receiver any, name string) any {
 // IsReadonly.
 func (h flatHost) SetProperty(receiver any, name string, value any, op string) error {
 	if object, ok := receiver.(*model.Object); ok {
-		object.Props[name] = applyAssignOp(op, object.Props[name], value)
+		next, err := applyAssignOp(op, object.Props[name], value)
+		if err != nil {
+			return err
+		}
+		object.Props[name] = next
 		return nil
 	}
-	return assignGoField(receiver, name, func(current any) any {
+	return assignGoField(receiver, name, func(current any) (any, error) {
 		return applyAssignOp(op, current, value)
 	})
 }
@@ -132,7 +136,7 @@ func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) er
 		if appendValue {
 			return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
 		}
-		return assignGoIndex(base, key, func(current any) any {
+		return assignGoIndex(base, key, func(current any) (any, error) {
 			return applyAssignOp(op, current, value)
 		})
 	}
@@ -161,12 +165,27 @@ func (h flatHost) MatchCatch(declaredType string, err error) bool {
 	return matchCatchType(declaredType, err)
 }
 
+// ClassConst reads a class constant, reusing the interpreter's resolution so
+// `Class::class`, autoloading and the per-class cache behave identically on
+// both backends. The compiler already collapsed self/static/parent, but the
+// scope still carries the class: a constant's default expression is evaluated
+// here, and it may name the class again.
+func (h flatHost) ClassConst(class, name string) (any, error) {
+	scope := h.runtime.newScope()
+	scope.Set("__class__", class)
+	return h.runtime.helperClassConst(&scopeRef{scope: scope})(class, name)
+}
+
+func (h flatHost) Cast(typ string, value any) any { return helperCast(typ, value) }
+
 func (h flatHost) Binary(op string, left, right any) (any, error) {
 	switch op {
 	case ".":
 		return helperConcat(left, right), nil
 	case "+", "-", "*", "/", "%", "**":
 		return phpArith(op, left, right), nil
+	case "&", "|", "^", "<<", ">>":
+		return phpBitwise(op, left, right)
 	case "==":
 		return phpLooseEqual(left, right), nil
 	case "!=":
@@ -221,6 +240,8 @@ func (h flatHost) Unary(op string, value any) (any, error) {
 			return -f, nil
 		}
 		return phpArith("-", int64(0), value), nil
+	case "~":
+		return phpBitNot(value), nil
 	default:
 		return nil, fmt.Errorf("unsupported unary operator %q", op)
 	}

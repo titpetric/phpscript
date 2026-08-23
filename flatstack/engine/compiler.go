@@ -20,9 +20,13 @@ type loopContext struct {
 }
 
 type compiler struct {
-	program  Program
-	locals   map[string]int
-	loops    []loopContext
+	program Program
+	locals  map[string]int
+	loops   []loopContext
+	// class is the name of the class whose method body is being compiled, or
+	// "" at top level. It is what `self`, `static` and `parent` resolve to,
+	// the same collapse the interpreter's resolveClassName makes at run time.
+	class    string
 	nextIter int
 }
 
@@ -236,7 +240,12 @@ func (c *compiler) classMethod(className string, node *model.FuncDecl, path stri
 	funcPC := len(c.program.code)
 	enclosing := c.loops
 	c.loops = nil
-	defer func() { c.loops = enclosing }()
+	enclosingClass := c.class
+	c.class = className
+	defer func() {
+		c.loops = enclosing
+		c.class = enclosingClass
+	}()
 	params := make([]string, 0, 1+len(node.Params))
 	params = append(params, "this")
 	_ = c.slot("this")
@@ -365,9 +374,15 @@ func (c *compiler) funcDecl(node *model.FuncDecl, path string) error {
 
 	// A function body is its own control-flow scope: a loop around the
 	// declaration is not a loop this body can break out of or write back to.
+	// It is also outside any class, so `self::` in one resolves to nothing.
 	enclosing := c.loops
 	c.loops = nil
-	defer func() { c.loops = enclosing }()
+	enclosingClass := c.class
+	c.class = ""
+	defer func() {
+		c.loops = enclosing
+		c.class = enclosingClass
+	}()
 
 	for _, param := range node.Params {
 		_ = c.slot(param.Name)
@@ -526,7 +541,7 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 	next := c.emit(instruction{op: opIterNext, a: iterator, b: keySlot, c: valueSlot, target: -1})
 	if keyTarget != nil {
 		c.emit(instruction{op: opLoad, a: keySlot})
-		if err := c.storeTop(keyTarget, path+".key"); err != nil {
+		if err := c.storeTop(keyTarget, "foreach", path+".key"); err != nil {
 			return err
 		}
 	}
@@ -539,7 +554,7 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 	if !node.ByRef && model.AssignsTo(node.Body, valueTarget) {
 		c.emit(instruction{op: opCopyValue})
 	}
-	if err := c.storeTop(valueTarget, path+".value"); err != nil {
+	if err := c.storeTop(valueTarget, "foreach", path+".value"); err != nil {
 		return err
 	}
 
@@ -604,14 +619,16 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 }
 
 // storeTop consumes a value already on the operand stack and writes it to a
-// foreach target. Index targets are evaluated once per iteration.
-func (c *compiler) storeTop(target model.Expr, path string) error {
+// destructuring target. Index targets are evaluated once per write. kind names
+// the construct the target belongs to, "foreach" or "list()", so a rejection
+// reports the one the source actually contains.
+func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 	switch target := target.(type) {
 	case *model.Var:
 		c.emit(instruction{op: opStore, a: c.slot(target.Name)})
 	case *model.Index:
 		if target.Index == nil {
-			return unsupported(path, "append foreach target")
+			return unsupported(path, "append %s target", kind)
 		}
 		if err := c.expr(target.Base, path+".base"); err != nil {
 			return err
@@ -620,8 +637,15 @@ func (c *compiler) storeTop(target model.Expr, path string) error {
 			return err
 		}
 		c.emit(instruction{op: opSetIndex, name: "="})
+	case *model.PropAccess:
+		// opSetProperty pops the receiver and then the value, the order the
+		// *model.PropAccess branch of assignment emits.
+		if err := c.expr(target.Base, path+".base"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opSetProperty, name: target.Name, extra: "="})
 	default:
-		return unsupported(path, "foreach target %T", target)
+		return unsupported(path, "%s target %T", kind, target)
 	}
 	return nil
 }
@@ -679,7 +703,7 @@ func (c *compiler) listAssignment(elems []model.Expr, keep bool, path string) er
 		c.emit(instruction{op: opLoad, a: sourceSlot})
 		c.emit(instruction{op: opPushConst, a: c.constant(int64(i))})
 		c.emit(instruction{op: opIndex})
-		if err := c.storeTop(elem, fmt.Sprintf("%s.elem[%d]", path, i)); err != nil {
+		if err := c.storeTop(elem, "list()", fmt.Sprintf("%s.elem[%d]", path, i)); err != nil {
 			return err
 		}
 	}
@@ -726,7 +750,9 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		if node.Op == "++" || node.Op == "--" {
 			return c.incDec(node, path)
 		}
-		if node.Op != "!" && node.Op != "+" && node.Op != "-" {
+		switch node.Op {
+		case "!", "+", "-", "~":
+		default:
 			return unsupported(path, "unary operator %q", node.Op)
 		}
 		if err := c.expr(node.X, path+".operand"); err != nil {
@@ -791,6 +817,13 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 			return err
 		}
 		c.emit(instruction{op: opGetProperty, name: node.Name})
+	case *model.ClassConst:
+		c.emit(instruction{op: opClassConst, name: c.resolveClass(node.Class), extra: node.Name})
+	case *model.Cast:
+		if err := c.expr(node.X, path+".operand"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opCast, name: node.Type})
 	case *model.AssignExpr:
 		if node.Op != "" && node.Op != "=" {
 			return unsupported(path, "assignment expression operator %q", node.Op)
@@ -844,7 +877,8 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		c.program.code[branch].target = len(c.program.code)
 		c.emit(instruction{op: opPushConst, a: c.constant(constant)})
 		c.program.code[end].target = len(c.program.code)
-	case ".", "+", "-", "*", "/", "%", "**", "==", "!=", "===", "!==", "<", "<=", ">", ">=":
+	case ".", "+", "-", "*", "/", "%", "**", "==", "!=", "===", "!==", "<", "<=", ">", ">=",
+		"&", "|", "^", "<<", ">>":
 		if err := c.expr(node.Left, path+".left"); err != nil {
 			return err
 		}
@@ -856,6 +890,21 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		return unsupported(path, "binary operator %q", node.Op)
 	}
 	return nil
+}
+
+// resolveClass collapses the contextual class names onto the class being
+// compiled. There is no inheritance in this tree, so `self`, `static` and
+// `parent` all name the enclosing class, exactly as the interpreter's
+// resolveClassName decides at run time. Outside a class body the name is left
+// alone, so the host reports it the way the interpreter would.
+func (c *compiler) resolveClass(name string) string {
+	switch name {
+	case "self", "static", "parent":
+		if c.class != "" {
+			return c.class
+		}
+	}
+	return name
 }
 
 func unsupported(path, format string, args ...any) error {

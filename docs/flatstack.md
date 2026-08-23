@@ -153,7 +153,8 @@ It supports these expressions:
 - PHP arrays, keyed/unkeyed literals, reads, writes, and append
 - Arithmetic (`+`, `-`, `*`, `/`, `%`)
 - Comparisons (`==`, `!=`, `===`, `!==`, `<`, `<=`, `>`, `>=`)
-- Short-circuit logical operators and unary `!`, `+`, and `-`
+- Bitwise operators (`&`, `|`, `^`, `<<`, `>>`)
+- Short-circuit logical operators and unary `!`, `+`, `-`, and `~`
 - Prefix/postfix increment and decrement of variables and array indexes
 - Assignment expressions and full/Elvis ternaries
 - Host and PHP object construction with `new`

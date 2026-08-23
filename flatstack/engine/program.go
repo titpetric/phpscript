@@ -46,6 +46,8 @@ const (
 	opEnsureArray
 	opVivifyIndex
 	opVivifyProperty
+	opClassConst
+	opCast
 )
 
 type instruction struct {
@@ -115,6 +117,14 @@ type Host interface {
 	// `catch (Exception)` does not catch an engine error all live in the host,
 	// so both backends select the same clause.
 	MatchCatch(declaredType string, err error) bool
+	// ClassConst reads the constant name off class. The compiler has already
+	// collapsed `self`, `static` and `parent` to the enclosing class, so the
+	// name arrives concrete; `Class::class` still reaches the host, since it
+	// resolves without the class being declared.
+	ClassConst(class, name string) (any, error)
+	// Cast applies a PHP type cast, spelled by its bare type name: "bool",
+	// "int", "float", "string", "array".
+	Cast(typ string, value any) any
 	Binary(string, any, any) (any, error)
 	Unary(string, any) (any, error)
 	Truthy(any) bool
