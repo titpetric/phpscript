@@ -40,33 +40,51 @@ type terminalTable struct {
 	w       io.Writer
 	headers []string
 	widths  []int
+	count   int
 	loop    bool
 	profile bool
 	lat     bool
 }
 
 type resultTable interface {
-	writeHeader()
+	writeGroup(dir string, labels []string)
 	writeResult(*fixtureRun)
-	close()
+	closeGroup(groupTotals)
 	writeSummary(passed, failed, total int, duration time.Duration)
 }
 
-func newResultTable(w io.Writer, filenames []string, opts Options) resultTable {
-	if file, ok := w.(*os.File); ok && term.IsTerminal(int(file.Fd())) {
-		return newTerminalTable(w, filenames, opts)
-	}
-	return newMarkdownTable(w, filenames, opts)
+// isTerminal reports whether w is a tty, which is what decides between the
+// box-drawing table and markdown when the caller has not said which it wants.
+func isTerminal(w io.Writer) bool {
+	file, ok := w.(*os.File)
+	return ok && term.IsTerminal(int(file.Fd()))
 }
 
-func newTerminalTable(w io.Writer, filenames []string, opts Options) *terminalTable {
-	t := &terminalTable{
+func newResultTable(w io.Writer, opts Options, markdown bool) resultTable {
+	if markdown {
+		return newMarkdownTable(w, opts)
+	}
+	return newTerminalTable(w, opts)
+}
+
+func newTerminalTable(w io.Writer, opts Options) *terminalTable {
+	return &terminalTable{
 		w:       w,
-		headers: []string{"Test", "Filename", "Duration (ms)"},
+		count:   opts.Count,
 		loop:    opts.Count > 0 || opts.Time > 0,
 		profile: opts.Profile,
 		lat:     opts.Time > 0,
 	}
+}
+
+// sizeColumns rebuilds the header row and the column widths for one folder.
+// The folder name is the header of the filename column, so a table says which
+// area it covers without spending a line on a title.
+func (t *terminalTable) sizeColumns(dir string, labels []string) {
+	if dir == "" {
+		dir = "Filename"
+	}
+	t.headers = []string{"Test", dir, "Duration (ms)"}
 	if t.loop {
 		t.headers = append(t.headers, "Count")
 	}
@@ -82,19 +100,19 @@ func newTerminalTable(w io.Writer, filenames []string, opts Options) *terminalTa
 	for i, header := range t.headers {
 		t.widths[i] = ansi.StringWidth(header)
 	}
-	for _, filename := range filenames {
-		if width := ansi.StringWidth(filename); width > t.widths[1] {
+	for _, label := range labels {
+		if width := ansi.StringWidth(label); width > t.widths[1] {
 			t.widths[1] = width
 		}
 	}
 	if t.loop {
-		t.widths[3] = max(t.widths[3], 7, len(strconv.Itoa(opts.Count)))
+		t.widths[3] = max(t.widths[3], 7, len(strconv.Itoa(t.count)))
 	}
 	t.widths[len(t.widths)-1] = max(t.widths[len(t.widths)-1], 15)
-	return t
 }
 
-func (t *terminalTable) writeHeader() {
+func (t *terminalTable) writeGroup(dir string, labels []string) {
+	t.sizeColumns(dir, labels)
 	t.writeBorder(boxTopLeft, boxTeeDown, boxTopRight)
 	t.writeRow(t.headers, colorHeader)
 	t.writeBorder(boxTeeRight, boxCross, boxTeeLeft)
@@ -107,7 +125,7 @@ func (t *terminalTable) writeResult(r *fixtureRun) {
 	}
 	row := []string{
 		status,
-		colorAmber + r.DisplayPath + colorReset,
+		colorAmber + r.label() + colorReset,
 		colorWhite + formatDuration(r.Total) + colorReset,
 	}
 	if t.loop {
@@ -130,8 +148,11 @@ func (t *terminalTable) writeResult(r *fixtureRun) {
 	t.writeRow(row, "")
 }
 
-func (t *terminalTable) close() {
+func (t *terminalTable) closeGroup(totals groupTotals) {
 	t.writeBorder(boxBottomLeft, boxTeeUp, boxBottomRight)
+	fmt.Fprintf(t.w, "%s%s: %d passed, %d failed out of %d fixtures (%dms)%s\n\n",
+		colorHeader, totals.Dir, totals.Passed, totals.Failed, totals.Total,
+		totals.Duration.Milliseconds(), colorReset)
 }
 
 func (t *terminalTable) writeSummary(passed, failed, total int, duration time.Duration) {
@@ -163,13 +184,19 @@ func (t *terminalTable) writeRow(values []string, color string) {
 
 type markdownTable struct {
 	*terminalTable
+	totals []groupTotals
 }
 
-func newMarkdownTable(w io.Writer, filenames []string, opts Options) *markdownTable {
-	return &markdownTable{terminalTable: newTerminalTable(w, filenames, opts)}
+func newMarkdownTable(w io.Writer, opts Options) *markdownTable {
+	return &markdownTable{terminalTable: newTerminalTable(w, opts)}
 }
 
-func (t *markdownTable) writeHeader() {
+func (t *markdownTable) writeGroup(dir string, labels []string) {
+	t.sizeColumns(dir, labels)
+	if dir == "" {
+		dir = "fixtures"
+	}
+	fmt.Fprintf(t.w, "## %s\n\n", dir)
 	t.writeMarkdownRow(t.headers)
 	separators := make([]string, len(t.widths))
 	for i, width := range t.widths {
@@ -178,12 +205,17 @@ func (t *markdownTable) writeHeader() {
 	t.writeMarkdownRow(separators)
 }
 
+func (t *markdownTable) closeGroup(totals groupTotals) {
+	t.totals = append(t.totals, totals)
+	fmt.Fprintln(t.w)
+}
+
 func (t *markdownTable) writeResult(r *fixtureRun) {
 	status := "PASS"
 	if !r.Result.Passed {
 		status = "FAIL"
 	}
-	row := []string{status, r.DisplayPath, formatDuration(r.Total)}
+	row := []string{status, markdownCell(r.label()), formatDuration(r.Total)}
 	if t.loop {
 		row = append(row, strconv.Itoa(r.Runs))
 	}
@@ -197,9 +229,78 @@ func (t *markdownTable) writeResult(r *fixtureRun) {
 	t.writeMarkdownRow(row)
 }
 
-func (t *markdownTable) close() {}
+// writeSummary closes the report with the per-folder totals, so the reader
+// sees the aggregate without adding up the tables above it.
+func (t *markdownTable) writeSummary(passed, failed, total int, duration time.Duration) {
+	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.lat || t.loop || t.profile)
+}
 
-func (t *markdownTable) writeSummary(int, int, int, time.Duration) {}
+// writeMarkdownSummary renders the per-folder totals table that closes a
+// report. The Total row is the sum of the folder rows and equals the counts
+// the caller passed, which is what makes the report self-checking.
+//
+// The duration column appears only when the run asked for cost columns. A
+// checked-in report is regenerated by every pipeline run, and a timing that
+// differs by a millisecond each time would show up as a diff in every commit.
+func writeMarkdownSummary(w io.Writer, totals []groupTotals, passed, failed, total int, duration time.Duration, timings bool) {
+	headers := []string{"Area", "Fixtures", "Passed", "Failed"}
+	widths := []int{len("**Total**"), len("Fixtures"), len("Passed"), len("Failed")}
+	if timings {
+		headers = append(headers, "Duration (ms)")
+		widths = append(widths, len("Duration (ms)"))
+	}
+	for _, group := range totals {
+		if width := ansi.StringWidth(group.Dir); width > widths[0] {
+			widths[0] = width
+		}
+	}
+
+	row := func(values []string) {
+		cells := make([]string, len(values))
+		for i, value := range values {
+			cells[i] = value + strings.Repeat(" ", max(0, widths[i]-ansi.StringWidth(value)))
+		}
+		fmt.Fprintln(w, "| "+strings.Join(cells, " | ")+" |")
+	}
+
+	fmt.Fprint(w, "## Summary\n\n")
+	row(headers)
+	separators := make([]string, len(widths))
+	for i, width := range widths {
+		separators[i] = strings.Repeat("-", width)
+	}
+	row(separators)
+	for _, group := range totals {
+		values := []string{
+			group.Dir,
+			strconv.Itoa(group.Total),
+			strconv.Itoa(group.Passed),
+			strconv.Itoa(group.Failed),
+		}
+		if timings {
+			values = append(values, formatDuration(group.Duration))
+		}
+		row(values)
+	}
+	values := []string{
+		"**Total**",
+		strconv.Itoa(total),
+		strconv.Itoa(passed),
+		strconv.Itoa(failed),
+	}
+	if timings {
+		values = append(values, formatDuration(duration))
+	}
+	row(values)
+	fmt.Fprintln(w)
+}
+
+// markdownCell keeps a value inside its table cell: a pipe would end the cell
+// and a newline would end the row.
+func markdownCell(value string) string {
+	value = strings.ReplaceAll(value, "|", "\\|")
+	return strings.Join(strings.Fields(value), " ")
+}
 
 func (t *markdownTable) writeMarkdownRow(values []string) {
 	cells := make([]string, len(values))

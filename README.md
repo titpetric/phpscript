@@ -7,6 +7,7 @@ This is a PHP interpreter written in Go. It supports the basic php expression sy
 - [Installation and usage](./docs/usage.md)
 - [Configuration](./docs/configuration.md)
 - [Testing and extending tests](./docs/testing.md)
+- [Test fixture results](./docs/test-fixtures.md)
 - [Naming conventions](./docs/naming-conventions.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
 - [Building an application](./docs/use-cases/application.md)

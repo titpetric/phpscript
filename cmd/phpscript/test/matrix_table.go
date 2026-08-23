@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,29 +28,35 @@ var matrixHeaders = map[tests.Runner]string{
 
 // matrixTable renders one fixture per row with a cell per runner.
 type matrixTable interface {
-	writeHeader()
+	writeGroup(dir string, labels []string)
 	writeRow(matrixRow)
-	close()
+	closeGroup(groupTotals)
 	writeSummary(passed, failed, total int, duration time.Duration)
 }
 
-// terminalMatrix writes the ansi table. Column widths are established before
-// the run so a fixture can be printed as soon as it completes.
+// terminalMatrix writes the ansi table. Column widths are established per
+// folder so a fixture can be printed as soon as it completes.
 type terminalMatrix struct {
-	w       io.Writer
-	headers []string
-	widths  []int
-	verbose bool
+	w         io.Writer
+	headers   []string
+	widths    []int
+	termWidth int
+	verbose   bool
+	count     int
+	loop      bool
+	profile   bool
+	lat       bool
 }
 
-func newMatrixTable(w io.Writer, filenames []string, opts Options) matrixTable {
-	table := newTerminalMatrix(w, filenames, opts)
-	file, ok := w.(*os.File)
-	if !ok || !term.IsTerminal(int(file.Fd())) {
+func newMatrixTable(w io.Writer, opts Options, markdown bool) matrixTable {
+	table := newTerminalMatrix(w, opts)
+	if markdown {
 		return &markdownMatrix{terminalMatrix: table}
 	}
-	if width, _, err := term.GetSize(int(file.Fd())); err == nil {
-		table.fit(width)
+	if file, ok := w.(*os.File); ok {
+		if width, _, err := term.GetSize(int(file.Fd())); err == nil {
+			table.termWidth = width
+		}
 	}
 	return table
 }
@@ -57,8 +64,12 @@ func newMatrixTable(w io.Writer, filenames []string, opts Options) matrixTable {
 // fit widens the last column so a verbose table fills the terminal. The failure
 // detail below a row is wrapped into the runner columns, and the natural width
 // of three status columns leaves too little of a reason to read.
+//
+// It is applied after the widths have been rebuilt for a folder, never before:
+// fit adds to the last column, so applying it to already-fitted widths would
+// compound across folders.
 func (t *terminalMatrix) fit(width int) {
-	if !t.verbose {
+	if !t.verbose || width == 0 {
 		return
 	}
 	natural := 1
@@ -70,38 +81,98 @@ func (t *terminalMatrix) fit(width int) {
 	}
 }
 
-func newTerminalMatrix(w io.Writer, filenames []string, opts Options) *terminalMatrix {
-	t := &terminalMatrix{w: w, verbose: opts.Verbose}
-	t.headers = []string{"Fixture"}
+func newTerminalMatrix(w io.Writer, opts Options) *terminalMatrix {
+	return &terminalMatrix{
+		w:       w,
+		verbose: opts.Verbose,
+		count:   opts.Count,
+		loop:    opts.Count > 0 || opts.Time > 0,
+		profile: opts.Profile,
+		lat:     opts.Time > 0,
+	}
+}
+
+// metrics reports whether the run asked for cost columns. Without a
+// benchmarking flag the matrix stays exactly as wide as it is without one,
+// which is what keeps the generated report stable.
+func (t *terminalMatrix) metrics() bool {
+	return t.loop || t.profile || t.lat
+}
+
+// sizeColumns rebuilds the header row and column widths for one folder. The
+// folder name is the header of the fixture column, so a table says which area
+// it covers without spending a line on a title.
+func (t *terminalMatrix) sizeColumns(dir string, labels []string) {
+	if dir == "" {
+		dir = "Fixture"
+	}
+	t.headers = []string{dir}
 	for _, runner := range tests.Runners {
 		t.headers = append(t.headers, matrixHeaders[runner])
+	}
+	if t.metrics() {
+		t.headers = append(t.headers, "Duration (ms)")
+		if t.loop {
+			t.headers = append(t.headers, "Count")
+		}
+		if t.lat {
+			t.headers = append(t.headers, "P50 (µs)", "P95 (µs)", "P99 (µs)")
+		}
+		if t.profile {
+			t.headers = append(t.headers, "Allocs/op", "Bytes/op")
+		}
+		t.headers = append(t.headers, "GC Runs")
 	}
 
 	t.widths = make([]int, len(t.headers))
 	for i, header := range t.headers {
 		t.widths[i] = ansi.StringWidth(header)
 	}
-	for _, filename := range filenames {
-		if width := ansi.StringWidth(filename); width > t.widths[0] {
+	for _, label := range labels {
+		if width := ansi.StringWidth(label); width > t.widths[0] {
 			t.widths[0] = width
 		}
 	}
-	for i := 1; i < len(t.widths); i++ {
+	for i := 1; i <= len(tests.Runners); i++ {
 		t.widths[i] = max(t.widths[i], len("PASS"))
 	}
-	return t
 }
 
-func (t *terminalMatrix) writeHeader() {
+// metricValues renders the cost cells appended after the runner columns.
+func (t *terminalMatrix) metricValues(m fixtureMetrics) []string {
+	if !t.metrics() {
+		return nil
+	}
+	values := []string{formatDuration(m.Total)}
+	if t.loop {
+		values = append(values, strconv.Itoa(m.Runs))
+	}
+	if t.lat {
+		values = append(values, formatMicros(m.P50), formatMicros(m.P95), formatMicros(m.P99))
+	}
+	if t.profile {
+		values = append(values,
+			strconv.FormatUint(m.AllocsPerOp, 10),
+			strconv.FormatUint(m.BytesPerOp, 10))
+	}
+	return append(values, formatGCRuns(m.GCRuns, m.Runs))
+}
+
+func (t *terminalMatrix) writeGroup(dir string, labels []string) {
+	t.sizeColumns(dir, labels)
+	t.fit(t.termWidth)
 	t.writeBorder(boxTopLeft, boxTeeDown, boxTopRight)
 	t.writeRowValues(t.headers, colorHeader)
 	t.writeBorder(boxTeeRight, boxCross, boxTeeLeft)
 }
 
 func (t *terminalMatrix) writeRow(row matrixRow) {
-	values := []string{colorAmber + row.DisplayPath + colorReset}
+	values := []string{colorAmber + row.label() + colorReset}
 	for _, cell := range row.Cells {
 		values = append(values, statusColor(cell.Status)+statusLabel(cell.Status)+colorReset)
+	}
+	for _, value := range t.metricValues(row.Metrics) {
+		values = append(values, colorWhite+value+colorReset)
 	}
 	t.writeRowValues(values, "")
 
@@ -118,8 +189,11 @@ func (t *terminalMatrix) writeRow(row matrixRow) {
 	}
 }
 
-func (t *terminalMatrix) close() {
+func (t *terminalMatrix) closeGroup(totals groupTotals) {
 	t.writeBorder(boxBottomLeft, boxTeeUp, boxBottomRight)
+	fmt.Fprintf(t.w, "%s%s: %d passed, %d failed out of %d fixtures (%dms)%s\n\n",
+		colorHeader, totals.Dir, totals.Passed, totals.Failed, totals.Total,
+		totals.Duration.Milliseconds(), colorReset)
 }
 
 func (t *terminalMatrix) writeSummary(passed, failed, total int, duration time.Duration) {
@@ -166,12 +240,22 @@ func (t *terminalMatrix) writeRowValues(values []string, color string) {
 	fmt.Fprintln(t.w, separator+strings.Join(cells, separator)+separator)
 }
 
-// markdownMatrix renders the same matrix for a piped stdout.
+// markdownMatrix renders the same matrix for a piped stdout or a -o report.
 type markdownMatrix struct {
 	*terminalMatrix
+	totals []groupTotals
 }
 
-func (t *markdownMatrix) writeHeader() {
+func newMarkdownMatrix(w io.Writer, opts Options) *markdownMatrix {
+	return &markdownMatrix{terminalMatrix: newTerminalMatrix(w, opts)}
+}
+
+func (t *markdownMatrix) writeGroup(dir string, labels []string) {
+	t.sizeColumns(dir, labels)
+	if dir == "" {
+		dir = "fixtures"
+	}
+	fmt.Fprintf(t.w, "## %s\n\n", dir)
 	t.writeMarkdownRow(t.headers)
 	separators := make([]string, len(t.widths))
 	for i, width := range t.widths {
@@ -181,10 +265,11 @@ func (t *markdownMatrix) writeHeader() {
 }
 
 func (t *markdownMatrix) writeRow(row matrixRow) {
-	values := []string{row.DisplayPath}
+	values := []string{markdownCell(row.label())}
 	for _, cell := range row.Cells {
 		values = append(values, statusLabel(cell.Status))
 	}
+	values = append(values, t.metricValues(row.Metrics)...)
 	t.writeMarkdownRow(values)
 
 	if !t.verbose {
@@ -204,9 +289,16 @@ func (t *markdownMatrix) writeRow(row matrixRow) {
 	}
 }
 
-func (t *markdownMatrix) close() {}
+func (t *markdownMatrix) closeGroup(totals groupTotals) {
+	t.totals = append(t.totals, totals)
+	fmt.Fprintln(t.w)
+}
 
-func (t *markdownMatrix) writeSummary(int, int, int, time.Duration) {}
+// writeSummary closes the report with the per-folder totals, so the reader
+// sees the aggregate without adding up the tables above it.
+func (t *markdownMatrix) writeSummary(passed, failed, total int, duration time.Duration) {
+	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.metrics())
+}
 
 func (t *markdownMatrix) writeMarkdownRow(values []string) {
 	cells := make([]string, len(values))

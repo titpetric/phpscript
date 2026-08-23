@@ -59,7 +59,7 @@ docs for classes and functions found in that tree.
 Lint one or more PHP files or directories.
 
 ```bash
-phpscript lint tests/fixtures
+phpscript lint tests/fixtures/...
 phpscript lint path/to/file.php
 ```
 
@@ -81,9 +81,15 @@ Discover and run `.phpt` fixtures. With no path, the command searches the
 current directory. Results are printed as they complete, using a colored table
 in a terminal and Markdown when output is redirected.
 
+Fixtures are grouped into one table per folder, with the folder name as the
+header of the fixture column, and each table is followed by that folder's
+subtotal. A directory path is not recursive on its own: `./...` walks a tree,
+and a path that matches no fixture is an error rather than a silent pass.
+
 ```bash
-phpscript test tests/fixtures
-phpscript test tests/fixtures/array_indexing.phpt
+phpscript test tests/fixtures/...
+phpscript test tests/fixtures/arrays
+phpscript test tests/fixtures/arrays/array_indexing.phpt
 ```
 
 Use `--count N` (`-c`) to run each fixture N times in one aggregate row, or
@@ -98,31 +104,47 @@ duration. `GC Runs` reports completed Go garbage-collection cycles as
 shown to two decimal places.
 
 ```bash
-phpscript test -c 5 tests/fixtures
-phpscript test -t 1s tests/fixtures
-phpscript test --count 5 --time 1s tests/fixtures
+phpscript test -c 5 tests/fixtures/...
+phpscript test -t 1s tests/fixtures/...
+phpscript test --count 5 --time 1s tests/fixtures/...
 ```
 
 Use `--profile` to add per-operation allocation and byte counts. `--json`
 writes a machine-readable report to stdout (no table). `--cpuprofile` and
 `--memprofile` write pprof files for the whole `test` invocation.
 
+Use `--output FILE` (`-o`) to write the same tables to a file as Markdown while
+the terminal output continues as normal. The file ends with a summary table of
+per-folder totals. `--matrix`, `--profile`, `--count` and `--time` all
+contribute their columns to it.
+
+```bash
+phpscript test --matrix -o docs/test-fixtures.md tests/fixtures/...
+```
+
 Use `--matrix` to run every fixture through all three runtimes (the flat
 bytecode engine, the default interpreter, and the `php` binary), reporting one
-row per fixture with a cell per runtime. Every other `test` flag is honored. A
+row per fixture with a cell per runtime. Every other `test` flag is honored,
+and the benchmarking flags add their columns after the runtime columns; those
+numbers are the default runtime's, because a row has one cost column and three
+runtimes. Per-runtime cost stays available in `--json`. A
 fixture that opts out of a runtime, and a runtime that is not installed, are
 reported as `SKIP`; anything else that is not a pass fails the run, and the
 command exits non-zero.
 
 ```bash
-phpscript test --matrix tests/fixtures
-phpscript test --matrix -v tests/fixtures
+phpscript test --matrix tests/fixtures/...
+phpscript test --matrix -v tests/fixtures/...
 ```
 
-| Fixture             | Flat stack | Runtime | PHP  |
+| arrays              | Flat stack | Runtime | PHP  |
 |---------------------|------------|---------|------|
 | array_indexing.phpt | PASS       | PASS    | PASS |
-| storage_list.phpt   | PASS       | PASS    | SKIP |
+| sort.phpt           | PASS       | PASS    | PASS |
+
+| bindings          | Flat stack | Runtime | PHP  |
+|-------------------|------------|---------|------|
+| storage_list.phpt | PASS       | PASS    | SKIP |
 
 Add `--verbose` (`-v`) to print the failure of each runtime in continuation
 rows below its fixture. A continuation row leaves the fixture column empty, so
@@ -186,7 +208,7 @@ others have neither.
 Tokenize a PHP file and print its PHP-style token stream.
 
 ```bash
-phpscript ast tests/fixtures/code/TemplateTest_phpscript.php
+phpscript ast tests/fixtures/syntax/code/TestCase.php
 ```
 
 The output uses the same token names exposed by `token_get_all()` and

@@ -81,31 +81,37 @@ func TestRunFixtureSamplesCountAndTime(t *testing.T) {
 func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 	fr := &fixtureRun{
 		Result:      &tests.TestResult{Passed: true},
-		DisplayPath: "a.phpt",
-		Runs:        2,
-		Total:       3 * time.Millisecond,
-		AllocsPerOp: 7,
-		BytesPerOp:  11,
-		GCRuns:      2,
+		DisplayPath: "arrays/a.phpt",
+		Label:       "a.phpt",
+		fixtureMetrics: fixtureMetrics{
+			Runs:        2,
+			Total:       3 * time.Millisecond,
+			AllocsPerOp: 7,
+			BytesPerOp:  11,
+			GCRuns:      2,
+		},
 	}
 	cases := []struct {
 		opts   Options
 		header string
 	}{
-		{Options{}, "| Test | Filename | Duration (ms) | GC Runs |"},
-		{Options{Count: 2}, "| Test | Filename | Duration (ms) | Count | GC Runs |"},
-		{Options{Count: 2, Profile: true}, "| Test | Filename | Duration (ms) | Count | Allocs/op | Bytes/op | GC Runs |"},
-		{Options{Profile: true}, "| Test | Filename | Duration (ms) | Allocs/op | Bytes/op | GC Runs |"},
-		{Options{Time: time.Millisecond}, "| Test | Filename | Duration (ms) | Count | P50 (µs) | P95 (µs) | P99 (µs) | GC Runs |"},
+		{Options{}, "| Test | arrays | Duration (ms) | GC Runs |"},
+		{Options{Count: 2}, "| Test | arrays | Duration (ms) | Count | GC Runs |"},
+		{Options{Count: 2, Profile: true}, "| Test | arrays | Duration (ms) | Count | Allocs/op | Bytes/op | GC Runs |"},
+		{Options{Profile: true}, "| Test | arrays | Duration (ms) | Allocs/op | Bytes/op | GC Runs |"},
+		{Options{Time: time.Millisecond}, "| Test | arrays | Duration (ms) | Count | P50 (µs) | P95 (µs) | P99 (µs) | GC Runs |"},
 	}
 	for _, c := range cases {
 		var buf bytes.Buffer
-		table := newTerminalTable(&buf, []string{"a-much-longer-name.phpt"}, c.opts)
-		table.writeHeader()
+		table := newTerminalTable(&buf, c.opts)
+		table.writeGroup("arrays", []string{"a-much-longer-name.phpt"})
 		table.writeResult(fr)
-		table.close()
+		table.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1})
 		output := ansi.Strip(buf.String())
+		// The trailing lines are the folder subtotal and its blank line, which
+		// are prose rather than table rows.
 		lines := strings.Split(strings.TrimSpace(output), "\n")
+		lines = lines[:len(lines)-1]
 		header := strings.Join(strings.Fields(strings.ReplaceAll(lines[1], "│", "|")), " ")
 		if header != c.header {
 			t.Errorf("opts %+v: header = %q, want %q", c.opts, header, c.header)
@@ -128,26 +134,80 @@ func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 
 func TestResultTableFallsBackToMarkdown(t *testing.T) {
 	var buf bytes.Buffer
-	table := newResultTable(&buf, []string{"a.phpt"}, Options{})
-	table.writeHeader()
+	table := newResultTable(&buf, Options{}, true)
+	table.writeGroup("arrays", []string{"a.phpt"})
 	table.writeResult(&fixtureRun{
-		Result:      &tests.TestResult{Passed: true},
-		DisplayPath: "a.phpt",
-		Total:       time.Millisecond,
+		Result:         &tests.TestResult{Passed: true},
+		DisplayPath:    "arrays/a.phpt",
+		Label:          "a.phpt",
+		fixtureMetrics: fixtureMetrics{Total: time.Millisecond},
 	})
-	table.close()
+	table.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1, Duration: time.Millisecond})
 	table.writeSummary(1, 0, 1, time.Millisecond)
 
-	want := "| Test | Filename | Duration (ms) | GC Runs         |\n" +
-		"| ---- | -------- | ------------- | --------------- |\n" +
-		"| PASS | a.phpt   | 1             | 0 (0.00%)       |\n"
+	want := "## arrays\n\n" +
+		"| Test | arrays | Duration (ms) | GC Runs         |\n" +
+		"| ---- | ------ | ------------- | --------------- |\n" +
+		"| PASS | a.phpt | 1             | 0 (0.00%)       |\n" +
+		"\n" +
+		"## Summary\n\n" +
+		"| Area      | Fixtures | Passed | Failed |\n" +
+		"| --------- | -------- | ------ | ------ |\n" +
+		"| arrays    | 1        | 1      | 0      |\n" +
+		"| **Total** | 1        | 1      | 0      |\n" +
+		"\n"
 	if got := buf.String(); got != want {
-		t.Fatalf("non-terminal table =\n%s\nwant:\n%s", got, want)
+		t.Fatalf("markdown table =\n%s\nwant:\n%s", got, want)
+	}
+}
+
+// TestMarkdownTableGroupsAndSummary asserts the property that makes the
+// generated report trustworthy: the Total row is the sum of the folder rows.
+func TestMarkdownTableGroupsAndSummary(t *testing.T) {
+	var buf bytes.Buffer
+	table := newMarkdownTable(&buf, Options{})
+
+	for _, group := range []struct {
+		dir            string
+		passed, failed int
+	}{{"arrays", 2, 0}, {"strings", 1, 1}} {
+		table.writeGroup(group.dir, []string{"a.phpt"})
+		for i := 0; i < group.passed+group.failed; i++ {
+			table.writeResult(&fixtureRun{
+				Result: &tests.TestResult{Passed: i < group.passed},
+				Label:  "a.phpt",
+			})
+		}
+		table.closeGroup(groupTotals{
+			Dir:    group.dir,
+			Passed: group.passed,
+			Failed: group.failed,
+			Total:  group.passed + group.failed,
+		})
+	}
+	table.writeSummary(3, 1, 4, time.Millisecond)
+
+	got := buf.String()
+	for _, want := range []string{"## arrays", "## strings", "## Summary", "| **Total** | 4        | 3      | 1      |"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("report is missing %q:\n%s", want, got)
+		}
+	}
+
+	var sumTotal, sumPassed, sumFailed int
+	for _, totals := range table.totals {
+		sumTotal += totals.Total
+		sumPassed += totals.Passed
+		sumFailed += totals.Failed
+	}
+	if sumTotal != 4 || sumPassed != 3 || sumFailed != 1 {
+		t.Fatalf("folder totals sum to %d/%d/%d, want 4/3/1", sumTotal, sumPassed, sumFailed)
 	}
 }
 
 func TestCountColumnExpandsForConfiguredCount(t *testing.T) {
-	table := newTerminalTable(&bytes.Buffer{}, nil, Options{Count: 100000000})
+	table := newTerminalTable(&bytes.Buffer{}, Options{Count: 100000000})
+	table.sizeColumns("arrays", nil)
 	if got := table.widths[3]; got != 9 {
 		t.Fatalf("Count width = %d, want 9", got)
 	}
@@ -155,11 +215,22 @@ func TestCountColumnExpandsForConfiguredCount(t *testing.T) {
 
 func TestTerminalSummaryUsesWorktreeStyle(t *testing.T) {
 	var buf bytes.Buffer
-	table := newTerminalTable(&buf, nil, Options{})
+	table := newTerminalTable(&buf, Options{})
 	table.writeSummary(2, 1, 3, 4*time.Millisecond)
 	want := colorHeader + "Test summary: 2 passed, 1 failed out of 3 fixtures (4ms)" + colorReset + "\n"
 	if got := buf.String(); got != want {
 		t.Fatalf("terminal summary = %q, want %q", got, want)
+	}
+}
+
+// TestTerminalGroupSubtotal covers the line closeGroup adds under each folder.
+func TestTerminalGroupSubtotal(t *testing.T) {
+	var buf bytes.Buffer
+	table := newTerminalTable(&buf, Options{})
+	table.sizeColumns("arrays", []string{"a.phpt"})
+	table.closeGroup(groupTotals{Dir: "arrays", Passed: 4, Failed: 1, Total: 5, Duration: 6 * time.Millisecond})
+	if want := "arrays: 4 passed, 1 failed out of 5 fixtures (6ms)"; !strings.Contains(ansi.Strip(buf.String()), want) {
+		t.Fatalf("group subtotal = %q, want it to contain %q", buf.String(), want)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/titpetric/cli"
@@ -28,6 +29,7 @@ type Options struct {
 	Profile    bool
 	CPUProfile string
 	MemProfile string
+	Output     string
 }
 
 type jsonFixture struct {
@@ -68,6 +70,7 @@ func NewCommand() *cli.Command {
 			fs.BoolVar(&opts.Profile, "profile", false, "Report memory usage per run (allocs/op, B/op)")
 			fs.StringVar(&opts.CPUProfile, "cpuprofile", "", "Write CPU profile to file")
 			fs.StringVar(&opts.MemProfile, "memprofile", "", "Write memory profile to file")
+			fs.StringVarP(&opts.Output, "output", "o", "", "Write a Markdown report of the results to this file")
 		},
 		Run: func(ctx context.Context, args []string) error {
 			return Run(ctx, args, opts)
@@ -75,10 +78,9 @@ func NewCommand() *cli.Command {
 	}
 }
 
-// fixtureRun aggregates the outcome of one fixture over one or more runs.
-type fixtureRun struct {
-	Result      *tests.TestResult
-	DisplayPath string
+// fixtureMetrics is the cost of running a fixture, kept apart from the outcome
+// so a matrix row can carry it too.
+type fixtureMetrics struct {
 	Runs        int
 	Total       time.Duration
 	P50         time.Duration
@@ -87,6 +89,24 @@ type fixtureRun struct {
 	AllocsPerOp uint64
 	BytesPerOp  uint64
 	GCRuns      uint32
+}
+
+// fixtureRun aggregates the outcome of one fixture over one or more runs.
+// DisplayPath is the full path, which is what a failure line and the JSON
+// report name; Label is the basename, which is what a per-folder table shows.
+type fixtureRun struct {
+	Result      *tests.TestResult
+	DisplayPath string
+	Label       string
+	fixtureMetrics
+}
+
+// label returns what a table cell should show for the run.
+func (r *fixtureRun) label() string {
+	if r.Label != "" {
+		return r.Label
+	}
+	return r.DisplayPath
 }
 
 func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts Options) *fixtureRun {
@@ -194,13 +214,15 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		return fmt.Errorf("discover fixtures: %w", err)
 	}
 
+	// An empty selection is a mis-scoped invocation, not a passing run: a
+	// pipeline that points the runner at the wrong directory should fail
+	// rather than report success over nothing.
 	if len(fixtures) == 0 {
-		if !opts.JSON {
-			fmt.Println("No .phpt test fixtures found.")
-		} else {
+		if opts.JSON {
 			_ = json.NewEncoder(os.Stdout).Encode(jsonReport{Results: []jsonFixture{}})
+			return nil
 		}
-		return nil
+		return fmt.Errorf("no .phpt test fixtures found in %s", strings.Join(paths, " "))
 	}
 
 	displayPaths := make([]string, len(fixtures))
@@ -210,9 +232,18 @@ func Run(ctx context.Context, args []string, opts Options) error {
 			displayPaths[i] = fx.Name
 		}
 	}
+	groups := groupFixtures(fixtures, displayPaths)
+
+	report, err := openReport(args, opts)
+	if err != nil {
+		return err
+	}
+	if report != nil {
+		defer report.Close()
+	}
 
 	if opts.Matrix {
-		failed := runMatrix(ctx, fixtures, displayPaths, opts)
+		failed := runMatrix(ctx, groups, opts, report)
 		if err := writeMemProfile(opts); err != nil {
 			return err
 		}
@@ -222,10 +253,12 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		return nil
 	}
 
-	var table resultTable
+	var sinks teeResultTable
 	if !opts.JSON {
-		table = newResultTable(os.Stdout, displayPaths, opts)
-		table.writeHeader()
+		sinks = append(sinks, newResultTable(os.Stdout, opts, !isTerminal(os.Stdout)))
+	}
+	if report != nil {
+		sinks = append(sinks, newMarkdownTable(report, opts))
 	}
 
 	var jsonRows []jsonFixture
@@ -233,50 +266,62 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	var passedCount, failedCount int
 	startAll := time.Now()
 
-	for i, fx := range fixtures {
-		var fixtureResult *tests.TestResult
-		var firstFailedRun *fixtureRun
-		for _, fr := range runFixtureSamples(ctx, fx, tests.RunnerRuntime, opts) {
-			fr.DisplayPath = displayPaths[i]
-			if table != nil {
-				table.writeResult(fr)
-			}
-			jsonRows = append(jsonRows, jsonFixture{
-				Name:        fx.Name,
-				Path:        fr.DisplayPath,
-				Runner:      string(fr.Result.Runner),
-				Passed:      fr.Result.Passed,
-				Runs:        fr.Runs,
-				DurationNs:  fr.Total.Nanoseconds(),
-				P50Ns:       fr.P50.Nanoseconds(),
-				P95Ns:       fr.P95.Nanoseconds(),
-				P99Ns:       fr.P99.Nanoseconds(),
-				AllocsPerOp: fr.AllocsPerOp,
-				BytesPerOp:  fr.BytesPerOp,
-				GCRuns:      fr.GCRuns,
-				Failure:     fr.Result.FailureReason,
-			})
+	for _, group := range groups {
+		sinks.writeGroup(group.Dir, group.Labels)
+		groupPassed, groupFailed := 0, 0
+		groupStart := time.Now()
 
-			if fixtureResult == nil || fixtureResult.Passed {
-				fixtureResult = fr.Result
+		for i, fx := range group.Fixtures {
+			var fixtureResult *tests.TestResult
+			var firstFailedRun *fixtureRun
+			for _, fr := range runFixtureSamples(ctx, fx, tests.RunnerRuntime, opts) {
+				fr.DisplayPath = group.Paths[i]
+				fr.Label = group.Labels[i]
+				sinks.writeResult(fr)
+				jsonRows = append(jsonRows, jsonFixture{
+					Name:        fx.Name,
+					Path:        fr.DisplayPath,
+					Runner:      string(fr.Result.Runner),
+					Passed:      fr.Result.Passed,
+					Runs:        fr.Runs,
+					DurationNs:  fr.Total.Nanoseconds(),
+					P50Ns:       fr.P50.Nanoseconds(),
+					P95Ns:       fr.P95.Nanoseconds(),
+					P99Ns:       fr.P99.Nanoseconds(),
+					AllocsPerOp: fr.AllocsPerOp,
+					BytesPerOp:  fr.BytesPerOp,
+					GCRuns:      fr.GCRuns,
+					Failure:     fr.Result.FailureReason,
+				})
+
+				if fixtureResult == nil || fixtureResult.Passed {
+					fixtureResult = fr.Result
+				}
+				if !fr.Result.Passed && firstFailedRun == nil {
+					firstFailedRun = fr
+				}
 			}
-			if !fr.Result.Passed && firstFailedRun == nil {
-				firstFailedRun = fr
+
+			if fixtureResult.Passed {
+				groupPassed++
+			} else {
+				groupFailed++
+				failedRuns = append(failedRuns, firstFailedRun)
 			}
 		}
 
-		if fixtureResult.Passed {
-			passedCount++
-		} else {
-			failedCount++
-			failedRuns = append(failedRuns, firstFailedRun)
-		}
+		sinks.closeGroup(groupTotals{
+			Dir:      group.Dir,
+			Passed:   groupPassed,
+			Failed:   groupFailed,
+			Total:    len(group.Fixtures),
+			Duration: time.Since(groupStart),
+		})
+		passedCount += groupPassed
+		failedCount += groupFailed
 	}
 
-	if table != nil {
-		table.close()
-		table.writeSummary(passedCount, failedCount, len(fixtures), time.Since(startAll))
-	}
+	sinks.writeSummary(passedCount, failedCount, len(fixtures), time.Since(startAll))
 
 	if opts.JSON {
 		enc := json.NewEncoder(os.Stdout)
