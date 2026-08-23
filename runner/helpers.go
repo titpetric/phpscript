@@ -554,10 +554,11 @@ func (rt *Runtime) helperNew(ref *scopeRef) func(class string, args ...any) (any
 			return nil, fmt.Errorf("new: undefined class %q", class)
 		}
 		obj := model.NewObject(c)
+		defaults := rt.classDefaultScope(c, scope)
 		for _, f := range c.Fields {
 			var def any
 			if f.Default != nil {
-				v, err := rt.Eval(f.Default, scope)
+				v, err := rt.Eval(f.Default, defaults)
 				if err != nil {
 					return nil, err
 				}

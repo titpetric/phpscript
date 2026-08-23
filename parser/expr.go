@@ -12,13 +12,20 @@ import (
 //
 // Note: the README forbids assignment inside conditions (no `if ($a = "b")`),
 // so `=` is NOT an expression operator here; assignment is a statement only.
+//
+// The bitwise levels sit where PHP 8 puts them: `| ^ &` are looser than any
+// comparison but tighter than `&&`, and `<< >>` are tighter than `.` but looser
+// than `+ -`. That is what makes `1 | 2 == 2` fold the comparison first (1) and
+// `1 << 2 + 3` shift by five (32).
 var binPrec = map[string]int{
 	"||": 1, "&&": 2,
-	"==": 3, "!=": 3, "===": 3, "!==": 3,
-	"<": 4, "<=": 4, ">": 4, ">=": 4,
-	".": 5,
-	"+": 6, "-": 6,
-	"*": 7, "/": 7, "%": 7,
+	"|": 3, "^": 4, "&": 5,
+	"==": 6, "!=": 6, "===": 6, "!==": 6,
+	"<": 7, "<=": 7, ">": 7, ">=": 7,
+	".":  8,
+	"<<": 9, ">>": 9,
+	"+": 10, "-": 10,
+	"*": 11, "/": 11, "%": 11,
 }
 
 func (p *parser) parseExpr() (model.Expr, error) {
@@ -146,7 +153,7 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		}
 		return p.newUnary(op, x, false), nil
 	}
-	if p.isOp("!") || p.isOp("-") || p.isOp("+") {
+	if p.isOp("!") || p.isOp("-") || p.isOp("+") || p.isOp("~") {
 		op := p.next().val
 		x, err := p.parseUnary()
 		if err != nil {
@@ -154,10 +161,15 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		}
 		return p.newUnary(op, x, false), nil
 	}
-	// `@expr` error suppression and `&expr` reference are parse-level no-ops
+	// `@expr` error suppression and `&$var` reference are parse-level no-ops
 	// (the VM has no by-reference values; callable arrays carry the marker
 	// harmlessly).
-	if p.isOp("@") || p.isOp("&") {
+	//
+	// The reference marker is only skipped in front of a variable. It used to
+	// be skipped in front of anything, which silently swallowed the binary `&`
+	// of `echo 6 & 3`: the operand parser took `& 3` as a fresh reference
+	// expression and the program printed 6.
+	if p.isOp("@") || (p.isOp("&") && p.peek(1).kind == tVar) {
 		p.next()
 		return p.parseUnary()
 	}

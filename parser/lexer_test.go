@@ -64,8 +64,10 @@ func TestLexOperatorGreedy(t *testing.T) {
 		{"!", []string{"!"}},
 		{"<=", []string{"<="}},
 		{"<<=", []string{"<<="}},
-		{"<<", []string{"<", "<"}},
+		{"<<", []string{"<<"}},
+		{"<<<", []string{"<<", "<"}},
 		{">>=", []string{">>="}},
+		{">>", []string{">>"}},
 		{">=", []string{">="}},
 		{"**=", []string{"**="}},
 		{"**", []string{"**"}},
@@ -83,8 +85,14 @@ func TestLexOperatorGreedy(t *testing.T) {
 		{":::", []string{"::", ":"}},
 		{"&&", []string{"&&"}},
 		{"&", []string{"&"}},
+		{"&=", []string{"&="}},
 		{"||", []string{"||"}},
 		{"|", []string{"|"}},
+		{"|=", []string{"|="}},
+		{"^", []string{"^"}},
+		{"^=", []string{"^="}},
+		{"~", []string{"~"}},
+		{"~~", []string{"~", "~"}},
 		{"*=", []string{"*="}},
 		{"/=", []string{"/="}},
 		{"%=", []string{"%="}},
@@ -185,7 +193,7 @@ func TestLexLineNumbersAcrossConstructs(t *testing.T) {
 }
 
 func TestLexRejectsUnknownCharacter(t *testing.T) {
-	if _, err := newLexer("<?php ~").run(); err == nil {
+	if _, err := newLexer("<?php \x01").run(); err == nil {
 		t.Fatal("expected an error for an unsupported character")
 	}
 }

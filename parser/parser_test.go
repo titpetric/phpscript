@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -357,5 +358,109 @@ func TestParseNamespacedPreambleAllowed(t *testing.T) {
 	src := "<?php\ndeclare(strict_types=1);\n\nnamespace App;\n\nuse Vendor\\Thing;\n\nfunction f() {\n\techo \"hi\";\n}\n"
 	if _, err := Parse(src); err != nil {
 		t.Fatalf("parse: %v", err)
+	}
+}
+
+// exprShape renders an expression fully parenthesised, so a precedence test
+// reads as the tree the parser built rather than as a chain of type
+// assertions.
+func exprShape(e model.Expr) string {
+	switch n := e.(type) {
+	case *model.Binary:
+		return "(" + exprShape(n.Left) + " " + n.Op + " " + exprShape(n.Right) + ")"
+	case *model.Unary:
+		if n.Postfix {
+			return "(" + exprShape(n.X) + n.Op + ")"
+		}
+		return "(" + n.Op + exprShape(n.X) + ")"
+	case *model.Parenthesized:
+		return exprShape(n.X)
+	case *model.Lit:
+		return fmt.Sprintf("%v", n.Value)
+	case *model.Var:
+		return "$" + n.Name
+	default:
+		return fmt.Sprintf("%T", e)
+	}
+}
+
+// TestParseBitwisePrecedence pins where the bitwise operators sit in PHP 8's
+// precedence table: `| ^ &` are looser than any comparison and tighter than
+// `&&`, and `<< >>` are tighter than `.` and looser than `+ -`. Every
+// expectation is what the php binary evaluates the same source to.
+func TestParseBitwisePrecedence(t *testing.T) {
+	tests := []struct {
+		src  string
+		want string
+	}{
+		{"1 | 2 == 2", "(1 | (2 == 2))"},
+		{"7 & 3 == 3", "(7 & (3 == 3))"},
+		{"1 < 2 & 3", "((1 < 2) & 3)"},
+		{"1 ^ 2 & 3", "(1 ^ (2 & 3))"},
+		{"2 | 4 ^ 6", "(2 | (4 ^ 6))"},
+		{"6 & 3 | 1 ^ 2", "((6 & 3) | (1 ^ 2))"},
+		{"$a && $b | $c", "($a && ($b | $c))"},
+		{"$a || $b & $c", "($a || ($b & $c))"},
+		{"1 << 2 + 3", "(1 << (2 + 3))"},
+		{`"a" . 1 << 2`, "(a . (1 << 2))"},
+		{"1 << 2 << 3", "((1 << 2) << 3)"},
+		{"16 >> 1 >> 2", "((16 >> 1) >> 2)"},
+		{"1 | 2 | 3", "((1 | 2) | 3)"},
+		{"~$a & $b", "((~$a) & $b)"},
+		{"~ ~5", "(~(~5))"},
+		{"-$a >> 1", "((-$a) >> 1)"},
+		{"$a & $b == $c", "($a & ($b == $c))"},
+		{"(1 | 2) == 2", "((1 | 2) == 2)"},
+	}
+	for _, test := range tests {
+		t.Run(test.src, func(t *testing.T) {
+			prog := mustParse(t, "<?php $r = "+test.src+";")
+			assign, ok := prog.Stmts[0].(*model.Assign)
+			if !ok {
+				t.Fatalf("got %T, want *model.Assign", prog.Stmts[0])
+			}
+			if got := exprShape(assign.Value); got != test.want {
+				t.Errorf("%s parses as %s, want %s", test.src, got, test.want)
+			}
+		})
+	}
+}
+
+// The by-reference marker used to be skipped in front of any operand, which
+// swallowed the binary `&` of `echo 6 & 3` and printed 6. It is a marker only
+// in front of a variable now, and nothing else may consume an operator
+// silently.
+func TestParseAmpersandIsNotSwallowed(t *testing.T) {
+	prog := mustParse(t, `<?php echo 6 & 3;`)
+	echo, ok := prog.Stmts[0].(*model.Echo)
+	if !ok {
+		t.Fatalf("got %T, want *model.Echo", prog.Stmts[0])
+	}
+	if len(prog.Stmts) != 1 {
+		t.Fatalf("got %d statements, want 1: %#v", len(prog.Stmts), prog.Stmts)
+	}
+	if len(echo.Args) != 1 {
+		t.Fatalf("got %d echo args, want 1", len(echo.Args))
+	}
+	if got := exprShape(echo.Args[0]); got != "(6 & 3)" {
+		t.Fatalf("echo arg = %s, want (6 & 3)", got)
+	}
+	if _, err := Parse(`<?php echo & 3;`); err == nil {
+		t.Fatal("a reference marker in front of a literal must be rejected")
+	}
+}
+
+// A reference marker still parses where PHP allows one: in front of a
+// variable, which is where every by-reference construct puts it.
+func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
+	for _, src := range []string{
+		`<?php $a = &$b;`,
+		`<?php f(&$b);`,
+		`<?php foreach ($rows as &$row) { $row = 1; }`,
+		`<?php $fn = function () use (&$b) { return $b; };`,
+	} {
+		if _, err := Parse(src); err != nil {
+			t.Errorf("parse %q: %v", src, err)
+		}
 	}
 }

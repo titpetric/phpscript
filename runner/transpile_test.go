@@ -56,6 +56,18 @@ func TestTranspileSource(t *testing.T) {
 			vars: []string{"a", "b"},
 		},
 		{
+			name: "bitwise",
+			expr: &model.Binary{Op: "|", Left: v("a"), Right: &model.Binary{Op: "<<", Left: lit(1), Right: v("b")}},
+			want: `__bit("|", v_a, __bit("<<", 1, v_b))`,
+			vars: []string{"a", "b"},
+		},
+		{
+			name: "bitwise complement",
+			expr: &model.Unary{Op: "~", X: v("a")},
+			want: `__bitnot(v_a)`,
+			vars: []string{"a"},
+		},
+		{
 			name: "identity comparison",
 			expr: &model.Binary{Op: "===", Left: v("a"), Right: lit(1)},
 			want: `(v_a) == (1)`,

@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -315,6 +316,92 @@ func phpArith(op string, a, b any) any {
 	default:
 		return int64(0)
 	}
+}
+
+// phpBitwise applies & | ^ << >>.
+//
+// Both operands are cast to int, except that & | ^ between two strings operate
+// bytewise and yield a string, as they do in PHP: "a" | "b" is "c". The operand
+// length follows PHP: `&` and `^` stop at the shorter operand, `|` keeps the
+// longer one and treats the missing bytes as zero.
+//
+// Shifts are int64 operations. A count of 64 or more needs no special case: Go
+// defines an over-wide shift as 0 for `<<`, and 0 or -1 by sign for `>>`, which
+// is what PHP produces. A negative count is the one input with no answer, and
+// PHP raises ArithmeticError for it rather than picking one.
+func phpBitwise(op string, a, b any) (any, error) {
+	switch op {
+	case "&", "|", "^":
+		if left, ok := a.(string); ok {
+			if right, ok := b.(string); ok {
+				return bitwiseString(op, left, right), nil
+			}
+		}
+		x, y := toInt(a), toInt(b)
+		switch op {
+		case "&":
+			return x & y, nil
+		case "|":
+			return x | y, nil
+		default:
+			return x ^ y, nil
+		}
+	case "<<", ">>":
+		x, count := toInt(a), toInt(b)
+		if count < 0 {
+			return nil, &ArithmeticError{Message: "Bit shift by negative number"}
+		}
+		if op == "<<" {
+			return x << uint64(count), nil
+		}
+		return x >> uint64(count), nil
+	default:
+		return nil, fmt.Errorf("unsupported bitwise operator %q", op)
+	}
+}
+
+// bitwiseString applies & | ^ bytewise to two strings.
+func bitwiseString(op string, a, b string) string {
+	n := min(len(a), len(b))
+	if op == "|" {
+		n = max(len(a), len(b))
+	}
+	out := make([]byte, n)
+	for i := 0; i < n; i++ {
+		var x, y byte
+		if i < len(a) {
+			x = a[i]
+		}
+		if i < len(b) {
+			y = b[i]
+		}
+		switch op {
+		case "&":
+			out[i] = x & y
+		case "|":
+			out[i] = x | y
+		default:
+			out[i] = x ^ y
+		}
+	}
+	return string(out)
+}
+
+// phpBitNot implements `~`. On a string it flips every byte; on anything else it
+// casts to int, where ~n is -(n+1).
+//
+// PHP 8 raises a TypeError for a null, bool or array operand. phpscript casts
+// those the way every other bitwise operand is cast, so `~null` is -1 rather
+// than a fatal error (docs/README.md).
+func phpBitNot(v any) any {
+	if s, ok := v.(string); ok {
+		out := make([]byte, len(s))
+		for i := 0; i < len(s); i++ {
+			out[i] = ^s[i]
+		}
+		return string(out)
+	}
+	return ^toInt(v)
 }
 
 // addInt, subInt and mulInt perform int64 arithmetic, reporting false on

@@ -881,7 +881,11 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 	switch tgt := model.UnwrapParenthesized(n.Target).(type) {
 	case *model.Var:
 		cur, _ := scope.Get(tgt.Name)
-		scope.Set(tgt.Name, applyAssignOp(n.Op, cur, rhs))
+		next, err := applyAssignOp(n.Op, cur, rhs)
+		if err != nil {
+			return err
+		}
+		scope.Set(tgt.Name, next)
 		return nil
 
 	case *model.ListExpr:
@@ -907,10 +911,14 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 			return err
 		}
 		if obj, ok := base.(*model.Object); ok {
-			obj.Props[tgt.Name] = applyAssignOp(n.Op, obj.Props[tgt.Name], rhs)
+			next, err := applyAssignOp(n.Op, obj.Props[tgt.Name], rhs)
+			if err != nil {
+				return err
+			}
+			obj.Props[tgt.Name] = next
 			return nil
 		}
-		return assignGoField(base, tgt.Name, func(current any) any {
+		return assignGoField(base, tgt.Name, func(current any) (any, error) {
 			return applyAssignOp(n.Op, current, rhs)
 		})
 
@@ -919,7 +927,11 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		if err != nil {
 			return err
 		}
-		bag[tgt.Name] = applyAssignOp(n.Op, bag[tgt.Name], rhs)
+		next, err := applyAssignOp(n.Op, bag[tgt.Name], rhs)
+		if err != nil {
+			return err
+		}
+		bag[tgt.Name] = next
 		return nil
 
 	case *model.Index:
@@ -940,7 +952,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 			if err != nil {
 				return err
 			}
-			return assignGoIndex(base, key, func(current any) any {
+			return assignGoIndex(base, key, func(current any) (any, error) {
 				return applyAssignOp(n.Op, current, rhs)
 			})
 		}
@@ -954,7 +966,11 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		}
 		k := normalizeKey(key)
 		cur, _ := arr.Get(k)
-		arr.Set(k, applyAssignOp(n.Op, cur, rhs))
+		next, err := applyAssignOp(n.Op, cur, rhs)
+		if err != nil {
+			return err
+		}
+		arr.Set(k, next)
 		return nil
 
 	default:
@@ -1114,7 +1130,7 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 			obj.Props[tgt.Name] = val
 			return nil
 		}
-		return assignGoField(base, tgt.Name, func(any) any { return val })
+		return assignGoField(base, tgt.Name, func(any) (any, error) { return val, nil })
 	case *model.StaticProp:
 		bag, err := rt.staticStorage(tgt.Class, scope)
 		if err != nil {
@@ -1136,7 +1152,7 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 			if err != nil {
 				return err
 			}
-			return assignGoIndex(base, key, func(any) any { return val })
+			return assignGoIndex(base, key, func(any) (any, error) { return val, nil })
 		}
 		if tgt.Index == nil {
 			arr.Append(val)
@@ -1158,7 +1174,7 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 // observes the write), and existing slice elements are addressable through the
 // shared backing array. A slice cannot grow through the interface value holding
 // it, so callers reject `$a[] =` before reaching here.
-func assignGoIndex(base, key any, value func(current any) any) error {
+func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 	rv := reflect.ValueOf(base)
 	switch rv.Kind() {
 	case reflect.Map:
@@ -1173,7 +1189,11 @@ func assignGoIndex(base, key any, value func(current any) any) error {
 		if existing := rv.MapIndex(mapKey); existing.IsValid() {
 			current = existing.Interface()
 		}
-		next, ok := coerceArg(value(current), rv.Type().Elem())
+		updated, err := value(current)
+		if err != nil {
+			return err
+		}
+		next, ok := coerceArg(updated, rv.Type().Elem())
 		if !ok || !next.Type().AssignableTo(rv.Type().Elem()) {
 			return fmt.Errorf("assign: cannot assign to an element of %T", base)
 		}
@@ -1185,7 +1205,11 @@ func assignGoIndex(base, key any, value func(current any) any) error {
 			return fmt.Errorf("assign: index %d is out of range for %T", index, base)
 		}
 		element := rv.Index(int(index))
-		next, ok := coerceArg(value(element.Interface()), element.Type())
+		updated, err := value(element.Interface())
+		if err != nil {
+			return err
+		}
+		next, ok := coerceArg(updated, element.Type())
 		if !element.CanSet() || !ok || !next.Type().AssignableTo(element.Type()) {
 			return fmt.Errorf("assign: cannot assign to an element of %T", base)
 		}
@@ -1195,7 +1219,7 @@ func assignGoIndex(base, key any, value func(current any) any) error {
 	return fmt.Errorf("assign: target is not an array")
 }
 
-func assignGoField(base any, name string, value func(any) any) error {
+func assignGoField(base any, name string, value func(any) (any, error)) error {
 	rv := reflect.ValueOf(base)
 	if !rv.IsValid() || (rv.Kind() == reflect.Pointer && rv.IsNil()) {
 		return fmt.Errorf("assign: %q is not an object property", name)
@@ -1208,7 +1232,10 @@ func assignGoField(base any, name string, value func(any) any) error {
 	if !field.IsValid() || !field.CanSet() || !field.CanInterface() {
 		return fmt.Errorf("assign: %q is not a writable object property", name)
 	}
-	raw := value(field.Interface())
+	raw, err := value(field.Interface())
+	if err != nil {
+		return err
+	}
 	next, ok := coerceArg(raw, field.Type())
 	if !ok || !next.Type().AssignableTo(field.Type()) {
 		return fmt.Errorf("assign: cannot assign %T to property %q", raw, name)
@@ -1217,17 +1244,21 @@ func assignGoField(base any, name string, value func(any) any) error {
 	return nil
 }
 
-// applyAssignOp resolves compound-assignment operators against the current value.
-func applyAssignOp(op string, cur, rhs any) any {
+// applyAssignOp resolves compound-assignment operators against the current
+// value. It reports an error for the same inputs the binary operator does, so
+// `$x <<= -1` fails where `$x = $x << -1` fails instead of assigning silently.
+func applyAssignOp(op string, cur, rhs any) (any, error) {
 	switch op {
 	case "", "=", "[]=":
-		return rhs
+		return rhs, nil
 	case ".=":
-		return phpString(cur) + phpString(rhs)
+		return phpString(cur) + phpString(rhs), nil
 	case "+=", "-=", "*=", "/=", "%=", "**=":
-		return phpArith(strings.TrimSuffix(op, "="), cur, rhs)
+		return phpArith(strings.TrimSuffix(op, "="), cur, rhs), nil
+	case "&=", "|=", "^=", "<<=", ">>=":
+		return phpBitwise(strings.TrimSuffix(op, "="), cur, rhs)
 	default:
-		return rhs
+		return rhs, nil
 	}
 }
 

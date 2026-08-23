@@ -175,6 +175,11 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 			// expr-lang `!` requires a bool; coerce with PHP truthiness first.
 			return "!__bool(" + x + ")", nil
 		}
+		if op == "~" {
+			// expr-lang has no bitwise complement, and PHP's operates on bytes
+			// for a string operand, so it is a helper rather than an operator.
+			return "__bitnot(" + x + ")", nil
+		}
 		return op + "(" + x + ")", nil
 
 	case *model.Parenthesized:
@@ -382,6 +387,16 @@ func joinCall(name, lead1, lead2 string, args []string) string {
 	return b.String()
 }
 
+// bitCallPrefix holds the __bit call opening for each bitwise operator, spelled
+// out once at package scope rather than built per expression.
+var bitCallPrefix = map[string]string{
+	"&":  `__bit("&", `,
+	"|":  `__bit("|", `,
+	"^":  `__bit("^", `,
+	"<<": `__bit("<<", `,
+	">>": `__bit(">>", `,
+}
+
 func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 	l, err := t.emit(n.Left)
 	if err != nil {
@@ -416,6 +431,12 @@ func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 		return concat(`__arith("%", `, l, ", ", r, ")"), nil
 	case "**":
 		return concat(`__arith("**", `, l, ", ", r, ")"), nil
+	case "&", "|", "^", "<<", ">>":
+		// expr-lang spells some of these differently (`^` is exponentiation
+		// there) and none of them with PHP's string semantics, so they all go
+		// through the helper. The call prefix comes from a table so that
+		// emitting one costs no concatenation of its own (rule 7).
+		return concat(bitCallPrefix[n.Op], l, ", ", r, ")"), nil
 	case "==":
 		return concat("(", l, ") == (", r, ")"), nil
 	case "!=":

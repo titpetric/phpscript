@@ -453,7 +453,7 @@ type New struct {
 	Args  []Expr
 }
 
-// Unary is a prefix/postfix operator: "!", "-", "+", "++", "--".
+// Unary is a prefix/postfix operator: "!", "-", "+", "~", "++", "--".
 type Unary struct {
 	Op      string
 	X       Expr
@@ -478,8 +478,9 @@ func UnwrapParenthesized(e Expr) Expr {
 	}
 }
 
-// Binary is an infix operator. Op covers arithmetic (+ - * / %), string concat
-// ("."), comparison (== != === !== < <= > >=) and logical (&& ||).
+// Binary is an infix operator. Op covers arithmetic (+ - * / % **), string
+// concat ("."), comparison (== != === !== < <= > >=), logical (&& ||) and
+// bitwise (& | ^ << >>).
 type Binary struct {
 	Op    string
 	Left  Expr

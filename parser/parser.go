@@ -1305,7 +1305,8 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 
 func isAssignOp(v string) bool {
 	switch v {
-	case "=", ".=", "+=", "-=", "*=", "/=", "%=", "**=", "[]=":
+	case "=", ".=", "+=", "-=", "*=", "/=", "%=", "**=", "[]=",
+		"&=", "|=", "^=", "<<=", ">>=":
 		return true
 	}
 	return false

@@ -1,0 +1,24 @@
+<?php
+
+$mask = 1|2;
+$mask = $mask & 0xF0;
+$mask = $mask ^ 3;
+$mask = ~$mask;
+$mask = 1 <<3;
+$mask = 64>> 2;
+$mask = ($a | $b) & ~($c ^ $d);
+$mask = 1 | 2 == 2;
+$mask = 1 << 2 + 3;
+
+$flags &= 3;
+$flags |= 4;
+$flags ^= 5;
+$flags <<= 1;
+$flags >>= 2;
+
+$row["mask"] |= 8;
+$obj->mask &= ~2;
+
+if (($flags & 4) != 0) {
+	echo $flags;
+}

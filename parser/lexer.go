@@ -58,13 +58,14 @@ var multiCharOps = []string{
 	"===", "!==", "<<=", ">>=", "**=",
 	"==", "!=", "<=", ">=", "&&", "||", "->", "=>", "++", "--", "**",
 	".=", "+=", "-=", "*=", "/=", "%=", "::",
+	"<<", ">>", "&=", "|=", "^=",
 }
 
 // singleCharOps lists every one-byte operator. It is a constant, so slicing it
 // (singleOpText below) yields a string header pointing into the binary's
 // read-only data. Emitting an operator token allocates nothing, where
 // `string(c)` allocated a fresh 1-byte string per token (rule 7).
-const singleCharOps = "+-*/%.,;()[]{}=<>!&|?:@\\"
+const singleCharOps = "+-*/%.,;()[]{}=<>!&|^~?:@\\"
 
 // singleOpText[c] is the token text for the single-character operator c, or ""
 // when c does not start an operator. Built once at package scope (rule 7).
