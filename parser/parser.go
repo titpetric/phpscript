@@ -133,12 +133,19 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 			if top && !isPreambleStmt(s) {
 				p.topSeen = true
 			}
+			// An included namespaced file is scanned for the symbols it
+			// declares rather than executed, which is what makes resolving a
+			// name cheap. The restriction is a policy, not an omission; it is
+			// recorded under "Known divergences from PHP" in docs/README.md,
+			// so the message says why rather than only what.
 			if top && p.namespace != "" && !isPreambleStmt(s) {
 				switch s.(type) {
 				case *model.ClassDecl, *model.FuncDecl:
 				default:
 					p.stmts.drop(mark)
-					return nil, fmt.Errorf("line %d: namespaced files may only declare symbols", p.cur().line)
+					return nil, fmt.Errorf("line %d: a namespaced file may only declare classes and functions, "+
+						"because it is scanned for the symbols it declares at include time instead of being run; "+
+						"move this statement into a function, or into a file that declares no namespace", p.spans[s].Start)
 				}
 			}
 			p.stmts.push(s)

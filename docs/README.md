@@ -124,6 +124,16 @@ Memory reporting differs from PHP's allocator view:
 - Exceeding `memory_limit` raises a catchable `RuntimeException`; PHP treats
   it as a fatal error that `catch` cannot intercept.
 
+Namespaces:
+
+- A file that declares a `namespace` may only declare classes and functions.
+  PHP allows top-level statements there; phpscript rejects them at parse time.
+  An included namespaced file is scanned for the symbols it declares rather
+  than executed, which is what keeps resolving a name cheap, and a file with
+  something to run cannot be treated that way. `use` and `declare` are
+  preamble, not statements, so both are still allowed. Put executable code in a
+  function, or in a file that declares no namespace.
+
 Classes:
 
 - `extends` and `implements` are parsed and recorded on the class, and confer

@@ -330,3 +330,32 @@ func TestParseClassHeritageRejected(t *testing.T) {
 		}
 	}
 }
+
+// The restriction on a namespaced file is deliberate, so the message has to
+// carry the reason and the way out, and point at the offending statement
+// rather than at whatever follows it.
+func TestParseNamespacedStatementRejected(t *testing.T) {
+	_, err := Parse("<?php\nnamespace App;\n\nclass Thing {}\n\necho \"hi\";\n")
+	if err == nil {
+		t.Fatal("a top-level statement in a namespaced file must be rejected")
+	}
+	for _, want := range []string{
+		"line 6:",
+		"may only declare classes and functions",
+		"scanned for the symbols it declares at include time",
+		"move this statement into a function",
+	} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not contain %q", err, want)
+		}
+	}
+}
+
+// `use` and `declare` are preamble rather than code, so a namespaced file may
+// still carry them.
+func TestParseNamespacedPreambleAllowed(t *testing.T) {
+	src := "<?php\ndeclare(strict_types=1);\n\nnamespace App;\n\nuse Vendor\\Thing;\n\nfunction f() {\n\techo \"hi\";\n}\n"
+	if _, err := Parse(src); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+}
