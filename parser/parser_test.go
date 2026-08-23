@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
@@ -222,5 +223,68 @@ func TestParseNestedArgumentLists(t *testing.T) {
 	}
 	if lit := outer.Args[2].(*model.Lit); lit.Value != int64(7) {
 		t.Errorf("last arg = %#v, want Lit(7)", lit.Value)
+	}
+}
+
+func TestParseClassModifiers(t *testing.T) {
+	cases := []struct {
+		src                         string
+		abstract, final, isReadonly bool
+	}{
+		{`<?php class A {}`, false, false, false},
+		{`<?php abstract class A {}`, true, false, false},
+		{`<?php final class A {}`, false, true, false},
+		{`<?php readonly class A {}`, false, false, true},
+		{`<?php final readonly class A {}`, false, true, true},
+		{`<?php readonly final class A {}`, false, true, true},
+		{`<?php abstract readonly class A {}`, true, false, true},
+	}
+	for _, tc := range cases {
+		prog := mustParse(t, tc.src)
+		cd, ok := prog.Stmts[0].(*model.ClassDecl)
+		if !ok {
+			t.Fatalf("%s: got %T, want *model.ClassDecl", tc.src, prog.Stmts[0])
+		}
+		if cd.Abstract != tc.abstract || cd.Final != tc.final || cd.Readonly != tc.isReadonly {
+			t.Errorf("%s: abstract/final/readonly = %v/%v/%v, want %v/%v/%v",
+				tc.src, cd.Abstract, cd.Final, cd.Readonly, tc.abstract, tc.final, tc.isReadonly)
+		}
+	}
+}
+
+// A namespaced file may only declare symbols, so a modifier the parser does not
+// recognise surfaces there as a rejected file rather than a dropped keyword.
+func TestParseClassModifiersInNamespace(t *testing.T) {
+	prog := mustParse(t, "<?php\nnamespace App;\nfinal readonly class Thing {}\n")
+	cd, ok := prog.Stmts[len(prog.Stmts)-1].(*model.ClassDecl)
+	if !ok {
+		t.Fatalf("got %T, want *model.ClassDecl", prog.Stmts[len(prog.Stmts)-1])
+	}
+	if cd.Name != `App\Thing` || !cd.Final || !cd.Readonly {
+		t.Errorf("class = %q final=%v readonly=%v, want App\\Thing final readonly", cd.Name, cd.Final, cd.Readonly)
+	}
+}
+
+func TestParseClassModifiersRejected(t *testing.T) {
+	cases := map[string]string{
+		"abstract final class A {}": "final modifier on an abstract class",
+		"final abstract class A {}": "final modifier on an abstract class",
+		"final final class A {}":    "multiple final modifiers",
+		"final function f() {}":     "expected class after class modifiers",
+	}
+	for src, want := range cases {
+		if _, err := Parse("<?php " + src); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want one containing %q", src, err, want)
+		}
+	}
+}
+
+// `readonly` is not a reserved word in PHP; it is a modifier only when a class
+// declaration follows it.
+func TestParseReadonlyAsCallable(t *testing.T) {
+	prog := mustParse(t, `<?php readonly(3);`)
+	call, ok := prog.Stmts[0].(*model.ExprStmt).X.(*model.Call)
+	if !ok || call.Name != "readonly" {
+		t.Fatalf("got %#v, want Call(readonly)", prog.Stmts[0])
 	}
 }

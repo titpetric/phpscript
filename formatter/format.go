@@ -517,7 +517,16 @@ type classMember struct {
 }
 
 func (p *printer) printClass(n *model.ClassDecl) {
+	// Modifiers are prepended in reverse of their printed order, which puts
+	// them back in PHP's canonical `abstract|final readonly class` spelling
+	// whatever order the source used.
 	head := "class " + shortName(n.Name)
+	if n.Readonly {
+		head = "readonly " + head
+	}
+	if n.Final {
+		head = "final " + head
+	}
 	if n.Abstract {
 		head = "abstract " + head
 	}

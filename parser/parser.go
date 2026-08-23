@@ -214,14 +214,17 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 				break
 			}
 			return p.parseFunction()
-		case "abstract":
-			p.next() // abstract modifier
-			if p.isKw("class") {
-				return p.parseClass(true)
+		case "abstract", "final", "readonly":
+			// `readonly` is not a reserved word in PHP, so `readonly(...)` has
+			// to keep parsing as a call; it is a modifier only when the run it
+			// starts ends in `class`. `abstract` and `final` are reserved, so
+			// anything else after them is a parse error worth reporting.
+			if t.val == "readonly" && !p.classFollowsModifiers() {
+				break
 			}
-			return nil, fmt.Errorf("line %d: expected class after abstract", p.cur().line)
+			return p.parseModifiedClass()
 		case "class":
-			return p.parseClass(false)
+			return p.parseClass(classModifiers{})
 		case "include", "include_once", "require", "require_once":
 			return p.parseInclude()
 		case "throw":
@@ -958,12 +961,75 @@ func (p *parser) parseReturnType() string {
 	return p.parseTypeHint()
 }
 
-func (p *parser) parseClass(abstract bool) (model.Stmt, error) {
+// classModifiers are the keywords that may precede a `class` declaration. PHP
+// accepts them in any order, so they are collected before the class keyword is
+// reached rather than matched as a fixed prefix.
+type classModifiers struct {
+	abstract bool
+	final    bool
+	readonly bool
+}
+
+// classFollowsModifiers reports whether the run of modifier keywords starting
+// at the cursor terminates in `class`.
+func (p *parser) classFollowsModifiers() bool {
+	for n := 0; ; n++ {
+		t := p.peek(n)
+		if t.kind != tIdent {
+			return false
+		}
+		switch t.val {
+		case "abstract", "final", "readonly":
+			continue
+		case "class":
+			return true
+		}
+		return false
+	}
+}
+
+// parseModifiedClass consumes `abstract`/`final`/`readonly` in any order and
+// the `class` declaration they apply to. The modifiers are recorded on the AST
+// so the formatter can print them back; none of them is enforced at runtime.
+func (p *parser) parseModifiedClass() (model.Stmt, error) {
+	var mods classModifiers
+	line := p.cur().line
+	for p.isKw("abstract", "final", "readonly") {
+		kw := p.next().val
+		seen := &mods.abstract
+		switch kw {
+		case "final":
+			seen = &mods.final
+		case "readonly":
+			seen = &mods.readonly
+		}
+		if *seen {
+			return nil, fmt.Errorf("line %d: multiple %s modifiers are not allowed", line, kw)
+		}
+		*seen = true
+	}
+	// `abstract final` is a contradiction: nothing could ever instantiate the
+	// class. PHP rejects it at compile time and so does this.
+	if mods.abstract && mods.final {
+		return nil, fmt.Errorf("line %d: cannot use the final modifier on an abstract class", line)
+	}
+	if !p.isKw("class") {
+		return nil, fmt.Errorf("line %d: expected class after class modifiers, got %s", p.cur().line, p.cur())
+	}
+	return p.parseClass(mods)
+}
+
+func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 	p.next() // class
 	if p.cur().kind != tIdent {
 		return nil, fmt.Errorf("line %d: expected class name", p.cur().line)
 	}
-	cd := &model.ClassDecl{Name: p.qualify(p.next().val, false), Abstract: abstract}
+	cd := &model.ClassDecl{
+		Name:     p.qualify(p.next().val, false),
+		Abstract: mods.abstract,
+		Final:    mods.final,
+		Readonly: mods.readonly,
+	}
 	wasInClass := p.inClass
 	p.inClass = true
 	defer func() { p.inClass = wasInClass }()

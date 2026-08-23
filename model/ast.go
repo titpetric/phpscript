@@ -149,11 +149,14 @@ type FuncDecl struct {
 }
 
 // ClassDecl is a trimmed-down class: fields + methods + class constants, no
-// inheritance. Abstract is tolerated (parsed) but not enforced (README omits
-// abstract classes; minitpl's Hook is abstract only to declare constants).
+// inheritance. The `abstract`, `final` and `readonly` modifiers are tolerated
+// (parsed) but not enforced (README omits abstract classes; minitpl's Hook is
+// abstract only to declare constants).
 type ClassDecl struct {
 	Name     string
 	Abstract bool
+	Final    bool
+	Readonly bool
 	Fields   []Field
 	Statics  []Field // `static $name = expr` properties, referenced as Class::$name
 	Consts   []Field // class constants (Name + value Expr), referenced as Class::NAME
@@ -205,10 +208,12 @@ type Throw struct {
 	X Expr
 }
 
-// Try is `try { Body } catch (Type $var) { ... } finally { ... }`. The VM has
-// no exception class hierarchy, so catch type filters are parsed but ignored:
-// the first catch clause handles any error raised in Body (a throw or a runtime
-// error from a forwarded Go call). Finally always runs.
+// Try is `try { Body } catch (Type $var) { ... } finally { ... }`. The first
+// clause whose declared type matches the error raised in Body (a throw or a
+// runtime error from a forwarded Go call) handles it; an error no clause
+// matches keeps propagating. Finally always runs either way. Matching is
+// by Go error type rather than a PHP class hierarchy, so two throwable names
+// backed by the same type cannot be told apart.
 type Try struct {
 	Body        []Stmt
 	Catches     []Catch
@@ -218,8 +223,9 @@ type Try struct {
 
 // Catch is one `catch (...) { ... }` clause. Var is the bound variable name
 // (without `$`); the caught error is assigned to it so `echo $e` prints it.
-// Type is the declared filter, `Exception` or `A|B`, which the runtime ignores
-// but PHP requires: a catch clause printed without it is a syntax error.
+// Type is the declared filter, `Exception` or the union form `A|B`, which
+// decides whether this clause handles the error. PHP requires it: a catch
+// clause printed without it is a syntax error.
 type Catch struct {
 	Type string
 	Var  string

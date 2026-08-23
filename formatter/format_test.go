@@ -581,3 +581,46 @@ func TestTrailingWhitespaceTrimmedFromMixedHTML(t *testing.T) {
 		t.Fatalf("trailing whitespace remains:\n--- got ---\n%q\n--- want ---\n%q", out, want)
 	}
 }
+
+func TestClassModifiersRoundTrip(t *testing.T) {
+	in := `<?php
+namespace App;
+
+final class Sealed {
+	function id() {
+		return 1;
+	}
+}
+
+abstract class Base {
+}
+
+readonly class Frozen {
+}
+
+readonly final class Both {
+}
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"final class Sealed {",
+		"abstract class Base {",
+		"readonly class Frozen {",
+		// Modifiers are normalised to PHP's canonical order.
+		"final readonly class Both {",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	again, err := formatter.Source(out)
+	if err != nil {
+		t.Fatalf("formatted output does not reformat: %v\n%s", err, out)
+	}
+	if again != out {
+		t.Fatalf("output is not idempotent:\nfirst:\n%s\nsecond:\n%s", out, again)
+	}
+}
