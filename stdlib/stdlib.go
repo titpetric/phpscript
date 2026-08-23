@@ -16,10 +16,10 @@ import (
 	"os"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/arrayi64"
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
@@ -209,16 +209,16 @@ func phpSubstr(s string, start int64, length ...int64) string {
 // phpStrReplace implements str_replace where search may be a string or a
 // collection (with a scalar or collection replacement), and subject is a string.
 func phpStrReplace(search, replace, subject any) string {
-	out := toString(subject)
+	out := phpval.String(subject)
 	if model.IsCollection(search) {
 		replIsList := model.IsCollection(replace)
-		repl := arrStrings(replace)
+		repl := phpval.Strings(replace)
 		// A scalar replacement converts once, not once per search term.
 		scalar := ""
 		if !replIsList {
-			scalar = toString(replace)
+			scalar = phpval.String(replace)
 		}
-		for i, s := range arrStrings(search) {
+		for i, s := range phpval.Strings(search) {
 			r := scalar
 			if replIsList {
 				r = ""
@@ -230,20 +230,20 @@ func phpStrReplace(search, replace, subject any) string {
 		}
 		return out
 	}
-	return strings.ReplaceAll(out, toString(search), toString(replace))
+	return strings.ReplaceAll(out, phpval.String(search), phpval.String(replace))
 }
 
 func phpImplode(separator, array any) string {
 	// implode($separator, $array) or implode($array), where the single
 	// array argument arrives in $separator.
 	if model.IsCollection(separator) {
-		return strings.Join(arrStrings(separator), "")
+		return strings.Join(phpval.Strings(separator), "")
 	}
-	// A []string joins without the per-element conversion arrStrings would do.
+	// A []string joins without the per-element conversion phpval.Strings would do.
 	if parts, ok := array.([]string); ok {
-		return strings.Join(parts, toString(separator))
+		return strings.Join(parts, phpval.String(separator))
 	}
-	return strings.Join(arrStrings(array), toString(separator))
+	return strings.Join(phpval.Strings(array), phpval.String(separator))
 }
 
 // phpExplode returns the parts as a []string: strings.Split already allocated
@@ -266,7 +266,7 @@ func phpSprintf(format string, args ...any) string {
 	if strings.Contains(format, "%u") {
 		format = strings.ReplaceAll(format, "%u", "%d")
 		for i, a := range args {
-			args[i] = uint64(toInt(a) & 0xFFFFFFFF)
+			args[i] = uint64(phpval.Int(a) & 0xFFFFFFFF)
 		}
 	}
 	return fmt.Sprintf(format, args...)
@@ -294,7 +294,7 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("in_array", func(needle, haystack any, strict ...any) bool {
 		found := false
 		model.RangeValues(haystack, func(_, v any) bool {
-			if toString(v) == toString(needle) {
+			if phpval.String(v) == phpval.String(needle) {
 				found = true
 				return false
 			}
@@ -308,7 +308,7 @@ func registerArrays(rt *runner.Runtime) {
 		out := model.NewArraySize(n)
 		seen := make(map[string]bool, n)
 		model.RangeValues(array, func(k, v any) bool {
-			s := toString(v)
+			s := phpval.String(v)
 			if !seen[s] {
 				seen[s] = true
 				out.Set(k, v)
@@ -419,7 +419,7 @@ func phpArraySplice(array any, offset int64, optional ...any) ([]any, error) {
 		return nil, fmt.Errorf("array_splice: expected an array, got %T", array)
 	}
 
-	vals := arrValues(a)
+	vals := phpval.Values(a)
 	n := len(vals)
 
 	start := int(offset)
@@ -468,7 +468,7 @@ func phpArraySpliceEnd(start, n int, lengthArg any) int {
 	if lengthArg == nil {
 		return n
 	}
-	l := int(toInt(lengthArg))
+	l := int(phpval.Int(lengthArg))
 	if l >= 0 {
 		end := start + l
 		if end > n {
@@ -488,7 +488,7 @@ func phpArraySpliceReplacement(rep any) []any {
 		return nil
 	}
 	if model.IsCollection(rep) {
-		return arrValues(rep)
+		return phpval.Values(rep)
 	}
 	return []any{rep}
 }
@@ -497,7 +497,7 @@ func phpArraySpliceReplacement(rep any) []any {
 // reindexes integer keys, which this shim has always done for every key, so a
 // list is a faithful representation of the result.
 func phpArraySlice(array any, offset int64, length ...int64) []any {
-	vals := arrValues(array)
+	vals := phpval.Values(array)
 	start := int(offset)
 	if start < 0 {
 		start += len(vals)
@@ -550,11 +550,11 @@ func phpUsort(a any, cmp func(...any) (any, error)) bool {
 		if err != nil {
 			return false
 		}
-		return toInt(r) < 0
+		return phpval.Int(r) < 0
 	})
 }
 
-// phpSort orders a list with PHP's default comparison (see phpCompare). Like
+// phpSort orders a list with PHP's default comparison (see phpval.Compare). Like
 // sort(), it discards the keys and reindexes the result from zero.
 func phpSort(array any) bool {
 	if sortInt64Array(array, false) {
@@ -590,266 +590,10 @@ func sortInt64Array(a any, desc bool) bool {
 	return true
 }
 
-// sortLess is the boolean sort.SliceStable wants, derived from phpCompare so
+// sortLess is the boolean sort.SliceStable wants, derived from phpval.Compare so
 // that ties stay ties.
 func sortLess(x, y any) bool {
-	return phpCompare(x, y) < 0
-}
-
-// phpCompare is PHP 8's comparison operator (<=>), which sort() and rsort()
-// order by. Its rules, in the order they are applied:
-//
-//	arrays          the shorter array is smaller, an array beats any scalar
-//	null vs string  the null becomes "" and the two compare as strings
-//	bool or null    both sides are cast to bool
-//	numbers         two numbers, or a number and a numeric string, or two
-//	                numeric strings, compare numerically, so "9" is less than
-//	                "10", and a list of digits out of explode() sorts the way
-//	                the same list sorts in PHP
-//	anything else   both sides are cast to string and compared bytewise, which
-//	                is where a number meeting a non-numeric string ends up
-func phpCompare(x, y any) int {
-	xa, xIsArray := comparableArray(x)
-	ya, yIsArray := comparableArray(y)
-	switch {
-	case xIsArray && yIsArray:
-		return compareArrays(xa, ya)
-	case xIsArray:
-		return 1
-	case yIsArray:
-		return -1
-	}
-
-	// null against a string is the one pairing PHP does not decide on
-	// truthiness: null is cast to "", so null is less than "a" but equal to "".
-	if x == nil {
-		if s, ok := y.(string); ok {
-			return strings.Compare("", s)
-		}
-	}
-	if y == nil {
-		if s, ok := x.(string); ok {
-			return strings.Compare(s, "")
-		}
-	}
-	if isBoolish(x) || isBoolish(y) {
-		return compareBools(toBool(x), toBool(y))
-	}
-
-	xn, xIsNum := phpNumeric(x)
-	yn, yIsNum := phpNumeric(y)
-	if xIsNum && yIsNum {
-		return compareNumbers(xn, yn)
-	}
-	return strings.Compare(toString(x), toString(y))
-}
-
-// comparableArray reports whether v is an array for comparison purposes,
-// returning it as an *Array. A binding that hands back a native Go collection
-// is one too, so it sorts where a *model.Array would.
-func comparableArray(v any) (*model.Array, bool) {
-	switch x := v.(type) {
-	case *model.Array:
-		return x, x != nil
-	case nil, bool, int, int64, float64, string:
-		// The values a sort sees most of the time, answered before
-		// model.IsCollection reaches for reflect.
-		return nil, false
-	}
-	if model.IsCollection(v) {
-		return model.ToArray(v), true
-	}
-	return nil, false
-}
-
-// compareArrays orders two arrays the way PHP does: the one with fewer members
-// is smaller, and same-size arrays compare member by member over the left
-// array's keys. A key the right array does not have makes the left array
-// greater, PHP's answer for two arrays it cannot compare.
-func compareArrays(x, y *model.Array) int {
-	if x.Len() != y.Len() {
-		return compareBools(x.Len() > y.Len(), y.Len() > x.Len())
-	}
-	result := 0
-	x.Range(func(key, val any) bool {
-		other, ok := y.Get(key)
-		if !ok {
-			result = 1
-			return false
-		}
-		result = phpCompare(val, other)
-		return result == 0
-	})
-	return result
-}
-
-// isBoolish reports whether v drags the comparison into the boolean domain,
-// where PHP compares (bool)$x with (bool)$y whatever the other side is.
-func isBoolish(v any) bool {
-	if v == nil {
-		return true
-	}
-	_, ok := v.(bool)
-	return ok
-}
-
-// toBool is PHP's truthiness: "", "0", 0 and 0.0 are false, other scalars true.
-// Arrays never reach it; phpCompare has taken them by then.
-func toBool(v any) bool {
-	switch x := v.(type) {
-	case nil:
-		return false
-	case bool:
-		return x
-	case string:
-		return x != "" && x != "0"
-	case int:
-		return x != 0
-	case int64:
-		return x != 0
-	case float64:
-		return x != 0
-	default:
-		return true
-	}
-}
-
-func compareBools(x, y bool) int {
-	switch {
-	case x == y:
-		return 0
-	case y:
-		return -1
-	default:
-		return 1
-	}
-}
-
-// phpNum is a value in PHP's numeric domain: an int64 when it is an integer
-// that fits one, a float64 otherwise. text is the numeric string it was read
-// from, kept for the precision fallback in compareNumbers.
-type phpNum struct {
-	i       int64
-	f       float64
-	isInt   bool
-	text    string // source text, when the value was read from a string
-	intText bool   // that text was written as a plain integer
-}
-
-func (n phpNum) float() float64 {
-	if n.isInt {
-		return float64(n.i)
-	}
-	return n.f
-}
-
-// phpNumeric returns v as a number, reporting false for anything PHP would
-// compare as a string. A numeric string is a number here, which is the whole
-// point: PHP compares "10" and "9" as 10 and 9.
-func phpNumeric(v any) (phpNum, bool) {
-	switch x := v.(type) {
-	case int:
-		return phpNum{i: int64(x), isInt: true}, true
-	case int64:
-		return phpNum{i: x, isInt: true}, true
-	case float64:
-		return phpNum{f: x}, true
-	case string:
-		return numericString(x)
-	}
-	return phpNum{}, false
-}
-
-// numericString reads s the way PHP's is_numeric_string does: whitespace around
-// an optional sign, digits with an optional fraction and an optional exponent.
-// The syntax is checked here rather than left to strconv, which also accepts
-// hex floats, digit separators, "Inf" and "NaN", none of which PHP considers
-// numeric, so "0x1A" has to sort as a string.
-func numericString(s string) (phpNum, bool) {
-	text := strings.Trim(s, " \t\n\r\v\f")
-	isInt, ok := scanNumeric(text)
-	if !ok {
-		return phpNum{}, false
-	}
-	if isInt {
-		if i, err := strconv.ParseInt(text, 10, 64); err == nil {
-			return phpNum{i: i, isInt: true, text: text, intText: true}, true
-		}
-		f, _ := strconv.ParseFloat(text, 64)
-		return phpNum{f: f, text: text, intText: true}, true
-	}
-	// An exponent out of float64's range yields ±Inf with ErrRange, which is
-	// the value PHP reads for "1e400" too.
-	f, err := strconv.ParseFloat(text, 64)
-	if err != nil && !errors.Is(err, strconv.ErrRange) {
-		return phpNum{}, false
-	}
-	return phpNum{f: f, text: text}, true
-}
-
-// scanNumeric validates a trimmed numeric literal, reporting whether it is one
-// and whether it is written as a plain integer (no fraction, no exponent).
-func scanNumeric(s string) (isInt, ok bool) {
-	i := 0
-	if i < len(s) && (s[i] == '+' || s[i] == '-') {
-		i++
-	}
-	digits := 0
-	for ; i < len(s) && isDigit(s[i]); i++ {
-		digits++
-	}
-	isInt = true
-	if i < len(s) && s[i] == '.' {
-		isInt = false
-		for i++; i < len(s) && isDigit(s[i]); i++ {
-			digits++
-		}
-	}
-	if digits == 0 {
-		return false, false
-	}
-	if i < len(s) && (s[i] == 'e' || s[i] == 'E') {
-		isInt = false
-		i++
-		if i < len(s) && (s[i] == '+' || s[i] == '-') {
-			i++
-		}
-		exponent := 0
-		for ; i < len(s) && isDigit(s[i]); i++ {
-			exponent++
-		}
-		if exponent == 0 {
-			return false, false
-		}
-	}
-	return isInt, i == len(s)
-}
-
-func isDigit(c byte) bool { return c >= '0' && c <= '9' }
-
-// compareNumbers compares two values from the numeric domain. Two integers
-// compare as int64 so that ids near 2^63 do not lose their last digits to a
-// float64.
-func compareNumbers(x, y phpNum) int {
-	if x.isInt && y.isInt {
-		return compareBools(x.i > y.i, y.i > x.i)
-	}
-	xf, yf := x.float(), y.float()
-	if xf != yf {
-		return compareBools(xf > yf, yf > xf)
-	}
-	// Equal as float64 is not always equal to PHP: two integer strings past
-	// int64, and two exponents past float64, round to the same value, and PHP
-	// compares their digits instead. It only does so for two strings, so
-	// "9223372036854775808" stays equal to the int 9223372036854775807, and
-	// only for two integers, so "1e20" stays equal to "100000000000000000000".
-	if x.text == "" || y.text == "" {
-		return 0
-	}
-	if (x.intText && y.intText && !(x.isInt && y.isInt)) || math.IsInf(xf, 0) {
-		return strings.Compare(x.text, y.text)
-	}
-	return 0
+	return phpval.Compare(x, y) < 0
 }
 
 // sortValues reorders a list in place using less. A *model.Array is rebuilt as
@@ -863,7 +607,7 @@ func sortValues(a any, less func(x, y any) bool) bool {
 		if target == nil {
 			return false
 		}
-		vals := arrValues(target)
+		vals := phpval.Values(target)
 		sort.SliceStable(vals, func(i, j int) bool { return less(vals[i], vals[j]) })
 		target.Clear()
 		for _, v := range vals {
@@ -938,7 +682,7 @@ func jsonEncodeValue(v any) any {
 		}
 		out := make(map[string]any, x.Len())
 		x.Range(func(k, v any) bool {
-			out[toString(k)] = jsonEncodeValue(v)
+			out[phpval.String(k)] = jsonEncodeValue(v)
 			return true
 		})
 		return out
@@ -1031,7 +775,7 @@ func registerLang(rt *runner.Runtime) {
 		if len(args) > 0 && args[0] != nil {
 			callback = args[0]
 		}
-		prepend := len(args) > 2 && truthy(args[2])
+		prepend := len(args) > 2 && phpval.Truthy(args[2])
 		rt.RegisterAutoloader(callback, prepend)
 		return true, nil
 	})
@@ -1111,7 +855,7 @@ func registerLang(rt *runner.Runtime) {
 		return true
 	})
 	// empty reports whether $value is empty: null, false, "", "0", 0, 0.0 or an empty array.
-	rt.RegisterFunc("empty", func(value any) bool { return !truthy(value) })
+	rt.RegisterFunc("empty", func(value any) bool { return !phpval.Truthy(value) })
 	// A binding's []string is as much a PHP array as an *model.Array is, so
 	// is_array() answers for the whole value model, not one Go type.
 	rt.RegisterFunc("is_array", model.IsCollection)
@@ -1186,7 +930,7 @@ func registerLang(rt *runner.Runtime) {
 					return nil, err
 				}
 			} else {
-				status = int(toInt(code[0]))
+				status = int(phpval.Int(code[0]))
 			}
 		}
 		return nil, rt.Exit(status)
@@ -1203,7 +947,7 @@ func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
 	if callArgs, ok := args.([]any); ok {
 		return fn(callArgs...)
 	}
-	return fn(arrValues(args)...)
+	return fn(phpval.Values(args)...)
 }
 
 // ---------------------------------------------------------------------------
@@ -1225,141 +969,6 @@ func registerTokenizer(rt *runner.Runtime) {
 // ---------------------------------------------------------------------------
 // shared coercion helpers (kept local to the shim layer)
 // ---------------------------------------------------------------------------
-
-func toString(v any) string {
-	switch x := v.(type) {
-	case nil:
-		return ""
-	case string:
-		return x
-	case bool:
-		if x {
-			return "1"
-		}
-		return ""
-	case int64:
-		// strconv formats in place; fmt.Sprintf would box x into an any
-		// (an allocation of its own for values over 255) and run the
-		// formatter. toString sits under implode, str_replace, in_array and
-		// array_unique, so it is worth the two lines.
-		return strconv.FormatInt(x, 10)
-	case int:
-		return strconv.Itoa(x)
-	case float64:
-		// %v for a float64 is 'g' with the shortest representation that
-		// round-trips, which is exactly what FormatFloat(-1) produces.
-		return strconv.FormatFloat(x, 'g', -1, 64)
-	default:
-		return fmt.Sprintf("%v", x)
-	}
-}
-
-func toInt(v any) int64 {
-	switch x := v.(type) {
-	case int64:
-		return x
-	case int:
-		return int64(x)
-	case float64:
-		return int64(x)
-	case bool:
-		if x {
-			return 1
-		}
-		return 0
-	case string:
-		return leadingInt(x)
-	default:
-		return 0
-	}
-}
-
-// leadingInt reads the integer prefix of s the way fmt.Sscanf(s, "%d", &n) did:
-// leading whitespace and an optional sign, then digits, stopping at the first
-// character that is not one ("12abc" is 12, "abc" is 0). Overflow yields 0, the
-// value Sscanf left behind when it failed. Sscanf allocated a scan state, a
-// reader and an argument box on every call; this reads the string in place.
-func leadingInt(s string) int64 {
-	i := 0
-	for i < len(s) {
-		switch s[i] {
-		case ' ', '\t', '\n', '\r', '\v', '\f':
-			i++
-			continue
-		}
-		break
-	}
-	negative := false
-	if i < len(s) && (s[i] == '+' || s[i] == '-') {
-		negative = s[i] == '-'
-		i++
-	}
-	var n int64
-	for ; i < len(s) && s[i] >= '0' && s[i] <= '9'; i++ {
-		digit := int64(s[i] - '0')
-		if n > (math.MaxInt64-digit)/10 {
-			return 0
-		}
-		n = n*10 + digit
-	}
-	if negative {
-		return -n
-	}
-	return n
-}
-
-func truthy(v any) bool {
-	switch x := v.(type) {
-	case nil:
-		return false
-	case bool:
-		return x
-	case string:
-		return x != "" && x != "0"
-	case int64:
-		return x != 0
-	case int:
-		return x != 0
-	case float64:
-		return x != 0
-	case *model.Array:
-		return x.Len() > 0
-	default:
-		if n, ok := model.LenValues(v); ok {
-			return n > 0
-		}
-		return true
-	}
-}
-
-// arrStrings returns a collection's values as strings in order.
-func arrStrings(a any) []string {
-	if parts, ok := a.([]string); ok {
-		return parts
-	}
-	n, _ := model.LenValues(a)
-	if n == 0 {
-		return nil
-	}
-	out := make([]string, 0, n)
-	model.RangeValues(a, func(_, v any) bool { out = append(out, toString(v)); return true })
-	return out
-}
-
-// arrValues returns a collection's values in order. A []any is returned as is:
-// callers only read it, and the shims that do not (array_splice) copy first.
-func arrValues(a any) []any {
-	if vals, ok := a.([]any); ok {
-		return vals
-	}
-	n, _ := model.LenValues(a)
-	if n == 0 {
-		return nil
-	}
-	out := make([]any, 0, n)
-	model.RangeValues(a, func(_, v any) bool { out = append(out, v); return true })
-	return out
-}
 
 // isObject reports whether value is what PHP calls an object, backing
 // is_object.

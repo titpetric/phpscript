@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	phprunner "github.com/titpetric/phpscript/runner"
 )
@@ -236,7 +237,7 @@ func phpFilterVar(value any, args ...any) any {
 	if len(args) > 0 {
 		filter = toInt64(args[0])
 	}
-	text := strings.TrimSpace(toString(value))
+	text := strings.TrimSpace(phpval.String(value))
 	switch filter {
 	case 257: // FILTER_VALIDATE_INT
 		n, err := strconv.ParseInt(text, 10, 64)
@@ -271,7 +272,7 @@ func phpStrtr(subject string, args ...any) string {
 		return subject
 	}
 	if len(args) >= 2 {
-		from, to := toString(args[0]), toString(args[1])
+		from, to := phpval.String(args[0]), phpval.String(args[1])
 		n := min(len(from), len(to))
 		if n == 0 {
 			return subject
@@ -293,12 +294,12 @@ func phpStrtr(subject string, args ...any) string {
 	keys := make([]string, 0, pairs.Len())
 	replacements := make(map[string]string, pairs.Len())
 	pairs.Range(func(key, val any) bool {
-		text := toString(key)
+		text := phpval.String(key)
 		if text == "" {
 			return true
 		}
 		keys = append(keys, text)
-		replacements[text] = toString(val)
+		replacements[text] = phpval.String(val)
 		return true
 	})
 	var out strings.Builder
