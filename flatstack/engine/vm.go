@@ -9,6 +9,15 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
+// scriptExit is what an exit() looks like from here.
+//
+// The concrete type is runner.ExitError, which this package cannot name:
+// runner imports this one. The method is the seam, and it carries the status
+// so a future caller that wants the code has it without another interface.
+type scriptExit interface {
+	ScriptExit() int
+}
+
 type vmScratch struct {
 	stack       []any
 	locals      []any
@@ -133,6 +142,14 @@ func Run(program *Program, host Host) (err error) {
 	}
 	handle := func(runErr error) bool {
 		if runErr == nil || len(handlers) == 0 {
+			return false
+		}
+		// exit() and die() are not catchable in PHP: a script that ends
+		// inside a try ends there. They unwind as an error here only because
+		// that is how the VM gets back to the top, so a handler declines
+		// them rather than binding them to a catch variable.
+		var exiting scriptExit
+		if errors.As(runErr, &exiting) {
 			return false
 		}
 		last := len(handlers) - 1
