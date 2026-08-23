@@ -356,6 +356,11 @@ function get_included_files(): array
 ```
 
 ```php
+// gettype returns the type of $value under PHP's legacy names: "integer", "double", "boolean", "string", "array", "object" or "NULL".
+function gettype(mixed $value): string
+```
+
+```php
 // intdiv returns the integer quotient of $num divided by $divisor; division by zero and PHP_INT_MIN by -1 are errors.
 function intdiv(int $num, int $divisor): int
 ```
@@ -428,6 +433,23 @@ function spl_autoload(string $class, mixed ...$file_extensions): void
 ```php
 // spl_autoload_register registers $callback as an autoloader, or the default spl_autoload when $callback is null or omitted; $prepend puts it first and $throw is ignored.
 function spl_autoload_register(mixed ...$args): bool
+```
+
+#### output
+
+```php
+// print_r renders $value for reading rather than for parsing; with $return true the text is returned, otherwise it is written to the output and true is returned.
+function print_r(mixed $value, mixed ...$ret): mixed
+```
+
+```php
+// var_dump writes each argument to the output annotated with its type, its element count and, for a string, its length in bytes.
+function var_dump(mixed ...$values): void
+```
+
+```php
+// var_export renders $value as parsable PHP source; with $return true the source is returned, otherwise it is written to the output and null is returned.
+function var_export(mixed $value, mixed ...$ret): mixed
 ```
 
 #### platform funcs

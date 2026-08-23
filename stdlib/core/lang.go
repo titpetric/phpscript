@@ -50,6 +50,38 @@ func isObject(value any) bool {
 	return rv.Kind() == reflect.Struct
 }
 
+// phpGetType backs gettype. The names it returns are PHP's original ones, and
+// that is the whole of the function: "integer" and "double" where the value
+// model and get_debug_type say int and float, "boolean" rather than bool, and
+// NULL alone in capitals. Answering with the modern spellings would pass every
+// eyeball and fail every `gettype($x) === "integer"`.
+func phpGetType(value any) string {
+	switch value.(type) {
+	case nil:
+		return "NULL"
+	case bool:
+		return "boolean"
+	case int, int64:
+		return "integer"
+	case float64:
+		return "double"
+	case string:
+		return "string"
+	}
+	if model.IsCollection(value) {
+		return "array"
+	}
+	if isObject(value) {
+		return "object"
+	}
+	// A closure reaches a binding as a Go func rather than an instance, but
+	// PHP has it an instance of Closure, so it reports as an object.
+	if reflect.ValueOf(value).Kind() == reflect.Func {
+		return "object"
+	}
+	return "unknown type"
+}
+
 func registerLang(rt *runner.Runtime) {
 	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
 	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
@@ -152,6 +184,8 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return false
 	})
+	// gettype returns the type of $value under PHP's legacy names: "integer", "double", "boolean", "string", "array", "object" or "NULL".
+	rt.RegisterFunc("gettype", phpGetType)
 	// is_string reports whether $value is a string.
 	rt.RegisterFunc("is_string", func(value any) bool { _, ok := value.(string); return ok })
 	// is_bool reports whether $value is a boolean.
