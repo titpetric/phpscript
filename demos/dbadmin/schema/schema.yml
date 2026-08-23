@@ -1,0 +1,457 @@
+- name: audit
+  comment: Audit
+  columns:
+    - name: id
+      type: integer
+      key: PRI
+      comment: ID
+      datatype: bigint
+      size: 8
+    - name: user_id
+      type: integer
+      key: MUL
+      comment: User ID
+      datatype: bigint
+      size: 8
+    - name: connection_id
+      type: integer
+      key: MUL
+      comment: Connection ID
+      datatype: bigint
+      size: 8
+    - name: rel_table
+      type: text
+      key: MUL
+      comment: Rel Table
+      datatype: varchar
+    - name: rel_id
+      type: text
+      key: MUL
+      comment: Rel ID
+      datatype: varchar
+    - name: action
+      type: TEXT
+      comment: Action
+      datatype: varchar
+      values:
+        - admin
+        - alter
+        - create
+        - delete
+        - denied
+        - drop
+        - insert
+        - login
+        - logout
+        - select
+        - truncate
+        - update
+    - name: message
+      type: text
+      comment: Message
+      datatype: varchar
+    - name: payload
+      type: text
+      comment: Payload
+      datatype: varchar
+    - name: created_at
+      type: timestamp
+      key: MUL
+      comment: Created At
+      datatype: datetime
+  indexes:
+    - columns:
+        - id
+      primary: true
+      unique: true
+    - name: idx_audit_connection_id_created_at
+      columns:
+        - connection_id
+        - created_at
+    - name: idx_audit_created_at
+      columns:
+        - created_at
+    - name: idx_audit_rel_table_rel_id
+      columns:
+        - rel_table
+        - rel_id
+    - name: idx_audit_user_id_created_at
+      columns:
+        - user_id
+        - created_at
+- name: connection
+  comment: Connection
+  columns:
+    - name: id
+      type: integer
+      key: PRI
+      comment: ID
+      datatype: bigint
+      size: 8
+    - name: name
+      type: text
+      key: MUL
+      comment: Name
+      datatype: varchar
+    - name: driver
+      type: TEXT
+      comment: Driver
+      datatype: varchar
+      values:
+        - mysql
+        - postgres
+        - sqlite
+    - name: dsn
+      type: text
+      comment: Dsn
+      datatype: varchar
+    - name: default_schema
+      type: text
+      comment: Default Schema
+      datatype: varchar
+    - name: is_enabled
+      type: boolean
+      key: MUL
+      comment: Is Enabled
+      datatype: boolean
+    - name: is_readonly
+      type: boolean
+      comment: Is Readonly
+      datatype: boolean
+    - name: status
+      type: TEXT
+      comment: Status
+      datatype: varchar
+      values:
+        - error
+        - ok
+        - unknown
+    - name: status_message
+      type: text
+      comment: Status Message
+      datatype: varchar
+    - name: table_count
+      type: integer
+      comment: Table Count
+      datatype: bigint
+      size: 8
+    - name: column_count
+      type: integer
+      comment: Column Count
+      datatype: bigint
+      size: 8
+    - name: schema_count
+      type: integer
+      comment: Schema Count
+      datatype: bigint
+      size: 8
+    - name: checked_at
+      type: timestamp
+      comment: Checked At
+      datatype: datetime
+    - name: created_at
+      type: timestamp
+      comment: Created At
+      datatype: datetime
+    - name: updated_at
+      type: timestamp
+      comment: Updated At
+      datatype: datetime
+  indexes:
+    - columns:
+        - id
+      primary: true
+      unique: true
+    - name: idx_connection_is_enabled_name
+      columns:
+        - is_enabled
+        - name
+    - name: uidx_connection_name
+      columns:
+        - name
+      unique: true
+- name: migrations
+  comment: Migrations
+  columns:
+    - name: project
+      type: text
+      key: PRI
+      comment: Project
+      datatype: varchar
+    - name: filename
+      type: text
+      key: PRI
+      comment: Filename
+      datatype: varchar
+    - name: statement_index
+      type: integer
+      comment: Statement Index
+      datatype: bigint
+      size: 8
+    - name: status
+      type: text
+      comment: Status
+      datatype: varchar
+  indexes:
+    - name: sqlite_autoindex_migrations_1
+      columns:
+        - project
+        - filename
+      primary: true
+      unique: true
+- name: user
+  comment: User
+  columns:
+    - name: id
+      type: integer
+      key: PRI
+      comment: ID
+      datatype: bigint
+      size: 8
+    - name: username
+      type: text
+      key: MUL
+      comment: Username
+      datatype: varchar
+    - name: password_hash
+      type: text
+      comment: Password Hash
+      datatype: varchar
+    - name: is_admin
+      type: boolean
+      key: MUL
+      comment: Is Admin
+      datatype: boolean
+    - name: is_enabled
+      type: boolean
+      comment: Is Enabled
+      datatype: boolean
+    - name: destructive_policy
+      type: TEXT
+      comment: Destructive Policy
+      datatype: varchar
+      values:
+        - allowed
+        - denied
+        - toggle
+    - name: last_login_at
+      type: timestamp
+      comment: Last Login At
+      datatype: datetime
+    - name: created_at
+      type: timestamp
+      comment: Created At
+      datatype: datetime
+    - name: updated_at
+      type: timestamp
+      comment: Updated At
+      datatype: datetime
+  indexes:
+    - columns:
+        - id
+      primary: true
+      unique: true
+    - name: idx_user_is_admin_username
+      columns:
+        - is_admin
+        - username
+    - name: uidx_user_username
+      columns:
+        - username
+      unique: true
+- name: user_group
+  comment: User Group
+  columns:
+    - name: id
+      type: integer
+      key: PRI
+      comment: ID
+      datatype: bigint
+      size: 8
+    - name: name
+      type: text
+      key: MUL
+      comment: Name
+      datatype: varchar
+    - name: description
+      type: text
+      comment: Description
+      datatype: varchar
+    - name: destructive_policy
+      type: TEXT
+      comment: Destructive Policy
+      datatype: varchar
+      values:
+        - allowed
+        - denied
+        - toggle
+    - name: created_at
+      type: timestamp
+      comment: Created At
+      datatype: datetime
+    - name: updated_at
+      type: timestamp
+      comment: Updated At
+      datatype: datetime
+  indexes:
+    - columns:
+        - id
+      primary: true
+      unique: true
+    - name: uidx_user_group_name
+      columns:
+        - name
+      unique: true
+- name: user_group_connection
+  comment: User Group Connection
+  columns:
+    - name: user_group_id
+      type: integer
+      key: PRI
+      comment: User Group ID
+      datatype: bigint
+      size: 8
+    - name: connection_id
+      type: integer
+      key: PRI
+      comment: Connection ID
+      datatype: bigint
+      size: 8
+    - name: is_readonly
+      type: boolean
+      comment: Is Readonly
+      datatype: boolean
+    - name: created_at
+      type: timestamp
+      comment: Created At
+      datatype: datetime
+  indexes:
+    - name: sqlite_autoindex_user_group_connection_1
+      columns:
+        - user_group_id
+        - connection_id
+      primary: true
+      unique: true
+    - name: idx_user_group_connection_connection_id
+      columns:
+        - connection_id
+- name: user_group_member
+  comment: User Group Member
+  columns:
+    - name: user_id
+      type: integer
+      key: PRI
+      comment: User ID
+      datatype: bigint
+      size: 8
+    - name: user_group_id
+      type: integer
+      key: PRI
+      comment: User Group ID
+      datatype: bigint
+      size: 8
+    - name: created_at
+      type: timestamp
+      comment: Created At
+      datatype: datetime
+  indexes:
+    - name: sqlite_autoindex_user_group_member_1
+      columns:
+        - user_id
+        - user_group_id
+      primary: true
+      unique: true
+    - name: idx_user_group_member_user_group_id
+      columns:
+        - user_group_id
+- name: user_session
+  comment: User Session
+  columns:
+    - name: id
+      type: integer
+      key: PRI
+      comment: ID
+      datatype: bigint
+      size: 8
+    - name: token
+      type: text
+      key: MUL
+      comment: Token
+      datatype: varchar
+    - name: csrf_token
+      type: text
+      comment: Csrf Token
+      datatype: varchar
+    - name: user_id
+      type: integer
+      key: MUL
+      comment: User ID
+      datatype: bigint
+      size: 8
+    - name: connection_id
+      type: integer
+      key: MUL
+      comment: Connection ID
+      datatype: bigint
+      size: 8
+    - name: schema_name
+      type: text
+      comment: Schema Name
+      datatype: varchar
+    - name: is_destructive
+      type: boolean
+      comment: Is Destructive
+      datatype: boolean
+    - name: destructive_until
+      type: timestamp
+      comment: Destructive Until
+      datatype: datetime
+    - name: is_revoked
+      type: boolean
+      comment: Is Revoked
+      datatype: boolean
+    - name: remote_addr
+      type: text
+      comment: Remote Addr
+      datatype: varchar
+    - name: user_agent
+      type: text
+      comment: User Agent
+      datatype: varchar
+    - name: flash
+      type: text
+      comment: Flash
+      datatype: varchar
+    - name: expires_at
+      type: timestamp
+      key: MUL
+      comment: Expires At
+      datatype: datetime
+    - name: created_at
+      type: timestamp
+      key: MUL
+      comment: Created At
+      datatype: datetime
+    - name: updated_at
+      type: timestamp
+      comment: Updated At
+      datatype: datetime
+  indexes:
+    - columns:
+        - id
+      primary: true
+      unique: true
+    - name: idx_user_session_connection_id
+      columns:
+        - connection_id
+    - name: idx_user_session_expires_at
+      columns:
+        - expires_at
+    - name: uidx_user_session_token
+      columns:
+        - token
+      unique: true
+    - name: idx_user_session_user_id_created_at
+      columns:
+        - user_id
+        - created_at

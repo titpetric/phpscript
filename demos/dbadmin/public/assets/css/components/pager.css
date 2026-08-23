@@ -1,0 +1,19 @@
+/* pager — previous, where you are, next. */
+
+.pager {
+	display: flex;
+	align-items: center;
+	gap: var(--space-4);
+	margin: var(--space-4) 0;
+	color: var(--text-faint);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+}
+
+.pager a {
+	color: var(--text-dim);
+}
+
+.pager a:hover {
+	color: var(--accent);
+}

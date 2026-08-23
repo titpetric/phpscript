@@ -1,8 +1,0 @@
-{include header.tpl}
-<div class="toolbar"><form method="get" class="search"><input name="q" value="{$search|h}" placeholder="Search all columns"><button>Search</button></form><div><a class="button secondary" href="/table/{$table|h}/structure">Structure</a> <a class="button secondary" href="/table/{$table|h}/export">Export CSV</a> <a class="button" href="/table/{$table|h}/insert">+ Insert row</a></div></div>
-{if $without_rowid}<div class="notice warning">This WITHOUT ROWID table can be browsed, but rows cannot be edited or deleted here.</div>{/if}
-<section class="card"><div class="cardhead"><div><h2>{$table|h}</h2><p>{$total} matching rows · page {$page}</p></div></div><div class="tablewrap"><table><thead><tr>
-{if !$without_rowid}<th>rowid</th>{/if}{foreach $columns as $column}<th>{$column.name|h}</th>{/foreach}<th>Actions</th></tr></thead><tbody>
-{foreach $rows as $row}<tr>{if !$without_rowid}<td><code>{$row._rowid_|h}</code></td>{/if}{foreach $columns as $column}<td>{$row[$column.name]|h}</td>{/foreach}<td class="actions">{if !$without_rowid}<a href="/table/{$table|h}/row/{$row._rowid_|h}/edit">Edit</a><form method="post" action="/table/{$table|h}/row/{$row._rowid_|h}/delete" onsubmit="return confirm('Delete this row?')"><button class="link danger">Delete</button></form>{/if}</td></tr>{else}<tr><td colspan="99" class="empty">No rows found.</td></tr>{/foreach}
-</tbody></table></div></section><div class="pagination">{if $page > 1}<a href="?q={$search|h}&page={$page - 1}">← Previous</a>{/if}<span>Page {$page}</span>{if $page * $limit < $total}<a href="?q={$search|h}&page={$page + 1}">Next →</a>{/if}</div>
-{include footer.tpl}

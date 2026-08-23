@@ -1,55 +1,119 @@
-# SQLite Admin demo
+# dbadmin
 
-A server-rendered, phpMyAdmin-style SQLite catalogue for phpscript. Controllers are annotated `.php` routes and all HTML views live in `templates/*.tpl`, rendered by [titpetric/minitpl](https://github.com/titpetric/minitpl). It provides a database overview, searchable and paginated table browsing, schema and index inspection, table creation, row insertion/editing/deletion, confirmed table drops, a direct SQL console, and CSV export.
+A database administration front end: accounts, named connections to sqlite,
+mysql and postgres, group-based access control, an audit trail, and a two-panel
+browser whose destructive actions are off until the session asks for them.
 
-The table editor creates up to four initial columns and includes common numeric, text, binary, boolean, and date/time types. Additional schema changes can be made through the SQL console. The demo connection and schema catalogue remain SQLite-backed; the PostgreSQL and MySQL selections validate definitions against those dialect presets.
+It is the largest application in this repository, and it is here to be one:
+everything it does is written in the PHP subset phpscript implements, against
+the bindings the standard runtime ships.
 
-## Dependencies
-
-The template engine comes from composer, like in any other PHP project. It is
-not vendored into this repository. Install it before the first run:
-
-```sh
-composer install
+```bash
+phpscript server ./demos/dbadmin
 ```
 
-That writes `vendor/`, which `bootstrap.php` pulls in with
-`require "vendor/autoload.php"`. phpscript interprets composer's generated
-autoloader as ordinary PHP; nothing about it is special-cased in the runtime.
+The first person to reach it creates the administrator. There is no seeded
+account and no default password.
 
-minitpl compiles each template to PHP on first use and caches the result in
-`templates/cache/`, which has to be writable. Both directories are gitignored.
+## What it does
 
-## Running
+- **Accounts.** The first registration becomes the administrator; after that,
+  creating an account is an administrative act. Passwords are bcrypt, through
+  the host `password_hash()` binding.
+- **Connections.** An administrator adds a named connection with a DSN. The name
+  is registered with the runtime when the connection is opened, so a connection
+  added through the UI works on the next request rather than the next restart.
+- **Groups.** A non-administrator reaches a connection by being in a group that
+  was granted it. A grant can be read-only, and a group can tighten what its
+  members may do but never loosen it.
+- **The two panels.** The left rail is the connection in view and its tables;
+  the right is the table list with browse, structure, insert, empty and drop,
+  or whichever page you asked for.
+- **Destructive mode.** Delete, empty and drop are refused unless the session is
+  in destructive mode, which is off at every sign-in and expires after fifteen
+  minutes. Whether the switch is offered at all is the administrator's setting
+  per account.
+- **The audit log.** Every change, and every refusal. An attempt that was
+  stopped is worth more in the log than a successful drop, because it is the one
+  that says somebody tried.
+- **The connection test page.** Every connection, its status, and how many
+  tables, columns and schemas the login can see. sqlite reports one schema by
+  definition.
 
-From this directory, start it with:
+## Layout
 
-```sh
-PLATFORM_DB_DBADMIN=sqlite://dbadmin.sqlite go run ../.. server .
+```text
+dbadmin/
+├── migrate.php              @startup: applies the schema
+├── harden.php               @startup: chmods the metadata database to 0600
+├── prune.php                @schedule hourly: sweeps expired sessions
+├── bootstrap.php            the composition root, included by every route file
+├── lib/
+│   ├── shim.php             standard library functions the runtime does not have
+│   └── dao.php              the require_once manifest, leaves first
+├── modules/
+│   ├── <name>.php           a routed controller
+│   └── <name>_dao.php       its storage, as class <name>_dao
+├── templates/               layout.tpl plus one pane per page
+├── schema/*.up.sql          one file per table, append only
+└── public/assets/
+    ├── css/                 dbadmin.css imports settings.css and components/
+    └── js/dbadmin.js        progressive enhancement, no dependencies
 ```
 
-Then open the address printed by the server (normally `http://localhost:8080`). Static assets are served directly from `public/`; the PHP controllers remain outside the public web root and are registered through their `@route` annotations. To use an absolute database path, use a three-slash DSN such as `sqlite:///tmp/dbadmin.sqlite`.
+Each module is a controller and a sidecar that holds its storage. A DAO opens
+its own `new Database("dbadmin")` — the provider hands them all the same pool —
+and composes the DAOs it needs, so `$this->audit->log(...)` is how a change is
+recorded. `audit_dao` and `driver_dao` are the leaves and compose nothing.
 
-## Schema
+`phpscript list ./demos/dbadmin/...` prints the routing table.
 
-`schema/` holds one `*.up.sql` migration per table, containing its `CREATE TABLE` statement and the demo rows to seed it with. `migrate.php` is an `@startup` file, so the migrations run to completion before the server accepts requests:
+## Configuration
 
-```php
-$migrate = new Database\Migrate("dbadmin");
-$migrate->load("./schema/*.up.sql");
-$migrate->run();
+One connection, for dbadmin's own storage:
+
+```yaml
+env:
+  - "PLATFORM_DB_DBADMIN=sqlite://dbadmin.db"
 ```
 
-Each file is append only. Applied statements are recorded by index in a `migrations` table, so a later change is added as new statements at the end of the file; editing or removing statements that already ran leaves databases inconsistent with each other. Adding a table means adding `schema/<table>.up.sql`.
+Everything else is a row in the `connection` table. The DSNs there are stored in
+cleartext, because they have to be replayed to open the connection: `harden.php`
+restricts the file to its owner at startup, the DSN is redacted everywhere it is
+rendered, and `dbadmin` is a reserved connection name so the tool cannot be
+pointed at its own credentials. A database you would not put behind that is a
+database this should not hold the password for.
+
+## The parts worth reading
+
+`modules/driver_dao.php` is the smallest file and the most load-bearing. It
+holds every difference between the three drivers: identifier quoting, the
+placeholder style, how a BLOB is rendered as text and how a timestamp is
+formatted. Both of the last two happen in SQL because this runtime has neither
+`base64_encode()` nor `date()`.
+
+`modules/session_dao.php` explains why the session is a token and not a user id.
+`Session\Manager` stores one opaque string and its only writer mints a new
+cookie, so the string it stores has to be immutable and everything that changes
+during a session is a column on the row it points at.
+
+`lib/shim.php` is the list of standard library functions this runtime does not
+register, with the reason each one is written the way it is. A user-defined
+function shadows a builtin of the same name, so they keep their PHP spellings
+and stop being the ones that run if the runtime grows them.
 
 ## Tests
 
-`tests/venom.yml` is a [venom](https://github.com/ovh/venom) suite covering every route the demo registers. It runs against the compose service, which has no published port, so `tests/atkins.yml` resolves the container address for it:
-
-```sh
-cd tests && atkins test
+```bash
+atkins compose:up          # from the repository root
+cd demos/dbadmin/tests && atkins test
 ```
 
-The suite is idempotent: it removes its own leftovers before it starts and edits rows in a scratch table so the seeded rows keep the ids the migration gave them.
+The suite runs against the compose service and walks browse, structure, insert,
+edit, export and search on **all three drivers**. That is deliberate: a suite
+that ran on sqlite alone would pass while every bound query against postgres
+failed, because postgres numbers its placeholders and sqlite does not.
 
-> **Local demo only:** this application has no authentication or authorization, and its SQL console intentionally executes arbitrary SQL. Do not expose it to an untrusted network or use it against a production database.
+`atkins reset` drops the metadata database first, because the suite's first
+assertion is that the first registration becomes the administrator, and that is
+a question an installation can only answer once.

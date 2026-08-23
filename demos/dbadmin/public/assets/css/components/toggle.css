@@ -1,0 +1,128 @@
+/* toggle — the destructive-mode switch and the danger zone it unlocks.
+
+   This is the only place on the page where --bad is used for something that
+   has not gone wrong. Destructive mode is not an error; it is a state the user
+   asked for, and the point of colouring it is that they can see they are still
+   in it. */
+
+.danger-switch {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-2);
+	flex-wrap: wrap;
+	margin: var(--space-5) 0 0;
+	padding: var(--space-2) var(--space-3);
+	border: 1px solid var(--line-2);
+	border-radius: var(--radius);
+	background: var(--ink-2);
+}
+
+.danger-switch__state {
+	color: var(--text-dim);
+	font-size: 0.62rem;
+	font-weight: 500;
+	letter-spacing: var(--label-track);
+	text-transform: uppercase;
+}
+
+.danger-switch button {
+	padding: 0.2rem 0.5rem;
+	font-size: 0.62rem;
+	letter-spacing: 0.1em;
+}
+
+/* On. The border and the label take the warning colour, and the label breathes
+   — the one pulse in this interface, and it carries a real state that expires
+   on its own. */
+.danger-switch--on {
+	border-color: var(--bad);
+	background: var(--bad-wash);
+}
+
+.danger-switch--on .danger-switch__state {
+	color: var(--bad);
+	animation: pulse 2s ease-in-out infinite;
+}
+
+.danger-switch--on button {
+	background: var(--bad);
+	border-color: var(--bad);
+	color: var(--ink-0);
+}
+
+/* Fixed by policy: nothing to press, so it is a statement rather than a
+   control that would do nothing. */
+.danger-switch--fixed {
+	justify-content: flex-start;
+	background: none;
+	border-style: dashed;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.45;
+	}
+}
+
+/* The block at the bottom of a structure page. Bordered in --bad on the
+   leading edge only: enough to stop the eye, not enough to look like a fault. */
+.danger-zone {
+	margin: var(--space-4) 0;
+	padding-left: var(--space-4);
+	border-left: 2px solid var(--bad);
+}
+
+.danger-form {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--space-4);
+	flex-wrap: wrap;
+	padding: var(--space-3) 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.danger-form:last-of-type {
+	border-bottom: none;
+}
+
+.danger-form b {
+	display: block;
+	color: var(--text);
+	font-size: 0.72rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+.danger-form p {
+	max-width: 52ch;
+	margin: 0.2rem 0 0;
+	color: var(--text-faint);
+	font-size: 0.72rem;
+}
+
+.danger-form__confirm {
+	display: flex;
+	align-items: center;
+	gap: var(--space-2);
+}
+
+.danger-form__confirm input {
+	width: 16rem;
+}
+
+@media (max-width: 719px) {
+	.danger-form__confirm {
+		width: 100%;
+	}
+
+	.danger-form__confirm input {
+		flex: 1;
+		width: auto;
+	}
+}

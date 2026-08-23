@@ -4,3 +4,15 @@ venom*.log
 /.claude
 /vendor/
 /templates/cache/
+
+# The venom suite keeps its session in a curl cookie jar and its CSRF token in
+# a file beside it, because the runner has no way to carry either between
+# steps. Both are recreated by the first testcase.
+/tests/.venom-jar
+/tests/.venom-csrf
+/tests/.venom-reader-jar
+/tests/.venom-reader-csrf
+
+# mig gen writes a Go model when the schema pipeline runs. dbadmin reads its
+# schema from PHP, so the generated package is dead code in this tree.
+/model/
