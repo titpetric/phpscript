@@ -2,7 +2,7 @@ package database
 
 import (
 	"context"
-	"fmt"
+	"io"
 	"io/fs"
 	"path"
 	"strings"
@@ -10,6 +10,7 @@ import (
 	"github.com/go-bridget/mig/migrate"
 	"github.com/jmoiron/sqlx"
 
+	"github.com/titpetric/phpscript/stdlib/logger"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -49,25 +50,20 @@ func (m *DatabaseMigrate) Load(pattern string) error {
 // migrations run at startup, where what matters is how long the schema took and
 // whether it failed, not a row per statement.
 func (m *DatabaseMigrate) Run(ctx context.Context) error {
-	span := telemetry.StartSpan(ctx, "migrate", telemetry.KindDatabase)
+	ctx, span := telemetry.Start(ctx, "migrate", telemetry.KindDatabase)
 	defer span.End()
 	span.SetAttribute("migrations", len(m.migrations))
 
-	// mig requires a log sink and returns logger.ErrNoLogFn without one. The
-	// lines it writes are per-file status, so they go on the span. Writing them
-	// to the script's output would put them in whatever the script is producing,
-	// which for a migration run at startup is an HTTP body or a rendered page.
-	var progress strings.Builder
-	options := migrate.NewOptions()
-	options.LogFn = func(format string, args ...any) {
-		fmt.Fprintf(&progress, format, args...)
-		progress.WriteByte('\n')
-	}
+	// What mig reports is per-file status, and it goes to the log. Writing it to
+	// the script's output would put it in whatever the script is producing, which
+	// for a migration run at startup is an HTTP body or a rendered page. The SQL
+	// is discarded for the same reason: it is only written when Verbose is set,
+	// and nothing here sets it. A file that failed fails this span, because the
+	// logger reports onto the span its context is in.
+	options := migrate.NewOptions(logger.New(ctx, "migrate"))
+	options.Output = io.Discard
 
 	err := migrate.RunWithFS(ctx, m.database, m.migrations, options)
-	if progress.Len() > 0 {
-		span.SetAttribute("log", strings.TrimRight(progress.String(), "\n"))
-	}
 	span.RecordError(err)
 	return err
 }
