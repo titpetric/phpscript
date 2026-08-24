@@ -75,6 +75,19 @@ exists because phpscript arrays are handles rather than values, so the two names
 end up sharing one array where PHP would give each its own. See
 [Value semantics](reference/types/value-semantics.md#arrays-are-handles-not-values).
 
+Findings are printed one per row, with a row per file that had none, using a
+colored table in a terminal and Markdown when output is redirected. Use
+`--output FILE` (`-o`) to write the same table to a file as Markdown while the
+terminal output continues as normal.
+
+```bash
+phpscript lint -o docs/lint.md tests/fixtures/...
+```
+
+Use `--flatstack` to also report whether the flat bytecode engine can run each
+file, which adds a failing row per file it cannot compile. See
+[Flat stack](flatstack.md).
+
 ### `phpscript test <path>...`
 
 Discover and run `.phpt` fixtures. With no path, the command searches the

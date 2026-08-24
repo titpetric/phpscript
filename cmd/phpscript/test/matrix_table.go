@@ -11,10 +11,9 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"golang.org/x/term"
 
+	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
-
-const colorDim = "\033[38;5;244m"
 
 // maxTableWidth bounds how far a verbose table is widened to fill a terminal.
 const maxTableWidth = 120
@@ -49,16 +48,16 @@ type terminalMatrix struct {
 }
 
 func newMatrixTable(w io.Writer, opts Options, markdown bool) matrixTable {
-	table := newTerminalMatrix(w, opts)
+	matrix := newTerminalMatrix(w, opts)
 	if markdown {
-		return &markdownMatrix{terminalMatrix: table}
+		return &markdownMatrix{terminalMatrix: matrix}
 	}
 	if file, ok := w.(*os.File); ok {
 		if width, _, err := term.GetSize(int(file.Fd())); err == nil {
-			table.termWidth = width
+			matrix.termWidth = width
 		}
 	}
-	return table
+	return matrix
 }
 
 // fit widens the last column so a verbose table fills the terminal. The failure
@@ -161,18 +160,18 @@ func (t *terminalMatrix) metricValues(m fixtureMetrics) []string {
 func (t *terminalMatrix) writeGroup(dir string, labels []string) {
 	t.sizeColumns(dir, labels)
 	t.fit(t.termWidth)
-	t.writeBorder(boxTopLeft, boxTeeDown, boxTopRight)
-	t.writeRowValues(t.headers, colorHeader)
-	t.writeBorder(boxTeeRight, boxCross, boxTeeLeft)
+	t.writeBorder(table.BoxTopLeft, table.BoxTeeDown, table.BoxTopRight)
+	t.writeRowValues(t.headers, table.ColorHeader)
+	t.writeBorder(table.BoxTeeRight, table.BoxCross, table.BoxTeeLeft)
 }
 
 func (t *terminalMatrix) writeRow(row matrixRow) {
-	values := []string{colorAmber + row.label() + colorReset}
+	values := []string{table.ColorAmber + row.label() + table.ColorReset}
 	for _, cell := range row.Cells {
-		values = append(values, statusColor(cell.Status)+statusLabel(cell.Status)+colorReset)
+		values = append(values, statusColor(cell.Status)+statusLabel(cell.Status)+table.ColorReset)
 	}
 	for _, value := range t.metricValues(row.Metrics) {
-		values = append(values, colorWhite+value+colorReset)
+		values = append(values, table.ColorWhite+value+table.ColorReset)
 	}
 	t.writeRowValues(values, "")
 
@@ -190,15 +189,15 @@ func (t *terminalMatrix) writeRow(row matrixRow) {
 }
 
 func (t *terminalMatrix) closeGroup(totals groupTotals) {
-	t.writeBorder(boxBottomLeft, boxTeeUp, boxBottomRight)
+	t.writeBorder(table.BoxBottomLeft, table.BoxTeeUp, table.BoxBottomRight)
 	fmt.Fprintf(t.w, "%s%s: %d passed, %d failed out of %d fixtures (%dms)%s\n\n",
-		colorHeader, totals.Dir, totals.Passed, totals.Failed, totals.Total,
-		totals.Duration.Milliseconds(), colorReset)
+		table.ColorHeader, totals.Dir, totals.Passed, totals.Failed, totals.Total,
+		totals.Duration.Milliseconds(), table.ColorReset)
 }
 
 func (t *terminalMatrix) writeSummary(passed, failed, total int, duration time.Duration) {
 	fmt.Fprintf(t.w, "%sMatrix summary: %d passed, %d failed out of %d fixtures (%dms)%s\n",
-		colorHeader, passed, failed, total, duration.Milliseconds(), colorReset)
+		table.ColorHeader, passed, failed, total, duration.Milliseconds(), table.ColorReset)
 }
 
 // detailWidth is the width of the runner columns merged into one cell, which
@@ -212,31 +211,31 @@ func (t *terminalMatrix) detailWidth() int {
 }
 
 func (t *terminalMatrix) writeDetail(line string) {
-	separator := colorSeparator + boxVertical + colorReset
+	separator := table.ColorSeparator + table.BoxVertical + table.ColorReset
 	fixture := strings.Repeat(" ", t.widths[0])
 	padding := strings.Repeat(" ", max(0, t.detailWidth()-ansi.StringWidth(line)))
-	fmt.Fprintln(t.w, separator+" "+fixture+" "+separator+" "+colorWhite+line+colorReset+padding+" "+separator)
+	fmt.Fprintln(t.w, separator+" "+fixture+" "+separator+" "+table.ColorWhite+line+table.ColorReset+padding+" "+separator)
 }
 
 func (t *terminalMatrix) writeBorder(left, middle, right string) {
 	segments := make([]string, len(t.widths))
 	for i, width := range t.widths {
-		segments[i] = strings.Repeat(boxHorizontal, width+2)
+		segments[i] = strings.Repeat(table.BoxHorizontal, width+2)
 	}
-	fmt.Fprintln(t.w, colorSeparator+left+strings.Join(segments, middle)+right+colorReset)
+	fmt.Fprintln(t.w, table.ColorSeparator+left+strings.Join(segments, middle)+right+table.ColorReset)
 }
 
 func (t *terminalMatrix) writeRowValues(values []string, color string) {
 	cells := make([]string, len(values))
 	reset := ""
 	if color != "" {
-		reset = colorReset
+		reset = table.ColorReset
 	}
 	for i, value := range values {
 		padding := strings.Repeat(" ", max(0, t.widths[i]-ansi.StringWidth(value)))
 		cells[i] = " " + color + value + padding + reset + " "
 	}
-	separator := colorSeparator + boxVertical + colorReset
+	separator := table.ColorSeparator + table.BoxVertical + table.ColorReset
 	fmt.Fprintln(t.w, separator+strings.Join(cells, separator)+separator)
 }
 
@@ -322,11 +321,11 @@ func statusLabel(status matrixStatus) string {
 func statusColor(status matrixStatus) string {
 	switch status {
 	case matrixFail:
-		return colorRed
+		return table.ColorRed
 	case matrixSkip:
-		return colorDim
+		return table.ColorDim
 	default:
-		return colorGreen
+		return table.ColorGreen
 	}
 }
 

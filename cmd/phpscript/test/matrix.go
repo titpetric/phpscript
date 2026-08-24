@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -63,7 +64,7 @@ func (r matrixRow) Failed() bool {
 func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report io.Writer) int {
 	var sinks teeMatrixTable
 	if !opts.JSON {
-		sinks = append(sinks, newMatrixTable(os.Stdout, opts, !isTerminal(os.Stdout)))
+		sinks = append(sinks, newMatrixTable(os.Stdout, opts, !table.IsTerminal(os.Stdout)))
 	}
 	if report != nil {
 		sinks = append(sinks, newMarkdownMatrix(report, opts))

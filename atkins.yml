@@ -20,7 +20,6 @@ tasks:
       - task: up
       - task: test:phpscript:run
       - task: test:phpscript:matrix
-      - task: test:phpscript:report
       - task: test:introspection
       - task: test:demos:dbadmin
       - task: test:demos:example
@@ -62,6 +61,13 @@ tasks:
   #
   # The ./... is load-bearing: fixtures live in per-area subfolders, and a bare
   # path is not recursive, so without it the job would match nothing and pass.
+  #
+  # One run produces both outputs: -o writes the checked-in report while the
+  # ansi table still goes to the terminal, so the suite is not executed twice
+  # to report it twice. The report is generated documentation, so this runs
+  # before test:introspection, whose last step formats everything under docs/.
+  # Written without --profile: timings would differ on every run and show up as
+  # a diff in every commit.
   test:phpscript:matrix:
     dir: tests/fixtures
     tty: true # enable ansi
@@ -69,19 +75,7 @@ tasks:
     env:
       include: .env.testing
     cmds:
-      - phpscript test --matrix -v ./...
-
-  # The fixture report is generated documentation, so it is written before
-  # test:introspection, whose last step formats everything under docs/. Written
-  # without --profile: timings would differ on every run and show up as a diff
-  # in every commit.
-  test:phpscript:report:
-    dir: tests/fixtures
-    passthru: true
-    env:
-      include: .env.testing
-    cmds:
-      - phpscript test --matrix -o ../../docs/test-fixtures.md ./...
+      - phpscript test --matrix -v -o ../../docs/test-fixtures.md ./...
 
   test:phpscript:run:
     dir: tests/fixtures

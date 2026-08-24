@@ -100,6 +100,9 @@ func reportArgs(opts Options, args []string) []string {
 	if opts.Matrix {
 		argv = append(argv, "--matrix")
 	}
+	if opts.Verbose {
+		argv = append(argv, "-v")
+	}
 	if opts.Profile {
 		argv = append(argv, "--profile")
 	}

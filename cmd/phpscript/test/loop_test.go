@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -103,10 +104,10 @@ func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 	}
 	for _, c := range cases {
 		var buf bytes.Buffer
-		table := newTerminalTable(&buf, c.opts)
-		table.writeGroup("arrays", []string{"a-much-longer-name.phpt"})
-		table.writeResult(fr)
-		table.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1})
+		tbl := newTerminalTable(&buf, c.opts)
+		tbl.writeGroup("arrays", []string{"a-much-longer-name.phpt"})
+		tbl.writeResult(fr)
+		tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1})
 		output := ansi.Strip(buf.String())
 		// The trailing lines are the folder subtotal and its blank line, which
 		// are prose rather than table rows.
@@ -121,29 +122,29 @@ func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 				t.Errorf("opts %+v: line %d has width %d, want %d:\n%s", c.opts, i, ansi.StringWidth(line), ansi.StringWidth(lines[0]), output)
 			}
 		}
-		if !strings.Contains(buf.String(), colorSeparator+boxTopLeft) ||
-			!strings.Contains(buf.String(), colorHeader+"Test") ||
-			!strings.Contains(buf.String(), colorGreen+"PASS") {
+		if !strings.Contains(buf.String(), table.ColorSeparator+table.BoxTopLeft) ||
+			!strings.Contains(buf.String(), table.ColorHeader+"Test") ||
+			!strings.Contains(buf.String(), table.ColorGreen+"PASS") {
 			t.Errorf("opts %+v: table is missing expected ANSI colors: %q", c.opts, buf.String())
 		}
-		if table.loop && table.widths[3] != 7 {
-			t.Errorf("opts %+v: Count width = %d, want 7", c.opts, table.widths[3])
+		if tbl.loop && tbl.widths[3] != 7 {
+			t.Errorf("opts %+v: Count width = %d, want 7", c.opts, tbl.widths[3])
 		}
 	}
 }
 
 func TestResultTableFallsBackToMarkdown(t *testing.T) {
 	var buf bytes.Buffer
-	table := newResultTable(&buf, Options{}, true)
-	table.writeGroup("arrays", []string{"a.phpt"})
-	table.writeResult(&fixtureRun{
+	tbl := newResultTable(&buf, Options{}, true)
+	tbl.writeGroup("arrays", []string{"a.phpt"})
+	tbl.writeResult(&fixtureRun{
 		Result:         &tests.TestResult{Passed: true},
 		DisplayPath:    "arrays/a.phpt",
 		Label:          "a.phpt",
 		fixtureMetrics: fixtureMetrics{Total: time.Millisecond},
 	})
-	table.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1, Duration: time.Millisecond})
-	table.writeSummary(1, 0, 1, time.Millisecond)
+	tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1, Duration: time.Millisecond})
+	tbl.writeSummary(1, 0, 1, time.Millisecond)
 
 	want := "## arrays\n\n" +
 		"| Test | arrays | Duration (ms) | GC Runs         |\n" +
@@ -165,27 +166,27 @@ func TestResultTableFallsBackToMarkdown(t *testing.T) {
 // generated report trustworthy: the Total row is the sum of the folder rows.
 func TestMarkdownTableGroupsAndSummary(t *testing.T) {
 	var buf bytes.Buffer
-	table := newMarkdownTable(&buf, Options{})
+	tbl := newMarkdownTable(&buf, Options{})
 
 	for _, group := range []struct {
 		dir            string
 		passed, failed int
 	}{{"arrays", 2, 0}, {"strings", 1, 1}} {
-		table.writeGroup(group.dir, []string{"a.phpt"})
+		tbl.writeGroup(group.dir, []string{"a.phpt"})
 		for i := 0; i < group.passed+group.failed; i++ {
-			table.writeResult(&fixtureRun{
+			tbl.writeResult(&fixtureRun{
 				Result: &tests.TestResult{Passed: i < group.passed},
 				Label:  "a.phpt",
 			})
 		}
-		table.closeGroup(groupTotals{
+		tbl.closeGroup(groupTotals{
 			Dir:    group.dir,
 			Passed: group.passed,
 			Failed: group.failed,
 			Total:  group.passed + group.failed,
 		})
 	}
-	table.writeSummary(3, 1, 4, time.Millisecond)
+	tbl.writeSummary(3, 1, 4, time.Millisecond)
 
 	got := buf.String()
 	for _, want := range []string{"## arrays", "## strings", "## Summary", "| **Total** | 4        | 3      | 1      |"} {
@@ -195,7 +196,7 @@ func TestMarkdownTableGroupsAndSummary(t *testing.T) {
 	}
 
 	var sumTotal, sumPassed, sumFailed int
-	for _, totals := range table.totals {
+	for _, totals := range tbl.totals {
 		sumTotal += totals.Total
 		sumPassed += totals.Passed
 		sumFailed += totals.Failed
@@ -206,18 +207,18 @@ func TestMarkdownTableGroupsAndSummary(t *testing.T) {
 }
 
 func TestCountColumnExpandsForConfiguredCount(t *testing.T) {
-	table := newTerminalTable(&bytes.Buffer{}, Options{Count: 100000000})
-	table.sizeColumns("arrays", nil)
-	if got := table.widths[3]; got != 9 {
+	tbl := newTerminalTable(&bytes.Buffer{}, Options{Count: 100000000})
+	tbl.sizeColumns("arrays", nil)
+	if got := tbl.widths[3]; got != 9 {
 		t.Fatalf("Count width = %d, want 9", got)
 	}
 }
 
 func TestTerminalSummaryUsesWorktreeStyle(t *testing.T) {
 	var buf bytes.Buffer
-	table := newTerminalTable(&buf, Options{})
-	table.writeSummary(2, 1, 3, 4*time.Millisecond)
-	want := colorHeader + "Test summary: 2 passed, 1 failed out of 3 fixtures (4ms)" + colorReset + "\n"
+	tbl := newTerminalTable(&buf, Options{})
+	tbl.writeSummary(2, 1, 3, 4*time.Millisecond)
+	want := table.ColorHeader + "Test summary: 2 passed, 1 failed out of 3 fixtures (4ms)" + table.ColorReset + "\n"
 	if got := buf.String(); got != want {
 		t.Fatalf("terminal summary = %q, want %q", got, want)
 	}
@@ -226,9 +227,9 @@ func TestTerminalSummaryUsesWorktreeStyle(t *testing.T) {
 // TestTerminalGroupSubtotal covers the line closeGroup adds under each folder.
 func TestTerminalGroupSubtotal(t *testing.T) {
 	var buf bytes.Buffer
-	table := newTerminalTable(&buf, Options{})
-	table.sizeColumns("arrays", []string{"a.phpt"})
-	table.closeGroup(groupTotals{Dir: "arrays", Passed: 4, Failed: 1, Total: 5, Duration: 6 * time.Millisecond})
+	tbl := newTerminalTable(&buf, Options{})
+	tbl.sizeColumns("arrays", []string{"a.phpt"})
+	tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 4, Failed: 1, Total: 5, Duration: 6 * time.Millisecond})
 	if want := "arrays: 4 passed, 1 failed out of 5 fixtures (6ms)"; !strings.Contains(ansi.Strip(buf.String()), want) {
 		t.Fatalf("group subtotal = %q, want it to contain %q", buf.String(), want)
 	}

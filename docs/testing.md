@@ -215,10 +215,10 @@ A `SKIP` is a fixture that opted the runtime out, or a `php` binary that is not 
 `-o` writes the same tables as Markdown while the terminal output continues as normal:
 
 ```bash
-phpscript test --matrix -o ../../docs/test-fixtures.md ./...
+phpscript test --matrix -v -o ../../docs/test-fixtures.md ./...
 ```
 
-That is what produces [test-fixtures.md](./test-fixtures.md), which `atkins test:phpscript:report` regenerates on every pipeline run. The report ends with a summary table whose total is the sum of the per-area rows.
+That is what produces [test-fixtures.md](./test-fixtures.md), which `atkins test:phpscript:matrix` regenerates on every pipeline run. One run reports the suite and writes the report, so the fixtures are not executed twice to produce both. The report ends with a summary table whose total is the sum of the per-area rows.
 
 `--profile`, `--count` and `--time` add their cost columns to the Markdown as well as the terminal. A matrix row has one cost column and three runners, so the numbers are the default runtime's: the matrix compares correctness across runtimes and cost on the runtime the other two are measured against, and `--json` keeps the per-runtime figures. The checked-in report is generated without them, because a timing that differs by a millisecond per run would be a diff in every commit.
 

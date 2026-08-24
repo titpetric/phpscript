@@ -3,35 +3,13 @@ package test
 import (
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/charmbracelet/x/ansi"
-	"golang.org/x/term"
-)
 
-const (
-	boxTopLeft     = "╭"
-	boxTopRight    = "╮"
-	boxBottomLeft  = "╰"
-	boxBottomRight = "╯"
-	boxHorizontal  = "─"
-	boxVertical    = "│"
-	boxTeeDown     = "┬"
-	boxTeeUp       = "┴"
-	boxTeeRight    = "├"
-	boxTeeLeft     = "┤"
-	boxCross       = "┼"
-
-	colorReset     = "\033[0m"
-	colorSeparator = "\033[38;5;238m"
-	colorHeader    = "\033[38;5;146m"
-	colorAmber     = "\033[38;5;214m"
-	colorGreen     = "\033[38;5;114m"
-	colorWhite     = "\033[38;5;255m"
-	colorRed       = "\033[38;5;167m"
+	"github.com/titpetric/phpscript/internal/table"
 )
 
 // terminalTable writes one padded row at a time. Column widths are established
@@ -51,13 +29,6 @@ type resultTable interface {
 	writeResult(*fixtureRun)
 	closeGroup(groupTotals)
 	writeSummary(passed, failed, total int, duration time.Duration)
-}
-
-// isTerminal reports whether w is a tty, which is what decides between the
-// box-drawing table and markdown when the caller has not said which it wants.
-func isTerminal(w io.Writer) bool {
-	file, ok := w.(*os.File)
-	return ok && term.IsTerminal(int(file.Fd()))
 }
 
 func newResultTable(w io.Writer, opts Options, markdown bool) resultTable {
@@ -113,72 +84,72 @@ func (t *terminalTable) sizeColumns(dir string, labels []string) {
 
 func (t *terminalTable) writeGroup(dir string, labels []string) {
 	t.sizeColumns(dir, labels)
-	t.writeBorder(boxTopLeft, boxTeeDown, boxTopRight)
-	t.writeRow(t.headers, colorHeader)
-	t.writeBorder(boxTeeRight, boxCross, boxTeeLeft)
+	t.writeBorder(table.BoxTopLeft, table.BoxTeeDown, table.BoxTopRight)
+	t.writeRow(t.headers, table.ColorHeader)
+	t.writeBorder(table.BoxTeeRight, table.BoxCross, table.BoxTeeLeft)
 }
 
 func (t *terminalTable) writeResult(r *fixtureRun) {
-	status := colorGreen + "PASS" + colorReset
+	status := table.ColorGreen + "PASS" + table.ColorReset
 	if !r.Result.Passed {
-		status = colorRed + "FAIL" + colorReset
+		status = table.ColorRed + "FAIL" + table.ColorReset
 	}
 	row := []string{
 		status,
-		colorAmber + r.label() + colorReset,
-		colorWhite + formatDuration(r.Total) + colorReset,
+		table.ColorAmber + r.label() + table.ColorReset,
+		table.ColorWhite + formatDuration(r.Total) + table.ColorReset,
 	}
 	if t.loop {
-		row = append(row, colorWhite+strconv.Itoa(r.Runs)+colorReset)
+		row = append(row, table.ColorWhite+strconv.Itoa(r.Runs)+table.ColorReset)
 	}
 	if t.lat {
 		row = append(row,
-			colorWhite+formatMicros(r.P50)+colorReset,
-			colorWhite+formatMicros(r.P95)+colorReset,
-			colorWhite+formatMicros(r.P99)+colorReset,
+			table.ColorWhite+formatMicros(r.P50)+table.ColorReset,
+			table.ColorWhite+formatMicros(r.P95)+table.ColorReset,
+			table.ColorWhite+formatMicros(r.P99)+table.ColorReset,
 		)
 	}
 	if t.profile {
 		row = append(row,
-			colorWhite+strconv.FormatUint(r.AllocsPerOp, 10)+colorReset,
-			colorWhite+strconv.FormatUint(r.BytesPerOp, 10)+colorReset,
+			table.ColorWhite+strconv.FormatUint(r.AllocsPerOp, 10)+table.ColorReset,
+			table.ColorWhite+strconv.FormatUint(r.BytesPerOp, 10)+table.ColorReset,
 		)
 	}
-	row = append(row, colorWhite+formatGCRuns(r.GCRuns, r.Runs)+colorReset)
+	row = append(row, table.ColorWhite+formatGCRuns(r.GCRuns, r.Runs)+table.ColorReset)
 	t.writeRow(row, "")
 }
 
 func (t *terminalTable) closeGroup(totals groupTotals) {
-	t.writeBorder(boxBottomLeft, boxTeeUp, boxBottomRight)
+	t.writeBorder(table.BoxBottomLeft, table.BoxTeeUp, table.BoxBottomRight)
 	fmt.Fprintf(t.w, "%s%s: %d passed, %d failed out of %d fixtures (%dms)%s\n\n",
-		colorHeader, totals.Dir, totals.Passed, totals.Failed, totals.Total,
-		totals.Duration.Milliseconds(), colorReset)
+		table.ColorHeader, totals.Dir, totals.Passed, totals.Failed, totals.Total,
+		totals.Duration.Milliseconds(), table.ColorReset)
 }
 
 func (t *terminalTable) writeSummary(passed, failed, total int, duration time.Duration) {
 	fmt.Fprintf(t.w, "%sTest summary: %d passed, %d failed out of %d fixtures (%dms)%s\n",
-		colorHeader, passed, failed, total, duration.Milliseconds(), colorReset)
+		table.ColorHeader, passed, failed, total, duration.Milliseconds(), table.ColorReset)
 }
 
 func (t *terminalTable) writeBorder(left, middle, right string) {
 	segments := make([]string, len(t.widths))
 	for i, width := range t.widths {
-		segments[i] = strings.Repeat(boxHorizontal, width+2)
+		segments[i] = strings.Repeat(table.BoxHorizontal, width+2)
 	}
-	fmt.Fprintln(t.w, colorSeparator+left+strings.Join(segments, middle)+right+colorReset)
+	fmt.Fprintln(t.w, table.ColorSeparator+left+strings.Join(segments, middle)+right+table.ColorReset)
 }
 
 func (t *terminalTable) writeRow(values []string, color string) {
 	cells := make([]string, len(values))
 	reset := ""
 	if color != "" {
-		reset = colorReset
+		reset = table.ColorReset
 	}
 	for i, value := range values {
 		padding := strings.Repeat(" ", max(0, t.widths[i]-ansi.StringWidth(value)))
 		cells[i] = " " + color + value + padding + reset + " "
 	}
-	separator := colorSeparator + boxVertical + colorReset
+	separator := table.ColorSeparator + table.BoxVertical + table.ColorReset
 	fmt.Fprintln(t.w, separator+strings.Join(cells, separator)+separator)
 }
 

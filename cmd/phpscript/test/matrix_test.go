@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -25,10 +26,10 @@ func matrixSample() matrixRow {
 
 func TestTerminalMatrixColumnsAndSpacing(t *testing.T) {
 	var buf bytes.Buffer
-	table := newTerminalMatrix(&buf, Options{})
-	table.writeGroup("arrays", []string{"a-much-longer-name.phpt"})
-	table.writeRow(matrixSample())
-	table.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
+	tbl := newTerminalMatrix(&buf, Options{})
+	tbl.writeGroup("arrays", []string{"a-much-longer-name.phpt"})
+	tbl.writeRow(matrixSample())
+	tbl.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
 
 	output := ansi.Strip(buf.String())
 	// The trailing lines are the folder subtotal and its blank line.
@@ -43,9 +44,9 @@ func TestTerminalMatrixColumnsAndSpacing(t *testing.T) {
 			t.Errorf("line %d has width %d, want %d:\n%s", i, ansi.StringWidth(line), ansi.StringWidth(lines[0]), output)
 		}
 	}
-	if !strings.Contains(buf.String(), colorGreen+"PASS") ||
-		!strings.Contains(buf.String(), colorRed+"FAIL") ||
-		!strings.Contains(buf.String(), colorDim+"SKIP") {
+	if !strings.Contains(buf.String(), table.ColorGreen+"PASS") ||
+		!strings.Contains(buf.String(), table.ColorRed+"FAIL") ||
+		!strings.Contains(buf.String(), table.ColorDim+"SKIP") {
 		t.Errorf("table is missing expected ANSI colors: %q", buf.String())
 	}
 	// Without --verbose a failure reason stays out of the table.
@@ -56,10 +57,10 @@ func TestTerminalMatrixColumnsAndSpacing(t *testing.T) {
 
 func TestTerminalMatrixVerboseContinuationRows(t *testing.T) {
 	var buf bytes.Buffer
-	table := newTerminalMatrix(&buf, Options{Verbose: true})
-	table.writeGroup("arrays", []string{"a.phpt"})
-	table.writeRow(matrixSample())
-	table.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
+	tbl := newTerminalMatrix(&buf, Options{Verbose: true})
+	tbl.writeGroup("arrays", []string{"a.phpt"})
+	tbl.writeRow(matrixSample())
+	tbl.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
 
 	output := ansi.Strip(buf.String())
 	lines := strings.Split(strings.TrimSpace(output), "\n")
@@ -96,15 +97,15 @@ func TestTerminalMatrixVerboseContinuationRows(t *testing.T) {
 
 func TestMatrixTableFallsBackToMarkdown(t *testing.T) {
 	var buf bytes.Buffer
-	table := newMatrixTable(&buf, Options{Verbose: true}, true)
-	table.writeGroup("arrays", []string{"a.phpt"})
-	table.writeRow(matrixSample())
-	table.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
+	tbl := newMatrixTable(&buf, Options{Verbose: true}, true)
+	tbl.writeGroup("arrays", []string{"a.phpt"})
+	tbl.writeRow(matrixSample())
+	tbl.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
 	rows := strings.Split(strings.TrimSpace(buf.String()), "\n")
-	table.writeSummary(0, 1, 1, time.Millisecond)
+	tbl.writeSummary(0, 1, 1, time.Millisecond)
 
 	got := buf.String()
-	if strings.Contains(got, boxVertical) || strings.Contains(got, colorGreen) {
+	if strings.Contains(got, table.BoxVertical) || strings.Contains(got, table.ColorGreen) {
 		t.Errorf("piped output is not markdown: %q", got)
 	}
 	for _, want := range []string{
@@ -131,30 +132,30 @@ func TestMatrixTableFallsBackToMarkdown(t *testing.T) {
 
 func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 	var buf bytes.Buffer
-	table := newTerminalMatrix(&buf, Options{Verbose: true})
-	table.termWidth = maxTableWidth
-	table.sizeColumns("arrays", []string{"a.phpt"})
-	natural := table.detailWidth()
-	table.fit(maxTableWidth)
-	if table.detailWidth() <= natural {
-		t.Errorf("detail width = %d, want more than the natural %d", table.detailWidth(), natural)
+	tbl := newTerminalMatrix(&buf, Options{Verbose: true})
+	tbl.termWidth = maxTableWidth
+	tbl.sizeColumns("arrays", []string{"a.phpt"})
+	natural := tbl.detailWidth()
+	tbl.fit(maxTableWidth)
+	if tbl.detailWidth() <= natural {
+		t.Errorf("detail width = %d, want more than the natural %d", tbl.detailWidth(), natural)
 	}
-	table.writeGroup("arrays", []string{"a.phpt"})
+	tbl.writeGroup("arrays", []string{"a.phpt"})
 	lines := strings.Split(strings.TrimSpace(ansi.Strip(buf.String())), "\n")
 	if width := ansi.StringWidth(lines[0]); width != maxTableWidth {
 		t.Errorf("table width = %d, want %d", width, maxTableWidth)
 	}
 	// A table already wider than the terminal is left alone.
-	before := table.detailWidth()
-	table.fit(10)
-	if table.detailWidth() != before {
-		t.Errorf("detail width = %d, want it unchanged at %d", table.detailWidth(), before)
+	before := tbl.detailWidth()
+	tbl.fit(10)
+	if tbl.detailWidth() != before {
+		t.Errorf("detail width = %d, want it unchanged at %d", tbl.detailWidth(), before)
 	}
 	// A second folder re-fits from the header widths rather than compounding:
 	// fit adds to the last column, so a writeGroup that forgot to reset the
 	// widths would grow the table past the terminal on every folder.
 	buf.Reset()
-	table.writeGroup("strings", []string{"b.phpt"})
+	tbl.writeGroup("strings", []string{"b.phpt"})
 	lines = strings.Split(strings.TrimSpace(ansi.Strip(buf.String())), "\n")
 	if width := ansi.StringWidth(lines[0]); width != maxTableWidth {
 		t.Errorf("second folder width = %d, want %d", width, maxTableWidth)
@@ -173,8 +174,8 @@ func TestMatrixMetricColumnsFollowProfileFlags(t *testing.T) {
 		{Options{Count: 2}, true},
 	} {
 		var buf bytes.Buffer
-		table := newMatrixTable(&buf, c.opts, true)
-		table.writeGroup("arrays", []string{"a.phpt"})
+		tbl := newMatrixTable(&buf, c.opts, true)
+		tbl.writeGroup("arrays", []string{"a.phpt"})
 		got := strings.Contains(buf.String(), "GC Runs")
 		if got != c.want {
 			t.Errorf("opts %+v: metric columns = %v, want %v:\n%s", c.opts, got, c.want, buf.String())

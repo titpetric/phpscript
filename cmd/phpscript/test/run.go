@@ -13,6 +13,7 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -255,7 +256,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 
 	var sinks teeResultTable
 	if !opts.JSON {
-		sinks = append(sinks, newResultTable(os.Stdout, opts, !isTerminal(os.Stdout)))
+		sinks = append(sinks, newResultTable(os.Stdout, opts, !table.IsTerminal(os.Stdout)))
 	}
 	if report != nil {
 		sinks = append(sinks, newMarkdownTable(report, opts))
