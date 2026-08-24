@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"path"
 	"strings"
@@ -52,7 +53,21 @@ func (m *DatabaseMigrate) Run(ctx context.Context) error {
 	defer span.End()
 	span.SetAttribute("migrations", len(m.migrations))
 
-	err := migrate.RunWithFS(ctx, m.database, m.migrations, migrate.NewOptions())
+	// mig requires a log sink and returns logger.ErrNoLogFn without one. The
+	// lines it writes are per-file status, so they go on the span. Writing them
+	// to the script's output would put them in whatever the script is producing,
+	// which for a migration run at startup is an HTTP body or a rendered page.
+	var progress strings.Builder
+	options := migrate.NewOptions()
+	options.LogFn = func(format string, args ...any) {
+		fmt.Fprintf(&progress, format, args...)
+		progress.WriteByte('\n')
+	}
+
+	err := migrate.RunWithFS(ctx, m.database, m.migrations, options)
+	if progress.Len() > 0 {
+		span.SetAttribute("log", strings.TrimRight(progress.String(), "\n"))
+	}
 	span.RecordError(err)
 	return err
 }
