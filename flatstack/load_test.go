@@ -308,6 +308,30 @@ echo 42;
 	}
 }
 
+// TestFlatstackSupportsArrayCallbackClosures fails until the compiler learns
+// *model.Closure, and is the only signal that it has: runFlat discards the
+// compile error and reruns the program on the interpreter, so the fixture in
+// tests/fixtures/arrays/array_callbacks.phpt passes either way.
+//
+// A closure argument is the most common reason a real library drops out of the
+// bytecode engine. One usort() comparator costs the whole file, because Compile
+// rejects a program on any unsupported node.
+func TestFlatstackSupportsArrayCallbackClosures(t *testing.T) {
+	program, err := parser.Parse(`<?php
+$n = array(3, 1, 2);
+usort($n, function ($a, $b) {
+	return $a - $b;
+});
+echo implode(",", $n);
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("usort closure should compile to bytecode: %v", err)
+	}
+}
+
 func TestFlatstackSharedCacheParallel(t *testing.T) {
 	program, err := parser.Parse(`<?php $a = "shared"; $b = "-cache"; echo $a . $b; ?>`)
 	if err != nil {
