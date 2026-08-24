@@ -13,6 +13,7 @@ import (
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
+	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -276,17 +277,24 @@ $storage->get("missing");
 	}
 }
 
+// TestFlatstackRejectsWholeProgramBeforeSideEffects checks that a rejected
+// program runs once, on the interpreter, rather than partly on each backend.
+// The constructor counts its calls, so a compile that gave up after the `new`
+// had already run would report two.
+//
+// compact() is the unsupported construct: it reads the caller's variables by
+// name, which the compiler has no scope to reflect over, so it stays rejected.
 func TestFlatstackRejectsWholeProgramBeforeSideEffects(t *testing.T) {
 	program, err := parser.Parse(`<?php
 $storage = new Storage;
-$fn = function() { return 1; };
+$keep = compact('storage');
 echo 42;
 `)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := flatstack.Supports(program); err == nil {
-		t.Fatal("program with a closure should require interpreter fallback")
+		t.Fatal("program with compact() should require interpreter fallback")
 	}
 
 	var constructions atomic.Int64
@@ -296,6 +304,9 @@ echo 42;
 	}
 	var output strings.Builder
 	runtime := flatstack.New(&output, flatstack.Options{})
+	// compact() is a stdlib registration; without it the interpreter reports an
+	// undefined function instead of running the fallback.
+	stdlib.Register(runtime)
 	runtime.RegisterConstructor("Storage", constructor)
 	if err := runtime.Run(program); err != nil {
 		t.Fatal(err)
@@ -305,6 +316,30 @@ echo 42;
 	}
 	if got := output.String(); got != "42" {
 		t.Fatalf("fallback output = %q, want 42", got)
+	}
+}
+
+// TestFlatstackSupportsArrayCallbackClosures fails until the compiler learns
+// *model.Closure, and is the only signal that it has: runFlat discards the
+// compile error and reruns the program on the interpreter, so the fixture in
+// tests/fixtures/arrays/array_callbacks.phpt passes either way.
+//
+// A closure argument is the most common reason a real library drops out of the
+// bytecode engine. One usort() comparator costs the whole file, because Compile
+// rejects a program on any unsupported node.
+func TestFlatstackSupportsArrayCallbackClosures(t *testing.T) {
+	program, err := parser.Parse(`<?php
+$n = array(3, 1, 2);
+usort($n, function ($a, $b) {
+	return $a - $b;
+});
+echo implode(",", $n);
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("usort closure should compile to bytecode: %v", err)
 	}
 }
 

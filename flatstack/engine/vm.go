@@ -93,12 +93,42 @@ type MemoryHost interface {
 	CheckMemory() error
 }
 
+// localSeed is one local written into a frame before it starts running: the
+// captures and the arguments of a closure call.
+type localSeed struct {
+	slot  int
+	value any
+}
+
+// hostLocals is the optional Host capability that exposes the script's
+// variables to a binding for the duration of a call.
+type hostLocals interface {
+	BindLocals(map[string]any)
+	TakeLocals() map[string]any
+}
+
 // Run executes a previously validated flat instruction stream.
-func Run(program *Program, host Host) (err error) {
+func Run(program *Program, host Host) error {
 	if program == nil {
 		return nil
 	}
-	pc := 0
+	if registrar, ok := host.(interface{ RegisterClass(*model.Class) }); ok {
+		for _, class := range program.classes {
+			registrar.RegisterClass(class)
+		}
+	}
+	return run(program, host, 0, nil, nil)
+}
+
+// run executes one frame, starting at entryPC with seeds already written into
+// its locals. The value the frame returns is reported through result, which is
+// nil for the top-level frame because nothing consumes it.
+//
+// A closure call re-enters here rather than pushing a call frame on the running
+// loop: the call arrives from a host binding (usort() invoking its comparator),
+// not from an instruction, so there is no loop to push onto.
+func run(program *Program, host Host, entryPC int, seeds []localSeed, result *any) (err error) {
+	pc := entryPC
 	scratch := scratchPool.Get().(*vmScratch)
 	stack := scratch.stack[:0]
 	nlocal := len(program.localNames)
@@ -110,9 +140,9 @@ func Run(program *Program, host Host) (err error) {
 	initialized := scratch.initialized[:nlocal]
 	clear(locals)
 	clear(initialized)
-	if registrar, ok := host.(interface{ RegisterClass(*model.Class) }); ok {
-		for _, class := range program.classes {
-			registrar.RegisterClass(class)
+	for _, seed := range seeds {
+		if seed.slot >= 0 && seed.slot < len(locals) {
+			locals[seed.slot], initialized[seed.slot] = seed.value, true
 		}
 	}
 	extras := map[string]any{}
@@ -287,13 +317,22 @@ func Run(program *Program, host Host) (err error) {
 			}
 			stack = append(stack, stack[len(stack)-1])
 		case opLoad:
-			if initialized[inst.a] {
-				stack = append(stack, locals[inst.a])
-			} else if extra, ok := extras[program.localNames[inst.a]]; ok {
-				stack = append(stack, extra)
-			} else {
-				stack = append(stack, host.Lookup(program.localNames[inst.a]))
+			stack = append(stack, loadLocal(host, program, locals, initialized, extras, inst.a))
+		case opClosure:
+			def := program.closures[inst.a]
+			captured := make([]localSeed, 0, len(def.captures)+1)
+			for _, slot := range def.captures {
+				captured = append(captured, localSeed{
+					slot:  slot,
+					value: loadLocal(host, program, locals, initialized, extras, slot),
+				})
 			}
+			// An unbound `$this` is left out rather than captured as null, so
+			// the closure body reads it the way any other unset local is read.
+			if def.thisSlot >= 0 && initialized[def.thisSlot] {
+				captured = append(captured, localSeed{slot: def.thisSlot, value: locals[def.thisSlot]})
+			}
+			stack = append(stack, closureValue(program, host, def, captured))
 		case opStore:
 			value, popErr := pop()
 			if popErr != nil {
@@ -770,7 +809,9 @@ func Run(program *Program, host Host) (err error) {
 				}
 				stack = append(stack, retVal)
 			} else {
-				stack = append(stack, retVal)
+				if result != nil {
+					*result = retVal
+				}
 				return nil
 			}
 		case opEnsureArray:
@@ -855,6 +896,65 @@ func Run(program *Program, host Host) (err error) {
 		pc++
 	}
 	return nil
+}
+
+// loadLocal reads a frame slot the way opLoad does: the local if the frame set
+// it, otherwise a variable a host binding introduced, otherwise whatever the
+// host knows under that name (a global or a constant).
+func loadLocal(host Host, program *Program, locals []any, initialized []bool, extras map[string]any, slot int) any {
+	if initialized[slot] {
+		return locals[slot]
+	}
+	if extra, ok := extras[program.localNames[slot]]; ok {
+		return extra
+	}
+	return host.Lookup(program.localNames[slot])
+}
+
+// closureValue turns a compiled closure into the func(...any) (any, error)
+// shape Runtime.Callable reduces every PHP callable to, so a binding invokes a
+// bytecode closure exactly as it invokes an interpreted one.
+//
+// captured is the snapshot taken where the closure value was created. Each call
+// gets a fresh frame seeded with it, so one call cannot see another's writes,
+// and the closure keeps working after the frame it was written in is gone.
+func closureValue(program *Program, host Host, def closureDef, captured []localSeed) func(...any) (any, error) {
+	return func(args ...any) (any, error) {
+		seeds := make([]localSeed, 0, len(captured)+len(def.paramSlots))
+		seeds = append(seeds, captured...)
+		// Parameters are seeded after the captures, so a parameter of the same
+		// name shadows the capture, as it does in PHP. An argument the caller
+		// omitted binds null, matching the interpreter's bindParams.
+		for i, slot := range def.paramSlots {
+			var value any
+			if i < len(args) {
+				value = args[i]
+			}
+			seeds = append(seeds, localSeed{slot: slot, value: value})
+		}
+		// The locals the host is holding belong to the call this closure was
+		// handed to: usort() had a snapshot taken before it invoked the
+		// comparator, and the VM writes that snapshot back when usort()
+		// returns. The body installs its own on every call it makes, so the
+		// caller's has to be put back on the way out.
+		defer restoreHostLocals(host)()
+		var result any
+		if err := run(program, host, def.entryPC, seeds, &result); err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+}
+
+// restoreHostLocals captures the host's current variable binding and returns the
+// call that reinstates it.
+func restoreHostLocals(host Host) func() {
+	binder, ok := host.(hostLocals)
+	if !ok {
+		return func() {}
+	}
+	saved := binder.TakeLocals()
+	return func() { binder.BindLocals(saved) }
 }
 
 func bindHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any) {
