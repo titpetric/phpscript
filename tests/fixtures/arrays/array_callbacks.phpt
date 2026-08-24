@@ -2,10 +2,9 @@ name: array callbacks with closures
 description: >
   usort and array_map take a closure, inline and held in a variable. The
   comparator sorts by length and then alphabetically, the shape a template
-  engine uses to replace the longest variable names first. This passes on
-  flatstack today by falling back to the compatibility interpreter;
-  TestFlatstackSupportsArrayCallbackClosures is what holds the bytecode
-  engine to compiling it.
+  engine uses to replace the longest variable names first. This compiles to
+  flatstack bytecode; TestFlatstackSupportsArrayCallbackClosures is what holds
+  the bytecode engine to it, since a fallback would still produce this output.
 ---
 <?php
 $vars = array('$var', '$v', '$variable', '$var1');

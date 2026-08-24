@@ -161,6 +161,8 @@ It supports these expressions:
 - Registered/free function calls and method calls
 - Property reads
 - String concatenation with `.`
+- Anonymous functions, including a by-value `use (...)` capture list, a `$this`
+  carried away from an enclosing method, and `static function () {}`
 
 The native operations above do not use `expr-lang`; arithmetic, coercion,
 comparison, array access, and truthiness are implemented by the flat VM and its
@@ -179,7 +181,12 @@ The complete program atomically selects fallback when it contains any currently
 unsupported form. The major remaining forms are:
 
 - Property increment/decrement and class-constant / static-property forms
-- Closures and callback bodies
+- Invoking a callable held in a value: `$fn(...)`, `$array[0](...)`,
+  `$this->handler(...)`. A closure compiles, but only a binding such as
+  `usort()` or `call_user_func()` can call one
+- By-reference closure captures `use (&$x)`, closure parameter defaults, and
+  variadic or by-reference closure parameters
+- `defer()`, which registers its callback on the frame that called it
 - `try` without a `catch` clause
 - Casts
 - PHP constructors (`__construct`) still run in the interpreter

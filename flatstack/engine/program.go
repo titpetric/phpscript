@@ -48,6 +48,7 @@ const (
 	opVivifyProperty
 	opClassConst
 	opCast
+	opClosure
 )
 
 type instruction struct {
@@ -63,6 +64,30 @@ type instruction struct {
 type userFuncDef struct {
 	entryPC int
 	params  []string
+}
+
+// closureDef is one compiled anonymous function. Its body sits inline in the
+// instruction stream, jumped over the way a function declaration's body is, and
+// opClosure turns the definition into a callable value.
+//
+// The slot numbers are frame offsets, and the same number means the same name
+// in every frame: Program.localNames is per program, not per function. That is
+// what lets a capture be copied straight from the creating frame into the
+// closure's own frame without a name lookup.
+type closureDef struct {
+	entryPC int
+	// paramSlots holds one slot per declared parameter, in order. An argument
+	// the caller did not pass leaves the slot null, which is what the
+	// interpreter's bindParams does.
+	paramSlots []int
+	// captures holds the slots of the `use (...)` list. They are read where the
+	// closure value is created, not where it is called, so the capture is the
+	// snapshot PHP's by-value `use` describes.
+	captures []int
+	// thisSlot is the slot holding the receiver a closure written inside a
+	// method carries away, or -1 for a `static function` and for one written
+	// outside a class.
+	thisSlot int
 }
 
 // catchClause is one compiled `catch (Type $var) { ... }`. declaredType is kept
@@ -84,6 +109,9 @@ type Program struct {
 	// catchGroups holds the clause list of every compiled try, in source
 	// order; opTryPush carries the index of its own group.
 	catchGroups [][]catchClause
+	// closures holds one entry per anonymous function in the program, in source
+	// order; opClosure carries the index of its own definition.
+	closures []closureDef
 }
 
 // Entry is one key/value pair produced for foreach.

@@ -779,8 +779,16 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.program.code[endJump].target = len(c.program.code)
 	case *model.Call:
-		if node.Name == "compact" {
+		switch node.Name {
+		case "compact":
 			return unsupported(path, "compact() requires scope reflection")
+		case "defer":
+			// defer() registers its callback on the frame that called it, and
+			// the frame runs it on the way out. The bytecode engine hands a
+			// binding a throwaway scope per call, so the registration would be
+			// dropped rather than run late. It only became reachable once
+			// closures compiled, since the callback is nearly always one.
+			return unsupported(path, "defer() registers on the calling frame")
 		}
 		for i, argument := range node.Args {
 			// An output parameter is handed to the binding as a setter for the
@@ -831,9 +839,76 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		return c.assignment(node.Target, node.Op, node.Value, true, path)
 	case *model.Include:
 		return c.include(node, path)
+	case *model.Closure:
+		return c.closure(node, path)
 	default:
 		return unsupported(path, "expression %T", expr)
 	}
+	return nil
+}
+
+// closure compiles an anonymous function. The body is laid out inline and
+// jumped over, the way funcDecl lays out a named function, and the opClosure
+// left behind builds the callable value when control reaches it.
+//
+// The value is a func(...any) (any, error), the one shape Runtime.Callable
+// reduces every PHP callable to, so usort() and array_map() invoke a compiled
+// closure without knowing which backend produced it.
+func (c *compiler) closure(node *model.Closure, path string) error {
+	def := closureDef{thisSlot: -1}
+	for i, param := range node.Params {
+		paramPath := fmt.Sprintf("%s.param[%d]", path, i)
+		switch {
+		case param.Default != nil:
+			// A default is an expression evaluated at call time in the scope of
+			// the declaration, and no instruction runs on the path where the
+			// argument is missing.
+			return unsupported(paramPath, "closure parameter default")
+		case param.ByRef:
+			return unsupported(paramPath, "by-reference closure parameter")
+		case param.Variadic:
+			return unsupported(paramPath, "variadic closure parameter")
+		}
+		def.paramSlots = append(def.paramSlots, c.slot(param.Name))
+	}
+	for _, use := range node.Uses {
+		if use.ByRef {
+			// `use (&$x)` binds the enclosing variable itself, and a compiled
+			// closure frame holds copies. Rejecting it sends the program to the
+			// interpreter rather than silently compiling it as by-value.
+			return unsupported(path, "by-reference capture use (&$%s)", use.Name)
+		}
+		def.captures = append(def.captures, c.slot(use.Name))
+	}
+	// A closure written in a method carries `$this` away with it, and a
+	// `static function` is declared not to. The interpreter drops the class
+	// with the receiver, so `self::` in a static closure resolves the same way
+	// on both backends.
+	if !node.Static && c.class != "" {
+		def.thisSlot = c.slot("this")
+	}
+
+	jumpAround := c.emit(instruction{op: opJump, target: -1})
+	def.entryPC = len(c.program.code)
+
+	// The body is its own control-flow scope: a loop around the closure is not
+	// one its `break` can leave, and a `return` in it returns from the closure.
+	enclosingLoops, enclosingClass := c.loops, c.class
+	c.loops = nil
+	if node.Static {
+		c.class = ""
+	}
+	err := c.block(node.Body, path+".body")
+	c.loops, c.class = enclosingLoops, enclosingClass
+	if err != nil {
+		return err
+	}
+	c.emit(instruction{op: opPushConst, a: c.constant(nil)})
+	c.emit(instruction{op: opReturn})
+	c.program.code[jumpAround].target = len(c.program.code)
+
+	c.program.closures = append(c.program.closures, def)
+	c.emit(instruction{op: opClosure, a: len(c.program.closures) - 1})
 	return nil
 }
 
