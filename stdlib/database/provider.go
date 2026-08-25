@@ -143,49 +143,71 @@ func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*sqlx.DB, e
 }
 
 // cached will return a singleton *sqlx.DB from a named connection.
+//
+// The credential decides which name the pool belongs to, and the cache is read
+// and written under that one rather than under the first name the caller asked
+// for. Callers name fallbacks: Database\Migrate asks for "app:migrate" before
+// "app", and both mean the credential "app" until a deployment registers the
+// first. Keying on the name asked for instead would give that caller a pool of
+// its own and every caller naming "app" another, and two pools on a DSN that
+// names no shared file are two databases, so the schema one applied would not
+// be in the one the next script queries.
+//
+// Reading the cache before the credential has the mirror image of that problem:
+// "app:migrate" registered after "app" was opened would answer with the pool of
+// "app" and run the migrations under the credential it was registered to avoid.
 func (r *DatabaseProvider) cached(connector func(string, string) (*sqlx.DB, error), names ...string) (*sqlx.DB, error) {
-	if len(names) == 0 {
-		names = []string{"default"}
+	name, value, ok := r.resolve(names)
+	if !ok {
+		return nil, fmt.Errorf("no configuration found for database: %v", names)
 	}
 
-	for _, name := range names {
-		r.mu.Lock()
-		db, ok := r.cache[name]
-		r.mu.Unlock()
-		if ok {
-			return db, nil
-		}
+	r.mu.Lock()
+	db, cached := r.cache[name]
+	r.mu.Unlock()
+	if cached {
+		return db, nil
 	}
 
-	db, err := r.with(connector, names...)
-	if err == nil {
-		r.mu.Lock()
-		r.cache[names[0]] = db
-		r.mu.Unlock()
+	db, err := r.with(connector, value)
+	if err != nil {
+		return nil, err
 	}
-	return db, err
+
+	r.mu.Lock()
+	r.cache[name] = db
+	r.mu.Unlock()
+	return db, nil
 }
 
-// with will create a *sqlx.DB given the connector (sqlx.Connect/Open).
-func (r *DatabaseProvider) with(connector func(string, string) (*sqlx.DB, error), names ...string) (*sqlx.DB, error) {
+// resolve returns the first of names that has a credential, with the credential
+// itself. No name is the default connection, which is what a caller that named
+// none has always meant.
+func (r *DatabaseProvider) resolve(names []string) (string, string, bool) {
 	if len(names) == 0 {
 		names = []string{"default"}
 	}
 
 	for _, name := range names {
 		if value, ok := r.credential(name); ok {
-			driver, dsn := r.parseCredential(value)
-			client, err := connector(driver, dsn)
-			if err != nil {
-				return nil, err
-			}
-
-			opt := databaseOption(driver, dsn)
-			opt.Apply(client)
-			return client, nil
+			return name, value, true
 		}
 	}
-	return nil, fmt.Errorf("no configuration found for database: %v", names)
+	return "", "", false
+}
+
+// with will create a *sqlx.DB from one credential, given the connector
+// (sqlx.Connect/Open).
+func (r *DatabaseProvider) with(connector func(string, string) (*sqlx.DB, error), value string) (*sqlx.DB, error) {
+	driver, dsn := r.parseCredential(value)
+	client, err := connector(driver, dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	opt := databaseOption(driver, dsn)
+	opt.Apply(client)
+	return client, nil
 }
 
 func (r *DatabaseProvider) parseCredential(credential string) (driver string, dsn string) {

@@ -107,6 +107,41 @@ func TestNewReadsPlatformDBEnvironment(t *testing.T) {
 	}
 }
 
+// TestDatabaseProviderCachesUnderResolvedName covers the pool a caller naming
+// fallbacks gets. Database\Migrate asks for "shop:migrate" before "shop", so
+// the credential that answers is not the name it asked under; caching under
+// the name asked for would hand it a second pool, which on a private DSN such
+// as an in-memory sqlite is a second database, and the schema it applied would
+// not be in the one the script queries.
+func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
+	provider := NewDatabaseProvider(sqlx.Open)
+	provider.Register("shop", "sqlite://:memory:")
+
+	migrations, err := provider.Open(t.Context(), "shop:migrate", "shop")
+	if err != nil {
+		t.Fatalf("Open(shop:migrate, shop): %v", err)
+	}
+
+	queries, err := provider.Open(t.Context(), "shop")
+	if err != nil {
+		t.Fatalf("Open(shop): %v", err)
+	}
+	if queries != migrations {
+		t.Errorf("Open(shop) returned %p, want the pool %p opened for the fallback", queries, migrations)
+	}
+
+	// A registered "shop:migrate" is the credential migrations run under,
+	// and it is a connection of its own rather than the one queries use.
+	provider.Register("shop:migrate", "sqlite://:memory:")
+	privileged, err := provider.Open(t.Context(), "shop:migrate", "shop")
+	if err != nil {
+		t.Fatalf("Open(shop:migrate, shop): %v", err)
+	}
+	if privileged == queries {
+		t.Error("Open(shop:migrate, shop) returned the pool of shop, want the one registered for shop:migrate")
+	}
+}
+
 // TestNewIsolatesProviders is the property virtual hosting rests on: a
 // provider only resolves the connections it was built with, and two
 // providers do not share the databases they open.
