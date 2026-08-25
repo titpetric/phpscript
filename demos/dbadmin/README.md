@@ -62,7 +62,7 @@ dbadmin/
 ```
 
 Each module is a controller and a sidecar that holds its storage. A DAO opens
-its own `new Database("dbadmin")` — the provider hands them all the same pool —
+its own `new Database("dbadmin")` (the provider hands them all the same pool)
 and composes the DAOs it needs, so `$this->audit->log(...)` is how a change is
 recorded. `audit_dao` and `driver_dao` are the leaves and compose nothing.
 

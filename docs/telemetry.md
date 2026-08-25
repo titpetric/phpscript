@@ -115,17 +115,17 @@ Span names are stable and low cardinality, because a name is an identity: the
 specifics go in attributes, which is what the detail view expands under each
 row.
 
-| Span                                      | Kind                              | Attributes                                                                           |
-|-------------------------------------------|-----------------------------------|--------------------------------------------------------------------------------------|
-| `GET /path` (the request)                 | `http`                            | `filename`, `included_files`                                                         |
-| `include file.php`                        | `internal`, `template` for `.tpl` | none                                                                                 |
-| `new Class`, `$var.method`                | `internal`                        | none                                                                                 |
-| `php error`                               | `internal`                        | the message is the recorded error                                                    |
-| `$db.Get`, `$db.Query`, ...               | `database`                        | `query`, `query_type`, `query_comment`, `args`, `transaction_depth`, `rows` on reads |
-| `$db.Begin` → `$db.Commit`/`$db.Rollback` | `database`                        | one span covering the transaction                                                    |
-| `migrate`                                 | `database`                        | `migrations`                                                                         |
-| `session load`/`save`/`delete`/`prune`    | `cache`                           | `hit`, `bytes`                                                                       |
-| `mail`                                    | `external`                        | `to`, `subject`, `bytes`, `host`                                                     |
+| Span                                       | Kind                              | Attributes                                                                           |
+|--------------------------------------------|-----------------------------------|--------------------------------------------------------------------------------------|
+| `GET /path` (the request)                  | `http`                            | `filename`, `included_files`                                                         |
+| `include file.php`                         | `internal`, `template` for `.tpl` | none                                                                                 |
+| `new Class`, `$var.method`                 | `internal`                        | none                                                                                 |
+| `php error`                                | `internal`                        | the message is the recorded error                                                    |
+| `$db.Get`, `$db.Query`, ...                | `database`                        | `query`, `query_type`, `query_comment`, `args`, `transaction_depth`, `rows` on reads |
+| `$db.Begin` to `$db.Commit`/`$db.Rollback` | `database`                        | one span covering the transaction                                                    |
+| `migrate`                                  | `database`                        | `migrations`                                                                         |
+| `session load`/`save`/`delete`/`prune`     | `cache`                           | `hit`, `bytes`                                                                       |
+| `mail`                                     | `external`                        | `to`, `subject`, `bytes`, `host`                                                     |
 
 `query_type` is the keyword the statement starts with, lowercased, and
 `query_comment` is the text of a `/* */` comment in front of it: a query written

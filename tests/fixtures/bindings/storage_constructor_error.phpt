@@ -4,7 +4,7 @@ runner:
 description: >
   A constructor returning an error surfaces as a thrown error: `new FailStorage`
   fails. Uncaught, execution aborts and the host renders an "Internal Server
-  Error" — the following echo never runs.
+  Error". The following echo never runs.
 error: boom
 ---
 <?php

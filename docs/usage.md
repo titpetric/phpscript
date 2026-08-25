@@ -213,7 +213,7 @@ phpscript list index.php    # A specific PHP file
 
 The Route column names the entry point a file provides: a `METHOD /path`
 annotation, `@startup` for a file the server runs before it listens, or
-`@schedule …` for a clock or interval job. Files that are only included by
+`@schedule ...` for a clock or interval job. Files that are only included by
 others have neither.
 
 ### `phpscript ast <file.php>`

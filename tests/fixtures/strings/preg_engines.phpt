@@ -1,7 +1,7 @@
 name: preg backreferences and lookaround
 description: >
-  Patterns RE2 cannot express — a backreference, a lookahead, a lookbehind, an
-  atomic group — are compiled by the backtracking engine, and produce the same
+  Patterns RE2 cannot express (a backreference, a lookahead, a lookbehind, an
+  atomic group) are compiled by the backtracking engine, and produce the same
   $matches shape as the ones RE2 handles. The backreference case is the one a
   template compiler needs: a tag paired with its own closing tag.
 ---

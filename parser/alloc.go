@@ -21,7 +21,7 @@ import "github.com/titpetric/phpscript/model"
 //     whose count is only known once parsed (call arguments, statement
 //     bodies, parameters, array items). Pushing onto the shared stack and
 //     copying out once yields one exactly-sized allocation per list instead
-//     of the 1→2→4→8 growth of appending to a nil slice. It is re-entrant:
+//     of the 1->2->4->8 growth of appending to a nil slice. It is re-entrant:
 //     nested lists push and pop above the outer mark, so the outer elements
 //     stay contiguous.
 

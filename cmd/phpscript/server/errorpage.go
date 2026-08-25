@@ -25,8 +25,8 @@ import (
 // a hand written 404.html starts serving the new one by writing it.
 //
 // The names are not nested. A directory of its own for /api could only add a
-// page, never remove one, so it cannot say "no page here" — the thing an API
-// actually wants. That is decided per request instead; see serveErrorPage.
+// page, never remove one, so it cannot say "no page here", which is the thing
+// an API actually wants. That is decided per request instead; see serveErrorPage.
 func errorPageNames(status int) [4]string {
 	code := strconv.Itoa(status)
 	return [4]string{code + ".php", code + ".html", "error.php", "error.html"}

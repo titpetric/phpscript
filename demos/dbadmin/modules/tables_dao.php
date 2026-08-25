@@ -5,7 +5,7 @@
  *
  * It is the one DAO that never opens dbadmin's own storage: every method takes
  * the client to work on, so the same code answers for a connection whichever
- * driver is behind it. That is also why it has no state — a request may hold
+ * driver is behind it. That is also why it has no state: a request may hold
  * two connections open, and a DAO that remembered one of them would answer for
  * the wrong database.
  *
