@@ -2,9 +2,9 @@ name: a caught throwable answers the Throwable methods
 description: >
   throw propagates the object a script threw rather than a rendering of it, so
   a catch clause binds the instance and getMessage() and getCode() report what
-  was constructed. Every throwable class name is one type here, so the class
-  named by the catch does not narrow what it catches. The expected output is
-  what php 8.4 prints for this source.
+  was constructed. A clause naming Exception takes any class not named *Error,
+  so the second clause takes the RuntimeException. The expected output is what
+  php 8.5 prints for this source.
 ---
 <?php
 

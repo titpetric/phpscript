@@ -4,7 +4,8 @@ description: >
   clauses are parsed and recorded on the AST so the file lints and reformats,
   and neither confers anything: the class is exercised only through the
   constant and the methods it declares itself, because phpscript inherits no
-  members from a parent and checks no interface.
+  members from a parent. `\Countable` is a name no `interface` declaration
+  defines, so it is not a contract this program is held to.
 ---
 <?php
 

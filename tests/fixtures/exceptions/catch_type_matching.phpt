@@ -5,10 +5,8 @@ description: >
   (LogicException) and reaches the clause after it, a union type matches on
   either alternative, and Throwable matches anything. When no clause matches,
   the throw keeps propagating to the enclosing try and the finally block still
-  runs on the way out. RuntimeException is the one SPL class carried as its own
-  type here, so it is what these clauses filter on; the other SPL names all
-  construct the same value and cannot be told apart. The expected output is what
-  php 8.5 prints for this source.
+  runs on the way out. The expected output is what php 8.5 prints for this
+  source.
 ---
 <?php
 
