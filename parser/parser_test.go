@@ -332,6 +332,68 @@ func TestParseClassHeritageRejected(t *testing.T) {
 	}
 }
 
+// An interface body holds method signatures with no body, class constants and
+// the `static` spelling of a signature. The names it carries are resolved the
+// way class names are, so a namespace and a `use` alias both apply.
+func TestParseInterface(t *testing.T) {
+	src := "<?php\nnamespace App;\n\nuse Vendor\\Reader;\n\n" +
+		"interface Bucket extends Reader, \\Countable, Local {\n" +
+		"\tconst MODE = \"read\";\n\n" +
+		"\tpublic function get(string $key, $fallback = null): ?string;\n" +
+		"\tstatic function open(string $dsn): self;\n" +
+		"}\n"
+	prog := mustParse(t, src)
+	id, ok := prog.Stmts[len(prog.Stmts)-1].(*model.InterfaceDecl)
+	if !ok {
+		t.Fatalf("got %T, want *model.InterfaceDecl", prog.Stmts[len(prog.Stmts)-1])
+	}
+	if id.Name != `App\Bucket` {
+		t.Errorf("name = %q, want App\\Bucket", id.Name)
+	}
+	wantExtends := []string{"Vendor\\Reader", "Countable", `App\Local`}
+	if len(id.Extends) != len(wantExtends) {
+		t.Fatalf("extends = %v, want %v", id.Extends, wantExtends)
+	}
+	for i, name := range wantExtends {
+		if id.Extends[i] != name {
+			t.Errorf("extends[%d] = %q, want %q", i, id.Extends[i], name)
+		}
+	}
+	if len(id.Consts) != 1 || id.Consts[0].Name != "MODE" {
+		t.Fatalf("consts = %v, want one named MODE", id.Consts)
+	}
+	if len(id.Methods) != 2 {
+		t.Fatalf("methods = %d, want 2", len(id.Methods))
+	}
+	get := id.Methods[0]
+	if get.Name != "get" || get.Visibility != "public" || get.ReturnType != "?string" || len(get.Params) != 2 {
+		t.Errorf("get = %#v, want the declared signature", get)
+	}
+	if get.Body != nil {
+		t.Error("an interface method has no body")
+	}
+	open := id.Methods[1]
+	if open.Name != "open" || !open.Static || open.ReturnType != "self" {
+		t.Errorf("open = %#v, want a static signature returning self", open)
+	}
+}
+
+// PHP rejects a body, a property and `abstract` in an interface; so does the
+// parser, because printing back what it read is only possible for what it can
+// hold.
+func TestParseInterfaceRejected(t *testing.T) {
+	cases := map[string]string{
+		"interface A extends {}":        "expected interface name after extends",
+		"interface A { abstract f(); }": "unexpected token in interface body",
+		"interface A { $x; }":           "unexpected token in interface body",
+	}
+	for src, want := range cases {
+		if _, err := Parse("<?php " + src); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: err = %v, want one containing %q", src, err, want)
+		}
+	}
+}
+
 // The restriction on a namespaced file is deliberate, so the message has to
 // carry the reason and the way out, and point at the offending statement
 // rather than at whatever follows it.
