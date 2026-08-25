@@ -223,7 +223,8 @@ func (p *printer) stmtEnd(s model.Stmt) int {
 // blankBetween reports the blank lines the printer adds of its own accord.
 // The ones the author wrote are kept by stmt, which compares source lines.
 func (p *printer) blankBetween(prev, next model.Stmt) bool {
-	if _, class := prev.(*model.ClassDecl); class {
+	switch prev.(type) {
+	case *model.ClassDecl, *model.InterfaceDecl:
 		return false
 	}
 	if isBlockStmt(prev) {
@@ -300,6 +301,8 @@ func (p *printer) printStmt(s model.Stmt) {
 		p.printFunc(n, false)
 	case *model.ClassDecl:
 		p.printClass(n)
+	case *model.InterfaceDecl:
+		p.printInterface(n)
 	case *model.Throw:
 		p.line("throw " + p.expr(n.X) + ";")
 	case *model.Try:
@@ -502,9 +505,13 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 // Class members are grouped: constants, then properties, then methods. The
 // order is what a reader of an unfamiliar class needs first, and it is the
 // order PHP style guides settle on.
+// groupSignature is the interface counterpart of groupMethod: a body-less
+// declaration is one line, so consecutive ones are kept together the way
+// properties are, rather than separated by a blank line each.
 const (
 	groupConst = iota
 	groupProp
+	groupSignature
 	groupMethod
 )
 
@@ -576,6 +583,16 @@ func (p *printer) printClass(n *model.ClassDecl) {
 		}
 		return members[i].span.Start < members[j].span.Start
 	})
+	p.printMembers(members, p.stmtEnd(n))
+	p.depth--
+	p.line("}")
+}
+
+// printMembers writes the members of a class or an interface body, separating
+// the groups with a blank line and keeping the ones the author left between
+// members of the same group. end is the line the body closes on, which is where
+// the comments written after the last member belong.
+func (p *printer) printMembers(members []classMember, end int) {
 	prev := classMember{group: -1}
 	p.lastLine = 0
 	for _, m := range members {
@@ -599,9 +616,71 @@ func (p *printer) printClass(n *model.ClassDecl) {
 		p.lastLine = m.span.End
 		prev = m
 	}
-	p.flushComments(p.stmtEnd(n))
+	p.flushComments(end)
+}
+
+// printInterface renders an `interface Name extends A, B { ... }` declaration:
+// its constants, then its method signatures, each closed with a semicolon
+// because an interface method has no body. PHP rejects `abstract` on one, so
+// the keyword is never printed here even though the shared FuncDecl can carry
+// it for an abstract class method.
+func (p *printer) printInterface(n *model.InterfaceDecl) {
+	head := "interface " + shortName(n.Name)
+	for i, name := range n.Extends {
+		if i == 0 {
+			head += " extends "
+		} else {
+			head += ", "
+		}
+		head += p.typeName(name)
+	}
+	p.line(head + " {")
+	p.depth++
+	members := make([]classMember, 0, len(n.Consts)+len(n.Methods))
+	for _, c := range n.Consts {
+		members = append(members, classMember{group: groupConst, span: c.Span, print: func() {
+			vis := ""
+			if c.Visibility != "" {
+				vis = c.Visibility + " "
+			}
+			p.line(vis + "const " + c.Name + " = " + p.expr(c.Default) + ";")
+		}})
+	}
+	for _, m := range n.Methods {
+		members = append(members, classMember{group: groupSignature, span: p.spans[m], print: func() {
+			p.line(p.signature(m))
+		}})
+	}
+	sort.SliceStable(members, func(i, j int) bool {
+		if members[i].group != members[j].group {
+			return members[i].group < members[j].group
+		}
+		return members[i].span.Start < members[j].span.Start
+	})
+	p.printMembers(members, p.stmtEnd(n))
 	p.depth--
 	p.line("}")
+}
+
+// signature renders a method declaration with no body, which is what an
+// interface member is.
+func (p *printer) signature(n *model.FuncDecl) string {
+	var b strings.Builder
+	if n.Visibility != "" {
+		b.WriteString(n.Visibility)
+		b.WriteByte(' ')
+	}
+	if n.Static {
+		b.WriteString("static ")
+	}
+	b.WriteString("function ")
+	b.WriteString(shortName(n.Name))
+	b.WriteString("(")
+	b.WriteString(p.params(n.Params))
+	b.WriteString(")")
+	b.WriteString(returnType(n.ReturnType))
+	b.WriteString(";")
+	return b.String()
 }
 
 // staticField renders a `static $name` property declaration. The modifier
@@ -756,6 +835,12 @@ func (p *printer) expr(e model.Expr) string {
 			return n.Raw
 		}
 		return p.lit(n.Value)
+	case *model.Interp:
+		// An interpolated literal prints from its source for the same reason a
+		// plain one does, and with more at stake: rebuilding it from the parts
+		// would pick one spelling for `"$a"`, `"${a}"` and `"{$a}"`, and would
+		// turn the text runs back into escapes of its own choosing.
+		return n.Raw
 	case *model.Var:
 		if n.Const {
 			return n.Name
@@ -1004,7 +1089,7 @@ func phpQuote(s string) string {
 
 func isDecl(s model.Stmt) bool {
 	switch s.(type) {
-	case *model.ClassDecl, *model.FuncDecl:
+	case *model.ClassDecl, *model.InterfaceDecl, *model.FuncDecl:
 		return true
 	}
 	return false

@@ -1,0 +1,51 @@
+<?php
+namespace App\Storage;
+
+use App\Contracts\Serializable as Wire;
+
+interface Reader {
+	const MODE = "read";
+	function get(string $key, $fallback = null): ?string;
+	function has(string $key): bool;
+}
+
+interface Writer {
+	function put(string $key, string ...$values): void;
+	static function open(string $dsn, array $options = array()): self;
+}
+
+interface Bucket extends Reader, \Countable, Writer {
+	function drop(&$key);
+}
+
+class Store implements Bucket, Wire {
+	private $rows = array();
+
+	function get(string $key, $fallback = null): ?string {
+		return $this->has($key) ? $this->rows[$key] : $fallback;
+	}
+
+	function has(string $key): bool {
+		return isset($this->rows[$key]);
+	}
+
+	function put(string $key, string ...$values): void {
+		$this->rows[$key] = implode(",", $values);
+	}
+
+	static function open(string $dsn, array $options = array()): self {
+		return new Store;
+	}
+
+	function drop(&$key) {
+		unset($this->rows[$key]);
+	}
+
+	function count(): int {
+		return count($this->rows);
+	}
+
+	function serialize(): string {
+		return implode(";", $this->rows);
+	}
+}

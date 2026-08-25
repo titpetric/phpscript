@@ -147,3 +147,34 @@ $value["k"] = $sum;
 		t.Fatalf("got %d diagnostics for unchained assignments: %+v", len(diags), diags)
 	}
 }
+
+// A violated interface contract is a lint finding on the line the class was
+// declared on, so a file is told what it is missing before it is run.
+func TestFileReportsInterfaceContract(t *testing.T) {
+	src := "<?php\ninterface Reader {\n\tfunction get($key);\n\tfunction has($key);\n}\n\nclass Store implements Reader {\n\tfunction get($key) {\n\t\treturn $key;\n\t}\n}\n"
+	diags, err := lint.File("store.php", src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(diags) != 1 {
+		t.Fatalf("diagnostics = %v, want one", diags)
+	}
+	want := "store.php:7: class Store does not declare method has() required by interface Reader"
+	if got := diags[0].String(); got != want {
+		t.Errorf("diagnostic = %q, want %q", got, want)
+	}
+}
+
+// A class satisfying its contract, and one naming an interface no declaration
+// defines, both lint clean: the second is a built-in name such as Countable,
+// which phpscript does not declare.
+func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
+	src := "<?php\ninterface Reader {\n\tfunction get($key);\n}\n\nclass Store implements Reader, Countable {\n\tfunction get($key) {\n\t\treturn $key;\n\t}\n}\n"
+	diags, err := lint.File("store.php", src)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("diagnostics = %v, want none", diags)
+	}
+}

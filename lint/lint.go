@@ -37,8 +37,23 @@ func File(name, src string) ([]Diagnostic, error) {
 		return []Diagnostic{{File: name, Line: 1, Message: fmt.Sprintf("parse error: %v", err)}}, nil
 	}
 	var out []Diagnostic
+	lintInterfaces(name, prog, &out)
 	lintStmts(name, prog.Stmts, &out)
 	return out, nil
+}
+
+// lintInterfaces reports a class that declares `implements` and does not
+// declare a method the interface names. The runtime raises a RuntimeException
+// for the same condition, so the finding is the warning that arrives before the
+// program is run.
+func lintInterfaces(file string, prog *model.Program, out *[]Diagnostic) {
+	for _, v := range model.CheckInterfaces(prog.Stmts) {
+		*out = append(*out, Diagnostic{
+			File:    file,
+			Line:    prog.SourceSpans[v.Decl].Start,
+			Message: v.String(),
+		})
+	}
 }
 
 // FlatstackFile checks whether a single PHP source file is compatible with flatstack engine.
@@ -215,6 +230,8 @@ func collectAssignExprs(e model.Expr, out *[]*model.AssignExpr) {
 	case *model.Binary:
 		collectAssignExprs(n.Left, out)
 		collectAssignExprs(n.Right, out)
+	case *model.Interp:
+		collectAssignExprList(n.Parts, out)
 	case *model.Ternary:
 		collectAssignExprs(n.Cond, out)
 		collectAssignExprs(n.Then, out)
