@@ -1,7 +1,10 @@
 package core
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"sort"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -17,7 +20,7 @@ func init() {
 func registerJSON(rt *runner.Runtime) {
 	// json_encode returns the JSON encoding of $value; there is no $flags parameter and an encoding failure raises an error instead of returning false.
 	rt.RegisterFunc("json_encode", phpJSONEncode)
-	// json_decode parses the JSON in $text; objects always decode to arrays (as if $associative were true) and invalid input raises an error instead of returning null.
+	// json_decode parses the JSON in $text; $associative must be true or omitted because there is no stdClass to decode an object into, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
 	rt.RegisterFunc("json_decode", phpJSONDecode)
 }
 
@@ -29,7 +32,13 @@ func phpJSONEncode(value any) (any, error) {
 	return string(b), nil
 }
 
-func phpJSONDecode(text string) (any, error) {
+func phpJSONDecode(text string, opts ...any) (any, error) {
+	// $associative selects the shape objects decode into. There is no stdClass
+	// here, so false is refused rather than answered with the array shape it
+	// did not ask for; $depth and $flags are accepted and ignored.
+	if len(opts) > 0 && opts[0] != nil && !phpval.Truthy(opts[0]) {
+		return nil, errors.New("json_decode(): $associative must be true; there is no stdClass to decode an object into")
+	}
 	var v any
 	dec := json.NewDecoder(strings.NewReader(text))
 	dec.UseNumber()
@@ -59,9 +68,9 @@ func jsonEncodeValue(v any) any {
 			})
 			return out
 		}
-		out := make(map[string]any, x.Len())
+		out := newJSONObject(x.Len())
 		x.Range(func(k, v any) bool {
-			out[phpval.String(k)] = jsonEncodeValue(v)
+			out.add(phpval.String(k), jsonEncodeValue(v))
 			return true
 		})
 		return out
@@ -69,9 +78,29 @@ func jsonEncodeValue(v any) any {
 		if x == nil {
 			return nil
 		}
-		out := make(map[string]any, len(x.Props))
-		for k, v := range x.Props {
-			out[k] = jsonEncodeValue(v)
+		out := newJSONObject(len(x.Props))
+		// Declared fields first, in declaration order, then anything the script
+		// added afterwards. Props is a Go map and has no order of its own.
+		seen := make(map[string]bool, len(x.Props))
+		if x.Class != nil {
+			for _, field := range x.Class.Fields {
+				if v, ok := x.Props[field.Name]; ok {
+					out.add(field.Name, jsonEncodeValue(v))
+					seen[field.Name] = true
+				}
+			}
+		}
+		if len(seen) < len(x.Props) {
+			rest := make([]string, 0, len(x.Props)-len(seen))
+			for k := range x.Props {
+				if !seen[k] {
+					rest = append(rest, k)
+				}
+			}
+			sort.Strings(rest)
+			for _, k := range rest {
+				out.add(k, jsonEncodeValue(x.Props[k]))
+			}
 		}
 		return out
 	case []any:
@@ -89,6 +118,53 @@ func jsonEncodeValue(v any) any {
 	default:
 		return v
 	}
+}
+
+// jsonObject is a JSON object that keeps the order its entries were added in.
+//
+// encoding/json sorts the keys of a Go map and PHP does not: json_encode writes
+// an array in the order it was built, so a row encoded for a client reads back
+// in the order the script assembled it. A map cannot carry that order, which is
+// why this type exists rather than a map[string]any.
+type jsonObject struct {
+	keys   []string
+	values []any
+}
+
+func newJSONObject(size int) *jsonObject {
+	return &jsonObject{
+		keys:   make([]string, 0, size),
+		values: make([]any, 0, size),
+	}
+}
+
+func (o *jsonObject) add(key string, value any) {
+	o.keys = append(o.keys, key)
+	o.values = append(o.values, value)
+}
+
+// MarshalJSON writes the entries in insertion order.
+func (o *jsonObject) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+	for i, key := range o.keys {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		encoded, err := json.Marshal(key)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(encoded)
+		buf.WriteByte(':')
+		encoded, err = json.Marshal(o.values[i])
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(encoded)
+	}
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }
 
 // arrayIsList reports whether an *model.Array's keys are the dense int64
