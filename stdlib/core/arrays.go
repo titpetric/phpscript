@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"sort"
 
@@ -98,6 +99,417 @@ func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("sort", phpSort)
 	// rsort sorts $array in place descending with PHP's default comparison, discarding the keys and reindexing from zero.
 	rt.RegisterFunc("rsort", phpRsort)
+
+	rt.SetConst("ARRAY_FILTER_USE_KEY", arrayFilterUseKey)
+	rt.SetConst("ARRAY_FILTER_USE_BOTH", arrayFilterUseBoth)
+
+	// array_key_exists reports whether $key is present in $array, which is true even when the value stored there is null.
+	rt.RegisterFunc("array_key_exists", phpArrayKeyExists)
+	// array_filter returns the elements of $array for which $callback is truthy, preserving the keys; without a $callback the values are filtered on their own truthiness, and $mode selects what the callback receives (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value and the key).
+	rt.RegisterFunc("array_filter", func(array any, options ...any) (*model.Array, error) {
+		var fn func(...any) (any, error)
+		if len(options) > 0 && options[0] != nil {
+			f, ok := rt.Callable(options[0])
+			if !ok {
+				return nil, errors.New("array_filter(): argument #2 ($callback) must be a valid callback")
+			}
+			fn = f
+		}
+		var mode int64
+		if len(options) > 1 {
+			mode = phpval.Int(options[1])
+		}
+		return phpArrayFilter(array, fn, mode)
+	})
+	// array_reduce folds $array with $callback, which is called with the carry and the value, starting from $initial and returning null for an empty array.
+	rt.RegisterFunc("array_reduce", func(array any, callback any, initial ...any) (any, error) {
+		fn, ok := rt.Callable(callback)
+		if !ok {
+			return nil, errors.New("array_reduce(): argument #2 ($callback) must be a valid callback")
+		}
+		var carry any
+		if len(initial) > 0 {
+			carry = initial[0]
+		}
+		return phpArrayReduce(array, fn, carry)
+	})
+	// array_column returns the $column_key value of every row of $array, keyed by each row's $index_key when that is given; a null $column_key selects the whole row and rows missing the column are skipped.
+	rt.RegisterFunc("array_column", phpArrayColumn)
+	// array_flip returns $array with its keys and values exchanged; a value that is neither an integer nor a string is skipped, as in PHP, but without the warning.
+	rt.RegisterFunc("array_flip", phpArrayFlip)
+	// array_reverse returns $array in reverse order, renumbering the integer keys from zero unless $preserve_keys is true; string keys are kept either way.
+	rt.RegisterFunc("array_reverse", phpArrayReverse)
+	// array_sum returns the sum of the values of $array as an int when every value is an integer and as a float once one of them is a float or the total overflows.
+	rt.RegisterFunc("array_sum", phpArraySum)
+	// range returns the list of values from $start to $end inclusive, stepping by $step; two single-character strings produce a character range, and any float endpoint or fractional step produces floats.
+	rt.RegisterFunc("range", phpRange)
+}
+
+// The $mode values of array_filter, which are PHP's own constant values: 1
+// passes the value and the key, 2 passes the key alone, 0 (the default) passes
+// the value alone.
+const (
+	arrayFilterUseBoth = int64(1)
+	arrayFilterUseKey  = int64(2)
+)
+
+// arrayHasKey looks up a normalised key in any collection shape. A *model.Array
+// and a map[string]any answer in constant time; anything else is walked,
+// because a native Go map of some other key type still has to be compared key
+// by key.
+func arrayHasKey(array any, key any) (any, bool) {
+	want := phpval.Key(key)
+	switch a := array.(type) {
+	case nil:
+		return nil, false
+	case *model.Array:
+		if a == nil {
+			return nil, false
+		}
+		return a.Get(want)
+	case map[string]any:
+		v, ok := a[phpval.String(key)]
+		return v, ok
+	}
+	var found any
+	ok := false
+	model.RangeValues(array, func(k, v any) bool {
+		if !arrayIdentical(phpval.Key(k), want) {
+			return true
+		}
+		found, ok = v, true
+		return false
+	})
+	return found, ok
+}
+
+// phpArrayKeyExists is isset() without the null check: the key exists even when
+// the value stored under it is null, which is the only reason the two functions
+// are not the same function.
+func phpArrayKeyExists(key, array any) bool {
+	_, ok := arrayHasKey(array, key)
+	return ok
+}
+
+// phpArrayFilter keeps the elements fn accepts. It returns an *model.Array
+// because the result keeps the keys of the input, holes included, which is a
+// shape only *model.Array carries (rule 4 of docs/allocation-performance.md).
+// A nil fn is PHP's omitted callback: the values are judged on truthiness.
+func phpArrayFilter(array any, fn func(...any) (any, error), mode int64) (*model.Array, error) {
+	n, _ := model.LenValues(array)
+	out := model.NewArraySize(n)
+	var filterErr error
+	model.RangeValues(array, func(k, v any) bool {
+		keep := false
+		if fn == nil {
+			keep = phpval.Truthy(v)
+		} else {
+			var (
+				r   any
+				err error
+			)
+			switch mode {
+			case arrayFilterUseKey:
+				r, err = fn(k)
+			case arrayFilterUseBoth:
+				r, err = fn(v, k)
+			default:
+				r, err = fn(v)
+			}
+			if err != nil {
+				filterErr = err
+				return false
+			}
+			keep = phpval.Truthy(r)
+		}
+		if keep {
+			out.Set(phpval.Key(k), v)
+		}
+		return true
+	})
+	if filterErr != nil {
+		return nil, filterErr
+	}
+	return out, nil
+}
+
+// phpArrayReduce folds the values left to right. The keys are not passed to the
+// callback, matching PHP.
+func phpArrayReduce(array any, fn func(...any) (any, error), carry any) (any, error) {
+	var reduceErr error
+	model.RangeValues(array, func(_, v any) bool {
+		next, err := fn(carry, v)
+		if err != nil {
+			reduceErr = err
+			return false
+		}
+		carry = next
+		return true
+	})
+	if reduceErr != nil {
+		return nil, reduceErr
+	}
+	return carry, nil
+}
+
+// phpArrayColumn projects one field out of every row. The real caller is
+// Database::get_all, which hands back a []map[string]any, so the rows are read
+// through model.RangeValues and may be any collection shape.
+//
+// Without $index_key the result is a plain list, so it is a presized []any.
+// With one it is keyed by a value taken from the rows, which can be a hybrid of
+// int and string keys, so it is an *model.Array (rule 4).
+func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
+	n, _ := model.LenValues(array)
+
+	var index any
+	if len(indexKey) > 0 {
+		index = indexKey[0]
+	}
+	if index == nil {
+		out := make([]any, 0, n)
+		model.RangeValues(array, func(_, row any) bool {
+			if v, ok := arrayColumnValue(row, columnKey); ok {
+				out = append(out, v)
+			}
+			return true
+		})
+		return out
+	}
+
+	out := model.NewArraySize(n)
+	model.RangeValues(array, func(_, row any) bool {
+		v, ok := arrayColumnValue(row, columnKey)
+		if !ok {
+			return true
+		}
+		// PHP appends a row whose index column is missing rather than
+		// dropping it.
+		if k, ok := arrayColumnValue(row, index); ok {
+			out.Set(phpval.Key(k), v)
+		} else {
+			out.Append(v)
+		}
+		return true
+	})
+	return out
+}
+
+// arrayColumnValue reads one field of a row. A null column key is PHP's "the
+// whole row", which is what makes array_column($rows, null, "id") a re-keying
+// of the input.
+func arrayColumnValue(row any, key any) (any, bool) {
+	if key == nil {
+		return row, true
+	}
+	return arrayHasKey(row, key)
+}
+
+// phpArrayFlip exchanges keys and values. The new keys go through phpval.Key so
+// that the flip of the value "1" is the key 1, the same key `$a[1] = x` would
+// have written.
+func phpArrayFlip(array any) *model.Array {
+	n, _ := model.LenValues(array)
+	out := model.NewArraySize(n)
+	model.RangeValues(array, func(k, v any) bool {
+		switch key := phpval.Key(v).(type) {
+		case int64:
+			out.Set(key, k)
+		case string:
+			out.Set(key, k)
+		}
+		return true
+	})
+	return out
+}
+
+// phpArrayReverse reverses the order of the elements. PHP drops integer keys
+// and renumbers them from zero unless $preserve_keys is set, but it keeps
+// string keys either way, so an array with any string key has to come back as
+// an *model.Array. An all-integer-keyed array being renumbered is a plain list,
+// which is a presized []any (rule 4).
+func phpArrayReverse(array any, preserveKeys ...any) any {
+	preserve := len(preserveKeys) > 0 && phpval.Truthy(preserveKeys[0])
+
+	n, _ := model.LenValues(array)
+	keys := make([]any, 0, n)
+	vals := make([]any, 0, n)
+	strKeys := false
+	model.RangeValues(array, func(k, v any) bool {
+		key := phpval.Key(k)
+		if _, isInt := key.(int64); !isInt {
+			strKeys = true
+		}
+		keys = append(keys, key)
+		vals = append(vals, v)
+		return true
+	})
+
+	if !preserve && !strKeys {
+		out := make([]any, len(vals))
+		for i, v := range vals {
+			out[len(vals)-1-i] = v
+		}
+		return out
+	}
+
+	out := model.NewArraySize(len(vals))
+	for i := len(vals) - 1; i >= 0; i-- {
+		if _, isInt := keys[i].(int64); isInt && !preserve {
+			out.Append(vals[i])
+			continue
+		}
+		out.Set(keys[i], vals[i])
+	}
+	return out
+}
+
+// phpArraySum adds the values up, preserving PHP's return type: an int64 while
+// every value read as an integer, a float64 from the first float onwards. The
+// promotion also happens on overflow, because PHP's integer arithmetic becomes
+// float arithmetic there rather than wrapping.
+func phpArraySum(array any) any {
+	var (
+		sum     int64
+		total   float64
+		isFloat bool
+	)
+	model.RangeValues(array, func(_, v any) bool {
+		n := phpval.Number(v)
+		if !isFloat {
+			if x, ok := n.(int64); ok {
+				if (x > 0 && sum > math.MaxInt64-x) || (x < 0 && sum < math.MinInt64-x) {
+					isFloat = true
+					total = float64(sum) + float64(x)
+					return true
+				}
+				sum += x
+				return true
+			}
+			isFloat, total = true, float64(sum)
+		}
+		total += phpval.Float(n)
+		return true
+	})
+	if isFloat {
+		return total
+	}
+	return sum
+}
+
+// phpRange builds the inclusive sequence from start to end. The element count
+// is computed up front and every element is derived from the start, the way PHP
+// does it, so a float step never accumulates rounding error across the range.
+//
+// The result is a presized []any: a range is a dense list by construction, so
+// there is no key information for an *model.Array to carry (rule 4).
+func phpRange(start, end any, step ...any) []any {
+	var by any = int64(1)
+	if len(step) > 0 && step[0] != nil {
+		by = step[0]
+	}
+
+	if s, e, ok := rangeChars(start, end); ok {
+		return rangeCharSeq(s, e, by)
+	}
+	if rangeIsFloat(start) || rangeIsFloat(end) || rangeStepIsFloat(by) {
+		return rangeFloats(phpval.Float(start), phpval.Float(end), math.Abs(phpval.Float(by)))
+	}
+	return rangeInts(phpval.Int(start), phpval.Int(end), phpval.Int(by))
+}
+
+// rangeChars reports the character-range case: both endpoints are one-character
+// strings, which is what PHP 8.3 onwards narrowed the rule to.
+func rangeChars(start, end any) (byte, byte, bool) {
+	s, ok := start.(string)
+	if !ok || len(s) != 1 {
+		return 0, 0, false
+	}
+	e, ok := end.(string)
+	if !ok || len(e) != 1 {
+		return 0, 0, false
+	}
+	return s[0], e[0], true
+}
+
+func rangeCharSeq(s, e byte, step any) []any {
+	p := int(phpval.Int(step))
+	if p < 0 {
+		p = -p
+	}
+	if p == 0 {
+		p = 1
+	}
+	from, to := int(s), int(e)
+	span := to - from
+	if span < 0 {
+		span = -span
+	}
+	n := span/p + 1
+	out := make([]any, 0, n)
+	for i := 0; i < n; i++ {
+		if from <= to {
+			out = append(out, string([]byte{byte(from + i*p)}))
+			continue
+		}
+		out = append(out, string([]byte{byte(from - i*p)}))
+	}
+	return out
+}
+
+// rangeIsFloat reports whether an endpoint forces a float range. A float
+// endpoint always does, whole or not: range(0.0, 4.0) is a list of floats.
+func rangeIsFloat(v any) bool {
+	_, ok := phpval.Number(v).(float64)
+	return ok
+}
+
+// rangeStepIsFloat is the same question for $step, where PHP is laxer: a step
+// with no fractional part leaves an integer range integral, so range(0, 4, 2.0)
+// is a list of ints while range(0, 10, 2.5) is a list of floats.
+func rangeStepIsFloat(v any) bool {
+	f, ok := phpval.Number(v).(float64)
+	return ok && f != math.Trunc(f)
+}
+
+func rangeFloats(from, to, step float64) []any {
+	if step == 0 {
+		step = 1
+	}
+	span := math.Abs(to - from)
+	n := int(math.Floor(span/step)) + 1
+	out := make([]any, 0, n)
+	for i := 0; i < n; i++ {
+		if from <= to {
+			out = append(out, from+float64(i)*step)
+			continue
+		}
+		out = append(out, from-float64(i)*step)
+	}
+	return out
+}
+
+func rangeInts(from, to, step int64) []any {
+	if step < 0 {
+		step = -step
+	}
+	if step == 0 {
+		step = 1
+	}
+	span := to - from
+	if span < 0 {
+		span = -span
+	}
+	n := int(span/step) + 1
+	out := make([]any, 0, n)
+	for i := 0; i < n; i++ {
+		if from <= to {
+			out = append(out, from+int64(i)*step)
+			continue
+		}
+		out = append(out, from-int64(i)*step)
+	}
+	return out
 }
 
 // phpArrayMerge implements array_merge. PHP renumbers integer keys and lets

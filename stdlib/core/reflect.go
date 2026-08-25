@@ -22,7 +22,7 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		return classNameOf(object[0])
 	})
-	// get_parent_class always returns false; phpscript does not track a parent class.
+	// get_parent_class always returns false; phpscript has no inheritance, so no class has a parent to report.
 	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
 	// get_object_vars returns the properties of $object as an array, declared fields first; a non-object yields an empty array.
 	rt.RegisterFunc("get_object_vars", func(object any) *model.Array {
@@ -96,6 +96,14 @@ func registerReflection(rt *runner.Runtime) {
 func classNameOf(value any) string {
 	if object, ok := value.(*model.Object); ok && object.Class != nil {
 		return object.Class.Name
+	}
+	// A throwable knows the class it was constructed as, and several of them
+	// share one Go type, so the Go type name would answer "Exception" for an
+	// InvalidArgumentException.
+	if throwable, ok := value.(runner.Throwable); ok {
+		if class := throwable.ThrowableClass(); class != "" {
+			return class
+		}
 	}
 	t := reflect.TypeOf(value)
 	for t != nil && t.Kind() == reflect.Pointer {

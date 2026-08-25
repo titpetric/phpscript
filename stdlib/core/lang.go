@@ -207,10 +207,10 @@ func registerLang(rt *runner.Runtime) {
 	// intdiv returns the integer quotient of $num divided by $divisor; division by zero and PHP_INT_MIN by -1 are errors.
 	rt.RegisterFunc("intdiv", func(num, divisor int64) (int64, error) {
 		if divisor == 0 {
-			return 0, errors.New("Division by zero")
+			return 0, &runner.DivisionByZeroError{Message: "Division by zero"}
 		}
 		if num == math.MinInt64 && divisor == -1 {
-			return 0, errors.New("Division of PHP_INT_MIN by -1 is not an integer")
+			return 0, &runner.ArithmeticError{Message: "Division of PHP_INT_MIN by -1 is not an integer"}
 		}
 		return num / divisor, nil
 	})

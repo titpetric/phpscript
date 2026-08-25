@@ -40,6 +40,16 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("substr_count", phpSubstrCount)
 	// substr_replace returns $string with the bytes from $offset for $length replaced by $replace; a negative $offset counts from the end and a negative $length is a distance from it. Array arguments are not supported.
 	rt.RegisterFunc("substr_replace", phpSubstrReplace)
+	// ucfirst returns $string with its first byte uppercased if it is an ASCII letter; like PHP's non-mb functions it never changes the byte length.
+	rt.RegisterFunc("ucfirst", phpUcfirst)
+	// lcfirst returns $string with its first byte lowercased if it is an ASCII letter; like PHP's non-mb functions it never changes the byte length.
+	rt.RegisterFunc("lcfirst", phpLcfirst)
+	// ucwords returns $string with the first ASCII letter of every word uppercased, words being separated by $separators, which defaults to " \t\r\n\f\v".
+	rt.RegisterFunc("ucwords", phpUcwords)
+	// chr returns the one-byte string for $codepoint, taken modulo 256 with negative values wrapping up into that range, as PHP does.
+	rt.RegisterFunc("chr", phpChr)
+	// ord returns the first byte of $character as an integer, or 0 when $character is empty.
+	rt.RegisterFunc("ord", phpOrd)
 	// str_contains reports whether $needle occurs in $haystack; an empty needle is contained in every string.
 	rt.RegisterFunc("str_contains", phpStrContains)
 	// str_starts_with reports whether $haystack begins with $needle.
@@ -264,6 +274,92 @@ func asciiLower(s string) string {
 		}
 	}
 	return s
+}
+
+// ucwordsDefaultSeparators is PHP's default $separators for ucwords.
+const ucwordsDefaultSeparators = " \t\r\n\f\v"
+
+// phpUcfirst uppercases the leading byte. strings.ToUpper is Unicode-aware and
+// would change the byte length of a multi-byte first character; PHP's ucfirst
+// touches the ASCII range and nothing else, so a non-ASCII leading byte is
+// returned untouched.
+func phpUcfirst(str string) string {
+	if str == "" || str[0] < 'a' || str[0] > 'z' {
+		return str
+	}
+	b := []byte(str)
+	b[0] -= 'a' - 'A'
+	return string(b)
+}
+
+// phpLcfirst is phpUcfirst in the other direction, ASCII-only for the same reason.
+func phpLcfirst(str string) string {
+	if str == "" || str[0] < 'A' || str[0] > 'Z' {
+		return str
+	}
+	b := []byte(str)
+	b[0] += 'a' - 'A'
+	return string(b)
+}
+
+// phpUcwords uppercases the first ASCII letter of every word. A word starts at
+// the beginning of the string and after any byte listed in $separators. The
+// scan is byte-wise for the reason phpUcfirst is: PHP's ucwords does not fold
+// non-ASCII letters and must not change the byte length.
+func phpUcwords(str string, separators ...string) string {
+	seps := ucwordsDefaultSeparators
+	if len(separators) > 0 {
+		seps = separators[0]
+	}
+	var b []byte
+	start := true
+	for i := 0; i < len(str); i++ {
+		c := str[i]
+		if start && c >= 'a' && c <= 'z' {
+			// The copy is made on the first byte that actually changes, so a
+			// string already in the wanted case is returned as it arrived.
+			if b == nil {
+				b = []byte(str)
+			}
+			b[i] = c - ('a' - 'A')
+		}
+		start = strings.IndexByte(seps, c) >= 0
+	}
+	if b == nil {
+		return str
+	}
+	return string(b)
+}
+
+// chrTable holds the 256 one-byte strings chr can return. Building it once
+// means chr allocates nothing per call, where string(byte(n)) would allocate
+// for every byte outside the runtime's small-string cache.
+var chrTable = func() [256]string {
+	var t [256]string
+	for i := range t {
+		t[i] = string([]byte{byte(i)})
+	}
+	return t
+}()
+
+// phpChr returns the byte $codepoint names. PHP reduces the argument modulo
+// 256 and wraps negatives up into 0-255, so chr(256) is chr(0) and chr(-1) is
+// chr(255).
+func phpChr(codepoint int64) string {
+	c := codepoint % 256
+	if c < 0 {
+		c += 256
+	}
+	return chrTable[c]
+}
+
+// phpOrd returns the first byte, not the first rune: PHP's ord is byte-wise, so
+// a multi-byte character reports its leading byte. An empty string is 0.
+func phpOrd(character string) int64 {
+	if character == "" {
+		return 0
+	}
+	return int64(character[0])
 }
 
 // The three PHP 8 substring predicates are one-line wrappers so the published

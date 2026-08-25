@@ -45,29 +45,43 @@ func legacyToString(v any) string {
 	}
 }
 
-// TestInt pins leadingInt against the fmt.Sscanf("%d") behaviour it
-// replaced, including the cases where a scan failed and left zero behind.
+// TestInt pins Int against PHP's own integer cast. Every expectation here was
+// read from `php -r 'var_dump((int)$s);'` rather than from what the previous
+// implementation happened to return.
 func TestInt(t *testing.T) {
-	inputs := []string{
-		"", "0", "42", " 42", "\t42", "42abc", "abc", "-7", "+7",
-		"0x1f", "3.9", "  -12  ", "007", "12 34", "- 5", "1e3",
-		"9223372036854775807", "-9223372036854775807",
-		"99999999999999999999", "-99999999999999999999",
+	tests := []struct {
+		in   string
+		want int64
+	}{
+		{"", 0},
+		{"0", 0},
+		{"42", 42},
+		{" 42", 42},
+		{"\t42", 42},
+		{"\n 42", 42},
+		{"42abc", 42},
+		{"abc", 0},
+		{"-7", -7},
+		{"+7", 7},
+		{"0x1f", 0},
+		{"3.9", 3},
+		{"  -12  ", -12},
+		{"007", 7},
+		{"12 34", 12},
+		{"- 5", 0},
+		// An exponent is part of the numeric prefix, as it is to a PHP cast.
+		{"1e3", 1000},
+		{"1.5e2", 150},
+		{"9223372036854775807", math.MaxInt64},
+		{"-9223372036854775807", -math.MaxInt64},
+		{"-9223372036854775808", math.MinInt64},
+		// PHP saturates at the int64 bounds rather than wrapping or zeroing.
+		{"99999999999999999999", math.MaxInt64},
+		{"-99999999999999999999", math.MinInt64},
 	}
-	for _, in := range inputs {
-		var want int64
-		fmt.Sscanf(in, "%d", &want)
-		if got := Int(in); got != want {
-			t.Errorf("Int(%q) = %d, want %d", in, got, want)
+	for _, tt := range tests {
+		if got := Int(tt.in); got != tt.want {
+			t.Errorf("Int(%q) = %d, want %d", tt.in, got, tt.want)
 		}
-	}
-	if got := Int("-9223372036854775808"); got != 0 && got != math.MinInt64 {
-		t.Errorf("Int(MinInt64) = %d, want 0 or MinInt64", got)
-	}
-	// One deliberate divergence: Sscanf treats a newline as a terminator, so
-	// it read "\n 42" as nothing. PHP's integer cast skips all leading
-	// whitespace, which is what leadingInt does.
-	if got := Int("\n 42"); got != 42 {
-		t.Errorf("Int(%q) = %d, want 42", "\n 42", got)
 	}
 }
