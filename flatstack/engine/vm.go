@@ -228,7 +228,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				continue
 			}
 			if clause.local >= 0 && clause.local < len(locals) {
-				locals[clause.local], initialized[clause.local] = runErr, true
+				locals[clause.local], initialized[clause.local] = host.CatchValue(runErr), true
 			}
 			// A throw out of the clause body is this try's to see through
 			// its finally block, but not to catch: PHP does not re-enter a
@@ -767,10 +767,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			// A thrown throwable is already an error and propagates as
 			// itself, so a catch clause binds the object rather than a
 			// rendering of it. A bare value still renders.
-			throwErr, ok := value.(error)
-			if !ok {
-				throwErr = fmt.Errorf("uncaught exception: %v", value)
-			}
+			throwErr := host.Throw(value)
 			if handle(throwErr) {
 				continue
 			}

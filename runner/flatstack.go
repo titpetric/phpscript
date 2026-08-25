@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -21,6 +22,15 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		var err error
 		program, err = flatvm.Compile(ast)
 		if err != nil {
+			// A compile error normally means the program uses something the
+			// bytecode subset does not cover yet, and the interpreter runs it
+			// instead. A violated interface contract is not that: it is a
+			// verdict on the program, which the interpreter would reach too, so
+			// it is raised here rather than deferred to a second opinion.
+			var contract *model.InterfaceContractError
+			if errors.As(err, &contract) {
+				return true, NewRuntimeException(err.Error(), 0)
+			}
 			return false, nil
 		}
 		rt.exprCache.setFlat(ast, program)
@@ -178,6 +188,21 @@ func (h flatHost) ClassConst(class, name string) (any, error) {
 
 func (h flatHost) Cast(typ string, value any) any { return helperCast(typ, value) }
 
+// Throw turns a thrown value into the error it travels as, the same way the
+// interpreter's throw statement does.
+func (h flatHost) Throw(value any) error {
+	if thrown, ok := value.(error); ok {
+		return thrown
+	}
+	if obj, ok := value.(*model.Object); ok {
+		return newObjectError(obj)
+	}
+	return fmt.Errorf("uncaught exception: %s", phpString(value))
+}
+
+// CatchValue returns what a catch clause binds for err.
+func (h flatHost) CatchValue(err error) any { return catchValue(err) }
+
 func (h flatHost) Binary(op string, left, right any) (any, error) {
 	switch op {
 	case ".":
@@ -186,6 +211,8 @@ func (h flatHost) Binary(op string, left, right any) (any, error) {
 		return phpArith(op, left, right), nil
 	case "&", "|", "^", "<<", ">>":
 		return phpBitwise(op, left, right)
+	case "instanceof":
+		return phpInstanceOf(left, right), nil
 	case "==":
 		return phpLooseEqual(left, right), nil
 	case "!=":
@@ -234,12 +261,7 @@ func (h flatHost) Unary(op string, value any) (any, error) {
 	case "+":
 		return phpArith("+", int64(0), value), nil
 	case "-":
-		// Negate floats directly rather than via `0 - x`, which loses the
-		// sign of zero: PHP echoes -0.0 as -0.
-		if f, ok := value.(float64); ok {
-			return -f, nil
-		}
-		return phpArith("-", int64(0), value), nil
+		return phpNegate(value), nil
 	case "~":
 		return phpBitNot(value), nil
 	default:

@@ -41,7 +41,9 @@ func Compile(ast *model.Program) (program *Program, err error) {
 	}()
 	c := &compiler{locals: make(map[string]int)}
 	if ast != nil {
-		c.collectClasses(ast.Stmts)
+		if err := c.collectClasses(ast.Stmts); err != nil {
+			return nil, err
+		}
 		for _, class := range c.program.classes {
 			for _, method := range class.Methods {
 				if method == nil {
@@ -152,6 +154,9 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 	case *model.ClassDecl:
 		// Top-level classes are hoisted before execution. Nested declarations
 		// are a no-op here, matching the interpreter.
+	case *model.InterfaceDecl:
+		// An interface is a contract checked by collectClasses. It declares no
+		// storage and no body, so it emits no code.
 	case *model.Include:
 		if err := c.include(node, path); err != nil {
 			return err
@@ -215,24 +220,34 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 	return nil
 }
 
-func (c *compiler) collectClasses(stmts []model.Stmt) {
+// collectClasses registers the classes a program declares, after holding every
+// one of them that declares `implements` to its contract. The check is the same
+// AST name comparison the interpreter runs in hoist, so a violated contract
+// fails on both backends rather than only on one; the caller turns the error
+// into the RuntimeException a script catches.
+func (c *compiler) collectClasses(stmts []model.Stmt) error {
+	if err := model.CheckInterfaceContracts(stmts); err != nil {
+		return err
+	}
 	for _, stmt := range stmts {
 		decl, ok := stmt.(*model.ClassDecl)
 		if !ok {
 			continue
 		}
 		class := &model.Class{
-			Name:    decl.Name,
-			Fields:  decl.Fields,
-			Statics: decl.Statics,
-			Consts:  decl.Consts,
-			Methods: make(map[string]*model.FuncDecl, len(decl.Methods)),
+			Name:       decl.Name,
+			Implements: model.InterfaceNames(decl, stmts),
+			Fields:     decl.Fields,
+			Statics:    decl.Statics,
+			Consts:     decl.Consts,
+			Methods:    make(map[string]*model.FuncDecl, len(decl.Methods)),
 		}
 		for _, method := range decl.Methods {
 			class.Methods[method.Name] = method
 		}
 		c.program.classes = append(c.program.classes, class)
 	}
+	return nil
 }
 
 func (c *compiler) classMethod(className string, node *model.FuncDecl, path string) error {
@@ -717,6 +732,8 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 	switch node := expr.(type) {
 	case *model.Lit:
 		c.emit(instruction{op: opPushConst, a: c.constant(node.Value)})
+	case *model.Interp:
+		return c.interp(node, path)
 	case *model.Parenthesized:
 		return c.expr(node.X, path+".expression")
 	case *model.Var:
@@ -933,6 +950,34 @@ func (c *compiler) incDec(node *model.Unary, path string) error {
 	return nil
 }
 
+// interp compiles an interpolated string literal as the concatenation it is.
+// opBinary "." applies PHP's string conversion to both operands, so an embedded
+// value becomes text the same way it does in a concatenation the source wrote
+// out. The empty leading run is what gives a literal holding one expression and
+// no surrounding text a string result.
+func (c *compiler) interp(node *model.Interp, path string) error {
+	if len(node.Parts) == 0 {
+		c.emit(instruction{op: opPushConst, a: c.constant("")})
+		return nil
+	}
+	if _, ok := node.Parts[0].(*model.Lit); !ok {
+		c.emit(instruction{op: opPushConst, a: c.constant("")})
+		if err := c.expr(node.Parts[0], path+".part[0]"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opBinary, name: "."})
+	} else if err := c.expr(node.Parts[0], path+".part[0]"); err != nil {
+		return err
+	}
+	for i, part := range node.Parts[1:] {
+		if err := c.expr(part, fmt.Sprintf("%s.part[%d]", path, i+1)); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opBinary, name: "."})
+	}
+	return nil
+}
+
 func (c *compiler) binary(node *model.Binary, path string) error {
 	switch node.Op {
 	case "&&", "||":
@@ -952,6 +997,18 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		c.program.code[branch].target = len(c.program.code)
 		c.emit(instruction{op: opPushConst, a: c.constant(constant)})
 		c.program.code[end].target = len(c.program.code)
+	case "instanceof":
+		// A bare class name on the right is the class, not a constant to look
+		// up, so it is compiled as the string it is.
+		if err := c.expr(node.Left, path+".left"); err != nil {
+			return err
+		}
+		if name, ok := model.UnwrapParenthesized(node.Right).(*model.Var); ok && name.Const {
+			c.emit(instruction{op: opPushConst, a: c.constant(name.Name)})
+		} else if err := c.expr(node.Right, path+".right"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opBinary, name: node.Op})
 	case ".", "+", "-", "*", "/", "%", "**", "==", "!=", "===", "!==", "<", "<=", ">", ">=",
 		"&", "|", "^", "<<", ">>":
 		if err := c.expr(node.Left, path+".left"); err != nil {

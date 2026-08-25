@@ -162,6 +162,9 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 	case *model.Var:
 		return t.addVar(n.Name), nil
 
+	case *model.Interp:
+		return t.emitInterp(n)
+
 	case *model.Unary:
 		if n.Op == "++" || n.Op == "--" {
 			return "__eval(" + strconv.Quote(t.mark(n)) + ")", nil
@@ -179,6 +182,13 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 			// expr-lang has no bitwise complement, and PHP's operates on bytes
 			// for a string operand, so it is a helper rather than an operator.
 			return "__bitnot(" + x + ")", nil
+		}
+		if op == "-" {
+			// expr-lang's own `-` is a Go int64 negation, which wraps:
+			// -PHP_INT_MIN would come back as PHP_INT_MIN, a positive quantity
+			// with a negative sign. The helper overflows to a float instead,
+			// and keeps the sign of a negative zero.
+			return "__neg(" + x + ")", nil
 		}
 		return op + "(" + x + ")", nil
 
@@ -313,6 +323,35 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 	}
 }
 
+// emitInterp emits an interpolated string literal as the concatenation it is.
+// __concat applies PHP's string conversion to each side, which is what turns the
+// embedded values into text, so a literal with one embedded expression and no
+// surrounding text still yields a string: the empty leading run is kept for
+// exactly that.
+func (t *Transpiler) emitInterp(n *model.Interp) (string, error) {
+	if len(n.Parts) == 0 {
+		return `""`, nil
+	}
+	out, err := t.emit(n.Parts[0])
+	if err != nil {
+		return "", err
+	}
+	if len(n.Parts) == 1 {
+		if _, ok := n.Parts[0].(*model.Lit); ok {
+			return out, nil
+		}
+		return concat("__concat(", `""`, ", ", out, ")"), nil
+	}
+	for _, part := range n.Parts[1:] {
+		s, err := t.emit(part)
+		if err != nil {
+			return "", err
+		}
+		out = concat("__concat(", out, ", ", s, ")")
+	}
+	return out, nil
+}
+
 // emitCall emits a free-function call. Free functions resolve from the env by
 // name (forwarded Go symbols or user-registered/PHP functions); expr-lang
 // builtins are disabled at compile time so PHP names like `count` never collide.
@@ -402,6 +441,14 @@ func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if n.Op == "instanceof" {
+		// A bare name on the right is the class, not a constant to resolve, so
+		// it is passed as the string it is. Anything else is evaluated: PHP
+		// accepts a variable holding a class name or an object there.
+		if v, ok := model.UnwrapParenthesized(n.Right).(*model.Var); ok && v.Const {
+			return concat("__instanceof(", l, ", ", strconv.Quote(v.Name), ")"), nil
+		}
+	}
 	r, err := t.emit(n.Right)
 	if err != nil {
 		return "", err
@@ -410,6 +457,8 @@ func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 	case ".":
 		// PHP string concatenation -> helper (expr `+` is numeric/typed).
 		return concat("__concat(", l, ", ", r, ")"), nil
+	case "instanceof":
+		return concat("__instanceof(", l, ", ", r, ")"), nil
 	case "===":
 		return concat("(", l, ") == (", r, ")"), nil
 	case "!==":

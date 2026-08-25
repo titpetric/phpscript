@@ -201,14 +201,17 @@ func adapt(fn any) func(...any) (any, error) {
 }
 
 // ArgumentCountError reports a call that passed more arguments than the
-// callable declares. PHP raises the same condition as ArgumentCountError; this
-// runtime registers that name alongside every other throwable class, and a
-// returned error is catchable whichever of them a script names.
+// callable declares. PHP raises the same condition under the same name, so it
+// names that class: `catch (ArgumentCountError $e)` and `catch (Error $e)`
+// match it and `catch (Exception $e)` does not, as in PHP.
 type ArgumentCountError struct {
 	Name string
 	Want int
 	Got  int
 }
+
+// ThrowableClass names the PHP class, implementing Throwable.
+func (e *ArgumentCountError) ThrowableClass() string { return "ArgumentCountError" }
 
 func (e *ArgumentCountError) Error() string {
 	name := e.Name
@@ -219,16 +222,18 @@ func (e *ArgumentCountError) Error() string {
 }
 
 // TypeError reports an argument that cannot be converted to the type the
-// callable's parameter declares. PHP raises TypeError for the same call, and
-// the Go type name is what a script sees as the class, so this is named for
-// the PHP class rather than for what it holds: `catch (TypeError $e)` has to
-// match it, and `catch (Exception $e)` has to not.
+// callable's parameter declares. PHP raises TypeError for the same call, so it
+// names that class: `catch (TypeError $e)` and `catch (Error $e)` match it and
+// `catch (Exception $e)` does not, as in PHP.
 type TypeError struct {
 	Name     string
 	Position int
 	Want     string
 	Got      string
 }
+
+// ThrowableClass names the PHP class, implementing Throwable.
+func (e *TypeError) ThrowableClass() string { return "TypeError" }
 
 // Error renders the message PHP's TypeError carries for the same call.
 func (e *TypeError) Error() string {
@@ -615,7 +620,10 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 		if value, ok := throwableMethod(base, method); ok {
 			return value, nil
 		}
-		return nil, fmt.Errorf("undefined method %T::%s", base, method)
+		// The class a script wrote, not the Go type carrying it: an object of a
+		// declared class reports the declared name, which is the name the
+		// author can look for in the source.
+		return nil, fmt.Errorf("call to undefined method %s::%s()", phpClassName(base), method)
 	}
 	mt := m.Type()
 	if wantsContext(mt) {

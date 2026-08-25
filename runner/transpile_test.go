@@ -100,7 +100,7 @@ func TestTranspileSource(t *testing.T) {
 		{
 			name: "negation and grouping",
 			expr: &model.Unary{Op: "!", X: &model.Parenthesized{X: &model.Unary{Op: "-", X: v("a")}}},
-			want: `!__bool((-(v_a)))`,
+			want: `!__bool((__neg(v_a)))`,
 			vars: []string{"a"},
 		},
 		{

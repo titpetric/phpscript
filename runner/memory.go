@@ -36,6 +36,10 @@ func (e *RuntimeException) GetCode() int {
 	return e.Code
 }
 
+// ThrowableClass names the PHP class, implementing Throwable, so a catch
+// filters on it the way it filters on one a script constructed.
+func (e *RuntimeException) ThrowableClass() string { return "RuntimeException" }
+
 // NewRuntimeException creates a new RuntimeException instance.
 func NewRuntimeException(message string, code int) *RuntimeException {
 	return &RuntimeException{

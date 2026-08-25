@@ -387,6 +387,20 @@ func bitwiseString(op string, a, b string) string {
 	return string(out)
 }
 
+// phpNegate implements PHP's unary minus.
+//
+// A float is negated directly rather than computed as `0 - x`, which loses the
+// sign of zero: PHP echoes -0.0 as -0. Everything else goes through the
+// arithmetic helper so that negating the smallest int64 overflows to a float
+// the way every other arithmetic operator does, instead of wrapping back to
+// itself with Go's int64 negation.
+func phpNegate(v any) any {
+	if f, ok := v.(float64); ok {
+		return -f
+	}
+	return phpArith("-", int64(0), v)
+}
+
 // phpBitNot implements `~`. On a string it flips every byte; on anything else it
 // casts to int, where ~n is -(n+1).
 //

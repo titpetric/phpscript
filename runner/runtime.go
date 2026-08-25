@@ -269,15 +269,17 @@ func New(w io.Writer, opts Options) *Runtime {
 		exprCache:    NewExprCache(),
 		sourceSpans:  map[model.Stmt]model.SourceSpan{},
 		helpers: map[string]func(...any) (any, error){
-			"__bool":   adapt(phpTruthy),
-			"__concat": adapt(helperConcat),
-			"__pair":   adapt(helperPair),
-			"__array":  adapt(helperArray),
-			"__index":  adapt(helperIndex),
-			"__cast":   adapt(helperCast),
-			"__arith":  adapt(phpArith),
-			"__bit":    adapt(phpBitwise),
-			"__bitnot": adapt(phpBitNot),
+			"__bool":       adapt(phpTruthy),
+			"__concat":     adapt(helperConcat),
+			"__pair":       adapt(helperPair),
+			"__array":      adapt(helperArray),
+			"__index":      adapt(helperIndex),
+			"__cast":       adapt(helperCast),
+			"__arith":      adapt(phpArith),
+			"__bit":        adapt(phpBitwise),
+			"__bitnot":     adapt(phpBitNot),
+			"__instanceof": adapt(phpInstanceOf),
+			"__neg":        adapt(phpNegate),
 		},
 		memUsage: runtimeBaseline,
 	}
@@ -462,7 +464,7 @@ func (rt *Runtime) AccountRequest(values ...any) {
 	}
 }
 
-// MemoryWalk recomputes live usage from the roots — the interpreter frame
+// MemoryWalk recomputes live usage from the roots: the interpreter frame
 // stack, globals, class statics, and any running flat VM's live values.
 // A visited set keyed on container identity counts a value reachable through
 // several variables once and terminates cycles. The result refreshes the
@@ -869,6 +871,9 @@ func (rt *Runtime) OnError(fn func(error)) {
 func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	if b, ok := e.(*model.Binary); ok && b.Op == "." {
 		return rt.evalConcat(b, scope)
+	}
+	if s, ok := e.(*model.Interp); ok {
+		return rt.joinParts(s.Parts, scope)
 	}
 	if u, ok := e.(*model.Unary); ok && (u.Op == "++" || u.Op == "--") {
 		return rt.evalIncDec(u, scope)
@@ -1298,6 +1303,8 @@ func (rt *Runtime) typeEnvBase() map[string]any {
 	env["__arith"] = typeEnvStub
 	env["__bit"] = typeEnvStub
 	env["__bitnot"] = typeEnvStub
+	env["__instanceof"] = typeEnvStub
+	env["__neg"] = typeEnvStub
 	env["__classconst"] = typeEnvStub
 	env["__set"] = typeEnvStub
 	env["__ref"] = typeEnvStub
@@ -1343,7 +1350,14 @@ func (rt *Runtime) evalIncDec(n *model.Unary, scope *Scope) (any, error) {
 }
 
 func (rt *Runtime) evalConcat(n *model.Binary, scope *Scope) (any, error) {
-	parts := flattenConcat(n, nil)
+	return rt.joinParts(flattenConcat(n, nil), scope)
+}
+
+// joinParts evaluates each part and joins their PHP string forms. It is what a
+// concatenation and an interpolated literal both reduce to, so the two produce
+// the same value for the same operands, and neither pays for a trip through the
+// expression VM to find that out.
+func (rt *Runtime) joinParts(parts []model.Expr, scope *Scope) (any, error) {
 	var out strings.Builder
 	for _, part := range parts {
 		v, err := rt.Eval(part, scope)

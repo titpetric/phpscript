@@ -172,12 +172,22 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 }
 
 // hoist registers all function and class declarations found at the given level.
+//
+// A class declaring `implements` is held to the contract first: every method
+// the listed interfaces name must be declared by the class itself. The check is
+// a name comparison over the AST, so it happens before anything runs and no
+// member is copied onto the class either way. The bytecode backend runs the
+// same check where it collects classes, so both raise the same
+// RuntimeException.
 func (rt *Runtime) hoist(stmts []model.Stmt, filename string) error {
+	if err := model.CheckInterfaceContracts(stmts); err != nil {
+		return NewRuntimeException(err.Error(), 0)
+	}
 	// First pass: classes, so methods can be attached.
 	classes := map[string]*model.Class{}
 	for _, s := range stmts {
 		if cd, ok := s.(*model.ClassDecl); ok {
-			c := &model.Class{Name: cd.Name, Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
+			c := &model.Class{Name: cd.Name, Implements: model.InterfaceNames(cd, stmts), Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
 			for _, m := range cd.Methods {
 				m.Filename = filename
 				c.Methods[m.Name] = m
@@ -320,12 +330,17 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		if err != nil {
 			return nil, flowNormal, err
 		}
-		// Every throwable class is one Go type, and that instance is an
-		// error, so it propagates as itself. A catch clause then binds the
-		// object a script threw and can call getMessage() on it, rather than
-		// binding a rendering of it. Throwing a bare value still renders.
+		// A built-in throwable is an error already, so it propagates as
+		// itself and a catch binds the object a script threw rather than a
+		// rendering of it.
 		if thrown, ok := v.(error); ok {
 			return nil, flowNormal, thrown
+		}
+		// An instance of a declared class is not an error, so it travels
+		// wrapped. The wrapper carries the class it was declared as, which is
+		// what a clause filters on and what get_class() reports.
+		if obj, ok := v.(*model.Object); ok {
+			return nil, flowNormal, newObjectError(obj)
 		}
 		return nil, flowNormal, fmt.Errorf("uncaught exception: %s", phpString(v))
 
@@ -341,6 +356,11 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 
 	case *model.FuncDecl, *model.ClassDecl:
 		// Already handled by hoist.
+		return nil, flowNormal, nil
+
+	case *model.InterfaceDecl:
+		// An interface is a contract checked by hoist, not a value: it declares
+		// no storage and no body, so there is nothing to register or run.
 		return nil, flowNormal, nil
 
 	default:
@@ -520,7 +540,7 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 		for _, c := range n.Catches {
 			if matchCatchType(c.Type, rootErr) {
 				if c.Var != "" {
-					scope.Set(c.Var, rootErr)
+					scope.Set(c.Var, catchValue(rootErr))
 				}
 				val, fl, err = rt.exec(c.Body, scope)
 				break
@@ -540,52 +560,48 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 	return val, fl, err
 }
 
+// matchCatchType reports whether a catch clause declaring declaredType handles
+// rootErr. A union takes the error when any alternative does.
+//
+// There is no class hierarchy to walk, so the clause is answered from the name
+// the throwable records:
+//
+//   - nothing, or Throwable, takes everything.
+//   - an error that is no PHP class at all takes any clause, so a Go binding's
+//     error reaches the catch a script already wrote around the call.
+//   - Exception takes any class whose name does not end in "Error", and Error
+//     takes any class whose name does. That suffix is the whole of the split
+//     between a fault in the program and a condition it raised, and it agrees
+//     with PHP for every built-in name: ErrorException is an Exception,
+//     AssertionError and TypeError are Errors.
+//   - any other name is compared to the class, case-insensitively.
 func matchCatchType(declaredType string, rootErr error) bool {
 	declaredType = strings.TrimSpace(declaredType)
 	if declaredType == "" {
 		return true
 	}
-	errTypeName := errorClassName(rootErr)
-	parts := strings.Split(declaredType, "|")
-	for _, part := range parts {
-		t := strings.TrimPrefix(strings.TrimSpace(part), "\\")
-		if t == "" || t == "Throwable" {
+
+	class, isThrowable := throwableClassOf(rootErr)
+	for _, part := range strings.Split(declaredType, "|") {
+		want := strings.TrimPrefix(strings.TrimSpace(part), "\\")
+		switch {
+		case want == "" || want == "Throwable":
 			return true
-		}
-		if t == "Exception" {
-			// In PHP, Exception catches all Exceptions (including RuntimeException).
-			// If engine error, it also catches for backwards-compatibility.
-			if errTypeName != "TypeError" && errTypeName != "ValueError" && errTypeName != "ArithmeticError" && errTypeName != "DivisionByZeroError" && errTypeName != "ArgumentCountError" {
+		case !isThrowable:
+			return true
+		case want == "Exception":
+			if !strings.HasSuffix(class, "Error") {
 				return true
 			}
-		}
-		if t == "Error" {
-			if errTypeName == "Error" || strings.HasSuffix(errTypeName, "Error") {
+		case want == "Error":
+			if strings.HasSuffix(class, "Error") {
 				return true
 			}
-		}
-		if strings.EqualFold(t, errTypeName) {
+		case strings.EqualFold(want, class):
 			return true
 		}
 	}
 	return false
-}
-
-func errorClassName(err error) string {
-	if err == nil {
-		return ""
-	}
-	t := reflect.TypeOf(err)
-	for t != nil && t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	if t != nil {
-		name := t.Name()
-		if name != "" && name != "errorString" && name != "wrapError" && name != "joinError" {
-			return name
-		}
-	}
-	return "Error"
 }
 
 // execSwitch evaluates the discriminant and runs matching case bodies with PHP

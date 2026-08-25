@@ -145,6 +145,14 @@ type Host interface {
 	// `catch (Exception)` does not catch an engine error all live in the host,
 	// so both backends select the same clause.
 	MatchCatch(declaredType string, err error) bool
+	// Throw turns a thrown value into the error it travels as. A built-in
+	// throwable is an error already; an instance of a declared class is
+	// wrapped so a clause can filter on the class it was declared as, and a
+	// catch binding it gets the object back.
+	Throw(value any) error
+	// CatchValue returns what a catch clause binds for err, which is the object
+	// for a thrown instance and the error itself for everything else.
+	CatchValue(err error) any
 	// ClassConst reads the constant name off class. The compiler has already
 	// collapsed `self`, `static` and `parent` to the enclosing class, so the
 	// name arrives concrete; `Class::class` still reaches the host, since it

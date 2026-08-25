@@ -657,3 +657,101 @@ func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
 		t.Fatal("calling an unregistered function: want error, got nil")
 	}
 }
+
+// TestInterfaceContractRaisesOnBothBackends pins the rule that made the
+// previous attempt at class metadata a mistake: a check wired into one backend
+// and not the other means the two disagree about what a program does. A
+// violated contract must be the same RuntimeException whichever engine runs it,
+// raised before any output is produced.
+func TestInterfaceContractRaisesOnBothBackends(t *testing.T) {
+	prog, err := parser.Parse(`<?php
+interface Reader {
+	function get($key);
+	function has($key);
+}
+
+class Store implements Reader {
+	function get($key) {
+		return $key;
+	}
+}
+
+echo "unreachable";`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	const want = "class Store does not declare method has() required by interface Reader"
+	for _, test := range []struct {
+		name string
+		new  func(io.Writer, runner.Options) *runner.Runtime
+	}{
+		{"interpreter", runner.New},
+		{"flatstack", runner.NewFlatStack},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var out strings.Builder
+			err := test.new(&out, runner.Options{}).Run(prog)
+			if err == nil {
+				t.Fatalf("a violated contract ran, with output %q", out.String())
+			}
+			if err.Error() != want {
+				t.Errorf("error = %q, want %q", err, want)
+			}
+			var thrown *runner.RuntimeException
+			if !errors.As(err, &thrown) {
+				t.Errorf("error is %T, want a *runner.RuntimeException a catch clause takes", err)
+			}
+			if out.String() != "" {
+				t.Errorf("output = %q, want none: the check runs before the program does", out.String())
+			}
+		})
+	}
+}
+
+// A class satisfying its contract runs on either backend, and gains no member
+// from the interface: the interface declares no body, so the class answers only
+// with what it wrote. `instanceof` does consult the list of names the class
+// declared, which is a name comparison rather than an inherited member.
+func TestInterfaceContractSatisfied(t *testing.T) {
+	prog, err := parser.Parse(`<?php
+interface Reader {
+	function get($key);
+}
+
+interface Listing extends Reader {
+	function keys();
+}
+
+class Store implements Listing {
+	function get($key) {
+		return "got:" . $key;
+	}
+
+	function keys() {
+		return "keys";
+	}
+}
+
+$store = new Store;
+echo $store->get("a"), " ", $store->keys(), " ", $store instanceof Reader ? "yes" : "no";`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	for _, test := range []struct {
+		name string
+		new  func(io.Writer, runner.Options) *runner.Runtime
+	}{
+		{"interpreter", runner.New},
+		{"flatstack", runner.NewFlatStack},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var out strings.Builder
+			if err := test.new(&out, runner.Options{}).Run(prog); err != nil {
+				t.Fatalf("run: %v", err)
+			}
+			if want := "got:a keys yes"; out.String() != want {
+				t.Fatalf("got %q, want %q", out.String(), want)
+			}
+		})
+	}
+}
