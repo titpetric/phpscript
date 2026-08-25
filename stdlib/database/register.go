@@ -80,8 +80,36 @@ func RegisterConnections(rt *runner.Runtime) {
 func RegisterMigrate(rt *runner.Runtime) {
 	// Database\Migrate loads a set of SQL migrations from the script filesystem
 	// and runs them against the named connection.
+	//
+	// The first name is also the project name mig records under, so two
+	// schemas sharing one database keep separate records by being opened
+	// under separate names. A script that names no connection migrates
+	// "default", which is the connection an unnamed one resolves to anyway.
+	//
+	// Each name is tried as "<name>:migrate" before "<name>", so a deployment
+	// can point migrations at a user allowed to alter tables while the script
+	// queries through one that is not, without the script naming either. The
+	// project stays "<name>" whichever credential answered: what a migration
+	// connects with is not what it is recorded under. A "<name>:migrate"
+	// credential cannot come from the PLATFORM_DB_<NAME>=<dsn> environment
+	// form, because an environment variable name holds no colon; it is
+	// registered through Database::register, which is how a virtual host
+	// owning its own connections already supplies them.
+	//
+	// A name longer than 16 characters fails the run with mig's ErrNoProject,
+	// because 16 is the width of the project column.
 	rt.RegisterConstructor("Database\\Migrate", func(ctx context.Context, names ...string) (*DatabaseMigrate, error) {
-		database, err := provider(rt).Open(ctx, names...)
+		if len(names) == 0 {
+			names = []string{"default"}
+		}
+		project := names[0]
+
+		candidates := make([]string, 0, len(names)*2)
+		for _, name := range names {
+			candidates = append(candidates, name+":migrate", name)
+		}
+
+		database, err := provider(rt).Open(ctx, candidates...)
 		if err != nil {
 			return nil, err
 		}
@@ -89,6 +117,7 @@ func RegisterMigrate(rt *runner.Runtime) {
 			database: database,
 			root:     rt.FS(),
 			workDir:  rt.WorkDir(),
+			project:  project,
 		}, nil
 	})
 }
