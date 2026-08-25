@@ -23,6 +23,11 @@ tasks:
       - task: test:introspection
       - task: test:demos:dbadmin
       - task: test:demos:example
+      # The demo suites need mysql and postgres, so the environment comes up
+      # above and is torn down here rather than left running. Deferred, so a
+      # failing test still cleans up after itself.
+      - task: compose:down
+        deferred: true
 
   # titpetric/minitpl is pulled in per project rather than vendored by hand, so
   # every tree with a composer.json is installed before the Go tests (the parser
