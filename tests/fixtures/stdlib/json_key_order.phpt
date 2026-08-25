@@ -22,6 +22,10 @@ echo json_encode(json_decode('{"b":1,"a":2}', true)), "\n";
 // Scalars and nesting.
 echo json_encode(array("q" => null, "w" => true, "e" => 1.5)), "\n";
 echo json_encode(array("nested" => array("deep" => array("k" => "v")))), "\n";
+
+// A decoded object keeps the order of the document, nested and at the top.
+echo json_encode(json_decode('{"z":1,"m":{"q":2,"b":3},"a":[1,2]}', true)), "\n";
+echo json_encode(json_decode('[{"b":1,"a":2},{"d":3,"c":4}]', true)), "\n";
 ---
 {"2":"c","1":"b","0":"a"}
 {"z":1,"m":2,"a":3}
@@ -31,3 +35,5 @@ echo json_encode(array("nested" => array("deep" => array("k" => "v")))), "\n";
 {"b":1,"a":2}
 {"q":null,"w":true,"e":1.5}
 {"nested":{"deep":{"k":"v"}}}
+{"z":1,"m":{"q":2,"b":3},"a":[1,2]}
+[{"b":1,"a":2},{"d":3,"c":4}]

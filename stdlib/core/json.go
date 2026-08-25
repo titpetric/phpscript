@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -39,13 +40,65 @@ func phpJSONDecode(text string, opts ...any) (any, error) {
 	if len(opts) > 0 && opts[0] != nil && !phpval.Truthy(opts[0]) {
 		return nil, errors.New("json_decode(): $associative must be true; there is no stdClass to decode an object into")
 	}
-	var v any
 	dec := json.NewDecoder(strings.NewReader(text))
 	dec.UseNumber()
-	if err := dec.Decode(&v); err != nil {
+	value, err := jsonDecodeStream(dec)
+	if err != nil {
 		return nil, err
 	}
-	return jsonDecodeValue(v), nil
+	return value, nil
+}
+
+// jsonDecodeStream reads one value from the token stream.
+//
+// It reads tokens rather than decoding into a map because a Go map has no
+// order and the decoder would hand back the document's keys in a different
+// order on every run. PHP preserves the order the object was written in, so a
+// decoded object encoded again reads the way it arrived.
+func jsonDecodeStream(dec *json.Decoder) (any, error) {
+	token, err := dec.Token()
+	if err != nil {
+		return nil, err
+	}
+	delim, ok := token.(json.Delim)
+	if !ok {
+		return jsonDecodeValue(token), nil
+	}
+
+	switch delim {
+	case '{':
+		out := model.NewArray()
+		for dec.More() {
+			key, err := dec.Token()
+			if err != nil {
+				return nil, err
+			}
+			value, err := jsonDecodeStream(dec)
+			if err != nil {
+				return nil, err
+			}
+			name, _ := key.(string)
+			out.Set(name, value)
+		}
+		if _, err := dec.Token(); err != nil {
+			return nil, err
+		}
+		return out, nil
+	case '[':
+		out := []any{}
+		for dec.More() {
+			value, err := jsonDecodeStream(dec)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, value)
+		}
+		if _, err := dec.Token(); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+	return nil, fmt.Errorf("json_decode(): unexpected %v", delim)
 }
 
 // jsonEncodeValue rewrites the value model into something encoding/json
@@ -192,17 +245,6 @@ func jsonDecodeValue(v any) any {
 			x[i] = jsonDecodeValue(item)
 		}
 		return x
-	case map[string]any:
-		// A JSON object becomes an *model.Array. The decoder's map has already
-		// lost the document's key order, but an *model.Array at least fixes one
-		// order for the value's lifetime, so iterating a decoded object twice
-		// renders the same output twice. Handing the map through would make
-		// every foreach re-randomise.
-		out := model.NewArraySize(len(x))
-		for k, v := range x {
-			out.Set(k, jsonDecodeValue(v))
-		}
-		return out
 	case json.Number:
 		if i, err := x.Int64(); err == nil {
 			return i
