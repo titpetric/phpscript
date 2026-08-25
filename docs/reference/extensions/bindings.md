@@ -100,7 +100,7 @@ The table is a package-level variable rather than part of this API, so a host bi
 Two similarly named context types have separate responsibilities:
 
 - `context.Context` is the Go lifecycle/request context. Set it with `Runtime.SetContext`. It is injected only when the callable's **first** parameter is exactly `context.Context`.
-- `runner.Context` is phpscript's HTTP data adapter. `runner.FromRequest(r)` builds it, and `requestContext.Register(rt)` installs `$_GET`, `$_POST`, `$_PATH`, and header functions.
+- `runner.Context` is phpscript's HTTP data adapter. `runner.FromRequest(r)` builds it, and its `Register` method installs the request superglobals and the header functions. See [Predefined variables](../predefined-variables/README.md).
 
 Neither `runner.Context` nor `*runner.Context` is automatically injected into constructors, methods, or functions. Pass host data through `context.Context`, close over it in a registered function, or register request globals explicitly. A typical HTTP setup uses both paths:
 
@@ -127,7 +127,7 @@ Arguments remain dynamically typed on the PHP side. At the Go boundary the refle
 
 Omitted trailing arguments are padded with their Go zero values, for constructors, registered functions and methods alike. A Go binding has no optional parameters, so padding is how PHP's optional arguments are spelled.
 
-Passing more arguments than a non-variadic callable declares is refused, with a throwable naming the callable: `strlen() expects at most 1 argument, 2 given`. PHP refuses the same call as `ArgumentCountError` and words it `expects exactly 1 argument`; the wording differs because padding makes every parameter after the first omitted one optional. Every SPL class name is registered to one type, so `catch (Exception $e)`, `catch (Error $e)` and `catch (Throwable $e)` all catch it, and the caught value answers `getMessage()` and the rest of the `Throwable` methods.
+Passing more arguments than a non-variadic callable declares is refused, with a throwable naming the callable: `strlen() expects at most 1 argument, 2 given`. PHP refuses the same call as `ArgumentCountError` and words it `expects exactly 1 argument`; the wording differs because padding makes every parameter after the first omitted one optional. An error a binding returns belongs to no PHP class, so every clause takes it and the caught value answers `getMessage()` and the rest of the `Throwable` methods. See [Exceptions](../exceptions/README.md).
 
 This is not a complete PHP-to-Go coercion system. Prefer stable scalar signatures and validate values in the binding when scripts are untrusted.
 

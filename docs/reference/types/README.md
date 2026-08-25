@@ -37,6 +37,47 @@ $mode = 0644;       // 420, the form a chmod() argument takes
 $float = 1.5e3;     // 1500.0
 ```
 
+## Strings
+
+A single-quoted literal is the characters between the quotes, and recognises
+only `\'` and `\\`. A double-quoted literal decodes the C-style escapes and the
+numeric forms (`\x41`, `\101`, `\u{1F600}`), and evaluates the variables written
+into it.
+
+Two spellings embed an expression. Simple syntax is a bare `$name`, a
+`$name[key]` subscript, or one level of `$name->prop`:
+
+```php
+$name = "Ada";
+$row = array("id" => 7);
+$user = new User("Ada");
+
+echo "hello $name\n";           // hello Ada
+echo "row $row[id]\n";          // row 7, the bare word is a string key
+echo "user $user->name\n";      // user Ada
+```
+
+A subscript in simple syntax is one token: a bare word, a number, or a variable.
+Everything else goes in braces, which re-enter PHP and take an ordinary
+expression:
+
+```php
+echo "first {$row['id']}\n";
+echo "deep {$rows['a']['b']}\n";
+echo "call {$user->label()}\n";
+```
+
+The braces close on the brace that matches, so a key holding one is safe:
+`"{$rows['}']}"` reads the key `}`. A `$` that starts no name is literal text,
+`\$` is a dollar, and a single-quoted literal never interpolates. The value of
+each embedded expression is converted to a string the way `.` converts it, so
+an interpolated literal and the equivalent concatenation produce the same
+string.
+
+`${name}` is not accepted. PHP deprecated that spelling in 8.2 and removes it in
+9; writing it is reported rather than read, so a literal never prints back a
+name the author meant to interpolate.
+
 ## Arrays
 
 Both PHP array forms are accepted. phpscript additionally accepts `{...}` as an

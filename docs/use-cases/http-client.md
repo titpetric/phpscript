@@ -87,6 +87,7 @@ if ($response->ok()) {
 matched case-insensitively:
 
 ```php
+$trace_id = "b7c1";
 $request = new HTTP\Request("GET", "https://api.example.com/users?page=1");
 
 echo $request->method;          // GET
@@ -95,7 +96,7 @@ echo $request->url->path;       // /users
 echo $request->url->string();   // the full URL
 
 $request->header->set("Accept", "application/json");
-$request->header->add("X-Trace", $traceId);
+$request->header->add("X-Trace", $trace_id);
 echo $request->header->get("accept");
 ```
 

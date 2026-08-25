@@ -1,14 +1,15 @@
 # Predefined interfaces and classes
 
-| PHP predefined interface or class                   | Status                | Notes                                                                           |
-|-----------------------------------------------------|-----------------------|---------------------------------------------------------------------------------|
-| `Exception`                                         | Partial compatibility | A host-backed exception value can be constructed and thrown.                    |
-| `Closure`                                           | Partial compatibility | Anonymous functions produce callable runtime values, without the PHP class API. |
-| `stdClass`                                          | Not implemented       | `(object)` is parsed but currently leaves its operand unchanged.                |
-| `Throwable`, `Traversable`, `Iterator`, `Countable` | Not implemented       | Interfaces and PHP's exception hierarchy are unavailable.                       |
-| `ArrayAccess`, `Serializable`, `Stringable`         | Not implemented       | Interfaces are unavailable.                                                     |
-| `Generator`, `Fiber`, `WeakReference`, `WeakMap`    | Not implemented       | Corresponding language/runtime features are unavailable.                        |
-| Enum interfaces and predefined attributes           | Not implemented       | Enums and attributes are unavailable.                                           |
+| PHP predefined interface or class                | Status                | Notes                                                                                                                    |
+|--------------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `Exception`, `Error` and the SPL classes         | Compatibility         | Constructed and thrown; a catch clause filters on the class name recorded.                                               |
+| `Closure`                                        | Partial compatibility | Anonymous functions produce callable runtime values, without the PHP class API.                                          |
+| `stdClass`                                       | Not implemented       | `(object)` is parsed but currently leaves its operand unchanged.                                                         |
+| `Throwable`                                      | Partial compatibility | `catch (Throwable $e)` takes any failure. `instanceof Throwable` is false, and the name is not declared as an interface. |
+| `Traversable`, `Iterator`, `Countable`           | Not implemented       | The names are not declared, so `implements Countable` is accepted and unchecked, and nothing dispatches through them.    |
+| `ArrayAccess`, `Serializable`, `Stringable`      | Not implemented       | As above: the names are not declared. Write the methods and call them by name.                                           |
+| `Generator`, `Fiber`, `WeakReference`, `WeakMap` | Not implemented       | Corresponding language/runtime features are unavailable.                                                                 |
+| Enum interfaces and predefined attributes        | Not implemented       | Enums and attributes are unavailable.                                                                                    |
 
 ## `Exception`
 
@@ -16,9 +17,9 @@
 throw new Exception("message");
 ```
 
-`Exception` exists to carry an error through phpscript's unified runtime error
-path. It does not implement PHP's complete exception methods or inheritance
-model.
+Every SPL exception and error name is registered and constructible, all of them
+one type carrying the name the script used. A catch clause filters on that name;
+none of them is a subclass of another. See [Exceptions](../exceptions/README.md).
 
 ## Runtime class discovery
 

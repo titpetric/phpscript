@@ -18,8 +18,8 @@ $items[] = $name;
 ```
 
 Variables, array indexes, object properties, static properties, and `list(...)`
-targets can be assigned. The supported compound assignments are `+=`, `-=`, and
-`.=`.
+targets can be assigned. Every PHP compound assignment applies: `+=`, `-=`,
+`*=`, `/=`, `%=`, `**=`, `.=`, `&=`, `|=`, `^=`, `<<=` and `>>=`.
 
 Writing through an index that does not exist yet creates the arrays on the way
 down, as PHP does:

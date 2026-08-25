@@ -200,10 +200,19 @@ $migrate->run();
 
 The constructor takes the same connection name as `new Database("app")`, which
 is `PLATFORM_DB_APP` in the environment. Omitting it selects the connection
-named `default`.
+named `default`. The name is also the project the run is recorded under, so two
+applications sharing one database keep separate records of what they applied.
 
-`load()` accepts a glob relative to the runtime working directory and reads the
-matching files from the application filesystem. `run()` applies them and
+Before `app`, the constructor tries the connection `app:migrate`. A deployment
+that registers one points migrations at a user allowed to alter tables while
+the application queries through a user that is not, and the script names
+neither. An environment variable name holds no colon, so `app:migrate` cannot
+be set as `PLATFORM_DB_APP:MIGRATE`; it is registered with
+`Database::register("app:migrate", $dsn)`. Whichever of the two answers, the
+project stays `app`.
+
+`load()` accepts a glob relative to the runtime working directory, selecting
+the migration files in the application filesystem. `run()` applies them and
 records what it applied in a `migrations` table, so later server starts skip
 the statements that already ran.
 

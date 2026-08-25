@@ -3,6 +3,7 @@
 This is a PHP interpreter written in Go. It supports the basic php expression syntax and some parts of the standard library. It's currently rudimentary and only enables limited functionality.
 
 - [About phpscript](./docs/README.md)
+- [Design decisions](./docs/design.md)
 - [Language reference and PHP compatibility](./docs/reference/README.md)
 - [Installation and usage](./docs/usage.md)
 - [Configuration](./docs/configuration.md)

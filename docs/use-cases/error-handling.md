@@ -51,19 +51,23 @@ errors thrown from either Go or PHP code, you use a try/catch statement:
 try {
 	$storage = new Storage;
 	$storage->get($_GET['id']);
-} catch ($e) {
-	echo "An exception occured:\n\n";
-	echo "Code: " . $e->getCode();
-        echo "Message: " . $e->getMessage();
+} catch (Exception $e) {
+	echo "An exception occurred:\n\n";
+	echo "Code: " . $e->getCode() . "\n";
+	echo "Message: " . $e->getMessage() . "\n";
 }
 ```
+
+The class a clause names selects what it takes, so `catch (Exception $e)` leaves
+a `TypeError` for a later clause. See
+[Exceptions](../reference/exceptions/README.md).
 
 Certain fallback situations can be created with `finally`.
 
 ```php
 try {
 	// exception throwing code
-} catch ($e) {
+} catch (Throwable $e) {
 	// exception handling code
 } finally {
 	// code that always executes

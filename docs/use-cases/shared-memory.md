@@ -43,17 +43,15 @@ echo $shm->count("requests"); // "2"
 
 The available methods are:
 
-```php
-class SharedMemory {
-	public function set($key, $value)
-	public function get($key)
-	public function incr($key)
-	public function count($key)
-	public function delete($key)
-	public function has($key)
-	public function clear()
-}
-```
+| Method            | Returns                                            |
+|-------------------|----------------------------------------------------|
+| `set($key, $val)` | nothing                                            |
+| `get($key)`       | The stored string, or an empty string              |
+| `incr($key)`      | The counter's new value, as an int                 |
+| `count($key)`     | The counter's current value, as a string           |
+| `delete($key)`    | Whether a value or a counter existed under the key |
+| `has($key)`       | Whether a value or a counter exists under the key  |
+| `clear()`         | nothing                                            |
 
 ## Sharing state between runtimes
 

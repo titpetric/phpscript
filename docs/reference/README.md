@@ -23,6 +23,7 @@ Source-file structure, runtime values, variables, constants, and expression eval
   - [Shebang scripts](basic-syntax/README.md#shebang-scripts)
 - [Types](types/README.md) - Dynamic scalar, array, object, callable, and cast behavior.
   - [Scalar types](types/README.md#scalar-types)
+  - [Strings](types/README.md#strings)
   - [Arrays](types/README.md#arrays)
   - [Type casting](types/README.md#type-casting)
 - [Value semantics](types/value-semantics.md) - What copies and what is shared, why `&` does nothing, and how binding output parameters work.
@@ -62,7 +63,9 @@ Statements and declarations used to organize executable scripts.
 - [Classes and objects](classes-and-objects/README.md) - Basic classes, properties, methods, constructors, and host-backed objects.
   - [Declaring a class](classes-and-objects/README.md#declaring-a-class)
   - [Static members](classes-and-objects/README.md#static-members)
+  - [Interfaces](classes-and-objects/README.md#interfaces)
   - [Host-backed objects](classes-and-objects/README.md#host-backed-objects)
+  - [References](classes-and-objects/README.md#references)
 - [Namespaces](namespaces/README.md) - Namespace declarations, name resolution, function fallback, and autoloading.
   - [Defining a namespace](namespaces/README.md#defining-a-namespace)
   - [Name resolution](namespaces/README.md#name-resolution)
@@ -78,6 +81,10 @@ The supported error model and values supplied by the runtime or request host.
   - [Errors a script cannot catch](errors/README.md#errors-a-script-cannot-catch)
 - [Exceptions](exceptions/README.md) - Throwing, catching, finally blocks, and differences from PHP exception dispatch.
   - [Throwing and catching](exceptions/README.md#throwing-and-catching)
+  - [Which clause takes it](exceptions/README.md#which-clause-takes-it)
+  - [The Throwable methods](exceptions/README.md#the-throwable-methods)
+  - [Errors from Go](exceptions/README.md#errors-from-go)
+  - [References](exceptions/README.md#references)
 - [Predefined variables](predefined-variables/README.md) - Request query, form, upload, cookie, server and route variables, and the superglobals that stay empty.
   - [`$_GET`](predefined-variables/README.md#_get)
   - [`$_POST`](predefined-variables/README.md#_post)
@@ -132,11 +139,15 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [regex](extensions/implemented-apis.md#regex)
     - [stdlib/core](extensions/implemented-apis.md#stdlibcore)
       - [other](extensions/implemented-apis.md#other)
+      - [array sort](extensions/implemented-apis.md#array-sort)
       - [arrays](extensions/implemented-apis.md#arrays)
       - [closure](extensions/implemented-apis.md#closure)
+      - [encoding](extensions/implemented-apis.md#encoding)
       - [environment](extensions/implemented-apis.md#environment)
       - [json](extensions/implemented-apis.md#json)
       - [lang](extensions/implemented-apis.md#lang)
+      - [math](extensions/implemented-apis.md#math)
+      - [mbstring](extensions/implemented-apis.md#mbstring)
       - [output](extensions/implemented-apis.md#output)
       - [platform funcs](extensions/implemented-apis.md#platform-funcs)
       - [reflection](extensions/implemented-apis.md#reflection)
@@ -156,10 +167,10 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Classes](extensions/implemented-apis.md#classes)
     - [`Database`](extensions/implemented-apis.md#database)
     - [`Database\Migrate`](extensions/implemented-apis.md#databasemigrate)
+    - [`Error`](extensions/implemented-apis.md#error)
     - [`Exception`](extensions/implemented-apis.md#exception)
     - [`HTTP\Client`](extensions/implemented-apis.md#httpclient)
     - [`HTTP\Request`](extensions/implemented-apis.md#httprequest)
-    - [`RuntimeException`](extensions/implemented-apis.md#runtimeexception)
     - [`SMTP`](extensions/implemented-apis.md#smtp)
     - [`Session\Manager`](extensions/implemented-apis.md#sessionmanager)
     - [`Session\Storage\Disk`](extensions/implemented-apis.md#sessionstoragedisk)

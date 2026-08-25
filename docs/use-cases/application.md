@@ -191,20 +191,21 @@ $tpl->assign(array("title" => "Bookmarks", "bookmarks" => $bookmarks));
 $tpl->render();
 ```
 
-Assigned values are addressed by name in braces, array elements with a dot, and
-`|escape` runs the value through `htmlspecialchars`:
+Assigned values are addressed by name in braces and array elements with a dot.
+A printed value goes through `htmlspecialchars` on the way out, so a bookmark
+titled `<script>alert(1)</script>` renders as text:
 
 ```html
-<h1>{title|escape}</h1>
+<h1>{title}</h1>
 
 {if $message}
-<p class="notice">{message|escape}</p>
+<p class="notice">{message}</p>
 {/if}
 
 <ul class="bookmarks">
 {foreach $bookmarks as $bookmark}
 	<li>
-		<a href="{bookmark.url|escape}">{bookmark.title|escape}</a>
+		<a href="{bookmark.url}">{bookmark.title}</a>
 		<form method="post" action="/bookmarks/{bookmark.id}/delete">
 			<button class="link">Delete</button>
 		</form>
@@ -216,9 +217,9 @@ Assigned values are addressed by name in braces, array elements with a dot, and
 </ul>
 ```
 
-Escape everything that came from a request. The suite has a case for it: a
-bookmark titled `<script>alert(1)</script>` must come back as text.
-[Templating](templating.md) documents the rest of the syntax.
+The suite has a case for it, and `|unescape` is how a template opts a value out
+where the markup is the value. [Templating](templating.md) documents the rest of
+the syntax.
 
 ## 7. Run it
 

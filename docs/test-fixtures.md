@@ -9,36 +9,50 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 ## arithmetic
 
-| arithmetic            | Flat stack | Runtime | PHP  |
-|-----------------------|------------|---------|------|
-| add_float.phpt        | PASS       | PASS    | PASS |
-| add_int.phpt          | PASS       | PASS    | PASS |
-| casts.phpt            | PASS       | PASS    | PASS |
-| divide_float.phpt     | PASS       | PASS    | PASS |
-| divide_int.phpt       | PASS       | PASS    | PASS |
-| float_format.phpt     | PASS       | PASS    | PASS |
-| int_overflow.phpt     | PASS       | PASS    | PASS |
-| intdiv_fdiv.phpt      | PASS       | PASS    | PASS |
-| multiply_float.phpt   | PASS       | PASS    | PASS |
-| multiply_int.phpt     | PASS       | PASS    | PASS |
-| numeric_literals.phpt | PASS       | PASS    | PASS |
-| pow_float.phpt        | PASS       | PASS    | PASS |
-| pow_int.phpt          | PASS       | PASS    | PASS |
-| subtract_float.phpt   | PASS       | PASS    | PASS |
-| subtract_int.phpt     | PASS       | PASS    | PASS |
+| arithmetic               | Flat stack | Runtime | PHP  |
+|--------------------------|------------|---------|------|
+| add_float.phpt           | PASS       | PASS    | PASS |
+| add_int.phpt             | PASS       | PASS    | PASS |
+| casts.phpt               | PASS       | PASS    | PASS |
+| compound_assignment.phpt | PASS       | PASS    | PASS |
+| divide_float.phpt        | PASS       | PASS    | PASS |
+| divide_int.phpt          | PASS       | PASS    | PASS |
+| float_format.phpt        | PASS       | PASS    | PASS |
+| int64_precision.phpt     | PASS       | PASS    | PASS |
+| int_overflow.phpt        | PASS       | PASS    | PASS |
+| intdiv_fdiv.phpt         | PASS       | PASS    | PASS |
+| math_abs_minmax.phpt     | PASS       | PASS    | PASS |
+| math_pow_sqrt_log.phpt   | PASS       | PASS    | PASS |
+| math_rounding.phpt       | PASS       | PASS    | PASS |
+| multiply_float.phpt      | PASS       | PASS    | PASS |
+| multiply_int.phpt        | PASS       | PASS    | PASS |
+| number_format.phpt       | PASS       | PASS    | PASS |
+| numeric_literals.phpt    | PASS       | PASS    | PASS |
+| pow_float.phpt           | PASS       | PASS    | PASS |
+| pow_int.phpt             | PASS       | PASS    | PASS |
+| subtract_float.phpt      | PASS       | PASS    | PASS |
+| subtract_int.phpt        | PASS       | PASS    | PASS |
 
 ## arrays
 
-| arrays                | Flat stack | Runtime | PHP  |
-|-----------------------|------------|---------|------|
-| array_callbacks.phpt  | PASS       | PASS    | PASS |
-| array_indexing.phpt   | PASS       | PASS    | PASS |
-| array_search.phpt     | PASS       | PASS    | PASS |
-| array_stack.phpt      | PASS       | PASS    | PASS |
-| compact.phpt          | PASS       | PASS    | PASS |
-| php_array_splice.phpt | PASS       | PASS    | PASS |
-| sort.phpt             | PASS       | PASS    | PASS |
-| unset_and_vivify.phpt | PASS       | PASS    | PASS |
+| arrays                   | Flat stack | Runtime | PHP  |
+|--------------------------|------------|---------|------|
+| array_callbacks.phpt     | PASS       | PASS    | PASS |
+| array_column_flip.phpt   | PASS       | PASS    | PASS |
+| array_filter_reduce.phpt | PASS       | PASS    | PASS |
+| array_indexing.phpt      | PASS       | PASS    | PASS |
+| array_key_exists.phpt    | PASS       | PASS    | PASS |
+| array_reverse_sum.phpt   | PASS       | PASS    | PASS |
+| array_search.phpt        | PASS       | PASS    | PASS |
+| array_stack.phpt         | PASS       | PASS    | PASS |
+| array_union.phpt         | PASS       | PASS    | PASS |
+| compact.phpt             | PASS       | PASS    | PASS |
+| ksort_asort.phpt         | PASS       | PASS    | PASS |
+| php_array_splice.phpt    | PASS       | PASS    | PASS |
+| range.phpt               | PASS       | PASS    | PASS |
+| sort.phpt                | PASS       | PASS    | PASS |
+| uasort_uksort.phpt       | PASS       | PASS    | PASS |
+| unset_and_vivify.phpt    | PASS       | PASS    | PASS |
 
 ## autoloading
 
@@ -91,6 +105,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | exception_response_code.phpt | PASS       | PASS    | PASS |
 | exit_in_try.phpt             | PASS       | PASS    | PASS |
 | host_panic_catch.phpt        | PASS       | PASS    | SKIP |
+| throwable_classes.phpt       | PASS       | PASS    | SKIP |
 
 ## flatstack
 
@@ -120,6 +135,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 |-------------------------|------------|---------|------|
 | get_included_files.phpt | PASS       | PASS    | SKIP |
 | include-return.phpt     | PASS       | PASS    | PASS |
+| once.phpt               | PASS       | PASS    | PASS |
 
 ## namespaces
 
@@ -134,6 +150,9 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 |------------------------------|------------|---------|------|
 | class_constant_defaults.phpt | PASS       | PASS    | PASS |
 | class_constants.phpt         | PASS       | PASS    | PASS |
+| instanceof.phpt              | PASS       | PASS    | PASS |
+| interface_contract.phpt      | PASS       | PASS    | SKIP |
+| interfaces.phpt              | PASS       | PASS    | PASS |
 | is_object.phpt               | PASS       | PASS    | PASS |
 | object_nesting.phpt          | PASS       | PASS    | SKIP |
 | property_incdec.phpt         | PASS       | PASS    | PASS |
@@ -183,17 +202,25 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 ## stdlib
 
-| stdlib                | Flat stack | Runtime | PHP  |
-|-----------------------|------------|---------|------|
-| filesystem.phpt       | PASS       | PASS    | PASS |
-| output_buffering.phpt | PASS       | PASS    | PASS |
-| password_hash.phpt    | PASS       | PASS    | PASS |
-| token_get_all.phpt    | PASS       | PASS    | PASS |
+| stdlib                           | Flat stack | Runtime | PHP  |
+|----------------------------------|------------|---------|------|
+| filesystem.phpt                  | PASS       | PASS    | PASS |
+| output_buffering.phpt            | PASS       | PASS    | PASS |
+| password_hash.phpt               | PASS       | PASS    | PASS |
+| token_get_all.phpt               | PASS       | PASS    | PASS |
+| token_get_all_interpolation.phpt | PASS       | PASS    | PASS |
 
 ## strings
 
 | strings                       | Flat stack | Runtime | PHP  |
 |-------------------------------|------------|---------|------|
+| base64.phpt                   | PASS       | PASS    | PASS |
+| case_functions.phpt           | PASS       | PASS    | PASS |
+| chr_ord.phpt                  | PASS       | PASS    | PASS |
+| http_build_query.phpt         | PASS       | PASS    | PASS |
+| interpolation.phpt            | PASS       | PASS    | PASS |
+| interpolation_complex.phpt    | PASS       | PASS    | PASS |
+| mbstring.phpt                 | PASS       | PASS    | PASS |
 | preg_engines.phpt             | PASS       | PASS    | PASS |
 | str_contains.phpt             | PASS       | PASS    | PASS |
 | str_pad_split_rev.phpt        | PASS       | PASS    | PASS |
@@ -201,6 +228,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | string_escapes.phpt           | PASS       | PASS    | PASS |
 | strpos_family.phpt            | PASS       | PASS    | PASS |
 | substr_count_replace.phpt     | PASS       | PASS    | PASS |
+| urlencode.phpt                | PASS       | PASS    | PASS |
 
 ## syntax
 
@@ -218,22 +246,22 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 | Area        | Fixtures | Passed | Failed |
 |-------------|----------|--------|--------|
-| arithmetic  | 15       | 15     | 0      |
-| arrays      | 8        | 8      | 0      |
+| arithmetic  | 21       | 21     | 0      |
+| arrays      | 16       | 16     | 0      |
 | autoloading | 4        | 4      | 0      |
 | bindings    | 18       | 18     | 0      |
 | errors      | 2        | 2      | 0      |
-| exceptions  | 8        | 8      | 0      |
+| exceptions  | 9        | 9      | 0      |
 | flatstack   | 7        | 7      | 0      |
 | functions   | 5        | 5      | 0      |
-| includes    | 2        | 2      | 0      |
+| includes    | 3        | 3      | 0      |
 | namespaces  | 2        | 2      | 0      |
-| oop         | 7        | 7      | 0      |
+| oop         | 10       | 10     | 0      |
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
 | runtime     | 8        | 8      | 0      |
-| stdlib      | 4        | 4      | 0      |
-| strings     | 7        | 7      | 0      |
+| stdlib      | 5        | 5      | 0      |
+| strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 117      | 117    | 0      |
+| **Total**   | 145      | 145    | 0      |

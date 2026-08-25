@@ -88,7 +88,7 @@ adapter:
 ```go
 stdlib.Register(runtime)
 stdlib.RegisterFS(runtime, ".")
-requestContext.Register(runtime)
+runner.FromRequest(r).Register(runtime)
 ```
 
 The package also forwards the runner package functions used by embedders:

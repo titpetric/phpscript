@@ -8,7 +8,7 @@ copied into this repository and patched.
 ```json
 {
     "require": {
-        "titpetric/minitpl": "^1.2"
+        "titpetric/minitpl": "^1.3"
     }
 }
 ```
@@ -43,13 +43,12 @@ small reusable parts similar to storage repository packages in Go.
 class UserStorage {
 	var $db;
 
-	UserService() {
-		$db = new Database("users");
-		$this->db = $db;
+	function __construct() {
+		$this->db = new Database("app");
 	}
 
 	function getUserById($id) {
-		return $this->db->get("select * from users where id=?", $id);
+		return $this->db->get("select * from users where id = ?", $id);
 	}
 
 	function getGroupList() {
@@ -57,7 +56,16 @@ class UserStorage {
 	}
 
 	function getUserGroups($id) {
-		return $this->db->get_all("select ...");
+		return $this->db->get_all("select group_id from user_group where user_id = ?", $id);
+	}
+
+	function saveUserMemberships($id, $group_ids) {
+		$this->db->begin();
+		$this->db->query("delete from user_group where user_id = ?", $id);
+		foreach ($group_ids as $group_id) {
+			$this->db->insert("user_group", array("user_id" => $id, "group_id" => $group_id));
+		}
+		$this->db->commit();
 	}
 }
 ```
@@ -97,7 +105,7 @@ For example, an edit form for an user may:
 
 include("UserStorage.php");
 
-$id = $_GET['id'];
+$id = $_PATH['id'];
 
 $db = new UserStorage;
 $user = $db->getUserById($id);
@@ -118,10 +126,10 @@ And a POST endpoint:
 
 include("UserStorage.php");
 
-$id = $_GET['id'];
+$id = $_PATH['id'];
 
 $db = new UserStorage();
-$db->saveUserMemberships($user_id, $_POST['user_groups']);
+$db->saveUserMemberships($id, $_POST['user_groups']);
 ```
 
 All the database interactions, including transactionality details, are

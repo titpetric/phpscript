@@ -166,13 +166,22 @@ Namespaces:
 
 Classes:
 
-- `extends` and `implements` are parsed and recorded on the class, and confer
-  nothing. A class gets no members from its parent: no inherited methods, no
-  inherited properties or constants, no `parent::`, no constructor to fall back
-  on, and `catch` cannot filter on a base class or an interface. Nothing checks
-  that the parent or the interface exists, or that the class satisfies it.
-  A class that relies on anything it did not declare itself will not run here,
-  even though it parses and lints; declare the members it uses.
+- `extends` on a class confers nothing. A class gets no members from its parent:
+  no inherited methods, no inherited properties or constants, no `parent::`, and
+  no constructor to fall back on. A catch clause and `instanceof` do not follow
+  it, and nothing checks that the parent exists. A class that calls something it
+  did not declare fails at the call, even though it parses and lints; declare
+  the members it uses. This is a decision rather than a gap; see
+  [Design decisions](design.md).
+- `implements` is checked and confers nothing: a class must declare every method
+  its interfaces name, or `phpscript lint` reports it and the runtime raises a
+  `RuntimeException`. An interface contributes no body, no property and no
+  constant. A name no `interface` declaration in the same file defines is not a
+  contract and is not checked, so `implements Countable` loads: phpscript
+  declares none of PHP's built-in interfaces.
+- `instanceof` compares the class name, and an interface name against the list
+  the class declared, so `$a instanceof SomeInterface` is true for a class that
+  implements it. Nothing follows `extends` on a class.
 - `abstract`, `final` and `readonly` on a class are parsed and printed back,
   and none of them is enforced. An abstract class can be instantiated, a final
   one carries no restriction of its own, and a readonly class does not make its

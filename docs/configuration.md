@@ -47,8 +47,11 @@ telemetry:
   sample_rate: 100
   track_memory_use: true
   live_stream: true
+  driver: memory
 
 document_root: public
+
+autoindex: false
 
 virtualhost: []
 

@@ -28,7 +28,8 @@ tests/fixtures/routing/
 ├── kv/
 │   ├── get.php
 │   └── post.php
-└── stats.php
+├── stats.php
+└── upload.php
 ```
 
 Routes are declared in PHP comments:
@@ -65,6 +66,7 @@ each VM to provide shared process state or services. The example fixture under
 - `POST /kv/{key}` writes `$_POST["value"]` into shared memory.
 - `GET /kv/{key}` reads the value back.
 - `GET /stats/{counter}` reads request counters maintained with `incr()`.
+- `POST /upload` reads a file part out of `$_FILES`.
 
 The write endpoint looks like this:
 
@@ -124,20 +126,29 @@ shared memory, database handles, metrics, or other request-wide services.
 
 ```go
 shm := core.NewSharedMemory()
-mux := http.NewServeMux()
 
-_, err := route.NewService(root, mux, route.WithRuntimeFunc(func(rt *runner.Runtime) {
-	rt.SetContext(core.SharedMemoryContext(rt.Context(), shm))
-	rt.RegisterConstructor("SharedMemory", core.NewSharedMemoryBinding)
-}))
+routes := annotations.NewRoute(os.DirFS(root),
+	annotations.WithExcludedDirectory("public"),
+	annotations.WithRuntimeFunc(func(rt *runner.Runtime) {
+		rt.SetContext(core.SharedMemoryContext(rt.Context(), shm))
+		rt.RegisterConstructor("SharedMemory", core.NewSharedMemoryBinding)
+	}),
+)
+
+if err := routes.Mount(ctx, router); err != nil {
+	return err
+}
 ```
 
-Go owns the `http.ServeMux`, route registration, synchronization, durable
-services, and bindings. Every request gets a fresh PHP runtime, but
+`annotations.Route` scans the filesystem it is given and registers a handler per
+annotation. `Mount` attaches them to a router the host owns, which is also where
+`phpscript server` puts them. Go owns route registration, synchronization,
+durable services, and bindings. Every request gets a fresh PHP runtime, but
 `new SharedMemory` resolves to the same Go `shm` value.
 
 ## References
 
 - [Route tests](../../tests/route_test.go)
+- [`annotations.Route`](https://pkg.go.dev/github.com/titpetric/phpscript@main/annotations#Route)
 - [SharedMemory binding](../../stdlib/core/shared_memory.go)
 - [Route fixtures](../../tests/fixtures/routing)

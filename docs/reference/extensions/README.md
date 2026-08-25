@@ -40,7 +40,7 @@ defer($db->rollback);
 
 ### `Database\Migrate`
 
-`new Database\Migrate("name")` targets a named platform database. `load($pattern)` reads migration files from the application filesystem, and `run()` applies matching `*.up.sql` files in filename order. Files are append only: applied statements are recorded by index in a `migrations` table, so statements added at the end of an existing file run on the next start. See the [database guide](../../use-cases/database.md#run-migrations).
+`new Database\Migrate("name")` targets a named platform database, trying the connection `name:migrate` before `name` so migrations can run as a more privileged user without the script naming one. `load($pattern)` selects migration files from the application filesystem, and `run()` applies matching `*.up.sql` files in filename order, recording them under the project `name`. Files are append only: applied statements are recorded by index in a `migrations` table, so statements added at the end of an existing file run on the next start. See the [database guide](../../use-cases/database.md#run-migrations).
 
 ### `SharedMemory`
 
@@ -111,6 +111,6 @@ Embedding hosts opt into runtime services separately:
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
 - `smtp.Register(rt, sender)` adds the bare `mail()` SMTP binding for a host-configured sender.
 - `smtp.SenderContext(ctx, sender)` makes `new SMTP` deliver through `sender` instead of dialing its configured host. `smtp.NewMemory()` is a sender that queues messages in memory, which is how tests and dry runs capture mail without a mail server.
-- `runner.Context.Register(rt)` adds request-aware header functions and seeds `$_GET`, `$_POST`, and `$_PATH`.
+- `runner.Context.Register(rt)` adds the request-aware header functions and seeds `$_GET`, `$_POST`, `$_COOKIE`, `$_SERVER`, `$_ENV`, `$_PATH`, `$_FILES`, `$argv` and `$argc`. See [Predefined variables](../predefined-variables/README.md).
 
 Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterBinding(Register)`, and `stdlib/imports.go` blank-imports them. A host that wants a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.
