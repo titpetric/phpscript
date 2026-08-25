@@ -395,8 +395,8 @@ function putenv(string $name, string ...$values): bool
 #### json
 
 ```php
-// json_decode parses the JSON in $text; objects always decode to arrays (as if $associative were true) and invalid input raises an error instead of returning null.
-function json_decode(string $text): mixed
+// json_decode parses the JSON in $text; $associative must be true or omitted because there is no stdClass to decode an object into, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
+function json_decode(string $text, mixed ...$opts): mixed
 ```
 
 ```php
