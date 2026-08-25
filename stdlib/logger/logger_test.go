@@ -7,14 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-bridget/mig/migrate"
-
 	"github.com/titpetric/phpscript/telemetry"
 )
-
-// The logger is handed to libraries that ask for one, so what they ask for has
-// to be what it is. mig is the caller it was written for.
-var _ migrate.Logger = (*Logger)(nil)
 
 // discard is a logger writing its lines nowhere, which is what a test that is
 // looking at the trace wants of the log.

@@ -1,16 +1,20 @@
-// Package logger wraps a slog logger for libraries that require one, and fails
-// the span the work runs in when that logger is told about an error.
+// Package logger writes a log line and fails the span the work runs in when
+// that line reports an error.
 //
-// Migrations are the case it was written for. mig reports per file status
-// through a logger it now requires, and a migration set runs at startup, where
-// the script's output is an HTTP body or a rendered page: a status line written
-// there lands in what the script is producing.
+// It is for the steps a host runs on behalf of a script and does not want in
+// the script's output. Migrations are the case it was written for: a migration
+// set runs at startup, where the script's output is an HTTP body or a rendered
+// page, so a per-file status line written there lands in what the script is
+// producing.
 //
-//	options := migrate.NewOptions(logger.New(ctx, "migrate"))
+//	log := logger.New(ctx, "migrate")
+//	for _, item := range applied {
+//		log.Info("migration", "file", item.Filename, "status", item.Status)
+//	}
 //
-// The method set is the one mig's migrate.Logger asks for, Info and Error,
-// spelled the way slog spells them, and both are logged the way slog logs them.
-// Output goes to slog.Default, read per call so a process that configures
+// The method set is Info and Error, spelled and behaving the way slog spells
+// them, which is also the shape a library asking to be handed a logger asks
+// for. Output goes to slog.Default, read per call so a process that configures
 // logging after a logger was built still gets it, or to the logger given to
 // WithLogger.
 //
