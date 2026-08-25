@@ -205,6 +205,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | stdlib                           | Flat stack | Runtime | PHP  |
 |----------------------------------|------------|---------|------|
 | filesystem.phpt                  | PASS       | PASS    | PASS |
+| json_key_order.phpt              | PASS       | PASS    | PASS |
 | output_buffering.phpt            | PASS       | PASS    | PASS |
 | password_hash.phpt               | PASS       | PASS    | PASS |
 | token_get_all.phpt               | PASS       | PASS    | PASS |
@@ -261,7 +262,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
 | runtime     | 8        | 8      | 0      |
-| stdlib      | 5        | 5      | 0      |
+| stdlib      | 6        | 6      | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 145      | 145    | 0      |
+| **Total**   | 146      | 146    | 0      |
