@@ -1,7 +1,7 @@
 <div class="pane-head">
 	<div>
-		<div class="eyebrow">{$ctx.driver|h}{if $ctx.schema_name} &middot; {$ctx.schema_name|h}{/if}</div>
-		<h1>{$ctx.connection_name|h}</h1>
+		<div class="eyebrow">{$ctx.driver}{if $ctx.schema_name} &middot; {$ctx.schema_name}{/if}</div>
+		<h1>{$ctx.connection_name}</h1>
 	</div>
 	<div class="pane-head__actions">
 		<a href="/sql">SQL console</a>
@@ -10,7 +10,7 @@
 </div>
 
 {if $error}
-<p class="notice notice--bad" role="alert">{$error|h}</p>
+<p class="notice notice--bad" role="alert">{$error}</p>
 {/if}
 
 {if $is_readonly}
@@ -32,10 +32,10 @@
 	<tbody>
 		{foreach $tables as $entry}
 		<tr>
-			<td class="name"><a href="/t/{$entry.name|urlencode}">{$entry.name|h}</a></td>
+			<td class="name"><a href="/t/{$entry.name|urlencode}">{$entry.name}</a></td>
 			<td class="num c-medium">{$entry.columns}</td>
 			<td class="num">{if $counted}{$entry.row_count}{else}&mdash;{/if}</td>
-			<td class="c-wide dim">{$entry.kind|h}</td>
+			<td class="c-wide dim">{$entry.kind}</td>
 			<td class="actions">
 				<a href="/t/{$entry.name|urlencode}">Browse</a>
 				<a href="/t/{$entry.name|urlencode}/structure">Structure</a>

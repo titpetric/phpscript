@@ -1,12 +1,12 @@
 {
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../../../minitpl",
-            "options": { "symlink": false }
-        }
-    ],
+    "repositories": [{
+        "packagist.org": false
+    },{
+        "name": "minitpl",
+        "type": "vcs",
+        "url": "https://github.com/titpetric/minitpl"
+    }],
     "require": {
-        "titpetric/minitpl": "@dev"
+        "titpetric/minitpl": "^1.3"
     }
 }

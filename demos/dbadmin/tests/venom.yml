@@ -331,6 +331,64 @@ testcases:
           - 'result.systemout ShouldContainSubstring EMPTY mysql 1'
           - 'result.systemout ShouldContainSubstring EMPTY postgres 1'
 
+  # minitpl escapes what a template prints, so the templates carry no escape
+  # filter of their own. The two things that survived that are checked here: a
+  # null is still marked by hand, and an attribute still holds a value that
+  # contains the quote delimiting it.
+  - name: a null cell is marked and a value stays inside its attribute
+    steps:
+      - type: exec
+        script: |
+          set -e
+          token=$(cat .venom-csrf)
+
+          curl -sS -b .venom-jar -o /dev/null \
+            --data-urlencode "csrf_token=$token" \
+            --data-urlencode "connection_id=1" {{.host}}/session/connection
+          curl -sS -b .venom-jar -o /dev/null \
+            --data-urlencode "csrf_token=$token" \
+            --data-urlencode "statement=DROP TABLE IF EXISTS venom_null" {{.host}}/sql
+          curl -sS -b .venom-jar -o /dev/null -w "CREATE %{http_code}\n" \
+            --data-urlencode "csrf_token=$token" \
+            --data-urlencode "statement=CREATE TABLE venom_null (id INTEGER PRIMARY KEY, body TEXT, note TEXT)" \
+            {{.host}}/sql
+
+          # body is a real null, note is the four characters N, U, L and L.
+          curl -sS -b .venom-jar -L -o /dev/null -w "INSERT %{http_code}\n" \
+            --data-urlencode "csrf_token=$token" \
+            --data-urlencode "f_id=1" \
+            --data-urlencode "null_body=1" \
+            --data-urlencode "f_note=NULL" {{.host}}/t/venom_null/insert
+
+          # One marker for the one null, and the literal string rendered as the
+          # text it is. A template that printed both the same way would pass a
+          # count of either alone, so both are counted.
+          curl -sS -b .venom-jar {{.host}}/t/venom_null \
+            | grep -c '<span class="null">NULL</span>' | sed "s/^/MARKED /"
+          curl -sS -b .venom-jar {{.host}}/t/venom_null \
+            | grep -c '<td class="cell">NULL</td>' | sed "s/^/LITERAL /"
+
+          # A search term carrying the quote that delimits the attribute it is
+          # printed into. Escaped by context, it stays one attribute; unescaped
+          # it would close the value and the rest would be markup.
+          curl -sS -b .venom-jar -G --data-urlencode 'q=a"b<i>' {{.host}}/t/venom_null \
+            | grep -c 'value="a&quot;b&lt;i&gt;"' | sed "s/^/ATTR /"
+          curl -sS -b .venom-jar -G --data-urlencode 'q=a"b<i>' {{.host}}/t/venom_null \
+            | grep -c 'value="a"b<i>"' | sed "s/^/RAWATTR /"
+
+          curl -sS -b .venom-jar -o /dev/null -w "DROP %{http_code}\n" \
+            --data-urlencode "csrf_token=$token" \
+            --data-urlencode "statement=DROP TABLE venom_null" {{.host}}/sql
+        assertions:
+          - 'result.code ShouldEqual 0'
+          - 'result.systemout ShouldContainSubstring CREATE 200'
+          - 'result.systemout ShouldContainSubstring INSERT 200'
+          - 'result.systemout ShouldContainSubstring MARKED 1'
+          - 'result.systemout ShouldContainSubstring LITERAL 1'
+          - 'result.systemout ShouldContainSubstring ATTR 1'
+          - 'result.systemout ShouldContainSubstring RAWATTR 0'
+          - 'result.systemout ShouldContainSubstring DROP 200'
+
   - name: a table that does not exist is a 404 rather than a broken query
     steps:
       - type: exec

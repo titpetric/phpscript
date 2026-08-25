@@ -8,7 +8,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{$title|h} &middot; dbadmin</title>
+<title>{$title} &middot; dbadmin</title>
 <link rel="stylesheet" href="/assets/css/dbadmin.css">
 <script defer src="/assets/js/dbadmin.js"></script>
 </head>
@@ -33,9 +33,9 @@
 		</nav>
 
 		<div class="session">
-			<span class="session__user">{$ctx.username|h}</span>
+			<span class="session__user">{$ctx.username}</span>
 			<form method="post" action="/logout">
-				<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+				<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 				<button type="submit" class="link">Sign out</button>
 			</form>
 		</div>
@@ -44,7 +44,7 @@
 </header>
 
 {if $ctx.flash}
-<p class="notice notice--ok" role="status">{$ctx.flash|h}</p>
+<p class="notice notice--ok" role="status">{$ctx.flash}</p>
 {/if}
 
 {if $standalone}

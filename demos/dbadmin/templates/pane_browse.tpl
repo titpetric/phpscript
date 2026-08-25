@@ -1,7 +1,7 @@
 {include table_head.tpl}
 
 <form class="filter-bar" method="get" action="/t/{$table|urlencode}">
-	<input type="search" name="q" value="{$result.search|h}" placeholder="Search every column" id="dbadmin-filter">
+	<input type="search" name="q" value="{$result.search}" placeholder="Search every column" id="dbadmin-filter">
 	<button type="submit">Search</button>
 	{if $result.search}<a class="link" href="/t/{$table|urlencode}">Clear</a>{/if}
 	<span class="hint">{$result.total} row(s)</span>
@@ -14,7 +14,7 @@
 		<tr>
 			{if $result.identity.kind != "none"}<th class="dim">Row</th>{/if}
 			{foreach $result.columns as $column}
-			<th class="name">{$column.name|h}<small>{$column.type|h}</small></th>
+			<th class="name">{$column.name}<small>{$column.type}</small></th>
 			{/foreach}
 		</tr>
 	</thead>
@@ -27,14 +27,14 @@
 				<a href="/t/{$table|urlencode}/row/{$key|urlencode}/edit">Edit</a>
 				{if $ctx.can_destroy}
 				<form method="post" action="/t/{$table|urlencode}/row/{$key|urlencode}/delete" data-confirm="Delete this row?">
-					<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+					<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 					<button type="submit" class="link danger">Delete</button>
 				</form>
 				{/if}
 			</td>
 			{/if}
 			{foreach $result.columns as $column}
-			<td class="cell">{$row[$column.name]|h}</td>
+			<td class="cell">{if $row[$column.name] === null}<span class="null">NULL</span>{else}{$row[$column.name]}{/if}</td>
 			{/foreach}
 		</tr>
 		{/foreach}

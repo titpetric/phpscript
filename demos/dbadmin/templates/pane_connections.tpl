@@ -22,8 +22,8 @@
 	<tbody>
 		{foreach $connections as $entry}
 		<tr>
-			<td class="name"><a href="/admin/connection/{$entry.id}">{$entry.name|h}</a></td>
-			<td class="dim">{$entry.driver|h}</td>
+			<td class="name"><a href="/admin/connection/{$entry.id}">{$entry.name}</a></td>
+			<td class="dim">{$entry.driver}</td>
 			<td>
 				{if $entry.is_enabled == 0}<span class="dot"></span>Disabled
 				{elseif $entry.status == "ok"}<span class="dot dot--ok"></span>OK
@@ -32,7 +32,7 @@
 			</td>
 			<td class="num c-medium">{$entry.table_count}</td>
 			<td class="num c-wide">{$entry.grants}</td>
-			<td class="flex c-wide"><code class="truncate">{$entry.dsn|h}</code></td>
+			<td class="flex c-wide"><code class="truncate">{$entry.dsn}</code></td>
 			<td class="actions"><a href="/admin/connection/{$entry.id}">Edit</a></td>
 		</tr>
 		{/foreach}
@@ -46,16 +46,16 @@
 <h2>Add a connection</h2>
 
 <form method="post" action="/admin/connection" class="stack">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 
 	<div class="field">
 		<label for="c-name">Name</label>
-		<input id="c-name" name="name" value="{$name|h}" autocomplete="off" required>
+		<input id="c-name" name="name" value="{$name}" autocomplete="off" required>
 		<small>Lowercase letters, digits, dash or underscore. This is the name the runtime registers.</small>
 	</div>
 	<div class="field grow">
 		<label for="c-dsn">DSN</label>
-		<input id="c-dsn" name="dsn" value="{$dsn|h}" autocomplete="off" required
+		<input id="c-dsn" name="dsn" value="{$dsn}" autocomplete="off" required
 			placeholder="postgres://user:pass@host:5432/database?sslmode=disable">
 		<small>sqlite://path.db &middot; mysql://user:pass@tcp(host:3306)/database &middot; postgres://user:pass@host/database</small>
 	</div>

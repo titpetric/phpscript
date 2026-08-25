@@ -4,15 +4,21 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2f266b5d4377537260e75108144b718e",
+    "content-hash": "fb1609ecc79930e83e3f4437c2031d4b",
     "packages": [
         {
             "name": "titpetric/minitpl",
-            "version": "dev-master",
+            "version": "v1.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/titpetric/minitpl.git",
+                "reference": "7d1a7265029124ccac6c41e26c71517d5382c438"
+            },
             "dist": {
-                "type": "path",
-                "url": "../../../minitpl",
-                "reference": "3a24b6a73761338a2b56dc053eebb60ec5e20718"
+                "type": "zip",
+                "url": "https://api.github.com/repos/titpetric/minitpl/zipball/7d1a7265029124ccac6c41e26c71517d5382c438",
+                "reference": "7d1a7265029124ccac6c41e26c71517d5382c438",
+                "shasum": ""
             },
             "require": {
                 "php": ">=5.6.0"
@@ -25,12 +31,10 @@
             },
             "archive": {
                 "exclude": [
-                    "/test",
-                    "/documentation",
+                    "/tests",
+                    "/docs",
                     "/vendor",
-                    "/git_hooks",
-                    "/phpunit.xml",
-                    "/.gitmodules"
+                    "/phpunit.xml"
                 ]
             },
             "license": [
@@ -54,18 +58,17 @@
                 "template",
                 "tiny"
             ],
-            "transport-options": {
-                "symlink": false,
-                "relative": true
-            }
+            "support": {
+                "source": "https://github.com/titpetric/minitpl/tree/v1.3.0",
+                "issues": "https://github.com/titpetric/minitpl/issues"
+            },
+            "time": "2026-08-24T12:43:36+00:00"
         }
     ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "titpetric/minitpl": 20
-    },
+    "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {},

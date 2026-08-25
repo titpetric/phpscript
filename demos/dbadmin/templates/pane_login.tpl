@@ -6,7 +6,7 @@
 	<form method="post" action="/login" class="stack">
 		<div class="field">
 			<label for="username">Username</label>
-			<input id="username" name="username" value="{$username|h}" autocomplete="username" autofocus required>
+			<input id="username" name="username" value="{$username}" autocomplete="username" autofocus required>
 		</div>
 		<div class="field">
 			<label for="password">Password</label>

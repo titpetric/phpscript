@@ -18,13 +18,13 @@
 	<tbody>
 		{foreach $users as $entry}
 		<tr>
-			<td class="name"><a href="/admin/user/{$entry.id}">{$entry.username|h}</a></td>
+			<td class="name"><a href="/admin/user/{$entry.id}">{$entry.username}</a></td>
 			<td>{if $entry.is_admin}<span class="status">admin</span>{else}<span class="dim">user</span>{/if}
 				{if $entry.is_enabled == 0}<span class="status s4xx">disabled</span>{/if}</td>
-			<td class="dim">{$entry.destructive_policy|h}</td>
-			<td class="dim c-medium flex">{$entry.groups|hv}</td>
+			<td class="dim">{$entry.destructive_policy}</td>
+			<td class="dim c-medium flex">{$entry.groups}</td>
 			<td class="num c-wide">{$entry.sessions}</td>
-			<td class="dim c-wide">{$entry.last_login_at|hv}</td>
+			<td class="dim c-wide">{$entry.last_login_at}</td>
 			<td class="actions"><a href="/admin/user/{$entry.id}">Edit</a></td>
 		</tr>
 		{/foreach}
@@ -35,11 +35,11 @@
 <h2>Add a user</h2>
 
 <form method="post" action="/admin/user" class="stack">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 
 	<div class="field">
 		<label for="u-name">Username</label>
-		<input id="u-name" name="username" value="{$username|h}" autocomplete="off" required>
+		<input id="u-name" name="username" value="{$username}" autocomplete="off" required>
 	</div>
 	<div class="field">
 		<label for="u-pass">Password</label>
@@ -49,7 +49,7 @@
 		<label for="u-policy">Destructive actions</label>
 		<select id="u-policy" name="policy">
 			{foreach $policies as $policy}
-			<option value="{$policy|h}"{if $policy == "toggle"} selected{/if}>{$policy|h}</option>
+			<option value="{$policy}"{if $policy == "toggle"} selected{/if}>{$policy}</option>
 			{/foreach}
 		</select>
 		<small><b>denied</b> hides the switch entirely &middot; <b>toggle</b> offers it, off at every sign-in &middot;

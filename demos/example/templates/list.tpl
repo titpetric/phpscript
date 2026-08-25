@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title|escape}</title>
+<title>{title}</title>
 <link rel="stylesheet" href="/assets/style.css">
 </head>
 <body>
 <main>
-<h1>{title|escape}</h1>
+<h1>{title}</h1>
 
 {if $message}
-<p class="notice">{message|escape}</p>
+<p class="notice">{message}</p>
 {/if}
 
 <form method="post" action="/bookmarks">
@@ -23,8 +23,8 @@
 <ul class="bookmarks">
 {foreach $bookmarks as $bookmark}
 	<li>
-		<a href="{bookmark.url|escape}">{bookmark.title|escape}</a>
-		<small>{bookmark.created_at|escape}</small>
+		<a href="{bookmark.url}">{bookmark.title}</a>
+		<small>{bookmark.created_at}</small>
 		<form method="post" action="/bookmarks/{bookmark.id}/delete">
 			<button class="link">Delete</button>
 		</form>

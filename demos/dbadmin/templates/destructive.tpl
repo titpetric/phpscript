@@ -4,11 +4,11 @@
    'allowed' has nothing to switch and 'denied' has nothing to offer, and in
    both cases a control that did nothing would be worse than no control. *}		{if $ctx.offers_toggle}
 		<form class="danger-switch{if $ctx.can_destroy} danger-switch--on{/if}" method="post" action="/session/destructive">
-			<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
-			<input type="hidden" name="back" value="{$back_path|h}">
+			<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
+			<input type="hidden" name="back" value="{$back_path}">
 
 			{if $ctx.can_destroy}
-			<span class="danger-switch__state" data-expires="{$ctx.destructive_until|h}">Destructive mode on</span>
+			<span class="danger-switch__state" data-expires="{$ctx.destructive_until}">Destructive mode on</span>
 			<button type="submit" name="off" value="1">Leave</button>
 			{else}
 			<span class="danger-switch__state">Destructive actions off</span>

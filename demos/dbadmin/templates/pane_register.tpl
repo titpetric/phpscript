@@ -8,7 +8,7 @@
 	<form method="post" action="/register" class="stack">
 		<div class="field">
 			<label for="username">Username</label>
-			<input id="username" name="username" value="{$username|h}" autocomplete="username" autofocus required>
+			<input id="username" name="username" value="{$username}" autocomplete="username" autofocus required>
 			<small>Letters, digits, dot, dash or underscore.</small>
 		</div>
 		<div class="field">

@@ -1,7 +1,7 @@
 {* The heading and tab strip every table page shares. *}<div class="pane-head">
 	<div>
-		<div class="eyebrow"><a href="/tables">{$ctx.connection_name|h}</a>{if $ctx.schema_name} &middot; {$ctx.schema_name|h}{/if}</div>
-		<h1>{$table|h}</h1>
+		<div class="eyebrow"><a href="/tables">{$ctx.connection_name}</a>{if $ctx.schema_name} &middot; {$ctx.schema_name}{/if}</div>
+		<h1>{$table}</h1>
 	</div>
 </div>
 

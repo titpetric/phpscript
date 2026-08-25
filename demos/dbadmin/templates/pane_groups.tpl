@@ -21,9 +21,9 @@ where a group and an account disagree about destructive actions, the stricter of
 	<tbody>
 		{foreach $groups as $entry}
 		<tr>
-			<td class="name"><a href="/admin/group/{$entry.id}">{$entry.name|h}</a></td>
-			<td class="dim flex c-medium">{$entry.description|hv}</td>
-			<td class="dim">{$entry.destructive_policy|h}</td>
+			<td class="name"><a href="/admin/group/{$entry.id}">{$entry.name}</a></td>
+			<td class="dim flex c-medium">{$entry.description}</td>
+			<td class="dim">{$entry.destructive_policy}</td>
 			<td class="num">{$entry.members}</td>
 			<td class="num">{$entry.connections}</td>
 			<td class="actions"><a href="/admin/group/{$entry.id}">Edit</a></td>
@@ -39,11 +39,11 @@ where a group and an account disagree about destructive actions, the stricter of
 <h2>Add a group</h2>
 
 <form method="post" action="/admin/group" class="stack">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 
 	<div class="field">
 		<label for="g-name">Name</label>
-		<input id="g-name" name="name" value="{$name|h}" autocomplete="off" required>
+		<input id="g-name" name="name" value="{$name}" autocomplete="off" required>
 	</div>
 	<div class="field grow">
 		<label for="g-desc">Description</label>
@@ -53,7 +53,7 @@ where a group and an account disagree about destructive actions, the stricter of
 		<label for="g-policy">Destructive actions</label>
 		<select id="g-policy" name="policy">
 			{foreach $policies as $policy}
-			<option value="{$policy|h}"{if $policy == "allowed"} selected{/if}>{$policy|h}</option>
+			<option value="{$policy}"{if $policy == "allowed"} selected{/if}>{$policy}</option>
 			{/foreach}
 		</select>
 		<small>Leave this on <b>allowed</b> unless the group should be stricter than its members' own settings.</small>

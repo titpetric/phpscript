@@ -18,18 +18,18 @@
 	<tbody>
 		{foreach $connections as $entry}
 		<tr>
-			<td class="name">{$entry.name|h}</td>
-			<td class="dim">{$entry.driver|h}</td>
+			<td class="name">{$entry.name}</td>
+			<td class="dim">{$entry.driver}</td>
 			<td>
 				{if $entry.status == "ok"}<span class="dot dot--ok"></span>OK
-				{elseif $entry.status == "error"}<span class="dot dot--bad"></span>{$entry.status_message|h}
+				{elseif $entry.status == "error"}<span class="dot dot--bad"></span>{$entry.status_message}
 				{else}<span class="dot"></span>Not tested{/if}
 			</td>
 			<td class="num c-medium">{$entry.table_count}</td>
-			<td class="dim c-wide">{$entry.default_schema|h}</td>
+			<td class="dim c-wide">{$entry.default_schema}</td>
 			<td>
 				<form method="post" action="/session/connection">
-					<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+					<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 					<input type="hidden" name="connection_id" value="{$entry.id}">
 					<button type="submit">Open</button>
 				</form>

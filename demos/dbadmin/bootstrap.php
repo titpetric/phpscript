@@ -52,30 +52,6 @@ if ($ctx["connection_id"] > 0) {
 	$ctx["is_readonly"] = $acl->may_use($ctx, $ctx["connection_id"])["is_readonly"];
 }
 
-/** h escapes $value for HTML, rendering null as a marked NULL rather than "". */
-function h($value) {
-	if ($value === null) {
-		return "<span class=\"null\">NULL</span>";
-	}
-
-	return htmlspecialchars("" . $value);
-}
-
-/**
- * hv escapes $value for an HTML attribute, rendering null as empty.
- *
- * h() marks a null so a browse table can show the difference between NULL and
- * the empty string. Inside a value attribute that marker would be the field's
- * contents, so a form asks for this one instead.
- */
-function hv($value) {
-	if ($value === null) {
-		return "";
-	}
-
-	return htmlspecialchars("" . $value);
-}
-
 /** redirect_to sends the browser to $url and ends the request. */
 function redirect_to($url) {
 	header("Location: " . $url);

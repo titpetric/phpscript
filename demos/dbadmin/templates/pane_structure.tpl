@@ -28,10 +28,10 @@
 	<tbody>
 		{foreach $columns as $column}
 		<tr>
-			<td class="name flex">{$column.name|h}</td>
-			<td class="dim">{$column.type|h}</td>
+			<td class="name flex">{$column.name}</td>
+			<td class="dim">{$column.type}</td>
 			<td class="dim">{if $column.nullable}yes{else}no{/if}</td>
-			<td class="dim c-medium">{$column.default|h}</td>
+			<td class="dim c-medium">{if $column.default === null}<span class="null">NULL</span>{else}{$column.default}{/if}</td>
 			<td>{if $column.is_key}<span class="status">PK</span>{/if}</td>
 		</tr>
 		{/foreach}
@@ -48,9 +48,9 @@
 	<tbody>
 		{foreach $indexes as $index}
 		<tr>
-			<td class="name flex">{$index.name|h}</td>
+			<td class="name flex">{$index.name}</td>
 			<td class="dim">{if $index.is_unique}yes{else}no{/if}</td>
-			<td class="dim c-medium"><code class="truncate">{$index.columns|h}</code></td>
+			<td class="dim c-medium"><code class="truncate">{$index.columns}</code></td>
 		</tr>
 		{/foreach}
 	</tbody>
@@ -62,7 +62,7 @@
 
 {if $definition}
 <h2>Definition</h2>
-<pre><code>{$definition|h}</code></pre>
+<pre><code>{$definition}</code></pre>
 {/if}
 
 {if $is_readonly == false}
@@ -70,25 +70,25 @@
 
 <div class="danger-zone">
 	<form method="post" action="/t/{$table|urlencode}/empty" id="empty" class="danger-form">
-		<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+		<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 		<div>
 			<b>Empty this table</b>
 			<p>Deletes every row and keeps the table. {$rows} row(s) would go.</p>
 		</div>
 		<div class="danger-form__confirm">
-			<input name="confirmation" placeholder="Type {$table|h} to confirm" autocomplete="off" data-confirm-name="{$table|h}">
+			<input name="confirmation" placeholder="Type {$table} to confirm" autocomplete="off" data-confirm-name="{$table}">
 			<button type="submit" class="danger"{if $ctx.can_destroy == false} disabled{/if}>Empty</button>
 		</div>
 	</form>
 
 	<form method="post" action="/t/{$table|urlencode}/drop" id="drop" class="danger-form">
-		<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+		<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 		<div>
 			<b>Drop this table</b>
 			<p>Removes the table and everything in it. There is nothing behind this to undo it.</p>
 		</div>
 		<div class="danger-form__confirm">
-			<input name="confirmation" placeholder="Type {$table|h} to confirm" autocomplete="off" data-confirm-name="{$table|h}">
+			<input name="confirmation" placeholder="Type {$table} to confirm" autocomplete="off" data-confirm-name="{$table}">
 			<button type="submit" class="danger"{if $ctx.can_destroy == false} disabled{/if}>Drop</button>
 		</div>
 	</form>

@@ -1,6 +1,6 @@
 <div class="pane-head">
 	<div>
-		<div class="eyebrow"><a href="/tables">{$ctx.connection_name|h}</a>{if $ctx.schema_name} &middot; {$ctx.schema_name|h}{/if}</div>
+		<div class="eyebrow"><a href="/tables">{$ctx.connection_name}</a>{if $ctx.schema_name} &middot; {$ctx.schema_name}{/if}</div>
 		<h1>Create table</h1>
 	</div>
 </div>
@@ -8,12 +8,12 @@
 {include errors.tpl}
 
 <form method="post" action="/table/create" class="stack">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 	<input type="hidden" name="columns" value="{$spec|count}">
 
 	<div class="field">
 		<label for="table-name">Table name</label>
-		<input id="table-name" name="name" value="{$name|h}" autocomplete="off" autofocus required>
+		<input id="table-name" name="name" value="{$name}" autocomplete="off" autofocus required>
 	</div>
 
 	<div class="scroll">
@@ -30,11 +30,11 @@
 		<tbody>
 			{foreach $spec as $index => $column}
 			<tr>
-				<td class="name"><input name="name_{$index}" value="{$column.name|hv}" autocomplete="off" placeholder="column"></td>
+				<td class="name"><input name="name_{$index}" value="{$column.name}" autocomplete="off" placeholder="column"></td>
 				<td>
 					<select name="type_{$index}">
 						{foreach $types as $type}
-						<option value="{$type|h}"{if $type == $column.type} selected{/if}>{$type|h}</option>
+						<option value="{$type}"{if $type == $column.type} selected{/if}>{$type}</option>
 						{/foreach}
 					</select>
 				</td>

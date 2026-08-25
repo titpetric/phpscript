@@ -1,6 +1,6 @@
 <div class="pane-head">
 	<div>
-		<div class="eyebrow"><a href="/tables">{$ctx.connection_name|h}</a> &middot; {$ctx.driver|h}</div>
+		<div class="eyebrow"><a href="/tables">{$ctx.connection_name}</a> &middot; {$ctx.driver}</div>
 		<h1>SQL console</h1>
 	</div>
 </div>
@@ -12,27 +12,27 @@
 {/if}
 
 <form method="post" action="/sql" class="stack">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
-	<textarea name="statement" rows="6" spellcheck="false" autofocus placeholder="SELECT * FROM ...">{$statement|hv}</textarea>
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
+	<textarea name="statement" rows="6" spellcheck="false" autofocus placeholder="SELECT * FROM ...">{$statement}</textarea>
 	<div class="form-actions">
 		<button type="submit">Run</button>
-		{if $kind}<span class="hint">Last statement classified as <b>{$kind|h}</b></span>{/if}
+		{if $kind}<span class="hint">Last statement classified as <b>{$kind}</b></span>{/if}
 	</div>
 </form>
 
 {if $result.message}
-<p class="notice notice--ok">{$result.message|h}</p>
+<p class="notice notice--ok">{$result.message}</p>
 {/if}
 
 {if $result.rows}
 <div class="scroll">
 <table>
 	<thead>
-		<tr>{foreach $result.columns as $column}<th class="name">{$column|h}</th>{/foreach}</tr>
+		<tr>{foreach $result.columns as $column}<th class="name">{$column}</th>{/foreach}</tr>
 	</thead>
 	<tbody>
 		{foreach $result.rows as $row}
-		<tr>{foreach $result.columns as $column}<td class="cell">{$row[$column]|h}</td>{/foreach}</tr>
+		<tr>{foreach $result.columns as $column}<td class="cell">{if $row[$column] === null}<span class="null">NULL</span>{else}{$row[$column]}{/if}</td>{/foreach}</tr>
 		{/foreach}
 	</tbody>
 </table>

@@ -5,7 +5,7 @@
 {include errors.tpl}
 
 <form method="post" class="stack" action="{if $inserting}/t/{$table|urlencode}/insert{else}/t/{$table|urlencode}/row/{$key|urlencode}/edit{/if}">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 
 	<div class="scroll">
 	<table class="form-table">
@@ -13,10 +13,10 @@
 		<tbody>
 			{foreach $columns as $column}
 			<tr>
-				<td class="name">{$column.name|h}{if $column.is_key}<span class="status">PK</span>{/if}</td>
-				<td class="dim c-medium">{$column.type|h}</td>
-				<td class="flex"><input name="f_{$column.name|h}" value="{$values[$column.name]|hv}" autocomplete="off"></td>
-				<td>{if $column.nullable}<input type="checkbox" name="null_{$column.name|h}" value="1" aria-label="Set null"{if $nulls[$column.name]} checked{/if}>{/if}</td>
+				<td class="name">{$column.name}{if $column.is_key}<span class="status">PK</span>{/if}</td>
+				<td class="dim c-medium">{$column.type}</td>
+				<td class="flex"><input name="f_{$column.name}" value="{$values[$column.name]}" autocomplete="off"></td>
+				<td>{if $column.nullable}<input type="checkbox" name="null_{$column.name}" value="1" aria-label="Set null"{if $nulls[$column.name]} checked{/if}>{/if}</td>
 			</tr>
 			{/foreach}
 		</tbody>

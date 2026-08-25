@@ -27,16 +27,16 @@ login can actually see.</p>
 	<tbody>
 		{foreach $report as $entry}
 		<tr{if $entry.status == "error"} class="failed"{/if}>
-			<td class="name"><a href="/admin/connection/{$entry.id}">{$entry.name|h}</a></td>
+			<td class="name"><a href="/admin/connection/{$entry.id}">{$entry.name}</a></td>
 			<td class="flex">
 				{if $entry.status == "ok"}<span class="dot dot--ok"></span>OK
-				{else}<span class="dot dot--bad"></span>{$entry.message|h}{/if}
+				{else}<span class="dot dot--bad"></span>{$entry.message}{/if}
 			</td>
 			<td class="num">{if $entry.status == "ok"}{$entry.tables}{else}&mdash;{/if}</td>
 			<td class="num">{if $entry.status == "ok"}{$entry.columns}{else}&mdash;{/if}</td>
 			<td class="num">{if $entry.status == "ok"}{$entry.schemas}{else}&mdash;{/if}</td>
-			<td class="dim c-medium">{$entry.driver|h}</td>
-			<td class="c-wide"><code class="truncate">{$entry.dsn|h}</code></td>
+			<td class="dim c-medium">{$entry.driver}</td>
+			<td class="c-wide"><code class="truncate">{$entry.dsn}</code></td>
 		</tr>
 		{/foreach}
 	</tbody>

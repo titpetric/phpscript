@@ -1,7 +1,7 @@
 <div class="pane-head">
 	<div>
 		<div class="eyebrow"><a href="/admin/user">Users</a></div>
-		<h1>{$user.username|h}</h1>
+		<h1>{$user.username}</h1>
 	</div>
 </div>
 
@@ -10,22 +10,22 @@
 <dl class="detail">
 	<div><dt>Role</dt><dd>{if $user.is_admin}administrator{else}user{/if}</dd></div>
 	<div><dt>Enabled</dt><dd>{if $user.is_enabled}yes{else}no{/if}</dd></div>
-	<div><dt>Destructive</dt><dd>{$user.destructive_policy|h}</dd></div>
-	<div><dt>Last sign-in</dt><dd>{$user.last_login_at|hv}</dd></div>
-	<div><dt>Created</dt><dd>{$user.created_at|hv}</dd></div>
+	<div><dt>Destructive</dt><dd>{$user.destructive_policy}</dd></div>
+	<div><dt>Last sign-in</dt><dd>{$user.last_login_at}</dd></div>
+	<div><dt>Created</dt><dd>{$user.created_at}</dd></div>
 </dl>
 
 <h2>Profile</h2>
 
 <form method="post" action="/admin/user/{$user.id}" class="stack">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 	<input type="hidden" name="action" value="profile">
 
 	<div class="field">
 		<label for="u-policy">Destructive actions</label>
 		<select id="u-policy" name="policy">
 			{foreach $policies as $policy}
-			<option value="{$policy|h}"{if $policy == $user.destructive_policy} selected{/if}>{$policy|h}</option>
+			<option value="{$policy}"{if $policy == $user.destructive_policy} selected{/if}>{$policy}</option>
 			{/foreach}
 		</select>
 	</div>
@@ -39,12 +39,12 @@
 <h2>Groups</h2>
 
 <form method="post" action="/admin/user/{$user.id}" class="stack">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 	<input type="hidden" name="action" value="groups">
 
 	{foreach $groups as $group}
 	<label class="check"><input type="checkbox" name="group_{$group.id}" value="1"{if in_array($group.id, $member_of)} checked{/if}>
-		{$group.name|h} <span class="dim">({$group.connections} connection(s), destructive: {$group.destructive_policy|h})</span></label>
+		{$group.name} <span class="dim">({$group.connections} connection(s), destructive: {$group.destructive_policy})</span></label>
 	{else}
 	<p class="note">No groups exist yet. <a href="/admin/group">Create one</a> to grant this account a connection.</p>
 	{/foreach}
@@ -55,7 +55,7 @@
 <h2>Password</h2>
 
 <form method="post" action="/admin/user/{$user.id}" class="stack">
-	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 	<input type="hidden" name="action" value="password">
 
 	<div class="field">
@@ -77,10 +77,10 @@
 	<tbody>
 		{foreach $sessions as $entry}
 		<tr>
-			<td class="name">{$entry.remote_addr|hv}</td>
-			<td class="dim c-medium flex"><code class="truncate">{$entry.user_agent|hv}</code></td>
-			<td class="dim">{$entry.created_at|hv}</td>
-			<td class="dim c-wide">{$entry.expires_at|hv}</td>
+			<td class="name">{$entry.remote_addr}</td>
+			<td class="dim c-medium flex"><code class="truncate">{$entry.user_agent}</code></td>
+			<td class="dim">{$entry.created_at}</td>
+			<td class="dim c-wide">{$entry.expires_at}</td>
 		</tr>
 		{/foreach}
 	</tbody>
@@ -99,10 +99,10 @@
 	<tbody>
 		{foreach $log as $entry}
 		<tr>
-			<td class="dim">{$entry.created_at|hv}</td>
-			<td><span class="status">{$entry.action|h}</span></td>
-			<td class="flex">{$entry.message|h}</td>
-			<td class="dim c-wide">{$entry.username|hv}</td>
+			<td class="dim">{$entry.created_at}</td>
+			<td><span class="status">{$entry.action}</span></td>
+			<td class="flex">{$entry.message}</td>
+			<td class="dim c-wide">{$entry.username}</td>
 		</tr>
 		{/foreach}
 	</tbody>
@@ -116,8 +116,8 @@
 <h2>Danger zone</h2>
 
 <div class="danger-zone">
-	<form method="post" action="/admin/user/{$user.id}/delete" class="danger-form" data-confirm="Delete {$user.username|h}?">
-		<input type="hidden" name="csrf_token" value="{$ctx.csrf_token|h}">
+	<form method="post" action="/admin/user/{$user.id}/delete" class="danger-form" data-confirm="Delete {$user.username}?">
+		<input type="hidden" name="csrf_token" value="{$ctx.csrf_token}">
 		<div>
 			<b>Delete this account</b>
 			<p>Removes the account, its group memberships and its sessions. Its audit rows stay: they are the only

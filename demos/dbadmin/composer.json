@@ -7,6 +7,6 @@
         "url": "https://github.com/titpetric/minitpl"
     }],
     "require": {
-        "titpetric/minitpl": "^1.2"
+        "titpetric/minitpl": "^1.3"
     }
 }
