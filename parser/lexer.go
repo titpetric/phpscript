@@ -20,6 +20,7 @@ const (
 	tInt                // integer literal
 	tFloat              // float literal
 	tString             // quoted string literal (already unescaped)
+	tInterp             // double-quoted literal with embedded expressions (raw holds the source)
 	tOp                 // operator or punctuation (value holds the exact text)
 )
 
@@ -319,12 +320,14 @@ func (l *lexer) lexString(quote byte) error {
 	open := l.pos
 	l.advanceRune() // opening quote
 
-	// Fast path: a literal with no escape sequence is a substring of the
-	// source, so it needs neither a Builder nor a copy.
+	// Fast path: a literal with neither an escape sequence nor a dollar is a
+	// substring of the source, so it needs neither a Builder nor a copy. A
+	// dollar only leaves the fast path for a double-quoted literal, since a
+	// single-quoted one never interpolates.
 	start := l.pos
 	for i := start; i < len(l.src); i++ {
 		c := l.src[i]
-		if c == '\\' {
+		if c == '\\' || (c == '$' && quote == '"') {
 			break
 		}
 		if c == quote {
@@ -332,6 +335,22 @@ func (l *lexer) lexString(quote byte) error {
 			l.advance(i - start) // keeps the line counter accurate
 			l.advanceRune()      // closing quote
 			l.emitString(val, open)
+			return nil
+		}
+	}
+
+	// A double-quoted literal may embed expressions. Scanning decides that and
+	// costs one pass over a literal that already left the fast path; a literal
+	// that turns out to hold none falls through to the decode below, so the
+	// common `"a\nb"` keeps producing one plain string token.
+	if quote == '"' {
+		_, end, interp, err := scanInterp(l.src, l.pos, l.line)
+		if err != nil {
+			return err
+		}
+		if interp {
+			l.advance(end - l.pos)
+			l.tokens = append(l.tokens, token{kind: tInterp, raw: l.src[open:l.pos], pos: l.pos, line: l.line})
 			return nil
 		}
 	}
@@ -364,6 +383,12 @@ func (l *lexer) lexString(quote byte) error {
 // writeEscape decodes the escape sequence starting at the backslash under
 // l.pos, writes its value to b, and returns how many bytes follow the
 // backslash.
+func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
+	return decodeEscape(l.src, l.pos, quote, b)
+}
+
+// decodeEscape decodes the escape sequence starting at the backslash at src[i],
+// writes its value to b, and returns how many bytes follow the backslash.
 //
 // The two quote styles have different rules, as they do in PHP. A single-quoted
 // literal recognises only `\\` and `\'`; every other backslash stands for
@@ -371,8 +396,12 @@ func (l *lexer) lexString(quote byte) error {
 // double-quoted literal recognises the C-style escapes plus the numeric forms
 // (`\x1B`, `\033`, `\u{1F600}`), and keeps the backslash for anything it does
 // not recognise.
-func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
-	next := l.src[l.pos+1]
+//
+// It is shared by the lexer and the interpolation scanner so that the literal
+// runs between two embedded expressions decode the same way as a literal with
+// no interpolation in it.
+func decodeEscape(src string, i int, quote byte, b *strings.Builder) int {
+	next := src[i+1]
 	if quote == '\'' {
 		if next == '\\' || next == '\'' {
 			b.WriteByte(next)
@@ -399,31 +428,31 @@ func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 		b.WriteByte(next)
 	case 'x', 'X':
 		// \xH or \xHH: one or two hex digits, and a lone `\x` is literal.
-		digits := hexRun(l.src[l.pos+2:], 2)
+		digits := hexRun(src[i+2:], 2)
 		if digits == 0 {
 			b.WriteByte('\\')
 			b.WriteByte(next)
 			return 1
 		}
-		value, _ := strconv.ParseUint(l.src[l.pos+2:l.pos+2+digits], 16, 16)
+		value, _ := strconv.ParseUint(src[i+2:i+2+digits], 16, 16)
 		b.WriteByte(byte(value))
 		return 1 + digits
 	case 'u':
 		// \u{HHH...}: a codepoint, written out as UTF-8. Without the braces
 		// PHP leaves the sequence alone.
-		if l.pos+2 >= len(l.src) || l.src[l.pos+2] != '{' {
+		if i+2 >= len(src) || src[i+2] != '{' {
 			b.WriteByte('\\')
 			b.WriteByte(next)
 			return 1
 		}
-		end := strings.IndexByte(l.src[l.pos+3:], '}')
-		digits := hexRun(l.src[l.pos+3:], end)
+		end := strings.IndexByte(src[i+3:], '}')
+		digits := hexRun(src[i+3:], end)
 		if end <= 0 || digits != end {
 			b.WriteByte('\\')
 			b.WriteByte(next)
 			return 1
 		}
-		value, err := strconv.ParseUint(l.src[l.pos+3:l.pos+3+end], 16, 32)
+		value, err := strconv.ParseUint(src[i+3:i+3+end], 16, 32)
 		if err != nil {
 			b.WriteByte('\\')
 			b.WriteByte(next)
@@ -433,8 +462,8 @@ func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 		return 3 + end
 	case '0', '1', '2', '3', '4', '5', '6', '7':
 		// \NNN: up to three octal digits, taken mod 256 as PHP does.
-		digits := octalRun(l.src[l.pos+1:], 3)
-		value, _ := strconv.ParseUint(l.src[l.pos+1:l.pos+1+digits], 8, 16)
+		digits := octalRun(src[i+1:], 3)
+		value, _ := strconv.ParseUint(src[i+1:i+1+digits], 8, 16)
 		b.WriteByte(byte(value))
 		return digits
 	default:

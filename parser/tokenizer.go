@@ -95,6 +95,11 @@ const (
 	T_AND_EQUAL // &=
 	T_OR_EQUAL  // |=
 	T_XOR_EQUAL // ^=
+	// String interpolation. A double-quoted literal that embeds an expression is
+	// reported as its pieces, and these are the ids that mark them.
+	T_ENCAPSED_AND_WHITESPACE // a literal run between two embedded expressions
+	T_CURLY_OPEN              // the `{` of a {$...}
+	T_NUM_STRING              // digits used as an array key inside a literal
 )
 
 // tokenNames maps each T_* id to its PHP name (what token_name returns).
@@ -155,6 +160,9 @@ var tokenNames = map[int]string{
 	T_AND_EQUAL:                "T_AND_EQUAL",
 	T_OR_EQUAL:                 "T_OR_EQUAL",
 	T_XOR_EQUAL:                "T_XOR_EQUAL",
+	T_ENCAPSED_AND_WHITESPACE:  "T_ENCAPSED_AND_WHITESPACE",
+	T_CURLY_OPEN:               "T_CURLY_OPEN",
+	T_NUM_STRING:               "T_NUM_STRING",
 }
 
 // tokenKeywords maps lowercase identifiers to their keyword token id. Anything
@@ -211,6 +219,18 @@ func TokenName(id int) string {
 		return name
 	}
 	return "UNKNOWN"
+}
+
+// TokenIDs returns every token name with the id token_get_all reports for it,
+// which is what a host registers as PHP constants. A script comparing a token
+// against a name it did not get from here would be comparing against nothing,
+// so the table that names the ids is the table that publishes them.
+func TokenIDs() map[string]int {
+	out := make(map[string]int, len(tokenNames))
+	for id, name := range tokenNames {
+		out[name] = id
+	}
+	return out
 }
 
 // boxedInts holds pre-boxed int64 values so that emitting a token id or a line
@@ -464,6 +484,18 @@ func (t *phpTokenizer) scanNumber() {
 func (t *phpTokenizer) scanString(quote byte) {
 	start := t.pos
 	startLine := t.line
+
+	// A double-quoted literal that embeds an expression is not one token: PHP
+	// opens it with the bare quote, reports each run and each embedded
+	// expression separately, and closes it with the quote again. A literal that
+	// embeds nothing, and every single-quoted literal, stays one token.
+	if quote == '"' {
+		if parts, _, interp, err := scanInterp(t.src, t.pos+1, t.line); err == nil && interp {
+			t.emitInterp(parts)
+			return
+		}
+	}
+
 	t.advance() // opening quote
 	for t.pos < len(t.src) {
 		c := t.src[t.pos]
@@ -479,6 +511,72 @@ func (t *phpTokenizer) scanString(quote byte) {
 	}
 	// Text keeps quotes and escapes raw, matching PHP.
 	t.emitArr(T_CONSTANT_ENCAPSED_STRING, t.src[start:t.pos], startLine)
+}
+
+// emitInterp writes the token sequence PHP produces for an interpolated
+// literal and advances past it. Simple syntax reports its pieces as the bare
+// tokens they are; complex syntax opens with T_CURLY_OPEN and then reports the
+// expression inside the braces as ordinary PHP, which is what it is.
+func (t *phpTokenizer) emitInterp(parts []interpPart) {
+	t.emitChar('"')
+	t.advance() // opening quote
+
+	for _, part := range parts {
+		switch part.Kind {
+		case interpText:
+			t.emitArr(T_ENCAPSED_AND_WHITESPACE, part.Raw, part.Line)
+
+		case interpSimple:
+			t.emitArr(T_VARIABLE, "$"+part.Name, part.Line)
+			switch {
+			case part.Prop != "":
+				t.emitArr(T_OBJECT_OPERATOR, "->", part.Line)
+				t.emitArr(T_STRING, part.Prop, part.Line)
+			case part.Sub != "":
+				t.emitChar('[')
+				t.emitSubscript(part.Sub, part.Line)
+				t.emitChar(']')
+			}
+
+		default:
+			t.emitArr(T_CURLY_OPEN, "{", part.Line)
+			for _, tok := range tokenizeFrom(part.Inner, part.Line) {
+				t.out = append(t.out, tok)
+			}
+			t.emitChar('}')
+		}
+		t.consume(len(part.Raw))
+	}
+
+	t.emitChar('"')
+	t.advance() // closing quote
+}
+
+// emitSubscript writes the one token (two for a negative number) that a
+// simple-syntax `$a[sub]` subscript is. A bare word there is a string key
+// rather than a constant, and PHP reports it as T_STRING; a number is
+// T_NUM_STRING, which is the id that says "digits read as an array key".
+func (t *phpTokenizer) emitSubscript(sub string, line int) {
+	switch {
+	case sub == "":
+	case sub[0] == '$':
+		t.emitArr(T_VARIABLE, sub, line)
+	case sub[0] == '-':
+		t.emitChar('-')
+		t.emitArr(T_NUM_STRING, sub[1:], line)
+	case sub[0] >= '0' && sub[0] <= '9':
+		t.emitArr(T_NUM_STRING, sub, line)
+	default:
+		t.emitArr(T_STRING, sub, line)
+	}
+}
+
+// tokenizeFrom tokenizes PHP source that came from between the braces of a
+// {$...}, numbering its lines from line so a multi-line literal reports the
+// lines the file has rather than the ones the fragment has.
+func tokenizeFrom(src string, line int) []any {
+	tk := &phpTokenizer{src: src, line: line, inPHP: true}
+	return tk.run()
 }
 
 func (t *phpTokenizer) scanOperator() bool {

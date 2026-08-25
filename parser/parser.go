@@ -6,10 +6,11 @@
 // function and class declarations, the `function Class::method()` form, method
 // and property access via both `->` and `.`, array/new expressions, and the
 // usual operators. It intentionally does not implement the full PHP grammar
-// (see the README "omissions" list: inheritance, interfaces, traits, etc.).
-// `extends` and `implements` are an exception in one direction only: they are
-// parsed and recorded on the AST so files carrying them lint and reformat, but
-// nothing downstream inherits.
+// (see the README "omissions" list: inheritance, traits, etc.). `extends` on a
+// class is an exception in one direction only: it is parsed and recorded on the
+// AST so files carrying it lint and reformat, but nothing downstream inherits.
+// `interface` declarations and a class's `implements` list are parsed and
+// checked as a contract, which also inherits nothing: see model.CheckInterfaces.
 package parser
 
 import (
@@ -140,7 +141,7 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 			// so the message says why rather than only what.
 			if top && p.namespace != "" && !isPreambleStmt(s) {
 				switch s.(type) {
-				case *model.ClassDecl, *model.FuncDecl:
+				case *model.ClassDecl, *model.InterfaceDecl, *model.FuncDecl:
 				default:
 					p.stmts.drop(mark)
 					return nil, fmt.Errorf("line %d: a namespaced file may only declare classes and functions, "+
@@ -235,6 +236,8 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 			return p.parseModifiedClass()
 		case "class":
 			return p.parseClass(classModifiers{})
+		case "interface":
+			return p.parseInterface()
 		case "include", "include_once", "require", "require_once":
 			return p.parseInclude()
 		case "throw":
@@ -1167,6 +1170,101 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 	return cd, p.eatOp("}")
 }
 
+// parseInterface consumes `interface Name [extends A, B] { ... }`.
+//
+// The body holds method signatures with no body, class constants, and the
+// `static` spelling of a signature. It holds no property, because an interface
+// declares no storage, and no method body, because it declares no behaviour:
+// what it declares is a list of names a class saying `implements` must declare
+// itself. See docs/design.md.
+func (p *parser) parseInterface() (model.Stmt, error) {
+	p.next() // interface
+	if p.cur().kind != tIdent {
+		return nil, fmt.Errorf("line %d: expected interface name", p.cur().line)
+	}
+	id := &model.InterfaceDecl{Name: p.qualify(p.next().val, false)}
+	if p.isKw("extends") {
+		p.next()
+		for {
+			name, absolute, err := p.parseQualifiedName(true)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: expected interface name after extends: %w", p.cur().line, err)
+			}
+			id.Extends = append(id.Extends, p.qualify(name, absolute))
+			if !p.isOp(",") {
+				break
+			}
+			p.next()
+		}
+	}
+	if err := p.eatOp("{"); err != nil {
+		return nil, err
+	}
+	for !p.isOp("}") && !p.atEOF() {
+		memberStart := p.cur().line
+		visibility := ""
+		isStatic := false
+		// PHP accepts only `public` on an interface member, and rejects
+		// `abstract` outright, but the modifiers are recorded rather than
+		// enforced: what is written is what has to print back.
+		for p.isKw("public", "private", "protected", "static", "final") {
+			switch {
+			case p.isKw("public"), p.isKw("private"), p.isKw("protected"):
+				visibility = p.cur().val
+			case p.isKw("static"):
+				isStatic = true
+			}
+			p.next()
+		}
+		switch {
+		case p.isKw("const"):
+			consts, err := p.parseConsts()
+			if err != nil {
+				return nil, err
+			}
+			for i := range consts {
+				consts[i].Visibility = visibility
+				consts[i].Span = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
+			}
+			id.Consts = append(id.Consts, consts...)
+		case p.isKw("fn", "func", "function"):
+			m, err := p.parseSignature(visibility, isStatic)
+			if err != nil {
+				return nil, err
+			}
+			p.spans[m] = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
+			id.Methods = append(id.Methods, m)
+		default:
+			return nil, fmt.Errorf("line %d: unexpected token in interface body: %s", p.cur().line, p.cur())
+		}
+	}
+	return id, p.eatOp("}")
+}
+
+// parseSignature consumes `function name(params): type;`, a declaration with
+// no body. It is what an interface member is; an abstract method in a class
+// carries the same shape and adds the keyword.
+func (p *parser) parseSignature(visibility string, isStatic bool) (*model.FuncDecl, error) {
+	p.next() // function
+	if p.cur().kind != tIdent {
+		return nil, fmt.Errorf("line %d: expected method name", p.cur().line)
+	}
+	name := p.next().val
+	params, err := p.parseParams()
+	if err != nil {
+		return nil, err
+	}
+	returnType := p.parseReturnType()
+	p.optSemi()
+	return &model.FuncDecl{
+		Name:       name,
+		Params:     params,
+		ReturnType: returnType,
+		Visibility: visibility,
+		Static:     isStatic,
+	}, nil
+}
+
 // parseConsts parses `const NAME = expr [, NAME = expr];`.
 func (p *parser) parseConsts() ([]model.Field, error) {
 	p.next() // const
@@ -1197,25 +1295,12 @@ func (p *parser) parseConsts() ([]model.Field, error) {
 
 // parseAbstractMethod consumes `function name(params);` with no body.
 func (p *parser) parseAbstractMethod(visibility string, isStatic bool) (*model.FuncDecl, error) {
-	p.next() // function
-	if p.cur().kind != tIdent {
-		return nil, fmt.Errorf("line %d: expected method name", p.cur().line)
-	}
-	name := p.next().val
-	params, err := p.parseParams()
+	fd, err := p.parseSignature(visibility, isStatic)
 	if err != nil {
 		return nil, err
 	}
-	returnType := p.parseReturnType()
-	p.optSemi()
-	return &model.FuncDecl{
-		Name:       name,
-		Params:     params,
-		ReturnType: returnType,
-		Visibility: visibility,
-		Static:     isStatic,
-		Abstract:   true,
-	}, nil
+	fd.Abstract = true
+	return fd, nil
 }
 
 // setFieldSpans records the source lines a property declaration occupies. One

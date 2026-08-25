@@ -185,6 +185,8 @@ func exprAssignsTo(e Expr, root string) bool {
 		return exprAssignsTo(n.X, root)
 	case *Binary:
 		return exprAssignsTo(n.Left, root) || exprAssignsTo(n.Right, root)
+	case *Interp:
+		return exprsAssignTo(n.Parts, root)
 	case *Ternary:
 		return exprAssignsTo(n.Cond, root) || exprAssignsTo(n.Then, root) || exprAssignsTo(n.Else, root)
 	case *Cast:

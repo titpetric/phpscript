@@ -153,14 +153,18 @@ type FuncDecl struct {
 // (parsed) but not enforced (README omits abstract classes; minitpl's Hook is
 // abstract only to declare constants).
 //
-// Parent and Implements are recorded for the same reason: a file the formatter
-// rewrites must print back what it read, and a name the AST cannot hold is a
-// name the formatter deletes. Neither confers inheritance -- see the "Known
-// divergences from PHP" section of docs/README.md.
+// Parent is recorded so a file the formatter rewrites prints back what it read:
+// a name the AST cannot hold is a name the formatter deletes. Nothing in runner
+// may read it. phpscript has no inheritance, a catch clause filters on a class
+// name and `instanceof` is name equality. See docs/design.md.
+//
+// Implements is recorded for the same reason and is also checked, by
+// CheckInterfaces: every method the listed interfaces name must be declared by
+// this class. The check confers nothing; it only reports what is missing.
 type ClassDecl struct {
 	Name       string
-	Parent     string   // `extends Name`, recorded but not inherited from
-	Implements []string // `implements A, B`, recorded but not checked
+	Parent     string   // `extends Name`, recorded for printing, never inherited from
+	Implements []string // `implements A, B`, a contract this class must declare
 	Abstract   bool
 	Final      bool
 	Readonly   bool
@@ -168,6 +172,28 @@ type ClassDecl struct {
 	Statics    []Field // `static $name = expr` properties, referenced as Class::$name
 	Consts     []Field // class constants (Name + value Expr), referenced as Class::NAME
 	Methods    []*FuncDecl
+}
+
+// InterfaceDecl is `interface Name extends A, B { ... }`.
+//
+// An interface is a declaration contract and nothing else. It names method
+// signatures and constants, and a class that says `implements` must declare
+// every one of those methods itself. No member is ever acquired from it, no
+// method body comes from it, and `instanceof` does not consult it, so
+// `$a instanceof SomeInterface` stays false. See docs/design.md.
+type InterfaceDecl struct {
+	Name string
+	// Extends is `extends A, B`. The extended interfaces widen the contract:
+	// the names a class is checked against are the union of what every listed
+	// interface declares. Nothing is inherited, because there is no member to
+	// inherit; an interface declares no body and holds no storage.
+	Extends []string
+	Consts  []Field
+	// Methods are signatures: the parameters, the return type and the modifiers
+	// are recorded so the formatter prints the declaration back, and Body is
+	// always nil. None of them is ever called; they are only names to check a
+	// class against.
+	Methods []*FuncDecl
 }
 
 // Use is `use A\B\C;`, `use A\B\C as D;` or `use function f;`. The parser
@@ -319,6 +345,8 @@ func (*FuncDecl) node() {}
 
 func (*ClassDecl) node() {}
 
+func (*InterfaceDecl) node() {}
+
 func (*Throw) node() {}
 
 func (*Try) node() {}
@@ -357,6 +385,8 @@ func (*FuncDecl) stmt() {}
 
 func (*ClassDecl) stmt() {}
 
+func (*InterfaceDecl) stmt() {}
+
 func (*Throw) stmt() {}
 
 func (*Try) stmt() {}
@@ -386,6 +416,22 @@ func (*Declare) stmt() {}
 // that were built rather than parsed.
 type Lit struct {
 	Value any
+	Raw   string
+}
+
+// Interp is a double-quoted string literal that embeds expressions, such as
+// `"hello $name"` or `"{$row['id']}: $count"`.
+//
+// Parts alternates literal runs, held as *Lit strings with their escapes already
+// decoded, and the expressions written between them. Evaluating one converts
+// every part to a string and joins them, which is what `.` concatenation does,
+// so an Interp and the equivalent concatenation produce the same value.
+//
+// Raw holds the source spelling, quotes included, for the same reason Lit does:
+// the formatter rewrites files in place and prints the literal the way it was
+// written rather than re-encoding it.
+type Interp struct {
+	Parts []Expr
 	Raw   string
 }
 
@@ -573,6 +619,8 @@ type ListExpr struct {
 
 func (*Lit) node() {}
 
+func (*Interp) node() {}
+
 func (*Var) node() {}
 
 func (*ArrayLit) node() {}
@@ -614,6 +662,8 @@ func (*Invoke) node() {}
 func (*Include) expr() {}
 
 func (*Lit) expr() {}
+
+func (*Interp) expr() {}
 
 func (*Var) expr() {}
 

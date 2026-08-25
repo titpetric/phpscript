@@ -173,7 +173,29 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		p.next()
 		return p.parseUnary()
 	}
-	return p.parsePow()
+	return p.parseInstanceOf()
+}
+
+// parseInstanceOf parses `expr instanceof Class`. PHP binds it tighter than
+// `!`, so `!$e instanceof Foo` negates the test rather than testing the
+// negation, which is why it sits below parseUnary. The right operand is a bare
+// class name, or an expression naming one, and is left for the runtime to
+// resolve: a bare name reaches it as a constant reference, exactly as a class
+// name does everywhere else.
+func (p *parser) parseInstanceOf() (model.Expr, error) {
+	left, err := p.parsePow()
+	if err != nil {
+		return nil, err
+	}
+	for p.isKw("instanceof") {
+		p.next()
+		right, err := p.parsePow()
+		if err != nil {
+			return nil, err
+		}
+		left = p.newBinary("instanceof", left, right)
+	}
+	return left, nil
 }
 
 // parsePow parses `base ** exponent`. PHP's `**` binds tighter than unary
@@ -275,6 +297,10 @@ func (p *parser) parsePrimary() (model.Expr, error) {
 	case tString:
 		p.next()
 		return p.newStringLit(t.val, t.raw), nil
+
+	case tInterp:
+		p.next()
+		return p.parseInterp(t)
 
 	case tIdent:
 		return p.parseIdentExpr()
