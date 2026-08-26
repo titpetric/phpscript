@@ -1155,6 +1155,11 @@ function copy(string $from, string $to): bool
 ```
 
 ```php
+// file_put_contents writes $data to $filename and returns the number of bytes written, or false on failure; FILE_APPEND appends instead of truncating, LOCK_EX is accepted as a no-op, and a path outside writable_paths is refused.
+function file_put_contents(string $filename, string $data, int ...$flags): mixed
+```
+
+```php
 // mkdir creates $directory and any missing parents; $permissions and $recursive are ignored, and a path outside writable_paths is refused.
 function mkdir(string $directory, mixed ...$permissions): bool
 ```

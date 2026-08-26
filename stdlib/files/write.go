@@ -17,7 +17,43 @@ import (
 // which the runtime turns into a catchable exception. A write the operating
 // system refused is a runtime condition a script handles by checking the
 // result; a write the configuration never allowed is a mistake worth raising.
+// PHP's file_put_contents flag values. LOCK_EX is accepted so ported code
+// keeps its spelling, but it is a no-op: none of the writers here lock, so
+// honouring it would promise an exclusion the rest of the package does not
+// keep.
+const (
+	fileAppend = 8 // FILE_APPEND
+	lockEx     = 2 // LOCK_EX
+)
+
 func registerWrites(rt *runner.Runtime, r root) {
+	rt.SetConst("FILE_APPEND", int64(fileAppend))
+	rt.SetConst("LOCK_EX", int64(lockEx))
+
+	// file_put_contents writes $data to $filename and returns the number of bytes written, or false on failure; FILE_APPEND appends instead of truncating, LOCK_EX is accepted as a no-op, and a path outside writable_paths is refused.
+	rt.RegisterFunc("file_put_contents", func(filename, data string, flags ...int64) (any, error) {
+		name, err := r.resolveWrite("file_put_contents", filename)
+		if err != nil {
+			return false, err
+		}
+		mode := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+		if len(flags) > 0 && flags[0]&fileAppend != 0 {
+			mode = os.O_CREATE | os.O_WRONLY | os.O_APPEND
+		}
+		f, err := os.OpenFile(name, mode, 0o644)
+		if err != nil {
+			return false, nil
+		}
+		n, err := f.WriteString(data)
+		if closeErr := f.Close(); err == nil {
+			err = closeErr
+		}
+		if err != nil {
+			return false, nil
+		}
+		return int64(n), nil
+	})
+
 	// mkdir creates $directory and any missing parents; $permissions and $recursive are ignored, and a path outside writable_paths is refused.
 	rt.RegisterFunc("mkdir", func(directory string, permissions ...any) (bool, error) {
 		name, err := r.resolveWrite("mkdir", directory)

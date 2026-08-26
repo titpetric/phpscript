@@ -31,11 +31,12 @@ $a = fopen("upload/a.txt", "w"); fwrite($a, "a"); fclose($a);
 $b = fopen("public/upload/b.txt", "w"); fwrite($b, "b"); fclose($b);
 mkdir("upload/nested/deep");
 $c = fopen("upload/nested/deep/c.txt", "w"); fwrite($c, "c"); fclose($c);
+file_put_contents("upload/d.txt", "d");
 echo "written";`)
 	if out != "written" {
 		t.Fatalf("output = %q", out)
 	}
-	for _, name := range []string{"upload/a.txt", "public/upload/b.txt", "upload/nested/deep/c.txt"} {
+	for _, name := range []string{"upload/a.txt", "public/upload/b.txt", "upload/nested/deep/c.txt", "upload/d.txt"} {
 		if _, err := os.Stat(filepath.Join(root, name)); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -55,6 +56,7 @@ func TestWritablePathsThrowsOutsideTheAllowlist(t *testing.T) {
 		{name: "mkdir", call: `mkdir("private/sub")`},
 		{name: "unlink", call: `unlink("private/keep.txt")`},
 		{name: "touch", call: `touch("private/x.txt")`},
+		{name: "file_put_contents", call: `file_put_contents("private/x.txt", "data")`},
 		{name: "copy destination", call: `copy("public/index.php", "private/x.php")`},
 		{name: "rename destination", call: `rename("upload/a.txt", "private/a.txt")`},
 		{name: "rename source", call: `rename("private/keep.txt", "upload/a.txt")`},

@@ -54,6 +54,34 @@ echo "|" . file_get_contents("a.txt") . "|" . file_get_contents("b.txt");`)
 	}
 }
 
+// TestFilePutContents covers the convenience writer: a fresh write reports its
+// length, FILE_APPEND adds instead of truncating, LOCK_EX is accepted, and a
+// target the operating system refuses answers false rather than failing the
+// script.
+func TestFilePutContents(t *testing.T) {
+	root := t.TempDir()
+
+	out := runFS(t, root, nil, `<?php
+var_dump(file_put_contents("a.txt", "one\n"));
+var_dump(file_put_contents("a.txt", "two\n", FILE_APPEND));
+var_dump(file_put_contents("a.txt", "three\n", FILE_APPEND | LOCK_EX));
+var_dump(file_put_contents("a.txt", "over\n"));
+var_dump(file_put_contents("missing-dir/a.txt", "x"));
+echo file_get_contents("a.txt");`)
+
+	want := "int(4)\nint(4)\nint(6)\nint(5)\nbool(false)\nover\n"
+	if out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+	stored, err := os.ReadFile(filepath.Join(root, "a.txt"))
+	if err != nil {
+		t.Fatalf("read written file: %v", err)
+	}
+	if string(stored) != "over\n" {
+		t.Fatalf("file content = %q, want %q", stored, "over\n")
+	}
+}
+
 // TestChmod checks that a mode written the way PHP writes it, as an octal
 // literal, reaches the file unchanged.
 func TestChmod(t *testing.T) {
