@@ -119,11 +119,23 @@ planned, and each row names what to use instead.
 | `strftime`, `gmstrftime`                                      | `date()`                                                                                     |
 | `create_function`                                             | Closures                                                                                     |
 | `${var}` string interpolation                                 | `{$var}`                                                                                     |
+| `global`                                                      | Pass collaborators as parameters; the statement parses and binds nothing                     |
 | `eval`                                                        | nothing; there is no runtime source evaluation                                               |
 | `goto`                                                        | nothing                                                                                      |
 | `yield`, generators, Fibers                                   | nothing; there is no coroutine model                                                         |
 | `trigger_error`, `restore_error_handler`, `@`                 | `try`/`catch` in PHP, `Runtime.OnError` in Go                                                |
 | `&` outside `foreach`                                         | Return the value; see [Value semantics](reference/types/value-semantics.md)                  |
+
+### global
+
+`global $x;` parses and does nothing: the variable stays unset inside the
+function, where PHP would import the binding from the global scope. This is a
+decision, not a gap. A function that names its collaborators as parameters can
+be read, tested and moved on its own; a function that reaches for `global`
+depends on state the call site never mentions, which is the wrong-at-a-distance
+coupling this runtime is built to avoid. Ported code that keeps its `global`
+lines loads cleanly and then reads the variable as unset, so treat every
+`global` statement in a port as a parameter waiting to be written.
 
 ### Cookies
 
