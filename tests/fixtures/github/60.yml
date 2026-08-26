@@ -1,0 +1,19 @@
+name: a default-value path parameter is refused, not half-registered
+description: >
+  Issue #60: the annotation registers a chi parameter literally named
+  "module=users", matches anything in that segment and exports nothing. There
+  is no default-value syntax here, so the expected behaviour is a loud
+  refusal at registration naming the malformed parameter; two stacked silent
+  failures are the bug. Route registration is not reachable from the fixture
+  runner today, so this file also records the transcript:
+  GET /a/anything -> 200 with $_PATH == [].
+runner:
+  php: false
+error: malformed path parameter {module=users}
+---
+<?php
+
+// @route GET /a/{module=users}
+echo json_encode($_PATH), "\n";
+---
+Internal Server Error

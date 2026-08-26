@@ -1,0 +1,23 @@
+name: parse_str decodes bracket syntax into nested arrays
+description: >
+  Issue #63: parse_str is missing, and the same bracket decoder is what
+  $_GET/$_POST population lacks. The expected section is php's own output,
+  so once the function exists this is a matrix fixture: drop the runner
+  block along with the .yml extension.
+runner:
+  php: false
+---
+<?php
+
+parse_str("a[b]=1&a[c][]=2&a[c][]=3&plain=x&last=1&last=2", $out);
+var_dump($out["a"]["b"]);
+var_dump($out["a"]["c"][0]);
+var_dump($out["a"]["c"][1]);
+var_dump($out["plain"]);
+var_dump($out["last"]);
+---
+string(1) "1"
+string(1) "2"
+string(1) "3"
+string(1) "x"
+string(1) "2"
