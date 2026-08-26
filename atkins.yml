@@ -18,16 +18,18 @@ tasks:
       - task: go:build
       - task: docker:build
       - task: up
+      # The demo suites need mysql and postgres, so the environment comes up
+      # above and is torn down rather than left running. The deferred cleanup
+      # is registered directly after up: a failing test later in the list
+      # aborts the run before reaching its end, and a deferral that sits there
+      # would never have been registered.
+      - task: compose:down
+        deferred: true
       - task: test:phpscript:run
       - task: test:phpscript:matrix
       - task: test:introspection
       - task: test:demos:dbadmin
       - task: test:demos:example
-      # The demo suites need mysql and postgres, so the environment comes up
-      # above and is torn down here rather than left running. Deferred, so a
-      # failing test still cleans up after itself.
-      - task: compose:down
-        deferred: true
 
   # titpetric/minitpl is pulled in per project rather than vendored by hand, so
   # every tree with a composer.json is installed before the Go tests (the parser
