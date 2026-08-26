@@ -178,3 +178,54 @@ func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
 		t.Fatalf("diagnostics = %v, want none", diags)
 	}
 }
+
+// global and extends are documented won't-implements (docs/design.md) that
+// parse and do nothing, so the linter is where a port hears about them before
+// the behaviour goes wrong at a distance.
+func TestFileReportsGlobalAndExtends(t *testing.T) {
+	src := `<?php
+class Animal {
+	function speak() { return "..."; }
+}
+class Dog extends Animal {
+	function fetch() {
+		global $ball;
+		return $ball;
+	}
+}
+function f() {
+	GLOBAL $x;
+}
+`
+	diags, err := lint.File("port.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+
+	want := []string{
+		"port.php:5: extends is a no-op: Dog inherits nothing from Animal; declare the members it uses",
+		"port.php:7: global is a no-op: the variable stays unset; pass the collaborator as a parameter",
+		"port.php:12: global is a no-op: the variable stays unset; pass the collaborator as a parameter",
+	}
+	if len(diags) != len(want) {
+		t.Fatalf("diagnostics = %v, want %d findings", diags, len(want))
+	}
+	for i, w := range want {
+		if got := diags[i].String(); got != w {
+			t.Errorf("diagnostic %d = %q, want %q", i, got, w)
+		}
+	}
+}
+
+// Interface extends widens the declaration contract, which instanceof does
+// follow, so it is not the no-op the class form is and lints clean.
+func TestFileAcceptsInterfaceExtends(t *testing.T) {
+	src := "<?php\ninterface Reader {\n\tfunction get($key);\n}\ninterface Store extends Reader {\n\tfunction put($key, $value);\n}\n"
+	diags, err := lint.File("iface.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("diagnostics = %v, want none", diags)
+	}
+}

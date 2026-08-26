@@ -136,6 +136,8 @@ depends on state the call site never mentions, which is the wrong-at-a-distance
 coupling this runtime is built to avoid. Ported code that keeps its `global`
 lines loads cleanly and then reads the variable as unset, so treat every
 `global` statement in a port as a parameter waiting to be written.
+`phpscript lint` reports each one as a warning, as it does a class `extends`
+clause, the other statement that parses and confers nothing.
 
 ### Cookies
 

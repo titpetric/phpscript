@@ -38,7 +38,7 @@ func File(name, src string) ([]Diagnostic, error) {
 	}
 	var out []Diagnostic
 	lintInterfaces(name, prog, &out)
-	lintStmts(name, prog.Stmts, &out)
+	lintStmts(name, prog, &out)
 	return out, nil
 }
 
@@ -136,47 +136,97 @@ func lintSource(name, src string) (string, error) {
 	return strings.Repeat("\n", lineOffset) + fixture.PHP, nil
 }
 
-func lintStmts(file string, stmts []model.Stmt, out *[]Diagnostic) {
+// lintStmts applies the statement-shaped checks to every statement list in
+// prog, at any nesting. The walker carries the file and program so the
+// recursion does not thread them through every call.
+func lintStmts(file string, prog *model.Program, out *[]Diagnostic) {
+	w := &stmtWalker{file: file, prog: prog, out: out}
+	w.walk(prog.Stmts)
+}
+
+type stmtWalker struct {
+	file string
+	prog *model.Program
+	out  *[]Diagnostic
+}
+
+func (w *stmtWalker) walk(stmts []model.Stmt) {
 	for _, s := range stmts {
 		switch n := s.(type) {
 		case *model.Assign:
-			lintChainedAssign(file, n, out)
+			lintChainedAssign(w.file, n, w.out)
+		case *model.ExprStmt:
+			w.lintGlobal(n)
 		case *model.If:
-			lintCondition(file, n.Cond, out)
-			lintStmts(file, n.Then, out)
-			lintStmts(file, n.Else, out)
+			lintCondition(w.file, n.Cond, w.out)
+			w.walk(n.Then)
+			w.walk(n.Else)
 		case *model.For:
 			if n.Init != nil {
-				lintStmts(file, []model.Stmt{n.Init}, out)
+				w.walk([]model.Stmt{n.Init})
 			}
 			if n.Cond != nil {
-				lintCondition(file, n.Cond, out)
+				lintCondition(w.file, n.Cond, w.out)
 			}
 			if n.Post != nil {
-				lintStmts(file, []model.Stmt{n.Post}, out)
+				w.walk([]model.Stmt{n.Post})
 			}
-			lintStmts(file, n.Body, out)
+			w.walk(n.Body)
 		case *model.Foreach:
-			lintStmts(file, n.Body, out)
+			w.walk(n.Body)
 		case *model.FuncDecl:
-			lintStmts(file, n.Body, out)
+			w.walk(n.Body)
 		case *model.ClassDecl:
+			w.lintExtends(n)
 			for _, m := range n.Methods {
-				lintStmts(file, m.Body, out)
+				w.walk(m.Body)
 			}
 		case *model.Try:
-			lintStmts(file, n.Body, out)
+			w.walk(n.Body)
 			for _, c := range n.Catches {
-				lintStmts(file, c.Body, out)
+				w.walk(c.Body)
 			}
-			lintStmts(file, n.Finally, out)
+			w.walk(n.Finally)
 		case *model.Switch:
 			for _, c := range n.Cases {
-				lintStmts(file, c.Body, out)
+				w.walk(c.Body)
 			}
-			lintStmts(file, n.Default, out)
+			w.walk(n.Default)
 		}
 	}
+}
+
+// lintGlobal reports the `global $x;` statement, a documented won't-implement
+// (docs/design.md): it parses and binds nothing, so the variable reads as
+// unset at a distance from the line that looks like it imports it. The keyword
+// parses as a constant lookup followed by the variable, which is why the check
+// reads an ExprStmt rather than a dedicated node.
+func (w *stmtWalker) lintGlobal(n *model.ExprStmt) {
+	v, ok := n.X.(*model.Var)
+	if !ok || !v.Const || !strings.EqualFold(v.Name, "global") {
+		return
+	}
+	*w.out = append(*w.out, Diagnostic{
+		File:    w.file,
+		Line:    w.prog.SourceSpans[n].Start,
+		Message: "global is a no-op: the variable stays unset; pass the collaborator as a parameter",
+	})
+}
+
+// lintExtends reports `extends` on a class, a documented won't-implement
+// (docs/design.md): the parent name is recorded and nothing arrives through
+// it, so the child answers only with the members it wrote and is not an
+// instanceof the parent. An interface's extends is not reported: there it
+// widens the declaration contract, which instanceof does follow.
+func (w *stmtWalker) lintExtends(n *model.ClassDecl) {
+	if n.Parent == "" {
+		return
+	}
+	*w.out = append(*w.out, Diagnostic{
+		File:    w.file,
+		Line:    w.prog.SourceSpans[n].Start,
+		Message: fmt.Sprintf("extends is a no-op: %s inherits nothing from %s; declare the members it uses", n.Name, n.Parent),
+	})
 }
 
 // lintChainedAssign reports `$a = $b = value`, where one value is bound to two
