@@ -103,7 +103,7 @@ fclose($r);`)
 
 // TestFOpenUnimplementedWrapper pins that a php:// name is a stream or false,
 // never a file: no php:/memory appears on disk. php://input opens outside a
-// request too, answering empty rather than reading the process's stdin.
+// request too, answering empty when there is no body and no cli stdin.
 func TestFOpenUnimplementedWrapper(t *testing.T) {
 	root := t.TempDir()
 	out := runFS(t, root, nil, `<?php

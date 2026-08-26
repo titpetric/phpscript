@@ -12,17 +12,14 @@ import (
 // registerStreams installs the file-handle functions. A handle is the *os.File
 // fopen() returns; PHP calls it a resource.
 func registerStreams(rt *runner.Runtime, r root) {
-	// fopen opens $filename in $mode and returns a handle, or false on failure; php://output is the script's own output stream, php://input is the raw request body, and a mode that can write is refused outside writable_paths.
+	// fopen opens $filename in $mode and returns a handle, or false on failure; php://output is the script's own output stream, php://input is the raw request body (stdin under the cli SAPI), and a mode that can write is refused outside writable_paths.
 	rt.RegisterFunc("fopen", func(filename, mode string) (any, error) {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			switch scheme {
 			case "output":
 				return outputStream{rt: rt}, nil
 			case "input":
-				// Each open reads the buffered body from the start,
-				// which is PHP 5.6+ semantics: the stream is rewindable
-				// and reopening it does not exhaust it.
-				return &inputStream{Reader: bytes.NewReader(requestBody(rt))}, nil
+				return &inputStream{Reader: inputSource(rt)}, nil
 			}
 			// The other wrappers (memory, temp) are not implemented;
 			// false is PHP's answer for a stream it cannot open, and
@@ -96,23 +93,28 @@ func (o outputStream) Write(p []byte) (int, error) {
 	return o.rt.Output().Write(p)
 }
 
-// inputStream is the handle fopen("php://input") returns: the request body,
-// readable from the start on every open. The named type is what lets fclose
-// recognise it.
+// inputStream is the handle fopen("php://input") returns. The named type is
+// what lets fclose recognise it.
 type inputStream struct {
-	*bytes.Reader
+	io.Reader
 }
 
-// requestBody returns the raw body of the request the runtime is serving.
-// Outside a request there is none, so a CLI run reads php://input as empty;
-// PHP's CLI maps it onto stdin instead, a divergence recorded here rather
-// than implemented, because consuming the process's stdin as a side effect of
-// an fopen is a bigger surprise than an empty string.
-func requestBody(rt *runner.Runtime) []byte {
-	if c, ok := runner.RequestContext(rt.Context()); ok {
-		return c.RawBody()
+// inputSource returns what php://input reads, matching PHP's two SAPIs: the
+// CLI maps it onto stdin, a live stream a script drains once, while a request
+// answers with the buffered body, rewindable on every open as PHP 5.6+ made
+// it. The branch is on the SAPI rather than on a registered request context
+// because the CLI registers an (empty) context of its own.
+func inputSource(rt *runner.Runtime) io.Reader {
+	if rt.SAPI() == "cli" {
+		if in := rt.Stdin(); in != nil {
+			return in
+		}
+		return bytes.NewReader(nil)
 	}
-	return nil
+	if c, ok := runner.RequestContext(rt.Context()); ok {
+		return bytes.NewReader(c.RawBody())
+	}
+	return bytes.NewReader(nil)
 }
 
 // openMode maps a PHP fopen() mode string onto the flags os.OpenFile takes. The

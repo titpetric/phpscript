@@ -1,6 +1,7 @@
 package files
 
 import (
+	"io"
 	iofs "io/fs"
 	"os"
 	"path"
@@ -24,11 +25,15 @@ func registerReads(rt *runner.Runtime, r root) {
 		return iofs.Glob(source, pattern)
 	})
 
-	// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body, and a relative path is tried in the source filesystem first, then on the host.
+	// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body (stdin under the cli SAPI), and a relative path is tried in the source filesystem first, then on the host.
 	rt.RegisterFunc("file_get_contents", func(filename string) any {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			if scheme == "input" {
-				return string(requestBody(rt))
+				b, err := io.ReadAll(inputSource(rt))
+				if err != nil {
+					return false
+				}
+				return string(b)
 			}
 			return false
 		}

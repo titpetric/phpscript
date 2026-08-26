@@ -1081,7 +1081,7 @@ function file_exists(string $filename): bool
 ```
 
 ```php
-// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body, and a relative path is tried in the source filesystem first, then on the host.
+// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body (stdin under the cli SAPI), and a relative path is tried in the source filesystem first, then on the host.
 function file_get_contents(string $filename): mixed
 ```
 
@@ -1103,7 +1103,7 @@ function fclose(mixed $f): bool
 ```
 
 ```php
-// fopen opens $filename in $mode and returns a handle, or false on failure; php://output is the script's own output stream, php://input is the raw request body, and a mode that can write is refused outside writable_paths.
+// fopen opens $filename in $mode and returns a handle, or false on failure; php://output is the script's own output stream, php://input is the raw request body (stdin under the cli SAPI), and a mode that can write is refused outside writable_paths.
 function fopen(string $filename, string $mode): mixed
 ```
 
