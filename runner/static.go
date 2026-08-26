@@ -122,8 +122,9 @@ func (rt *Runtime) setStaticProp(class, name string, value any, scope *Scope) er
 //
 //   - a host static, registered under the "Class::method" name (this is how
 //     Closure::bind and friends are provided),
-//   - a PHP method declared on the class, run with no `$this` but with the
-//     class recorded so nested `self::` references resolve,
+//   - a PHP method declared on the class, with the current `$this` forwarded
+//     when an instance method calls a non-static method through `self::`,
+//     `static::` or its class name,
 //   - a Go constructor's package-level function, which has no static form and
 //     therefore reports an undefined method.
 func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class, method string, args ...any) (any, error) {
@@ -147,6 +148,11 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class, method string, ar
 			if !ok {
 				return nil, fmt.Errorf("call to undefined method %s::%s()", name, method)
 			}
+			if current, ok := scope.Get("this"); !fn.Static && ok {
+				if obj, ok := current.(*model.Object); ok && obj.Class == decl {
+					return rt.invokeMethod(obj, fn, args, scope)
+				}
+			}
 			return rt.invokeStatic(decl, fn, args, scope)
 		}
 		// No PHP class of that name: the target can only be a host static, so
@@ -158,10 +164,10 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class, method string, ar
 	}
 }
 
-// invokeStatic runs a method with no receiver. `$this` is left unset, which
-// PHP rejects in a static context and so does an unbound scope, while
+// invokeStatic runs a method with no receiver. `$this` is left unset, as it is
+// in a genuinely static method or a class call made without an instance, while
 // `__class__` is bound so that `self::` inside the body resolves back to the
-// same class.
+// same class. helperStaticCall forwards instance calls before reaching here.
 func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.newScope()
 	rt.pushFrame(scope)

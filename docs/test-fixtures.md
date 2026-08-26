@@ -159,6 +159,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | new_static_refused.phpt      | PASS       | PASS    | SKIP |
 | object_nesting.phpt          | PASS       | PASS    | SKIP |
 | property_incdec.phpt         | PASS       | PASS    | PASS |
+| self_instance_call.phpt      | PASS       | PASS    | PASS |
 | self_scope.phpt              | PASS       | PASS    | PASS |
 | static_members.phpt          | PASS       | PASS    | PASS |
 | template_render.phpt         | PASS       | PASS    | PASS |
@@ -267,7 +268,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | functions   | 5        | 5      | 0      |
 | includes    | 3        | 3      | 0      |
 | namespaces  | 2        | 2      | 0      |
-| oop         | 14       | 14     | 0      |
+| oop         | 15       | 15     | 0      |
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
@@ -275,4 +276,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | stdlib      | 11       | 11     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 156      | 156    | 0      |
+| **Total**   | 157      | 157    | 0      |

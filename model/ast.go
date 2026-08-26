@@ -549,8 +549,9 @@ type ClassConst struct {
 }
 
 // StaticCall is `Class::method(args...)`, including the `self::` and `static::`
-// spellings. It carries no receiver: the runtime runs the declaration against a
-// class rather than an instance.
+// spellings. The runtime forwards the current receiver when an instance method
+// reaches a non-static declaration through this syntax; genuinely static calls
+// run against the class alone.
 type StaticCall struct {
 	Class  string
 	Method string

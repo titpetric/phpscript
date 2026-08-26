@@ -66,8 +66,11 @@ echo Registry::class;                 // Registry
 
 `self::` and `static::` both resolve to the class of the running method. There
 is no inheritance, so late static binding has nothing to bind late to and the
-two spellings are equivalent. A static method runs without a receiver: `$this`
-is unbound inside it, as it is in PHP.
+two spellings are equivalent. Inside an instance method, calling a non-static
+method through `self::method()` forwards the current instance just like
+`$this->method()`, so the called method can read and write `$this`. A genuinely
+static method still runs without a receiver: `$this` is unbound inside it, as it
+is in PHP.
 
 `new self()` and `new static()` are not resolved: both fail loudly as an
 undefined class, a won't-implement recorded in
