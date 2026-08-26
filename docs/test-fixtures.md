@@ -213,6 +213,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | file_put_contents.phpt           | PASS       | PASS    | PASS |
 | filesystem.phpt                  | PASS       | PASS    | PASS |
 | json_key_order.phpt              | PASS       | PASS    | PASS |
+| mail_unconfigured.phpt           | PASS       | PASS    | SKIP |
 | output_buffering.phpt            | PASS       | PASS    | PASS |
 | password_hash.phpt               | PASS       | PASS    | PASS |
 | php_input.phpt                   | PASS       | PASS    | SKIP |
@@ -271,7 +272,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
 | runtime     | 9        | 9      | 0      |
-| stdlib      | 10       | 10     | 0      |
+| stdlib      | 11       | 11     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 155      | 155    | 0      |
+| **Total**   | 156      | 156    | 0      |

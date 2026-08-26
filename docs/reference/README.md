@@ -164,6 +164,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [writes](extensions/implemented-apis.md#writes)
     - [stdlib/info](extensions/implemented-apis.md#stdlibinfo)
     - [stdlib/internals](extensions/implemented-apis.md#stdlibinternals)
+    - [stdlib/smtp](extensions/implemented-apis.md#stdlibsmtp)
     - [stdlib/span](extensions/implemented-apis.md#stdlibspan)
   - [Classes](extensions/implemented-apis.md#classes)
     - [`Database`](extensions/implemented-apis.md#database)
