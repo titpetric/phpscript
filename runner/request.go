@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -77,6 +78,11 @@ type Context struct {
 	// ran: a body refused for its size. It is a pointer for the same reason
 	// status is, so a copy of a Context reports what another copy recorded.
 	errors *[]error
+
+	// rawBody holds the request body bytes php://input answers with. It is a
+	// pointer for the same reason status is, so a copy of a Context reads
+	// what another copy buffered.
+	rawBody *[]byte
 }
 
 type requestContextKey struct{}
@@ -87,6 +93,7 @@ func NewContext() Context {
 	var errs []error
 	return Context{
 		errors:   &errs,
+		rawBody:  new([]byte),
 		Get:      map[string]string{},
 		Post:     map[string]string{},
 		Path:     map[string]string{},
@@ -268,6 +275,27 @@ func isMultipart(r *http.Request) bool {
 // no-op for bodyless requests, so neither needs a method check.
 func (c Context) parseBody(r *http.Request, opts Options) {
 	capBody(r, opts.PostMaxSize)
+
+	// Buffer the raw body before any parser consumes it: these bytes are what
+	// php://input answers with, for any method and any content type, which is
+	// how a JSON API or a webhook receiver reads its payload. A multipart
+	// body is deliberately not buffered: PHP documents php://input as
+	// unavailable there, and it is the one body shape that carries whole
+	// files.
+	if !isMultipart(r) && r.Body != nil {
+		buf, readErr := io.ReadAll(r.Body)
+		var tooLarge *http.MaxBytesError
+		if errors.As(readErr, &tooLarge) {
+			c.recordError(fmt.Errorf("POST body exceeds the post_max_size limit of %d bytes", tooLarge.Limit))
+			return
+		}
+		if readErr != nil {
+			c.recordError(fmt.Errorf("reading request body: %w", readErr))
+			return
+		}
+		*c.rawBody = buf
+		r.Body = io.NopCloser(bytes.NewReader(buf))
+	}
 
 	var err error
 	if isMultipart(r) {
@@ -623,6 +651,23 @@ func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
 // ResponseHeaders returns the headers staged by the PHP header() function so a
 // host handler can copy them onto the http.ResponseWriter after execution.
 func (c Context) ResponseHeaders() http.Header { return c.response }
+
+// RawBody returns the request body bytes buffered for php://input, if any. A
+// multipart body answers empty, as PHP's php://input does.
+func (c Context) RawBody() []byte {
+	if c.rawBody == nil {
+		return nil
+	}
+	return *c.rawBody
+}
+
+// SetRawBody stores the bytes php://input answers with, for a host that
+// builds its Context by hand rather than from an *http.Request.
+func (c Context) SetRawBody(body []byte) {
+	if c.rawBody != nil {
+		*c.rawBody = body
+	}
+}
 
 // RequestContext returns the request data registered on a runtime context.
 // It is intended for request-aware Go bindings such as session management.

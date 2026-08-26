@@ -644,6 +644,11 @@ func buildFixtureRequestContext(f *Fixture) runner.Context {
 		reqCtx.Argv = parseArgs(f.Request.Args, f.Path)
 	}
 
+	// The raw request body, which php://input answers with.
+	if f.Request.Body != "" {
+		reqCtx.SetRawBody([]byte(f.Request.Body))
+	}
+
 	return reqCtx
 }
 

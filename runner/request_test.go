@@ -254,6 +254,75 @@ func TestFromRequestUrlencodedUnaffected(t *testing.T) {
 	}
 }
 
+// TestRawBodyJSON pins the JSON API case: a body no form parser wants reaches
+// the script through php://input, readable more than once, while $_POST stays
+// empty rather than inventing entries from it.
+func TestRawBodyJSON(t *testing.T) {
+	r := httptest.NewRequest("PUT", "/api/thing", strings.NewReader(`{"hours":90}`))
+	r.Header.Set("Content-Type", "application/json")
+
+	out, _ := runReq(t, r, `<?php
+echo file_get_contents("php://input"), ";";
+$decoded = json_decode(file_get_contents("php://input"), true);
+echo $decoded["hours"], ";";
+echo count($_POST), ";";
+$h = fopen("php://input", "r");
+echo stream_get_contents($h), ";";
+fclose($h);
+echo file_get_contents("php://input");`)
+
+	want := `{"hours":90};90;0;{"hours":90};{"hours":90}`
+	if out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// TestRawBodyFormEncoded pins that buffering the body does not cost the form
+// parse: $_POST decodes as before, and php://input still answers with the raw
+// urlencoded bytes, as PHP's does.
+func TestRawBodyFormEncoded(t *testing.T) {
+	r := httptest.NewRequest("POST", "/echo", strings.NewReader("hours=90"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	out, _ := runReq(t, r, `<?php
+echo $_POST["hours"], ";", file_get_contents("php://input");`)
+
+	if want := "90;hours=90"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// TestRawBodyMultipartEmpty pins the shape PHP documents: php://input is not
+// available for a multipart body, so it answers empty while the form fields
+// arrive through $_POST.
+func TestRawBodyMultipartEmpty(t *testing.T) {
+	r := multipartRequest(t, map[string]string{"name": "bob"})
+
+	out, _ := runReq(t, r, `<?php
+echo $_POST["name"], ";", strlen(file_get_contents("php://input"));`)
+
+	if want := "bob;0"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// TestRawBodyOverLimitIsDropped pins the size cap: a body past post_max_size
+// leaves php://input empty along with the superglobals, and the reason goes to
+// the host.
+func TestRawBodyOverLimitIsDropped(t *testing.T) {
+	r := httptest.NewRequest("POST", "/submit", strings.NewReader(`{"payload":"`+strings.Repeat("x", 4096)+`"}`))
+	r.Header.Set("Content-Type", "application/json")
+	r.ContentLength = -1
+
+	ctx := runner.FromRequestOptions(r, runner.Options{PostMaxSize: 1024})
+	if got := ctx.RawBody(); len(got) != 0 {
+		t.Fatalf("raw body = %d bytes, want none", len(got))
+	}
+	if errs := ctx.Errors(); len(errs) != 1 || !strings.Contains(errs[0].Error(), "post_max_size") {
+		t.Fatalf("errors = %v, want the post_max_size error", errs)
+	}
+}
+
 func TestSuperglobalsVisibleInsideFunctions(t *testing.T) {
 	mux := http.NewServeMux()
 	var got *http.Request

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/titpetric/phpscript/runner"
 )
@@ -23,8 +24,14 @@ func registerReads(rt *runner.Runtime, r root) {
 		return iofs.Glob(source, pattern)
 	})
 
-	// file_get_contents returns the contents of $filename as a string, or false on failure; a relative path is tried in the source filesystem first, then on the host.
+	// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body, and a relative path is tried in the source filesystem first, then on the host.
 	rt.RegisterFunc("file_get_contents", func(filename string) any {
+		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
+			if scheme == "input" {
+				return string(requestBody(rt))
+			}
+			return false
+		}
 		if filepath.IsAbs(filename) {
 			b, err := os.ReadFile(path.Clean(filename))
 			if err != nil {
