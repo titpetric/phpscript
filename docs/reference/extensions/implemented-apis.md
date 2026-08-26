@@ -1049,6 +1049,18 @@ Database::register(string $name, string $dsn): bool
 
 ### stdlib/files
 
+#### csv
+
+```php
+// fgetcsv reads one CSV record from $stream and returns its fields as strings, or false at end of file; $length is accepted and ignored, $escape is accepted and ignored, and an $enclosure other than '"' is refused.
+function fgetcsv(resource $stream, mixed ...$opts): mixed
+```
+
+```php
+// fputcsv writes $fields to $stream as one RFC 4180 record ending in \n and returns the number of bytes written, or false on failure; $escape is accepted and ignored, and an $enclosure other than '"' is refused.
+function fputcsv(resource $stream, mixed $fields, mixed ...$opts): mixed
+```
+
 #### paths
 
 ```php
@@ -1087,11 +1099,11 @@ function glob(string $pattern): array
 
 ```php
 // fclose closes a handle fopen() returned and reports whether the close succeeded.
-function fclose(resource $f): bool
+function fclose(mixed $f): bool
 ```
 
 ```php
-// fopen opens $filename in $mode and returns a handle, or false on failure; a mode that can write is refused outside writable_paths.
+// fopen opens $filename in $mode and returns a handle, or false on failure; php://output is the script's own output stream, and a mode that can write is refused outside writable_paths.
 function fopen(string $filename, string $mode): mixed
 ```
 
