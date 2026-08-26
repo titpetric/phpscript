@@ -356,6 +356,16 @@ function base64_encode(string $str): string
 ```
 
 ```php
+// bin2hex returns $string spelled as lowercase hexadecimal, two digits per byte.
+function bin2hex(string $str): string
+```
+
+```php
+// hex2bin decodes the hexadecimal $string back into bytes, returning false for an odd-length string or a non-hex character.
+function hex2bin(string $str): mixed
+```
+
+```php
 // http_build_query joins $data into a query string, urlencoding both halves of every pair and spelling a nested array as key[sub]=value; the $numeric_prefix, $arg_separator and $encoding_type parameters are not supported.
 function http_build_query(mixed $data): string
 ```
@@ -1008,6 +1018,16 @@ function password_needs_rehash(string $hash, mixed ...$opts): bool
  * question, and "no" is an answer.
  */
 function password_verify(string $password, string $hash): bool
+```
+
+```php
+// random_bytes returns $length cryptographically secure random bytes, throwing when $length is less than 1.
+function random_bytes(int $length): string
+```
+
+```php
+// random_int returns a cryptographically secure, uniformly selected integer between $min and $max inclusive, throwing when $min is greater than $max.
+function random_int(int $min, int $max): int
 ```
 
 ### stdlib/database

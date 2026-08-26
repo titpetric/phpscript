@@ -188,6 +188,60 @@ func TestStringShimsScript(t *testing.T) {
 	}
 }
 
+// TestRandomBindingsScript covers what the .phpt fixture cannot: the error
+// contract (a bad bound or length surfaces as a catchable throw) and the
+// hex2bin false returns, which under the php binary arrive with a warning.
+func TestRandomBindingsScript(t *testing.T) {
+	cases := []struct {
+		name string
+		php  string
+		want string
+	}{
+		{
+			name: "random_bytes rejects a zero length",
+			php:  `<?php try { random_bytes(0); echo "minted"; } catch (Exception $e) { echo "caught"; }`,
+			want: "caught",
+		},
+		{
+			name: "random_int rejects min above max",
+			php:  `<?php try { random_int(2, 1); echo "picked"; } catch (Exception $e) { echo "caught"; }`,
+			want: "caught",
+		},
+		{
+			name: "random_int spans a negative range",
+			php:  `<?php $n = random_int(-1, 0); var_dump($n >= -1 && $n <= 0);`,
+			want: "bool(true)\n",
+		},
+		{
+			name: "random_bytes length is honoured",
+			php:  `<?php echo strlen(random_bytes(1)), " ", strlen(random_bytes(64));`,
+			want: "1 64",
+		},
+		{
+			name: "hex2bin rejects an odd length",
+			php:  `<?php var_dump(hex2bin("abc"));`,
+			want: "bool(false)\n",
+		},
+		{
+			name: "hex2bin rejects a non-hex character",
+			php:  `<?php var_dump(hex2bin("zz"));`,
+			want: "bool(false)\n",
+		},
+		{
+			name: "bin2hex round trips arbitrary bytes",
+			php:  `<?php var_dump(hex2bin(bin2hex("\x00\x01\xfe\xff")) === "\x00\x01\xfe\xff");`,
+			want: "bool(true)\n",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := runScript(t, tc.php); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // BenchmarkScriptHTMLSpecialChars measures the shim the way a template does:
 // through the VM's reflection call path.
 func BenchmarkScriptHTMLSpecialChars(b *testing.B) {

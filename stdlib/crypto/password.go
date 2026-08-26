@@ -1,10 +1,12 @@
-// Package crypto holds the password hashing a script cannot write for itself.
+// Package crypto holds the password hashing and the random source a script
+// cannot write for itself.
 //
 // PHP's password_hash() is one of the few standard functions with no
 // implementation in the language: it needs a key derivation function and a
 // CSPRNG, and phpscript exposes neither. Everything else the family does
 // (parsing options, choosing an algorithm) is arithmetic a script could do, so
-// the binding is deliberately three functions wide and no wider.
+// the binding is deliberately narrow: the password functions here, and the
+// CSPRNG pair in random.go that hands the same entropy to scripts directly.
 package crypto
 
 import (

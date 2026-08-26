@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -9,7 +10,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init contributes the base64, URL and query-string encoders to
+// init contributes the base64, hex, URL and query-string encoders to
 // stdlib.Register.
 func init() {
 	runner.RegisterBinding(registerEncoding)
@@ -30,6 +31,25 @@ func registerEncoding(rt *runner.Runtime) {
 	rt.RegisterFunc("rawurldecode", phpRawURLDecode)
 	// http_build_query joins $data into a query string, urlencoding both halves of every pair and spelling a nested array as key[sub]=value; the $numeric_prefix, $arg_separator and $encoding_type parameters are not supported.
 	rt.RegisterFunc("http_build_query", phpHTTPBuildQuery)
+	// bin2hex returns $string spelled as lowercase hexadecimal, two digits per byte.
+	rt.RegisterFunc("bin2hex", phpBin2hex)
+	// hex2bin decodes the hexadecimal $string back into bytes, returning false for an odd-length string or a non-hex character.
+	rt.RegisterFunc("hex2bin", phpHex2bin)
+}
+
+func phpBin2hex(str string) string {
+	return hex.EncodeToString([]byte(str))
+}
+
+// phpHex2bin returns any because PHP's contract is string|false: an odd length
+// or a character outside [0-9A-Fa-f] is reported by returning false, not by
+// raising. encoding/hex rejects both, so the whole contract is one decode.
+func phpHex2bin(str string) any {
+	out, err := hex.DecodeString(str)
+	if err != nil {
+		return false
+	}
+	return string(out)
 }
 
 func phpBase64Encode(str string) string {
