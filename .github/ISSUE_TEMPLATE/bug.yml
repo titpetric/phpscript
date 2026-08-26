@@ -1,0 +1,41 @@
+name: Bug report
+description: Unexpected or undefined behaviour, where the runtime does something other than what it documents or what PHP does.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A bug is behaviour that misleads: a silent no-op, a value that
+        stringifies wrong, a route that registers and then answers nothing.
+        Demonstrate it with a failing .phpt first; the fix lands with that
+        fixture passing. For a function that simply does not exist, use the
+        feature gap template instead.
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behaviour
+      description: What the runtime does today. Paste real output, name the file and line when the cause is known.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should happen instead, and why. When PHP defines the behaviour, state what php prints for the same source.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction (.phpt)
+      description: A fixture in the tests/fixtures format that fails today and passes when the bug is fixed. Note any environment it needs, such as a PLATFORM_DB_* variable.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Anything considered and rejected, related issues, affected demos.
+    validations:
+      required: false

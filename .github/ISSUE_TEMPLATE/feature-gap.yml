@@ -1,0 +1,50 @@
+name: Feature gap
+description: An unimplemented function, class or language behaviour, or a concern the runtime does not handle yet.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A gap is something PHP has and this runtime does not, or a concern no
+        current API covers. Check docs/design.md first: a row in the "Won't
+        implement" table is a decision, not a gap. Consider the PHP ecosystem
+        before proposing the classic API: some functions are deprecated or
+        superseded, and the honest binding may be a different name. The
+        implementation lands with a .phpt fixture; write the expected section
+        from what php prints, not from what the new code prints.
+  - type: textarea
+    id: missing
+    attributes:
+      label: What is missing
+      description: The function, class or behaviour, and what breaks or gets awkward without it. Name the demo or application code that works around it today.
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current alternative
+      description: How code copes today (shim, SQL, Go-side binding), and what that costs.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Change proposal
+      description: The API to add, with signatures. When PHP's own API is deprecated or poorly shaped, say what to bind instead and why.
+    validations:
+      required: true
+  - type: textarea
+    id: ecosystem
+    attributes:
+      label: Ecosystem considerations
+      description: What modern PHP does, what is deprecated, what other runtimes chose. Alternatives that were considered and discarded belong here.
+    validations:
+      required: false
+  - type: textarea
+    id: test
+    attributes:
+      label: Acceptance (.phpt)
+      description: The fixture that defines done. It fails today because the API is absent.
+      render: text
+    validations:
+      required: false
