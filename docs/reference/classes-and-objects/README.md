@@ -69,6 +69,11 @@ is no inheritance, so late static binding has nothing to bind late to and the
 two spellings are equivalent. A static method runs without a receiver: `$this`
 is unbound inside it, as it is in PHP.
 
+`new self()` and `new static()` are not resolved: both fail loudly as an
+undefined class, a won't-implement recorded in
+[Design decisions](../../design.md). Spell the class name, `new Registry()`,
+which is the one class either keyword could ever name here.
+
 `Class::method` is also a callable value, so `array($object, "method")`,
 `"Class::method"` and `Closure::fromCallable(...)` all resolve through the same
 lookup; see [Functions](../functions/README.md).

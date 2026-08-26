@@ -111,6 +111,7 @@ planned, and each row names what to use instead.
 |---------------------------------------------------------------|----------------------------------------------------------------------------------------------|
 | `extends` semantics, traits, `parent::`                       | Composition; declare the members a class uses. An interface is checked, never inherited from |
 | Magic methods beyond `__construct` and `__invoke`             | Explicit methods                                                                             |
+| `new self()`, `new static()`                                  | `new ClassName()`; the keywords are not resolved and fail loudly as an undefined class       |
 | `setcookie`, `setrawcookie`                                   | `Session\Manager`, or `header("Set-Cookie: ...", false)`                                     |
 | `session_start`, `session_id`, `session_destroy`, `$_SESSION` | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`                          |
 | `curl_*`                                                      | `HTTP\Client`, `HTTP\Request`                                                                |
