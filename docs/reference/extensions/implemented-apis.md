@@ -1220,6 +1220,13 @@ function memory_get_peak_usage(bool ...$real_usage): int
 function memory_get_usage(bool ...$real_usage): int
 ```
 
+### stdlib/smtp
+
+```php
+// mail sends a plain-text message to $recipient with $subject and $body through the host-configured smtp sender, throwing when none is configured; PHP's $additional_headers and $additional_params are not accepted.
+function mail(string $recipient, string $subject, string $body): void
+```
+
 ### stdlib/span
 
 ```php
@@ -1532,6 +1539,13 @@ class SMTP
      * script still calls `$smtp->send($to, $subject, $body)`.
      */
     public function send(string $recipient, string $subject, string $body): void {}
+
+    /**
+     * sender returns the client as the context-free Sender mail() takes. The
+     * mail() binding opens the delivery span itself, so this path delivers
+     * without opening a second one.
+     */
+    public function sender(): mixed {}
 }
 ```
 

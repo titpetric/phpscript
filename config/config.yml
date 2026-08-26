@@ -46,6 +46,19 @@ telemetry:
   live_stream: true
   driver: memory
 
+# The sender mail() delivers through. With no host configured, mail() still
+# exists and fails catchably ("mail: no smtp configured"), so calling code
+# keeps one spelling and its own fallback. A virtual host may set its own
+# smtp block in phpscript.yml over this one. `insecure` accepts the STARTTLS
+# certificate without verifying it, for hosts presenting a self-signed one.
+smtp:
+  host: ""
+  port: 25
+  username: ""
+  password: ""
+  from: ""
+  insecure: false
+
 # The directory beneath an application root that is served over HTTP. Sites
 # are expected to leave this alone; it is here for a tree that already calls
 # that directory something other than public.

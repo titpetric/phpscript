@@ -119,3 +119,69 @@ func TestRegisterSMTPErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestMailUnconfiguredDefault covers the stdlib default: mail() exists on
+// every runtime and refuses catchably until a host binds a configured sender
+// over it.
+func TestMailUnconfiguredDefault(t *testing.T) {
+	program, err := parser.Parse(`<?php
+		echo function_exists("mail") ? "exists" : "missing";
+		try {
+			mail("a@example.com", "s", "b");
+			echo "|sent";
+		} catch (Exception $e) {
+			echo "|" . $e->getMessage();
+		}
+	?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var output bytes.Buffer
+	rt := runner.New(&output, runner.Options{})
+	stdlib.Register(rt)
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	if want := "exists|mail: no smtp configured"; output.String() != want {
+		t.Fatalf("output = %q, want %q", output.String(), want)
+	}
+}
+
+// TestRegisterConfig pins the two halves of the config wiring: an empty block
+// keeps the refusal, and a configured one binds a sender for the named host.
+// Delivery itself is not attempted; what matters is which sender answers.
+func TestRegisterConfig(t *testing.T) {
+	program, err := parser.Parse(`<?php
+		try {
+			mail("a@example.com", "s", "b");
+			echo "sent";
+		} catch (Exception $e) {
+			echo $e->getMessage();
+		}
+	?>`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(cfg smtpstdlib.Config) string {
+		var output bytes.Buffer
+		rt := runner.New(&output, runner.Options{})
+		stdlib.Register(rt)
+		smtpstdlib.RegisterConfig(rt, cfg)
+		if err := rt.Run(program); err != nil {
+			t.Fatal(err)
+		}
+		return output.String()
+	}
+
+	if got := run(smtpstdlib.Config{}); got != "mail: no smtp configured" {
+		t.Fatalf("unconfigured output = %q, want the refusal", got)
+	}
+	// The configured sender dials the named host, so an unroutable address
+	// proves the refusal was replaced: the error is a delivery failure now.
+	if got := run(smtpstdlib.Config{Host: "127.0.0.1", Port: 1, From: "a@example.com"}); got == "mail: no smtp configured" || got == "sent" {
+		t.Fatalf("configured output = %q, want a delivery error", got)
+	}
+}

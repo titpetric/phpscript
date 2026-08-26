@@ -13,6 +13,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
+	"github.com/titpetric/phpscript/stdlib/smtp"
 )
 
 // Name is the command title.
@@ -70,6 +71,7 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, root)
+	smtp.RegisterConfig(rt, config.SMTP)
 
 	reqCtx := runner.NewContext()
 	reqCtx.Register(rt)

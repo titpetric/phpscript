@@ -44,9 +44,39 @@ type Sender interface {
 	Send(recipient, subject, body string) error
 }
 
+// senderFunc adapts a function to the Sender interface.
+type senderFunc func(recipient, subject, body string) error
+
+func (f senderFunc) Send(recipient, subject, body string) error {
+	return f(recipient, subject, body)
+}
+
+// Unconfigured is the Sender mail() is bound to when no smtp block is
+// configured: the call fails catchably, naming what is missing, so calling
+// code keeps one spelling and its own log-the-link fallback, and
+// function_exists("mail") answers true either way.
+func Unconfigured() Sender {
+	return senderFunc(func(recipient, subject, body string) error {
+		return errors.New("mail: no smtp configured")
+	})
+}
+
+// RegisterConfig binds mail() for cfg: to the configured host when one is
+// named, and to the Unconfigured refusal otherwise. A host calls it after
+// stdlib.Register, whose default is the refusal, so a configured smtp block
+// upgrades mail() in place and its absence changes nothing.
+func RegisterConfig(rt *runner.Runtime, cfg Config) {
+	if cfg.Host == "" {
+		Register(rt, Unconfigured())
+		return
+	}
+	Register(rt, NewSMTP(cfg).Sender())
+}
+
 // Register binds mail() to sender. The standard library itself is registered
 // separately by the embedding host (stdlib.Register).
 func Register(rt *runner.Runtime, sender Sender) {
+	// mail sends a plain-text message to $recipient with $subject and $body through the host-configured smtp sender, throwing when none is configured; PHP's $additional_headers and $additional_params are not accepted.
 	rt.RegisterFunc("mail", func(ctx context.Context, recipient, subject, body string) (err error) {
 		done := traceDelivery(ctx, "", recipient, subject, body)
 		defer func() { done(err) }()
@@ -153,6 +183,11 @@ func NewSMTP(config Config) *SMTP {
 	return &SMTP{config: config}
 }
 
+// Sender returns the client as the context-free Sender mail() takes. The
+// mail() binding opens the delivery span itself, so this path delivers
+// without opening a second one.
+func (s *SMTP) Sender() Sender { return senderFunc(s.send) }
+
 // Send sends an email via SMTP. It takes a context so the delivery is recorded
 // on the trace of the request that asked for it; the runtime injects it, so a
 // script still calls `$smtp->send($to, $subject, $body)`.
@@ -160,6 +195,12 @@ func (s *SMTP) Send(ctx context.Context, recipient, subject, body string) (err e
 	done := traceDelivery(ctx, s.config.Host, recipient, subject, body)
 	defer func() { done(err) }()
 
+	return s.send(recipient, subject, body)
+}
+
+// send delivers without opening a span, so each traced entry point,
+// $smtp->send() and mail(), records exactly one delivery.
+func (s *SMTP) send(recipient, subject, body string) error {
 	if s.sender != nil {
 		return s.sender.Send(recipient, subject, body)
 	}

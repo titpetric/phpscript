@@ -23,6 +23,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/stdlib/database"
 	"github.com/titpetric/phpscript/stdlib/files"
+	"github.com/titpetric/phpscript/stdlib/smtp"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -88,6 +89,11 @@ type handler struct {
 	// autoindex answers a directory with no index page with a listing of
 	// what is in it. See serveAutoindex.
 	autoindex bool
+
+	// smtp is the sender mail() delivers through, the site's own block for a
+	// virtual host. The zero value keeps the stdlib default, a catchable
+	// refusal naming the missing configuration.
+	smtp smtp.Config
 
 	// writable is where scripts may write, resolved against the application
 	// root. Nothing in one of these directories is executed.
@@ -283,6 +289,7 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, v
 	if h.rootDir != "" {
 		stdlib.RegisterFS(rt, h.rootDir)
 	}
+	smtp.RegisterConfig(rt, h.smtp)
 	reqCtx := runner.FromRequestOptions(r, options)
 	// Uploaded parts are copied to temporary files for the script to read; they
 	// belong to this request and nothing outlives it.
@@ -422,6 +429,7 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	if err != nil {
 		return err
 	}
+	files.smtp = appConfig.SMTP
 	// The routed endpoints are handed the file handler's error pages: they live
 	// under the site's document root, which is the file handler's to look in.
 	if appConfig.Routes.Enabled {
@@ -536,6 +544,7 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	if err != nil {
 		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
+	files.smtp = siteConfig.SMTP
 
 	// A site's error pages are its own: they are found under its document root
 	// and rendered by its own handler, so nothing a site puts up is reachable
@@ -581,6 +590,11 @@ func annotationOptions(appConfig config.Config, runnerOptions runner.Options, ob
 		annotations.WithFlatstack(appConfig.Flatstack.Enabled),
 		annotations.WithObservers(observers...),
 		annotations.WithModuleSuffix(suffix),
+		// mail() delivers through the site's smtp block; with none configured
+		// the stdlib default, a catchable refusal, is re-registered unchanged.
+		annotations.WithRuntimeFunc(func(rt *runner.Runtime) {
+			smtp.RegisterConfig(rt, appConfig.SMTP)
+		}),
 	}
 }
 

@@ -444,3 +444,30 @@ func TestValidateVirtualHosts(t *testing.T) {
 		}
 	})
 }
+
+// TestVirtualHostSMTPIsTheSitesOwn pins the smtp overlay: a site's block
+// replaces the operator's for that site, and a site that says nothing
+// inherits the server default.
+func TestVirtualHostSMTPIsTheSitesOwn(t *testing.T) {
+	base := config.New()
+	base.SMTP.Host = "mail.operator.example"
+	base.SMTP.From = "operator@example.com"
+
+	own := writeSite(t, "smtp:\n  host: mail.site.example\n  from: site@example.com\n")
+	result, err := config.VirtualHost{Domain: "site.test", Root: own}.Load(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.SMTP.Host != "mail.site.example" || result.SMTP.From != "site@example.com" {
+		t.Errorf("smtp = %+v, want the site's own block", result.SMTP)
+	}
+
+	silent := writeSite(t, "autoindex: false\n")
+	result, err = config.VirtualHost{Domain: "quiet.test", Root: silent}.Load(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.SMTP.Host != "mail.operator.example" {
+		t.Errorf("smtp host = %q, want the inherited default", result.SMTP.Host)
+	}
+}
