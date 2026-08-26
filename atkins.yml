@@ -18,11 +18,6 @@ tasks:
       - task: go:build
       - task: docker:build
       - task: up
-      # The demo suites need mysql and postgres, so the environment comes up
-      # above and is torn down rather than left running. The deferred cleanup
-      # is registered directly after up: a failing test later in the list
-      # aborts the run before reaching its end, and a deferral that sits there
-      # would never have been registered.
       - task: compose:down
         deferred: true
       - task: test:phpscript:run

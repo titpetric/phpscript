@@ -156,6 +156,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [stdlib/crypto](extensions/implemented-apis.md#stdlibcrypto)
     - [stdlib/database](extensions/implemented-apis.md#stdlibdatabase)
     - [stdlib/files](extensions/implemented-apis.md#stdlibfiles)
+      - [csv](extensions/implemented-apis.md#csv)
       - [paths](extensions/implemented-apis.md#paths)
       - [reads](extensions/implemented-apis.md#reads)
       - [streams](extensions/implemented-apis.md#streams)

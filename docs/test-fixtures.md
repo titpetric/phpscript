@@ -150,12 +150,16 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 |------------------------------|------------|---------|------|
 | class_constant_defaults.phpt | PASS       | PASS    | PASS |
 | class_constants.phpt         | PASS       | PASS    | PASS |
+| extends_noop.phpt            | PASS       | PASS    | SKIP |
 | instanceof.phpt              | PASS       | PASS    | PASS |
 | interface_contract.phpt      | PASS       | PASS    | SKIP |
 | interfaces.phpt              | PASS       | PASS    | PASS |
 | is_object.phpt               | PASS       | PASS    | PASS |
+| new_self_refused.phpt        | PASS       | PASS    | SKIP |
+| new_static_refused.phpt      | PASS       | PASS    | SKIP |
 | object_nesting.phpt          | PASS       | PASS    | SKIP |
 | property_incdec.phpt         | PASS       | PASS    | PASS |
+| self_scope.phpt              | PASS       | PASS    | PASS |
 | static_members.phpt          | PASS       | PASS    | PASS |
 | template_render.phpt         | PASS       | PASS    | PASS |
 
@@ -191,6 +195,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 | runtime                    | Flat stack | Runtime | PHP  |
 |----------------------------|------------|---------|------|
+| global_noop.phpt           | PASS       | PASS    | SKIP |
 | memory_alias.phpt          | PASS       | PASS    | SKIP |
 | memory_frames.phpt         | PASS       | PASS    | SKIP |
 | memory_limit.phpt          | PASS       | PASS    | SKIP |
@@ -204,10 +209,14 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 | stdlib                           | Flat stack | Runtime | PHP  |
 |----------------------------------|------------|---------|------|
+| csv.phpt                         | PASS       | PASS    | SKIP |
+| file_put_contents.phpt           | PASS       | PASS    | PASS |
 | filesystem.phpt                  | PASS       | PASS    | PASS |
 | json_key_order.phpt              | PASS       | PASS    | PASS |
 | output_buffering.phpt            | PASS       | PASS    | PASS |
 | password_hash.phpt               | PASS       | PASS    | PASS |
+| php_input.phpt                   | PASS       | PASS    | SKIP |
+| random.phpt                      | PASS       | PASS    | PASS |
 | token_get_all.phpt               | PASS       | PASS    | PASS |
 | token_get_all_interpolation.phpt | PASS       | PASS    | PASS |
 
@@ -257,12 +266,12 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | functions   | 5        | 5      | 0      |
 | includes    | 3        | 3      | 0      |
 | namespaces  | 2        | 2      | 0      |
-| oop         | 10       | 10     | 0      |
+| oop         | 14       | 14     | 0      |
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
-| runtime     | 8        | 8      | 0      |
-| stdlib      | 6        | 6      | 0      |
+| runtime     | 9        | 9      | 0      |
+| stdlib      | 10       | 10     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 146      | 146    | 0      |
+| **Total**   | 155      | 155    | 0      |
