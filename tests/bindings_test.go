@@ -505,12 +505,12 @@ func BenchmarkConstructRowsMaps(b *testing.B) {
 }
 
 // The call benchmarks add the reflection return path (runner.invokeAny plus
-// firstReturn), which is what actually differs between a concrete return type
+// callResult), which is what actually differs between a concrete return type
 // and `any`.
 
 // benchmarkCall drives a binding through the same reflection sequence the
 // runtime uses (reflect.Value.Call followed by Interface() on each result, see
-// runner.invokeAny and runner.firstReturn), isolating the return path from the
+// runner.invokeAny and runner.callResult), isolating the return path from the
 // rest of the VM.
 func benchmarkCall(b *testing.B, name string, args ...reflect.Value) {
 	b.Helper()

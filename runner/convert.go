@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -34,6 +35,13 @@ func phpString(v any) string {
 		// A caught exception ($e in catch) renders as its message, so
 		// `echo $e` prints the error text.
 		return x.Error()
+	case fmt.Stringer:
+		// A Go value that knows how to spell itself is echoed that way, so a
+		// time.Time from a DATETIME column, a time.Duration and a time.Month
+		// all print rather than vanishing. PHP has no counterpart to fall back
+		// on: it refuses to convert an object to a string at all, so the Go
+		// stringer is the only sensible answer and an empty one is a bug.
+		return x.String()
 	default:
 		return ""
 	}
@@ -116,8 +124,28 @@ func toInt(v any) int64 {
 	case string:
 		return stringToInt(x)
 	default:
-		return 0
+		// A Go binding hands back named scalar types (time.Month, time.Weekday,
+		// time.Duration), which are integers wearing a name. Arithmetic on them
+		// is ordinary PHP arithmetic, so `$t->month() + 1` counts months rather
+		// than answering zero.
+		return namedScalarInt(v)
 	}
+}
+
+// namedScalarInt reads a named Go scalar as the integer PHP sees. It is the
+// reflect fallback for values no case above matched, and answers zero for
+// everything that is not numeric, which is the same answer toInt gave before.
+func namedScalarInt(v any) int64 {
+	rv := reflect.ValueOf(v)
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return rv.Int()
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return int64(rv.Uint())
+	case reflect.Float32, reflect.Float64:
+		return int64(rv.Float())
+	}
+	return 0
 }
 
 // numericPrefix returns the longest leading substring of s that reads as a

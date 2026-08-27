@@ -6,6 +6,16 @@ env:
     GOFLAGS: ""
 
 tasks:
+  # The default pipeline is what a change to the runtime has to pass, and it
+  # needs nothing but a Go toolchain and php: format, build, test, then run the
+  # fixtures on all three runtimes and regenerate the documentation from the
+  # registered surface.
+  #
+  # The demos are deliberately not here. They are compose services, so running
+  # them costs a --no-cache image build, a mysql and a postgres, and a venom
+  # suite per demo -- minutes of work that answers a question about the demo
+  # applications rather than about the runtime. `atkins test:demos` runs them,
+  # and a change under demos/ is expected to.
   default:
     cmds:
       - go mod tidy
@@ -13,31 +23,56 @@ tasks:
       - goimports-reviser -set-alias -format -imports-order "std,blanked,general,company,project" ./...
       - go fmt ./...
       - go install .
-      - task: composer:install
       - task: go:test
       - task: go:build
-      - task: docker:build
-      - task: up
-      - task: compose:down
+      - task: db:up
+      - task: db:down
         deferred: true
       - task: test:phpscript:run
       - task: test:phpscript:matrix
       - task: test:introspection
+
+  # mysql and postgres are test infrastructure, not demos: test-database.php and
+  # the platform_database fixtures query all three dialects, and sqlite alone
+  # would not catch a dialect divergence. Both publish a port to the host, so
+  # they come up without the image the demos need.
+  db:up:
+    desc: "Start the mysql and postgres services the database fixtures query"
+    passthru: true
+    cmds:
+      - docker compose up -d --wait mysql postgres
+
+  db:down:
+    desc: "Stop the mysql and postgres services"
+    passthru: true
+    cmds:
+      - docker compose stop mysql postgres
+
+  # The whole demo lifecycle: install their dependencies, build the image the
+  # compose services run, bring the stack up, and run both venom suites against
+  # it. The stack comes down whether or not the suites passed.
+  test:demos:
+    desc: "Build the image and run the demo venom suites against the compose stack"
+    cmds:
+      - task: composer:install
+      - task: docker:build
+      - task: compose:up
+      - task: compose:down
+        deferred: true
       - task: test:demos:dbadmin
       - task: test:demos:example
 
   # titpetric/minitpl is pulled in per project rather than vendored by hand, so
-  # every tree with a composer.json is installed before the Go tests (the parser
-  # benchmarks read the engine sources) and before the demos are packaged into
-  # the image.
+  # every tree with a composer.json is installed before the demos are packaged
+  # into the image. No Go test reads these trees; this is a demo-only step.
   composer:install:
     passthru: true
     cmds:
       - for dir in demos/example demos/dbadmin; do (cd $dir && composer install --no-interaction); done
 
   # The demos are compose services, so their venom suites run against the image
-  # built above. They have their own pipelines because they have to resolve the
-  # address of their container first.
+  # test:demos builds. They have their own pipelines because they have to
+  # resolve the address of their container first.
   test:demos:dbadmin:
     dir: demos/dbadmin/tests
     passthru: true

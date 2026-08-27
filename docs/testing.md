@@ -245,3 +245,15 @@ go test ./tests -run 'TestFlatstackFixtures/arrays/sort'
 ```
 
 Before submitting a change, run the package tests affected by the change, then the complete suite with `go test ./...`, and then `phpscript test --matrix tests/fixtures/...`. A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it passes the php column of the matrix.
+
+## The pipeline
+
+`atkins` runs the default pipeline: format, build, `go test`, the fixtures on all three runtimes, and the introspection step that regenerates the generated documentation. It needs a Go toolchain, a `php` binary, and docker for the mysql and postgres containers the database fixtures query — `db:up` starts those two services and the deferred `db:down` stops them, so a pipeline that fails partway still leaves nothing running.
+
+The demos are not in the default pipeline. `atkins test:demos` runs them, and it is the slow half: a `--no-cache` image build, the whole compose stack, and a venom suite per demo. It answers a question about [demos/dbadmin](../demos/dbadmin) and [demos/example](../demos/example) rather than about the runtime, so a change under `demos/` is what should run it.
+
+```bash
+atkins                     # the runtime: everything a change to Go or stdlib has to pass
+atkins test:demos          # the demo applications, against the compose stack
+atkins test:phpscript:matrix   # just the fixture matrix
+```

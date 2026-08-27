@@ -459,7 +459,7 @@ func invokeAny(fn any, args []any) (result any, err error) {
 		return nil, err
 	}
 	out := rv.Call(in)
-	return firstReturn(out)
+	return callResult(out)
 }
 
 // paramType returns the declared parameter type at position i (handling variadic).
@@ -650,7 +650,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 		return nil, err
 	}
 	out := m.Call(in)
-	return firstReturn(out)
+	return callResult(out)
 }
 
 // throwableMethod implements PHP's Throwable interface over any Go error.
@@ -724,21 +724,40 @@ func fieldByNameFold(value reflect.Value, name string) reflect.Value {
 	})
 }
 
-// firstReturn reduces a reflect Call result to (value, error) following Go
-// conventions: a trailing error is surfaced, the first non-error value returned.
-func firstReturn(out []reflect.Value) (any, error) {
-	var result any
+// callResult reduces a reflect Call result to (value, error) following Go
+// conventions: a trailing error is surfaced, and the non-error values become
+// the PHP result.
+//
+// A Go callable that returns several values is not a special case to hide. One
+// value is returned as itself; several become a PHP list, in declaration order,
+// which a script destructures the way PHP returns a tuple:
+//
+//	list($year, $week) = $t->iso_week();
+//
+// Keeping only the first value would silently answer a different question than
+// the one asked: time.Time.ISOWeek returns (year, week), and dropping the tail
+// makes `$t->iso_week()` evaluate to the year.
+func callResult(out []reflect.Value) (any, error) {
+	var values []reflect.Value
 	for _, o := range out {
 		if o.Type() == errorType {
 			err, _ := o.Interface().(error)
 			if err != nil {
-				return result, err
+				return nil, err
 			}
 			continue
 		}
-		if result == nil {
-			result = o.Interface()
-		}
+		values = append(values, o)
 	}
-	return result, nil
+	switch len(values) {
+	case 0:
+		return nil, nil
+	case 1:
+		return values[0].Interface(), nil
+	}
+	list := model.NewArraySize(len(values))
+	for _, v := range values {
+		list.Append(v.Interface())
+	}
+	return list, nil
 }

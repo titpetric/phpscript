@@ -107,25 +107,25 @@ Separate from the "Not implemented" rows in the
 [language reference](reference/README.md), which mean "not yet". Nothing here is
 planned, and each row names what to use instead.
 
-| PHP API                                                       | Use instead                                                                                  |
-|---------------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| `extends` semantics, traits, `parent::`                       | Composition; declare the members a class uses. An interface is checked, never inherited from |
-| Magic methods beyond `__construct` and `__invoke`             | Explicit methods                                                                             |
-| `new self()`, `new static()`                                  | `new ClassName()`; the keywords are not resolved and fail loudly as an undefined class       |
-| `setcookie`, `setrawcookie`                                   | `Session\Manager`, or `header("Set-Cookie: ...", false)`                                     |
-| `session_start`, `session_id`, `session_destroy`, `$_SESSION` | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`                          |
-| `curl_*`                                                      | `HTTP\Client`, `HTTP\Request`                                                                |
-| PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                          | `Database`, `Database\Migrate`                                                               |
-| `shmop_*`, `apcu_*`, `sem_*`                                  | `SharedMemory`                                                                               |
-| `strftime`, `gmstrftime`                                      | `date()`                                                                                     |
-| `create_function`                                             | Closures                                                                                     |
-| `${var}` string interpolation                                 | `{$var}`                                                                                     |
-| `global`                                                      | Pass collaborators as parameters; the statement parses and binds nothing                     |
-| `eval`                                                        | nothing; there is no runtime source evaluation                                               |
-| `goto`                                                        | nothing                                                                                      |
-| `yield`, generators, Fibers                                   | nothing; there is no coroutine model                                                         |
-| `trigger_error`, `restore_error_handler`, `@`                 | `try`/`catch` in PHP, `Runtime.OnError` in Go                                                |
-| `&` outside `foreach`                                         | Return the value; see [Value semantics](reference/types/value-semantics.md)                  |
+| PHP API                                                           | Use instead                                                                                  |
+|-------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `extends` semantics, traits, `parent::`                           | Composition; declare the members a class uses. An interface is checked, never inherited from |
+| Magic methods beyond `__construct` and `__invoke`                 | Explicit methods                                                                             |
+| `new self()`, `new static()`                                      | `new ClassName()`; the keywords are not resolved and fail loudly as an undefined class       |
+| `setcookie`, `setrawcookie`                                       | `Session\Manager`, or `header("Set-Cookie: ...", false)`                                     |
+| `session_start`, `session_id`, `session_destroy`, `$_SESSION`     | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`                          |
+| `curl_*`                                                          | `HTTP\Client`, `HTTP\Request`                                                                |
+| PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                              | `Database`, `Database\Migrate`                                                               |
+| `shmop_*`, `apcu_*`, `sem_*`                                      | `SharedMemory`                                                                               |
+| `strftime`, `gmstrftime`, `date`, `gmdate`, `mktime`, `strtotime` | `DateTime`, `Time`; Go layouts rather than format characters or English dates                |
+| `create_function`                                                 | Closures                                                                                     |
+| `${var}` string interpolation                                     | `{$var}`                                                                                     |
+| `global`                                                          | Pass collaborators as parameters; the statement parses and binds nothing                     |
+| `eval`                                                            | nothing; there is no runtime source evaluation                                               |
+| `goto`                                                            | nothing                                                                                      |
+| `yield`, generators, Fibers                                       | nothing; there is no coroutine model                                                         |
+| `trigger_error`, `restore_error_handler`, `@`                     | `try`/`catch` in PHP, `Runtime.OnError` in Go                                                |
+| `&` outside `foreach`                                             | Return the value; see [Value semantics](reference/types/value-semantics.md)                  |
 
 ### global
 
@@ -139,6 +139,29 @@ lines loads cleanly and then reads the variable as unset, so treat every
 `global` statement in a port as a parameter waiting to be written.
 `phpscript lint` reports each one as a warning, as it does a class `extends`
 clause, the other statement that parses and confers nothing.
+
+### Dates and times
+
+PHP's date family is not implemented, and neither is a compatibility layer over
+it. `date()`'s format characters, `strftime()`'s `%` codes and `strtotime()`'s
+English are three spellings of the same job, and the runtime binds Go's instead:
+`DateTime::now()`, `DateTime::parse()` and `$t->format()` take
+[Go layouts](https://pkg.go.dev/time#pkg-constants), where the layout is the
+reference instant written the way the output should read. `2006-01-02` is a
+date; `Y-m-d` is a table lookup, and `strtotime("next thursday")` is a guess.
+
+The value a script holds is Go's `time.Time`, which is what the database driver
+already scans a `DATETIME` column into, so the same value flows from a query to
+a template without a conversion in between. Every method returns a new one, so
+the mutable/immutable split PHP carries as two classes does not arise. See the
+[stdlib/time section](reference/extensions/implemented-apis.md) for the surface.
+
+Two sharp edges come with dispatching straight to Go's methods. A duration is
+nanoseconds, as it is in Go: `$t->add(86400)` advances the clock by 86.4
+microseconds, not by a day, so write durations as strings and the intent
+survives the reading, `$t->add("24h")`. And a Go method with several results
+arrives as a PHP list, read with `list($year, $week) = $t->iso_week();` — the
+short `[$a, $b] =` spelling does not parse here.
 
 ### Cookies
 

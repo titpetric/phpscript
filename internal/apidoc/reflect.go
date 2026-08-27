@@ -97,6 +97,10 @@ func typeParamName(p Param) string {
 // reflectReturn folds a Go function's results into one PHP type. Registered
 // concrete types use their PHP class name; a trailing error is thrown, not
 // returned.
+//
+// Several non-error results are one array, not a union: the runtime packs them
+// into a PHP list for the script to destructure, so time.Time.ISOWeek's
+// (year, week) documents as array rather than as int.
 func reflectReturn(t reflect.Type, classTypes map[reflect.Type]string) string {
 	kept := []string{}
 	for i := 0; i < t.NumOut(); i++ {
@@ -109,6 +113,9 @@ func reflectReturn(t reflect.Type, classTypes map[reflect.Type]string) string {
 			continue
 		}
 		kept = append(kept, phpTypeReflect(out))
+	}
+	if len(kept) > 1 {
+		return "array"
 	}
 	return returnType(kept)
 }

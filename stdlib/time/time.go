@@ -2,6 +2,17 @@
 // sets. Constructors and package functions are registered explicitly; methods
 // such as Time.Format, Time.Add, Duration.Minutes and Location.String are
 // provided by the runtime's normal Go-value method dispatch.
+//
+// Two consequences of dispatching to Go's own methods are worth stating, since
+// no wrapper is there to soften them:
+//
+//   - A duration argument is nanoseconds when written as an integer, so
+//     $t->add(86400) advances by 86.4 microseconds. The runtime coerces a
+//     string to a time.Duration, so $t->add("24h") is the spelling that means
+//     what a PHP author reading time()+86400 expects.
+//   - A method Go declares with several results returns a PHP list, read with
+//     list($year, $week) = $t->iso_week(). The short [$a, $b] = spelling does
+//     not parse in this runtime.
 package time
 
 import (

@@ -1548,7 +1548,7 @@ class HTTP\Request
 
     public function add_cookie(object $value2): void {}
 
-    public function basic_auth(): string|bool {}
+    public function basic_auth(): array {}
 
     public function clone(): HTTP\Request {}
 
@@ -1560,7 +1560,7 @@ class HTTP\Request
 
     public function cookies_named(string $string): array {}
 
-    public function form_file(string $string): object {}
+    public function form_file(string $string): array {}
 
     public function form_value(string $string): string {}
 
@@ -1763,11 +1763,11 @@ class Time
 
     public function before(object $value2): bool {}
 
-    public function clock(): int {}
+    public function clock(): array {}
 
     public function compare(object $value2): int {}
 
-    public function date(): int {}
+    public function date(): array {}
 
     public function day(): int {}
 
@@ -1785,7 +1785,7 @@ class Time
 
     public function is_zero(): bool {}
 
-    public function iso_week(): int {}
+    public function iso_week(): array {}
 
     public function local(): Time {}
 
@@ -1825,9 +1825,9 @@ class Time
 
     public function year_day(): int {}
 
-    public function zone(): string|int {}
+    public function zone(): array {}
 
-    public function zone_bounds(): Time {}
+    public function zone_bounds(): array {}
 }
 ```
 

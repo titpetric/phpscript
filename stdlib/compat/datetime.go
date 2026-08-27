@@ -8,8 +8,11 @@ import (
 )
 
 // registerDatetime installs the clock functions scripts time themselves with.
-// PHP's date/format family is not implemented; these are the two functions a
-// script needs to measure its own execution.
+// These are the two that answer "how long did that take" in the epoch integers
+// PHP spells them in; anything that formats, parses or does arithmetic on an
+// instant is stdlib/time, where the value is a Go time.Time rather than an int.
+// PHP's date/format family has no compatibility layer here on purpose, recorded
+// in docs/design.md under "Dates and times".
 func registerDatetime(rt *runner.Runtime) {
 	// time returns the current Unix timestamp in seconds.
 	rt.RegisterFunc("time", func() int64 {

@@ -168,25 +168,137 @@ func TestInvokeMethodArgumentRules(t *testing.T) {
 	}
 }
 
-// A string passed to a Go API that declares time.Duration uses Go's duration
-// syntax. The rule lives at the shared reflection boundary, so automatically
-// exposed methods such as time.Time.Add need no PHP-specific adapter.
-func TestInvokeMethodParsesDurationString(t *testing.T) {
-	program, err := parser.Parse(`<?php $t = new ClockTime; $later = $t->add("30m"); echo $later->format("15:04");`)
+// runInstant runs src with the standard library registered and $t bound to a
+// known instant, and returns what the script printed.
+//
+// The instant is built with the bindings a script uses, so the PHP spelling in
+// these tests is the spelling the runtime actually ships. A test-only class
+// would name a Go symbol that does not exist, and the point of these tests is
+// that the mapping between the two languages holds.
+func runInstant(t *testing.T, src string) string {
+	t.Helper()
+	const prelude = `<?php set_timezone("UTC"); $t = DateTime::parse("2006-01-02 15:04:05", "2026-08-26 14:48:00"); `
+	program, err := parser.Parse(prelude + src)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
-	rt.RegisterConstructor("ClockTime", func() time.Time {
-		return time.Date(2026, time.August, 26, 14, 48, 0, 0, time.UTC)
-	})
+	stdlib.Register(rt)
 	if err := rt.Run(program); err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	if out.String() != "15:18" {
-		t.Fatalf("got %q, want %q", out.String(), "15:18")
+	return out.String()
+}
+
+// instant is what runInstant's prelude constructs, as a Go value, so a test can
+// state its expectation as time.Time's own rendering rather than by copying a
+// string out of a previous run.
+var instant = time.Date(2026, time.August, 26, 14, 48, 0, 0, time.UTC)
+
+// A string passed to a Go API that declares time.Duration uses Go's duration
+// syntax. The rule lives at the shared reflection boundary, so automatically
+// exposed methods such as time.Time.Add need no PHP-specific adapter.
+func TestInvokeMethodParsesDurationString(t *testing.T) {
+	if got := runInstant(t, `echo $t->add("30m")->format("15:04");`); got != "15:18" {
+		t.Fatalf("got %q, want %q", got, "15:18")
 	}
+}
+
+// A Go callable declaring several results hands PHP a list, in declaration
+// order. Keeping only the first would answer a different question than the one
+// asked: time.Time.ISOWeek returns (year, week), and dropping the tail makes
+// $t->iso_week() evaluate to the year.
+func TestInvokeSeveralResultsBecomeAList(t *testing.T) {
+	tests := []struct {
+		name string
+		fn   any
+		src  string
+		want string
+	}{
+		{
+			name: "two results",
+			fn:   func() (int64, int64) { return 2026, 35 },
+			src:  `<?php list($year, $week) = probe(); echo $year, "-", $week;`,
+			want: "2026-35",
+		},
+		{
+			name: "mixed types keep their own",
+			fn:   func() (string, int64) { return "UTC", 0 },
+			src:  `<?php list($name, $offset) = probe(); echo $name, ":", $offset;`,
+			want: "UTC:0",
+		},
+		{
+			name: "a trailing error is still thrown, not listed",
+			fn:   func() (int64, int64, error) { return 1, 2, nil },
+			src:  `<?php echo count(probe());`,
+			want: "2",
+		},
+		{
+			name: "one result is the value itself, not a one-element list",
+			fn:   func() int64 { return 7 },
+			src:  `<?php echo probe();`,
+			want: "7",
+		},
+		{
+			name: "a nil first result no longer promotes the second",
+			fn:   func() (any, bool) { return nil, true },
+			src:  `<?php $r = probe(); var_dump($r[0]); var_dump($r[1]);`,
+			want: "NULL\nbool(true)\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			out, err := runBindingWithStdlib(t, "probe", test.fn, test.src)
+			if err != nil {
+				t.Fatalf("run: %v", err)
+			}
+			if out != test.want {
+				t.Fatalf("got %q, want %q", out, test.want)
+			}
+		})
+	}
+}
+
+// A Go value that spells itself echoes that way rather than as the empty
+// string, and a named Go integer counts as an integer in arithmetic. Both
+// reach PHP through automatic method dispatch, where no hand-written shim is
+// there to convert them.
+func TestGoValueStringAndIntConversion(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want string
+	}{
+		{"time echoes through its stringer", `echo $t;`, instant.String()},
+		{"interpolation uses the same path", `echo "{$t}";`, instant.String()},
+		{"a named integer echoes its name", `echo $t->month();`, instant.Month().String()},
+		{"a named integer counts as its value", `echo $t->month() + 1;`, "9"},
+		{"a duration echoes as Go writes it", `echo $t->sub($t->add("-90m"));`, (90 * time.Minute).String()},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := runInstant(t, test.src); got != test.want {
+				t.Fatalf("got %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+// runBindingWithStdlib is runBinding with the standard library registered, for
+// scripts that need count() or var_dump() to observe what a binding returned.
+func runBindingWithStdlib(t *testing.T, name string, fn any, src string) (string, error) {
+	t.Helper()
+	program, err := parser.Parse(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	rt.RegisterFunc(name, fn)
+	runErr := rt.Run(program)
+	return out.String(), runErr
 }
 
 func TestInvokeBindingParsesDurationString(t *testing.T) {

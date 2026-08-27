@@ -8,7 +8,7 @@ package tests
 //
 // The runtime never requires *model.Array on the way out. Registered functions
 // are invoked through reflection (runner.invokeAny), and the single return
-// value is boxed into `any` by firstReturn. Everything downstream, from
+// value is boxed into `any` by callResult. Everything downstream, from
 // foreach to `$x[...]`, `$obj->field` and method calls, dispatches on the dynamic
 // type, with reflection fallbacks for native Go slices, maps and structs.
 // So a binding is free to return the cheapest representation of its data and
@@ -133,7 +133,7 @@ func registerBindings(rt registrar) {
 	// --- the `any` question ------------------------------------------------
 	//
 	// Declaring the return type as `any` rather than a concrete type costs
-	// nothing: firstReturn calls reflect.Value.Interface() either way, and a
+	// nothing: callResult calls reflect.Value.Interface() either way, and a
 	// slice header already lives behind an interface once returned. These two
 	// exist so the benchmark can prove that rather than assert it.
 
@@ -213,7 +213,7 @@ func registerBindings(rt registrar) {
 	// --- scalar shapes -----------------------------------------------------
 	//
 	// Scalars are where `any` actually costs something: returning a concrete
-	// int64 lets firstReturn box a value the compiler may have already staged,
+	// int64 lets callResult box a value the compiler may have already staged,
 	// while `any` boxes at the return statement. Both allocate 8 bytes unless
 	// the value is a small int (0-255) served from the runtime's static cache.
 
@@ -256,7 +256,7 @@ func registerBindings(rt registrar) {
 
 	// --- error shape -------------------------------------------------------
 	//
-	// A trailing error is unwrapped by firstReturn and surfaces as a thrown
+	// A trailing error is unwrapped by callResult and surfaces as a thrown
 	// PHP error. Returning (any, error) is only worth it when the call can
 	// actually fail; a second return value costs an extra reflect.Value slot.
 
