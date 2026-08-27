@@ -25,6 +25,7 @@ Source-file structure, runtime values, variables, constants, and expression eval
   - [Scalar types](types/README.md#scalar-types)
   - [Strings](types/README.md#strings)
   - [Arrays](types/README.md#arrays)
+    - [Keys](types/README.md#keys)
   - [Type casting](types/README.md#type-casting)
 - [Value semantics](types/value-semantics.md) - What copies and what is shared, why `&` does nothing, and how binding output parameters work.
   - [Arrays are handles, not values](types/value-semantics.md#arrays-are-handles-not-values)

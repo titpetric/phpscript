@@ -8,6 +8,7 @@ import (
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib/shared"
 )
 
 // init contributes the base64, hex, URL and query-string encoders to
@@ -31,6 +32,8 @@ func registerEncoding(rt *runner.Runtime) {
 	rt.RegisterFunc("rawurldecode", phpRawURLDecode)
 	// http_build_query joins $data into a query string, urlencoding both halves of every pair and spelling a nested array as key[sub]=value; the $numeric_prefix, $arg_separator and $encoding_type parameters are not supported.
 	rt.RegisterFunc("http_build_query", phpHTTPBuildQuery)
+	// parse_str decodes the query string $string into $result, reading PHP's bracket syntax so a[b]=1 arrives as a nested array; it is the inverse of http_build_query and the decoder behind $_GET and $_POST.
+	rt.RegisterFunc("parse_str", phpParseStr)
 	// bin2hex returns $string spelled as lowercase hexadecimal, two digits per byte.
 	rt.RegisterFunc("bin2hex", phpBin2hex)
 	// hex2bin decodes the hexadecimal $string back into bytes, returning false for an odd-length string or a non-hex character.
@@ -207,46 +210,27 @@ func urlEncode(str string, form bool) string {
 	return b.String()
 }
 
-func phpURLDecode(str string) string { return urlDecode(str, true) }
+// The decoders live in stdlib/shared because the runner needs them too: it
+// builds $_GET and $_POST from a request with the same rules parse_str applies
+// to a string. Two implementations would let a form arrive one way through the
+// superglobals and another through parse_str.
+func phpURLDecode(str string) string { return shared.URLDecode(str) }
 
-func phpRawURLDecode(str string) string { return urlDecode(str, false) }
+func phpRawURLDecode(str string) string { return shared.RawURLDecode(str) }
 
-// urlDecode reverses urlEncode. A '%' that is not followed by two hex digits
-// is kept literal, as PHP does, rather than reported as an error.
-func urlDecode(str string, form bool) string {
-	if strings.IndexByte(str, '%') < 0 && !(form && strings.IndexByte(str, '+') >= 0) {
-		return str
+// phpParseStr writes the decoded query string through the by-reference second
+// parameter, which is the only form of parse_str modern PHP has: the
+// single-argument spelling wrote the variables into the caller's scope and went
+// with register_globals in PHP 8.
+//
+// The setter is nil when a script omitted the argument. PHP raises an
+// ArgumentCountError for that call, and this runtime pads a short call instead,
+// so the decode is skipped rather than written nowhere.
+func phpParseStr(str string, result func(any)) {
+	if result == nil {
+		return
 	}
-	var b strings.Builder
-	b.Grow(len(str))
-	for i := 0; i < len(str); i++ {
-		c := str[i]
-		switch {
-		case form && c == '+':
-			b.WriteByte(' ')
-		case c == '%' && i+2 < len(str) && isHexDigit(str[i+1]) && isHexDigit(str[i+2]):
-			b.WriteByte(unhexDigit(str[i+1])<<4 | unhexDigit(str[i+2]))
-			i += 2
-		default:
-			b.WriteByte(c)
-		}
-	}
-	return b.String()
-}
-
-func isHexDigit(c byte) bool {
-	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
-}
-
-func unhexDigit(c byte) byte {
-	switch {
-	case c >= '0' && c <= '9':
-		return c - '0'
-	case c >= 'a' && c <= 'f':
-		return c - 'a' + 10
-	default:
-		return c - 'A' + 10
-	}
+	result(shared.ParseStr(str, shared.Limits{}))
 }
 
 // phpHTTPBuildQuery takes data as any and reads it through model.RangeValues,

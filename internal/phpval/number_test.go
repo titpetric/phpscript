@@ -122,6 +122,8 @@ func TestNumberMatchesIntAndFloat(t *testing.T) {
 	}
 }
 
+// TestKey pins PHP's array key rules, read off php 8's output for
+// `$a[<in>] = 1; foreach ($a as $k => $v)`.
 func TestKey(t *testing.T) {
 	tests := []struct {
 		name string
@@ -129,19 +131,32 @@ func TestKey(t *testing.T) {
 		want any
 	}{
 		{"decimal string", "1", int64(1)},
-		{"leading zero, as the runner reads it", "01", int64(1)},
-		{"fraction stays a string", "1.5", "1.5"},
+		{"zero", "0", int64(0)},
 		{"negative", "-2", int64(-2)},
 		{"int widens", 1, int64(1)},
 		{"int64 unchanged", int64(1), int64(1)},
-		{"bool unchanged", true, true},
-		{"nil unchanged", nil, nil},
 		{"word", "abc", "abc"},
 		{"empty string", "", ""},
+
+		// Not canonical spellings, so not integer keys.
+		{"leading zero", "01", "01"},
+		{"leading zeros", "007", "007"},
+		{"zero padded zero", "00", "00"},
+		{"signed leading zero", "-01", "-01"},
+		{"signed zero prints as 0", "-0", "-0"},
+		{"explicit plus", "+1", "+1"},
 		{"space is not a decimal", " 1", " 1"},
+		{"fraction stays a string", "1.5", "1.5"},
 		{"exponent is not a decimal", "1e3", "1e3"},
-		{"float unchanged", 1.5, 1.5},
 		{"past int64", "9223372036854775808", "9223372036854775808"},
+
+		// The other three scalar types have integer or string keys too.
+		{"true is 1", true, int64(1)},
+		{"false is 0", false, int64(0)},
+		{"nil is the empty string", nil, ""},
+		{"float truncates toward zero", 1.5, int64(1)},
+		{"negative float truncates toward zero", -1.7, int64(-1)},
+		{"float below one is zero", 0.4, int64(0)},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

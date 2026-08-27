@@ -1,11 +1,7 @@
 name: parse_str decodes bracket syntax into nested arrays
 description: >
-  Issue #63: parse_str is missing, and the same bracket decoder is what
-  $_GET/$_POST population lacks. The expected section is php's own output,
-  so once the function exists this is a matrix fixture: drop the runner
-  block along with the .yml extension.
-runner:
-  php: false
+  The expected section is php's own output, so the matrix run compares the
+  decoder against the reference implementation.
 ---
 <?php
 

@@ -2,10 +2,10 @@
 
 | PHP predefined variable                  | Status                | Notes                                                              |
 |------------------------------------------|-----------------------|--------------------------------------------------------------------|
-| `$_GET`                                  | Compatibility         | Last query-string value for each key.                              |
-| `$_POST`                                 | Compatibility         | Last parsed form value for each key, urlencoded or multipart.      |
+| `$_GET`                                  | Compatibility         | Query-string fields, bracket names decoded into nested arrays.     |
+| `$_POST`                                 | Compatibility         | Form fields, urlencoded or multipart, decoded the same way.        |
 | `$_FILES`                                | Partial compatibility | File parts of a multipart body, with php.ini's size limits.        |
-| `$_COOKIE`                               | Compatibility         | One value per cookie sent with the request.                        |
+| `$_COOKIE`                               | Compatibility         | Cookies sent with the request, decoded the same way.               |
 | `$_SERVER`                               | Partial compatibility | The request line, peer, scheme, timing, `HTTP_*`, and the script.  |
 | `$_ENV`                                  | Partial compatibility | Seeded empty. Only a Go host fills it; `getenv()` is unrelated.    |
 | `$argc`, `$argv`                         | Partial compatibility | Seeded for scheduled jobs. CLI arguments are not passed to either. |
@@ -24,19 +24,36 @@ an undefined name.
 
 ## `$_GET`
 
-Contains URL query parameters, one string per key. A key sent more than once
-keeps the last value, as it does in PHP.
+Contains URL query parameters. A key sent more than once keeps the last value,
+as it does in PHP.
 
 ```php
 $page = $_GET["page"];
 ```
 
+Bracket syntax in a field name is decoded into nested arrays, so the query
+`a[b]=1&ids[]=7&ids[]=9` arrives as `$_GET["a"]["b"]` and a two-element
+`$_GET["ids"]`, not as the literal keys `a[b]` and `ids[]`. `parse_str()` is
+the same decoder applied to a string, and
+[Arrays](../types/README.md#keys) covers which field names become integer
+keys.
+
+The order is the request's own, and two limits bound what a hostile query can
+build: `max_input_vars` (1000) and `max_input_nesting_level` (64). A field
+nested past the limit is dropped whole rather than truncated. Both are
+[configurable](../../configuration.md).
+
 ## `$_POST`
 
-Contains parsed form-body values, also one string per key and also last one
-wins. Both body encodings a browser form produces are decoded:
-`application/x-www-form-urlencoded` and `multipart/form-data`. The value parts
-of a multipart body land here; its file parts land in `$_FILES`.
+Contains parsed form-body values, last one wins. Both body encodings a browser
+form produces are decoded: `application/x-www-form-urlencoded` and
+`multipart/form-data`. The value parts of a multipart body land here; its file
+parts land in `$_FILES`.
+
+Field names are decoded the same way `$_GET` decodes them, so a repeating form
+row named `line[0][hours]` arrives as `$_POST["line"][0]["hours"]`. `$_FILES`
+is the exception: it is still keyed by the literal field name, so a file input
+named `docs[]` is one entry `docs[]` rather than a nested one.
 
 ## `$_FILES`
 

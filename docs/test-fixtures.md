@@ -47,6 +47,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | array_stack.phpt         | PASS       | PASS    | PASS |
 | array_union.phpt         | PASS       | PASS    | PASS |
 | compact.phpt             | PASS       | PASS    | PASS |
+| keys.phpt                | PASS       | PASS    | PASS |
 | ksort_asort.phpt         | PASS       | PASS    | PASS |
 | php_array_splice.phpt    | PASS       | PASS    | PASS |
 | range.phpt               | PASS       | PASS    | PASS |
@@ -221,6 +222,8 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | json_key_order.phpt              | PASS       | PASS    | PASS |
 | mail_unconfigured.phpt           | PASS       | PASS    | SKIP |
 | output_buffering.phpt            | PASS       | PASS    | PASS |
+| parse_str.phpt                   | PASS       | PASS    | PASS |
+| parse_str_edge_cases.phpt        | PASS       | PASS    | PASS |
 | password_hash.phpt               | PASS       | PASS    | PASS |
 | php_input.phpt                   | PASS       | PASS    | SKIP |
 | random.phpt                      | PASS       | PASS    | PASS |
@@ -264,7 +267,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | Area        | Fixtures | Passed | Failed |
 |-------------|----------|--------|--------|
 | arithmetic  | 21       | 21     | 0      |
-| arrays      | 16       | 16     | 0      |
+| arrays      | 17       | 17     | 0      |
 | autoloading | 4        | 4      | 0      |
 | bindings    | 23       | 23     | 0      |
 | errors      | 2        | 2      | 0      |
@@ -278,7 +281,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
 | runtime     | 9        | 9      | 0      |
-| stdlib      | 11       | 11     | 0      |
+| stdlib      | 13       | 13     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 162      | 162    | 0      |
+| **Total**   | 165      | 165    | 0      |

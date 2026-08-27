@@ -89,6 +89,30 @@ $map = array("name" => "Ada");
 $extended = {"name" => "Ada"}; // phpscript only
 ```
 
+### Keys
+
+An array key is an int or a string and nothing else, and what a script writes
+between the brackets becomes one of the two the way it does in PHP: `null` is
+the empty string, `true` and `false` are `1` and `0`, and a float truncates
+toward zero, so `$a[1.7]` and `$a[1]` are one entry.
+
+A string becomes an int key only when it is the canonical spelling of one,
+which means it reads back identically from the integer it would become:
+
+| Key                     | Stored as | Why                       |
+|-------------------------|-----------|---------------------------|
+| `"12"`, `"0"`, `"-2"`   | `int`     | canonical                 |
+| `"08"`, `"007"`         | `string`  | leading zeros             |
+| `"+1"`                  | `string`  | an explicit plus          |
+| `"-0"`                  | `string`  | the integer prints as `0` |
+| `" 1"`, `"1 "`          | `string`  | surrounding space         |
+| `"1.0"`, `"1e3"`        | `string`  | float syntax              |
+| `"9223372036854775808"` | `string`  | past `PHP_INT_MAX`        |
+
+So `$a["08"]` and `$a[8]` are two entries. This is exact rather than
+permissive on purpose: a form field or a database column named `"007"` has to
+survive a round trip through an array without becoming `7`.
+
 ## Type casting
 
 The casts `(bool)`, `(boolean)`, `(int)`, `(integer)`, `(float)`, `(double)`,

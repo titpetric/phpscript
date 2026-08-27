@@ -371,6 +371,11 @@ function http_build_query(mixed $data): string
 ```
 
 ```php
+// parse_str decodes the query string $string into $result, reading PHP's bracket syntax so a[b]=1 arrives as a nested array; it is the inverse of http_build_query and the decoder behind $_GET and $_POST.
+function parse_str(string $str, &$result): void
+```
+
+```php
 // rawurldecode decodes the RFC 3986 $string, leaving '+' alone and leaving an incomplete '%' sequence literal.
 function rawurldecode(string $str): string
 ```

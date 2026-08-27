@@ -555,20 +555,8 @@ func toFloat(v any) float64 {
 	}
 }
 
-// normalizeKey canonicalises array keys: PHP uses int keys for integers and
-// numeric strings, string keys otherwise.
-func normalizeKey(k any) any {
-	switch x := k.(type) {
-	case int:
-		return int64(x)
-	case int64:
-		return x
-	case string:
-		if i, err := strconv.ParseInt(x, 10, 64); err == nil {
-			return i
-		}
-		return x
-	default:
-		return x
-	}
-}
+// normalizeKey canonicalises array keys. PHP has int keys and string keys and
+// nothing else, and the conversion rules are the same ones the standard
+// library needs for array_key_exists() and array_flip(), so there is one
+// definition and this is a call to it.
+func normalizeKey(k any) any { return phpval.Key(k) }

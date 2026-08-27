@@ -19,6 +19,7 @@ import (
 	"unsafe"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/stdlib/shared"
 )
 
 // PHP's UPLOAD_ERR_* codes, as they appear in a $_FILES entry. Only the ones
@@ -63,6 +64,21 @@ type Context struct {
 	Env     map[string]string
 	Headers map[string]string
 	Argv    []string
+
+	// GetVars, PostVars and CookieVars are the same fields decoded through
+	// PHP's bracket syntax, and seed $_GET, $_POST and $_COOKIE.
+	//
+	// The flat maps above are not the same information. They hold one string
+	// per literal field name, which is what a Go host reads and what
+	// Session\Manager looks a cookie up in, and they cannot express what the
+	// decoder needs: `a[]=1&a[]=2` is one repeated name, so a map keeps only
+	// the second value.
+	//
+	// Nil when the Context was not built from a request; Register falls back
+	// to the flat map, so a host that fills c.Get itself is unaffected.
+	GetVars    *model.Array
+	PostVars   *model.Array
+	CookieVars *model.Array
 
 	// Files holds the file parts of a multipart body keyed by form field name,
 	// in the order they were sent. A field carries more than one file when the
@@ -118,24 +134,27 @@ func FromRequest(r *http.Request) Context {
 	return FromRequestOptions(r, Options{})
 }
 
-// FromRequestOptions builds a Context from an HTTP request. Query and form
-// values are flattened to one value per key (PHP's scalar superglobal shape);
-// path values are pulled out of the matched ServeMux pattern via r.PathValue.
+// FromRequestOptions builds a Context from an HTTP request. Path values come
+// out of the matched ServeMux pattern via r.PathValue.
 //
-// A key sent more than once keeps the last value, which is what PHP's own
-// parser does: each repetition assigns over the one before it.
+// Query, form and cookie fields are recorded twice: flat for a Go host, and
+// decoded for the superglobals. Both keep the last value when a name repeats,
+// as PHP's parser does.
 //
-// The upload_max_filesize and post_max_size options limit what the body may
-// carry; see enforcement in the form-body section below.
+// upload_max_filesize and post_max_size limit what the body may carry;
+// max_input_vars and max_input_nesting_level bound what is built from it.
 func FromRequestOptions(r *http.Request, opts Options) Context {
 	c := NewContext()
 
-	// Query string ($_GET).
+	// Query string ($_GET). Decoded from RawQuery, not r.URL.Query(): a
+	// url.Values is a map, so field order is already gone, and the decoder
+	// needs it.
 	for k, v := range r.URL.Query() {
 		if len(v) > 0 {
 			c.Get[k] = v[len(v)-1]
 		}
 	}
+	c.GetVars = shared.ParseStr(r.URL.RawQuery, opts.inputLimits())
 
 	// Form body ($_POST) and file uploads ($_FILES). A body over post_max_size
 	// is not parsed at all: PHP leaves both superglobals empty rather than
@@ -147,10 +166,18 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 		c.parseBody(r, opts)
 	}
 
-	// Cookies ($_COOKIE).
-	for _, ck := range r.Cookies() {
+	// Cookies ($_COOKIE). r.Cookies() is ordered. Go does not percent-decode a
+	// cookie the way PHP does, so that happens here.
+	cookies := r.Cookies()
+	pairs := make([]shared.Pair, 0, len(cookies))
+	for _, ck := range cookies {
 		c.Cookie[ck.Name] = ck.Value
+		pairs = append(pairs, shared.Pair{
+			Name:  shared.URLDecode(ck.Name),
+			Value: shared.URLDecode(ck.Value),
+		})
 	}
+	c.CookieVars = shared.ParsePairs(pairs, opts.inputLimits())
 
 	// Server variables ($_SERVER).
 	c.serverVars(r)
@@ -261,11 +288,22 @@ func contentLength(r *http.Request) (string, bool) {
 // isMultipart reports whether the request body is a multipart form, the one
 // body shape ParseForm does not decode by itself.
 func isMultipart(r *http.Request) bool {
-	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	return mediaType(r) == "multipart/form-data"
+}
+
+// isURLEncoded reports whether the body is a urlencoded form. Only the two
+// form types populate $_POST: a JSON or XML body is php://input and nothing
+// else, as it is in PHP.
+func isURLEncoded(r *http.Request) bool {
+	return mediaType(r) == "application/x-www-form-urlencoded"
+}
+
+func mediaType(r *http.Request) string {
+	parsed, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
-		return false
+		return ""
 	}
-	return mediaType == "multipart/form-data"
+	return parsed
 }
 
 // parseBody decodes the request body into $_POST and $_FILES. ParseForm only
@@ -273,7 +311,7 @@ func isMultipart(r *http.Request) bool {
 // which is why a form with a file input used to arrive empty. Only the content
 // type says which of the two a request carries. Both calls are idempotent and a
 // no-op for bodyless requests, so neither needs a method check.
-func (c Context) parseBody(r *http.Request, opts Options) {
+func (c *Context) parseBody(r *http.Request, opts Options) {
 	capBody(r, opts.PostMaxSize)
 
 	// Buffer the raw body before any parser consumes it: these bytes are what
@@ -320,6 +358,41 @@ func (c Context) parseBody(r *http.Request, opts Options) {
 			c.Post[k] = v[len(v)-1]
 		}
 	}
+	c.PostVars = c.decodeBody(r, opts)
+}
+
+// decodeBody builds $_POST, reading the brackets in the field names. Only the
+// two form content types produce one; anything else is php://input and leaves
+// $_POST empty.
+//
+// A urlencoded body decodes from the bytes parseBody already buffered for
+// php://input, so a repeated `a[]` is two fields rather than one map entry.
+//
+// A multipart body has no such string: net/http has parsed it into a map, so
+// order between two field names is gone and the names are sorted to make what
+// remains deterministic. Nesting is unaffected. What this cannot reproduce is
+// a form interleaving two top-level names and expecting the later to win,
+// which no browser produces.
+func (c Context) decodeBody(r *http.Request, opts Options) *model.Array {
+	limits := opts.inputLimits()
+	if isURLEncoded(r) {
+		return shared.ParseStr(string(*c.rawBody), limits)
+	}
+	if !isMultipart(r) || r.MultipartForm == nil {
+		return model.NewArray()
+	}
+	names := make([]string, 0, len(r.MultipartForm.Value))
+	for name := range r.MultipartForm.Value {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var pairs []shared.Pair
+	for _, name := range names {
+		for _, value := range r.MultipartForm.Value[name] {
+			pairs = append(pairs, shared.Pair{Name: name, Value: value})
+		}
+	}
+	return shared.ParsePairs(pairs, limits)
 }
 
 // capBody limits how much of a body of unannounced length is read, so a
@@ -522,9 +595,9 @@ func (c Context) Register(rt *Runtime) {
 	})
 
 	// Superglobals as ordinary PHP arrays.
-	rt.SetGlobal("_GET", mapToArray(c.Get))
-	rt.SetGlobal("_POST", mapToArray(c.Post))
-	rt.SetGlobal("_COOKIE", mapToArray(c.Cookie))
+	rt.SetGlobal("_GET", superglobal(c.GetVars, c.Get))
+	rt.SetGlobal("_POST", superglobal(c.PostVars, c.Post))
+	rt.SetGlobal("_COOKIE", superglobal(c.CookieVars, c.Cookie))
 	rt.SetGlobal("_SERVER", c.serverArray())
 	rt.SetGlobal("_ENV", mapToArray(c.Env))
 	rt.SetGlobal("_PATH", mapToArray(c.Path))
@@ -780,6 +853,16 @@ func (c Context) serverArray() *model.Array {
 		arr.Set("REQUEST_TIME_FLOAT", exact)
 	}
 	return arr
+}
+
+// superglobal prefers the decoded record, and falls back to the flat map for a
+// Context assembled by hand: a CLI run, a scheduled job, the fixture harness,
+// or an embedder filling c.Get itself. There was no request to decode.
+func superglobal(vars *model.Array, flat map[string]string) *model.Array {
+	if vars != nil {
+		return vars
+	}
+	return mapToArray(flat)
 }
 
 // mapToArray converts a string map into a PHP associative array with stable,

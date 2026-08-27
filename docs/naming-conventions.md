@@ -112,6 +112,14 @@ depends on another. The coercion they all need lives in `internal/phpval`
 rather than in a shared file beside them, because a shared file is the coupling
 the split exists to remove.
 
+`stdlib/shared` is the one exception, and it is not for sharing between stdlib
+packages. `stdlib` imports `runner` and never the reverse, so a behaviour both
+perform has nowhere to live in either: the form decoder builds `$_GET` in the
+runner and answers `parse_str()` in a script, and the two have to agree. That
+package imports `model` and `internal/phpval` and nothing else in the tree,
+which is what keeps it importable from both sides. A helper only stdlib needs
+belongs in `internal/phpval`; one only the runner needs belongs in `runner`.
+
 ## PHP-visible names
 
 A registered name is what a script types. It is a compatibility surface and

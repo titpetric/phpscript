@@ -5,6 +5,7 @@ import (
 	"io/fs"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/stdlib/shared"
 )
 
 // Options configures a Runtime.
@@ -44,6 +45,18 @@ type Options struct {
 	// does in PHP. Zero is no limit.
 	PostMaxSize Size `yaml:"post_max_size"`
 
+	// MaxInputVars is how many fields are decoded into $_GET, $_POST and
+	// $_COOKIE, PHP's max_input_vars. Zero is PHP's default of 1000; negative
+	// is no limit.
+	MaxInputVars int `yaml:"max_input_vars"`
+
+	// MaxInputNestingLevel is the deepest bracket chain a field name may have,
+	// PHP's max_input_nesting_level. A field past it is dropped whole. Zero is
+	// PHP's default of 64; negative is no limit.
+	//
+	// Both bound attacker-controlled input: `a[x][x]...` costs an array a level.
+	MaxInputNestingLevel int `yaml:"max_input_nesting_level"`
+
 	// UploadFileMode is the mode move_uploaded_file() gives a stored upload.
 	// Zero means DefaultUploadFileMode; a host that serves uploads to nobody
 	// but itself sets something tighter, 0600 or 0640.
@@ -73,4 +86,14 @@ type Options struct {
 	//
 	// NOT ENFORCED YET. See TimeLimit.
 	ConcurrencyLimit int `yaml:"concurrency_limit"`
+}
+
+// inputLimits renders the two input limits as the form decoder takes them.
+// Zero means PHP's default on both sides, so an unconfigured Options decodes
+// as PHP would.
+func (o Options) inputLimits() shared.Limits {
+	return shared.Limits{
+		MaxNesting: o.MaxInputNestingLevel,
+		MaxVars:    o.MaxInputVars,
+	}
 }

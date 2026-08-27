@@ -3,11 +3,9 @@
 // of values or strings, and how two values order under PHP 8's <=> operator.
 //
 // It exists so the files under stdlib/core can each register their own area
-// without importing one another, and so the runner agrees with them. Every one
-// of them coerces its arguments, and the coercion has to have exactly one
-// definition: sort() and in_array() disagreeing about what "10" is would be a
-// bug no test names, and echo and implode disagreeing about a time.Time would
-// be the same bug with a different pair of names.
+// without importing one another, and so the runner agrees with them. The
+// coercion needs exactly one definition: sort() and in_array() disagreeing
+// about what "10" is would be a bug no test names.
 package phpval
 
 import (
@@ -21,22 +19,15 @@ import (
 )
 
 // GoString renders a value that is none of PHP's own scalars: something a Go
-// binding returned, reached by method dispatch or scanned out of a database
-// row. The final return reports whether it knew how, so a caller can fall back
-// to its own default.
+// binding returned or a database row scanned. The final return reports whether
+// it knew how.
 //
-// PHP itself has no string form for a date: `echo $dateTime` is a fatal Error,
-// "Object of class DateTime could not be converted to string". Every place PHP
-// writes a datetime as text of its own accord -- the `date` field of a
-// var_dump, of a print_r and of json_encode -- writes `Y-m-d H:i:s`, and PDO
-// hands a DATETIME column to a script as exactly the text it was stored as. So
-// a time.Time takes time.DateTime, the same layout under a Go name, rather
-// than time.Time.String's trailing zone or RFC3339's T and Z. The zone is
-// dropped for the same reason PHP drops it there: it is a separate field, not
-// part of the reading.
-//
-// Everything else that can spell itself is spelled that way, so a Duration
-// prints "1h30m0s" and a Month prints "August".
+// A time.Time takes time.DateTime rather than Go's String or RFC3339. PHP has
+// no string form for a date to copy -- `echo $dateTime` is a fatal Error -- so
+// the rule comes from where PHP writes one itself: the `date` field of
+// var_dump, print_r and json_encode is Y-m-d H:i:s, and PDO hands back a
+// DATETIME column as the text it was stored as. Anything else that can spell
+// itself does, so a Duration is "1h30m0s" and a Month is "August".
 func GoString(v any) (string, bool) {
 	switch x := v.(type) {
 	case time.Time:
@@ -244,25 +235,90 @@ func Number(v any) any {
 	}
 }
 
-// Key normalises an array key the way the runner stores one: an int becomes an
-// int64, a decimal string becomes the int64 it spells, and everything else is
-// returned unchanged. array_key_exists() and array_flip() have to name a key
-// the same way the assignment that created it did, so this reproduces
-// runner.normalizeKey, down to "01" being the key 1.
+// Key normalises an array key the way PHP does. Only int and string keys
+// exist; everything else converts:
+//
+//	null           the empty string
+//	true / false   1 / 0
+//	1.7 / -1.7     1 / -1, truncated toward zero
+//	"12"           12
+//	"08", "+1"     themselves, see NumericKey
+//
+// runner.normalizeKey is this function: a key has to be stored the same way
+// array_key_exists() and array_flip() later name it.
 func Key(v any) any {
 	switch x := v.(type) {
+	case nil:
+		return ""
+	case bool:
+		if x {
+			return int64(1)
+		}
+		return int64(0)
 	case int:
 		return int64(x)
 	case int64:
 		return x
+	case float64:
+		return floatKey(x)
+	case float32:
+		return floatKey(float64(x))
 	case string:
-		if i, err := strconv.ParseInt(x, 10, 64); err == nil {
+		if i, ok := NumericKey(x); ok {
 			return i
 		}
 		return x
 	default:
 		return x
 	}
+}
+
+// floatKey truncates toward zero. Go leaves an out-of-range float-to-int
+// conversion undefined, so the ends are named rather than left to the compiler.
+func floatKey(f float64) int64 {
+	switch {
+	case math.IsNaN(f):
+		return 0
+	case f >= math.MaxInt64:
+		return math.MaxInt64
+	case f <= math.MinInt64:
+		return math.MinInt64
+	}
+	return int64(f)
+}
+
+// NumericKey reports whether s is the canonical spelling of an integer, and so
+// becomes an int key. The string has to read back identically from the integer
+// it would become, which rules out "08", "+1", "-0", " 1", "1.0", "1e2" and
+// anything past int64. Each stays a string key, so $a["08"] and $a[8] are two
+// entries. ParseInt accepts most of them, hence the hand-rolled check.
+func NumericKey(s string) (int64, bool) {
+	digits := s
+	if strings.HasPrefix(digits, "-") {
+		digits = digits[1:]
+		// "-0" prints as "0", so it is not the canonical spelling of anything.
+		if digits == "0" {
+			return 0, false
+		}
+	}
+	if digits == "" {
+		return 0, false
+	}
+	// A leading zero is canonical only when the whole number is "0".
+	if digits[0] == '0' && len(digits) > 1 {
+		return 0, false
+	}
+	for i := 0; i < len(digits); i++ {
+		if digits[i] < '0' || digits[i] > '9' {
+			return 0, false
+		}
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		// Out of int64 range. PHP keeps it as a string rather than saturating.
+		return 0, false
+	}
+	return n, true
 }
 
 func Truthy(v any) bool {

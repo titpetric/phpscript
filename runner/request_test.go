@@ -839,3 +839,138 @@ func runCtxOptions(t *testing.T, ctx runner.Context, opts runner.Options, setup 
 	}
 	return out.String()
 }
+
+// Repeated rows, checkbox arrays and `line[0][hours]` naming reach a script as
+// nested arrays rather than literal keys.
+func TestFromRequestBracketNames(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		body  string
+		src   string
+		want  string
+	}{
+		{
+			name:  "query nests",
+			query: "a[b]=1&a[c][]=2&a[c][]=3",
+			src:   `<?php echo $_GET["a"]["b"], $_GET["a"]["c"][0], $_GET["a"]["c"][1];`,
+			want:  "123",
+		},
+		{
+			name: "a repeated checkbox array keeps every value",
+			body: "ids[]=7&ids[]=9&ids[]=11",
+			src:  `<?php echo count($_POST["ids"]), ":", implode(",", $_POST["ids"]);`,
+			want: "3:7,9,11",
+		},
+		{
+			name: "a repeating form row",
+			body: "line[0][hours]=8&line[0][note]=a&line[1][hours]=4",
+			src:  `<?php echo $_POST["line"][0]["hours"], $_POST["line"][0]["note"], $_POST["line"][1]["hours"];`,
+			want: "8a4",
+		},
+		{
+			name:  "percent-encoded brackets decode before nesting",
+			query: "k%5Ba%20b%5D=1",
+			src:   `<?php echo $_GET["k"]["a b"];`,
+			want:  "1",
+		},
+		{
+			name:  "a name without brackets is untouched",
+			query: "plain=x",
+			body:  "also=y",
+			src:   `<?php echo $_GET["plain"], $_POST["also"];`,
+			want:  "xy",
+		},
+		{
+			name:  "the query keeps its own order",
+			query: "z=1&a=2&m=3",
+			src:   `<?php echo implode(",", array_keys($_GET));`,
+			want:  "z,a,m",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := httptest.NewRequest("POST", "/submit?"+test.query, strings.NewReader(test.body))
+			r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+			out, _ := runReq(t, r, test.src)
+			if out != test.want {
+				t.Fatalf("got %q, want %q", out, test.want)
+			}
+		})
+	}
+}
+
+// A cookie carries bracket syntax too, and Go leaves it percent-encoded.
+func TestFromRequestCookieBracketNames(t *testing.T) {
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Cookie", "prefs%5Btheme%5D=dark; plain=abc")
+
+	out, _ := runReq(t, r, `<?php echo $_COOKIE["prefs"]["theme"], ":", $_COOKIE["plain"];`)
+	if want := "dark:abc"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// A multipart body's field names are read the same way.
+func TestFromRequestMultipartBracketNames(t *testing.T) {
+	r := multipartRequest(t, map[string]string{
+		"line[0][hours]": "8",
+		"line[1][hours]": "4",
+	})
+
+	out, _ := runReq(t, r, `<?php echo $_POST["line"][0]["hours"], $_POST["line"][1]["hours"];`)
+	if want := "84"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// A field nested past the limit is dropped whole; the rest still arrive.
+func TestFromRequestInputLimits(t *testing.T) {
+	deep := "a" + strings.Repeat("[x]", 65) + "=1&b=kept"
+	r := httptest.NewRequest("GET", "/?"+deep, nil)
+
+	out, _ := runReq(t, r, `<?php echo isset($_GET["a"]) ? "kept" : "dropped", ":", $_GET["b"];`)
+	if want := "dropped:kept"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// A hand-assembled Context has no request to decode, so its flat maps are
+// promoted as they stand: the fixture harness, a CLI run, an embedder.
+func TestRegisterFallsBackToFlatMaps(t *testing.T) {
+	c := runner.NewContext()
+	c.Get["greeting"] = "hello"
+	c.Post["message"] = "form"
+	c.Cookie["session"] = "abc"
+
+	out := runCtx(t, c, `<?php echo $_GET["greeting"], $_POST["message"], $_COOKIE["session"];`)
+	if want := "helloformabc"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// Only the two form content types populate $_POST. A JSON body is
+// php://input and nothing else, as it is in PHP.
+func TestBodyDecodeIsFormOnly(t *testing.T) {
+	tests := []struct {
+		name        string
+		contentType string
+		want        string
+	}{
+		{"urlencoded", "application/x-www-form-urlencoded", "1"},
+		{"json", "application/json", "0"},
+		{"none", "", "0"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			r := httptest.NewRequest("POST", "/api", strings.NewReader("hours=90"))
+			if test.contentType != "" {
+				r.Header.Set("Content-Type", test.contentType)
+			}
+			if out, _ := runReq(t, r, `<?php echo count($_POST);`); out != test.want {
+				t.Fatalf("got %q, want %q", out, test.want)
+			}
+		})
+	}
+}

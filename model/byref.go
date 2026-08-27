@@ -9,6 +9,7 @@ var byRefArgs = map[string]map[int]bool{
 	"preg_match_all":        {2: true},
 	"preg_match":            {2: true},
 	"preg_replace_callback": {4: true},
+	"parse_str":             {1: true},
 }
 
 // ByRefArg reports whether the argument at index is an output parameter of the
