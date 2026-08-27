@@ -6,6 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
@@ -45,6 +46,39 @@ defer(function() { echo "-file"; });`)
 	}
 }
 
+func TestFlatstackDeferRunsAtFrameReturnInLIFOOrder(t *testing.T) {
+	var out strings.Builder
+	rt := flatstack.New(&out, flatstack.Options{})
+	core.RegisterDefer(rt)
+
+	source := `<?php
+function work() {
+    echo "body";
+    defer(function() { echo "-first"; });
+    defer(function() { echo "-second"; });
+    return;
+}
+echo "before-";
+work();
+echo "-after";
+defer(function() { echo "-file"; });`
+
+	program, err := parser.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("flatstack unexpectedly rejects program: %v", err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := out.String(), "before-body-second-first-after-file"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
 type closeRecorder struct {
 	out *strings.Builder
 }
@@ -75,6 +109,39 @@ echo "-after";`)
 	}
 }
 
+func TestFlatstackDeferAcceptsNativeBoundMethodReference(t *testing.T) {
+	var out strings.Builder
+	rt := flatstack.New(&out, flatstack.Options{})
+	core.RegisterDefer(rt)
+	rt.RegisterConstructor("Resource", func() *closeRecorder {
+		return &closeRecorder{out: &out}
+	})
+
+	source := `<?php
+function work() {
+    $resource = new Resource;
+    defer($resource->close);
+    echo "body";
+}
+work();
+echo "-after";`
+
+	program, err := parser.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("flatstack unexpectedly rejects program: %v", err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := out.String(), "body-closed-after"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
 func TestDeferUsesIncludeFileBoundary(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
@@ -91,6 +158,39 @@ defer(function() { echo "-main-deferred"; });
 echo "main-";
 include "child.php";
 echo "-after";`)
+
+	if got, want := out.String(), "main-child-child-deferred-after-main-deferred"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+func TestFlatstackDeferUsesIncludeFileBoundary(t *testing.T) {
+	var out strings.Builder
+	rt := flatstack.New(&out, flatstack.Options{})
+	core.RegisterDefer(rt)
+	rt.SetIncludeResolver(func(path string) (*model.Program, error) {
+		return parser.Parse(`<?php
+echo "child";
+defer(function() { echo "-child-deferred"; });
+return;`)
+	})
+
+	source := `<?php
+defer(function() { echo "-main-deferred"; });
+echo "main-";
+include "child.php";
+echo "-after";`
+
+	program, err := parser.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("flatstack unexpectedly rejects program: %v", err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
 
 	if got, want := out.String(), "main-child-child-deferred-after-main-deferred"; got != want {
 		t.Fatalf("output = %q, want %q", got, want)

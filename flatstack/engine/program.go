@@ -56,6 +56,9 @@ const (
 	// opDefineConst pops the value and declares it under the name a top-level
 	// `const` statement wrote, through the same host table define() uses.
 	opDefineConst
+	// opDefer pops the callable and registers it on the frame in flight; the
+	// VM runs the registrations LIFO when the frame returns.
+	opDefer
 )
 
 type instruction struct {
@@ -185,4 +188,6 @@ type Host interface {
 	Truthy(any) bool
 	Entries(any) []Entry
 	Echo(any) error
+	// InvokeCallable runs a deferred callable value on the host bridge.
+	InvokeCallable(any) error
 }

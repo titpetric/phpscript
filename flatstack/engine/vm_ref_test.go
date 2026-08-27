@@ -38,6 +38,13 @@ func (h *refTestHost) Echo(value any) error {
 	return nil
 }
 
+func (h *refTestHost) InvokeCallable(callable any) error {
+	if fn, ok := callable.(func()); ok {
+		fn()
+	}
+	return nil
+}
+
 func setRef(value any) func(*refTestHost, []any) {
 	return func(_ *refTestHost, args []any) {
 		args[len(args)-1].(func(any))(value)

@@ -22,6 +22,7 @@ type vmScratch struct {
 	stack       []any
 	locals      []any
 	initialized []bool
+	deferred    []any
 }
 
 // release returns the scratch buffers to the pool with every slot zeroed.
@@ -35,12 +36,17 @@ func (s *vmScratch) release(stack []any) {
 	clear(s.stack[:cap(s.stack)])
 	clear(s.locals[:cap(s.locals)])
 	clear(s.initialized[:cap(s.initialized)])
+	clear(s.deferred[:cap(s.deferred)])
+	s.deferred = s.deferred[:0]
 	scratchPool.Put(s)
 }
 
 var scratchPool = sync.Pool{
 	New: func() any {
-		return &vmScratch{stack: make([]any, 0, 32)}
+		return &vmScratch{
+			stack:    make([]any, 0, 32),
+			deferred: make([]any, 0, 8),
+		}
 	},
 }
 
@@ -93,6 +99,10 @@ type callFrame struct {
 	// here and handing the callee an empty one is what keeps a foreach that
 	// calls a function from being closed by the call it made.
 	iterators map[int]*iteratorState
+
+	// deferMark is the caller's boundary in scratch.deferred; opReturn unwinds
+	// the registrations above it, LIFO, before control leaves the frame.
+	deferMark int
 }
 
 // MemoryHost is an optional Host extension for memory accounting, discovered
@@ -179,10 +189,34 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 	var iterators map[int]*iteratorState
 	var handlers []errorHandler
 	var callFrames []callFrame
+
+	entryDeferMark := len(scratch.deferred)
+	unwindDeferred := func(mark int) error {
+		var errs []error
+		for len(scratch.deferred) > mark {
+			last := len(scratch.deferred) - 1
+			cb := scratch.deferred[last]
+			scratch.deferred[last] = nil
+			scratch.deferred = scratch.deferred[:last]
+			if cb != nil {
+				if callErr := host.InvokeCallable(cb); callErr != nil {
+					errs = append(errs, callErr)
+				}
+			}
+		}
+		if len(errs) > 0 {
+			return errors.Join(errs...)
+		}
+		return nil
+	}
+
 	defer func() {
+		unwindErr := unwindDeferred(entryDeferMark)
 		scratch.release(stack)
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("flatstack: VM panic at pc %d: %v", pc, recovered)
+		} else if err == nil && unwindErr != nil {
+			err = unwindErr
 		}
 	}()
 
@@ -227,6 +261,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 		}
 		for len(callFrames) > handler.frameDepth {
 			frame := callFrames[len(callFrames)-1]
+			_ = unwindDeferred(frame.deferMark)
 			callFrames = callFrames[:len(callFrames)-1]
 			locals = frame.locals
 			initialized = frame.initialized
@@ -620,6 +655,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 						extras:      extras,
 						refWrites:   refWrites,
 						iterators:   iterators,
+						deferMark:   len(scratch.deferred),
 					})
 					locals = make([]any, len(program.localNames))
 					initialized = make([]bool, len(program.localNames))
@@ -677,6 +713,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 						extras:      extras,
 						refWrites:   refWrites,
 						iterators:   iterators,
+						deferMark:   len(scratch.deferred),
 					})
 					locals = make([]any, len(program.localNames))
 					initialized = make([]bool, len(program.localNames))
@@ -857,6 +894,12 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			}
 			if len(callFrames) > 0 {
 				lastFrame := callFrames[len(callFrames)-1]
+				if unwindErr := unwindDeferred(lastFrame.deferMark); unwindErr != nil {
+					if handle(unwindErr) {
+						continue
+					}
+					return unwindErr
+				}
 				callFrames = callFrames[:len(callFrames)-1]
 				pc = lastFrame.returnPC
 				locals = lastFrame.locals
@@ -869,6 +912,12 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				}
 				stack = append(stack, retVal)
 			} else {
+				if unwindErr := unwindDeferred(entryDeferMark); unwindErr != nil {
+					if handle(unwindErr) {
+						continue
+					}
+					return unwindErr
+				}
 				if result != nil {
 					*result = retVal
 				}
@@ -950,6 +999,13 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			}
 			applyNamedValues(program, locals, initialized, extras, exported, refWrites)
 			stack = append(stack, value)
+		case opDefer:
+			callable, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			scratch.deferred = append(scratch.deferred, callable)
+			stack = append(stack, nil)
 		default:
 			return fmt.Errorf("flatstack: pc %d: invalid opcode %d", pc, inst.op)
 		}

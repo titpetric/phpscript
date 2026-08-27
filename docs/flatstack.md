@@ -145,6 +145,8 @@ Flat bytecode currently supports these statements:
 - Top-level PHP class declarations and free function declarations
 - `include` / `include_once` / `require` as statements or expressions
 - `list()` / array destructuring assignment
+- `defer()`, registered on the frame in flight and run LIFO when that frame
+  returns
 
 It supports these expressions:
 
@@ -186,7 +188,6 @@ unsupported form. The major remaining forms are:
   `usort()` or `call_user_func()` can call one
 - By-reference closure captures `use (&$x)`, closure parameter defaults, and
   variadic or by-reference closure parameters
-- `defer()`, which registers its callback on the frame that called it
 - Anonymous classes, `new class { ... }`. The bytecode carries a class name
   where an anonymous class carries its declaration
 - `try` without a `catch` clause

@@ -859,12 +859,14 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		case "compact":
 			return unsupported(path, "compact() requires scope reflection")
 		case "defer":
-			// defer() registers its callback on the frame that called it, and
-			// the frame runs it on the way out. The bytecode engine hands a
-			// binding a throwaway scope per call, so the registration would be
-			// dropped rather than run late. It only became reachable once
-			// closures compiled, since the callback is nearly always one.
-			return unsupported(path, "defer() registers on the calling frame")
+			if len(node.Args) != 1 {
+				return unsupported(path, "defer() expects 1 argument")
+			}
+			if err := c.expr(node.Args[0], path+".arg[0]"); err != nil {
+				return err
+			}
+			c.emit(instruction{op: opDefer})
+			return nil
 		}
 		for i, argument := range node.Args {
 			// An output parameter is handed to the binding as a setter for the
