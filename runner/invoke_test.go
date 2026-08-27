@@ -270,8 +270,8 @@ func TestGoValueStringAndIntConversion(t *testing.T) {
 		src  string
 		want string
 	}{
-		{"time echoes through its stringer", `echo $t;`, instant.String()},
-		{"interpolation uses the same path", `echo "{$t}";`, instant.String()},
+		{"time echoes as php writes a datetime", `echo $t;`, instant.Format(time.DateTime)},
+		{"interpolation uses the same path", `echo "{$t}";`, instant.Format(time.DateTime)},
 		{"a named integer echoes its name", `echo $t->month();`, instant.Month().String()},
 		{"a named integer counts as its value", `echo $t->month() + 1;`, "9"},
 		{"a duration echoes as Go writes it", `echo $t->sub($t->add("-90m"));`, (90 * time.Minute).String()},

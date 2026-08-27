@@ -3,9 +3,11 @@
 // of values or strings, and how two values order under PHP 8's <=> operator.
 //
 // It exists so the files under stdlib/core can each register their own area
-// without importing one another. Every one of them coerces its arguments, and
-// the coercion has to have exactly one definition: sort() and in_array()
-// disagreeing about what "10" is would be a bug no test names.
+// without importing one another, and so the runner agrees with them. Every one
+// of them coerces its arguments, and the coercion has to have exactly one
+// definition: sort() and in_array() disagreeing about what "10" is would be a
+// bug no test names, and echo and implode disagreeing about a time.Time would
+// be the same bug with a different pair of names.
 package phpval
 
 import (
@@ -13,9 +15,37 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/titpetric/phpscript/model"
 )
+
+// GoString renders a value that is none of PHP's own scalars: something a Go
+// binding returned, reached by method dispatch or scanned out of a database
+// row. The final return reports whether it knew how, so a caller can fall back
+// to its own default.
+//
+// PHP itself has no string form for a date: `echo $dateTime` is a fatal Error,
+// "Object of class DateTime could not be converted to string". Every place PHP
+// writes a datetime as text of its own accord -- the `date` field of a
+// var_dump, of a print_r and of json_encode -- writes `Y-m-d H:i:s`, and PDO
+// hands a DATETIME column to a script as exactly the text it was stored as. So
+// a time.Time takes time.DateTime, the same layout under a Go name, rather
+// than time.Time.String's trailing zone or RFC3339's T and Z. The zone is
+// dropped for the same reason PHP drops it there: it is a separate field, not
+// part of the reading.
+//
+// Everything else that can spell itself is spelled that way, so a Duration
+// prints "1h30m0s" and a Month prints "August".
+func GoString(v any) (string, bool) {
+	switch x := v.(type) {
+	case time.Time:
+		return x.Format(time.DateTime), true
+	case fmt.Stringer:
+		return x.String(), true
+	}
+	return "", false
+}
 
 func String(v any) string {
 	switch x := v.(type) {
@@ -41,6 +71,9 @@ func String(v any) string {
 		// round-trips, which is exactly what FormatFloat(-1) produces.
 		return strconv.FormatFloat(x, 'g', -1, 64)
 	default:
+		if s, ok := GoString(x); ok {
+			return s
+		}
 		return fmt.Sprintf("%v", x)
 	}
 }

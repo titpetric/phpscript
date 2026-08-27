@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 )
 
@@ -35,14 +36,14 @@ func phpString(v any) string {
 		// A caught exception ($e in catch) renders as its message, so
 		// `echo $e` prints the error text.
 		return x.Error()
-	case fmt.Stringer:
-		// A Go value that knows how to spell itself is echoed that way, so a
-		// time.Time from a DATETIME column, a time.Duration and a time.Month
-		// all print rather than vanishing. PHP has no counterpart to fall back
-		// on: it refuses to convert an object to a string at all, so the Go
-		// stringer is the only sensible answer and an empty one is a bug.
-		return x.String()
 	default:
+		// A Go value a binding returned renders the way the rest of the
+		// runtime renders it, so echo, implode and var_dump cannot disagree
+		// about a time.Time. See phpval.GoString for which spelling each type
+		// gets and why.
+		if s, ok := phpval.GoString(v); ok {
+			return s
+		}
 		return ""
 	}
 }

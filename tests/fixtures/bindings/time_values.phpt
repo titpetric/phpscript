@@ -32,8 +32,8 @@ echo $hour, ":", $min, ":", $sec, "\n";
 list($name, $offset) = $t->zone();
 echo $name, " ", $offset, "\n";
 ---
-2026-08-26 14:48:00 +0000 UTC
-2026-08-26 14:48:00 +0000 UTC
+2026-08-26 14:48:00
+2026-08-26 14:48:00
 1h30m0s
 Europe/Ljubljana
 August
