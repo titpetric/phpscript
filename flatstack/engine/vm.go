@@ -318,6 +318,28 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			stack = append(stack, stack[len(stack)-1])
 		case opLoad:
 			stack = append(stack, loadLocal(host, program, locals, initialized, extras, inst.a))
+		case opLoadConst:
+			name := program.localNames[inst.a]
+			// A scope value of the same name wins, which is how the magic
+			// constants set per frame answer before the constant table.
+			if initialized[inst.a] {
+				stack = append(stack, locals[inst.a])
+				break
+			}
+			if extra, ok := extras[name]; ok {
+				stack = append(stack, extra)
+				break
+			}
+			value, constErr := host.Constant(name)
+			if constErr != nil {
+				// Through handle, so a catch clause binds it the way it binds
+				// an error a binding returned.
+				if handle(constErr) {
+					continue
+				}
+				return constErr
+			}
+			stack = append(stack, value)
 		case opClosure:
 			def := program.closures[inst.a]
 			captured := make([]localSeed, 0, len(def.captures)+1)

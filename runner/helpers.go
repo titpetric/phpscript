@@ -761,3 +761,25 @@ func callResult(out []reflect.Value) (any, error) {
 	}
 	return list, nil
 }
+
+// UndefinedConstantError reports a bare name no constant, no scope value and
+// no superglobal defines.
+//
+// PHP 8 raises Error for the same expression. This raises RuntimeException, a
+// deliberate break: an Error in PHP is a fault in the program that a caller is
+// not expected to handle, and a name this runtime does not define is an
+// ordinary condition a script can catch and answer for, the same way exceeding
+// memory_limit is. It also puts the condition where `catch (Exception $e)`
+// already looks, which is the clause a script has written.
+type UndefinedConstantError struct {
+	Name string
+}
+
+// ThrowableClass names the PHP class, implementing Throwable. RuntimeException
+// does not end in Error, so `catch (Exception $e)` takes it and
+// `catch (Error $e)` does not.
+func (e *UndefinedConstantError) ThrowableClass() string { return "RuntimeException" }
+
+func (e *UndefinedConstantError) Error() string {
+	return fmt.Sprintf("Undefined constant %q", e.Name)
+}

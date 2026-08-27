@@ -108,6 +108,20 @@ func (h flatHost) Lookup(name string) any {
 	return h.runtime.constants[name]
 }
 
+// Constant resolves a bare name: whatever the host knows under it, then the
+// constant table, and an Error when nothing does. PHP 8 raises the same for
+// the same expression, and an unset variable of that spelling stays null,
+// which is why this is not Lookup.
+func (h flatHost) Constant(name string) (any, error) {
+	if value, ok := h.runtime.globals[name]; ok {
+		return value, nil
+	}
+	if value, ok := h.runtime.constants[name]; ok {
+		return value, nil
+	}
+	return nil, &UndefinedConstantError{Name: name}
+}
+
 func (h flatHost) Array(items []model.ArrayItemValue) any { return helperArray(items...) }
 
 func (h flatHost) Index(base, index any) any { return helperIndex(base, index) }

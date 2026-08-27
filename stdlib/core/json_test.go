@@ -48,16 +48,13 @@ func TestNoJSONFlagConstants(t *testing.T) {
 	}
 }
 
-// $flags is accepted and ignored, as json_decode accepts $depth and $flags. A
-// port carrying JSON_PRETTY_PRINT runs and encodes: the constant is not
-// defined, so it arrives as null and selects nothing. phpscript lint reports
-// the name.
+// $flags is accepted and ignored, as json_decode accepts $depth and $flags, so
+// a literal one changes nothing.
 func TestJSONEncodeIgnoresFlags(t *testing.T) {
 	tests := []string{
 		`json_encode(array("a" => 1))`,
 		`json_encode(array("a" => 1), 128)`,
-		`json_encode(array("a" => 1), JSON_PRETTY_PRINT)`,
-		`json_encode(array("a" => 1), JSON_HEX_TAG | JSON_HEX_AMP)`,
+		`json_encode(array("a" => 1), 0)`,
 	}
 	for _, call := range tests {
 		t.Run(call, func(t *testing.T) {
@@ -65,6 +62,16 @@ func TestJSONEncodeIgnoresFlags(t *testing.T) {
 				t.Fatalf("got %q, want %q", got, `{"a":1}`)
 			}
 		})
+	}
+}
+
+// A JSON_* name is not defined, so it raises before json_encode is called.
+// phpscript lint reports it first, which is the point of the warning: the
+// argument was never going to do anything.
+func TestJSONFlagConstantThrows(t *testing.T) {
+	got := runPHP(t, `<?php try { echo json_encode(array(1), JSON_PRETTY_PRINT); } catch (Exception $e) { echo $e->getMessage(); }`)
+	if want := `Undefined constant "JSON_PRETTY_PRINT"`; got != want {
+		t.Fatalf("got %q, want %q", got, want)
 	}
 }
 

@@ -11,6 +11,10 @@ const (
 	opPop
 	opDup
 	opLoad
+	// opLoadConst reads a bare name. It is separate from opLoad because the
+	// two answer differently when nothing defines the name: an unset variable
+	// is null, an undefined constant is an Error.
+	opLoadConst
 	opStore
 	opArray
 	opIndex
@@ -129,6 +133,9 @@ type Host interface {
 	GetProperty(any, string) any
 	SetProperty(any, string, any, string) error
 	Lookup(string) any
+	// Constant resolves a bare name. The error is what an undefined one
+	// raises, which Lookup has no way to report.
+	Constant(string) (any, error)
 	Array([]model.ArrayItemValue) any
 	Index(any, any) any
 	SetIndex(any, any, any, bool, string) error

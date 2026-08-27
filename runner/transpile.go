@@ -123,13 +123,19 @@ func (t *Transpiler) Closures() map[string]*model.Closure { return t.closures }
 func (t *Transpiler) Exprs() map[string]model.Expr { return t.exprs }
 
 // addVar records a referenced variable and returns its expr identifier.
-func (t *Transpiler) addVar(name string) string {
+func (t *Transpiler) addVar(name string) string { return t.add(name, varIdent(name)) }
+
+// addConst records a bare identifier, which PHP resolves as a constant. It
+// takes an identifier of its own so the runtime can tell the two apart: an
+// unset variable is null, and an undefined constant is an Error.
+func (t *Transpiler) addConst(name string) string { return t.add(name, constIdent(name)) }
+
+func (t *Transpiler) add(name, ident string) string {
 	for i, have := range t.vars {
-		if have == name {
-			return t.idents[i]
+		if have == name && t.idents[i] == ident {
+			return ident
 		}
 	}
-	ident := varIdent(name)
 	t.vars = append(t.vars, name)
 	t.idents = append(t.idents, ident)
 	return ident
@@ -154,12 +160,31 @@ func varIdent(name string) string {
 	return "v_" + name
 }
 
+// constIdentPrefix marks the identifier of a bare name. The runtime reads it
+// to decide what an unresolved name means.
+const constIdentPrefix = "c_"
+
+// constIdent is the expr identifier for a bare name, kept apart from the
+// variable of the same spelling: `define("x", 1); echo x;` and `echo $x;` are
+// two lookups, and only the second is null when nothing set it.
+func constIdent(name string) string { return constIdentPrefix + name }
+
 func (t *Transpiler) emit(e model.Expr) (string, error) {
 	switch n := e.(type) {
 	case *model.Lit:
 		return litSource(n.Value), nil
 
 	case *model.Var:
+		if n.Const {
+			// `global $x;` parses as this bare name followed by the variable,
+			// and is defined to bind nothing (docs/design.md). It is a
+			// reserved word in PHP, so no constant can be spelled that way and
+			// nothing is shadowed by answering null for it.
+			if strings.EqualFold(n.Name, "global") {
+				return litSource(nil), nil
+			}
+			return t.addConst(n.Name), nil
+		}
 		return t.addVar(n.Name), nil
 
 	case *model.Interp:

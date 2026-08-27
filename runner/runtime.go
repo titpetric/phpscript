@@ -929,6 +929,11 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 			st.layer(ce.idents[i], c)
 		} else if _, ok := phpSuperglobals[name]; ok {
 			st.layer(ce.idents[i], rt.globals[name])
+		} else if strings.HasPrefix(ce.idents[i], constIdentPrefix) {
+			// A bare name nothing defines. PHP 8 raises Error here; an unset
+			// variable of the same spelling stays null, which is why the two
+			// carry different identifiers.
+			return nil, &UndefinedConstantError{Name: name}
 		} else {
 			st.layer(ce.idents[i], nil)
 		}

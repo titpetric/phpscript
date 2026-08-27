@@ -211,6 +211,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | microtime.phpt             | PASS       | PASS    | PASS |
 | runtime_introspection.phpt | PASS       | PASS    | SKIP |
 | stdin.phpt                 | PASS       | PASS    | PASS |
+| undefined_constant.phpt    | PASS       | PASS    | SKIP |
 
 ## stdlib
 
@@ -281,8 +282,8 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
-| runtime     | 9        | 9      | 0      |
+| runtime     | 10       | 10     | 0      |
 | stdlib      | 14       | 14     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 166      | 166    | 0      |
+| **Total**   | 167      | 167    | 0      |

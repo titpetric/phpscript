@@ -43,6 +43,23 @@ A constant is visible in every scope, including inside functions and methods.
 A bare identifier resolves from the current scope first and the constant table
 second, which is how the magic constants, set per frame, take precedence.
 
+A bare identifier nothing defines throws:
+
+```php
+echo MISSING;         // RuntimeException: Undefined constant "MISSING"
+echo $missing;        // null, and the script continues
+```
+
+The two are separate lookups, which is why an unset variable is still the null
+PHP reads it as.
+
+PHP 8 raises `Error` for the same expression. This raises `RuntimeException`,
+so `catch (Exception $e)`, `catch (RuntimeException $e)` and
+`catch (Throwable $e)` take it and `catch (Error $e)` does not. An `Error` in
+PHP is a fault a caller is not expected to handle, and a name this runtime does
+not define is a condition a script can answer for. Use `defined()` to ask
+without throwing.
+
 ## Predefined constants
 
 Registering the standard library installs the platform constants a PHP library

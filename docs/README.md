@@ -161,8 +161,21 @@ JSON:
   Both are the same document to a parser; a byte comparison or a signature
   over the encoded text is not. PHP produces this form with
   `JSON_UNESCAPED_SLASHES`, which is not defined here: the encoding takes no
-  flags, see [design.md](design.md#json). `json_encode()` accepts a second
-  argument and ignores it, and `phpscript lint` reports the name.
+  flags, see [design.md](design.md#json). `json_encode()` accepts a literal
+  second argument and ignores it; a `JSON_*` name raises `Error`, since no
+  constant defines it, and `phpscript lint` reports it first.
+
+Constants:
+
+- An undefined constant throws, as it does in PHP 8, and the class differs:
+  `RuntimeException` here, `Error` there. An `Error` in PHP is a fault a caller
+  is not expected to handle, and a name this runtime does not define is a
+  condition a script can answer for, so `catch (Exception $e)` takes it and
+  `catch (Error $e)` does not. `memory_limit` diverges the same way.
+- An unset *variable* of the same spelling stays null and keeps running, which
+  is PHP's behaviour and the reason the two are separate lookups. `global` is
+  the exception: it is a reserved word, the statement is a documented no-op,
+  and the bare keyword answers null rather than throwing.
 
 Namespaces:
 

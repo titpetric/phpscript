@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -737,6 +738,17 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 	case *model.Parenthesized:
 		return c.expr(node.X, path+".expression")
 	case *model.Var:
+		if node.Const {
+			// `global $x;` parses as this bare name followed by the variable
+			// and is defined to bind nothing (docs/design.md). PHP reserves
+			// the word, so no constant can be spelled that way.
+			if strings.EqualFold(node.Name, "global") {
+				c.emit(instruction{op: opPushConst, a: c.constant(nil)})
+				return nil
+			}
+			c.emit(instruction{op: opLoadConst, a: c.slot(node.Name)})
+			return nil
+		}
 		c.emit(instruction{op: opLoad, a: c.slot(node.Name)})
 	case *model.ArrayLit:
 		for i, item := range node.Items {
