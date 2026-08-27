@@ -107,25 +107,26 @@ Separate from the "Not implemented" rows in the
 [language reference](reference/README.md), which mean "not yet". Nothing here is
 planned, and each row names what to use instead.
 
-| PHP API                                                           | Use instead                                                                                  |
-|-------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| `extends` semantics, traits, `parent::`                           | Composition; declare the members a class uses. An interface is checked, never inherited from |
-| Magic methods beyond `__construct` and `__invoke`                 | Explicit methods                                                                             |
-| `new self()`, `new static()`                                      | `new ClassName()`; the keywords are not resolved and fail loudly as an undefined class       |
-| `setcookie`, `setrawcookie`                                       | `Session\Manager`, or `header("Set-Cookie: ...", false)`                                     |
-| `session_start`, `session_id`, `session_destroy`, `$_SESSION`     | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`                          |
-| `curl_*`                                                          | `HTTP\Client`, `HTTP\Request`                                                                |
-| PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                              | `Database`, `Database\Migrate`                                                               |
-| `shmop_*`, `apcu_*`, `sem_*`                                      | `SharedMemory`                                                                               |
-| `strftime`, `gmstrftime`, `date`, `gmdate`, `mktime`, `strtotime` | `DateTime`, `Time`; Go layouts rather than format characters or English dates                |
-| `create_function`                                                 | Closures                                                                                     |
-| `${var}` string interpolation                                     | `{$var}`                                                                                     |
-| `global`                                                          | Pass collaborators as parameters; the statement parses and binds nothing                     |
-| `eval`                                                            | nothing; there is no runtime source evaluation                                               |
-| `goto`                                                            | nothing                                                                                      |
-| `yield`, generators, Fibers                                       | nothing; there is no coroutine model                                                         |
-| `trigger_error`, `restore_error_handler`, `@`                     | `try`/`catch` in PHP, `Runtime.OnError` in Go                                                |
-| `&` outside `foreach`                                             | Return the value; see [Value semantics](reference/types/value-semantics.md)                  |
+| PHP API                                                                  | Use instead                                                                                  |
+|--------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `extends` semantics, traits, `parent::`                                  | Composition; declare the members a class uses. An interface is checked, never inherited from |
+| Magic methods beyond `__construct` and `__invoke`                        | Explicit methods                                                                             |
+| `new self()`, `new static()`                                             | `new ClassName()`; the keywords are not resolved and fail loudly as an undefined class       |
+| `setcookie`, `setrawcookie`                                              | `Session\Manager`, or `header("Set-Cookie: ...", false)`                                     |
+| `session_start`, `session_id`, `session_destroy`, `$_SESSION`            | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`                          |
+| `curl_*`                                                                 | `HTTP\Client`, `HTTP\Request`                                                                |
+| PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                                     | `Database`, `Database\Migrate`                                                               |
+| `shmop_*`, `apcu_*`, `sem_*`                                             | `SharedMemory`                                                                               |
+| `strftime`, `gmstrftime`, `date`, `gmdate`, `mktime`, `strtotime`        | `DateTime`, `Time`; Go layouts rather than format characters or English dates                |
+| `JSON_PRETTY_PRINT`, `JSON_UNESCAPED_SLASHES`, every other `JSON_*` flag | `json_encode($value)`; the encoding is not configurable                                      |
+| `create_function`                                                        | Closures                                                                                     |
+| `${var}` string interpolation                                            | `{$var}`                                                                                     |
+| `global`                                                                 | Pass collaborators as parameters; the statement parses and binds nothing                     |
+| `eval`                                                                   | nothing; there is no runtime source evaluation                                               |
+| `goto`                                                                   | nothing                                                                                      |
+| `yield`, generators, Fibers                                              | nothing; there is no coroutine model                                                         |
+| `trigger_error`, `restore_error_handler`, `@`                            | `try`/`catch` in PHP, `Runtime.OnError` in Go                                                |
+| `&` outside `foreach`                                                    | Return the value; see [Value semantics](reference/types/value-semantics.md)                  |
 
 ### global
 
@@ -172,6 +173,31 @@ microseconds rather than by a day; write `$t->add("24h")` instead. And a Go
 method with several results arrives as a PHP list, read with
 `list($year, $week) = $t->iso_week();`. The short `[$a, $b] =` spelling does
 not parse here.
+
+### JSON
+
+`json_encode($value)` takes the value and nothing else. There is no `$flags`
+parameter, no `JSON_*` constant is defined, and a second argument is refused at
+the call rather than ignored.
+
+PHP has those flags because its encoder makes choices a caller then has to
+undo. `JSON_UNESCAPED_SLASHES` is the clearest: PHP writes `{"path":"a\/b"}`,
+which is legal JSON that no other language emits, and the flag exists to turn
+it off. This runtime encodes with Go's `encoding/json`, which writes the slash
+as itself, so there is no choice to reverse and the flag has no work to do.
+
+The rest are presentation. `JSON_PRETTY_PRINT` indents for a reader the
+producer cannot see; whatever consumes the document can indent it, and `jq`
+does. Emitting compact JSON and leaving the formatting to the consumer is one
+behaviour to test and one output to compare, and a payload that is diffed or
+signed does not change shape depending on a flag at the call site.
+
+`json_decode` accepts `$depth` and `$flags` and ignores them, because library
+code passes them defensively. `$associative` must be true or omitted: there is
+no `stdClass` for an object to decode into.
+
+`stdlib/core.TestNoJSONFlagConstants` fails the build if a `JSON_*` constant
+is registered.
 
 ### Cookies
 

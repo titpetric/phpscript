@@ -1,0 +1,71 @@
+package core_test
+
+import (
+	"io"
+	"strings"
+	"testing"
+
+	"github.com/titpetric/phpscript/parser"
+	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib"
+)
+
+func runPHP(t *testing.T, src string) string {
+	t.Helper()
+	program, err := parser.Parse(src)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	return out.String()
+}
+
+// TestNoJSONFlagConstants is the executable form of a design decision: this
+// runtime has one JSON encoding and no flags to vary it. If this test fails,
+// read docs/design.md before changing it.
+//
+// The flags exist in PHP because its encoder makes choices a caller then has
+// to undo. Escaping a forward slash is the clearest: PHP writes "one\/two",
+// which is legal JSON that no other language emits, and JSON_UNESCAPED_SLASHES
+// exists to turn it off. Go's encoder does not escape it, so there is nothing
+// to turn off and the flag has no work to do here.
+//
+// The rest are presentation. A consumer that wants indented JSON runs it
+// through jq or its own pretty printer; a producer that indents its output is
+// deciding for a reader it cannot see.
+func TestNoJSONFlagConstants(t *testing.T) {
+	rt := runner.New(io.Discard, runner.Options{})
+	stdlib.Register(rt)
+	for name := range rt.DefinedConstants() {
+		if strings.HasPrefix(name, "JSON_") {
+			t.Fatalf("%s is registered: json_encode has one encoding and no flags. See docs/design.md.", name)
+		}
+	}
+}
+
+// json_encode takes the value and nothing else. A second argument is refused
+// rather than ignored, so a port carrying JSON_PRETTY_PRINT is a loud failure
+// at the call rather than output that silently ignored it.
+func TestJSONEncodeRefusesFlags(t *testing.T) {
+	got := runPHP(t, `<?php try { json_encode(array(1), 128); } catch (Throwable $e) { echo $e->getMessage(); }`)
+	if !strings.Contains(got, "expects at most 1 argument") {
+		t.Fatalf("got %q, want an argument count error", got)
+	}
+}
+
+// A forward slash is written as itself, which is Go's behaviour and legal
+// JSON. php escapes it unless JSON_UNESCAPED_SLASHES is passed.
+func TestJSONEncodeDoesNotEscapeSlashes(t *testing.T) {
+	got := runPHP(t, `<?php echo json_encode(array("path" => "a/b"));`)
+	if want := `{"path":"a\/b"}`; got == want {
+		t.Fatalf("got php's escaped form %q; this runtime writes the slash as itself", got)
+	}
+	if want := `{"path":"a/b"}`; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}

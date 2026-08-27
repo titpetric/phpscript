@@ -154,6 +154,15 @@ Arrays:
   rather than a mutation the script cannot observe. Assign it to a variable
   built by the script first: `$parts = array_merge(explode(",", $s));`.
 
+JSON:
+
+- `json_encode()` writes a forward slash as itself. PHP escapes it, so
+  `["path" => "a/b"]` is `{"path":"a\/b"}` there and `{"path":"a/b"}` here.
+  Both are the same document to a parser; a byte comparison or a signature
+  over the encoded text is not. PHP produces this form with
+  `JSON_UNESCAPED_SLASHES`, which is not defined here: the encoding takes no
+  flags, see [design.md](design.md#json).
+
 Namespaces:
 
 - A file that declares a `namespace` may only declare classes and functions.

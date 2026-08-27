@@ -19,12 +19,16 @@ func init() {
 }
 
 func registerJSON(rt *runner.Runtime) {
-	// json_encode returns the JSON encoding of $value; there is no $flags parameter and an encoding failure raises an error instead of returning false.
+	// json_encode returns the JSON encoding of $value; there is no $flags parameter, a forward slash is written as itself rather than escaped, and an encoding failure raises an error instead of returning false.
 	rt.RegisterFunc("json_encode", phpJSONEncode)
 	// json_decode parses the JSON in $text; $associative must be true or omitted because there is no stdClass to decode an object into, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
 	rt.RegisterFunc("json_decode", phpJSONDecode)
 }
 
+// phpJSONEncode takes the value and nothing else. No JSON_* constant is
+// defined and a second argument is refused, which is a decision rather than a
+// gap: see docs/design.md, "JSON". stdlib/core.TestNoJSONFlagConstants guards
+// it.
 func phpJSONEncode(value any) (any, error) {
 	b, err := json.Marshal(jsonEncodeValue(value))
 	if err != nil {
