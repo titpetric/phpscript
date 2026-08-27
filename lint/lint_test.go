@@ -3,6 +3,7 @@ package lint_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/titpetric/phpscript/lint"
@@ -227,5 +228,62 @@ func TestFileAcceptsInterfaceExtends(t *testing.T) {
 	}
 	if len(diags) != 0 {
 		t.Fatalf("diagnostics = %v, want none", diags)
+	}
+}
+
+// A JSON_* constant is reported as a warning. The name is not defined, so it
+// arrives as null and json_encode ignores it: the call runs and encodes, and
+// what the author loses is the formatting they asked for.
+func TestLintJSONFlags(t *testing.T) {
+	tests := []struct {
+		name  string
+		src   string
+		lines []int
+	}{
+		{
+			name:  "one flag",
+			src:   "<?php\necho json_encode($a, JSON_PRETTY_PRINT);\n",
+			lines: []int{2},
+		},
+		{
+			name:  "several on one line",
+			src:   "<?php\necho json_encode($a, JSON_HEX_TAG | JSON_HEX_AMP);\n",
+			lines: []int{2, 2},
+		},
+		{
+			name:  "no flags is clean",
+			src:   "<?php\necho json_encode($a);\n",
+			lines: nil,
+		},
+		{
+			// The name inside a string is not a use, so a script probing for
+			// the constant reads as written.
+			name:  "a string is not a use",
+			src:   "<?php\nvar_dump(defined(\"JSON_PRETTY_PRINT\"));\n$s = \"JSON_HEX_TAG\";\n",
+			lines: nil,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			diags, err := lint.File("probe.php", test.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []int
+			for _, d := range diags {
+				if !strings.Contains(d.Message, "the JSON encoding is not") {
+					continue
+				}
+				got = append(got, d.Line)
+			}
+			if len(got) != len(test.lines) {
+				t.Fatalf("lines = %v, want %v", got, test.lines)
+			}
+			for i := range got {
+				if got[i] != test.lines[i] {
+					t.Fatalf("lines = %v, want %v", got, test.lines)
+				}
+			}
+		})
 	}
 }

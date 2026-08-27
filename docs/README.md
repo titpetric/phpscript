@@ -161,7 +161,8 @@ JSON:
   Both are the same document to a parser; a byte comparison or a signature
   over the encoded text is not. PHP produces this form with
   `JSON_UNESCAPED_SLASHES`, which is not defined here: the encoding takes no
-  flags, see [design.md](design.md#json).
+  flags, see [design.md](design.md#json). `json_encode()` accepts a second
+  argument and ignores it, and `phpscript lint` reports the name.
 
 Namespaces:
 

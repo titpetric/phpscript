@@ -415,8 +415,8 @@ function json_decode(string $text, mixed ...$opts): mixed
 ```
 
 ```php
-// json_encode returns the JSON encoding of $value; there is no $flags parameter, a forward slash is written as itself rather than escaped, and an encoding failure raises an error instead of returning false.
-function json_encode(mixed $value): mixed
+// json_encode returns the JSON encoding of $value; $flags is accepted and ignored because the encoding is not configurable, a forward slash is written as itself rather than escaped, and an encoding failure raises an error instead of returning false.
+function json_encode(mixed $value, mixed ...$flags): mixed
 ```
 
 #### lang

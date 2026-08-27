@@ -48,13 +48,23 @@ func TestNoJSONFlagConstants(t *testing.T) {
 	}
 }
 
-// json_encode takes the value and nothing else. A second argument is refused
-// rather than ignored, so a port carrying JSON_PRETTY_PRINT is a loud failure
-// at the call rather than output that silently ignored it.
-func TestJSONEncodeRefusesFlags(t *testing.T) {
-	got := runPHP(t, `<?php try { json_encode(array(1), 128); } catch (Throwable $e) { echo $e->getMessage(); }`)
-	if !strings.Contains(got, "expects at most 1 argument") {
-		t.Fatalf("got %q, want an argument count error", got)
+// $flags is accepted and ignored, as json_decode accepts $depth and $flags. A
+// port carrying JSON_PRETTY_PRINT runs and encodes: the constant is not
+// defined, so it arrives as null and selects nothing. phpscript lint reports
+// the name.
+func TestJSONEncodeIgnoresFlags(t *testing.T) {
+	tests := []string{
+		`json_encode(array("a" => 1))`,
+		`json_encode(array("a" => 1), 128)`,
+		`json_encode(array("a" => 1), JSON_PRETTY_PRINT)`,
+		`json_encode(array("a" => 1), JSON_HEX_TAG | JSON_HEX_AMP)`,
+	}
+	for _, call := range tests {
+		t.Run(call, func(t *testing.T) {
+			if got := runPHP(t, "<?php echo "+call+";"); got != `{"a":1}` {
+				t.Fatalf("got %q, want %q", got, `{"a":1}`)
+			}
+		})
 	}
 }
 

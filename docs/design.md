@@ -176,9 +176,10 @@ not parse here.
 
 ### JSON
 
-`json_encode($value)` takes the value and nothing else. There is no `$flags`
-parameter, no `JSON_*` constant is defined, and a second argument is refused at
-the call rather than ignored.
+`json_encode($value)` encodes the value. `$flags` is accepted and ignored, as
+`json_decode` accepts `$depth` and `$flags`, and no `JSON_*` constant is
+defined. A port carrying `json_encode($v, JSON_PRETTY_PRINT)` runs: the name is
+not defined, so it arrives as null and selects nothing.
 
 PHP has those flags because its encoder makes choices a caller then has to
 undo. `JSON_UNESCAPED_SLASHES` is the clearest: PHP writes `{"path":"a\/b"}`,
@@ -195,6 +196,11 @@ signed does not change shape depending on a flag at the call site.
 `json_decode` accepts `$depth` and `$flags` and ignores them, because library
 code passes them defensively. `$associative` must be true or omitted: there is
 no `stdClass` for an object to decode into.
+
+`phpscript lint` warns on a `JSON_*` name. It is a warning and not a failure
+because nothing breaks: the call encodes correctly, and what the author loses
+is the formatting they asked for. The name inside a string is not a use, so
+`defined("JSON_PRETTY_PRINT")` reads as written.
 
 `stdlib/core.TestNoJSONFlagConstants` fails the build if a `JSON_*` constant
 is registered.

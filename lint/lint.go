@@ -38,10 +38,43 @@ func File(name, src string) ([]Diagnostic, error) {
 		return []Diagnostic{{File: name, Line: 1, Message: fmt.Sprintf("parse error: %v", err)}}, nil
 	}
 	var out []Diagnostic
+	lintJSONFlags(name, src, &out)
 	lintRoutes(name, src, &out)
 	lintInterfaces(name, prog, &out)
 	lintStmts(name, prog, &out)
 	return out, nil
+}
+
+// lintJSONFlags reports a JSON_* constant.
+//
+// No JSON_* constant is defined here, so the name evaluates to null and
+// json_encode ignores the argument. The call runs and encodes correctly, which
+// is why this is a warning: nothing is broken, and the author has asked for a
+// formatting the encoder does not vary. See docs/design.md.
+//
+// The scan is over tokens rather than the AST: a constant can appear in any
+// expression, and T_STRING already tells a bare name apart from the same text
+// inside a string literal, so defined("JSON_PRETTY_PRINT") is not a use.
+func lintJSONFlags(file, src string, out *[]Diagnostic) {
+	for _, token := range parser.TokenGetAll(src) {
+		triple, ok := token.([]any)
+		if !ok || len(triple) != 3 {
+			continue
+		}
+		// A token id and line are int64, the type a PHP integer has here.
+		id, _ := triple[0].(int64)
+		text, _ := triple[1].(string)
+		line, _ := triple[2].(int64)
+		if id != int64(parser.T_STRING) || !strings.HasPrefix(text, "JSON_") {
+			continue
+		}
+		*out = append(*out, Diagnostic{
+			File: file,
+			Line: int(line),
+			Message: fmt.Sprintf("%s is not defined and the argument is ignored: the JSON encoding is not "+
+				"configurable. Drop it, and indent downstream if the output has to be read; see docs/design.md.", text),
+		})
+	}
 }
 
 // lintRoutes reports an @route path whose parameters the router cannot

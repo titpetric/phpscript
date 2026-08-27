@@ -15,15 +15,12 @@ var_dump(defined("JSON_UNESCAPED_SLASHES"));
 var_dump(defined("JSON_PRETTY_PRINT"));
 var_dump(defined("JSON_THROW_ON_ERROR"));
 
-try {
-	json_encode(array(1), 128);
-} catch (Throwable $e) {
-	echo "refused\n";
-}
+// A literal second argument is accepted and selects nothing.
+echo json_encode(array("a" => 1), 128), "\n";
 ---
 {"path":"a/b"}
 "https://example.com/x"
 bool(false)
 bool(false)
 bool(false)
-refused
+{"a":1}
