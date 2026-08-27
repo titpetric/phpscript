@@ -149,10 +149,23 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 						"move this statement into a function, or into a file that declares no namespace", p.spans[s].Start)
 				}
 			}
-			p.stmts.push(s)
+			p.pushStmt(s)
 		}
 	}
 	return p.stmts.take(mark), nil
+}
+
+// pushStmt appends s to the statement being collected, as the one or more
+// statements it lowers to. Every statement list goes through it so that a
+// lowering applies wherever the statement was written.
+func (p *parser) pushStmt(s model.Stmt) {
+	if split := p.lowerChainedAlloc(s); split != nil {
+		for _, one := range split {
+			p.stmts.push(one)
+		}
+		return
+	}
+	p.stmts.push(s)
 }
 
 // isPreambleStmt reports whether s is a file-preamble statement: an import or
@@ -827,7 +840,7 @@ func (p *parser) parseCaseBody() ([]model.Stmt, error) {
 			return nil, err
 		}
 		if s != nil {
-			p.stmts.push(s)
+			p.pushStmt(s)
 		}
 	}
 	return p.stmts.take(mark), nil
@@ -1348,6 +1361,9 @@ func (p *parser) parseBlock() ([]model.Stmt, error) {
 		if s == nil {
 			return nil, nil
 		}
+		if split := p.lowerChainedAlloc(s); split != nil {
+			return split, nil
+		}
 		return []model.Stmt{s}, nil
 	}
 	if err := p.eatOp("{"); err != nil {
@@ -1386,6 +1402,130 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 		return p.newAssign(ae.Target, ae.Op, ae.Value), nil
 	}
 	return p.newExprStmt(lhs), nil
+}
+
+// lowerChainedAlloc rewrites `$a = $b = array(...)` into one assignment per
+// name, each with its own copy of the literal, and returns nil for every other
+// statement.
+//
+// PHP arrays are values, so that statement leaves each name holding an array of
+// its own; phpscript arrays are handles, so binding the one array the chain
+// allocates to both names would let a later write through either be seen
+// through the other. The literal says what to allocate rather than naming
+// something already allocated, so the fix is to allocate once per name, which
+// is what PHP's copy amounts to here. The literal node is shared by the
+// statements rather than duplicated: evaluating an ArrayLit builds a new array
+// every time, so one node still yields one array per assignment.
+//
+// A chain is left alone unless it ends in a literal that can be evaluated more
+// than once without the program noticing. `$a = $b = array(next($rows))` must
+// keep sharing, because splitting it would advance the pointer twice; so must
+// `$a = $b = new Database`, where PHP shares the object as well and the two
+// names are meant to be the same connection. Those are what `phpscript lint`
+// reports; see docs/reference/types/value-semantics.md.
+//
+// A `for` clause is not lowered either: model.For holds one statement for its
+// init and one for its post, so there is nowhere to put the second assignment.
+// The chain keeps its old meaning there and the lint rule reports it.
+func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
+	outer, ok := s.(*model.Assign)
+	if !ok || outer.Op != "=" {
+		return nil
+	}
+	var inner []model.Expr
+	value := model.UnwrapParenthesized(outer.Value)
+	for {
+		ae, ok := value.(*model.AssignExpr)
+		if !ok {
+			break
+		}
+		if ae.Op != "=" {
+			return nil
+		}
+		inner = append(inner, ae.Target)
+		value = model.UnwrapParenthesized(ae.Value)
+	}
+	if len(inner) == 0 {
+		return nil
+	}
+	lit, ok := value.(*model.ArrayLit)
+	if !ok || !repeatableExpr(lit) {
+		return nil
+	}
+
+	// PHP assigns right to left, so the innermost name is written first. The
+	// order is observable when the targets overlap, as in `$r["k"] = $r =
+	// array()`, which clears $r and then puts an array under "k".
+	out := make([]model.Stmt, 0, len(inner)+1)
+	for i := len(inner) - 1; i >= 0; i-- {
+		n := p.newAssign(inner[i], "=", lit)
+		p.spans[n] = p.spans[s]
+		out = append(out, n)
+	}
+	outer.Value = lit
+	return append(out, outer)
+}
+
+// repeatableExpr reports whether evaluating e a second time is guaranteed to
+// produce the same value and no side effect, which is what lets one literal
+// stand in for the several allocations a chained assignment should have made.
+//
+// It is a whitelist: a call, a `new`, a closure, an assignment or an increment
+// is excluded because a second evaluation would run it again, and everything
+// the walk does not recognise is excluded because it has not been thought
+// about. Reading a variable, a constant, an element or a property is included;
+// none of them can run script code, because phpscript has no `__get` and no
+// overloaded index (docs/design.md).
+func repeatableExpr(e model.Expr) bool {
+	switch n := e.(type) {
+	case nil:
+		return true
+	case *model.Lit:
+		return true
+	case *model.Var:
+		return true
+	case *model.Interp:
+		return repeatableExprs(n.Parts)
+	case *model.ArrayLit:
+		for _, item := range n.Items {
+			if !repeatableExpr(item.Key) || !repeatableExpr(item.Val) {
+				return false
+			}
+		}
+		return true
+	case *model.Index:
+		return repeatableExpr(n.Base) && repeatableExpr(n.Index)
+	case *model.PropAccess:
+		return repeatableExpr(n.Base)
+	case *model.StaticProp:
+		return true
+	case *model.ClassConst:
+		return true
+	case *model.Parenthesized:
+		return repeatableExpr(n.X)
+	case *model.Cast:
+		return repeatableExpr(n.X)
+	case *model.Unary:
+		switch n.Op {
+		case "++", "--":
+			return false
+		}
+		return repeatableExpr(n.X)
+	case *model.Binary:
+		return repeatableExpr(n.Left) && repeatableExpr(n.Right)
+	case *model.Ternary:
+		return repeatableExpr(n.Cond) && repeatableExpr(n.Then) && repeatableExpr(n.Else)
+	}
+	return false
+}
+
+func repeatableExprs(xs []model.Expr) bool {
+	for _, x := range xs {
+		if !repeatableExpr(x) {
+			return false
+		}
+	}
+	return true
 }
 
 func isAssignOp(v string) bool {

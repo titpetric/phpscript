@@ -68,12 +68,18 @@ The lint pass reports two shapes:
 | Finding                                               | Example                         |
 |-------------------------------------------------------|---------------------------------|
 | `assignment in conditional statement`                 | `if (($row = fn()) !== false)`  |
-| `chained assignment binds one value to several names` | `$inlines = $blocks = array();` |
+| `chained assignment binds one value to several names` | `$dba = $dbb = new Database();` |
 
 Both are warnings; only a parse error fails the run. The chained-assignment rule
-exists because phpscript arrays are handles rather than values, so the two names
+exists because phpscript arrays are handles rather than values, so two names can
 end up sharing one array where PHP would give each its own. See
 [Value semantics](reference/types/value-semantics.md#arrays-are-handles-not-values).
+
+It reports what the parser could not already fix. `$inlines = $blocks = array()`
+is split into one allocation per name and is not reported; neither is
+`$r['y'] = $r['m'] = '00'`, because no name can mutate a string through another.
+A chain ending in a name, a call or a `new` is reported: the value is either a
+handle the names really do share, or of a type the source does not settle.
 
 Findings are printed one per row, with a row per file that had none, using a
 colored table in a terminal and Markdown when output is redirected. Use

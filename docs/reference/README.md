@@ -29,6 +29,7 @@ Source-file structure, runtime values, variables, constants, and expression eval
   - [Type casting](types/README.md#type-casting)
 - [Value semantics](types/value-semantics.md) - What copies and what is shared, why `&` does nothing, and how binding output parameters work.
   - [Arrays are handles, not values](types/value-semantics.md#arrays-are-handles-not-values)
+  - [Chained assignment allocates once per name](types/value-semantics.md#chained-assignment-allocates-once-per-name)
   - [foreach binds a copy, or the element](types/value-semantics.md#foreach-binds-a-copy-or-the-element)
   - [`&` elsewhere does not create a reference](types/value-semantics.md#elsewhere-does-not-create-a-reference)
   - [Output parameters](types/value-semantics.md#output-parameters)

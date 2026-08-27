@@ -49,14 +49,49 @@ Copy explicitly where independence matters:
 $copy = array_merge(array(), $original);
 ```
 
-`phpscript lint` reports the shape this most often hides behind:
+## Chained assignment allocates once per name
+
+A chain that ends in an array literal is split by the parser into one assignment
+per name, so each name gets an allocation of its own:
 
 ```php
-$inlines = $blocks = array();   // chained assignment binds one value to several names
+$inlines = $blocks = array();   // parsed as: $blocks = array(); $inlines = array();
 ```
 
-That statement gives each name its own array in PHP and one shared array here,
-so a later `$inlines[$k] = ...` also writes into `$blocks`.
+The literal says what to allocate rather than naming something already
+allocated, so allocating once per name is what PHP's copy amounts to here, and
+`$inlines[$k] = ...` no longer writes into `$blocks`. `phpscript fmt` prints the
+split form, which is the statement's meaning written out. The order is PHP's,
+right to left, which is observable when the targets overlap:
+
+```php
+$r['k'] = $r = array();         // clears $r, then puts an array under "k"
+```
+
+The split needs to evaluate the literal once per name, so it applies only when
+doing that cannot be noticed: `array()`, `array(1, 2)`, `['k' => $v]`. A chain
+ending in anything else keeps its old meaning and `phpscript lint` reports it:
+
+```php
+$a = $b = array(next($rows));   // chained assignment binds one value to several names
+$dba = $dbb = new Database();   // chained assignment binds one value to several names
+$m = $n = $rows;                // chained assignment binds one value to several names
+```
+
+Splitting the first would advance the array pointer twice. The second and third
+are handles the two names really do share -- PHP shares the object too, and
+`$rows` is the same array under a second name -- so the finding is a question
+about the code rather than a divergence to repair.
+
+A chain that ends in a scalar literal is neither split nor reported: a string or
+a number has no interior for two names to share.
+
+```php
+$r['y'] = $r['m'] = $r['d'] = '00';   // no finding
+```
+
+A `for` clause holds one statement for its init and one for its post, so a chain
+written there is not split and is reported instead.
 
 ## foreach binds a copy, or the element
 

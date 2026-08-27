@@ -526,3 +526,85 @@ func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
 		}
 	}
 }
+
+// `$a = $b = array()` is split into one assignment per name so that each name
+// gets its own allocation, which is what PHP's copy-on-assignment amounts to
+// for a literal. The names are written right to left, as PHP evaluates them.
+func TestParseSplitsChainedArrayLiteral(t *testing.T) {
+	prog := mustParse(t, "<?php\n$a = $b = $c = array(1);\n")
+	if len(prog.Stmts) != 3 {
+		t.Fatalf("got %d statements, want 3: %#v", len(prog.Stmts), prog.Stmts)
+	}
+	for i, want := range []string{"c", "b", "a"} {
+		s, ok := prog.Stmts[i].(*model.Assign)
+		if !ok {
+			t.Fatalf("statement %d = %T, want *model.Assign", i, prog.Stmts[i])
+		}
+		if v, ok := s.Target.(*model.Var); !ok || v.Name != want {
+			t.Errorf("statement %d target = %#v, want $%s", i, s.Target, want)
+		}
+		if _, ok := s.Value.(*model.ArrayLit); !ok {
+			t.Errorf("statement %d value = %T, want *model.ArrayLit", i, s.Value)
+		}
+		if got := prog.SourceSpans[s].Start; got != 2 {
+			t.Errorf("statement %d line = %d, want the line the chain was written on", i, got)
+		}
+	}
+}
+
+// The split reaches every statement list, including a brace-less body, which
+// would otherwise keep the chain and its sharing.
+func TestParseSplitsChainedArrayLiteralInBodies(t *testing.T) {
+	for _, src := range []string{
+		"<?php if (true) $a = $b = array();",
+		"<?php if (true) { $a = $b = array(); }",
+		"<?php function f() { $a = $b = array(); }",
+		"<?php switch (1) { case 1: $a = $b = array(); }",
+		"<?php while (true) { $a = $b = array(); }",
+	} {
+		prog := mustParse(t, src)
+		if n := countAssigns(prog.Stmts); n != 2 {
+			t.Errorf("%s: got %d assignments, want 2", src, n)
+		}
+	}
+}
+
+// A chain is only split when re-evaluating the literal cannot be noticed. A
+// call inside it would run twice, and `new` allocates an object, which PHP
+// shares between the names as well; both keep the chain and are what
+// `phpscript lint` reports instead.
+func TestParseKeepsChainWithSideEffects(t *testing.T) {
+	for _, src := range []string{
+		"<?php $a = $b = array(next($rows));",
+		"<?php $a = $b = new Database();",
+		"<?php $a = $b = $rows;",
+		"<?php $a = $b = load();",
+		"<?php $a = $b = array($i++);",
+	} {
+		prog := mustParse(t, src)
+		if len(prog.Stmts) != 1 {
+			t.Errorf("%s: got %d statements, want the chain left alone", src, len(prog.Stmts))
+		}
+	}
+}
+
+func countAssigns(stmts []model.Stmt) int {
+	n := 0
+	for _, s := range stmts {
+		switch v := s.(type) {
+		case *model.Assign:
+			n++
+		case *model.If:
+			n += countAssigns(v.Then) + countAssigns(v.Else)
+		case *model.FuncDecl:
+			n += countAssigns(v.Body)
+		case *model.Switch:
+			for _, c := range v.Cases {
+				n += countAssigns(c.Body)
+			}
+		case *model.For:
+			n += countAssigns(v.Body)
+		}
+	}
+	return n
+}

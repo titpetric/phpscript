@@ -100,23 +100,24 @@ done
 
 func TestFileReportsChainedAssignment(t *testing.T) {
 	src := `<?php
-$inlines = $blocks = array();
-$one = array();
-$a = $b = $c = 1;
-$paren = ($x = 5);
-$obj->left = $obj->right = "v";
-function scoped() { $p = $q = array(); }
-class Holder { function method() { $r = $s = 0; } }
-foreach (array(1) as $v) { $t = $u = 1; }
-for ($i = 0; $i < 1; $i++) { $w = $y = 1; }
-if (true) { $m = $n = 1; }
+$dba = $dbb = new Database();
+$one = new Database();
+$a = $b = $c = compute();
+$paren = ($x = $handle);
+$obj->left = $obj->right = $shared;
+function scoped() { $p = $q = new Database(); }
+class Holder { function method() { $r = $s = load(); } }
+foreach (array(1) as $v) { $t = $u = $v; }
+for ($i = 0; $i < 1; $i++) { $w = $y = $z; }
+if (true) { $m = $n = $o; }
 `
 	diags, err := lint.File("chain.php", src)
 	if err != nil {
 		t.Fatalf("File returned an error: %v", err)
 	}
 
-	// Every chained statement is reported once, whatever scope it sits in, and
+	// Every chained statement whose value is a handle, or a name whose type the
+	// source does not settle, is reported once, whatever scope it sits in, and
 	// a chain of three names is still one finding rather than one per link.
 	wantLines := []int{2, 4, 5, 6, 7, 8, 9, 10, 11}
 	if len(diags) != len(wantLines) {
@@ -129,6 +130,35 @@ if (true) { $m = $n = 1; }
 		if got := diags[i].Message; got != "chained assignment binds one value to several names" {
 			t.Errorf("diagnostic %d message = %q", i, got)
 		}
+	}
+}
+
+// A chain that ends in a literal is left alone. A scalar is immutable, so
+// neither name can reach the other through it, and an array literal is split
+// into one allocation per name by the parser, so there is nothing left to
+// share. `$r['y'] = $r['m'] = '00'` is the shape this comes from.
+func TestFileAcceptsChainedLiterals(t *testing.T) {
+	src := `<?php
+$r = array();
+$r['y'] = $r['m'] = $r['d'] = '00';
+$inlines = $blocks = array();
+$rows = $cols = [1, 2, 3];
+function scopedAlloc() { $g = $h = array("k" => "v"); }
+$a = $b = $c = 1;
+$paren = ($x = 5);
+$obj->left = $obj->right = "v";
+$i = $j = "count: $n";
+$k = $l = null;
+$m = $n = true;
+$o = $p = -1.5;
+function scoped() { $q = $s = 0; }
+`
+	diags, err := lint.File("scalar.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	if len(diags) != 0 {
+		t.Fatalf("got %d diagnostics for chained literals: %+v", len(diags), diags)
 	}
 }
 

@@ -46,6 +46,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | array_search.phpt        | PASS       | PASS    | PASS |
 | array_stack.phpt         | PASS       | PASS    | PASS |
 | array_union.phpt         | PASS       | PASS    | PASS |
+| chained_assignment.phpt  | PASS       | PASS    | PASS |
 | compact.phpt             | PASS       | PASS    | PASS |
 | keys.phpt                | PASS       | PASS    | PASS |
 | ksort_asort.phpt         | PASS       | PASS    | PASS |
@@ -269,7 +270,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | Area        | Fixtures | Passed | Failed |
 |-------------|----------|--------|--------|
 | arithmetic  | 21       | 21     | 0      |
-| arrays      | 17       | 17     | 0      |
+| arrays      | 18       | 18     | 0      |
 | autoloading | 4        | 4      | 0      |
 | bindings    | 23       | 23     | 0      |
 | errors      | 2        | 2      | 0      |
@@ -286,4 +287,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | stdlib      | 14       | 14     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 167      | 167    | 0      |
+| **Total**   | 168      | 168    | 0      |

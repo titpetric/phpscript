@@ -287,13 +287,23 @@ func (w *stmtWalker) lintExtends(n *model.ClassDecl) {
 // PHP copies an array on assignment, so there the two names end up holding
 // independent arrays. phpscript's arrays are references, so both names see one
 // array and a later write through either is visible through the other, a bug
-// the shape hides rather than announces. Objects are handles in both
-// languages and scalars are immutable in both, so for those the chain is only a
-// readability question; the rule does not try to tell the cases apart, because
-// the type of `value` is not known until the statement runs.
+// the shape hides rather than announces.
+//
+// The rule only sees the chains that are left after the parser has fixed the
+// ones it can. A chain ending in an array literal is split into one allocation
+// per name (parser.lowerChainedAlloc) and never reaches here; a chain ending in
+// a scalar literal is left alone and skipped here, because a string or a number
+// has no interior for the names to share. What remains is a chain ending in a
+// name, a call or a `new`, where either the value is a handle the names really
+// do share -- `$dba = $dbb = new Database` gives one connection two names in
+// PHP as well -- or its type is not known until the statement runs. Both are
+// worth a second look, which is what the finding asks for.
 func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 	chained, ok := model.UnwrapParenthesized(n.Value).(*model.AssignExpr)
 	if !ok {
+		return
+	}
+	if isScalarLiteral(chainedValue(chained)) {
 		return
 	}
 	*out = append(*out, Diagnostic{
@@ -301,6 +311,44 @@ func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 		Line:    chained.Line,
 		Message: "chained assignment binds one value to several names",
 	})
+}
+
+// chainedValue walks to the end of an assignment chain, so that
+// `$a = $b = $c = '00'` is judged by the `'00'` rather than by the assignment
+// that binds `$c`.
+func chainedValue(n *model.AssignExpr) model.Expr {
+	v := model.UnwrapParenthesized(n.Value)
+	for {
+		next, ok := v.(*model.AssignExpr)
+		if !ok {
+			return v
+		}
+		v = model.UnwrapParenthesized(next.Value)
+	}
+}
+
+// isScalarLiteral reports whether the source spells out a value that no name
+// can share: a string, int, float, bool or null literal, an interpolated
+// string, which always evaluates to a string, or a prefix operator over one of
+// those, which is how a negative number is written. A *model.Lit holding a
+// *model.Array is not one of these; the parser does not build them, but the
+// check reads the value rather than assuming it.
+func isScalarLiteral(e model.Expr) bool {
+	switch v := e.(type) {
+	case *model.Interp:
+		return true
+	case *model.Lit:
+		switch v.Value.(type) {
+		case string, int, int64, float64, bool, nil:
+			return true
+		}
+	case *model.Unary:
+		switch v.Op {
+		case "-", "+", "!", "~":
+			return !v.Postfix && isScalarLiteral(model.UnwrapParenthesized(v.X))
+		}
+	}
+	return false
 }
 
 func lintCondition(file string, e model.Expr, out *[]Diagnostic) {
