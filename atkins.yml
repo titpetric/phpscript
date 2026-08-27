@@ -36,6 +36,7 @@ tasks:
       - task: test:phpscript:matrix
       - task: test:introspection
       - task: composer:install
+      - task: test:phpscript:common
       - task: docker:build
 
   # mysql and postgres are test infrastructure, not demos: test-database.php and
@@ -74,7 +75,19 @@ tasks:
   composer:install:
     passthru: true
     cmds:
-      - for dir in demos/example demos/dbadmin; do (cd $dir && composer install --no-interaction); done
+      - for dir in demos/example demos/dbadmin demos/common-phpscript; do (cd $dir && composer install --no-interaction); done
+
+  # phpscript-common ships a fixture beside every source file, so the suite is
+  # the package's own test run rather than a demo's. It needs no database and
+  # no server: every component is exercised against the memory store that
+  # stands in for its SQL one, which is what the store interfaces exist for.
+  test:phpscript:common:
+    dir: demos/common-phpscript
+    tty: true # enable ansi
+    passthru: true
+    cmds:
+      - phpscript lint ./...
+      - phpscript test --matrix -v ./src/...
 
   # The demos are compose services, so their venom suites run against the image
   # test:demos builds. They have their own pipelines because they have to
