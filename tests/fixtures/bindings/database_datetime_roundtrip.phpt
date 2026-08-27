@@ -3,6 +3,7 @@ description: >
   In sqlite the declared column type makes the driver scan into a Time, and
   the stored text carries the zone. TIME_RFC3339 keeps the offset across the
   round trip. Needs the sqlite_test credential from .env.testing.
+serial: true
 runner:
   php: false
 ---

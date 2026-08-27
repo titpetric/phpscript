@@ -1,4 +1,5 @@
 name: database binding property access
+serial: true
 runner:
   php: false
 description: >

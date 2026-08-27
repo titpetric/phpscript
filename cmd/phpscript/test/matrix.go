@@ -40,6 +40,11 @@ type matrixRow struct {
 	Metrics     fixtureMetrics
 }
 
+type matrixFixtureResult struct {
+	Row      matrixRow
+	JSONRows []jsonFixture
+}
+
 // label returns what a table cell should show for the row.
 func (r matrixRow) label() string {
 	if r.Label != "" {
@@ -79,15 +84,16 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 		groupPassed, groupFailed := 0, 0
 		groupStart := time.Now()
 
-		for i, fx := range group.Fixtures {
+		results := mapFixtures(group.Fixtures, opts.Parallel, func(i int, fx *tests.Fixture) matrixFixtureResult {
 			row := matrixRow{DisplayPath: group.Paths[i], Label: group.Labels[i]}
+			var fixtureJSONRows []jsonFixture
 			for _, name := range tests.Runners {
 				cell := matrixCell{Runner: name}
 				if !fx.Runs(name) {
 					cell.Status = matrixSkip
 					cell.Reason = fmt.Sprintf("opted out by runner.%s: false", name)
 					row.Cells = append(row.Cells, cell)
-					jsonRows = append(jsonRows, jsonFixture{
+					fixtureJSONRows = append(fixtureJSONRows, jsonFixture{
 						Name:    fx.Name,
 						Path:    row.DisplayPath,
 						Runner:  string(name),
@@ -103,7 +109,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 					if name == tests.RunnerRuntime {
 						row.Metrics = fr.fixtureMetrics
 					}
-					jsonRows = append(jsonRows, jsonFixture{
+					fixtureJSONRows = append(fixtureJSONRows, jsonFixture{
 						Name:        fx.Name,
 						Path:        fr.DisplayPath,
 						Runner:      string(name),
@@ -132,7 +138,12 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 				}
 				row.Cells = append(row.Cells, cell)
 			}
+			return matrixFixtureResult{Row: row, JSONRows: fixtureJSONRows}
+		})
 
+		for _, result := range results {
+			row := result.Row
+			jsonRows = append(jsonRows, result.JSONRows...)
 			if row.Failed() {
 				groupFailed++
 			} else {

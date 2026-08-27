@@ -106,6 +106,9 @@ func reportArgs(opts Options, args []string) []string {
 	if opts.Profile {
 		argv = append(argv, "--profile")
 	}
+	if opts.Parallel > 1 {
+		argv = append(argv, "--parallel", fmt.Sprint(opts.Parallel))
+	}
 	if opts.Output != "" {
 		argv = append(argv, "-o", filepath.ToSlash(opts.Output))
 	}

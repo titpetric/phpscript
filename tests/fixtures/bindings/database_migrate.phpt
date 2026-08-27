@@ -1,4 +1,5 @@
 name: database migrations
+serial: true
 runner:
   php: false
 description: Database\Migrate loads and runs SQL migrations against a named sqlite database.

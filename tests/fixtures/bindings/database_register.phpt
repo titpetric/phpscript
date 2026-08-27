@@ -1,5 +1,6 @@
 name: database register
 description: Database::register adds a connection new Database() can then open.
+serial: true
 runner:
   php: false
 ---

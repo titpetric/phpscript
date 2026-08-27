@@ -1,4 +1,5 @@
 name: database binding property is not writable
+serial: true
 runner:
   php: false
 description: >

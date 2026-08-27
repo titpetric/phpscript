@@ -1,4 +1,5 @@
 name: database bridge
+serial: true
 runner:
   php: false
 description: Database.php can use the Go-backed Database with sqlite.

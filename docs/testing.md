@@ -118,6 +118,7 @@ The YAML metadata supports these fields:
 | `stdin`       |       no | String exposed to the script through `STDIN`.                              |
 | `runner`      |       no | Runtimes the fixture opts out of; see [Runner metadata](#runner-metadata). |
 | `root`        |       no | Include root, relative to the fixture's own directory.                     |
+| `serial`      |       no | Do not overlap the fixture with peers when `--parallel` is enabled.        |
 
 The expected-output section is always checked. Trailing newline differences are ignored, but all other output must match exactly. For an uncaught error, set `error` to a stable identifying substring and normally expect the host response body `Internal Server Error`:
 

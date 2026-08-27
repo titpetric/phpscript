@@ -3,6 +3,7 @@ description: >
   A single non-scalar argument is read as named parameters; a Time is exempt
   and binds by position. Needs pdo v0.2.4 and the sqlite_test credential
   from .env.testing.
+serial: true
 runner:
   php: false
 ---

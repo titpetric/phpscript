@@ -122,6 +122,12 @@ phpscript test -t 1s tests/fixtures/...
 phpscript test --count 5 --time 1s tests/fixtures/...
 ```
 
+Use `--parallel N` (`-p`) to run up to N fixtures in each area concurrently.
+Output remains in discovery order. Fixtures that share external state can set
+`serial: true` in their metadata to run as a barrier between parallel batches.
+`--profile` cannot be combined with parallel execution because Go's allocation
+counters are process-wide and cannot be attributed to one concurrent fixture.
+
 Use `--profile` to add per-operation allocation and byte counts. `--json`
 writes a machine-readable report to stdout (no table). `--cpuprofile` and
 `--memprofile` write pprof files for the whole `test` invocation.

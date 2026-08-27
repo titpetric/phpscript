@@ -179,6 +179,7 @@ type Fixture struct {
 	Stdin       string          `yaml:"stdin"`   // optional: top-level stdin contents
 	Options     runner.Options  `yaml:"options"` // optional: runtime options for both engines (memory_limit, ...)
 	Root        string          `yaml:"root"`    // optional: include root, relative to the fixture's own directory
+	Serial      bool            `yaml:"serial"`  // optional: do not overlap this fixture with peers in its area
 	Runner      FixtureRunners  `yaml:"runner"`  // optional: runners the fixture opts out of
 	Request     FixtureRequest  `yaml:"request"`
 	Response    FixtureResponse `yaml:"response"`

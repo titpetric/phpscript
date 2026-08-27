@@ -1,4 +1,5 @@
 name: database read-only client
+serial: true
 runner:
   php: false
 description: >

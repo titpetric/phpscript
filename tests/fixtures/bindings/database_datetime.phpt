@@ -3,6 +3,7 @@ description: >
   A DATETIME column scans into a Go time.Time, and echoing it produces the
   stored text, as PDO does returning the column as a string. Needs the
   sqlite_test credential from .env.testing.
+serial: true
 runner:
   php: false
 ---

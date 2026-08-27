@@ -25,6 +25,7 @@ type Options struct {
 	JSON       bool
 	Matrix     bool
 	Verbose    bool
+	Parallel   int
 	Count      int
 	Time       time.Duration
 	Profile    bool
@@ -66,6 +67,7 @@ func NewCommand() *cli.Command {
 			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
 			fs.BoolVar(&opts.Matrix, "matrix", false, "Run every fixture through all runtimes and report a matrix")
 			fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "Report the failure of each runtime below its fixture")
+			fs.IntVarP(&opts.Parallel, "parallel", "p", 1, "Run up to N fixtures concurrently")
 			fs.IntVarP(&opts.Count, "count", "c", 0, "Run each test N times; with --time, produce N benchmark samples")
 			fs.DurationVarP(&opts.Time, "time", "t", 0, "Run each test for this duration per benchmark sample (e.g. 10s)")
 			fs.BoolVar(&opts.Profile, "profile", false, "Report memory usage per run (allocs/op, B/op)")
@@ -190,6 +192,16 @@ func runFixtureSamples(ctx context.Context, fx *tests.Fixture, r tests.Runner, o
 
 // Run executes .phpt test fixtures matching the provided paths or patterns.
 func Run(ctx context.Context, args []string, opts Options) error {
+	if opts.Parallel < 0 {
+		return fmt.Errorf("parallel must be at least 1")
+	}
+	if opts.Parallel == 0 {
+		opts.Parallel = 1
+	}
+	if opts.Parallel > 1 && opts.Profile {
+		return fmt.Errorf("profile cannot be combined with parallel fixture execution")
+	}
+
 	if opts.CPUProfile != "" {
 		f, err := os.Create(opts.CPUProfile)
 		if err != nil {
@@ -272,10 +284,13 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		groupPassed, groupFailed := 0, 0
 		groupStart := time.Now()
 
+		fixtureRuns := mapFixtures(group.Fixtures, opts.Parallel, func(_ int, fx *tests.Fixture) []*fixtureRun {
+			return runFixtureSamples(ctx, fx, tests.RunnerRuntime, opts)
+		})
 		for i, fx := range group.Fixtures {
 			var fixtureResult *tests.TestResult
 			var firstFailedRun *fixtureRun
-			for _, fr := range runFixtureSamples(ctx, fx, tests.RunnerRuntime, opts) {
+			for _, fr := range fixtureRuns[i] {
 				fr.DisplayPath = group.Paths[i]
 				fr.Label = group.Labels[i]
 				sinks.writeResult(fr)

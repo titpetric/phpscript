@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -76,6 +77,33 @@ func TestRunFixtureSamplesCountAndTime(t *testing.T) {
 		if run.Runs < 1 {
 			t.Errorf("sample %d operation count = %d, want at least 1", i, run.Runs)
 		}
+	}
+}
+
+func TestMapFixturesRunsConcurrentlyWithSerialBarrier(t *testing.T) {
+	fixtures := []*tests.Fixture{{Name: "a"}, {Name: "b"}, {Name: "serial", Serial: true}, {Name: "c"}, {Name: "d"}}
+	var active, peak, serialActive atomic.Int64
+
+	results := mapFixtures(fixtures, 4, func(i int, fx *tests.Fixture) string {
+		current := active.Add(1)
+		defer active.Add(-1)
+		for current > peak.Load() && !peak.CompareAndSwap(peak.Load(), current) {
+		}
+		if fx.Serial {
+			serialActive.Store(current)
+		}
+		time.Sleep(10 * time.Millisecond)
+		return fx.Name
+	})
+
+	if got := strings.Join(results, ","); got != "a,b,serial,c,d" {
+		t.Fatalf("result order = %q", got)
+	}
+	if peak.Load() < 2 {
+		t.Fatalf("peak concurrency = %d, want at least 2", peak.Load())
+	}
+	if serialActive.Load() != 1 {
+		t.Fatalf("serial fixture active count = %d, want 1", serialActive.Load())
 	}
 }
 
