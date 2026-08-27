@@ -228,18 +228,19 @@ The standard library is much smaller than either Go's or PHP's, and there is no
 plan for full coverage of either. These are the areas worth an implementation,
 with the names they get when they arrive.
 
-| Area          | PHP does it with | phpscript name                       | State                                                      |
-|---------------|------------------|--------------------------------------|------------------------------------------------------------|
-| HTTP client   | `curl_*`         | `HTTP\Client`, `HTTP\Request`        | Implemented                                                |
-| JSON          | `json_encode`    | `json_encode`, `json_decode`         | Implemented, PHP-compatible                                |
-| YAML          | `yaml_*`         | `yaml_parse`, `yaml_emit`            | Not implemented, aim for PHP-compatible                    |
-| Databases     | PDO              | `Database`                           | Implemented                                                |
-| Migrations    | none             | `Database\Migrate`                   | Implemented                                                |
-| Telemetry     | none             | `start_span`, later `Telemetry\Span` | Spans only                                                 |
-| Sessions      | `$_SESSION`      | `Session\Manager`                    | Implemented                                                |
-| Shared memory | `shmop_*`, APCu  | `SharedMemory`                       | Implemented                                                |
-| Mail          | `mail`           | `mail`, `SMTP`                       | Implemented; `mail` registers when the host binds a sender |
-| Templating    | none             | native PHP                           | minitpl runs as PHP source                                 |
+| Area          | PHP does it with | phpscript name                                       | State                                                      |
+|---------------|------------------|------------------------------------------------------|------------------------------------------------------------|
+| HTTP client   | `curl_*`         | `HTTP\Client`, `HTTP\Request`                        | Implemented                                                |
+| JSON          | `json_encode`    | `json_encode`, `json_decode`                         | Implemented, PHP-compatible                                |
+| YAML          | `yaml_*`         | `yaml_parse`, `yaml_emit`                            | Not implemented, aim for PHP-compatible                    |
+| Time          | `DateTime`       | `DateTime`, `Time`, `Time\Duration`, `Time\Location` | Implemented as direct Go value bindings                    |
+| Databases     | PDO              | `Database`                                           | Implemented                                                |
+| Migrations    | none             | `Database\Migrate`                                   | Implemented                                                |
+| Telemetry     | none             | `start_span`, later `Telemetry\Span`                 | Spans only                                                 |
+| Sessions      | `$_SESSION`      | `Session\Manager`                                    | Implemented                                                |
+| Shared memory | `shmop_*`, APCu  | `SharedMemory`                                       | Implemented                                                |
+| Mail          | `mail`           | `mail`, `SMTP`                                       | Implemented; `mail` registers when the host binds a sender |
+| Templating    | none             | native PHP                                           | minitpl runs as PHP source                                 |
 
 An area not in this table is not in scope. Adding one is a decision about the
 scope of the runtime, and goes through an issue before it goes through a

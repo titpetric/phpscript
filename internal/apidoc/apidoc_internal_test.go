@@ -5,7 +5,37 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/titpetric/phpscript/runner"
 )
+
+type generatedTime struct{}
+
+type generatedDuration int64
+
+type generatedLocation struct{}
+
+type generatedUnregistered struct{}
+
+func (generatedTime) Add(generatedDuration) generatedTime { return generatedTime{} }
+
+func (generatedTime) Sub(generatedTime) generatedDuration { return 0 }
+
+func (generatedTime) Location() *generatedLocation { return &generatedLocation{} }
+
+func newGeneratedTime() generatedTime { return generatedTime{} }
+
+func newGeneratedDuration() generatedDuration { return 0 }
+
+func newGeneratedLocation() *generatedLocation { return &generatedLocation{} }
+
+func generatedNow() generatedTime { return generatedTime{} }
+
+func generatedSince(generatedTime) generatedDuration { return 0 }
+
+func generatedLoad(string) *generatedLocation { return &generatedLocation{} }
+
+func generatedOpaque() generatedUnregistered { return generatedUnregistered{} }
 
 func TestCamelToSnake(t *testing.T) {
 	cases := map[string]string{
@@ -47,6 +77,7 @@ func TestReturnType(t *testing.T) {
 		{[]string{"error"}, "void"},
 		{[]string{"string", "error"}, "string"},
 		{[]string{"int", "bool"}, "int|bool"},
+		{[]string{"Time", "Time"}, "Time"},
 	}
 	for _, c := range cases {
 		if got := returnType(c.in); got != c.want {
@@ -139,5 +170,59 @@ type Thing struct{}
 	}
 	if len(ctor.params) != 1 || ctor.params[0].Type != "string" {
 		t.Errorf(`Fake\Thing params = %+v`, ctor.params)
+	}
+}
+
+// Registered constructor return types are the source of truth for the PHP
+// class names used by function and method return hints. This matters for named
+// scalar types such as time.Duration as well as structs and pointers.
+func TestGenerateResolvesRegisteredClassReturnTypes(t *testing.T) {
+	dir := t.TempDir()
+	source := `package fake
+
+import stdtime "time"
+
+func registerTime(rt *Runtime) {
+	rt.RegisterFunc("DateTime::now", generatedNow)
+	rt.RegisterFunc("opaque", generatedOpaque)
+}
+
+func generatedNow() stdtime.Time { return stdtime.Time{} }
+func generatedOpaque() any { return nil }
+
+type generatedTime struct{}
+
+func (generatedTime) Add(duration int64) stdtime.Time { return stdtime.Time{} }
+`
+	if err := os.WriteFile(filepath.Join(dir, "time.go"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rt := runner.New(nil, runner.Options{})
+	rt.RegisterConstructor("Time", newGeneratedTime)
+	rt.RegisterConstructor(`Time\Duration`, newGeneratedDuration)
+	rt.RegisterConstructor(`Time\Location`, newGeneratedLocation)
+	rt.RegisterFunc("DateTime::now", generatedNow)
+	rt.RegisterFunc("DateTime::since", generatedSince)
+	rt.RegisterFunc(`Time\Location::load`, generatedLoad)
+	rt.RegisterFunc("opaque", generatedOpaque)
+
+	doc, err := Generate(rt, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, want := range []string{
+		"DateTime::now(): Time",
+		`DateTime::since(object $value): Time\Duration`,
+		`Time\Location::load(string $string): Time\Location`,
+		"public function add(int $duration): Time {}",
+		`public function sub(object $value2): Time\Duration {}`,
+		`public function location(): Time\Location {}`,
+		"function opaque(): mixed",
+	} {
+		if !strings.Contains(doc, want) {
+			t.Errorf("generated documentation does not contain %q:\n%s", want, doc)
+		}
 	}
 }

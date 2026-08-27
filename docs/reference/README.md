@@ -107,6 +107,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
 - [phpscript extensions](extensions/README.md) - defer, bare host bindings, function keyword aliases, and portability hazards.
   - [Deferred callbacks](extensions/README.md#deferred-callbacks)
   - [Host-backed APIs](extensions/README.md#host-backed-apis)
+    - [`DateTime` and `Time`](extensions/README.md#datetime-and-time)
     - [`Database`](extensions/README.md#database)
     - [`Database\Migrate`](extensions/README.md#databasemigrate)
     - [`SharedMemory`](extensions/README.md#sharedmemory)
@@ -166,6 +167,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [stdlib/internals](extensions/implemented-apis.md#stdlibinternals)
     - [stdlib/smtp](extensions/implemented-apis.md#stdlibsmtp)
     - [stdlib/span](extensions/implemented-apis.md#stdlibspan)
+    - [stdlib/time](extensions/implemented-apis.md#stdlibtime)
   - [Classes](extensions/implemented-apis.md#classes)
     - [`Database`](extensions/implemented-apis.md#database)
     - [`Database\Migrate`](extensions/implemented-apis.md#databasemigrate)
@@ -178,3 +180,6 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [`Session\Storage\Disk`](extensions/implemented-apis.md#sessionstoragedisk)
     - [`Session\Storage\Memory`](extensions/implemented-apis.md#sessionstoragememory)
     - [`SharedMemory`](extensions/implemented-apis.md#sharedmemory)
+    - [`Time`](extensions/implemented-apis.md#time)
+    - [`Time\Duration`](extensions/implemented-apis.md#timeduration)
+    - [`Time\Location`](extensions/implemented-apis.md#timelocation)

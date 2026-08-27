@@ -85,6 +85,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | storage_list.phpt                     | PASS       | PASS    | SKIP |
 | storage_method_error.phpt             | PASS       | PASS    | SKIP |
 | storage_method_error_caught.phpt      | PASS       | PASS    | SKIP |
+| time.phpt                             | PASS       | PASS    | SKIP |
 
 ## errors
 
@@ -261,7 +262,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | arithmetic  | 21       | 21     | 0      |
 | arrays      | 16       | 16     | 0      |
 | autoloading | 4        | 4      | 0      |
-| bindings    | 18       | 18     | 0      |
+| bindings    | 19       | 19     | 0      |
 | errors      | 2        | 2      | 0      |
 | exceptions  | 9        | 9      | 0      |
 | flatstack   | 7        | 7      | 0      |

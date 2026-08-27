@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -15,6 +16,8 @@ import (
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
+var durationType = reflect.TypeOf(time.Duration(0))
 
 // HostPanicError converts a panic raised by a registered Go constructor,
 // function, or method into the runtime error path. PHP try/catch can therefore
@@ -488,6 +491,19 @@ func coerceArg(v any, want reflect.Type) (reflect.Value, bool) {
 	rv := reflect.ValueOf(v)
 	if rv.Type().AssignableTo(want) {
 		return rv, true
+	}
+	// Duration-taking Go APIs keep their native signature while PHP callers
+	// may use Go's readable duration syntax. This applies equally to registered
+	// functions and automatically exposed methods, so time.Time.Add accepts
+	// both a Time\Duration value and a string such as "30m".
+	if want == durationType {
+		if text, ok := v.(string); ok {
+			duration, err := time.ParseDuration(strings.TrimSpace(text))
+			if err != nil {
+				return reflect.Value{}, false
+			}
+			return reflect.ValueOf(duration), true
+		}
 	}
 	// A string parameter renders the value the way PHP renders it in a string
 	// context. Go's own conversion is defined for every integer type and means

@@ -1,13 +1,13 @@
 # phpscript extensions
 
-| Extension                   | Status              | Notes                                                                               |
-|-----------------------------|---------------------|-------------------------------------------------------------------------------------|
-| `defer()`                   | phpscript extension | Runs callbacks when the current execution frame exits.                              |
-| Host-backed APIs            | phpscript extension | Bare bindings such as `Database`, `Database\Migrate`, `SharedMemory`, and `mail()`. |
-| `func` keyword              | phpscript extension | Alias for block-bodied `function`.                                                  |
-| `fn` keyword                | PHP-incompatible    | Alias for block-bodied `function`, not a PHP arrow function.                        |
-| Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.                             |
-| `{...}` arrays              | PHP-incompatible    | Braces can delimit an array literal.                                                |
+| Extension                   | Status              | Notes                                                              |
+|-----------------------------|---------------------|--------------------------------------------------------------------|
+| `defer()`                   | phpscript extension | Runs callbacks when the current execution frame exits.             |
+| Host-backed APIs            | phpscript extension | Bindings such as `Time`, `Database`, `SharedMemory`, and `mail()`. |
+| `func` keyword              | phpscript extension | Alias for block-bodied `function`.                                 |
+| `fn` keyword                | PHP-incompatible    | Alias for block-bodied `function`, not a PHP arrow function.       |
+| Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.            |
+| `{...}` arrays              | PHP-incompatible    | Braces can delimit an array literal.                               |
 
 These features have no equivalent in the PHP language reference or deliberately use syntax differently. Avoid them when source must also run on PHP.
 
@@ -31,6 +31,38 @@ defer($db->rollback);
 ```
 
 ## Host-backed APIs
+
+### `DateTime` and `Time`
+
+`Time`, `Time\Duration`, and `Time\Location` expose Go's `time.Time`,
+`time.Duration`, and `time.Location` values directly. Go's package-level
+functions are registered as `DateTime` statics; the returned `Time` values
+supply their exported methods automatically:
+
+```php
+set_timezone("Europe/Ljubljana");
+
+$start = DateTime::parse("2006-01-02 15:04", "2026-08-26 14:48");
+$end = $start->add("30m");
+
+echo $end->format("2006-01-02 15:04 MST");
+```
+
+Any PHP argument passed to a Go `time.Duration` parameter may be a duration
+string accepted by Go's `time.ParseDuration`, such as `"500ms"`, `"30m"`, or
+`"2h45m"`. A reusable value can be constructed explicitly:
+
+```php
+$retention = new Time\Duration("168h");
+$expires = $start->add($retention);
+```
+
+`new Time\Location($name)` and `Time\Location::load($name)` load an IANA
+timezone. `set_timezone()` accepts either that value or its name and changes
+the default used by `new Time`, `DateTime::now()`, `DateTime::parse()`,
+`DateTime::date()`, and the Unix constructors. The setting belongs to the
+current runtime; it does not mutate Go's process-wide `time.Local` and cannot
+leak into another request.
 
 ### `Database`
 
@@ -107,7 +139,7 @@ New bindings follow the [naming conventions](../../naming-conventions.md): PHP's
 
 Embedding hosts opt into runtime services separately:
 
-- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterBinding`: `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `SMTP`, and `start_span`.
+- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterBinding`: `Time`, `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `SMTP`, and `start_span`.
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
 - `smtp.Register(rt, sender)` adds the bare `mail()` SMTP binding for a host-configured sender.
 - `smtp.SenderContext(ctx, sender)` makes `new SMTP` deliver through `sender` instead of dialing its configured host. `smtp.NewMemory()` is a sender that queues messages in memory, which is how tests and dry runs capture mail without a mail server.

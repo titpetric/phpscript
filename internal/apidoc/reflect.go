@@ -94,18 +94,32 @@ func typeParamName(p Param) string {
 	return "value"
 }
 
-// reflectReturn folds a Go function's results into one PHP type. A trailing
-// error is thrown, not returned.
-func reflectReturn(t reflect.Type) string {
+// reflectReturn folds a Go function's results into one PHP type. Registered
+// concrete types use their PHP class name; a trailing error is thrown, not
+// returned.
+func reflectReturn(t reflect.Type, classTypes map[reflect.Type]string) string {
 	kept := []string{}
 	for i := 0; i < t.NumOut(); i++ {
 		out := t.Out(i)
 		if out == errorType {
 			continue
 		}
+		if class, ok := classTypes[out]; ok {
+			kept = append(kept, class)
+			continue
+		}
 		kept = append(kept, phpTypeReflect(out))
 	}
 	return returnType(kept)
+}
+
+func hasRegisteredReturn(t reflect.Type, classTypes map[reflect.Type]string) bool {
+	for i := 0; i < t.NumOut(); i++ {
+		if _, ok := classTypes[t.Out(i)]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // isRefSetterType matches func(any), the runner's by-reference setter.

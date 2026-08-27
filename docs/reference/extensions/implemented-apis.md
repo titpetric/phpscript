@@ -1238,6 +1238,87 @@ function mail(string $recipient, string $subject, string $body): void
 function start_span(string $name, mixed ...$kind): mixed
 ```
 
+### stdlib/time
+
+```php
+// DateTime::date constructs an instant in the default location.
+DateTime::date(int $year, mixed $month, int $day, int $hour, int $min, int $sec, int $nsec): Time
+```
+
+```php
+// DateTime::now returns the current instant in the default location.
+DateTime::now(): Time
+```
+
+```php
+// DateTime::parse parses $value with the Go $layout in the default location.
+DateTime::parse(string $layout, string $value): Time
+```
+
+```php
+// DateTime::parse_in_location parses $value with an explicit Time\Location.
+DateTime::parse_in_location(string $string1, string $string2, object $value): Time
+```
+
+```php
+// DateTime::since returns the duration elapsed since $time.
+DateTime::since(object $value): Time\Duration
+```
+
+```php
+// DateTime::unix constructs an instant from seconds and nanoseconds since the Unix epoch.
+DateTime::unix(int $sec, int $nsec): Time
+```
+
+```php
+// DateTime::unix_micro constructs an instant from microseconds since the Unix epoch.
+DateTime::unix_micro(int $usec): Time
+```
+
+```php
+// DateTime::unix_milli constructs an instant from milliseconds since the Unix epoch.
+DateTime::unix_milli(int $msec): Time
+```
+
+```php
+// DateTime::until returns the duration until $time.
+DateTime::until(object $value): Time\Duration
+```
+
+```php
+// Time\Duration::parse parses a Go duration string such as "1h30m".
+Time\Duration::parse(string $string): Time\Duration
+```
+
+```php
+// Time\Location::fixed constructs a location with a fixed offset in seconds east of UTC.
+Time\Location::fixed(string $string, int $num): Time\Location
+```
+
+```php
+// Time\Location::load loads an IANA location by name.
+Time\Location::load(string $string): Time\Location
+```
+
+```php
+// Time\Location::local returns the process-local location.
+Time\Location::local(): Time\Location
+```
+
+```php
+// Time\Location::utc returns UTC.
+Time\Location::utc(): Time\Location
+```
+
+```php
+/**
+ * set_timezone selects the default location used by Time construction,
+ * parsing and Unix conversion in this runtime. It accepts either an IANA
+ * location name or a Time\Location value.
+ */
+function set_timezone(mixed $value): bool
+```
+
 ## Classes
 
 ### `Database`
@@ -1467,9 +1548,9 @@ class HTTP\Request
 
     public function add_cookie(object $value2): void {}
 
-    public function basic_auth(): string|string|bool {}
+    public function basic_auth(): string|bool {}
 
-    public function clone(): object {}
+    public function clone(): HTTP\Request {}
 
     public function context(): object {}
 
@@ -1479,7 +1560,7 @@ class HTTP\Request
 
     public function cookies_named(string $string): array {}
 
-    public function form_file(string $string): object|object {}
+    public function form_file(string $string): object {}
 
     public function form_value(string $string): string {}
 
@@ -1503,7 +1584,7 @@ class HTTP\Request
 
     public function user_agent(): string {}
 
-    public function with_context(): object {}
+    public function with_context(): HTTP\Request {}
 
     public function write(object $value2): void {}
 
@@ -1655,5 +1736,142 @@ class SharedMemory
 
     // set stores a string value.
     public function set(string $key, string $value): void {}
+}
+```
+
+### `Time`
+
+Registered from `stdlib/time`.
+
+```php
+// Time constructs the current instant in the runtime's default location.
+class Time
+{
+    public function __construct() {}
+
+    public function add(int $num): Time {}
+
+    public function add_date(int $num1, int $num2, int $num3): Time {}
+
+    public function after(object $value2): bool {}
+
+    public function append_binary(string $string): string {}
+
+    public function append_format(string $string1, string $string2): string {}
+
+    public function append_text(string $string): string {}
+
+    public function before(object $value2): bool {}
+
+    public function clock(): int {}
+
+    public function compare(object $value2): int {}
+
+    public function date(): int {}
+
+    public function day(): int {}
+
+    public function equal(object $value2): bool {}
+
+    public function format(string $string): string {}
+
+    public function gob_encode(): string {}
+
+    public function hour(): int {}
+
+    public function in(object $value2): Time {}
+
+    public function is_dst(): bool {}
+
+    public function is_zero(): bool {}
+
+    public function iso_week(): int {}
+
+    public function local(): Time {}
+
+    public function location(): Time\Location {}
+
+    public function marshal_binary(): string {}
+
+    public function marshal_text(): string {}
+
+    public function minute(): int {}
+
+    public function month(): int {}
+
+    public function nanosecond(): int {}
+
+    public function round(int $num): Time {}
+
+    public function second(): int {}
+
+    public function sub(object $value2): Time\Duration {}
+
+    public function truncate(int $num): Time {}
+
+    public function unix(): int {}
+
+    public function unix_micro(): int {}
+
+    public function unix_milli(): int {}
+
+    public function unix_nano(): int {}
+
+    public function utc(): Time {}
+
+    public function weekday(): int {}
+
+    public function year(): int {}
+
+    public function year_day(): int {}
+
+    public function zone(): string|int {}
+
+    public function zone_bounds(): Time {}
+}
+```
+
+### `Time\Duration`
+
+Registered from `stdlib/time`.
+
+```php
+/**
+ * Time\Duration constructs a Go duration from a duration string such as
+ * "30m", or from an integer nanosecond count.
+ */
+class Time\Duration
+{
+    public function __construct(mixed $value) {}
+
+    public function abs(): Time\Duration {}
+
+    public function hours(): float {}
+
+    public function microseconds(): int {}
+
+    public function milliseconds(): int {}
+
+    public function minutes(): float {}
+
+    public function nanoseconds(): int {}
+
+    public function round(int $num2): Time\Duration {}
+
+    public function seconds(): float {}
+
+    public function truncate(int $num2): Time\Duration {}
+}
+```
+
+### `Time\Location`
+
+Registered from `stdlib/time`.
+
+```php
+// Time\Location loads an IANA location such as "Europe/Ljubljana".
+class Time\Location
+{
+    public function __construct(string $string) {}
 }
 ```

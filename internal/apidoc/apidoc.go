@@ -56,6 +56,11 @@ type Class struct {
 	Methods []Method
 }
 
+type constructorGroup struct {
+	names []string
+	ctor  any
+}
+
 // Generate renders the implemented-apis markdown for the runtime rt, reading
 // doc comments and parameter names from the Go source rooted at srcRoot.
 func Generate(rt *runner.Runtime, srcRoot string) (string, error) {
@@ -63,25 +68,25 @@ func Generate(rt *runner.Runtime, srcRoot string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	classTypes := registeredClassTypes(rt, src)
 
 	internal, _ := rt.DefinedFunctions()
 	funcs := make([]Func, 0, len(internal))
 	for _, name := range internal {
 		fn, _ := rt.LookupFunc(name)
-		funcs = append(funcs, buildFunc(name, fn, src))
+		funcs = append(funcs, buildFunc(name, fn, src, classTypes))
 	}
 
-	classes := buildClasses(rt, src)
+	classes := buildClasses(rt, src, classTypes)
 
 	return render(funcs, classes), nil
 }
 
 // buildFunc merges the scanned source entry for name with the reflected
-// signature of the registered Go function. Source wins where it has data:
-// it knows parameter names and the doc comment; reflection fills in bindings
-// whose implementation the scan could not resolve (an adapter call, a
-// function from another module).
-func buildFunc(name string, fn any, src *sources) Func {
+// signature of the registered Go function. Source provides parameter names and
+// comments; reflection remains authoritative for returns because it can map a
+// concrete Go type back to the PHP class registered for it.
+func buildFunc(name string, fn any, src *sources, classTypes map[reflect.Type]string) Func {
 	out := Func{Name: name, Returns: "void"}
 	entry := src.funcs[name]
 	if entry != nil {
@@ -103,41 +108,20 @@ func buildFunc(name string, fn any, src *sources) Func {
 	if entry == nil || entry.params == nil {
 		out.Params = reflectParams(t)
 	}
-	if entry == nil || entry.results == nil {
-		out.Returns = reflectReturn(t)
+	if entry == nil || entry.results == nil || hasRegisteredReturn(t, classTypes) {
+		out.Returns = reflectReturn(t, classTypes)
 	}
 	return out
 }
 
 // buildClasses reflects over every registered constructor, grouping class
 // names that share one Go constructor into a single entry.
-func buildClasses(rt *runner.Runtime, src *sources) []Class {
-	type group struct {
-		names []string
-		ctor  any
-	}
-	groups := map[uintptr]*group{}
-	order := []uintptr{}
-	for _, name := range rt.DeclaredClasses() {
-		ctor, ok := rt.LookupConstructor(name)
-		if !ok {
-			continue
-		}
-		key := reflect.ValueOf(ctor).Pointer()
-		g, ok := groups[key]
-		if !ok {
-			g = &group{ctor: ctor}
-			groups[key] = g
-			order = append(order, key)
-		}
-		g.names = append(g.names, name)
-	}
-
-	classes := make([]Class, 0, len(order))
-	for _, key := range order {
-		g := groups[key]
+func buildClasses(rt *runner.Runtime, src *sources, classTypes map[reflect.Type]string) []Class {
+	groups := constructorGroups(rt)
+	classes := make([]Class, 0, len(groups))
+	for _, g := range groups {
 		sort.Strings(g.names)
-		classes = append(classes, buildClass(g.names, g.ctor, src))
+		classes = append(classes, buildClass(g.names, g.ctor, src, classTypes))
 	}
 	sort.Slice(classes, func(i, j int) bool { return classes[i].Name < classes[j].Name })
 	return classes
@@ -145,19 +129,8 @@ func buildClasses(rt *runner.Runtime, src *sources) []Class {
 
 // buildClass assembles one class entry: the primary name is the one a scanned
 // registration site documents, falling back to the shortest of the group.
-func buildClass(names []string, ctor any, src *sources) Class {
-	primary := names[0]
-	for _, name := range names {
-		if len(name) < len(primary) {
-			primary = name
-		}
-	}
-	for _, name := range names {
-		if e := src.ctors[name]; e != nil && len(e.comment) > 0 {
-			primary = name
-			break
-		}
-	}
+func buildClass(names []string, ctor any, src *sources, classTypes map[reflect.Type]string) Class {
+	primary := primaryClassName(names, src)
 
 	out := Class{Name: primary}
 	for _, name := range names {
@@ -196,9 +169,79 @@ func buildClass(names []string, ctor any, src *sources) Class {
 		out.Params = reflectParams(t)
 	}
 	if t.NumOut() > 0 && t.Out(0).Kind() != reflect.Interface {
-		out.Methods = reflectMethods(t.Out(0), src)
+		out.Methods = reflectMethods(t.Out(0), src, classTypes)
 	}
 	return out
+}
+
+func primaryClassName(names []string, src *sources) string {
+	primary := names[0]
+	for _, name := range names {
+		if len(name) < len(primary) {
+			primary = name
+		}
+	}
+	for _, name := range names {
+		if e := src.ctors[name]; e != nil && len(e.comment) > 0 {
+			primary = name
+			break
+		}
+	}
+	return primary
+}
+
+// registeredClassTypes maps the concrete value returned by each constructor
+// to the PHP class name scripts use for that value. Named integer types need
+// this just as much as structs: time.Duration would otherwise render as int.
+func registeredClassTypes(rt *runner.Runtime, src *sources) map[reflect.Type]string {
+	classTypes := map[reflect.Type]string{}
+	for _, group := range constructorGroups(rt) {
+		t, ok := constructorResultType(group.ctor)
+		if !ok {
+			continue
+		}
+		sort.Strings(group.names)
+		classTypes[t] = primaryClassName(group.names, src)
+	}
+	return classTypes
+}
+
+func constructorGroups(rt *runner.Runtime) []*constructorGroup {
+	byConstructor := map[uintptr]*constructorGroup{}
+	groups := []*constructorGroup{}
+	for _, name := range rt.DeclaredClasses() {
+		ctor, ok := rt.LookupConstructor(name)
+		if !ok {
+			continue
+		}
+		key := reflect.ValueOf(ctor).Pointer()
+		group := byConstructor[key]
+		if group == nil {
+			group = &constructorGroup{ctor: ctor}
+			byConstructor[key] = group
+			groups = append(groups, group)
+		}
+		group.names = append(group.names, name)
+	}
+	return groups
+}
+
+func constructorResultType(ctor any) (reflect.Type, bool) {
+	t := reflect.TypeOf(ctor)
+	if t == nil || t.Kind() != reflect.Func {
+		return nil, false
+	}
+	for i := 0; i < t.NumOut(); i++ {
+		out := t.Out(i)
+		if out == errorType {
+			continue
+		}
+		if out.Kind() == reflect.Interface {
+			return nil, false
+		}
+		return out, true
+	}
+	return nil, false
 }
 
 // ctorDecl resolves a constructor value to its scanned declaration through
@@ -226,7 +269,7 @@ func ctorDecl(ctor any, src *sources) (string, *ast.FuncDecl) {
 // reflectMethods lists the PHP-callable surface of the Go type a constructor
 // returns. Method dispatch is case-insensitive with underscores accepted, so
 // the PHP spelling is the Go name in snake_case.
-func reflectMethods(t reflect.Type, src *sources) []Method {
+func reflectMethods(t reflect.Type, src *sources, classTypes map[reflect.Type]string) []Method {
 	typeName := t.Name()
 	if t.Kind() == reflect.Pointer {
 		typeName = t.Elem().Name()
@@ -240,14 +283,14 @@ func reflectMethods(t reflect.Type, src *sources) []Method {
 		out := Method{
 			Name:    camelToSnake(m.Name),
 			Params:  reflectParams(m.Func.Type())[1:], // drop the receiver
-			Returns: reflectReturn(m.Func.Type()),
+			Returns: reflectReturn(m.Func.Type(), classTypes),
 		}
 		if decl := src.method(typeName, m.Name); decl != nil {
 			out.Comment = decl.comment
 			if decl.params != nil {
 				out.Params = decl.params
 			}
-			if decl.results != nil {
+			if decl.results != nil && !hasRegisteredReturn(m.Func.Type(), classTypes) {
 				out.Returns = returnType(decl.results)
 			}
 		}
@@ -268,10 +311,13 @@ var infraMethods = map[string]bool{
 // thrown, not returned, so it never shows.
 func returnType(results []string) string {
 	kept := make([]string, 0, len(results))
+	seen := map[string]bool{}
 	for _, r := range results {
-		if r != "error" {
-			kept = append(kept, r)
+		if r == "error" || seen[r] {
+			continue
 		}
+		seen[r] = true
+		kept = append(kept, r)
 	}
 	switch len(kept) {
 	case 0:

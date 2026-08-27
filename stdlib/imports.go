@@ -17,4 +17,5 @@ import (
 	_ "github.com/titpetric/phpscript/stdlib/session"
 	_ "github.com/titpetric/phpscript/stdlib/smtp"
 	_ "github.com/titpetric/phpscript/stdlib/span"
+	_ "github.com/titpetric/phpscript/stdlib/time"
 )

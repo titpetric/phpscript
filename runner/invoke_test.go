@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
@@ -164,6 +165,39 @@ func TestInvokeMethodArgumentRules(t *testing.T) {
 				t.Fatalf("got %q, want %q", out.String(), test.want)
 			}
 		})
+	}
+}
+
+// A string passed to a Go API that declares time.Duration uses Go's duration
+// syntax. The rule lives at the shared reflection boundary, so automatically
+// exposed methods such as time.Time.Add need no PHP-specific adapter.
+func TestInvokeMethodParsesDurationString(t *testing.T) {
+	program, err := parser.Parse(`<?php $t = new ClockTime; $later = $t->add("30m"); echo $later->format("15:04");`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	rt.RegisterConstructor("ClockTime", func() time.Time {
+		return time.Date(2026, time.August, 26, 14, 48, 0, 0, time.UTC)
+	})
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out.String() != "15:18" {
+		t.Fatalf("got %q, want %q", out.String(), "15:18")
+	}
+}
+
+func TestInvokeBindingParsesDurationString(t *testing.T) {
+	out, err := runBinding(t, "millis", func(duration time.Duration) int64 {
+		return duration.Milliseconds()
+	}, `<?php echo millis("250ms");`)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out != "250" {
+		t.Fatalf("got %q, want %q", out, "250")
 	}
 }
 

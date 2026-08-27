@@ -22,6 +22,24 @@ if err == nil {
 
 Registration is per runtime. Class and function names become part of that runtime's PHP environment; Go APIs are not exposed automatically. Registration is not a complete method allowlist, however: PHP reflection dispatch sees the dynamic concrete value returned by a constructor. Every exported method on that concrete type is callable and every exported field is readable, even when the constructor's declared return type is an interface. Return a dedicated facade type when the underlying implementation has exports that scripts must not see.
 
+Methods need no separate registration. If a constructor or registered function
+returns a concrete Go value, PHP invokes its exported methods through ordinary
+`$value->method(...)` syntax. Method lookup is case-insensitive and accepts
+snake case, so a returned `time.Time` provides `$time->format(...)`,
+`$time->add(...)`, and `$time->unix()` directly. Package-level Go functions are
+not methods and still need explicit registration when they belong on the PHP
+surface, for example `time.Now` as `DateTime::now`. This keeps `Time` aligned
+with the method set of Go's `time.Time`, while `DateTime` represents the
+package-level API.
+
+The argument bridge also recognizes Go's `time.Duration` type. A PHP string is
+parsed with `time.ParseDuration` before invoking any registered function or
+automatically exposed method that declares a duration parameter. Thus a native
+`time.Time` accepts `$time->add("30m")` without an adapter, while callers may
+still pass a `Time\Duration` value or an integer nanosecond count. An invalid
+duration string is rejected as a type error before reflection invokes the Go
+method.
+
 For request-oriented hosts, retain one concurrency-safe `runner.ExprCache` and install it on each fresh runtime with `SetExprCache`. This reuses compiled expression programs across requests while request globals, context, output, and registered capabilities remain isolated in their own runtime. The built-in HTTP server and annotated route service configure shared expression and include caches for their request runtimes.
 
 ## Binding a constructor
