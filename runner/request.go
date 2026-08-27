@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -124,8 +123,32 @@ func NewContext() Context {
 	}
 }
 
-// pathVarRE matches Go 1.22+ ServeMux wildcard segments, e.g. {id} or {rest...}.
-var pathVarRE = regexp.MustCompile(`\{([a-zA-Z_][a-zA-Z0-9_]*)(\.\.\.)?\}`)
+// routePatternKey carries the route path as its author declared it, which
+// RoutePattern puts on the request context.
+type routePatternKey struct{}
+
+// WithRoutePattern records the @route path a request matched, before any
+// router-specific rewriting. $_PATH is built from it.
+//
+// Without it the pattern has to be recovered from r.Pattern, which is the
+// router's own dialect: chi reports /c/* for a route declared /c/{tail...},
+// and the name the value should be exported under is not in there.
+func WithRoutePattern(ctx context.Context, pattern string) context.Context {
+	return context.WithValue(ctx, routePatternKey{}, pattern)
+}
+
+// routePattern returns the declared pattern, falling back to the one the
+// router matched. The fallback covers a host that registers routes itself.
+func routePattern(r *http.Request) string {
+	if pattern, ok := r.Context().Value(routePatternKey{}).(string); ok && pattern != "" {
+		return pattern
+	}
+	// ServeMux prefixes the method; chi does not.
+	if _, path, ok := strings.Cut(r.Pattern, " "); ok {
+		return path
+	}
+	return r.Pattern
+}
 
 // FromRequest builds a Context from an HTTP request with no size limits on the
 // body. A host that has runtime options, which is every host that reads a
@@ -182,15 +205,8 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	// Server variables ($_SERVER).
 	c.serverVars(r)
 
-	// Path values from the matched route pattern, e.g. "GET /users/{id}".
-	// The stdlib exposes individual values via r.PathValue but no enumeration,
-	// so we recover the wildcard names from r.Pattern and look each one up.
-	for _, m := range pathVarRE.FindAllStringSubmatch(r.Pattern, -1) {
-		name := m[1]
-		if val := r.PathValue(name); val != "" {
-			c.Path[name] = val
-		}
-	}
+	// Path values from the matched route ($_PATH).
+	c.pathValues(r)
 
 	// Request headers (canonical name -> first value).
 	for k, v := range r.Header {
@@ -202,6 +218,33 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	}
 
 	return c
+}
+
+// pathValues fills $_PATH from the route parameters the pattern declares.
+//
+// The names come from the declared path rather than the matched one, so a
+// parameter reads back under the name it was written with whichever router
+// served it. Both routers publish the values through r.PathValue: ServeMux
+// natively, chi by calling SetPathValue for every URL param it captured.
+//
+// A {name...} parameter is the exception. chi has no such syntax and is
+// registered with its * wildcard instead, which it publishes under "*".
+func (c Context) pathValues(r *http.Request) {
+	params, err := model.ParseRoutePath(routePattern(r))
+	if err != nil {
+		// A path the grammar refuses is reported by the linter and skipped at
+		// registration, so reaching here means a host registered it directly.
+		return
+	}
+	for _, param := range params {
+		value := r.PathValue(param.Name)
+		if value == "" && param.Rest {
+			value = r.PathValue("*")
+		}
+		if value != "" {
+			c.Path[param.Name] = value
+		}
+	}
 }
 
 // serverVars fills $_SERVER with the part of PHP's server array that the

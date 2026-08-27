@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/model"
@@ -37,9 +38,27 @@ func File(name, src string) ([]Diagnostic, error) {
 		return []Diagnostic{{File: name, Line: 1, Message: fmt.Sprintf("parse error: %v", err)}}, nil
 	}
 	var out []Diagnostic
+	lintRoutes(name, src, &out)
 	lintInterfaces(name, prog, &out)
 	lintStmts(name, prog, &out)
 	return out, nil
+}
+
+// lintRoutes reports an @route path whose parameters the router cannot
+// answer for.
+//
+// The two routers this runtime registers on disagree about what a {...}
+// segment may say, and neither refuses the spellings the other does not
+// understand in a way an author sees: chi takes {module=users} as a parameter
+// of that literal name, matches every request to the segment and exports
+// nothing. Registration skips such a route; this is the diagnostic that names
+// the file and the line before it gets that far.
+func lintRoutes(file, src string, out *[]Diagnostic) {
+	for _, route := range annotations.ParseRoutes([]byte(src)) {
+		if _, err := model.ParseRoutePath(route.Path); err != nil {
+			*out = append(*out, Diagnostic{File: file, Line: route.Line, Message: err.Error()})
+		}
+	}
 }
 
 // lintInterfaces reports a class that declares `implements` and does not

@@ -35,10 +35,14 @@ func newHandler(root fs.FS, config config) *handler {
 	}
 }
 
-// file returns the HTTP handler that serves one annotated PHP endpoint.
-func (h *handler) file(name string) http.Handler {
+// route returns the HTTP handler that serves one annotated PHP endpoint.
+//
+// pattern is the path as the annotation declared it, before either router's
+// rewriting, and rides the request context so $_PATH can name its parameters
+// the way the author wrote them.
+func (h *handler) route(name, pattern string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.serve(w, r, name)
+		h.serve(w, r.WithContext(runner.WithRoutePattern(r.Context(), pattern)), name)
 	})
 }
 

@@ -8,6 +8,8 @@ import (
 	"net/http"
 
 	"github.com/titpetric/platform"
+
+	"github.com/titpetric/phpscript/model"
 )
 
 // Route serves the @route endpoints of a PHP source tree. It is a
@@ -55,12 +57,21 @@ func (r *Route) Register(registrar Registrar) error {
 	var warnings []string
 	err := scanner{root: r.root, excluded: r.config.excludedDirs}.walk(func(file string, src []byte) error {
 		for _, route := range ParseRoutes(src) {
+			// A path the grammar refuses is skipped rather than registered.
+			// chi accepts {module=users} as a parameter of that literal name,
+			// matches every request to the segment and exports nothing, which
+			// is a live route that answers wrongly. `phpscript lint` reports
+			// the same paths with a file and a line.
+			if _, err := model.ParseRoutePath(route.Path); err != nil {
+				warnings = append(warnings, fmt.Sprintf("%s in %s; route not registered", err, file))
+				continue
+			}
 			pattern := route.Method + " " + route.Path
 			if previous, ok := seen[pattern]; ok {
 				warnings = append(warnings, fmt.Sprintf("duplicate route %q in %s; previously registered by %s", pattern, file, previous))
 			}
 			seen[pattern] = file
-			registrar.Handle(route.Method, route.Path, endpoints.file(file))
+			registrar.Handle(route.Method, route.Path, endpoints.route(file, route.Path))
 		}
 		return nil
 	})

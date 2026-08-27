@@ -48,6 +48,28 @@ A route without a method registers both GET and POST. Explicit methods such as
 PUT or DELETE must be written in the annotation. There is no specific handling
 available for HEAD or OPTIONS requests, you have to bind them explicitly.
 
+### Path parameters
+
+Three spellings, each arriving in `$_PATH` under the name it declares:
+
+| Spelling        | Matches                          | `$_PATH`                                                   |
+|-----------------|----------------------------------|------------------------------------------------------------|
+| `{key}`         | one path segment                 | `$_PATH["key"]`                                            |
+| `{pathname...}` | the remaining segments, joined   | `$_PATH["pathname"]` is `docs/2026/report.pdf`             |
+| `{id:[0-9]+}`   | one segment matching the pattern | `$_PATH["id"]`, and a segment that does not match is a 404 |
+
+A name is letters, digits and underscores. Anything else is refused: the route
+is not registered, the server logs it at boot with the file it came from, and
+`phpscript lint` reports it with a line number. There is no default-value
+syntax, so `{module=users}` is an authoring error rather than a route.
+
+The regex constraint is enforced by the bundled server, which routes with
+[chi](https://github.com/go-chi/chi). An application registering these routes
+on a standard library `http.ServeMux` gets the parameter without the
+constraint: `ServeMux` has no equivalent, and rejecting the route there would
+make the same annotation valid or invalid depending on the host. Constrain in
+PHP as well when the check has to hold either way.
+
 PHP endpoint files handle:
 
 - route declarations with `// @route METHOD /path/{param}`

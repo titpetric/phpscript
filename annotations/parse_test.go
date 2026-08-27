@@ -17,20 +17,20 @@ func TestParseRoutesReadsCommentAnnotations(t *testing.T) {
 		{
 			name:   "method and path",
 			source: "<?php\n// @route GET /users/{id}",
-			want:   []model.RouteAnnotation{{Method: http.MethodGet, Path: "/users/{id}"}},
+			want:   []model.RouteAnnotation{{Method: http.MethodGet, Path: "/users/{id}", Line: 2}},
 		},
 		{
 			name:   "path only defaults to GET and POST",
 			source: "<?php\n// @route: /submit",
 			want: []model.RouteAnnotation{
-				{Method: http.MethodGet, Path: "/submit"},
-				{Method: http.MethodPost, Path: "/submit"},
+				{Method: http.MethodGet, Path: "/submit", Line: 2},
+				{Method: http.MethodPost, Path: "/submit", Line: 2},
 			},
 		},
 		{
 			name:   "docblock",
 			source: "<?php\n/**\n * @route PUT /users/{id}\n */",
-			want:   []model.RouteAnnotation{{Method: http.MethodPut, Path: "/users/{id}"}},
+			want:   []model.RouteAnnotation{{Method: http.MethodPut, Path: "/users/{id}", Line: 3}},
 		},
 		{
 			name:   "annotation inside a PHP string",

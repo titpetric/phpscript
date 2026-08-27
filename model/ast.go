@@ -51,6 +51,10 @@ type SourceSpan struct {
 type RouteAnnotation struct {
 	Method string
 	Path   string
+
+	// Line is the 1-based line the annotation was written on, for a
+	// diagnostic that names where to fix it. Zero when the source is unknown.
+	Line int
 }
 
 func (*Program) node() {}

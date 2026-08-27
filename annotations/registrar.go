@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/titpetric/platform"
+
+	"github.com/titpetric/phpscript/model"
 )
 
 // Registrar binds a handler to an HTTP method and path. It is the seam between
@@ -23,7 +25,9 @@ func (r serveMuxRegistrar) Handle(method string, path string, handler http.Handl
 		// path, turning a 404 into an index page.
 		path = "/{$}"
 	}
-	r.ServeMux.Handle(method+" "+path, handler)
+	// ServeMux panics on a pattern it cannot parse, so an unrendered
+	// {id:[0-9]+} takes the process down at registration.
+	r.ServeMux.Handle(method+" "+model.RenderRoutePath(path, model.RouteServeMux), handler)
 }
 
 // platformRegistrar registers routes on a platform router.
@@ -32,5 +36,5 @@ type platformRegistrar struct {
 }
 
 func (r platformRegistrar) Handle(method string, path string, handler http.Handler) {
-	r.Router.Method(method, path, handler)
+	r.Router.Method(method, model.RenderRoutePath(path, model.RouteChi), handler)
 }
