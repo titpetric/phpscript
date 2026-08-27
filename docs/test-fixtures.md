@@ -68,6 +68,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | bindings                              | Flat stack | Runtime | PHP  |
 |---------------------------------------|------------|---------|------|
 | database_datetime.phpt                | PASS       | PASS    | SKIP |
+| database_datetime_bind.phpt           | PASS       | PASS    | SKIP |
 | database_datetime_roundtrip.phpt      | PASS       | PASS    | SKIP |
 | database_migrate.phpt                 | PASS       | PASS    | SKIP |
 | database_property_access.phpt         | PASS       | PASS    | SKIP |
@@ -265,7 +266,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | arithmetic  | 21       | 21     | 0      |
 | arrays      | 16       | 16     | 0      |
 | autoloading | 4        | 4      | 0      |
-| bindings    | 22       | 22     | 0      |
+| bindings    | 23       | 23     | 0      |
 | errors      | 2        | 2      | 0      |
 | exceptions  | 9        | 9      | 0      |
 | flatstack   | 7        | 7      | 0      |
@@ -280,4 +281,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | stdlib      | 11       | 11     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 161      | 161    | 0      |
+| **Total**   | 162      | 162    | 0      |

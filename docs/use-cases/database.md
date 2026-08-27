@@ -259,13 +259,11 @@ statement with no arguments is passed through as it was written: rebinding
 scans rather than parses, and a `?` inside a string literal is not a
 placeholder.
 
-**One value that is not a scalar is bound by name, not by position.** A single
-argument that is an array, a map or an object is taken as a set of named
-parameters for a `:name` query, which is what makes `insert()` and friends
-work. A statement that binds exactly one value, and that value is one of those,
-therefore becomes a named query and fails somewhere else. An array is the usual
-way to trip over it; a `Time` from a date column is the other, see
-[Dates and times](#dates-and-times):
+**One value that is an array is bound by name, not by position.** A single
+argument that is an array or a map is taken as a set of named parameters for a
+`:name` query, which is what makes `insert()` and friends work. A statement
+that binds exactly one value, and that value is an array, therefore becomes a
+named query and fails somewhere else:
 
 ```php
 // Refused: one argument, and it is an array.
@@ -277,6 +275,10 @@ $db->get("select * from users where id = ?", $ids[0]);
 
 Code that builds its argument list at runtime should check for it, as dbadmin's
 `driver_dao::bind()` does, rather than let sqlx report it.
+
+A value the driver binds on its own is exempt, so a lone `Time` from a date
+column is bound by position like any scalar. See
+[Dates and times](#dates-and-times).
 
 `get` returns the first row as an associative array, or `false` when there are
 no rows. `get_all` returns every row as an array of associative arrays:
@@ -400,7 +402,7 @@ Reading back needs no ceremony: the column is a `Time` and its methods are
 there, so `$row["at"]->format(TIME_RFC3339)` renders it and
 `$row["at"]->unix()` compares it.
 
-### Two things that will surprise you
+### One thing that will surprise you
 
 **`echo` prints a wall clock, and the driver chooses the zone.** A value
 written as `14:48:00Z` echoes as `2026-08-26 16:48:00` when it comes back from
@@ -409,12 +411,16 @@ the same instant, printed in a different place. Compare with `->unix()` or
 `->equal()`, never by echoing two values and reading them; format with
 `TIME_RFC3339` when the reading has to be unambiguous.
 
-**A lone `Time` argument is bound by name, not by position.** The rule under
-[Execute queries](#execute-queries) — one argument that is an array becomes a
-named query — is really *one argument that is not a scalar*, and a `Time` is
-not a scalar. `$db->query("insert into events (at) values (?)", $t)` reaches
-the server with its `?` unbound and fails as a syntax error. Bind another
-column alongside it, or format the value into a string.
+A `Time` is exempt from the named-binding rule under
+[Execute queries](#execute-queries), so a statement whose only bound value is
+one works as written:
+
+```php
+$db->query("insert into events (at) values (?)", $t);
+```
+
+That needs pdo v0.2.4 or later. Before it, a lone `Time` was read as a bag of
+named parameters, and the statement reached the server with its `?` unbound.
 
 ## Tracing
 
