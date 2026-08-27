@@ -11,7 +11,7 @@ import (
 
 // RegisterRandom installs the CSPRNG functions on rt. They are the PHP 7+
 // core pair (paragonie/random_compat existed solely to polyfill them), read
-// from crypto/rand — the same source Session\Manager mints session ids from.
+// from crypto/rand, the same source Session\Manager mints session ids from.
 // The seeded family (mt_rand, rand, srand) is deliberately absent: PHP itself
 // points modern code at random_int, and nothing here wants reproducible
 // randomness.

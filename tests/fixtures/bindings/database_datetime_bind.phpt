@@ -1,10 +1,8 @@
 name: a lone Time argument binds by position
 description: >
-  A statement binding exactly one non-scalar value is read as a set of named
-  parameters, which is what makes insert() work. A Time is exempt: it is a
-  value the driver binds on its own, and a date column is written one column
-  at a time often enough that the exemption has to hold. Needs pdo v0.2.4 and
-  the sqlite_test credential from .env.testing.
+  A single non-scalar argument is read as named parameters; a Time is exempt
+  and binds by position. Needs pdo v0.2.4 and the sqlite_test credential
+  from .env.testing.
 runner:
   php: false
 ---

@@ -374,10 +374,9 @@ all; the driver has no reason to parse them, so a script gets the text back.
 
 sqlite has no date type. What makes a column a date there is its **declared**
 type: a `TIMESTAMP` or `DATETIME` column is scanned into a `Time`, a `TEXT`
-column is not, and the text stored in it is what decides the zone —
-`2026-08-26T14:48:00+02:00` keeps the offset, while `2026-08-26 14:48:00` is
-read as UTC whatever it meant. That is the whole argument for RFC 3339 in one
-line.
+column is not, and the text stored in it is what decides the zone.
+`2026-08-26T14:48:00+02:00` keeps the offset; `2026-08-26 14:48:00` is read as
+UTC whatever it meant.
 
 ### Write the layout, do not bind the value
 
@@ -398,9 +397,9 @@ The same call against mysql stores `2026-08-26 16:48:00` and against postgres
 `2026-08-26 14:48:00 +0000 UTC`, so a bound `Time` in a text column has three
 formats depending on which driver is under it. Formatting first has one.
 
-Reading back needs no ceremony: the column is a `Time` and its methods are
-there, so `$row["at"]->format(TIME_RFC3339)` renders it and
-`$row["at"]->unix()` compares it.
+Reading back takes no conversion: the column is a `Time`, so
+`$row["at"]->format(TIME_RFC3339)` renders it and `$row["at"]->unix()`
+compares it.
 
 ### One thing that will surprise you
 

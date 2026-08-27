@@ -1,9 +1,7 @@
 name: a declared DATETIME column survives the round trip to echo
 description: >
-  The driver scans a DATETIME column into a Go time.Time. Echoing it must
-  produce the stored text, the same thing php prints when PDO returns the
-  column as a string: php refuses to convert a DateTime object to a string at
-  all, and every datetime php writes itself is Y-m-d H:i:s. Needs the
+  A DATETIME column scans into a Go time.Time, and echoing it produces the
+  stored text, as PDO does returning the column as a string. Needs the
   sqlite_test credential from .env.testing.
 runner:
   php: false

@@ -1,10 +1,8 @@
 name: Go time values render and destructure
 description: >
-  A Time, a Duration and a Location echo through their Go stringer rather
-  than as an empty string, a named integer counts as an integer in
-  arithmetic, and a Go method with several results arrives as a PHP list.
-  php has no counterpart: it refuses to convert a DateTime to a string at
-  all, and returns none of these as tuples.
+  A Time, a Duration and a Location echo through their Go stringer, a named
+  integer counts as an integer in arithmetic, and a Go method with several
+  results arrives as a PHP list. php has none of these.
 runner:
   php: false
 ---

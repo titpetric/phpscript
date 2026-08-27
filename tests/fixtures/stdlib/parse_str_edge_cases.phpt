@@ -1,9 +1,7 @@
-name: parse_str follows PHP's bracket rules, sharp edges included
+name: parse_str follows PHP's bracket rules
 description: >
-  The rules are a pile of special cases: mangling that applies to the
-  top-level name only, trailing text discarded rather than rejected, and an
-  unterminated first bracket meaning something different from a later one.
-  Every expectation is php's own output.
+  Covers top-level-only name mangling, discarded trailing text, unterminated
+  brackets, shape replacement, append indexing and canonical keys.
 ---
 <?php
 

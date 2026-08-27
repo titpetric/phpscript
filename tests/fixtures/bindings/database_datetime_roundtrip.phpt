@@ -1,10 +1,8 @@
 name: an RFC 3339 instant round trips through a declared date column
 description: >
-  sqlite has no date type: the declared column type is what makes the driver
-  scan into a Time, and the text stored is what carries the zone. Writing the
-  TIME_RFC3339 layout keeps the offset, so the value read back is the instant
-  that was written and not a wall clock in some other zone. Needs the
-  sqlite_test credential from .env.testing.
+  In sqlite the declared column type makes the driver scan into a Time, and
+  the stored text carries the zone. TIME_RFC3339 keeps the offset across the
+  round trip. Needs the sqlite_test credential from .env.testing.
 runner:
   php: false
 ---

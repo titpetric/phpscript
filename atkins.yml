@@ -16,10 +16,10 @@ tasks:
   # the demos.
   #
   # The demo suites are deliberately not here. They are compose services, and
-  # running them costs the whole stack plus a venom suite per demo -- minutes
-  # of work that answers a question about the demo applications rather than
-  # about the runtime. `atkins test:demos` runs them against the image this
-  # pipeline built, and a change under demos/ is expected to.
+  # running them costs the whole stack plus a venom suite per demo. That
+  # answers a question about the demo applications, not about the runtime.
+  # `atkins test:demos` runs them against the image this pipeline built, and a
+  # change under demos/ is expected to.
   default:
     cmds:
       - go mod tidy

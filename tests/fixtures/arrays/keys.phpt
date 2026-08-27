@@ -1,10 +1,7 @@
 name: array keys are integers only when spelled canonically
 description: >
-  PHP has int keys and string keys and nothing else, and the conversion is
-  exact rather than permissive: a string becomes an integer key only when it
-  reads back identically from the integer it would become. The expected
-  section is php's own output, so the matrix run compares against the
-  reference implementation.
+  A string becomes an int key only when it is the canonical spelling of one.
+  Covers null, bool and float keys as well.
 ---
 <?php
 
@@ -38,7 +35,7 @@ $floats[-1.7] = "c";
 var_dump(count($floats));
 foreach ($floats as $k => $v) { var_dump($k, $v); }
 
-// "08" and 8 are two entries, which is the whole point of the rule.
+// "08" and 8 are two entries.
 $two = array();
 $two["08"] = "string";
 $two[8] = "int";

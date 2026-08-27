@@ -23,11 +23,11 @@ import (
 // it knew how.
 //
 // A time.Time takes time.DateTime rather than Go's String or RFC3339. PHP has
-// no string form for a date to copy -- `echo $dateTime` is a fatal Error -- so
-// the rule comes from where PHP writes one itself: the `date` field of
-// var_dump, print_r and json_encode is Y-m-d H:i:s, and PDO hands back a
-// DATETIME column as the text it was stored as. Anything else that can spell
-// itself does, so a Duration is "1h30m0s" and a Month is "August".
+// no string form for a date to copy: `echo $dateTime` is a fatal Error. The
+// rule comes from where PHP writes one itself. The `date` field of var_dump,
+// print_r and json_encode is Y-m-d H:i:s, and PDO hands back a DATETIME column
+// as the text it was stored as. Anything else that can spell itself does, so a
+// Duration is "1h30m0s" and a Month is "August".
 func GoString(v any) (string, bool) {
 	switch x := v.(type) {
 	case time.Time:

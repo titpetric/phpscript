@@ -157,21 +157,21 @@ the mutable/immutable split PHP carries as two classes does not arise. See the
 [stdlib/time section](reference/extensions/implemented-apis.md) for the surface.
 
 `echo $t` prints `2026-08-26 14:48:00`, not Go's `2026-08-26 14:48:00 +0000 UTC`
-and not RFC 3339. PHP has no string form for a date to copy — `echo $dateTime`
-is a fatal `Error`, "Object of class DateTime could not be converted to string"
-— so the rule comes from every place PHP writes a datetime of its own accord:
-the `date` field of a `var_dump`, a `print_r` and a `json_encode` all read
+and not RFC 3339. PHP has no string form for a date to copy: `echo $dateTime`
+is a fatal `Error`, "Object of class DateTime could not be converted to string".
+The rule comes from every place PHP writes a datetime of its own accord. The
+`date` field of a `var_dump`, a `print_r` and a `json_encode` all read
 `Y-m-d H:i:s`, and PDO hands a `DATETIME` column to a script as the text it was
 stored as. Go spells that layout `time.DateTime`. The zone is dropped for the
 reason PHP drops it there, that it is a separate field rather than part of the
 reading; `$t->format("2006-01-02 15:04:05 MST")` prints it when it matters.
 
-Two sharp edges come with dispatching straight to Go's methods. A duration is
-nanoseconds, as it is in Go: `$t->add(86400)` advances the clock by 86.4
-microseconds, not by a day, so write durations as strings and the intent
-survives the reading, `$t->add("24h")`. And a Go method with several results
-arrives as a PHP list, read with `list($year, $week) = $t->iso_week();` — the
-short `[$a, $b] =` spelling does not parse here.
+Dispatching straight to Go's methods has two consequences. A duration is
+nanoseconds, as it is in Go, so `$t->add(86400)` advances the clock by 86.4
+microseconds rather than by a day; write `$t->add("24h")` instead. And a Go
+method with several results arrives as a PHP list, read with
+`list($year, $week) = $t->iso_week();`. The short `[$a, $b] =` spelling does
+not parse here.
 
 ### Cookies
 

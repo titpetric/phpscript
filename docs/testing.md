@@ -248,7 +248,7 @@ Before submitting a change, run the package tests affected by the change, then t
 
 ## The pipeline
 
-`atkins` runs the default pipeline: format, build, `go test`, the fixtures on all three runtimes, the introspection step that regenerates the generated documentation, and the docker image. It needs a Go toolchain, a `php` binary, and docker — for the mysql and postgres containers the database fixtures query, and for the image build. `db:up` starts those two services and the deferred `db:down` stops them, so a pipeline that fails partway still leaves nothing running.
+`atkins` runs the default pipeline: format, build, `go test`, the fixtures on all three runtimes, the introspection step that regenerates the generated documentation, and the docker image. It needs a Go toolchain, a `php` binary, and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services and the deferred `db:down` stops them, so a pipeline that fails partway still leaves nothing running.
 
 `docker:build` is in the default pipeline rather than with the demos: the image is what `compose:up` and `compose:down` operate on and what a deployment ships, so a pipeline run leaves a current one behind whether or not anybody asked for the demos.
 
