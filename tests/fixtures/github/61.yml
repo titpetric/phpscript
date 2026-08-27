@@ -1,0 +1,16 @@
+name: a regex-constrained path parameter is readable through $_PATH
+description: >
+  chi enforced {id:[0-9]+} and carried the value under "id", while the
+  exporter recognised {name} and {name...} only, so $_PATH arrived empty.
+  Reported transcript: GET /b/123 -> 200 with $_PATH == [], GET /b/xyz -> 404.
+
+  Closed. Regression test: tests/github/issue_061_test.go, Test_Issue061.
+runner:
+  php: false
+---
+<?php
+
+// @route GET /b/{id:[0-9]+}
+echo json_encode($_PATH), "\n";
+---
+{"id":"123"}

@@ -37,20 +37,6 @@ echo "public";
 `)},
 	"ignored.txt": {Data: []byte(`// @route GET /ignored`)},
 
-	// The three parameter spellings, and one the grammar refuses.
-	"params/rest.php": {Data: []byte(`<?php
-// @route GET /files/{pathname...}
-echo $_PATH["pathname"];
-`)},
-	"params/constrained.php": {Data: []byte(`<?php
-// @route GET /orders/{id:[0-9]+}
-echo $_PATH["id"];
-`)},
-	"params/malformed.php": {Data: []byte(`<?php
-// @route GET /bad/{module=users}
-echo "reached";
-`)},
-
 	// The four ways an endpoint can end an error, for the error page tests.
 	"api/quiet.php": {Data: []byte(`<?php
 // @route GET /api/quiet
@@ -158,61 +144,6 @@ func TestRouteMountsOnPlatformRouter(t *testing.T) {
 	router.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/users/42", nil))
 	if rr.Code != http.StatusOK || rr.Body.String() != "42" {
 		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
-	}
-}
-
-// The three parameter spellings answer the same way on both routers, though
-// neither router understands all three as written: chi 404s on {name...} and
-// ServeMux panics on {name:regex}, so each is registered in its own dialect
-// and $_PATH is keyed from the declared path.
-//
-// A path the grammar refuses is not registered at all. chi would take
-// {module=users} as a parameter of that literal name, match every request to
-// the segment and export nothing.
-func TestRouteParameterSpellings(t *testing.T) {
-	tests := []struct {
-		name   string
-		url    string
-		status int
-		body   string
-	}{
-		{"one segment", "/users/42", http.StatusOK, "42"},
-		{"remaining segments", "/files/docs/2026/report.pdf", http.StatusOK, "docs/2026/report.pdf"},
-		{"remaining segments, one deep", "/files/report.pdf", http.StatusOK, "report.pdf"},
-		{"constraint matches", "/orders/123", http.StatusOK, "123"},
-		{"constraint refuses", "/orders/xyz", http.StatusNotFound, ""},
-		{"malformed is not registered", "/bad/anything", http.StatusNotFound, ""},
-	}
-
-	routers := map[string]func(t *testing.T) http.Handler{
-		"servemux": func(t *testing.T) http.Handler { return newTestMux(t) },
-		"chi": func(t *testing.T) http.Handler {
-			router := chi.NewRouter()
-			if err := annotations.NewRoute(testRouteFileSystem).Mount(context.Background(), router); err != nil {
-				t.Fatal(err)
-			}
-			return router
-		},
-	}
-	for routerName, build := range routers {
-		for _, test := range tests {
-			t.Run(routerName+"/"+test.name, func(t *testing.T) {
-				// ServeMux has no regex constraint, so it answers a request
-				// chi refuses. The parameter still arrives.
-				status, body := test.status, test.body
-				if routerName == "servemux" && test.name == "constraint refuses" {
-					status, body = http.StatusOK, "xyz"
-				}
-				rr := httptest.NewRecorder()
-				build(t).ServeHTTP(rr, httptest.NewRequest(http.MethodGet, test.url, nil))
-				if rr.Code != status {
-					t.Fatalf("status = %d, want %d, body = %q", rr.Code, status, rr.Body.String())
-				}
-				if status == http.StatusOK && rr.Body.String() != body {
-					t.Fatalf("body = %q, want %q", rr.Body.String(), body)
-				}
-			})
-		}
 	}
 }
 

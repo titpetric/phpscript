@@ -1,0 +1,19 @@
+name: a default-value path parameter is refused, not half-registered
+description: >
+  The annotation registered a chi parameter literally named "module=users",
+  matched anything in that segment and exported nothing. There is no
+  default-value syntax, so the path is an authoring error: it is not
+  registered, the boot log names the file, and phpscript lint reports the
+  line. Reported transcript: GET /a/anything -> 200 with $_PATH == [].
+
+  Closed. Regression test: tests/github/issue_060_test.go, Test_Issue060.
+runner:
+  php: false
+error: malformed path parameter {module=users}
+---
+<?php
+
+// @route GET /a/{module=users}
+echo json_encode($_PATH), "\n";
+---
+Internal Server Error

@@ -1,0 +1,17 @@
+name: a path parameter matches the remaining segments and exports them
+description: >
+  {tail...} registered and never matched, because nothing turned it into
+  chi's wildcard, while the bare /* matched with no name to export the tail
+  under. Reported transcript: GET /c/one/two -> 404, GET /d/one/two -> 200
+  with $_PATH == [].
+
+  Closed. Regression test: tests/github/issue_062_test.go, Test_Issue062.
+runner:
+  php: false
+---
+<?php
+
+// @route GET /c/{tail...}
+echo json_encode($_PATH), "\n";
+---
+{"tail":"one/two"}

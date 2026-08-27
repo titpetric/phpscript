@@ -255,6 +255,19 @@ phpscript test --matrix tests/fixtures/...
 
 A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it passes the php column of the matrix.
 
+## Issue reproductions
+
+[`tests/fixtures/github`](../tests/fixtures/github) holds one file per GitHub issue, in the `.phpt` format under a `.yml` extension. Nothing there runs: the fixture runner discovers `.phpt` only, and the extension is what keeps a file written against *expected* behaviour out of the passing suite. The files stay after their issue closes, as the log of what was reported.
+
+An issue whose behaviour a fixture can reach closes by renaming its file to `.phpt` and moving it to the area it belongs to. It joins the matrix from there.
+
+An issue whose behaviour a fixture cannot reach closes with a Go test in [`tests/github`](../tests/github), one file per issue, `issue_NNN_test.go` holding `Test_IssueNNN`. Route registration, server flags and host bindings are all outside what a script can observe, so they are covered there. The `.yml` stays and its description names the test.
+
+```text
+tests/fixtures/github/62.yml     the transcript that was reported
+tests/github/issue_062_test.go   Test_Issue062, the check that fails on a regression
+```
+
 ## The pipeline
 
 `atkins` runs the default pipeline: format, build, `go test`, the fixtures on all three runtimes, the introspection step that regenerates the generated documentation, and the docker image. It needs a Go toolchain, a `php` binary, and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services and the deferred `db:down` stops them, so a pipeline that fails partway still leaves nothing running.
