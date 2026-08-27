@@ -57,3 +57,21 @@ and the `T_*` tokenizer ids.
 tested against. It is not a claim of full compatibility with that release; it is
 the number library code reads when it decides which language features it may
 use.
+
+### Time layouts
+
+`TIME_RFC3339`, `TIME_RFC3339_NANO`, `TIME_DATETIME`, `TIME_DATE_ONLY` and
+`TIME_TIME_ONLY` hold the [Go layouts](https://pkg.go.dev/time#pkg-constants)
+of the same names, for `$t->format()` and `DateTime::parse()`. A layout is an
+ordinary string and any of them can be written out; these are the ones worth
+naming.
+
+`TIME_RFC3339` is the one to reach for by default. It is the only layout here
+that carries the UTC offset, so it is the one that survives a round trip
+through a database column or a JSON payload, and it is what `json_encode`
+already emits for a `Time`. See
+[Dates and times](../../use-cases/database.md#dates-and-times).
+
+The names are flat because a namespaced constant does not parse in this
+runtime: the classes are `Time\Duration` and `Time\Location`, but a constant
+spells that prefix `TIME_`.

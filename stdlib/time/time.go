@@ -39,6 +39,19 @@ type clock struct {
 func Register(rt *runner.Runtime) {
 	c := &clock{location: stdtime.Local}
 
+	// The layouts worth naming, under Go's own names for them. A layout is an
+	// ordinary string and any of them can be written out, but the one a script
+	// should reach for by default deserves to be spelled rather than
+	// remembered: TIME_RFC3339 is the only layout here that carries the offset,
+	// so it is the one that survives a round trip through a database column or
+	// a JSON payload. A namespaced constant does not parse in this runtime, so
+	// the Time\ prefix the classes use is spelled TIME_ here.
+	rt.SetConst("TIME_RFC3339", stdtime.RFC3339)
+	rt.SetConst("TIME_RFC3339_NANO", stdtime.RFC3339Nano)
+	rt.SetConst("TIME_DATETIME", stdtime.DateTime)
+	rt.SetConst("TIME_DATE_ONLY", stdtime.DateOnly)
+	rt.SetConst("TIME_TIME_ONLY", stdtime.TimeOnly)
+
 	// Time constructs the current instant in the runtime's default location.
 	rt.RegisterConstructor("Time", func() stdtime.Time {
 		return c.now()

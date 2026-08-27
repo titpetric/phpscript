@@ -259,11 +259,13 @@ statement with no arguments is passed through as it was written: rebinding
 scans rather than parses, and a `?` inside a string literal is not a
 placeholder.
 
-**One value that is an array is bound by name, not by position.** A single
-argument that is an array or a map is taken as a set of named parameters for a
-`:name` query, which is what makes `insert()` and friends work. A statement
-that binds exactly one value, and that value is an array, therefore becomes a
-named query and fails somewhere else:
+**One value that is not a scalar is bound by name, not by position.** A single
+argument that is an array, a map or an object is taken as a set of named
+parameters for a `:name` query, which is what makes `insert()` and friends
+work. A statement that binds exactly one value, and that value is one of those,
+therefore becomes a named query and fails somewhere else. An array is the usual
+way to trip over it; a `Time` from a date column is the other, see
+[Dates and times](#dates-and-times):
 
 ```php
 // Refused: one argument, and it is an array.
@@ -333,6 +335,86 @@ $db->close();
 
 `connect()` does not select or configure a named database. The connection name
 is always passed to `new Database("name")`.
+
+## Dates and times
+
+A date column is the one place a Go value crosses into PHP without a conversion
+being written for it: the driver scans it into a `time.Time`, and that is the
+same value [stdlib/time](../design.md#dates-and-times) hands a script. That is
+worth designing for rather than working around, and the design is one rule:
+
+**store the offset.** Prefer the column type that carries one, and write RFC
+3339 (`2026-08-26T14:48:00+02:00`) wherever the column is text. It is what
+`json_encode` already emits for a `Time`, so one spelling covers a database
+column, a JSON payload and a Go binding, and the layout has a name:
+`$t->format(TIME_RFC3339)`.
+
+### Column types, per dialect
+
+Measured against the drivers this runtime ships, writing `2026-08-26T14:48:00Z`
+and reading it back:
+
+| Dialect  | Column type            | Stored as                       | Read back as                       |    |
+|----------|------------------------|---------------------------------|------------------------------------|----|
+| postgres | `TIMESTAMPTZ`          | `2026-08-26 14:48:00+00`        | `Time`, in the session zone        | ✅ |
+| postgres | `TIMESTAMP`            | wall clock, no offset           | `Time`, labelled UTC               | ⚠️  |
+| postgres | `DATE`                 | `2026-08-26`                    | `Time` at midnight UTC             |    |
+| mysql    | `TIMESTAMP`            | `2026-08-26 16:48:00`, in `loc` | `Time`, in `loc` (the DSN's)       | ✅ |
+| mysql    | `DATETIME`             | as above                        | as above                           | ⚠️  |
+| sqlite   | `TIMESTAMP`/`DATETIME` | whatever text was written       | `Time`, offset read from that text | ✅ |
+| any      | `TEXT`/`VARCHAR`       | see below                       | a plain string                     | ❌ |
+
+A `TIMESTAMPTZ` and a mysql `TIMESTAMP` both store an instant and both round
+trip one. The rows marked ⚠️ store a wall clock instead: they round trip
+correctly only while every writer and reader agrees on one zone, and they have
+no way to say which zone that was. The rows marked ❌ are not date columns at
+all; the driver has no reason to parse them, so a script gets the text back.
+
+sqlite has no date type. What makes a column a date there is its **declared**
+type: a `TIMESTAMP` or `DATETIME` column is scanned into a `Time`, a `TEXT`
+column is not, and the text stored in it is what decides the zone —
+`2026-08-26T14:48:00+02:00` keeps the offset, while `2026-08-26 14:48:00` is
+read as UTC whatever it meant. That is the whole argument for RFC 3339 in one
+line.
+
+### Write the layout, do not bind the value
+
+Binding a `Time` straight into a statement works for the dialects that have a
+date type, and produces something unusable for the one that does not:
+
+```php
+// sqlite stores Go's own rendering, which its date functions cannot read:
+//   2026-08-26 14:48:00 +0000 UTC
+$db->query("insert into events (id, at) values (?, ?)", 1, $t);
+
+// Portable, and readable by strftime() and datetime() alike:
+//   2026-08-26T16:48:00+02:00
+$db->query("insert into events (id, at) values (?, ?)", 1, $t->format(TIME_RFC3339));
+```
+
+The same call against mysql stores `2026-08-26 16:48:00` and against postgres
+`2026-08-26 14:48:00 +0000 UTC`, so a bound `Time` in a text column has three
+formats depending on which driver is under it. Formatting first has one.
+
+Reading back needs no ceremony: the column is a `Time` and its methods are
+there, so `$row["at"]->format(TIME_RFC3339)` renders it and
+`$row["at"]->unix()` compares it.
+
+### Two things that will surprise you
+
+**`echo` prints a wall clock, and the driver chooses the zone.** A value
+written as `14:48:00Z` echoes as `2026-08-26 16:48:00` when it comes back from
+mysql or from a `TIMESTAMPTZ`, because both return it in the local zone. It is
+the same instant, printed in a different place. Compare with `->unix()` or
+`->equal()`, never by echoing two values and reading them; format with
+`TIME_RFC3339` when the reading has to be unambiguous.
+
+**A lone `Time` argument is bound by name, not by position.** The rule under
+[Execute queries](#execute-queries) — one argument that is an array becomes a
+named query — is really *one argument that is not a scalar*, and a `Time` is
+not a scalar. `$db->query("insert into events (at) values (?)", $t)` reaches
+the server with its `?` unbound and fails as a syntax error. Bind another
+column alongside it, or format the value into a string.
 
 ## Tracing
 
