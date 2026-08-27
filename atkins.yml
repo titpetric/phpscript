@@ -5,6 +5,17 @@ env:
   vars:
     GOFLAGS: ""
 
+# The demo trees, named once rather than spelled out per task. `demos.all` is
+# every tree with a composer.json, which is what composer:install walks;
+# `demos.venom` is the subset that is a compose service with a venom suite of
+# its own. demos/common is in the first and not the second: it is a package
+# whose fixtures sit beside its source, so it answers to test:phpscript:common
+# rather than to a server.
+vars:
+  demos:
+    all: [example, dbadmin, common]
+    venom: [dbadmin, example]
+
 tasks:
   # The default pipeline is what a change to the runtime has to pass: format,
   # build, test, run the fixtures on all three runtimes, regenerate the
@@ -66,16 +77,21 @@ tasks:
       - task: compose:up
       - task: compose:down
         deferred: true
-      - task: test:demos:dbadmin
-      - task: test:demos:example
+      - task: test:demos:venom
 
   # titpetric/minitpl is pulled in per project rather than vendored by hand, so
   # every tree with a composer.json is installed before the demos are packaged
   # into the image. No Go test reads these trees; it runs for the image's sake.
+  #
+  # A for: over the list rather than a shell loop, because the shell one took
+  # the exit code of its last iteration: a failed install in demos/example
+  # passed the task as long as the one after it worked.
   composer:install:
     passthru: true
     cmds:
-      - for dir in demos/example demos/dbadmin demos/common; do (cd $dir && composer install --no-interaction); done
+      - for: demo in demos.all
+        dir: demos/${{ demo }}
+        run: composer install --no-interaction
 
   # phpscript-common ships a fixture beside every source file, so the suite is
   # the package's own test run rather than a demo's. It needs no database and
@@ -90,19 +106,17 @@ tasks:
       - phpscript test --matrix -v ./src/...
 
   # The demos are compose services, so their venom suites run against the image
-  # test:demos builds. They have their own pipelines because they have to
-  # resolve the address of their container first.
-  test:demos:dbadmin:
-    dir: demos/dbadmin/tests
+  # test:demos builds. Each has a pipeline of its own because it has to resolve
+  # the address of its container first, which is why this delegates to
+  # `atkins test` in the demo's tests/ rather than running venom here. One task
+  # over the list: the command is the same in every tree, only the directory it
+  # runs from differs.
+  test:demos:venom:
     passthru: true
     cmds:
-      - atkins --final test
-
-  test:demos:example:
-    dir: demos/example/tests
-    passthru: true
-    cmds:
-      - atkins --final test
+      - for: demo in demos.venom
+        dir: demos/${{ demo }}/tests
+        run: atkins --final test
 
   test:introspection:
     passthru: true
