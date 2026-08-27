@@ -248,12 +248,15 @@ Before submitting a change, run the package tests affected by the change, then t
 
 ## The pipeline
 
-`atkins` runs the default pipeline: format, build, `go test`, the fixtures on all three runtimes, and the introspection step that regenerates the generated documentation. It needs a Go toolchain, a `php` binary, and docker for the mysql and postgres containers the database fixtures query — `db:up` starts those two services and the deferred `db:down` stops them, so a pipeline that fails partway still leaves nothing running.
+`atkins` runs the default pipeline: format, build, `go test`, the fixtures on all three runtimes, the introspection step that regenerates the generated documentation, and the docker image. It needs a Go toolchain, a `php` binary, and docker — for the mysql and postgres containers the database fixtures query, and for the image build. `db:up` starts those two services and the deferred `db:down` stops them, so a pipeline that fails partway still leaves nothing running.
 
-The demos are not in the default pipeline. `atkins test:demos` runs them, and it is the slow half: a `--no-cache` image build, the whole compose stack, and a venom suite per demo. It answers a question about [demos/dbadmin](../demos/dbadmin) and [demos/example](../demos/example) rather than about the runtime, so a change under `demos/` is what should run it.
+`docker:build` is in the default pipeline rather than with the demos: the image is what `compose:up` and `compose:down` operate on and what a deployment ships, so a pipeline run leaves a current one behind whether or not anybody asked for the demos.
+
+The demo *suites* are not in the default pipeline. `atkins test:demos` brings the compose stack up and runs a venom suite against each of [demos/dbadmin](../demos/dbadmin) and [demos/example](../demos/example). It runs whatever image is on the host rather than building one, so run `atkins` first when the demos have to exercise the tree rather than the last release.
 
 ```bash
-atkins                     # the runtime: everything a change to Go or stdlib has to pass
+atkins                     # the runtime, the docs and the image
 atkins test:demos          # the demo applications, against the compose stack
+atkins docker:build        # just the image
 atkins test:phpscript:matrix   # just the fixture matrix
 ```
