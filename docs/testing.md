@@ -244,7 +244,16 @@ go test ./tests -run 'TestFixtures/arrays/sort'  # one fixture
 go test ./tests -run 'TestFlatstackFixtures/arrays/sort'
 ```
 
-Before submitting a change, run the package tests affected by the change, then the complete suite with `go test ./...`, and then `phpscript test --matrix tests/fixtures/...`. A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it passes the php column of the matrix.
+Before submitting a change, run the package tests affected by the change, then the complete suite with `go test ./...`, and then the matrix:
+
+```bash
+go install .                                    # the matrix runs the installed binary
+phpscript test --matrix tests/fixtures/...
+```
+
+`go install .` is not optional. `phpscript test` runs the binary on `PATH`, not the tree, so an edited runtime that has not been installed is tested in its previous state and the fixtures pass or fail on code that is no longer there. `go test ./tests` has no such gap: it compiles the tree in process. `GOBIN` is also shared between checkouts, so a second clone of this repository installing over the same path produces the same symptom.
+
+A change to language or runtime behavior is not finished until it has a fixture, and a fixture covering PHP's own behavior is not finished until it passes the php column of the matrix.
 
 ## The pipeline
 
