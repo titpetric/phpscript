@@ -75,14 +75,14 @@ tasks:
   composer:install:
     passthru: true
     cmds:
-      - for dir in demos/example demos/dbadmin demos/common-phpscript; do (cd $dir && composer install --no-interaction); done
+      - for dir in demos/example demos/dbadmin demos/common; do (cd $dir && composer install --no-interaction); done
 
   # phpscript-common ships a fixture beside every source file, so the suite is
   # the package's own test run rather than a demo's. It needs no database and
   # no server: every component is exercised against the memory store that
   # stands in for its SQL one, which is what the store interfaces exist for.
   test:phpscript:common:
-    dir: demos/common-phpscript
+    dir: demos/common
     tty: true # enable ansi
     passthru: true
     cmds:
