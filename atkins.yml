@@ -47,7 +47,6 @@ tasks:
       - task: test:phpscript:run
       - task: test:phpscript:matrix
       - task: test:introspection
-      - task: composer:install
       - task: test:phpscript:common
       - task: docker:build
 
@@ -75,14 +74,16 @@ tasks:
   test:demos:
     desc: "Run the demo venom suites against the compose stack"
     cmds:
+      - task: composer:install
       - task: compose:up
       - task: compose:down
         deferred: true
       - task: test:demos:venom
 
   # titpetric/minitpl is pulled in per project rather than vendored by hand, so
-  # every tree with a composer.json is installed before the demos are packaged
-  # into the image. No Go test reads these trees; it runs for the image's sake.
+  # every tree with a composer.json is installed before the demo suites run.
+  # No Go test reads these trees, which is why the default pipeline skips this:
+  # it belongs to test:demos, the job that executes them.
   #
   # A for: over the list rather than a shell loop, because the shell one took
   # the exit code of its last iteration: a failed install in demos/example
