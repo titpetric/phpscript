@@ -1599,9 +1599,24 @@ func combineErrors(errs ...error) error {
 // func_get_args() can return them.
 const argsKey = "__args__"
 
-// bindParams binds positional args to parameter names, applying defaults.
+// bindParams binds positional args to parameter names, applying defaults. A
+// variadic parameter collects every remaining argument into one array, an
+// empty one when the caller stopped short of it, and is the last binding
+// either way, as the parser allows `...` only in final position.
 func (rt *Runtime) bindParams(decl *model.FuncDecl, args []any, scope *Scope) error {
 	for i, p := range decl.Params {
+		if p.Variadic {
+			n := 0
+			if len(args) > i {
+				n = len(args) - i
+			}
+			rest := model.NewArraySize(n)
+			for _, arg := range args[i:] {
+				rest.Append(arg)
+			}
+			scope.Set(p.Name, rest)
+			return nil
+		}
 		if i < len(args) {
 			scope.Set(p.Name, args[i])
 			continue

@@ -271,7 +271,11 @@ func (c *compiler) classMethod(className string, node *model.FuncDecl, path stri
 	params := make([]string, 0, 1+len(node.Params))
 	params = append(params, "this")
 	_ = c.slot("this")
-	for _, param := range node.Params {
+	for i, param := range node.Params {
+		if param.Variadic {
+			// See funcDecl: a collecting parameter has no slot to compile to.
+			return unsupported(fmt.Sprintf("%s.param[%d]", path, i), "variadic parameter")
+		}
 		params = append(params, param.Name)
 		_ = c.slot(param.Name)
 	}
@@ -406,7 +410,13 @@ func (c *compiler) funcDecl(node *model.FuncDecl, path string) error {
 		c.class = enclosingClass
 	}()
 
-	for _, param := range node.Params {
+	for i, param := range node.Params {
+		if param.Variadic {
+			// The parameter table pairs one slot with one argument, so a
+			// collecting parameter has no slot to compile to; the interpreter
+			// binds it.
+			return unsupported(fmt.Sprintf("%s.param[%d]", path, i), "variadic parameter")
+		}
 		_ = c.slot(param.Name)
 	}
 
