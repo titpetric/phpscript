@@ -144,6 +144,18 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | static_var_recursion.phpt               | PASS       | PASS    | PASS |
 | user_function_declaration_and_call.phpt | PASS       | PASS    | PASS |
 
+## gd
+
+| gd               | Flat stack | Runtime | PHP  |
+|------------------|------------|---------|------|
+| color.phpt       | PASS       | PASS    | PASS |
+| create.phpt      | PASS       | PASS    | PASS |
+| decode.phpt      | PASS       | PASS    | PASS |
+| draw.phpt        | PASS       | PASS    | PASS |
+| image_class.phpt | PASS       | PASS    | SKIP |
+| resample.phpt    | PASS       | PASS    | PASS |
+| write.phpt       | PASS       | PASS    | PASS |
+
 ## includes
 
 | includes                | Flat stack | Runtime | PHP  |
@@ -175,6 +187,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | is_object.phpt                   | PASS       | PASS    | PASS |
 | new_self_refused.phpt            | PASS       | PASS    | SKIP |
 | new_static_refused.phpt          | PASS       | PASS    | SKIP |
+| new_variable_class.phpt          | PASS       | PASS    | PASS |
 | object_cast.phpt                 | PASS       | PASS    | PASS |
 | object_nesting.phpt              | PASS       | PASS    | SKIP |
 | property_incdec.phpt             | PASS       | PASS    | PASS |
@@ -297,9 +310,10 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | exceptions  | 9        | 9      | 0      |
 | flatstack   | 7        | 7      | 0      |
 | functions   | 9        | 9      | 0      |
+| gd          | 7        | 7      | 0      |
 | includes    | 3        | 3      | 0      |
 | namespaces  | 2        | 2      | 0      |
-| oop         | 23       | 23     | 0      |
+| oop         | 24       | 24     | 0      |
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
@@ -307,4 +321,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | stdlib      | 16       | 16     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 8        | 8      | 0      |
-| **Total**   | 188      | 188    | 0      |
+| **Total**   | 196      | 196    | 0      |

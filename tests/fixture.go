@@ -531,8 +531,10 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 		rt.RegisterConstructor("Storage", NewStorage)
 		rt.RegisterConstructor("FailStorage", NewFailStorage)
 		registerPanicBindings(rt)
-		stdlib.RegisterFS(rt, f.RootDir())
+		// Register installs the shims rooted at the process working directory;
+		// RegisterFS rebinds them to the fixture, so it has to run after it.
 		stdlib.Register(rt)
+		stdlib.RegisterFS(rt, f.RootDir())
 		// The harness parses and runs the fixture directly rather than going
 		// through LoadFile, so nothing else sets the entrypoint and __FILE__
 		// and __DIR__ would both be empty. An empty __DIR__ silently turns
@@ -595,8 +597,8 @@ func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, ro
 	runtime.RegisterConstructor("Storage", NewStorage)
 	runtime.RegisterConstructor("FailStorage", NewFailStorage)
 	registerPanicBindings(runtime)
-	stdlib.RegisterFS(runtime, rootDir)
 	stdlib.Register(runtime)
+	stdlib.RegisterFS(runtime, rootDir)
 	runtime.UpdateFilename(entrypoint)
 	return runtime
 }

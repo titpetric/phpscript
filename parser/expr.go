@@ -265,6 +265,10 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			p.next()
 			// `$obj->$m(...)` calls the method named by `$m`. Without the
 			// parens it would be a dynamic property, which stays unsupported.
+			//
+			// Only the bare variable is read. PHP 7's uniform variable syntax
+			// made `$obj->$m["get"]()` mean `($obj->$m)["get"]()`, so taking
+			// the index here would call a different method than PHP does.
 			if p.cur().kind == tVar && p.peek(1).kind == tOp && p.peek(1).val == "(" {
 				varName := p.next().val
 				args, err := p.parseArgs()
@@ -272,6 +276,29 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 					return nil, err
 				}
 				e = &model.MethodCall{Base: e, MethodExpr: &model.Var{Name: varName}, Args: args}
+				continue
+			}
+			// `$obj->{expr}(...)` calls the method the expression names. The
+			// braces are how a name that is not a plain variable is spelled
+			// since PHP 7: `$obj->{$calls["read"]}()` is the method `$calls`
+			// holds, where the unbraced form would subscript a property.
+			if p.isOp("{") {
+				p.next()
+				method, err := p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
+				if err := p.eatOp("}"); err != nil {
+					return nil, err
+				}
+				if !p.isOp("(") {
+					return nil, fmt.Errorf("line %d: expected %q after a braced member name", p.cur().line, "(")
+				}
+				args, err := p.parseArgs()
+				if err != nil {
+					return nil, err
+				}
+				e = &model.MethodCall{Base: e, MethodExpr: method, Args: args}
 				continue
 			}
 			if p.cur().kind != tIdent {
@@ -565,13 +592,55 @@ func (p *parser) parseList() (model.Expr, error) {
 	return &model.ListExpr{Elems: p.exprs.take(mark)}, p.eatOp(")")
 }
 
+// parseVarRef reads the value a class name can be held in: a variable, then any
+// index and property accessors applied to it. It stops before "(", so the
+// caller owns the argument list; that boundary is what separates the name from
+// the constructor call in `new $factories["png"]($file)`.
+func (p *parser) parseVarRef() (model.Expr, error) {
+	if p.cur().kind != tVar {
+		return nil, fmt.Errorf("line %d: expected a variable, got %s", p.cur().line, p.cur())
+	}
+	var e model.Expr = &model.Var{Name: p.next().val}
+	for {
+		switch {
+		case p.isOp("["):
+			p.next()
+			if p.isOp("]") {
+				return nil, fmt.Errorf("line %d: expected an index holding the name", p.cur().line)
+			}
+			idx, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			if err := p.eatOp("]"); err != nil {
+				return nil, err
+			}
+			e = p.newIndex(e, idx)
+		case p.isOp("->") && p.peek(1).kind == tIdent:
+			p.next()
+			e = p.newProp(e, p.next().val)
+		default:
+			return e, nil
+		}
+	}
+}
+
 func (p *parser) parseNew() (model.Expr, error) {
 	if p.isKw("class") {
 		return p.parseAnonClass()
 	}
-	// `new $className(...)`: the class is named by a runtime value.
+	// `new $className(...)`: the class is named by a runtime value. The name
+	// can be held in an index or a property as well as in the variable itself,
+	// so the whole reference is taken here rather than only the variable.
+	// Leaving the accessors to parsePostfix would read
+	// `new $renderers["json"]($data)` as `(new $renderers)["json"]($data)`,
+	// which constructs the wrong thing and then calls the result.
 	if p.cur().kind == tVar {
-		n := &model.New{ClassExpr: &model.Var{Name: p.next().val}}
+		class, err := p.parseVarRef()
+		if err != nil {
+			return nil, err
+		}
+		n := &model.New{ClassExpr: class}
 		if p.isOp("(") {
 			args, err := p.parseArgs()
 			if err != nil {

@@ -1224,6 +1224,108 @@ function touch(string $filename, int ...$mtime): bool
 function unlink(string $filename): bool
 ```
 
+### stdlib/gd
+
+#### color
+
+```php
+// imagecolorallocate returns an opaque colour identifier for $red, $green and $blue, each 0 to 255.
+function imagecolorallocate(mixed $im, int $red, int $green, int $blue): mixed
+```
+
+```php
+// imagecolorat returns the packed colour identifier of the pixel at $x, $y.
+function imagecolorat(mixed $im, int $x, int $y): mixed
+```
+
+```php
+// imagecolorsforindex splits the packed identifier $color into an array with red, green, blue and alpha keys.
+function imagecolorsforindex(mixed $unused, int $packed): array
+```
+
+#### create
+
+```php
+// imagecreatefromgif decodes $filename as GIF and returns an image, or false when it cannot be read.
+function imagecreatefromgif(string $string): mixed
+```
+
+```php
+// imagecreatefromjpeg decodes $filename as JPEG and returns an image, or false when it cannot be read.
+function imagecreatefromjpeg(string $string): mixed
+```
+
+```php
+// imagecreatefrompng decodes $filename as PNG and returns an image, or false when it cannot be read.
+function imagecreatefrompng(string $string): mixed
+```
+
+```php
+// imagecreatetruecolor returns a new true colour image of $width by $height, filled with opaque black.
+function imagecreatetruecolor(int $width, int $height): mixed
+```
+
+```php
+// imagedestroy frees $image. Memory is reclaimed automatically here, so it only drops the pixels and returns true.
+function imagedestroy(mixed $im): bool
+```
+
+#### draw
+
+```php
+// imagecopyresampled copies a $src_w by $src_h region of $src at $src_x, $src_y into $dst at $dst_x, $dst_y, scaled to $dst_w by $dst_h, interpolating as it goes.
+function imagecopyresampled(mixed $dst, mixed $src, int $dst_x, int $dst_y, int $src_x, int $src_y, int $dst_w, int $dst_h, int $src_w, int $src_h): bool
+```
+
+```php
+// imagefill flood fills from $x, $y in $color, replacing the connected region that shares the starting pixel's colour.
+function imagefill(mixed $im, int $x, int $y, int $packed): bool
+```
+
+```php
+// imagefilledrectangle fills the rectangle with corners $x1, $y1 and $x2, $y2 in $color.
+function imagefilledrectangle(mixed $im, int $x1, int $y1, int $x2, int $y2, int $packed): bool
+```
+
+```php
+// imageline draws a line from $x1, $y1 to $x2, $y2 in $color.
+function imageline(mixed $im, int $x1, int $y1, int $x2, int $y2, int $packed): bool
+```
+
+#### info
+
+```php
+// getimagesize returns array(width, height, IMAGETYPE_*, "width=.. height=..") for $filename, or false when it is not an image.
+function getimagesize(string $filename): mixed
+```
+
+```php
+// imagesx returns the width of $image in pixels.
+function imagesx(mixed $im): mixed
+```
+
+```php
+// imagesy returns the height of $image in pixels.
+function imagesy(mixed $im): mixed
+```
+
+```php
+// imagetypes returns a bitmask of the formats this build reads and writes: IMG_GIF, IMG_JPG and IMG_PNG.
+function imagetypes(): int
+```
+
+#### write
+
+```php
+// imagejpeg writes $image to $filename as JPEG at $quality (default 75), or to the output when $filename is null or empty.
+function imagejpeg(mixed $im, mixed ...$args): mixed
+```
+
+```php
+// imagepng writes $image to $filename as PNG, or to the output when $filename is null or empty. $quality selects the compression level.
+function imagepng(mixed $im, mixed ...$args): mixed
+```
+
 ### stdlib/info
 
 ```php
