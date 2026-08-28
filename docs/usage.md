@@ -74,7 +74,7 @@ The lint pass reports these shapes:
 | `abstract is a no-op`                                 | `abstract class Shape {}`            |
 | `magic method ... is never called implicitly`         | `function __call($name, $args)`      |
 | `reference & is a no-op` / `returns by value`         | `$a = &$b;`, `function &f()`         |
-| `call to undefined function`                          | `hash_hmac("nothing registers it")`  |
+| `call to undefined function`                          | `undefined_function()`               |
 | `new: undefined class` and the `unknown class` forms  | `new ReflectionClass($c);`           |
 | `JSON_* is not defined and the argument is ignored`   | `json_encode($v, JSON_PRETTY_PRINT)` |
 | a class missing a method its `implements` names       | see [design.md](design.md)           |

@@ -328,7 +328,7 @@ func TestLintJSONFlags(t *testing.T) {
 func TestFileReportsUndefinedFunctions(t *testing.T) {
 	src := `<?php
 echo strlen("known binding"), "\n";
-echo hash_hmac("nothing registers this");
+echo undefined_function("nothing registers this");
 declared();
 conditional();
 if (function_exists("imagetypes")) {
@@ -347,7 +347,7 @@ $sorter = function ($rows) {
 		t.Fatalf("File returned an error: %v", err)
 	}
 	want := []string{
-		`funcs.php:3: call to undefined function hash_hmac()`,
+		`funcs.php:3: call to undefined function undefined_function()`,
 		`funcs.php:14: call to undefined function date()`,
 	}
 	if len(diags) != len(want) {
