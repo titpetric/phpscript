@@ -78,6 +78,8 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("str_repeat", func(str string, times int64) string { return strings.Repeat(str, int(times)) })
 	// implode returns the values of $array joined with $separator; with a single array argument the separator is "".
 	rt.RegisterFunc("implode", phpImplode)
+	// join returns the values of $array joined with $separator, PHP's alias of implode.
+	rt.RegisterFunc("join", phpImplode)
 	// explode splits $str on $separator into a list; a positive $limit caps the parts, the last one holding the rest, and other limits are ignored.
 	rt.RegisterFunc("explode", phpExplode)
 	// htmlspecialchars escapes &, <, >, double and single quotes as HTML entities; the $flags and later arguments are accepted and ignored.
