@@ -97,6 +97,12 @@ func openReport(opts Options, args []string) (*os.File, error) {
 // reportArgs reconstructs the test invocation for the provenance comment.
 func reportArgs(opts Options, args []string) []string {
 	argv := []string{"test"}
+	if opts.Autoload != "" {
+		argv = append(argv, "--autoload", filepath.ToSlash(opts.Autoload))
+	}
+	if opts.Include != "" {
+		argv = append(argv, "--include", filepath.ToSlash(opts.Include))
+	}
 	if opts.Matrix {
 		argv = append(argv, "--matrix")
 	}

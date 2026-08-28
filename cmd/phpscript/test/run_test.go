@@ -106,3 +106,69 @@ func TestRunCommandOutputFile(t *testing.T) {
 		}
 	}
 }
+
+// TestRunCommandAppRoot covers --autoload and --include: a fixture reaches a
+// function the include file defines and a class the autoload folder holds,
+// with neither named in the fixture body. The bare invocation (no paths) is
+// what discovers the tree, which also covers the recursive default.
+func TestRunCommandAppRoot(t *testing.T) {
+	tmp := t.TempDir()
+	write := func(name, content string) {
+		t.Helper()
+		p := filepath.Join(tmp, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("autoload.php", "<?php\n\ninclude \"lib/functions.php\";\n")
+	write("lib/functions.php", "<?php\n\nfunction app_name()\n{\n\treturn \"acme\";\n}\n")
+	write("code/Acme/Thing.php", "<?php\n\nnamespace Acme;\n\nclass Thing\n{\n\tpublic function greet()\n\t{\n\t\treturn \"hello\";\n\t}\n}\n")
+	write("suite/prelude.phpt", `name: prelude reaches include and autoload
+description: >
+  The include file defines app_name through a nested include, and the class
+  loads lazily from the autoload folder; the fixture names neither.
+---
+<?php
+
+$thing = new \Acme\Thing();
+echo $thing->greet(), " ", app_name(), "\n";
+---
+hello acme
+`)
+	write("plain/noprelude.phpt", `name: missing include is skipped
+description: >
+  An include file that is not there is not an error; the fixture runs with
+  only the autoload folder.
+---
+<?php
+
+$thing = new \Acme\Thing();
+echo $thing->greet(), "\n";
+---
+hello
+`)
+
+	t.Chdir(tmp)
+
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	errAll := test.Run(context.Background(), nil, test.Options{Autoload: "code", Include: "autoload.php"})
+	errMissing := test.Run(context.Background(), []string{"plain"}, test.Options{Autoload: "code", Include: "missing.php"})
+	w.Close()
+	os.Stdout = old
+	io.Copy(io.Discard, r)
+
+	if errAll != nil {
+		t.Errorf("bare run with --autoload code --include autoload.php: %v", errAll)
+	}
+	if errMissing != nil {
+		t.Errorf("run with a missing include file: %v", errMissing)
+	}
+}

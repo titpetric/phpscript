@@ -22,6 +22,8 @@ const Name = "Run .phpt test fixtures"
 
 // Options holds CLI flag options for the test command.
 type Options struct {
+	Autoload   string
+	Include    string
 	JSON       bool
 	Matrix     bool
 	Verbose    bool
@@ -64,6 +66,8 @@ func NewCommand() *cli.Command {
 		Name:  "test",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
+			fs.StringVar(&opts.Autoload, "autoload", "", "Resolve class references against this folder on first use (Acme\\Thing is <folder>/Acme/Thing.php)")
+			fs.StringVar(&opts.Include, "include", "", "Include this file before every fixture when it exists, for globally available functions")
 			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
 			fs.BoolVar(&opts.Matrix, "matrix", false, "Run every fixture through all runtimes and report a matrix")
 			fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "Report the failure of each runtime below its fixture")
@@ -219,12 +223,27 @@ func Run(ctx context.Context, args []string, opts Options) error {
 
 	paths := args
 	if len(paths) == 0 {
-		paths = []string{"."}
+		// A bare invocation means the whole tree: a pipeline that names no
+		// paths runs from the application root, where the fixtures live in
+		// the folders below. An explicit "." keeps its non-recursive meaning.
+		paths = []string{"./..."}
 	}
 
 	fixtures, err := tests.FindFixtures(paths)
 	if err != nil {
 		return fmt.Errorf("discover fixtures: %w", err)
+	}
+
+	if opts.Autoload != "" || opts.Include != "" {
+		// The flags speak from the invocation root: that is where the autoload
+		// folder and the include file live, below no fixture directory.
+		var includes []string
+		if opts.Include != "" {
+			includes = append(includes, opts.Include)
+		}
+		for _, fx := range fixtures {
+			fx.SetAppRoot(".", opts.Autoload, includes...)
+		}
 	}
 
 	// An empty selection is a mis-scoped invocation, not a passing run: a

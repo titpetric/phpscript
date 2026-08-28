@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/titpetric/phpscript/runner"
 )
 
 // Runner names an execution backend a fixture can be checked against.
@@ -83,16 +85,22 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	}
 	defer cleanup()
 
+	prepend, cleanupPrepend, err := phpPrepend(f)
+	if err != nil {
+		return phpRun{}, err
+	}
+	defer cleanupPrepend()
+
 	// The fixture output is the contract, so error display is pinned to stderr
 	// and log duplication is turned off; a php.ini differing per machine would
 	// otherwise decide whether a warning lands in the compared stdout.
-	args := []string{
+	args := append(prepend,
 		"-d", "display_errors=stderr",
 		"-d", "log_errors=0",
 		"-d", "error_reporting=E_ALL",
 		"-d", "variables_order=EGPCS",
 		script,
-	}
+	)
 	if f.Request.Args != nil {
 		// parseArgs names the script itself first, the way $argv does.
 		args = append(args, parseArgs(f.Request.Args, f.Path)[1:]...)
@@ -129,6 +137,64 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 		return out, fmt.Errorf("run php: %w", runErr)
 	}
 	return out, nil
+}
+
+// phpPrepend materializes the harness prelude for the php runner as an
+// auto_prepend_file: the autoload folder becomes an spl_autoload_register
+// callback and the include files are pulled in from the application root, so
+// php sees the same world the in-process runtimes assemble from SetAppRoot.
+// The includes run inside a function scope with the application root as the
+// working directory, mirroring the fresh scope and root-relative resolution
+// the Go runtimes give the prelude.
+func phpPrepend(f *Fixture) ([]string, func(), error) {
+	if f.appRoot == "" {
+		return nil, func() {}, nil
+	}
+	root, err := filepath.Abs(f.appRoot)
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve application root: %w", err)
+	}
+	autoload := f.Options.Autoload
+	if autoload == "" {
+		autoload = runner.DefaultAutoloadDir
+	}
+
+	var b strings.Builder
+	b.WriteString("<?php\n")
+	b.WriteString("spl_autoload_register(function ($class) {\n")
+	fmt.Fprintf(&b, "\t$file = %s . '/' . str_replace('\\\\', '/', $class) . '.php';\n", phpQuote(filepath.ToSlash(filepath.Join(root, autoload))))
+	b.WriteString("\tif (is_file($file)) {\n\t\tinclude $file;\n\t}\n});\n")
+	if len(f.includes) > 0 {
+		b.WriteString("call_user_func(function () {\n\t$cwd = getcwd();\n")
+		fmt.Fprintf(&b, "\tchdir(%s);\n", phpQuote(filepath.ToSlash(root)))
+		for _, name := range f.includes {
+			quoted := phpQuote(filepath.ToSlash(name))
+			fmt.Fprintf(&b, "\tif (is_file(%s)) {\n\t\tinclude %s;\n\t}\n", quoted, quoted)
+		}
+		b.WriteString("\tchdir($cwd);\n});\n")
+	}
+
+	file, err := os.CreateTemp("", ".phpscript-prepend.*.php")
+	if err != nil {
+		return nil, nil, fmt.Errorf("write php prepend: %w", err)
+	}
+	name := file.Name()
+	cleanup := func() { os.Remove(name) }
+	if _, err := file.WriteString(b.String()); err != nil {
+		file.Close()
+		cleanup()
+		return nil, nil, fmt.Errorf("write php prepend: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		cleanup()
+		return nil, nil, fmt.Errorf("write php prepend: %w", err)
+	}
+	return []string{"-d", "auto_prepend_file=" + name}, cleanup, nil
+}
+
+// phpQuote renders s as a single-quoted PHP string literal.
+func phpQuote(s string) string {
+	return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(s) + "'"
 }
 
 // writePHPScript materializes the fixture source as a hidden file in dir. The

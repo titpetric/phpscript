@@ -188,6 +188,8 @@ type Fixture struct {
 	Expected string `yaml:"-"`
 	Path     string `yaml:"-"`
 
+	appRoot            string
+	includes           []string
 	rootFS             fs.FS
 	privateInclude     *runner.IncludeCache
 	privateFlatInclude *flatstack.IncludeCache
@@ -221,6 +223,22 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 	f.rootFS = root
 }
 
+// SetAppRoot points the fixture at the application root the test command ran
+// in. The autoload folder convention and the prelude includes resolve there,
+// while the fixture's own relative includes keep resolving against its
+// directory: runnerOptions layers the two, fixture directory first.
+//
+// An include that is not there is not an error; the flag says what to load
+// when the application provides it, and a tree without an autoload.php simply
+// runs without one.
+func (f *Fixture) SetAppRoot(root, autoload string, includes ...string) {
+	f.appRoot = root
+	f.includes = includes
+	if autoload != "" {
+		f.Options.Autoload = autoload
+	}
+}
+
 // RootDir returns the directory a fixture's includes resolve against. That is
 // the directory holding it, which is also where the php runner executes, unless
 // the fixture named another one with `root:`.
@@ -237,7 +255,7 @@ func (f *Fixture) RootDir() string {
 // keyed by the path as the script wrote it, so a fixture reaching a different
 // tree must not be served a program cached for the embedded one.
 func (f *Fixture) realRoot() bool {
-	return f.Root != ""
+	return f.Root != "" || f.appRoot != ""
 }
 
 // includeCache is the include cache for the fixture's root. A fixture reaching
@@ -263,6 +281,47 @@ func (f *Fixture) flatIncludeCache() *flatstack.IncludeCache {
 	return flatIncludeCacheFor(f.RootDir())
 }
 
+// unionFS resolves a path against each layer in order, first hit wins. It is
+// how a fixture keeps its own directory as the include root while the
+// application root the test command ran in answers for everything the fixture
+// directory does not hold. fs.Stat and fs.ReadFile both fall back to Open, so
+// Open is the whole contract.
+type unionFS []fs.FS
+
+func (u unionFS) Open(name string) (fs.File, error) {
+	var firstErr error
+	for _, layer := range u {
+		file, err := layer.Open(name)
+		if err == nil {
+			return file, nil
+		}
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
+	if firstErr == nil {
+		firstErr = &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	}
+	return nil, firstErr
+}
+
+// includePrelude includes the files the test command named with --include
+// before the fixture body runs. It runs every session, because ResetSession
+// clears user declarations. A file that is not there is skipped: the flag
+// names what to load when the application provides it.
+func (f *Fixture) includePrelude(rt *runner.Runtime) error {
+	for _, name := range f.includes {
+		clean := strings.TrimPrefix(path.Clean(filepath.ToSlash(name)), "/")
+		if _, err := fs.Stat(rt.FS(), clean); err != nil {
+			continue
+		}
+		if _, err := rt.IncludeFile(clean); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // runnerOptions returns the fixture's options: frontmatter with the
 // harness-owned fields filled in.
 func (f *Fixture) runnerOptions() runner.Options {
@@ -273,6 +332,13 @@ func (f *Fixture) runnerOptions() runner.Options {
 		// for a tree phpscript does not embed, a vendor directory being the
 		// motivating case.
 		options.RootFS = os.DirFS(f.RootDir())
+	}
+	if f.appRoot != "" {
+		// The fixture directory answers first, so a fixture's own relative
+		// include keeps meaning what it always meant; the application root
+		// answers second, for the prelude include, the files it pulls in, and
+		// the autoload folder, all of which sit outside every fixture directory.
+		options.RootFS = unionFS{os.DirFS(f.RootDir()), os.DirFS(f.appRoot)}
 	}
 	if options.RootFS == nil {
 		options.RootFS = testPHPFS()
@@ -549,6 +615,10 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	f.interp.SetContext(ctx)
 	reqCtx.Register(f.interp)
 
+	if err := f.includePrelude(f.interp); err != nil {
+		return "Internal Server Error", reqCtx, err
+	}
+
 	if err := f.interp.Run(prog); err != nil {
 		if _, ok := runner.IsExit(err); ok {
 			return out.String(), reqCtx, nil
@@ -580,6 +650,10 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	}
 	f.flatRT.SetContext(ctx)
 	reqCtx.Register(f.flatRT)
+
+	if err := f.includePrelude(f.flatRT); err != nil {
+		return "Internal Server Error", reqCtx, err
+	}
 
 	if err := f.flatRT.Run(prog); err != nil {
 		if _, ok := flatstack.IsExit(err); ok {

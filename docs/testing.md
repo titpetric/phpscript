@@ -82,7 +82,9 @@ Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): 
 
 A fixture's own folder is its include root. That is what lets all three runtimes agree: the `php` runner executes with its working directory set to the folder holding the fixture, and both Go runtimes are rooted at the same folder, so a relative path in the fixture names the same file whichever runtime reads it.
 
-Because the folder is the unit of discovery, a bare directory path is not recursive. `phpscript test ./...` is what runs a tree; `phpscript test .` matches only the fixtures sitting directly in that directory, and reports an error rather than success when it matches none.
+Because the folder is the unit of discovery, a bare directory path is not recursive. `phpscript test ./...` is what runs a tree; `phpscript test .` matches only the fixtures sitting directly in that directory, and reports an error rather than success when it matches none. `phpscript test` with no path at all runs the whole tree below the working directory, the way a pipeline invoked from an application root means it.
+
+An application root can supply its bootstrap to every fixture. `--include autoload.php` includes the named file, resolved against the invocation root, before each fixture body — when the file exists, so the same pipeline line works in a tree that has no bootstrap. `--autoload code` points the [autoload folder convention](design.md) at a folder below the invocation root, so a class reference in any fixture resolves to the file its namespace spells, `Acme\Thing` to `code/Acme/Thing.php`, without an include. The fixture's own folder stays its include root: its relative includes answer first, and the invocation root answers for what the folder does not hold.
 
 Each fixture has three sections separated by a line containing only `---`:
 
