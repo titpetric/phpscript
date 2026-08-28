@@ -858,6 +858,11 @@ function implode(mixed $separator, mixed $array): string
 ```
 
 ```php
+// join returns the values of $array joined with $separator, PHP's alias of implode.
+function join(mixed $separator, mixed $array): string
+```
+
+```php
 // lcfirst returns $string with its first byte lowercased if it is an ASCII letter; like PHP's non-mb functions it never changes the byte length.
 function lcfirst(string $str): string
 ```
@@ -1051,6 +1056,11 @@ function password_needs_rehash(string $hash, mixed ...$opts): bool
  * question, and "no" is an answer.
  */
 function password_verify(string $password, string $hash): bool
+```
+
+```php
+// rand returns a uniformly selected integer between $min and $max inclusive, or between 0 and 2147483647 when called without arguments; it reads the CSPRNG rather than a seeded generator, so there is no srand to pair it with.
+function rand(int ...$bounds): int
 ```
 
 ```php
@@ -1368,6 +1378,23 @@ function memory_get_peak_usage(bool ...$real_usage): int
  * estimate has no allocator/used distinction.
  */
 function memory_get_usage(bool ...$real_usage): int
+```
+
+### stdlib/pexec
+
+```php
+// escapeshellarg returns $arg single-quoted for the shell, with embedded single quotes escaped.
+function escapeshellarg(string $arg): string
+```
+
+```php
+// exec runs $command through the shell and returns the last line of its stdout, appending each output line to $output when an array is passed; $result_code is accepted and ignored, because an integer cannot be written back.
+function exec(string $command, mixed ...$args): mixed
+```
+
+```php
+// posix_getpid returns the process id of the running interpreter.
+function posix_getpid(): int
 ```
 
 ### stdlib/smtp

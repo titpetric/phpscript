@@ -275,6 +275,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [write](extensions/implemented-apis.md#write)
     - [stdlib/info](extensions/implemented-apis.md#stdlibinfo)
     - [stdlib/internals](extensions/implemented-apis.md#stdlibinternals)
+    - [stdlib/pexec](extensions/implemented-apis.md#stdlibpexec)
     - [stdlib/smtp](extensions/implemented-apis.md#stdlibsmtp)
     - [stdlib/span](extensions/implemented-apis.md#stdlibspan)
     - [stdlib/time](extensions/implemented-apis.md#stdlibtime)
