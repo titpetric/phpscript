@@ -63,14 +63,28 @@ phpscript lint tests/fixtures/...
 phpscript lint path/to/file.php
 ```
 
-The lint pass reports two shapes:
+The lint pass reports these shapes:
 
-| Finding                                               | Example                         |
-|-------------------------------------------------------|---------------------------------|
-| `assignment in conditional statement`                 | `if (($row = fn()) !== false)`  |
-| `chained assignment binds one value to several names` | `$dba = $dbb = new Database();` |
+| Finding                                               | Example                              |
+|-------------------------------------------------------|--------------------------------------|
+| `assignment in conditional statement`                 | `if (($row = fn()) !== false)`       |
+| `chained assignment binds one value to several names` | `$dba = $dbb = new Database();`      |
+| `global is a no-op`                                   | `global $x;`                         |
+| `extends is a no-op`                                  | `class Dog extends Animal {}`        |
+| `abstract is a no-op`                                 | `abstract class Shape {}`            |
+| `magic method ... is never called implicitly`         | `function __call($name, $args)`      |
+| `reference & is a no-op` / `returns by value`         | `$a = &$b;`, `function &f()`         |
+| `call to undefined function`                          | `md5("no binding registers it")`     |
+| `new: undefined class` and the `unknown class` forms  | `new ReflectionClass($c);`           |
+| `JSON_* is not defined and the argument is ignored`   | `json_encode($v, JSON_PRETTY_PRINT)` |
+| a class missing a method its `implements` names       | see [design.md](design.md)           |
+| an `@route` path the router cannot answer for         | `// @route /users/{id=}`             |
 
-Both are warnings; only a parse error fails the run. The chained-assignment rule
+All are warnings; only a parse error fails the run. The undefined-name checks
+compare against the file's own declarations plus the registered runtime
+bindings, and skip names the source guards with `function_exists` /
+`class_exists`; a name that arrives through an include or an autoloader can
+still warn, which is why it warns rather than fails. The chained-assignment rule
 exists because phpscript arrays are handles rather than values, so two names can
 end up sharing one array where PHP would give each its own. See
 [Value semantics](reference/types/value-semantics.md#arrays-are-handles-not-values).

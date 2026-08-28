@@ -327,6 +327,14 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	case *model.Switch:
 		return rt.execSwitch(n, scope)
 
+	case *model.StaticVar:
+		return nil, flowNormal, rt.execStaticVar(n, scope)
+
+	case *model.Global:
+		// A documented no-op: the variable stays unset (docs/design.md), and
+		// `phpscript lint` reports the statement.
+		return nil, flowNormal, nil
+
 	case *model.Break:
 		return nil, flowBreak, nil
 
@@ -794,7 +802,87 @@ func (rt *Runtime) autoload(class string, scope *Scope) error {
 			return nil
 		}
 	}
-	return nil
+	// The autoload folder is a fallback rather than an entry in the queue, so
+	// spl_autoload_functions and spl_autoload_unregister keep answering for what
+	// the script registered and a callback still gets first refusal on a class
+	// the folder could have answered.
+	return rt.folderAutoload(class)
+}
+
+// folderAutoload resolves a class against the autoload folder, the convention
+// that replaces a bootstrap for a site that has no composer: the namespace is
+// the directory path below the folder, case for case, and the class is the
+// file. `Acme\Thing` is autoload/Acme/Thing.php, and the namespace is optional,
+// so a class declared in none is autoload/Bare.php.
+//
+// The folder is disabled by not being there. Nothing scans it and nothing is
+// loaded ahead of time: this runs on a class reference that was otherwise about
+// to fail, so a file nobody names is a file nobody reads.
+func (rt *Runtime) folderAutoload(class string) error {
+	if rt.opts.RootFS == nil {
+		return nil
+	}
+	segments := autoloadSegments(class)
+	if segments == nil {
+		return nil
+	}
+	filename := path.Join(filepath.ToSlash(rt.opts.autoloadDir()), path.Join(segments...)+".php")
+	cleanPath := rt.resolveFSPath(filename)
+	if _, err := fs.Stat(rt.opts.RootFS, cleanPath); err != nil {
+		return nil
+	}
+	// A file that names the class it was loaded for without declaring it would
+	// otherwise include itself until the stack runs out. PHP guards the same
+	// way: a class already being autoloaded is not autoloaded again.
+	if _, busy := rt.autoloading[cleanPath]; busy {
+		return nil
+	}
+	if rt.autoloading == nil {
+		rt.autoloading = map[string]struct{}{}
+	}
+	rt.autoloading[cleanPath] = struct{}{}
+	defer delete(rt.autoloading, cleanPath)
+
+	_, err := rt.includeFile(filename, rt.newScope())
+	return err
+}
+
+// autoloadSegments splits a class name into the path segments the folder
+// convention names, or nil when any of them is not a PHP label.
+//
+// The check is what keeps a class name from being a path. class_exists takes an
+// arbitrary string, so "../secret" has to be a miss rather than a file read
+// outside the folder.
+func autoloadSegments(class string) []string {
+	class = strings.TrimPrefix(class, "\\")
+	if class == "" {
+		return nil
+	}
+	segments := strings.Split(class, "\\")
+	for _, segment := range segments {
+		if !isPHPLabel(segment) {
+			return nil
+		}
+	}
+	return segments
+}
+
+// isPHPLabel reports whether s is spelled the way PHP spells an identifier:
+// a letter, underscore or high byte first, then those plus digits.
+func isPHPLabel(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		switch {
+		case r == '_' || r >= 0x80:
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z':
+		case i > 0 && r >= '0' && r <= '9':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // UnregisterAutoloader removes a callback from the SPL autoload queue, matching
@@ -1362,11 +1450,16 @@ type closureEnv struct {
 	captured  map[string]any
 	this      any
 	class     any
+
+	// statics holds this closure value's function-static bags: PHP gives every
+	// closure instance its own `static $x` storage, so two counters built by
+	// the same factory count independently. Keyed like Runtime.funcStatics.
+	statics map[*model.StaticVar]map[string]any
 }
 
 // captureClosureEnv snapshots scope for a closure declared in it.
 func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
-	env := closureEnv{}
+	env := closureEnv{statics: map[*model.StaticVar]map[string]any{}}
 	env.filename, _ = scope.Get("__FILE__")
 	env.directory, _ = scope.Get("__DIR__")
 	if !cl.Static {
@@ -1410,6 +1503,7 @@ func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) 
 	for name, value := range env.captured {
 		scope.Set(name, value)
 	}
+	scope.Set(staticsKey, env.statics)
 	decl := &model.FuncDecl{Params: cl.Params, Body: cl.Body}
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err

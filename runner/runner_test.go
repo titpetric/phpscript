@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
@@ -461,6 +462,131 @@ func TestClassExistsPropagatesAutoloaderError(t *testing.T) {
 	}
 	if !errors.Is(err, want) {
 		t.Fatalf("got error %v, want %v", err, want)
+	}
+}
+
+// autoloadFS is a source tree carrying the folder convention: an autoload/
+// directory with one namespaced class and one at its root, a second folder to
+// point the option at, and a file outside both that no class name may reach.
+func autoloadFS() fstest.MapFS {
+	file := func(src string) *fstest.MapFile {
+		return &fstest.MapFile{Data: []byte(src)}
+	}
+	return fstest.MapFS{
+		"autoload/Acme/Thing.php": file("<?php\nnamespace Acme;\nclass Thing { public function name() { return \"folder\"; } }\n"),
+		"autoload/Bare.php":       file("<?php\nclass Bare {}\n"),
+		"lib/Acme/Thing.php":      file("<?php\nnamespace Acme;\nclass Thing { public function name() { return \"lib\"; } }\n"),
+		"secret.php":              file("<?php\nclass Secret {}\n"),
+	}
+}
+
+func TestFolderAutoloadResolvesNamespacedClass(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		autoload string
+		class    string
+	}{
+		{name: "default folder", class: "Acme\\Thing"},
+		{name: "folder root", class: "Bare"},
+		{name: "named folder", autoload: "lib", class: "Acme\\Thing"},
+		{name: "leading separator", class: "\\Acme\\Thing"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rt := runner.New(io.Discard, runner.Options{RootFS: autoloadFS(), Autoload: tc.autoload})
+			exists, err := rt.ClassExists(tc.class, true)
+			if err != nil {
+				t.Fatalf("class_exists: %v", err)
+			}
+			if !exists {
+				t.Fatalf("class %q did not autoload from the folder", tc.class)
+			}
+		})
+	}
+}
+
+// TestFolderAutoloadRefusesTraversal pins that a class name is not a path.
+// class_exists takes an arbitrary string, so a name whose segments are not PHP
+// labels must produce a miss rather than a file read outside the folder.
+func TestFolderAutoloadRefusesTraversal(t *testing.T) {
+	rt := runner.New(io.Discard, runner.Options{RootFS: autoloadFS()})
+	for _, class := range []string{
+		"../secret",
+		"..\\secret",
+		"Acme\\..\\..\\secret",
+		"Acme/Thing",
+		"",
+	} {
+		exists, err := rt.ClassExists(class, true)
+		if err != nil {
+			t.Fatalf("class_exists %q: %v", class, err)
+		}
+		if exists {
+			t.Fatalf("class %q resolved, want a miss", class)
+		}
+	}
+}
+
+// TestFolderAutoloadInertWithoutDirectory pins the off switch: the convention is
+// disabled by not having the directory, not by a configuration key.
+func TestFolderAutoloadInertWithoutDirectory(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		opts runner.Options
+	}{
+		{name: "no autoload directory", opts: runner.Options{RootFS: fstest.MapFS{}}},
+		{name: "no source fs", opts: runner.Options{}},
+		{name: "directory named but absent", opts: runner.Options{RootFS: autoloadFS(), Autoload: "nowhere"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rt := runner.New(io.Discard, tc.opts)
+			exists, err := rt.ClassExists("Acme\\Thing", true)
+			if err != nil {
+				t.Fatalf("class_exists: %v", err)
+			}
+			if exists {
+				t.Fatal("class resolved with no autoload directory")
+			}
+		})
+	}
+}
+
+// TestFolderAutoloadRunsAfterRegisteredQueue pins the ordering the folder
+// convention is built on: it is a fallback, so a callback the script registered
+// is consulted first even for a class the folder could have answered.
+func TestFolderAutoloadRunsAfterRegisteredQueue(t *testing.T) {
+	rt := runner.New(io.Discard, runner.Options{RootFS: autoloadFS()})
+	var seen []string
+	rt.RegisterAutoloader(func(class string) error {
+		seen = append(seen, class)
+		return nil
+	}, false)
+
+	exists, err := rt.ClassExists("Acme\\Thing", true)
+	if err != nil {
+		t.Fatalf("class_exists: %v", err)
+	}
+	if !exists {
+		t.Fatal("class did not autoload from the folder")
+	}
+	if len(seen) != 1 || seen[0] != "Acme\\Thing" {
+		t.Fatalf("registered autoloader saw %v, want one call for Acme\\Thing", seen)
+	}
+}
+
+// TestFolderAutoloadIsPerSession pins that what the folder loaded belongs to one
+// request: the next session starts without it and autoloads it again.
+func TestFolderAutoloadIsPerSession(t *testing.T) {
+	rt := runner.New(io.Discard, runner.Options{RootFS: autoloadFS()})
+	if exists, err := rt.ClassExists("Acme\\Thing", true); err != nil || !exists {
+		t.Fatalf("first session: exists=%v err=%v", exists, err)
+	}
+
+	rt.ResetSession(io.Discard, nil)
+	if exists, err := rt.ClassExists("Acme\\Thing", false); err != nil || exists {
+		t.Fatalf("after reset without autoload: exists=%v err=%v", exists, err)
+	}
+	if exists, err := rt.ClassExists("Acme\\Thing", true); err != nil || !exists {
+		t.Fatalf("second session: exists=%v err=%v", exists, err)
 	}
 }
 

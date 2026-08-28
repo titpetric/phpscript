@@ -156,6 +156,10 @@ type FuncDecl struct {
 	ReturnType string // declared `: Type`, kept for printing only
 	Static     bool
 	Abstract   bool // declaration only; Body is empty
+	// ByRef is `function &name()`. The runtime has no reference values, so
+	// the function returns by value; the marker is kept so the formatter
+	// prints the declaration back and the linter can report it.
+	ByRef bool
 }
 
 // ClassDecl is a trimmed-down class: fields + methods + class constants, no
@@ -242,6 +246,27 @@ type DeclareDirective struct {
 // scope, array or property bag holding it.
 type Unset struct {
 	Targets []Expr
+}
+
+// StaticVar is `static $x [= expr][, $y ...];` inside a function body. Each
+// initializer runs once per function lifetime; the bindings persist across
+// calls (per closure value for closures), which is PHP's function-static
+// semantics. Storage lives on the runtime, keyed by this node's address.
+type StaticVar struct {
+	Vars []StaticVarDecl
+}
+
+// StaticVarDecl is one `$name [= expr]` entry of a StaticVar.
+type StaticVarDecl struct {
+	Name    string
+	Default Expr // nil when the declaration has no initializer
+}
+
+// Global is `global $x[, $y];`. The statement parses into a node so the
+// formatter can print it back; at runtime it is a documented no-op — the
+// variable stays unset (docs/design.md), and `phpscript lint` reports it.
+type Global struct {
+	Names []string
 }
 
 // Throw raises an exception. The VM has no exception model; it surfaces as a
@@ -369,6 +394,10 @@ func (*Continue) node() {}
 
 func (*Unset) node() {}
 
+func (*StaticVar) node() {}
+
+func (*Global) node() {}
+
 func (*Use) node() {}
 
 func (*Declare) node() {}
@@ -408,6 +437,10 @@ func (*Break) stmt() {}
 func (*Continue) stmt() {}
 
 func (*Unset) stmt() {}
+
+func (*StaticVar) stmt() {}
+
+func (*Global) stmt() {}
 
 func (*Use) stmt() {}
 
@@ -517,6 +550,15 @@ type New struct {
 	Decl  *ClassDecl
 }
 
+// Ref is the reference marker `&$var` written in expression position, as in
+// `$a = &$b`. The runtime has no reference values (docs/design.md, "`&`
+// outside `foreach`"), so evaluating a Ref evaluates X and binds by value;
+// the node exists so the formatter prints the source back as written and the
+// linter can report the marker.
+type Ref struct {
+	X Expr
+}
+
 // Unary is a prefix/postfix operator: "!", "-", "+", "~", "++", "--".
 type Unary struct {
 	Op      string
@@ -570,10 +612,14 @@ type ClassConst struct {
 // spellings. The runtime forwards the current receiver when an instance method
 // reaches a non-static declaration through this syntax; genuinely static calls
 // run against the class alone.
+//
+// The variable spelling `Class::$m(args...)` calls the method whose name is
+// held in `$m`: MethodExpr carries that expression and Method is empty.
 type StaticCall struct {
-	Class  string
-	Method string
-	Args   []Expr
+	Class      string
+	Method     string
+	MethodExpr Expr // set for `Class::$m(...)`; Method is "" then
+	Args       []Expr
 }
 
 // StaticProp is `Class::$name` / `self::$name` static-property access. Unlike a
@@ -609,6 +655,7 @@ type Closure struct {
 	Body       []Stmt
 	ReturnType string // declared `: Type`, kept for printing only
 	Static     bool
+	ByRef      bool // `function &() {}`; returns by value, kept for printing
 }
 
 // ClosureUse is one entry of a closure's `use (...)` capture list. ByRef marks
@@ -654,6 +701,8 @@ func (*MethodCall) node() {}
 
 func (*New) node() {}
 
+func (*Ref) node() {}
+
 func (*Unary) node() {}
 
 func (*Parenthesized) node() {}
@@ -697,6 +746,8 @@ func (*Call) expr() {}
 func (*MethodCall) expr() {}
 
 func (*New) expr() {}
+
+func (*Ref) expr() {}
 
 func (*Unary) expr() {}
 

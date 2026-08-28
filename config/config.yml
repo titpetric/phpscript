@@ -1,6 +1,13 @@
 runner:
   work_dir: "."
   writable_paths: []
+  # The directory below the application root whose classes load on first
+  # reference, with no include and no registered autoloader: `Acme\Thing` is
+  # autoload/Acme/Thing.php, and a class in no namespace is autoload/Bare.php.
+  # There is no key that turns it off, because a directory that is not there is
+  # already off. Keep it beside public/ and never inside it: a folder served
+  # over HTTP hands out its own class files as text.
+  autoload: autoload
   # Upload limits, spelled and defaulted as php.ini spells them. A bare number
   # is bytes and an M suffix is megabytes; nothing else parses, and 0 is no
   # limit.

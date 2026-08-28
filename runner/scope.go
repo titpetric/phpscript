@@ -20,6 +20,13 @@ type envContextKey struct{}
 type Scope struct {
 	vars     map[string]any
 	deferred []any
+
+	// statics maps a name declared by a `static $x` statement in this frame to
+	// the persistent bag holding it (see Runtime.funcStatics). Reads and
+	// writes of a bound name go through the bag, which is what makes a later
+	// `$x = ...` in the function persist across calls. Nil in every frame
+	// that declares no statics, so the common path pays one nil check.
+	statics map[string]map[string]any
 }
 
 // NewScope returns an empty scope.
@@ -27,20 +34,42 @@ func NewScope() *Scope {
 	return &Scope{vars: map[string]any{}}
 }
 
+// bindStatic links name to its persistent storage for the rest of this frame.
+func (s *Scope) bindStatic(name string, bag map[string]any) {
+	if s.statics == nil {
+		s.statics = map[string]map[string]any{}
+	}
+	s.statics[name] = bag
+}
+
 // Get returns the value of name and whether it is set.
 func (s *Scope) Get(name string) (any, bool) {
+	if s.statics != nil {
+		if bag, ok := s.statics[name]; ok {
+			v, ok := bag[name]
+			return v, ok
+		}
+	}
 	v, ok := s.vars[name]
 	return v, ok
 }
 
 // Set stores name=val.
 func (s *Scope) Set(name string, val any) {
+	if s.statics != nil {
+		if bag, ok := s.statics[name]; ok {
+			bag[name] = val
+			return
+		}
+	}
 	s.vars[name] = val
 }
 
 // Unset removes name from the frame (PHP's unset). Removing a name that was
-// never set is not an error.
+// never set is not an error. Unsetting a static-bound name breaks the local
+// link and leaves the stored value for the next call, as PHP does.
 func (s *Scope) Unset(name string) {
+	delete(s.statics, name)
 	delete(s.vars, name)
 }
 
@@ -54,12 +83,17 @@ func (s *Scope) Defer(callback any) {
 // Interpreter bookkeeping slots use a double-underscore prefix and are not PHP
 // variables, so they are omitted.
 func (s *Scope) DefinedVars() map[string]any {
-	vars := make(map[string]any, len(s.vars))
+	vars := make(map[string]any, len(s.vars)+len(s.statics))
 	for name, value := range s.vars {
 		if len(name) >= 2 && name[:2] == "__" {
 			continue
 		}
 		vars[name] = value
+	}
+	for name, bag := range s.statics {
+		if value, ok := bag[name]; ok {
+			vars[name] = value
+		}
 	}
 	return vars
 }

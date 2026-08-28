@@ -42,9 +42,21 @@ func (p *parser) parseAssign() (model.Expr, error) {
 	}
 	if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && isLValue(left) {
 		op := p.next().val
+		// `$a = &f()` / `$a = &$b`: PHP's assign-by-reference spelling. The
+		// marker is kept as a Ref node (bind stays by value); consuming it
+		// here reaches the forms the unary parser's tVar guard cannot.
+		byRef := op == "=" && p.isOp("&")
+		if byRef {
+			p.next()
+		}
 		right, err := p.parseAssign()
 		if err != nil {
 			return nil, err
+		}
+		if byRef {
+			if _, ok := right.(*model.Ref); !ok {
+				right = &model.Ref{X: right}
+			}
 		}
 		return p.newAssignExpr(left, op, right, t.line), nil
 	}
@@ -111,9 +123,18 @@ func (p *parser) parseBinary(minPrec int) (model.Expr, error) {
 		// assignment is folded onto the right operand here.
 		if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && isLValue(right) {
 			p.next()
+			byRef := t.val == "=" && p.isOp("&")
+			if byRef {
+				p.next()
+			}
 			value, err := p.parseAssign()
 			if err != nil {
 				return nil, err
+			}
+			if byRef {
+				if _, ok := value.(*model.Ref); !ok {
+					value = &model.Ref{X: value}
+				}
 			}
 			right = p.newAssignExpr(right, t.val, value, t.line)
 		}
@@ -161,17 +182,26 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		}
 		return p.newUnary(op, x, false), nil
 	}
-	// `@expr` error suppression and `&$var` reference are parse-level no-ops
-	// (the VM has no by-reference values; callable arrays carry the marker
-	// harmlessly).
-	//
-	// The reference marker is only skipped in front of a variable. It used to
-	// be skipped in front of anything, which silently swallowed the binary `&`
-	// of `echo 6 & 3`: the operand parser took `& 3` as a fresh reference
-	// expression and the program printed 6.
-	if p.isOp("@") || (p.isOp("&") && p.peek(1).kind == tVar) {
+	// `@expr` error suppression is a parse-level no-op.
+	if p.isOp("@") {
 		p.next()
 		return p.parseUnary()
+	}
+	// `&$var` binds by value (the VM has no by-reference values), but the
+	// marker is kept as a Ref node so the formatter prints the source back
+	// as written and the linter reports it.
+	//
+	// The reference marker is only taken in front of a variable. It used to
+	// be taken in front of anything, which silently swallowed the binary `&`
+	// of `echo 6 & 3`: the operand parser took `& 3` as a fresh reference
+	// expression and the program printed 6.
+	if p.isOp("&") && p.peek(1).kind == tVar {
+		p.next()
+		x, err := p.parseUnary()
+		if err != nil {
+			return nil, err
+		}
+		return &model.Ref{X: x}, nil
 	}
 	return p.parseInstanceOf()
 }
@@ -392,7 +422,17 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 		p.next()
 		class := p.qualify(name, absolute)
 		if p.cur().kind == tVar {
-			return &model.StaticProp{Class: class, Name: p.next().val}, nil
+			varName := p.next().val
+			// `Class::$m(...)` calls the static method named by `$m`;
+			// without the parens it reads the static property `Class::$m`.
+			if p.isOp("(") {
+				args, err := p.parseArgs()
+				if err != nil {
+					return nil, err
+				}
+				return &model.StaticCall{Class: class, MethodExpr: &model.Var{Name: varName}, Args: args}, nil
+			}
+			return &model.StaticProp{Class: class, Name: varName}, nil
 		}
 		if p.cur().kind != tIdent {
 			return nil, fmt.Errorf("line %d: expected member name after ::", p.cur().line)
@@ -438,6 +478,13 @@ func isFuncKeyword(name string) bool {
 // The `use` capture list names the enclosing variables the closure sees; the
 // runtime binds their values when the closure is created.
 func (p *parser) parseClosure() (*model.Closure, error) {
+	// `function &() {}` declares a by-reference return; like the named form,
+	// the marker is recorded and the closure returns by value.
+	byRef := false
+	if p.isOp("&") {
+		p.next()
+		byRef = true
+	}
 	params, err := p.parseParams()
 	if err != nil {
 		return nil, err
@@ -455,7 +502,7 @@ func (p *parser) parseClosure() (*model.Closure, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Closure{Params: params, Uses: uses, Body: body, ReturnType: returnType}, nil
+	return &model.Closure{Params: params, Uses: uses, Body: body, ReturnType: returnType, ByRef: byRef}, nil
 }
 
 // parseClosureUses parses a closure's `use ($a, &$b)` capture list.

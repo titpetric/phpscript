@@ -110,6 +110,8 @@ class Holder { function method() { $r = $s = load(); } }
 foreach (array(1) as $v) { $t = $u = $v; }
 for ($i = 0; $i < 1; $i++) { $w = $y = $z; }
 if (true) { $m = $n = $o; }
+function compute() { return 1; }
+function load() { return 1; }
 `
 	diags, err := lint.File("chain.php", src)
 	if err != nil {
@@ -169,6 +171,7 @@ $sum = 1 + 2;
 $result = compute($value);
 $value[] = $sum;
 $value["k"] = $sum;
+function compute($v) { return $v; }
 `
 	diags, err := lint.File("single.php", src)
 	if err != nil {
@@ -315,5 +318,191 @@ func TestLintJSONFlags(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A call to a function nothing defines is the "call to undefined function"
+// error waiting for the line to run; the linter reports it first. A name the
+// file declares (at any nesting), a registered binding, or one the source
+// guards with function_exists lints clean.
+func TestFileReportsUndefinedFunctions(t *testing.T) {
+	src := `<?php
+echo strlen("known binding"), "\n";
+echo md5("nothing registers this");
+declared();
+conditional();
+if (function_exists("imagetypes")) {
+	imagetypes();
+}
+function declared() { return 1; }
+if (true) {
+	function conditional() { return 2; }
+}
+$sorter = function ($rows) {
+	return date("Y");
+};
+`
+	diags, err := lint.File("funcs.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	want := []string{
+		`funcs.php:3: call to undefined function md5()`,
+		`funcs.php:14: call to undefined function date()`,
+	}
+	if len(diags) != len(want) {
+		t.Fatalf("diagnostics = %v, want %d findings", diags, len(want))
+	}
+	for i, w := range want {
+		if got := diags[i].String(); got != w {
+			t.Errorf("diagnostic %d = %q, want %q", i, got, w)
+		}
+	}
+}
+
+// A class reference nothing declares — a `new`, a static call, property or
+// constant — is reported with the message the runtime would raise. Classes
+// declared in the file, registered host classes, anonymous classes and the
+// contextual self/static names lint clean.
+func TestFileReportsUndefinedClasses(t *testing.T) {
+	src := `<?php
+class Declared {
+	public static function make() {
+		return new self();
+	}
+}
+$a = new Declared();
+$b = new Exception("registered host class");
+$c = new ReflectionClass("nope");
+ReflectionMethod::export();
+$anon = new class {
+	function touch() {}
+};
+echo Missing::NAME;
+echo Missing::class, "\n";
+$d = Missing::$prop;
+`
+	diags, err := lint.File("classes.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	want := []string{
+		`classes.php:9: new: undefined class "ReflectionClass"`,
+		`classes.php:10: static call ReflectionMethod::export(): unknown class`,
+		`classes.php:14: class constant Missing::NAME: unknown class`,
+		`classes.php:16: static property Missing::$prop: unknown class`,
+	}
+	if len(diags) != len(want) {
+		t.Fatalf("diagnostics = %v, want %d findings", diags, len(want))
+	}
+	for i, w := range want {
+		if got := diags[i].String(); got != w {
+			t.Errorf("diagnostic %d = %q, want %q", i, got, w)
+		}
+	}
+}
+
+// A magic method other than __construct and __invoke is never called
+// implicitly (docs/design.md), so a class relying on one holds dead code that
+// looks load-bearing. The two that run lint clean.
+func TestFileReportsMagicMethods(t *testing.T) {
+	src := `<?php
+class Inject {
+	public function __construct() {}
+	public function __invoke() {}
+	public function __call($name, $args) {
+		return null;
+	}
+	public function __get($name) {
+		return null;
+	}
+}
+`
+	diags, err := lint.File("magic.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	want := []string{
+		`magic.php:5: magic method Inject::__call() is never called implicitly: only __construct and __invoke run; declare an explicit method (docs/design.md)`,
+		`magic.php:8: magic method Inject::__get() is never called implicitly: only __construct and __invoke run; declare an explicit method (docs/design.md)`,
+	}
+	if len(diags) != len(want) {
+		t.Fatalf("diagnostics = %v, want %d findings", diags, len(want))
+	}
+	for i, w := range want {
+		if got := diags[i].String(); got != w {
+			t.Errorf("diagnostic %d = %q, want %q", i, got, w)
+		}
+	}
+}
+
+// The reference markers parse and confer nothing (docs/design.md): `$a = &$b`
+// binds by value and `function &f()` returns by value, in free functions,
+// methods and closures alike. The foreach form, parameters and closure `use`
+// captures really do carry semantics elsewhere and are not reported.
+func TestFileReportsReferences(t *testing.T) {
+	src := `<?php
+$b = 2;
+$a = &$b;
+function &getRef() { return 1; }
+class Box { public function &value() { return 7; } }
+$f = function &() { return 1; };
+foreach (array(1) as &$v) { $v = 2; }
+$g = function () use (&$b) { return $b; };
+function takesRef(&$x) { return $x; }
+`
+	diags, err := lint.File("refs.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	want := []string{
+		`refs.php:3: reference & is a no-op: the value is bound by value, and a later write through one name is not seen through the other (docs/design.md)`,
+		`refs.php:4: function &getRef() returns by value: the & is a no-op; return the value (docs/design.md)`,
+		`refs.php:5: function &Box::value() returns by value: the & is a no-op; return the value (docs/design.md)`,
+		`refs.php:6: function &() returns by value: the & is a no-op; return the value (docs/design.md)`,
+	}
+	if len(diags) != len(want) {
+		t.Fatalf("diagnostics = %v, want %d findings", diags, len(want))
+	}
+	for i, w := range want {
+		if got := diags[i].String(); got != w {
+			t.Errorf("diagnostic %d = %q, want %q", i, got, w)
+		}
+	}
+}
+
+// The abstract modifier has nothing to mean without inheritance: the class
+// instantiates like any other and an abstract method's call returns null
+// where PHP refuses to load the incomplete class. Both spellings are
+// reported; a plain class with bodies lints clean.
+func TestFileReportsAbstract(t *testing.T) {
+	src := `<?php
+abstract class Shape {
+	abstract public function area();
+	public function describe() {
+		return "shape";
+	}
+}
+class Circle {
+	public function area() {
+		return 1;
+	}
+}
+`
+	diags, err := lint.File("shape.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	want := []string{
+		`shape.php:2: abstract is a no-op: Shape can be instantiated; declare an interface for the contract (docs/design.md)`,
+		`shape.php:3: abstract method Shape::area() is a no-op: it has no body and a call returns null; declare the body (docs/design.md)`,
+	}
+	if len(diags) != len(want) {
+		t.Fatalf("diagnostics = %v, want %d findings", diags, len(want))
+	}
+	for i, w := range want {
+		if got := diags[i].String(); got != w {
+			t.Errorf("diagnostic %d = %q, want %q", i, got, w)
+		}
 	}
 }

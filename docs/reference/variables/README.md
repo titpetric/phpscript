@@ -1,13 +1,13 @@
 # Variables
 
-| PHP language-reference feature  | Status                | Notes                                                                                                                     |
-|---------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------|
-| Basics                          | Compatibility         | Variables use the `$name` form and are created by assignment.                                                             |
-| Predefined variables            | Partial compatibility | Only the request variables documented in [Predefined variables](../predefined-variables/README.md) are seeded.            |
-| Variable scope                  | Partial compatibility | Calls have local scope; `global` is a won't-implement no-op and static locals are unavailable.                            |
-| Variable variables              | Not implemented       | Forms such as `$$name` are unavailable.                                                                                   |
-| Variables from external sources | Partial compatibility | HTTP query, form, and route values are provided by the request context.                                                   |
-| References                      | Partial compatibility | `foreach ($a as &$v)` works; `&` elsewhere parses but binds by value. See [Value semantics](../types/value-semantics.md). |
+| PHP language-reference feature  | Status                | Notes                                                                                                                                                               |
+|---------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Basics                          | Compatibility         | Variables use the `$name` form and are created by assignment.                                                                                                       |
+| Predefined variables            | Partial compatibility | Only the request variables documented in [Predefined variables](../predefined-variables/README.md) are seeded.                                                      |
+| Variable scope                  | Partial compatibility | Calls have local scope; `static $x` persists per function (per closure value); `global` is a won't-implement no-op.                                                 |
+| Variable variables              | Not implemented       | Forms such as `$$name` are unavailable.                                                                                                                             |
+| Variables from external sources | Partial compatibility | HTTP query, form, and route values are provided by the request context.                                                                                             |
+| References                      | Partial compatibility | `foreach ($a as &$v)` works; `$a = &$b` and `function &f()` parse, are kept by the formatter and bind by value. See [Value semantics](../types/value-semantics.md). |
 
 ## Basics
 
@@ -46,8 +46,19 @@ additional scope.
 
 PHP's `global` statement will not be implemented: it parses and binds nothing,
 so the variable it names stays unset inside the function. Pass the collaborator
-as a parameter instead; [Design decisions](../../design.md) records why. Static
-local variables are not implemented.
+as a parameter instead; [Design decisions](../../design.md) records why.
+
+Function-level `static` variables work as PHP defines them: the initializer
+runs once per function lifetime, later writes persist across calls, and every
+closure value carries its own static storage.
+
+```php
+function counter() {
+	static $n = 0;
+	$n++;
+	return $n;                        // 1, 2, 3 across calls
+}
+```
 
 ## Destructuring
 

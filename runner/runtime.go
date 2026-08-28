@@ -61,6 +61,11 @@ type Runtime struct {
 	autoloaders  []any
 	includePath  string
 
+	// autoloading holds the autoload-folder files currently being included, so
+	// a file that names the class it was loaded for without declaring it stops
+	// rather than including itself until the stack runs out.
+	autoloading map[string]struct{}
+
 	// ctx is the request/lifecycle context auto-injected into any registered
 	// callable (constructor, method, function) whose first parameter is a
 	// context.Context, mirroring vuego's wrapContextFunc. It lets PHP call
@@ -95,6 +100,14 @@ type Runtime struct {
 	// seeds it the first time the class is touched, and every later read and
 	// write of Class::$name goes through it.
 	classStatics map[string]map[string]any
+
+	// funcStatics holds the live bindings of function-level `static $x`
+	// declarations, one bag per StaticVar statement. The statement node's
+	// address is the function identity: the AST is parsed once, and each
+	// `static` statement sits in exactly one function body. Closures do not
+	// use this table — each closure value carries its own bag on closureEnv,
+	// which is PHP's per-instance static semantics.
+	funcStatics map[*model.StaticVar]map[string]any
 
 	mu    sync.Mutex
 	cache map[string]*vm.Program // expr source -> compiled program
@@ -266,6 +279,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		constants:    map[string]any{},
 		classConsts:  map[string]map[string]any{},
 		classStatics: map[string]map[string]any{},
+		funcStatics:  map[*model.StaticVar]map[string]any{},
 		exprCache:    NewExprCache(),
 		sourceSpans:  map[model.Stmt]model.SourceSpan{},
 		helpers: map[string]func(...any) (any, error){
@@ -355,8 +369,10 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	clear(rt.globals)
 	rt.shutdown = nil
 	rt.autoloaders = nil
+	clear(rt.autoloading)
 	clear(rt.classConsts)
 	clear(rt.classStatics)
+	clear(rt.funcStatics)
 	rt.entrypoint = ""
 	rt.memBase = 0
 	rt.memUsage = 0
@@ -486,6 +502,11 @@ func (rt *Runtime) MemoryWalk() int64 {
 		total += DeepSize(val, visited)
 	}
 	for _, bag := range rt.classStatics {
+		for name, val := range bag {
+			total += 16 + int64(len(name)) + DeepSize(val, visited)
+		}
+	}
+	for _, bag := range rt.funcStatics {
 		for name, val := range bag {
 			total += 16 + int64(len(name)) + DeepSize(val, visited)
 		}

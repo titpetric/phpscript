@@ -9,6 +9,7 @@ This is a PHP interpreter written in Go. It supports the basic php expression sy
 - [Configuration](./docs/configuration.md)
 - [Testing and extending tests](./docs/testing.md)
 - [Test fixture results](./docs/test-fixtures.md)
+- [Code coverage](./docs/code-coverage.md)
 - [Naming conventions](./docs/naming-conventions.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
 - [Creating phpscript applications](./docs/guides/creating-phpscript-applications.md)
@@ -17,13 +18,37 @@ This is a PHP interpreter written in Go. It supports the basic php expression sy
 
 ## Current state
 
-Several unit focused test fixtures exists, namely:
+Behaviour is settled by `.phpt` fixtures: each one is written by running the
+source through real `php` first, and `phpscript test tests/fixtures/...`
+checks the runtime against that output. The generated
+[test fixture results](./docs/test-fixtures.md) hold the per-fixture matrix;
+the bird's-eye view per area:
 
-1. interfacing Go code from the PHP VM for callbacks,
-2. database client and usage from PHP side (bring your own database/sql driver)
-3. loading and executing template engine code
+| Area                       | Fixtures | Passed | Failed |
+|----------------------------|----------|--------|--------|
+| tests/fixtures/arithmetic  | 21       | 21     | 0      |
+| tests/fixtures/arrays      | 18       | 18     | 0      |
+| tests/fixtures/autoloading | 8        | 8      | 0      |
+| tests/fixtures/bindings    | 23       | 23     | 0      |
+| tests/fixtures/errors      | 2        | 2      | 0      |
+| tests/fixtures/exceptions  | 9        | 9      | 0      |
+| tests/fixtures/flatstack   | 7        | 7      | 0      |
+| tests/fixtures/functions   | 9        | 9      | 0      |
+| tests/fixtures/includes    | 3        | 3      | 0      |
+| tests/fixtures/namespaces  | 2        | 2      | 0      |
+| tests/fixtures/oop         | 22       | 22     | 0      |
+| tests/fixtures/output      | 4        | 4      | 0      |
+| tests/fixtures/paths       | 2        | 2      | 0      |
+| tests/fixtures/regex       | 7        | 7      | 0      |
+| tests/fixtures/runtime     | 11       | 11     | 0      |
+| tests/fixtures/stdlib      | 14       | 14     | 0      |
+| tests/fixtures/strings     | 15       | 15     | 0      |
+| tests/fixtures/syntax      | 7        | 7      | 0      |
+| **Total**                  | 184      | 184    | 0      |
 
-This means that phpscript is currently able to use a generic Database client. Our own standard library implements a `Database` class which is integration tested with [./tests/fixtures/test-database.php](./tests/fixtures/test-database.php) over several databases (pgx, mysql, sqlite).
+The Go test run collects a coverage profile (about 84% of statements at the
+time of writing), and `atkins cover` renders it into the generated
+[code coverage](./docs/code-coverage.md) report, per package and per function.
 
 ## Building a docker image
 

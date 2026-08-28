@@ -58,12 +58,16 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 ## autoloading
 
-| autoloading              | Flat stack | Runtime | PHP  |
-|--------------------------|------------|---------|------|
-| autoloading.phpt         | PASS       | PASS    | PASS |
-| autoloading_default.phpt | PASS       | PASS    | PASS |
-| autoloading_missing.phpt | PASS       | PASS    | PASS |
-| psr4_autoloader.phpt     | PASS       | PASS    | PASS |
+| autoloading                  | Flat stack | Runtime | PHP  |
+|------------------------------|------------|---------|------|
+| autoloading.phpt             | PASS       | PASS    | PASS |
+| autoloading_default.phpt     | PASS       | PASS    | PASS |
+| autoloading_missing.phpt     | PASS       | PASS    | PASS |
+| folder_autoload.phpt         | PASS       | PASS    | SKIP |
+| folder_autoload_missing.phpt | PASS       | PASS    | PASS |
+| folder_autoload_option.phpt  | PASS       | PASS    | SKIP |
+| folder_autoload_root.phpt    | PASS       | PASS    | SKIP |
+| psr4_autoloader.phpt         | PASS       | PASS    | PASS |
 
 ## bindings
 
@@ -134,6 +138,10 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | callables.phpt                          | PASS       | PASS    | PASS |
 | closure_capture.phpt                    | PASS       | PASS    | PASS |
 | defer-usage.phpt                        | PASS       | PASS    | SKIP |
+| static_var.phpt                         | PASS       | PASS    | PASS |
+| static_var_closure.phpt                 | PASS       | PASS    | PASS |
+| static_var_list.phpt                    | PASS       | PASS    | PASS |
+| static_var_recursion.phpt               | PASS       | PASS    | PASS |
 | user_function_declaration_and_call.phpt | PASS       | PASS    | PASS |
 
 ## includes
@@ -153,28 +161,30 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 ## oop
 
-| oop                           | Flat stack | Runtime | PHP  |
-|-------------------------------|------------|---------|------|
-| anonymous_class_contract.phpt | PASS       | PASS    | SKIP |
-| anonymous_class_include.phpt  | PASS       | PASS    | PASS |
-| class_constant_defaults.phpt  | PASS       | PASS    | PASS |
-| class_constants.phpt          | PASS       | PASS    | PASS |
-| extends_noop.phpt             | PASS       | PASS    | SKIP |
-| instanceof.phpt               | PASS       | PASS    | PASS |
-| interface_contract.phpt       | PASS       | PASS    | SKIP |
-| interfaces.phpt               | PASS       | PASS    | PASS |
-| is_object.phpt                | PASS       | PASS    | PASS |
-| new_self_refused.phpt         | PASS       | PASS    | SKIP |
-| new_static_refused.phpt       | PASS       | PASS    | SKIP |
-| object_cast.phpt              | PASS       | PASS    | PASS |
-| object_nesting.phpt           | PASS       | PASS    | SKIP |
-| property_incdec.phpt          | PASS       | PASS    | PASS |
-| property_order.phpt           | PASS       | PASS    | PASS |
-| self_instance_call.phpt       | PASS       | PASS    | PASS |
-| self_scope.phpt               | PASS       | PASS    | PASS |
-| static_members.phpt           | PASS       | PASS    | PASS |
-| stdclass.phpt                 | PASS       | PASS    | PASS |
-| template_render.phpt          | PASS       | PASS    | PASS |
+| oop                              | Flat stack | Runtime | PHP  |
+|----------------------------------|------------|---------|------|
+| anonymous_class_contract.phpt    | PASS       | PASS    | SKIP |
+| anonymous_class_include.phpt     | PASS       | PASS    | PASS |
+| class_constant_defaults.phpt     | PASS       | PASS    | PASS |
+| class_constants.phpt             | PASS       | PASS    | PASS |
+| extends_noop.phpt                | PASS       | PASS    | SKIP |
+| instanceof.phpt                  | PASS       | PASS    | PASS |
+| interface_contract.phpt          | PASS       | PASS    | SKIP |
+| interfaces.phpt                  | PASS       | PASS    | PASS |
+| is_object.phpt                   | PASS       | PASS    | PASS |
+| new_self_refused.phpt            | PASS       | PASS    | SKIP |
+| new_static_refused.phpt          | PASS       | PASS    | SKIP |
+| object_cast.phpt                 | PASS       | PASS    | PASS |
+| object_nesting.phpt              | PASS       | PASS    | SKIP |
+| property_incdec.phpt             | PASS       | PASS    | PASS |
+| property_order.phpt              | PASS       | PASS    | PASS |
+| self_instance_call.phpt          | PASS       | PASS    | PASS |
+| self_scope.phpt                  | PASS       | PASS    | PASS |
+| static_call_variable_method.phpt | PASS       | PASS    | PASS |
+| static_members.phpt              | PASS       | PASS    | PASS |
+| static_var_method.phpt           | PASS       | PASS    | PASS |
+| stdclass.phpt                    | PASS       | PASS    | PASS |
+| template_render.phpt             | PASS       | PASS    | PASS |
 
 ## output
 
@@ -208,6 +218,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 | runtime                    | Flat stack | Runtime | PHP  |
 |----------------------------|------------|---------|------|
+| byref_noop.phpt            | PASS       | PASS    | SKIP |
 | global_noop.phpt           | PASS       | PASS    | SKIP |
 | memory_alias.phpt          | PASS       | PASS    | SKIP |
 | memory_frames.phpt         | PASS       | PASS    | SKIP |
@@ -276,20 +287,20 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 |-------------|----------|--------|--------|
 | arithmetic  | 21       | 21     | 0      |
 | arrays      | 18       | 18     | 0      |
-| autoloading | 4        | 4      | 0      |
+| autoloading | 8        | 8      | 0      |
 | bindings    | 23       | 23     | 0      |
 | errors      | 2        | 2      | 0      |
 | exceptions  | 9        | 9      | 0      |
 | flatstack   | 7        | 7      | 0      |
-| functions   | 5        | 5      | 0      |
+| functions   | 9        | 9      | 0      |
 | includes    | 3        | 3      | 0      |
 | namespaces  | 2        | 2      | 0      |
-| oop         | 20       | 20     | 0      |
+| oop         | 22       | 22     | 0      |
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
-| runtime     | 10       | 10     | 0      |
+| runtime     | 11       | 11     | 0      |
 | stdlib      | 14       | 14     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 173      | 173    | 0      |
+| **Total**   | 184      | 184    | 0      |

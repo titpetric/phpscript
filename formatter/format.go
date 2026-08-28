@@ -315,6 +315,17 @@ func (p *printer) printStmt(s model.Stmt) {
 		p.line("continue;")
 	case *model.Unset:
 		p.line("unset(" + p.args(n.Targets) + ");")
+	case *model.Global:
+		p.line("global $" + strings.Join(n.Names, ", $") + ";")
+	case *model.StaticVar:
+		decls := make([]string, len(n.Vars))
+		for i, d := range n.Vars {
+			decls[i] = "$" + d.Name
+			if d.Default != nil {
+				decls[i] += " = " + p.expr(d.Default)
+			}
+		}
+		p.line("static " + strings.Join(decls, ", ") + ";")
 	case *model.Use:
 		p.line(p.use(n))
 	case *model.Declare:
@@ -482,6 +493,9 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 		b.WriteString("abstract ")
 	}
 	b.WriteString("function ")
+	if n.ByRef {
+		b.WriteString("&")
+	}
 	if n.Class != "" && !inClass {
 		b.WriteString(shortName(n.Class))
 		b.WriteString("::")
@@ -897,13 +911,21 @@ func (p *printer) expr(e model.Expr) string {
 	case *model.StaticProp:
 		return p.typeName(n.Class) + "::$" + n.Name
 	case *model.StaticCall:
+		if n.MethodExpr != nil {
+			return p.typeName(n.Class) + "::" + p.expr(n.MethodExpr) + "(" + p.args(n.Args) + ")"
+		}
 		return p.typeName(n.Class) + "::" + n.Method + "(" + p.args(n.Args) + ")"
 	case *model.Invoke:
 		return p.expr(n.Callee) + "(" + p.args(n.Args) + ")"
+	case *model.Ref:
+		return "&" + p.expr(n.X)
 	case *model.Cast:
 		return "(" + n.Type + ")" + p.expr(n.X)
 	case *model.Closure:
 		head := "function(" + p.params(n.Params) + ")"
+		if n.ByRef {
+			head = "function &(" + p.params(n.Params) + ")"
+		}
 		if n.Static {
 			head = "static " + head
 		}

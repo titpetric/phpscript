@@ -93,6 +93,56 @@ func (rt *Runtime) staticStorage(class string, scope *Scope) (map[string]any, er
 	return rt.staticBag(decl, scope)
 }
 
+// staticsKey is the interpreter bookkeeping slot a closure frame uses to carry
+// its per-instance function-static table (the `__` prefix keeps it out of
+// DefinedVars, like the other bookkeeping slots).
+const staticsKey = "__statics__"
+
+// staticVarBag returns the persistent storage of one `static $x` statement and
+// whether it already held values from an earlier call. Named functions and
+// methods share one bag per statement on the Runtime; a closure frame carries
+// its own table so each closure value counts on its own.
+func (rt *Runtime) staticVarBag(n *model.StaticVar, scope *Scope) (map[string]any, bool) {
+	if v, ok := scope.Get(staticsKey); ok {
+		if table, ok := v.(map[*model.StaticVar]map[string]any); ok {
+			bag, seeded := table[n]
+			if !seeded {
+				bag = map[string]any{}
+				table[n] = bag
+			}
+			return bag, seeded
+		}
+	}
+	bag, seeded := rt.funcStatics[n]
+	if !seeded {
+		bag = map[string]any{}
+		rt.funcStatics[n] = bag
+	}
+	return bag, seeded
+}
+
+// execStaticVar runs `static $x [= expr][, $y ...];`. The initializers run
+// only the first time the declaring function executes the statement; every
+// call after that rebinds the names to the values the last call left behind.
+func (rt *Runtime) execStaticVar(n *model.StaticVar, scope *Scope) error {
+	bag, seeded := rt.staticVarBag(n, scope)
+	for _, decl := range n.Vars {
+		if !seeded {
+			var value any
+			if decl.Default != nil {
+				evaluated, err := rt.Eval(decl.Default, scope)
+				if err != nil {
+					return fmt.Errorf("static $%s: %w", decl.Name, err)
+				}
+				value = evaluated
+			}
+			bag[decl.Name] = value
+		}
+		scope.bindStatic(decl.Name, bag)
+	}
+	return nil
+}
+
 // helperStaticProp reads `Class::$name`. A property that was never declared
 // reads as null, matching the leniency the rest of the runtime applies to
 // property and index access.
@@ -127,9 +177,11 @@ func (rt *Runtime) setStaticProp(class, name string, value any, scope *Scope) er
 //     `static::` or its class name,
 //   - a Go constructor's package-level function, which has no static form and
 //     therefore reports an undefined method.
-func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class, method string, args ...any) (any, error) {
-	return func(class, method string, args ...any) (any, error) {
+func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValue any, args ...any) (any, error) {
+	return func(class string, methodValue any, args ...any) (any, error) {
 		scope := ref.scope
+		// `Class::$m(...)` arrives with the method name as a runtime value.
+		method := phpString(methodValue)
 		name := resolveClassName(class, scope)
 		// The host table is consulted by exact name only: it is one map lookup
 		// on the common path, where lookupFunc's case-insensitive fallback

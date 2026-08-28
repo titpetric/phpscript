@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -137,6 +136,10 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		return c.foreachStmt(node, path)
 	case *model.Use:
 		// Imports are resolved while parsing and emit no code.
+	case *model.Global:
+		// A documented no-op (docs/design.md): the variable stays unset.
+		// StaticVar has no case on purpose — it needs the runtime's persistent
+		// storage, so a program using it takes the whole-program fallback.
 	case *model.Declare:
 		// No directive changes how the engine behaves; the block form still
 		// wraps ordinary code.
@@ -738,15 +741,11 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		return c.interp(node, path)
 	case *model.Parenthesized:
 		return c.expr(node.X, path+".expression")
+	case *model.Ref:
+		// `&$var` binds by value; the marker exists for printing and lint.
+		return c.expr(node.X, path+".expression")
 	case *model.Var:
 		if node.Const {
-			// `global $x;` parses as this bare name followed by the variable
-			// and is defined to bind nothing (docs/design.md). PHP reserves
-			// the word, so no constant can be spelled that way.
-			if strings.EqualFold(node.Name, "global") {
-				c.emit(instruction{op: opPushConst, a: c.constant(nil)})
-				return nil
-			}
 			c.emit(instruction{op: opLoadConst, a: c.slot(node.Name)})
 			return nil
 		}

@@ -176,13 +176,6 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 
 	case *model.Var:
 		if n.Const {
-			// `global $x;` parses as this bare name followed by the variable,
-			// and is defined to bind nothing (docs/design.md). It is a
-			// reserved word in PHP, so no constant can be spelled that way and
-			// nothing is shadowed by answering null for it.
-			if strings.EqualFold(n.Name, "global") {
-				return litSource(nil), nil
-			}
 			return t.addConst(n.Name), nil
 		}
 		return t.addVar(n.Name), nil
@@ -223,6 +216,11 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 			return "", err
 		}
 		return "(" + x + ")", nil
+
+	case *model.Ref:
+		// `&$var` binds by value: the marker survives parsing for the
+		// formatter and linter, and evaluates as the expression it wraps.
+		return t.emit(n.X)
 
 	case *model.Binary:
 		return t.emitBinary(n)
@@ -279,7 +277,14 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return joinCall("__static", strconv.Quote(n.Class), strconv.Quote(n.Method), args), nil
+		method := strconv.Quote(n.Method)
+		if n.MethodExpr != nil {
+			// `Class::$m(...)`: the method name is a runtime value.
+			if method, err = t.emit(n.MethodExpr); err != nil {
+				return "", err
+			}
+		}
+		return joinCall("__static", strconv.Quote(n.Class), method, args), nil
 
 	case *model.Invoke:
 		callee, err := t.emit(n.Callee)

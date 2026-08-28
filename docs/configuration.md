@@ -20,6 +20,7 @@ otherwise the command exits with an error.
 runner:
   work_dir: "."
   writable_paths: []
+  autoload: autoload
   upload_max_filesize: 2M
   post_max_size: 8M
   upload_file_mode: "0644"
@@ -70,18 +71,59 @@ leaves out keeps what the embedded file says.
 `runner` applies to the `run` and `server` commands and to annotated routes
 created by the bundled server.
 
-| Key                       | Default | Purpose                                                                                                |
-|---------------------------|--------:|--------------------------------------------------------------------------------------------------------|
-| `work_dir`                |     `.` | Directory inside the runtime source filesystem used to resolve relative script and include paths.      |
-| `writable_paths`          |    `[]` | Directories a script may write to, relative to the application root. An empty list allows every write. |
-| `upload_max_filesize`     |    `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.            |
-| `post_max_size`           |    `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.        |
-| `upload_file_mode`        |  `0644` | Mode `move_uploaded_file()` gives a stored upload. Octal, as `chmod()` takes it.                       |
-| `max_input_vars`          |  `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The rest are dropped. Negative is no limit.      |
-| `max_input_nesting_level` |    `64` | Deepest bracket chain a field name may have. A field past it is dropped whole. Negative is no limit.   |
-| `memory_limit`            |     `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                           |
-| `time_limit`              |     `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.         |
-| `concurrency_limit`       |     `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                       |
+| Key                       | Default    | Purpose                                                                                                |
+|---------------------------|-----------:|--------------------------------------------------------------------------------------------------------|
+| `work_dir`                |        `.` | Directory inside the runtime source filesystem used to resolve relative script and include paths.      |
+| `writable_paths`          |       `[]` | Directories a script may write to, relative to the application root. An empty list allows every write. |
+| `autoload`                | `autoload` | Directory whose classes load on first reference. Absent from the tree, nothing autoloads.              |
+| `upload_max_filesize`     |       `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.            |
+| `post_max_size`           |       `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.        |
+| `upload_file_mode`        |     `0644` | Mode `move_uploaded_file()` gives a stored upload. Octal, as `chmod()` takes it.                       |
+| `max_input_vars`          |     `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The rest are dropped. Negative is no limit.      |
+| `max_input_nesting_level` |       `64` | Deepest bracket chain a field name may have. A field past it is dropped whole. Negative is no limit.   |
+| `memory_limit`            |        `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                           |
+| `time_limit`              |        `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.         |
+| `concurrency_limit`       |        `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                       |
+
+### Autoload folder
+
+`autoload` names a directory whose classes load the first time something names
+them, with no `include` and no `spl_autoload_register()`. The namespace is the
+directory path below it and the class is the file, case for case:
+
+```
+myapp/
+  autoload/
+    Greeter.php          class Greeter
+    Acme/
+      Thing.php          namespace Acme; class Thing
+  public/
+    index.php            new Acme\Thing;  — no include
+```
+
+The namespace is optional, so the root of the folder holds the classes that
+declare none. Only classes resolve this way; PHP has no function autoloading and
+phpscript does not invent one, so a file of helpers is still `require`d.
+
+Files in the folder are expected to **declare and nothing else**. Nothing
+enforces it, and a top-level `echo` runs the way it runs in any included file —
+but it runs at the moment some other file first named a class, which is not a
+moment anything can predict.
+
+Two things are worth stating plainly:
+
+- **Keep the folder beside `public/`, never inside it.** A folder below the
+  [document root](#document-root) is served over HTTP, which hands out the class
+  files as text.
+- **There is no key that turns this off.** A tree with no `autoload/` directory
+  has no autoloading; the lookup happens once, on a class reference that was
+  about to fail anyway. Point the key at another directory to move it.
+
+What the folder loads belongs to the request that loaded it. Registered
+autoloaders still come first, so a script that calls `spl_autoload_register()`
+or requires composer's `vendor/autoload.php` keeps the resolution order it wrote.
+See [Autoloading](reference/namespaces/README.md#autoloading) in the language
+reference.
 
 ### Writable paths
 

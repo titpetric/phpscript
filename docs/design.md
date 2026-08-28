@@ -14,7 +14,10 @@ What exists:
 
 - `class` declarations with properties, methods and class constants
 - `__construct`, `$this`, `__invoke`
-- static properties and methods, `self::` and `static::`
+- static properties and methods, `self::` and `static::`, including the
+  variable spelling `Class::$m()`
+- function-level `static $x` variables, persistent per function and per
+  closure value
 - `Class::class`
 - `interface` declarations and `implements`, as a contract check and nothing
   more; see below
@@ -107,26 +110,27 @@ Separate from the "Not implemented" rows in the
 [language reference](reference/README.md), which mean "not yet". Nothing here is
 planned, and each row names what to use instead.
 
-| PHP API                                                                  | Use instead                                                                                  |
-|--------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| `extends` semantics, traits, `parent::`                                  | Composition; declare the members a class uses. An interface is checked, never inherited from |
-| Magic methods beyond `__construct` and `__invoke`                        | Explicit methods                                                                             |
-| `new self()`, `new static()`                                             | `new ClassName()`; the keywords are not resolved and fail loudly as an undefined class       |
-| `setcookie`, `setrawcookie`                                              | `Session\Manager`, or `header("Set-Cookie: ...", false)`                                     |
-| `session_start`, `session_id`, `session_destroy`, `$_SESSION`            | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`                          |
-| `curl_*`                                                                 | `HTTP\Client`, `HTTP\Request`                                                                |
-| PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                                     | `Database`, `Database\Migrate`                                                               |
-| `shmop_*`, `apcu_*`, `sem_*`                                             | `SharedMemory`                                                                               |
-| `strftime`, `gmstrftime`, `date`, `gmdate`, `mktime`, `strtotime`        | `DateTime`, `Time`; Go layouts rather than format characters or English dates                |
-| `JSON_PRETTY_PRINT`, `JSON_UNESCAPED_SLASHES`, every other `JSON_*` flag | `json_encode($value)`; the encoding is not configurable                                      |
-| `create_function`                                                        | Closures                                                                                     |
-| `${var}` string interpolation                                            | `{$var}`                                                                                     |
-| `global`                                                                 | Pass collaborators as parameters; the statement parses and binds nothing                     |
-| `eval`                                                                   | nothing; there is no runtime source evaluation                                               |
-| `goto`                                                                   | nothing                                                                                      |
-| `yield`, generators, Fibers                                              | nothing; there is no coroutine model                                                         |
-| `trigger_error`, `restore_error_handler`, `@`                            | `try`/`catch` in PHP, `Runtime.OnError` in Go                                                |
-| `&` outside `foreach`                                                    | Return the value; see [Value semantics](reference/types/value-semantics.md)                  |
+| PHP API                                                                  | Use instead                                                                                                                    |
+|--------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| `extends` semantics, traits, `parent::`                                  | Composition; declare the members a class uses. An interface is checked, never inherited from                                   |
+| `abstract` semantics                                                     | An `interface`; the modifier parses, the class instantiates, and a bodyless method returns null. `phpscript lint` reports both |
+| Magic methods beyond `__construct` and `__invoke`                        | Explicit methods                                                                                                               |
+| `new self()`, `new static()`                                             | `new ClassName()`; the keywords are not resolved and fail loudly as an undefined class                                         |
+| `setcookie`, `setrawcookie`                                              | `Session\Manager`, or `header("Set-Cookie: ...", false)`                                                                       |
+| `session_start`, `session_id`, `session_destroy`, `$_SESSION`            | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`                                                            |
+| `curl_*`                                                                 | `HTTP\Client`, `HTTP\Request`                                                                                                  |
+| PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                                     | `Database`, `Database\Migrate`                                                                                                 |
+| `shmop_*`, `apcu_*`, `sem_*`                                             | `SharedMemory`                                                                                                                 |
+| `strftime`, `gmstrftime`, `date`, `gmdate`, `mktime`, `strtotime`        | `DateTime`, `Time`; Go layouts rather than format characters or English dates                                                  |
+| `JSON_PRETTY_PRINT`, `JSON_UNESCAPED_SLASHES`, every other `JSON_*` flag | `json_encode($value)`; the encoding is not configurable                                                                        |
+| `create_function`                                                        | Closures                                                                                                                       |
+| `${var}` string interpolation                                            | `{$var}`                                                                                                                       |
+| `global`                                                                 | Pass collaborators as parameters; the statement parses and binds nothing                                                       |
+| `eval`                                                                   | nothing; there is no runtime source evaluation                                                                                 |
+| `goto`                                                                   | nothing                                                                                                                        |
+| `yield`, generators, Fibers                                              | nothing; there is no coroutine model                                                                                           |
+| `trigger_error`, `restore_error_handler`, `@`                            | `try`/`catch` in PHP, `Runtime.OnError` in Go                                                                                  |
+| `&` outside `foreach`                                                    | Return the value; see [Value semantics](reference/types/value-semantics.md)                                                    |
 
 ### global
 
@@ -140,6 +144,20 @@ lines loads cleanly and then reads the variable as unset, so treat every
 `global` statement in a port as a parameter waiting to be written.
 `phpscript lint` reports each one as a warning, as it does a class `extends`
 clause, the other statement that parses and confers nothing.
+
+### references
+
+`&` outside a `foreach` will not be implemented: the runtime has no reference
+values, so aliasing two names to one storage is not expressible. The spellings
+still parse and survive the formatter as written — `$a = &$b` binds the value,
+and `function &getRef()` (free function, method or closure) returns the value —
+because a port should format cleanly before it is rewritten. What never
+happens is the aliasing: a later write through one name is not seen through
+the other, and a caller holding a "reference" return holds a copy.
+`phpscript lint` reports every marker, as it does `global` and `extends`; a
+parameter's `&`, a closure's `use (&$x)` and `foreach ($a as &$v)` keep their
+meaning and are not reported. Return the value instead; see
+[Value semantics](reference/types/value-semantics.md).
 
 ### Dates and times
 

@@ -218,6 +218,18 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 	}
 
 	if t.kind == tIdent {
+		// `global $x;` and `static $x = ...;` are statements only when a
+		// variable follows the keyword; `static function () {}`, `static::m()`
+		// and a stray bare `global` keep parsing as expressions. PHP keywords
+		// are case-insensitive, so `GLOBAL $x;` matches too.
+		if p.peek(1).kind == tVar {
+			if strings.EqualFold(t.val, "global") {
+				return p.parseGlobal()
+			}
+			if strings.EqualFold(t.val, "static") {
+				return p.parseStaticVar()
+			}
+		}
 		switch t.val {
 		case "namespace":
 			return p.parseNamespace()
@@ -446,6 +458,51 @@ func (p *parser) parseUnset() (model.Stmt, error) {
 	}
 	p.optSemi()
 	return &model.Unset{Targets: targets}, nil
+}
+
+// parseGlobal parses `global $a[, $b]*;`.
+func (p *parser) parseGlobal() (model.Stmt, error) {
+	p.next() // global
+	var names []string
+	for {
+		if p.cur().kind != tVar {
+			return nil, fmt.Errorf("line %d: expected variable after global, got %s", p.cur().line, p.cur())
+		}
+		names = append(names, p.next().val)
+		if !p.isOp(",") {
+			break
+		}
+		p.next()
+	}
+	p.optSemi()
+	return &model.Global{Names: names}, nil
+}
+
+// parseStaticVar parses `static $a [= expr][, $b [= expr]]*;`.
+func (p *parser) parseStaticVar() (model.Stmt, error) {
+	p.next() // static
+	var vars []model.StaticVarDecl
+	for {
+		if p.cur().kind != tVar {
+			return nil, fmt.Errorf("line %d: expected variable after static, got %s", p.cur().line, p.cur())
+		}
+		decl := model.StaticVarDecl{Name: p.next().val}
+		if p.isOp("=") {
+			p.next()
+			def, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			decl.Default = def
+		}
+		vars = append(vars, decl)
+		if !p.isOp(",") {
+			break
+		}
+		p.next()
+	}
+	p.optSemi()
+	return &model.StaticVar{Vars: vars}, nil
 }
 
 // parseQualifiedName consumes Ident (\\ Ident)*. If leading is allowed, an
@@ -862,11 +919,18 @@ func (p *parser) parseCaseBody() ([]model.Stmt, error) {
 
 func (p *parser) parseFunction() (model.Stmt, error) {
 	p.next() // function
+	// `function &name()` declares a by-reference return. The runtime returns
+	// by value either way; the marker is recorded for printing and lint.
+	byRef := false
+	if p.isOp("&") {
+		p.next()
+		byRef = true
+	}
 	if p.cur().kind != tIdent {
 		return nil, fmt.Errorf("line %d: expected function name", p.cur().line)
 	}
 	name := p.next().val
-	fd := &model.FuncDecl{Name: name}
+	fd := &model.FuncDecl{Name: name, ByRef: byRef}
 
 	// `function Class::method()` form.
 	if p.isOp("::") {

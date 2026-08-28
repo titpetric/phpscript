@@ -42,6 +42,8 @@ func File(name, src string) ([]Diagnostic, error) {
 	lintRoutes(name, src, &out)
 	lintInterfaces(name, prog, &out)
 	lintStmts(name, prog, &out)
+	lintReferences(name, prog, &out)
+	lintUndefinedNames(name, prog, &out)
 	return out, nil
 }
 
@@ -194,6 +196,9 @@ func lintSource(name, src string) (string, error) {
 func lintStmts(file string, prog *model.Program, out *[]Diagnostic) {
 	w := &stmtWalker{file: file, prog: prog, out: out}
 	w.walk(prog.Stmts)
+	for _, decl := range prog.AnonClasses {
+		w.lintMagicMethods(decl)
+	}
 }
 
 type stmtWalker struct {
@@ -207,7 +212,7 @@ func (w *stmtWalker) walk(stmts []model.Stmt) {
 		switch n := s.(type) {
 		case *model.Assign:
 			lintChainedAssign(w.file, n, w.out)
-		case *model.ExprStmt:
+		case *model.Global:
 			w.lintGlobal(n)
 		case *model.If:
 			lintCondition(w.file, n.Cond, w.out)
@@ -230,6 +235,8 @@ func (w *stmtWalker) walk(stmts []model.Stmt) {
 			w.walk(n.Body)
 		case *model.ClassDecl:
 			w.lintExtends(n)
+			w.lintAbstract(n)
+			w.lintMagicMethods(n)
 			for _, m := range n.Methods {
 				w.walk(m.Body)
 			}
@@ -250,19 +257,69 @@ func (w *stmtWalker) walk(stmts []model.Stmt) {
 
 // lintGlobal reports the `global $x;` statement, a documented won't-implement
 // (docs/design.md): it parses and binds nothing, so the variable reads as
-// unset at a distance from the line that looks like it imports it. The keyword
-// parses as a constant lookup followed by the variable, which is why the check
-// reads an ExprStmt rather than a dedicated node.
-func (w *stmtWalker) lintGlobal(n *model.ExprStmt) {
-	v, ok := n.X.(*model.Var)
-	if !ok || !v.Const || !strings.EqualFold(v.Name, "global") {
-		return
-	}
+// unset at a distance from the line that looks like it imports it.
+func (w *stmtWalker) lintGlobal(n *model.Global) {
 	*w.out = append(*w.out, Diagnostic{
 		File:    w.file,
 		Line:    w.prog.SourceSpans[n].Start,
 		Message: "global is a no-op: the variable stays unset; pass the collaborator as a parameter",
 	})
+}
+
+// lintAbstract reports the abstract modifier, which has nothing to mean
+// without inheritance (docs/design.md): an abstract class can be instantiated
+// like any other, and an abstract method has no body, so calling it returns
+// null where PHP would refuse to load the class uncompleted. Both parse and
+// are kept by the formatter; the linter is where the author hears that no
+// contract is being enforced. An interface is the contract that is checked.
+func (w *stmtWalker) lintAbstract(n *model.ClassDecl) {
+	if n.Abstract {
+		*w.out = append(*w.out, Diagnostic{
+			File:    w.file,
+			Line:    w.prog.SourceSpans[n].Start,
+			Message: fmt.Sprintf("abstract is a no-op: %s can be instantiated; declare an interface for the contract (docs/design.md)", n.Name),
+		})
+	}
+	for _, m := range n.Methods {
+		if !m.Abstract {
+			continue
+		}
+		line := w.prog.SourceSpans[n].Start
+		if span, ok := w.prog.SourceSpans[m]; ok {
+			line = span.Start
+		}
+		*w.out = append(*w.out, Diagnostic{
+			File:    w.file,
+			Line:    line,
+			Message: fmt.Sprintf("abstract method %s::%s() is a no-op: it has no body and a call returns null; declare the body (docs/design.md)", n.Name, m.Name),
+		})
+	}
+}
+
+// lintMagicMethods reports a magic method the runtime never calls. Only
+// __construct and __invoke run (docs/design.md, "Won't implement"); a class
+// that declares __call, __get or any other implicit hook is dead code that
+// looks load-bearing, which is worse than absent.
+func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
+	for _, m := range n.Methods {
+		if !strings.HasPrefix(m.Name, "__") {
+			continue
+		}
+		switch strings.ToLower(m.Name) {
+		case "__construct", "__invoke":
+			continue
+		}
+		line := w.prog.SourceSpans[n].Start
+		if span, ok := w.prog.SourceSpans[m]; ok {
+			line = span.Start
+		}
+		*w.out = append(*w.out, Diagnostic{
+			File: w.file,
+			Line: line,
+			Message: fmt.Sprintf("magic method %s::%s() is never called implicitly: only __construct and __invoke run; "+
+				"declare an explicit method (docs/design.md)", n.Name, m.Name),
+		})
+	}
 }
 
 // lintExtends reports `extends` on a class, a documented won't-implement
@@ -279,6 +336,59 @@ func (w *stmtWalker) lintExtends(n *model.ClassDecl) {
 		Line:    w.prog.SourceSpans[n].Start,
 		Message: fmt.Sprintf("extends is a no-op: %s inherits nothing from %s; declare the members it uses", n.Name, n.Parent),
 	})
+}
+
+// lintReferences reports the reference markers that parse and confer nothing
+// (docs/design.md, "`&` outside `foreach`"): `$a = &$b` binds by value, and
+// `function &f()` returns by value. Both spellings survive the formatter, so
+// the linter is where a port hears that the aliasing they promise never
+// happens. The `&` of `foreach ($a as &$v)`, a parameter or a closure `use`
+// never builds these nodes and is not reported.
+func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
+	w := &astWalker{prog: prog}
+	byRefDecl := func(fallback model.Stmt, fn *model.FuncDecl, name string) {
+		if !fn.ByRef {
+			return
+		}
+		line := prog.SourceSpans[fallback].Start
+		if span, ok := prog.SourceSpans[fn]; ok {
+			line = span.Start
+		}
+		*out = append(*out, Diagnostic{
+			File:    file,
+			Line:    line,
+			Message: fmt.Sprintf("function &%s() returns by value: the & is a no-op; return the value (docs/design.md)", name),
+		})
+	}
+	w.stmt = func(s model.Stmt) {
+		switch n := s.(type) {
+		case *model.FuncDecl:
+			byRefDecl(n, n, n.Name)
+		case *model.ClassDecl:
+			for _, m := range n.Methods {
+				byRefDecl(n, m, n.Name+"::"+m.Name)
+			}
+		}
+	}
+	w.expr = func(e model.Expr, line int) {
+		switch n := e.(type) {
+		case *model.Ref:
+			*out = append(*out, Diagnostic{
+				File:    file,
+				Line:    line,
+				Message: "reference & is a no-op: the value is bound by value, and a later write through one name is not seen through the other (docs/design.md)",
+			})
+		case *model.Closure:
+			if n.ByRef {
+				*out = append(*out, Diagnostic{
+					File:    file,
+					Line:    line,
+					Message: "function &() returns by value: the & is a no-op; return the value (docs/design.md)",
+				})
+			}
+		}
+	}
+	w.walk(prog.Stmts)
 }
 
 // lintChainedAssign reports `$a = $b = value`, where one value is bound to two
@@ -374,6 +484,8 @@ func collectAssignExprs(e model.Expr, out *[]*model.AssignExpr) {
 		*out = append(*out, n)
 		collectAssignExprs(n.Value, out)
 	case *model.Unary:
+		collectAssignExprs(n.X, out)
+	case *model.Ref:
 		collectAssignExprs(n.X, out)
 	case *model.Parenthesized:
 		collectAssignExprs(n.X, out)

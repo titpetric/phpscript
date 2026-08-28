@@ -39,6 +39,7 @@ tasks:
       - go fmt ./...
       - go install .
       - task: go:test
+      - task: cover
       - task: go:build
       - task: db:up
       - task: db:down
@@ -157,6 +158,21 @@ tasks:
       - phpscript test-hello-world.php
       - php test-hello-world.php
       - ./test-shebang
+
+  # The go:test job writes pkg.cov (see .atkins/skills/go.yml); this turns the
+  # profile into the checked-in docs/code-coverage.md, a per-package and
+  # per-function report rendered by go-fsck from docs/code-coverage.md.tpl.
+  # The json intermediates are working files and are removed on the way out;
+  # pkg.cov stays behind (gitignored) for `go tool cover -html`.
+  cover:
+    desc: "Generate docs/code-coverage.md from the test run's coverage profile"
+    cmds:
+      - defer: rm -f pkg.cov.json go-fsck.json
+      - go-fsck extract --pretty-json ./...
+      - go tool cover -func=pkg.cov | summary coverfunc --json > pkg.cov.json
+      - go-fsck coverage -c pkg.cov.json -o go-fsck.json
+      - go-fsck coverage --template docs/code-coverage.md.tpl > docs/code-coverage.md
+      - task: mdox:fmt
 
   lint:
     passthru: true
