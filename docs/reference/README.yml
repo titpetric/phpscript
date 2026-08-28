@@ -50,6 +50,46 @@ sitemap:
         description: Request query, form, upload, cookie, server and route variables, and the superglobals that stay empty.
       - path: predefined-interfaces-and-classes/README.md
         description: Exception and closure behavior, plus absent PHP runtime types.
+      - path: predefined-interfaces-and-classes/reserved-interfaces.md
+        description: Every interface and class PHP predefines, the version that added it, and what phpscript does about each.
+      - path: predefined-interfaces-and-classes/classes/Traversable.md
+        description: The base interface foreach detects, which cannot be implemented on its own.
+      - path: predefined-interfaces-and-classes/classes/Iterator.md
+        description: The five methods foreach calls, why nothing dispatches through them, and a flattened workaround.
+      - path: predefined-interfaces-and-classes/classes/IteratorAggregate.md
+        description: Handing back a separate iterator, and why getIterator() is never called.
+      - path: predefined-interfaces-and-classes/classes/InternalIterator.md
+        description: The engine-supplied iterator for internal classes.
+      - path: predefined-interfaces-and-classes/classes/Throwable.md
+        description: The base interface of everything thrown, supported in a catch clause and nowhere else.
+      - path: predefined-interfaces-and-classes/classes/Countable.md
+        description: The count() method count() does not call.
+      - path: predefined-interfaces-and-classes/classes/ArrayAccess.md
+        description: Indexing an object, and the absence of an overloaded index.
+      - path: predefined-interfaces-and-classes/classes/Serializable.md
+        description: Customized serializing, deprecated in PHP 8.1 and unimplemented here.
+      - path: predefined-interfaces-and-classes/classes/Closure.md
+        description: The class wrapping an anonymous function, whose value exists without it.
+      - path: predefined-interfaces-and-classes/classes/stdClass.md
+        description: The empty class new stdClass and the (object) cast both build.
+      - path: predefined-interfaces-and-classes/classes/Generator.md
+        description: What a function containing yield returns, and why there is no coroutine model.
+      - path: predefined-interfaces-and-classes/classes/Fiber.md
+        description: Interruptible call stacks, left to the embedding Go application.
+      - path: predefined-interfaces-and-classes/classes/WeakReference.md
+        description: A reference that does not keep its object alive, and why refcounts do not carry over.
+      - path: predefined-interfaces-and-classes/classes/WeakMap.md
+        description: A map keyed by object, resting on three unavailable features.
+      - path: predefined-interfaces-and-classes/classes/Stringable.md
+        description: The __toString() contract, and the magic method behind it.
+      - path: predefined-interfaces-and-classes/classes/UnitEnum.md
+        description: The interface the engine applies to every enumeration.
+      - path: predefined-interfaces-and-classes/classes/BackedEnum.md
+        description: The scalar-to-case mappings on a backed enumeration.
+      - path: predefined-interfaces-and-classes/classes/SensitiveParameterValue.md
+        description: The wrapper that keeps a secret out of a stack trace.
+      - path: predefined-interfaces-and-classes/classes/__PHP_Incomplete_Class.md
+        description: The placeholder unserialize() produces for a class it cannot build.
   - section: phpscript extensions
     description: Runtime-specific syntax and APIs that are not part of the PHP language reference.
     links:

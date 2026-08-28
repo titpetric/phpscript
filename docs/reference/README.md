@@ -102,6 +102,107 @@ The supported error model and values supplied by the runtime or request host.
 - [Predefined interfaces and classes](predefined-interfaces-and-classes/README.md) - Exception and closure behavior, plus absent PHP runtime types.
   - [`Exception`](predefined-interfaces-and-classes/README.md#exception)
   - [Runtime class discovery](predefined-interfaces-and-classes/README.md#runtime-class-discovery)
+- [Reserved interfaces and classes](predefined-interfaces-and-classes/reserved-interfaces.md) - Every interface and class PHP predefines, the version that added it, and what phpscript does about each.
+  - [Table of contents](predefined-interfaces-and-classes/reserved-interfaces.md#table-of-contents)
+  - [Reserved names](predefined-interfaces-and-classes/reserved-interfaces.md#reserved-names)
+  - [Reading the phpscript column](predefined-interfaces-and-classes/reserved-interfaces.md#reading-the-phpscript-column)
+  - [Interfaces that use extends](predefined-interfaces-and-classes/reserved-interfaces.md#interfaces-that-use-extends)
+  - [See also](predefined-interfaces-and-classes/reserved-interfaces.md#see-also)
+- [The Traversable interface](predefined-interfaces-and-classes/classes/Traversable.md) - The base interface foreach detects, which cannot be implemented on its own.
+  - [Introduction](predefined-interfaces-and-classes/classes/Traversable.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/Traversable.md#interface-synopsis)
+  - [Status](predefined-interfaces-and-classes/classes/Traversable.md#status)
+- [The Iterator interface](predefined-interfaces-and-classes/classes/Iterator.md) - The five methods foreach calls, why nothing dispatches through them, and a flattened workaround.
+  - [Introduction](predefined-interfaces-and-classes/classes/Iterator.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/Iterator.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/Iterator.md#methods)
+  - [Predefined iterators](predefined-interfaces-and-classes/classes/Iterator.md#predefined-iterators)
+  - [Examples](predefined-interfaces-and-classes/classes/Iterator.md#examples)
+  - [See also](predefined-interfaces-and-classes/classes/Iterator.md#see-also)
+  - [Status](predefined-interfaces-and-classes/classes/Iterator.md#status)
+- [The IteratorAggregate interface](predefined-interfaces-and-classes/classes/IteratorAggregate.md) - Handing back a separate iterator, and why getIterator() is never called.
+  - [Introduction](predefined-interfaces-and-classes/classes/IteratorAggregate.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/IteratorAggregate.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/IteratorAggregate.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/IteratorAggregate.md#status)
+- [The InternalIterator class](predefined-interfaces-and-classes/classes/InternalIterator.md) - The engine-supplied iterator for internal classes.
+  - [Introduction](predefined-interfaces-and-classes/classes/InternalIterator.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/InternalIterator.md#class-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/InternalIterator.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/InternalIterator.md#status)
+- [The Throwable interface](predefined-interfaces-and-classes/classes/Throwable.md) - The base interface of everything thrown, supported in a catch clause and nowhere else.
+  - [Introduction](predefined-interfaces-and-classes/classes/Throwable.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/Throwable.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/Throwable.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/Throwable.md#status)
+- [The Countable interface](predefined-interfaces-and-classes/classes/Countable.md) - The count() method count() does not call.
+  - [Introduction](predefined-interfaces-and-classes/classes/Countable.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/Countable.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/Countable.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/Countable.md#status)
+- [The ArrayAccess interface](predefined-interfaces-and-classes/classes/ArrayAccess.md) - Indexing an object, and the absence of an overloaded index.
+  - [Introduction](predefined-interfaces-and-classes/classes/ArrayAccess.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/ArrayAccess.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/ArrayAccess.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/ArrayAccess.md#status)
+- [The Serializable interface](predefined-interfaces-and-classes/classes/Serializable.md) - Customized serializing, deprecated in PHP 8.1 and unimplemented here.
+  - [Introduction](predefined-interfaces-and-classes/classes/Serializable.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/Serializable.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/Serializable.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/Serializable.md#status)
+- [The Closure class](predefined-interfaces-and-classes/classes/Closure.md) - The class wrapping an anonymous function, whose value exists without it.
+  - [Introduction](predefined-interfaces-and-classes/classes/Closure.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/Closure.md#class-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/Closure.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/Closure.md#status)
+- [The stdClass class](predefined-interfaces-and-classes/classes/stdClass.md) - The empty class new stdClass and the (object) cast both build.
+  - [Introduction](predefined-interfaces-and-classes/classes/stdClass.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/stdClass.md#class-synopsis)
+  - [Status](predefined-interfaces-and-classes/classes/stdClass.md#status)
+- [The Generator class](predefined-interfaces-and-classes/classes/Generator.md) - What a function containing yield returns, and why there is no coroutine model.
+  - [Introduction](predefined-interfaces-and-classes/classes/Generator.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/Generator.md#class-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/Generator.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/Generator.md#status)
+- [The Fiber class](predefined-interfaces-and-classes/classes/Fiber.md) - Interruptible call stacks, left to the embedding Go application.
+  - [Introduction](predefined-interfaces-and-classes/classes/Fiber.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/Fiber.md#class-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/Fiber.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/Fiber.md#status)
+- [The WeakReference class](predefined-interfaces-and-classes/classes/WeakReference.md) - A reference that does not keep its object alive, and why refcounts do not carry over.
+  - [Introduction](predefined-interfaces-and-classes/classes/WeakReference.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/WeakReference.md#class-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/WeakReference.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/WeakReference.md#status)
+- [The WeakMap class](predefined-interfaces-and-classes/classes/WeakMap.md) - A map keyed by object, resting on three unavailable features.
+  - [Introduction](predefined-interfaces-and-classes/classes/WeakMap.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/WeakMap.md#class-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/WeakMap.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/WeakMap.md#status)
+- [The Stringable interface](predefined-interfaces-and-classes/classes/Stringable.md) - The __toString() contract, and the magic method behind it.
+  - [Introduction](predefined-interfaces-and-classes/classes/Stringable.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/Stringable.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/Stringable.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/Stringable.md#status)
+- [The UnitEnum interface](predefined-interfaces-and-classes/classes/UnitEnum.md) - The interface the engine applies to every enumeration.
+  - [Introduction](predefined-interfaces-and-classes/classes/UnitEnum.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/UnitEnum.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/UnitEnum.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/UnitEnum.md#status)
+- [The BackedEnum interface](predefined-interfaces-and-classes/classes/BackedEnum.md) - The scalar-to-case mappings on a backed enumeration.
+  - [Introduction](predefined-interfaces-and-classes/classes/BackedEnum.md#introduction)
+  - [Interface synopsis](predefined-interfaces-and-classes/classes/BackedEnum.md#interface-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/BackedEnum.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/BackedEnum.md#status)
+- [The SensitiveParameterValue class](predefined-interfaces-and-classes/classes/SensitiveParameterValue.md) - The wrapper that keeps a secret out of a stack trace.
+  - [Introduction](predefined-interfaces-and-classes/classes/SensitiveParameterValue.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/SensitiveParameterValue.md#class-synopsis)
+  - [Methods](predefined-interfaces-and-classes/classes/SensitiveParameterValue.md#methods)
+  - [Status](predefined-interfaces-and-classes/classes/SensitiveParameterValue.md#status)
+- [The __PHP_Incomplete_Class class](predefined-interfaces-and-classes/classes/__PHP_Incomplete_Class.md) - The placeholder unserialize() produces for a class it cannot build.
+  - [Introduction](predefined-interfaces-and-classes/classes/__PHP_Incomplete_Class.md#introduction)
+  - [Class synopsis](predefined-interfaces-and-classes/classes/__PHP_Incomplete_Class.md#class-synopsis)
+  - [Status](predefined-interfaces-and-classes/classes/__PHP_Incomplete_Class.md#status)
 
 ## phpscript extensions
 
