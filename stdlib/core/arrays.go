@@ -53,6 +53,10 @@ func registerArrays(rt *runner.Runtime) {
 	})
 	// array_merge merges the given arrays into one; integer keys are renumbered and later string keys overwrite earlier ones.
 	rt.RegisterFunc("array_merge", phpArrayMerge)
+	// reset returns the first value of $array, or false when it is empty; there is no internal pointer here, so this is the value without the rewind.
+	rt.RegisterFunc("reset", func(array any) any { return edgeValue(array, true) })
+	// end returns the last value of $array, or false when it is empty; there is no internal pointer here, so this is the value without the seek.
+	rt.RegisterFunc("end", func(array any) any { return edgeValue(array, false) })
 	// array_keys returns the keys of $array as a list; there is no $filter_value parameter.
 	rt.RegisterFunc("array_keys", func(array any) []any {
 		n, _ := model.LenValues(array)
@@ -952,4 +956,22 @@ func sortValues(a any, less func(x, y any) bool) bool {
 		return less(rv.Index(i).Interface(), rv.Index(j).Interface())
 	})
 	return true
+}
+
+// edgeValue is reset and end: the first or last value of the array, false when
+// it holds none. PHP defines both in terms of the internal pointer, which the
+// array model here does not carry; every practical call reads them for the
+// value, which is what this answers with.
+func edgeValue(array any, first bool) any {
+	var out any = false
+	found := false
+	model.RangeValues(array, func(_, v any) bool {
+		out = v
+		found = true
+		return !first
+	})
+	if !found {
+		return false
+	}
+	return out
 }
