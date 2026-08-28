@@ -315,6 +315,11 @@ function count(mixed $array): int
 ```
 
 ```php
+// end returns the last value of $array, or false when it is empty; there is no internal pointer here, so this is the value without the seek.
+function end(mixed $array): mixed
+```
+
+```php
 // in_array reports whether $needle occurs in $haystack, comparing loosely with PHP 8 rules unless $strict is true, which compares types as well as values.
 function in_array(mixed $needle, mixed $haystack, mixed ...$strict): bool
 ```
@@ -322,6 +327,11 @@ function in_array(mixed $needle, mixed $haystack, mixed ...$strict): bool
 ```php
 // range returns the list of values from $start to $end inclusive, stepping by $step; two single-character strings produce a character range, and any float endpoint or fractional step produces floats.
 function range(mixed $start, mixed $end, mixed ...$step): array
+```
+
+```php
+// reset returns the first value of $array, or false when it is empty; there is no internal pointer here, so this is the value without the rewind.
+function reset(mixed $array): mixed
 ```
 
 ```php

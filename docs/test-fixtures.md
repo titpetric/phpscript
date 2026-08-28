@@ -48,6 +48,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | array_union.phpt         | PASS       | PASS    | PASS |
 | chained_assignment.phpt  | PASS       | PASS    | PASS |
 | compact.phpt             | PASS       | PASS    | PASS |
+| end_reset.phpt           | PASS       | PASS    | PASS |
 | keys.phpt                | PASS       | PASS    | PASS |
 | ksort_asort.phpt         | PASS       | PASS    | PASS |
 | php_array_splice.phpt    | PASS       | PASS    | PASS |
@@ -143,6 +144,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | static_var_list.phpt                    | PASS       | PASS    | PASS |
 | static_var_recursion.phpt               | PASS       | PASS    | PASS |
 | user_function_declaration_and_call.phpt | PASS       | PASS    | PASS |
+| variadic.phpt                           | PASS       | PASS    | PASS |
 
 ## gd
 
@@ -314,13 +316,13 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | Area        | Fixtures | Passed | Failed |
 |-------------|----------|--------|--------|
 | arithmetic  | 21       | 21     | 0      |
-| arrays      | 18       | 18     | 0      |
+| arrays      | 19       | 19     | 0      |
 | autoloading | 8        | 8      | 0      |
 | bindings    | 23       | 23     | 0      |
 | errors      | 2        | 2      | 0      |
 | exceptions  | 9        | 9      | 0      |
 | flatstack   | 7        | 7      | 0      |
-| functions   | 9        | 9      | 0      |
+| functions   | 10       | 10     | 0      |
 | gd          | 7        | 7      | 0      |
 | includes    | 3        | 3      | 0      |
 | namespaces  | 3        | 3      | 0      |
@@ -333,4 +335,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | stdlib      | 18       | 18     | 0      |
 | strings     | 16       | 16     | 0      |
 | syntax      | 8        | 8      | 0      |
-| **Total**   | 202      | 202    | 0      |
+| **Total**   | 204      | 204    | 0      |
