@@ -204,6 +204,8 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return false
 	})
+	// intval returns the integer value of $value; $base applies only to a string $value, read like C strtol with the 0x and 0b prefixes, and a $base outside 0 and 2-36 yields 0.
+	rt.RegisterFunc("intval", phpIntval)
 	// intdiv returns the integer quotient of $num divided by $divisor; division by zero and PHP_INT_MIN by -1 are errors.
 	rt.RegisterFunc("intdiv", func(num, divisor int64) (int64, error) {
 		if divisor == 0 {
@@ -267,4 +269,108 @@ func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
 		return fn(callArgs...)
 	}
 	return fn(phpval.Values(args)...)
+}
+
+// phpIntval backs intval. Without a base, or with the default base 10, it is
+// the (int) cast, which phpval.Int already is for every scalar; a collection is
+// its truthiness (intval([]) is 0, intval([1, 2]) is 1), which the cast owns
+// here because phpval.Int reads a collection as 0. Any other base applies to a
+// string argument only — intval(12.9, 16) is 12 — and reads it through
+// strtolInt.
+func phpIntval(num any, base ...any) int64 {
+	radix := int64(10)
+	if len(base) > 0 {
+		radix = phpval.Int(base[0])
+	}
+	if str, ok := num.(string); ok && radix != 10 {
+		return strtolInt(str, radix)
+	}
+	if model.IsCollection(num) {
+		if n, _ := model.LenValues(num); n > 0 {
+			return 1
+		}
+		return 0
+	}
+	return phpval.Int(num)
+}
+
+// strtolInt reads s the way intval hands a non-10 base to C strtol: leading
+// whitespace, one optional sign, then digits of the base until the first
+// character that is not one, saturating at the int64 bounds the way strtol
+// does. Base 0 detects the base from a 0x, 0b or 0 prefix and is 10 without
+// one; 0b is PHP's own addition for bases 0 and 2, stripped before strtol ever
+// sees the string. A base outside 0 and 2-36 is strtol's EINVAL, which intval
+// surfaces as 0 rather than an error — php 8.5 raises no ValueError. The 0o
+// octal prefix is not recognised, exactly because strtol does not know it:
+// intval("0o12", 8) is 0.
+func strtolInt(s string, base int64) int64 {
+	if base != 0 && (base < 2 || base > 36) {
+		return 0
+	}
+	i := 0
+	for i < len(s) {
+		switch s[i] {
+		case ' ', '\t', '\n', '\v', '\f', '\r':
+			i++
+			continue
+		}
+		break
+	}
+	neg := false
+	if i < len(s) && (s[i] == '+' || s[i] == '-') {
+		neg = s[i] == '-'
+		i++
+	}
+	// strtol takes a 0x prefix only when a hex digit follows; without one it
+	// reads the lone "0" and stops. Both spellings of that are 0, so the
+	// prefix is taken unconditionally here.
+	switch {
+	case (base == 0 || base == 16) && i+1 < len(s) && s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X'):
+		base, i = 16, i+2
+	case (base == 0 || base == 2) && i+1 < len(s) && s[i] == '0' && (s[i+1] == 'b' || s[i+1] == 'B'):
+		base, i = 2, i+2
+	case base == 0:
+		base = 10
+		if i < len(s) && s[i] == '0' {
+			base = 8
+		}
+	}
+	// The magnitude accumulates unsigned so that -9223372036854775808 base 10
+	// still reads exactly; one digit past the bound saturates like strtol.
+	var mag uint64
+	overflowed := false
+	for ; i < len(s); i++ {
+		var d uint64
+		switch c := s[i]; {
+		case c >= '0' && c <= '9':
+			d = uint64(c - '0')
+		case c >= 'a' && c <= 'z':
+			d = uint64(c-'a') + 10
+		case c >= 'A' && c <= 'Z':
+			d = uint64(c-'A') + 10
+		default:
+			d = 36
+		}
+		if d >= uint64(base) {
+			break
+		}
+		if overflowed {
+			continue
+		}
+		if mag > (math.MaxUint64-d)/uint64(base) {
+			overflowed = true
+			continue
+		}
+		mag = mag*uint64(base) + d
+	}
+	if neg {
+		if overflowed || mag > 1<<63 {
+			return math.MinInt64
+		}
+		return -int64(mag)
+	}
+	if overflowed || mag > math.MaxInt64 {
+		return math.MaxInt64
+	}
+	return int64(mag)
 }

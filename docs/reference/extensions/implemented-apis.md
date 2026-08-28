@@ -505,6 +505,11 @@ function intdiv(int $num, int $divisor): int
 ```
 
 ```php
+// intval returns the integer value of $value; $base applies only to a string $value, read like C strtol with the 0x and 0b prefixes, and a $base outside 0 and 2-36 yields 0.
+function intval(mixed $num, mixed ...$base): int
+```
+
+```php
 /**
  * A binding's []string is as much a PHP array as an *model.Array is, so
  * is_array() answers for the whole value model, not one Go type.
