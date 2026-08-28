@@ -410,7 +410,7 @@ function putenv(string $name, string ...$values): bool
 #### json
 
 ```php
-// json_decode parses the JSON in $text; $associative must be true or omitted because there is no stdClass to decode an object into, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
+// json_decode parses the JSON in $text; $associative must be true or omitted because decoding into objects is not implemented, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
 function json_decode(string $text, mixed ...$opts): mixed
 ```
 
@@ -774,7 +774,7 @@ function get_class(mixed ...$object): mixed
 ```
 
 ```php
-// get_object_vars returns the properties of $object as an array, declared fields first; a non-object yields an empty array.
+// get_object_vars returns the properties of $object as an array, in the order the object reads them back; a non-object yields an empty array.
 function get_object_vars(mixed $object): array
 ```
 

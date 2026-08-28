@@ -194,8 +194,9 @@ behaviour to test and one output to compare, and a payload that is diffed or
 signed does not change shape depending on a flag at the call site.
 
 `json_decode` accepts `$depth` and `$flags` and ignores them, because library
-code passes them defensively. `$associative` must be true or omitted: there is
-no `stdClass` for an object to decode into.
+code passes them defensively. `$associative` must be true or omitted: decoding
+into objects is not implemented. `stdClass` itself exists, and `(object)` builds
+one, so this is a gap in the decoder rather than a missing class.
 
 `phpscript lint` warns on a `JSON_*` name, so a port is told before it runs
 rather than at the first request that reaches the line. The name inside a

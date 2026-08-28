@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -21,7 +20,7 @@ func init() {
 func registerJSON(rt *runner.Runtime) {
 	// json_encode returns the JSON encoding of $value; $flags is accepted and ignored because the encoding is not configurable, a forward slash is written as itself rather than escaped, and an encoding failure raises an error instead of returning false.
 	rt.RegisterFunc("json_encode", phpJSONEncode)
-	// json_decode parses the JSON in $text; $associative must be true or omitted because there is no stdClass to decode an object into, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
+	// json_decode parses the JSON in $text; $associative must be true or omitted because decoding into objects is not implemented, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
 	rt.RegisterFunc("json_decode", phpJSONDecode)
 }
 
@@ -39,11 +38,13 @@ func phpJSONEncode(value any, flags ...any) (any, error) {
 }
 
 func phpJSONDecode(text string, opts ...any) (any, error) {
-	// $associative selects the shape objects decode into. There is no stdClass
-	// here, so false is refused rather than answered with the array shape it
-	// did not ask for; $depth and $flags are accepted and ignored.
+	// $associative selects the shape objects decode into. The decoder only
+	// builds arrays, so false is refused rather than answered with the shape it
+	// did not ask for; $depth and $flags are accepted and ignored. stdClass
+	// exists and `(object)` builds one, so what is missing is the decode path,
+	// not the class; see docs/design.md, "JSON".
 	if len(opts) > 0 && opts[0] != nil && !phpval.Truthy(opts[0]) {
-		return nil, errors.New("json_decode(): $associative must be true; there is no stdClass to decode an object into")
+		return nil, errors.New("json_decode(): $associative must be true; decoding into objects is not implemented")
 	}
 	dec := json.NewDecoder(strings.NewReader(text))
 	dec.UseNumber()
@@ -136,30 +137,11 @@ func jsonEncodeValue(v any) any {
 		if x == nil {
 			return nil
 		}
-		out := newJSONObject(len(x.Props))
-		// Declared fields first, in declaration order, then anything the script
-		// added afterwards. Props is a Go map and has no order of its own.
-		seen := make(map[string]bool, len(x.Props))
-		if x.Class != nil {
-			for _, field := range x.Class.Fields {
-				if v, ok := x.Props[field.Name]; ok {
-					out.add(field.Name, jsonEncodeValue(v))
-					seen[field.Name] = true
-				}
-			}
-		}
-		if len(seen) < len(x.Props) {
-			rest := make([]string, 0, len(x.Props)-len(seen))
-			for k := range x.Props {
-				if !seen[k] {
-					rest = append(rest, k)
-				}
-			}
-			sort.Strings(rest)
-			for _, k := range rest {
-				out.add(k, jsonEncodeValue(x.Props[k]))
-			}
-		}
+		out := newJSONObject(x.Len())
+		x.Range(func(name string, v any) bool {
+			out.add(name, jsonEncodeValue(v))
+			return true
+		})
 		return out
 	case []any:
 		out := make([]any, len(x))

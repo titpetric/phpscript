@@ -4,7 +4,6 @@ import (
 	"io"
 	"math"
 	"reflect"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -350,34 +349,23 @@ type objectField struct {
 	value any
 }
 
-// objectFields returns an object's properties in a stable order. An
-// interpreted object keeps its values in a Go map, whose iteration order is
-// randomised per pass, so the declared fields come first in declaration order
-// and anything the script added afterwards is sorted by name.
+// objectFields returns an object's properties in the order it reads them back:
+// the declared fields first, in declaration order, then the ones the script
+// added, in the order it added them. A dynamic property carries no scope
+// annotation, because only a declaration can name a visibility.
 func objectFields(value any) []objectField {
 	if object, ok := value.(*model.Object); ok {
-		fields := make([]objectField, 0, len(object.Props))
-		declared := make(map[string]bool, len(object.Props))
-		if object.Class != nil {
-			for _, field := range object.Class.Fields {
-				val, ok := object.Props[field.Name]
-				if !ok {
-					continue
+		fields := make([]objectField, 0, object.Len())
+		object.Range(func(name string, val any) bool {
+			scope := ""
+			if object.Class != nil {
+				if field, ok := object.Class.Field(name); ok {
+					scope = fieldScope(object.Class.Name, field.Visibility)
 				}
-				fields = append(fields, objectField{field.Name, fieldScope(object.Class.Name, field.Visibility), val})
-				declared[field.Name] = true
 			}
-		}
-		dynamic := make([]string, 0, len(object.Props))
-		for name := range object.Props {
-			if !declared[name] {
-				dynamic = append(dynamic, name)
-			}
-		}
-		sort.Strings(dynamic)
-		for _, name := range dynamic {
-			fields = append(fields, objectField{name, "", object.Props[name]})
-		}
+			fields = append(fields, objectField{name, scope, val})
+			return true
+		})
 		return fields
 	}
 

@@ -39,6 +39,12 @@ type Program struct {
 	// parser. Consumers may ignore it; the formatter uses it to retain a single
 	// intentional blank line between statements.
 	SourceSpans map[Stmt]SourceSpan
+	// AnonClasses holds the declaration of every anonymous class written in the
+	// file, in source order. An anonymous class is declared inside an
+	// expression rather than by a statement, so a consumer that walks Stmts
+	// looking for a ClassDecl does not see one; whatever registers or checks
+	// the file's classes reads this alongside Stmts.
+	AnonClasses []*ClassDecl
 }
 
 // SourceSpan is the inclusive source-line range occupied by a statement.
@@ -498,9 +504,17 @@ type MethodCall struct {
 }
 
 // New is `new ClassName` / `new ClassName(args...)`.
+//
+// Decl is set for an anonymous class, `new class { ... }`, and holds the
+// declaration written in place of the name. Class still names the class, using
+// a name the parser synthesized, so that everything downstream of the parser
+// resolves an anonymous class the same way it resolves a written one. The
+// declarations a program builds this way are collected on Program.AnonClasses,
+// because they are not statements and nothing else would find them.
 type New struct {
 	Class string
 	Args  []Expr
+	Decl  *ClassDecl
 }
 
 // Unary is a prefix/postfix operator: "!", "-", "+", "~", "++", "--".

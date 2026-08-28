@@ -742,6 +742,8 @@ func (rt *Runtime) DeclaredClasses() []string {
 	for name := range rt.constructors {
 		names[name] = struct{}{}
 	}
+	// stdClass is not in either table, and get_declared_classes() lists it.
+	names[model.StdClass().Name] = struct{}{}
 	out := make([]string, 0, len(names))
 	for name := range names {
 		out = append(out, name)
@@ -844,6 +846,12 @@ func (rt *Runtime) lookupClass(name string) (*model.Class, bool) {
 		if strings.EqualFold(className, name) {
 			return c, true
 		}
+	}
+	// stdClass is answered last so a script that declares its own shadows it,
+	// and from outside the table so that clearing the table between runs does
+	// not take it away. See model.StdClass.
+	if strings.EqualFold(name, "stdClass") {
+		return model.StdClass(), true
 	}
 	return nil, false
 }

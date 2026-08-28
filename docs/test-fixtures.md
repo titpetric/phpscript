@@ -153,23 +153,28 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 ## oop
 
-| oop                          | Flat stack | Runtime | PHP  |
-|------------------------------|------------|---------|------|
-| class_constant_defaults.phpt | PASS       | PASS    | PASS |
-| class_constants.phpt         | PASS       | PASS    | PASS |
-| extends_noop.phpt            | PASS       | PASS    | SKIP |
-| instanceof.phpt              | PASS       | PASS    | PASS |
-| interface_contract.phpt      | PASS       | PASS    | SKIP |
-| interfaces.phpt              | PASS       | PASS    | PASS |
-| is_object.phpt               | PASS       | PASS    | PASS |
-| new_self_refused.phpt        | PASS       | PASS    | SKIP |
-| new_static_refused.phpt      | PASS       | PASS    | SKIP |
-| object_nesting.phpt          | PASS       | PASS    | SKIP |
-| property_incdec.phpt         | PASS       | PASS    | PASS |
-| self_instance_call.phpt      | PASS       | PASS    | PASS |
-| self_scope.phpt              | PASS       | PASS    | PASS |
-| static_members.phpt          | PASS       | PASS    | PASS |
-| template_render.phpt         | PASS       | PASS    | PASS |
+| oop                           | Flat stack | Runtime | PHP  |
+|-------------------------------|------------|---------|------|
+| anonymous_class_contract.phpt | PASS       | PASS    | SKIP |
+| anonymous_class_include.phpt  | PASS       | PASS    | PASS |
+| class_constant_defaults.phpt  | PASS       | PASS    | PASS |
+| class_constants.phpt          | PASS       | PASS    | PASS |
+| extends_noop.phpt             | PASS       | PASS    | SKIP |
+| instanceof.phpt               | PASS       | PASS    | PASS |
+| interface_contract.phpt       | PASS       | PASS    | SKIP |
+| interfaces.phpt               | PASS       | PASS    | PASS |
+| is_object.phpt                | PASS       | PASS    | PASS |
+| new_self_refused.phpt         | PASS       | PASS    | SKIP |
+| new_static_refused.phpt       | PASS       | PASS    | SKIP |
+| object_cast.phpt              | PASS       | PASS    | PASS |
+| object_nesting.phpt           | PASS       | PASS    | SKIP |
+| property_incdec.phpt          | PASS       | PASS    | PASS |
+| property_order.phpt           | PASS       | PASS    | PASS |
+| self_instance_call.phpt       | PASS       | PASS    | PASS |
+| self_scope.phpt               | PASS       | PASS    | PASS |
+| static_members.phpt           | PASS       | PASS    | PASS |
+| stdclass.phpt                 | PASS       | PASS    | PASS |
+| template_render.phpt          | PASS       | PASS    | PASS |
 
 ## output
 
@@ -279,7 +284,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | functions   | 5        | 5      | 0      |
 | includes    | 3        | 3      | 0      |
 | namespaces  | 2        | 2      | 0      |
-| oop         | 15       | 15     | 0      |
+| oop         | 20       | 20     | 0      |
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
@@ -287,4 +292,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | stdlib      | 14       | 14     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 168      | 168    | 0      |
+| **Total**   | 173      | 173    | 0      |

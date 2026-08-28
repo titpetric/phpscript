@@ -205,8 +205,8 @@ func registerBindings(rt registrar) {
 	bindingClass := &model.Class{Name: "BindingRecord", Methods: map[string]*model.FuncDecl{}}
 	rt.RegisterFunc("bind_object", func() *model.Object {
 		obj := model.NewObject(bindingClass)
-		obj.Props["id"] = int64(1)
-		obj.Props["name"] = "alpha"
+		obj.SetProp("id", int64(1))
+		obj.SetProp("name", "alpha")
 		return obj
 	})
 

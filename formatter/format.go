@@ -869,6 +869,13 @@ func (p *printer) expr(e model.Expr) string {
 	case *model.MethodCall:
 		return p.expr(n.Base) + "->" + n.Method + "(" + p.args(n.Args) + ")"
 	case *model.New:
+		// The name an anonymous class carries was synthesized by the parser and
+		// is not the source spelling; printing it would rewrite a working file
+		// into one that does not parse. Refusing the file leaves it untouched,
+		// which is what the unsupported list is for.
+		if n.Decl != nil {
+			return p.unsupportedNode("anonymous class", n)
+		}
 		class := p.typeName(n.Class)
 		if len(n.Args) == 0 {
 			return "new " + class

@@ -608,3 +608,85 @@ func countAssigns(stmts []model.Stmt) int {
 	}
 	return n
 }
+
+// `new class { ... }` parses into a New carrying the declaration written in
+// place of the name, under a name the parser synthesized so that everything
+// downstream resolves it the way it resolves a written class.
+func TestParseAnonymousClass(t *testing.T) {
+	prog := mustParse(t, `<?php
+$obj = new class implements Reader {
+	public $label = "anon";
+	public function name() { return $this->label; }
+};
+`)
+	n, ok := prog.Stmts[0].(*model.Assign).Value.(*model.New)
+	if !ok {
+		t.Fatalf("value = %T, want *model.New", prog.Stmts[0].(*model.Assign).Value)
+	}
+	if n.Decl == nil {
+		t.Fatal("New carries no declaration")
+	}
+	if n.Class == "" || n.Class != n.Decl.Name {
+		t.Errorf("New.Class = %q, Decl.Name = %q, want the same synthesized name", n.Class, n.Decl.Name)
+	}
+	if !strings.HasPrefix(n.Class, "class@anonymous") {
+		t.Errorf("New.Class = %q, want a name shaped like PHP's", n.Class)
+	}
+	if len(n.Decl.Implements) != 1 || n.Decl.Implements[0] != "Reader" {
+		t.Errorf("Implements = %v, want [Reader]", n.Decl.Implements)
+	}
+	if len(n.Decl.Fields) != 1 || n.Decl.Fields[0].Name != "label" {
+		t.Errorf("Fields = %+v, want one named label", n.Decl.Fields)
+	}
+	if len(n.Decl.Methods) != 1 || n.Decl.Methods[0].Name != "name" {
+		t.Errorf("Methods = %+v, want one named name", n.Decl.Methods)
+	}
+	// The declaration is not a statement, so the program carries it separately
+	// for whatever registers the file's classes.
+	if len(prog.AnonClasses) != 1 || prog.AnonClasses[0] != n.Decl {
+		t.Errorf("AnonClasses = %v, want the declaration New points at", prog.AnonClasses)
+	}
+}
+
+// Constructor arguments come before the heritage, as in PHP, and each
+// declaration in a file gets a name of its own.
+func TestParseAnonymousClassArgsAndNaming(t *testing.T) {
+	prog := mustParse(t, `<?php
+$a = new class ("dsn") { public function __construct($dsn) { $this->dsn = $dsn; } };
+$b = new class { };
+`)
+	first := prog.Stmts[0].(*model.Assign).Value.(*model.New)
+	second := prog.Stmts[1].(*model.Assign).Value.(*model.New)
+	if len(first.Args) != 1 {
+		t.Errorf("first args = %v, want one", first.Args)
+	}
+	if first.Class == second.Class {
+		t.Errorf("both declarations are named %q, want a name each", first.Class)
+	}
+	if len(prog.AnonClasses) != 2 {
+		t.Errorf("AnonClasses = %d, want 2", len(prog.AnonClasses))
+	}
+}
+
+// A named class still parses the same way through the extracted body parser.
+func TestParseNamedClassUnchangedByAnonymousSupport(t *testing.T) {
+	prog := mustParse(t, `<?php
+class Store implements Reader {
+	const LIMIT = 10;
+	public static $count = 0;
+	private $rows = array();
+	public function get($k) { return $this->rows[$k]; }
+}
+`)
+	cd, ok := prog.Stmts[0].(*model.ClassDecl)
+	if !ok {
+		t.Fatalf("statement = %T, want *model.ClassDecl", prog.Stmts[0])
+	}
+	if len(cd.Consts) != 1 || len(cd.Statics) != 1 || len(cd.Fields) != 1 || len(cd.Methods) != 1 {
+		t.Errorf("consts=%d statics=%d fields=%d methods=%d, want 1 of each",
+			len(cd.Consts), len(cd.Statics), len(cd.Fields), len(cd.Methods))
+	}
+	if len(prog.AnonClasses) != 0 {
+		t.Errorf("AnonClasses = %v, want none", prog.AnonClasses)
+	}
+}

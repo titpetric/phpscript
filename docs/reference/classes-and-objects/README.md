@@ -1,19 +1,20 @@
 # Classes and objects
 
-| PHP language-reference feature    | Status                | Notes                                                                                                                                                                    |
-|-----------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Classes, properties, methods      | Partial compatibility | Basic declarations, construction, `$this`, fields, and method calls are supported.                                                                                       |
-| Constructors                      | Compatibility         | `__construct` is called when present.                                                                                                                                    |
-| Class constants                   | Compatibility         | Declaration and `Class::NAME` access are supported.                                                                                                                      |
-| Visibility, final, abstract       | Not enforced          | Modifiers are accepted but do not provide PHP semantics.                                                                                                                 |
-| Inheritance                       | Partial compatibility | `extends` names a parent that a catch clause and `instanceof` filter on; no member is inherited through it.                                                              |
-| Interfaces and traits             | Partial compatibility | `interface` declarations and `implements` are a contract: a class must declare every method its interfaces name, and inherits nothing from them. Traits are unavailable. |
-| Static methods                    | Compatibility         | `Class::method()`, `self::method()` and `static::method()` are supported.                                                                                                |
-| Static properties                 | Compatibility         | `static $name` declarations and `Class::$name` read/write are supported.                                                                                                 |
-| `Class::class`                    | Compatibility         | Resolves to the fully-qualified class name without requiring the class to exist.                                                                                         |
-| Magic methods                     | Partial compatibility | `__construct` and `__invoke` are supported; the wider magic-method contract is not.                                                                                      |
-| `instanceof`                      | Compatibility         | Tests a value against a class name, following `extends`.                                                                                                                 |
-| Enums, anonymous classes, cloning | Not implemented       | These PHP object features are unavailable.                                                                                                                               |
+| PHP language-reference feature | Status                | Notes                                                                                                                                                                            |
+|--------------------------------|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Classes, properties, methods   | Partial compatibility | Basic declarations, construction, `$this`, fields, and method calls are supported.                                                                                               |
+| Constructors                   | Compatibility         | `__construct` is called when present.                                                                                                                                            |
+| Class constants                | Compatibility         | Declaration and `Class::NAME` access are supported.                                                                                                                              |
+| Visibility, final, abstract    | Not enforced          | Modifiers are accepted but do not provide PHP semantics.                                                                                                                         |
+| Inheritance                    | Partial compatibility | `extends` names a parent that a catch clause and `instanceof` filter on; no member is inherited through it.                                                                      |
+| Interfaces and traits          | Partial compatibility | `interface` declarations and `implements` are a contract: a class must declare every method its interfaces name, and inherits nothing from them. Traits are unavailable.         |
+| Static methods                 | Compatibility         | `Class::method()`, `self::method()` and `static::method()` are supported.                                                                                                        |
+| Static properties              | Compatibility         | `static $name` declarations and `Class::$name` read/write are supported.                                                                                                         |
+| `Class::class`                 | Compatibility         | Resolves to the fully-qualified class name without requiring the class to exist.                                                                                                 |
+| Magic methods                  | Partial compatibility | `__construct` and `__invoke` are supported; the wider magic-method contract is not.                                                                                              |
+| `instanceof`                   | Compatibility         | Tests a value against a class name, following `extends`.                                                                                                                         |
+| Anonymous classes              | Compatibility         | `new class [(args)] [implements ...] { ... }` declares and constructs in one expression. `get_class()` returns a synthesized name, and the bytecode engine does not compile one. |
+| Enums, cloning                 | Not implemented       | These PHP object features are unavailable.                                                                                                                                       |
 
 ## Declaring a class
 

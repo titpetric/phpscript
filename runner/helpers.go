@@ -585,7 +585,7 @@ func (rt *Runtime) helperNew(ref *scopeRef) func(class string, args ...any) (any
 				}
 				def = v
 			}
-			obj.Props[f.Name] = def
+			obj.SetProp(f.Name, def)
 		}
 		// Constructor: prefer the modern __construct, fall back to the PHP4-style
 		// method named after the class.

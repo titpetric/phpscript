@@ -42,7 +42,7 @@ func Compile(ast *model.Program) (program *Program, err error) {
 	}()
 	c := &compiler{locals: make(map[string]int)}
 	if ast != nil {
-		if err := c.collectClasses(ast.Stmts); err != nil {
+		if err := c.collectClasses(ast); err != nil {
 			return nil, err
 		}
 		for _, class := range c.program.classes {
@@ -226,10 +226,11 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 // AST name comparison the interpreter runs in hoist, so a violated contract
 // fails on both backends rather than only on one; the caller turns the error
 // into the RuntimeException a script catches.
-func (c *compiler) collectClasses(stmts []model.Stmt) error {
-	if err := model.CheckInterfaceContracts(stmts); err != nil {
+func (c *compiler) collectClasses(prog *model.Program) error {
+	if err := model.CheckInterfaceContracts(prog); err != nil {
 		return err
 	}
+	stmts := prog.Stmts
 	for _, stmt := range stmts {
 		decl, ok := stmt.(*model.ClassDecl)
 		if !ok {
@@ -833,6 +834,13 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opCall, a: len(node.Args), name: node.Name, extra: node.Fallback})
 	case *model.New:
+		// An anonymous class is declared where it is constructed, and the
+		// bytecode carries a class name rather than a declaration. Rejecting it
+		// here delegates the whole program to the interpreter, which is the
+		// fallback every unsupported node takes; see docs/flatstack.md.
+		if node.Decl != nil {
+			return unsupported(path, "anonymous class")
+		}
 		for i, argument := range node.Args {
 			if err := c.expr(argument, fmt.Sprintf("%s.arg[%d]", path, i)); err != nil {
 				return err

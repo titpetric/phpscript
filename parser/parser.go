@@ -35,7 +35,13 @@ func Parse(src string) (*model.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Program{Stmts: stmts, Namespace: p.namespace, NamespaceLine: p.namespaceLine, SourceSpans: p.spans}, nil
+	return &model.Program{
+		Stmts:         stmts,
+		Namespace:     p.namespace,
+		NamespaceLine: p.namespaceLine,
+		SourceSpans:   p.spans,
+		AnonClasses:   p.anonClasses,
+	}, nil
 }
 
 type parser struct {
@@ -51,6 +57,14 @@ type parser struct {
 	topSeen       bool
 	spans         map[model.Stmt]model.SourceSpan
 	namespaceLine int
+	// anonSeq numbers the anonymous classes declared in this file, and
+	// anonClasses collects their declarations for the Program. The counter is
+	// per file so that a name depends only on the source it came from: the
+	// include cache hands the same parsed program to every include of a file,
+	// and a counter shared across files would make the name depend on which
+	// files had been parsed first.
+	anonSeq     int
+	anonClasses []*model.ClassDecl
 
 	// Chunked node storage and list scratch stacks; see alloc.go.
 	varNodes        nodeChunk[model.Var]
@@ -1090,11 +1104,18 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 	if err := p.parseClassHeritage(cd); err != nil {
 		return nil, err
 	}
+	return cd, p.parseClassBody(cd)
+}
+
+// parseClassBody consumes `{ ... }` into cd: constants, properties with their
+// modifiers and types, statics, and methods. It is shared by the named and the
+// anonymous form, which differ only in the header above it.
+func (p *parser) parseClassBody(cd *model.ClassDecl) error {
 	wasInClass := p.inClass
 	p.inClass = true
 	defer func() { p.inClass = wasInClass }()
 	if err := p.eatOp("{"); err != nil {
-		return nil, err
+		return err
 	}
 	for !p.isOp("}") && !p.atEOF() {
 		memberStart := p.cur().line
@@ -1120,7 +1141,7 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 		case p.isKw("const"):
 			consts, err := p.parseConsts()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			for i := range consts {
 				consts[i].Visibility = visibility
@@ -1131,7 +1152,7 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 			p.next()
 			fields, err := p.parseFields(visibility)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			p.setFieldSpans(fields, memberStart)
 			cd.Fields = append(cd.Fields, fields...)
@@ -1139,7 +1160,7 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 			if methodAbstract {
 				m, err := p.parseAbstractMethod(visibility, isStatic)
 				if err != nil {
-					return nil, err
+					return err
 				}
 				p.spans[m] = model.SourceSpan{Start: memberStart, End: p.toks[p.i-1].line}
 				cd.Methods = append(cd.Methods, m)
@@ -1147,7 +1168,7 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 			}
 			m, err := p.parseFunction()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			fd := m.(*model.FuncDecl)
 			fd.Visibility = visibility
@@ -1159,11 +1180,11 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 			// (`protected $stack = array();`, `private ?string $dir = null;`).
 			fieldType := p.parseTypeHint()
 			if p.cur().kind != tVar {
-				return nil, fmt.Errorf("line %d: unexpected token in class body: %s", p.cur().line, p.cur())
+				return fmt.Errorf("line %d: unexpected token in class body: %s", p.cur().line, p.cur())
 			}
 			fields, err := p.parseFields(visibility)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			p.setFieldSpans(fields, memberStart)
 			for i := range fields {
@@ -1177,10 +1198,10 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 			}
 			cd.Fields = append(cd.Fields, fields...)
 		default:
-			return nil, fmt.Errorf("line %d: unexpected token in class body: %s", p.cur().line, p.cur())
+			return fmt.Errorf("line %d: unexpected token in class body: %s", p.cur().line, p.cur())
 		}
 	}
-	return cd, p.eatOp("}")
+	return p.eatOp("}")
 }
 
 // parseInterface consumes `interface Name [extends A, B] { ... }`.

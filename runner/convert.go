@@ -259,6 +259,19 @@ func helperCast(typ string, v any) any {
 		if v == nil {
 			return model.NewArray()
 		}
+		// (array) on an object reads its properties out, in the order the
+		// object reads them back. PHP prefixes a private or protected name with
+		// the class it was declared in; phpscript enforces no visibility, and a
+		// key holding a NUL byte is one no script could index, so the plain
+		// name is used. See docs/README.md.
+		if obj, ok := v.(*model.Object); ok {
+			out := model.NewArraySize(obj.Len())
+			obj.Range(func(name string, val any) bool {
+				out.Set(phpval.Key(name), val)
+				return true
+			})
+			return out
+		}
 		// (array) on a collection converts it, preserving keys; on a scalar it
 		// wraps the value, as PHP does.
 		if model.IsCollection(v) {
@@ -267,9 +280,62 @@ func helperCast(typ string, v any) any {
 		a := model.NewArraySize(1)
 		a.Append(v)
 		return a
+	case "object":
+		return helperToObject(v)
 	default:
 		return v
 	}
+}
+
+// helperToObject implements the `(object)` cast: an array becomes a stdClass
+// whose properties are its entries, a scalar lands under `scalar`, and null
+// gives an object with nothing in it.
+//
+// An object is returned as it is, which is PHP's behaviour and the reason the
+// cast is not a copy: `(object) $o === $o`. Nothing is copied on the way in
+// either. PHP copies the array because arrays are values there; here they are
+// handles (docs/reference/types/value-semantics.md), and the cast is not the
+// place to make one exception to that. An array nested under a property
+// therefore stays the array it was, which is also what PHP does, since its copy
+// does not convert nested arrays into objects.
+func helperToObject(v any) any {
+	switch {
+	case v == nil:
+		return model.NewStdClass()
+	case model.IsCollection(v):
+		// Ahead of the host-object test: an *model.Array is a pointer to a
+		// struct and would answer that test, and it is an array.
+		obj := model.NewStdClass()
+		model.RangeValues(v, func(key, val any) bool {
+			obj.SetProp(phpval.String(key), val)
+			return true
+		})
+		return obj
+	case isObjectValue(v):
+		return v
+	}
+	obj := model.NewStdClass()
+	obj.SetProp("scalar", v)
+	return obj
+}
+
+// isObjectValue reports whether v is already an object: an interpreted one, or
+// a value a host binding returned, which `new Database` produces and which the
+// cast must hand back rather than fold into a `scalar` property. Call it after
+// the collection test; a Go collection would otherwise answer it.
+func isObjectValue(v any) bool {
+	if _, ok := v.(*model.Object); ok {
+		return true
+	}
+	rv := reflect.ValueOf(v)
+	for rv.Kind() == reflect.Pointer {
+		rv = rv.Elem()
+	}
+	switch rv.Kind() {
+	case reflect.Struct, reflect.Func:
+		return true
+	}
+	return false
 }
 
 // phpArith applies + - * / % with the same int coercion used by += and -=.

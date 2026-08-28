@@ -508,6 +508,9 @@ func (p *parser) parseList() (model.Expr, error) {
 }
 
 func (p *parser) parseNew() (model.Expr, error) {
+	if p.isKw("class") {
+		return p.parseAnonClass()
+	}
 	class, absolute, err := p.parseQualifiedName(true)
 	if err != nil {
 		return nil, fmt.Errorf("line %d: expected class name after new: %w", p.cur().line, err)
@@ -520,6 +523,47 @@ func (p *parser) parseNew() (model.Expr, error) {
 		}
 		n.Args = args
 	}
+	return n, nil
+}
+
+// parseAnonClass consumes `class [(args)] [extends X] [implements A, B] { ... }`
+// after `new`, the declaration of a class with no name.
+//
+// The parser gives it one anyway. A name is what `new` resolves, what a method
+// call looks a class up by, and what `instanceof` compares, so a class without
+// one would need a second path through every one of those; naming it here means
+// the declaration is registered and reached exactly like a written class, and
+// only the parser knows the difference. The spelling follows PHP's, which also
+// synthesizes a name, so a script that prints get_class() sees something of the
+// same shape. The declarations are collected on the program because they sit in
+// an expression, where nothing walking statements would find them.
+//
+// The arguments come before the heritage, as in PHP: `new class ($dsn)
+// implements Reader { ... }` passes $dsn to __construct.
+func (p *parser) parseAnonClass() (model.Expr, error) {
+	line := p.cur().line
+	p.next() // class
+	n := &model.New{}
+	if p.isOp("(") {
+		args, err := p.parseArgs()
+		if err != nil {
+			return nil, err
+		}
+		n.Args = args
+	}
+	p.anonSeq++
+	cd := &model.ClassDecl{Name: fmt.Sprintf("class@anonymous$%d", p.anonSeq)}
+	if err := p.parseClassHeritage(cd); err != nil {
+		return nil, err
+	}
+	if !p.isOp("{") {
+		return nil, fmt.Errorf("line %d: expected %q after new class, got %s", line, "{", p.cur())
+	}
+	if err := p.parseClassBody(cd); err != nil {
+		return nil, err
+	}
+	n.Class, n.Decl = cd.Name, cd
+	p.anonClasses = append(p.anonClasses, cd)
 	return n, nil
 }
 

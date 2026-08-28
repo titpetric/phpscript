@@ -41,8 +41,8 @@ func (e *InterfaceContractError) Error() string {
 // error, or nil when every class declaring `implements` declares what it
 // promised. Both backends call it where they register classes, so a program
 // fails the same way whichever one runs it.
-func CheckInterfaceContracts(stmts []Stmt) error {
-	violations := CheckInterfaces(stmts)
+func CheckInterfaceContracts(prog *Program) error {
+	violations := CheckInterfaces(prog.Stmts, prog.AnonClasses...)
 	if len(violations) == 0 {
 		return nil
 	}
@@ -61,15 +61,24 @@ func CheckInterfaceContracts(stmts []Stmt) error {
 // reported. It is either a PHP built-in such as Countable, which phpscript does
 // not declare, or an interface declared in a file that is not part of this
 // statement list; neither is a contract this program can be held to.
-func CheckInterfaces(stmts []Stmt) []InterfaceViolation {
+func CheckInterfaces(stmts []Stmt, extra ...*ClassDecl) []InterfaceViolation {
 	interfaces := interfaceIndex(stmts)
 	if len(interfaces) == 0 {
 		return nil
 	}
-	var out []InterfaceViolation
+	// extra carries the classes that are not statements: an anonymous class is
+	// declared inside an expression, and says `implements` like any other.
+	decls := make([]*ClassDecl, 0, len(stmts)+len(extra))
 	for _, s := range stmts {
-		cd, ok := s.(*ClassDecl)
-		if !ok || len(cd.Implements) == 0 {
+		if cd, ok := s.(*ClassDecl); ok {
+			decls = append(decls, cd)
+		}
+	}
+	decls = append(decls, extra...)
+
+	var out []InterfaceViolation
+	for _, cd := range decls {
+		if len(cd.Implements) == 0 {
 			continue
 		}
 		declared := declaredMethods(cd, stmts)

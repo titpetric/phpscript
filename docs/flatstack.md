@@ -187,6 +187,8 @@ unsupported form. The major remaining forms are:
 - By-reference closure captures `use (&$x)`, closure parameter defaults, and
   variadic or by-reference closure parameters
 - `defer()`, which registers its callback on the frame that called it
+- Anonymous classes, `new class { ... }`. The bytecode carries a class name
+  where an anonymous class carries its declaration
 - `try` without a `catch` clause
 - Casts
 - PHP constructors (`__construct`) still run in the interpreter

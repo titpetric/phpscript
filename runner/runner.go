@@ -164,7 +164,7 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 	}
 	// Hoist declarations so functions/classes are callable before their textual
 	// position (PHP semantics for top-level function/class definitions).
-	if err := rt.hoist(p.Stmts, rt.entrypoint); err != nil {
+	if err := rt.hoist(p, rt.entrypoint); err != nil {
 		return err
 	}
 	_, _, runErr := rt.exec(p.Stmts, scope)
@@ -179,22 +179,33 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 // member is copied onto the class either way. The bytecode backend runs the
 // same check where it collects classes, so both raise the same
 // RuntimeException.
-func (rt *Runtime) hoist(stmts []model.Stmt, filename string) error {
-	if err := model.CheckInterfaceContracts(stmts); err != nil {
+// An anonymous class is registered here too. Its declaration is written inside
+// an expression rather than as a statement, so the parser collects it on the
+// program; from this point on it is an ordinary class under the name the parser
+// gave it.
+func (rt *Runtime) hoist(prog *model.Program, filename string) error {
+	stmts := prog.Stmts
+	if err := model.CheckInterfaceContracts(prog); err != nil {
 		return NewRuntimeException(err.Error(), 0)
 	}
 	// First pass: classes, so methods can be attached.
 	classes := map[string]*model.Class{}
+	declare := func(cd *model.ClassDecl) {
+		c := &model.Class{Name: cd.Name, Implements: model.InterfaceNames(cd, stmts), Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
+		for _, m := range cd.Methods {
+			m.Filename = filename
+			c.Methods[m.Name] = m
+		}
+		classes[cd.Name] = c
+		rt.RegisterClass(c)
+	}
 	for _, s := range stmts {
 		if cd, ok := s.(*model.ClassDecl); ok {
-			c := &model.Class{Name: cd.Name, Implements: model.InterfaceNames(cd, stmts), Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
-			for _, m := range cd.Methods {
-				m.Filename = filename
-				c.Methods[m.Name] = m
-			}
-			classes[cd.Name] = c
-			rt.RegisterClass(c)
+			declare(cd)
 		}
+	}
+	for _, cd := range prog.AnonClasses {
+		declare(cd)
 	}
 	// Second pass: functions (free and the `function Class::method` form).
 	for _, s := range stmts {
@@ -443,6 +454,14 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	switch src := src.(type) {
 	case *model.Array:
 		src.Range(iter)
+	case *model.Object:
+		// An object yields its properties, name and value, in the order it
+		// reads them back. PHP yields only the ones visible where the loop is
+		// written; phpscript enforces no visibility anywhere, so it yields all
+		// of them. See docs/README.md.
+		src.Range(func(name string, value any) bool {
+			return iter(name, value)
+		})
 	default:
 		// Native Go collections (e.g. a []Record returned by a forwarded
 		// method) are iterable too: slices/arrays by integer index, maps by key.
@@ -716,7 +735,7 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	rt.UpdateIncludedFiles(len(rt.included))
 	restoreFile := setScopeFile(scope, filename)
 	defer restoreFile()
-	if err := rt.hoist(prog.Stmts, filename); err != nil {
+	if err := rt.hoist(prog, filename); err != nil {
 		return nil, err
 	}
 	deferMark := len(scope.deferred)
@@ -931,7 +950,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 			if err != nil {
 				return err
 			}
-			obj.Props[tgt.Name] = next
+			obj.SetProp(tgt.Name, next)
 			return nil
 		}
 		return assignGoField(base, tgt.Name, func(current any) (any, error) {
@@ -1056,7 +1075,7 @@ func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 				return err
 			}
 			if obj, ok := base.(*model.Object); ok {
-				delete(obj.Props, tgt.Name)
+				obj.DeleteProp(tgt.Name)
 			}
 		case *model.StaticProp:
 			bag, err := rt.staticStorage(tgt.Class, scope)
@@ -1143,7 +1162,7 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 			return err
 		}
 		if obj, ok := base.(*model.Object); ok {
-			obj.Props[tgt.Name] = val
+			obj.SetProp(tgt.Name, val)
 			return nil
 		}
 		return assignGoField(base, tgt.Name, func(any) (any, error) { return val, nil })

@@ -209,6 +209,33 @@ Classes:
   and none of them is enforced. An abstract class can be instantiated, a final
   one carries no restriction of its own, and a readonly class does not make its
   properties readonly.
+- An anonymous class is named by the parser, so `get_class()` answers
+  `class@anonymous$1` where PHP answers a name built from the file and line that
+  declared it. Neither spelling is one a script should compare against. The
+  bytecode engine does not compile an anonymous class, so a program containing
+  one runs on the interpreter; see [Flat stack](flatstack.md).
+- `phpscript fmt` refuses a file containing an anonymous class rather than
+  rewriting it, because the printer would emit the synthesized name in place of
+  the declaration. The file is left untouched.
+
+Objects:
+
+- `foreach` over an object yields every property. PHP yields only the ones
+  visible where the loop is written; phpscript enforces no visibility anywhere,
+  so there is nothing for it to filter on. `(array)` and `get_object_vars()`
+  read every property for the same reason.
+- `(array)` on an object uses the plain property name. PHP prefixes a private
+  name with the declaring class and a protected one with `*`, both wrapped in
+  NUL bytes; a key holding a NUL byte is one no script could index.
+- `(object)` shares rather than copies. PHP copies the array it converts,
+  because arrays are values there; here they are handles, and the cast is not
+  the place to make one exception to that. See
+  [Value semantics](reference/types/value-semantics.md).
+- `==` between two objects compares more than the properties: the variable each
+  was first assigned to, and the order the properties were added in. Two
+  separately built objects with equal properties are therefore unequal where PHP
+  says they are equal, if they were assigned to differently named variables or
+  built in a different order. `===` is identity, as in PHP.
 
 Includes:
 

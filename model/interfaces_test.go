@@ -99,7 +99,7 @@ func TestCheckInterfaces(t *testing.T) {
 					t.Errorf("violation[%d] carries no class declaration", i)
 				}
 			}
-			err := model.CheckInterfaceContracts(tc.stmts)
+			err := model.CheckInterfaceContracts(&model.Program{Stmts: tc.stmts})
 			if len(tc.want) == 0 {
 				if err != nil {
 					t.Fatalf("CheckInterfaceContracts = %v, want nil", err)

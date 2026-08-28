@@ -35,7 +35,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		}
 		rt.exprCache.setFlat(ast, program)
 	}
-	if err := rt.hoist(ast.Stmts, rt.entrypoint); err != nil {
+	if err := rt.hoist(ast, rt.entrypoint); err != nil {
 		return false, nil
 	}
 	return true, flatvm.Run(program, &flatHost{runtime: rt})
@@ -86,7 +86,7 @@ func (h flatHost) SetProperty(receiver any, name string, value any, op string) e
 		if err != nil {
 			return err
 		}
-		object.Props[name] = next
+		object.SetProp(name, next)
 		return nil
 	}
 	return assignGoField(receiver, name, func(current any) (any, error) {
@@ -288,6 +288,13 @@ func (h flatHost) Entries(value any) []flatvm.Entry {
 	if array, ok := value.(*model.Array); ok {
 		array.Range(func(key, value any) bool {
 			entries = append(entries, flatvm.Entry{Key: key, Value: value})
+			return true
+		})
+		return entries
+	}
+	if object, ok := value.(*model.Object); ok {
+		object.Range(func(name string, value any) bool {
+			entries = append(entries, flatvm.Entry{Key: name, Value: value})
 			return true
 		})
 		return entries

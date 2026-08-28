@@ -4,7 +4,7 @@
 |--------------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------|
 | `Exception`, `Error` and the SPL classes         | Compatibility         | Constructed and thrown; a catch clause filters on the class name recorded.                                               |
 | `Closure`                                        | Partial compatibility | Anonymous functions produce callable runtime values, without the PHP class API.                                          |
-| `stdClass`                                       | Not implemented       | `(object)` is parsed but currently leaves its operand unchanged.                                                         |
+| `stdClass`                                       | Compatibility         | `new stdClass` and the `(object)` cast both produce one; it declares nothing and every property is added by assignment.  |
 | `Throwable`                                      | Partial compatibility | `catch (Throwable $e)` takes any failure. `instanceof Throwable` is false, and the name is not declared as an interface. |
 | `Traversable`, `Iterator`, `Countable`           | Not implemented       | The names are not declared, so `implements Countable` is accepted and unchecked, and nothing dispatches through them.    |
 | `ArrayAccess`, `Serializable`, `Stringable`      | Not implemented       | As above: the names are not declared. Write the methods and call them by name.                                           |

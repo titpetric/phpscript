@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
@@ -24,21 +25,19 @@ func registerReflection(rt *runner.Runtime) {
 	})
 	// get_parent_class always returns false; phpscript has no inheritance, so no class has a parent to report.
 	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
-	// get_object_vars returns the properties of $object as an array, declared fields first; a non-object yields an empty array.
+	// get_object_vars returns the properties of $object as an array, in the order the object reads them back; a non-object yields an empty array.
 	rt.RegisterFunc("get_object_vars", func(object any) *model.Array {
-		out := model.NewArray()
-		if obj, ok := object.(*model.Object); ok {
-			for _, field := range obj.Class.Fields {
-				if v, ok := obj.Props[field.Name]; ok {
-					out.Set(field.Name, v)
-				}
-			}
-			for name, v := range obj.Props {
-				if _, seen := out.Get(name); !seen {
-					out.Set(name, v)
-				}
-			}
+		obj, ok := object.(*model.Object)
+		if !ok {
+			return model.NewArray()
 		}
+		out := model.NewArraySize(obj.Len())
+		// A property named for its digits is an integer key once it is an array
+		// entry, so `(object) array("a", "b")` reads back as a list.
+		obj.Range(func(name string, v any) bool {
+			out.Set(phpval.Key(name), v)
+			return true
+		})
 		return out
 	})
 	// method_exists reports whether $object_or_class, an object or a class name, has method $method.
