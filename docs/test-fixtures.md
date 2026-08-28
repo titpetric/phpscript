@@ -167,6 +167,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | anonymous_class_include.phpt     | PASS       | PASS    | PASS |
 | class_constant_defaults.phpt     | PASS       | PASS    | PASS |
 | class_constants.phpt             | PASS       | PASS    | PASS |
+| dynamic_new_and_call.phpt        | PASS       | PASS    | PASS |
 | extends_noop.phpt                | PASS       | PASS    | SKIP |
 | instanceof.phpt                  | PASS       | PASS    | PASS |
 | interface_contract.phpt          | PASS       | PASS    | SKIP |
@@ -295,7 +296,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | functions   | 9        | 9      | 0      |
 | includes    | 3        | 3      | 0      |
 | namespaces  | 2        | 2      | 0      |
-| oop         | 22       | 22     | 0      |
+| oop         | 23       | 23     | 0      |
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
@@ -303,4 +304,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | stdlib      | 14       | 14     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 7        | 7      | 0      |
-| **Total**   | 184      | 184    | 0      |
+| **Total**   | 185      | 185    | 0      |

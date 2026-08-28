@@ -339,14 +339,28 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return joinCall("__call", base, strconv.Quote(n.Method), args), nil
+		method := strconv.Quote(n.Method)
+		if n.MethodExpr != nil {
+			// `$obj->$m(...)`: the method name is a runtime value.
+			if method, err = t.emit(n.MethodExpr); err != nil {
+				return "", err
+			}
+		}
+		return joinCall("__call", base, method, args), nil
 
 	case *model.New:
 		args, err := t.emitArgs(n.Args)
 		if err != nil {
 			return "", err
 		}
-		return joinCall("__new", strconv.Quote(n.Class), "", args), nil
+		class := strconv.Quote(n.Class)
+		if n.ClassExpr != nil {
+			// `new $className(...)`: the class name is a runtime value.
+			if class, err = t.emit(n.ClassExpr); err != nil {
+				return "", err
+			}
+		}
+		return joinCall("__new", class, "", args), nil
 
 	default:
 		return "", fmt.Errorf("transpile: unsupported expression %T", e)

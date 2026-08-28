@@ -521,9 +521,11 @@ func coerceArg(v any, want reflect.Type) (reflect.Value, bool) {
 // model.Object instances back into the interpreter, and otherwise invokes a Go
 // method on the value by reflection (the "invoke from values on the stack"
 // capability the README relies on).
-func (rt *Runtime) helperCall(ref *scopeRef) func(base any, method string, args ...any) (any, error) {
-	return func(base any, method string, args ...any) (any, error) {
+func (rt *Runtime) helperCall(ref *scopeRef) func(base any, methodValue any, args ...any) (any, error) {
+	return func(base any, methodValue any, args ...any) (any, error) {
 		scope := ref.scope
+		// `$obj->$m(...)` arrives with the method name as a runtime value.
+		method := phpString(methodValue)
 		if obj, ok := base.(*model.Object); ok && obj.Class != nil {
 			if decl, ok := lookupPHPMethod(obj.Class, method); ok {
 				return rt.invokeMethod(obj, decl, args, scope)
@@ -547,9 +549,23 @@ func lookupPHPMethod(class *model.Class, method string) (*model.FuncDecl, bool) 
 
 // helperNew implements `new Class(args...)`: instantiate from the class table,
 // apply field defaults, and run the same-named constructor method if present.
-func (rt *Runtime) helperNew(ref *scopeRef) func(class string, args ...any) (any, error) {
-	return func(class string, args ...any) (any, error) {
+func (rt *Runtime) helperNew(ref *scopeRef) func(classValue any, args ...any) (any, error) {
+	return func(classValue any, args ...any) (any, error) {
 		scope := ref.scope
+		// `new $className(...)` arrives with the class as a runtime value: a
+		// string name, or an instance whose class is reused, as PHP allows.
+		var class string
+		switch v := classValue.(type) {
+		case string:
+			class = v
+		case *model.Object:
+			if v.Class != nil {
+				class = v.Class.Name
+			}
+		}
+		if class == "" {
+			return nil, fmt.Errorf("new: class name must be a string, got %T", classValue)
+		}
 		if len(rt.observers) > 0 {
 			defer rt.trace(scope, "new "+class)()
 		}

@@ -530,10 +530,14 @@ type Call struct {
 }
 
 // MethodCall is `Base->method(args...)` or `Base.method(args...)`.
+//
+// The variable spelling `Base->$m(args...)` calls the method whose name is
+// held in `$m`: MethodExpr carries that expression and Method is empty.
 type MethodCall struct {
-	Base   Expr
-	Method string
-	Args   []Expr
+	Base       Expr
+	Method     string
+	MethodExpr Expr // set for `Base->$m(...)`; Method is "" then
+	Args       []Expr
 }
 
 // New is `new ClassName` / `new ClassName(args...)`.
@@ -544,10 +548,14 @@ type MethodCall struct {
 // resolves an anonymous class the same way it resolves a written one. The
 // declarations a program builds this way are collected on Program.AnonClasses,
 // because they are not statements and nothing else would find them.
+// The variable spelling `new $className(...)` resolves the class at run time:
+// ClassExpr carries the expression and Class is empty. The value may name a
+// PHP class or a registered Go constructor, exactly as a written name would.
 type New struct {
-	Class string
-	Args  []Expr
-	Decl  *ClassDecl
+	Class     string
+	ClassExpr Expr // set for `new $className(...)`; Class is "" then
+	Args      []Expr
+	Decl      *ClassDecl
 }
 
 // Ref is the reference marker `&$var` written in expression position, as in

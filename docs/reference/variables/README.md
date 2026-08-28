@@ -5,7 +5,7 @@
 | Basics                          | Compatibility         | Variables use the `$name` form and are created by assignment.                                                                                                       |
 | Predefined variables            | Partial compatibility | Only the request variables documented in [Predefined variables](../predefined-variables/README.md) are seeded.                                                      |
 | Variable scope                  | Partial compatibility | Calls have local scope; `static $x` persists per function (per closure value); `global` is a won't-implement no-op.                                                 |
-| Variable variables              | Not implemented       | Forms such as `$$name` are unavailable.                                                                                                                             |
+| Variable variables              | Partial compatibility | `new $className` and `$obj->$method(...)` resolve the name at run time; `$$name` is unavailable.                                                                    |
 | Variables from external sources | Partial compatibility | HTTP query, form, and route values are provided by the request context.                                                                                             |
 | References                      | Partial compatibility | `foreach ($a as &$v)` works; `$a = &$b` and `function &f()` parse, are kept by the formatter and bind by value. See [Value semantics](../types/value-semantics.md). |
 

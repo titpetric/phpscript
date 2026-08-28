@@ -263,6 +263,17 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			// minitpl T1 target). Those are irreconcilable without type info, so
 			// v0 uses `->` for members and keeps `.` as concat.
 			p.next()
+			// `$obj->$m(...)` calls the method named by `$m`. Without the
+			// parens it would be a dynamic property, which stays unsupported.
+			if p.cur().kind == tVar && p.peek(1).kind == tOp && p.peek(1).val == "(" {
+				varName := p.next().val
+				args, err := p.parseArgs()
+				if err != nil {
+					return nil, err
+				}
+				e = &model.MethodCall{Base: e, MethodExpr: &model.Var{Name: varName}, Args: args}
+				continue
+			}
 			if p.cur().kind != tIdent {
 				return nil, fmt.Errorf("line %d: expected member name", p.cur().line)
 			}
@@ -557,6 +568,18 @@ func (p *parser) parseList() (model.Expr, error) {
 func (p *parser) parseNew() (model.Expr, error) {
 	if p.isKw("class") {
 		return p.parseAnonClass()
+	}
+	// `new $className(...)`: the class is named by a runtime value.
+	if p.cur().kind == tVar {
+		n := &model.New{ClassExpr: &model.Var{Name: p.next().val}}
+		if p.isOp("(") {
+			args, err := p.parseArgs()
+			if err != nil {
+				return nil, err
+			}
+			n.Args = args
+		}
+		return n, nil
 	}
 	class, absolute, err := p.parseQualifiedName(true)
 	if err != nil {

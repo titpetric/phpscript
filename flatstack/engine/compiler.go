@@ -840,6 +840,11 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		if node.Decl != nil {
 			return unsupported(path, "anonymous class")
 		}
+		if node.ClassExpr != nil {
+			// The class name is a runtime value; opConstruct carries a static
+			// one, so the program takes the interpreter fallback.
+			return unsupported(path, "dynamic class name")
+		}
 		for i, argument := range node.Args {
 			if err := c.expr(argument, fmt.Sprintf("%s.arg[%d]", path, i)); err != nil {
 				return err
@@ -847,6 +852,10 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opConstruct, a: len(node.Args), name: node.Class})
 	case *model.MethodCall:
+		if node.MethodExpr != nil {
+			// opCallMethod carries a static method name; see the New case.
+			return unsupported(path, "dynamic method name")
+		}
 		if err := c.expr(node.Base, path+".base"); err != nil {
 			return err
 		}

@@ -133,6 +133,9 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 			if n.Decl != nil {
 				return // anonymous class, declared in place
 			}
+			if n.ClassExpr != nil {
+				return // `new $className(...)`, resolved at run time
+			}
 			if !classKnown(n.Class) {
 				report(line, fmt.Sprintf("new: undefined class %q", n.Class))
 			}
@@ -288,8 +291,10 @@ func (w *astWalker) one(e model.Expr) {
 		w.exprs(n.Args)
 	case *model.MethodCall:
 		w.one(n.Base)
+		w.one(n.MethodExpr)
 		w.exprs(n.Args)
 	case *model.New:
+		w.one(n.ClassExpr)
 		w.exprs(n.Args)
 		if n.Decl != nil {
 			// An anonymous class declares its body inside the expression;

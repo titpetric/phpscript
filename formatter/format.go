@@ -881,6 +881,9 @@ func (p *printer) expr(e model.Expr) string {
 		}
 		return name + "(" + p.args(n.Args) + ")"
 	case *model.MethodCall:
+		if n.MethodExpr != nil {
+			return p.expr(n.Base) + "->" + p.expr(n.MethodExpr) + "(" + p.args(n.Args) + ")"
+		}
 		return p.expr(n.Base) + "->" + n.Method + "(" + p.args(n.Args) + ")"
 	case *model.New:
 		// The name an anonymous class carries was synthesized by the parser and
@@ -891,6 +894,9 @@ func (p *printer) expr(e model.Expr) string {
 			return p.unsupportedNode("anonymous class", n)
 		}
 		class := p.typeName(n.Class)
+		if n.ClassExpr != nil {
+			class = p.expr(n.ClassExpr)
+		}
 		if len(n.Args) == 0 {
 			return "new " + class
 		}
