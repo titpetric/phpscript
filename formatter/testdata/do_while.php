@@ -1,0 +1,16 @@
+<?php
+
+$i = 0;
+do {
+	$i++;
+	if ($i == 2) {
+		continue;
+	}
+	echo $i, "\n";
+} while ($i < 4);
+
+$once = true;
+do {
+	echo "single pass\n";
+	$once = false;
+} while ($once);

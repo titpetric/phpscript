@@ -185,6 +185,8 @@ func collectClasses(stmts []model.Stmt, out *[]string) {
 			collectClasses(n.Else, out)
 		case *model.For:
 			collectClasses(n.Body, out)
+		case *model.DoWhile:
+			collectClasses(n.Body, out)
 		case *model.Foreach:
 			collectClasses(n.Body, out)
 		case *model.Try:

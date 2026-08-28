@@ -249,6 +249,8 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 			return p.parseFor()
 		case "while":
 			return p.parseWhile()
+		case "do":
+			return p.parseDoWhile()
 		case "return":
 			return p.parseReturn()
 		case "die", "exit":
@@ -729,6 +731,30 @@ func (p *parser) parseFor() (model.Stmt, error) {
 		return nil, err
 	}
 	return &model.For{Init: init, Cond: cond, Post: post, Body: body}, nil
+}
+
+func (p *parser) parseDoWhile() (model.Stmt, error) {
+	p.next() // do
+	body, err := p.parseBlock()
+	if err != nil {
+		return nil, err
+	}
+	if !p.isKw("while") {
+		return nil, fmt.Errorf("line %d: expected while after do block, got %s", p.cur().line, p.cur())
+	}
+	p.next() // while
+	if err := p.eatOp("("); err != nil {
+		return nil, err
+	}
+	cond, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+	if err := p.eatOp(")"); err != nil {
+		return nil, err
+	}
+	p.optSemi()
+	return &model.DoWhile{Body: body, Cond: cond}, nil
 }
 
 func (p *parser) parseWhile() (model.Stmt, error) {

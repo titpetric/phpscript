@@ -310,6 +310,9 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	case *model.For:
 		return rt.execFor(n, scope)
 
+	case *model.DoWhile:
+		return rt.execDoWhile(n, scope)
+
 	case *model.Return:
 		if n.Value == nil {
 			return nil, flowReturn, nil
@@ -531,6 +534,31 @@ func (rt *Runtime) execFor(n *model.For, scope *Scope) (any, flow, error) {
 			if _, _, err := rt.execOne(n.Post, scope); err != nil {
 				return nil, flowNormal, err
 			}
+		}
+	}
+	return nil, flowNormal, nil
+}
+
+// execDoWhile runs the body before the first condition check, so it executes
+// at least once. continue falls through to the check, matching PHP.
+func (rt *Runtime) execDoWhile(n *model.DoWhile, scope *Scope) (any, flow, error) {
+	for {
+		val, fl, err := rt.exec(n.Body, scope)
+		if err != nil {
+			return nil, flowNormal, err
+		}
+		if fl == flowReturn {
+			return val, fl, nil
+		}
+		if fl == flowBreak {
+			break
+		}
+		c, err := rt.Eval(n.Cond, scope)
+		if err != nil {
+			return nil, flowNormal, err
+		}
+		if !phpTruthy(c) {
+			break
 		}
 	}
 	return nil, flowNormal, nil

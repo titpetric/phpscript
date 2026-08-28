@@ -210,6 +210,9 @@ func (w *astWalker) walk(stmts []model.Stmt) {
 				w.walk([]model.Stmt{n.Post})
 			}
 			w.walk(n.Body)
+		case *model.DoWhile:
+			w.walk(n.Body)
+			w.one(n.Cond)
 		case *model.Return:
 			w.one(n.Value)
 		case *model.Include:

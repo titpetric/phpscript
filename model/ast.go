@@ -129,6 +129,14 @@ type For struct {
 	Body []Stmt
 }
 
+// DoWhile is `do { Body } while (Cond);`. The body runs before the condition
+// is first checked, so it executes at least once; continue jumps to the
+// check and break leaves the loop, as in the other loops.
+type DoWhile struct {
+	Body []Stmt
+	Cond Expr
+}
+
 // Return exits the current function with an optional value.
 type Return struct {
 	Value Expr // may be nil
@@ -372,6 +380,8 @@ func (*Foreach) node() {}
 
 func (*For) node() {}
 
+func (*DoWhile) node() {}
+
 func (*Return) node() {}
 
 func (*Include) node() {}
@@ -415,6 +425,8 @@ func (*If) stmt() {}
 func (*Foreach) stmt() {}
 
 func (*For) stmt() {}
+
+func (*DoWhile) stmt() {}
 
 func (*Return) stmt() {}
 

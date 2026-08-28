@@ -284,6 +284,10 @@ func (p *printer) printStmt(s model.Stmt) {
 		p.printForeach(n)
 	case *model.For:
 		p.printFor(n)
+	case *model.DoWhile:
+		p.line("do {")
+		p.body(n.Body, p.stmtEnd(n))
+		p.line("} while (" + p.expr(n.Cond) + ");")
 	case *model.Return:
 		if n.Value == nil {
 			p.line("return;")
@@ -1137,7 +1141,7 @@ func isFuncDecl(s model.Stmt) bool {
 
 func isBlockStmt(s model.Stmt) bool {
 	switch s.(type) {
-	case *model.If, *model.Foreach, *model.For, *model.Try, *model.Switch:
+	case *model.If, *model.Foreach, *model.For, *model.DoWhile, *model.Try, *model.Switch:
 		return true
 	}
 	return false

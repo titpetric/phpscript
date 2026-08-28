@@ -231,6 +231,9 @@ func (w *stmtWalker) walk(stmts []model.Stmt) {
 			w.walk(n.Body)
 		case *model.Foreach:
 			w.walk(n.Body)
+		case *model.DoWhile:
+			lintCondition(w.file, n.Cond, w.out)
+			w.walk(n.Body)
 		case *model.FuncDecl:
 			w.walk(n.Body)
 		case *model.ClassDecl:

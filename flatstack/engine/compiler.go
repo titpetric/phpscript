@@ -132,6 +132,8 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		c.program.code[endJump].target = len(c.program.code)
 	case *model.For:
 		return c.forStmt(node, path)
+	case *model.DoWhile:
+		return c.doWhileStmt(node, path)
 	case *model.Foreach:
 		return c.foreachStmt(node, path)
 	case *model.Use:
@@ -501,6 +503,34 @@ func (c *compiler) forStmt(node *model.For, path string) error {
 	if endCondition >= 0 {
 		c.program.code[endCondition].target = endPC
 	}
+	for _, patch := range loop.breaks {
+		c.program.code[patch].target = endPC
+	}
+	c.loops = c.loops[:len(c.loops)-1]
+	return nil
+}
+
+// doWhileStmt lowers `do { ... } while (cond);`: the body precedes the
+// condition, and a truthy condition jumps back to the body's first
+// instruction, so the body runs at least once. continue lands on the
+// condition check, break past the back-jump.
+func (c *compiler) doWhileStmt(node *model.DoWhile, path string) error {
+	startPC := len(c.program.code)
+	c.loops = append(c.loops, loopContext{continueTarget: -2})
+	if err := c.block(node.Body, path+".body"); err != nil {
+		return err
+	}
+	condPC := len(c.program.code)
+	loop := &c.loops[len(c.loops)-1]
+	loop.continueTarget = condPC
+	for _, patch := range loop.continues {
+		c.program.code[patch].target = condPC
+	}
+	if err := c.expr(node.Cond, path+".cond"); err != nil {
+		return err
+	}
+	c.emit(instruction{op: opJumpTrue, target: startPC})
+	endPC := len(c.program.code)
 	for _, patch := range loop.breaks {
 		c.program.code[patch].target = endPC
 	}

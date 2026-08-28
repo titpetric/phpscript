@@ -1,16 +1,17 @@
 # Control structures
 
-| PHP language-reference feature       | Status                | Notes                                                                                                               |
-|--------------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------|
-| `if`, `elseif`, `else`               | Compatibility         | Brace-delimited branches are supported.                                                                             |
-| `while`, `for`, `foreach`            | Compatibility         | Brace-delimited loops are supported, including `foreach ($a as &$v)`.                                               |
-| `switch`                             | Compatibility         | Case fallthrough and `break` are supported.                                                                         |
-| `break`, `continue`                  | Partial compatibility | Only the nearest loop/switch can be targeted; numeric levels are unavailable.                                       |
-| `return`                             | Compatibility         | A value is optional.                                                                                                |
-| `include`, `require`                 | Compatibility         | All four keywords run, and the `*_once` pair executes a file only when it has not run yet.                          |
-| `declare`                            | Parsed, ignored       | Directives are read and dropped; a block form runs its body. See [Basic syntax](../basic-syntax/README.md#declare). |
-| `do-while`, `goto`, alternate syntax | Not implemented       | These PHP control structures are a parse error.                                                                     |
-| Parenthesis-free conditions          | phpscript extension   | `if $value {}` and `foreach $items as $item {}` are accepted.                                                       |
+| PHP language-reference feature | Status                | Notes                                                                                                               |
+|--------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------|
+| `if`, `elseif`, `else`         | Compatibility         | Brace-delimited branches are supported.                                                                             |
+| `while`, `for`, `foreach`      | Compatibility         | Brace-delimited loops are supported, including `foreach ($a as &$v)`.                                               |
+| `do-while`                     | Compatibility         | The body runs before the condition is first checked; `break` and `continue` behave as in the other loops.           |
+| `switch`                       | Compatibility         | Case fallthrough and `break` are supported.                                                                         |
+| `break`, `continue`            | Partial compatibility | Only the nearest loop/switch can be targeted; numeric levels are unavailable.                                       |
+| `return`                       | Compatibility         | A value is optional.                                                                                                |
+| `include`, `require`           | Compatibility         | All four keywords run, and the `*_once` pair executes a file only when it has not run yet.                          |
+| `declare`                      | Parsed, ignored       | Directives are read and dropped; a block form runs its body. See [Basic syntax](../basic-syntax/README.md#declare). |
+| `goto`, alternate syntax       | Not implemented       | These PHP control structures are a parse error.                                                                     |
+| Parenthesis-free conditions    | phpscript extension   | `if $value {}` and `foreach $items as $item {}` are accepted.                                                       |
 
 ## Conditions
 
@@ -41,7 +42,14 @@ for ($i = 0; $i < 3; $i++) {
 while ($ready) {
     break;
 }
+
+do {
+    $attempts++;
+} while ($attempts < 3);
 ```
+
+`do-while` runs the body before the condition is first checked, so it executes
+at least once. `continue` jumps to the condition check.
 
 `foreach` assignment targets may be variables, indexes, or properties.
 `list(...)` destructuring works in ordinary assignment but not as a `foreach`

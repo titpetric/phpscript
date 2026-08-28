@@ -43,8 +43,8 @@ the bird's-eye view per area:
 | tests/fixtures/runtime     | 11       | 11     | 0      |
 | tests/fixtures/stdlib      | 14       | 14     | 0      |
 | tests/fixtures/strings     | 15       | 15     | 0      |
-| tests/fixtures/syntax      | 7        | 7      | 0      |
-| **Total**                  | 185      | 185    | 0      |
+| tests/fixtures/syntax      | 8        | 8      | 0      |
+| **Total**                  | 186      | 186    | 0      |
 
 The Go test run collects a coverage profile (about 84% of statements at the
 time of writing), and `atkins cover` renders it into the generated
