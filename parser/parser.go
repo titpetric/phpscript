@@ -543,7 +543,21 @@ func (p *parser) qualify(name string, absolute bool) string {
 	// later `C` mean `A\B\C`, and `C\D` mean `A\B\C\D`.
 	if len(p.imports) > 0 {
 		head, rest, _ := strings.Cut(name, "\\")
-		if full, ok := p.imports[head]; ok {
+		full, ok := p.imports[head]
+		if !ok {
+			// PHP reads a class or function through a `use` alias in any
+			// case: `use App\SomeClass;` answers `someclass::get()`. The
+			// table stores the declared spelling, so a miss retries it
+			// case-insensitively, the same exact-then-EqualFold order the
+			// runtime's class table uses.
+			for alias, path := range p.imports {
+				if strings.EqualFold(alias, head) {
+					full, ok = path, true
+					break
+				}
+			}
+		}
+		if ok {
 			if rest == "" {
 				return full
 			}

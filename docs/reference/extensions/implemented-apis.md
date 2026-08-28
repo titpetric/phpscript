@@ -95,11 +95,24 @@ function ob_start(mixed ...$unused): bool
 #### datetime
 
 ```php
+// date formats a Unix timestamp with PHP's numeric format characters.
+function date(string $format, int ...$timestamp): string
+```
+
+```php
 /**
  * microtime(true) returns seconds as a float; the argumentless form
  * returns PHP's historical "msec sec" string.
  */
 function microtime(bool ...$as_float): mixed
+```
+
+```php
+/**
+ * strtotime parses a datetime string against a fixed list of layouts, most
+ * specific first, and returns the Unix timestamp, or false when none match.
+ */
+function strtotime(string $value, int ...$base): mixed
 ```
 
 ```php

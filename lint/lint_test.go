@@ -339,7 +339,7 @@ if (true) {
 	function conditional() { return 2; }
 }
 $sorter = function ($rows) {
-	return date("Y");
+	return undefined_in_closure();
 };
 `
 	diags, err := lint.File("funcs.php", src)
@@ -348,7 +348,7 @@ $sorter = function ($rows) {
 	}
 	want := []string{
 		`funcs.php:3: call to undefined function undefined_function()`,
-		`funcs.php:14: call to undefined function date()`,
+		`funcs.php:14: call to undefined function undefined_in_closure()`,
 	}
 	if len(diags) != len(want) {
 		t.Fatalf("diagnostics = %v, want %d findings", diags, len(want))

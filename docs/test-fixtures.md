@@ -10,7 +10,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## arithmetic
 
 | arithmetic               | Flat stack | Runtime | PHP  |
-|--------------------------|------------|---------|------|
+| ------------------------ | ---------- | ------- | ---- |
 | add_float.phpt           | PASS       | PASS    | PASS |
 | add_int.phpt             | PASS       | PASS    | PASS |
 | casts.phpt               | PASS       | PASS    | PASS |
@@ -36,7 +36,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## arrays
 
 | arrays                   | Flat stack | Runtime | PHP  |
-|--------------------------|------------|---------|------|
+| ------------------------ | ---------- | ------- | ---- |
 | array_callbacks.phpt     | PASS       | PASS    | PASS |
 | array_column_flip.phpt   | PASS       | PASS    | PASS |
 | array_filter_reduce.phpt | PASS       | PASS    | PASS |
@@ -59,7 +59,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## autoloading
 
 | autoloading                  | Flat stack | Runtime | PHP  |
-|------------------------------|------------|---------|------|
+| ---------------------------- | ---------- | ------- | ---- |
 | autoloading.phpt             | PASS       | PASS    | PASS |
 | autoloading_default.phpt     | PASS       | PASS    | PASS |
 | autoloading_missing.phpt     | PASS       | PASS    | PASS |
@@ -72,7 +72,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## bindings
 
 | bindings                              | Flat stack | Runtime | PHP  |
-|---------------------------------------|------------|---------|------|
+| ------------------------------------- | ---------- | ------- | ---- |
 | database_datetime.phpt                | PASS       | PASS    | SKIP |
 | database_datetime_bind.phpt           | PASS       | PASS    | SKIP |
 | database_datetime_roundtrip.phpt      | PASS       | PASS    | SKIP |
@@ -100,14 +100,14 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## errors
 
 | errors                  | Flat stack | Runtime | PHP  |
-|-------------------------|------------|---------|------|
+| ----------------------- | ---------- | ------- | ---- |
 | argument_type.phpt      | PASS       | PASS    | PASS |
 | undefined_function.phpt | PASS       | PASS    | PASS |
 
 ## exceptions
 
 | exceptions                   | Flat stack | Runtime | PHP  |
-|------------------------------|------------|---------|------|
+| ---------------------------- | ---------- | ------- | ---- |
 | catch_type_matching.phpt     | PASS       | PASS    | PASS |
 | die_exit.phpt                | PASS       | PASS    | PASS |
 | die_message.phpt             | PASS       | PASS    | PASS |
@@ -121,7 +121,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## flatstack
 
 | flatstack                                  | Flat stack | Runtime | PHP  |
-|--------------------------------------------|------------|---------|------|
+| ------------------------------------------ | ---------- | ------- | ---- |
 | cast_compiles.phpt                         | PASS       | PASS    | PASS |
 | class_const_compiles.phpt                  | PASS       | PASS    | PASS |
 | closure_compiles.phpt                      | PASS       | PASS    | PASS |
@@ -133,7 +133,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## functions
 
 | functions                               | Flat stack | Runtime | PHP  |
-|-----------------------------------------|------------|---------|------|
+| --------------------------------------- | ---------- | ------- | ---- |
 | argument_count.phpt                     | PASS       | PASS    | PASS |
 | callables.phpt                          | PASS       | PASS    | PASS |
 | closure_capture.phpt                    | PASS       | PASS    | PASS |
@@ -147,7 +147,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## gd
 
 | gd               | Flat stack | Runtime | PHP  |
-|------------------|------------|---------|------|
+| ---------------- | ---------- | ------- | ---- |
 | color.phpt       | PASS       | PASS    | PASS |
 | create.phpt      | PASS       | PASS    | PASS |
 | decode.phpt      | PASS       | PASS    | PASS |
@@ -159,7 +159,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## includes
 
 | includes                | Flat stack | Runtime | PHP  |
-|-------------------------|------------|---------|------|
+| ----------------------- | ---------- | ------- | ---- |
 | get_included_files.phpt | PASS       | PASS    | SKIP |
 | include-return.phpt     | PASS       | PASS    | PASS |
 | once.phpt               | PASS       | PASS    | PASS |
@@ -167,14 +167,15 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## namespaces
 
 | namespaces                      | Flat stack | Runtime | PHP  |
-|---------------------------------|------------|---------|------|
+| ------------------------------- | ---------- | ------- | ---- |
 | class_inheritance_parses.phpt   | PASS       | PASS    | PASS |
 | namespaced_class_modifiers.phpt | PASS       | PASS    | PASS |
+| use_case_insensitive.phpt       | PASS       | PASS    | PASS |
 
 ## oop
 
 | oop                              | Flat stack | Runtime | PHP  |
-|----------------------------------|------------|---------|------|
+| -------------------------------- | ---------- | ------- | ---- |
 | anonymous_class_contract.phpt    | PASS       | PASS    | SKIP |
 | anonymous_class_include.phpt     | PASS       | PASS    | PASS |
 | class_constant_defaults.phpt     | PASS       | PASS    | PASS |
@@ -203,7 +204,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## output
 
 | output          | Flat stack | Runtime | PHP  |
-|-----------------|------------|---------|------|
+| --------------- | ---------- | ------- | ---- |
 | gettype.phpt    | PASS       | PASS    | PASS |
 | print_r.phpt    | PASS       | PASS    | PASS |
 | var_dump.phpt   | PASS       | PASS    | PASS |
@@ -212,14 +213,14 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## paths
 
 | paths                | Flat stack | Runtime | PHP  |
-|----------------------|------------|---------|------|
+| -------------------- | ---------- | ------- | ---- |
 | magic_constants.phpt | PASS       | PASS    | PASS |
 | root_filesystem.phpt | PASS       | PASS    | PASS |
 
 ## regex
 
 | regex                      | Flat stack | Runtime | PHP  |
-|----------------------------|------------|---------|------|
+| -------------------------- | ---------- | ------- | ---- |
 | preg_combined_flags.phpt   | PASS       | PASS    | PASS |
 | preg_match_flags.phpt      | PASS       | PASS    | PASS |
 | preg_offset_capture.phpt   | PASS       | PASS    | PASS |
@@ -231,7 +232,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## runtime
 
 | runtime                    | Flat stack | Runtime | PHP  |
-|----------------------------|------------|---------|------|
+| -------------------------- | ---------- | ------- | ---- |
 | byref_noop.phpt            | PASS       | PASS    | SKIP |
 | global_noop.phpt           | PASS       | PASS    | SKIP |
 | memory_alias.phpt          | PASS       | PASS    | SKIP |
@@ -242,12 +243,13 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | microtime.phpt             | PASS       | PASS    | PASS |
 | runtime_introspection.phpt | PASS       | PASS    | SKIP |
 | stdin.phpt                 | PASS       | PASS    | PASS |
+| strtotime.phpt             | PASS       | PASS    | PASS |
 | undefined_constant.phpt    | PASS       | PASS    | SKIP |
 
 ## stdlib
 
 | stdlib                           | Flat stack | Runtime | PHP  |
-|----------------------------------|------------|---------|------|
+| -------------------------------- | ---------- | ------- | ---- |
 | csv.phpt                         | PASS       | PASS    | SKIP |
 | file_put_contents.phpt           | PASS       | PASS    | PASS |
 | filesystem.phpt                  | PASS       | PASS    | PASS |
@@ -269,7 +271,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## strings
 
 | strings                       | Flat stack | Runtime | PHP  |
-|-------------------------------|------------|---------|------|
+| ----------------------------- | ---------- | ------- | ---- |
 | base64.phpt                   | PASS       | PASS    | PASS |
 | case_functions.phpt           | PASS       | PASS    | PASS |
 | chr_ord.phpt                  | PASS       | PASS    | PASS |
@@ -289,7 +291,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## syntax
 
 | syntax                      | Flat stack | Runtime | PHP  |
-|-----------------------------|------------|---------|------|
+| --------------------------- | ---------- | ------- | ---- |
 | bitwise_operators.phpt      | PASS       | PASS    | PASS |
 | condition_syntax.phpt       | PASS       | PASS    | SKIP |
 | do_while.phpt               | PASS       | PASS    | PASS |
@@ -302,7 +304,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 ## Summary
 
 | Area        | Fixtures | Passed | Failed |
-|-------------|----------|--------|--------|
+| ----------- | -------- | ------ | ------ |
 | arithmetic  | 21       | 21     | 0      |
 | arrays      | 18       | 18     | 0      |
 | autoloading | 8        | 8      | 0      |
@@ -313,13 +315,14 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | functions   | 9        | 9      | 0      |
 | gd          | 7        | 7      | 0      |
 | includes    | 3        | 3      | 0      |
-| namespaces  | 2        | 2      | 0      |
+| namespaces  | 3        | 3      | 0      |
 | oop         | 24       | 24     | 0      |
 | output      | 4        | 4      | 0      |
 | paths       | 2        | 2      | 0      |
 | regex       | 7        | 7      | 0      |
-| runtime     | 11       | 11     | 0      |
+| runtime     | 12       | 12     | 0      |
 | stdlib      | 17       | 17     | 0      |
 | strings     | 15       | 15     | 0      |
 | syntax      | 8        | 8      | 0      |
-| **Total**   | 197      | 197    | 0      |
+| **Total**   | 199      | 199    | 0      |
+

@@ -121,7 +121,7 @@ planned, and each row names what to use instead.
 | `curl_*`                                                                 | `HTTP\Client`, `HTTP\Request`                                                                                                  |
 | PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                                     | `Database`, `Database\Migrate`                                                                                                 |
 | `shmop_*`, `apcu_*`, `sem_*`                                             | `SharedMemory`                                                                                                                 |
-| `strftime`, `gmstrftime`, `date`, `gmdate`, `mktime`, `strtotime`        | `DateTime`, `Time`; Go layouts rather than format characters or English dates                                                  |
+| `strftime`, `gmstrftime`, `gmdate`, `mktime`                             | `DateTime`, `Time`; Go layouts rather than format characters. `date` and `strtotime` exist as numeric-and-layout shims         |
 | `JSON_PRETTY_PRINT`, `JSON_UNESCAPED_SLASHES`, every other `JSON_*` flag | `json_encode($value)`; the encoding is not configurable                                                                        |
 | `create_function`                                                        | Closures                                                                                                                       |
 | `${var}` string interpolation                                            | `{$var}`                                                                                                                       |
@@ -161,13 +161,22 @@ meaning and are not reported. Return the value instead; see
 
 ### Dates and times
 
-PHP's date family is not implemented, and neither is a compatibility layer over
-it. `date()`'s format characters, `strftime()`'s `%` codes and `strtotime()`'s
+PHP's date family is not implemented beyond a deliberately small shim.
+`date()`'s format characters, `strftime()`'s `%` codes and `strtotime()`'s
 English are three spellings of the same job, and the runtime binds Go's instead:
 `DateTime::now()`, `DateTime::parse()` and `$t->format()` take
 [Go layouts](https://pkg.go.dev/time#pkg-constants), where the layout is the
 reference instant written the way the output should read. `2006-01-02` is a
 date; `Y-m-d` is a table lookup, and `strtotime("next thursday")` is a guess.
+
+The shim in `stdlib/compat` covers the epoch corner of that family and stops
+there. `strtotime` matches a fixed list of layouts from most to least
+specific — RFC 3339 with and without fraction and offset, `Y-m-d H:i:s` and
+its prefixes, RFC 1123, `@epoch`, `now` — and returns `false` for anything
+else, English included. `date` knows the numeric format characters
+(`Y y m n d j H G h g i s U`) and backslash escapes, and writes every other
+character through unchanged; a word or a zone in the output is `$t->format()`
+with a Go layout.
 
 The value a script holds is Go's `time.Time`, which is what the database driver
 already scans a `DATETIME` column into, so the same value flows from a query to
