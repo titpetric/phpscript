@@ -31,6 +31,11 @@ func knownRuntime() *runner.Runtime {
 	registryOnce.Do(func() {
 		rt := runner.New(io.Discard, runner.Options{SAPI: "cli"})
 		stdlib.Register(rt)
+		// The request-aware functions (header, http_response_code,
+		// getallheaders, ...) are installed per request rather than by
+		// stdlib.Register; a server-targeted file still names them, so an
+		// empty request context registers them for the name check.
+		runner.NewContext().Register(rt)
 		registry = rt
 	})
 	return registry
