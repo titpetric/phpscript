@@ -51,6 +51,45 @@ func registerMath(rt *runner.Runtime) {
 	rt.RegisterFunc("max", func(args ...any) (any, error) { return phpMinMax("max", args, 1) })
 	// number_format formats $num with $decimals decimals, $decimal_separator between the parts and $thousands_separator every three digits of the integer part, rounding half away from zero.
 	rt.RegisterFunc("number_format", phpNumberFormat)
+	// hexdec returns the number $hex_string names in hexadecimal, ignoring any character outside 0-9 a-f A-F, as PHP does; a value past PHP_INT_MAX keeps accumulating as a float.
+	rt.RegisterFunc("hexdec", phpHexdec)
+}
+
+// phpHexdec backs hexdec. PHP reads the digits it recognises and skips the
+// rest without a word (hexdec("0x1A") is 26 because the x is skipped), and
+// switches to float arithmetic at the first digit that would overflow the
+// int, which is why hexdec("7fffffffffffffff") is PHP_INT_MAX and one more
+// digit of anything is a float.
+func phpHexdec(hexString string) any {
+	var asInt int64
+	var asFloat float64
+	overflowed := false
+	for _, c := range []byte(hexString) {
+		var d int64
+		switch {
+		case c >= '0' && c <= '9':
+			d = int64(c - '0')
+		case c >= 'a' && c <= 'f':
+			d = int64(c-'a') + 10
+		case c >= 'A' && c <= 'F':
+			d = int64(c-'A') + 10
+		default:
+			continue
+		}
+		if !overflowed {
+			if asInt <= (math.MaxInt64-d)/16 {
+				asInt = asInt*16 + d
+				continue
+			}
+			overflowed = true
+			asFloat = float64(asInt)
+		}
+		asFloat = asFloat*16 + float64(d)
+	}
+	if overflowed {
+		return asFloat
+	}
+	return asInt
 }
 
 // phpAbs backs abs. phpval.Number decides the return type, so an int argument

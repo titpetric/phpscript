@@ -592,6 +592,11 @@ function floor(mixed $num): float
 ```
 
 ```php
+// hexdec returns the number $hex_string names in hexadecimal, ignoring any character outside 0-9 a-f A-F, as PHP does; a value past PHP_INT_MAX keeps accumulating as a float.
+function hexdec(string $hex_string): mixed
+```
+
+```php
 // log returns the logarithm of $num in base $base, natural (base M_E) when $base is omitted.
 function log(mixed $num, mixed ...$base): float
 ```
@@ -991,6 +996,11 @@ function token_name(int $id): string
 ### stdlib/crypto
 
 ```php
+// md5 returns the MD5 hash of $string as 32 lowercase hex characters, or as 16 raw bytes when $binary is true.
+function md5(string $str, bool ...$binary): string
+```
+
+```php
 /**
  * password_get_info returns the algorithm and options $hash records, as
  * PHP's does: an unrecognised hash reports algo "" rather than failing.
@@ -1033,6 +1043,21 @@ function random_bytes(int $length): string
 ```php
 // random_int returns a cryptographically secure, uniformly selected integer between $min and $max inclusive, throwing when $min is greater than $max.
 function random_int(int $min, int $max): int
+```
+
+```php
+// sha1 returns the SHA-1 hash of $string as 40 lowercase hex characters, or as 20 raw bytes when $binary is true.
+function sha1(string $str, bool ...$binary): string
+```
+
+```php
+// ulid returns a 26-character ULID: a millisecond timestamp and 80 random bits in Crockford base32, so ids sort by creation time. Ids from the same millisecond sort in no particular order.
+function ulid(): string
+```
+
+```php
+// uuid returns a UUIDv7 as 36 lowercase characters in the 8-4-4-4-12 form: a millisecond timestamp and random bits, so ids sort by creation time like a ulid.
+function uuid(): string
 ```
 
 ### stdlib/database
