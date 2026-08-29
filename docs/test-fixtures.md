@@ -252,6 +252,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | runtime_introspection.phpt | PASS       | PASS    | SKIP |
 | stdin.phpt                 | PASS       | PASS    | PASS |
 | strtotime.phpt             | PASS       | PASS    | PASS |
+| superglobals.phpt          | PASS       | PASS    | PASS |
 | undefined_constant.phpt    | PASS       | PASS    | SKIP |
 
 ## stdlib
@@ -331,8 +332,8 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | paths       | 2        | 2      | 0      |
 | pexec       | 1        | 1      | 0      |
 | regex       | 7        | 7      | 0      |
-| runtime     | 12       | 12     | 0      |
+| runtime     | 13       | 13     | 0      |
 | stdlib      | 18       | 18     | 0      |
 | strings     | 16       | 16     | 0      |
 | syntax      | 8        | 8      | 0      |
-| **Total**   | 204      | 204    | 0      |
+| **Total**   | 205      | 205    | 0      |

@@ -817,6 +817,16 @@ function get_parent_class(mixed ...$unused): mixed
 ```
 
 ```php
+/**
+ * is_subclass_of always returns false; phpscript has no inheritance, so no
+ * object is an instance of a subclass. A guard written as
+ * `is_subclass_of($o, "Exception") || get_class($o) === "Exception"` falls
+ * through to the name comparison, which is the check that answers here.
+ */
+function is_subclass_of(mixed ...$unused): bool
+```
+
+```php
 // method_exists reports whether $object_or_class, an object or a class name, has method $method.
 function method_exists(mixed $object_or_class, string $method): bool
 ```
