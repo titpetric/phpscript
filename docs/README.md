@@ -138,6 +138,15 @@ Memory reporting differs from PHP's allocator view:
 - Exceeding `memory_limit` raises a catchable `RuntimeException`; PHP treats
   it as a fatal error that `catch` cannot intercept.
 
+Superglobals:
+
+- `$_REQUEST` merges the route's path values over the query, form and cookie
+  fields, so a `// @route GET /users/{id}` endpoint reads `$_REQUEST["id"]`.
+  PHP's `$_REQUEST` carries no route parameters; carrying them under PHP's
+  name was chosen over keeping `$_PATH`, a name PHP does not have, which
+  remains seeded with the path values alone. See
+  [Predefined variables](reference/predefined-variables/README.md#_request).
+
 Strings:
 
 - A negative `$offset` past the start of the subject, a `substr_count()` window

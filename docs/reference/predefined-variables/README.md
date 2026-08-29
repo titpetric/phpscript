@@ -9,8 +9,9 @@
 | `$_SERVER`                               | Partial compatibility | The request line, peer, scheme, timing, `HTTP_*`, and the script.  |
 | `$_ENV`                                  | Partial compatibility | Seeded empty. Only a Go host fills it; `getenv()` is unrelated.    |
 | `$argc`, `$argv`                         | Partial compatibility | Seeded for scheduled jobs. CLI arguments are not passed to either. |
-| `$_PATH`                                 | phpscript extension   | Route wildcard values from the matched Go HTTP pattern.            |
-| `$GLOBALS`, `$_REQUEST`, `$_SESSION`     | Not implemented       | Reserved names, never seeded, so they read as null.                |
+| `$_REQUEST`                              | Partial compatibility | Query, form and cookie fields, with route path values merged over. |
+| `$_PATH`                                 | phpscript extension   | The name `$_REQUEST` replaced; still seeded, path values alone.    |
+| `$GLOBALS`, `$_SESSION`                  | Not implemented       | Reserved names, never seeded, so they read as null.                |
 | `$php_errormsg`, `$http_response_header` | Not implemented       | PHP error and stream globals are unavailable.                      |
 
 These arrays are installed only when a Go host creates and registers a request
@@ -165,14 +166,30 @@ follows is whatever its `// @schedule` annotation put after `--`. Everywhere
 else they are `0` and an empty array; the arguments passed to the `phpscript`
 CLI are not among them.
 
-## `$_PATH`
+## `$_REQUEST`
 
-Contains values captured by Go 1.22+ `ServeMux` route patterns, such as `{id}`
-or `{rest...}`.
+Contains the query, form and cookie fields merged the way PHP's default
+`request_order` merges them — `$_GET`, then `$_POST`, then `$_COOKIE`, a later
+source overwriting an earlier one — and then the values captured by the
+matched route pattern, such as `{id}` or `{rest...}`, written over all three.
 
 ```php
-$id = $_PATH["id"];
+// @route GET /users/{id}
+$id = $_REQUEST["id"];
 ```
+
+The path values are the deliberate divergence from PHP, whose `$_REQUEST`
+carries no route parameters: a path parameter is request input here, and it
+arrives under PHP's name rather than under one PHP does not have. A request
+field spelled like a path parameter is overwritten by it, so
+`/users/42?id=abc` answers `"42"`.
+
+`$_REQUEST` is its own array, as it is in PHP: writing to it changes none of
+the arrays it was merged from, and their writes do not appear in it.
+
+`$_PATH` is the name this merge replaced. It remains seeded with the path
+values alone, so a script written against it keeps running; its removal is a
+separate change.
 
 ## Request headers
 

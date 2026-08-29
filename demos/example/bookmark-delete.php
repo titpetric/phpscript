@@ -3,7 +3,7 @@
 // @route POST /bookmarks/{id}/delete
 
 include "bootstrap.php";
-$id = (int)$_PATH["id"];
+$id = (int)$_REQUEST["id"];
 $bookmark = $db->get("SELECT id FROM bookmarks WHERE id = ?", $id);
 if (!$bookmark) {
 	die("Bookmark not found.");

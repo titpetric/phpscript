@@ -127,7 +127,7 @@ The files are what they would be if each site ran in a server of its own.
 
 // @route GET /hello/{name}
 
-echo "hello " . $_PATH["name"];
+echo "hello " . $_REQUEST["name"];
 ```
 
 `shop/migrate.php` runs to completion before the server listens:

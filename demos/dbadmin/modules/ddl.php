@@ -21,7 +21,7 @@ $decision = $acl->decide($ctx);
 if (!$creating) {
 	require_csrf($ctx, $tpl);
 
-	$table = (string)$_PATH["table"];
+	$table = (string)$_REQUEST["table"];
 	$dropping = str_ends_with($where, "/drop");
 
 	// The table name has to be typed into the form. A confirmation the user

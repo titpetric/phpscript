@@ -8,7 +8,7 @@ include "bootstrap.php";
 
 require_auth($ctx);
 
-$table = (string)$_PATH["table"];
+$table = (string)$_REQUEST["table"];
 $opened = open_connection($ctx, $acl, $connections, $tpl, false);
 $db = $opened["db"];
 $driver = $opened["driver"];

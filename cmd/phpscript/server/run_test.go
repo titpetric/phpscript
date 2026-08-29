@@ -30,7 +30,7 @@ echo "public annotation";
 `)},
 	"routes/hello.php": {Data: []byte(`<?php
 // @route GET /hello/{name}
-echo "hello " . $_PATH["name"];
+echo "hello " . $_REQUEST["name"];
 `)},
 	"secret.txt": {Data: []byte(`not public`)},
 }

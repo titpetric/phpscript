@@ -37,7 +37,7 @@ if ($where === "/admin/group") {
 	exit();
 }
 
-$id = (int)$_PATH["id"];
+$id = (int)$_REQUEST["id"];
 $group = $groups->find($id);
 if (!$group) {
 	fail($ctx, $tpl, 404, "No such group.");

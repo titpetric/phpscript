@@ -71,7 +71,7 @@ The bindings can now be used from PHP. Using the `@route` hints, a request handl
 $shm = new SharedMemory;
 $shm->incr("requests");
 $shm->incr("post");
-$shm->set($_PATH["key"], $_POST["value"]);
+$shm->set($_REQUEST["key"], $_POST["value"]);
 
 echo "ok";
 ```

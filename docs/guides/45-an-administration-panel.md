@@ -271,23 +271,23 @@ include "bootstrap.php";
 try {
 	require_login($session);
 
-	$user = $users->find($_PATH["id"]);
+	$user = $users->find($_REQUEST["id"]);
 	if ($user === false) {
 		fail($html, 404, "No such user.");
 	}
 
-	$member_of = $groups->group_ids_of($_PATH["id"]);
+	$member_of = $groups->group_ids_of($_REQUEST["id"]);
 	require_can($html, $rules["user"], "user.edit", $member_of);
 
 	echo page($html, $frame, "admin-users-edit.tpl", array(
 		"user" => $user,
-		"member_of" => $groups->groups_of($_PATH["id"]),
+		"member_of" => $groups->groups_of($_REQUEST["id"]),
 		"all_groups" => $groups->all(),
 		"message" => $flash->take(),
 	));
 ```
 
-The annotation names the path and `$_PATH["id"]` is the parameter. The row is read before the
+The annotation names the path and `$_REQUEST["id"]` is the parameter. The row is read before the
 permission check, because 404 for a user that does not exist is the more useful answer; the
 trade is that a signed-in administrator learns whether an id exists. The section list is
 `group_ids_of($id)`, so the question the grant answers is "may this administrator edit users
@@ -323,7 +323,7 @@ then validate, write, flash, redirect:
 		fail($html, 422, "A username is required.");
 	}
 
-	$users->update($_PATH["id"], array(
+	$users->update($_REQUEST["id"], array(
 		"username" => $username,
 		"email" => isset($_POST["email"]) ? trim($_POST["email"]) : "",
 		"is_admin" => isset($_POST["is_admin"]) ? 1 : 0,
@@ -332,7 +332,7 @@ then validate, write, flash, redirect:
 
 	$flash->set("Saved " . $username . ".");
 
-	redirect_to("/admin/user/" . $_PATH["id"]);
+	redirect_to("/admin/user/" . $_REQUEST["id"]);
 ```
 
 The password is not among the columns written here. Setting one is its own key,
@@ -369,7 +369,7 @@ empty username is 422.
 ## The handlers live in the route files
 
 A panel class holds no request state, reads no superglobal and contains no route handler. A
-handler reads `$_GET`, `$_POST` and `$_PATH`, and those reads belong in the annotated file,
+handler reads `$_GET`, `$_POST` and `$_REQUEST`, and those reads belong in the annotated file,
 so the input to a route is visible from the route: open `routes/admin-users-save.php` and the
 four fields it writes are in front of you, next to the `@route` line that says where they
 arrive from.
@@ -380,11 +380,11 @@ errors here, so that dispatch does not exist.
 
 ## Route paths are written literally
 
-One file per action, with `{name}` parameters only. `/admin/{module=users}/{path}` does not
-work: chi has no default-value syntax and registers a parameter literally named
-`module=users`, and `pathVarRE` exports only `{name}` and `{name...}` into `$_PATH`. A
-`{id:[0-9]+}` parameter routes and then never reaches `$_PATH`, and a `*` tail matches with
-its remainder dropped. `../../demos/common-report/proposal-annotation-route-module.md`
-specifies the fix for all three.
+One file per action. A path takes `{name}` for one segment, `{name...}` for the remaining
+segments joined, and `{name:regex}` for a constrained segment, each arriving in
+`$_REQUEST` under the name it declares. `/admin/{module=users}/{path}` does not work:
+there is no default-value syntax, and the route is refused at boot rather than registered
+with a parameter literally named `module=users`. See
+[Routing and endpoints](10-routing-and-endpoints.md).
 
 Next: [A JSON API](50-a-json-api.md).

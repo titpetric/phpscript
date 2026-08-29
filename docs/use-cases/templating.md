@@ -105,7 +105,7 @@ For example, an edit form for an user may:
 
 include("UserStorage.php");
 
-$id = $_PATH['id'];
+$id = $_REQUEST['id'];
 
 $db = new UserStorage;
 $user = $db->getUserById($id);
@@ -126,7 +126,7 @@ And a POST endpoint:
 
 include("UserStorage.php");
 
-$id = $_PATH['id'];
+$id = $_REQUEST['id'];
 
 $db = new UserStorage();
 $db->saveUserMemberships($id, $_POST['user_groups']);

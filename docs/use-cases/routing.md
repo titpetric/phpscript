@@ -41,7 +41,7 @@ Routes are declared in PHP comments:
 
 $shm = new SharedMemory;
 
-echo $shm->get($_PATH["key"]);
+echo $shm->get($_REQUEST["key"]);
 ```
 
 A route without a method registers both GET and POST. Explicit methods such as
@@ -50,13 +50,13 @@ available for HEAD or OPTIONS requests, you have to bind them explicitly.
 
 ### Path parameters
 
-Three spellings, each arriving in `$_PATH` under the name it declares:
+Three spellings, each arriving in `$_REQUEST` under the name it declares:
 
-| Spelling        | Matches                          | `$_PATH`                                                   |
-|-----------------|----------------------------------|------------------------------------------------------------|
-| `{key}`         | one path segment                 | `$_PATH["key"]`                                            |
-| `{pathname...}` | the remaining segments, joined   | `$_PATH["pathname"]` is `docs/2026/report.pdf`             |
-| `{id:[0-9]+}`   | one segment matching the pattern | `$_PATH["id"]`, and a segment that does not match is a 404 |
+| Spelling        | Matches                          | `$_REQUEST`                                                   |
+|-----------------|----------------------------------|---------------------------------------------------------------|
+| `{key}`         | one path segment                 | `$_REQUEST["key"]`                                            |
+| `{pathname...}` | the remaining segments, joined   | `$_REQUEST["pathname"]` is `docs/2026/report.pdf`             |
+| `{id:[0-9]+}`   | one segment matching the pattern | `$_REQUEST["id"]`, and a segment that does not match is a 404 |
 
 A name is letters, digits and underscores. Anything else is refused: the route
 is not registered, the server logs it at boot with the file it came from, and
@@ -73,7 +73,7 @@ PHP as well when the check has to hold either way.
 PHP endpoint files handle:
 
 - route declarations with `// @route METHOD /path/{param}`
-- path params from `$_PATH`
+- path params from `$_REQUEST`
 - query and form data from `$_GET` and `$_POST`
 - host-provided bindings such as `SharedMemory`
 - response bodies with `echo`
@@ -100,7 +100,7 @@ The write endpoint looks like this:
 $shm = new SharedMemory;
 $shm->incr("requests");
 $shm->incr("post");
-$shm->set($_PATH["key"], $_POST["value"]);
+$shm->set($_REQUEST["key"], $_POST["value"]);
 
 echo "ok";
 ```
@@ -116,7 +116,7 @@ $shm = new SharedMemory;
 $shm->incr("requests");
 $shm->incr("get");
 
-echo $shm->get($_PATH["key"]);
+echo $shm->get($_REQUEST["key"]);
 ```
 
 And the stats endpoint proves that requests share the same Go-side state:
@@ -128,7 +128,7 @@ And the stats endpoint proves that requests share the same Go-side state:
 
 $shm = new SharedMemory;
 
-echo $shm->count($_PATH["counter"]);
+echo $shm->count($_REQUEST["counter"]);
 ```
 
 Example session:

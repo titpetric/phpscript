@@ -22,17 +22,17 @@ include "bootstrap.php";
 try {
 	require_login($session);
 
-	$user = $users->find($_PATH["id"]);
+	$user = $users->find($_REQUEST["id"]);
 	if ($user === false) {
 		fail($html, 404, "No such user.");
 	}
 
-	$member_of = $groups->group_ids_of($_PATH["id"]);
+	$member_of = $groups->group_ids_of($_REQUEST["id"]);
 	require_can($html, $rules["user"], "user.edit", $member_of);
 
 	echo page($html, $frame, "admin-users-edit.tpl", array(
 		"user" => $user,
-		"member_of" => $groups->groups_of($_PATH["id"]),
+		"member_of" => $groups->groups_of($_REQUEST["id"]),
 		"all_groups" => $groups->all(),
 		"message" => $flash->take(),
 	));
@@ -51,7 +51,7 @@ Five parts, in order:
    scope, so `$users`, `$groups`, `$rules`, `$html`, `$frame` and `$session` are this file's
    variables and the route constructs nothing.
    [Structuring an application](25-structuring-an-application.md) covers what is in there.
-3. `$_PATH["id"]` is the input, read here in the annotated file and nowhere below it.
+3. `$_REQUEST["id"]` is the input, read here in the annotated file and nowhere below it.
 4. `echo` is the answer. Everything the script writes is the response body.
 5. The `catch` turns an exception thrown by a component into a status and an error page.
    Guards inside the body answer directly with `fail()`.
@@ -84,42 +84,48 @@ until a file declares them.
 Two files declaring the same method and path both register, the one later in path order
 wins, and the server logs `WARN duplicate route ...` while it starts.
 
-## Take path parameters out of $_PATH
+## Take path parameters out of $_REQUEST
 
-`{name}` in the path matches one segment, and the segment arrives in `$_PATH` under that
+`{name}` in the path matches one segment, and the segment arrives in `$_REQUEST` under that
 name as a string:
 
 ```php
 // @route POST /admin/user/{id}/group/{group_id}/delete
 
-$id = $_PATH["id"];
-$group_id = $_PATH["group_id"];
+$id = $_REQUEST["id"];
+$group_id = $_REQUEST["group_id"];
 ```
 
-`{name}` is the only spelling that both routes and reaches the script. `pathVarRE` in
-`runner/request.go` is `\{([a-zA-Z_][a-zA-Z0-9_]*)(\.\.\.)?\}`, and the runtime recovers the
-parameter names from the matched pattern with it before looking each one up. The router
-accepts patterns that regex does not match, registers them, and then nothing fills `$_PATH`.
-The result is a route that works and an endpoint with no input:
+Three spellings route and reach the script — `model.ParseRoutePath` is the one grammar an
+annotation is written against, and every parameter it accepts arrives under the name it
+declares: `{name}` for one segment, `{name...}` for the remaining segments joined, and
+`{name:regex}` for one constrained segment. Anything else is refused: the route is not
+registered, the server logs it at boot with the file it came from, and `phpscript lint`
+reports it with a line number.
 
-| Annotation          | Request           | Result                                                                       |
-|---------------------|-------------------|------------------------------------------------------------------------------|
-| `/admin/user/{id}`  | `/admin/user/abc` | serves, `$_PATH["id"]` is `"abc"`                                            |
-| `/admin/user/{id}`  | `/admin/user/a/b` | 404, a parameter is one segment                                              |
-| `/x/{id:[0-9]+}`    | `/x/12`           | serves, `$_PATH` is empty                                                    |
-| `/y/{module=users}` | `/y/anything`     | serves any segment, the parameter is named `module=users`, `$_PATH` is empty |
-| `/z/{module}/*`     | `/z/users/a/b`    | serves, `$_PATH` holds `module` and the tail is nowhere                      |
-| `/g/{rest...}`      | `/g/a/b`          | 404                                                                          |
+| Annotation          | Request           | Result                                                                          |
+|---------------------|-------------------|---------------------------------------------------------------------------------|
+| `/admin/user/{id}`  | `/admin/user/abc` | serves, `$_REQUEST["id"]` is `"abc"`                                            |
+| `/admin/user/{id}`  | `/admin/user/a/b` | 404, a parameter is one segment                                                 |
+| `/g/{rest...}`      | `/g/a/b`          | serves, `$_REQUEST["rest"]` is `"a/b"`                                          |
+| `/x/{id:[0-9]+}`    | `/x/12`           | serves, `$_REQUEST["id"]` is `"12"`                                             |
+| `/x/{id:[0-9]+}`    | `/x/ab`           | 404 under the bundled server; an `http.ServeMux` host serves, unconstrained     |
+| `/q/{id:.*}`        | `/q/a/b`          | 404, a constrained parameter is still one segment; `{rest...}` is the catch-all |
+| `/y/{module=users}` | `/y/anything`     | refused at boot, there is no default-value syntax                               |
+| `/z/{module}/*`     | `/z/users/a/b`    | serves under chi with `module` and the tail nowhere; write `{rest...}` instead  |
 
-So there is no regex constraint you can read, no tail parameter, and no default value.
-`/admin/{module=users}/{path}` looks like it defaults `module` to `users` and does not: it
-registers a parameter whose literal name is `module=users`, matches any segment there, and
-hands the script nothing. Write the two routes out instead. Values are strings, and `intval`
-is not bound, so cast with `(int)$_PATH["id"]` when you need a number.
+`{name...}` is the catch-all, and the one spelling that matches across segments: a regex
+constraint applies within a single segment, so `{id:.*}` is not a tail. The constraint is
+enforced by the bundled server, which routes with chi; a host registering on
+`http.ServeMux` gets the parameter without it, because `ServeMux` has no equivalent — see
+[Routing](../use-cases/routing.md). There is no default-value syntax:
+`/admin/{module=users}/{path}` is an authoring error rather than a route that defaults
+`module`. Values are strings, and `intval` is not bound, so cast with
+`(int)$_REQUEST["id"]` when you need a number.
 
 ## Read the request
 
-Six superglobals carry the request: `$_GET`, `$_POST`, `$_PATH`, `$_COOKIE`, `$_SERVER` and
+Six superglobals carry the request: `$_GET`, `$_POST`, `$_REQUEST`, `$_COOKIE`, `$_SERVER` and
 `$_FILES`. Every value is a string, and a key that was not sent reads as `null` with no
 notice, so test with `isset()` wherever absence and an empty value differ:
 
@@ -193,12 +199,12 @@ try {
 	require_login($session);
 	require_csrf($html, $csrf);
 
-	$user = $users->find($_PATH["id"]);
+	$user = $users->find($_REQUEST["id"]);
 	if ($user === false) {
 		fail($html, 404, "No such user.");
 	}
 
-	$member_of = $groups->group_ids_of($_PATH["id"]);
+	$member_of = $groups->group_ids_of($_REQUEST["id"]);
 	require_can($html, $rules["user"], "user.edit", $member_of);
 
 	$username = isset($_POST["username"]) ? trim($_POST["username"]) : "";
@@ -206,7 +212,7 @@ try {
 		fail($html, 422, "A username is required.");
 	}
 
-	$users->update($_PATH["id"], array(
+	$users->update($_REQUEST["id"], array(
 		"username" => $username,
 		"email" => isset($_POST["email"]) ? trim($_POST["email"]) : "",
 		"is_admin" => isset($_POST["is_admin"]) ? 1 : 0,
@@ -215,7 +221,7 @@ try {
 
 	$flash->set("Saved " . $username . ".");
 
-	redirect_to("/admin/user/" . $_PATH["id"]);
+	redirect_to("/admin/user/" . $_REQUEST["id"]);
 } catch (Exception $e) {
 	$problem = Problem::of($e);
 	http_response_code(Problem::status($e));

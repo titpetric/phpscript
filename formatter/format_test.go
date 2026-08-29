@@ -168,7 +168,7 @@ func TestLeadingRouteCommentsPreserved(t *testing.T) {
 	in := `<?php
 // @route GET /kv/{key}
 $shm = new SharedMemory;
-echo $shm->get($_PATH["key"]);
+echo $shm->get($_REQUEST["key"]);
 `
 	out, err := formatter.Source(in)
 	if err != nil {

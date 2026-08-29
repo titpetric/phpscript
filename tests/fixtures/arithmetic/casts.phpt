@@ -5,7 +5,7 @@ description: >
   truncated to page numbers, and scalars wrapped for a uniform foreach. A cast
   is a *model.Cast node, which the flatstack compiler does not lower yet; this
   fixture holds the interpreter fallback and, later, the native path to the
-  same output. dbadmin casts $_GET["page"] and $_PATH["rowid"] this way.
+  same output. dbadmin casts $_GET["page"] and $_REQUEST["rowid"] this way.
 ---
 <?php
 

@@ -157,7 +157,7 @@ The list endpoint asks the module-wide question:
 The read endpoint asks a scoped one. Sections for the `user` panel are group ids, so the grant answers "may this caller read users in group X":
 
 ```php
-	$member_of = $groups->group_ids_of($_PATH["id"]);
+	$member_of = $groups->group_ids_of($_REQUEST["id"]);
 	if (!$rules["user"]->can("user.read", $member_of)) {
 		throw new Common\PermissionDenied("you may not user.read");
 	}
@@ -250,7 +250,7 @@ Which `catch` clause takes a class is decided by the tail of its fully qualified
 
 ## Methods
 
-`// @route DELETE /api/user/{id}` registers the method as written, and `$_PATH` is filled from the matched pattern whatever the method is, so `{id}` arrives in a `DELETE` handler exactly as it does in the `GET` twin. `PUT` behaves the same way. The admin route is `POST /admin/user/{id}/delete` only because an HTML form emits GET and POST and nothing else.
+`// @route DELETE /api/user/{id}` registers the method as written, and `$_REQUEST` is filled from the matched pattern whatever the method is, so `{id}` arrives in a `DELETE` handler exactly as it does in the `GET` twin. `PUT` behaves the same way. The admin route is `POST /admin/user/{id}/delete` only because an HTML form emits GET and POST and nothing else.
 
 | Annotation                        | Registers    |
 |-----------------------------------|--------------|
@@ -261,7 +261,7 @@ Which `catch` clause takes a class is decided by the tail of its fully qualified
 
 A path-only annotation expands to GET and POST, and to nothing else. HEAD and OPTIONS are not implied by a GET route and have to be written out. Without them the server answers 404, not 405, and the same goes for a method no annotation registered: `HEAD /api/status`, `OPTIONS /api/status` and `POST /api/user/{id}` are all 404 against this application.
 
-A path takes `{name}` parameters only. `{id:[0-9]+}` routes but never reaches `$_PATH`, and there is no default-value syntax. See [Routing and endpoints](10-routing-and-endpoints.md).
+A path takes `{name}`, `{name...}` and `{name:regex}` parameters, each arriving in `$_REQUEST` under its declared name; there is no default-value syntax. See [Routing and endpoints](10-routing-and-endpoints.md).
 
 ## What this API does not do
 

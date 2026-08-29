@@ -37,7 +37,7 @@ if ($where === "/admin/user") {
 	exit();
 }
 
-$id = (int)$_PATH["id"];
+$id = (int)$_REQUEST["id"];
 $user = $users->find($id);
 if (!$user) {
 	fail($ctx, $tpl, 404, "No such user.");

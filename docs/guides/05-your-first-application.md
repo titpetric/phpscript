@@ -324,5 +324,5 @@ migrations. It is the application this book builds toward, and every API the lat
 teach is taken from it.
 
 Next: [Routing and endpoints](10-routing-and-endpoints.md) covers `@route` in full, path
-parameters in `$_PATH`, the methods a file may declare, and the `@startup` and `@schedule`
+parameters in `$_REQUEST`, the methods a file may declare, and the `@startup` and `@schedule`
 annotations.

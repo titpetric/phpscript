@@ -130,7 +130,7 @@ module-wide question; a per-record check passes the record's sections, which for
 panel are the groups it belongs to:
 
 ```php
-$sections = $groups->group_ids_of($_PATH["id"]);
+$sections = $groups->group_ids_of($_REQUEST["id"]);
 require_can($html, $rules["user"], "user.edit", $sections);
 ```
 
@@ -272,7 +272,7 @@ authentication, then permission. A route with no guard is public.
 **Errors.** A component throws; a route file catches at its own boundary and exits. Every
 route ends with the same catch block, so a 404 from a store is a 404 to the client.
 
-**Input.** All `$_GET`, `$_POST` and `$_PATH` reads happen in the annotated file, so the
+**Input.** All `$_GET`, `$_POST` and `$_REQUEST` reads happen in the annotated file, so the
 input to a route is visible from the route.
 
 **Tests.** A `.phpt` beside every `.php`. Fixtures run on both engines and on real PHP;

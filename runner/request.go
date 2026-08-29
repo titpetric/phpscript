@@ -128,7 +128,8 @@ func NewContext() Context {
 type routePatternKey struct{}
 
 // WithRoutePattern records the @route path a request matched, before any
-// router-specific rewriting. $_PATH is built from it.
+// router-specific rewriting. The path values $_REQUEST carries are built
+// from it.
 //
 // Without it the pattern has to be recovered from r.Pattern, which is the
 // router's own dialect: chi reports /c/* for a route declared /c/{tail...},
@@ -205,7 +206,7 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	// Server variables ($_SERVER).
 	c.serverVars(r)
 
-	// Path values from the matched route ($_PATH).
+	// Path values from the matched route, merged into $_REQUEST.
 	c.pathValues(r)
 
 	// Request headers (canonical name -> first value).
@@ -220,7 +221,8 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	return c
 }
 
-// pathValues fills $_PATH from the route parameters the pattern declares.
+// pathValues fills c.Path from the route parameters the pattern declares,
+// which $_REQUEST merges over the request fields.
 //
 // The names come from the declared path rather than the matched one, so a
 // parameter reads back under the name it was written with whichever router
@@ -607,7 +609,7 @@ func (c Context) memoryFootprint(visited visitedSet) int64 {
 
 // Register installs the request-aware PHP functions onto rt and seeds the
 // request superglobals. After this, transpiled PHP can call getallheaders() /
-// header() and read $_GET, $_POST, $_PATH, all backed by this Context.
+// header() and read $_GET, $_POST, $_REQUEST, all backed by this Context.
 func (c Context) Register(rt *Runtime) {
 	// The request has crossed into the runtime: fold its host-side size into
 	// the memory baseline for the rest of this request's lifetime.
@@ -643,6 +645,10 @@ func (c Context) Register(rt *Runtime) {
 	rt.SetGlobal("_COOKIE", superglobal(c.CookieVars, c.Cookie))
 	rt.SetGlobal("_SERVER", c.serverArray())
 	rt.SetGlobal("_ENV", mapToArray(c.Env))
+	rt.SetGlobal("_REQUEST", c.requestArray())
+	// _PATH is the name $_REQUEST replaced: the route's path values alone. It
+	// stays seeded so a script written against it keeps running; removal is a
+	// separate change.
 	rt.SetGlobal("_PATH", mapToArray(c.Path))
 	rt.SetGlobal("_FILES", c.filesArray())
 
@@ -894,6 +900,31 @@ func (c Context) serverArray() *model.Array {
 	}
 	if exact, err := strconv.ParseFloat(c.Server["REQUEST_TIME_FLOAT"], 64); err == nil {
 		arr.Set("REQUEST_TIME_FLOAT", exact)
+	}
+	return arr
+}
+
+// requestArray renders $_REQUEST: the query, form and cookie fields merged in
+// PHP's default request order, with the route's path values written over them
+// last. The path values are a deliberate deviation from PHP, whose $_REQUEST
+// carries no route parameters: a path parameter is request input here, and
+// carrying it under PHP's name was chosen over keeping a name PHP does not
+// have. See the predefined-variables reference.
+//
+// Every entry is a copy. $_REQUEST is its own array in PHP, so a write to it
+// must not reach $_GET, $_POST or $_COOKIE, nor theirs reach it.
+func (c Context) requestArray() *model.Array {
+	arr := model.NewArray()
+	for _, source := range []*model.Array{
+		superglobal(c.GetVars, c.Get),
+		superglobal(c.PostVars, c.Post),
+		superglobal(c.CookieVars, c.Cookie),
+		mapToArray(c.Path),
+	} {
+		source.Range(func(key, val any) bool {
+			arr.Set(key, model.CopyValue(val))
+			return true
+		})
 	}
 	return arr
 }

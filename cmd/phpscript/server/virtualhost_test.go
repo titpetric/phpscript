@@ -51,7 +51,7 @@ foreach (["SERVER_NAME", "SERVER_PORT", "SCRIPT_NAME", "PHP_SELF", "SERVER_SOFTW
 `)
 	write(t, filepath.Join(shop, "routes", "hello.php"), `<?php
 // @route GET /hello/{name}
-echo "hello " . $_PATH["name"];
+echo "hello " . $_REQUEST["name"];
 `)
 	// A failing @startup belongs to this site and must not stop the others.
 	write(t, filepath.Join(shop, "boot.php"), `<?php

@@ -10,7 +10,7 @@ include "bootstrap.php";
 
 require_auth($ctx);
 
-$table = (string)$_PATH["table"];
+$table = (string)$_REQUEST["table"];
 $where = path();
 $deleting = str_ends_with($where, "/delete");
 $inserting = str_ends_with($where, "/insert");
@@ -27,7 +27,7 @@ if (!$tables->exists($db, $driver, $schema, $table)) {
 }
 
 $decision = $acl->decide($ctx);
-$key = isset($_PATH["key"]) ? (string)$_PATH["key"] : "";
+$key = isset($_REQUEST["key"]) ? (string)$_REQUEST["key"] : "";
 
 if ($deleting) {
 	require_csrf($ctx, $tpl);

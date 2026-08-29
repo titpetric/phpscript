@@ -20,7 +20,7 @@ echo "home";
 `)},
 	"users/show.php": {Data: []byte(`<?php
 // @route GET /users/{id}
-echo $_PATH["id"];
+echo $_REQUEST["id"];
 `)},
 	"submit.php": {Data: []byte(`<?php
 // @route: /submit

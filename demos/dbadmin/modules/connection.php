@@ -71,7 +71,7 @@ if ($where === "/admin/connection") {
 	exit();
 }
 
-$id = (int)$_PATH["id"];
+$id = (int)$_REQUEST["id"];
 $connection = $connections->find($id);
 if (!$connection) {
 	fail($ctx, $tpl, 404, "No such connection.");

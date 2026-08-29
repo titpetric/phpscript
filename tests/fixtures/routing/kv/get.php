@@ -3,4 +3,4 @@
 $shm = new SharedMemory;
 $shm->incr("requests");
 $shm->incr("get");
-echo $shm->get($_PATH["key"]);
+echo $shm->get($_REQUEST["key"]);

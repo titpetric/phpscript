@@ -97,7 +97,7 @@ The supported error model and values supplied by the runtime or request host.
   - [`$_SERVER`](predefined-variables/README.md#_server)
   - [`$_ENV`](predefined-variables/README.md#_env)
   - [`$argc` and `$argv`](predefined-variables/README.md#argc-and-argv)
-  - [`$_PATH`](predefined-variables/README.md#_path)
+  - [`$_REQUEST`](predefined-variables/README.md#_request)
   - [Request headers](predefined-variables/README.md#request-headers)
 - [Predefined interfaces and classes](predefined-interfaces-and-classes/README.md) - Exception and closure behavior, plus absent PHP runtime types.
   - [`Exception`](predefined-interfaces-and-classes/README.md#exception)

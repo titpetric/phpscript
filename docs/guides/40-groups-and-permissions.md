@@ -28,7 +28,7 @@ inherit stays as the absence of a row.
 A check is one call, as `routes/admin-users-edit.php` makes it:
 
 ```php
-$member_of = $groups->group_ids_of($_PATH["id"]);
+$member_of = $groups->group_ids_of($_REQUEST["id"]);
 require_can($html, $rules["user"], "user.edit", $member_of);
 ```
 

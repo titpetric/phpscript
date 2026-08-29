@@ -45,7 +45,7 @@ Everything under `docs/` in this repository.
   page convention, and which requests get a page rather than a status.
 - [Serving static files](../use-cases/static-files.md) - the document root, index pages,
   `autoindex`, and what is never served.
-- [Routing](../use-cases/routing.md) - `@route`, `$_PATH`, methods, and what a path
+- [Routing](../use-cases/routing.md) - `@route`, `$_REQUEST`, methods, and what a path
   pattern accepts.
 - [Virtual hosting](../use-cases/virtual-hosting.md) - a two site server worked through,
   and what one domain cannot reach on the other.

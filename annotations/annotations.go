@@ -27,9 +27,9 @@
 //
 // Specific HTTP methods like PUT are only reachable when explicitly stated.
 //
-// This functionality fills a phpscript-specific auto-global value:
-//
-//   - `$_PATH`, specifically `$_PATH['id']`.
+// The extracted path parameters are merged into `$_REQUEST`, so a route
+// declared `/users/{id}` answers `$_REQUEST['id']`. `$_PATH` is the name
+// that merge replaced and stays seeded with the path values alone.
 //
 // It relies on the Go standard library to extract path parameters present.
 //

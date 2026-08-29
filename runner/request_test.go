@@ -62,9 +62,70 @@ func TestFromRequestGetAndPath(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	out, _ := runReq(t, got, `<?php echo $_PATH["id"] . "-" . $_GET["q"];`)
+	out, _ := runReq(t, got, `<?php echo $_REQUEST["id"] . "-" . $_GET["q"];`)
 	if out != "42-hello" {
 		t.Fatalf("got %q", out)
+	}
+}
+
+// TestRequestSuperglobalMerge pins what $_REQUEST holds and in which order it
+// is built: query, form and cookie fields as PHP merges them, and the route's
+// path values written over all three, which is the documented deviation.
+func TestRequestSuperglobalMerge(t *testing.T) {
+	// The context is built inside the handler, while the body is still
+	// readable; after the handler returns the server has closed it.
+	mux := http.NewServeMux()
+	var ctx runner.Context
+	mux.HandleFunc("POST /users/{id}", func(_ http.ResponseWriter, r *http.Request) {
+		ctx = runner.FromRequest(r)
+	})
+
+	r := httptest.NewRequest("POST", "/users/42?id=from-get&a=get&b=get&c=get", strings.NewReader("id=from-post&b=post"))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Set("Cookie", "c=cookie")
+	mux.ServeHTTP(httptest.NewRecorder(), r)
+
+	src := `<?php echo $_REQUEST["id"], "|", $_REQUEST["a"], "|", $_REQUEST["b"], "|", $_REQUEST["c"];`
+	out := runCtx(t, ctx, src)
+	if want := "42|get|post|cookie"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// TestRequestSuperglobalIsACopy pins that $_REQUEST is its own array, as it is
+// in PHP: writing through it must not reach $_GET, and the other way around.
+func TestRequestSuperglobalIsACopy(t *testing.T) {
+	r := httptest.NewRequest("GET", "/?a=1", nil)
+	src := `<?php
+$_REQUEST["a"] = "changed";
+$_GET["b"] = "added";
+echo $_GET["a"], "|", isset($_REQUEST["b"]) ? "leaked" : "own";
+`
+	out, _ := runReq(t, r, src)
+	if want := "1|own"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
+	}
+}
+
+// TestPathSuperglobalStaysSeeded pins the registration $_REQUEST replaced:
+// $_PATH still answers the path values alone, so a script written against the
+// old name keeps running.
+func TestPathSuperglobalStaysSeeded(t *testing.T) {
+	mux := http.NewServeMux()
+	var got *http.Request
+	mux.HandleFunc("GET /users/{id}", func(_ http.ResponseWriter, r *http.Request) { got = r })
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL + "/users/42?q=hello")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+
+	out, _ := runReq(t, got, `<?php echo $_PATH["id"], "|", isset($_PATH["q"]) ? "merged" : "path-only";`)
+	if want := "42|path-only"; out != want {
+		t.Fatalf("got %q, want %q", out, want)
 	}
 }
 
@@ -338,7 +399,7 @@ func TestSuperglobalsVisibleInsideFunctions(t *testing.T) {
 
 	src := `<?php
 function route_job_name() {
-	return $_PATH["jobName"];
+	return $_REQUEST["jobName"];
 }
 echo route_job_name();
 `

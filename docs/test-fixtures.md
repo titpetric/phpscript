@@ -249,6 +249,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | memory_peak.phpt           | PASS       | PASS    | SKIP |
 | memory_usage.phpt          | PASS       | PASS    | SKIP |
 | microtime.phpt             | PASS       | PASS    | PASS |
+| request_superglobal.phpt   | PASS       | PASS    | PASS |
 | runtime_introspection.phpt | PASS       | PASS    | SKIP |
 | stdin.phpt                 | PASS       | PASS    | PASS |
 | strtotime.phpt             | PASS       | PASS    | PASS |
@@ -265,6 +266,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | hash_functions.phpt              | PASS       | PASS    | PASS |
 | identifiers.phpt                 | PASS       | PASS    | SKIP |
 | intval.phpt                      | PASS       | PASS    | PASS |
+| is_null.phpt                     | PASS       | PASS    | PASS |
 | json_encode_flags.phpt           | PASS       | PASS    | SKIP |
 | json_key_order.phpt              | PASS       | PASS    | PASS |
 | mail_unconfigured.phpt           | PASS       | PASS    | SKIP |
@@ -332,8 +334,8 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | paths       | 2        | 2      | 0      |
 | pexec       | 1        | 1      | 0      |
 | regex       | 7        | 7      | 0      |
-| runtime     | 13       | 13     | 0      |
-| stdlib      | 18       | 18     | 0      |
+| runtime     | 14       | 14     | 0      |
+| stdlib      | 19       | 19     | 0      |
 | strings     | 16       | 16     | 0      |
 | syntax      | 8        | 8      | 0      |
-| **Total**   | 205      | 205    | 0      |
+| **Total**   | 207      | 207    | 0      |

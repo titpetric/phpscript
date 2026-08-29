@@ -153,7 +153,7 @@ $db->close();
 redirect_to("/?saved=1");
 ```
 
-Path parameters are declared in braces and arrive in `$_PATH`:
+Path parameters are declared in braces and arrive in `$_REQUEST`:
 
 ```php
 <?php
@@ -161,7 +161,7 @@ Path parameters are declared in braces and arrive in `$_PATH`:
 // @route POST /bookmarks/{id}/delete
 
 include "bootstrap.php";
-$id = (int)$_PATH["id"];
+$id = (int)$_REQUEST["id"];
 $bookmark = $db->get("SELECT id FROM bookmarks WHERE id = ?", $id);
 if (!$bookmark) {
 	die("Bookmark not found.");

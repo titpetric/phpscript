@@ -105,7 +105,7 @@ func parseRouteParam(body, path string) (RouteParam, error) {
 	return RouteParam{Name: body}, nil
 }
 
-// validRouteName accepts the names both routers accept and $_PATH can key on.
+// validRouteName accepts the names both routers accept and $_REQUEST can key on.
 func validRouteName(name, path string) error {
 	if name == "" {
 		return fmt.Errorf("empty route parameter name in route path %q", path)
@@ -143,7 +143,7 @@ func closingBrace(path string, open int) int {
 //
 // The one rewrite chi needs is {name...} to *, its only multi-segment
 // placeholder; the name is not recoverable from the rendered pattern, so
-// $_PATH is built from the declared path instead.
+// the path values $_REQUEST carries are built from the declared path instead.
 //
 // ServeMux drops a regex constraint, because it has none: the parameter still
 // matches its segment and the constraint is not enforced. RegisterMux says so.

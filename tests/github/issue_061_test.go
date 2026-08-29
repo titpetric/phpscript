@@ -10,7 +10,7 @@ import (
 // https://github.com/titpetric/phpscript/issues/61
 //
 // chi enforced {id:[0-9]+} and carried the value, and the exporter recognised
-// {name} and {name...} only, so $_PATH arrived empty.
+// {name} and {name...} only, so the path value never reached $_REQUEST.
 //
 // ServeMux has no regex constraint. It is registered with the bare parameter
 // and answers a request chi refuses, which is why the two routers differ on

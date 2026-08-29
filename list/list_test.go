@@ -22,7 +22,7 @@ class Database
 	routeFile := filepath.Join(dir, "get-user-profile.php")
 	mustWrite(t, routeFile, `<?php
 // @route GET /users/{id}
-echo $_PATH["id"];
+echo $_REQUEST["id"];
 `)
 
 	cwd, err := os.Getwd()
