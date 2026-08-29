@@ -190,6 +190,8 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("is_string", func(value any) bool { _, ok := value.(string); return ok })
 	// is_bool reports whether $value is a boolean.
 	rt.RegisterFunc("is_bool", func(value any) bool { _, ok := value.(bool); return ok })
+	// is_null reports whether $value is null.
+	rt.RegisterFunc("is_null", func(value any) bool { return value == nil })
 	// is_object reports whether $value is an object. A value a Go binding
 	// returned is one: a script constructs it with new, calls its methods and
 	// reads its properties the same way it does an interpreted object.

@@ -556,6 +556,11 @@ function is_int(mixed $value): bool
 ```
 
 ```php
+// is_null reports whether $value is null.
+function is_null(mixed $value): bool
+```
+
+```php
 // is_numeric reports whether $value is an int or a float; unlike PHP, numeric strings return false.
 function is_numeric(mixed $value): bool
 ```
