@@ -25,6 +25,11 @@ func registerReflection(rt *runner.Runtime) {
 	})
 	// get_parent_class always returns false; phpscript has no inheritance, so no class has a parent to report.
 	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
+	// is_subclass_of always returns false; phpscript has no inheritance, so no
+	// object is an instance of a subclass. A guard written as
+	// `is_subclass_of($o, "Exception") || get_class($o) === "Exception"` falls
+	// through to the name comparison, which is the check that answers here.
+	rt.RegisterFunc("is_subclass_of", func(_ ...any) bool { return false })
 	// get_object_vars returns the properties of $object as an array, in the order the object reads them back; a non-object yields an empty array.
 	rt.RegisterFunc("get_object_vars", func(object any) *model.Array {
 		obj, ok := object.(*model.Object)
