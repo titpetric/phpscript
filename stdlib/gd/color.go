@@ -54,7 +54,6 @@ func registerColor(rt *runner.Runtime) {
 			"alpha": int64(a),
 		}
 	})
-
 }
 
 // checkRGB raises the ValueError PHP raises for a component outside 0 to 255.

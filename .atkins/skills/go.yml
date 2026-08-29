@@ -47,7 +47,7 @@ jobs:
   fmt:revise:
     desc: "Revise goimports formatting"
     steps:
-      - goimports-reviser -set-alias -format -imports-order "std,blanked,general,company,project" -excludes "scripts/" ./...
+      - goimports-reviser -set-alias -format -imports-order "std,blanked,general,company,project" -excludes ".git/,scripts/" ./...
 
   lint:
     desc: "Lint the code"

@@ -22,11 +22,11 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/list    | 0.00%    | 1         | 19    |
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/run     | 26.67%   | 11        | 86    |
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/server  | 79.88%   | 120       | 856   |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test    | 81.89%   | 412       | 1550  |
+| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test    | 82.08%   | 417       | 1571  |
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/version | 0.00%    | 31        | 81    |
 | ✅     | github.com/titpetric/phpscript/config                | 94.49%   | 55        | 256   |
 | ✅     | github.com/titpetric/phpscript/flatstack             | 50.00%   | 0         | 18    |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine      | 87.96%   | 935       | 2008  |
+| ✅     | github.com/titpetric/phpscript/flatstack/engine      | 88.19%   | 935       | 2008  |
 | ✅     | github.com/titpetric/phpscript/formatter             | 80.45%   | 288       | 1273  |
 | ❌     | github.com/titpetric/phpscript/internal/apidoc       | 76.66%   | 366       | 1044  |
 | ✅     | github.com/titpetric/phpscript/internal/arrayi64     | 100.00%  | 6         | 18    |
@@ -36,16 +36,16 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | github.com/titpetric/phpscript/list                  | 72.31%   | 115       | 335   |
 | ❌     | github.com/titpetric/phpscript/model                 | 36.82%   | 325       | 1130  |
 | ✅     | github.com/titpetric/phpscript/parser                | 91.34%   | 1039      | 3399  |
-| ✅     | github.com/titpetric/phpscript/runner                | 86.58%   | 1647      | 6976  |
+| ✅     | github.com/titpetric/phpscript/runner                | 86.62%   | 1648      | 7002  |
 | ✅     | github.com/titpetric/phpscript/runner/coverage       | 92.37%   | 45        | 187   |
 | ❌     | github.com/titpetric/phpscript/scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | github.com/titpetric/phpscript/stdlib                | 96.30%   | 4         | 88    |
 | ✅     | github.com/titpetric/phpscript/stdlib/compat         | 86.92%   | 184       | 901   |
-| ✅     | github.com/titpetric/phpscript/stdlib/core           | 85.86%   | 862       | 3859  |
+| ✅     | github.com/titpetric/phpscript/stdlib/core           | 85.86%   | 862       | 3861  |
 | ✅     | github.com/titpetric/phpscript/stdlib/crypto         | 85.97%   | 56        | 312   |
 | ✅     | github.com/titpetric/phpscript/stdlib/database       | 84.59%   | 105       | 791   |
 | ✅     | github.com/titpetric/phpscript/stdlib/files          | 87.99%   | 165       | 644   |
-| ❌     | github.com/titpetric/phpscript/stdlib/gd             | 76.99%   | 154       | 578   |
+| ❌     | github.com/titpetric/phpscript/stdlib/gd             | 76.99%   | 154       | 577   |
 | ❌     | github.com/titpetric/phpscript/stdlib/http           | 72.75%   | 61        | 417   |
 | ✅     | github.com/titpetric/phpscript/stdlib/info           | 75.00%   | 0         | 10    |
 | ✅     | github.com/titpetric/phpscript/stdlib/internals      | 100.00%  | 0         | 18    |
@@ -164,6 +164,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | serveStatus                           | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | writeAutoindexRow                     | 92.30%   | 5         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | Options.coverReport                   | 100.00%  | 1         |
+| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | Options.runners                       | 100.00%  | 4         |
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/test   | Run                                   | 78.00%   | 89        |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | coverFilePath                         | 83.30%   | 2         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | coverFiles                            | 92.30%   | 9         |
@@ -200,7 +201,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | newTerminalTable                      | 100.00%  | 1         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | openReport                            | 85.70%   | 2         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | percentileNs                          | 75.00%   | 3         |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/test   | reportArgs                            | 68.80%   | 7         |
+| ❌     | github.com/titpetric/phpscript/cmd/phpscript/test   | reportArgs                            | 66.70%   | 8         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | reportBlocks                          | 100.00%  | 3         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | runFixtureLoop                        | 100.00%  | 18        |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | runFixtureSamples                     | 90.00%   | 5         |
@@ -263,7 +264,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | bindHostLocals                        | 90.90%   | 9         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | boolInt                               | 100.00%  | 1         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | closureValue                          | 100.00%  | 7         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.assignment                   | 68.00%   | 20        |
+| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.assignment                   | 72.00%   | 20        |
 | ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.binary                       | 78.60%   | 17        |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.block                        | 100.00%  | 3         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.classMethod                  | 100.00%  | 5         |
@@ -272,7 +273,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.constant                     | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.doWhileStmt                  | 88.20%   | 4         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.emit                         | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.ensureContainer              | 73.70%   | 9         |
+| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.ensureContainer              | 78.90%   | 9         |
 | ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.expr                         | 79.10%   | 70        |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.forStmt                      | 85.70%   | 13        |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.foreachStmt                  | 86.20%   | 27        |
@@ -742,6 +743,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/runner               | Context.parseBody                     | 85.20%   | 14        |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.pathValues                    | 88.90%   | 7         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.recordError                   | 66.70%   | 2         |
+| ✅     | github.com/titpetric/phpscript/runner               | Context.requestArray                  | 100.00%  | 1         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.serverArray                   | 100.00%  | 2         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.serverVars                    | 100.00%  | 5         |
 | ❌     | github.com/titpetric/phpscript/runner               | DeepSize                              | 43.20%   | 31        |
@@ -1296,7 +1298,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | registerEncoding                      | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | registerEnvironment                   | 100.00%  | 7         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | registerJSON                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerLang                          | 93.10%   | 47        |
+| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerLang                          | 93.20%   | 47        |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | registerMath                          | 100.00%  | 4         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | registerMbstring                      | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | registerOutput                        | 95.20%   | 10        |

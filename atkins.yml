@@ -13,7 +13,7 @@ env:
 # rather than to a server.
 vars:
   demos:
-    all: [example, dbadmin, common]
+    all: [example, dbadmin]
     venom: [dbadmin, example]
 
 tasks:
@@ -33,22 +33,19 @@ tasks:
   # change under demos/ is expected to.
   default:
     cmds:
-      - go mod tidy
-      - goimports -w .
-      - goimports-reviser -set-alias -format -imports-order "std,blanked,general,company,project" ./...
-      - go fmt ./...
+      - task: go:fmt go:fmt:revise
       - go install .
       - task: go:test
       - task: cover
       - task: go:build
-      - task: db:up
       - task: db:down
         deferred: true
+      - task: db:up
       - task: test:phpscript:run
       - task: test:phpscript:matrix
       - task: test:introspection
-      - task: test:phpscript:common
       - task: docker:build
+      - task: mdox:fmt
 
   # mysql and postgres are test infrastructure, not demos: test-database.php and
   # the platform_database fixtures query all three dialects, and sqlite alone
@@ -95,18 +92,6 @@ tasks:
         dir: demos/${{ demo }}
         run: composer install --no-interaction
 
-  # phpscript-common ships a fixture beside every source file, so the suite is
-  # the package's own test run rather than a demo's. It needs no database and
-  # no server: every component is exercised against the memory store that
-  # stands in for its SQL one, which is what the store interfaces exist for.
-  test:phpscript:common:
-    dir: demos/common
-    tty: true # enable ansi
-    passthru: true
-    cmds:
-      - phpscript lint ./...
-      - phpscript test --matrix -v ./src/...
-
   # The demos are compose services, so their venom suites run against the image
   # test:demos builds. Each has a pipeline of its own because it has to resolve
   # the address of its container first, which is why this delegates to
@@ -126,7 +111,6 @@ tasks:
       - go run ./scripts/list-apis > docs/reference/extensions/implemented-apis.md
       - phpscript info
       - cd docs/reference && php README.php > README.md
-      - task: mdox:fmt
 
   # Every fixture runs on all three runtimes, so a divergence between the two
   # Go runtimes, or between phpscript and php itself, fails the pipeline.
@@ -141,13 +125,12 @@ tasks:
   # Written without --profile: timings would differ on every run and show up as
   # a diff in every commit.
   test:phpscript:matrix:
-    dir: tests/fixtures
     tty: true # enable ansi
     passthru: true
     env:
       include: .env.testing
     cmds:
-      - phpscript test --matrix -v -o ../../docs/test-fixtures.md ./...
+      - phpscript test --matrix -v -o docs/test-fixtures.md ./tests/...
 
   test:phpscript:run:
     dir: tests/fixtures
@@ -173,7 +156,6 @@ tasks:
       - go tool cover -func=pkg.cov | summary coverfunc --json > pkg.cov.json
       - go-fsck coverage -c pkg.cov.json -o go-fsck.json
       - go-fsck coverage --template docs/code-coverage.md.tpl > docs/code-coverage.md
-      - task: mdox:fmt
 
   lint:
     passthru: true

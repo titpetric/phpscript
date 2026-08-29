@@ -2,6 +2,7 @@ vendor
 /phpscript
 /docs/data
 /docs/log
+.venom*
 *.pprof
 *.db
 *.sqlite
