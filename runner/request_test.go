@@ -107,28 +107,6 @@ echo $_GET["a"], "|", isset($_REQUEST["b"]) ? "leaked" : "own";
 	}
 }
 
-// TestPathSuperglobalStaysSeeded pins the registration $_REQUEST replaced:
-// $_PATH still answers the path values alone, so a script written against the
-// old name keeps running.
-func TestPathSuperglobalStaysSeeded(t *testing.T) {
-	mux := http.NewServeMux()
-	var got *http.Request
-	mux.HandleFunc("GET /users/{id}", func(_ http.ResponseWriter, r *http.Request) { got = r })
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	resp, err := http.Get(srv.URL + "/users/42?q=hello")
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-
-	out, _ := runReq(t, got, `<?php echo $_PATH["id"], "|", isset($_PATH["q"]) ? "merged" : "path-only";`)
-	if want := "42|path-only"; out != want {
-		t.Fatalf("got %q, want %q", out, want)
-	}
-}
-
 func TestFromRequestPost(t *testing.T) {
 	r := httptest.NewRequest("POST", "/submit", strings.NewReader("name=bob"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")

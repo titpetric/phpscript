@@ -10,7 +10,6 @@
 | `$_ENV`                                  | Partial compatibility | Seeded empty. Only a Go host fills it; `getenv()` is unrelated.    |
 | `$argc`, `$argv`                         | Partial compatibility | Seeded for scheduled jobs. CLI arguments are not passed to either. |
 | `$_REQUEST`                              | Partial compatibility | Query, form and cookie fields, with route path values merged over. |
-| `$_PATH`                                 | phpscript extension   | The name `$_REQUEST` replaced; still seeded, path values alone.    |
 | `$GLOBALS`, `$_SESSION`                  | Not implemented       | Reserved names, never seeded, so they read as null.                |
 | `$php_errormsg`, `$http_response_header` | Not implemented       | PHP error and stream globals are unavailable.                      |
 
@@ -187,9 +186,8 @@ field spelled like a path parameter is overwritten by it, so
 `$_REQUEST` is its own array, as it is in PHP: writing to it changes none of
 the arrays it was merged from, and their writes do not appear in it.
 
-`$_PATH` is the name this merge replaced. It remains seeded with the path
-values alone, so a script written against it keeps running; its removal is a
-separate change.
+`$_PATH`, the phpscript-only name that used to carry the path values, is gone;
+`$_REQUEST` is where they arrive.
 
 ## Request headers
 

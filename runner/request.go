@@ -646,10 +646,6 @@ func (c Context) Register(rt *Runtime) {
 	rt.SetGlobal("_SERVER", c.serverArray())
 	rt.SetGlobal("_ENV", mapToArray(c.Env))
 	rt.SetGlobal("_REQUEST", c.requestArray())
-	// _PATH is the name $_REQUEST replaced: the route's path values alone. It
-	// stays seeded so a script written against it keeps running; removal is a
-	// separate change.
-	rt.SetGlobal("_PATH", mapToArray(c.Path))
 	rt.SetGlobal("_FILES", c.filesArray())
 
 	argvArr := model.NewArray()

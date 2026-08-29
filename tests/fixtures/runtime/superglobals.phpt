@@ -3,8 +3,8 @@ description: >
   A superglobal is one binding per request. Assigning the whole variable or a
   single key in the global scope is visible inside a function, and a write
   inside a function is visible after it returns — php allows all of this, and
-  both phpscript runtimes match it. $_PATH is phpscript's own and $_SESSION
-  starts life unset under cli php, so the fixture sticks to the shared eight.
+  both phpscript runtimes match it. $_SESSION starts life unset under cli
+  php, so the fixture assigns it before reading it back.
 ---
 <?php
 

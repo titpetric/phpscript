@@ -28,8 +28,7 @@
 // Specific HTTP methods like PUT are only reachable when explicitly stated.
 //
 // The extracted path parameters are merged into `$_REQUEST`, so a route
-// declared `/users/{id}` answers `$_REQUEST['id']`. `$_PATH` is the name
-// that merge replaced and stays seeded with the path values alone.
+// declared `/users/{id}` answers `$_REQUEST['id']`.
 //
 // It relies on the Go standard library to extract path parameters present.
 //

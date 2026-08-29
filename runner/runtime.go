@@ -33,7 +33,6 @@ import (
 var phpSuperglobals = map[string]struct{}{
 	"_COOKIE": {}, "_ENV": {}, "_FILES": {}, "_GET": {},
 	"_POST": {}, "_REQUEST": {}, "_SERVER": {}, "_SESSION": {},
-	"_PATH": {},
 }
 
 // setVar routes a whole-variable assignment. A superglobal is one binding per
