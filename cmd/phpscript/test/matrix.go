@@ -29,7 +29,7 @@ type matrixCell struct {
 	Reason string
 }
 
-// matrixRow is a fixture and its cell per runner, in tests.Runners order.
+// matrixRow is a fixture and its cell per runner, in opts.runners() order.
 // Metrics are the default runtime's: a row has one cost column and three
 // runners, so the matrix compares correctness across runners and cost on the
 // runtime the other two are measured against. Per-runner cost stays in --json.
@@ -87,7 +87,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 		results := mapFixtures(group.Fixtures, opts.Parallel, func(i int, fx *tests.Fixture) matrixFixtureResult {
 			row := matrixRow{DisplayPath: group.Paths[i], Label: group.Labels[i]}
 			var fixtureJSONRows []jsonFixture
-			for _, name := range tests.Runners {
+			for _, name := range opts.runners() {
 				cell := matrixCell{Runner: name}
 				if !fx.Runs(name) {
 					cell.Status = matrixSkip

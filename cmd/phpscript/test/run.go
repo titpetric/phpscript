@@ -37,12 +37,30 @@ type Options struct {
 	Cover      string
 	CoverFile  string
 	Split      bool
+	SkipPHP    bool
 }
 
 // coverReport reports whether the cover mode owns stdout with a per-symbol
 // report, which is what suppresses the fixture tables.
 func (o Options) coverReport() bool {
 	return o.Cover == CoverFunc || o.Cover == CoverFile
+}
+
+// runners answers the matrix columns this invocation covers: every backend,
+// minus php when --skip-php dropped the external binary from the run. The
+// column leaves the table entirely rather than reporting SKIP per row - a
+// skipped column says the machine has no php, this flag says do not ask.
+func (o Options) runners() []tests.Runner {
+	if !o.SkipPHP {
+		return tests.Runners
+	}
+	runners := make([]tests.Runner, 0, len(tests.Runners))
+	for _, r := range tests.Runners {
+		if r != tests.RunnerPHP {
+			runners = append(runners, r)
+		}
+	}
+	return runners
 }
 
 type jsonFixture struct {
@@ -79,6 +97,7 @@ func NewCommand() *cli.Command {
 			fs.StringVar(&opts.Include, "include", "", "Include this file before every fixture when it exists, for globally available functions")
 			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
 			fs.BoolVar(&opts.Matrix, "matrix", false, "Run every fixture through all runtimes and report a matrix")
+			fs.BoolVar(&opts.SkipPHP, "skip-php", false, "With --matrix, leave the php binary out: the built-in runtimes alone")
 			fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "Report the failure of each runtime below its fixture")
 			fs.IntVarP(&opts.Parallel, "parallel", "p", 1, "Run up to N fixtures concurrently")
 			fs.IntVarP(&opts.Count, "count", "c", 0, "Run each test N times; with --time, produce N benchmark samples")

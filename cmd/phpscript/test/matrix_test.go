@@ -55,6 +55,36 @@ func TestTerminalMatrixColumnsAndSpacing(t *testing.T) {
 	}
 }
 
+func TestSkipPHPDropsTheColumn(t *testing.T) {
+	if got, want := len(Options{SkipPHP: true}.runners()), len(tests.Runners)-1; got != want {
+		t.Fatalf("runners() length = %d, want %d", got, want)
+	}
+	for _, r := range (Options{SkipPHP: true}).runners() {
+		if r == tests.RunnerPHP {
+			t.Fatalf("runners() still lists %s", tests.RunnerPHP)
+		}
+	}
+
+	var buf bytes.Buffer
+	tbl := newTerminalMatrix(&buf, Options{SkipPHP: true})
+	tbl.writeGroup("arrays", []string{"a.phpt"})
+	row := matrixSample()
+	// The cells mirror the run loop, which walks the same filtered list.
+	row.Cells = row.Cells[:2]
+	tbl.writeRow(row)
+	tbl.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
+
+	output := ansi.Strip(buf.String())
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	header := strings.Join(strings.Fields(strings.ReplaceAll(lines[1], "│", "|")), " ")
+	if want := "| arrays | Flat stack | Runtime |"; header != want {
+		t.Errorf("header = %q, want %q", header, want)
+	}
+	if strings.Contains(output, "PHP") {
+		t.Errorf("skip-php table still shows a PHP column:\n%s", output)
+	}
+}
+
 func TestTerminalMatrixVerboseContinuationRows(t *testing.T) {
 	var buf bytes.Buffer
 	tbl := newTerminalMatrix(&buf, Options{Verbose: true})

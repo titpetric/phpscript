@@ -106,6 +106,9 @@ func reportArgs(opts Options, args []string) []string {
 	if opts.Matrix {
 		argv = append(argv, "--matrix")
 	}
+	if opts.SkipPHP {
+		argv = append(argv, "--skip-php")
+	}
 	if opts.Verbose {
 		argv = append(argv, "-v")
 	}

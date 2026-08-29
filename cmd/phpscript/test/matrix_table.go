@@ -45,6 +45,7 @@ type terminalMatrix struct {
 	loop      bool
 	profile   bool
 	lat       bool
+	runners   []tests.Runner
 }
 
 func newMatrixTable(w io.Writer, opts Options, markdown bool) matrixTable {
@@ -88,6 +89,7 @@ func newTerminalMatrix(w io.Writer, opts Options) *terminalMatrix {
 		loop:    opts.Count > 0 || opts.Time > 0,
 		profile: opts.Profile,
 		lat:     opts.Time > 0,
+		runners: opts.runners(),
 	}
 }
 
@@ -106,7 +108,7 @@ func (t *terminalMatrix) sizeColumns(dir string, labels []string) {
 		dir = "Fixture"
 	}
 	t.headers = []string{dir}
-	for _, runner := range tests.Runners {
+	for _, runner := range t.runners {
 		t.headers = append(t.headers, matrixHeaders[runner])
 	}
 	if t.metrics() {
@@ -132,7 +134,7 @@ func (t *terminalMatrix) sizeColumns(dir string, labels []string) {
 			t.widths[0] = width
 		}
 	}
-	for i := 1; i <= len(tests.Runners); i++ {
+	for i := 1; i <= len(t.runners); i++ {
 		t.widths[i] = max(t.widths[i], len("PASS"))
 	}
 }
