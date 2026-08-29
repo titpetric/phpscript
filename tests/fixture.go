@@ -25,6 +25,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
 )
 
@@ -190,6 +191,7 @@ type Fixture struct {
 
 	appRoot            string
 	includes           []string
+	coverage           *coverage.Collector
 	rootFS             fs.FS
 	privateInclude     *runner.IncludeCache
 	privateFlatInclude *flatstack.IncludeCache
@@ -237,6 +239,18 @@ func (f *Fixture) SetAppRoot(root, autoload string, includes ...string) {
 	if autoload != "" {
 		f.Options.Autoload = autoload
 	}
+}
+
+// SetCoverage installs a statement-coverage collector for the fixture's
+// runtime runner. Only that runner reports coverage: flatstack carries no
+// coverage support, and the php runner is another process.
+func (f *Fixture) SetCoverage(c *coverage.Collector) {
+	f.coverage = c
+}
+
+// Coverage returns the collector installed with SetCoverage, or nil.
+func (f *Fixture) Coverage() *coverage.Collector {
+	return f.coverage
 }
 
 // RootDir returns the directory a fixture's includes resolve against. That is
@@ -612,6 +626,7 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	} else {
 		f.interp.ResetSession(&out, f.stdin())
 	}
+	f.interp.SetCoverage(f.coverage)
 	f.interp.SetContext(ctx)
 	reqCtx.Register(f.interp)
 

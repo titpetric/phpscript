@@ -34,6 +34,9 @@ type Options struct {
 	CPUProfile string
 	MemProfile string
 	Output     string
+	Cover      bool
+	CoverFile  string
+	Split      bool
 }
 
 type jsonFixture struct {
@@ -78,6 +81,9 @@ func NewCommand() *cli.Command {
 			fs.StringVar(&opts.CPUProfile, "cpuprofile", "", "Write CPU profile to file")
 			fs.StringVar(&opts.MemProfile, "memprofile", "", "Write memory profile to file")
 			fs.StringVarP(&opts.Output, "output", "o", "", "Write a Markdown report of the results to this file")
+			fs.BoolVar(&opts.Cover, "cover", false, "Measure statement coverage on the phpscript runtime")
+			fs.StringVar(&opts.CoverFile, "coverfile", "", "Write the coverage profile to this file (implies --cover; default "+DefaultCoverFile+")")
+			fs.BoolVar(&opts.Split, "split", false, "With --cover, also write each fixture's own coverage next to it as <fixture>.cov")
 		},
 		Run: func(ctx context.Context, args []string) error {
 			return Run(ctx, args, opts)
@@ -205,6 +211,19 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	if opts.Parallel > 1 && opts.Profile {
 		return fmt.Errorf("profile cannot be combined with parallel fixture execution")
 	}
+	if opts.CoverFile != "" || opts.Split {
+		opts.Cover = true
+	}
+	if opts.Cover {
+		// A coverage count is how many times the fixture reached a line, so a
+		// benchmark loop would multiply every count by its repetitions.
+		if opts.Count > 0 || opts.Time > 0 {
+			return fmt.Errorf("cover cannot be combined with --count or --time")
+		}
+		if opts.CoverFile == "" {
+			opts.CoverFile = DefaultCoverFile
+		}
+	}
 
 	if opts.CPUProfile != "" {
 		f, err := os.Create(opts.CPUProfile)
@@ -257,6 +276,10 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		return fmt.Errorf("no .phpt test fixtures found in %s", strings.Join(paths, " "))
 	}
 
+	if opts.Cover {
+		coverFixtures(fixtures)
+	}
+
 	displayPaths := make([]string, len(fixtures))
 	for i, fx := range fixtures {
 		displayPaths[i] = fx.Path
@@ -278,6 +301,13 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		failed := runMatrix(ctx, groups, opts, report)
 		if err := writeMemProfile(opts); err != nil {
 			return err
+		}
+		// Only the runtime column collects: flatstack carries no coverage
+		// support and the php column is another process.
+		if opts.Cover {
+			if err := writeCoverage(fixtures, opts); err != nil {
+				return err
+			}
 		}
 		if failed > 0 {
 			return fmt.Errorf("%d fixture(s) failed", failed)
@@ -381,6 +411,12 @@ func Run(ctx context.Context, args []string, opts Options) error {
 
 	if err := writeMemProfile(opts); err != nil {
 		return err
+	}
+
+	if opts.Cover {
+		if err := writeCoverage(fixtures, opts); err != nil {
+			return err
+		}
 	}
 
 	if failedCount > 0 {

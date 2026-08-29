@@ -152,6 +152,24 @@ Use `--profile` to add per-operation allocation and byte counts. `--json`
 writes a machine-readable report to stdout (no table). `--cpuprofile` and
 `--memprofile` write pprof files for the whole `test` invocation.
 
+Use `--cover` to measure statement coverage on the phpscript runtime, in the
+format `go test -coverprofile` writes (`mode: count`; each entry counts how
+many times its line range ran) with the PHP files as the entries. The profile
+lists every file `get_included_files` reports, so an included file's unexecuted
+statements appear at count zero. `--coverfile FILE` names the profile (implies
+`--cover`; the default is `phpscript.cov`), and `--split` also writes each
+fixture's own coverage next to it as `<fixture>.cov`. Coverage is a property of
+the interpreter alone: under `--matrix` only the runtime column collects, since
+flatstack is a performance-oriented backend without coverage support and the
+`php` column is another process. The benchmark flags `--count` and `--time`
+cannot be combined with coverage, because a count is how many times the fixture
+reached a line, not how many times a benchmark loop replayed it.
+
+```bash
+phpscript test --cover tests/fixtures/...
+phpscript test --coverfile phpscript.cov --split tests/fixtures/...
+```
+
 Use `--output FILE` (`-o`) to write the same tables to a file as Markdown while
 the terminal output continues as normal. The file ends with a summary table of
 per-folder totals. `--matrix`, `--profile`, `--count` and `--time` all
