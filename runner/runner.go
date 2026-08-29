@@ -103,7 +103,9 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 		rt.recordTraceError(err)
 	}()
 	rt.UpdateStatus(telemetry.StateProcessing)
-	if rt.flat {
+	// Coverage forces the interpreter: flatstack carries no coverage support,
+	// and the fallback is atomic, so the whole program runs where it is counted.
+	if rt.flat && rt.coverage == nil {
 		if handled, flatErr := rt.runFlat(p); handled {
 			err = flatErr
 			return err
@@ -152,6 +154,9 @@ func (rt *Runtime) recordTraceError(err error) {
 
 func (rt *Runtime) runInterpreted(p *model.Program) error {
 	rt.addSourceSpans(p)
+	if rt.coverage != nil {
+		rt.coverage.Register(rt.entrypoint, p)
+	}
 	scope := rt.newScope()
 	rt.pushFrame(scope)
 	defer rt.popFrame()
@@ -247,6 +252,9 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 		if source, ok := rt.sourceSpans[s]; ok {
 			rt.currentLine = source.Start
 			scope.Set("__LINE__", source.Start)
+		}
+		if rt.coverage != nil {
+			rt.coverage.Hit(s)
 		}
 		rt.UpdateStatus(telemetry.StateProcessing)
 		val, fl, err := rt.execOne(s, scope)
@@ -767,6 +775,9 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 		return nil, fmt.Errorf("error including %s: %w", path, err)
 	}
 	rt.addSourceSpans(prog)
+	if rt.coverage != nil {
+		rt.coverage.Register(filename, prog)
+	}
 	rt.included = append(rt.included, filename)
 	rt.UpdateIncludedFiles(len(rt.included))
 	restoreFile := setScopeFile(scope, filename)

@@ -25,6 +25,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -135,6 +136,11 @@ type Runtime struct {
 
 	sourceSpans map[model.Stmt]model.SourceSpan
 	currentLine int
+
+	// coverage counts statement executions when a host installed a collector
+	// with SetCoverage. Nil means off, which is the only cost the common path
+	// pays for it.
+	coverage *coverage.Collector
 
 	// frames is the stack of live interpreter frames, global frame first;
 	// vmWalkers enumerate the live values of any flat VM currently running.
@@ -622,6 +628,13 @@ func (rt *Runtime) LookupConstructor(name string) (any, bool) {
 	fn, ok := rt.constructors[name]
 	return fn, ok
 }
+
+// SetCoverage installs a statement-coverage collector; nil turns collection
+// off. Coverage is an interpreter feature: while a collector is installed, a
+// runtime created with NewFlatStack stops delegating to the bytecode backend,
+// because flatstack carries no coverage support (docs/flatstack.md) and the
+// fallback is atomic — a program partly counted would be a program partly run.
+func (rt *Runtime) SetCoverage(c *coverage.Collector) { rt.coverage = c }
 
 // SetIncludeCache installs a shared include cache. A cache must only be shared
 // by runtimes whose include paths resolve within the same source-root namespace.
