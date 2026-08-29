@@ -68,8 +68,15 @@ func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, err
 	return result, err
 }
 
-func (h flatHost) SetGlobal(name string, value any) {
+// SetGlobal claims whole-variable stores to superglobal names: those bind one
+// shared array per request, which interpreted and bytecode frames alike read
+// back through Lookup. Any other name stays with the storing frame.
+func (h flatHost) SetGlobal(name string, value any) bool {
+	if _, ok := phpSuperglobals[name]; !ok {
+		return false
+	}
 	h.runtime.globals[name] = value
+	return true
 }
 
 func (h flatHost) GetProperty(receiver any, name string) any {

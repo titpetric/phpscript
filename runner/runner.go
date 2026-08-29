@@ -1047,7 +1047,7 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		if err != nil {
 			return err
 		}
-		scope.Set(tgt.Name, next)
+		rt.setVar(scope, tgt.Name, next)
 		return nil
 
 	case *model.ListExpr:
@@ -1281,7 +1281,7 @@ func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
-		scope.Set(tgt.Name, val)
+		rt.setVar(scope, tgt.Name, val)
 		return nil
 	case *model.PropAccess:
 		base, err := rt.Eval(tgt.Base, scope)

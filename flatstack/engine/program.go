@@ -133,6 +133,11 @@ type Host interface {
 	GetProperty(any, string) any
 	SetProperty(any, string, any, string) error
 	Lookup(string) any
+	// SetGlobal offers a whole-variable store to the host before the frame
+	// keeps it. A host claims names with cross-frame semantics — PHP's
+	// superglobals — by returning true; the engine then leaves the frame slot
+	// cold, so later reads keep resolving through Lookup.
+	SetGlobal(string, any) bool
 	// Constant resolves a bare name. The error is what an undefined one
 	// raises, which Lookup has no way to report.
 	Constant(string) (any, error)

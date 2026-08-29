@@ -36,6 +36,20 @@ var phpSuperglobals = map[string]struct{}{
 	"_PATH": {},
 }
 
+// setVar routes a whole-variable assignment. A superglobal is one binding per
+// request, visible in every scope, so writing the variable itself rebinds the
+// global — the way PHP lets a script replace $_POST wholesale — and clears any
+// scope-local shadow so reads keep resolving through the global. Every other
+// name belongs to the scope.
+func (rt *Runtime) setVar(scope *Scope, name string, val any) {
+	if _, ok := phpSuperglobals[name]; ok {
+		rt.globals[name] = val
+		scope.Unset(name)
+		return
+	}
+	scope.Set(name, val)
+}
+
 // Runtime executes parsed PHP statements and evaluates transpiled expressions
 // with registered functions, classes, constructors, and runtime state.
 type Runtime struct {

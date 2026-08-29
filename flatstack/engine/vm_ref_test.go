@@ -20,6 +20,8 @@ type refTestHost struct {
 	calls map[string]func(h *refTestHost, args []any)
 }
 
+func (h *refTestHost) SetGlobal(string, any) bool { return false }
+
 func (h *refTestHost) BindLocals(vars map[string]any) { h.locals = vars }
 
 func (h *refTestHost) TakeLocals() map[string]any { return h.locals }

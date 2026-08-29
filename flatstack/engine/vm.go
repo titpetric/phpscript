@@ -380,7 +380,13 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if identifiable, ok := value.(interface{ SetID(string) }); ok && inst.extra != "" {
 				identifiable.SetID(inst.extra)
 			}
-			locals[inst.a], initialized[inst.a] = value, true
+			if host.SetGlobal(program.localNames[inst.a], value) {
+				// The host claimed the name — a superglobal — so the store is
+				// request state, not frame state.
+				initialized[inst.a] = false
+			} else {
+				locals[inst.a], initialized[inst.a] = value, true
+			}
 			if inst.b != 0 {
 				stack = append(stack, value)
 			}
