@@ -95,10 +95,12 @@ is split into one allocation per name and is not reported; neither is
 A chain ending in a name, a call or a `new` is reported: the value is either a
 handle the names really do share, or of a type the source does not settle.
 
-Findings are printed one per row, with a row per file that had none, using a
-colored table in a terminal and Markdown when output is redirected. Use
-`--output FILE` (`-o`) to write the same table to a file as Markdown while the
-terminal output continues as normal.
+Findings are printed one per row, with a row per file that had none, grouped
+the way `phpscript test` groups fixtures: one table per folder scanned, the
+folder naming the file column, closed by a per-folder summary line before the
+run's total. A terminal gets colored tables and redirected output gets
+Markdown. Use `--output FILE` (`-o`) to write the same tables to a file as
+Markdown while the terminal output continues as normal.
 
 ```bash
 phpscript lint -o docs/lint.md tests/fixtures/...

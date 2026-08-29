@@ -24,15 +24,48 @@ func TestRunPrintsMarkdownResultsAndSummary(t *testing.T) {
 
 	got := collapse(out.String())
 	for _, want := range []string{
-		"| Status | File | Line | Message |",
-		"| FAIL | " + filepath.Join(dir, "fail.php") + " | 1 | parse error:",
-		"| PASS | " + filepath.Join(dir, "pass.php") + " | | No lint findings |",
-		"| WARN | " + filepath.Join(dir, "warn.php") + " | 1 | assignment in conditional statement |",
+		"## " + filepath.ToSlash(dir),
+		"| Status | " + filepath.ToSlash(dir) + " | Line | Message |",
+		"| FAIL | fail.php | 1 | parse error:",
+		"| PASS | pass.php | | No lint findings |",
+		"| WARN | warn.php | 1 | assignment in conditional statement |",
+		filepath.ToSlash(dir) + ": 1 passing, 1 warnings, 1 failing",
 		"Passing 1, with 1 warnings, 1 failing",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("output does not contain %q:\n%s", want, out.String())
 		}
+	}
+}
+
+// TestRunGroupsResultsByFolder checks the per-folder layout: each folder gets
+// a table of its own headed by the folder, closed by its own summary line,
+// with the run's total after the last one.
+func TestRunGroupsResultsByFolder(t *testing.T) {
+	dir := t.TempDir()
+	writeLintFile(t, dir, "pass.php", `<?php echo "ok";`)
+	writeLintFile(t, filepath.Join(dir, "sub"), "warn.php", `<?php if ($value = true) {}`)
+
+	var out bytes.Buffer
+	if err := run([]string{dir, filepath.Join(dir, "sub")}, Options{}, &out); err != nil {
+		t.Fatalf("run returned an error: %v", err)
+	}
+
+	got := collapse(out.String())
+	top, sub := filepath.ToSlash(dir), filepath.ToSlash(filepath.Join(dir, "sub"))
+	for _, want := range []string{
+		"| Status | " + top + " | Line | Message |",
+		"| Status | " + sub + " | Line | Message |",
+		top + ": 1 passing, 0 warnings, 0 failing",
+		sub + ": 0 passing, 1 warnings, 0 failing",
+		"Passing 1, with 1 warnings, 0 failing",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output does not contain %q:\n%s", want, out.String())
+		}
+	}
+	if strings.Index(got, top+":") > strings.Index(got, sub+":") {
+		t.Errorf("folders are not reported in discovery order:\n%s", out.String())
 	}
 }
 
@@ -91,7 +124,7 @@ func TestRunReportsAnsiTableOnATerminal(t *testing.T) {
 	// A pipe is not a terminal, so the table has to be built directly to check
 	// what a terminal would be given.
 	var buf bytes.Buffer
-	tbl := newTable(&buf, false)
+	tbl := newTable(&buf, false, "src")
 	tbl.Row(table.Colored(statusColor(statusWarn), statusWarn), table.Text("warn.php"), table.Text("1"), table.Text("finding"))
 	tbl.Flush()
 
@@ -111,6 +144,9 @@ func collapse(value string) string {
 
 func writeLintFile(t *testing.T, dir, name, src string) {
 	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}

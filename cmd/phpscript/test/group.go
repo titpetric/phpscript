@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -74,25 +75,20 @@ func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, 
 }
 
 // groupFixtures buckets fixtures by the folder holding them, preserving the
-// order discovery established both between folders and inside one. Bucketing
-// is explicit rather than relying on the sort, because sorted paths do not
-// keep a folder contiguous: a/b.phpt, a/m/x.phpt and a/z.phpt interleave.
+// order discovery established both between folders and inside one, which is
+// what list.GroupByDir does for any path list.
 func groupFixtures(fixtures []*tests.Fixture, displayPaths []string) []fixtureGroup {
-	index := map[string]int{}
-	var groups []fixtureGroup
+	buckets := list.GroupByDir(displayPaths)
+	groups := make([]fixtureGroup, 0, len(buckets))
 
-	for i, fx := range fixtures {
-		display := displayPaths[i]
-		dir := filepath.ToSlash(filepath.Dir(display))
-		at, ok := index[dir]
-		if !ok {
-			at = len(groups)
-			index[dir] = at
-			groups = append(groups, fixtureGroup{Dir: dir})
+	for _, bucket := range buckets {
+		group := fixtureGroup{Dir: bucket.Dir}
+		for _, i := range bucket.Indexes {
+			group.Fixtures = append(group.Fixtures, fixtures[i])
+			group.Paths = append(group.Paths, displayPaths[i])
+			group.Labels = append(group.Labels, filepath.Base(displayPaths[i]))
 		}
-		groups[at].Fixtures = append(groups[at].Fixtures, fx)
-		groups[at].Paths = append(groups[at].Paths, display)
-		groups[at].Labels = append(groups[at].Labels, filepath.Base(display))
+		groups = append(groups, group)
 	}
 
 	return groups
