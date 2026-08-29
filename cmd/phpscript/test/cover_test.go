@@ -76,7 +76,7 @@ for ($i = 0; $i < 3; $i++) {
 		t.Fatal(err)
 	}
 	os.Stdout = w
-	errRun := test.Run(context.Background(), []string{"suite"}, test.Options{Cover: true, Split: true})
+	errRun := test.Run(context.Background(), []string{"suite"}, test.Options{Cover: test.CoverLine, Split: true})
 	w.Close()
 	os.Stdout = old
 	var stdout bytes.Buffer
@@ -121,12 +121,196 @@ for ($i = 0; $i < 3; $i++) {
 }
 
 // TestRunCommandCoverConflicts holds the flag contract: coverage counts one run
-// per fixture, so the benchmark loops are refused.
+// per fixture, so the benchmark loops are refused; a report mode owns stdout,
+// so --json is refused with it; and a mode outside line/func/file is a typo to
+// report, not a profile to write.
 func TestRunCommandCoverConflicts(t *testing.T) {
-	if err := test.Run(context.Background(), nil, test.Options{Cover: true, Count: 5}); err == nil || !strings.Contains(err.Error(), "cover") {
+	if err := test.Run(context.Background(), nil, test.Options{Cover: test.CoverLine, Count: 5}); err == nil || !strings.Contains(err.Error(), "cover") {
 		t.Errorf("cover with count: err = %v, want a cover conflict", err)
 	}
 	if err := test.Run(context.Background(), nil, test.Options{CoverFile: "x.cov", Time: time.Second}); err == nil || !strings.Contains(err.Error(), "cover") {
 		t.Errorf("coverfile with time: err = %v, want a cover conflict", err)
+	}
+	if err := test.Run(context.Background(), nil, test.Options{Cover: test.CoverFunc, JSON: true}); err == nil || !strings.Contains(err.Error(), "json") {
+		t.Errorf("cover=func with json: err = %v, want a json conflict", err)
+	}
+	if err := test.Run(context.Background(), nil, test.Options{Cover: "statements"}); err == nil || !strings.Contains(err.Error(), "cover mode") {
+		t.Errorf("unknown cover mode: err = %v, want a mode error", err)
+	}
+}
+
+// coverReportSuite writes the fixture tree the report-mode tests share: an
+// include with a called and an uncalled function, a class with a called and an
+// uncalled method, and a prelude at the invocation root, which the include
+// union resolves outside the fixture's directory.
+func coverReportSuite(t *testing.T) {
+	t.Helper()
+	tmp := t.TempDir()
+	write := func(name, content string) {
+		t.Helper()
+		p := filepath.Join(tmp, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("prelude.php", `<?php
+
+function prelude_helper()
+{
+	return 42;
+}
+
+$prelude_value = prelude_helper();
+`)
+	write("suite/lib/functions.php", `<?php
+
+function covered($n)
+{
+	return $n;
+}
+
+function uncovered()
+{
+	return "never";
+}
+`)
+	write("suite/lib/greeter.php", `<?php
+
+class Greeter
+{
+	public function greet($n)
+	{
+		return "hi" . $n;
+	}
+
+	public function unused()
+	{
+		return "no";
+	}
+}
+`)
+	write("suite/lib/contract.php", `<?php
+
+interface Contract
+{
+	public function greet($n);
+}
+`)
+	write("suite/covered.phpt", `name: coverage report fixture
+description: exercises functions, methods and the include union
+---
+<?php
+
+include "lib/contract.php";
+include "lib/functions.php";
+include "lib/greeter.php";
+
+$g = new Greeter();
+echo covered(1), $g->greet(2), prelude_helper();
+---
+1hi242
+`)
+	t.Chdir(tmp)
+}
+
+// runCoverReport runs the suite in a report mode and returns stdout.
+func runCoverReport(t *testing.T, opts test.Options) string {
+	t.Helper()
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	errRun := test.Run(context.Background(), []string{"suite"}, opts)
+	w.Close()
+	os.Stdout = old
+	var stdout bytes.Buffer
+	_, _ = stdout.ReadFrom(r)
+	if errRun != nil {
+		t.Fatalf("run with --cover=%s: %v\n%s", opts.Cover, errRun, stdout.String())
+	}
+	return stdout.String()
+}
+
+// reportLine finds the report row starting with prefix.
+func reportLine(t *testing.T, report, prefix string) string {
+	t.Helper()
+	for _, line := range strings.Split(report, "\n") {
+		if strings.HasPrefix(line, prefix) {
+			return line
+		}
+	}
+	t.Fatalf("report has no row starting %q:\n%s", prefix, report)
+	return ""
+}
+
+// TestRunCommandCoverFunc covers --cover=func: every declaration reports under
+// its file and start line, methods under Class::name, top-level code as {main},
+// the prelude under the path the include union served it from, and neither the
+// fixture tables nor any .phpt row reaches stdout.
+func TestRunCommandCoverFunc(t *testing.T) {
+	coverReportSuite(t)
+	report := runCoverReport(t, test.Options{Cover: test.CoverFunc, Include: "prelude.php"})
+
+	for prefix, want := range map[string]string{
+		"suite/lib/functions.php:3:": "covered 100.0%",
+		"suite/lib/functions.php:8:": "uncovered 0.0%",
+		"suite/lib/greeter.php:5:":   "Greeter::greet 100.0%",
+		"suite/lib/greeter.php:10:":  "Greeter::unused 0.0%",
+		"prelude.php:3:":             "prelude_helper 100.0%",
+		"prelude.php:1:":             "{main} 100.0%",
+		// The interface file holds nothing runnable, so its coverage is the
+		// adjusted 0/0: nothing left uncovered.
+		"suite/lib/contract.php:1:": "{main} 100.0%",
+	} {
+		got := reportLine(t, report, prefix)
+		if cells := strings.Fields(got); strings.Join(cells[1:], " ") != want {
+			t.Errorf("row %q = %q, want columns %q", prefix, got, want)
+		}
+	}
+	if !strings.Contains(report, "total:") {
+		t.Errorf("report is missing the total row:\n%s", report)
+	}
+	if strings.Contains(report, ".phpt") {
+		t.Errorf("report leaks fixture rows or tables:\n%s", report)
+	}
+	if strings.Contains(report, "suite/prelude.php") {
+		t.Errorf("report names the prelude below the fixture directory:\n%s", report)
+	}
+
+	// The merged profile names the prelude as the union resolved it: at the
+	// invocation root, not below the fixture's directory.
+	data, err := os.ReadFile("phpscript.cov")
+	if err != nil {
+		t.Fatalf("read merged profile: %v", err)
+	}
+	if !strings.Contains(string(data), "\nprelude.php:") || strings.Contains(string(data), "suite/prelude.php:") {
+		t.Errorf("profile does not name the prelude at the invocation root:\n%s", data)
+	}
+}
+
+// TestRunCommandCoverFile covers --cover=file: one row per source file with a
+// statement-weighted percentage, and no fixture rows.
+func TestRunCommandCoverFile(t *testing.T) {
+	coverReportSuite(t)
+	report := runCoverReport(t, test.Options{Cover: test.CoverFile, Include: "prelude.php"})
+
+	for prefix, want := range map[string]string{
+		"suite/lib/functions.php:1:": "functions.php 50.0%",
+		"suite/lib/greeter.php:1:":   "greeter.php 50.0%",
+		"suite/lib/contract.php:1:":  "contract.php 100.0%",
+		"prelude.php:1:":             "prelude.php 100.0%",
+	} {
+		got := reportLine(t, report, prefix)
+		if cells := strings.Fields(got); strings.Join(cells[1:], " ") != want {
+			t.Errorf("row %q = %q, want columns %q", prefix, got, want)
+		}
+	}
+	if !strings.Contains(report, "total:") || strings.Contains(report, ".phpt") {
+		t.Errorf("report total/fixture contract broken:\n%s", report)
 	}
 }

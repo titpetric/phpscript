@@ -24,6 +24,8 @@ import (
 type Collector struct {
 	mu    sync.Mutex
 	stmts map[model.Stmt]*coverStmt
+	funcs map[funcKey]FuncSpan
+	files map[string]bool
 }
 
 // coverStmt is one registered statement: the file it was parsed from, the line
@@ -45,9 +47,30 @@ type Block struct {
 	Count     int
 }
 
+// FuncSpan is the source range of one declared function: a free function under
+// its name, a method under Class::name. A per-function report charges the
+// blocks inside the range to it.
+type FuncSpan struct {
+	File      string
+	Name      string
+	StartLine int
+	EndLine   int
+}
+
+// funcKey identifies a declaration across re-registrations of the same file.
+type funcKey struct {
+	file  string
+	name  string
+	start int
+}
+
 // New returns an empty collector.
 func New() *Collector {
-	return &Collector{stmts: map[model.Stmt]*coverStmt{}}
+	return &Collector{
+		stmts: map[model.Stmt]*coverStmt{},
+		funcs: map[funcKey]FuncSpan{},
+		files: map[string]bool{},
+	}
 }
 
 // Register seeds every executable statement of program at count zero under
@@ -57,6 +80,7 @@ func New() *Collector {
 func (c *Collector) Register(filename string, program *model.Program) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.files[filename] = true
 	for stmt, span := range program.SourceSpans {
 		if !coverable(stmt) {
 			continue
@@ -66,6 +90,94 @@ func (c *Collector) Register(filename string, program *model.Program) {
 		}
 		c.stmts[stmt] = &coverStmt{file: filename, span: coverSpan(stmt, span)}
 	}
+	c.registerFuncs(filename, program)
+}
+
+// registerFuncs records the span of every declared function body: free
+// functions from the statement list, methods from class declarations, named or
+// anonymous. An abstract method declares no body and spans nothing to charge,
+// so it is skipped. Interfaces declare only signatures and are skipped whole.
+func (c *Collector) registerFuncs(filename string, program *model.Program) {
+	seen := map[*model.FuncDecl]bool{}
+	add := func(fd *model.FuncDecl, class string) {
+		seen[fd] = true
+		if fd.Abstract || len(fd.Body) == 0 {
+			return
+		}
+		span, ok := program.SourceSpans[fd]
+		if !ok {
+			return
+		}
+		name := fd.Name
+		if class != "" {
+			name = class + "::" + fd.Name
+		}
+		key := funcKey{file: filename, name: name, start: span.Start}
+		if _, done := c.funcs[key]; done {
+			return
+		}
+		c.funcs[key] = FuncSpan{File: filename, Name: name, StartLine: span.Start, EndLine: span.End}
+	}
+	classes := make([]*model.ClassDecl, 0, len(program.AnonClasses))
+	classes = append(classes, program.AnonClasses...)
+	for _, stmt := range program.Stmts {
+		switch n := stmt.(type) {
+		case *model.FuncDecl:
+			add(n, n.Class)
+		case *model.ClassDecl:
+			classes = append(classes, n)
+		}
+	}
+	for _, class := range classes {
+		for _, method := range class.Methods {
+			add(method, class.Name)
+		}
+	}
+	// A function declared inside another statement's body is in no list above
+	// but carries a span like any parsed statement, so the sweep picks it up.
+	// Methods were seen through their classes, which keeps them prefixed.
+	for stmt := range program.SourceSpans {
+		if fd, ok := stmt.(*model.FuncDecl); ok && !seen[fd] {
+			add(fd, fd.Class)
+		}
+	}
+}
+
+// Files returns every registered filename, sorted. A file appears whether or
+// not it holds an executable statement: a file of pure declarations registers
+// no counts, and a report that renders only counted blocks would omit it,
+// reading as a gap where there is nothing to run.
+func (c *Collector) Files() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	files := make([]string, 0, len(c.files))
+	for f := range c.files {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+	return files
+}
+
+// Functions returns the registered declaration spans, sorted by file and
+// position. Every function of every registered file appears, called or not:
+// an uncalled function is the zero row a per-function report exists to show.
+func (c *Collector) Functions() []FuncSpan {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	funcs := make([]FuncSpan, 0, len(c.funcs))
+	for _, fn := range c.funcs {
+		funcs = append(funcs, fn)
+	}
+	sort.Slice(funcs, func(i, j int) bool {
+		if funcs[i].File != funcs[j].File {
+			return funcs[i].File < funcs[j].File
+		}
+		if funcs[i].StartLine != funcs[j].StartLine {
+			return funcs[i].StartLine < funcs[j].StartLine
+		}
+		return funcs[i].Name < funcs[j].Name
+	})
+	return funcs
 }
 
 // Hit charges one execution to a registered statement. An unregistered

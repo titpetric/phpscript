@@ -165,9 +165,24 @@ flatstack is a performance-oriented backend without coverage support and the
 cannot be combined with coverage, because a count is how many times the fixture
 reached a line, not how many times a benchmark loop replayed it.
 
+`--cover` takes a mode. Bare `--cover` means `--cover=line`: write the profile
+and print the one-line percentage under the tables. `--cover=func` and
+`--cover=file` still write the profile, but own stdout with a coverage report
+in the format `go tool cover -func` prints — one row per declared function
+(methods as `Class::method`, a file's top-level code as `{main}`) or one row
+per file, each with its statement-weighted percentage, ending in a `total:`
+row. The report covers the application sources; the `.phpt` fixtures
+themselves are excluded, being the tests. A file or function with no runnable
+statement — an interface, a class of pure declarations — reports the adjusted
+0/0 as 100%: nothing is left uncovered, and the row contributes no statements
+to the total. The fixture tables are suppressed so
+the report pipes clean (failures go to stderr, `-o` still writes the Markdown
+tables), which also rules out combining a report mode with `--json`.
+
 ```bash
 phpscript test --cover tests/fixtures/...
 phpscript test --coverfile phpscript.cov --split tests/fixtures/...
+phpscript test --cover=func --autoload code --include autoload.php
 ```
 
 Use `--output FILE` (`-o`) to write the same tables to a file as Markdown while

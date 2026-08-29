@@ -34,9 +34,15 @@ type Options struct {
 	CPUProfile string
 	MemProfile string
 	Output     string
-	Cover      bool
+	Cover      string
 	CoverFile  string
 	Split      bool
+}
+
+// coverReport reports whether the cover mode owns stdout with a per-symbol
+// report, which is what suppresses the fixture tables.
+func (o Options) coverReport() bool {
+	return o.Cover == CoverFunc || o.Cover == CoverFile
 }
 
 type jsonFixture struct {
@@ -81,7 +87,8 @@ func NewCommand() *cli.Command {
 			fs.StringVar(&opts.CPUProfile, "cpuprofile", "", "Write CPU profile to file")
 			fs.StringVar(&opts.MemProfile, "memprofile", "", "Write memory profile to file")
 			fs.StringVarP(&opts.Output, "output", "o", "", "Write a Markdown report of the results to this file")
-			fs.BoolVar(&opts.Cover, "cover", false, "Measure statement coverage on the phpscript runtime")
+			fs.StringVar(&opts.Cover, "cover", "", "Measure statement coverage: line writes the profile, func/file also print a coverage report")
+			fs.Lookup("cover").NoOptDefVal = CoverLine
 			fs.StringVar(&opts.CoverFile, "coverfile", "", "Write the coverage profile to this file (implies --cover; default "+DefaultCoverFile+")")
 			fs.BoolVar(&opts.Split, "split", false, "With --cover, also write each fixture's own coverage next to it as <fixture>.cov")
 		},
@@ -211,14 +218,23 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	if opts.Parallel > 1 && opts.Profile {
 		return fmt.Errorf("profile cannot be combined with parallel fixture execution")
 	}
-	if opts.CoverFile != "" || opts.Split {
-		opts.Cover = true
+	if opts.Cover == "" && (opts.CoverFile != "" || opts.Split) {
+		opts.Cover = CoverLine
 	}
-	if opts.Cover {
+	if opts.Cover != "" {
+		switch opts.Cover {
+		case CoverLine, CoverFunc, CoverFile:
+		default:
+			return fmt.Errorf("cover mode must be %s, %s or %s, got %q", CoverLine, CoverFunc, CoverFile, opts.Cover)
+		}
 		// A coverage count is how many times the fixture reached a line, so a
 		// benchmark loop would multiply every count by its repetitions.
 		if opts.Count > 0 || opts.Time > 0 {
 			return fmt.Errorf("cover cannot be combined with --count or --time")
+		}
+		// A report mode and --json both own stdout.
+		if opts.coverReport() && opts.JSON {
+			return fmt.Errorf("cover=%s cannot be combined with --json", opts.Cover)
 		}
 		if opts.CoverFile == "" {
 			opts.CoverFile = DefaultCoverFile
@@ -276,7 +292,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		return fmt.Errorf("no .phpt test fixtures found in %s", strings.Join(paths, " "))
 	}
 
-	if opts.Cover {
+	if opts.Cover != "" {
 		coverFixtures(fixtures)
 	}
 
@@ -304,7 +320,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		}
 		// Only the runtime column collects: flatstack carries no coverage
 		// support and the php column is another process.
-		if opts.Cover {
+		if opts.Cover != "" {
 			if err := writeCoverage(fixtures, opts); err != nil {
 				return err
 			}
@@ -316,7 +332,9 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	}
 
 	var sinks teeResultTable
-	if !opts.JSON {
+	if !opts.JSON && !opts.coverReport() {
+		// A report mode leaves stdout to the coverage report so it pipes
+		// clean; -o still writes the tables as Markdown.
 		sinks = append(sinks, newResultTable(os.Stdout, opts, !table.IsTerminal(os.Stdout)))
 	}
 	if report != nil {
@@ -401,10 +419,16 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	}
 
 	if !opts.JSON {
+		// Failures stay visible in a report mode, on stderr, where they do not
+		// corrupt the piped report.
+		failOut := os.Stdout
+		if opts.coverReport() {
+			failOut = os.Stderr
+		}
 		for _, fr := range failedRuns {
-			fmt.Printf("FAIL %s (%dms)\n", fr.DisplayPath, fr.Result.DurationMs)
+			fmt.Fprintf(failOut, "FAIL %s (%dms)\n", fr.DisplayPath, fr.Result.DurationMs)
 			if fr.Result.FailureReason != "" {
-				fmt.Printf("  Reason: %s\n", fr.Result.FailureReason)
+				fmt.Fprintf(failOut, "  Reason: %s\n", fr.Result.FailureReason)
 			}
 		}
 	}
@@ -413,7 +437,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		return err
 	}
 
-	if opts.Cover {
+	if opts.Cover != "" {
 		if err := writeCoverage(fixtures, opts); err != nil {
 			return err
 		}
