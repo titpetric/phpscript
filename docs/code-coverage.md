@@ -26,7 +26,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/version | 0.00%    | 31        | 81    |
 | ✅     | github.com/titpetric/phpscript/config                | 94.49%   | 55        | 256   |
 | ✅     | github.com/titpetric/phpscript/flatstack             | 50.00%   | 0         | 18    |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine      | 88.19%   | 935       | 2008  |
+| ✅     | github.com/titpetric/phpscript/flatstack/engine      | 87.96%   | 935       | 2008  |
 | ✅     | github.com/titpetric/phpscript/formatter             | 80.45%   | 288       | 1273  |
 | ❌     | github.com/titpetric/phpscript/internal/apidoc       | 76.66%   | 366       | 1044  |
 | ✅     | github.com/titpetric/phpscript/internal/arrayi64     | 100.00%  | 6         | 18    |
@@ -263,7 +263,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | bindHostLocals                        | 90.90%   | 9         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | boolInt                               | 100.00%  | 1         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | closureValue                          | 100.00%  | 7         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.assignment                   | 72.00%   | 20        |
+| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.assignment                   | 68.00%   | 20        |
 | ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.binary                       | 78.60%   | 17        |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.block                        | 100.00%  | 3         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.classMethod                  | 100.00%  | 5         |
@@ -272,7 +272,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.constant                     | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.doWhileStmt                  | 88.20%   | 4         |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.emit                         | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.ensureContainer              | 78.90%   | 9         |
+| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.ensureContainer              | 73.70%   | 9         |
 | ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.expr                         | 79.10%   | 70        |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.forStmt                      | 85.70%   | 13        |
 | ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.foreachStmt                  | 86.20%   | 27        |
