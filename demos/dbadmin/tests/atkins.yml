@@ -5,8 +5,7 @@
 
 vars:
   compose: ../../../compose.yml
-  root: ../../..
-  address: "{{range .NetworkSettings.Networks}}{{if .IPAddress}}http://{{.IPAddress}}:8080 {{end}}{{end}}"
+  address: "{{range .NetworkSettings.Networks}}http://{{.IPAddress}}:8080{{end}}"
 
 tasks:
   default:
@@ -14,43 +13,18 @@ tasks:
     desc: "Run the venom suite against the compose dbadmin service"
     passthru: true
     cmds:
-      - task: reset
+      - task: restart
       - task: host
       - >
         docker compose -f ${{ compose }} ps -q phpscript
         | xargs --no-run-if-empty docker inspect -f '${{ address }}'
-        | tr ' ' '\n' | grep . | head -1
         | xargs --no-run-if-empty -I {} venom run venom.yml --var=host={}
-
-  # The suite starts from an installation with no accounts, because the first
-  # thing it asserts is that the first registration becomes the administrator.
-  # That is a question an installation can only answer once.
-  reset:
-    desc: "Drop the metadata database and reload the service"
-    cmds:
-      - rm -f ${{ root }}/demos/dbadmin/dbadmin.db ${{ root }}/demos/dbadmin/dbadmin.db-wal ${{ root }}/demos/dbadmin/dbadmin.db-shm
-      - rm -f ${{ root }}/demos/dbadmin/scratch.db ${{ root }}/demos/dbadmin/scratch.db-wal ${{ root }}/demos/dbadmin/scratch.db-shm
-      - task: restart
 
   restart:
     desc: "Reload the service so edited PHP sources are picked up"
     cmds:
-      # A template include is a compile-time paste and the compiled copy is
-      # keyed on the mtime of the template that was loaded, not of the partials
-      # inside it. An edited partial is therefore invisible until the cache is
-      # gone, which looks exactly like the server not having restarted.
-      - rm -rf ${{ root }}/demos/dbadmin/templates/cache
       - docker compose -f ${{ compose }} restart phpscript
-      # Wait over HTTP rather than with `docker compose exec`. The service is
-      # ready when it answers, which is the thing the suite is about to need;
-      # exec answers as soon as the container has a shell, which is earlier,
-      # and it needs a writable /tmp on the host for runc to hand the process
-      # over through.
-      - >
-        docker compose -f ${{ compose }} ps -q phpscript
-        | xargs --no-run-if-empty docker inspect -f '${{ address }}'
-        | tr ' ' '\n' | grep . | head -1
-        | xargs --no-run-if-empty -I {} timeout 60 sh -c 'until curl -fsS -o /dev/null {}/login; do sleep 1; done'
+      - docker compose -f ${{ compose }} exec phpscript true
 
   host:
     desc: "Print the address of the dbadmin container the suite runs against"
@@ -58,5 +32,4 @@ tasks:
       - >
         docker compose -f ${{ compose }} ps -q phpscript
         | xargs --no-run-if-empty docker inspect -f '${{ address }}'
-        | tr ' ' '\n' | grep . | head -1
-        | grep . || { echo "dbadmin container is not running; run 'atkins compose:up' in the repository root" >&2; exit 1; }
+        | grep . || { echo "dbadmin container is not running; run 'atkins up' in the repository root" >&2; exit 1; }

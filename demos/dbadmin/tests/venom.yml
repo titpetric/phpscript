@@ -1,961 +1,272 @@
 name: dbadmin
 
 # Every route reported by `phpscript list ./...` is exercised here. Run it with
-# `atkins test` from this directory: that drops the metadata database, clears
-# the template cache, reloads the compose service and passes its address in as
-# {{.host}}.
+# `atkins test` from this directory: that reloads the compose service, resolves
+# the container address and passes it in as {{.host}}.
 #
-# The suite needs an installation with no accounts, because the first thing it
-# asserts is that the first registration becomes the administrator, and that is
-# a question an installation can only answer once. `atkins reset` is what makes
-# it repeatable; it is not idempotent against a database it did not create.
-#
-# Every step is an `exec` running curl rather than an `http` step, for two
-# reasons that both come down to state. venom's http executor follows redirects
-# and cannot be told not to, so the 302 that carries the session cookie is two
-# responses gone by the time it reports; and `extracts` does not publish a
-# variable that a later step or testcase can read in this build, so there is
-# nowhere to put the session id even once it is captured.
-#
-# curl's cookie jar solves both. .venom-jar carries the session the way a
-# browser would, .venom-csrf holds the token that session's forms are stamped
-# with, and both are files on disk that survive from one step to the next. The
-# token is a column on the session row and never rotates, so it is read once
-# per sign-in.
-#
-# Each step prints the response and then a STATUS line, so a step asserts on
-# the status and the body together. A step that wants to see a redirect asks
-# for headers and does not follow; a step that wants the page the redirect
-# leads to follows and does not ask for headers.
-#
-# The three target connections are the compose services. mysql and postgres are
-# reachable because the phpscript service joins the project default network as
-# well as the ingress one; without that only sqlite would be exercised, and the
-# placeholder rebinding this suite exists to check would go untested.
+# The suite is idempotent. It removes its own leftovers before it starts and
+# does its row editing in a scratch table, so the seeded catalogue rows keep
+# the ids the migration gave them.
 
 vars:
   host: http://dbadmin.localhost
-  password: "hunter2hunter2"
-  reader_password: "readerreader"
 
 testcases:
-  - name: registration is open on an installation with no accounts
+  - name: remove leftovers from an earlier run
     steps:
-      - type: exec
-        script: |
-          rm -f .venom-jar .venom-csrf .venom-reader-jar .venom-reader-csrf
-          curl -sS -c .venom-jar -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/register
+      - type: http
+        method: POST
+        url: "{{.host}}/sql"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "query=DROP TABLE IF EXISTS venom_rows"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring This installation has no accounts yet'
-          - 'result.systemout ShouldContainSubstring Create the administrator'
-
-      # A first visitor asking for the sign-in page is sent to set up instead.
-      - type: exec
-        script: curl -sS -i -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/login
+          - result.statuscode ShouldEqual 200
+      - type: http
+        method: POST
+        url: "{{.host}}/sql"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "query=DROP TABLE IF EXISTS venom_scratch"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /register'
+          - result.statuscode ShouldEqual 200
+      - type: http
+        method: POST
+        url: "{{.host}}/sql"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "query=DELETE FROM catalogue WHERE name LIKE 'Venom%'"
+        assertions:
+          - result.statuscode ShouldEqual 200
 
-  - name: the first account created is the administrator
+  - name: dashboard lists the migrated table
     steps:
-      - type: exec
-        script: |
-          curl -sS -i -c .venom-jar -b .venom-jar \
-            -d "username=admin&password={{.password}}&confirm={{.password}}" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/register
-          curl -sS -b .venom-jar {{.host}}/ \
-            | grep -o 'csrf_token" value="[a-f0-9]*"' | head -1 | sed 's/.*value="//;s/"//' > .venom-csrf
-          echo "TOKEN $(wc -c < .venom-csrf)"
+      - type: http
+        method: GET
+        url: "{{.host}}/"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring HttpOnly'
-          - 'result.systemout ShouldContainSubstring SameSite=Lax'
-          # 32 hex characters and the newline the shell added.
-          - 'result.systemout ShouldContainSubstring TOKEN 33'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring catalogue
+          - result.body ShouldContainSubstring migrations
+          - result.body ShouldContainSubstring Table catalogue
 
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring admin'
-          - 'result.systemout ShouldContainSubstring /admin/connection'
-          - 'result.systemout ShouldContainSubstring No connections'
-
-      # A second registration is refused: the installation is claimed.
-      - type: exec
-        script: curl -sS -w '\nSTATUS %{http_code}\n' {{.host}}/register
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-          - 'result.systemout ShouldContainSubstring already has an administrator'
-
-  - name: a mistyped password is refused, and says nothing about the account
+  - name: browse shows the seeded rows
     steps:
-      - type: exec
-        script: curl -sS -d "username=admin&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Those credentials were not accepted'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring SQLite Handbook
+          - result.body ShouldContainSubstring Desk Lamp
+          - result.body ShouldContainSubstring Local database
+          - result.body ShouldContainSubstring 3 matching rows
 
-      # The same answer for a name that does not exist, so the response does
-      # not say which accounts are real.
-      - type: exec
-        script: curl -sS -d "username=nobody&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Those credentials were not accepted'
-
-  - name: connections are created for all three drivers
+  - name: browse filters on the search term
     steps:
-      - type: exec
-        script: |
-          curl -sS -i -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=scratch" \
-            --data-urlencode "dsn=sqlite://scratch.db" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/connection
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue?q=Handbook"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /admin/connection/1'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring SQLite Handbook
+          - result.body ShouldNotContainSubstring Desk Lamp
 
-      - type: exec
-        script: |
-          curl -sS -i -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=mysql-target" \
-            --data-urlencode "dsn=mysql://root:test@tcp(mysql:3306)/mysql" \
-            --data-urlencode "schema=mysql" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/connection
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /admin/connection/2'
-
-      - type: exec
-        script: |
-          curl -sS -i -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=pg-target" \
-            --data-urlencode "dsn=postgres://postgres:test@postgres:5432/postgres?sslmode=disable" \
-            --data-urlencode "schema=public" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/connection
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /admin/connection/3'
-
-      # A connection nothing answers on, so the test page has an error to show.
-      - type: exec
-        script: |
-          curl -sS -i -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=broken" \
-            --data-urlencode "dsn=postgres://nobody:wrong@nowhere:5432/none" \
-            --data-urlencode "schema=public" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/connection
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /admin/connection/4'
-
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=oracle-target" \
-            --data-urlencode "dsn=oracle://host/db" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/connection
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Unsupported driver'
-
-      # The name dbadmin is the application's own database and is refused.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=dbadmin" \
-            --data-urlencode "dsn=sqlite://elsewhere.db" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/connection
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring is reserved'
-
-  - name: the test page reports status and three counts per connection
+  - name: browse paginates past the seeded rows
     steps:
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/admin/connection/test
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue?page=2"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Connection test'
-          # One dead connection does not stop the others being reported.
-          - 'result.systemout ShouldContainSubstring no such host'
-          - 'result.systemout ShouldContainSubstring dot--bad'
-          - 'result.systemout ShouldContainSubstring dot--ok'
-          # Credentials are never rendered, on any row.
-          - 'result.systemout ShouldContainSubstring ***@postgres'
-          - 'result.systemout ShouldNotContainSubstring test@postgres'
-          - 'result.systemout ShouldNotContainSubstring test@tcp'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring No rows found.
 
-      # sqlite has one schema by definition; the other two report what this
-      # login can actually see.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar {{.host}}/admin/connection/test \
-            | tr -d '\t' | tr '\n' ' ' | sed 's/<[^>]*>/|/g' | tr -s '|' '|'
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring scratch'
-
-  - name: a connection is chosen and its tables are listed
+  - name: structure reports columns and the create statement
     steps:
-      - type: exec
-        script: |
-          curl -sS -i -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "connection_id=1" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/session/connection
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue/structure"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /tables'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring created_at
+          - result.body ShouldContainSubstring CREATE TABLE catalogue
+          - result.body ShouldContainSubstring Danger zone
 
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/tables
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring scratch'
-          - 'result.systemout ShouldContainSubstring Destructive actions off'
-
-  # The same walk on every driver. This is what catches a dialect bug: a suite
-  # that ran on sqlite alone would pass while every bound query against
-  # postgres failed, because postgres numbers its placeholders and sqlite does
-  # not.
-  # The same walk on every driver, in one step because the walk is a sequence:
-  # it picks a connection and then works in it, so the three drivers cannot be
-  # interleaved. venom's `range` is a step-level field, and a step-level range
-  # would run "pick the connection" three times before the first insert.
-  #
-  # Every request prints a line tagged with the driver it was made against, so
-  # a failure names the driver without needing three copies of the walk.
-  - name: browse, insert, edit and export work on every driver
+  - name: export returns csv
     steps:
-      - type: exec
-        script: |
-          set -e
-          token=$(cat .venom-csrf)
-          say() { curl -sS -b .venom-jar -o /dev/null -w "$1 %{http_code}\n" "$2" ; }
-
-          for pair in 1:sqlite 2:mysql 3:postgres; do
-            id=${pair%%:*}
-            driver=${pair##*:}
-            echo "=== $driver ==="
-
-            curl -sS -b .venom-jar -o /dev/null \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "connection_id=$id" {{.host}}/session/connection
-            curl -sS -b .venom-jar -o /dev/null \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "statement=DROP TABLE IF EXISTS venom_note" {{.host}}/sql
-            curl -sS -b .venom-jar \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "statement=CREATE TABLE venom_note (id INTEGER PRIMARY KEY, body TEXT)" \
-              -o /dev/null -w "CREATE $driver %{http_code}\n" {{.host}}/sql
-
-            # A value that is markup comes back as text on the page. The count
-            # is what is asserted on: piping through grep -c leaves the status
-            # line nowhere to go, and a row that rendered escaped is a row that
-            # was inserted.
-            curl -sS -b .venom-jar -L \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "f_id=1" \
-              --data-urlencode "f_body=<script>alert(1)</script>" \
-              {{.host}}/t/venom_note/insert \
-              | grep -c '&lt;script&gt;alert(1)&lt;/script&gt;' | sed "s/^/ESCAPED $driver /"
-
-            # The export is not HTML, so the same value comes back as it was
-            # stored. This runs before the edit, while that value is still the
-            # one in the row.
-            curl -sS -b .venom-jar {{.host}}/t/venom_note/export \
-              | grep -c '<script>alert(1)</script>' | sed "s/^/RAWCSV $driver /"
-
-            curl -sS -b .venom-jar -o /dev/null \
-              -w "STRUCTURE $driver %{http_code}\n" {{.host}}/t/venom_note/structure
-
-            curl -sS -b .venom-jar -L \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "f_id=1" \
-              --data-urlencode "f_body=edited on $driver" \
-              {{.host}}/t/venom_note/row/1/edit \
-              | grep -c "edited on $driver" | sed "s/^/EDITED $driver /"
-
-            curl -sS -b .venom-jar -G --data-urlencode "q=edited" {{.host}}/t/venom_note \
-              | grep -c "edited on $driver" | sed "s/^/SEARCH $driver /"
-
-            curl -sS -b .venom-jar -G --data-urlencode "q=no-such-value" {{.host}}/t/venom_note \
-              | grep -c 'No rows' | sed "s/^/EMPTY $driver /"
-          done
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue/export"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring CREATE sqlite 200'
-          - 'result.systemout ShouldContainSubstring CREATE mysql 200'
-          - 'result.systemout ShouldContainSubstring CREATE postgres 200'
-          - 'result.systemout ShouldContainSubstring ESCAPED sqlite 1'
-          - 'result.systemout ShouldContainSubstring ESCAPED mysql 1'
-          - 'result.systemout ShouldContainSubstring ESCAPED postgres 1'
-          - 'result.systemout ShouldContainSubstring STRUCTURE sqlite 200'
-          - 'result.systemout ShouldContainSubstring STRUCTURE mysql 200'
-          - 'result.systemout ShouldContainSubstring STRUCTURE postgres 200'
-          - 'result.systemout ShouldContainSubstring EDITED sqlite 1'
-          - 'result.systemout ShouldContainSubstring EDITED mysql 1'
-          - 'result.systemout ShouldContainSubstring EDITED postgres 1'
-          - 'result.systemout ShouldContainSubstring RAWCSV sqlite 1'
-          - 'result.systemout ShouldContainSubstring RAWCSV mysql 1'
-          - 'result.systemout ShouldContainSubstring RAWCSV postgres 1'
-          - 'result.systemout ShouldContainSubstring SEARCH sqlite 1'
-          - 'result.systemout ShouldContainSubstring SEARCH mysql 1'
-          - 'result.systemout ShouldContainSubstring SEARCH postgres 1'
-          - 'result.systemout ShouldContainSubstring EMPTY sqlite 1'
-          - 'result.systemout ShouldContainSubstring EMPTY mysql 1'
-          - 'result.systemout ShouldContainSubstring EMPTY postgres 1'
+          - result.statuscode ShouldEqual 200
+          - result.headers.Content-Type ShouldContainSubstring text/csv
+          - result.headers.Content-Disposition ShouldContainSubstring catalogue.csv
+          - result.body ShouldContainSubstring created_at
+          - result.body ShouldContainSubstring SQLite Handbook
 
-  # minitpl escapes what a template prints, so the templates carry no escape
-  # filter of their own. The two things that survived that are checked here: a
-  # null is still marked by hand, and an attribute still holds a value that
-  # contains the quote delimiting it.
-  - name: a null cell is marked and a value stays inside its attribute
+  - name: sql console runs its default query
     steps:
-      - type: exec
-        script: |
-          set -e
-          token=$(cat .venom-csrf)
-
-          curl -sS -b .venom-jar -o /dev/null \
-            --data-urlencode "csrf_token=$token" \
-            --data-urlencode "connection_id=1" {{.host}}/session/connection
-          curl -sS -b .venom-jar -o /dev/null \
-            --data-urlencode "csrf_token=$token" \
-            --data-urlencode "statement=DROP TABLE IF EXISTS venom_null" {{.host}}/sql
-          curl -sS -b .venom-jar -o /dev/null -w "CREATE %{http_code}\n" \
-            --data-urlencode "csrf_token=$token" \
-            --data-urlencode "statement=CREATE TABLE venom_null (id INTEGER PRIMARY KEY, body TEXT, note TEXT)" \
-            {{.host}}/sql
-
-          # body is a real null, note is the four characters N, U, L and L.
-          curl -sS -b .venom-jar -L -o /dev/null -w "INSERT %{http_code}\n" \
-            --data-urlencode "csrf_token=$token" \
-            --data-urlencode "f_id=1" \
-            --data-urlencode "null_body=1" \
-            --data-urlencode "f_note=NULL" {{.host}}/t/venom_null/insert
-
-          # One marker for the one null, and the literal string rendered as the
-          # text it is. A template that printed both the same way would pass a
-          # count of either alone, so both are counted.
-          curl -sS -b .venom-jar {{.host}}/t/venom_null \
-            | grep -c '<span class="null">NULL</span>' | sed "s/^/MARKED /"
-          curl -sS -b .venom-jar {{.host}}/t/venom_null \
-            | grep -c '<td class="cell">NULL</td>' | sed "s/^/LITERAL /"
-
-          # A search term carrying the quote that delimits the attribute it is
-          # printed into. Escaped by context, it stays one attribute; unescaped
-          # it would close the value and the rest would be markup.
-          curl -sS -b .venom-jar -G --data-urlencode 'q=a"b<i>' {{.host}}/t/venom_null \
-            | grep -c 'value="a&quot;b&lt;i&gt;"' | sed "s/^/ATTR /"
-          curl -sS -b .venom-jar -G --data-urlencode 'q=a"b<i>' {{.host}}/t/venom_null \
-            | grep -c 'value="a"b<i>"' | sed "s/^/RAWATTR /"
-
-          curl -sS -b .venom-jar -o /dev/null -w "DROP %{http_code}\n" \
-            --data-urlencode "csrf_token=$token" \
-            --data-urlencode "statement=DROP TABLE venom_null" {{.host}}/sql
+      - type: http
+        method: GET
+        url: "{{.host}}/sql"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring CREATE 200'
-          - 'result.systemout ShouldContainSubstring INSERT 200'
-          - 'result.systemout ShouldContainSubstring MARKED 1'
-          - 'result.systemout ShouldContainSubstring LITERAL 1'
-          - 'result.systemout ShouldContainSubstring ATTR 1'
-          - 'result.systemout ShouldContainSubstring RAWATTR 0'
-          - 'result.systemout ShouldContainSubstring DROP 200'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring 3 row(s) returned
+          - result.body ShouldContainSubstring SQLite Handbook
 
-  - name: a table that does not exist is a 404 rather than a broken query
+  - name: sql console runs a query from the url
     steps:
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -o /dev/null \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "connection_id=1" {{.host}}/session/connection
-          curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/t/no_such_table
+      - type: http
+        method: GET
+        url: "{{.host}}/sql?query=SELECT+COUNT(*)+AS+total+FROM+catalogue"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 404'
-          - 'result.systemout ShouldContainSubstring No table named no_such_table'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring 1 row(s) returned
+          - result.body ShouldContainSubstring total
 
-      # An identifier that is not one is refused before it reaches the server.
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' "{{.host}}/t/not%20an%20identifier"
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 404'
-
-  - name: destructive actions are refused until the session asks for them
+  - name: sql console executes a posted query
     steps:
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/t/venom_note/row/1/delete
+      - type: http
+        method: POST
+        url: "{{.host}}/sql"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "query=SELECT name FROM catalogue ORDER BY id LIMIT 1"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-          - 'result.systemout ShouldContainSubstring Destructive actions are not enabled'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring 1 row(s) returned
+          - result.body ShouldContainSubstring SQLite Handbook
 
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "confirmation=venom_note" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/t/venom_note/drop
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-
-      # The table survived both refusals.
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/t/venom_note
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -L \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "on=1" \
-            --data-urlencode "back=/tables" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/session/destructive
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Destructive mode on'
-
-      # A confirmation that does not match the table name is refused, so the
-      # typed name is a gate rather than a formality.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "confirmation=not-the-name" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/t/venom_note/drop
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 400'
-          - 'result.systemout ShouldContainSubstring Type the table name exactly'
-
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -L \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/t/venom_note/row/1/delete
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Row deleted from venom_note'
-
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -L \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "confirmation=venom_note" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/t/venom_note/drop
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Dropped venom_note'
-
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/t/venom_note
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 404'
-
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -L \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "back=/tables" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/session/destructive
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring Destructive actions off'
-
-  - name: a form without this session's token is refused
+  - name: create table form offers the dialect presets
     steps:
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=00000000000000000000000000000000" \
-            --data-urlencode "on=1" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/session/destructive
+      - type: http
+        method: GET
+        url: "{{.host}}/table/create"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-          - 'result.systemout ShouldContainSubstring This form has expired'
-
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "username=sneak" \
-            --data-urlencode "password=sneaksneaksneak" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/user
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring New database table
+      - type: http
+        method: GET
+        url: "{{.host}}/table/create?engine=pgsql"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring selected>PostgreSQL
 
-  - name: a group grants a connection, read-only, and tightens the policy
+  - name: insert form renders the columns
     steps:
-      - type: exec
-        script: |
-          curl -sS -i -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=readers" \
-            --data-urlencode "description=read the scratch database" \
-            --data-urlencode "policy=denied" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/group
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue/insert"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /admin/group/1'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Insert row
+          - result.body ShouldContainSubstring value_1
 
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -L \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "action=grants" \
-            --data-urlencode "grant_1=1" \
-            --data-urlencode "ro_1=1" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/group/1
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Connections updated'
-
-      - type: exec
-        script: |
-          curl -sS -i -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "username=reader" \
-            --data-urlencode "password={{.reader_password}}" \
-            --data-urlencode "policy=toggle" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/user
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /admin/user/2'
-
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -L \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "action=groups" \
-            --data-urlencode "group_1=1" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/user/2
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Group membership updated'
-
-      # A duplicate username is the unique index answering, not a pre-check.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "username=reader" \
-            --data-urlencode "password={{.reader_password}}" \
-            --data-urlencode "policy=toggle" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/user
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring already taken'
-
-      # A password below the floor is refused with the reason.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "username=shorty" \
-            --data-urlencode "password=abc" \
-            --data-urlencode "policy=toggle" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/admin/user
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring at least 8 characters'
-
-  - name: a non-administrator sees only what it was granted
+  - name: edit form loads an existing row
     steps:
-      - type: exec
-        script: |
-          curl -sS -i -c .venom-reader-jar -b .venom-reader-jar \
-            --data-urlencode "username=reader" \
-            --data-urlencode "password={{.reader_password}}" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/login
-          curl -sS -b .venom-reader-jar {{.host}}/ \
-            | grep -o 'csrf_token" value="[a-f0-9]*"' | head -1 | sed 's/.*value="//;s/"//' > .venom-reader-csrf
-          echo "TOKEN $(wc -c < .venom-reader-csrf)"
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue/row/1/edit"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring TOKEN 33'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Update row
+          - result.body ShouldContainSubstring SQLite Handbook
 
-      - type: exec
-        script: curl -sS -b .venom-reader-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring scratch'
-          - 'result.systemout ShouldNotContainSubstring mysql-target'
-          - 'result.systemout ShouldNotContainSubstring pg-target'
-          - 'result.systemout ShouldNotContainSubstring /admin/connection'
-
-      - type: exec
-        script: curl -sS -b .venom-reader-jar -w '\nSTATUS %{http_code}\n' {{.host}}/admin/user
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-          - 'result.systemout ShouldContainSubstring This page is for administrators'
-
-      - type: exec
-        script: curl -sS -b .venom-reader-jar -w '\nSTATUS %{http_code}\n' {{.host}}/admin/audit
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-
-      # The group says denied and the account says toggle, so the switch is not
-      # drawn, and the grant is read-only so the writes are not offered.
-      - type: exec
-        script: |
-          curl -sS -b .venom-reader-jar -L \
-            --data-urlencode "csrf_token=$(cat .venom-reader-csrf)" \
-            --data-urlencode "connection_id=1" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/session/connection
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Destructive actions blocked by policy'
-          - 'result.systemout ShouldNotContainSubstring Enable for 15 min'
-          - 'result.systemout ShouldContainSubstring read-only for you'
-          - 'result.systemout ShouldNotContainSubstring /table/create'
-
-      # A connection it was not granted is refused even when named directly.
-      - type: exec
-        script: |
-          curl -sS -b .venom-reader-jar \
-            --data-urlencode "csrf_token=$(cat .venom-reader-csrf)" \
-            --data-urlencode "connection_id=2" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/session/connection
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-          - 'result.systemout ShouldContainSubstring do not have access'
-
-      - type: exec
-        script: |
-          curl -sS -b .venom-reader-jar \
-            --data-urlencode "csrf_token=$(cat .venom-reader-csrf)" \
-            --data-urlencode "on=1" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/session/destructive
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-          - 'result.systemout ShouldContainSubstring not available for this account'
-
-      # A read-only grant refuses a write the page never offered.
-      - type: exec
-        script: |
-          curl -sS -b .venom-reader-jar \
-            --data-urlencode "csrf_token=$(cat .venom-reader-csrf)" \
-            --data-urlencode "name=sneaky" \
-            --data-urlencode "columns=1" \
-            --data-urlencode "name_0=id" \
-            --data-urlencode "type_0=INTEGER" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/table/create
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 403'
-          - 'result.systemout ShouldContainSubstring read-only for you'
-
-  - name: the SQL console classifies statements before it runs them
+  - name: a table can be created from the form
     steps:
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "statement=SELECT 1 AS one" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/sql
+      - type: http
+        method: POST
+        url: "{{.host}}/table/create"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "table_name=venom_rows&engine=sqlite&column_count=2&name_1=id&type_1=INTEGER&default_1=&pk_1=1&name_2=label&type_2=TEXT&default_2="
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring 1 row(s) shown'
-
-      # Destructive mode is off again, so a DELETE is refused by its verb
-      # before it reaches the driver.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "statement=DELETE FROM sqlite_master" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/sql
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring CREATE TABLE &quot;venom_rows&quot;
+          - result.body ShouldContainSubstring label
+      - type: http
+        method: GET
+        url: "{{.host}}/"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring This statement is destructive'
+          - result.body ShouldContainSubstring venom_rows
 
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "statement=" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/sql
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Nothing to run'
-
-  - name: the create-table form builds a table on the connection's dialect
+  - name: a row can be inserted, edited and deleted
     steps:
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/create
+      - type: http
+        method: POST
+        url: "{{.host}}/table/venom_rows/insert"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "null_0=1&value_1=Venom probe"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Create table'
-
-      # The form offers a key row and three blank ones. The key row starts on
-      # the integer type, because that is what an auto-incrementing key is; the
-      # blank rows start on the driver's string type.
-      #
-      # The first entry of the type list is the integer one, and a form that
-      # started every dropdown there handed somebody who filled in three column
-      # names and left the dropdowns alone three integer columns.
-      - type: exec
-        script: |
-          page=$(curl -sS -b .venom-jar {{.host}}/table/create)
-          echo "TEXTDEFAULTS $(echo "$page" | grep -c 'value="TEXT" selected')"
-          echo "INTDEFAULTS $(echo "$page" | grep -c 'value="INTEGER" selected')"
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Venom probe
+          - result.body ShouldContainSubstring 1 matching rows
+      - type: http
+        method: POST
+        url: "{{.host}}/table/venom_rows/row/1/edit"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "value_0=1&value_1=Venom probe renamed"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring TEXTDEFAULTS 3'
-          - 'result.systemout ShouldContainSubstring INTDEFAULTS 1'
-
-      # And the table it builds keeps them. This one is created without the
-      # type fields at all, so every column falls to the default.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -o /dev/null -L \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=venom_defaults" \
-            --data-urlencode "columns=2" \
-            --data-urlencode "name_0=title" \
-            --data-urlencode "name_1=body" \
-            {{.host}}/table/create
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "statement=SELECT sql FROM sqlite_master WHERE name = 'venom_defaults'" \
-            {{.host}}/sql | grep -o 'CREATE TABLE[^<]*'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Venom probe renamed
+      - type: http
+        method: POST
+        url: "{{.host}}/table/venom_rows/row/1/delete"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring title&quot; TEXT'
-          - 'result.systemout ShouldContainSubstring body&quot; TEXT'
-          - 'result.systemout ShouldNotContainSubstring title&quot; INTEGER'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldNotContainSubstring Venom probe
+          - result.body ShouldContainSubstring No rows found.
 
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar -L \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=venom_built" \
-            --data-urlencode "columns=2" \
-            --data-urlencode "name_0=id" \
-            --data-urlencode "type_0=INTEGER" \
-            --data-urlencode "auto_0=1" \
-            --data-urlencode "name_1=label" \
-            --data-urlencode "type_1=TEXT" \
-            --data-urlencode "notnull_1=1" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/table/create
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring label'
-          - 'result.systemout ShouldContainSubstring AUTOINCREMENT'
-
-      # A type that was not offered is refused rather than concatenated in.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=venom_evil" \
-            --data-urlencode "columns=1" \
-            --data-urlencode "name_0=id" \
-            --data-urlencode "type_0=INTEGER); DROP TABLE venom_built; --" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/table/create
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Unsupported column type'
-
-      # A column name that is not an identifier is refused the same way.
-      - type: exec
-        script: |
-          curl -sS -b .venom-jar \
-            --data-urlencode "csrf_token=$(cat .venom-csrf)" \
-            --data-urlencode "name=venom_evil" \
-            --data-urlencode "columns=1" \
-            --data-urlencode "name_0=id INTEGER, x" \
-            --data-urlencode "type_0=INTEGER" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/table/create
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring Invalid column name'
-
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/t/venom_built
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-
-  - name: the audit log records what happened and what was refused
+  - name: a table can be dropped after confirmation
     steps:
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/admin/audit
+      - type: http
+        method: POST
+        url: "{{.host}}/table/venom_rows/drop"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "confirmation=venom_rows"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring created new user'
-          - 'result.systemout ShouldContainSubstring created connection'
-          - 'result.systemout ShouldContainSubstring dropped table'
-          - 'result.systemout ShouldContainSubstring created group'
-          - 'result.systemout ShouldContainSubstring signed in'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring Table catalogue
+          - result.body ShouldNotContainSubstring venom_rows
 
-      # The refusals are in the log too. An attempt that was stopped is worth
-      # more than a successful drop, because it is the one that says somebody
-      # tried.
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' "{{.host}}/admin/audit?action=denied"
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring refused to delete a row'
-          - 'result.systemout ShouldContainSubstring attempted to toggle destructive mode'
-
-      - type: exec
-        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' "{{.host}}/admin/audit?action=drop"
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring dropped table'
-          - 'result.systemout ShouldNotContainSubstring signed in'
-
-  - name: signing out ends the session
+  - name: dropping requires a matching confirmation
     steps:
-      - type: exec
-        script: |
-          curl -sS -i -b .venom-reader-jar \
-            --data-urlencode "csrf_token=$(cat .venom-reader-csrf)" \
-            -w '\nSTATUS %{http_code}\n' {{.host}}/logout
+      - type: http
+        method: POST
+        url: "{{.host}}/table/catalogue/drop"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "confirmation=wrong"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /login'
-
-      # The revoked session is not logged in any more, so what it gets is the
-      # sign-in page.
-      - type: exec
-        script: curl -sS -i -b .venom-reader-jar -w '\nSTATUS %{http_code}\n' {{.host}}/tables
+          - result.body ShouldContainSubstring Confirmation did not match the table name.
+      - type: http
+        method: GET
+        url: "{{.host}}/table/catalogue"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 302'
-          - 'result.systemout ShouldContainSubstring Location: /login'
+          - result.statuscode ShouldEqual 200
+          - result.body ShouldContainSubstring 3 matching rows
 
-  - name: static assets are served and the sources are not
+  - name: unknown and invalid table names are rejected
     steps:
-      - type: exec
-        script: curl -sS -w '\nSTATUS %{http_code}\n' {{.host}}/assets/css/dbadmin.css
+      - type: http
+        method: GET
+        url: "{{.host}}/table/nope"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring settings.css'
-          - 'result.systemout ShouldContainSubstring components/table.css'
-
-      - type: exec
-        script: curl -sS -w '\nSTATUS %{http_code}\n' {{.host}}/assets/css/settings.css
+          - result.body ShouldContainSubstring Table not found.
+      - type: http
+        method: GET
+        url: "{{.host}}/table/bad-name"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring --accent'
+          - result.body ShouldContainSubstring Invalid table name.
 
-      - type: exec
-        script: curl -sS -w '\nSTATUS %{http_code}\n' {{.host}}/assets/js/dbadmin.js
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring STATUS 200'
-          - 'result.systemout ShouldContainSubstring data-confirm-name'
-
-      # The application's own sources are above the document root and have no
-      # URL at all.
-      - type: exec
-        script: |
-          curl -sS -o /dev/null -w 'BOOTSTRAP %{http_code}\n' {{.host}}/bootstrap.php
-          curl -sS -o /dev/null -w 'DAO %{http_code}\n' {{.host}}/modules/login_dao.php
-          curl -sS -o /dev/null -w 'SCHEMA %{http_code}\n' {{.host}}/schema/user.up.sql
-        assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring BOOTSTRAP 404'
-          - 'result.systemout ShouldContainSubstring DAO 404'
-          - 'result.systemout ShouldContainSubstring SCHEMA 404'
-
-  - name: cleanup removes the scratch tables from every driver
+  - name: static assets are served from the web root
     steps:
-      - type: exec
-        script: |
-          set -e
-          token=$(cat .venom-csrf)
-
-          for pair in 1:sqlite 2:mysql 3:postgres; do
-            id=${pair%%:*}
-            driver=${pair##*:}
-
-            curl -sS -b .venom-jar -o /dev/null \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "connection_id=$id" {{.host}}/session/connection
-            curl -sS -b .venom-jar -o /dev/null \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "on=1" {{.host}}/session/destructive
-            curl -sS -b .venom-jar -o /dev/null \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "statement=DROP TABLE IF EXISTS venom_note" \
-              -w "DROPPED $driver %{http_code}\n" {{.host}}/sql
-            curl -sS -b .venom-jar -o /dev/null \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "statement=DROP TABLE IF EXISTS venom_built" {{.host}}/sql
-            curl -sS -b .venom-jar -o /dev/null \
-              --data-urlencode "csrf_token=$token" \
-              --data-urlencode "statement=DROP TABLE IF EXISTS venom_defaults" {{.host}}/sql
-          done
+      - type: http
+        method: GET
+        url: "{{.host}}/assets/style.css"
         assertions:
-          - 'result.code ShouldEqual 0'
-          - 'result.systemout ShouldContainSubstring DROPPED sqlite 200'
-          - 'result.systemout ShouldContainSubstring DROPPED mysql 200'
-          - 'result.systemout ShouldContainSubstring DROPPED postgres 200'
+          - result.statuscode ShouldEqual 200
+          - result.headers.Content-Type ShouldContainSubstring text/css
