@@ -99,20 +99,20 @@ type inputStream struct {
 	io.Reader
 }
 
-// inputSource returns what php://input reads, matching PHP's two SAPIs: the
-// CLI maps it onto stdin, a live stream a script drains once, while a request
-// answers with the buffered body, rewindable on every open as PHP 5.6+ made
-// it. The branch is on the SAPI rather than on a registered request context
-// because the CLI registers an (empty) context of its own.
+// inputSource returns what php://input reads, matching PHP's two SAPIs: a
+// request answers with the buffered body, rewindable on every open as PHP
+// 5.6+ made it, while the CLI maps it onto stdin, a live stream a script
+// drains once. A staged body wins over the SAPI because the test harness
+// speaks as cli — the way the php column does — while still carrying the
+// request a fixture states; a cli run without one keeps its stdin.
 func inputSource(rt *runner.Runtime) io.Reader {
+	if c, ok := runner.RequestContext(rt.Context()); ok && len(c.RawBody()) > 0 {
+		return bytes.NewReader(c.RawBody())
+	}
 	if rt.SAPI() == "cli" {
 		if in := rt.Stdin(); in != nil {
 			return in
 		}
-		return bytes.NewReader(nil)
-	}
-	if c, ok := runner.RequestContext(rt.Context()); ok {
-		return bytes.NewReader(c.RawBody())
 	}
 	return bytes.NewReader(nil)
 }

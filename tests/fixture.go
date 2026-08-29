@@ -340,6 +340,10 @@ func (f *Fixture) includePrelude(rt *runner.Runtime) error {
 // harness-owned fields filled in.
 func (f *Fixture) runnerOptions() runner.Options {
 	options := f.Options
+	// The php column executes the php cli binary, so the runtime column
+	// speaks as the same SAPI: a fixture probing php_sapi_name() must read
+	// the same answer from both.
+	options.SAPI = "cli"
 	options.RootFS = f.rootFS
 	if f.realRoot() {
 		// A fixture that names a root wants the real filesystem: it is reaching
