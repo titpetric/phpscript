@@ -22,11 +22,11 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | cmd/phpscript/list    | 0.00%    | 1         | 19    |
 | ❌     | cmd/phpscript/run     | 26.67%   | 11        | 86    |
 | ❌     | cmd/phpscript/server  | 79.88%   | 120       | 856   |
-| ✅     | cmd/phpscript/test    | 81.07%   | 485       | 1824  |
+| ✅     | cmd/phpscript/test    | 81.27%   | 485       | 1829  |
 | ❌     | cmd/phpscript/version | 0.00%    | 31        | 81    |
 | ✅     | config                | 94.49%   | 55        | 256   |
 | ✅     | flatstack             | 50.00%   | 0         | 18    |
-| ✅     | flatstack/engine      | 88.19%   | 935       | 2008  |
+| ✅     | flatstack/engine      | 87.96%   | 935       | 2008  |
 | ✅     | formatter             | 80.45%   | 288       | 1273  |
 | ❌     | internal/apidoc       | 76.66%   | 366       | 1044  |
 | ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
@@ -207,6 +207,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | openReport                            | 85.70%   | 2         |
 | ✅     |                      | percentOf                             | 66.70%   | 1         |
 | ✅     |                      | percentileNs                          | 75.00%   | 3         |
+| ✅     |                      | ratio                                 | 100.00%  | 0         |
 | ❌     |                      | reportArgs                            | 66.70%   | 8         |
 | ✅     |                      | reportBlocks                          | 100.00%  | 3         |
 | ✅     |                      | runFixtureLoop                        | 100.00%  | 18        |
@@ -273,7 +274,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | bindHostLocals                        | 90.90%   | 9         |
 | ✅     |                      | boolInt                               | 100.00%  | 1         |
 | ✅     |                      | closureValue                          | 100.00%  | 7         |
-| ❌     |                      | compiler.assignment                   | 72.00%   | 20        |
+| ❌     |                      | compiler.assignment                   | 68.00%   | 20        |
 | ❌     |                      | compiler.binary                       | 78.60%   | 17        |
 | ✅     |                      | compiler.block                        | 100.00%  | 3         |
 | ✅     |                      | compiler.classMethod                  | 100.00%  | 5         |
@@ -282,7 +283,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | compiler.constant                     | 100.00%  | 0         |
 | ✅     |                      | compiler.doWhileStmt                  | 88.20%   | 4         |
 | ✅     |                      | compiler.emit                         | 100.00%  | 0         |
-| ❌     |                      | compiler.ensureContainer              | 78.90%   | 9         |
+| ❌     |                      | compiler.ensureContainer              | 73.70%   | 9         |
 | ❌     |                      | compiler.expr                         | 79.10%   | 70        |
 | ✅     |                      | compiler.forStmt                      | 85.70%   | 13        |
 | ✅     |                      | compiler.foreachStmt                  | 86.20%   | 27        |

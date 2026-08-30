@@ -187,14 +187,14 @@ questions. `Files` is how many of the PHP files the folder's fixtures loaded
 were reached at all, which says what the suite has not looked at; `Lines` is how
 many of the statements in them ran, which says how thoroughly it looked at the
 rest. A folder scoring 8% of files and 90% of lines is tested in one corner, and
-neither number alone would say so. A folder whose fixtures loaded no PHP file of
-their own has nothing to measure and reports `-`.
+neither number alone would say so. Both columns read `N/M (J%)`. A folder whose
+fixtures loaded no PHP file of their own has nothing to measure and reports `-`.
 
 ```text
-| Path                    | Fixtures | Passed | Failed | Files                    | Lines               |
-| ----------------------- | -------- | ------ | ------ | ------------------------ | ------------------- |
-| tests/fixtures/includes | 3        | 3      | 0      | 2/4 files covered (50%)  | 3/10 lines covered  |
-| tests/fixtures/oop      | 24       | 24     | 0      | 2/2 files covered (100%) | 9/9 lines covered   |
+| Path                    | Fixtures | Passed | Failed | Files      | Lines      |
+| ----------------------- | -------- | ------ | ------ | ---------- | ---------- |
+| tests/fixtures/includes | 3        | 3      | 0      | 2/4 (50%)  | 3/10 (30%) |
+| tests/fixtures/oop      | 24       | 24     | 0      | 2/2 (100%) | 9/9 (100%) |
 ```
 
 Files are charged to the folder whose fixtures loaded them, because a fixture's

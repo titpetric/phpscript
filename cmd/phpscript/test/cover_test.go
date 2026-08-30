@@ -86,7 +86,7 @@ for ($i = 0; $i < 3; $i++) {
 	}
 	// Without -v the folder summary is the whole answer on stdout: the run
 	// reports what it measured per folder rather than per fixture.
-	for _, want := range []string{"| Path ", "| Files ", "| Lines ", "files covered", "lines covered"} {
+	for _, want := range []string{"| Path ", "| Files ", "| Lines ", "| suite "} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("stdout is missing %q from the folder summary:\n%s", want, stdout.String())
 		}
@@ -332,7 +332,7 @@ func TestRunCommandFolderSummary(t *testing.T) {
 	// Four files are loaded and three hold runnable statements; the interface
 	// counts as reached because it has nothing left to reach.
 	row := reportLine(t, report, "| suite ")
-	for _, want := range []string{"4/4 files covered (100%)", "lines covered"} {
+	for _, want := range []string{"4/4 (100%)", "4/6 (67%)"} {
 		if !strings.Contains(row, want) {
 			t.Errorf("folder row = %q, want %q in it", row, want)
 		}

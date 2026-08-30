@@ -31,20 +31,26 @@ type folderCover struct {
 	Files []coverRow
 }
 
-// files renders the file column: "4/50 files covered (8%)".
+// files renders the file column: "4/50 (8%)". The header says what is counted,
+// so the cell carries the counts and nothing else.
 func (f folderCover) files() string {
 	if f.FilesTotal == 0 {
 		return noCoverage
 	}
-	return fmt.Sprintf("%d/%d files covered (%d%%)", f.FilesCovered, f.FilesTotal, percentOf(f.FilesCovered, f.FilesTotal))
+	return ratio(f.FilesCovered, f.FilesTotal)
 }
 
-// lines renders the line column: "1532/8000 lines covered".
+// lines renders the line column: "1532/8000 (19%)".
 func (f folderCover) lines() string {
 	if f.LinesTotal == 0 {
 		return noCoverage
 	}
-	return fmt.Sprintf("%d/%d lines covered", f.LinesCovered, f.LinesTotal)
+	return ratio(f.LinesCovered, f.LinesTotal)
+}
+
+// ratio is the form both coverage columns take, "N/M (J%)".
+func ratio(covered, total int) string {
+	return fmt.Sprintf("%d/%d (%d%%)", covered, total, percentOf(covered, total))
 }
 
 // noCoverage is what a folder reports when there was nothing to measure: its
