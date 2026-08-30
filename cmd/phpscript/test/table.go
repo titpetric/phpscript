@@ -22,6 +22,7 @@ type terminalTable struct {
 	loop    bool
 	profile bool
 	lat     bool
+	cover   bool
 }
 
 type resultTable interface {
@@ -45,6 +46,7 @@ func newTerminalTable(w io.Writer, opts Options) *terminalTable {
 		loop:    opts.Count > 0 || opts.Time > 0,
 		profile: opts.Profile,
 		lat:     opts.Time > 0,
+		cover:   opts.Cover != "",
 	}
 }
 
@@ -64,6 +66,9 @@ func (t *terminalTable) sizeColumns(dir string, labels []string) {
 	}
 	if t.profile {
 		t.headers = append(t.headers, "Allocs/op", "Bytes/op")
+	}
+	if t.cover {
+		t.headers = append(t.headers, "Coverage")
 	}
 	t.headers = append(t.headers, "GC Runs")
 
@@ -114,6 +119,9 @@ func (t *terminalTable) writeResult(r *fixtureRun) {
 			table.ColorWhite+strconv.FormatUint(r.AllocsPerOp, 10)+table.ColorReset,
 			table.ColorWhite+strconv.FormatUint(r.BytesPerOp, 10)+table.ColorReset,
 		)
+	}
+	if t.cover {
+		row = append(row, table.ColorWhite+fixtureCoverage(r.Fixture)+table.ColorReset)
 	}
 	row = append(row, table.ColorWhite+formatGCRuns(r.GCRuns, r.Runs)+table.ColorReset)
 	t.writeRow(row, "")
@@ -195,6 +203,9 @@ func (t *markdownTable) writeResult(r *fixtureRun) {
 	}
 	if t.profile {
 		row = append(row, strconv.FormatUint(r.AllocsPerOp, 10), strconv.FormatUint(r.BytesPerOp, 10))
+	}
+	if t.cover {
+		row = append(row, fixtureCoverage(r.Fixture))
 	}
 	row = append(row, formatGCRuns(r.GCRuns, r.Runs))
 	t.writeMarkdownRow(row)

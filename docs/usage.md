@@ -116,16 +116,31 @@ Discover and run `.phpt` fixtures. With no path, the command searches the
 current directory. Results are printed as they complete, using a colored table
 in a terminal and Markdown when output is redirected.
 
-Fixtures are grouped into one table per folder, with the folder name as the
-header of the fixture column, and each table is followed by that folder's
-subtotal. A directory path is not recursive on its own: `./...` walks a tree,
-and a path that matches no fixture is an error rather than a silent pass.
+A directory path is not recursive on its own: `./...` walks a tree, and a path
+that matches no fixture is an error rather than a silent pass.
 
 ```bash
 phpscript test tests/fixtures/...
 phpscript test tests/fixtures/arrays
 phpscript test tests/fixtures/arrays/array_indexing.phpt
 ```
+
+The run answers with one row per folder resolved from the arguments. A tree of
+a few hundred fixtures is a few hundred passing rows, and reading them is not
+what a run is for; what a reader needs is which folder the failures are in, and
+the failures themselves are printed below the table either way.
+
+```text
+| Path                      | Fixtures | Passed | Failed |
+| ------------------------- | -------- | ------ | ------ |
+| tests/fixtures/arithmetic | 21       | 21     | 0      |
+| tests/fixtures/arrays     | 19       | 19     | 0      |
+```
+
+Add `--verbose` (`-v`) for the fixture tables: one table per folder, with the
+folder name as the header of the fixture column, each followed by that folder's
+subtotal. `--output` (`-o`) writes those tables whether or not `-v` is set, so a
+checked-in report is the same file either way.
 
 Use `--count N` (`-c`) to run each fixture N times in one aggregate row, or
 `--time D` (`-t`) to repeatedly run each fixture for at least duration D.
@@ -167,8 +182,42 @@ flatstack is a performance-oriented backend without coverage support and the
 cannot be combined with coverage, because a count is how many times the fixture
 reached a line, not how many times a benchmark loop replayed it.
 
-`--cover` takes a mode. Bare `--cover` means `--cover=line`: write the profile
-and print the one-line percentage under the tables. `--cover=func` and
+With `--cover`, the folder summary carries the two counts that answer different
+questions. `Files` is how many of the PHP files the folder's fixtures loaded
+were reached at all, which says what the suite has not looked at; `Lines` is how
+many of the statements in them ran, which says how thoroughly it looked at the
+rest. A folder scoring 8% of files and 90% of lines is tested in one corner, and
+neither number alone would say so. A folder whose fixtures loaded no PHP file of
+their own has nothing to measure and reports `-`.
+
+```text
+| Path                    | Fixtures | Passed | Failed | Files                    | Lines               |
+| ----------------------- | -------- | ------ | ------ | ------------------------ | ------------------- |
+| tests/fixtures/includes | 3        | 3      | 0      | 2/4 files covered (50%)  | 3/10 lines covered  |
+| tests/fixtures/oop      | 24       | 24     | 0      | 2/2 files covered (100%) | 9/9 lines covered   |
+```
+
+Files are charged to the folder whose fixtures loaded them, because a fixture's
+own directory is its include root: two folders including the same relative path
+are including their own copy of it.
+
+With `-v`, each fixture table gains a `Coverage` column — the coverage of the
+PHP that fixture loaded, not of the `.phpt` itself — and every folder that
+loaded a file gets a per-file section below the tables, which is where an
+unvisited file is named rather than counted.
+
+```text
+## coverage: tests/fixtures/includes
+
+tests/fixtures/includes/counter.php           2/2 lines covered 100.0%
+tests/fixtures/includes/modules/functions.php 0/6 lines covered   0.0%
+```
+
+`--cover` takes a mode. Bare `--cover` means `--cover=line`: write the profile,
+and under `-v` print the one-line percentage below the tables. That percentage
+measures the written profile, which counts the `.phpt` entrypoints, and the
+tables do not; printing both without `-v` would invite a comparison between two
+numbers answering different questions. `--cover=func` and
 `--cover=file` still write the profile, but own stdout with a coverage report
 in the format `go tool cover -func` prints — one row per declared function
 (methods as `Class::method`, a file's top-level code as `{main}`) or one row
@@ -220,9 +269,10 @@ phpscript test --matrix -v tests/fixtures/...
 |-------------------|------------|---------|------|
 | storage_list.phpt | PASS       | PASS    | SKIP |
 
-Add `--verbose` (`-v`) to print the failure of each runtime in continuation
-rows below its fixture. A continuation row leaves the fixture column empty, so
-it reads as part of the row above it.
+The matrix follows the same rule as a plain run: without `-v` it prints the
+folder summary, and `-v` restores the tables above and prints the failure of
+each runtime in continuation rows below its fixture. A continuation row leaves
+the fixture column empty, so it reads as part of the row above it.
 
 ### `phpscript fmt <path>...`
 
