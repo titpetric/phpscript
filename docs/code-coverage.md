@@ -14,7 +14,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | Status | Package                                              | Coverage | Cognitive | Lines |
 |--------|------------------------------------------------------|----------|-----------|-------|
 | ❌     | github.com/titpetric/phpscript                       | 34.80%   | 22        | 96    |
-| ✅     | github.com/titpetric/phpscript/annotations           | 88.26%   | 149       | 701   |
+| ✅     | github.com/titpetric/phpscript/annotations           | 88.82%   | 149       | 701   |
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/ast     | 0.00%    | 5         | 31    |
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/fmt     | 0.00%    | 5         | 42    |
 | ❌     | github.com/titpetric/phpscript/cmd/phpscript/info    | 78.96%   | 52        | 177   |
@@ -36,17 +36,17 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | github.com/titpetric/phpscript/list                  | 72.31%   | 115       | 335   |
 | ❌     | github.com/titpetric/phpscript/model                 | 36.82%   | 325       | 1130  |
 | ✅     | github.com/titpetric/phpscript/parser                | 91.34%   | 1039      | 3399  |
-| ✅     | github.com/titpetric/phpscript/runner                | 86.62%   | 1648      | 7002  |
+| ✅     | github.com/titpetric/phpscript/runner                | 86.93%   | 1649      | 7023  |
 | ✅     | github.com/titpetric/phpscript/runner/coverage       | 92.37%   | 45        | 187   |
 | ❌     | github.com/titpetric/phpscript/scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | github.com/titpetric/phpscript/stdlib                | 96.30%   | 4         | 88    |
 | ✅     | github.com/titpetric/phpscript/stdlib/compat         | 86.92%   | 184       | 901   |
-| ✅     | github.com/titpetric/phpscript/stdlib/core           | 85.86%   | 862       | 3861  |
+| ✅     | github.com/titpetric/phpscript/stdlib/core           | 86.14%   | 862       | 3861  |
 | ✅     | github.com/titpetric/phpscript/stdlib/crypto         | 85.97%   | 56        | 312   |
 | ✅     | github.com/titpetric/phpscript/stdlib/database       | 84.59%   | 105       | 791   |
 | ✅     | github.com/titpetric/phpscript/stdlib/files          | 87.99%   | 165       | 644   |
 | ❌     | github.com/titpetric/phpscript/stdlib/gd             | 76.99%   | 154       | 577   |
-| ❌     | github.com/titpetric/phpscript/stdlib/http           | 72.75%   | 61        | 417   |
+| ❌     | github.com/titpetric/phpscript/stdlib/http           | 73.26%   | 63        | 448   |
 | ✅     | github.com/titpetric/phpscript/stdlib/info           | 75.00%   | 0         | 10    |
 | ✅     | github.com/titpetric/phpscript/stdlib/internals      | 100.00%  | 0         | 18    |
 | ✅     | github.com/titpetric/phpscript/stdlib/logger         | 100.00%  | 9         | 73    |
@@ -107,7 +107,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/annotations          | scanner.walk                          | 82.40%   | 15        |
 | ✅     | github.com/titpetric/phpscript/annotations          | serveMuxRegistrar.Handle              | 100.00%  | 1         |
 | ✅     | github.com/titpetric/phpscript/annotations          | splitScheduleArgs                     | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/annotations          | tag                                   | 75.00%   | 1         |
+| ✅     | github.com/titpetric/phpscript/annotations          | tag                                   | 100.00%  | 1         |
 | ✅     | github.com/titpetric/phpscript/annotations          | weekdayName                           | 22.20%   | 1         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | Run                                   | 92.30%   | 3         |
 | ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | ctorParams                            | 100.00%  | 4         |
@@ -730,6 +730,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/runner               | Context.IsUpload                      | 100.00%  | 7         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.RawBody                       | 66.70%   | 1         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.Register                      | 100.00%  | 2         |
+| ✅     | github.com/titpetric/phpscript/runner               | Context.Request                       | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.ResponseHeaders               | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.ResponseStatus                | 66.70%   | 1         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.SetDefaultHeader              | 100.00%  | 1         |
@@ -740,7 +741,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/runner               | Context.decodeBody                    | 100.00%  | 7         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.filesArray                    | 94.70%   | 7         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.memoryFootprint               | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.parseBody                     | 85.20%   | 14        |
+| ✅     | github.com/titpetric/phpscript/runner               | Context.parseBody                     | 87.10%   | 15        |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.pathValues                    | 88.90%   | 7         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.recordError                   | 66.70%   | 2         |
 | ✅     | github.com/titpetric/phpscript/runner               | Context.requestArray                  | 100.00%  | 1         |
@@ -1018,13 +1019,14 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/runner               | flatHost.pullScope                    | 66.70%   | 5         |
 | ✅     | github.com/titpetric/phpscript/runner               | flattenConcat                         | 100.00%  | 4         |
 | ✅     | github.com/titpetric/phpscript/runner               | funcGetArgs                           | 75.00%   | 3         |
+| ✅     | github.com/titpetric/phpscript/runner               | goTypeName                            | 83.30%   | 3         |
 | ✅     | github.com/titpetric/phpscript/runner               | helperArray                           | 100.00%  | 4         |
 | ✅     | github.com/titpetric/phpscript/runner               | helperCast                            | 95.00%   | 7         |
 | ✅     | github.com/titpetric/phpscript/runner               | helperConcat                          | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/runner               | helperIndex                           | 85.70%   | 12        |
 | ✅     | github.com/titpetric/phpscript/runner               | helperPair                            | 100.00%  | 0         |
 | ✅     | github.com/titpetric/phpscript/runner               | helperToObject                        | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/runner               | instanceOfClass                       | 44.40%   | 6         |
+| ❌     | github.com/titpetric/phpscript/runner               | instanceOfClass                       | 66.70%   | 6         |
 | ✅     | github.com/titpetric/phpscript/runner               | instanceOfName                        | 75.00%   | 1         |
 | ✅     | github.com/titpetric/phpscript/runner               | invokeAny                             | 94.10%   | 8         |
 | ✅     | github.com/titpetric/phpscript/runner               | invokeFast                            | 100.00%  | 1         |
@@ -1177,7 +1179,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | asciiLower                            | 100.00%  | 12        |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | buildQuery                            | 100.00%  | 8         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | callbackLess                          | 75.00%   | 1         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | classNameOf                           | 45.50%   | 8         |
+| ✅     | github.com/titpetric/phpscript/stdlib/core          | classNameOf                           | 90.90%   | 8         |
 | ❌     | github.com/titpetric/phpscript/stdlib/core          | classOf                               | 20.00%   | 6         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | dumpKey                               | 75.00%   | 1         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | edgeValue                             | 100.00%  | 1         |
@@ -1193,7 +1195,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | isObject                              | 91.70%   | 6         |
 | ❌     | github.com/titpetric/phpscript/stdlib/core          | isObjectLike                          | 64.30%   | 7         |
 | ❌     | github.com/titpetric/phpscript/stdlib/core          | jsonDecodeStream                      | 76.70%   | 22        |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | jsonDecodeValue                       | 30.00%   | 8         |
+| ❌     | github.com/titpetric/phpscript/stdlib/core          | jsonDecodeValue                       | 40.00%   | 8         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | jsonEncodeValue                       | 90.30%   | 16        |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | jsonObject.MarshalJSON                | 87.50%   | 7         |
 | ✅     | github.com/titpetric/phpscript/stdlib/core          | jsonObject.add                        | 100.00%  | 0         |
@@ -1447,6 +1449,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | github.com/titpetric/phpscript/stdlib/http          | Client.Send                           | 83.30%   | 2         |
 | ✅     | github.com/titpetric/phpscript/stdlib/http          | Client.prepare                        | 93.30%   | 8         |
 | ✅     | github.com/titpetric/phpscript/stdlib/http          | Client.send                           | 93.50%   | 3         |
+| ✅     | github.com/titpetric/phpscript/stdlib/http          | CurrentRequest                        | 85.70%   | 2         |
 | ✅     | github.com/titpetric/phpscript/stdlib/http          | NewClient                             | 87.10%   | 12        |
 | ✅     | github.com/titpetric/phpscript/stdlib/http          | NewRequest                            | 92.90%   | 7         |
 | ✅     | github.com/titpetric/phpscript/stdlib/http          | Register                              | 100.00%  | 0         |

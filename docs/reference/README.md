@@ -273,6 +273,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [draw](extensions/implemented-apis.md#draw)
       - [info](extensions/implemented-apis.md#info)
       - [write](extensions/implemented-apis.md#write)
+    - [stdlib/http](extensions/implemented-apis.md#stdlibhttp)
     - [stdlib/info](extensions/implemented-apis.md#stdlibinfo)
     - [stdlib/internals](extensions/implemented-apis.md#stdlibinternals)
     - [stdlib/pexec](extensions/implemented-apis.md#stdlibpexec)
