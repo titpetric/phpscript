@@ -11,1619 +11,1619 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 
 ## Packages
 
-| Status | Package                                              | Coverage | Cognitive | Lines |
-|--------|------------------------------------------------------|----------|-----------|-------|
-| ❌     | github.com/titpetric/phpscript                       | 34.80%   | 22        | 96    |
-| ✅     | github.com/titpetric/phpscript/annotations           | 88.26%   | 149       | 701   |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/ast     | 0.00%    | 5         | 31    |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/fmt     | 0.00%    | 5         | 42    |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/info    | 78.96%   | 52        | 177   |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/lint    | 73.07%   | 56        | 218   |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/list    | 0.00%    | 1         | 19    |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/run     | 26.67%   | 11        | 86    |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/server  | 79.88%   | 120       | 856   |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test    | 81.07%   | 485       | 1824  |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/version | 0.00%    | 31        | 81    |
-| ✅     | github.com/titpetric/phpscript/config                | 94.49%   | 55        | 256   |
-| ✅     | github.com/titpetric/phpscript/flatstack             | 50.00%   | 0         | 18    |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine      | 87.96%   | 935       | 2008  |
-| ✅     | github.com/titpetric/phpscript/formatter             | 80.45%   | 288       | 1273  |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc       | 76.66%   | 366       | 1044  |
-| ✅     | github.com/titpetric/phpscript/internal/arrayi64     | 100.00%  | 6         | 18    |
-| ✅     | github.com/titpetric/phpscript/internal/phpval       | 90.60%   | 142       | 575   |
-| ✅     | github.com/titpetric/phpscript/internal/table        | 100.00%  | 24        | 135   |
-| ✅     | github.com/titpetric/phpscript/lint                  | 86.78%   | 223       | 783   |
-| ❌     | github.com/titpetric/phpscript/list                  | 72.31%   | 115       | 335   |
-| ❌     | github.com/titpetric/phpscript/model                 | 36.82%   | 325       | 1130  |
-| ✅     | github.com/titpetric/phpscript/parser                | 91.34%   | 1039      | 3399  |
-| ✅     | github.com/titpetric/phpscript/runner                | 86.62%   | 1648      | 7002  |
-| ✅     | github.com/titpetric/phpscript/runner/coverage       | 92.37%   | 45        | 187   |
-| ❌     | github.com/titpetric/phpscript/scripts/list-apis     | 0.00%    | 1         | 13    |
-| ✅     | github.com/titpetric/phpscript/stdlib                | 96.30%   | 4         | 88    |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat         | 86.92%   | 184       | 901   |
-| ✅     | github.com/titpetric/phpscript/stdlib/core           | 85.86%   | 862       | 3861  |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto         | 85.97%   | 56        | 312   |
-| ✅     | github.com/titpetric/phpscript/stdlib/database       | 84.59%   | 105       | 791   |
-| ✅     | github.com/titpetric/phpscript/stdlib/files          | 87.99%   | 165       | 644   |
-| ❌     | github.com/titpetric/phpscript/stdlib/gd             | 76.99%   | 154       | 577   |
-| ❌     | github.com/titpetric/phpscript/stdlib/http           | 72.75%   | 61        | 417   |
-| ✅     | github.com/titpetric/phpscript/stdlib/info           | 75.00%   | 0         | 10    |
-| ✅     | github.com/titpetric/phpscript/stdlib/internals      | 100.00%  | 0         | 18    |
-| ✅     | github.com/titpetric/phpscript/stdlib/logger         | 100.00%  | 9         | 73    |
-| ✅     | github.com/titpetric/phpscript/stdlib/pexec          | 89.47%   | 13        | 51    |
-| ❌     | github.com/titpetric/phpscript/stdlib/session        | 78.20%   | 72        | 341   |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared         | 95.90%   | 57        | 197   |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp           | 86.89%   | 38        | 347   |
-| ✅     | github.com/titpetric/phpscript/stdlib/span           | 100.00%  | 0         | 11    |
-| ✅     | github.com/titpetric/phpscript/stdlib/time           | 42.78%   | 5         | 137   |
-| ❌     | github.com/titpetric/phpscript/telemetry             | 73.04%   | 10        | 209   |
-| ✅     | github.com/titpetric/phpscript/tests                 | 82.90%   | 215       | 1140  |
+| Status | Package               | Coverage | Cognitive | Lines |
+|--------|-----------------------|----------|-----------|-------|
+| ❌     | .                     | 34.80%   | 22        | 96    |
+| ✅     | annotations           | 88.26%   | 149       | 701   |
+| ❌     | cmd/phpscript/ast     | 0.00%    | 5         | 31    |
+| ❌     | cmd/phpscript/fmt     | 0.00%    | 5         | 42    |
+| ❌     | cmd/phpscript/info    | 78.96%   | 52        | 177   |
+| ❌     | cmd/phpscript/lint    | 73.07%   | 56        | 218   |
+| ❌     | cmd/phpscript/list    | 0.00%    | 1         | 19    |
+| ❌     | cmd/phpscript/run     | 26.67%   | 11        | 86    |
+| ❌     | cmd/phpscript/server  | 79.88%   | 120       | 856   |
+| ✅     | cmd/phpscript/test    | 81.07%   | 485       | 1824  |
+| ❌     | cmd/phpscript/version | 0.00%    | 31        | 81    |
+| ✅     | config                | 94.49%   | 55        | 256   |
+| ✅     | flatstack             | 50.00%   | 0         | 18    |
+| ✅     | flatstack/engine      | 88.19%   | 935       | 2008  |
+| ✅     | formatter             | 80.45%   | 288       | 1273  |
+| ❌     | internal/apidoc       | 76.66%   | 366       | 1044  |
+| ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
+| ✅     | internal/phpval       | 90.60%   | 142       | 575   |
+| ✅     | internal/table        | 100.00%  | 24        | 135   |
+| ✅     | lint                  | 86.78%   | 223       | 783   |
+| ❌     | list                  | 72.31%   | 115       | 335   |
+| ❌     | model                 | 36.82%   | 325       | 1130  |
+| ✅     | parser                | 91.34%   | 1039      | 3399  |
+| ✅     | runner                | 86.62%   | 1648      | 7002  |
+| ✅     | runner/coverage       | 92.37%   | 45        | 187   |
+| ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
+| ✅     | stdlib                | 96.30%   | 4         | 88    |
+| ✅     | stdlib/compat         | 86.92%   | 184       | 901   |
+| ✅     | stdlib/core           | 85.86%   | 862       | 3861  |
+| ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
+| ✅     | stdlib/database       | 84.59%   | 105       | 791   |
+| ✅     | stdlib/files          | 87.99%   | 165       | 644   |
+| ❌     | stdlib/gd             | 76.99%   | 154       | 577   |
+| ❌     | stdlib/http           | 72.75%   | 61        | 417   |
+| ✅     | stdlib/info           | 75.00%   | 0         | 10    |
+| ✅     | stdlib/internals      | 100.00%  | 0         | 18    |
+| ✅     | stdlib/logger         | 100.00%  | 9         | 73    |
+| ✅     | stdlib/pexec          | 89.47%   | 13        | 51    |
+| ❌     | stdlib/session        | 78.20%   | 72        | 341   |
+| ✅     | stdlib/shared         | 95.90%   | 57        | 197   |
+| ✅     | stdlib/smtp           | 86.89%   | 38        | 347   |
+| ✅     | stdlib/span           | 100.00%  | 0         | 11    |
+| ✅     | stdlib/time           | 42.78%   | 5         | 137   |
+| ❌     | telemetry             | 73.04%   | 10        | 209   |
+| ✅     | tests                 | 82.90%   | 215       | 1140  |
 
 ## Functions
 
-| Status | Package                                             | Function                              | Coverage | Cognitive |
-|--------|-----------------------------------------------------|---------------------------------------|----------|-----------|
-| ✅     | github.com/titpetric/phpscript                      | loadConfig                            | 70.00%   | 3         |
-| ❌     | github.com/titpetric/phpscript                      | parseConfigFile                       | 69.20%   | 10        |
-| ✅     | github.com/titpetric/phpscript/annotations          | HasStartup                            | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/annotations          | NewRoute                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | NewScheduler                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | NewStartup                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | ParseRoutes                           | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/annotations          | ParseSchedules                        | 93.80%   | 8         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Route.Mount                           | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Route.Register                        | 91.30%   | 13        |
-| ✅     | github.com/titpetric/phpscript/annotations          | Route.RegisterMux                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Schedule.Next                         | 75.00%   | 4         |
-| ❌     | github.com/titpetric/phpscript/annotations          | Schedule.matchDay                     | 37.50%   | 6         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Scheduler.Start                       | 90.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Scheduler.execute                     | 84.20%   | 7         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Scheduler.loop                        | 81.80%   | 5         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Scheduler.run                         | 72.70%   | 4         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Startup.Start                         | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Startup.execute                       | 81.80%   | 4         |
-| ✅     | github.com/titpetric/phpscript/annotations          | Startup.run                           | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithErrorPages                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithExcludedDirectory                 | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithFlatstack                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithModuleSuffix                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithObservers                         | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithOutput                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithRootDir                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithRunnerOptions                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | WithRuntimeFunc                       | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/annotations          | comment                               | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | config.moduleName                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | config.newRuntime                     | 95.70%   | 5         |
-| ✅     | github.com/titpetric/phpscript/annotations          | durationUnit                          | 60.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | eq                                    | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/annotations          | handler.route                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | handler.serve                         | 97.60%   | 9         |
-| ✅     | github.com/titpetric/phpscript/annotations          | newConfig                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | newHandler                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | nextMidnight                          | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/annotations          | parseScheduleSpec                     | 64.00%   | 17        |
-| ✅     | github.com/titpetric/phpscript/annotations          | platformRegistrar.Handle              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/annotations          | scanner.walk                          | 82.40%   | 15        |
-| ✅     | github.com/titpetric/phpscript/annotations          | serveMuxRegistrar.Handle              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | splitScheduleArgs                     | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/annotations          | tag                                   | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/annotations          | weekdayName                           | 22.20%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | Run                                   | 92.30%   | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | ctorParams                            | 100.00%  | 4         |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/info   | ctorReturn                            | 75.00%   | 6         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | methodParams                          | 80.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | paramList                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | paramName                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | phpMethod                             | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | printBindings                         | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | printHostClass                        | 73.30%   | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | printSourceTree                       | 85.20%   | 21        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/info   | shortType                             | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | collect                               | 81.50%   | 22        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | hasFailure                            | 75.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | isParseError                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | line                                  | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | newTable                              | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | reportArgs                            | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | run                                   | 95.30%   | 24        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | sink.summary                          | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | statusColor                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/lint   | writeReportHeader                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/run    | resolveEntrypoint                     | 80.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | NewHandler                            | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/server | Run                                   | 46.40%   | 11        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | annotationOptions                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | buildVirtualHosts                     | 85.70%   | 8         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | documentRoot                          | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | errorPageNames                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | escapeEntry                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | formatSize                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.ServeHTTP                     | 100.00%  | 13        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.errorPage                     | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.executes                      | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.indexPage                     | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.run                           | 96.10%   | 8         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.serveAutoindex                | 91.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.serveErrorFile                | 85.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.serveErrorPage                | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.serveNotFound                 | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.servePHP                      | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | handler.serverVars                    | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | hostMux.ServeHTTP                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | newHandler                            | 77.80%   | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | newHostMux                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | newVirtualHost                        | 93.00%   | 10        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | nonFatal                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | nonFatalModule.Start                  | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | normalizeHost                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | redirectToDirectory                   | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | redirectVars                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | renderAutoindex                       | 100.00%  | 10        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | routeOptions                          | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | serveStatus                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/server | writeAutoindexRow                     | 92.30%   | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | Options.coverReport                   | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | Options.runners                       | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | Run                                   | 81.00%   | 97        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | coverFilePath                         | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | coverFiles                            | 92.30%   | 9         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | coverFixtures                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | coverFuncs                            | 91.30%   | 14        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | coverRow.percent                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | coveragePercent                       | 87.50%   | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | fileRows                              | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | fixtureCoverBlocks                    | 100.00%  | 18        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | fixtureCoverage                       | 66.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | fixtureRun.label                      | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | folderCover.files                     | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | folderCover.lines                     | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | folderCoverage                        | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | formatDuration                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | formatGCRuns                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | formatMicros                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | funcRows                              | 100.00%  | 24        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | groupFixtures                         | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | mapFixtureBatch                       | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | mapFixtures                           | 100.00%  | 10        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownCell                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownMatrix.closeGroup             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownMatrix.writeGroup             | 88.90%   | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownMatrix.writeMarkdownRow       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownMatrix.writeRow               | 94.10%   | 8         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownMatrix.writeSummary           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownTable.closeGroup              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownTable.writeGroup              | 88.90%   | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownTable.writeMarkdownRow        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownTable.writeResult             | 78.60%   | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | markdownTable.writeSummary            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | matrixRow.label                       | 66.70%   | 1         |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/test   | mergeCoverBlocks                      | 78.90%   | 12        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | newMarkdownTable                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | newMatrixTable                        | 42.90%   | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | newResultTable                        | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | newTerminalMatrix                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | newTerminalTable                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | openReport                            | 85.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | percentOf                             | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | percentileNs                          | 75.00%   | 3         |
-| ❌     | github.com/titpetric/phpscript/cmd/phpscript/test   | reportArgs                            | 66.70%   | 8         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | reportBlocks                          | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | runFixtureLoop                        | 100.00%  | 18        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | runFixtureSamples                     | 90.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | sortProfile                           | 83.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | sortRows                              | 83.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | statusColor                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | statusLabel                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | teeResultTable.closeGroup             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | teeResultTable.writeGroup             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | teeResultTable.writeResult            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | teeResultTable.writeSummary           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.closeGroup             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.detailWidth            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.fit                    | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.metricValues           | 20.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.metrics                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.sizeColumns            | 90.90%   | 14        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.writeBorder            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.writeDetail            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.writeGroup             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.writeRow               | 93.30%   | 9         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalMatrix.writeRowValues         | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalTable.closeGroup              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalTable.sizeColumns             | 95.80%   | 10        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalTable.writeBorder             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalTable.writeGroup              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalTable.writeResult             | 87.50%   | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalTable.writeRow                | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | terminalTable.writeSummary            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | wrapDetail                            | 75.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeCoverProfile                     | 72.70%   | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeCoverReport                      | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeCoverage                         | 81.20%   | 14        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeFolderFileReport                 | 88.90%   | 5         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeFolderTable                      | 88.50%   | 14        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeMarkdownGrid                     | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeMarkdownSummary                  | 87.90%   | 11        |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeMemProfile                       | 80.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/cmd/phpscript/test   | writeReportHeader                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/config               | Config.PlatformOptions                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/config               | Config.ValidateVirtualHosts           | 93.90%   | 25        |
-| ✅     | github.com/titpetric/phpscript/config               | New                                   | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/config               | NewTestConfig                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/config               | Server.Options                        | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/config               | Telemetry.Resolved                    | 80.00%   | 7         |
-| ✅     | github.com/titpetric/phpscript/config               | VirtualHost.Domains                   | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/config               | VirtualHost.Load                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/config               | VirtualHost.Name                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/config               | VirtualHost.Normalize                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/config               | VirtualHost.load                      | 93.90%   | 8         |
-| ❌     | github.com/titpetric/phpscript/config               | declares                              | 80.00%   | 7         |
-| ✅     | github.com/titpetric/phpscript/config               | normalizeDomain                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/config               | statDir                               | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/flatstack            | IsExit                                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/flatstack            | New                                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/flatstack            | NewExprCache                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/flatstack            | NewIncludeCache                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/flatstack            | Supports                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | Compile                               | 85.00%   | 28        |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | Run                                   | 83.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | applyHostLocals                       | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | applyNamedValues                      | 85.70%   | 18        |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | bindHostLocals                        | 90.90%   | 9         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | boolInt                               | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | closureValue                          | 100.00%  | 7         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.assignment                   | 68.00%   | 20        |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.binary                       | 78.60%   | 17        |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.block                        | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.classMethod                  | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.closure                      | 100.00%  | 10        |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.collectClasses               | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.constant                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.doWhileStmt                  | 88.20%   | 4         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.emit                         | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.ensureContainer              | 73.70%   | 9         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.expr                         | 79.10%   | 70        |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.forStmt                      | 85.70%   | 13        |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.foreachStmt                  | 86.20%   | 27        |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.funcDecl                     | 97.80%   | 6         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.incDec                       | 72.70%   | 7         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.include                      | 85.70%   | 2         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.interp                       | 66.70%   | 8         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.listAssignment               | 84.60%   | 6         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.resolveClass                 | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.slot                         | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.stmt                         | 77.60%   | 50        |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.storeTop                     | 71.40%   | 9         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.switchStmt                   | 84.60%   | 9         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | compiler.tryStmt                      | 90.20%   | 12        |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | compiler.unsetStmt                    | 76.90%   | 12        |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | loadLocal                             | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | lookupUserFunc                        | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | phpEmptyContainer                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | restoreHostLocals                     | 83.30%   | 1         |
-| ❌     | github.com/titpetric/phpscript/flatstack/engine     | run                                   | 79.50%   | 551       |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | unsupported                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/flatstack/engine     | vmScratch.release                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | Changed                               | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/formatter            | CollectComments                       | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/formatter            | NeedFormatting                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | Paths                                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | Print                                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | Source                                | 88.20%   | 7         |
-| ✅     | github.com/titpetric/phpscript/formatter            | catchClause                           | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/formatter            | collapseBlankLines                    | 100.00%  | 8         |
-| ❌     | github.com/titpetric/phpscript/formatter            | format                                | 80.00%   | 6         |
-| ✅     | github.com/titpetric/phpscript/formatter            | includeKeyword                        | 40.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/formatter            | isBlockStmt                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | isCallStmt                            | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/formatter            | isDecl                                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | isFuncDecl                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | phpQuote                              | 78.60%   | 5         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printProgram                          | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.appendToLine                  | 71.40%   | 2         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.args                          | 71.40%   | 3         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.arrayLit                      | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.assign                        | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.blank                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.blankBetween                  | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.blankFor                      | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.body                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.comment                       | 90.00%   | 7         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.ensurePHP                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.expr                          | 80.30%   | 42        |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.field                         | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.flushComments                 | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.indent                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.inlineBlock                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.line                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.lit                           | 77.80%   | 3         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.params                        | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printClass                    | 97.40%   | 17        |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printDeclare                  | 70.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printFor                      | 38.50%   | 3         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printForeach                  | 84.60%   | 5         |
-| ❌     | github.com/titpetric/phpscript/formatter            | printer.printFunc                     | 77.80%   | 7         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printIf                       | 36.80%   | 5         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printInterface                | 96.00%   | 11        |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printMembers                  | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printStmt                     | 93.20%   | 16        |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printSwitch                   | 88.20%   | 4         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.printTry                      | 78.60%   | 5         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.signature                     | 85.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.staticField                   | 90.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.stmt                          | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.stmtEnd                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.stmts                         | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.thenEnd                       | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.trailingComment               | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.typeName                      | 83.30%   | 6         |
-| ✅     | github.com/titpetric/phpscript/formatter            | printer.use                           | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/formatter            | returnType                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | shortName                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | splitDeclarePreamble                  | 80.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/formatter            | splitShebang                          | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/formatter            | trimOpenTag                           | 80.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/formatter            | tryEnd                                | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/formatter            | verify                                | 62.50%   | 3         |
-| ✅     | github.com/titpetric/phpscript/formatter            | walk                                  | 83.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | Generate                              | 94.10%   | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | areaName                              | 100.00%  | 2         |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | astParam                              | 78.60%   | 6         |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | buildClass                            | 58.60%   | 14        |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | buildClasses                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | buildFunc                             | 89.50%   | 10        |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | camelToSnake                          | 100.00%  | 11        |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | cleanComment                          | 58.80%   | 14        |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | constructorGroups                     | 100.00%  | 5         |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | constructorResultType                 | 63.60%   | 7         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | ctorDecl                              | 66.70%   | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | declComment                           | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | dedupeParams                          | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | funcResultTypeName                    | 75.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | hasRegisteredReturn                   | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | isCallbackName                        | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | isContextContext                      | 60.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | isRefSetter                           | 62.50%   | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | nameParams                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | packageNames                          | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | paramList                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | paramName                             | 66.70%   | 2         |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | phpTypeAST                            | 35.30%   | 16        |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | phpTypeName                           | 71.40%   | 1         |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | phpTypeReflect                        | 23.80%   | 13        |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | primaryClassName                      | 66.70%   | 7         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | recvTypeName                          | 60.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | reflectMethods                        | 90.50%   | 13        |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | reflectParams                         | 55.60%   | 12        |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | reflectReturn                         | 75.00%   | 6         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | registeredClassTypes                  | 87.50%   | 3         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | render                                | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | renderClass                           | 85.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | renderFuncs                           | 100.00%  | 4         |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | renderPackage                         | 66.70%   | 7         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | renderParam                           | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | returnType                            | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | scan                                  | 89.40%   | 55        |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | selectPackage                         | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | signature                             | 95.20%   | 25        |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | sources.collect                       | 89.50%   | 21        |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | sources.lookupDecl                    | 66.70%   | 6         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | sources.method                        | 85.70%   | 3         |
-| ❌     | github.com/titpetric/phpscript/internal/apidoc      | sources.resolveSignature              | 77.80%   | 20        |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | sources.typeDoc                       | 42.90%   | 4         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | stmtComment                           | 83.30%   | 10        |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | typeParamName                         | 50.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/internal/apidoc      | writeComment                          | 16.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/internal/arrayi64    | Sort                                  | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | Compare                               | 100.00%  | 12        |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | Float                                 | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | GoString                              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | Int                                   | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | Key                                   | 84.60%   | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | Number                                | 90.90%   | 8         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | NumericKey                            | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | String                                | 91.70%   | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | Strings                               | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | Truthy                                | 81.80%   | 4         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | Values                                | 90.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | comparableArray                       | 50.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | compareArrays                         | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | compareBools                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | compareNumbers                        | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | floatKey                              | 40.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | isBoolish                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | isDigit                               | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | leadingFloat                          | 96.80%   | 29        |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | numericString                         | 92.30%   | 6         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | parseFloat                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | parseInt                              | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | phpNum.float                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | phpNumeric                            | 83.30%   | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | scanNumeric                           | 91.70%   | 23        |
-| ✅     | github.com/titpetric/phpscript/internal/phpval      | toBool                                | 62.50%   | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Colored                               | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | IsTerminal                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | New                                   | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.Flush                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.Row                             | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.Summary                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.flushMarkdown                   | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.flushTerminal                   | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.pad                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.sanitize                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.writeBorder                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Table.writeRow                        | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/internal/table       | Text                                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/lint                 | Diagnostic.String                     | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/lint                 | File                                  | 92.90%   | 2         |
-| ✅     | github.com/titpetric/phpscript/lint                 | FlatstackFile                         | 77.80%   | 3         |
-| ❌     | github.com/titpetric/phpscript/lint                 | Paths                                 | 76.90%   | 6         |
-| ✅     | github.com/titpetric/phpscript/lint                 | assignExprs                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/lint                 | astWalker.exprs                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/lint                 | astWalker.fields                      | 50.00%   | 1         |
-| ❌     | github.com/titpetric/phpscript/lint                 | astWalker.one                         | 76.10%   | 13        |
-| ✅     | github.com/titpetric/phpscript/lint                 | astWalker.params                      | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/lint                 | astWalker.walk                        | 65.40%   | 27        |
-| ✅     | github.com/titpetric/phpscript/lint                 | chainedValue                          | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/lint                 | collectAssignExprList                 | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/lint                 | collectAssignExprs                    | 25.00%   | 19        |
-| ✅     | github.com/titpetric/phpscript/lint                 | declaredNames.hasClass                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/lint                 | declaredNames.hasFunc                 | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/lint                 | isScalarLiteral                       | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/lint                 | knownRuntime                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintChainedAssign                     | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintCondition                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintInterfaces                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintJSONFlags                         | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintReferences                        | 100.00%  | 14        |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintRoutes                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintSource                            | 81.80%   | 3         |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintStmts                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/lint                 | lintUndefinedNames                    | 94.40%   | 63        |
-| ✅     | github.com/titpetric/phpscript/lint                 | stmtWalker.lintAbstract               | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/lint                 | stmtWalker.lintExtends                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/lint                 | stmtWalker.lintGlobal                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/lint                 | stmtWalker.lintMagicMethods           | 100.00%  | 7         |
-| ❌     | github.com/titpetric/phpscript/lint                 | stmtWalker.walk                       | 70.00%   | 21        |
-| ❌     | github.com/titpetric/phpscript/list                 | ExpandFiles                           | 78.60%   | 9         |
-| ❌     | github.com/titpetric/phpscript/list                 | File                                  | 75.00%   | 10        |
-| ✅     | github.com/titpetric/phpscript/list                 | GroupByDir                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/list                 | Markdown                              | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/list                 | Paths                                 | 80.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/list                 | cell                                  | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/list                 | classNames                            | 87.50%   | 2         |
-| ❌     | github.com/titpetric/phpscript/list                 | classNamesFromTokens                  | 47.10%   | 17        |
-| ❌     | github.com/titpetric/phpscript/list                 | collectClasses                        | 18.80%   | 20        |
-| ❌     | github.com/titpetric/phpscript/list                 | expandOne                             | 73.70%   | 9         |
-| ✅     | github.com/titpetric/phpscript/list                 | filenameCell                          | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/list                 | isPHP                                 | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/list                 | listDir                               | 90.90%   | 6         |
-| ✅     | github.com/titpetric/phpscript/list                 | tokenize                              | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/list                 | walkRecursive                         | 83.30%   | 10        |
-| ✅     | github.com/titpetric/phpscript/list                 | writeMarkdownRow                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Append                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Clear                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Delete                          | 93.30%   | 10        |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Get                             | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Int64List                       | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Keys                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Len                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Map                             | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Pop                             | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Range                           | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.ReplaceInt64List                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.Set                             | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/model                | Array.isList                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | Array.promote                         | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/model                | AssignsTo                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | ByRefArg                              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | CheckInterfaceContracts               | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | CheckInterfaces                       | 95.50%   | 16        |
-| ✅     | github.com/titpetric/phpscript/model                | Class.Field                           | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/model                | Class.declares                        | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/model                | CopyArray                             | 85.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | CopyValue                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | InterfaceContractError.Error          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | InterfaceNames                        | 94.40%   | 10        |
-| ✅     | github.com/titpetric/phpscript/model                | InterfaceViolation.String             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | IsCollection                          | 85.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/model                | LenValues                             | 84.60%   | 4         |
-| ✅     | github.com/titpetric/phpscript/model                | NewArray                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | NewArraySize                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | NewObject                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/model                | NewStdClass                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | Object.DeleteProp                     | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/model                | Object.Len                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | Object.Names                          | 92.90%   | 13        |
-| ✅     | github.com/titpetric/phpscript/model                | Object.Prop                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | Object.Range                          | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/model                | Object.SetID                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | Object.SetProp                        | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/model                | Object.appendUnrecorded               | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/model                | ParseRoutePath                        | 100.00%  | 11        |
-| ❌     | github.com/titpetric/phpscript/model                | RangeValues                           | 66.70%   | 34        |
-| ✅     | github.com/titpetric/phpscript/model                | RenderRoutePath                       | 94.70%   | 10        |
-| ✅     | github.com/titpetric/phpscript/model                | RootName                              | 87.50%   | 6         |
-| ✅     | github.com/titpetric/phpscript/model                | StdClass                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | ToArray                               | 93.30%   | 7         |
-| ✅     | github.com/titpetric/phpscript/model                | UnwrapParenthesized                   | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/model                | callWritesBack                        | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/model                | closingBrace                          | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/model                | collectContract                       | 93.30%   | 7         |
-| ✅     | github.com/titpetric/phpscript/model                | contractOf                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/model                | declaredMethods                       | 100.00%  | 7         |
-| ❌     | github.com/titpetric/phpscript/model                | exprAssignsTo                         | 44.00%   | 34        |
-| ✅     | github.com/titpetric/phpscript/model                | exprsAssignTo                         | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/model                | interfaceIndex                        | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/model                | listAssignsTo                         | 42.90%   | 5         |
-| ✅     | github.com/titpetric/phpscript/model                | parseRouteParam                       | 100.00%  | 10        |
-| ❌     | github.com/titpetric/phpscript/model                | stmtAssignsTo                         | 25.00%   | 30        |
-| ✅     | github.com/titpetric/phpscript/model                | stmtsAssignTo                         | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/model                | validRouteName                        | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/parser               | Parse                                 | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | TokenGetAll                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | TokenIDs                              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | TokenName                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | aliasSpelling                         | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | boxInt                                | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | decodeEscape                          | 87.50%   | 15        |
-| ✅     | github.com/titpetric/phpscript/parser               | hexRun                                | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/parser               | isAssignOp                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isBinDigit                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isDecDigit                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isFuncKeyword                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isHexDigit                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | isIdentPart                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isIdentStart                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isLValue                              | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isOctDigit                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isOpenTagSpace                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | isPreambleStmt                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.advance                         | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.advanceRune                     | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.emit                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.emitString                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.flushHTML                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.lexIdent                        | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.lexInlineHTML                   | 71.40%   | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.lexNumber                       | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.lexOperator                     | 94.10%   | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.lexPHP                          | 100.00%  | 20        |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.lexString                       | 97.50%   | 19        |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.lexVar                          | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.run                             | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.skipBlockComment                | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.skipLineComment                 | 75.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.skipShebang                     | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | lexer.writeEscape                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | newLexer                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | nodeChunk[T].new                      | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | numLit                                | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | octalRun                              | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.atEOF                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.classFollowsModifiers          | 87.50%   | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.cur                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.eatOp                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.interpExpr                     | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.interpSubscript                | 87.50%   | 7         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.isKw                           | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.isOp                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.lowerChainedAlloc              | 96.00%   | 11        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newArrayLit                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newAssign                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newAssignExpr                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newBinary                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newCall                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newConstRef                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newEcho                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newExprStmt                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newIndex                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newLit                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newMethodCall                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newParen                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newProp                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newStringLit                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newUnary                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.newVar                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.next                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.optSemi                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseAbstractMethod            | 80.00%   | 1         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseAnonClass                 | 78.90%   | 6         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseArgs                      | 78.60%   | 6         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseArrayLiteral              | 77.30%   | 11        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseAssign                    | 94.70%   | 13        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseBinary                    | 82.10%   | 26        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseBlock                     | 86.70%   | 9         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseCaseBody                  | 77.80%   | 6         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseClass                     | 88.90%   | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseClassBody                 | 87.90%   | 43        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseClassHeritage             | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseClosure                   | 83.30%   | 6         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseClosureUses               | 78.60%   | 8         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseConsts                    | 84.20%   | 9         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseDeclare                   | 57.10%   | 16        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseDoWhile                   | 68.80%   | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseEcho                      | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseExpr                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseExprStmt                  | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseFields                    | 88.90%   | 10        |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseFor                       | 63.60%   | 8         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseForeach                   | 82.10%   | 18        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseForeachTarget             | 80.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseFunction                  | 90.90%   | 9         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseGlobal                    | 90.90%   | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseIdentExpr                 | 86.70%   | 12        |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseIf                        | 61.80%   | 17        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseInclude                   | 83.30%   | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseIncludeExpr               | 81.80%   | 6         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseInstanceOf                | 90.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseInterface                 | 90.90%   | 29        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseInterp                    | 90.00%   | 4         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseList                      | 62.50%   | 8         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseModifiedClass             | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseNamedExpr                 | 84.40%   | 24        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseNamespace                 | 80.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseNew                       | 82.60%   | 13        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseParamDecoration           | 100.00%  | 3         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseParams                    | 76.20%   | 11        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parsePostfix                   | 81.80%   | 56        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parsePow                       | 90.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parsePrimary                   | 82.80%   | 14        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseQualifiedName             | 94.40%   | 7         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseReturn                    | 88.90%   | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseReturnType                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseSignature                 | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseSimpleStmt                | 87.50%   | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseStaticVar                 | 88.90%   | 10        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseStmt                      | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseStmtNode                  | 94.00%   | 25        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseStmts                     | 100.00%  | 20        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseSubExpr                   | 75.00%   | 3         |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseSwitch                    | 67.60%   | 25        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseTernary                   | 82.40%   | 11        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseThrow                     | 83.30%   | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseTry                       | 83.90%   | 13        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseTypeHint                  | 100.00%  | 14        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseUnary                     | 84.40%   | 19        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseUnset                     | 82.40%   | 7         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseUse                       | 85.70%   | 16        |
-| ❌     | github.com/titpetric/phpscript/parser               | parser.parseVarRef                    | 76.50%   | 14        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.parseWhile                     | 66.70%   | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.peek                           | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.pushStmt                       | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.qualify                        | 94.10%   | 18        |
-| ✅     | github.com/titpetric/phpscript/parser               | parser.setFieldSpans                  | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.advance                  | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.consume                  | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.emitArr                  | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.emitChar                 | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.emitInterp               | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.emitSubscript            | 66.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.run                      | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanBlockComment         | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanIdent                | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanInlineHTML           | 91.30%   | 13        |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanLineComment          | 85.70%   | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanNumber               | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanOperator             | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanPHP                  | 100.00%  | 15        |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanString               | 100.00%  | 10        |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanVariable             | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/parser               | phpTokenizer.scanWhitespace           | 100.00%  | 4         |
-| ❌     | github.com/titpetric/phpscript/parser               | repeatableExpr                        | 47.60%   | 25        |
-| ✅     | github.com/titpetric/phpscript/parser               | scanCurly                             | 91.70%   | 9         |
-| ✅     | github.com/titpetric/phpscript/parser               | scanInterp                            | 100.00%  | 16        |
-| ✅     | github.com/titpetric/phpscript/parser               | scanNumber                            | 100.00%  | 38        |
-| ✅     | github.com/titpetric/phpscript/parser               | scanSimple                            | 95.80%   | 13        |
-| ✅     | github.com/titpetric/phpscript/parser               | scratch[T].drop                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | scratch[T].mark                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | scratch[T].push                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | scratch[T].take                       | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/parser               | skipQuoted                            | 75.00%   | 6         |
-| ✅     | github.com/titpetric/phpscript/parser               | token.String                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/parser               | tokenizeFrom                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | AcceptsHTML                           | 100.00%  | 12        |
-| ✅     | github.com/titpetric/phpscript/runner               | ArgumentCountError.Error              | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | ArgumentCountError.ThrowableClass     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | ArithmeticError.Error                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | ArithmeticError.ThrowableClass        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Bindings                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.AddResponseHeader             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.Answered                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.Cleanup                       | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.Errors                        | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.GetAllHeaders                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.HTTPResponseCode              | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.Header                        | 95.50%   | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.IsUpload                      | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.RawBody                       | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.Register                      | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.ResponseHeaders               | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.ResponseStatus                | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.SetDefaultHeader              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.SetRawBody                    | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.StatusFor                     | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.WriteResponse                 | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.collectUploads                | 88.90%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.decodeBody                    | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.filesArray                    | 94.70%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.memoryFootprint               | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.parseBody                     | 85.20%   | 14        |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.pathValues                    | 88.90%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.recordError                   | 66.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.requestArray                  | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.serverArray                   | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Context.serverVars                    | 100.00%  | 5         |
-| ❌     | github.com/titpetric/phpscript/runner               | DeepSize                              | 43.20%   | 31        |
-| ❌     | github.com/titpetric/phpscript/runner               | EstimateValueSize                     | 26.70%   | 21        |
-| ✅     | github.com/titpetric/phpscript/runner               | ExitError.Error                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | ExprCache.Clear                       | 83.30%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | ExprCache.GetSource                   | 83.30%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | ExprCache.Len                         | 80.00%   | 1         |
-| ❌     | github.com/titpetric/phpscript/runner               | ExprCache.SetSource                   | 78.60%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | ExprCache.getFlat                     | 83.30%   | 1         |
-| ❌     | github.com/titpetric/phpscript/runner               | ExprCache.setFlat                     | 57.10%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | FileMode.Mode                         | 87.50%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | FileMode.String                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | FileMode.UnmarshalYAML                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | FromRequest                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | FromRequestOptions                    | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/runner               | HostPanicError.Error                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | IncludeCache.Clear                    | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | IncludeCache.Get                      | 83.30%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | IncludeCache.Len                      | 80.00%   | 1         |
-| ❌     | github.com/titpetric/phpscript/runner               | IncludeCache.Set                      | 78.60%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | IsExit                                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | New                                   | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewContext                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewExprCache                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewExprCacheWithCapacity              | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewFlatStack                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewIncludeCache                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewIncludeCacheWithCapacity           | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewRuntimeException                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewScope                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | NewTranspiler                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Options.autoloadDir                   | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Options.inputLimits                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | ParseFileMode                         | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | ParseSize                             | 94.40%   | 9         |
-| ✅     | github.com/titpetric/phpscript/runner               | RegisterBinding                       | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | RequestContext                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.AccountRequest                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Callable                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.ClassExists                   | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Const                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Context                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Database                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.DeclaredClasses               | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.DefinedConstants              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.DefinedFunctions              | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Eval                          | 97.60%   | 18        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Exit                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.FS                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.FreezeStdlib                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.FunctionExists                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.IncludeFile                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.IncludePath                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.IncludedFiles                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Load                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.LoadFile                      | 64.30%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.LookupConstructor             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.LookupFunc                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.MemoryLimit                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.MemoryPeak                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.MemoryUsage                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.MemoryWalk                    | 82.60%   | 16        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.MethodExists                  | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Observe                       | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.OnError                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Output                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.PHPInfo                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.PopOutput                     | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.PushOutput                    | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.RecordError                   | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.RegisterAutoloader            | 50.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.RegisterClass                 | 88.90%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.RegisterConstructor           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.RegisterFunc                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.RegisterShutdown              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.ResetSession                  | 96.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Run                           | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SAPI                          | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.SPLAutoload                   | 73.30%   | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SetConst                      | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SetContext                    | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SetCoverage                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SetExprCache                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SetGlobal                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SetIncludeCache               | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SetIncludePath                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.SetIncludeResolver            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.Stdin                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.UnregisterAutoloader          | 71.40%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.UpdateFilename                | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.UpdateIncludedFiles           | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.UpdateStatus                  | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.UploadFileMode                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.WorkDir                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.WritablePaths                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.acquireEnv                    | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.addSourceSpans                | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.assignTo                      | 45.90%   | 21        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.autoload                      | 88.90%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.bindParams                    | 90.50%   | 16        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.boundGoMethod                 | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.boundMethod                   | 71.40%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.buildEnv                      | 97.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.callGoMethod                  | 95.50%   | 9         |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.callableFromArray             | 50.00%   | 10        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.callableFromString            | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.callableWithScope             | 54.50%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.checkMemory                   | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.classDefaultScope             | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.compile                       | 83.30%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.compileExpr                   | 92.60%   | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.container                     | 77.80%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.evalConcat                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.evalIncDec                    | 81.80%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.evalInclude                   | 90.00%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.exec                          | 87.00%   | 24        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.execAssign                    | 81.80%   | 43        |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.execDoWhile                   | 78.60%   | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.execFor                       | 81.00%   | 23        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.execForeach                   | 82.10%   | 44        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.execOne                       | 84.00%   | 21        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.execStaticVar                 | 91.70%   | 10        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.execTry                       | 92.00%   | 22        |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.execUnset                     | 62.50%   | 24        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.exprConfig                    | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.folderAutoload                | 95.20%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.hasClass                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.helperCall                    | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.helperClassConst              | 89.70%   | 25        |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.helperFunc                    | 78.60%   | 12        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.helperGet                     | 81.00%   | 22        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.helperInvoke                  | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.helperNew                     | 87.00%   | 42        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.helperRef                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.helperSet                     | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.helperStaticCall              | 78.60%   | 23        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.helperStaticProp              | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.hoist                         | 96.80%   | 15        |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.includeFile                   | 80.00%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.installFunc                   | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.invokeClosure                 | 95.00%   | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.invokeFunc                    | 90.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.invokeMethod                  | 87.00%   | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.invokeStatic                  | 68.80%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.invokeWithScopeContext        | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.joinParts                     | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.lastMemoryUsage               | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.lookupClass                   | 87.50%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.lookupConstructor             | 83.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.lookupFunc                    | 83.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.newScope                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.popFrame                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.pushFrame                     | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.readLValue                    | 60.70%   | 15        |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.recordTraceError              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.registerUserFunc              | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/runner               | Runtime.releaseEnv                    | 71.40%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.resolveFSPath                 | 75.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.resolveInclude                | 84.60%   | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.runDeferred                   | 88.90%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.runFlat                       | 86.70%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.runInterpreted                | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.runShutdown                   | 92.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.setCompiledExpr               | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.setVar                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.staticBag                     | 92.90%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.staticMethod                  | 75.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.staticStorage                 | 62.50%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.staticVarBag                  | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.trace                         | 90.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.traceContext                  | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Runtime.typeEnvBase                   | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | RuntimeException.Error                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | RuntimeException.ThrowableClass       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Scope.Defer                           | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/runner               | Scope.DefinedVars                     | 77.80%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Scope.Get                             | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Scope.Set                             | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Scope.Unset                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Scope.bindStatic                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | ScopeFromContext                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | ScriptEnvironment                     | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | Size.Bytes                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Size.Exceeds                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Size.String                           | 66.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | Size.UnmarshalYAML                    | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.Calls                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.Closures                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.Exprs                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.Idents                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.Reset                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.Transpile                  | 88.90%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.add                        | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.addCall                    | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.addConst                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.addVar                     | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/runner               | Transpiler.emit                       | 78.10%   | 66        |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.emitArgs                   | 85.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.emitArray                  | 84.60%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.emitBinary                 | 90.00%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.emitCall                   | 93.30%   | 10        |
-| ❌     | github.com/titpetric/phpscript/runner               | Transpiler.emitInterp                 | 73.30%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | Transpiler.mark                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | TypeError.Error                       | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | TypeError.ThrowableClass              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | UndefinedConstantError.Error          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | UndefinedConstantError.ThrowableClass | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | UploadedFile.refuse                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | WantsErrorPage                        | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | WithRoutePattern                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | acquireTranspiler                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | adapt                                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | addInt                                | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | applyAssignOp                         | 83.30%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | argAt                                 | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/runner               | assignGoField                         | 76.50%   | 9         |
-| ❌     | github.com/titpetric/phpscript/runner               | assignGoIndex                         | 77.40%   | 21        |
-| ✅     | github.com/titpetric/phpscript/runner               | assignable                            | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | autoloadSegments                      | 100.00%  | 4         |
-| ❌     | github.com/titpetric/phpscript/runner               | autoloaderKey                         | 46.20%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | bindConstructorID                     | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | bitwiseString                         | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | buildArgs                             | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/runner               | callResult                            | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | capBody                               | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | captureClosureEnv                     | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | catchValue                            | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | cleanFSPath                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | coerceArg                             | 88.90%   | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | combineErrors                         | 87.50%   | 4         |
-| ❌     | github.com/titpetric/phpscript/runner               | compileWith                           | 50.00%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | concat                                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | constIdent                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | contentLength                         | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | contextWithEnv                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | contextWithScope                      | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | evalEnv.layer                         | 50.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | fieldByNameFold                       | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Array                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Binary                       | 88.90%   | 16        |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.BindLocals                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Call                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.CallMethod                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Cast                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.CatchValue                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.CheckMemory                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.ClassConst                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Constant                     | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Construct                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Echo                         | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/runner               | flatHost.Entries                      | 65.00%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.GetProperty                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Include                      | 89.50%   | 13        |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Index                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Lookup                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.MatchCatch                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.MemoryCheckInterval          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.PopLiveWalker                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.PushLiveWalker               | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.RegisterClass                | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.SetEntry                     | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.SetGlobal                    | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.SetIndex                     | 89.50%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.SetProperty                  | 87.50%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.TakeLocals                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Throw                        | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Truthy                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.Unary                        | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.UnsetIndex                   | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.boundScope                   | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | flatHost.pullScope                    | 66.70%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | flattenConcat                         | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | funcGetArgs                           | 75.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | helperArray                           | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | helperCast                            | 95.00%   | 7         |
-| ✅     | github.com/titpetric/phpscript/runner               | helperConcat                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | helperIndex                           | 85.70%   | 12        |
-| ✅     | github.com/titpetric/phpscript/runner               | helperPair                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | helperToObject                        | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/runner               | instanceOfClass                       | 44.40%   | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | instanceOfName                        | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | invokeAny                             | 94.10%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | invokeFast                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | isFloat                               | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | isMultipart                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | isNumeric                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | isObjectValue                         | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | isPHPLabel                            | 83.30%   | 8         |
-| ✅     | github.com/titpetric/phpscript/runner               | isURLEncoded                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | joinCall                              | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | litSource                             | 92.30%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | lookupPHPMethod                       | 83.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | mapToArray                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | matchCatchType                        | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | mediaType                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | methodByNameFold                      | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | mulInt                                | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | nameCallError                         | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | namedScalarInt                        | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | newCompiledExpr                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | newObjectError                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | normalizeKey                          | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/runner               | numericPrefix                         | 65.60%   | 29        |
-| ✅     | github.com/titpetric/phpscript/runner               | objectError.ThrowableClass            | 66.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | paramType                             | 75.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | parseStatusLine                       | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | phpArith                              | 86.80%   | 28        |
-| ✅     | github.com/titpetric/phpscript/runner               | phpBitNot                             | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | phpBitwise                            | 93.80%   | 12        |
-| ✅     | github.com/titpetric/phpscript/runner               | phpClassName                          | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | phpDebugType                          | 20.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | phpFloatString                        | 93.80%   | 10        |
-| ✅     | github.com/titpetric/phpscript/runner               | phpInstanceOf                         | 90.00%   | 10        |
-| ✅     | github.com/titpetric/phpscript/runner               | phpLooseEqual                         | 80.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | phpNegate                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | phpParamTypeName                      | 38.50%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | phpPow                                | 94.40%   | 14        |
-| ✅     | github.com/titpetric/phpscript/runner               | phpString                             | 92.30%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | phpTruthy                             | 81.80%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | plural                                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | releaseTranspiler                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner               | resolveClassName                      | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/runner               | routePattern                          | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | saveUpload                            | 80.80%   | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | scopeBuiltin                          | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | setScopeFile                          | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | splitStaticCallable                   | 100.00%  | 4         |
-| ❌     | github.com/titpetric/phpscript/runner               | stringToInt                           | 58.30%   | 6         |
-| ✅     | github.com/titpetric/phpscript/runner               | subInt                                | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | superglobal                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | throwableClassOf                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | throwableMethod                       | 42.90%   | 4         |
-| ✅     | github.com/titpetric/phpscript/runner               | toFloat                               | 61.50%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner               | toInt                                 | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | typeEnvNature                         | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | unionArrays                           | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/runner               | uploadArray                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | uploadBaseName                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | uploadListArray                       | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/runner               | uploadValue                           | 87.50%   | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | varIdent                              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner               | wantsContext                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | Collector.Blocks                      | 97.00%   | 10        |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | Collector.Files                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | Collector.Functions                   | 91.70%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | Collector.Hit                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | Collector.Register                    | 90.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | Collector.registerFuncs               | 92.60%   | 19        |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | New                                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | coverSpan                             | 60.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/runner/coverage      | coverable                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | Exception.Error                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | Exception.GetCode                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | Exception.GetMessage                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | Exception.ThrowableClass              | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | NewException                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | Register                              | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | RegisterFS                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | newThrowable                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib               | registerExceptions                    | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | Register                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | backtrackGroupCount                   | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | backtrackIndex                        | 88.90%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | backtrackOptions                      | 62.50%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | buffers.contents                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | buffers.level                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | buffers.pop                           | 90.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | buffers.push                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | closingDelim                          | 33.30%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | compilePCRE                           | 92.30%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | date                                  | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | groupStart                            | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | groupText                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | matchGroups                           | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | matchOffset                           | 87.50%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | matchValue                            | 75.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | needsBacktracking                     | 100.00%  | 15        |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | newBuffers                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | newRegexpCache                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | newRuneOffsets                        | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | participatingGroups                   | 83.30%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | pattern.backtracker                   | 75.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | pattern.findAllIndex                  | 92.30%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | pattern.findIndex                     | 88.90%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | pattern.numGroups                     | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | pattern.replaceAll                    | 22.20%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | patternOrder                          | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | pcreReplacement                       | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | phpPregQuote                          | 90.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | regexpCache.compilePCRE               | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | regexpCache.phpPregMatch              | 92.30%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | regexpCache.phpPregMatchAll           | 84.60%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | regexpCache.phpPregReplace            | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | regexpCache.phpPregReplaceCallback    | 90.60%   | 8         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | regexpCache.phpPregSplit              | 95.00%   | 14        |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | registerBuffers                       | 96.70%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | registerDatetime                      | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | registerRegex                         | 97.40%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | registerRegexConstants                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | runeOffsets.byteOffset                | 100.00%  | 3         |
-| ❌     | github.com/titpetric/phpscript/stdlib/compat        | sanitizeEscapes                       | 11.80%   | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | setOrder                              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | splitPCRE                             | 75.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | splitPieces.add                       | 80.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | splitPieces.result                    | 42.90%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | strtotime                             | 86.70%   | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | translateFlags                        | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/compat        | writeRef                              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | NewSharedMemory                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | NewSharedMemoryBinding                | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | RegisterDefer                         | 88.90%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | RegisterSharedMemory                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | RegisterShutdown                      | 83.30%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | SharedMemory.Count                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | SharedMemory.Get                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | SharedMemory.Incr                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | SharedMemory.Set                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | SharedMemoryContext                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | abs                                   | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | allZeroDigits                         | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayColumnValue                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayEntries                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayFind                             | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayHasKey                           | 25.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayIdentical                        | 87.50%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayIsList                           | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayReplay                           | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayStrict                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | arrayTarget                           | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | asciiLower                            | 100.00%  | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | buildQuery                            | 100.00%  | 8         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | callbackLess                          | 75.00%   | 1         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | classNameOf                           | 45.50%   | 8         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | classOf                               | 20.00%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | dumpKey                               | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | edgeValue                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | expSign                               | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | exportFloat                           | 75.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | exportKey                             | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | exportScalar                          | 90.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | exportString                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | fieldScope                            | 50.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | incrementDigits                       | 83.30%   | 3         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | integerDigits                         | 54.20%   | 14        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | isComposite                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | isObject                              | 91.70%   | 6         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | isObjectLike                          | 64.30%   | 7         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | jsonDecodeStream                      | 76.70%   | 22        |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | jsonDecodeValue                       | 30.00%   | 8         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | jsonEncodeValue                       | 90.30%   | 16        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | jsonObject.MarshalJSON                | 87.50%   | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | jsonObject.add                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | lastIndexOrFalse                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | mulInt64                              | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | newBase64Values                       | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | newJSONObject                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | newURLSafe                            | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | newValueWriter                        | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | objectFields                          | 41.70%   | 15        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | objectKey                             | 66.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | osFamily                              | 28.60%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | osName                                | 40.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | padTo                                 | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpAbs                                | 75.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayColumn                        | 100.00%  | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayFilter                        | 86.40%   | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayFlip                          | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayKeyExists                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayMap                           | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayMerge                         | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayPop                           | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayPush                          | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayReduce                        | 72.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayReverse                       | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArraySearch                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayShift                         | 100.00%  | 2         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | phpArraySlice                         | 77.80%   | 8         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArraySplice                        | 92.00%   | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArraySpliceEnd                     | 83.30%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArraySpliceReplacement             | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArraySum                           | 100.00%  | 13        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArrayUnshift                       | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpArsort                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpAsort                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpBase64Decode                       | 96.90%   | 22        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpBase64Encode                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpBin2hex                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpCRC32                              | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpCallUserFuncArray                  | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpChr                                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpCompact                            | 87.50%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpExplode                            | 50.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpFormatFloat                        | 83.30%   | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpGetType                            | 92.30%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpHTTPBuildQuery                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpHex2bin                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpHexdec                             | 100.00%  | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpImplode                            | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpInArray                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpIntval                             | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpJSONDecode                         | 75.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpJSONEncode                         | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpKrsort                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpKsort                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpLcfirst                            | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpLog                                | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpMbSubstr                           | 100.00%  | 11        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpMinMax                             | 84.60%   | 9         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpNumberFormat                       | 87.50%   | 22        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpOrd                                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpParseStr                           | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpPow                                | 92.00%   | 18        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpRange                              | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpRawURLDecode                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpRawURLEncode                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpRound                              | 86.70%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpRsort                              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpSort                               | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpSprintf                            | 40.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrContains                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrEndsWith                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrPad                             | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrReplace                         | 100.00%  | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrSplit                           | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrStartsWith                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStripos                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrpos                             | 85.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrrev                             | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpStrripos                           | 75.00%   | 1         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | phpStrtr                              | 26.30%   | 21        |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | phpSubstr                             | 61.10%   | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpSubstrCount                        | 66.70%   | 1         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | phpSubstrReplace                      | 77.80%   | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpTrim                               | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpURLDecode                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpURLEncode                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpUcfirst                            | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpUcwords                            | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | phpUsort                              | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | printString                           | 90.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | queryValue                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | rangeCharSeq                          | 88.20%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | rangeChars                            | 85.70%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | rangeFloats                           | 81.80%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | rangeInts                             | 86.70%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | rangeIsFloat                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | rangeStepIsFloat                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerArraySort                     | 94.40%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerArrays                        | 92.10%   | 19        |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | registerClosure                       | 45.50%   | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerEncoding                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerEnvironment                   | 100.00%  | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerJSON                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerLang                          | 93.20%   | 47        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerMath                          | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerMbstring                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerOutput                        | 95.20%   | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerPlatform                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerPlatformConstants             | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | registerPlatformFuncs                 | 59.70%   | 30        |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | registerReflection                    | 57.40%   | 28        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerStrings                       | 99.40%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | registerTokenizer                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | roundDecimal                          | 89.30%   | 11        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | runeSlice                             | 100.00%  | 6         |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | searchLast                            | 12.50%   | 9         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | searchStart                           | 80.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | sortEntries                           | 88.90%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | sortInt64Array                        | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | sortLess                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | sortValues                            | 85.00%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | strtolInt                             | 97.60%   | 37        |
-| ❌     | github.com/titpetric/phpscript/stdlib/core          | substrWindow                          | 63.60%   | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | urlEncode                             | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | valueWriter.dump                      | 92.10%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | valueWriter.enter                     | 85.70%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | valueWriter.export                    | 91.30%   | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | valueWriter.exportEntry               | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | valueWriter.leave                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | valueWriter.pad                       | 60.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/core          | valueWriter.printR                    | 93.30%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | Register                              | 82.60%   | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | RegisterHash                          | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | RegisterIdentifiers                   | 90.90%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | RegisterRandom                        | 84.20%   | 11        |
-| ❌     | github.com/titpetric/phpscript/stdlib/crypto        | costFrom                              | 64.70%   | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | costOption                            | 41.70%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | encodeCrockford                       | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | goForm                                | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | timestampedID                         | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | timingDecoy                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/crypto        | uniformInt64                          | 87.50%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.Close                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.Get                          | 78.60%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.GetAll                       | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.Insert                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.InsertID                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.Query                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.Replace                      | 87.50%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.SetID                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.Update                       | 87.50%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.name                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.observe                      | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.refuseQuery                  | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.refuseWrite                  | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.span                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Database.withSpan                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseMigrate.Load                  | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseMigrate.Run                   | 85.30%   | 3         |
-| ❌     | github.com/titpetric/phpscript/stdlib/database      | DatabaseMigrate.observe               | 66.70%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseOption.Apply                  | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.Connect              | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.List                 | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.Open                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.Register             | 81.80%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.cached               | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.credential           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.parseCredential      | 80.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.resolve              | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | DatabaseProvider.with                 | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | New                                   | 94.10%   | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | NewDatabaseProvider                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Open                                  | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | Register                              | 100.00%  | 2         |
-| ❌     | github.com/titpetric/phpscript/stdlib/database      | RegisterConnections                   | 76.50%   | 8         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | RegisterMigrate                       | 85.70%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | addOptionToDSN                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | cleanDSN                              | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | databaseOption                        | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | databaseSpan                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | isSQLiteMemoryDSN                     | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | leadingKeyword                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | parseQuery                            | 100.00%  | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | provider                              | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | queryArgs                             | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | queryInfo.isRead                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | queryInfo.record                      | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | queryInfo.refusal                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | readOnlyError.Error                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | readOnlyError.Is                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/database      | recordRows                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | Register                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | RegisterRoot                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | Within                                | 66.70%   | 1         |
-| ❌     | github.com/titpetric/phpscript/stdlib/files         | WritableRoots                         | 76.90%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | byteReader.Read                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | copyFile                              | 85.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | countingWriter.Write                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | csvControls                           | 90.90%   | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | inputSource                           | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | lookupGroup                           | 60.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | lookupUser                            | 70.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | moveFile                              | 80.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | openMode                              | 60.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | outputStream.Write                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | registerCSV                           | 94.30%   | 14        |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | registerPaths                         | 75.00%   | 0         |
-| ❌     | github.com/titpetric/phpscript/stdlib/files         | registerReads                         | 47.60%   | 36        |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | registerStreams                       | 82.90%   | 23        |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | registerUploads                       | 93.30%   | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | registerWrites                        | 92.30%   | 39        |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | root.resolve                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | root.resolveWrite                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | root.sourceFS                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | root.statSource                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | root.writableAllows                   | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/files         | writes                                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | Register                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | RegisterRoot                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | abs                                   | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | alphaFromByte                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | blendPixel                            | 44.40%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | byteFromAlpha                         | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | checkDimensions                       | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | checkRGB                              | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | clampComponent                        | 60.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | copyResampled                         | 81.80%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | decoder                               | 100.00%  | 5         |
-| ❌     | github.com/titpetric/phpscript/stdlib/gd            | encodeTo                              | 78.30%   | 13        |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | floodFill                             | 90.30%   | 31        |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | imageTypeOf                           | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | image_ptIn                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | line                                  | 100.00%  | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | normalise                             | 60.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | packColor                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | registerColor                         | 87.50%   | 9         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | registerConstants                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | registerCreate                        | 96.20%   | 4         |
-| ❌     | github.com/titpetric/phpscript/stdlib/gd            | registerDraw                          | 73.10%   | 18        |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | registerInfo                          | 84.20%   | 10        |
-| ❌     | github.com/titpetric/phpscript/stdlib/gd            | registerWrite                         | 70.60%   | 21        |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | rgba                                  | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | root.resolve                          | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | root.resolveWrite                     | 42.90%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | toInt                                 | 60.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | unpackColor                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/gd            | wrap                                  | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Client.Get                            | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Client.Parallel                       | 96.70%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Client.Send                           | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Client.prepare                        | 93.30%   | 8         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Client.send                           | 93.50%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | NewClient                             | 87.10%   | 12        |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | NewRequest                            | 92.90%   | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Register                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Response.Body                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Response.Err                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Response.Header                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Response.JSON                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Response.OK                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | Response.Status                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | toBool                                | 28.60%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | toDuration                            | 66.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | toHeaders                             | 77.80%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | toInt                                 | 27.30%   | 3         |
-| ❌     | github.com/titpetric/phpscript/stdlib/http          | toRequestMap                          | 73.70%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/http          | toString                              | 50.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/info          | Register                              | 50.00%   | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/internals     | Register                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/logger        | Logger.Error                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/logger        | Logger.Info                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/logger        | Logger.WithLogger                     | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/logger        | Logger.label                          | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/logger        | Logger.slog                           | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/logger        | New                                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/logger        | cause                                 | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/pexec         | Register                              | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/stdlib/pexec         | phpExec                               | 68.40%   | 13        |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | Manager.Get                           | 71.40%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | Manager.Start                         | 75.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | Manager.Valid                         | 87.50%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | Manager.currentID                     | 88.90%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | NewManager                            | 100.00%  | 1         |
-| ❌     | github.com/titpetric/phpscript/stdlib/session       | NewStorageDisk                        | 70.60%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | NewStorageMemory                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | Register                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | StorageDisk.Delete                    | 66.70%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | StorageDisk.Load                      | 66.70%   | 2         |
-| ❌     | github.com/titpetric/phpscript/stdlib/session       | StorageDisk.Prune                     | 66.70%   | 17        |
-| ❌     | github.com/titpetric/phpscript/stdlib/session       | StorageDisk.Save                      | 66.70%   | 7         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | StorageDisk.sessionPath               | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | StorageMemory.Delete                  | 75.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | StorageMemory.Load                    | 87.50%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | StorageMemory.Prune                   | 81.80%   | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | StorageMemory.Save                    | 90.90%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | missing                               | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | traceStorage                          | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | tracedStorage.Load                    | 92.90%   | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | tracedStorage.Save                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/session       | validSessionID                        | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | Limits.maxNesting                     | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | Limits.maxVars                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | ParsePairs                            | 100.00%  | 6         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | ParseStr                              | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | RawURLDecode                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | URLDecode                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | assign                                | 100.00%  | 9         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | child                                 | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | decode                                | 100.00%  | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | mangle                                | 100.00%  | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | needsDecoding                         | 100.00%  | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | parseKey                              | 100.00%  | 10        |
-| ✅     | github.com/titpetric/phpscript/stdlib/shared        | unhex                                 | 80.00%   | 4         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | Memory.Messages                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | Memory.Next                           | 85.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | Memory.Send                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | NewMemory                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | NewSMTP                               | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | NewSMTPBinding                        | 96.30%   | 9         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | Register                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | RegisterConfig                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | RegisterSMTP                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | SMTP.Send                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | SMTP.Sender                           | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/stdlib/smtp          | SMTP.deliver                          | 23.30%   | 14        |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | SMTP.send                             | 80.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | SMTP.tlsConfig                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | SenderContext                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | Unconfigured                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | buildMessage                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | envelopeAddress                       | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | header                                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | registerUnconfiguredMail              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | senderFunc.Send                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | toBool                                | 85.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | toInt                                 | 25.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | toString                              | 50.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/smtp          | traceDelivery                         | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/span          | Register                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/time          | Register                              | 98.90%   | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/time          | clock.parse                           | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/stdlib/time          | clock.setTimezone                     | 80.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/stdlib/time          | location                              | 66.70%   | 3         |
-| ✅     | github.com/titpetric/phpscript/stdlib/time          | newDuration                           | 25.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Module.Snapshot                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Module.Trace                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Module.Tracer                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Module.TrackLifecycle                 | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Module.UpdateFilename                 | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Module.UpdateIncludedFiles            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Module.UpdateStatus                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Mount                                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | New                                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | NewModule                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | NewOptions                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | NewStorageDisk                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Recordable                            | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | SpanFromContext                       | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | SpanSource                            | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | Start                                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | StartSpan                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | TraceFromContext                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | TraceHost                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | TraceID                               | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | TracingMiddleware                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | WithSpanFilename                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | WithSpanLine                          | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | WithTrace                             | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/telemetry            | withSource                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/tests                | BindingFuncs                          | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | BindingRecord.Label                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | FindFixtures                          | 87.00%   | 41        |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.Coverage                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.RootDir                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.Runs                          | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.SetAppRoot                    | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.SetCoverage                   | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.SetRootFS                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.flatIncludeCache              | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.includeCache                  | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.includePrelude                | 85.70%   | 5         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.program                       | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.realRoot                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.runnerOptions                 | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/tests                | Fixture.stdin                         | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/tests                | NewFailStorage                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | NewStorage                            | 75.00%   | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | ParseFixture                          | 75.00%   | 5         |
-| ✅     | github.com/titpetric/phpscript/tests                | RegisterBindings                      | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | RunFixture                            | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/tests                | RunFixtureOn                          | 74.20%   | 20        |
-| ✅     | github.com/titpetric/phpscript/tests                | TestMain                              | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | bindingError.Error                    | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | buildFixtureRequestContext            | 97.70%   | 9         |
-| ✅     | github.com/titpetric/phpscript/tests                | collector.RegisterFunc                | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | embeddedFixtures                      | 85.30%   | 14        |
-| ✅     | github.com/titpetric/phpscript/tests                | errorChainContains                    | 60.00%   | 3         |
-| ✅     | github.com/titpetric/phpscript/tests                | executeFixturePHP                     | 96.80%   | 7         |
-| ✅     | github.com/titpetric/phpscript/tests                | executeFlatstack                      | 88.90%   | 7         |
-| ✅     | github.com/titpetric/phpscript/tests                | executePHP                            | 90.80%   | 7         |
-| ✅     | github.com/titpetric/phpscript/tests                | flatIncludeCacheFor                   | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | hostPanicFast                         | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | hostPanicReflect                      | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | includeCacheFor                       | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | loadFixtureFile                       | 75.00%   | 2         |
-| ✅     | github.com/titpetric/phpscript/tests                | memStorage.All                        | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/tests                | memStorage.Get                        | 100.00%  | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | memStorage.Len                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | memStorage.Set                        | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | memStorage.Tenant                     | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | newFlatstackTestRuntime               | 100.00%  | 0         |
-| ❌     | github.com/titpetric/phpscript/tests                | parseArgs                             | 76.20%   | 13        |
-| ✅     | github.com/titpetric/phpscript/tests                | phpEnv                                | 33.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/tests                | phpFatal                              | 100.00%  | 4         |
-| ❌     | github.com/titpetric/phpscript/tests                | phpPrepend                            | 5.90%    | 9         |
-| ✅     | github.com/titpetric/phpscript/tests                | phpRun.diagnostics                    | 100.00%  | 2         |
-| ✅     | github.com/titpetric/phpscript/tests                | registerBindings                      | 85.40%   | 18        |
-| ✅     | github.com/titpetric/phpscript/tests                | registerPanicBindings                 | 100.00%  | 0         |
-| ✅     | github.com/titpetric/phpscript/tests                | setTestEnv                            | 100.00%  | 3         |
-| ✅     | github.com/titpetric/phpscript/tests                | testPHPFS                             | 83.30%   | 2         |
-| ✅     | github.com/titpetric/phpscript/tests                | toString                              | 66.70%   | 1         |
-| ✅     | github.com/titpetric/phpscript/tests                | unionFS.Open                          | 90.00%   | 6         |
-| ✅     | github.com/titpetric/phpscript/tests                | writePHPScript                        | 58.80%   | 5         |
+| Status | Package              | Function                              | Coverage | Cognitive |
+|--------|----------------------|---------------------------------------|----------|-----------|
+| ✅     | .                    | loadConfig                            | 70.00%   | 3         |
+| ❌     |                      | parseConfigFile                       | 69.20%   | 10        |
+| ✅     | annotations          | HasStartup                            | 100.00%  | 5         |
+| ✅     |                      | NewRoute                              | 100.00%  | 0         |
+| ✅     |                      | NewScheduler                          | 100.00%  | 0         |
+| ✅     |                      | NewStartup                            | 100.00%  | 0         |
+| ✅     |                      | ParseRoutes                           | 100.00%  | 8         |
+| ✅     |                      | ParseSchedules                        | 93.80%   | 8         |
+| ✅     |                      | Route.Mount                           | 66.70%   | 1         |
+| ✅     |                      | Route.Register                        | 91.30%   | 13        |
+| ✅     |                      | Route.RegisterMux                     | 100.00%  | 1         |
+| ✅     |                      | Schedule.Next                         | 75.00%   | 4         |
+| ❌     |                      | Schedule.matchDay                     | 37.50%   | 6         |
+| ✅     |                      | Scheduler.Start                       | 90.00%   | 4         |
+| ✅     |                      | Scheduler.execute                     | 84.20%   | 7         |
+| ✅     |                      | Scheduler.loop                        | 81.80%   | 5         |
+| ✅     |                      | Scheduler.run                         | 72.70%   | 4         |
+| ✅     |                      | Startup.Start                         | 100.00%  | 5         |
+| ✅     |                      | Startup.execute                       | 81.80%   | 4         |
+| ✅     |                      | Startup.run                           | 100.00%  | 3         |
+| ✅     |                      | WithErrorPages                        | 100.00%  | 0         |
+| ✅     |                      | WithExcludedDirectory                 | 100.00%  | 2         |
+| ✅     |                      | WithFlatstack                         | 100.00%  | 0         |
+| ✅     |                      | WithModuleSuffix                      | 100.00%  | 0         |
+| ✅     |                      | WithObservers                         | 100.00%  | 5         |
+| ✅     |                      | WithOutput                            | 100.00%  | 0         |
+| ✅     |                      | WithRootDir                           | 100.00%  | 0         |
+| ✅     |                      | WithRunnerOptions                     | 100.00%  | 0         |
+| ✅     |                      | WithRuntimeFunc                       | 100.00%  | 2         |
+| ✅     |                      | comment                               | 100.00%  | 1         |
+| ✅     |                      | config.moduleName                     | 100.00%  | 1         |
+| ✅     |                      | config.newRuntime                     | 95.70%   | 5         |
+| ✅     |                      | durationUnit                          | 60.00%   | 1         |
+| ✅     |                      | eq                                    | 100.00%  | 4         |
+| ✅     |                      | handler.route                         | 100.00%  | 0         |
+| ✅     |                      | handler.serve                         | 97.60%   | 9         |
+| ✅     |                      | newConfig                             | 100.00%  | 1         |
+| ✅     |                      | newHandler                            | 100.00%  | 1         |
+| ✅     |                      | nextMidnight                          | 100.00%  | 1         |
+| ❌     |                      | parseScheduleSpec                     | 64.00%   | 17        |
+| ✅     |                      | platformRegistrar.Handle              | 100.00%  | 0         |
+| ✅     |                      | scanner.walk                          | 82.40%   | 15        |
+| ✅     |                      | serveMuxRegistrar.Handle              | 100.00%  | 1         |
+| ✅     |                      | splitScheduleArgs                     | 100.00%  | 3         |
+| ✅     |                      | tag                                   | 75.00%   | 1         |
+| ✅     |                      | weekdayName                           | 22.20%   | 1         |
+| ✅     | cmd/phpscript/info   | Run                                   | 92.30%   | 3         |
+| ✅     |                      | ctorParams                            | 100.00%  | 4         |
+| ❌     |                      | ctorReturn                            | 75.00%   | 6         |
+| ✅     |                      | methodParams                          | 80.00%   | 5         |
+| ✅     |                      | paramList                             | 100.00%  | 1         |
+| ✅     |                      | paramName                             | 100.00%  | 1         |
+| ✅     |                      | phpMethod                             | 66.70%   | 1         |
+| ✅     |                      | printBindings                         | 100.00%  | 4         |
+| ✅     |                      | printHostClass                        | 73.30%   | 5         |
+| ✅     |                      | printSourceTree                       | 85.20%   | 21        |
+| ✅     |                      | shortType                             | 75.00%   | 1         |
+| ✅     | cmd/phpscript/lint   | collect                               | 81.50%   | 22        |
+| ✅     |                      | hasFailure                            | 75.00%   | 3         |
+| ✅     |                      | isParseError                          | 100.00%  | 1         |
+| ✅     |                      | line                                  | 100.00%  | 1         |
+| ✅     |                      | newTable                              | 66.70%   | 1         |
+| ✅     |                      | reportArgs                            | 83.30%   | 2         |
+| ✅     |                      | run                                   | 95.30%   | 24        |
+| ✅     |                      | sink.summary                          | 75.00%   | 1         |
+| ✅     |                      | statusColor                           | 100.00%  | 1         |
+| ✅     |                      | writeReportHeader                     | 100.00%  | 0         |
+| ✅     | cmd/phpscript/run    | resolveEntrypoint                     | 80.00%   | 4         |
+| ✅     | cmd/phpscript/server | NewHandler                            | 100.00%  | 0         |
+| ❌     |                      | Run                                   | 46.40%   | 11        |
+| ✅     |                      | annotationOptions                     | 100.00%  | 0         |
+| ✅     |                      | buildVirtualHosts                     | 85.70%   | 8         |
+| ✅     |                      | documentRoot                          | 66.70%   | 1         |
+| ✅     |                      | errorPageNames                        | 100.00%  | 0         |
+| ✅     |                      | escapeEntry                           | 100.00%  | 1         |
+| ✅     |                      | formatSize                            | 100.00%  | 3         |
+| ✅     |                      | handler.ServeHTTP                     | 100.00%  | 13        |
+| ✅     |                      | handler.errorPage                     | 100.00%  | 4         |
+| ✅     |                      | handler.executes                      | 100.00%  | 4         |
+| ✅     |                      | handler.indexPage                     | 100.00%  | 4         |
+| ✅     |                      | handler.run                           | 96.10%   | 8         |
+| ✅     |                      | handler.serveAutoindex                | 91.70%   | 3         |
+| ✅     |                      | handler.serveErrorFile                | 85.70%   | 1         |
+| ✅     |                      | handler.serveErrorPage                | 100.00%  | 7         |
+| ✅     |                      | handler.serveNotFound                 | 100.00%  | 1         |
+| ✅     |                      | handler.servePHP                      | 100.00%  | 5         |
+| ✅     |                      | handler.serverVars                    | 100.00%  | 2         |
+| ✅     |                      | hostMux.ServeHTTP                     | 100.00%  | 1         |
+| ✅     |                      | newHandler                            | 77.80%   | 2         |
+| ✅     |                      | newHostMux                            | 100.00%  | 1         |
+| ✅     |                      | newVirtualHost                        | 93.00%   | 10        |
+| ✅     |                      | nonFatal                              | 100.00%  | 0         |
+| ✅     |                      | nonFatalModule.Start                  | 100.00%  | 3         |
+| ✅     |                      | normalizeHost                         | 100.00%  | 1         |
+| ✅     |                      | redirectToDirectory                   | 100.00%  | 1         |
+| ✅     |                      | redirectVars                          | 100.00%  | 1         |
+| ✅     |                      | renderAutoindex                       | 100.00%  | 10        |
+| ✅     |                      | routeOptions                          | 100.00%  | 4         |
+| ✅     |                      | serveStatus                           | 100.00%  | 0         |
+| ✅     |                      | writeAutoindexRow                     | 92.30%   | 5         |
+| ✅     | cmd/phpscript/test   | Options.coverReport                   | 100.00%  | 1         |
+| ✅     |                      | Options.runners                       | 100.00%  | 4         |
+| ✅     |                      | Run                                   | 81.00%   | 97        |
+| ✅     |                      | coverFilePath                         | 83.30%   | 2         |
+| ✅     |                      | coverFiles                            | 92.30%   | 9         |
+| ✅     |                      | coverFixtures                         | 100.00%  | 1         |
+| ✅     |                      | coverFuncs                            | 91.30%   | 14        |
+| ✅     |                      | coverRow.percent                      | 100.00%  | 1         |
+| ✅     |                      | coveragePercent                       | 87.50%   | 4         |
+| ✅     |                      | fileRows                              | 100.00%  | 7         |
+| ✅     |                      | fixtureCoverBlocks                    | 100.00%  | 18        |
+| ✅     |                      | fixtureCoverage                       | 66.70%   | 3         |
+| ✅     |                      | fixtureRun.label                      | 66.70%   | 1         |
+| ✅     |                      | folderCover.files                     | 66.70%   | 1         |
+| ✅     |                      | folderCover.lines                     | 66.70%   | 1         |
+| ✅     |                      | folderCoverage                        | 100.00%  | 7         |
+| ✅     |                      | formatDuration                        | 100.00%  | 0         |
+| ✅     |                      | formatGCRuns                          | 100.00%  | 1         |
+| ✅     |                      | formatMicros                          | 100.00%  | 0         |
+| ✅     |                      | funcRows                              | 100.00%  | 24        |
+| ✅     |                      | groupFixtures                         | 100.00%  | 3         |
+| ✅     |                      | mapFixtureBatch                       | 100.00%  | 5         |
+| ✅     |                      | mapFixtures                           | 100.00%  | 10        |
+| ✅     |                      | markdownCell                          | 100.00%  | 0         |
+| ✅     |                      | markdownMatrix.closeGroup             | 100.00%  | 0         |
+| ✅     |                      | markdownMatrix.writeGroup             | 88.90%   | 2         |
+| ✅     |                      | markdownMatrix.writeMarkdownRow       | 100.00%  | 1         |
+| ✅     |                      | markdownMatrix.writeRow               | 94.10%   | 8         |
+| ✅     |                      | markdownMatrix.writeSummary           | 100.00%  | 0         |
+| ✅     |                      | markdownTable.closeGroup              | 100.00%  | 0         |
+| ✅     |                      | markdownTable.writeGroup              | 88.90%   | 2         |
+| ✅     |                      | markdownTable.writeMarkdownRow        | 100.00%  | 1         |
+| ✅     |                      | markdownTable.writeResult             | 78.60%   | 5         |
+| ✅     |                      | markdownTable.writeSummary            | 100.00%  | 1         |
+| ✅     |                      | matrixRow.label                       | 66.70%   | 1         |
+| ❌     |                      | mergeCoverBlocks                      | 78.90%   | 12        |
+| ✅     |                      | newMarkdownTable                      | 100.00%  | 0         |
+| ✅     |                      | newMatrixTable                        | 42.90%   | 4         |
+| ✅     |                      | newResultTable                        | 66.70%   | 1         |
+| ✅     |                      | newTerminalMatrix                     | 100.00%  | 1         |
+| ✅     |                      | newTerminalTable                      | 100.00%  | 1         |
+| ✅     |                      | openReport                            | 85.70%   | 2         |
+| ✅     |                      | percentOf                             | 66.70%   | 1         |
+| ✅     |                      | percentileNs                          | 75.00%   | 3         |
+| ❌     |                      | reportArgs                            | 66.70%   | 8         |
+| ✅     |                      | reportBlocks                          | 100.00%  | 3         |
+| ✅     |                      | runFixtureLoop                        | 100.00%  | 18        |
+| ✅     |                      | runFixtureSamples                     | 90.00%   | 5         |
+| ✅     |                      | sortProfile                           | 83.30%   | 4         |
+| ✅     |                      | sortRows                              | 83.30%   | 4         |
+| ✅     |                      | statusColor                           | 100.00%  | 1         |
+| ✅     |                      | statusLabel                           | 100.00%  | 1         |
+| ✅     |                      | teeResultTable.closeGroup             | 100.00%  | 1         |
+| ✅     |                      | teeResultTable.writeGroup             | 100.00%  | 1         |
+| ✅     |                      | teeResultTable.writeResult            | 100.00%  | 1         |
+| ✅     |                      | teeResultTable.writeSummary           | 100.00%  | 1         |
+| ✅     |                      | terminalMatrix.closeGroup             | 100.00%  | 0         |
+| ✅     |                      | terminalMatrix.detailWidth            | 100.00%  | 1         |
+| ✅     |                      | terminalMatrix.fit                    | 100.00%  | 4         |
+| ✅     |                      | terminalMatrix.metricValues           | 20.00%   | 4         |
+| ✅     |                      | terminalMatrix.metrics                | 100.00%  | 1         |
+| ✅     |                      | terminalMatrix.sizeColumns            | 90.90%   | 14        |
+| ✅     |                      | terminalMatrix.writeBorder            | 100.00%  | 1         |
+| ✅     |                      | terminalMatrix.writeDetail            | 100.00%  | 0         |
+| ✅     |                      | terminalMatrix.writeGroup             | 100.00%  | 0         |
+| ✅     |                      | terminalMatrix.writeRow               | 93.30%   | 9         |
+| ✅     |                      | terminalMatrix.writeRowValues         | 100.00%  | 2         |
+| ✅     |                      | terminalTable.closeGroup              | 100.00%  | 0         |
+| ✅     |                      | terminalTable.sizeColumns             | 95.80%   | 10        |
+| ✅     |                      | terminalTable.writeBorder             | 100.00%  | 1         |
+| ✅     |                      | terminalTable.writeGroup              | 100.00%  | 0         |
+| ✅     |                      | terminalTable.writeResult             | 87.50%   | 5         |
+| ✅     |                      | terminalTable.writeRow                | 100.00%  | 2         |
+| ✅     |                      | terminalTable.writeSummary            | 100.00%  | 0         |
+| ✅     |                      | wrapDetail                            | 75.00%   | 4         |
+| ✅     |                      | writeCoverProfile                     | 72.70%   | 5         |
+| ✅     |                      | writeCoverReport                      | 100.00%  | 2         |
+| ✅     |                      | writeCoverage                         | 81.20%   | 14        |
+| ✅     |                      | writeFolderFileReport                 | 88.90%   | 5         |
+| ✅     |                      | writeFolderTable                      | 88.50%   | 14        |
+| ✅     |                      | writeMarkdownGrid                     | 100.00%  | 4         |
+| ✅     |                      | writeMarkdownSummary                  | 87.90%   | 11        |
+| ✅     |                      | writeMemProfile                       | 80.00%   | 3         |
+| ✅     |                      | writeReportHeader                     | 100.00%  | 0         |
+| ✅     | config               | Config.PlatformOptions                | 100.00%  | 1         |
+| ✅     |                      | Config.ValidateVirtualHosts           | 93.90%   | 25        |
+| ✅     |                      | New                                   | 75.00%   | 1         |
+| ✅     |                      | NewTestConfig                         | 100.00%  | 0         |
+| ✅     |                      | Server.Options                        | 100.00%  | 0         |
+| ❌     |                      | Telemetry.Resolved                    | 80.00%   | 7         |
+| ✅     |                      | VirtualHost.Domains                   | 100.00%  | 3         |
+| ✅     |                      | VirtualHost.Load                      | 100.00%  | 0         |
+| ✅     |                      | VirtualHost.Name                      | 100.00%  | 1         |
+| ✅     |                      | VirtualHost.Normalize                 | 100.00%  | 0         |
+| ✅     |                      | VirtualHost.load                      | 93.90%   | 8         |
+| ❌     |                      | declares                              | 80.00%   | 7         |
+| ✅     |                      | normalizeDomain                       | 100.00%  | 0         |
+| ✅     |                      | statDir                               | 100.00%  | 2         |
+| ✅     | flatstack            | IsExit                                | 100.00%  | 0         |
+| ✅     |                      | New                                   | 100.00%  | 0         |
+| ✅     |                      | NewExprCache                          | 100.00%  | 0         |
+| ✅     |                      | NewIncludeCache                       | 100.00%  | 0         |
+| ✅     |                      | Supports                              | 100.00%  | 0         |
+| ✅     | flatstack/engine     | Compile                               | 85.00%   | 28        |
+| ✅     |                      | Run                                   | 83.30%   | 4         |
+| ✅     |                      | applyHostLocals                       | 75.00%   | 1         |
+| ✅     |                      | applyNamedValues                      | 85.70%   | 18        |
+| ✅     |                      | bindHostLocals                        | 90.90%   | 9         |
+| ✅     |                      | boolInt                               | 100.00%  | 1         |
+| ✅     |                      | closureValue                          | 100.00%  | 7         |
+| ❌     |                      | compiler.assignment                   | 72.00%   | 20        |
+| ❌     |                      | compiler.binary                       | 78.60%   | 17        |
+| ✅     |                      | compiler.block                        | 100.00%  | 3         |
+| ✅     |                      | compiler.classMethod                  | 100.00%  | 5         |
+| ✅     |                      | compiler.closure                      | 100.00%  | 10        |
+| ✅     |                      | compiler.collectClasses               | 100.00%  | 6         |
+| ✅     |                      | compiler.constant                     | 100.00%  | 0         |
+| ✅     |                      | compiler.doWhileStmt                  | 88.20%   | 4         |
+| ✅     |                      | compiler.emit                         | 100.00%  | 0         |
+| ❌     |                      | compiler.ensureContainer              | 78.90%   | 9         |
+| ❌     |                      | compiler.expr                         | 79.10%   | 70        |
+| ✅     |                      | compiler.forStmt                      | 85.70%   | 13        |
+| ✅     |                      | compiler.foreachStmt                  | 86.20%   | 27        |
+| ✅     |                      | compiler.funcDecl                     | 97.80%   | 6         |
+| ❌     |                      | compiler.incDec                       | 72.70%   | 7         |
+| ✅     |                      | compiler.include                      | 85.70%   | 2         |
+| ❌     |                      | compiler.interp                       | 66.70%   | 8         |
+| ✅     |                      | compiler.listAssignment               | 84.60%   | 6         |
+| ✅     |                      | compiler.resolveClass                 | 100.00%  | 3         |
+| ✅     |                      | compiler.slot                         | 100.00%  | 1         |
+| ❌     |                      | compiler.stmt                         | 77.60%   | 50        |
+| ❌     |                      | compiler.storeTop                     | 71.40%   | 9         |
+| ✅     |                      | compiler.switchStmt                   | 84.60%   | 9         |
+| ✅     |                      | compiler.tryStmt                      | 90.20%   | 12        |
+| ❌     |                      | compiler.unsetStmt                    | 76.90%   | 12        |
+| ✅     |                      | loadLocal                             | 80.00%   | 2         |
+| ✅     |                      | lookupUserFunc                        | 100.00%  | 4         |
+| ✅     |                      | phpEmptyContainer                     | 100.00%  | 0         |
+| ✅     |                      | restoreHostLocals                     | 83.30%   | 1         |
+| ❌     |                      | run                                   | 79.50%   | 551       |
+| ✅     |                      | unsupported                           | 100.00%  | 0         |
+| ✅     |                      | vmScratch.release                     | 100.00%  | 0         |
+| ✅     | formatter            | Changed                               | 100.00%  | 3         |
+| ✅     |                      | CollectComments                       | 100.00%  | 5         |
+| ✅     |                      | NeedFormatting                        | 100.00%  | 0         |
+| ✅     |                      | Paths                                 | 100.00%  | 0         |
+| ✅     |                      | Print                                 | 100.00%  | 0         |
+| ✅     |                      | Source                                | 88.20%   | 7         |
+| ✅     |                      | catchClause                           | 100.00%  | 2         |
+| ✅     |                      | collapseBlankLines                    | 100.00%  | 8         |
+| ❌     |                      | format                                | 80.00%   | 6         |
+| ✅     |                      | includeKeyword                        | 40.00%   | 2         |
+| ✅     |                      | isBlockStmt                           | 100.00%  | 1         |
+| ✅     |                      | isCallStmt                            | 83.30%   | 2         |
+| ✅     |                      | isDecl                                | 100.00%  | 1         |
+| ✅     |                      | isFuncDecl                            | 100.00%  | 0         |
+| ✅     |                      | phpQuote                              | 78.60%   | 5         |
+| ✅     |                      | printProgram                          | 100.00%  | 11        |
+| ✅     |                      | printer.appendToLine                  | 71.40%   | 2         |
+| ✅     |                      | printer.args                          | 71.40%   | 3         |
+| ✅     |                      | printer.arrayLit                      | 100.00%  | 9         |
+| ✅     |                      | printer.assign                        | 66.70%   | 1         |
+| ✅     |                      | printer.blank                         | 100.00%  | 1         |
+| ✅     |                      | printer.blankBetween                  | 100.00%  | 5         |
+| ✅     |                      | printer.blankFor                      | 100.00%  | 2         |
+| ✅     |                      | printer.body                          | 100.00%  | 1         |
+| ✅     |                      | printer.comment                       | 90.00%   | 7         |
+| ✅     |                      | printer.ensurePHP                     | 100.00%  | 1         |
+| ✅     |                      | printer.expr                          | 80.30%   | 42        |
+| ✅     |                      | printer.field                         | 100.00%  | 4         |
+| ✅     |                      | printer.flushComments                 | 100.00%  | 4         |
+| ✅     |                      | printer.indent                        | 100.00%  | 0         |
+| ✅     |                      | printer.inlineBlock                   | 100.00%  | 0         |
+| ✅     |                      | printer.line                          | 100.00%  | 0         |
+| ✅     |                      | printer.lit                           | 77.80%   | 3         |
+| ✅     |                      | printer.params                        | 100.00%  | 11        |
+| ✅     |                      | printer.printClass                    | 97.40%   | 17        |
+| ✅     |                      | printer.printDeclare                  | 70.00%   | 2         |
+| ✅     |                      | printer.printFor                      | 38.50%   | 3         |
+| ✅     |                      | printer.printForeach                  | 84.60%   | 5         |
+| ❌     |                      | printer.printFunc                     | 77.80%   | 7         |
+| ✅     |                      | printer.printIf                       | 36.80%   | 5         |
+| ✅     |                      | printer.printInterface                | 96.00%   | 11        |
+| ✅     |                      | printer.printMembers                  | 100.00%  | 9         |
+| ✅     |                      | printer.printStmt                     | 93.20%   | 16        |
+| ✅     |                      | printer.printSwitch                   | 88.20%   | 4         |
+| ✅     |                      | printer.printTry                      | 78.60%   | 5         |
+| ✅     |                      | printer.signature                     | 85.70%   | 2         |
+| ✅     |                      | printer.staticField                   | 90.00%   | 3         |
+| ✅     |                      | printer.stmt                          | 100.00%  | 6         |
+| ✅     |                      | printer.stmtEnd                       | 100.00%  | 0         |
+| ✅     |                      | printer.stmts                         | 100.00%  | 4         |
+| ✅     |                      | printer.thenEnd                       | 66.70%   | 1         |
+| ✅     |                      | printer.trailingComment               | 100.00%  | 4         |
+| ✅     |                      | printer.typeName                      | 83.30%   | 6         |
+| ✅     |                      | printer.use                           | 100.00%  | 4         |
+| ✅     |                      | returnType                            | 100.00%  | 1         |
+| ✅     |                      | shortName                             | 100.00%  | 1         |
+| ✅     |                      | splitDeclarePreamble                  | 80.00%   | 4         |
+| ✅     |                      | splitShebang                          | 83.30%   | 2         |
+| ✅     |                      | trimOpenTag                           | 80.00%   | 3         |
+| ✅     |                      | tryEnd                                | 66.70%   | 1         |
+| ✅     |                      | verify                                | 62.50%   | 3         |
+| ✅     |                      | walk                                  | 83.30%   | 4         |
+| ✅     | internal/apidoc      | Generate                              | 94.10%   | 2         |
+| ✅     |                      | areaName                              | 100.00%  | 2         |
+| ❌     |                      | astParam                              | 78.60%   | 6         |
+| ❌     |                      | buildClass                            | 58.60%   | 14        |
+| ✅     |                      | buildClasses                          | 100.00%  | 1         |
+| ✅     |                      | buildFunc                             | 89.50%   | 10        |
+| ✅     |                      | camelToSnake                          | 100.00%  | 11        |
+| ❌     |                      | cleanComment                          | 58.80%   | 14        |
+| ✅     |                      | constructorGroups                     | 100.00%  | 5         |
+| ❌     |                      | constructorResultType                 | 63.60%   | 7         |
+| ✅     |                      | ctorDecl                              | 66.70%   | 5         |
+| ✅     |                      | declComment                           | 100.00%  | 5         |
+| ✅     |                      | dedupeParams                          | 100.00%  | 4         |
+| ✅     |                      | funcResultTypeName                    | 75.00%   | 4         |
+| ✅     |                      | hasRegisteredReturn                   | 100.00%  | 3         |
+| ✅     |                      | isCallbackName                        | 66.70%   | 1         |
+| ✅     |                      | isContextContext                      | 60.00%   | 2         |
+| ✅     |                      | isRefSetter                           | 62.50%   | 5         |
+| ✅     |                      | nameParams                            | 100.00%  | 3         |
+| ✅     |                      | packageNames                          | 100.00%  | 5         |
+| ✅     |                      | paramList                             | 100.00%  | 1         |
+| ✅     |                      | paramName                             | 66.70%   | 2         |
+| ❌     |                      | phpTypeAST                            | 35.30%   | 16        |
+| ✅     |                      | phpTypeName                           | 71.40%   | 1         |
+| ❌     |                      | phpTypeReflect                        | 23.80%   | 13        |
+| ❌     |                      | primaryClassName                      | 66.70%   | 7         |
+| ✅     |                      | recvTypeName                          | 60.00%   | 2         |
+| ✅     |                      | reflectMethods                        | 90.50%   | 13        |
+| ❌     |                      | reflectParams                         | 55.60%   | 12        |
+| ❌     |                      | reflectReturn                         | 75.00%   | 6         |
+| ✅     |                      | registeredClassTypes                  | 87.50%   | 3         |
+| ✅     |                      | render                                | 100.00%  | 2         |
+| ✅     |                      | renderClass                           | 85.70%   | 3         |
+| ✅     |                      | renderFuncs                           | 100.00%  | 4         |
+| ❌     |                      | renderPackage                         | 66.70%   | 7         |
+| ✅     |                      | renderParam                           | 100.00%  | 4         |
+| ✅     |                      | returnType                            | 100.00%  | 5         |
+| ✅     |                      | scan                                  | 89.40%   | 55        |
+| ✅     |                      | selectPackage                         | 100.00%  | 5         |
+| ✅     |                      | signature                             | 95.20%   | 25        |
+| ✅     |                      | sources.collect                       | 89.50%   | 21        |
+| ❌     |                      | sources.lookupDecl                    | 66.70%   | 6         |
+| ✅     |                      | sources.method                        | 85.70%   | 3         |
+| ❌     |                      | sources.resolveSignature              | 77.80%   | 20        |
+| ✅     |                      | sources.typeDoc                       | 42.90%   | 4         |
+| ✅     |                      | stmtComment                           | 83.30%   | 10        |
+| ✅     |                      | typeParamName                         | 50.00%   | 3         |
+| ✅     |                      | writeComment                          | 16.70%   | 3         |
+| ✅     | internal/arrayi64    | Sort                                  | 100.00%  | 6         |
+| ✅     | internal/phpval      | Compare                               | 100.00%  | 12        |
+| ✅     |                      | Float                                 | 100.00%  | 3         |
+| ✅     |                      | GoString                              | 100.00%  | 1         |
+| ✅     |                      | Int                                   | 100.00%  | 7         |
+| ✅     |                      | Key                                   | 84.60%   | 5         |
+| ✅     |                      | Number                                | 90.90%   | 8         |
+| ✅     |                      | NumericKey                            | 100.00%  | 11        |
+| ✅     |                      | String                                | 91.70%   | 5         |
+| ✅     |                      | Strings                               | 100.00%  | 2         |
+| ✅     |                      | Truthy                                | 81.80%   | 4         |
+| ✅     |                      | Values                                | 90.00%   | 2         |
+| ✅     |                      | comparableArray                       | 50.00%   | 2         |
+| ✅     |                      | compareArrays                         | 100.00%  | 3         |
+| ✅     |                      | compareBools                          | 100.00%  | 1         |
+| ✅     |                      | compareNumbers                        | 100.00%  | 9         |
+| ✅     |                      | floatKey                              | 40.00%   | 1         |
+| ✅     |                      | isBoolish                             | 100.00%  | 1         |
+| ✅     |                      | isDigit                               | 100.00%  | 1         |
+| ✅     |                      | leadingFloat                          | 96.80%   | 29        |
+| ✅     |                      | numericString                         | 92.30%   | 6         |
+| ✅     |                      | parseFloat                            | 100.00%  | 0         |
+| ✅     |                      | parseInt                              | 100.00%  | 2         |
+| ✅     |                      | phpNum.float                          | 100.00%  | 1         |
+| ✅     |                      | phpNumeric                            | 83.30%   | 1         |
+| ✅     |                      | scanNumeric                           | 91.70%   | 23        |
+| ✅     |                      | toBool                                | 62.50%   | 2         |
+| ✅     | internal/table       | Colored                               | 100.00%  | 0         |
+| ✅     |                      | IsTerminal                            | 100.00%  | 1         |
+| ✅     |                      | New                                   | 100.00%  | 1         |
+| ✅     |                      | Table.Flush                           | 100.00%  | 1         |
+| ✅     |                      | Table.Row                             | 100.00%  | 5         |
+| ✅     |                      | Table.Summary                         | 100.00%  | 1         |
+| ✅     |                      | Table.flushMarkdown                   | 100.00%  | 6         |
+| ✅     |                      | Table.flushTerminal                   | 100.00%  | 2         |
+| ✅     |                      | Table.pad                             | 100.00%  | 1         |
+| ✅     |                      | Table.sanitize                        | 100.00%  | 1         |
+| ✅     |                      | Table.writeBorder                     | 100.00%  | 1         |
+| ✅     |                      | Table.writeRow                        | 100.00%  | 4         |
+| ✅     |                      | Text                                  | 100.00%  | 0         |
+| ✅     | lint                 | Diagnostic.String                     | 66.70%   | 1         |
+| ✅     |                      | File                                  | 92.90%   | 2         |
+| ✅     |                      | FlatstackFile                         | 77.80%   | 3         |
+| ❌     |                      | Paths                                 | 76.90%   | 6         |
+| ✅     |                      | assignExprs                           | 100.00%  | 0         |
+| ✅     |                      | astWalker.exprs                       | 100.00%  | 1         |
+| ✅     |                      | astWalker.fields                      | 50.00%   | 1         |
+| ❌     |                      | astWalker.one                         | 76.10%   | 13        |
+| ✅     |                      | astWalker.params                      | 100.00%  | 1         |
+| ❌     |                      | astWalker.walk                        | 65.40%   | 27        |
+| ✅     |                      | chainedValue                          | 100.00%  | 3         |
+| ✅     |                      | collectAssignExprList                 | 100.00%  | 1         |
+| ❌     |                      | collectAssignExprs                    | 25.00%   | 19        |
+| ✅     |                      | declaredNames.hasClass                | 100.00%  | 1         |
+| ✅     |                      | declaredNames.hasFunc                 | 100.00%  | 1         |
+| ✅     |                      | isScalarLiteral                       | 100.00%  | 7         |
+| ✅     |                      | knownRuntime                          | 100.00%  | 0         |
+| ✅     |                      | lintChainedAssign                     | 100.00%  | 2         |
+| ✅     |                      | lintCondition                         | 100.00%  | 1         |
+| ✅     |                      | lintInterfaces                        | 100.00%  | 1         |
+| ✅     |                      | lintJSONFlags                         | 100.00%  | 7         |
+| ✅     |                      | lintReferences                        | 100.00%  | 14        |
+| ✅     |                      | lintRoutes                            | 100.00%  | 3         |
+| ✅     |                      | lintSource                            | 81.80%   | 3         |
+| ✅     |                      | lintStmts                             | 100.00%  | 1         |
+| ✅     |                      | lintUndefinedNames                    | 94.40%   | 63        |
+| ✅     |                      | stmtWalker.lintAbstract               | 100.00%  | 6         |
+| ✅     |                      | stmtWalker.lintExtends                | 100.00%  | 1         |
+| ✅     |                      | stmtWalker.lintGlobal                 | 100.00%  | 0         |
+| ✅     |                      | stmtWalker.lintMagicMethods           | 100.00%  | 7         |
+| ❌     |                      | stmtWalker.walk                       | 70.00%   | 21        |
+| ❌     | list                 | ExpandFiles                           | 78.60%   | 9         |
+| ❌     |                      | File                                  | 75.00%   | 10        |
+| ✅     |                      | GroupByDir                            | 100.00%  | 3         |
+| ✅     |                      | Markdown                              | 100.00%  | 5         |
+| ✅     |                      | Paths                                 | 80.00%   | 4         |
+| ✅     |                      | cell                                  | 100.00%  | 1         |
+| ✅     |                      | classNames                            | 87.50%   | 2         |
+| ❌     |                      | classNamesFromTokens                  | 47.10%   | 17        |
+| ❌     |                      | collectClasses                        | 18.80%   | 20        |
+| ❌     |                      | expandOne                             | 73.70%   | 9         |
+| ✅     |                      | filenameCell                          | 66.70%   | 1         |
+| ✅     |                      | isPHP                                 | 100.00%  | 1         |
+| ✅     |                      | listDir                               | 90.90%   | 6         |
+| ✅     |                      | tokenize                              | 100.00%  | 3         |
+| ✅     |                      | walkRecursive                         | 83.30%   | 10        |
+| ✅     |                      | writeMarkdownRow                      | 100.00%  | 1         |
+| ✅     | model                | Array.Append                          | 100.00%  | 1         |
+| ✅     |                      | Array.Clear                           | 100.00%  | 0         |
+| ✅     |                      | Array.Delete                          | 93.30%   | 10        |
+| ✅     |                      | Array.Get                             | 100.00%  | 4         |
+| ✅     |                      | Array.Int64List                       | 100.00%  | 5         |
+| ✅     |                      | Array.Keys                            | 100.00%  | 3         |
+| ✅     |                      | Array.Len                             | 100.00%  | 1         |
+| ✅     |                      | Array.Map                             | 100.00%  | 4         |
+| ✅     |                      | Array.Pop                             | 100.00%  | 3         |
+| ✅     |                      | Array.Range                           | 100.00%  | 9         |
+| ✅     |                      | Array.ReplaceInt64List                | 100.00%  | 1         |
+| ✅     |                      | Array.Set                             | 100.00%  | 11        |
+| ✅     |                      | Array.isList                          | 100.00%  | 0         |
+| ✅     |                      | Array.promote                         | 100.00%  | 5         |
+| ✅     |                      | AssignsTo                             | 100.00%  | 1         |
+| ✅     |                      | ByRefArg                              | 100.00%  | 1         |
+| ✅     |                      | CheckInterfaceContracts               | 100.00%  | 1         |
+| ✅     |                      | CheckInterfaces                       | 95.50%   | 16        |
+| ✅     |                      | Class.Field                           | 100.00%  | 3         |
+| ✅     |                      | Class.declares                        | 100.00%  | 3         |
+| ✅     |                      | CopyArray                             | 85.70%   | 1         |
+| ✅     |                      | CopyValue                             | 100.00%  | 1         |
+| ✅     |                      | InterfaceContractError.Error          | 100.00%  | 1         |
+| ✅     |                      | InterfaceNames                        | 94.40%   | 10        |
+| ✅     |                      | InterfaceViolation.String             | 100.00%  | 0         |
+| ✅     |                      | IsCollection                          | 85.70%   | 2         |
+| ✅     |                      | LenValues                             | 84.60%   | 4         |
+| ✅     |                      | NewArray                              | 100.00%  | 0         |
+| ✅     |                      | NewArraySize                          | 100.00%  | 1         |
+| ✅     |                      | NewObject                             | 100.00%  | 1         |
+| ✅     |                      | NewStdClass                           | 100.00%  | 0         |
+| ✅     |                      | Object.DeleteProp                     | 100.00%  | 4         |
+| ✅     |                      | Object.Len                            | 100.00%  | 0         |
+| ✅     |                      | Object.Names                          | 92.90%   | 13        |
+| ✅     |                      | Object.Prop                           | 100.00%  | 0         |
+| ✅     |                      | Object.Range                          | 100.00%  | 3         |
+| ✅     |                      | Object.SetID                          | 100.00%  | 0         |
+| ✅     |                      | Object.SetProp                        | 80.00%   | 2         |
+| ✅     |                      | Object.appendUnrecorded               | 100.00%  | 4         |
+| ✅     |                      | ParseRoutePath                        | 100.00%  | 11        |
+| ❌     |                      | RangeValues                           | 66.70%   | 34        |
+| ✅     |                      | RenderRoutePath                       | 94.70%   | 10        |
+| ✅     |                      | RootName                              | 87.50%   | 6         |
+| ✅     |                      | StdClass                              | 100.00%  | 0         |
+| ✅     |                      | ToArray                               | 93.30%   | 7         |
+| ✅     |                      | UnwrapParenthesized                   | 100.00%  | 3         |
+| ✅     |                      | callWritesBack                        | 100.00%  | 4         |
+| ✅     |                      | closingBrace                          | 100.00%  | 6         |
+| ✅     |                      | collectContract                       | 93.30%   | 7         |
+| ✅     |                      | contractOf                            | 100.00%  | 0         |
+| ✅     |                      | declaredMethods                       | 100.00%  | 7         |
+| ❌     |                      | exprAssignsTo                         | 44.00%   | 34        |
+| ✅     |                      | exprsAssignTo                         | 100.00%  | 3         |
+| ✅     |                      | interfaceIndex                        | 100.00%  | 5         |
+| ✅     |                      | listAssignsTo                         | 42.90%   | 5         |
+| ✅     |                      | parseRouteParam                       | 100.00%  | 10        |
+| ❌     |                      | stmtAssignsTo                         | 25.00%   | 30        |
+| ✅     |                      | stmtsAssignTo                         | 100.00%  | 3         |
+| ✅     |                      | validRouteName                        | 100.00%  | 11        |
+| ✅     | parser               | Parse                                 | 100.00%  | 2         |
+| ✅     |                      | TokenGetAll                           | 100.00%  | 0         |
+| ✅     |                      | TokenIDs                              | 100.00%  | 1         |
+| ✅     |                      | TokenName                             | 100.00%  | 1         |
+| ✅     |                      | aliasSpelling                         | 100.00%  | 2         |
+| ✅     |                      | boxInt                                | 100.00%  | 2         |
+| ✅     |                      | decodeEscape                          | 87.50%   | 15        |
+| ✅     |                      | hexRun                                | 100.00%  | 8         |
+| ✅     |                      | isAssignOp                            | 100.00%  | 1         |
+| ✅     |                      | isBinDigit                            | 100.00%  | 1         |
+| ✅     |                      | isDecDigit                            | 100.00%  | 1         |
+| ✅     |                      | isFuncKeyword                         | 100.00%  | 1         |
+| ✅     |                      | isHexDigit                            | 100.00%  | 3         |
+| ✅     |                      | isIdentPart                           | 100.00%  | 1         |
+| ✅     |                      | isIdentStart                          | 100.00%  | 1         |
+| ✅     |                      | isLValue                              | 66.70%   | 1         |
+| ✅     |                      | isOctDigit                            | 100.00%  | 1         |
+| ✅     |                      | isOpenTagSpace                        | 100.00%  | 1         |
+| ✅     |                      | isPreambleStmt                        | 100.00%  | 1         |
+| ✅     |                      | lexer.advance                         | 100.00%  | 2         |
+| ✅     |                      | lexer.advanceRune                     | 100.00%  | 3         |
+| ✅     |                      | lexer.emit                            | 100.00%  | 0         |
+| ✅     |                      | lexer.emitString                      | 100.00%  | 0         |
+| ✅     |                      | lexer.flushHTML                       | 100.00%  | 1         |
+| ✅     |                      | lexer.lexIdent                        | 100.00%  | 2         |
+| ✅     |                      | lexer.lexInlineHTML                   | 71.40%   | 5         |
+| ✅     |                      | lexer.lexNumber                       | 100.00%  | 2         |
+| ✅     |                      | lexer.lexOperator                     | 94.10%   | 5         |
+| ✅     |                      | lexer.lexPHP                          | 100.00%  | 20        |
+| ✅     |                      | lexer.lexString                       | 97.50%   | 19        |
+| ✅     |                      | lexer.lexVar                          | 100.00%  | 2         |
+| ✅     |                      | lexer.run                             | 100.00%  | 5         |
+| ✅     |                      | lexer.skipBlockComment                | 100.00%  | 2         |
+| ✅     |                      | lexer.skipLineComment                 | 75.00%   | 4         |
+| ✅     |                      | lexer.skipShebang                     | 100.00%  | 4         |
+| ✅     |                      | lexer.writeEscape                     | 100.00%  | 0         |
+| ✅     |                      | newLexer                              | 100.00%  | 0         |
+| ✅     |                      | nodeChunk[T].new                      | 100.00%  | 3         |
+| ✅     |                      | numLit                                | 100.00%  | 5         |
+| ✅     |                      | octalRun                              | 100.00%  | 2         |
+| ✅     |                      | parser.atEOF                          | 100.00%  | 0         |
+| ✅     |                      | parser.classFollowsModifiers          | 87.50%   | 5         |
+| ✅     |                      | parser.cur                            | 100.00%  | 0         |
+| ✅     |                      | parser.eatOp                          | 100.00%  | 1         |
+| ✅     |                      | parser.interpExpr                     | 100.00%  | 6         |
+| ✅     |                      | parser.interpSubscript                | 87.50%   | 7         |
+| ✅     |                      | parser.isKw                           | 100.00%  | 4         |
+| ✅     |                      | parser.isOp                           | 100.00%  | 1         |
+| ✅     |                      | parser.lowerChainedAlloc              | 96.00%   | 11        |
+| ✅     |                      | parser.newArrayLit                    | 100.00%  | 0         |
+| ✅     |                      | parser.newAssign                      | 100.00%  | 0         |
+| ✅     |                      | parser.newAssignExpr                  | 100.00%  | 0         |
+| ✅     |                      | parser.newBinary                      | 100.00%  | 0         |
+| ✅     |                      | parser.newCall                        | 100.00%  | 0         |
+| ✅     |                      | parser.newConstRef                    | 100.00%  | 0         |
+| ✅     |                      | parser.newEcho                        | 100.00%  | 0         |
+| ✅     |                      | parser.newExprStmt                    | 100.00%  | 0         |
+| ✅     |                      | parser.newIndex                       | 100.00%  | 0         |
+| ✅     |                      | parser.newLit                         | 100.00%  | 0         |
+| ✅     |                      | parser.newMethodCall                  | 100.00%  | 0         |
+| ✅     |                      | parser.newParen                       | 100.00%  | 0         |
+| ✅     |                      | parser.newProp                        | 100.00%  | 0         |
+| ✅     |                      | parser.newStringLit                   | 100.00%  | 0         |
+| ✅     |                      | parser.newUnary                       | 100.00%  | 0         |
+| ✅     |                      | parser.newVar                         | 100.00%  | 0         |
+| ✅     |                      | parser.next                           | 100.00%  | 1         |
+| ✅     |                      | parser.optSemi                        | 100.00%  | 1         |
+| ✅     |                      | parser.parseAbstractMethod            | 80.00%   | 1         |
+| ❌     |                      | parser.parseAnonClass                 | 78.90%   | 6         |
+| ❌     |                      | parser.parseArgs                      | 78.60%   | 6         |
+| ❌     |                      | parser.parseArrayLiteral              | 77.30%   | 11        |
+| ✅     |                      | parser.parseAssign                    | 94.70%   | 13        |
+| ✅     |                      | parser.parseBinary                    | 82.10%   | 26        |
+| ✅     |                      | parser.parseBlock                     | 86.70%   | 9         |
+| ❌     |                      | parser.parseCaseBody                  | 77.80%   | 6         |
+| ✅     |                      | parser.parseClass                     | 88.90%   | 2         |
+| ✅     |                      | parser.parseClassBody                 | 87.90%   | 43        |
+| ✅     |                      | parser.parseClassHeritage             | 100.00%  | 9         |
+| ✅     |                      | parser.parseClosure                   | 83.30%   | 6         |
+| ❌     |                      | parser.parseClosureUses               | 78.60%   | 8         |
+| ✅     |                      | parser.parseConsts                    | 84.20%   | 9         |
+| ❌     |                      | parser.parseDeclare                   | 57.10%   | 16        |
+| ✅     |                      | parser.parseDoWhile                   | 68.80%   | 5         |
+| ✅     |                      | parser.parseEcho                      | 100.00%  | 5         |
+| ✅     |                      | parser.parseExpr                      | 100.00%  | 0         |
+| ✅     |                      | parser.parseExprStmt                  | 80.00%   | 1         |
+| ✅     |                      | parser.parseFields                    | 88.90%   | 10        |
+| ❌     |                      | parser.parseFor                       | 63.60%   | 8         |
+| ✅     |                      | parser.parseForeach                   | 82.10%   | 18        |
+| ✅     |                      | parser.parseForeachTarget             | 80.00%   | 3         |
+| ✅     |                      | parser.parseFunction                  | 90.90%   | 9         |
+| ✅     |                      | parser.parseGlobal                    | 90.90%   | 5         |
+| ✅     |                      | parser.parseIdentExpr                 | 86.70%   | 12        |
+| ❌     |                      | parser.parseIf                        | 61.80%   | 17        |
+| ✅     |                      | parser.parseInclude                   | 83.30%   | 1         |
+| ✅     |                      | parser.parseIncludeExpr               | 81.80%   | 6         |
+| ✅     |                      | parser.parseInstanceOf                | 90.00%   | 4         |
+| ✅     |                      | parser.parseInterface                 | 90.90%   | 29        |
+| ✅     |                      | parser.parseInterp                    | 90.00%   | 4         |
+| ❌     |                      | parser.parseList                      | 62.50%   | 8         |
+| ✅     |                      | parser.parseModifiedClass             | 100.00%  | 8         |
+| ✅     |                      | parser.parseNamedExpr                 | 84.40%   | 24        |
+| ✅     |                      | parser.parseNamespace                 | 80.00%   | 5         |
+| ✅     |                      | parser.parseNew                       | 82.60%   | 13        |
+| ✅     |                      | parser.parseParamDecoration           | 100.00%  | 3         |
+| ❌     |                      | parser.parseParams                    | 76.20%   | 11        |
+| ✅     |                      | parser.parsePostfix                   | 81.80%   | 56        |
+| ✅     |                      | parser.parsePow                       | 90.00%   | 4         |
+| ✅     |                      | parser.parsePrimary                   | 82.80%   | 14        |
+| ✅     |                      | parser.parseQualifiedName             | 94.40%   | 7         |
+| ✅     |                      | parser.parseReturn                    | 88.90%   | 2         |
+| ✅     |                      | parser.parseReturnType                | 100.00%  | 1         |
+| ✅     |                      | parser.parseSignature                 | 80.00%   | 2         |
+| ✅     |                      | parser.parseSimpleStmt                | 87.50%   | 4         |
+| ✅     |                      | parser.parseStaticVar                 | 88.90%   | 10        |
+| ✅     |                      | parser.parseStmt                      | 100.00%  | 4         |
+| ✅     |                      | parser.parseStmtNode                  | 94.00%   | 25        |
+| ✅     |                      | parser.parseStmts                     | 100.00%  | 20        |
+| ✅     |                      | parser.parseSubExpr                   | 75.00%   | 3         |
+| ❌     |                      | parser.parseSwitch                    | 67.60%   | 25        |
+| ✅     |                      | parser.parseTernary                   | 82.40%   | 11        |
+| ✅     |                      | parser.parseThrow                     | 83.30%   | 1         |
+| ✅     |                      | parser.parseTry                       | 83.90%   | 13        |
+| ✅     |                      | parser.parseTypeHint                  | 100.00%  | 14        |
+| ✅     |                      | parser.parseUnary                     | 84.40%   | 19        |
+| ✅     |                      | parser.parseUnset                     | 82.40%   | 7         |
+| ✅     |                      | parser.parseUse                       | 85.70%   | 16        |
+| ❌     |                      | parser.parseVarRef                    | 76.50%   | 14        |
+| ✅     |                      | parser.parseWhile                     | 66.70%   | 4         |
+| ✅     |                      | parser.peek                           | 75.00%   | 1         |
+| ✅     |                      | parser.pushStmt                       | 100.00%  | 3         |
+| ✅     |                      | parser.qualify                        | 94.10%   | 18        |
+| ✅     |                      | parser.setFieldSpans                  | 100.00%  | 1         |
+| ✅     |                      | phpTokenizer.advance                  | 100.00%  | 3         |
+| ✅     |                      | phpTokenizer.consume                  | 100.00%  | 1         |
+| ✅     |                      | phpTokenizer.emitArr                  | 100.00%  | 3         |
+| ✅     |                      | phpTokenizer.emitChar                 | 75.00%   | 1         |
+| ✅     |                      | phpTokenizer.emitInterp               | 100.00%  | 9         |
+| ✅     |                      | phpTokenizer.emitSubscript            | 66.70%   | 2         |
+| ✅     |                      | phpTokenizer.run                      | 100.00%  | 3         |
+| ✅     |                      | phpTokenizer.scanBlockComment         | 100.00%  | 2         |
+| ✅     |                      | phpTokenizer.scanIdent                | 100.00%  | 3         |
+| ✅     |                      | phpTokenizer.scanInlineHTML           | 91.30%   | 13        |
+| ✅     |                      | phpTokenizer.scanLineComment          | 85.70%   | 4         |
+| ✅     |                      | phpTokenizer.scanNumber               | 100.00%  | 3         |
+| ✅     |                      | phpTokenizer.scanOperator             | 100.00%  | 4         |
+| ✅     |                      | phpTokenizer.scanPHP                  | 100.00%  | 15        |
+| ✅     |                      | phpTokenizer.scanString               | 100.00%  | 10        |
+| ✅     |                      | phpTokenizer.scanVariable             | 100.00%  | 2         |
+| ✅     |                      | phpTokenizer.scanWhitespace           | 100.00%  | 4         |
+| ❌     |                      | repeatableExpr                        | 47.60%   | 25        |
+| ✅     |                      | scanCurly                             | 91.70%   | 9         |
+| ✅     |                      | scanInterp                            | 100.00%  | 16        |
+| ✅     |                      | scanNumber                            | 100.00%  | 38        |
+| ✅     |                      | scanSimple                            | 95.80%   | 13        |
+| ✅     |                      | scratch[T].drop                       | 100.00%  | 0         |
+| ✅     |                      | scratch[T].mark                       | 100.00%  | 0         |
+| ✅     |                      | scratch[T].push                       | 100.00%  | 0         |
+| ✅     |                      | scratch[T].take                       | 100.00%  | 1         |
+| ❌     |                      | skipQuoted                            | 75.00%   | 6         |
+| ✅     |                      | token.String                          | 100.00%  | 0         |
+| ✅     |                      | tokenizeFrom                          | 100.00%  | 0         |
+| ✅     | runner               | AcceptsHTML                           | 100.00%  | 12        |
+| ✅     |                      | ArgumentCountError.Error              | 75.00%   | 1         |
+| ✅     |                      | ArgumentCountError.ThrowableClass     | 100.00%  | 0         |
+| ✅     |                      | ArithmeticError.Error                 | 100.00%  | 0         |
+| ✅     |                      | ArithmeticError.ThrowableClass        | 100.00%  | 0         |
+| ✅     |                      | Bindings                              | 100.00%  | 0         |
+| ✅     |                      | Context.AddResponseHeader             | 100.00%  | 0         |
+| ✅     |                      | Context.Answered                      | 100.00%  | 1         |
+| ✅     |                      | Context.Cleanup                       | 100.00%  | 6         |
+| ✅     |                      | Context.Errors                        | 66.70%   | 1         |
+| ✅     |                      | Context.GetAllHeaders                 | 100.00%  | 0         |
+| ✅     |                      | Context.HTTPResponseCode              | 100.00%  | 7         |
+| ✅     |                      | Context.Header                        | 95.50%   | 11        |
+| ✅     |                      | Context.IsUpload                      | 100.00%  | 7         |
+| ✅     |                      | Context.RawBody                       | 66.70%   | 1         |
+| ✅     |                      | Context.Register                      | 100.00%  | 2         |
+| ✅     |                      | Context.ResponseHeaders               | 100.00%  | 0         |
+| ✅     |                      | Context.ResponseStatus                | 66.70%   | 1         |
+| ✅     |                      | Context.SetDefaultHeader              | 100.00%  | 1         |
+| ✅     |                      | Context.SetRawBody                    | 100.00%  | 1         |
+| ✅     |                      | Context.StatusFor                     | 100.00%  | 6         |
+| ✅     |                      | Context.WriteResponse                 | 100.00%  | 3         |
+| ✅     |                      | Context.collectUploads                | 88.90%   | 7         |
+| ✅     |                      | Context.decodeBody                    | 100.00%  | 7         |
+| ✅     |                      | Context.filesArray                    | 94.70%   | 7         |
+| ✅     |                      | Context.memoryFootprint               | 100.00%  | 4         |
+| ✅     |                      | Context.parseBody                     | 85.20%   | 14        |
+| ✅     |                      | Context.pathValues                    | 88.90%   | 7         |
+| ✅     |                      | Context.recordError                   | 66.70%   | 2         |
+| ✅     |                      | Context.requestArray                  | 100.00%  | 1         |
+| ✅     |                      | Context.serverArray                   | 100.00%  | 2         |
+| ✅     |                      | Context.serverVars                    | 100.00%  | 5         |
+| ❌     |                      | DeepSize                              | 43.20%   | 31        |
+| ❌     |                      | EstimateValueSize                     | 26.70%   | 21        |
+| ✅     |                      | ExitError.Error                       | 100.00%  | 0         |
+| ✅     |                      | ExprCache.Clear                       | 83.30%   | 1         |
+| ✅     |                      | ExprCache.GetSource                   | 83.30%   | 1         |
+| ✅     |                      | ExprCache.Len                         | 80.00%   | 1         |
+| ❌     |                      | ExprCache.SetSource                   | 78.60%   | 7         |
+| ✅     |                      | ExprCache.getFlat                     | 83.30%   | 1         |
+| ❌     |                      | ExprCache.setFlat                     | 57.10%   | 7         |
+| ✅     |                      | FileMode.Mode                         | 87.50%   | 3         |
+| ✅     |                      | FileMode.String                       | 100.00%  | 0         |
+| ✅     |                      | FileMode.UnmarshalYAML                | 100.00%  | 1         |
+| ✅     |                      | FromRequest                           | 100.00%  | 0         |
+| ✅     |                      | FromRequestOptions                    | 100.00%  | 9         |
+| ✅     |                      | HostPanicError.Error                  | 100.00%  | 0         |
+| ✅     |                      | IncludeCache.Clear                    | 80.00%   | 1         |
+| ✅     |                      | IncludeCache.Get                      | 83.30%   | 1         |
+| ✅     |                      | IncludeCache.Len                      | 80.00%   | 1         |
+| ❌     |                      | IncludeCache.Set                      | 78.60%   | 7         |
+| ✅     |                      | IsExit                                | 100.00%  | 1         |
+| ✅     |                      | New                                   | 100.00%  | 2         |
+| ✅     |                      | NewContext                            | 100.00%  | 0         |
+| ✅     |                      | NewExprCache                          | 100.00%  | 0         |
+| ✅     |                      | NewExprCacheWithCapacity              | 66.70%   | 1         |
+| ✅     |                      | NewFlatStack                          | 100.00%  | 0         |
+| ✅     |                      | NewIncludeCache                       | 100.00%  | 0         |
+| ✅     |                      | NewIncludeCacheWithCapacity           | 66.70%   | 1         |
+| ✅     |                      | NewRuntimeException                   | 100.00%  | 0         |
+| ✅     |                      | NewScope                              | 100.00%  | 0         |
+| ✅     |                      | NewTranspiler                         | 100.00%  | 0         |
+| ✅     |                      | Options.autoloadDir                   | 100.00%  | 1         |
+| ✅     |                      | Options.inputLimits                   | 100.00%  | 0         |
+| ✅     |                      | ParseFileMode                         | 100.00%  | 4         |
+| ✅     |                      | ParseSize                             | 94.40%   | 9         |
+| ✅     |                      | RegisterBinding                       | 80.00%   | 1         |
+| ✅     |                      | RequestContext                        | 100.00%  | 0         |
+| ✅     |                      | Runtime.AccountRequest                | 100.00%  | 1         |
+| ✅     |                      | Runtime.Callable                      | 100.00%  | 0         |
+| ✅     |                      | Runtime.ClassExists                   | 100.00%  | 3         |
+| ✅     |                      | Runtime.Const                         | 100.00%  | 0         |
+| ✅     |                      | Runtime.Context                       | 100.00%  | 0         |
+| ✅     |                      | Runtime.Database                      | 100.00%  | 0         |
+| ✅     |                      | Runtime.DeclaredClasses               | 100.00%  | 3         |
+| ✅     |                      | Runtime.DefinedConstants              | 100.00%  | 0         |
+| ✅     |                      | Runtime.DefinedFunctions              | 100.00%  | 4         |
+| ✅     |                      | Runtime.Eval                          | 97.60%   | 18        |
+| ✅     |                      | Runtime.Exit                          | 100.00%  | 0         |
+| ✅     |                      | Runtime.FS                            | 100.00%  | 0         |
+| ✅     |                      | Runtime.FreezeStdlib                  | 100.00%  | 0         |
+| ✅     |                      | Runtime.FunctionExists                | 100.00%  | 0         |
+| ✅     |                      | Runtime.IncludeFile                   | 100.00%  | 0         |
+| ✅     |                      | Runtime.IncludePath                   | 100.00%  | 0         |
+| ✅     |                      | Runtime.IncludedFiles                 | 100.00%  | 0         |
+| ✅     |                      | Runtime.Load                          | 100.00%  | 1         |
+| ✅     |                      | Runtime.LoadFile                      | 64.30%   | 3         |
+| ✅     |                      | Runtime.LookupConstructor             | 100.00%  | 0         |
+| ✅     |                      | Runtime.LookupFunc                    | 100.00%  | 0         |
+| ✅     |                      | Runtime.MemoryLimit                   | 100.00%  | 0         |
+| ✅     |                      | Runtime.MemoryPeak                    | 100.00%  | 0         |
+| ✅     |                      | Runtime.MemoryUsage                   | 100.00%  | 0         |
+| ✅     |                      | Runtime.MemoryWalk                    | 82.60%   | 16        |
+| ✅     |                      | Runtime.MethodExists                  | 80.00%   | 1         |
+| ✅     |                      | Runtime.Observe                       | 83.30%   | 2         |
+| ✅     |                      | Runtime.OnError                       | 100.00%  | 0         |
+| ✅     |                      | Runtime.Output                        | 100.00%  | 1         |
+| ✅     |                      | Runtime.PHPInfo                       | 100.00%  | 0         |
+| ✅     |                      | Runtime.PopOutput                     | 75.00%   | 1         |
+| ✅     |                      | Runtime.PushOutput                    | 66.70%   | 1         |
+| ✅     |                      | Runtime.RecordError                   | 80.00%   | 2         |
+| ✅     |                      | Runtime.RegisterAutoloader            | 50.00%   | 1         |
+| ✅     |                      | Runtime.RegisterClass                 | 88.90%   | 8         |
+| ✅     |                      | Runtime.RegisterConstructor           | 100.00%  | 0         |
+| ✅     |                      | Runtime.RegisterFunc                  | 100.00%  | 0         |
+| ✅     |                      | Runtime.RegisterShutdown              | 100.00%  | 0         |
+| ✅     |                      | Runtime.ResetSession                  | 96.00%   | 3         |
+| ✅     |                      | Runtime.Run                           | 100.00%  | 11        |
+| ✅     |                      | Runtime.SAPI                          | 100.00%  | 0         |
+| ❌     |                      | Runtime.SPLAutoload                   | 73.30%   | 11        |
+| ✅     |                      | Runtime.SetConst                      | 100.00%  | 2         |
+| ✅     |                      | Runtime.SetContext                    | 80.00%   | 2         |
+| ✅     |                      | Runtime.SetCoverage                   | 100.00%  | 0         |
+| ✅     |                      | Runtime.SetExprCache                  | 100.00%  | 0         |
+| ✅     |                      | Runtime.SetGlobal                     | 100.00%  | 0         |
+| ✅     |                      | Runtime.SetIncludeCache               | 100.00%  | 0         |
+| ✅     |                      | Runtime.SetIncludePath                | 100.00%  | 0         |
+| ✅     |                      | Runtime.SetIncludeResolver            | 100.00%  | 0         |
+| ✅     |                      | Runtime.Stdin                         | 100.00%  | 0         |
+| ✅     |                      | Runtime.UnregisterAutoloader          | 71.40%   | 3         |
+| ✅     |                      | Runtime.UpdateFilename                | 100.00%  | 4         |
+| ✅     |                      | Runtime.UpdateIncludedFiles           | 100.00%  | 3         |
+| ✅     |                      | Runtime.UpdateStatus                  | 100.00%  | 2         |
+| ✅     |                      | Runtime.UploadFileMode                | 100.00%  | 1         |
+| ✅     |                      | Runtime.WorkDir                       | 100.00%  | 0         |
+| ✅     |                      | Runtime.WritablePaths                 | 100.00%  | 0         |
+| ✅     |                      | Runtime.acquireEnv                    | 100.00%  | 4         |
+| ✅     |                      | Runtime.addSourceSpans                | 100.00%  | 1         |
+| ❌     |                      | Runtime.assignTo                      | 45.90%   | 21        |
+| ✅     |                      | Runtime.autoload                      | 88.90%   | 7         |
+| ✅     |                      | Runtime.bindParams                    | 90.50%   | 16        |
+| ✅     |                      | Runtime.boundGoMethod                 | 80.00%   | 2         |
+| ✅     |                      | Runtime.boundMethod                   | 71.40%   | 2         |
+| ✅     |                      | Runtime.buildEnv                      | 97.70%   | 3         |
+| ✅     |                      | Runtime.callGoMethod                  | 95.50%   | 9         |
+| ❌     |                      | Runtime.callableFromArray             | 50.00%   | 10        |
+| ✅     |                      | Runtime.callableFromString            | 100.00%  | 2         |
+| ✅     |                      | Runtime.callableWithScope             | 54.50%   | 4         |
+| ✅     |                      | Runtime.checkMemory                   | 80.00%   | 2         |
+| ✅     |                      | Runtime.classDefaultScope             | 100.00%  | 5         |
+| ✅     |                      | Runtime.compile                       | 83.30%   | 5         |
+| ✅     |                      | Runtime.compileExpr                   | 92.60%   | 6         |
+| ✅     |                      | Runtime.container                     | 77.80%   | 4         |
+| ✅     |                      | Runtime.evalConcat                    | 100.00%  | 0         |
+| ✅     |                      | Runtime.evalIncDec                    | 81.80%   | 4         |
+| ✅     |                      | Runtime.evalInclude                   | 90.00%   | 8         |
+| ✅     |                      | Runtime.exec                          | 87.00%   | 24        |
+| ✅     |                      | Runtime.execAssign                    | 81.80%   | 43        |
+| ❌     |                      | Runtime.execDoWhile                   | 78.60%   | 11        |
+| ✅     |                      | Runtime.execFor                       | 81.00%   | 23        |
+| ✅     |                      | Runtime.execForeach                   | 82.10%   | 44        |
+| ✅     |                      | Runtime.execOne                       | 84.00%   | 21        |
+| ✅     |                      | Runtime.execStaticVar                 | 91.70%   | 10        |
+| ✅     |                      | Runtime.execTry                       | 92.00%   | 22        |
+| ❌     |                      | Runtime.execUnset                     | 62.50%   | 24        |
+| ✅     |                      | Runtime.exprConfig                    | 100.00%  | 3         |
+| ✅     |                      | Runtime.folderAutoload                | 95.20%   | 5         |
+| ✅     |                      | Runtime.hasClass                      | 100.00%  | 1         |
+| ✅     |                      | Runtime.helperCall                    | 100.00%  | 6         |
+| ✅     |                      | Runtime.helperClassConst              | 89.70%   | 25        |
+| ❌     |                      | Runtime.helperFunc                    | 78.60%   | 12        |
+| ✅     |                      | Runtime.helperGet                     | 81.00%   | 22        |
+| ✅     |                      | Runtime.helperInvoke                  | 83.30%   | 2         |
+| ✅     |                      | Runtime.helperNew                     | 87.00%   | 42        |
+| ✅     |                      | Runtime.helperRef                     | 100.00%  | 0         |
+| ✅     |                      | Runtime.helperSet                     | 100.00%  | 0         |
+| ❌     |                      | Runtime.helperStaticCall              | 78.60%   | 23        |
+| ✅     |                      | Runtime.helperStaticProp              | 80.00%   | 2         |
+| ✅     |                      | Runtime.hoist                         | 96.80%   | 15        |
+| ❌     |                      | Runtime.includeFile                   | 80.00%   | 7         |
+| ✅     |                      | Runtime.installFunc                   | 100.00%  | 2         |
+| ✅     |                      | Runtime.invokeClosure                 | 95.00%   | 6         |
+| ✅     |                      | Runtime.invokeFunc                    | 90.00%   | 2         |
+| ✅     |                      | Runtime.invokeMethod                  | 87.00%   | 11        |
+| ✅     |                      | Runtime.invokeStatic                  | 68.80%   | 5         |
+| ✅     |                      | Runtime.invokeWithScopeContext        | 100.00%  | 8         |
+| ✅     |                      | Runtime.joinParts                     | 100.00%  | 3         |
+| ✅     |                      | Runtime.lastMemoryUsage               | 66.70%   | 1         |
+| ✅     |                      | Runtime.lookupClass                   | 87.50%   | 5         |
+| ✅     |                      | Runtime.lookupConstructor             | 83.30%   | 4         |
+| ✅     |                      | Runtime.lookupFunc                    | 83.30%   | 4         |
+| ✅     |                      | Runtime.newScope                      | 100.00%  | 0         |
+| ✅     |                      | Runtime.popFrame                      | 100.00%  | 0         |
+| ✅     |                      | Runtime.pushFrame                     | 100.00%  | 0         |
+| ❌     |                      | Runtime.readLValue                    | 60.70%   | 15        |
+| ✅     |                      | Runtime.recordTraceError              | 100.00%  | 1         |
+| ✅     |                      | Runtime.registerUserFunc              | 100.00%  | 0         |
+| ❌     |                      | Runtime.releaseEnv                    | 71.40%   | 8         |
+| ✅     |                      | Runtime.resolveFSPath                 | 75.00%   | 2         |
+| ✅     |                      | Runtime.resolveInclude                | 84.60%   | 6         |
+| ✅     |                      | Runtime.runDeferred                   | 88.90%   | 3         |
+| ✅     |                      | Runtime.runFlat                       | 86.70%   | 8         |
+| ✅     |                      | Runtime.runInterpreted                | 100.00%  | 4         |
+| ✅     |                      | Runtime.runShutdown                   | 92.30%   | 4         |
+| ✅     |                      | Runtime.setCompiledExpr               | 100.00%  | 1         |
+| ✅     |                      | Runtime.setVar                        | 100.00%  | 1         |
+| ✅     |                      | Runtime.staticBag                     | 92.90%   | 7         |
+| ✅     |                      | Runtime.staticMethod                  | 75.00%   | 2         |
+| ✅     |                      | Runtime.staticStorage                 | 62.50%   | 4         |
+| ✅     |                      | Runtime.staticVarBag                  | 100.00%  | 7         |
+| ✅     |                      | Runtime.trace                         | 90.00%   | 2         |
+| ✅     |                      | Runtime.traceContext                  | 100.00%  | 4         |
+| ✅     |                      | Runtime.typeEnvBase                   | 100.00%  | 3         |
+| ✅     |                      | RuntimeException.Error                | 100.00%  | 0         |
+| ✅     |                      | RuntimeException.ThrowableClass       | 100.00%  | 0         |
+| ✅     |                      | Scope.Defer                           | 100.00%  | 0         |
+| ❌     |                      | Scope.DefinedVars                     | 77.80%   | 7         |
+| ✅     |                      | Scope.Get                             | 100.00%  | 3         |
+| ✅     |                      | Scope.Set                             | 100.00%  | 3         |
+| ✅     |                      | Scope.Unset                           | 100.00%  | 0         |
+| ✅     |                      | Scope.bindStatic                      | 100.00%  | 1         |
+| ✅     |                      | ScopeFromContext                      | 100.00%  | 0         |
+| ✅     |                      | ScriptEnvironment                     | 100.00%  | 5         |
+| ✅     |                      | Size.Bytes                            | 100.00%  | 0         |
+| ✅     |                      | Size.Exceeds                          | 100.00%  | 1         |
+| ✅     |                      | Size.String                           | 66.70%   | 2         |
+| ✅     |                      | Size.UnmarshalYAML                    | 100.00%  | 1         |
+| ✅     |                      | Transpiler.Calls                      | 100.00%  | 0         |
+| ✅     |                      | Transpiler.Closures                   | 100.00%  | 0         |
+| ✅     |                      | Transpiler.Exprs                      | 100.00%  | 0         |
+| ✅     |                      | Transpiler.Idents                     | 100.00%  | 0         |
+| ✅     |                      | Transpiler.Reset                      | 100.00%  | 0         |
+| ✅     |                      | Transpiler.Transpile                  | 88.90%   | 1         |
+| ✅     |                      | Transpiler.add                        | 100.00%  | 4         |
+| ✅     |                      | Transpiler.addCall                    | 100.00%  | 3         |
+| ✅     |                      | Transpiler.addConst                   | 100.00%  | 0         |
+| ✅     |                      | Transpiler.addVar                     | 100.00%  | 0         |
+| ❌     |                      | Transpiler.emit                       | 78.10%   | 66        |
+| ✅     |                      | Transpiler.emitArgs                   | 85.70%   | 3         |
+| ✅     |                      | Transpiler.emitArray                  | 84.60%   | 8         |
+| ✅     |                      | Transpiler.emitBinary                 | 90.00%   | 7         |
+| ✅     |                      | Transpiler.emitCall                   | 93.30%   | 10        |
+| ❌     |                      | Transpiler.emitInterp                 | 73.30%   | 8         |
+| ✅     |                      | Transpiler.mark                       | 100.00%  | 1         |
+| ✅     |                      | TypeError.Error                       | 75.00%   | 1         |
+| ✅     |                      | TypeError.ThrowableClass              | 100.00%  | 0         |
+| ✅     |                      | UndefinedConstantError.Error          | 100.00%  | 0         |
+| ✅     |                      | UndefinedConstantError.ThrowableClass | 100.00%  | 0         |
+| ✅     |                      | UploadedFile.refuse                   | 100.00%  | 0         |
+| ✅     |                      | WantsErrorPage                        | 100.00%  | 2         |
+| ✅     |                      | WithRoutePattern                      | 100.00%  | 0         |
+| ✅     |                      | acquireTranspiler                     | 100.00%  | 1         |
+| ✅     |                      | adapt                                 | 100.00%  | 0         |
+| ✅     |                      | addInt                                | 100.00%  | 4         |
+| ✅     |                      | applyAssignOp                         | 83.30%   | 1         |
+| ✅     |                      | argAt                                 | 100.00%  | 1         |
+| ❌     |                      | assignGoField                         | 76.50%   | 9         |
+| ❌     |                      | assignGoIndex                         | 77.40%   | 21        |
+| ✅     |                      | assignable                            | 66.70%   | 1         |
+| ✅     |                      | autoloadSegments                      | 100.00%  | 4         |
+| ❌     |                      | autoloaderKey                         | 46.20%   | 8         |
+| ✅     |                      | bindConstructorID                     | 100.00%  | 5         |
+| ✅     |                      | bitwiseString                         | 100.00%  | 8         |
+| ✅     |                      | buildArgs                             | 100.00%  | 9         |
+| ✅     |                      | callResult                            | 100.00%  | 8         |
+| ✅     |                      | capBody                               | 100.00%  | 2         |
+| ✅     |                      | captureClosureEnv                     | 100.00%  | 4         |
+| ✅     |                      | catchValue                            | 66.70%   | 1         |
+| ✅     |                      | cleanFSPath                           | 100.00%  | 0         |
+| ✅     |                      | coerceArg                             | 88.90%   | 11        |
+| ✅     |                      | combineErrors                         | 87.50%   | 4         |
+| ❌     |                      | compileWith                           | 50.00%   | 7         |
+| ✅     |                      | concat                                | 100.00%  | 0         |
+| ✅     |                      | constIdent                            | 100.00%  | 0         |
+| ✅     |                      | contentLength                         | 100.00%  | 3         |
+| ✅     |                      | contextWithEnv                        | 100.00%  | 0         |
+| ✅     |                      | contextWithScope                      | 100.00%  | 6         |
+| ✅     |                      | evalEnv.layer                         | 50.00%   | 3         |
+| ✅     |                      | fieldByNameFold                       | 100.00%  | 2         |
+| ✅     |                      | flatHost.Array                        | 100.00%  | 0         |
+| ✅     |                      | flatHost.Binary                       | 88.90%   | 16        |
+| ✅     |                      | flatHost.BindLocals                   | 100.00%  | 0         |
+| ✅     |                      | flatHost.Call                         | 100.00%  | 0         |
+| ✅     |                      | flatHost.CallMethod                   | 100.00%  | 0         |
+| ✅     |                      | flatHost.Cast                         | 100.00%  | 0         |
+| ✅     |                      | flatHost.CatchValue                   | 100.00%  | 0         |
+| ✅     |                      | flatHost.CheckMemory                  | 100.00%  | 0         |
+| ✅     |                      | flatHost.ClassConst                   | 100.00%  | 0         |
+| ✅     |                      | flatHost.Constant                     | 80.00%   | 2         |
+| ✅     |                      | flatHost.Construct                    | 100.00%  | 0         |
+| ✅     |                      | flatHost.Echo                         | 100.00%  | 0         |
+| ❌     |                      | flatHost.Entries                      | 65.00%   | 8         |
+| ✅     |                      | flatHost.GetProperty                  | 100.00%  | 0         |
+| ✅     |                      | flatHost.Include                      | 89.50%   | 13        |
+| ✅     |                      | flatHost.Index                        | 100.00%  | 0         |
+| ✅     |                      | flatHost.Lookup                       | 100.00%  | 1         |
+| ✅     |                      | flatHost.MatchCatch                   | 100.00%  | 0         |
+| ✅     |                      | flatHost.MemoryCheckInterval          | 100.00%  | 1         |
+| ✅     |                      | flatHost.PopLiveWalker                | 100.00%  | 0         |
+| ✅     |                      | flatHost.PushLiveWalker               | 100.00%  | 0         |
+| ✅     |                      | flatHost.RegisterClass                | 100.00%  | 4         |
+| ✅     |                      | flatHost.SetEntry                     | 80.00%   | 1         |
+| ✅     |                      | flatHost.SetGlobal                    | 100.00%  | 1         |
+| ✅     |                      | flatHost.SetIndex                     | 89.50%   | 8         |
+| ✅     |                      | flatHost.SetProperty                  | 87.50%   | 3         |
+| ✅     |                      | flatHost.TakeLocals                   | 100.00%  | 0         |
+| ✅     |                      | flatHost.Throw                        | 80.00%   | 2         |
+| ✅     |                      | flatHost.Truthy                       | 100.00%  | 0         |
+| ✅     |                      | flatHost.Unary                        | 66.70%   | 1         |
+| ✅     |                      | flatHost.UnsetIndex                   | 80.00%   | 1         |
+| ✅     |                      | flatHost.boundScope                   | 100.00%  | 1         |
+| ✅     |                      | flatHost.pullScope                    | 66.70%   | 5         |
+| ✅     |                      | flattenConcat                         | 100.00%  | 4         |
+| ✅     |                      | funcGetArgs                           | 75.00%   | 3         |
+| ✅     |                      | helperArray                           | 100.00%  | 4         |
+| ✅     |                      | helperCast                            | 95.00%   | 7         |
+| ✅     |                      | helperConcat                          | 100.00%  | 0         |
+| ✅     |                      | helperIndex                           | 85.70%   | 12        |
+| ✅     |                      | helperPair                            | 100.00%  | 0         |
+| ✅     |                      | helperToObject                        | 100.00%  | 1         |
+| ❌     |                      | instanceOfClass                       | 44.40%   | 6         |
+| ✅     |                      | instanceOfName                        | 75.00%   | 1         |
+| ✅     |                      | invokeAny                             | 94.10%   | 8         |
+| ✅     |                      | invokeFast                            | 100.00%  | 1         |
+| ✅     |                      | isFloat                               | 100.00%  | 0         |
+| ✅     |                      | isMultipart                           | 100.00%  | 0         |
+| ✅     |                      | isNumeric                             | 100.00%  | 1         |
+| ✅     |                      | isObjectValue                         | 100.00%  | 3         |
+| ✅     |                      | isPHPLabel                            | 83.30%   | 8         |
+| ✅     |                      | isURLEncoded                          | 100.00%  | 0         |
+| ✅     |                      | joinCall                              | 100.00%  | 11        |
+| ✅     |                      | litSource                             | 92.30%   | 5         |
+| ✅     |                      | lookupPHPMethod                       | 83.30%   | 4         |
+| ✅     |                      | mapToArray                            | 100.00%  | 3         |
+| ✅     |                      | matchCatchType                        | 100.00%  | 11        |
+| ✅     |                      | mediaType                             | 100.00%  | 1         |
+| ✅     |                      | methodByNameFold                      | 100.00%  | 6         |
+| ✅     |                      | mulInt                                | 100.00%  | 4         |
+| ✅     |                      | nameCallError                         | 100.00%  | 4         |
+| ✅     |                      | namedScalarInt                        | 66.70%   | 1         |
+| ✅     |                      | newCompiledExpr                       | 100.00%  | 0         |
+| ✅     |                      | newObjectError                        | 100.00%  | 0         |
+| ✅     |                      | normalizeKey                          | 100.00%  | 0         |
+| ❌     |                      | numericPrefix                         | 65.60%   | 29        |
+| ✅     |                      | objectError.ThrowableClass            | 66.70%   | 2         |
+| ✅     |                      | paramType                             | 75.00%   | 4         |
+| ✅     |                      | parseStatusLine                       | 100.00%  | 4         |
+| ✅     |                      | phpArith                              | 86.80%   | 28        |
+| ✅     |                      | phpBitNot                             | 100.00%  | 3         |
+| ✅     |                      | phpBitwise                            | 93.80%   | 12        |
+| ✅     |                      | phpClassName                          | 66.70%   | 1         |
+| ✅     |                      | phpDebugType                          | 20.00%   | 4         |
+| ✅     |                      | phpFloatString                        | 93.80%   | 10        |
+| ✅     |                      | phpInstanceOf                         | 90.00%   | 10        |
+| ✅     |                      | phpLooseEqual                         | 80.00%   | 5         |
+| ✅     |                      | phpNegate                             | 100.00%  | 1         |
+| ✅     |                      | phpParamTypeName                      | 38.50%   | 3         |
+| ✅     |                      | phpPow                                | 94.40%   | 14        |
+| ✅     |                      | phpString                             | 92.30%   | 5         |
+| ✅     |                      | phpTruthy                             | 81.80%   | 4         |
+| ✅     |                      | plural                                | 100.00%  | 1         |
+| ✅     |                      | releaseTranspiler                     | 100.00%  | 0         |
+| ✅     |                      | resolveClassName                      | 100.00%  | 11        |
+| ✅     |                      | routePattern                          | 100.00%  | 3         |
+| ✅     |                      | saveUpload                            | 80.80%   | 6         |
+| ✅     |                      | scopeBuiltin                          | 66.70%   | 1         |
+| ✅     |                      | setScopeFile                          | 100.00%  | 6         |
+| ✅     |                      | splitStaticCallable                   | 100.00%  | 4         |
+| ❌     |                      | stringToInt                           | 58.30%   | 6         |
+| ✅     |                      | subInt                                | 100.00%  | 4         |
+| ✅     |                      | superglobal                           | 100.00%  | 1         |
+| ✅     |                      | throwableClassOf                      | 100.00%  | 1         |
+| ✅     |                      | throwableMethod                       | 42.90%   | 4         |
+| ✅     |                      | toFloat                               | 61.50%   | 5         |
+| ✅     |                      | toInt                                 | 100.00%  | 3         |
+| ✅     |                      | typeEnvNature                         | 100.00%  | 2         |
+| ✅     |                      | unionArrays                           | 100.00%  | 2         |
+| ✅     |                      | uploadArray                           | 100.00%  | 1         |
+| ✅     |                      | uploadBaseName                        | 100.00%  | 1         |
+| ✅     |                      | uploadListArray                       | 100.00%  | 3         |
+| ✅     |                      | uploadValue                           | 87.50%   | 1         |
+| ✅     |                      | varIdent                              | 100.00%  | 1         |
+| ✅     |                      | wantsContext                          | 100.00%  | 1         |
+| ✅     | runner/coverage      | Collector.Blocks                      | 97.00%   | 10        |
+| ✅     |                      | Collector.Files                       | 100.00%  | 1         |
+| ✅     |                      | Collector.Functions                   | 91.70%   | 5         |
+| ✅     |                      | Collector.Hit                         | 100.00%  | 1         |
+| ✅     |                      | Collector.Register                    | 90.00%   | 5         |
+| ✅     |                      | Collector.registerFuncs               | 92.60%   | 19        |
+| ✅     |                      | New                                   | 100.00%  | 0         |
+| ✅     |                      | coverSpan                             | 60.00%   | 3         |
+| ✅     |                      | coverable                             | 100.00%  | 1         |
+| ✅     | stdlib               | Exception.Error                       | 100.00%  | 0         |
+| ✅     |                      | Exception.GetCode                     | 100.00%  | 0         |
+| ✅     |                      | Exception.GetMessage                  | 100.00%  | 0         |
+| ✅     |                      | Exception.ThrowableClass              | 66.70%   | 1         |
+| ✅     |                      | NewException                          | 100.00%  | 0         |
+| ✅     |                      | Register                              | 100.00%  | 2         |
+| ✅     |                      | RegisterFS                            | 100.00%  | 0         |
+| ✅     |                      | newThrowable                          | 100.00%  | 0         |
+| ✅     |                      | registerExceptions                    | 100.00%  | 1         |
+| ✅     | stdlib/compat        | Register                              | 100.00%  | 0         |
+| ✅     |                      | backtrackGroupCount                   | 100.00%  | 3         |
+| ✅     |                      | backtrackIndex                        | 88.90%   | 4         |
+| ✅     |                      | backtrackOptions                      | 62.50%   | 3         |
+| ✅     |                      | buffers.contents                      | 100.00%  | 1         |
+| ✅     |                      | buffers.level                         | 100.00%  | 0         |
+| ✅     |                      | buffers.pop                           | 90.00%   | 4         |
+| ✅     |                      | buffers.push                          | 100.00%  | 0         |
+| ✅     |                      | closingDelim                          | 33.30%   | 1         |
+| ✅     |                      | compilePCRE                           | 92.30%   | 6         |
+| ✅     |                      | date                                  | 100.00%  | 8         |
+| ✅     |                      | groupStart                            | 66.70%   | 1         |
+| ✅     |                      | groupText                             | 100.00%  | 1         |
+| ✅     |                      | matchGroups                           | 100.00%  | 4         |
+| ✅     |                      | matchOffset                           | 87.50%   | 4         |
+| ✅     |                      | matchValue                            | 75.00%   | 2         |
+| ✅     |                      | needsBacktracking                     | 100.00%  | 15        |
+| ✅     |                      | newBuffers                            | 100.00%  | 0         |
+| ✅     |                      | newRegexpCache                        | 100.00%  | 0         |
+| ✅     |                      | newRuneOffsets                        | 100.00%  | 5         |
+| ✅     |                      | participatingGroups                   | 83.30%   | 3         |
+| ✅     |                      | pattern.backtracker                   | 75.00%   | 2         |
+| ✅     |                      | pattern.findAllIndex                  | 92.30%   | 5         |
+| ✅     |                      | pattern.findIndex                     | 88.90%   | 5         |
+| ✅     |                      | pattern.numGroups                     | 83.30%   | 2         |
+| ✅     |                      | pattern.replaceAll                    | 22.20%   | 3         |
+| ✅     |                      | patternOrder                          | 100.00%  | 8         |
+| ✅     |                      | pcreReplacement                       | 100.00%  | 9         |
+| ✅     |                      | phpPregQuote                          | 90.00%   | 5         |
+| ✅     |                      | regexpCache.compilePCRE               | 100.00%  | 1         |
+| ✅     |                      | regexpCache.phpPregMatch              | 92.30%   | 3         |
+| ✅     |                      | regexpCache.phpPregMatchAll           | 84.60%   | 4         |
+| ✅     |                      | regexpCache.phpPregReplace            | 75.00%   | 1         |
+| ✅     |                      | regexpCache.phpPregReplaceCallback    | 90.60%   | 8         |
+| ✅     |                      | regexpCache.phpPregSplit              | 95.00%   | 14        |
+| ✅     |                      | registerBuffers                       | 96.70%   | 6         |
+| ✅     |                      | registerDatetime                      | 100.00%  | 3         |
+| ✅     |                      | registerRegex                         | 97.40%   | 2         |
+| ✅     |                      | registerRegexConstants                | 100.00%  | 0         |
+| ✅     |                      | runeOffsets.byteOffset                | 100.00%  | 3         |
+| ❌     |                      | sanitizeEscapes                       | 11.80%   | 10        |
+| ✅     |                      | setOrder                              | 100.00%  | 1         |
+| ✅     |                      | splitPCRE                             | 75.00%   | 2         |
+| ✅     |                      | splitPieces.add                       | 80.00%   | 4         |
+| ✅     |                      | splitPieces.result                    | 42.90%   | 4         |
+| ✅     |                      | strtotime                             | 86.70%   | 10        |
+| ✅     |                      | translateFlags                        | 100.00%  | 3         |
+| ✅     |                      | writeRef                              | 100.00%  | 1         |
+| ✅     | stdlib/core          | NewSharedMemory                       | 100.00%  | 0         |
+| ✅     |                      | NewSharedMemoryBinding                | 75.00%   | 1         |
+| ✅     |                      | RegisterDefer                         | 88.90%   | 5         |
+| ✅     |                      | RegisterSharedMemory                  | 100.00%  | 0         |
+| ✅     |                      | RegisterShutdown                      | 83.30%   | 3         |
+| ✅     |                      | SharedMemory.Count                    | 100.00%  | 0         |
+| ✅     |                      | SharedMemory.Get                      | 100.00%  | 0         |
+| ✅     |                      | SharedMemory.Incr                     | 100.00%  | 0         |
+| ✅     |                      | SharedMemory.Set                      | 100.00%  | 0         |
+| ✅     |                      | SharedMemoryContext                   | 100.00%  | 0         |
+| ✅     |                      | abs                                   | 66.70%   | 1         |
+| ✅     |                      | allZeroDigits                         | 100.00%  | 3         |
+| ✅     |                      | arrayColumnValue                      | 100.00%  | 1         |
+| ✅     |                      | arrayEntries                          | 100.00%  | 0         |
+| ✅     |                      | arrayFind                             | 100.00%  | 6         |
+| ✅     |                      | arrayHasKey                           | 25.00%   | 5         |
+| ✅     |                      | arrayIdentical                        | 87.50%   | 5         |
+| ✅     |                      | arrayIsList                           | 100.00%  | 3         |
+| ✅     |                      | arrayReplay                           | 100.00%  | 4         |
+| ✅     |                      | arrayStrict                           | 100.00%  | 1         |
+| ✅     |                      | arrayTarget                           | 100.00%  | 2         |
+| ✅     |                      | asciiLower                            | 100.00%  | 12        |
+| ✅     |                      | buildQuery                            | 100.00%  | 8         |
+| ✅     |                      | callbackLess                          | 75.00%   | 1         |
+| ❌     |                      | classNameOf                           | 45.50%   | 8         |
+| ❌     |                      | classOf                               | 20.00%   | 6         |
+| ✅     |                      | dumpKey                               | 75.00%   | 1         |
+| ✅     |                      | edgeValue                             | 100.00%  | 1         |
+| ✅     |                      | expSign                               | 66.70%   | 1         |
+| ✅     |                      | exportFloat                           | 75.00%   | 2         |
+| ✅     |                      | exportKey                             | 75.00%   | 1         |
+| ✅     |                      | exportScalar                          | 90.00%   | 3         |
+| ✅     |                      | exportString                          | 100.00%  | 0         |
+| ✅     |                      | fieldScope                            | 50.00%   | 1         |
+| ✅     |                      | incrementDigits                       | 83.30%   | 3         |
+| ❌     |                      | integerDigits                         | 54.20%   | 14        |
+| ✅     |                      | isComposite                           | 100.00%  | 1         |
+| ✅     |                      | isObject                              | 91.70%   | 6         |
+| ❌     |                      | isObjectLike                          | 64.30%   | 7         |
+| ❌     |                      | jsonDecodeStream                      | 76.70%   | 22        |
+| ❌     |                      | jsonDecodeValue                       | 30.00%   | 8         |
+| ✅     |                      | jsonEncodeValue                       | 90.30%   | 16        |
+| ✅     |                      | jsonObject.MarshalJSON                | 87.50%   | 7         |
+| ✅     |                      | jsonObject.add                        | 100.00%  | 0         |
+| ✅     |                      | lastIndexOrFalse                      | 100.00%  | 1         |
+| ✅     |                      | mulInt64                              | 100.00%  | 4         |
+| ✅     |                      | newBase64Values                       | 100.00%  | 3         |
+| ✅     |                      | newJSONObject                         | 100.00%  | 0         |
+| ✅     |                      | newURLSafe                            | 100.00%  | 4         |
+| ✅     |                      | newValueWriter                        | 100.00%  | 0         |
+| ❌     |                      | objectFields                          | 41.70%   | 15        |
+| ✅     |                      | objectKey                             | 66.70%   | 3         |
+| ✅     |                      | osFamily                              | 28.60%   | 1         |
+| ✅     |                      | osName                                | 40.00%   | 1         |
+| ✅     |                      | padTo                                 | 66.70%   | 1         |
+| ✅     |                      | phpAbs                                | 75.00%   | 5         |
+| ✅     |                      | phpArrayColumn                        | 100.00%  | 10        |
+| ✅     |                      | phpArrayFilter                        | 86.40%   | 10        |
+| ✅     |                      | phpArrayFlip                          | 100.00%  | 2         |
+| ✅     |                      | phpArrayKeyExists                     | 100.00%  | 0         |
+| ✅     |                      | phpArrayMap                           | 100.00%  | 3         |
+| ✅     |                      | phpArrayMerge                         | 100.00%  | 6         |
+| ✅     |                      | phpArrayPop                           | 100.00%  | 2         |
+| ✅     |                      | phpArrayPush                          | 100.00%  | 2         |
+| ✅     |                      | phpArrayReduce                        | 72.70%   | 3         |
+| ✅     |                      | phpArrayReverse                       | 100.00%  | 11        |
+| ✅     |                      | phpArraySearch                        | 100.00%  | 1         |
+| ✅     |                      | phpArrayShift                         | 100.00%  | 2         |
+| ❌     |                      | phpArraySlice                         | 77.80%   | 8         |
+| ✅     |                      | phpArraySplice                        | 92.00%   | 7         |
+| ✅     |                      | phpArraySpliceEnd                     | 83.30%   | 5         |
+| ✅     |                      | phpArraySpliceReplacement             | 80.00%   | 2         |
+| ✅     |                      | phpArraySum                           | 100.00%  | 13        |
+| ✅     |                      | phpArrayUnshift                       | 100.00%  | 2         |
+| ✅     |                      | phpArsort                             | 100.00%  | 0         |
+| ✅     |                      | phpAsort                              | 100.00%  | 0         |
+| ✅     |                      | phpBase64Decode                       | 96.90%   | 22        |
+| ✅     |                      | phpBase64Encode                       | 100.00%  | 0         |
+| ✅     |                      | phpBin2hex                            | 100.00%  | 0         |
+| ✅     |                      | phpCRC32                              | 100.00%  | 2         |
+| ✅     |                      | phpCallUserFuncArray                  | 66.70%   | 1         |
+| ✅     |                      | phpChr                                | 100.00%  | 1         |
+| ✅     |                      | phpCompact                            | 87.50%   | 4         |
+| ✅     |                      | phpExplode                            | 50.00%   | 2         |
+| ✅     |                      | phpFormatFloat                        | 83.30%   | 10        |
+| ✅     |                      | phpGetType                            | 92.30%   | 4         |
+| ✅     |                      | phpHTTPBuildQuery                     | 100.00%  | 1         |
+| ✅     |                      | phpHex2bin                            | 100.00%  | 1         |
+| ✅     |                      | phpHexdec                             | 100.00%  | 12        |
+| ✅     |                      | phpImplode                            | 100.00%  | 2         |
+| ✅     |                      | phpInArray                            | 100.00%  | 0         |
+| ✅     |                      | phpIntval                             | 100.00%  | 6         |
+| ✅     |                      | phpJSONDecode                         | 75.00%   | 3         |
+| ✅     |                      | phpJSONEncode                         | 75.00%   | 1         |
+| ✅     |                      | phpKrsort                             | 100.00%  | 0         |
+| ✅     |                      | phpKsort                              | 100.00%  | 0         |
+| ✅     |                      | phpLcfirst                            | 100.00%  | 2         |
+| ✅     |                      | phpLog                                | 75.00%   | 1         |
+| ✅     |                      | phpMbSubstr                           | 100.00%  | 11        |
+| ✅     |                      | phpMinMax                             | 84.60%   | 9         |
+| ✅     |                      | phpNumberFormat                       | 87.50%   | 22        |
+| ✅     |                      | phpOrd                                | 100.00%  | 1         |
+| ✅     |                      | phpParseStr                           | 66.70%   | 1         |
+| ✅     |                      | phpPow                                | 92.00%   | 18        |
+| ✅     |                      | phpRange                              | 100.00%  | 5         |
+| ✅     |                      | phpRawURLDecode                       | 100.00%  | 0         |
+| ✅     |                      | phpRawURLEncode                       | 100.00%  | 0         |
+| ✅     |                      | phpRound                              | 86.70%   | 5         |
+| ✅     |                      | phpRsort                              | 100.00%  | 1         |
+| ✅     |                      | phpSort                               | 100.00%  | 1         |
+| ✅     |                      | phpSprintf                            | 40.00%   | 3         |
+| ✅     |                      | phpStrContains                        | 100.00%  | 0         |
+| ✅     |                      | phpStrEndsWith                        | 100.00%  | 0         |
+| ✅     |                      | phpStrPad                             | 100.00%  | 5         |
+| ✅     |                      | phpStrReplace                         | 100.00%  | 12        |
+| ✅     |                      | phpStrSplit                           | 100.00%  | 6         |
+| ✅     |                      | phpStrStartsWith                      | 100.00%  | 0         |
+| ✅     |                      | phpStripos                            | 100.00%  | 0         |
+| ✅     |                      | phpStrpos                             | 85.70%   | 2         |
+| ✅     |                      | phpStrrev                             | 100.00%  | 1         |
+| ✅     |                      | phpStrripos                           | 75.00%   | 1         |
+| ❌     |                      | phpStrtr                              | 26.30%   | 21        |
+| ❌     |                      | phpSubstr                             | 61.10%   | 10        |
+| ✅     |                      | phpSubstrCount                        | 66.70%   | 1         |
+| ❌     |                      | phpSubstrReplace                      | 77.80%   | 10        |
+| ✅     |                      | phpTrim                               | 100.00%  | 2         |
+| ✅     |                      | phpURLDecode                          | 100.00%  | 0         |
+| ✅     |                      | phpURLEncode                          | 100.00%  | 0         |
+| ✅     |                      | phpUcfirst                            | 100.00%  | 2         |
+| ✅     |                      | phpUcwords                            | 100.00%  | 9         |
+| ✅     |                      | phpUsort                              | 80.00%   | 2         |
+| ✅     |                      | printString                           | 90.00%   | 3         |
+| ✅     |                      | queryValue                            | 100.00%  | 3         |
+| ✅     |                      | rangeCharSeq                          | 88.20%   | 6         |
+| ✅     |                      | rangeChars                            | 85.70%   | 4         |
+| ✅     |                      | rangeFloats                           | 81.80%   | 4         |
+| ✅     |                      | rangeInts                             | 86.70%   | 6         |
+| ✅     |                      | rangeIsFloat                          | 100.00%  | 0         |
+| ✅     |                      | rangeStepIsFloat                      | 100.00%  | 1         |
+| ✅     |                      | registerArraySort                     | 94.40%   | 4         |
+| ✅     |                      | registerArrays                        | 92.10%   | 19        |
+| ❌     |                      | registerClosure                       | 45.50%   | 7         |
+| ✅     |                      | registerEncoding                      | 100.00%  | 0         |
+| ✅     |                      | registerEnvironment                   | 100.00%  | 7         |
+| ✅     |                      | registerJSON                          | 100.00%  | 0         |
+| ✅     |                      | registerLang                          | 93.20%   | 47        |
+| ✅     |                      | registerMath                          | 100.00%  | 4         |
+| ✅     |                      | registerMbstring                      | 100.00%  | 0         |
+| ✅     |                      | registerOutput                        | 95.20%   | 10        |
+| ✅     |                      | registerPlatform                      | 100.00%  | 0         |
+| ✅     |                      | registerPlatformConstants             | 100.00%  | 0         |
+| ❌     |                      | registerPlatformFuncs                 | 59.70%   | 30        |
+| ❌     |                      | registerReflection                    | 57.40%   | 28        |
+| ✅     |                      | registerStrings                       | 99.40%   | 2         |
+| ✅     |                      | registerTokenizer                     | 100.00%  | 1         |
+| ✅     |                      | roundDecimal                          | 89.30%   | 11        |
+| ✅     |                      | runeSlice                             | 100.00%  | 6         |
+| ❌     |                      | searchLast                            | 12.50%   | 9         |
+| ✅     |                      | searchStart                           | 80.00%   | 5         |
+| ✅     |                      | sortEntries                           | 88.90%   | 1         |
+| ✅     |                      | sortInt64Array                        | 100.00%  | 6         |
+| ✅     |                      | sortLess                              | 100.00%  | 0         |
+| ✅     |                      | sortValues                            | 85.00%   | 6         |
+| ✅     |                      | strtolInt                             | 97.60%   | 37        |
+| ❌     |                      | substrWindow                          | 63.60%   | 12        |
+| ✅     |                      | urlEncode                             | 100.00%  | 9         |
+| ✅     |                      | valueWriter.dump                      | 92.10%   | 6         |
+| ✅     |                      | valueWriter.enter                     | 85.70%   | 4         |
+| ✅     |                      | valueWriter.export                    | 91.30%   | 7         |
+| ✅     |                      | valueWriter.exportEntry               | 100.00%  | 2         |
+| ✅     |                      | valueWriter.leave                     | 100.00%  | 1         |
+| ✅     |                      | valueWriter.pad                       | 60.00%   | 1         |
+| ✅     |                      | valueWriter.printR                    | 93.30%   | 6         |
+| ✅     | stdlib/crypto        | Register                              | 82.60%   | 12        |
+| ✅     |                      | RegisterHash                          | 100.00%  | 6         |
+| ✅     |                      | RegisterIdentifiers                   | 90.90%   | 4         |
+| ✅     |                      | RegisterRandom                        | 84.20%   | 11        |
+| ❌     |                      | costFrom                              | 64.70%   | 12        |
+| ✅     |                      | costOption                            | 41.70%   | 4         |
+| ✅     |                      | encodeCrockford                       | 100.00%  | 3         |
+| ✅     |                      | goForm                                | 100.00%  | 1         |
+| ✅     |                      | timestampedID                         | 80.00%   | 1         |
+| ✅     |                      | timingDecoy                           | 100.00%  | 0         |
+| ✅     |                      | uniformInt64                          | 87.50%   | 2         |
+| ✅     | stdlib/database      | Database.Close                        | 100.00%  | 0         |
+| ✅     |                      | Database.Get                          | 78.60%   | 3         |
+| ✅     |                      | Database.GetAll                       | 100.00%  | 4         |
+| ✅     |                      | Database.Insert                       | 100.00%  | 1         |
+| ✅     |                      | Database.InsertID                     | 100.00%  | 0         |
+| ✅     |                      | Database.Query                        | 100.00%  | 1         |
+| ✅     |                      | Database.Replace                      | 87.50%   | 1         |
+| ✅     |                      | Database.SetID                        | 100.00%  | 0         |
+| ✅     |                      | Database.Update                       | 87.50%   | 1         |
+| ✅     |                      | Database.name                         | 100.00%  | 1         |
+| ✅     |                      | Database.observe                      | 100.00%  | 2         |
+| ✅     |                      | Database.refuseQuery                  | 100.00%  | 2         |
+| ✅     |                      | Database.refuseWrite                  | 100.00%  | 1         |
+| ✅     |                      | Database.span                         | 100.00%  | 0         |
+| ✅     |                      | Database.withSpan                     | 100.00%  | 1         |
+| ✅     |                      | DatabaseMigrate.Load                  | 80.00%   | 2         |
+| ✅     |                      | DatabaseMigrate.Run                   | 85.30%   | 3         |
+| ❌     |                      | DatabaseMigrate.observe               | 66.70%   | 6         |
+| ✅     |                      | DatabaseOption.Apply                  | 75.00%   | 1         |
+| ✅     |                      | DatabaseProvider.Connect              | 83.30%   | 2         |
+| ✅     |                      | DatabaseProvider.List                 | 100.00%  | 1         |
+| ✅     |                      | DatabaseProvider.Open                 | 100.00%  | 0         |
+| ✅     |                      | DatabaseProvider.Register             | 81.80%   | 3         |
+| ✅     |                      | DatabaseProvider.cached               | 100.00%  | 3         |
+| ✅     |                      | DatabaseProvider.credential           | 100.00%  | 0         |
+| ✅     |                      | DatabaseProvider.parseCredential      | 80.00%   | 4         |
+| ✅     |                      | DatabaseProvider.resolve              | 100.00%  | 4         |
+| ✅     |                      | DatabaseProvider.with                 | 100.00%  | 1         |
+| ✅     |                      | New                                   | 94.10%   | 7         |
+| ✅     |                      | NewDatabaseProvider                   | 100.00%  | 0         |
+| ✅     |                      | Open                                  | 75.00%   | 1         |
+| ✅     |                      | Register                              | 100.00%  | 2         |
+| ❌     |                      | RegisterConnections                   | 76.50%   | 8         |
+| ✅     |                      | RegisterMigrate                       | 85.70%   | 6         |
+| ✅     |                      | addOptionToDSN                        | 100.00%  | 1         |
+| ✅     |                      | cleanDSN                              | 100.00%  | 3         |
+| ✅     |                      | databaseOption                        | 100.00%  | 2         |
+| ✅     |                      | databaseSpan                          | 100.00%  | 0         |
+| ✅     |                      | isSQLiteMemoryDSN                     | 100.00%  | 2         |
+| ✅     |                      | leadingKeyword                        | 100.00%  | 1         |
+| ✅     |                      | parseQuery                            | 100.00%  | 12        |
+| ✅     |                      | provider                              | 100.00%  | 1         |
+| ✅     |                      | queryArgs                             | 100.00%  | 6         |
+| ✅     |                      | queryInfo.isRead                      | 100.00%  | 0         |
+| ✅     |                      | queryInfo.record                      | 100.00%  | 2         |
+| ✅     |                      | queryInfo.refusal                     | 100.00%  | 1         |
+| ✅     |                      | readOnlyError.Error                   | 100.00%  | 0         |
+| ✅     |                      | readOnlyError.Is                      | 100.00%  | 0         |
+| ✅     |                      | recordRows                            | 100.00%  | 0         |
+| ✅     | stdlib/files         | Register                              | 100.00%  | 0         |
+| ✅     |                      | RegisterRoot                          | 100.00%  | 0         |
+| ✅     |                      | Within                                | 66.70%   | 1         |
+| ❌     |                      | WritableRoots                         | 76.90%   | 6         |
+| ✅     |                      | byteReader.Read                       | 100.00%  | 1         |
+| ✅     |                      | copyFile                              | 85.70%   | 3         |
+| ✅     |                      | countingWriter.Write                  | 100.00%  | 0         |
+| ✅     |                      | csvControls                           | 90.90%   | 10        |
+| ✅     |                      | inputSource                           | 100.00%  | 5         |
+| ✅     |                      | lookupGroup                           | 60.00%   | 5         |
+| ✅     |                      | lookupUser                            | 70.00%   | 5         |
+| ✅     |                      | moveFile                              | 80.00%   | 2         |
+| ✅     |                      | openMode                              | 60.00%   | 1         |
+| ✅     |                      | outputStream.Write                    | 100.00%  | 0         |
+| ✅     |                      | registerCSV                           | 94.30%   | 14        |
+| ✅     |                      | registerPaths                         | 75.00%   | 0         |
+| ❌     |                      | registerReads                         | 47.60%   | 36        |
+| ✅     |                      | registerStreams                       | 82.90%   | 23        |
+| ✅     |                      | registerUploads                       | 93.30%   | 7         |
+| ✅     |                      | registerWrites                        | 92.30%   | 39        |
+| ✅     |                      | root.resolve                          | 100.00%  | 1         |
+| ✅     |                      | root.resolveWrite                     | 100.00%  | 1         |
+| ✅     |                      | root.sourceFS                         | 100.00%  | 0         |
+| ✅     |                      | root.statSource                       | 100.00%  | 1         |
+| ✅     |                      | root.writableAllows                   | 100.00%  | 4         |
+| ✅     |                      | writes                                | 100.00%  | 0         |
+| ✅     | stdlib/gd            | Register                              | 100.00%  | 0         |
+| ✅     |                      | RegisterRoot                          | 100.00%  | 0         |
+| ✅     |                      | abs                                   | 66.70%   | 1         |
+| ✅     |                      | alphaFromByte                         | 100.00%  | 0         |
+| ✅     |                      | blendPixel                            | 44.40%   | 2         |
+| ✅     |                      | byteFromAlpha                         | 66.70%   | 1         |
+| ✅     |                      | checkDimensions                       | 100.00%  | 2         |
+| ✅     |                      | checkRGB                              | 100.00%  | 4         |
+| ✅     |                      | clampComponent                        | 60.00%   | 2         |
+| ✅     |                      | copyResampled                         | 81.80%   | 5         |
+| ✅     |                      | decoder                               | 100.00%  | 5         |
+| ❌     |                      | encodeTo                              | 78.30%   | 13        |
+| ✅     |                      | floodFill                             | 90.30%   | 31        |
+| ✅     |                      | imageTypeOf                           | 80.00%   | 1         |
+| ✅     |                      | image_ptIn                            | 100.00%  | 1         |
+| ✅     |                      | line                                  | 100.00%  | 12        |
+| ✅     |                      | normalise                             | 60.00%   | 2         |
+| ✅     |                      | packColor                             | 100.00%  | 0         |
+| ✅     |                      | registerColor                         | 87.50%   | 9         |
+| ✅     |                      | registerConstants                     | 100.00%  | 1         |
+| ✅     |                      | registerCreate                        | 96.20%   | 4         |
+| ❌     |                      | registerDraw                          | 73.10%   | 18        |
+| ✅     |                      | registerInfo                          | 84.20%   | 10        |
+| ❌     |                      | registerWrite                         | 70.60%   | 21        |
+| ✅     |                      | rgba                                  | 100.00%  | 0         |
+| ✅     |                      | root.resolve                          | 75.00%   | 1         |
+| ✅     |                      | root.resolveWrite                     | 42.90%   | 4         |
+| ✅     |                      | toInt                                 | 60.00%   | 1         |
+| ✅     |                      | unpackColor                           | 100.00%  | 0         |
+| ✅     |                      | wrap                                  | 100.00%  | 3         |
+| ✅     | stdlib/http          | Client.Get                            | 75.00%   | 1         |
+| ✅     |                      | Client.Parallel                       | 96.70%   | 6         |
+| ✅     |                      | Client.Send                           | 83.30%   | 2         |
+| ✅     |                      | Client.prepare                        | 93.30%   | 8         |
+| ✅     |                      | Client.send                           | 93.50%   | 3         |
+| ✅     |                      | NewClient                             | 87.10%   | 12        |
+| ✅     |                      | NewRequest                            | 92.90%   | 7         |
+| ✅     |                      | Register                              | 100.00%  | 0         |
+| ✅     |                      | Response.Body                         | 100.00%  | 0         |
+| ✅     |                      | Response.Err                          | 100.00%  | 0         |
+| ✅     |                      | Response.Header                       | 100.00%  | 0         |
+| ✅     |                      | Response.JSON                         | 100.00%  | 1         |
+| ✅     |                      | Response.OK                           | 100.00%  | 1         |
+| ✅     |                      | Response.Status                       | 100.00%  | 0         |
+| ✅     |                      | toBool                                | 28.60%   | 3         |
+| ✅     |                      | toDuration                            | 66.70%   | 3         |
+| ✅     |                      | toHeaders                             | 77.80%   | 2         |
+| ✅     |                      | toInt                                 | 27.30%   | 3         |
+| ❌     |                      | toRequestMap                          | 73.70%   | 6         |
+| ✅     |                      | toString                              | 50.00%   | 1         |
+| ✅     | stdlib/info          | Register                              | 50.00%   | 0         |
+| ✅     | stdlib/internals     | Register                              | 100.00%  | 0         |
+| ✅     | stdlib/logger        | Logger.Error                          | 100.00%  | 1         |
+| ✅     |                      | Logger.Info                           | 100.00%  | 1         |
+| ✅     |                      | Logger.WithLogger                     | 100.00%  | 1         |
+| ✅     |                      | Logger.label                          | 100.00%  | 2         |
+| ✅     |                      | Logger.slog                           | 100.00%  | 1         |
+| ✅     |                      | New                                   | 100.00%  | 0         |
+| ✅     |                      | cause                                 | 100.00%  | 3         |
+| ✅     | stdlib/pexec         | Register                              | 100.00%  | 0         |
+| ❌     |                      | phpExec                               | 68.40%   | 13        |
+| ✅     | stdlib/session       | Manager.Get                           | 71.40%   | 2         |
+| ✅     |                      | Manager.Start                         | 75.00%   | 3         |
+| ✅     |                      | Manager.Valid                         | 87.50%   | 4         |
+| ✅     |                      | Manager.currentID                     | 88.90%   | 6         |
+| ✅     |                      | NewManager                            | 100.00%  | 1         |
+| ❌     |                      | NewStorageDisk                        | 70.60%   | 6         |
+| ✅     |                      | NewStorageMemory                      | 100.00%  | 0         |
+| ✅     |                      | Register                              | 100.00%  | 0         |
+| ✅     |                      | StorageDisk.Delete                    | 66.70%   | 2         |
+| ✅     |                      | StorageDisk.Load                      | 66.70%   | 2         |
+| ❌     |                      | StorageDisk.Prune                     | 66.70%   | 17        |
+| ❌     |                      | StorageDisk.Save                      | 66.70%   | 7         |
+| ✅     |                      | StorageDisk.sessionPath               | 100.00%  | 2         |
+| ✅     |                      | StorageMemory.Delete                  | 75.00%   | 2         |
+| ✅     |                      | StorageMemory.Load                    | 87.50%   | 2         |
+| ✅     |                      | StorageMemory.Prune                   | 81.80%   | 6         |
+| ✅     |                      | StorageMemory.Save                    | 90.90%   | 2         |
+| ✅     |                      | missing                               | 100.00%  | 0         |
+| ✅     |                      | traceStorage                          | 66.70%   | 1         |
+| ✅     |                      | tracedStorage.Load                    | 92.90%   | 2         |
+| ✅     |                      | tracedStorage.Save                    | 100.00%  | 0         |
+| ✅     |                      | validSessionID                        | 100.00%  | 3         |
+| ✅     | stdlib/shared        | Limits.maxNesting                     | 66.70%   | 1         |
+| ✅     |                      | Limits.maxVars                        | 100.00%  | 1         |
+| ✅     |                      | ParsePairs                            | 100.00%  | 6         |
+| ✅     |                      | ParseStr                              | 100.00%  | 4         |
+| ✅     |                      | RawURLDecode                          | 100.00%  | 0         |
+| ✅     |                      | URLDecode                             | 100.00%  | 0         |
+| ✅     |                      | assign                                | 100.00%  | 9         |
+| ✅     |                      | child                                 | 100.00%  | 3         |
+| ✅     |                      | decode                                | 100.00%  | 10        |
+| ✅     |                      | mangle                                | 100.00%  | 4         |
+| ✅     |                      | needsDecoding                         | 100.00%  | 5         |
+| ✅     |                      | parseKey                              | 100.00%  | 10        |
+| ✅     |                      | unhex                                 | 80.00%   | 4         |
+| ✅     | stdlib/smtp          | Memory.Messages                       | 100.00%  | 0         |
+| ✅     |                      | Memory.Next                           | 85.70%   | 1         |
+| ✅     |                      | Memory.Send                           | 100.00%  | 0         |
+| ✅     |                      | NewMemory                             | 100.00%  | 0         |
+| ✅     |                      | NewSMTP                               | 100.00%  | 0         |
+| ✅     |                      | NewSMTPBinding                        | 96.30%   | 9         |
+| ✅     |                      | Register                              | 100.00%  | 0         |
+| ✅     |                      | RegisterConfig                        | 100.00%  | 1         |
+| ✅     |                      | RegisterSMTP                          | 100.00%  | 0         |
+| ✅     |                      | SMTP.Send                             | 100.00%  | 0         |
+| ✅     |                      | SMTP.Sender                           | 100.00%  | 0         |
+| ❌     |                      | SMTP.deliver                          | 23.30%   | 14        |
+| ✅     |                      | SMTP.send                             | 80.00%   | 5         |
+| ✅     |                      | SMTP.tlsConfig                        | 100.00%  | 0         |
+| ✅     |                      | SenderContext                         | 100.00%  | 0         |
+| ✅     |                      | Unconfigured                          | 100.00%  | 0         |
+| ✅     |                      | buildMessage                          | 100.00%  | 0         |
+| ✅     |                      | envelopeAddress                       | 100.00%  | 2         |
+| ✅     |                      | header                                | 100.00%  | 0         |
+| ✅     |                      | registerUnconfiguredMail              | 100.00%  | 0         |
+| ✅     |                      | senderFunc.Send                       | 100.00%  | 0         |
+| ✅     |                      | toBool                                | 85.70%   | 3         |
+| ✅     |                      | toInt                                 | 25.00%   | 1         |
+| ✅     |                      | toString                              | 50.00%   | 1         |
+| ✅     |                      | traceDelivery                         | 100.00%  | 1         |
+| ✅     | stdlib/span          | Register                              | 100.00%  | 0         |
+| ✅     | stdlib/time          | Register                              | 98.90%   | 0         |
+| ✅     |                      | clock.parse                           | 100.00%  | 0         |
+| ✅     |                      | clock.setTimezone                     | 80.00%   | 1         |
+| ✅     |                      | location                              | 66.70%   | 3         |
+| ✅     |                      | newDuration                           | 25.00%   | 1         |
+| ✅     | telemetry            | Module.Snapshot                       | 100.00%  | 0         |
+| ✅     |                      | Module.Trace                          | 100.00%  | 0         |
+| ✅     |                      | Module.Tracer                         | 100.00%  | 0         |
+| ✅     |                      | Module.TrackLifecycle                 | 100.00%  | 2         |
+| ✅     |                      | Module.UpdateFilename                 | 83.30%   | 2         |
+| ✅     |                      | Module.UpdateIncludedFiles            | 100.00%  | 0         |
+| ✅     |                      | Module.UpdateStatus                   | 100.00%  | 0         |
+| ✅     |                      | Mount                                 | 100.00%  | 0         |
+| ✅     |                      | New                                   | 100.00%  | 0         |
+| ✅     |                      | NewModule                             | 100.00%  | 0         |
+| ✅     |                      | NewOptions                            | 100.00%  | 0         |
+| ✅     |                      | NewStorageDisk                        | 100.00%  | 0         |
+| ✅     |                      | Recordable                            | 100.00%  | 1         |
+| ✅     |                      | SpanFromContext                       | 100.00%  | 0         |
+| ✅     |                      | SpanSource                            | 100.00%  | 0         |
+| ✅     |                      | Start                                 | 100.00%  | 0         |
+| ✅     |                      | StartSpan                             | 100.00%  | 0         |
+| ✅     |                      | TraceFromContext                      | 100.00%  | 0         |
+| ✅     |                      | TraceHost                             | 100.00%  | 0         |
+| ✅     |                      | TraceID                               | 100.00%  | 0         |
+| ✅     |                      | TracingMiddleware                     | 100.00%  | 0         |
+| ✅     |                      | WithSpanFilename                      | 100.00%  | 1         |
+| ✅     |                      | WithSpanLine                          | 100.00%  | 1         |
+| ✅     |                      | WithTrace                             | 100.00%  | 0         |
+| ✅     |                      | withSource                            | 100.00%  | 3         |
+| ✅     | tests                | BindingFuncs                          | 100.00%  | 0         |
+| ✅     |                      | BindingRecord.Label                   | 100.00%  | 0         |
+| ✅     |                      | FindFixtures                          | 87.00%   | 41        |
+| ✅     |                      | Fixture.Coverage                      | 100.00%  | 0         |
+| ✅     |                      | Fixture.RootDir                       | 100.00%  | 1         |
+| ✅     |                      | Fixture.Runs                          | 100.00%  | 3         |
+| ✅     |                      | Fixture.SetAppRoot                    | 100.00%  | 1         |
+| ✅     |                      | Fixture.SetCoverage                   | 100.00%  | 0         |
+| ✅     |                      | Fixture.SetRootFS                     | 100.00%  | 0         |
+| ✅     |                      | Fixture.flatIncludeCache              | 100.00%  | 3         |
+| ✅     |                      | Fixture.includeCache                  | 100.00%  | 3         |
+| ✅     |                      | Fixture.includePrelude                | 85.70%   | 5         |
+| ✅     |                      | Fixture.program                       | 100.00%  | 2         |
+| ✅     |                      | Fixture.realRoot                      | 100.00%  | 1         |
+| ✅     |                      | Fixture.runnerOptions                 | 100.00%  | 3         |
+| ✅     |                      | Fixture.stdin                         | 100.00%  | 2         |
+| ✅     |                      | NewFailStorage                        | 100.00%  | 0         |
+| ✅     |                      | NewStorage                            | 75.00%   | 1         |
+| ✅     |                      | ParseFixture                          | 75.00%   | 5         |
+| ✅     |                      | RegisterBindings                      | 100.00%  | 1         |
+| ✅     |                      | RunFixture                            | 100.00%  | 0         |
+| ❌     |                      | RunFixtureOn                          | 74.20%   | 20        |
+| ✅     |                      | TestMain                              | 100.00%  | 0         |
+| ✅     |                      | bindingError.Error                    | 100.00%  | 0         |
+| ✅     |                      | buildFixtureRequestContext            | 97.70%   | 9         |
+| ✅     |                      | collector.RegisterFunc                | 100.00%  | 0         |
+| ✅     |                      | embeddedFixtures                      | 85.30%   | 14        |
+| ✅     |                      | errorChainContains                    | 60.00%   | 3         |
+| ✅     |                      | executeFixturePHP                     | 96.80%   | 7         |
+| ✅     |                      | executeFlatstack                      | 88.90%   | 7         |
+| ✅     |                      | executePHP                            | 90.80%   | 7         |
+| ✅     |                      | flatIncludeCacheFor                   | 100.00%  | 1         |
+| ✅     |                      | hostPanicFast                         | 100.00%  | 0         |
+| ✅     |                      | hostPanicReflect                      | 100.00%  | 0         |
+| ✅     |                      | includeCacheFor                       | 100.00%  | 1         |
+| ✅     |                      | loadFixtureFile                       | 75.00%   | 2         |
+| ✅     |                      | memStorage.All                        | 100.00%  | 2         |
+| ✅     |                      | memStorage.Get                        | 100.00%  | 1         |
+| ✅     |                      | memStorage.Len                        | 100.00%  | 0         |
+| ✅     |                      | memStorage.Set                        | 100.00%  | 0         |
+| ✅     |                      | memStorage.Tenant                     | 100.00%  | 0         |
+| ✅     |                      | newFlatstackTestRuntime               | 100.00%  | 0         |
+| ❌     |                      | parseArgs                             | 76.20%   | 13        |
+| ✅     |                      | phpEnv                                | 33.30%   | 2         |
+| ✅     |                      | phpFatal                              | 100.00%  | 4         |
+| ❌     |                      | phpPrepend                            | 5.90%    | 9         |
+| ✅     |                      | phpRun.diagnostics                    | 100.00%  | 2         |
+| ✅     |                      | registerBindings                      | 85.40%   | 18        |
+| ✅     |                      | registerPanicBindings                 | 100.00%  | 0         |
+| ✅     |                      | setTestEnv                            | 100.00%  | 3         |
+| ✅     |                      | testPHPFS                             | 83.30%   | 2         |
+| ✅     |                      | toString                              | 66.70%   | 1         |
+| ✅     |                      | unionFS.Open                          | 90.00%   | 6         |
+| ✅     |                      | writePHPScript                        | 58.80%   | 5         |
