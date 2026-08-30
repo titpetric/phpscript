@@ -137,6 +137,10 @@ type fixtureRun struct {
 	Result      *tests.TestResult
 	DisplayPath string
 	Label       string
+	// Fixture is the fixture the run came from, carried so a table can read
+	// the coverage collector installed on it. It is nil for a run assembled
+	// by a test.
+	Fixture *tests.Fixture
 	fixtureMetrics
 }
 
@@ -351,9 +355,12 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	}
 
 	var sinks teeResultTable
-	if !opts.JSON && !opts.coverReport() {
+	if !opts.JSON && !opts.coverReport() && opts.Verbose {
 		// A report mode leaves stdout to the coverage report so it pipes
-		// clean; -o still writes the tables as Markdown.
+		// clean; -o still writes the tables as Markdown. Without -v the
+		// fixture tables stay off stdout entirely and the folder summary
+		// below is the whole answer: a tree of a few hundred fixtures prints
+		// a few hundred rows, and reading them is not what a run is for.
 		sinks = append(sinks, newResultTable(os.Stdout, opts, !table.IsTerminal(os.Stdout)))
 	}
 	if report != nil {
@@ -363,6 +370,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	var jsonRows []jsonFixture
 	var failedRuns []*fixtureRun
 	var passedCount, failedCount int
+	var folders []folderSummary
 	startAll := time.Now()
 
 	for _, group := range groups {
@@ -379,6 +387,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 			for _, fr := range fixtureRuns[i] {
 				fr.DisplayPath = group.Paths[i]
 				fr.Label = group.Labels[i]
+				fr.Fixture = fx
 				sinks.writeResult(fr)
 				jsonRows = append(jsonRows, jsonFixture{
 					Name:        fx.Name,
@@ -412,18 +421,48 @@ func Run(ctx context.Context, args []string, opts Options) error {
 			}
 		}
 
-		sinks.closeGroup(groupTotals{
+		totals := groupTotals{
 			Dir:      group.Dir,
 			Passed:   groupPassed,
 			Failed:   groupFailed,
 			Total:    len(group.Fixtures),
 			Duration: time.Since(groupStart),
-		})
+		}
+		sinks.closeGroup(totals)
+		folders = append(folders, folderSummary{groupTotals: totals})
 		passedCount += groupPassed
 		failedCount += groupFailed
 	}
 
+	// Coverage is measured once every fixture has run, so the per-folder
+	// reading is assembled here rather than as each folder closed.
+	var covers []folderCover
+	if opts.Cover != "" && !opts.JSON && !opts.coverReport() {
+		covers = folderCoverage(groups)
+	}
+
+	// The folder summary is what a run answers with when the fixture tables are
+	// not being printed: one row per folder resolved from the arguments,
+	// instead of one table per fixture.
+	if !opts.JSON && !opts.coverReport() && !opts.Verbose {
+		for i := range covers {
+			folders[i].cover = &covers[i]
+		}
+		markdown := !table.IsTerminal(os.Stdout)
+		writeFolderTable(os.Stdout, folders, markdown, opts.Time > 0 || opts.Count > 0 || opts.Profile)
+		fmt.Printf("Test summary: %d passed, %d failed out of %d fixtures (%dms)\n",
+			passedCount, failedCount, len(fixtures), time.Since(startAll).Milliseconds())
+	}
+
 	sinks.writeSummary(passedCount, failedCount, len(fixtures), time.Since(startAll))
+
+	// With -v, coverage drops to the file it was measured on, under the folder
+	// that loaded it. That is the reading a fixture table cannot give: a column
+	// says how much of what a fixture loaded ran, not which file went unvisited.
+	// A folder whose fixtures loaded no PHP file of their own has no section.
+	if opts.Verbose {
+		writeFolderFileReport(os.Stdout, covers)
+	}
 
 	if opts.JSON {
 		enc := json.NewEncoder(os.Stdout)

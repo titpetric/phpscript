@@ -84,8 +84,15 @@ for ($i = 0; $i < 3; $i++) {
 	if errRun != nil {
 		t.Fatalf("run with --cover --split: %v\n%s", errRun, stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "% of statements") {
-		t.Errorf("stdout is missing the coverage summary:\n%s", stdout.String())
+	// Without -v the folder summary is the whole answer on stdout: the run
+	// reports what it measured per folder rather than per fixture.
+	for _, want := range []string{"| Path ", "| Files ", "| Lines ", "| suite "} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Errorf("stdout is missing %q from the folder summary:\n%s", want, stdout.String())
+		}
+	}
+	if strings.Contains(stdout.String(), "| Test |") {
+		t.Errorf("stdout carries a fixture table without -v:\n%s", stdout.String())
 	}
 
 	data, err := os.ReadFile("phpscript.cov")
@@ -312,5 +319,78 @@ func TestRunCommandCoverFile(t *testing.T) {
 	}
 	if !strings.Contains(report, "total:") || strings.Contains(report, ".phpt") {
 		t.Errorf("report total/fixture contract broken:\n%s", report)
+	}
+}
+
+// TestRunCommandFolderSummary covers what a run without -v prints: one row per
+// folder resolved from the arguments, carrying the two coverage counts, and no
+// fixture table at all.
+func TestRunCommandFolderSummary(t *testing.T) {
+	coverReportSuite(t)
+	report := runCoverReport(t, test.Options{Cover: test.CoverLine, Include: "prelude.php"})
+
+	// Four files are loaded and three hold runnable statements; the interface
+	// counts as reached because it has nothing left to reach.
+	row := reportLine(t, report, "| suite ")
+	for _, want := range []string{"4/4 (100%)", "4/6 (67%)"} {
+		if !strings.Contains(row, want) {
+			t.Errorf("folder row = %q, want %q in it", row, want)
+		}
+	}
+	if strings.Contains(report, "| Test |") || strings.Contains(report, ".phpt") {
+		t.Errorf("folder summary leaks fixture rows or tables:\n%s", report)
+	}
+	// The one-line percentage measures the written profile, which counts the
+	// .phpt entrypoints; the table does not. Printing both invites a comparison
+	// between two numbers answering different questions, so it waits for -v.
+	if strings.Contains(report, "% of statements") {
+		t.Errorf("folder summary carries the profile percentage without -v:\n%s", report)
+	}
+	if !strings.Contains(report, "Test summary: 1 passed, 0 failed") {
+		t.Errorf("folder summary is missing the run total:\n%s", report)
+	}
+}
+
+// TestRunCommandFolderSummaryVerbose covers the other half of the same switch:
+// -v restores the fixture tables, gives each one a coverage column, and drops
+// to a per-file report under every folder that loaded a PHP file.
+func TestRunCommandFolderSummaryVerbose(t *testing.T) {
+	coverReportSuite(t)
+	report := runCoverReport(t, test.Options{Cover: test.CoverLine, Include: "prelude.php", Verbose: true})
+
+	if !strings.Contains(report, "| Test |") || !strings.Contains(report, "Coverage") {
+		t.Errorf("verbose run is missing the fixture table or its coverage column:\n%s", report)
+	}
+	if strings.Contains(report, "| Path ") {
+		t.Errorf("verbose run carries the folder summary as well as the tables:\n%s", report)
+	}
+	if !strings.Contains(report, "## coverage: suite") {
+		t.Errorf("verbose run is missing the per-file coverage section:\n%s", report)
+	}
+	for _, want := range []string{"suite/lib/functions.php", "suite/lib/greeter.php", "prelude.php"} {
+		if !strings.Contains(report, want) {
+			t.Errorf("per-file coverage is missing %q:\n%s", want, report)
+		}
+	}
+	if !strings.Contains(report, "% of statements") {
+		t.Errorf("verbose run is missing the profile percentage:\n%s", report)
+	}
+}
+
+// TestRunCommandFolderSummaryWithoutCover covers the summary a run prints when
+// it measured no coverage: the same one row per folder, without the two columns
+// there is nothing to fill.
+func TestRunCommandFolderSummaryWithoutCover(t *testing.T) {
+	coverReportSuite(t)
+	report := runCoverReport(t, test.Options{Include: "prelude.php"})
+
+	if !strings.Contains(report, "| Path ") || !strings.Contains(report, "| suite ") {
+		t.Errorf("run is missing the folder summary:\n%s", report)
+	}
+	if strings.Contains(report, "| Files ") || strings.Contains(report, "| Lines ") {
+		t.Errorf("run carries coverage columns it did not measure:\n%s", report)
+	}
+	if strings.Contains(report, "| Test |") {
+		t.Errorf("run carries a fixture table without -v:\n%s", report)
 	}
 }

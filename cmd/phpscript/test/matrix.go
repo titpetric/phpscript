@@ -68,7 +68,9 @@ func (r matrixRow) Failed() bool {
 // the machine, is skipped rather than failed.
 func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report io.Writer) int {
 	var sinks teeMatrixTable
-	if !opts.JSON {
+	if !opts.JSON && opts.Verbose {
+		// Without -v the per-fixture tables stay off stdout and the folder
+		// summary below is the whole answer; -o still writes every table.
 		sinks = append(sinks, newMatrixTable(os.Stdout, opts, !table.IsTerminal(os.Stdout)))
 	}
 	if report != nil {
@@ -77,6 +79,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 
 	var jsonRows []jsonFixture
 	var passedCount, failedCount, total int
+	var folders []folderSummary
 	startAll := time.Now()
 
 	for _, group := range groups {
@@ -152,16 +155,29 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 			sinks.writeRow(row)
 		}
 
-		sinks.closeGroup(groupTotals{
+		totals := groupTotals{
 			Dir:      group.Dir,
 			Passed:   groupPassed,
 			Failed:   groupFailed,
 			Total:    len(group.Fixtures),
 			Duration: time.Since(groupStart),
-		})
+		}
+		sinks.closeGroup(totals)
+		folders = append(folders, folderSummary{groupTotals: totals})
 		passedCount += groupPassed
 		failedCount += groupFailed
 		total += len(group.Fixtures)
+	}
+
+	if !opts.JSON && !opts.Verbose {
+		if opts.Cover != "" {
+			for i, cover := range folderCoverage(groups) {
+				folders[i].cover = &cover
+			}
+		}
+		writeFolderTable(os.Stdout, folders, !table.IsTerminal(os.Stdout), opts.Time > 0 || opts.Count > 0 || opts.Profile)
+		fmt.Printf("Matrix summary: %d passed, %d failed out of %d fixtures (%dms)\n",
+			passedCount, failedCount, total, time.Since(startAll).Milliseconds())
 	}
 
 	sinks.writeSummary(passedCount, failedCount, total, time.Since(startAll))

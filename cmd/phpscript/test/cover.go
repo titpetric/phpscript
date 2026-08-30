@@ -46,19 +46,50 @@ type profileBlock struct {
 // opts.CoverFile either way. It runs after the fixtures did, whichever mode ran
 // them; a fixture whose runtime runner never executed simply has empty counts.
 func writeCoverage(fixtures []*tests.Fixture, opts Options) error {
+	if opts.Split {
+		for _, fx := range fixtures {
+			if fx.Coverage() == nil {
+				continue
+			}
+			split := strings.TrimSuffix(fx.Path, ".phpt") + ".cov"
+			if err := writeCoverProfile(split, fixtureCoverBlocks(fx)); err != nil {
+				return err
+			}
+		}
+	}
+
+	blocks := mergeCoverBlocks(fixtures)
+	if err := writeCoverProfile(opts.CoverFile, blocks); err != nil {
+		return err
+	}
+	switch opts.Cover {
+	case CoverFunc:
+		return writeCoverReport(os.Stdout, funcRows(blocks, coverFuncs(fixtures), coverFiles(fixtures)))
+	case CoverFile:
+		return writeCoverReport(os.Stdout, fileRows(blocks, coverFiles(fixtures)))
+	default:
+		// The folder table is the fuller answer and it has already been
+		// printed, so this line would only invite a comparison between two
+		// numbers measuring different things: the profile counts the .phpt
+		// entrypoints, which run by definition, and the table does not.
+		if !opts.JSON && opts.Verbose {
+			fmt.Printf("coverage: %.1f%% of statements\n", coveragePercent(blocks))
+		}
+	}
+	return nil
+}
+
+// mergeCoverBlocks folds every fixture's collected blocks into one profile.
+// The same statement reached by several fixtures is one block whose counts add
+// up, which is what makes a folder's total independent of how its fixtures are
+// split up.
+func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	merged := map[profileKey]*profileBlock{}
 	for _, fx := range fixtures {
 		if fx.Coverage() == nil {
 			continue
 		}
-		blocks := fixtureCoverBlocks(fx)
-		if opts.Split {
-			split := strings.TrimSuffix(fx.Path, ".phpt") + ".cov"
-			if err := writeCoverProfile(split, blocks); err != nil {
-				return err
-			}
-		}
-		for _, b := range blocks {
+		for _, b := range fixtureCoverBlocks(fx) {
 			key := profileKey{file: b.File, startLine: b.StartLine, endLine: b.EndLine}
 			at, ok := merged[key]
 			if !ok {
@@ -81,20 +112,7 @@ func writeCoverage(fixtures []*tests.Fixture, opts Options) error {
 		blocks = append(blocks, *b)
 	}
 	sortProfile(blocks)
-	if err := writeCoverProfile(opts.CoverFile, blocks); err != nil {
-		return err
-	}
-	switch opts.Cover {
-	case CoverFunc:
-		return writeCoverReport(os.Stdout, funcRows(blocks, coverFuncs(fixtures), coverFiles(fixtures)))
-	case CoverFile:
-		return writeCoverReport(os.Stdout, fileRows(blocks, coverFiles(fixtures)))
-	default:
-		if !opts.JSON {
-			fmt.Printf("coverage: %.1f%% of statements\n", coveragePercent(blocks))
-		}
-	}
-	return nil
+	return blocks
 }
 
 // profileKey identifies a block across fixtures. Columns are derived from the
