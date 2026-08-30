@@ -227,7 +227,7 @@ A malformed selection raises a plain `\Exception` out of the parser, and a plain
 {"error":{"message":"fields: unbalanced braces in selection","code":422}}
 ```
 
-Writes take a form body, not JSON. There is no `php://input` and no raw body binding in this runtime, so only an urlencoded or multipart body reaches `$_POST`; a request sent as `application/json` arrives with `$_POST` empty and every field looking absent. `POST /api/user` reads `$_POST["username"]` and answers 201 with the created record.
+Writes here take a form body, not JSON. Only an urlencoded or multipart body reaches `$_POST`, as in PHP, so a request sent as `application/json` arrives with `$_POST` empty and every field looking absent. `POST /api/user` reads `$_POST["username"]` and answers 201 with the created record. A route that wants to accept JSON reads the bytes itself, the way PHP does — `json_decode(file_get_contents("php://input"), true)` — which [api-echo.php](../../demos/example/api-echo.php) does next to the form case.
 
 ## Errors
 

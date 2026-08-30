@@ -83,6 +83,55 @@ testcases:
           - result.statuscode ShouldEqual 200
           - result.body ShouldNotContainSubstring &lt;script&gt;
 
+  - name: the echo endpoint answers a GET with its query and trailing path
+    steps:
+      - type: http
+        method: GET
+        url: "{{.host}}/api/echo/a/b?x=1"
+        headers:
+          X-Trace: venom
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.headers.Content-Type ShouldContainSubstring application/json
+          - result.bodyjson.method ShouldEqual GET
+          - result.bodyjson.path ShouldEqual /api/echo/a/b
+          - result.bodyjson.rest ShouldEqual a/b
+          - result.bodyjson.args.x ShouldEqual 1
+          - result.bodyjson.headers.X-Trace ShouldEqual venom
+          - result.bodyjson.body ShouldBeEmpty
+          - result.bodyjson.json ShouldBeNil
+
+  # A JSON body reaches no superglobal: only the two form content types populate
+  # $_POST, so the endpoint reads php://input and decodes it itself.
+  - name: the echo endpoint decodes a JSON body
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/api/echo"
+        headers:
+          Content-Type: application/json
+        body: '{"name":"venom","n":2}'
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.bodyjson.method ShouldEqual POST
+          - result.bodyjson.rest ShouldBeEmpty
+          - result.bodyjson.json.name ShouldEqual venom
+          - result.bodyjson.json.n ShouldEqual 2
+
+  - name: the echo endpoint reports a form body as form
+    steps:
+      - type: http
+        method: POST
+        url: "{{.host}}/api/echo"
+        headers:
+          Content-Type: application/x-www-form-urlencoded
+        body: "title=venom"
+        assertions:
+          - result.statuscode ShouldEqual 200
+          - result.bodyjson.form.title ShouldEqual venom
+          - result.bodyjson.body ShouldEqual title=venom
+          - result.bodyjson.json ShouldBeNil
+
   - name: static assets are served from the web root
     steps:
       - type: http

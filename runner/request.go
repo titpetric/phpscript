@@ -98,6 +98,12 @@ type Context struct {
 	// pointer for the same reason status is, so a copy of a Context reads
 	// what another copy buffered.
 	rawBody *[]byte
+
+	// request is the *http.Request this Context was built from, kept so a
+	// binding can hand the request itself to a script. It is nil for a Context
+	// assembled by hand: a CLI run, a @startup or @schedule job, the fixture
+	// harness, or an embedder filling c.Get itself. There was no request.
+	request *http.Request
 }
 
 type requestContextKey struct{}
@@ -169,6 +175,7 @@ func FromRequest(r *http.Request) Context {
 // max_input_vars and max_input_nesting_level bound what is built from it.
 func FromRequestOptions(r *http.Request, opts Options) Context {
 	c := NewContext()
+	c.request = r
 
 	// Query string ($_GET). Decoded from RawQuery, not r.URL.Query(): a
 	// url.Values is a map, so field order is already gone, and the decoder
@@ -404,6 +411,15 @@ func (c *Context) parseBody(r *http.Request, opts Options) {
 		}
 	}
 	c.PostVars = c.decodeBody(r, opts)
+
+	// ParseForm consumed the reader the buffered bytes were handed to, so a
+	// script reaching the request itself would find an exhausted body. Wrap the
+	// bytes again: php://input and $request->body then answer the same payload,
+	// rather than one of them silently reading empty. A multipart body was
+	// never buffered and stays as net/http left it.
+	if len(*c.rawBody) > 0 {
+		r.Body = io.NopCloser(bytes.NewReader(*c.rawBody))
+	}
 }
 
 // decodeBody builds $_POST, reading the brackets in the field names. Only the
@@ -777,6 +793,18 @@ func (c Context) RawBody() []byte {
 		return nil
 	}
 	return *c.rawBody
+}
+
+// Request returns the request this Context was built from, or nil when it was
+// built by hand and there was none. It is what lets a binding hand the request
+// itself to a script; the superglobals above are the same data decoded, and a
+// script reading either sees one request.
+//
+// The value is the host's, not a copy. It is request-lived and reached by one
+// script, so nothing guards it, and a write to it is visible only to the code
+// that runs after the write.
+func (c Context) Request() *http.Request {
+	return c.request
 }
 
 // SetRawBody stores the bytes php://input answers with, for a host that

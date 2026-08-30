@@ -18,7 +18,18 @@ created next to the sources on first start.
 | `GET /`                            | [index.php](./index.php)                      |
 | `POST /bookmarks`                  | [bookmark-create.php](./bookmark-create.php)  |
 | `POST /bookmarks/{id}/delete`      | [bookmark-delete.php](./bookmark-delete.php)  |
+| `GET POST /api/echo[/{rest...}]`   | [api-echo.php](./api-echo.php)                |
 | `@startup`                         | [migrate.php](./migrate.php)                  |
+
+`api-echo.php` is not part of the bookmark list. It answers an httpbin-style
+JSON description of the request it was given, and is here because it is the one
+endpoint that reads the request through `HTTP\Request::current()` rather than
+through the superglobals:
+
+```sh
+curl -s localhost:8080/api/echo/a/b?x=1
+curl -s -XPOST -H 'content-type: application/json' -d '{"a":1}' localhost:8080/api/echo
+```
 
 `include/Compiler.php` and `include/Template.php` are
 [minitpl](https://github.com/titpetric/minitpl), vendored from

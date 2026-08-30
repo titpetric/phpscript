@@ -5,6 +5,8 @@ import (
 	"fmt"
 	nethttp "net/http"
 	"strings"
+
+	"github.com/titpetric/phpscript/runner"
 )
 
 // NewRequest builds a request from $method and $url, with an optional $body.
@@ -45,6 +47,31 @@ func NewRequest(ctx context.Context, method, url string, body ...string) (*netht
 		return nil, fmt.Errorf("HTTP\\Request: %w", err)
 	}
 	return request, nil
+}
+
+// CurrentRequest returns the request being served, or null when nothing is
+// being served. It is the same net/http request an outbound one is, so the
+// inbound and the outbound side of HTTP read alike.
+//
+// The request is the host's own value rather than a copy of it. It is
+// request-lived and reached by one script, so no lock guards it, and a write
+// reaches only the code that runs after the write: net/http has already read
+// what it needed by the time a script can see it.
+//
+// The return type is any rather than *http.Request so that "no request" is
+// PHP's null. A nil pointer in a typed return slot is not a nil interface: it
+// arrives as a value that is_null() answers false for and that a plain if()
+// takes as true, which is the opposite of what the caller asked.
+func CurrentRequest(ctx context.Context) any {
+	c, ok := runner.RequestContext(ctx)
+	if !ok {
+		return nil
+	}
+	request := c.Request()
+	if request == nil {
+		return nil
+	}
+	return request
 }
 
 // flattenHeader renders a header set as the array shape a script reads. A

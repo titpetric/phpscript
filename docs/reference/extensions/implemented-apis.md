@@ -1379,6 +1379,19 @@ function imagejpeg(mixed $im, mixed ...$args): mixed
 function imagepng(mixed $im, mixed ...$args): mixed
 ```
 
+### stdlib/http
+
+```php
+/**
+ * HTTP\Request::current returns the request being served, as the same
+ * HTTP\Request an outbound one is, and null off a request: a command line
+ * run, a @startup or @schedule job. The superglobals carry the same
+ * request decoded, and $_GET, getallheaders() and php://input are the
+ * ordered, PHP-shaped readings of what this value holds raw.
+ */
+HTTP\Request::current(): mixed
+```
+
 ### stdlib/info
 
 ```php
