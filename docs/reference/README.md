@@ -266,6 +266,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [reads](extensions/implemented-apis.md#reads)
       - [streams](extensions/implemented-apis.md#streams)
       - [uploads](extensions/implemented-apis.md#uploads)
+      - [work dir](extensions/implemented-apis.md#work-dir)
       - [writes](extensions/implemented-apis.md#writes)
     - [stdlib/gd](extensions/implemented-apis.md#stdlibgd)
       - [color](extensions/implemented-apis.md#color)

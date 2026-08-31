@@ -21,8 +21,8 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | cmd/phpscript/lint    | 73.07%   | 56        | 218   |
 | ✅     | cmd/phpscript/list    | 30.00%   | 4         | 38    |
 | ❌     | cmd/phpscript/run     | 26.67%   | 11        | 86    |
-| ❌     | cmd/phpscript/server  | 79.88%   | 120       | 856   |
-| ✅     | cmd/phpscript/test    | 81.27%   | 485       | 1829  |
+| ✅     | cmd/phpscript/server  | 80.88%   | 121       | 881   |
+| ✅     | cmd/phpscript/test    | 81.28%   | 485       | 1841  |
 | ❌     | cmd/phpscript/version | 0.00%    | 31        | 81    |
 | ✅     | config                | 94.49%   | 55        | 256   |
 | ✅     | flatstack             | 50.00%   | 0         | 18    |
@@ -36,7 +36,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | list                  | 76.85%   | 136       | 472   |
 | ❌     | model                 | 36.82%   | 325       | 1130  |
 | ✅     | parser                | 91.34%   | 1039      | 3399  |
-| ✅     | runner                | 86.51%   | 1660      | 7095  |
+| ✅     | runner                | 86.62%   | 1656      | 7178  |
 | ✅     | runner/coverage       | 92.37%   | 45        | 187   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | stdlib                | 96.30%   | 4         | 88    |
@@ -44,7 +44,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | stdlib/core           | 85.99%   | 931       | 4049  |
 | ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
 | ✅     | stdlib/database       | 84.59%   | 105       | 791   |
-| ✅     | stdlib/files          | 88.07%   | 183       | 709   |
+| ✅     | stdlib/files          | 88.92%   | 191       | 763   |
 | ❌     | stdlib/gd             | 76.99%   | 154       | 577   |
 | ❌     | stdlib/http           | 72.75%   | 61        | 417   |
 | ✅     | stdlib/info           | 75.00%   | 0         | 10    |
@@ -142,14 +142,16 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | formatSize                            | 100.00%  | 3         |
 | ✅     |                      | handler.ServeHTTP                     | 100.00%  | 13        |
 | ✅     |                      | handler.errorPage                     | 100.00%  | 4         |
+| ✅     |                      | handler.errorPageFor                  | 100.00%  | 8         |
 | ✅     |                      | handler.executes                      | 100.00%  | 4         |
 | ✅     |                      | handler.indexPage                     | 100.00%  | 4         |
 | ✅     |                      | handler.run                           | 96.10%   | 8         |
 | ✅     |                      | handler.serveAutoindex                | 91.70%   | 3         |
 | ✅     |                      | handler.serveErrorFile                | 85.70%   | 1         |
-| ✅     |                      | handler.serveErrorPage                | 100.00%  | 7         |
+| ✅     |                      | handler.serveErrorPage                | 100.00%  | 0         |
 | ✅     |                      | handler.serveNotFound                 | 100.00%  | 1         |
 | ✅     |                      | handler.servePHP                      | 100.00%  | 5         |
+| ✅     |                      | handler.serveUnrouted                 | 100.00%  | 0         |
 | ✅     |                      | handler.serverVars                    | 100.00%  | 2         |
 | ✅     |                      | hostMux.ServeHTTP                     | 100.00%  | 1         |
 | ✅     |                      | newHandler                            | 77.80%   | 2         |
@@ -168,9 +170,9 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Options.runners                       | 100.00%  | 4         |
 | ✅     |                      | Run                                   | 81.00%   | 97        |
 | ✅     |                      | coverFilePath                         | 83.30%   | 2         |
-| ✅     |                      | coverFiles                            | 92.30%   | 9         |
+| ✅     |                      | coverFiles                            | 92.90%   | 9         |
 | ✅     |                      | coverFixtures                         | 100.00%  | 1         |
-| ✅     |                      | coverFuncs                            | 91.30%   | 14        |
+| ✅     |                      | coverFuncs                            | 91.70%   | 14        |
 | ✅     |                      | coverRow.percent                      | 100.00%  | 1         |
 | ✅     |                      | coveragePercent                       | 87.50%   | 4         |
 | ✅     |                      | fileRows                              | 100.00%  | 7         |
@@ -829,7 +831,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.IncludePath                   | 100.00%  | 0         |
 | ✅     |                      | Runtime.IncludedFiles                 | 100.00%  | 0         |
 | ✅     |                      | Runtime.Load                          | 100.00%  | 1         |
-| ✅     |                      | Runtime.LoadFile                      | 64.30%   | 3         |
+| ✅     |                      | Runtime.LoadFile                      | 66.70%   | 1         |
 | ✅     |                      | Runtime.LookupConstructor             | 100.00%  | 0         |
 | ✅     |                      | Runtime.LookupFunc                    | 100.00%  | 0         |
 | ✅     |                      | Runtime.MemoryLimit                   | 100.00%  | 0         |
@@ -849,7 +851,8 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.RegisterConstructor           | 100.00%  | 0         |
 | ✅     |                      | Runtime.RegisterFunc                  | 100.00%  | 0         |
 | ✅     |                      | Runtime.RegisterShutdown              | 100.00%  | 0         |
-| ✅     |                      | Runtime.ResetSession                  | 97.00%   | 4         |
+| ✅     |                      | Runtime.ResetSession                  | 97.10%   | 4         |
+| ✅     |                      | Runtime.ResolvePath                   | 100.00%  | 0         |
 | ✅     |                      | Runtime.Run                           | 100.00%  | 11        |
 | ✅     |                      | Runtime.SAPI                          | 100.00%  | 0         |
 | ❌     |                      | Runtime.SPLAutoload                   | 73.30%   | 11        |
@@ -861,6 +864,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.SetIncludeCache               | 100.00%  | 0         |
 | ✅     |                      | Runtime.SetIncludePath                | 100.00%  | 0         |
 | ✅     |                      | Runtime.SetIncludeResolver            | 100.00%  | 0         |
+| ✅     |                      | Runtime.SetWorkDir                    | 88.90%   | 5         |
 | ✅     |                      | Runtime.Stdin                         | 100.00%  | 0         |
 | ✅     |                      | Runtime.UnregisterAutoloader          | 71.40%   | 3         |
 | ✅     |                      | Runtime.UpdateFilename                | 100.00%  | 4         |
@@ -868,6 +872,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.UpdateStatus                  | 100.00%  | 2         |
 | ✅     |                      | Runtime.UploadFileMode                | 100.00%  | 1         |
 | ✅     |                      | Runtime.WorkDir                       | 100.00%  | 0         |
+| ✅     |                      | Runtime.WorkDirPath                   | 100.00%  | 0         |
 | ✅     |                      | Runtime.WritablePaths                 | 100.00%  | 0         |
 | ✅     |                      | Runtime.acquireEnv                    | 100.00%  | 4         |
 | ✅     |                      | Runtime.addSourceSpans                | 100.00%  | 1         |
@@ -889,7 +894,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.declareFunc                   | 100.00%  | 2         |
 | ✅     |                      | Runtime.evalConcat                    | 100.00%  | 0         |
 | ✅     |                      | Runtime.evalIncDec                    | 81.80%   | 4         |
-| ✅     |                      | Runtime.evalInclude                   | 90.00%   | 8         |
+| ✅     |                      | Runtime.evalInclude                   | 75.00%   | 1         |
 | ✅     |                      | Runtime.exec                          | 87.00%   | 24        |
 | ✅     |                      | Runtime.execAssign                    | 81.80%   | 43        |
 | ❌     |                      | Runtime.execDoWhile                   | 78.60%   | 11        |
@@ -913,7 +918,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     |                      | Runtime.helperStaticCall              | 78.60%   | 23        |
 | ✅     |                      | Runtime.helperStaticProp              | 80.00%   | 2         |
 | ✅     |                      | Runtime.hoist                         | 97.00%   | 17        |
-| ✅     |                      | Runtime.includeFile                   | 83.30%   | 7         |
+| ✅     |                      | Runtime.includeFile                   | 84.80%   | 9         |
 | ✅     |                      | Runtime.installFunc                   | 100.00%  | 2         |
 | ✅     |                      | Runtime.invokeClosure                 | 95.00%   | 6         |
 | ✅     |                      | Runtime.invokeFunc                    | 90.00%   | 2         |
@@ -922,6 +927,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.invokeWithScopeContext        | 100.00%  | 8         |
 | ✅     |                      | Runtime.joinParts                     | 100.00%  | 3         |
 | ✅     |                      | Runtime.lastMemoryUsage               | 66.70%   | 1         |
+| ✅     |                      | Runtime.loadResolved                  | 62.50%   | 2         |
 | ✅     |                      | Runtime.lookupClass                   | 87.50%   | 5         |
 | ✅     |                      | Runtime.lookupConstructor             | 83.30%   | 4         |
 | ✅     |                      | Runtime.lookupFunc                    | 83.30%   | 4         |
@@ -932,7 +938,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.recordTraceError              | 100.00%  | 1         |
 | ✅     |                      | Runtime.registerUserFunc              | 100.00%  | 0         |
 | ❌     |                      | Runtime.releaseEnv                    | 71.40%   | 8         |
-| ✅     |                      | Runtime.resolveFSPath                 | 75.00%   | 2         |
+| ✅     |                      | Runtime.resolveFSPath                 | 100.00%  | 3         |
 | ✅     |                      | Runtime.resolveInclude                | 84.60%   | 6         |
 | ✅     |                      | Runtime.runDeferred                   | 88.90%   | 3         |
 | ❌     |                      | Runtime.runFlat                       | 72.20%   | 10        |
@@ -1002,6 +1008,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | capBody                               | 100.00%  | 2         |
 | ✅     |                      | captureClosureEnv                     | 100.00%  | 4         |
 | ✅     |                      | catchValue                            | 66.70%   | 1         |
+| ✅     |                      | clampFSPath                           | 100.00%  | 1         |
 | ✅     |                      | cleanFSPath                           | 100.00%  | 0         |
 | ✅     |                      | coerceArg                             | 88.90%   | 11        |
 | ✅     |                      | combineErrors                         | 87.50%   | 4         |
@@ -1028,7 +1035,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | flatHost.Echo                         | 100.00%  | 0         |
 | ❌     |                      | flatHost.Entries                      | 65.00%   | 8         |
 | ✅     |                      | flatHost.GetProperty                  | 100.00%  | 0         |
-| ✅     |                      | flatHost.Include                      | 94.70%   | 13        |
+| ✅     |                      | flatHost.Include                      | 92.30%   | 6         |
 | ✅     |                      | flatHost.Index                        | 100.00%  | 0         |
 | ✅     |                      | flatHost.Lookup                       | 100.00%  | 1         |
 | ✅     |                      | flatHost.MatchCatch                   | 100.00%  | 0         |
@@ -1098,6 +1105,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | plural                                | 100.00%  | 1         |
 | ✅     |                      | releaseTranspiler                     | 100.00%  | 0         |
 | ✅     |                      | resolveClassName                      | 100.00%  | 11        |
+| ✅     |                      | rootPath                              | 100.00%  | 1         |
 | ✅     |                      | routePattern                          | 100.00%  | 3         |
 | ✅     |                      | saveUpload                            | 80.80%   | 6         |
 | ✅     |                      | scopeBuiltin                          | 66.70%   | 1         |
@@ -1436,16 +1444,19 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | outputStream.Write                    | 100.00%  | 0         |
 | ✅     |                      | registerCSV                           | 94.30%   | 14        |
 | ✅     |                      | registerPaths                         | 75.00%   | 0         |
-| ❌     |                      | registerReads                         | 76.90%   | 47        |
-| ✅     |                      | registerStreams                       | 82.90%   | 23        |
+| ❌     |                      | registerReads                         | 79.20%   | 47        |
+| ✅     |                      | registerStreams                       | 82.90%   | 25        |
 | ✅     |                      | registerUploads                       | 93.30%   | 7         |
+| ✅     |                      | registerWorkDir                       | 100.00%  | 0         |
 | ✅     |                      | registerWrites                        | 92.30%   | 39        |
-| ✅     |                      | root.fsPath                           | 77.80%   | 4         |
-| ✅     |                      | root.resolve                          | 100.00%  | 1         |
+| ✅     |                      | root.fsPath                           | 66.70%   | 1         |
+| ✅     |                      | root.globSpelling                     | 100.00%  | 7         |
+| ✅     |                      | root.resolve                          | 100.00%  | 0         |
 | ✅     |                      | root.resolveWrite                     | 100.00%  | 1         |
 | ✅     |                      | root.sourceFS                         | 100.00%  | 0         |
 | ✅     |                      | root.statSource                       | 85.70%   | 2         |
 | ✅     |                      | root.unresolve                        | 85.70%   | 2         |
+| ✅     |                      | root.uploadPath                       | 100.00%  | 3         |
 | ✅     |                      | root.writableAllows                   | 100.00%  | 4         |
 | ✅     |                      | writes                                | 100.00%  | 0         |
 | ✅     | stdlib/gd            | Register                              | 100.00%  | 0         |

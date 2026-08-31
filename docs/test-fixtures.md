@@ -217,6 +217,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 | tests/fixtures/paths | Flat stack | Runtime | PHP  |
 |----------------------|------------|---------|------|
+| chdir.phpt           | PASS       | PASS    | PASS |
 | magic_constants.phpt | PASS       | PASS    | PASS |
 | root_filesystem.phpt | PASS       | PASS    | PASS |
 
@@ -334,11 +335,11 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/namespaces  | 3        | 3      | 0      |
 | tests/fixtures/oop         | 24       | 24     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
-| tests/fixtures/paths       | 2        | 2      | 0      |
+| tests/fixtures/paths       | 3        | 3      | 0      |
 | tests/fixtures/pexec       | 1        | 1      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
 | tests/fixtures/stdlib      | 20       | 20     | 0      |
 | tests/fixtures/strings     | 17       | 17     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 210      | 210    | 0      |
+| **Total**                  | 211      | 211    | 0      |

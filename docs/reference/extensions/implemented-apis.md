@@ -1225,6 +1225,18 @@ function is_uploaded_file(string $filename): bool
 function move_uploaded_file(string $from, string $to): bool
 ```
 
+#### work dir
+
+```php
+// chdir changes the working directory relative paths resolve against and returns whether it could; the directory is this request's own, and a path that would climb out of the source filesystem's root stops at it.
+function chdir(string $dir): bool
+```
+
+```php
+// getcwd returns the working directory, written from the source filesystem's root: "/" for the root itself, "/app" for a directory below it. PHP answers a host path; a runtime whose scripts may be served out of an embedded tree has none to answer with.
+function getcwd(): string
+```
+
 #### writes
 
 ```php
