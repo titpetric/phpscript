@@ -1,15 +1,9 @@
 <?php
-declare(strict_types=1);
 
-namespace App;
+use Mobius\Render\Problem;
+use Common\Config;
 
-use MiniTPL\Compiler;
-use MiniTPL\Template as Renderer;
-use function array_map;
+include "bootstrap.php";
+require_once "shim.php";
 
-class Runner {
-	function run() {
-		$compiler = new Compiler();
-		return $compiler;
-	}
-}
+echo Config::get("app", "development");

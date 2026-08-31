@@ -107,6 +107,19 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 		p.lastLine = prog.NamespaceLine
 		p.blank()
 	}
+	// Includes ahead of imports, as their own paragraphs. Printed here rather
+	// than reordered in place because the blank line between them is the
+	// point: two groups a reader can take in at a glance beats one block
+	// whose order happens to be right.
+	if includes, uses, rest := splitImportPreamble(stmts); len(includes) > 0 && len(uses) > 0 {
+		p.stmts(includes)
+		p.blank()
+		p.stmts(uses)
+		stmts = rest
+		if len(stmts) > 0 {
+			p.blank()
+		}
+	}
 	p.stmts(stmts)
 	// Anything written below the last statement, a trailing note or a
 	// commented-out block, still belongs to the file.
@@ -129,6 +142,47 @@ func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
 		}
 	}
 	return stmts, nil
+}
+
+// splitImportPreamble separates a file's leading includes from its leading
+// imports, and answers what follows both.
+//
+// A `use` is a compile-time alias: it binds a short name to a long one and
+// loads nothing, so it can sit anywhere and is legal before the include that
+// will eventually define what it names. That is exactly why the order is
+// worth fixing here rather than leaving to whoever types it - a reader
+// scanning the top of a file learns what the file pulls in before what it
+// renames, and one order for every file is one less thing to decide.
+//
+// Only the leading run is reordered, and only across the include/use
+// boundary. Includes keep their order among themselves, because an include
+// runs code and the next one may depend on it; imports keep theirs. A `use`
+// further down the file, after real work has started, is left where the
+// author put it.
+func splitImportPreamble(stmts []model.Stmt) (includes, uses, rest []model.Stmt) {
+	var from = len(stmts)
+	for i, s := range stmts {
+		switch node := s.(type) {
+		case *model.Use:
+			uses = append(uses, s)
+			continue
+		case *model.Include:
+			includes = append(includes, s)
+			continue
+		case *model.ExprStmt:
+			// An include written where a value is wanted - `$ok = include
+			// "x";` - is an expression, and the parser wraps it. It is still
+			// the file pulling something in.
+			if _, ok := node.X.(*model.Include); ok {
+				includes = append(includes, s)
+				continue
+			}
+		}
+		from = i
+		break
+	}
+
+	return includes, uses, stmts[from:]
 }
 
 type printer struct {
