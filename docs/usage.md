@@ -76,6 +76,7 @@ The lint pass reports these shapes:
 | `reference & is a no-op` / `returns by value`         | `$a = &$b;`, `function &f()`         |
 | `call to undefined function`                          | `undefined_function()`               |
 | `new: undefined class` and the `unknown class` forms  | `new ReflectionClass($c);`           |
+| `Cannot redeclare function`                           | `function strlen($s) {}`             |
 | `JSON_* is not defined and the argument is ignored`   | `json_encode($v, JSON_PRETTY_PRINT)` |
 | a class missing a method its `implements` names       | see [design.md](design.md)           |
 | an `@route` path the router cannot answer for         | `// @route /users/{id=}`             |
@@ -84,7 +85,11 @@ All are warnings; only a parse error fails the run. The undefined-name checks
 compare against the file's own declarations plus the registered runtime
 bindings, and skip names the source guards with `function_exists` /
 `class_exists`; a name that arrives through an include or an autoloader can
-still warn, which is why it warns rather than fails. The chained-assignment rule
+still warn, which is why it warns rather than fails. The redeclaration check
+reads the same set from the other side: a function declared twice in one file,
+or declared over a name the runtime registers, is refused at run time, so the
+finding is the error arriving early. A declaration the source guards with
+`function_exists` is the polyfill idiom and is not reported. The chained-assignment rule
 exists because phpscript arrays are handles rather than values, so two names can
 end up sharing one array where PHP would give each its own. See
 [Value semantics](reference/types/value-semantics.md#arrays-are-handles-not-values).

@@ -44,6 +44,7 @@ func File(name, src string) ([]Diagnostic, error) {
 	lintStmts(name, prog, &out)
 	lintReferences(name, prog, &out)
 	lintUndefinedNames(name, prog, &out)
+	lintRedeclared(name, prog, &out)
 	return out, nil
 }
 

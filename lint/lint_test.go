@@ -506,3 +506,39 @@ class Circle {
 		}
 	}
 }
+
+// A function declared twice, or declared over a name the runtime registers, is
+// the RedeclareError waiting for the file to be hoisted; the linter reports it
+// first. A single declaration, a class method, and a name the source guards
+// with function_exists all lint clean, the last being the polyfill idiom where
+// declaring over an absent built-in is the whole point.
+func TestFileReportsRedeclaredFunctions(t *testing.T) {
+	src := `<?php
+function once_only() { return 1; }
+function twice() { return 1; }
+function twice() { return 2; }
+function strlen($s) { return 0; }
+if (!function_exists("str_contains")) {
+	function str_contains($h, $n) { return false; }
+}
+class Holder {
+	public function twice() { return 3; }
+}
+`
+	diags, err := lint.File("redeclare.php", src)
+	if err != nil {
+		t.Fatalf("File returned an error: %v", err)
+	}
+	want := []string{
+		`redeclare.php:4: Cannot redeclare function twice() (previously declared on line 3)`,
+		`redeclare.php:5: Cannot redeclare function strlen()`,
+	}
+	if len(diags) != len(want) {
+		t.Fatalf("diagnostics = %v, want %d findings", diags, len(want))
+	}
+	for i, w := range want {
+		if got := diags[i].String(); got != w {
+			t.Errorf("diagnostic %d = %q, want %q", i, got, w)
+		}
+	}
+}
