@@ -68,6 +68,23 @@ func Generate(rt *runner.Runtime, srcRoot string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	funcs, classes := build(rt, src)
+	return render(funcs, classes), nil
+}
+
+// Reflect is Generate's first half without the source scan: what the runtime
+// registers, with the signature reflection can recover on its own. It is what a
+// shipped binary can answer, since the Go source it was built from is not there
+// to read doc comments and PHP-spelled parameter names out of. Those are the
+// only things missing from the result; the names, types and returns are the
+// same ones the generated reference is rendered from.
+func Reflect(rt *runner.Runtime) ([]Func, []Class) {
+	return build(rt, emptySources())
+}
+
+// build assembles the registered surface from the runtime and whatever the
+// source scan found, which may be nothing.
+func build(rt *runner.Runtime, src *sources) ([]Func, []Class) {
 	classTypes := registeredClassTypes(rt, src)
 
 	internal, _ := rt.DefinedFunctions()
@@ -77,9 +94,7 @@ func Generate(rt *runner.Runtime, srcRoot string) (string, error) {
 		funcs = append(funcs, buildFunc(name, fn, src, classTypes))
 	}
 
-	classes := buildClasses(rt, src, classTypes)
-
-	return render(funcs, classes), nil
+	return funcs, buildClasses(rt, src, classTypes)
 }
 
 // buildFunc merges the scanned source entry for name with the reflected

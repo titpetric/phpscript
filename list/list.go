@@ -208,11 +208,23 @@ func collectClasses(stmts []model.Stmt, out *[]string) {
 
 // Markdown renders rows as an indented, padded GitHub-flavoured markdown table.
 func Markdown(rows []Row) string {
-	headings := [3]string{"Route", "Filename", "Classes"}
-	widths := [3]int{len(headings[0]), len(headings[1]), len(headings[2])}
+	cells := make([][]string, 0, len(rows))
 	for _, r := range rows {
-		values := [3]string{cell(r.Route), filenameCell(r.Filename), cell(r.Classes)}
-		for i, value := range values {
+		cells = append(cells, []string{cell(r.Route), filenameCell(r.Filename), cell(r.Classes)})
+	}
+	return markdownTable([]string{"Route", "Filename", "Classes"}, cells)
+}
+
+// markdownTable renders a table of any width, every column padded to its widest
+// cell. Both listings this package produces are the same table with different
+// headings, so the padding is worked out in one place.
+func markdownTable(headings []string, rows [][]string) string {
+	widths := make([]int, len(headings))
+	for i, heading := range headings {
+		widths[i] = utf8.RuneCountInString(heading)
+	}
+	for _, row := range rows {
+		for i, value := range row {
 			widths[i] = max(widths[i], utf8.RuneCountInString(value))
 		}
 	}
@@ -224,13 +236,13 @@ func Markdown(rows []Row) string {
 		fmt.Fprintf(&b, "%s|", strings.Repeat("-", width+2))
 	}
 	b.WriteByte('\n')
-	for _, r := range rows {
-		writeMarkdownRow(&b, [3]string{cell(r.Route), filenameCell(r.Filename), cell(r.Classes)}, widths)
+	for _, row := range rows {
+		writeMarkdownRow(&b, row, widths)
 	}
 	return b.String()
 }
 
-func writeMarkdownRow(b *strings.Builder, values [3]string, widths [3]int) {
+func writeMarkdownRow(b *strings.Builder, values []string, widths []int) {
 	b.WriteString("  |")
 	for i, value := range values {
 		fmt.Fprintf(b, " %s%s |", value, strings.Repeat(" ", widths[i]-utf8.RuneCountInString(value)))

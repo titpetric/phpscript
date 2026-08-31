@@ -68,15 +68,21 @@ var skipDirs = map[string]bool{
 	"scripts": true, "testdata": true, "tests": true, "vendor": true,
 }
 
-// scan parses every non-test Go file under root and collects registration
-// sites, function declarations and type doc comments.
-func scan(root string) (*sources, error) {
-	src := &sources{
+// emptySources is what a caller with no Go source tree to read passes in. Every
+// lookup misses, so the result carries only what reflection recovered.
+func emptySources() *sources {
+	return &sources{
 		funcs: map[string]*sourceEntry{},
 		ctors: map[string]*sourceEntry{},
 		decls: map[string][]*declInfo{},
 		types: map[string][]typeInfo{},
 	}
+}
+
+// scan parses every non-test Go file under root and collects registration
+// sites, function declarations and type doc comments.
+func scan(root string) (*sources, error) {
+	src := emptySources()
 
 	fset := token.NewFileSet()
 	type parsedFile struct {

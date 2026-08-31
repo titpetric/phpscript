@@ -105,11 +105,7 @@ func renderFuncs(b *strings.Builder, funcs []Func) {
 		writeComment(b, f.Comment, "")
 		// A Class::method name is not declarable with the function keyword;
 		// it is cited the way a script calls it.
-		if strings.Contains(f.Name, "::") {
-			fmt.Fprintf(b, "%s(%s): %s\n", f.Name, paramList(f.Params), f.Returns)
-		} else {
-			fmt.Fprintf(b, "function %s(%s): %s\n", f.Name, paramList(f.Params), f.Returns)
-		}
+		fmt.Fprintf(b, "%s\n", f.Signature())
 		b.WriteString("```\n\n")
 	}
 }
@@ -124,11 +120,11 @@ func renderClass(b *strings.Builder, c Class) {
 	b.WriteString("```php\n")
 	writeComment(b, c.Comment, "")
 	fmt.Fprintf(b, "class %s\n{\n", c.Name)
-	fmt.Fprintf(b, "    public function __construct(%s) {}\n", paramList(c.Params))
+	fmt.Fprintf(b, "    %s {}\n", c.Signature())
 	for _, m := range c.Methods {
 		b.WriteString("\n")
 		writeComment(b, m.Comment, "    ")
-		fmt.Fprintf(b, "    public function %s(%s): %s {}\n", m.Name, paramList(m.Params), m.Returns)
+		fmt.Fprintf(b, "    %s {}\n", m.Signature())
 	}
 	b.WriteString("}\n```\n\n")
 	if len(c.Aliases) > 0 {
@@ -151,6 +147,26 @@ func writeComment(b *strings.Builder, lines []string, indent string) {
 		}
 		fmt.Fprintf(b, "%s */\n", indent)
 	}
+}
+
+// Signature renders the function as a script would declare it. A Class::method
+// name is not declarable with the function keyword, so it is cited the way a
+// script calls it instead.
+func (f Func) Signature() string {
+	if strings.Contains(f.Name, "::") {
+		return fmt.Sprintf("%s(%s): %s", f.Name, paramList(f.Params), f.Returns)
+	}
+	return fmt.Sprintf("function %s(%s): %s", f.Name, paramList(f.Params), f.Returns)
+}
+
+// Signature renders the class constructor as a script would declare it.
+func (c Class) Signature() string {
+	return fmt.Sprintf("public function __construct(%s)", paramList(c.Params))
+}
+
+// Signature renders the method as a script would declare it.
+func (m Method) Signature() string {
+	return fmt.Sprintf("public function %s(%s): %s", m.Name, paramList(m.Params), m.Returns)
 }
 
 // paramList renders parameters in signature order.
