@@ -34,7 +34,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | internal/table        | 100.00%  | 24        | 135   |
 | ✅     | lint                  | 87.32%   | 238       | 844   |
 | ❌     | list                  | 76.85%   | 136       | 472   |
-| ❌     | model                 | 36.82%   | 325       | 1130  |
+| ❌     | model                 | 36.84%   | 325       | 1130  |
 | ✅     | parser                | 91.34%   | 1039      | 3399  |
 | ✅     | runner                | 86.62%   | 1656      | 7163  |
 | ✅     | runner/bindings       | 86.72%   | 95        | 538   |
@@ -42,7 +42,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | stdlib                | 96.30%   | 4         | 94    |
 | ✅     | stdlib/compat         | 86.92%   | 184       | 901   |
-| ✅     | stdlib/core           | 85.99%   | 931       | 4049  |
+| ✅     | stdlib/core           | 85.58%   | 933       | 4128  |
 | ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
 | ✅     | stdlib/database       | 84.59%   | 105       | 791   |
 | ✅     | stdlib/files          | 87.78%   | 272       | 1041  |
@@ -572,7 +572,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | collectContract                       | 93.30%   | 7         |
 | ✅     |                      | contractOf                            | 100.00%  | 0         |
 | ✅     |                      | declaredMethods                       | 100.00%  | 7         |
-| ❌     |                      | exprAssignsTo                         | 44.00%   | 34        |
+| ❌     |                      | exprAssignsTo                         | 48.00%   | 34        |
 | ✅     |                      | exprsAssignTo                         | 100.00%  | 3         |
 | ✅     |                      | interfaceIndex                        | 100.00%  | 5         |
 | ✅     |                      | listAssignsTo                         | 42.90%   | 5         |
@@ -1212,7 +1212,13 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | strtotime                             | 86.70%   | 10        |
 | ✅     |                      | translateFlags                        | 100.00%  | 3         |
 | ✅     |                      | writeRef                              | 100.00%  | 1         |
-| ✅     | stdlib/core          | NewSharedMemory                       | 100.00%  | 0         |
+| ✅     | stdlib/core          | JSONDecoder.Decode                    | 100.00%  | 0         |
+| ✅     |                      | JSONDecoder.More                      | 100.00%  | 0         |
+| ✅     |                      | JSONEncoder.Encode                    | 100.00%  | 0         |
+| ✅     |                      | JSONEncoder.SetIndent                 | 100.00%  | 0         |
+| ✅     |                      | NewJSONDecoder                        | 80.00%   | 1         |
+| ✅     |                      | NewJSONEncoder                        | 66.70%   | 1         |
+| ✅     |                      | NewSharedMemory                       | 100.00%  | 0         |
 | ✅     |                      | NewSharedMemoryBinding                | 75.00%   | 1         |
 | ✅     |                      | RegisterDefer                         | 88.90%   | 5         |
 | ✅     |                      | RegisterSharedMemory                  | 100.00%  | 0         |
@@ -1241,7 +1247,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | dumpKey                               | 75.00%   | 1         |
 | ✅     |                      | edgeValue                             | 100.00%  | 1         |
 | ✅     |                      | expSign                               | 66.70%   | 1         |
-| ✅     |                      | exportFloat                           | 75.00%   | 2         |
+| ✅     |                      | exportFloat                           | 100.00%  | 2         |
 | ✅     |                      | exportKey                             | 75.00%   | 1         |
 | ✅     |                      | exportScalar                          | 90.00%   | 3         |
 | ✅     |                      | exportString                          | 100.00%  | 0         |
@@ -1254,7 +1260,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | isObject                              | 91.70%   | 6         |
 | ❌     |                      | isObjectLike                          | 64.30%   | 7         |
 | ❌     |                      | jsonDecodeStream                      | 76.70%   | 22        |
-| ❌     |                      | jsonDecodeValue                       | 30.00%   | 8         |
+| ❌     |                      | jsonDecodeValue                       | 60.00%   | 8         |
 | ✅     |                      | jsonEncodeValue                       | 90.30%   | 16        |
 | ✅     |                      | jsonObject.MarshalJSON                | 87.50%   | 7         |
 | ✅     |                      | jsonObject.add                        | 100.00%  | 0         |

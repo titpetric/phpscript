@@ -2022,6 +2022,88 @@ class HTTP\Request
 }
 ```
 
+### `JSON\Decoder`
+
+Registered from `stdlib/core`.
+
+```php
+/**
+ * JSON\Decoder returns a decoder reading from $stream.
+ * 
+ * UseNumber is on, as it is in json_decode(): without it Go reads every number
+ * as a float, and the 7 in a document would come back as 7.0. With it a whole
+ * number is an int and only a fractional one is a float, which is what php
+ * answers and what a row written back out has to preserve.
+ */
+class JSON\Decoder
+{
+    public function __construct(resource $stream) {}
+
+    /**
+     * decode reads the next value from the stream and returns it, or throws at the
+     * end of the stream.
+     * 
+     * Go's Decode fills a pointer and answers an error; PHP has no out-parameter,
+     * so the value comes back instead and the error is thrown.
+     * 
+     * It goes through jsonDecodeStream, which json_decode() uses, rather than
+     * through Go's Decode into an any. Decode would build a map[string]any, and a
+     * Go map has no order: the same document would hand back its keys in a
+     * different order on every run. The two spellings of decoding therefore agree
+     * on the shape as well as the values - an object is an ordered array keyed by
+     * its field names.
+     * 
+     * The end of the stream is an error rather than a null, because a null is a
+     * value JSON can carry: `while ($d->more())` is the loop, not a test against
+     * what decode() returned.
+     */
+    public function decode(): mixed {}
+
+    /**
+     * more reports whether another value is waiting in the stream. It is what ends
+     * a decode loop, and it is false at the end of the stream and inside a document
+     * that has been read to its close.
+     */
+    public function more(): bool {}
+}
+```
+
+### `JSON\Encoder`
+
+Registered from `stdlib/core`.
+
+```php
+/**
+ * The streaming pair. json_encode() and json_decode() work on a whole
+ * string, which means holding the whole document; these work on a stream,
+ * which is what a request body and a response are.
+ * `new JSON\Decoder(fopen("php://input", "r"))` reads a POST body without a
+ * string of it existing first, and an encoder over php://output writes the
+ * response as it is built. Both take the io.Reader or io.Writer they wrap,
+ * so any handle fopen() returns works, and so do STDIN and STDOUT.
+ */
+class JSON\Encoder
+{
+    public function __construct(resource $stream) {}
+
+    /**
+     * encode writes $value to the stream as JSON, followed by a newline.
+     * 
+     * The newline is Go's, not php's: an Encoder writes a stream of values, and the
+     * newline is what separates one from the next. A single value followed by a
+     * newline is still valid JSON to any reader.
+     */
+    public function encode(mixed $value): void {}
+
+    /**
+     * set_indent makes the encoder write each value across several lines, $indent
+     * per level under $prefix; called with two empty strings it goes back to one
+     * line per value.
+     */
+    public function set_indent(string $prefix, string $indent): void {}
+}
+```
+
 ### `SMTP`
 
 Registered from `stdlib/smtp`.

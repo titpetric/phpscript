@@ -86,6 +86,8 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | database_test.phpt                    | PASS       | PASS    | SKIP |
 | http_request.phpt                     | PASS       | PASS    | SKIP |
 | http_response_code.phpt               | PASS       | PASS    | PASS |
+| json_request_body.phpt                | PASS       | PASS    | SKIP |
+| json_stream.phpt                      | PASS       | PASS    | SKIP |
 | platform_database.phpt                | PASS       | PASS    | SKIP |
 | request_and_response_handling.phpt    | PASS       | PASS    | SKIP |
 | session_manager.phpt                  | PASS       | PASS    | SKIP |
@@ -332,7 +334,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/arithmetic  | 21       | 21     | 0      |
 | tests/fixtures/arrays      | 20       | 20     | 0      |
 | tests/fixtures/autoloading | 8        | 8      | 0      |
-| tests/fixtures/bindings    | 24       | 24     | 0      |
+| tests/fixtures/bindings    | 26       | 26     | 0      |
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 9        | 9      | 0      |
 | tests/fixtures/flatstack   | 7        | 7      | 0      |
@@ -349,4 +351,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/stdlib      | 21       | 21     | 0      |
 | tests/fixtures/strings     | 18       | 18     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 218      | 218    | 0      |
+| **Total**                  | 220      | 220    | 0      |

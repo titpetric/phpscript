@@ -296,6 +296,8 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [`Exception`](extensions/implemented-apis.md#exception)
     - [`HTTP\Client`](extensions/implemented-apis.md#httpclient)
     - [`HTTP\Request`](extensions/implemented-apis.md#httprequest)
+    - [`JSON\Decoder`](extensions/implemented-apis.md#jsondecoder)
+    - [`JSON\Encoder`](extensions/implemented-apis.md#jsonencoder)
     - [`SMTP`](extensions/implemented-apis.md#smtp)
     - [`Session\Manager`](extensions/implemented-apis.md#sessionmanager)
     - [`Session\Storage\Disk`](extensions/implemented-apis.md#sessionstoragedisk)
