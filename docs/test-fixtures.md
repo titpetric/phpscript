@@ -263,6 +263,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | csv.phpt                         | PASS       | PASS    | SKIP |
 | file_put_contents.phpt           | PASS       | PASS    | PASS |
 | filesystem.phpt                  | PASS       | PASS    | PASS |
+| glob.phpt                        | PASS       | PASS    | PASS |
 | hash_functions.phpt              | PASS       | PASS    | PASS |
 | identifiers.phpt                 | PASS       | PASS    | SKIP |
 | intval.phpt                      | PASS       | PASS    | PASS |
@@ -287,6 +288,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | base64.phpt                   | PASS       | PASS    | PASS |
 | case_functions.phpt           | PASS       | PASS    | PASS |
 | chr_ord.phpt                  | PASS       | PASS    | PASS |
+| fnmatch.phpt                  | PASS       | PASS    | PASS |
 | http_build_query.phpt         | PASS       | PASS    | PASS |
 | interpolation.phpt            | PASS       | PASS    | PASS |
 | interpolation_complex.phpt    | PASS       | PASS    | PASS |
@@ -335,7 +337,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/pexec       | 1        | 1      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
-| tests/fixtures/stdlib      | 19       | 19     | 0      |
-| tests/fixtures/strings     | 16       | 16     | 0      |
+| tests/fixtures/stdlib      | 20       | 20     | 0      |
+| tests/fixtures/strings     | 17       | 17     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 207      | 207    | 0      |
+| **Total**                  | 209      | 209    | 0      |

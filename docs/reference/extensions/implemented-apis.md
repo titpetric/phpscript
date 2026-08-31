@@ -873,6 +873,11 @@ function explode(string $separator, string $str, int ...$limit): array
 ```
 
 ```php
+// fnmatch reports whether $str matches the shell wildcard $pattern, where * and ? cross a directory separator unless $flags names FNM_PATHNAME; the other flags are FNM_NOESCAPE, FNM_PERIOD and FNM_CASEFOLD.
+function fnmatch(string $pattern, string $str, mixed ...$flags): bool
+```
+
+```php
 // htmlspecialchars escapes &, <, >, double and single quotes as HTML entities; the $flags and later arguments are accepted and ignored.
 function htmlspecialchars(string $s, mixed ...$flags): string
 ```
@@ -1174,7 +1179,7 @@ function filemtime(string $filename): int
 ```
 
 ```php
-// glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host.
+// glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host; a pattern naming anything outside the root matches nothing, and a malformed one matches nothing rather than failing, as PHP's does.
 function glob(string $pattern): array
 ```
 

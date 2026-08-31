@@ -17,23 +17,23 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | annotations           | 88.26%   | 149       | 701   |
 | ❌     | cmd/phpscript/ast     | 0.00%    | 5         | 31    |
 | ❌     | cmd/phpscript/fmt     | 0.00%    | 5         | 42    |
-| ❌     | cmd/phpscript/info    | 78.96%   | 52        | 177   |
+| ❌     | cmd/phpscript/info    | 79.20%   | 52        | 183   |
 | ❌     | cmd/phpscript/lint    | 73.07%   | 56        | 218   |
-| ❌     | cmd/phpscript/list    | 0.00%    | 1         | 19    |
+| ✅     | cmd/phpscript/list    | 30.00%   | 4         | 38    |
 | ❌     | cmd/phpscript/run     | 26.67%   | 11        | 86    |
 | ❌     | cmd/phpscript/server  | 79.88%   | 120       | 856   |
 | ✅     | cmd/phpscript/test    | 81.27%   | 485       | 1829  |
 | ❌     | cmd/phpscript/version | 0.00%    | 31        | 81    |
 | ✅     | config                | 94.49%   | 55        | 256   |
 | ✅     | flatstack             | 50.00%   | 0         | 18    |
-| ✅     | flatstack/engine      | 87.96%   | 935       | 2008  |
+| ✅     | flatstack/engine      | 88.19%   | 935       | 2008  |
 | ✅     | formatter             | 80.45%   | 288       | 1273  |
-| ❌     | internal/apidoc       | 76.66%   | 366       | 1044  |
+| ✅     | internal/apidoc       | 84.01%   | 364       | 1075  |
 | ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
 | ✅     | internal/phpval       | 90.60%   | 142       | 575   |
 | ✅     | internal/table        | 100.00%  | 24        | 135   |
 | ✅     | lint                  | 86.78%   | 223       | 783   |
-| ❌     | list                  | 72.31%   | 115       | 335   |
+| ❌     | list                  | 76.85%   | 136       | 472   |
 | ❌     | model                 | 36.82%   | 325       | 1130  |
 | ✅     | parser                | 91.34%   | 1039      | 3399  |
 | ✅     | runner                | 86.62%   | 1648      | 7002  |
@@ -41,10 +41,10 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | stdlib                | 96.30%   | 4         | 88    |
 | ✅     | stdlib/compat         | 86.92%   | 184       | 901   |
-| ✅     | stdlib/core           | 85.86%   | 862       | 3861  |
+| ✅     | stdlib/core           | 85.99%   | 931       | 4049  |
 | ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
 | ✅     | stdlib/database       | 84.59%   | 105       | 791   |
-| ✅     | stdlib/files          | 87.99%   | 165       | 644   |
+| ✅     | stdlib/files          | 88.07%   | 183       | 709   |
 | ❌     | stdlib/gd             | 76.99%   | 154       | 577   |
 | ❌     | stdlib/http           | 72.75%   | 61        | 417   |
 | ✅     | stdlib/info           | 75.00%   | 0         | 10    |
@@ -109,7 +109,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | splitScheduleArgs                     | 100.00%  | 3         |
 | ✅     |                      | tag                                   | 75.00%   | 1         |
 | ✅     |                      | weekdayName                           | 22.20%   | 1         |
-| ✅     | cmd/phpscript/info   | Run                                   | 92.30%   | 3         |
+| ✅     | cmd/phpscript/info   | Run                                   | 95.20%   | 3         |
 | ✅     |                      | ctorParams                            | 100.00%  | 4         |
 | ❌     |                      | ctorReturn                            | 75.00%   | 6         |
 | ✅     |                      | methodParams                          | 80.00%   | 5         |
@@ -130,6 +130,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | sink.summary                          | 75.00%   | 1         |
 | ✅     |                      | statusColor                           | 100.00%  | 1         |
 | ✅     |                      | writeReportHeader                     | 100.00%  | 0         |
+| ✅     | cmd/phpscript/list   | run                                   | 90.00%   | 4         |
 | ✅     | cmd/phpscript/run    | resolveEntrypoint                     | 80.00%   | 4         |
 | ✅     | cmd/phpscript/server | NewHandler                            | 100.00%  | 0         |
 | ❌     |                      | Run                                   | 46.40%   | 11        |
@@ -274,7 +275,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | bindHostLocals                        | 90.90%   | 9         |
 | ✅     |                      | boolInt                               | 100.00%  | 1         |
 | ✅     |                      | closureValue                          | 100.00%  | 7         |
-| ❌     |                      | compiler.assignment                   | 68.00%   | 20        |
+| ❌     |                      | compiler.assignment                   | 72.00%   | 20        |
 | ❌     |                      | compiler.binary                       | 78.60%   | 17        |
 | ✅     |                      | compiler.block                        | 100.00%  | 3         |
 | ✅     |                      | compiler.classMethod                  | 100.00%  | 5         |
@@ -283,7 +284,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | compiler.constant                     | 100.00%  | 0         |
 | ✅     |                      | compiler.doWhileStmt                  | 88.20%   | 4         |
 | ✅     |                      | compiler.emit                         | 100.00%  | 0         |
-| ❌     |                      | compiler.ensureContainer              | 73.70%   | 9         |
+| ❌     |                      | compiler.ensureContainer              | 78.90%   | 9         |
 | ❌     |                      | compiler.expr                         | 79.10%   | 70        |
 | ✅     |                      | compiler.forStmt                      | 85.70%   | 13        |
 | ✅     |                      | compiler.foreachStmt                  | 86.20%   | 27        |
@@ -368,40 +369,47 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | tryEnd                                | 66.70%   | 1         |
 | ✅     |                      | verify                                | 62.50%   | 3         |
 | ✅     |                      | walk                                  | 83.30%   | 4         |
-| ✅     | internal/apidoc      | Generate                              | 94.10%   | 2         |
+| ✅     | internal/apidoc      | Class.Signature                       | 100.00%  | 0         |
+| ✅     |                      | Func.Signature                        | 100.00%  | 1         |
+| ✅     |                      | Generate                              | 80.00%   | 1         |
+| ✅     |                      | Method.Signature                      | 100.00%  | 0         |
+| ✅     |                      | Reflect                               | 100.00%  | 0         |
 | ✅     |                      | areaName                              | 100.00%  | 2         |
 | ❌     |                      | astParam                              | 78.60%   | 6         |
-| ❌     |                      | buildClass                            | 58.60%   | 14        |
+| ✅     |                      | build                                 | 100.00%  | 1         |
+| ❌     |                      | buildClass                            | 62.10%   | 14        |
 | ✅     |                      | buildClasses                          | 100.00%  | 1         |
 | ✅     |                      | buildFunc                             | 89.50%   | 10        |
 | ✅     |                      | camelToSnake                          | 100.00%  | 11        |
 | ❌     |                      | cleanComment                          | 58.80%   | 14        |
 | ✅     |                      | constructorGroups                     | 100.00%  | 5         |
 | ❌     |                      | constructorResultType                 | 63.60%   | 7         |
-| ✅     |                      | ctorDecl                              | 66.70%   | 5         |
+| ✅     |                      | ctorDecl                              | 83.30%   | 5         |
 | ✅     |                      | declComment                           | 100.00%  | 5         |
 | ✅     |                      | dedupeParams                          | 100.00%  | 4         |
+| ✅     |                      | emptySources                          | 100.00%  | 0         |
 | ✅     |                      | funcResultTypeName                    | 75.00%   | 4         |
 | ✅     |                      | hasRegisteredReturn                   | 100.00%  | 3         |
 | ✅     |                      | isCallbackName                        | 66.70%   | 1         |
 | ✅     |                      | isContextContext                      | 60.00%   | 2         |
 | ✅     |                      | isRefSetter                           | 62.50%   | 5         |
+| ✅     |                      | isRefSetterType                       | 100.00%  | 1         |
 | ✅     |                      | nameParams                            | 100.00%  | 3         |
 | ✅     |                      | packageNames                          | 100.00%  | 5         |
 | ✅     |                      | paramList                             | 100.00%  | 1         |
 | ✅     |                      | paramName                             | 66.70%   | 2         |
 | ❌     |                      | phpTypeAST                            | 35.30%   | 16        |
 | ✅     |                      | phpTypeName                           | 71.40%   | 1         |
-| ❌     |                      | phpTypeReflect                        | 23.80%   | 13        |
-| ❌     |                      | primaryClassName                      | 66.70%   | 7         |
+| ✅     |                      | phpTypeReflect                        | 85.70%   | 13        |
+| ❌     |                      | primaryClassName                      | 77.80%   | 7         |
 | ✅     |                      | recvTypeName                          | 60.00%   | 2         |
-| ✅     |                      | reflectMethods                        | 90.50%   | 13        |
-| ❌     |                      | reflectParams                         | 55.60%   | 12        |
-| ❌     |                      | reflectReturn                         | 75.00%   | 6         |
+| ✅     |                      | reflectMethods                        | 95.20%   | 13        |
+| ✅     |                      | reflectParams                         | 94.40%   | 12        |
+| ✅     |                      | reflectReturn                         | 100.00%  | 6         |
 | ✅     |                      | registeredClassTypes                  | 87.50%   | 3         |
 | ✅     |                      | render                                | 100.00%  | 2         |
 | ✅     |                      | renderClass                           | 85.70%   | 3         |
-| ✅     |                      | renderFuncs                           | 100.00%  | 4         |
+| ✅     |                      | renderFuncs                           | 100.00%  | 1         |
 | ❌     |                      | renderPackage                         | 66.70%   | 7         |
 | ✅     |                      | renderParam                           | 100.00%  | 4         |
 | ✅     |                      | returnType                            | 100.00%  | 5         |
@@ -414,7 +422,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     |                      | sources.resolveSignature              | 77.80%   | 20        |
 | ✅     |                      | sources.typeDoc                       | 42.90%   | 4         |
 | ✅     |                      | stmtComment                           | 83.30%   | 10        |
-| ✅     |                      | typeParamName                         | 50.00%   | 3         |
+| ✅     |                      | typeParamName                         | 66.70%   | 3         |
 | ✅     |                      | writeComment                          | 16.70%   | 3         |
 | ✅     | internal/arrayi64    | Sort                                  | 100.00%  | 6         |
 | ✅     | internal/phpval      | Compare                               | 100.00%  | 12        |
@@ -490,16 +498,22 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | list                 | ExpandFiles                           | 78.60%   | 9         |
 | ❌     |                      | File                                  | 75.00%   | 10        |
 | ✅     |                      | GroupByDir                            | 100.00%  | 3         |
-| ✅     |                      | Markdown                              | 100.00%  | 5         |
+| ✅     |                      | Markdown                              | 100.00%  | 1         |
 | ✅     |                      | Paths                                 | 80.00%   | 4         |
+| ✅     |                      | Stdlib                                | 100.00%  | 12        |
+| ✅     |                      | StdlibMarkdown                        | 100.00%  | 1         |
 | ✅     |                      | cell                                  | 100.00%  | 1         |
 | ✅     |                      | classNames                            | 87.50%   | 2         |
 | ❌     |                      | classNamesFromTokens                  | 47.10%   | 17        |
 | ❌     |                      | collectClasses                        | 18.80%   | 20        |
+| ✅     |                      | constantValue                         | 42.90%   | 3         |
 | ❌     |                      | expandOne                             | 73.70%   | 9         |
 | ✅     |                      | filenameCell                          | 66.70%   | 1         |
 | ✅     |                      | isPHP                                 | 100.00%  | 1         |
 | ✅     |                      | listDir                               | 90.90%   | 6         |
+| ✅     |                      | markdownTable                         | 100.00%  | 6         |
+| ✅     |                      | paramTypes                            | 100.00%  | 3         |
+| ✅     |                      | stdlibRuntime                         | 100.00%  | 0         |
 | ✅     |                      | tokenize                              | 100.00%  | 3         |
 | ✅     |                      | walkRecursive                         | 83.30%   | 10        |
 | ✅     |                      | writeMarkdownRow                      | 100.00%  | 1         |
@@ -1197,6 +1211,8 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | exportScalar                          | 90.00%   | 3         |
 | ✅     |                      | exportString                          | 100.00%  | 0         |
 | ✅     |                      | fieldScope                            | 50.00%   | 1         |
+| ✅     |                      | fnmatchBytes                          | 98.70%   | 44        |
+| ✅     |                      | fnmatchClass                          | 86.20%   | 23        |
 | ✅     |                      | incrementDigits                       | 83.30%   | 3         |
 | ❌     |                      | integerDigits                         | 54.20%   | 14        |
 | ✅     |                      | isComposite                           | 100.00%  | 1         |
@@ -1247,6 +1263,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | phpChr                                | 100.00%  | 1         |
 | ✅     |                      | phpCompact                            | 87.50%   | 4         |
 | ✅     |                      | phpExplode                            | 50.00%   | 2         |
+| ✅     |                      | phpFnmatch                            | 100.00%  | 2         |
 | ✅     |                      | phpFormatFloat                        | 83.30%   | 10        |
 | ✅     |                      | phpGetType                            | 92.30%   | 4         |
 | ✅     |                      | phpHTTPBuildQuery                     | 100.00%  | 1         |
@@ -1316,7 +1333,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | registerPlatformConstants             | 100.00%  | 0         |
 | ❌     |                      | registerPlatformFuncs                 | 59.70%   | 30        |
 | ❌     |                      | registerReflection                    | 57.40%   | 28        |
-| ✅     |                      | registerStrings                       | 99.40%   | 2         |
+| ✅     |                      | registerStrings                       | 99.50%   | 2         |
 | ✅     |                      | registerTokenizer                     | 100.00%  | 1         |
 | ✅     |                      | roundDecimal                          | 89.30%   | 11        |
 | ✅     |                      | runeSlice                             | 100.00%  | 6         |
@@ -1412,14 +1429,16 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | outputStream.Write                    | 100.00%  | 0         |
 | ✅     |                      | registerCSV                           | 94.30%   | 14        |
 | ✅     |                      | registerPaths                         | 75.00%   | 0         |
-| ❌     |                      | registerReads                         | 47.60%   | 36        |
+| ❌     |                      | registerReads                         | 76.90%   | 47        |
 | ✅     |                      | registerStreams                       | 82.90%   | 23        |
 | ✅     |                      | registerUploads                       | 93.30%   | 7         |
 | ✅     |                      | registerWrites                        | 92.30%   | 39        |
+| ✅     |                      | root.fsPath                           | 77.80%   | 4         |
 | ✅     |                      | root.resolve                          | 100.00%  | 1         |
 | ✅     |                      | root.resolveWrite                     | 100.00%  | 1         |
 | ✅     |                      | root.sourceFS                         | 100.00%  | 0         |
-| ✅     |                      | root.statSource                       | 100.00%  | 1         |
+| ✅     |                      | root.statSource                       | 85.70%   | 2         |
+| ✅     |                      | root.unresolve                        | 85.70%   | 2         |
 | ✅     |                      | root.writableAllows                   | 100.00%  | 4         |
 | ✅     |                      | writes                                | 100.00%  | 0         |
 | ✅     | stdlib/gd            | Register                              | 100.00%  | 0         |
