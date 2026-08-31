@@ -28,6 +28,12 @@ func Parse(src string) (*model.Program, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The AST outlives the tokens but never points into them: model cannot
+	// hold a token, the type is unexported to it, and every read through
+	// p.toks[i] copies the struct. So the slice goes back to the pool here,
+	// however the parse ends.
+	defer releaseTokens(toks)
+
 	// One span per statement; statements run around one per sixteen tokens, so
 	// the hint saves the map's rehash-and-copy cycle (rule 6).
 	p := &parser{toks: toks, spans: make(map[model.Stmt]model.SourceSpan, len(toks)/16+8)}

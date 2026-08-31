@@ -690,3 +690,56 @@ class Store implements Reader {
 		t.Errorf("AnonClasses = %v, want none", prog.AnonClasses)
 	}
 }
+
+// benchSource is a file of the shape the parser meets in an application: a
+// class with methods, a function, control flow and interpolation, repeated
+// until it is the size of a real source file rather than a snippet.
+var benchSource = func() string {
+	const unit = `
+class Row%[1]d {
+	private $id;
+	private $name;
+
+	public function __construct($id, $name) {
+		$this->id = $id;
+		$this->name = $name;
+	}
+
+	public function label($prefix = "row") {
+		if ($this->id > 0 && $this->name !== "") {
+			return "{$prefix}-{$this->id}: {$this->name}";
+		}
+		return $prefix;
+	}
+}
+
+function collect%[1]d(array $rows) {
+	$out = array();
+	foreach ($rows as $key => $row) {
+		if (!isset($row["id"])) {
+			continue;
+		}
+		$out[$key] = new Row%[1]d($row["id"], isset($row["name"]) ? $row["name"] : "");
+	}
+	return $out;
+}
+`
+	var b strings.Builder
+	b.WriteString("<?php\nnamespace Acme\\Bench;\n")
+	for i := 0; i < 40; i++ {
+		fmt.Fprintf(&b, unit, i)
+	}
+	return b.String()
+}()
+
+// BenchmarkParse measures the whole parse, which is where the token slice is
+// allocated and discarded. B/op is the number the token pool moves.
+func BenchmarkParse(b *testing.B) {
+	b.SetBytes(int64(len(benchSource)))
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		if _, err := Parse(benchSource); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
