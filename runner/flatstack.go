@@ -36,6 +36,15 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		rt.exprCache.setFlat(ast, program)
 	}
 	if err := rt.hoist(ast, rt.entrypoint); err != nil {
+		// A redeclaration is a verdict on the program, like a violated
+		// interface contract above: the interpreter would reach it too, so
+		// falling back would only run the same hoist a second time, over a
+		// table the first pass already wrote into, and report the wrong
+		// declaration as the duplicate.
+		var redeclared *RedeclareError
+		if errors.As(err, &redeclared) {
+			return true, NewRuntimeException(err.Error(), 0)
+		}
 		return false, nil
 	}
 	return true, flatvm.Run(program, &flatHost{runtime: rt})

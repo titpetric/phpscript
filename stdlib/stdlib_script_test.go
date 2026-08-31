@@ -64,10 +64,13 @@ func TestExceptionSemantics(t *testing.T) {
 		},
 		{
 			name: "reference semantics across a call",
+			// The helper was called rename(), which php refuses: the name
+			// is taken by a built-in, and declaring over one is a fatal
+			// error there and a RedeclareError here.
 			php: `<?php
-function rename($e) { $e->message = "renamed"; }
+function relabel($e) { $e->message = "renamed"; }
 $e = new Exception("boom");
-rename($e);
+relabel($e);
 echo $e->getMessage();`,
 			want: "renamed",
 		},

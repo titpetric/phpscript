@@ -227,6 +227,9 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 			c.Methods[fd.Name] = fd
 			continue
 		}
+		if err := rt.declareFunc(fd.Name, declSite(prog, s, filename)); err != nil {
+			return err
+		}
 		decl := fd
 		rt.registerUserFunc(fd.Name, func(args ...any) (any, error) {
 			return rt.invokeFunc(decl, args)

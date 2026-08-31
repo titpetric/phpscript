@@ -60,7 +60,11 @@ type Runtime struct {
 	observers  []Observer
 	funcs      map[string]any
 	userFns    map[string]struct{}
-	classes    map[string]*model.Class
+	// funcSites records where each user function was declared, so a second
+	// declaration can name the first one the way PHP's fatal error does.
+	// userFns alone cannot: it is a set, and the message is the useful half.
+	funcSites map[string]FuncSite
+	classes   map[string]*model.Class
 
 	// Env is the environment visible to PHP for this Runtime. New snapshots the
 	// host environment so mutations remain local to a single request/runtime.
@@ -290,6 +294,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		includeCache: NewIncludeCache(),
 		funcs:        map[string]any{},
 		userFns:      map[string]struct{}{},
+		funcSites:    map[string]FuncSite{},
 		classes:      map[string]*model.Class{},
 		constructors: map[string]any{},
 		includePath:  ".",
@@ -383,7 +388,19 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 		stdin = strings.NewReader("")
 	}
 	rt.opts.Stdin = stdin
+	// The closures a hoist installed have to come out of the function table
+	// too, not just out of the name set. Leaving them behind made
+	// function_exists answer for a function the reset session never declared,
+	// and made the redeclaration check see the previous session's work as a
+	// binding it must not shadow.
+	for name := range rt.userFns {
+		delete(rt.funcs, name)
+	}
+	rt.envMu.Lock()
+	rt.funcsGen++
+	rt.envMu.Unlock()
 	clear(rt.userFns)
+	clear(rt.funcSites)
 	clear(rt.classes)
 	clear(rt.globals)
 	rt.shutdown = nil

@@ -153,6 +153,20 @@ Strings:
   are clamped rather than raising the `ValueError` PHP 8 raises.
 - `substr_replace()` does not accept array arguments.
 
+Functions:
+
+- Declaring a function twice, or declaring one over a name the runtime
+  registers, raises a catchable `Exception` carrying PHP's own message. PHP
+  treats it as a compile-time fatal error no `catch` can reach, so a script
+  that includes a file which redeclares can answer for it here and cannot
+  there. `memory_limit` and an undefined constant diverge the same way. The
+  first declaration stands and the program keeps running; `phpscript lint`
+  reports the condition before the file is ever hoisted.
+- Only a declaration written at the top level of a file is honoured. A
+  `function` inside an `if` body or another function is parsed and confers
+  nothing, so `if (!function_exists('f')) { function f() {} }` leaves `f`
+  undefined rather than declaring it. Nothing reports this yet.
+
 Filesystem:
 
 - `glob()` answers nothing for an absolute pattern whenever a source
