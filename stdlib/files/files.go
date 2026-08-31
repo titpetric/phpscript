@@ -47,6 +47,8 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	registerPaths(rt)
 	registerWorkDir(rt)
 	registerReads(rt, r)
+	registerStat(rt, r)
+	registerStreamReads(rt)
 	registerWrites(rt, r)
 	registerStreams(rt, r)
 	registerCSV(rt)
