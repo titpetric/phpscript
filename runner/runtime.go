@@ -992,6 +992,20 @@ func (rt *Runtime) OnError(fn func(error)) {
 // Eval transpiles e, binds the referenced variables from scope, and runs the
 // resulting program through the expr-lang VM.
 func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
+	// A literal is its own value. Everything below this transpiles to expr
+	// source and runs it on the VM, which for a constant is the whole machine
+	// to answer what the parser already knew - and, for a string holding a
+	// byte that is not valid UTF-8, cannot answer correctly: the value would
+	// travel as \xff in source text and come back as the two bytes UTF-8
+	// spells U+00FF with.
+	if l, ok := e.(*model.Lit); ok {
+		if n, ok := l.Value.(int); ok {
+			// PHP integers are int64 everywhere else in the runtime, and the
+			// VM would have widened this one on the way out.
+			return int64(n), nil
+		}
+		return l.Value, nil
+	}
 	if b, ok := e.(*model.Binary); ok && b.Op == "." {
 		return rt.evalConcat(b, scope)
 	}
