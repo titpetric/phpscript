@@ -22,6 +22,7 @@ const Name = "Lint php scripts"
 // Options holds CLI flag options for the lint command.
 type Options struct {
 	Flatstack bool
+	Include   string
 	Output    string
 }
 
@@ -34,6 +35,7 @@ func NewCommand() *cli.Command {
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
 			fs.BoolVar(&opts.Flatstack, "flatstack", false, "Check flatstack bytecode engine compatibility and print diagnostic reason if unsupported")
+			fs.StringVar(&opts.Include, "include", "", "Include this file before checking, so the classes it autoloads and the functions it registers are names the checks know")
 			fs.StringVarP(&opts.Output, "output", "o", "", "Write a Markdown report of the findings to this file")
 		},
 		Run: func(ctx context.Context, args []string) error {
@@ -61,6 +63,10 @@ const (
 )
 
 func run(args []string, opts Options, out io.Writer) error {
+	// Before the first file is checked: the name registry is built once per
+	// process, and this is what puts the application's own names in it.
+	phplint.SetInclude(opts.Include)
+
 	results, err := collect(args, opts.Flatstack)
 	if err != nil {
 		return err

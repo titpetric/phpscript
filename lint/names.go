@@ -3,6 +3,7 @@ package lint
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"sync"
 
@@ -22,23 +23,69 @@ import (
 var (
 	registryOnce sync.Once
 	registry     *runner.Runtime
+	includeFile  string
 )
+
+// SetInclude names a file to run against the name registry before any file is
+// checked, which is what lets the linter see an application rather than one
+// file of it.
+//
+// Without it every check runs against the standard library alone: a class
+// composer autoloads and a helper bootstrap.php registers are both unknown,
+// so the findings are mostly false and a true one cannot be told from them.
+// With `--include vendor/autoload.php` the autoloader is registered and the
+// classmap is what a name resolves against.
+//
+// It must be called before the first File(), which is what the command does:
+// the registry is built once per process, because registration is
+// deterministic and nothing executes against it afterwards.
+func SetInclude(path string) {
+	includeFile = path
+}
 
 // knownRuntime is the registry the checks query for host-provided names. It is
 // built once per process: registration is deterministic, and the runtime never
 // executes a script here, so the table is read-only after construction.
 func knownRuntime() *runner.Runtime {
 	registryOnce.Do(func() {
-		rt := runner.New(io.Discard, runner.Options{SAPI: "cli"})
+		// The working directory is the source root, because an --include is
+		// named relative to where the command was invoked and the file it
+		// names includes its own siblings relative to itself.
+		rt := runner.New(io.Discard, runner.Options{SAPI: "cli", RootFS: os.DirFS(".")})
 		stdlib.Register(rt)
+		stdlib.RegisterFS(rt, ".")
 		// The request-aware functions (header, http_response_code,
 		// getallheaders, ...) are installed per request rather than by
 		// stdlib.Register; a server-targeted file still names them, so an
 		// empty request context registers them for the name check.
 		runner.NewContext().Register(rt)
+		loadInclude(rt)
 		registry = rt
 	})
 	return registry
+}
+
+// loadInclude runs the --include file against the registry, and says nothing
+// when there is none or when it fails.
+//
+// A failure is deliberately quiet. The file is a convenience for resolving
+// names, not the thing under test: an application whose bootstrap cannot run
+// outside a request still deserves the findings the standard library alone
+// can produce, and a linter that refused to lint because a bootstrap threw
+// would be worse than one that reports a few more unknown names.
+func loadInclude(rt *runner.Runtime) {
+	if includeFile == "" {
+		return
+	}
+	if _, err := os.Stat(includeFile); err != nil {
+		return
+	}
+
+	prog, err := rt.LoadFile(includeFile)
+	if err != nil {
+		return
+	}
+	_ = rt.Run(prog)
 }
 
 // declaredNames is what one file provides for itself: functions, classes and
@@ -116,7 +163,13 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 		if declared.hasClass(class) {
 			return true
 		}
-		known, _ := rt.ClassExists(class, false)
+		// Autoload only when an --include registered one. Composer's
+		// autoloader does not declare a class until something asks for it, so
+		// including it and then refusing to autoload would leave every PSR-4
+		// class unknown - which is the whole finding the flag exists to
+		// remove. With no include there is no autoloader to run, and asking
+		// for one would only cost a lookup that cannot succeed.
+		known, _ := rt.ClassExists(class, includeFile != "")
 		return known
 	}
 
