@@ -1,74 +1,59 @@
-// Package pexec exposes process execution to PHP: exec runs a command through
-// the shell the way PHP's does, escapeshellarg quotes an argument for it, and
-// posix_getpid names the running process.
+// Package pexec exposes process execution to PHP: the ref.exec.php functions
+// that run a command through the shell, the two that quote for it, and
+// posix_getpid, which names the running process.
 //
-// exec's $output works because arrays are shared: the binding appends into the
-// array the caller passed, which is the same observable result PHP reaches by
-// reference. $result_code has no such route — an integer cannot be written
-// back — so it is accepted and ignored.
+// Running a command leaves the fs.FS sandbox behind on purpose. A process reads
+// and writes with the permissions of the user running the server, and
+// writable_paths does not reach it; a host that runs untrusted scripts leaves
+// this package out. What the runtime does say is where a command starts, which
+// is the working directory chdir() moved, resolved onto the host.
 package pexec
 
 import (
-	"context"
-	"errors"
 	"os"
-	"os/exec"
-	"strings"
 
-	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init contributes the process bindings (exec, escapeshellarg, posix_getpid)
-// to stdlib.Register.
+// init contributes the process bindings to stdlib.Register, rooted at the
+// process working directory, which is where a CLI run runs anyway.
 func init() {
 	runner.RegisterBinding(Register)
 }
 
-// Register installs symbols into the runtime.
+// Register installs the process bindings rooted at the process working
+// directory. A host serving scripts out of a project directory binds that
+// instead, with RegisterRoot.
 func Register(rt *runner.Runtime) {
-	// exec runs $command through the shell and returns the last line of its stdout, appending each output line to $output when an array is passed; $result_code is accepted and ignored, because an integer cannot be written back.
-	rt.RegisterFunc("exec", phpExec)
-	// escapeshellarg returns $arg single-quoted for the shell, with embedded single quotes escaped.
-	rt.RegisterFunc("escapeshellarg", func(arg string) string {
-		return "'" + strings.ReplaceAll(arg, "'", `'\''`) + "'"
-	})
-	// posix_getpid returns the process id of the running interpreter.
-	rt.RegisterFunc("posix_getpid", func() int64 { return int64(os.Getpid()) })
+	RegisterRoot(rt, "")
 }
 
-// phpExec is the exec binding. Stdout is captured line by line; stderr passes
-// through to the host's, as it does under PHP. A command that starts and
-// exits non-zero still yields its output — the status would have gone into
-// $result_code — while a command that cannot start at all returns false.
-func phpExec(ctx context.Context, command string, args ...any) (any, error) {
-	if command == "" {
-		return nil, errors.New("exec(): Argument #1 ($command) cannot be empty")
-	}
+// RegisterRoot installs the process bindings with commands rooted at dir, the
+// directory the filesystem shims are bound to. It replaces whatever root was
+// installed before it, so a host calls it after stdlib.Register, the way
+// stdlib.RegisterFS does for the filesystem.
+//
+// An empty dir leaves a command in the process working directory, which is what
+// a host that bound no directory of its own has to fall back to.
+func RegisterRoot(rt *runner.Runtime, dir string) {
+	r := root{rt: rt, dir: dir}
 
-	cmd := exec.CommandContext(ctx, "sh", "-c", command)
-	cmd.Stderr = os.Stderr
-	stdout, err := cmd.Output()
-	if err != nil {
-		var exitErr *exec.ExitError
-		if !errors.As(err, &exitErr) {
-			return false, nil
-		}
-	}
+	registerExec(rt, r)
+	registerEscape(rt)
+	registerProcess(rt)
+}
 
-	lines := strings.Split(strings.TrimRight(string(stdout), "\n"), "\n")
-	if len(lines) == 1 && lines[0] == "" {
-		lines = nil
-	}
-	if len(args) > 0 {
-		if output, ok := args[0].(*model.Array); ok {
-			for _, line := range lines {
-				output.Append(strings.TrimRight(line, " \t\r\v\f"))
-			}
-		}
-	}
-	if len(lines) == 0 {
-		return "", nil
-	}
-	return strings.TrimRight(lines[len(lines)-1], " \t\r\v\f"), nil
+// root is the directory a command starts in, and the runtime it reads the
+// working directory off. It is read per call rather than resolved once, because
+// chdir moves it while the script runs.
+type root struct {
+	rt  *runner.Runtime
+	dir string
+}
+
+// registerProcess installs what names the running process rather than a
+// command it starts.
+func registerProcess(rt *runner.Runtime) {
+	// posix_getpid returns the process id of the running interpreter.
+	rt.RegisterFunc("posix_getpid", func() int64 { return int64(os.Getpid()) })
 }

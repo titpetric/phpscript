@@ -1,29 +1,58 @@
-name: exec runs a command and collects its output
+name: the program execution functions
 description: >
-  exec returns the last line of stdout and appends each line to the $output
-  array: PHP writes it by reference, this runtime appends into the shared
-  array, and both spell the same result. escapeshellarg quotes for the shell
-  and posix_getpid names a live process.
+  The four ways to run a command differ in what they do with the output. exec
+  collects it, returning the last line and appending every line to $output;
+  system writes it out as it arrives and returns the last line; passthru writes
+  it through untouched and returns null; shell_exec returns all of it, or null
+  when there was none. All but shell_exec report the exit status through
+  $result_code, which PHP passes by reference. $output is appended to rather
+  than replaced, so a second call adds to what the first collected. Every
+  command has fixed output, so nothing here depends on the machine it runs on.
 ---
 <?php
 
-echo exec("echo hello"), "\n";
 $out = array();
-exec("printf 'a\nb\nc\n'", $out);
+$code = null;
+echo exec("printf 'a\nb\nc\n'; exit 3", $out, $code), "|";
 print_r($out);
-echo exec("printf 'first\nlast'"), "\n";
-echo escapeshellarg("a b"), "\n";
+echo $code, "|";
+
+$ok = null;
+echo exec("echo hello", $out, $ok), "|", $ok, "|";
+print_r($out);
+
+$status = null;
+echo system("printf 'x\ny\n'; exit 4", $status), "|", $status, "|";
+
+$passed = null;
+passthru("printf 'p\nq\n'; exit 5", $passed);
+echo $passed, "|";
+
+var_dump(shell_exec("printf 's\nt\n'"));
+var_dump(shell_exec("exit 7"));
+echo escapeshellcmd("a; rm -rf /"), "|", escapeshellcmd("echo 'a b'"), "|";
 echo escapeshellarg("it's"), "\n";
-var_dump(posix_getpid() > 0);
+?>
 ---
-hello
-Array
+c|Array
 (
     [0] => a
     [1] => b
     [2] => c
 )
-last
-'a b'
-'it'\''s'
-bool(true)
+3|hello|0|Array
+(
+    [0] => a
+    [1] => b
+    [2] => c
+    [3] => hello
+)
+x
+y
+y|4|p
+q
+5|string(4) "s
+t
+"
+NULL
+a\; rm -rf /|echo 'a b'|'it'\''s'

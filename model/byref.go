@@ -10,6 +10,14 @@ var byRefArgs = map[string]map[int]bool{
 	"preg_match":            {2: true},
 	"preg_replace_callback": {4: true},
 	"parse_str":             {1: true},
+
+	// The exit status of a command. exec's $output is not here: it is an
+	// array, and an array is shared, so the binding appends into the one the
+	// caller passed and reaches the same observable result. An integer has no
+	// such route back.
+	"exec":     {2: true},
+	"system":   {1: true},
+	"passthru": {1: true},
 }
 
 // ByRefArg reports whether the argument at index is an output parameter of the
