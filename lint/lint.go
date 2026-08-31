@@ -18,6 +18,12 @@ type Diagnostic struct {
 	File    string
 	Line    int
 	Message string
+
+	// Fatal marks a finding the program cannot survive, as against one it
+	// might: a call to a function some host registers is a warning because the
+	// linter cannot see every binding, but a redeclaration is refused by the
+	// runtime whatever is registered. A fatal finding fails the lint run.
+	Fatal bool
 }
 
 func (d Diagnostic) String() string {

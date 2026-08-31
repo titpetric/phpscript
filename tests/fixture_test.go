@@ -96,8 +96,8 @@ func newTestRuntime(out *strings.Builder, ctx context.Context, input ...*strings
 		options.Stdin = input[0]
 	}
 	rt := runner.New(out, options)
-	rt.SetIncludeCache(includeCacheFor("fixtures"))
-	rt.SetExprCache(exprCache)
+	rt.SetIncludeCache(runner.NewIncludeCache())
+	rt.SetExprCache(runner.NewExprCache())
 	rt.SetContext(context.WithValue(ctx, tenantKey, "acme"))
 	rt.RegisterConstructor("Storage", NewStorage)
 	rt.RegisterConstructor("FailStorage", NewFailStorage)

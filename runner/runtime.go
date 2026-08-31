@@ -428,6 +428,26 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	}
 }
 
+// Reset returns the runtime to the state a new one is in, so a pool can hand
+// the same value to the next program instead of building another.
+//
+// It is ResetSession plus everything that outlives a session: the parse caches,
+// and the two maps keyed by AST node - compiled expressions and source spans.
+// Those are what ResetSession deliberately keeps, because a --count loop runs
+// one program repeatedly and the keys are the same nodes each time. Across two
+// different programs they are keys nothing will look up again, holding the
+// previous program's tree alive behind them.
+//
+// The caches are cleared rather than replaced: a cleared map keeps the buckets
+// it grew, so the next program allocates nothing to start.
+func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
+	rt.ResetSession(out, stdin)
+	clear(rt.compiled)
+	clear(rt.sourceSpans)
+	rt.includeCache.Clear()
+	rt.exprCache.Clear()
+}
+
 // SetContext installs the lifecycle context auto-injected into registered Go
 // callables whose first parameter is a context.Context (constructors, methods,
 // functions). Defaults to context.Background().
@@ -992,6 +1012,20 @@ func (rt *Runtime) OnError(fn func(error)) {
 // Eval transpiles e, binds the referenced variables from scope, and runs the
 // resulting program through the expr-lang VM.
 func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
+	// A literal is its own value. Everything below this transpiles to expr
+	// source and runs it on the VM, which for a constant is the whole machine
+	// to answer what the parser already knew - and, for a string holding a
+	// byte that is not valid UTF-8, cannot answer correctly: the value would
+	// travel as \xff in source text and come back as the two bytes UTF-8
+	// spells U+00FF with.
+	if l, ok := e.(*model.Lit); ok {
+		if n, ok := l.Value.(int); ok {
+			// PHP integers are int64 everywhere else in the runtime, and the
+			// VM would have widened this one on the way out.
+			return int64(n), nil
+		}
+		return l.Value, nil
+	}
 	if b, ok := e.(*model.Binary); ok && b.Op == "." {
 		return rt.evalConcat(b, scope)
 	}

@@ -87,7 +87,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 		groupPassed, groupFailed := 0, 0
 		groupStart := time.Now()
 
-		results := mapFixtures(group.Fixtures, opts.Parallel, func(i int, fx *tests.Fixture) matrixFixtureResult {
+		results := mapFixtures(group.Fixtures, opts.Parallel, func(worker, i int, fx *tests.Fixture) matrixFixtureResult {
 			row := matrixRow{DisplayPath: group.Paths[i], Label: group.Labels[i]}
 			var fixtureJSONRows []jsonFixture
 			for _, name := range opts.runners() {
@@ -106,7 +106,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 					continue
 				}
 
-				for _, fr := range runFixtureSamples(ctx, fx, name, opts) {
+				for _, fr := range runFixtureSamples(tests.WithWorker(ctx, worker), fx, name, opts) {
 					fr.DisplayPath = row.DisplayPath
 					fr.Label = row.Label
 					if name == tests.RunnerRuntime {

@@ -85,7 +85,13 @@ func phpGetType(value any) string {
 func registerLang(rt *runner.Runtime) {
 	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
 	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
-	rt.SetConst("STDIN", rt.Stdin())
+	// STDIN holds the runtime, not the reader of the moment. The constant is
+	// frozen once and a runtime can serve more than one program - a --count
+	// loop, a worker reusing its runtime - and each of those brings its own
+	// stdin. Reading through the runtime means STDIN is whatever the current
+	// session's is, the way php://output writes wherever output currently
+	// goes rather than where it went when the handle was made.
+	rt.SetConst("STDIN", stdinStream{rt: rt})
 	// spl_autoload_register registers $callback as an autoloader, or the default spl_autoload when $callback is null or omitted; $prepend puts it first and $throw is ignored.
 	rt.RegisterFunc("spl_autoload_register", func(args ...any) (bool, error) {
 		var callback any = rt.SPLAutoload
@@ -375,4 +381,18 @@ func strtolInt(s string, base int64) int64 {
 		return math.MaxInt64
 	}
 	return int64(mag)
+}
+
+// stdinStream is the reader STDIN answers with. It resolves the runtime's
+// current stdin per read, so a session that replaced it is read from.
+type stdinStream struct {
+	rt *runner.Runtime
+}
+
+func (s stdinStream) Read(p []byte) (int, error) {
+	in := s.rt.Stdin()
+	if in == nil {
+		return 0, io.EOF
+	}
+	return in.Read(p)
 }

@@ -18,11 +18,11 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | cmd/phpscript/ast     | 0.00%    | 5         | 31    |
 | ❌     | cmd/phpscript/fmt     | 0.00%    | 5         | 42    |
 | ❌     | cmd/phpscript/info    | 79.20%   | 52        | 183   |
-| ❌     | cmd/phpscript/lint    | 73.07%   | 56        | 218   |
+| ❌     | cmd/phpscript/lint    | 73.07%   | 57        | 218   |
 | ✅     | cmd/phpscript/list    | 30.00%   | 4         | 38    |
 | ❌     | cmd/phpscript/run     | 26.67%   | 11        | 86    |
 | ✅     | cmd/phpscript/server  | 80.88%   | 121       | 881   |
-| ✅     | cmd/phpscript/test    | 81.28%   | 485       | 1841  |
+| ✅     | cmd/phpscript/test    | 80.94%   | 490       | 1891  |
 | ❌     | cmd/phpscript/version | 0.00%    | 31        | 81    |
 | ✅     | config                | 94.49%   | 55        | 256   |
 | ✅     | flatstack             | 50.00%   | 0         | 18    |
@@ -32,17 +32,17 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
 | ✅     | internal/phpval       | 90.60%   | 142       | 575   |
 | ✅     | internal/table        | 100.00%  | 24        | 135   |
-| ✅     | lint                  | 87.32%   | 238       | 844   |
+| ✅     | lint                  | 87.32%   | 238       | 846   |
 | ❌     | list                  | 76.85%   | 136       | 472   |
 | ❌     | model                 | 36.84%   | 325       | 1130  |
-| ✅     | parser                | 91.34%   | 1039      | 3399  |
-| ✅     | runner                | 86.62%   | 1656      | 7163  |
+| ✅     | parser                | 91.37%   | 1041      | 3434  |
+| ✅     | runner                | 86.48%   | 1662      | 7205  |
 | ✅     | runner/bindings       | 86.72%   | 95        | 538   |
 | ✅     | runner/coverage       | 92.37%   | 45        | 187   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | stdlib                | 96.30%   | 4         | 94    |
 | ✅     | stdlib/compat         | 86.92%   | 184       | 901   |
-| ✅     | stdlib/core           | 85.53%   | 958       | 4262  |
+| ✅     | stdlib/core           | 85.48%   | 959       | 4275  |
 | ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
 | ✅     | stdlib/database       | 84.59%   | 105       | 791   |
 | ✅     | stdlib/files          | 87.78%   | 272       | 1041  |
@@ -58,7 +58,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | stdlib/span           | 100.00%  | 0         | 11    |
 | ✅     | stdlib/time           | 42.78%   | 5         | 137   |
 | ❌     | telemetry             | 73.04%   | 10        | 209   |
-| ✅     | tests                 | 82.90%   | 215       | 1140  |
+| ✅     | tests                 | 84.80%   | 224       | 1262  |
 
 ## Functions
 
@@ -121,7 +121,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | printHostClass                        | 73.30%   | 5         |
 | ✅     |                      | printSourceTree                       | 85.20%   | 21        |
 | ✅     |                      | shortType                             | 75.00%   | 1         |
-| ✅     | cmd/phpscript/lint   | collect                               | 81.50%   | 22        |
+| ✅     | cmd/phpscript/lint   | collect                               | 81.50%   | 23        |
 | ✅     |                      | hasFailure                            | 75.00%   | 3         |
 | ✅     |                      | isParseError                          | 100.00%  | 1         |
 | ✅     |                      | line                                  | 100.00%  | 1         |
@@ -169,7 +169,8 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | writeAutoindexRow                     | 92.30%   | 5         |
 | ✅     | cmd/phpscript/test   | Options.coverReport                   | 100.00%  | 1         |
 | ✅     |                      | Options.runners                       | 100.00%  | 4         |
-| ✅     |                      | Run                                   | 81.00%   | 97        |
+| ✅     |                      | Run                                   | 81.00%   | 99        |
+| ✅     |                      | cacheMode                             | 50.00%   | 1         |
 | ✅     |                      | coverFilePath                         | 83.30%   | 2         |
 | ✅     |                      | coverFiles                            | 92.90%   | 9         |
 | ✅     |                      | coverFixtures                         | 100.00%  | 1         |
@@ -187,6 +188,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | formatGCRuns                          | 100.00%  | 1         |
 | ✅     |                      | formatMicros                          | 100.00%  | 0         |
 | ✅     |                      | funcRows                              | 100.00%  | 24        |
+| ✅     |                      | gcCycles                              | 80.00%   | 1         |
 | ✅     |                      | groupFixtures                         | 100.00%  | 3         |
 | ✅     |                      | mapFixtureBatch                       | 100.00%  | 5         |
 | ✅     |                      | mapFixtures                           | 100.00%  | 10        |
@@ -214,7 +216,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | ratio                                 | 100.00%  | 0         |
 | ❌     |                      | reportArgs                            | 66.70%   | 8         |
 | ✅     |                      | reportBlocks                          | 100.00%  | 3         |
-| ✅     |                      | runFixtureLoop                        | 100.00%  | 18        |
+| ✅     |                      | runFixtureLoop                        | 100.00%  | 19        |
 | ✅     |                      | runFixtureSamples                     | 90.00%   | 5         |
 | ✅     |                      | sortProfile                           | 83.30%   | 4         |
 | ✅     |                      | sortRows                              | 83.30%   | 4         |
@@ -698,7 +700,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | parser.parseStmt                      | 100.00%  | 4         |
 | ✅     |                      | parser.parseStmtNode                  | 94.00%   | 25        |
 | ✅     |                      | parser.parseStmts                     | 100.00%  | 20        |
-| ✅     |                      | parser.parseSubExpr                   | 75.00%   | 3         |
+| ✅     |                      | parser.parseSubExpr                   | 82.40%   | 3         |
 | ❌     |                      | parser.parseSwitch                    | 67.60%   | 25        |
 | ✅     |                      | parser.parseTernary                   | 82.40%   | 11        |
 | ✅     |                      | parser.parseThrow                     | 83.30%   | 1         |
@@ -730,6 +732,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | phpTokenizer.scanString               | 100.00%  | 10        |
 | ✅     |                      | phpTokenizer.scanVariable             | 100.00%  | 2         |
 | ✅     |                      | phpTokenizer.scanWhitespace           | 100.00%  | 4         |
+| ✅     |                      | releaseTokens                         | 80.00%   | 1         |
 | ❌     |                      | repeatableExpr                        | 47.60%   | 25        |
 | ✅     |                      | scanCurly                             | 91.70%   | 9         |
 | ✅     |                      | scanInterp                            | 100.00%  | 16        |
@@ -740,6 +743,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | scratch[T].push                       | 100.00%  | 0         |
 | ✅     |                      | scratch[T].take                       | 100.00%  | 1         |
 | ❌     |                      | skipQuoted                            | 75.00%   | 6         |
+| ✅     |                      | takeTokens                            | 100.00%  | 1         |
 | ✅     |                      | token.String                          | 100.00%  | 0         |
 | ✅     |                      | tokenizeFrom                          | 100.00%  | 0         |
 | ✅     | runner               | AcceptsHTML                           | 100.00%  | 12        |
@@ -823,7 +827,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.DeclaredClasses               | 100.00%  | 3         |
 | ✅     |                      | Runtime.DefinedConstants              | 100.00%  | 0         |
 | ✅     |                      | Runtime.DefinedFunctions              | 100.00%  | 4         |
-| ✅     |                      | Runtime.Eval                          | 97.60%   | 18        |
+| ✅     |                      | Runtime.Eval                          | 95.60%   | 21        |
 | ✅     |                      | Runtime.Exit                          | 100.00%  | 0         |
 | ✅     |                      | Runtime.FS                            | 100.00%  | 0         |
 | ✅     |                      | Runtime.FreezeStdlib                  | 100.00%  | 0         |
@@ -966,7 +970,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | ScriptEnvironment                     | 100.00%  | 5         |
 | ✅     |                      | Size.Bytes                            | 100.00%  | 0         |
 | ✅     |                      | Size.Exceeds                          | 100.00%  | 1         |
-| ✅     |                      | Size.String                           | 66.70%   | 2         |
+| ✅     |                      | Size.String                           | 100.00%  | 2         |
 | ✅     |                      | Size.UnmarshalYAML                    | 100.00%  | 1         |
 | ✅     |                      | Transpiler.Calls                      | 100.00%  | 0         |
 | ✅     |                      | Transpiler.Closures                   | 100.00%  | 0         |
@@ -978,7 +982,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Transpiler.addCall                    | 100.00%  | 3         |
 | ✅     |                      | Transpiler.addConst                   | 100.00%  | 0         |
 | ✅     |                      | Transpiler.addVar                     | 100.00%  | 0         |
-| ❌     |                      | Transpiler.emit                       | 78.10%   | 66        |
+| ❌     |                      | Transpiler.emit                       | 78.50%   | 69        |
 | ✅     |                      | Transpiler.emitArgs                   | 85.70%   | 3         |
 | ✅     |                      | Transpiler.emitArray                  | 84.60%   | 8         |
 | ✅     |                      | Transpiler.emitBinary                 | 90.00%   | 7         |
@@ -1368,7 +1372,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | registerEncoding                      | 100.00%  | 0         |
 | ✅     |                      | registerEnvironment                   | 100.00%  | 7         |
 | ✅     |                      | registerJSON                          | 100.00%  | 0         |
-| ✅     |                      | registerLang                          | 93.20%   | 47        |
+| ✅     |                      | registerLang                          | 93.40%   | 47        |
 | ✅     |                      | registerMath                          | 100.00%  | 4         |
 | ✅     |                      | registerMbstring                      | 100.00%  | 0         |
 | ✅     |                      | registerOutput                        | 95.20%   | 10        |
@@ -1387,6 +1391,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | sortInt64Array                        | 100.00%  | 6         |
 | ✅     |                      | sortLess                              | 100.00%  | 0         |
 | ✅     |                      | sortValues                            | 85.00%   | 6         |
+| ✅     |                      | stdinStream.Read                      | 75.00%   | 1         |
 | ✅     |                      | strtolInt                             | 97.60%   | 37        |
 | ❌     |                      | substrWindow                          | 63.60%   | 12        |
 | ✅     |                      | urlEncode                             | 100.00%  | 9         |
@@ -1671,14 +1676,19 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Fixture.RootDir                       | 100.00%  | 1         |
 | ✅     |                      | Fixture.Runs                          | 100.00%  | 3         |
 | ✅     |                      | Fixture.SetAppRoot                    | 100.00%  | 1         |
+| ✅     |                      | Fixture.SetCacheScope                 | 100.00%  | 0         |
 | ✅     |                      | Fixture.SetCoverage                   | 100.00%  | 0         |
 | ✅     |                      | Fixture.SetRootFS                     | 100.00%  | 0         |
-| ✅     |                      | Fixture.flatIncludeCache              | 100.00%  | 3         |
-| ✅     |                      | Fixture.includeCache                  | 100.00%  | 3         |
+| ✅     |                      | Fixture.acquireRuntime                | 83.30%   | 8         |
+| ✅     |                      | Fixture.cacheRoot                     | 100.00%  | 1         |
+| ✅     |                      | Fixture.caches                        | 75.00%   | 1         |
+| ✅     |                      | Fixture.cleanState                    | 100.00%  | 0         |
+| ✅     |                      | Fixture.flatCaches                    | 75.00%   | 1         |
 | ✅     |                      | Fixture.includePrelude                | 85.70%   | 5         |
 | ✅     |                      | Fixture.program                       | 100.00%  | 2         |
 | ✅     |                      | Fixture.realRoot                      | 100.00%  | 1         |
 | ✅     |                      | Fixture.runnerOptions                 | 100.00%  | 3         |
+| ✅     |                      | Fixture.runtimeKey                    | 100.00%  | 0         |
 | ✅     |                      | Fixture.stdin                         | 100.00%  | 2         |
 | ✅     |                      | NewFailStorage                        | 100.00%  | 0         |
 | ✅     |                      | NewStorage                            | 75.00%   | 1         |
@@ -1687,18 +1697,19 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | RunFixture                            | 100.00%  | 0         |
 | ❌     |                      | RunFixtureOn                          | 74.20%   | 20        |
 | ✅     |                      | TestMain                              | 100.00%  | 0         |
+| ✅     |                      | WithWorker                            | 100.00%  | 0         |
+| ✅     |                      | absPath                               | 66.70%   | 1         |
 | ✅     |                      | bindingError.Error                    | 100.00%  | 0         |
 | ✅     |                      | buildFixtureRequestContext            | 97.70%   | 9         |
 | ✅     |                      | collector.RegisterFunc                | 100.00%  | 0         |
+| ✅     |                      | currentWorker                         | 100.00%  | 2         |
 | ✅     |                      | embeddedFixtures                      | 85.30%   | 14        |
 | ✅     |                      | errorChainContains                    | 60.00%   | 3         |
-| ✅     |                      | executeFixturePHP                     | 96.80%   | 7         |
-| ✅     |                      | executeFlatstack                      | 88.90%   | 7         |
+| ✅     |                      | executeFixturePHP                     | 92.30%   | 7         |
+| ✅     |                      | executeFlatstack                      | 83.90%   | 8         |
 | ✅     |                      | executePHP                            | 90.80%   | 7         |
-| ✅     |                      | flatIncludeCacheFor                   | 100.00%  | 1         |
 | ✅     |                      | hostPanicFast                         | 100.00%  | 0         |
 | ✅     |                      | hostPanicReflect                      | 100.00%  | 0         |
-| ✅     |                      | includeCacheFor                       | 100.00%  | 1         |
 | ✅     |                      | loadFixtureFile                       | 75.00%   | 2         |
 | ✅     |                      | memStorage.All                        | 100.00%  | 2         |
 | ✅     |                      | memStorage.Get                        | 100.00%  | 1         |
@@ -1706,6 +1717,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | memStorage.Set                        | 100.00%  | 0         |
 | ✅     |                      | memStorage.Tenant                     | 100.00%  | 0         |
 | ✅     |                      | newFlatstackTestRuntime               | 100.00%  | 0         |
+| ✅     |                      | newWorker                             | 100.00%  | 0         |
 | ❌     |                      | parseArgs                             | 76.20%   | 13        |
 | ✅     |                      | phpEnv                                | 33.30%   | 2         |
 | ✅     |                      | phpFatal                              | 100.00%  | 4         |
@@ -1717,4 +1729,6 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | testPHPFS                             | 83.30%   | 2         |
 | ✅     |                      | toString                              | 66.70%   | 1         |
 | ✅     |                      | unionFS.Open                          | 90.00%   | 6         |
+| ✅     |                      | worker.flatIncludeFor                 | 100.00%  | 1         |
+| ✅     |                      | worker.includeFor                     | 100.00%  | 1         |
 | ✅     |                      | writePHPScript                        | 58.80%   | 5         |

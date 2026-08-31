@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"runtime/metrics"
 	"runtime/pprof"
 	"sort"
 	"strings"
@@ -38,6 +39,7 @@ type Options struct {
 	CoverFile  string
 	Split      bool
 	SkipPHP    bool
+	Cache      string
 }
 
 // coverReport reports whether the cover mode owns stdout with a per-symbol
@@ -110,6 +112,7 @@ func NewCommand() *cli.Command {
 			fs.Lookup("cover").NoOptDefVal = CoverLine
 			fs.StringVar(&opts.CoverFile, "coverfile", "", "Write the coverage profile to this file (implies --cover; default "+DefaultCoverFile+")")
 			fs.BoolVar(&opts.Split, "split", false, "With --cover, also write each fixture's own coverage next to it as <fixture>.cov")
+			fs.StringVar(&opts.Cache, "cache", CacheWorker, "Scope of the parse caches: worker (one per worker loop, the default) or off (a new one per fixture run)")
 		},
 		Run: func(ctx context.Context, args []string) error {
 			return Run(ctx, args, opts)
@@ -160,8 +163,16 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts
 	}
 	samples := make([]int64, 0, hint)
 
+	// MemStats only when something reports it. ReadMemStats stops the world,
+	// and this runs once per fixture per runner - 1368 pauses over a 342-file
+	// matrix - for two numbers nothing prints unless --profile asked for them.
+	// The GC count comes from runtime/metrics either way, which does not stop
+	// anything, so the column stays.
 	var before, after runtime.MemStats
-	runtime.ReadMemStats(&before)
+	if opts.Profile {
+		runtime.ReadMemStats(&before)
+	}
+	gcBefore := gcCycles()
 	start := time.Now()
 	for {
 		opStart := time.Now()
@@ -183,9 +194,12 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts
 		}
 	}
 	out.Total = time.Since(start)
-	runtime.ReadMemStats(&after)
-	out.GCRuns = after.NumGC - before.NumGC
+	out.GCRuns = uint32(gcCycles() - gcBefore)
 	if opts.Profile {
+		runtime.ReadMemStats(&after)
+		// Per op, not per fixture: --count and --time run the fixture N times
+		// inside the one pair of readings, so the totals are divided by the
+		// runs rather than sampled per iteration.
 		n := uint64(out.Runs)
 		out.AllocsPerOp = (after.Mallocs - before.Mallocs) / n
 		out.BytesPerOp = (after.TotalAlloc - before.TotalAlloc) / n
@@ -292,6 +306,14 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		return fmt.Errorf("discover fixtures: %w", err)
 	}
 
+	mode, err := cacheMode(opts.Cache)
+	if err != nil {
+		return err
+	}
+	for _, fx := range fixtures {
+		fx.SetCacheScope(mode)
+	}
+
 	if opts.Autoload != "" || opts.Include != "" {
 		// The flags speak from the invocation root: that is where the autoload
 		// folder and the include file live, below no fixture directory.
@@ -378,8 +400,8 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		groupPassed, groupFailed := 0, 0
 		groupStart := time.Now()
 
-		fixtureRuns := mapFixtures(group.Fixtures, opts.Parallel, func(_ int, fx *tests.Fixture) []*fixtureRun {
-			return runFixtureSamples(ctx, fx, tests.RunnerRuntime, opts)
+		fixtureRuns := mapFixtures(group.Fixtures, opts.Parallel, func(worker, _ int, fx *tests.Fixture) []*fixtureRun {
+			return runFixtureSamples(tests.WithWorker(ctx, worker), fx, tests.RunnerRuntime, opts)
 		})
 		for i, fx := range group.Fixtures {
 			var fixtureResult *tests.TestResult
@@ -523,4 +545,48 @@ func writeMemProfile(opts Options) error {
 		return fmt.Errorf("write memprofile: %w", err)
 	}
 	return nil
+}
+
+// gcCycles returns the number of completed GC cycles.
+//
+// runtime/metrics rather than runtime.MemStats: NumGC is only reachable through
+// ReadMemStats, which stops the world, and this is read twice per fixture per
+// runner. The metrics reader takes a lock and copies a counter.
+func gcCycles() uint64 {
+	sample := [1]metrics.Sample{{Name: "/gc/cycles/total:gc-cycles"}}
+	metrics.Read(sample[:])
+	if sample[0].Value.Kind() != metrics.KindUint64 {
+		return 0
+	}
+	return sample[0].Value.Uint64()
+}
+
+// The --cache modes, which say how far a parsed include and a compiled
+// expression travel.
+//
+// There is no "shared" mode because a worker loop already is one: run without
+// --parallel there is a single worker, so a single set of caches serves the
+// whole run. Sharing them across workers on top of that only adds contention
+// for a hit the worker's own cache already has.
+const (
+	// CacheOff gives every fixture run its own caches and drops the runtime
+	// after it. Nothing one run parsed is visible to the next, so a run is
+	// charged the parsing its own includes cost - and what it held is returned
+	// when it ends rather than kept for the length of the suite.
+	CacheOff = "off"
+	// CacheWorker gives each worker one set, reused by the fixtures that
+	// worker runs serially. What is held scales with --parallel rather than
+	// with the number of fixtures.
+	CacheWorker = "worker"
+)
+
+// cacheMode reads the --cache flag.
+func cacheMode(value string) (string, error) {
+	switch value {
+	case "", CacheWorker:
+		return CacheWorker, nil
+	case CacheOff:
+		return value, nil
+	}
+	return "", fmt.Errorf("--cache must be %s or %s, not %q", CacheWorker, CacheOff, value)
 }

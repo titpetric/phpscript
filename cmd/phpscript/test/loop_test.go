@@ -84,7 +84,7 @@ func TestMapFixturesRunsConcurrentlyWithSerialBarrier(t *testing.T) {
 	fixtures := []*tests.Fixture{{Name: "a"}, {Name: "b"}, {Name: "serial", Serial: true}, {Name: "c"}, {Name: "d"}}
 	var active, peak, serialActive atomic.Int64
 
-	results := mapFixtures(fixtures, 4, func(i int, fx *tests.Fixture) string {
+	results := mapFixtures(fixtures, 4, func(_, i int, fx *tests.Fixture) string {
 		current := active.Add(1)
 		defer active.Add(-1)
 		for current > peak.Load() && !peak.CompareAndSwap(peak.Load(), current) {

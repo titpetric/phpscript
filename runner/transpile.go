@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -172,6 +173,15 @@ func constIdent(name string) string { return constIdentPrefix + name }
 func (t *Transpiler) emit(e model.Expr) (string, error) {
 	switch n := e.(type) {
 	case *model.Lit:
+		if text, ok := n.Value.(string); ok && !utf8.ValidString(text) {
+			// A string carrying a byte that is not valid UTF-8 cannot travel
+			// as source text: strconv.Quote writes it as \xff, and expr-lang
+			// reads that back as the codepoint U+00FF and encodes it as the
+			// two bytes UTF-8 spells it with. "a\xffb" would arrive four bytes
+			// long. The literal is handed to the runtime instead, which reads
+			// the value itself and never spells it.
+			return "__eval(" + strconv.Quote(t.mark(n)) + ")", nil
+		}
 		return litSource(n.Value), nil
 
 	case *model.Var:

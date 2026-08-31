@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 )
@@ -103,8 +104,46 @@ var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 // the whole slice, on dense ones.
 const bytesPerToken = 4
 
+// tokenPool recycles the token slice a parse walks.
+//
+// The slice is the largest single allocation the parser makes - a token is five
+// fields and a source file yields one per four bytes - and it is garbage the
+// moment the AST is built: model cannot hold a token, the type is unexported to
+// it, and every read through p.toks[i] copies the struct rather than aliasing
+// the array. So the same backing array serves every parse in the process.
+//
+// It holds *[]token rather than []token because putting a slice in an
+// interface allocates the header; a pointer to one does not.
+var tokenPool sync.Pool
+
+// takeTokens returns an empty token slice, recycled when one is free.
+//
+// A recycled slice keeps whatever capacity it grew to, so the pool converges on
+// the largest file the process has parsed and later parses stop growing
+// altogether. The hint is only used when the pool is empty.
+func takeTokens(hint int) []token {
+	if v := tokenPool.Get(); v != nil {
+		return (*v.(*[]token))[:0]
+	}
+	return make([]token, 0, hint)
+}
+
+// releaseTokens returns a slice to the pool.
+//
+// It clears first. A token holds two strings, and those keep whole source files
+// alive: a pooled slice that kept them would trade an allocation saving for a
+// retention leak, which is the more expensive of the two.
+func releaseTokens(toks []token) {
+	if cap(toks) == 0 {
+		return
+	}
+	clear(toks)
+	toks = toks[:0]
+	tokenPool.Put(&toks)
+}
+
 func (l *lexer) run() ([]token, error) {
-	l.tokens = make([]token, 0, len(l.src)/bytesPerToken+8)
+	l.tokens = takeTokens(len(l.src)/bytesPerToken + 8)
 	l.skipShebang()
 	for l.pos < len(l.src) {
 		if !l.inPHP {
@@ -112,6 +151,10 @@ func (l *lexer) run() ([]token, error) {
 			continue
 		}
 		if err := l.lexPHP(); err != nil {
+			// The caller gets no slice to hand back, so the failed lex
+			// returns its own.
+			releaseTokens(l.tokens)
+			l.tokens = nil
 			return nil, err
 		}
 	}

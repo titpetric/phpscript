@@ -54,12 +54,14 @@ func lintRedeclared(file string, prog *model.Program, out *[]Diagnostic) {
 				File:    file,
 				Line:    line,
 				Message: fmt.Sprintf("Cannot redeclare function %s() (previously declared on line %d)", decl.Name, previous),
+				Fatal:   true,
 			})
 		case rt.FunctionExists(decl.Name):
 			*out = append(*out, Diagnostic{
 				File:    file,
 				Line:    line,
 				Message: fmt.Sprintf("Cannot redeclare function %s()", decl.Name),
+				Fatal:   true,
 			})
 		default:
 			seen[key] = line
