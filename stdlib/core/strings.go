@@ -60,6 +60,12 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("strrev", phpStrrev)
 	// str_split returns $string cut into chunks of $length bytes, the last one shorter when the string does not divide evenly; an empty string yields an empty array.
 	rt.RegisterFunc("str_split", phpStrSplit)
+	rt.SetConst("FNM_PATHNAME", int64(fnmPathname))
+	rt.SetConst("FNM_NOESCAPE", int64(fnmNoescape))
+	rt.SetConst("FNM_PERIOD", int64(fnmPeriod))
+	rt.SetConst("FNM_CASEFOLD", int64(fnmCasefold))
+	// fnmatch reports whether $str matches the shell wildcard $pattern, where * and ? cross a directory separator unless $flags names FNM_PATHNAME; the other flags are FNM_NOESCAPE, FNM_PERIOD and FNM_CASEFOLD.
+	rt.RegisterFunc("fnmatch", phpFnmatch)
 	rt.SetConst("STR_PAD_RIGHT", int64(strPadRight))
 	rt.SetConst("STR_PAD_LEFT", int64(strPadLeft))
 	rt.SetConst("STR_PAD_BOTH", int64(strPadBoth))
