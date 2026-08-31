@@ -607,9 +607,15 @@ func (c Context) memoryFootprint(visited visitedSet) int64 {
 	return total
 }
 
-// Register installs the request-aware PHP functions onto rt and seeds the
-// request superglobals. After this, transpiled PHP can call getallheaders() /
-// header() and read $_GET, $_POST, $_REQUEST, all backed by this Context.
+// Register seeds the request superglobals and puts the request itself on the
+// runtime context. After this, transpiled PHP reads $_GET, $_POST and
+// $_REQUEST from this Context, and the request-aware functions find it.
+//
+// The functions themselves - getallheaders(), header(), http_response_code(),
+// setcookie() - are registered by runner/bindings, which reaches this Context
+// through RequestContext at call time. They are registered before this runs,
+// because a host installs the standard library first and seeds the request
+// second; the indirection is what makes that order work either way.
 func (c Context) Register(rt *Runtime) {
 	// The request has crossed into the runtime: fold its host-side size into
 	// the memory baseline for the rest of this request's lifetime.
@@ -617,27 +623,6 @@ func (c Context) Register(rt *Runtime) {
 	// Make request cookies and staged response headers available to bindings
 	// whose methods receive the runtime lifecycle context.
 	rt.SetContext(context.WithValue(rt.Context(), requestContextKey{}, c))
-
-	// getallheaders returns the request headers as an associative array keyed
-	// by canonical header name.
-	rt.RegisterFunc("getallheaders", c.GetAllHeaders)
-	// get_all_headers is an alias spelling of getallheaders.
-	rt.RegisterFunc("get_all_headers", c.GetAllHeaders)
-	// apache_request_headers is an alias of getallheaders.
-	rt.RegisterFunc("apache_request_headers", c.GetAllHeaders)
-
-	// header stages the "Name: value" response header in $header, written to
-	// the response after the script finishes. $replace (default true) overwrites
-	// an existing header of the same name; $code stages the response status. A
-	// status line, "HTTP/1.0 404 Not Found", stages the status it names.
-	rt.RegisterFunc("header", c.Header)
-
-	// http_response_code stages the response status in $response_code and
-	// returns the one it replaced; called without one it returns the status the
-	// response will be sent with.
-	rt.RegisterFunc("http_response_code", func(opts ...any) any {
-		return c.HTTPResponseCode(rt.SAPI(), opts...)
-	})
 
 	// Superglobals as ordinary PHP arrays.
 	rt.SetGlobal("_GET", superglobal(c.GetVars, c.Get))

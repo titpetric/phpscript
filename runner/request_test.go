@@ -622,6 +622,10 @@ func TestHeaderEmission(t *testing.T) {
 func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 	ctx := runner.NewContext()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
+	// header() is a standard-library binding that finds this Context through
+	// the runtime context, so the library is registered here the way a host
+	// registers it: stdlib first, request second.
+	stdlib.Register(rt)
 	ctx.Register(rt)
 	prog, err := parser.Parse(`<?php header("Location: /next");`)
 	if err != nil {
