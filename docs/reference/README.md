@@ -1,10 +1,10 @@
 # phpscript language reference
 
-| Reference area                                                      | Status                | Notes                                                                    |
-|---------------------------------------------------------------------|-----------------------|--------------------------------------------------------------------------|
-| PHP language reference                                              | Partial compatibility | Only documented chapters and features are implemented.                   |
-| phpscript extensions                                                | Compatibility         | Documented separately because these APIs and syntax do not exist in PHP. |
-| Fibers, generators, attributes, enums, stream contexts and wrappers | Not implemented       | Omitted from the sitemap because phpscript has no corresponding feature. |
+| Reference area | Status | Notes |
+| --- | --- | --- |
+| PHP language reference | Partial compatibility | Only documented chapters and features are implemented. |
+| phpscript extensions | Compatibility | Documented separately because these APIs and syntax do not exist in PHP. |
+| Fibers, generators, attributes, enums, stream contexts and wrappers | Not implemented | Omitted from the sitemap because phpscript has no corresponding feature. |
 
 A PHP language-reference-shaped guide to the syntax and runtime behavior implemented by phpscript.
 
@@ -237,9 +237,10 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Implementation](extensions/regexp.md#implementation)
 - [Implemented PHP APIs](extensions/implemented-apis.md) - Generated inventory of functions and classes in the standard CLI runtime.
   - [Functions](extensions/implemented-apis.md#functions)
-    - [runner](extensions/implemented-apis.md#runner)
     - [runner/bindings](extensions/implemented-apis.md#runnerbindings)
+      - [arrays](extensions/implemented-apis.md#arrays)
       - [crypto](extensions/implemented-apis.md#crypto)
+      - [request](extensions/implemented-apis.md#request)
       - [strings](extensions/implemented-apis.md#strings)
     - [stdlib/compat](extensions/implemented-apis.md#stdlibcompat)
       - [buffers](extensions/implemented-apis.md#buffers)
@@ -248,7 +249,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [stdlib/core](extensions/implemented-apis.md#stdlibcore)
       - [other](extensions/implemented-apis.md#other)
       - [array sort](extensions/implemented-apis.md#array-sort)
-      - [arrays](extensions/implemented-apis.md#arrays)
+      - [arrays](extensions/implemented-apis.md#arrays-1)
       - [closure](extensions/implemented-apis.md#closure)
       - [encoding](extensions/implemented-apis.md#encoding)
       - [environment](extensions/implemented-apis.md#environment)
@@ -267,6 +268,8 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [csv](extensions/implemented-apis.md#csv)
       - [paths](extensions/implemented-apis.md#paths)
       - [reads](extensions/implemented-apis.md#reads)
+      - [stat](extensions/implemented-apis.md#stat)
+      - [stream reads](extensions/implemented-apis.md#stream-reads)
       - [streams](extensions/implemented-apis.md#streams)
       - [uploads](extensions/implemented-apis.md#uploads)
       - [work dir](extensions/implemented-apis.md#work-dir)

@@ -11,46 +11,64 @@ or its comment; docs/naming-conventions.md documents the comment convention.
 
 ## Functions
 
-### runner
-
-```php
-// apache_request_headers is an alias of getallheaders.
-function apache_request_headers(): array
-```
-
-```php
-// get_all_headers is an alias spelling of getallheaders.
-function get_all_headers(): array
-```
-
-```php
-/**
- * getallheaders returns the request headers as an associative array keyed
- * by canonical header name.
- */
-function getallheaders(): array
-```
-
-```php
-/**
- * header stages the "Name: value" response header in $header, written to
- * the response after the script finishes. $replace (default true) overwrites
- * an existing header of the same name; $code stages the response status. A
- * status line, "HTTP/1.0 404 Not Found", stages the status it names.
- */
-function header(string $header, mixed ...$opts): void
-```
-
-```php
-/**
- * http_response_code stages the response status in $response_code and
- * returns the one it replaced; called without one it returns the status the
- * response will be sent with.
- */
-function http_response_code(mixed ...$opts): mixed
-```
-
 ### runner/bindings
+
+#### arrays
+
+```php
+// array_chunk splits $array into arrays of at most $length entries; the chunks are keyed from zero either way, and $preserve_keys decides whether the entries inside them keep their own keys or are renumbered.
+function array_chunk(mixed $array, int $length, bool ...$preserve_keys): array
+```
+
+```php
+// array_combine returns an array keyed by the values of $keys and valued by the values of $values, paired in order; the two must hold the same number of entries.
+function array_combine(mixed $keys, mixed $values): array
+```
+
+```php
+// array_diff returns the entries of $array whose value is in none of the other arrays, keys kept; values are compared as strings, which is php's own rule and the reason 0 and "0" are the same entry here.
+function array_diff(mixed $array, mixed ...$others): array
+```
+
+```php
+// array_diff_key returns the entries of $array whose key is in none of the other arrays, values untouched and never compared.
+function array_diff_key(mixed $array, mixed ...$others): array
+```
+
+```php
+// array_fill returns an array of $count copies of $value, keyed from $start_index upwards; php 8 raises a ValueError below zero and this clamps to the empty array, which is what a count of zero already answers.
+function array_fill(int $start_index, int $count, mixed $value): array
+```
+
+```php
+// array_fill_keys returns an array whose keys are the values of $keys and whose every value is $value; a key repeated in $keys lands once, as the later assignment overwrites the earlier.
+function array_fill_keys(mixed $keys, mixed $value): array
+```
+
+```php
+// array_intersect returns the entries of $array whose value is in every one of the other arrays, keys kept; values are compared as strings, as array_diff compares them.
+function array_intersect(mixed $array, mixed ...$others): array
+```
+
+```php
+// array_intersect_key returns the entries of $array whose key is in every one of the other arrays, values untouched and never compared.
+function array_intersect_key(mixed $array, mixed ...$others): array
+```
+
+```php
+// array_is_list reports whether $array is keyed by the integers 0 to count-1 in that order, which is what makes it a list rather than a map; an empty array is a list.
+function array_is_list(mixed $array): bool
+```
+
+```php
+// array_key_first returns the first key of $array without moving anything, or null when it is empty.
+function array_key_first(mixed $array): mixed
+```
+
+```php
+// array_key_last returns the last key of $array, or null when it is empty.
+function array_key_last(mixed $array): mixed
+```
 
 #### crypto
 
@@ -72,6 +90,43 @@ function hash_equals(string $known_string, string $user_string): bool
 ```php
 // hash_hmac returns the $algo keyed digest of $data under $key as lowercase hex characters, or as raw bytes when $binary is true; a key longer than the algorithm's block size is itself digested first, which is HMAC's own rule and not a choice made here.
 function hash_hmac(string $algo, string $data, string $key, bool ...$binary): string
+```
+
+#### request
+
+```php
+// apache_request_headers is an alias of getallheaders.
+function apache_request_headers(): array
+```
+
+```php
+// get_all_headers is an alias spelling of getallheaders.
+function get_all_headers(): array
+```
+
+```php
+// getallheaders returns the request headers as an associative array keyed by canonical header name, and an empty array when there is no request.
+function getallheaders(): array
+```
+
+```php
+// header stages the "Name: value" response header in $header, written to the response after the script finishes; $replace (default true) overwrites an existing header of the same name, $code stages the response status, and a status line such as "HTTP/1.0 404 Not Found" stages the status it names.
+function header(string $header, mixed ...$opts): void
+```
+
+```php
+// http_response_code stages the response status in $response_code and returns the one it replaced; called without one it returns the status the response will be sent with, or false when there is no request to answer for.
+function http_response_code(mixed ...$opts): mixed
+```
+
+```php
+// setcookie stages a Set-Cookie header naming $name with $value url-encoded, and answers whether it could; $expires_or_options is a unix timestamp, 0 for a cookie that dies with the browser session, or an array of expires, path, domain, secure, httponly and samesite.
+function setcookie(string $name, mixed ...$opts): bool
+```
+
+```php
+// setrawcookie stages a Set-Cookie header the way setcookie does but writes $value as it stands, so a value carrying a semicolon or a space is the caller's problem rather than the encoder's.
+function setrawcookie(string $name, mixed ...$opts): bool
 ```
 
 #### strings
@@ -1227,6 +1282,90 @@ function filemtime(string $filename): int
 ```php
 // glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host; a pattern naming anything outside the root matches nothing, and a malformed one matches nothing rather than failing, as PHP's does.
 function glob(string $pattern): array
+```
+
+#### stat
+
+```php
+// filesize returns the size of $filename in bytes, or false when it cannot be found.
+function filesize(string $filename): mixed
+```
+
+```php
+// filetype returns "file", "dir" or "link" for what $filename names, or false when it cannot be found; the exotic types php can answer with - fifo, block, char, socket - are reported as "file", because nothing inside a source filesystem can be one.
+function filetype(string $filename): mixed
+```
+
+```php
+// is_dir reports whether $filename names a directory.
+function is_dir(string $filename): bool
+```
+
+```php
+// is_executable reports whether $filename has an execute bit set on the host; a file that exists only in the source filesystem is not executable, because there is nothing there to run.
+function is_executable(string $filename): bool
+```
+
+```php
+// is_file reports whether $filename names an ordinary file, in the source filesystem or on the host; a directory is not one, and neither is a path that does not exist.
+function is_file(string $filename): bool
+```
+
+```php
+// is_readable reports whether $filename can be opened for reading, which here is whether it exists: a path inside the root is readable by the process that is asking, and the source filesystem carries no permissions of its own.
+function is_readable(string $filename): bool
+```
+
+```php
+// is_writable reports whether $filename could be written, which asks writable_paths rather than the file mode; a path the allowlist refuses is not writable however the host's permissions read, and a path it allows is, whether or not the file exists yet.
+function is_writable(string $filename): bool
+```
+
+```php
+// pathinfo returns the parts of $path as an array of dirname, basename, extension and filename; a path with no dot carries no extension key, which is what php leaves out rather than answering empty. It never touches the filesystem, so it answers about a path that does not exist.
+function pathinfo(string $path): array
+```
+
+```php
+// realpath returns $path written from the root, with . and .. resolved, or false when nothing is there; php answers a host path, and a runtime whose scripts may be served out of an embedded tree has none to answer with, so this answers the spelling getcwd() and __DIR__ use.
+function realpath(string $path): mixed
+```
+
+```php
+// scandir returns the names in the directory $directory, sorted, with "." and ".." first as php lists them; false when $directory is not a directory.
+function scandir(string $directory): mixed
+```
+
+#### stream reads
+
+```php
+// feof reports whether $stream is at its end. It answers for a handle fopen() gave out, by comparing where the handle sits against how long the file is; php://input and php://output are not seekable and answer false, so a script draining the request body should read it with stream_get_contents.
+function feof(mixed $stream): bool
+```
+
+```php
+// fgets reads one line from $stream, keeping the newline that ends it, and returns false at the end of the handle; $length bounds the line, so a line longer than it comes back in pieces.
+function fgets(resource $stream, int ...$length): mixed
+```
+
+```php
+// fread reads at most $length bytes from $stream and returns them, or false when the handle cannot be read; a read at the end of the handle returns the empty string, which is how a loop knows to stop.
+function fread(resource $stream, int $length): mixed
+```
+
+```php
+// fseek moves $stream to $offset, counted from the start of the handle, from where it sits when $whence is SEEK_CUR, or from the end when it is SEEK_END; it answers 0 on success and -1 on failure, which is the opposite way round from every other function here and is php's own choice.
+function fseek(resource $stream, int $offset, int ...$whence): int
+```
+
+```php
+// ftell returns where $stream sits, counted in bytes from the start, or false when the handle cannot say.
+function ftell(resource $stream): mixed
+```
+
+```php
+// rewind moves $stream back to its start and reports whether it could.
+function rewind(resource $stream): bool
 ```
 
 #### streams
