@@ -290,6 +290,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | random.phpt                      | PASS       | PASS    | PASS |
 | token_get_all.phpt               | PASS       | PASS    | PASS |
 | token_get_all_interpolation.phpt | PASS       | PASS    | PASS |
+| yaml.phpt                        | PASS       | PASS    | SKIP |
 
 ## tests/fixtures/strings
 
@@ -348,7 +349,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/pexec       | 2        | 2      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
-| tests/fixtures/stdlib      | 21       | 21     | 0      |
+| tests/fixtures/stdlib      | 22       | 22     | 0      |
 | tests/fixtures/strings     | 18       | 18     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 220      | 220    | 0      |
+| **Total**                  | 221      | 221    | 0      |

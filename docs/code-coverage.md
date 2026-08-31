@@ -42,7 +42,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | stdlib                | 96.30%   | 4         | 94    |
 | ✅     | stdlib/compat         | 86.92%   | 184       | 901   |
-| ✅     | stdlib/core           | 85.58%   | 933       | 4128  |
+| ✅     | stdlib/core           | 85.53%   | 958       | 4262  |
 | ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
 | ✅     | stdlib/database       | 84.59%   | 105       | 791   |
 | ✅     | stdlib/files          | 87.78%   | 272       | 1041  |
@@ -307,7 +307,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | lookupUserFunc                        | 100.00%  | 4         |
 | ✅     |                      | phpEmptyContainer                     | 100.00%  | 0         |
 | ✅     |                      | restoreHostLocals                     | 83.30%   | 1         |
-| ❌     |                      | run                                   | 79.90%   | 551       |
+| ✅     |                      | run                                   | 80.10%   | 551       |
 | ✅     |                      | unsupported                           | 100.00%  | 0         |
 | ✅     |                      | vmScratch.release                     | 100.00%  | 0         |
 | ✅     | formatter            | Changed                               | 100.00%  | 3         |
@@ -1352,6 +1352,8 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | phpUcfirst                            | 100.00%  | 2         |
 | ✅     |                      | phpUcwords                            | 100.00%  | 9         |
 | ✅     |                      | phpUsort                              | 80.00%   | 2         |
+| ✅     |                      | phpYAMLDecode                         | 100.00%  | 1         |
+| ✅     |                      | phpYAMLEncode                         | 75.00%   | 1         |
 | ✅     |                      | printString                           | 90.00%   | 3         |
 | ✅     |                      | queryValue                            | 100.00%  | 3         |
 | ✅     |                      | rangeCharSeq                          | 88.20%   | 6         |
@@ -1376,6 +1378,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     |                      | registerReflection                    | 57.40%   | 28        |
 | ✅     |                      | registerStrings                       | 99.50%   | 2         |
 | ✅     |                      | registerTokenizer                     | 100.00%  | 1         |
+| ✅     |                      | registerYAML                          | 100.00%  | 0         |
 | ✅     |                      | roundDecimal                          | 89.30%   | 11        |
 | ✅     |                      | runeSlice                             | 100.00%  | 6         |
 | ❌     |                      | searchLast                            | 12.50%   | 9         |
@@ -1394,6 +1397,9 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | valueWriter.leave                     | 100.00%  | 1         |
 | ✅     |                      | valueWriter.pad                       | 60.00%   | 1         |
 | ✅     |                      | valueWriter.printR                    | 93.30%   | 6         |
+| ❌     |                      | yamlDecodeValue                       | 60.00%   | 8         |
+| ❌     |                      | yamlEncodeValue                       | 53.80%   | 13        |
+| ✅     |                      | yamlMapping                           | 100.00%  | 2         |
 | ✅     | stdlib/crypto        | Register                              | 82.60%   | 12        |
 | ✅     |                      | RegisterHash                          | 100.00%  | 6         |
 | ✅     |                      | RegisterIdentifiers                   | 90.90%   | 4         |

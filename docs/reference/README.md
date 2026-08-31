@@ -262,6 +262,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [reflection](extensions/implemented-apis.md#reflection)
       - [strings](extensions/implemented-apis.md#strings-1)
       - [tokenizer](extensions/implemented-apis.md#tokenizer)
+      - [yaml](extensions/implemented-apis.md#yaml)
     - [stdlib/crypto](extensions/implemented-apis.md#stdlibcrypto)
     - [stdlib/database](extensions/implemented-apis.md#stdlibdatabase)
     - [stdlib/files](extensions/implemented-apis.md#stdlibfiles)

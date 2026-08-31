@@ -1147,6 +1147,18 @@ function token_get_all(string $src): array
 function token_name(int $id): string
 ```
 
+#### yaml
+
+```php
+// yaml_decode parses the YAML in $text into arrays, with a mapping arriving as an array keyed by its field names and a sequence as a list; the keys come back sorted, and invalid input raises an error rather than answering null.
+function yaml_decode(string $text): mixed
+```
+
+```php
+// yaml_encode returns $value as YAML, writing an array that is a list as a sequence and any other array as a mapping in the order its keys were set.
+function yaml_encode(mixed $value): mixed
+```
+
 ### stdlib/crypto
 
 ```php
