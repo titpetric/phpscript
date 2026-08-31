@@ -317,7 +317,7 @@ preserve, so sorting one would be `sort()` under another name.
 | `ucfirst`, `lcfirst`, `ucwords`                                              | `string`                             | OK: byte-wise, and the `[]byte` copy is made only when a byte actually changes                                                                                          |
 | `chr`                                                                        | `string`                             | OK: a package-level table of the 256 one-byte strings, so the return is a shared constant: 1 alloc -> 0                                                                 |
 | `ord`                                                                        | `int64`                              | OK                                                                                                                                                                      |
-| `fnmatch`                                                                    | `bool`                               | OK: the matcher walks both strings in place with one saved backtrack point per star, so it allocates nothing and a run of stars costs the same as one                    |
+| `fnmatch`                                                                    | `bool`                               | OK: the matcher walks both strings in place with one saved backtrack point per star, so it allocates nothing and a run of stars costs the same as one                   |
 | `mb_strtolower`, `mb_strtoupper`                                             | `string`                             | OK: `strings.ToLower`/`ToUpper`, which return the input unchanged when no case maps                                                                                     |
 | `mb_strlen`                                                                  | `int64`                              | OK: `utf8.RuneCountInString` counts in place, where a `[]rune` conversion would allocate the whole string again                                                         |
 | `mb_substr`                                                                  | `string`, subslice, no copy          | OK: the two byte offsets are found by walking the string, again avoiding a `[]rune` round trip                                                                          |
@@ -365,15 +365,15 @@ given.
 
 ### Filesystem
 
-| Binding                                             | Returns                       | Status                                               |
-|-----------------------------------------------------|-------------------------------|------------------------------------------------------|
-| `glob`                                              | `([]string, error)`           | OK                                                   |
-| `file_get_contents`                                 | `any` (`string` or `false`)   | OK (by design): the file contents are the allocation |
-| `file_exists`, `mkdir`, `unlink`, `touch`, `fclose` | `bool`                        | OK                                                   |
-| `filemtime`                                         | `int64`                       | OK                                                   |
-| `dirname`, `basename`                               | `string`                      | OK                                                   |
-| `fopen`                                             | `any` (`*os.File` or `false`) | OK                                                   |
-| `fwrite`                                            | `any` (`int64` or `false`)    | OK                                                   |
+| Binding                                             | Returns                       | Status                                                                                                                                                           |
+|-----------------------------------------------------|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `glob`                                              | `[]string`                    | OK: `fs.Glob`/`filepath.Glob` build the only slice; the error slot went away because PHP answers an empty array, not a throw, for a pattern that matches nothing |
+| `file_get_contents`                                 | `any` (`string` or `false`)   | OK (by design): the file contents are the allocation                                                                                                             |
+| `file_exists`, `mkdir`, `unlink`, `touch`, `fclose` | `bool`                        | OK                                                                                                                                                               |
+| `filemtime`                                         | `int64`                       | OK                                                                                                                                                               |
+| `dirname`, `basename`                               | `string`                      | OK                                                                                                                                                               |
+| `fopen`                                             | `any` (`*os.File` or `false`) | OK                                                                                                                                                               |
+| `fwrite`                                            | `any` (`int64` or `false`)    | OK                                                                                                                                                               |
 
 ### Type checks
 

@@ -16,13 +16,29 @@ import (
 // ships, and falls back to the host filesystem for what only exists there, such
 // as a file an earlier write produced.
 func registerReads(rt *runner.Runtime, r root) {
-	// glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host.
-	rt.RegisterFunc("glob", func(pattern string) ([]string, error) {
+	// glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host; a pattern naming anything outside the root matches nothing, and a malformed one matches nothing rather than failing, as PHP's does.
+	rt.RegisterFunc("glob", func(pattern string) []string {
 		source := r.sourceFS()
 		if source == nil {
-			return filepath.Glob(r.resolve(pattern))
+			matches, err := filepath.Glob(r.resolve(pattern))
+			if err != nil {
+				return nil
+			}
+			return r.unresolve(matches)
 		}
-		return iofs.Glob(source, pattern)
+		// An absolute pattern is the one case fsPath refuses. PHP would
+		// answer with whatever the host holds there; a runtime whose
+		// scripts are served out of an fs.FS answers with nothing,
+		// because nothing outside it is addressable.
+		name, ok := r.fsPath(pattern)
+		if !ok {
+			return nil
+		}
+		matches, err := iofs.Glob(source, name)
+		if err != nil {
+			return nil
+		}
+		return matches
 	})
 
 	// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body (stdin under the cli SAPI), and a relative path is tried in the source filesystem first, then on the host.
@@ -45,8 +61,10 @@ func registerReads(rt *runner.Runtime, r root) {
 			return string(b)
 		}
 		if source := r.sourceFS(); source != nil {
-			if b, err := iofs.ReadFile(source, r.resolve(filename)); err == nil {
-				return string(b)
+			if name, ok := r.fsPath(filename); ok {
+				if b, err := iofs.ReadFile(source, name); err == nil {
+					return string(b)
+				}
 			}
 		}
 		b, err := os.ReadFile(r.resolve(filename))
@@ -92,11 +110,16 @@ func (r root) sourceFS() iofs.FS {
 }
 
 // statSource stats a script-supplied path in the source filesystem, and reports
-// the absence of that filesystem as a miss.
+// the absence of that filesystem, or of a way to name the path inside it, as a
+// miss. A miss is not an answer: every caller falls through to the host.
 func (r root) statSource(p string) (iofs.FileInfo, error) {
 	source := r.sourceFS()
 	if source == nil {
 		return nil, iofs.ErrNotExist
 	}
-	return iofs.Stat(source, r.resolve(p))
+	name, ok := r.fsPath(p)
+	if !ok {
+		return nil, iofs.ErrNotExist
+	}
+	return iofs.Stat(source, name)
 }

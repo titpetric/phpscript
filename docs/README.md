@@ -153,6 +153,17 @@ Strings:
   are clamped rather than raising the `ValueError` PHP 8 raises.
 - `substr_replace()` does not accept array arguments.
 
+Filesystem:
+
+- `glob()` answers nothing for an absolute pattern whenever a source
+  filesystem is bound, which is every host that serves scripts out of an
+  embedded or in-memory tree. PHP lists whatever the host holds at that path.
+  A relative pattern is cleaned against the root and cannot climb out of it,
+  which is the rule every path a script hands to this package follows; the
+  difference is that a listing has no way to name something outside the
+  `fs.FS`, where a read falls through to the host. `glob()` takes no `$flags`
+  argument, so `GLOB_BRACE` and the rest are not defined.
+
 Arrays:
 
 - `array_shift()`, `array_unshift()`, `array_pop()`, `array_push()` and

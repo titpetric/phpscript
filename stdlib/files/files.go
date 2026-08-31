@@ -75,6 +75,50 @@ func (r root) resolve(p string) string {
 	return filepath.Join(r.dir, filepath.FromSlash(clean))
 }
 
+// fsPath maps a path a script supplied onto the source filesystem, which every
+// host roots at the same directory the shims are bound to. It names the same
+// file resolve does, in the other spelling, and the two are not
+// interchangeable: resolve answers with a host path joined onto r.dir, while an
+// fs.FS wants a slash path relative to its own root and rejects anything else,
+// r.dir included. Passing resolve's answer to an fs.FS is how a read silently
+// stopped going through it whenever r.dir was not ".".
+//
+// A relative path is cleaned against the root, so "a/../../etc/passwd" becomes
+// "etc/passwd" inside it rather than escaping, which is the rule resolve
+// states. The second return is false for an absolute path: resolve hands that
+// one to the host untouched, and there is no way to say the same thing to an
+// fs.FS, so the caller decides what a path outside the root means.
+func (r root) fsPath(p string) (string, bool) {
+	if p == "" || filepath.IsAbs(p) {
+		return "", false
+	}
+	slash := filepath.ToSlash(p)
+	if strings.HasPrefix(slash, "/") {
+		return "", false
+	}
+	clean := strings.TrimPrefix(path.Clean("/"+slash), "/")
+	if clean == "" {
+		clean = "."
+	}
+	return clean, true
+}
+
+// unresolve undoes resolve over a list of host paths, so a listing answers in
+// the spelling the script asked in. PHP's glob echoes the pattern's own shape
+// back: a relative pattern yields relative paths. A match that is not under the
+// root came from an absolute pattern and is left as it is.
+func (r root) unresolve(names []string) []string {
+	if len(names) == 0 {
+		return nil
+	}
+	prefix := filepath.Clean(r.dir) + string(filepath.Separator)
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		out = append(out, filepath.ToSlash(strings.TrimPrefix(name, prefix)))
+	}
+	return out
+}
+
 // resolveWrite is resolve for a path a script is about to modify. A path
 // outside writable_paths is an error rather than a false return: a refused
 // write is a mistake in the script or an attempt to escape its allowance, and
