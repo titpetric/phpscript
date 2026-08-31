@@ -1,8 +1,11 @@
 package server
 
 import (
+	"bytes"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -363,5 +366,124 @@ func TestErrorPageInAWritableDirectoryIsNotRun(t *testing.T) {
 	rr := fetch(h, http.MethodGet, "/missing", map[string]string{"Accept": browserAccept})
 	if rr.Code != http.StatusNotFound || rr.Body.String() != "404 page not found\n" {
 		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+	}
+}
+
+// post issues one request carrying a body and returns what the handler wrote.
+func post(h http.Handler, target, contentType, body string, headers map[string]string) *httptest.ResponseRecorder {
+	r := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
+	r.Header.Set("Content-Type", contentType)
+	for name, value := range headers {
+		r.Header.Set(name, value)
+	}
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, r)
+	return rr
+}
+
+// TestUnroutedRequestKeepsItsBody is what lets 404.php dispatch a site's own
+// routes. A request that matched no file ran no script, so nothing read its
+// body and the page answering for it is the last thing that can. It sees the
+// form the way the endpoint it was meant for would have.
+func TestUnroutedRequestKeepsItsBody(t *testing.T) {
+	h := newErrorPageHandler(t, fstest.MapFS{
+		"public/404.php": {Data: []byte(`<?php
+echo $_SERVER["REQUEST_METHOD"], "|",
+     $_SERVER["REDIRECT_URL"], "|",
+     $_POST["title"], "|",
+     $_REQUEST["title"], "|",
+     file_get_contents("php://input");`)},
+	})
+
+	rr := post(h, "/article/new", "application/x-www-form-urlencoded", "title=Hello", map[string]string{"Accept": browserAccept})
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rr.Code)
+	}
+	const want = "POST|/article/new|Hello|Hello|title=Hello"
+	if rr.Body.String() != want {
+		t.Fatalf("body = %q, want %q", rr.Body.String(), want)
+	}
+}
+
+// TestUnroutedPageMayAnswerOK covers the dispatcher shape end to end: the page
+// reads the failed path, includes the file it routes to, and answers 200. A
+// site whose 404.php is its router never wants the status it was called for.
+func TestUnroutedPageMayAnswerOK(t *testing.T) {
+	h := newErrorPageHandler(t, fstest.MapFS{
+		"routes/article.php": {Data: []byte(`<?php echo "article ", $_POST["id"];`)},
+		"public/404.php": {Data: []byte(`<?php
+if ($_SERVER["REDIRECT_URL"] === "/article") {
+	http_response_code(200);
+	include "routes/article.php";
+	return;
+}
+echo "no route";`)},
+	})
+
+	rr := post(h, "/article", "application/x-www-form-urlencoded", "id=42", map[string]string{"Accept": browserAccept})
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	if want := "article 42"; rr.Body.String() != want {
+		t.Fatalf("body = %q, want %q", rr.Body.String(), want)
+	}
+}
+
+// TestFailedScriptErrorPageHasNoBody pins the other half of the split. By the
+// time a failing script asks for an error page it has read the body itself, so
+// there is nothing left to hand on and the page is told so rather than being
+// given a payload it cannot read.
+func TestFailedScriptErrorPageHasNoBody(t *testing.T) {
+	h := newErrorPageHandler(t, fstest.MapFS{
+		"public/gone.php": {Data: []byte(`<?php throw new Exception("boom", 503);`)},
+		"public/503.php": {Data: []byte(`<?php
+echo $_SERVER["REQUEST_METHOD"], "|",
+     count($_POST), "|",
+     strlen(file_get_contents("php://input"));`)},
+	})
+
+	rr := post(h, "/gone.php", "application/x-www-form-urlencoded", "title=Hello", map[string]string{"Accept": browserAccept})
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503", rr.Code)
+	}
+	if want := "POST|0|0"; rr.Body.String() != want {
+		t.Fatalf("body = %q, want %q", rr.Body.String(), want)
+	}
+}
+
+// TestUnroutedRequestKeepsItsUploads is the same rule for $_FILES. A multipart
+// POST to a URL no file backs reaches the page with its parts intact, so a
+// router that handles uploads can live in 404.php.
+func TestUnroutedRequestKeepsItsUploads(t *testing.T) {
+	h := newErrorPageHandler(t, fstest.MapFS{
+		"public/404.php": {Data: []byte(`<?php
+echo $_POST["title"], "|",
+     $_FILES["doc"]["name"], "|",
+     $_FILES["doc"]["size"], "|",
+     file_get_contents($_FILES["doc"]["tmp_name"]);`)},
+	})
+
+	var body bytes.Buffer
+	form := multipart.NewWriter(&body)
+	if err := form.WriteField("title", "Notes"); err != nil {
+		t.Fatal(err)
+	}
+	part, err := form.CreateFormFile("doc", "notes.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := part.Write([]byte("hello")); err != nil {
+		t.Fatal(err)
+	}
+	if err := form.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	rr := post(h, "/upload", form.FormDataContentType(), body.String(), map[string]string{"Accept": browserAccept})
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404", rr.Code)
+	}
+	if want := "Notes|notes.txt|5|hello"; rr.Body.String() != want {
+		t.Fatalf("body = %q, want %q", rr.Body.String(), want)
 	}
 }

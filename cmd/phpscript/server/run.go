@@ -206,7 +206,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // when it has one, and the plain status otherwise. See serveErrorPage for who
 // gets the page.
 func (h *handler) serveNotFound(w http.ResponseWriter, r *http.Request) {
-	if h.serveErrorPage(w, r, http.StatusNotFound, "") {
+	if h.serveUnrouted(w, r, http.StatusNotFound) {
 		return
 	}
 	http.NotFound(w, r)

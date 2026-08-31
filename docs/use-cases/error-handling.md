@@ -197,11 +197,35 @@ reads `REDIRECT_URL` through `isset`.
 | `REDIRECT_QUERY_STRING` | Its query string                                     |
 | `REDIRECT_ERROR_NOTES`  | What went wrong, when the request failed on a script |
 
-`$_GET`, `$_COOKIE` and the rest of `$_SERVER` are the failed request's;
-`$_POST` and `$_FILES` are empty. A page may answer with a status of its own,
-and the one it was called for is only the default. A page that fails itself is
-logged, and the request falls back to the plain status rather than dispatching a
-second page behind it.
+`$_GET`, `$_COOKIE` and the rest of `$_SERVER` are the failed request's. A page
+may answer with a status of its own, and the one it was called for is only the
+default. A page that fails itself is logged, and the request falls back to the
+plain status rather than dispatching a second page behind it.
+
+Whether the page also gets `$_POST`, `$_FILES` and `php://input` depends on
+which of the two things went wrong, and the rule is not a policy:
+
+- **The request matched nothing.** No file answered for it and no script ran, so
+  nothing read the body and the page gets it whole. This is what lets `404.php`
+  dispatch a site's own routes: a form posting to a URL no file backs arrives
+  the way the endpoint it was meant for would have seen it, and the page answers
+  `http_response_code(200)` and includes what it routes to.
+- **A script failed.** It had already read the body by the time it threw, so
+  there is nothing left to hand on. `$_POST` and `$_FILES` are empty and
+  `php://input` reads nothing.
+
+```php
+<?php
+
+// public/404.php, dispatching a site's own routes
+$path = isset($_SERVER["REDIRECT_URL"]) ? $_SERVER["REDIRECT_URL"] : $_SERVER["REQUEST_URI"];
+
+if ($path === "/article" && $_SERVER["REQUEST_METHOD"] === "POST") {
+    http_response_code(200);
+    include "routes/article-save.php";  // reads $_POST as usual
+    return;
+}
+```
 
 ### Who gets one
 

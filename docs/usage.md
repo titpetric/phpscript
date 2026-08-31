@@ -395,7 +395,9 @@ what a visitor following a dead link sees, and `public/503.php` answers a
 `throw new Exception("...", 503)`. Writing the file is all there is to it, and a
 site with no such file answers the way it did before. Programs are not sent one:
 a `fetch()`, an API client and curl get the plain status, as does any endpoint
-that wrote a body or declared a `Content-Type`. See [Error
+that wrote a body or declared a `Content-Type`. A page answering for a request
+that matched nothing gets that request whole, `$_POST` and `$_FILES` included,
+which is what lets `404.php` dispatch a site's own routes. See [Error
 pages](use-cases/error-handling.md#error-pages).
 
 PHP files outside `public/` are scanned recursively for
