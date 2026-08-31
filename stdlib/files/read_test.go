@@ -50,11 +50,12 @@ func TestGlobListsTheSourceFilesystem(t *testing.T) {
 	}
 }
 
-// TestGlobIsJailedToTheSourceFilesystem pins the rule the rest of the read side
-// only implies. An absolute pattern names something the fs.FS cannot address,
-// so it matches nothing; php would answer with whatever the host holds there,
-// and that divergence is the point. A pattern that climbs is cleaned against
-// the root instead, which is what resolve does for every other relative path.
+// TestGlobIsJailedToTheSourceFilesystem pins where "/" points. It is the source
+// filesystem's root, not the host's, so an absolute pattern names something
+// inside the tree the script was served from and there is no spelling that
+// reaches past it; php would list whatever the host holds at that path, and
+// that divergence is the point. A pattern that climbs is cleaned against the
+// root, which is the rule every path a script hands this package follows.
 func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 	opts := runner.Options{RootFS: sourceTree()}
 	for _, test := range []struct {
@@ -62,8 +63,8 @@ func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 		pattern string
 		want    string
 	}{
-		{name: "absolute", pattern: "/etc/host*", want: ""},
-		{name: "absolute root", pattern: "/*", want: ""},
+		{name: "the host is not addressable", pattern: "/etc/host*", want: ""},
+		{name: "slash is the source root", pattern: "/*", want: "/drafts,/notes.md,/one.txt,/two.txt"},
 		{name: "climbing", pattern: "../*.txt", want: "one.txt,two.txt"},
 		{name: "climbing twice", pattern: "drafts/../../*.txt", want: "one.txt,two.txt"},
 		{name: "malformed", pattern: "[", want: ""},

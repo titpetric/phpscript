@@ -106,7 +106,7 @@ func TestRuntimeObserverReceivesExecutionErrorSpan(t *testing.T) {
 	// The message is the recorded error, not part of the span name: names stay
 	// stable so one kind of failure reads as one kind of failure.
 	span := recorder.spans[0]
-	if span.Name != "php error" || span.Error != "assign: target is not an array" || span.Filename != "main.php" || span.Line != 1 {
+	if span.Name != "php error" || span.Error != "assign: target is not an array" || span.Filename != "/main.php" || span.Line != 1 {
 		t.Fatalf("error span = %+v", span)
 	}
 }
@@ -137,7 +137,7 @@ func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
 	}
 
 	span := findSpan(trace, "inspect")
-	if span == nil || span.Filename != "main.php" || span.Line != 3 {
+	if span == nil || span.Filename != "/main.php" || span.Line != 3 {
 		t.Fatalf("spans = %+v", trace.Clone().Spans)
 	}
 }
@@ -211,7 +211,7 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 		t.Fatalf("nested include parent = %d, want %d", child.ParentID, parent.ID)
 	}
 
-	wantFiles := []string{"main.php", "one.php", "main.php"}
+	wantFiles := []string{"/main.php", "/one.php", "/main.php"}
 	for i, filename := range wantFiles {
 		if recorder.spans[i].Filename != filename {
 			t.Fatalf("span %d filename = %q, want %q", i, recorder.spans[i].Filename, filename)
@@ -235,7 +235,7 @@ func TestRuntimeObserverReceivesMeasuredConstructor(t *testing.T) {
 	if want := []string{"new Example"}; !reflect.DeepEqual(recorder.traces, want) {
 		t.Fatalf("traces = %q, want %q", recorder.traces, want)
 	}
-	if len(recorder.spans) != 1 || recorder.spans[0].Duration <= 0 || recorder.spans[0].Filename != "main.php" {
+	if len(recorder.spans) != 1 || recorder.spans[0].Duration <= 0 || recorder.spans[0].Filename != "/main.php" {
 		t.Fatalf("constructor spans = %+v", recorder.spans)
 	}
 }
@@ -265,7 +265,7 @@ class Database {
 			break
 		}
 	}
-	if methodSpan == nil || methodSpan.Duration <= 0 || methodSpan.Filename != "main.php" || methodSpan.Line != 4 {
+	if methodSpan == nil || methodSpan.Duration <= 0 || methodSpan.Filename != "/main.php" || methodSpan.Line != 4 {
 		t.Fatalf("method spans = %+v", recorder.spans)
 	}
 }

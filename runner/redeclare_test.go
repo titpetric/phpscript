@@ -90,7 +90,7 @@ try {
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	want := "caught: Exception: Cannot redeclare function dup() (previously declared in dup.php:2) in dup.php on line 3"
+	want := "caught: Exception: Cannot redeclare function dup() (previously declared in /dup.php:2) in /dup.php on line 3"
 	if out != want {
 		t.Errorf("output = %q, want %q", out, want)
 	}
@@ -112,7 +112,7 @@ include "a/b/c/deep.php";
 	if err == nil {
 		t.Fatal("run returned nil error")
 	}
-	want := "Cannot redeclare function deepfn() (previously declared in a/b/c/deep.php:3) in a/b/c/deep.php on line 5"
+	want := "Cannot redeclare function deepfn() (previously declared in /a/b/c/deep.php:3) in /a/b/c/deep.php on line 5"
 	if err.Error() != want {
 		t.Errorf("error = %q, want %q", err, want)
 	}

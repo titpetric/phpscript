@@ -164,8 +164,12 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 
 	var out []profileBlock
 	for _, b := range fx.Coverage().Blocks() {
+		// The collector keys a file the way a script reads it, from the source
+		// filesystem's root. A profile names files as they sit below the
+		// invocation directory, so the root comes back off here.
+		name := strings.TrimPrefix(b.File, "/")
 		block := profileBlock{
-			File:      b.File,
+			File:      name,
 			StartLine: b.StartLine,
 			StartCol:  1,
 			EndLine:   b.EndLine,
@@ -173,7 +177,7 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 			NumStmt:   b.NumStmt,
 			Count:     b.Count,
 		}
-		if src := lines(b.File); src != nil {
+		if src := lines(name); src != nil {
 			if b.StartLine >= 1 && b.StartLine <= len(src) {
 				line := src[b.StartLine-1]
 				block.StartCol = len(line) - len(strings.TrimLeft(line, " \t")) + 1
@@ -182,8 +186,8 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 				block.EndCol = len(src[b.EndLine-1]) + 1
 			}
 		}
-		if b.File != fx.Path {
-			block.File = coverFilePath(fx, b.File)
+		if name != fx.Path {
+			block.File = coverFilePath(fx, name)
 		}
 		out = append(out, block)
 	}
@@ -284,6 +288,10 @@ func coverFuncs(fixtures []*tests.Fixture) []coverage.FuncSpan {
 			continue
 		}
 		for _, fn := range fx.Coverage().Functions() {
+			// As in fixtureCoverBlocks: the collector names a file from the
+			// source filesystem's root, a report names it below the invocation
+			// directory.
+			fn.File = strings.TrimPrefix(fn.File, "/")
 			if fn.File == fx.Path {
 				continue
 			}
@@ -318,6 +326,10 @@ func coverFiles(fixtures []*tests.Fixture) []string {
 			continue
 		}
 		for _, file := range fx.Coverage().Files() {
+			// As in fixtureCoverBlocks: the collector names a file from the
+			// source filesystem's root, a report names it below the invocation
+			// directory.
+			file = strings.TrimPrefix(file, "/")
 			if file == fx.Path {
 				continue
 			}

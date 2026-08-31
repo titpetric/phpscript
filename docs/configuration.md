@@ -71,19 +71,19 @@ leaves out keeps what the embedded file says.
 `runner` applies to the `run` and `server` commands and to annotated routes
 created by the bundled server.
 
-| Key                       | Default    | Purpose                                                                                                |
-|---------------------------|-----------:|--------------------------------------------------------------------------------------------------------|
-| `work_dir`                |        `.` | Directory inside the runtime source filesystem used to resolve relative script and include paths.      |
-| `writable_paths`          |       `[]` | Directories a script may write to, relative to the application root. An empty list allows every write. |
-| `autoload`                | `autoload` | Directory whose classes load on first reference. Absent from the tree, nothing autoloads.              |
-| `upload_max_filesize`     |       `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.            |
-| `post_max_size`           |       `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.        |
-| `upload_file_mode`        |     `0644` | Mode `move_uploaded_file()` gives a stored upload. Octal, as `chmod()` takes it.                       |
-| `max_input_vars`          |     `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The rest are dropped. Negative is no limit.      |
-| `max_input_nesting_level` |       `64` | Deepest bracket chain a field name may have. A field past it is dropped whole. Negative is no limit.   |
-| `memory_limit`            |        `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                           |
-| `time_limit`              |        `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.         |
-| `concurrency_limit`       |        `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                       |
+| Key                       | Default    | Purpose                                                                                                                                        |
+|---------------------------|-----------:|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `work_dir`                |        `.` | Directory inside the runtime source filesystem relative paths resolve against. `chdir()` moves it, per request; this is where each one starts. |
+| `writable_paths`          |       `[]` | Directories a script may write to, relative to the application root. An empty list allows every write.                                         |
+| `autoload`                | `autoload` | Directory whose classes load on first reference. Absent from the tree, nothing autoloads.                                                      |
+| `upload_max_filesize`     |       `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.                                                    |
+| `post_max_size`           |       `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.                                                |
+| `upload_file_mode`        |     `0644` | Mode `move_uploaded_file()` gives a stored upload. Octal, as `chmod()` takes it.                                                               |
+| `max_input_vars`          |     `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The rest are dropped. Negative is no limit.                                              |
+| `max_input_nesting_level` |       `64` | Deepest bracket chain a field name may have. A field past it is dropped whole. Negative is no limit.                                           |
+| `memory_limit`            |        `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                                                                   |
+| `time_limit`              |        `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.                                                 |
+| `concurrency_limit`       |        `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                                                               |
 
 ### Autoload folder
 

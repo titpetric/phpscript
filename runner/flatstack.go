@@ -369,20 +369,13 @@ func (h flatHost) RegisterClass(class *model.Class) {
 }
 
 func (h flatHost) Include(path any, keyword string, once bool, vars map[string]any) (any, map[string]any, error) {
-	filename := phpString(path)
-	if once {
-		want := cleanFSPath(filename)
-		for _, included := range h.runtime.included {
-			if included == want || cleanFSPath(included) == want {
-				return true, vars, nil
-			}
-		}
-	}
 	scope := h.runtime.newScope()
 	for name, value := range vars {
 		scope.Set(name, value)
 	}
-	result, err := h.runtime.includeFile(filename, scope)
+	// The *_once dedupe lives in includeFile, so both engines answer it on the
+	// resolved path rather than each keeping its own scan over spellings.
+	result, err := h.runtime.includeFile(phpString(path), once, scope)
 	if err != nil {
 		return nil, nil, err
 	}

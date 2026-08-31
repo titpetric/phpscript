@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/titpetric/phpscript/model"
@@ -72,15 +73,23 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 		rt.UpdateStatus(telemetry.StateError)
 		return nil, fmt.Errorf("load %q: no source FS configured", path)
 	}
-	cleanPath := rt.resolveFSPath(path)
+	return rt.loadResolved(rt.resolveFSPath(path))
+}
+
+// loadResolved reads and parses a path the caller has already put through
+// resolveFSPath. Resolution happens once per include, above the cache lookup,
+// so that the cache is keyed by the file rather than by the spelling: after a
+// chdir the same "x.php" names a different file, and a cache keyed on the
+// spelling would answer with the previous one.
+func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 	b, err := fs.ReadFile(rt.opts.RootFS, cleanPath)
 	if err != nil {
 		rt.UpdateStatus(telemetry.StateError)
-		return nil, fmt.Errorf("load %q: %w", path, err)
+		return nil, fmt.Errorf("load %q: %w", cleanPath, err)
 	}
 	prog, err := rt.Load(string(b))
 	if err != nil {
-		return nil, fmt.Errorf("parse %q: %w", path, err)
+		return nil, fmt.Errorf("parse %q: %w", cleanPath, err)
 	}
 	return prog, nil
 }
@@ -164,8 +173,7 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 		scope.Set(name, val)
 	}
 	if rt.entrypoint != "" {
-		scope.Set("__FILE__", rt.entrypoint)
-		scope.Set("__DIR__", path.Dir(rt.entrypoint))
+		setScopeFile(scope, rt.entrypoint)
 	}
 	// Hoist declarations so functions/classes are callable before their textual
 	// position (PHP semantics for top-level function/class definitions).
@@ -722,16 +730,7 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	filename := phpString(path)
-	if n.Once {
-		want := cleanFSPath(filename)
-		for _, included := range rt.included {
-			if included == want || cleanFSPath(included) == want {
-				return true, nil
-			}
-		}
-	}
-	return rt.includeFile(filename, scope)
+	return rt.includeFile(phpString(path), n.Once, scope)
 }
 
 // noopTrace is the span closer returned when no observer is registered. It
@@ -760,15 +759,25 @@ func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) f
 	}
 }
 
-func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
+// includeFile evaluates one include. once is the *_once form, which is answered
+// here rather than at the call site so that both engines dedupe on the same
+// thing: the file that was resolved, not the spelling the script used. After a
+// chdir two directories can spell one name, and a scan over spellings would
+// skip the second file as though it had already run.
+func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error) {
+	resolved := rt.resolveFSPath(path)
+	if once && slices.Contains(rt.included, rootPath(resolved)) {
+		return true, nil
+	}
+
 	kind := telemetry.KindInternal
 	if strings.EqualFold(filepath.Ext(path), ".tpl") {
 		kind = telemetry.KindTemplate
 	}
 	defer rt.trace(scope, "include "+path, kind)()
 
-	if hook, ok := rt.includeHooks[cleanFSPath(path)]; ok {
-		rt.included = append(rt.included, cleanFSPath(path))
+	if hook, ok := rt.includeHooks[resolved]; ok {
+		rt.included = append(rt.included, rootPath(resolved))
 		rt.UpdateIncludedFiles(len(rt.included))
 		return hook()
 	}
@@ -781,11 +790,11 @@ func (rt *Runtime) includeFile(path string, scope *Scope) (any, error) {
 	if rt.coverage != nil {
 		rt.coverage.Register(filename, prog)
 	}
-	rt.included = append(rt.included, filename)
+	rt.included = append(rt.included, rootPath(filename))
 	rt.UpdateIncludedFiles(len(rt.included))
-	restoreFile := setScopeFile(scope, filename)
+	restoreFile := setScopeFile(scope, rootPath(filename))
 	defer restoreFile()
-	if err := rt.hoist(prog, filename); err != nil {
+	if err := rt.hoist(prog, rootPath(filename)); err != nil {
 		return nil, err
 	}
 	deferMark := len(scope.deferred)
@@ -885,7 +894,7 @@ func (rt *Runtime) folderAutoload(class string) error {
 	rt.autoloading[cleanPath] = struct{}{}
 	defer delete(rt.autoloading, cleanPath)
 
-	_, err := rt.includeFile(filename, rt.newScope())
+	_, err := rt.includeFile(filename, false, rt.newScope())
 	return err
 }
 
@@ -987,7 +996,7 @@ func (rt *Runtime) SPLAutoload(class string) error {
 			if _, err := fs.Stat(rt.opts.RootFS, cleanPath); err != nil {
 				continue
 			}
-			_, err := rt.includeFile(filename, rt.newScope())
+			_, err := rt.includeFile(filename, false, rt.newScope())
 			return err
 		}
 	}
@@ -1002,12 +1011,12 @@ func (rt *Runtime) resolveInclude(path string) (*model.Program, string, error) {
 		return prog, cleanFSPath(path), err
 	}
 	if rt.opts.RootFS != nil {
-		cleanPath := cleanFSPath(path)
+		cleanPath := rt.resolveFSPath(path)
 		if prog, ok := rt.includeCache.Get(cleanPath); ok {
 			return prog, cleanPath, nil
 		}
 
-		prog, err := rt.LoadFile(cleanPath)
+		prog, err := rt.loadResolved(cleanPath)
 		if err != nil {
 			return nil, "", fmt.Errorf("include %q: %w", path, err)
 		}
@@ -1026,12 +1035,53 @@ func cleanFSPath(p string) string {
 	return path.Clean(p)
 }
 
-func (rt *Runtime) resolveFSPath(p string) string {
-	cleanPath := cleanFSPath(p)
-	if rt.opts.WorkDir == "" || rt.opts.WorkDir == "." || cleanPath == "." {
-		return cleanPath
+// clampFSPath cleans p against the root: a ".." that would climb above it is
+// collapsed rather than escaping, so "a/../../etc/passwd" names etc/passwd
+// inside the root. Cleaning happens against "/" first, which is what does the
+// collapsing; path.Clean on its own keeps a leading "..".
+func clampFSPath(p string) string {
+	clean := strings.TrimPrefix(path.Clean("/"+filepath.ToSlash(p)), "/")
+	if clean == "" {
+		return "."
 	}
-	return cleanFSPath(path.Join(rt.opts.WorkDir, cleanPath))
+	return clean
+}
+
+// rootPath spells an fs.FS path the way a script reads it. The source
+// filesystem is mounted at "/", so a name below it is written from there, and
+// that is what __FILE__, __DIR__ and getcwd() answer with.
+//
+// The point of the leading slash is that resolveFSPath leaves it alone: a path
+// written from the root names one file whatever the working directory is, the
+// way an absolute path does in PHP. Without it `include __DIR__ . "/x.php"`
+// would be re-resolved against the working directory and name a different file
+// after every chdir, which is what composer's autoloader is built on.
+func rootPath(p string) string {
+	clean := clampFSPath(p)
+	if clean == "." {
+		return "/"
+	}
+	return "/" + clean
+}
+
+// resolveFSPath maps a path a script supplied onto the source filesystem,
+// through the working directory chdir() moved.
+//
+// A path written from the root is taken as it is; anything else is relative to
+// the working directory. Both are cleaned against the root, so neither can
+// climb out of it.
+func (rt *Runtime) resolveFSPath(p string) string {
+	slash := filepath.ToSlash(p)
+	if strings.HasPrefix(slash, "/") {
+		return clampFSPath(slash)
+	}
+	if rt.opts.WorkDir == "" || rt.opts.WorkDir == "." {
+		return clampFSPath(slash)
+	}
+	// The working directory is joined before the clamp, not after, so a ".."
+	// climbs out of it the way it would on a real filesystem and stops at the
+	// root rather than at the directory the script happens to be in.
+	return clampFSPath(rt.opts.WorkDir + "/" + slash)
 }
 
 // execAssign mutates a variable, property or array element. expr-lang cannot do

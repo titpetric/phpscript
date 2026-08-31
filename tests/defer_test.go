@@ -162,7 +162,7 @@ echo __FILE__ . "-body";
 	if err := rt.Run(program); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := out.String(), "main.php-body-first:main.php-second:main.php"; got != want {
+	if got, want := out.String(), "/main.php-body-first:/main.php-second:/main.php"; got != want {
 		t.Fatalf("output = %q, want %q", got, want)
 	}
 }
@@ -188,7 +188,7 @@ register_shutdown_function(function() { echo "-" . __FILE__ . "-close"; });
 	if err := rt.Run(program); err != nil {
 		t.Fatal(err)
 	}
-	if got, want := out.String(), "main.php-main-bootstrap.php-open-bootstrap.php-close"; got != want {
+	if got, want := out.String(), "/main.php-main-/bootstrap.php-open-/bootstrap.php-close"; got != want {
 		t.Fatalf("output = %q, want %q", got, want)
 	}
 }

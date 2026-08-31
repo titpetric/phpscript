@@ -45,6 +45,7 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	r.writable = WritableRoots(dir, rt.WritablePaths())
 
 	registerPaths(rt)
+	registerWorkDir(rt)
 	registerReads(rt, r)
 	registerWrites(rt, r)
 	registerStreams(rt, r)
@@ -64,15 +65,18 @@ type root struct {
 	writable []string
 }
 
-// resolve maps a path a script supplied onto the host filesystem. A relative
-// path is cleaned against the root, so it cannot climb out of it; an absolute
-// path is the script's own business and is only cleaned.
+// resolve maps a path a script supplied onto the host filesystem.
+//
+// Both spellings are anchored inside the root and neither can climb out of it.
+// A path written from "/" names the root itself, which is how __DIR__ and
+// getcwd() answer and therefore what most concatenated paths look like;
+// anything else is relative to the working directory chdir() moved. The source
+// filesystem is what a script can address, so "/" is its root rather than the
+// host's: there is no spelling for a host path outside it, and a runtime
+// serving an embedded tree could not honour one anyway.
 func (r root) resolve(p string) string {
-	if filepath.IsAbs(p) {
-		return path.Clean(p)
-	}
-	clean := path.Clean("/" + filepath.ToSlash(p))
-	return filepath.Join(r.dir, filepath.FromSlash(clean))
+	rel, _ := r.fsPath(p)
+	return filepath.Join(r.dir, filepath.FromSlash(rel))
 }
 
 // fsPath maps a path a script supplied onto the source filesystem, which every
@@ -83,30 +87,41 @@ func (r root) resolve(p string) string {
 // r.dir included. Passing resolve's answer to an fs.FS is how a read silently
 // stopped going through it whenever r.dir was not ".".
 //
-// A relative path is cleaned against the root, so "a/../../etc/passwd" becomes
-// "etc/passwd" inside it rather than escaping, which is the rule resolve
-// states. The second return is false for an absolute path: resolve hands that
-// one to the host untouched, and there is no way to say the same thing to an
-// fs.FS, so the caller decides what a path outside the root means.
+// The runtime states the rule, in resolveFSPath, because an include is held to
+// the same one: a path written from "/" names the root, anything else is
+// relative to the working directory, and both are cleaned against the root so
+// "a/../../etc/passwd" becomes "etc/passwd" inside it rather than escaping.
+//
+// The second return is false only for an empty path, which names nothing.
 func (r root) fsPath(p string) (string, bool) {
-	if p == "" || filepath.IsAbs(p) {
+	if p == "" {
 		return "", false
 	}
-	slash := filepath.ToSlash(p)
-	if strings.HasPrefix(slash, "/") {
-		return "", false
-	}
-	clean := strings.TrimPrefix(path.Clean("/"+slash), "/")
-	if clean == "" {
-		clean = "."
-	}
-	return clean, true
+	return r.rt.ResolvePath(p), true
 }
 
-// unresolve undoes resolve over a list of host paths, so a listing answers in
-// the spelling the script asked in. PHP's glob echoes the pattern's own shape
-// back: a relative pattern yields relative paths. A match that is not under the
-// root came from an absolute pattern and is left as it is.
+// uploadPath reports the host path of a file this request uploaded.
+//
+// It is the one path a script names that is not resolved against the source
+// filesystem. The request runtime writes an uploaded part outside the root by
+// design and hands the script the absolute tmp_name it wrote, so reading that
+// back is reading a file the runtime itself produced. The request's own
+// registry is what says which paths those are, and a path it did not issue is
+// not one of them, which is the same check is_uploaded_file answers with.
+func (r root) uploadPath(p string) (string, bool) {
+	if !filepath.IsAbs(p) {
+		return "", false
+	}
+	request, ok := runner.RequestContext(r.rt.Context())
+	if !ok || !request.IsUpload(p) {
+		return "", false
+	}
+	return path.Clean(filepath.ToSlash(p)), true
+}
+
+// unresolve undoes resolve over a list of host paths, leaving them named from
+// the source filesystem's root, which is the spelling globSpelling then works
+// in.
 func (r root) unresolve(names []string) []string {
 	if len(names) == 0 {
 		return nil
@@ -115,6 +130,32 @@ func (r root) unresolve(names []string) []string {
 	out := make([]string, 0, len(names))
 	for _, name := range names {
 		out = append(out, filepath.ToSlash(strings.TrimPrefix(name, prefix)))
+	}
+	return out
+}
+
+// globSpelling rewrites matches into the shape the pattern was written in. PHP
+// echoes a pattern's own shape back: a pattern written from the root answers
+// from the root, and one written relative to the working directory answers
+// relative to it. Answering resolved paths would make every match unusable as
+// the argument to the next call.
+func (r root) globSpelling(pattern string, matches []string) []string {
+	if len(matches) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(matches))
+	if strings.HasPrefix(filepath.ToSlash(pattern), "/") {
+		for _, match := range matches {
+			out = append(out, "/"+match)
+		}
+		return out
+	}
+	prefix := r.rt.WorkDir()
+	if prefix == "" || prefix == "." {
+		return matches
+	}
+	for _, match := range matches {
+		out = append(out, strings.TrimPrefix(match, prefix+"/"))
 	}
 	return out
 }

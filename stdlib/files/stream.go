@@ -27,7 +27,10 @@ func registerStreams(rt *runner.Runtime, r root) {
 			// instead.
 			return false, nil
 		}
-		name := r.resolve(filename)
+		name, isUpload := r.uploadPath(filename)
+		if !isUpload {
+			name = r.resolve(filename)
+		}
 		// Only a mode that can write is held to writable_paths. Opening a
 		// file for reading is a read wherever it lives.
 		if writes(mode) {

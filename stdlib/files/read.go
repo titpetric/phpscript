@@ -4,7 +4,6 @@ import (
 	"io"
 	iofs "io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -24,12 +23,8 @@ func registerReads(rt *runner.Runtime, r root) {
 			if err != nil {
 				return nil
 			}
-			return r.unresolve(matches)
+			return r.globSpelling(pattern, r.unresolve(matches))
 		}
-		// An absolute pattern is the one case fsPath refuses. PHP would
-		// answer with whatever the host holds there; a runtime whose
-		// scripts are served out of an fs.FS answers with nothing,
-		// because nothing outside it is addressable.
 		name, ok := r.fsPath(pattern)
 		if !ok {
 			return nil
@@ -38,7 +33,7 @@ func registerReads(rt *runner.Runtime, r root) {
 		if err != nil {
 			return nil
 		}
-		return matches
+		return r.globSpelling(pattern, matches)
 	})
 
 	// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body (stdin under the cli SAPI), and a relative path is tried in the source filesystem first, then on the host.
@@ -53,8 +48,8 @@ func registerReads(rt *runner.Runtime, r root) {
 			}
 			return false
 		}
-		if filepath.IsAbs(filename) {
-			b, err := os.ReadFile(path.Clean(filename))
+		if name, ok := r.uploadPath(filename); ok {
+			b, err := os.ReadFile(name)
 			if err != nil {
 				return false
 			}
@@ -75,8 +70,8 @@ func registerReads(rt *runner.Runtime, r root) {
 	})
 	// file_exists reports whether $filename exists, in the source filesystem or on the host.
 	rt.RegisterFunc("file_exists", func(filename string) bool {
-		if filepath.IsAbs(filename) {
-			_, err := os.Stat(path.Clean(filename))
+		if name, ok := r.uploadPath(filename); ok {
+			_, err := os.Stat(name)
 			return err == nil
 		}
 		if _, err := r.statSource(filename); err == nil {
@@ -87,10 +82,11 @@ func registerReads(rt *runner.Runtime, r root) {
 	})
 	// filemtime returns the modification time of $filename as a Unix timestamp, or 0 when the file cannot be found; PHP returns false there.
 	rt.RegisterFunc("filemtime", func(filename string) int64 {
-		if filepath.IsAbs(filename) {
-			if st, err := os.Stat(path.Clean(filename)); err == nil {
+		if name, ok := r.uploadPath(filename); ok {
+			if st, err := os.Stat(name); err == nil {
 				return st.ModTime().Unix()
 			}
+			return 0
 		}
 		if st, err := r.statSource(filename); err == nil {
 			return st.ModTime().Unix()

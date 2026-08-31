@@ -175,14 +175,11 @@ Functions:
 
 Filesystem:
 
-- `glob()` answers nothing for an absolute pattern whenever a source
-  filesystem is bound, which is every host that serves scripts out of an
-  embedded or in-memory tree. PHP lists whatever the host holds at that path.
-  A relative pattern is cleaned against the root and cannot climb out of it,
-  which is the rule every path a script hands to this package follows; the
-  difference is that a listing has no way to name something outside the
-  `fs.FS`, where a read falls through to the host. `glob()` takes no `$flags`
-  argument, so `GLOB_BRACE` and the rest are not defined.
+- `glob()` searches the source filesystem, so `glob("/etc/host*")` lists
+  `etc/host*` inside the root rather than the host's `/etc`, and a pattern that
+  climbs stops at the root. Matches come back in the shape the pattern was
+  written in, as PHP's do. `glob()` takes no `$flags` argument, so `GLOB_BRACE`
+  and the rest are not defined. See the path rules under Includes.
 
 Arrays:
 
@@ -282,3 +279,32 @@ Includes:
   loaded; PHP `include` emits a warning and continues.
 - Nested `class` declarations are a no-op (not registered), matching the
   interpreter hoist; PHP registers them when the statement runs.
+- A relative path resolves against the working directory only. PHP tries the
+  working directory, then `include_path`, then the directory of the file doing
+  the including; the last of those is what makes `include "b.php"` from
+  `a/x.php` find `a/b.php` there and nothing here. `set_include_path()` is the
+  SPL autoloader's path and takes no part in `include`.
+
+Paths and the working directory:
+
+- The source filesystem is mounted at `/`. `__FILE__` is `/public/index.php`
+  where PHP would say `/srv/site/public/index.php`, `__DIR__` is `/public`, and
+  `getcwd()` answers `/` or `/app`. There is no spelling that reaches the host
+  filesystem: a runtime whose scripts are served out of an embedded tree has no
+  host path to name, so `/` is the root of what the script can address and a
+  path that would climb above it stops there. `file_get_contents("/etc/passwd")`
+  reads `etc/passwd` inside the root, or nothing.
+- A path written from `/` ignores the working directory, which is PHP's rule
+  for an absolute path. That is what makes `include __DIR__ . "/x.php"` name one
+  file wherever `chdir()` has been, and it is why the constants are written that
+  way.
+- `chdir()` moves this request's working directory and nothing else. It is
+  per-runtime state, and a host builds one runtime per request, so a script
+  cannot move another request's; the process working directory is never touched.
+  A directory that does not exist is refused with `false`, as in PHP, without
+  the warning PHP also emits.
+- The one exception to all of it is an uploaded file. The runtime writes it
+  outside the root by design and hands the script the `tmp_name` it wrote, so
+  reading that path back reads a file the runtime itself produced. A path the
+  request's upload registry did not issue is not one, which is the check
+  `is_uploaded_file()` answers with.

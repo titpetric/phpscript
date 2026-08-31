@@ -105,7 +105,11 @@ type Runtime struct {
 	constsShared bool
 
 	// opts holds runtime source root, working directory, and write policy.
+	// opts.WorkDir is the one field a script can move, through chdir; workDirBase
+	// is what the host configured, so a reset session starts where the first one
+	// did rather than wherever the last one wandered to.
 	opts         Options
+	workDirBase  string
 	includeCache *IncludeCache
 	included     []string
 
@@ -295,6 +299,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		funcs:        map[string]any{},
 		userFns:      map[string]struct{}{},
 		funcSites:    map[string]FuncSite{},
+		workDirBase:  opts.WorkDir,
 		classes:      map[string]*model.Class{},
 		constructors: map[string]any{},
 		includePath:  ".",
@@ -401,6 +406,8 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	rt.envMu.Unlock()
 	clear(rt.userFns)
 	clear(rt.funcSites)
+	rt.opts.WorkDir = rt.workDirBase
+	rt.included = nil
 	clear(rt.classes)
 	clear(rt.globals)
 	rt.shutdown = nil
@@ -620,9 +627,13 @@ func (rt *Runtime) UpdateFilename(filename string) {
 	if rt.entrypoint != "" {
 		return
 	}
-	rt.entrypoint = filename
-	rt.SetConst("__FILE__", filename)
-	rt.SetConst("__DIR__", path.Dir(filename))
+	// The entrypoint is recorded from the source filesystem's root, which is
+	// how a script reads every path: __DIR__ . "/x" then names one file however
+	// chdir has moved the working directory, and a span, a coverage key and a
+	// redeclaration message all spell the same file the same way.
+	rt.entrypoint = rootPath(filename)
+	rt.SetConst("__FILE__", rt.entrypoint)
+	rt.SetConst("__DIR__", path.Dir(rt.entrypoint))
 	for _, observer := range rt.observers {
 		if filenameObserver, ok := observer.(FilenameObserver); ok {
 			filenameObserver.UpdateFilename(rt.ctx, filename)
@@ -682,8 +693,48 @@ func (rt *Runtime) FS() fs.FS { return rt.opts.RootFS }
 // Stdin returns the input stream configured by the runtime host.
 func (rt *Runtime) Stdin() io.Reader { return rt.opts.Stdin }
 
-// WorkDir returns the configured working directory inside the source root.
+// WorkDir returns the working directory as an fs.FS path inside the source
+// root: "." for the root itself, "app" for a directory below it. Bindings that
+// resolve a path against it want this spelling.
 func (rt *Runtime) WorkDir() string { return rt.opts.WorkDir }
+
+// WorkDirPath returns the working directory the way a script reads it, written
+// from the source filesystem's root. This is what getcwd() answers with.
+func (rt *Runtime) WorkDirPath() string { return rootPath(rt.opts.WorkDir) }
+
+// ResolvePath maps a path a script supplied onto the source filesystem, through
+// the working directory. It is what an include resolves through, exported so a
+// binding taking a path from PHP resolves it to the same file: a runtime where
+// include "x.php" and file_get_contents("x.php") name different files would be
+// worse than either rule on its own.
+func (rt *Runtime) ResolvePath(p string) string { return rt.resolveFSPath(p) }
+
+// SetWorkDir moves the working directory and reports whether it could. A
+// relative path resolves against the current one and an absolute path against
+// the source root; neither can climb out of it, so the directory is always one
+// the runtime can name.
+//
+// The directory is per-runtime state. A host builds one runtime per request, so
+// a script that moves it moves nothing another request can see, and the process
+// working directory is never touched: os.Chdir is a global, and there is no
+// point in the runtime where owning one would be correct.
+//
+// A path naming no directory is refused rather than accepted and left to fail
+// later, which is what PHP's false return means.
+func (rt *Runtime) SetWorkDir(dir string) bool {
+	target := rt.resolveFSPath(dir)
+	if target == "" {
+		target = "."
+	}
+	if rt.opts.RootFS != nil {
+		info, err := fs.Stat(rt.opts.RootFS, target)
+		if err != nil || !info.IsDir() {
+			return false
+		}
+	}
+	rt.opts.WorkDir = target
+	return true
+}
 
 // Database returns the provider named connections resolve through, or nil when
 // the host configured none. The binding decides what nil falls back to.
@@ -772,7 +823,7 @@ func (rt *Runtime) FunctionExists(name string) bool {
 // statement would. Hosts that resolve classes outside the interpreter (the
 // composer autoloader) use it to pull a declaration file into the runtime.
 func (rt *Runtime) IncludeFile(path string) (any, error) {
-	return rt.includeFile(path, rt.newScope())
+	return rt.includeFile(path, false, rt.newScope())
 }
 
 // DefinedFunctions returns stable snapshots of registered host/internal and
