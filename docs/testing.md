@@ -166,6 +166,16 @@ diff /tmp/want.txt /tmp/got.txt
 
 An empty diff means the fixture holds phpscript to PHP's behavior. A difference is the fixture's answer to a question worth resolving before it lands: either phpscript is wrong, or the fixture's expectation is.
 
+A fixture that closes its PHP tag needs none of that setup to be read by eye. `?>` ends the script and everything after it is text the interpreter echoes, so `php` runs the file itself:
+
+```bash
+php tests/fixtures/arrays/sort.phpt
+```
+
+The metadata prints as its own header, the code runs where the source sits, and the expected section prints immediately below the actual output — the two are adjacent and a mismatch is visible without extracting anything. This is why **a fixture closes its tag by default**: the same file is a fixture the harness runs and a script PHP runs, and nothing but the closing tag makes it both. Reach for the `awk` recipe above when a machine has to diff the sections; reach for `php <fixture>` when a person does.
+
+The three kinds of fixture in the table below still cannot be read this way, for the same reasons they cannot be checked: the names, the paths or the request state do not exist outside the harness. They close their tag regardless, because the convention is about the file's shape rather than any one reader's luck with it.
+
 Write the fixture this way around. Run the source through `php` first, paste that output into the expected section, and then make phpscript produce it. Writing the expected section from phpscript's output tests the runtime against itself.
 
 Three kinds of fixture cannot be checked this way, and none of them is an excuse to skip the check on the ones that can:
