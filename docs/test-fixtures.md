@@ -90,6 +90,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | json_stream.phpt                      | PASS       | PASS    | SKIP |
 | platform_database.phpt                | PASS       | PASS    | SKIP |
 | request_and_response_handling.phpt    | PASS       | PASS    | SKIP |
+| request_body_stdin.phpt               | PASS       | PASS    | SKIP |
 | session_manager.phpt                  | PASS       | PASS    | SKIP |
 | setcookie.phpt                        | PASS       | PASS    | SKIP |
 | storage_constructor_error.phpt        | PASS       | PASS    | SKIP |
@@ -219,13 +220,14 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 ## tests/fixtures/paths
 
-| tests/fixtures/paths | Flat stack | Runtime | PHP  |
-|----------------------|------------|---------|------|
-| chdir.phpt           | PASS       | PASS    | PASS |
-| magic_constants.phpt | PASS       | PASS    | PASS |
-| root_filesystem.phpt | PASS       | PASS    | PASS |
-| stat.phpt            | PASS       | PASS    | PASS |
-| streamread.phpt      | PASS       | PASS    | PASS |
+| tests/fixtures/paths     | Flat stack | Runtime | PHP  |
+|--------------------------|------------|---------|------|
+| chdir.phpt               | PASS       | PASS    | PASS |
+| chdir_include_cache.phpt | PASS       | PASS    | PASS |
+| magic_constants.phpt     | PASS       | PASS    | PASS |
+| root_filesystem.phpt     | PASS       | PASS    | PASS |
+| stat.phpt                | PASS       | PASS    | PASS |
+| streamread.phpt          | PASS       | PASS    | PASS |
 
 ## tests/fixtures/pexec
 
@@ -299,6 +301,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | base64.phpt                   | PASS       | PASS    | PASS |
 | case_functions.phpt           | PASS       | PASS    | PASS |
 | chr_ord.phpt                  | PASS       | PASS    | PASS |
+| escapes_bytes.phpt            | PASS       | PASS    | PASS |
 | fnmatch.phpt                  | PASS       | PASS    | PASS |
 | http_build_query.phpt         | PASS       | PASS    | PASS |
 | interpolation.phpt            | PASS       | PASS    | PASS |
@@ -335,7 +338,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/arithmetic  | 21       | 21     | 0      |
 | tests/fixtures/arrays      | 20       | 20     | 0      |
 | tests/fixtures/autoloading | 8        | 8      | 0      |
-| tests/fixtures/bindings    | 26       | 26     | 0      |
+| tests/fixtures/bindings    | 27       | 27     | 0      |
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 9        | 9      | 0      |
 | tests/fixtures/flatstack   | 7        | 7      | 0      |
@@ -345,11 +348,11 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/namespaces  | 3        | 3      | 0      |
 | tests/fixtures/oop         | 24       | 24     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
-| tests/fixtures/paths       | 5        | 5      | 0      |
+| tests/fixtures/paths       | 6        | 6      | 0      |
 | tests/fixtures/pexec       | 2        | 2      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
 | tests/fixtures/stdlib      | 22       | 22     | 0      |
-| tests/fixtures/strings     | 18       | 18     | 0      |
+| tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 221      | 221    | 0      |
+| **Total**                  | 224      | 224    | 0      |
