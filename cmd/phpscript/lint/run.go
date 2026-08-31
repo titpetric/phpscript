@@ -182,7 +182,7 @@ func collect(args []string, checkFlatstack bool) ([]result, error) {
 		}
 		for _, d := range diags {
 			status := statusWarn
-			if isParseError(d.Message) {
+			if d.Fatal || isParseError(d.Message) {
 				status = statusFail
 			}
 			results = append(results, result{status: status, file: d.File, line: d.Line, message: d.Message})
