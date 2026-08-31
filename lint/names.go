@@ -71,6 +71,12 @@ func knownRuntime() *runner.Runtime {
 		for _, name := range internal {
 			hostFuncs[strings.ToLower(name)] = true
 		}
+		// The per-scope builtins are not in the function table, so a script
+		// calling func_get_args() would read as a call to something
+		// undefined. They are host-provided all the same.
+		for _, name := range runner.ScopeBuiltins() {
+			hostFuncs[strings.ToLower(name)] = true
+		}
 
 		loadInclude(rt)
 		registry = rt
@@ -201,10 +207,10 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 			if n.Bare {
 				return
 			}
-			if declared.hasFunc(n.Name) || rt.FunctionExists(n.Name) {
+			if declared.hasFunc(n.Name) || rt.FunctionExists(n.Name) || hostFunc(n.Name) {
 				return
 			}
-			if n.Fallback != "" && (declared.hasFunc(n.Fallback) || rt.FunctionExists(n.Fallback)) {
+			if n.Fallback != "" && (declared.hasFunc(n.Fallback) || rt.FunctionExists(n.Fallback) || hostFunc(n.Fallback)) {
 				return
 			}
 			report(line, fmt.Sprintf("call to undefined function %s()", n.Name))
@@ -219,7 +225,11 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 				report(line, fmt.Sprintf("new: undefined class %q", n.Class))
 			}
 		case *model.StaticCall:
-			if !classKnown(n.Class) {
+			// A binding may be registered under the whole spelling - the
+			// clock is a set of functions named DateTime::now, DateTime::parse
+			// and so on, not a class with methods - so a static call resolves
+			// when either the class or the full name is known.
+			if !classKnown(n.Class) && !rt.FunctionExists(n.Class+"::"+n.Method) {
 				report(line, fmt.Sprintf("static call %s::%s(): unknown class", n.Class, n.Method))
 			}
 		case *model.StaticProp:

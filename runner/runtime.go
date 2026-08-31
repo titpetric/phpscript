@@ -1570,6 +1570,14 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 	}
 }
 
+// ScopeBuiltins names the builtins provided per-environment instead of through
+// the function table. function_exists() and the linter both ask the function
+// table, which does not carry these, so a script calling one reads as a call to
+// something undefined without this list.
+func ScopeBuiltins() []string {
+	return []string{"func_get_args"}
+}
+
 // scopeBuiltin resolves the builtins provided per-environment instead of
 // through the function table, under the name a PHP script calls them by.
 func scopeBuiltin(name string, scope *Scope) (any, bool) {
