@@ -6,6 +6,7 @@ package stdlib
 // different set constructs its Runtime without this package, or passes extra
 // bindings to Register.
 import (
+	_ "github.com/titpetric/phpscript/runner/bindings"
 	_ "github.com/titpetric/phpscript/stdlib/compat"
 	_ "github.com/titpetric/phpscript/stdlib/core"
 	_ "github.com/titpetric/phpscript/stdlib/crypto"
