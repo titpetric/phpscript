@@ -81,14 +81,17 @@ The lint pass reports these shapes:
 | a class missing a method its `implements` names       | see [design.md](design.md)           |
 | an `@route` path the router cannot answer for         | `// @route /users/{id=}`             |
 
-All are warnings; only a parse error fails the run. The undefined-name checks
-compare against the file's own declarations plus the registered runtime
-bindings, and skip names the source guards with `function_exists` /
-`class_exists`; a name that arrives through an include or an autoloader can
-still warn, which is why it warns rather than fails. The redeclaration check
-reads the same set from the other side: a function declared twice in one file,
-or declared over a name the runtime registers, is refused at run time, so the
-finding is the error arriving early. A declaration the source guards with
+A parse error and a redeclaration fail the run; the rest are warnings. The
+undefined-name checks compare against the file's own declarations plus the
+registered runtime bindings, and skip names the source guards with
+`function_exists` / `class_exists`; without `--include` a name that arrives
+through an autoloader still warns, which is why it warns rather than fails.
+The redeclaration check reads the same set from the other side, and fails
+rather than warns: a function declared twice in one file, or declared over a
+name the runtime itself provides, is refused at run time whatever else is
+registered. A name the `--include` file declared is not one of those - it is
+PHP like the file being checked, and comparing the two would report every
+function a bootstrap defines as a redeclaration of itself. A declaration the source guards with
 `function_exists` is the polyfill idiom and is not reported. The chained-assignment rule
 exists because phpscript arrays are handles rather than values, so two names can
 end up sharing one array where PHP would give each its own. See
@@ -114,6 +117,19 @@ phpscript lint -o docs/lint.md tests/fixtures/...
 Use `--flatstack` to also report whether the flat bytecode engine can run each
 file, which adds a failing row per file it cannot compile. See
 [Flat stack](flatstack.md).
+
+Use `--include FILE` to run a file against the name registry before checking,
+which is what lets the checks see an application rather than one file of it.
+Without it every check runs against the standard library alone: a class
+composer autoloads and a helper the application's bootstrap registers are both
+unknown, so most findings are false and a true one cannot be told from them.
+The class check autoloads only when an include was given, because composer's
+autoloader declares nothing until something asks for it.
+
+```bash
+phpscript lint --include vendor/autoload.php ./src/...
+phpscript lint --include bootstrap.php ./...
+```
 
 ### `phpscript test <path>...`
 
@@ -173,6 +189,19 @@ counters are process-wide and cannot be attributed to one concurrent fixture.
 Use `--profile` to add per-operation allocation and byte counts. `--json`
 writes a machine-readable report to stdout (no table). `--cpuprofile` and
 `--memprofile` write pprof files for the whole `test` invocation.
+
+Use `--cache` to say how far a parsed include and a compiled expression
+travel. `worker`, the default, gives each worker loop one set of caches and
+one runtime, reused by the fixtures that worker runs serially, so what a run
+holds scales with `--parallel` rather than with the number of fixtures. `off`
+gives every fixture run its own and drops them — and its runtime — when the run
+ends: a clean state, at the cost of re-parsing what the caches would have kept.
+There is no `shared` mode, because a worker loop already is one: without
+`--parallel` there is a single worker.
+
+```bash
+phpscript test --cache=off tests/fixtures/...
+```
 
 Use `--cover` to measure statement coverage on the phpscript runtime, in the
 format `go test -coverprofile` writes (`mode: count`; each entry counts how
@@ -238,7 +267,7 @@ tables), which also rules out combining a report mode with `--json`.
 ```bash
 phpscript test --cover tests/fixtures/...
 phpscript test --coverfile phpscript.cov --split tests/fixtures/...
-phpscript test --cover=func --autoload code --include autoload.php
+phpscript test --cover=func --include vendor/autoload.php
 ```
 
 Use `--output FILE` (`-o`) to write the same tables to a file as Markdown while

@@ -120,7 +120,7 @@ enforced by the bundled server, which routes with chi; a host registering on
 `http.ServeMux` gets the parameter without it, because `ServeMux` has no equivalent — see
 [Routing](../use-cases/routing.md). There is no default-value syntax:
 `/admin/{module=users}/{path}` is an authoring error rather than a route that defaults
-`module`. Values are strings, and `intval` is not bound, so cast with
+`module`. Values are strings, so cast with
 `(int)$_REQUEST["id"]` when you need a number.
 
 ## Read the request

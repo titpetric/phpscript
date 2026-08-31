@@ -84,7 +84,7 @@ A fixture's own folder is its include root. That is what lets all three runtimes
 
 Because the folder is the unit of discovery, a bare directory path is not recursive. `phpscript test ./...` is what runs a tree; `phpscript test .` matches only the fixtures sitting directly in that directory, and reports an error rather than success when it matches none. `phpscript test` with no path at all runs the whole tree below the working directory, the way a pipeline invoked from an application root means it.
 
-An application root can supply its bootstrap to every fixture. `--include autoload.php` includes the named file, resolved against the invocation root, before each fixture body — when the file exists, so the same pipeline line works in a tree that has no bootstrap. `--autoload code` points the [autoload folder convention](design.md) at a folder below the invocation root, so a class reference in any fixture resolves to the file its namespace spells, `Acme\Thing` to `code/Acme/Thing.php`, without an include. The fixture's own folder stays its include root: its relative includes answer first, and the invocation root answers for what the folder does not hold.
+An application root can supply its bootstrap to every fixture. `--include vendor/autoload.php` includes the named file, resolved against the invocation root, before each fixture body — when the file exists, so the same pipeline line works in a tree that has no bootstrap. It is the whole of it: composer's autoloader resolves the classes and the file's own includes bring the helpers, so a fixture names neither. The fixture's own folder stays its include root: its relative includes answer first, and the invocation root answers for what the folder does not hold.
 
 Each fixture has three sections separated by a line containing only `---`:
 
@@ -148,7 +148,9 @@ root: ..
 require 'vendor/autoload.php';
 ```
 
-Such a fixture gets its own include cache, because a cache is keyed by the path as the script wrote it and a fixture reaching a different tree must not be served a program cached for the embedded one.
+Caches are keyed by include root, because a cache is keyed by the path as the script wrote it and two roots can both hold a `code/functions.php` — a fixture reaching a different tree must not be served a program cached for the embedded one. The key is absolute, since the relative spelling is ambiguous once the working directory moves.
+
+How far a cached program travels is `--cache`. The default, `worker`, gives each worker loop one set of caches and one runtime, reused by the fixtures that worker runs serially: what a run holds scales with `--parallel` rather than with the number of fixtures. `--cache=off` gives every fixture run its own and drops them, and its runtime, when the run ends — nothing one fixture parsed or declared is visible to the next. That is the flag to reach for when a fixture passes alone and fails in the suite.
 
 Files used by `include`, autoloading, templates, or filesystem APIs sit inside the area folder that uses them, and fixture code names them relative to that folder: `autoloading/psr4/loader.php` is `psr4/loader.php` to a fixture in `autoloading`. Keeping the support files with their fixture is what keeps the include root a single directory, and a support file that two areas need is copied rather than shared, because an include path that climbs out of the fixture's folder is rejected.
 

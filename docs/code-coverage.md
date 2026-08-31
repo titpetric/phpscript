@@ -32,11 +32,11 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
 | ✅     | internal/phpval       | 90.60%   | 142       | 482   |
 | ✅     | internal/table        | 100.00%  | 24        | 117   |
-| ✅     | lint                  | 86.29%   | 243       | 792   |
+| ✅     | lint                  | 86.29%   | 246       | 802   |
 | ❌     | list                  | 76.85%   | 136       | 427   |
 | ❌     | model                 | 36.84%   | 325       | 956   |
 | ✅     | parser                | 91.33%   | 1041      | 3167  |
-| ✅     | runner                | 86.48%   | 1662      | 6005  |
+| ✅     | runner                | 86.51%   | 1662      | 6008  |
 | ✅     | runner/bindings       | 86.72%   | 95        | 462   |
 | ✅     | runner/coverage       | 92.37%   | 45        | 157   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
@@ -488,7 +488,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | declaredNames.hasFunc                 | 100.00%  | 1         |
 | ✅     |                      | hostFunc                              | 100.00%  | 0         |
 | ✅     |                      | isScalarLiteral                       | 100.00%  | 7         |
-| ✅     |                      | knownRuntime                          | 100.00%  | 2         |
+| ✅     |                      | knownRuntime                          | 100.00%  | 4         |
 | ✅     |                      | lintChainedAssign                     | 100.00%  | 2         |
 | ✅     |                      | lintCondition                         | 100.00%  | 1         |
 | ✅     |                      | lintInterfaces                        | 100.00%  | 1         |
@@ -498,7 +498,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | lintRoutes                            | 100.00%  | 3         |
 | ✅     |                      | lintSource                            | 81.80%   | 3         |
 | ✅     |                      | lintStmts                             | 100.00%  | 1         |
-| ✅     |                      | lintUndefinedNames                    | 94.40%   | 63        |
+| ✅     |                      | lintUndefinedNames                    | 94.40%   | 64        |
 | ✅     |                      | loadInclude                           | 25.00%   | 3         |
 | ✅     |                      | stmtWalker.lintAbstract               | 100.00%  | 6         |
 | ✅     |                      | stmtWalker.lintExtends                | 100.00%  | 1         |
@@ -970,6 +970,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Scope.Set                             | 100.00%  | 3         |
 | ✅     |                      | Scope.Unset                           | 100.00%  | 0         |
 | ✅     |                      | Scope.bindStatic                      | 100.00%  | 1         |
+| ✅     |                      | ScopeBuiltins                         | 100.00%  | 0         |
 | ✅     |                      | ScopeFromContext                      | 100.00%  | 0         |
 | ✅     |                      | ScriptEnvironment                     | 100.00%  | 5         |
 | ✅     |                      | Size.Bytes                            | 100.00%  | 0         |

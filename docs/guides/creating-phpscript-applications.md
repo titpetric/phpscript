@@ -259,7 +259,7 @@ memory implementation `Mock\Memory<Thing>Store`.
 **Schema.** Singular table names. No foreign keys anywhere, so cascade is the application's
 job and each component documents what it deletes. Indexes are `idx_` and unique indexes
 `uidx_`, both prefixing the table name. Timestamps are native columns defaulting to
-`CURRENT_TIMESTAMP`, written and compared by the server, because there is no `date()` here.
+`CURRENT_TIMESTAMP`, written and compared by the server, so one clock answers for every row.
 
 **Structure.** Dependencies arrive through `__construct`. There is no container and no
 service locator. One responsibility per class: a class and its functions stand in for a Go

@@ -77,8 +77,9 @@ Set-Cookie: session=524ad2abf1f5368f899d8c89042c4e01ab07257399b9fb8d21d001746efd
 choose the cookie value. That also settles session fixation without a line of PHP, since
 `start()` never reuses an id.
 
-There is no `$_SESSION`, no `session_start()` and no `setcookie()` in this runtime. `$_COOKIE`
-is the read side and is populated per request. Any other cookie goes out through
+There is no `$_SESSION` and no `session_start()` in this runtime. `$_COOKIE`
+is the read side and is populated per request. A cookie goes out through
+`setcookie()`, or through
 `header("Set-Cookie: ...", false)`, which is the string `setcookie()` would have formatted.
 
 ## Why session state lives in a row
@@ -179,7 +180,7 @@ surviving a rebuilt database cannot land on a recycled row.
 
 `created_at`, `last_seen_at` and `expires_at` are on the row and kept off the context. A
 `DATETIME` column arrives from the driver as a Go time object: `echo` prints the empty string,
-`__toString` is never called, and there is no `date()` or `gmdate()` to turn it into anything
+`__toString` is never called, and `date()` takes a timestamp rather than that object, so nothing turns it into anything
 else.
 
 So expiry is written and compared in SQL and never projected into a template.
@@ -206,7 +207,7 @@ source, so it must not be the credential that authenticates the request carrying
 
 `check()` refuses the empty string before it compares, so an anonymous request cannot pass by
 posting an empty field. The comparison is `===` rather than constant-time, because
-`hash_equals` is not bound; a cross-site POST cannot read the response, so it has no oracle
+the tokens are compared whole rather than by prefix; a cross-site POST cannot read the response, so it has no oracle
 to time.
 
 Every POST route starts with the guard from `bootstrap.php`:

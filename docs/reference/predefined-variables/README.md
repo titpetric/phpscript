@@ -115,7 +115,7 @@ PHP's per-form `MAX_FILE_SIZE` field, and the `UPLOAD_ERR_FORM_SIZE` and
 ## `$_COOKIE`
 
 Contains one value per cookie sent with the request, keyed by cookie name.
-Setting a cookie is `header("Set-Cookie: ...")`; there is no `setcookie()`.
+Setting a cookie is `setcookie()`, or `header("Set-Cookie: ...")` for a header this runtime spells differently.
 
 ## `$_SERVER`
 

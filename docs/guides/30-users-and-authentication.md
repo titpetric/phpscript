@@ -151,7 +151,7 @@ Four functions are bound, and they are the only password cryptography in the run
 | `password_get_info($hash)`                                 | `algo`, `algoName`, `options["cost"]`       |
 
 bcrypt is the only algorithm, so `PASSWORD_DEFAULT` and `PASSWORD_BCRYPT` are the same value.
-Nothing else is there: `md5`, `sha1`, `hash`, `hash_hmac` and `random_bytes` all raise `call to undefined function`. You cannot write your own scheme here, which is why the binding is
+The digests are there too - `md5`, `sha1`, `hash`, `hash_hmac` and `random_bytes` - but bcrypt is the only password scheme, which is why the binding is
 this narrow.
 
 `Common\Auth::hash()` is the whole of the application's hashing:
@@ -299,7 +299,7 @@ try {
 `revoke()` does two things. It marks the `user_session` row revoked rather than deleting it,
 so a cookie replayed after the sign-out meets a row that says no instead of nothing at all.
 Then it starts the manager with the empty string, because there is no way to delete a cookie
-here: `setcookie()` is not bound and `Session\Manager` has no destroy, so `start("")` mints a
+here: `Session\Manager` has no destroy, so `start("")` mints a
 fresh cookie whose payload names no row and the next request resolves to anonymous.
 
 Signing out is a POST because it is a write, and it carries a CSRF token for the same reason
@@ -406,9 +406,11 @@ without avoiding the work. The design for doing it in Go, before a PHP runtime e
 Counting failures in the `user` table is not the answer either, because that turns every wrong
 guess into a write to the table under attack.
 
-A legacy table of `md5` passwords cannot be upgraded on login. `password_verify()` returns
-false against an `md5` digest, so the account never reaches the rehash step, and there is no
-`md5` in the runtime to write a two-step check with. Migrating an existing table is a password
-reset per row.
+A legacy table of `md5` passwords is not upgraded on login by `password_verify()`, which
+returns false against an `md5` digest so the account never reaches the rehash step. `md5()` is
+bound, so a two-step check can be written - verify the legacy digest, then write a bcrypt hash
+- but it puts the weak comparison back in the login path for every account that has not moved
+  yet. Migrating an existing table is a password
+  reset per row.
 
 Next: [Sessions and identity](35-sessions-and-identity.md).

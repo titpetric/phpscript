@@ -206,7 +206,7 @@ public function placeholders($count)
 
 `placeholders(3)` is `?, ?, ?` and `placeholders(1)` is `?`. `placeholders(0)` is `NULL`,
 because `IN ()` is a syntax error and `IN (NULL)` is a legal statement that matches nothing.
-It is `str_repeat` because `array_fill` is not bound in this runtime. The caller passes the
+It is `str_repeat` rather than `implode` over an `array_fill`: one allocation instead of a list of identical strings to join. The caller passes the
 values positionally:
 
 ```php
@@ -276,8 +276,8 @@ $sql = "SELECT id, user_id, csrf_token FROM user_session"
 	. " WHERE token = ? AND revoked_at IS NULL AND expires_at > " . $this->conn->now_expr(0);
 ```
 
-**Nothing in this book formats or parses a timestamp in PHP.** There is no `date()` and no
-`gmdate()` in this runtime, so a stored time is written by the server and compared by the
+**Nothing in this book formats or parses a timestamp in PHP.** `date()` is bound and
+`gmdate()` is not, and neither is reached for: a stored time is written by the server and compared by the
 server. A `DATETIME` column read back into PHP arrives as a Go time object that echoes as
 the empty string, so do not select one into a template or a context array.
 
