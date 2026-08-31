@@ -20,7 +20,7 @@ interface Bucket extends Reader, \Countable, Writer {
 	function drop(&$key);
 }
 
-class Store implements Bucket, \App\Contracts\Serializable {
+class Store implements Bucket, Wire {
 	private $rows = array();
 
 	function get(string $key, $fallback = null): ?string {

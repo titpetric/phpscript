@@ -641,10 +641,12 @@ final class Suite extends TestCase implements \Countable, Local {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A parent imported from another namespace prints fully qualified, which
-	// is what `new` already does and does not depend on the use statement
-	// surviving.
-	want := `final class Suite extends \Vendor\Framework\TestCase implements \Countable, Local {`
+	// A parent imported from another namespace prints as the file imported
+	// it. Expanding it would leave the use statement above with nothing
+	// referring to it, and rewrite code the author wrote one way into
+	// another. A name with no import still prints fully qualified, which is
+	// what \Countable shows here.
+	want := `final class Suite extends TestCase implements \Countable, Local {`
 	if !strings.Contains(out, want) {
 		t.Fatalf("missing %q in:\n%s", want, out)
 	}

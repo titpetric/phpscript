@@ -89,6 +89,7 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 		}
 	}
 	p := &printer{depth: 0, namespace: prog.Namespace, inPHP: startsInPHP, spans: prog.SourceSpans, comments: opts.Comments}
+	p.imports = collectImports(stmts)
 	if startsInPHP {
 		p.line("<?php")
 		p.blank()
@@ -142,6 +143,31 @@ func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
 		}
 	}
 	return stmts, nil
+}
+
+// collectImports maps every name a file imports to the alias it gave it, so
+// the printer can write a reference the way the author did rather than the way
+// the parser resolved it.
+//
+// The alias of an unaliased import is its last segment, which is what the
+// short name in the body already means.
+func collectImports(stmts []model.Stmt) map[string]string {
+	out := map[string]string{}
+	for _, s := range stmts {
+		use, ok := s.(*model.Use)
+		if !ok {
+			continue
+		}
+		for _, imp := range use.Imports {
+			alias := imp.Alias
+			if alias == "" {
+				alias = shortName(imp.Path)
+			}
+			out[strings.ToLower(strings.TrimPrefix(imp.Path, `\`))] = alias
+		}
+	}
+
+	return out
 }
 
 // splitImportPreamble separates a file's leading includes from its leading
@@ -200,6 +226,9 @@ type printer struct {
 	// the first one not yet written out. lastLine is the source line of the
 	// last thing written, which is what tells a blank line the author left
 	// from one the printer would be inventing.
+	// imports maps a fully-qualified name to the alias the file's use
+	// statements gave it, so a reference prints the way it was written.
+	imports     map[string]string
 	comments    []Comment
 	nextComment int
 	lastLine    int
@@ -1238,6 +1267,14 @@ func (p *printer) typeName(name string) string {
 	}
 	if name == p.namespace {
 		return shortName(name)
+	}
+	// An imported name prints as the file imported it. The parser resolves a
+	// use statement while parsing, so by here the reference carries the full
+	// name and the alias is only recoverable from the imports - without this,
+	// formatting rewrites every `Config::get()` in the body to
+	// `\Common\Config::get()` and the import it was written against goes dead.
+	if alias, ok := p.imports[strings.ToLower(name)]; ok {
+		return alias
 	}
 	return `\` + name
 }
