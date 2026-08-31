@@ -50,6 +50,52 @@ function header(string $header, mixed ...$opts): void
 function http_response_code(mixed ...$opts): mixed
 ```
 
+### runner/bindings
+
+#### crypto
+
+```php
+// hash returns the $algo digest of $data as lowercase hex characters, or as raw bytes when $binary is true; $algo is one of the names hash_algos() answers, which is a subset of PHP's.
+function hash(string $algo, string $data, bool ...$binary): string
+```
+
+```php
+// hash_algos returns the algorithm names hash() and hash_hmac() accept here, sorted; the list is shorter than PHP's, so a script that offers a choice should read it rather than assume one.
+function hash_algos(): array
+```
+
+```php
+// hash_equals reports whether $known_string and $user_string are the same, in time that does not depend on how far along they first differ; strings of different lengths are never equal, and the comparison of a wrong-length guess is the one case that does leak, because the lengths are compared first.
+function hash_equals(string $known_string, string $user_string): bool
+```
+
+```php
+// hash_hmac returns the $algo keyed digest of $data under $key as lowercase hex characters, or as raw bytes when $binary is true; a key longer than the algorithm's block size is itself digested first, which is HMAC's own rule and not a choice made here.
+function hash_hmac(string $algo, string $data, string $key, bool ...$binary): string
+```
+
+#### strings
+
+```php
+// strcasecmp compares $string1 and $string2 byte by byte with the ASCII letters folded to lower case, answering a negative number, a positive one, or 0 as strcmp does; a byte above 127 is compared as it is, so the folding does not reach an accented letter.
+function strcasecmp(string $string1, string $string2): int
+```
+
+```php
+// strcmp compares $string1 and $string2 byte by byte, answering a negative number when $string1 sorts first, a positive one when it sorts last, and 0 when they are equal.
+function strcmp(string $string1, string $string2): int
+```
+
+```php
+// strncasecmp compares at most $length leading bytes of $string1 and $string2 the way strcasecmp does, with the same reading of a $length past the end or below zero.
+function strncasecmp(string $string1, string $string2, int $length): int
+```
+
+```php
+// strncmp compares at most $length leading bytes of $string1 and $string2 the way strcmp does; a $length past the end of both compares what is there, and a negative one compares nothing and answers 0.
+function strncmp(string $string1, string $string2, int $length): int
+```
+
 ### stdlib/compat
 
 #### buffers
@@ -1424,15 +1470,41 @@ function memory_get_usage(bool ...$real_usage): int
 
 ### stdlib/pexec
 
+#### escape
+
 ```php
 // escapeshellarg returns $arg single-quoted for the shell, with embedded single quotes escaped.
 function escapeshellarg(string $arg): string
 ```
 
 ```php
-// exec runs $command through the shell and returns the last line of its stdout, appending each output line to $output when an array is passed; $result_code is accepted and ignored, because an integer cannot be written back.
-function exec(string $command, mixed ...$args): mixed
+// escapeshellcmd returns $command with the shell metacharacters in it backslash-escaped, leaving quotes that come in pairs alone; escapeshellarg is the one to reach for, since this leaves a quoted argument's own contents live.
+function escapeshellcmd(string $command): string
 ```
+
+#### exec
+
+```php
+// exec runs $command through the shell and returns the last line of its stdout, appending each output line to $output when an array is passed and writing the exit status to $result_code.
+function exec(string $command, mixed $output, &$result_code): mixed
+```
+
+```php
+// passthru runs $command through the shell and writes its output through untouched, for a command whose output is binary; it returns null, and the exit status is written to $result_code.
+function passthru(string $command, &$result_code): mixed
+```
+
+```php
+// shell_exec runs $command through the shell and returns all of its stdout, or null when the command produced none.
+function shell_exec(string $command): mixed
+```
+
+```php
+// system runs $command through the shell, writing its output as it arrives, and returns the last line; the exit status is written to $result_code.
+function system(string $command, &$result_code): mixed
+```
+
+#### process
 
 ```php
 // posix_getpid returns the process id of the running interpreter.

@@ -173,6 +173,23 @@ Functions:
   nothing, so `if (!function_exists('f')) { function f() {} }` leaves `f`
   undefined rather than declaring it. Nothing reports this yet.
 
+Processes:
+
+- `exec()`, `system()`, `passthru()` and `shell_exec()` run a command through
+  `sh -c`, as PHP's do, and **leave the sandbox behind**. A process reads and
+  writes with the permissions of the user running the server; `writable_paths`
+  does not reach it, and neither does the source filesystem's root. A host that
+  runs untrusted scripts leaves `stdlib/pexec` out. What the runtime does say is
+  where a command starts: the working directory `chdir()` moved, resolved onto
+  the host, so a relative path means the same thing to the command as to the
+  script that ran it.
+- `shell_exec()` answers `null` for a command that produced no output, as PHP
+  does, which is also its answer for one that could not start. `exec()`'s
+  `$output` is appended to rather than replaced, as PHP's is.
+- The `proc_*` family is not implemented. It needs a process handle and pipe
+  resources `fopen()` can work with, which is a kind of value the runtime does
+  not have.
+
 Filesystem:
 
 - `glob()` searches the source filesystem, so `glob("/etc/host*")` lists

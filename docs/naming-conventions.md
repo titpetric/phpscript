@@ -249,6 +249,7 @@ with the names they get when they arrive.
 | Shared memory | `shmop_*`, APCu  | `SharedMemory`                                       | Implemented                                                |
 | Mail          | `mail`           | `mail`, `SMTP`                                       | Implemented; `mail` registers when the host binds a sender |
 | Templating    | none             | native PHP                                           | minitpl runs as PHP source                                 |
+| Processes     | `exec`, `system` | `exec`, `system`, `passthru`, `shell_exec`           | Implemented; `proc_*` is not, and needs a handle type      |
 
 An area not in this table is not in scope. Adding one is a decision about the
 scope of the runtime, and goes through an issue before it goes through a

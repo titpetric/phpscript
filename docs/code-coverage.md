@@ -37,9 +37,10 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | model                 | 36.82%   | 325       | 1130  |
 | ✅     | parser                | 91.34%   | 1039      | 3399  |
 | ✅     | runner                | 86.62%   | 1656      | 7178  |
+| ❌     | runner/bindings       | 79.02%   | 27        | 160   |
 | ✅     | runner/coverage       | 92.37%   | 45        | 187   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
-| ✅     | stdlib                | 96.30%   | 4         | 88    |
+| ✅     | stdlib                | 96.30%   | 4         | 94    |
 | ✅     | stdlib/compat         | 86.92%   | 184       | 901   |
 | ✅     | stdlib/core           | 85.99%   | 931       | 4049  |
 | ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
@@ -50,7 +51,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | stdlib/info           | 75.00%   | 0         | 10    |
 | ✅     | stdlib/internals      | 100.00%  | 0         | 18    |
 | ✅     | stdlib/logger         | 100.00%  | 9         | 73    |
-| ✅     | stdlib/pexec          | 89.47%   | 13        | 51    |
+| ✅     | stdlib/pexec          | 92.55%   | 41        | 272   |
 | ❌     | stdlib/session        | 78.20%   | 72        | 341   |
 | ✅     | stdlib/shared         | 95.90%   | 57        | 197   |
 | ✅     | stdlib/smtp           | 86.89%   | 38        | 347   |
@@ -1126,6 +1127,13 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | uploadValue                           | 87.50%   | 1         |
 | ✅     |                      | varIdent                              | 100.00%  | 1         |
 | ✅     |                      | wantsContext                          | 100.00%  | 1         |
+| ✅     | runner/bindings      | clampLength                           | 60.00%   | 2         |
+| ✅     |                      | compareBytes                          | 100.00%  | 10        |
+| ✅     |                      | digestString                          | 100.00%  | 2         |
+| ✅     |                      | lowerASCII                            | 100.00%  | 2         |
+| ✅     |                      | newDigest                             | 75.00%   | 1         |
+| ❌     |                      | registerCrypto                        | 55.20%   | 10        |
+| ✅     |                      | registerStrings                       | 100.00%  | 0         |
 | ✅     | runner/coverage      | Collector.Blocks                      | 97.00%   | 10        |
 | ✅     |                      | Collector.Files                       | 100.00%  | 1         |
 | ✅     |                      | Collector.Functions                   | 91.70%   | 5         |
@@ -1519,7 +1527,23 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | New                                   | 100.00%  | 0         |
 | ✅     |                      | cause                                 | 100.00%  | 3         |
 | ✅     | stdlib/pexec         | Register                              | 100.00%  | 0         |
-| ❌     |                      | phpExec                               | 68.40%   | 13        |
+| ✅     |                      | RegisterRoot                          | 100.00%  | 0         |
+| ✅     |                      | lastLine.String                       | 100.00%  | 1         |
+| ✅     |                      | lastLine.Write                        | 100.00%  | 3         |
+| ✅     |                      | outputLines                           | 85.70%   | 2         |
+| ✅     |                      | phpEscapeshellarg                     | 100.00%  | 0         |
+| ✅     |                      | phpEscapeshellcmd                     | 100.00%  | 13        |
+| ✅     |                      | registerEscape                        | 100.00%  | 0         |
+| ✅     |                      | registerExec                          | 100.00%  | 0         |
+| ✅     |                      | registerProcess                       | 50.00%   | 0         |
+| ✅     |                      | root.command                          | 100.00%  | 1         |
+| ✅     |                      | root.hostWorkDir                      | 100.00%  | 2         |
+| ✅     |                      | root.phpExec                          | 88.90%   | 8         |
+| ✅     |                      | root.phpPassthru                      | 86.70%   | 2         |
+| ✅     |                      | root.phpShellExec                     | 87.50%   | 4         |
+| ✅     |                      | root.phpSystem                        | 88.20%   | 2         |
+| ✅     |                      | runStatus                             | 71.40%   | 2         |
+| ✅     |                      | writeRef                              | 100.00%  | 1         |
 | ✅     | stdlib/session       | Manager.Get                           | 71.40%   | 2         |
 | ✅     |                      | Manager.Start                         | 75.00%   | 3         |
 | ✅     |                      | Manager.Valid                         | 87.50%   | 4         |

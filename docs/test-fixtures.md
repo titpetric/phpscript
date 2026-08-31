@@ -226,6 +226,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/pexec | Flat stack | Runtime | PHP  |
 |----------------------|------------|---------|------|
 | exec.phpt            | PASS       | PASS    | PASS |
+| workdir.phpt         | PASS       | PASS    | PASS |
 
 ## tests/fixtures/regex
 
@@ -266,6 +267,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | file_put_contents.phpt           | PASS       | PASS    | PASS |
 | filesystem.phpt                  | PASS       | PASS    | PASS |
 | glob.phpt                        | PASS       | PASS    | PASS |
+| hash.phpt                        | PASS       | PASS    | PASS |
 | hash_functions.phpt              | PASS       | PASS    | PASS |
 | identifiers.phpt                 | PASS       | PASS    | SKIP |
 | intval.phpt                      | PASS       | PASS    | PASS |
@@ -299,6 +301,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | preg_engines.phpt             | PASS       | PASS    | PASS |
 | str_contains.phpt             | PASS       | PASS    | PASS |
 | str_pad_split_rev.phpt        | PASS       | PASS    | PASS |
+| strcmp.phpt                   | PASS       | PASS    | PASS |
 | string_argument_coercion.phpt | PASS       | PASS    | PASS |
 | string_escapes.phpt           | PASS       | PASS    | PASS |
 | strpos_family.phpt            | PASS       | PASS    | PASS |
@@ -336,10 +339,10 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/oop         | 24       | 24     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
 | tests/fixtures/paths       | 3        | 3      | 0      |
-| tests/fixtures/pexec       | 1        | 1      | 0      |
+| tests/fixtures/pexec       | 2        | 2      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
-| tests/fixtures/stdlib      | 20       | 20     | 0      |
-| tests/fixtures/strings     | 17       | 17     | 0      |
+| tests/fixtures/stdlib      | 21       | 21     | 0      |
+| tests/fixtures/strings     | 18       | 18     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 211      | 211    | 0      |
+| **Total**                  | 214      | 214    | 0      |

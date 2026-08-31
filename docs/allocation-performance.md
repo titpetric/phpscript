@@ -374,6 +374,17 @@ given.
 | `dirname`, `basename`                               | `string`                      | OK                                                                                                                                                               |
 | `fopen`                                             | `any` (`*os.File` or `false`) | OK                                                                                                                                                               |
 | `fwrite`                                            | `any` (`int64` or `false`)    | OK                                                                                                                                                               |
+| `chdir`, `getcwd`                                   | `bool` / `string`             | OK: both read the runtime's own field, and getcwd builds one short string                                                                                        |
+
+### Processes
+
+| Binding              | Returns                     | Status                                                                                                                                                     |
+|----------------------|-----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `exec`               | `any` (`string` or `false`) | OK: `cmd.Output()` allocates the captured stdout, which is the value; `$output` appends into the caller's `*model.Array` rather than building a second one |
+| `system`, `passthru` | `any`                       | OK: the process writes straight through to `rt.Output()`, so nothing is buffered; `system` keeps one line rather than the stream                           |
+| `shell_exec`         | `any` (`string` or `null`)  | OK: the captured stdout is the value                                                                                                                       |
+| `escapeshellarg`     | `string`                    | OK: one `strings.ReplaceAll`, which returns the input unchanged when there is no quote to escape                                                           |
+| `escapeshellcmd`     | `string`                    | OK: a presized `strings.Builder`, one pass                                                                                                                 |
 
 ### Type checks
 
