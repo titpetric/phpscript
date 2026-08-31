@@ -30,18 +30,18 @@ type groupTotals struct {
 
 // mapFixtures runs fn over a group with bounded concurrency and returns values
 // in fixture discovery order, keeping terminal, Markdown, and JSON output stable.
-func mapFixtures[T any](fixtures []*tests.Fixture, parallel int, fn func(int, *tests.Fixture) T) []T {
+func mapFixtures[T any](fixtures []*tests.Fixture, parallel int, fn func(worker, i int, fx *tests.Fixture) T) []T {
 	results := make([]T, len(fixtures))
 	if parallel <= 1 || len(fixtures) <= 1 {
 		for i, fx := range fixtures {
-			results[i] = fn(i, fx)
+			results[i] = fn(0, i, fx)
 		}
 		return results
 	}
 
 	for start := 0; start < len(fixtures); {
 		if fixtures[start].Serial {
-			results[start] = fn(start, fixtures[start])
+			results[start] = fn(0, start, fixtures[start])
 			start++
 			continue
 		}
@@ -55,17 +55,24 @@ func mapFixtures[T any](fixtures []*tests.Fixture, parallel int, fn func(int, *t
 	return results
 }
 
-func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, parallel int, fn func(int, *tests.Fixture) T) {
-	jobs := make(chan int)
+func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, parallel int, fn func(worker, i int, fx *tests.Fixture) T) {
+	// Buffered to the whole batch, so the fixtures are queued in one go and
+	// the workers draw from it. An unbuffered channel makes the sender wait
+	// for a worker to take each one, which serialises the hand-off against
+	// the slowest fixture in flight.
+	jobs := make(chan int, end-start)
 	var workers sync.WaitGroup
 	workers.Add(min(parallel, end-start))
-	for range min(parallel, end-start) {
-		go func() {
+	for id := range min(parallel, end-start) {
+		// Each goroutine is one worker with a number, and the number is what
+		// --cache=worker scopes a cache to. The loop inside it is serial, so a
+		// worker's cache is never touched by two fixtures at once.
+		go func(id int) {
 			defer workers.Done()
 			for i := range jobs {
-				results[i] = fn(i, fixtures[i])
+				results[i] = fn(id, i, fixtures[i])
 			}
-		}()
+		}(id)
 	}
 	for i := start; i < end; i++ {
 		jobs <- i

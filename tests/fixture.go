@@ -36,51 +36,6 @@ var phpFS fs.FS
 
 var phpFSOnce sync.Once
 
-var exprCache = runner.NewExprCache()
-
-var flatExprCache = flatstack.NewExprCache()
-
-// An include cache is keyed by the path as the script wrote it, so one cache
-// shared across fixture areas would serve syntax/code/functions.php to a
-// fixture in another area that includes its own code/functions.php. The caches
-// are therefore per include root, which is the directory holding the fixture.
-var (
-	includeCaches     sync.Map // string -> *runner.IncludeCache
-	flatIncludeCaches sync.Map // string -> *flatstack.IncludeCache
-)
-
-func includeCacheFor(dir string) *runner.IncludeCache {
-	if cache, ok := includeCaches.Load(dir); ok {
-		return cache.(*runner.IncludeCache)
-	}
-	cache, _ := includeCaches.LoadOrStore(dir, runner.NewIncludeCache())
-	return cache.(*runner.IncludeCache)
-}
-
-func flatIncludeCacheFor(dir string) *flatstack.IncludeCache {
-	if cache, ok := flatIncludeCaches.Load(dir); ok {
-		return cache.(*flatstack.IncludeCache)
-	}
-	cache, _ := flatIncludeCaches.LoadOrStore(dir, flatstack.NewIncludeCache())
-	return cache.(*flatstack.IncludeCache)
-}
-
-// ResetCaches clears all global shared caches between test suites.
-func ResetCaches() {
-	exprCache.Clear()
-	flatExprCache.Clear()
-	includeCaches.Range(func(key, value any) bool {
-		value.(*runner.IncludeCache).Clear()
-		includeCaches.Delete(key)
-		return true
-	})
-	flatIncludeCaches.Range(func(key, value any) bool {
-		value.(*flatstack.IncludeCache).Clear()
-		flatIncludeCaches.Delete(key)
-		return true
-	})
-}
-
 func testPHPFS() fs.FS {
 	phpFSOnce.Do(func() {
 		var err error
@@ -189,17 +144,16 @@ type Fixture struct {
 	Expected string `yaml:"-"`
 	Path     string `yaml:"-"`
 
-	appRoot            string
-	includes           []string
-	coverage           *coverage.Collector
-	rootFS             fs.FS
-	privateInclude     *runner.IncludeCache
-	privateFlatInclude *flatstack.IncludeCache
-	mu                 sync.Mutex
-	parsed             *model.Program
-	parsedErr          error
-	interp             *runner.Runtime
-	flatRT             *flatstack.Runtime
+	appRoot    string
+	cacheScope string
+	includes   []string
+	coverage   *coverage.Collector
+	rootFS     fs.FS
+	mu         sync.Mutex
+	parsed     *model.Program
+	parsedErr  error
+	interp     *runner.Runtime
+	flatRT     *flatstack.Runtime
 }
 
 // TestResult carries execution outcome for a single fixture.
@@ -233,6 +187,227 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 // An include that is not there is not an error; the flag says what to load
 // when the application provides it, and a tree without an autoload.php simply
 // runs without one.
+// Cache scopes, naming how far a parsed include and a compiled expression
+// travel. The CLI spells them as --cache=off|worker|shared.
+const (
+	CacheOff    = "off"
+	CacheWorker = "worker"
+)
+
+// SetCacheScope says how far this fixture's parse caches reach.
+//
+// The caches are what a suite trades memory for speed with. Worker, the
+// default, gives each worker loop one set, reused by the fixtures that worker
+// runs serially, so what is held scales with --parallel rather than with the
+// number of fixtures. Off gives a run its own and drops them - and its runtime
+// - when it ends, so a run is charged its own parsing and holds nothing
+// afterwards.
+func (f *Fixture) SetCacheScope(scope string) {
+	f.cacheScope = scope
+}
+
+// caches answers the include and expression caches this run installs.
+//
+// Off builds a pair for this run alone. Worker takes the pair belonging to the
+// goroutine running it, so the fixtures one worker walks share what they parse
+// and two workers share nothing. Shared is the process-wide pair, keyed by
+// include root because a cache is keyed by the path a script wrote and two
+// folders can both hold a code/functions.php.
+func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.ExprCache) {
+	switch f.cacheScope {
+	case CacheOff:
+		return runner.NewIncludeCache(), runner.NewExprCache()
+	}
+	w := currentWorker(ctx)
+	return w.includeFor(f.cacheRoot()), w.expr
+}
+
+// flatCaches is caches for the bytecode runtime.
+func (f *Fixture) flatCaches(ctx context.Context) (*flatstack.IncludeCache, *flatstack.ExprCache) {
+	switch f.cacheScope {
+	case CacheOff:
+		return flatstack.NewIncludeCache(), flatstack.NewExprCache()
+	}
+	w := currentWorker(ctx)
+	return w.flatIncludeFor(f.cacheRoot()), w.flatExpr
+}
+
+// acquireRuntime answers the runtime this run executes on, and whether it was
+// just built and still needs its bindings.
+//
+// Worker scope hands back the worker's own runtime, Reset for this run rather
+// than rebuilt: a reset runtime keeps the maps and buckets it grew, so the next
+// fixture allocates nothing to start, and what a run holds is bounded by
+// --parallel instead of by the number of fixtures. It is rebuilt only when the
+// fixture answers a different runtimeKey, which is once per folder rather than
+// once per fixture.
+//
+// Off scope builds one per run and lets it go when the run ends, which is the
+// clean state that mode is for.
+func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Runtime, bool) {
+	include, expr := f.caches(ctx)
+
+	build := func() *runner.Runtime {
+		rt := runner.New(out, f.runnerOptions())
+		rt.SetIncludeCache(include)
+		rt.SetExprCache(expr)
+		return rt
+	}
+
+	if f.cacheScope != CacheWorker {
+		if f.interp != nil {
+			// The same fixture again, under --count: the program and its AST
+			// are the ones already compiled, so the session resets and the
+			// caches stay.
+			f.interp.ResetSession(out, f.stdin())
+			return f.interp, false
+		}
+		return build(), true
+	}
+
+	w := currentWorker(ctx)
+	key := f.runtimeKey()
+	if w.interp != nil && w.interpKey == key {
+		// Reset, not ResetSession: the last fixture's compiled expressions and
+		// source spans are keyed by AST nodes this one will never look up, and
+		// they would hold that fixture's tree alive behind them.
+		if f.interp == w.interp {
+			w.interp.ResetSession(out, f.stdin())
+		} else {
+			w.interp.Reset(out, f.stdin())
+		}
+		return w.interp, false
+	}
+
+	rt := build()
+	w.interp = rt
+	w.interpKey = key
+	return rt, true
+}
+
+// runtimeKey names what a runtime was built for. A worker reuses its runtime
+// when the next fixture answers the same key and builds another when it does
+// not: RootFS is fixed at construction and stdlib.RegisterFS binds the file
+// bindings to a directory, so neither survives a move. Fixtures arrive grouped
+// by folder, so the key changes once per group rather than once per fixture.
+func (f *Fixture) runtimeKey() string {
+	return fmt.Sprintf("%s\x00%v", f.cacheRoot(), f.Options)
+}
+
+// worker holds what one serial worker loop reuses across the fixtures it runs.
+//
+// The include caches are keyed by include root, not pooled into one. A cache is
+// keyed by the path a script wrote, so one cache spanning two roots would serve
+// a fixture in one folder the code/functions.php belonging to another - and
+// with --autoload, autoload.php names a different file under every invocation
+// root. The expression caches are keyed by source text, which carries no root,
+// so one of each per worker is right.
+type worker struct {
+	include     map[string]*runner.IncludeCache
+	flatInclude map[string]*flatstack.IncludeCache
+	expr        *runner.ExprCache
+	flatExpr    *flatstack.ExprCache
+
+	// The runtime this worker reuses, and the key it was built for. One
+	// runtime per worker rather than one per fixture is what bounds what a
+	// run holds by --parallel instead of by the number of fixtures.
+	interp    *runner.Runtime
+	interpKey string
+	flatRT    *flatstack.Runtime
+	flatKey   string
+}
+
+func newWorker() *worker {
+	return &worker{
+		include:     map[string]*runner.IncludeCache{},
+		flatInclude: map[string]*flatstack.IncludeCache{},
+		expr:        runner.NewExprCache(),
+		flatExpr:    flatstack.NewExprCache(),
+	}
+}
+
+// includeFor answers this worker's cache for one include root, building it on
+// first use. A worker runs its fixtures serially, so no lock is needed here.
+func (w *worker) includeFor(root string) *runner.IncludeCache {
+	if c, ok := w.include[root]; ok {
+		return c
+	}
+	c := runner.NewIncludeCache()
+	w.include[root] = c
+	return c
+}
+
+// flatIncludeFor is includeFor for the bytecode runtime.
+func (w *worker) flatIncludeFor(root string) *flatstack.IncludeCache {
+	if c, ok := w.flatInclude[root]; ok {
+		return c
+	}
+	c := flatstack.NewIncludeCache()
+	w.flatInclude[root] = c
+	return c
+}
+
+// workers is the pool a worker-scoped run draws from, indexed by the id
+// WithWorker assigned. A run outside a worker loop - a single-threaded run, a
+// Go test calling RunFixture directly - gets index zero, which is a worker like
+// any other.
+var (
+	workersMu sync.Mutex
+	workers   = map[int]*worker{}
+	workerKey = new(int)
+)
+
+// WithWorker marks ctx as belonging to worker id, so a fixture run under it
+// takes that worker's caches. The command's worker loop calls this once per
+// goroutine; everything else inherits worker zero.
+func WithWorker(ctx context.Context, id int) context.Context {
+	return context.WithValue(ctx, workerKey, id)
+}
+
+// currentWorker answers the caches for the worker ctx names. Go has no
+// goroutine-local storage, so the id rides the context the run was started
+// with - which is already threaded from the command down to here.
+func currentWorker(ctx context.Context) *worker {
+	id := 0
+	if got, ok := ctx.Value(workerKey).(int); ok {
+		id = got
+	}
+	workersMu.Lock()
+	defer workersMu.Unlock()
+	if w, ok := workers[id]; ok {
+		return w
+	}
+	w := newWorker()
+	workers[id] = w
+	return w
+}
+
+// cacheRoot names the tree a cached include path is relative to.
+//
+// Absolute, because the relative spelling is ambiguous: a cached path is
+// relative to a root, and two roots reached from different working directories
+// can both be called "suite". A fixture given an app root resolves against that
+// too, so the key names both trees.
+func (f *Fixture) cacheRoot() string {
+	root := absPath(f.RootDir())
+	if f.appRoot != "" {
+		return root + "\x00" + absPath(f.appRoot)
+	}
+	return root
+}
+
+// absPath answers the absolute spelling, or the given one when the working
+// directory cannot be read - a key that is merely ambiguous beats no key.
+func absPath(p string) string {
+	if abs, err := filepath.Abs(p); err == nil {
+		return abs
+	}
+	return p
+}
+
+// cleanState reports whether the run drops what it built when it ends.
+func (f *Fixture) cleanState() bool { return f.cacheScope == CacheOff }
+
 func (f *Fixture) SetAppRoot(root, autoload string, includes ...string) {
 	f.appRoot = root
 	f.includes = includes
@@ -270,29 +445,6 @@ func (f *Fixture) RootDir() string {
 // tree must not be served a program cached for the embedded one.
 func (f *Fixture) realRoot() bool {
 	return f.Root != "" || f.appRoot != ""
-}
-
-// includeCache is the include cache for the fixture's root. A fixture reaching
-// a real tree gets a private one rather than sharing by directory name.
-func (f *Fixture) includeCache() *runner.IncludeCache {
-	if f.realRoot() {
-		if f.privateInclude == nil {
-			f.privateInclude = runner.NewIncludeCache()
-		}
-		return f.privateInclude
-	}
-	return includeCacheFor(f.RootDir())
-}
-
-// flatIncludeCache is includeCache for the bytecode runtime.
-func (f *Fixture) flatIncludeCache() *flatstack.IncludeCache {
-	if f.realRoot() {
-		if f.privateFlatInclude == nil {
-			f.privateFlatInclude = flatstack.NewIncludeCache()
-		}
-		return f.privateFlatInclude
-	}
-	return flatIncludeCacheFor(f.RootDir())
 }
 
 // unionFS resolves a path against each layer in order, first hit wins. It is
@@ -605,13 +757,19 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 		return "Internal Server Error", runner.Context{}, err
 	}
 
+	if f.cleanState() {
+		// A clean state is a new runtime, not only an empty cache. A runtime
+		// keeps every declaration it hoisted out of an include, and this
+		// fixture holds the runtime for the whole run, so reusing one carries
+		// the last fixture's functions and classes into the next and keeps
+		// their ASTs alive besides.
+		defer func() { f.interp = nil }()
+	}
+
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
-	if f.interp == nil {
-		options := f.runnerOptions()
-		rt := runner.New(&out, options)
-		rt.SetIncludeCache(f.includeCache())
-		rt.SetExprCache(exprCache)
+	rt, built := f.acquireRuntime(ctx, &out)
+	if built {
 		rt.RegisterConstructor("Storage", NewStorage)
 		rt.RegisterConstructor("FailStorage", NewFailStorage)
 		registerPanicBindings(rt)
@@ -619,17 +777,16 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 		// RegisterFS rebinds them to the fixture, so it has to run after it.
 		stdlib.Register(rt)
 		stdlib.RegisterFS(rt, f.RootDir())
-		// The harness parses and runs the fixture directly rather than going
-		// through LoadFile, so nothing else sets the entrypoint and __FILE__
-		// and __DIR__ would both be empty. An empty __DIR__ silently turns
-		// __DIR__ . "/x" into "/x", which is then rejected as escaping the
-		// root: a confusing two-step failure a long way from its cause.
-		rt.UpdateFilename(f.Path)
 		rt.FreezeStdlib()
-		f.interp = rt
-	} else {
-		f.interp.ResetSession(&out, f.stdin())
 	}
+	// The harness parses and runs the fixture directly rather than going
+	// through LoadFile, so nothing else sets the entrypoint and __FILE__ and
+	// __DIR__ would both be empty. An empty __DIR__ silently turns
+	// __DIR__ . "/x" into "/x", which is then rejected as escaping the root: a
+	// confusing two-step failure a long way from its cause.
+	rt.UpdateFilename(f.Path)
+	f.interp = rt
+
 	f.interp.SetCoverage(f.coverage)
 	f.interp.SetContext(ctx)
 	reqCtx.Register(f.interp)
@@ -662,7 +819,10 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
 	if f.flatRT == nil {
-		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions(), f.RootDir(), f.Path, f.flatIncludeCache())
+		// A nil cache is caching off, which is what SetNoCache asks for; both
+		// cache types answer a miss for nil rather than needing a branch here.
+		flatCache, flatExpr := f.flatCaches(ctx)
+		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions(), f.RootDir(), f.Path, flatCache, flatExpr)
 		f.flatRT.FreezeStdlib()
 	} else {
 		f.flatRT.ResetSession(&out, f.stdin())
@@ -674,6 +834,10 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 		return "Internal Server Error", reqCtx, err
 	}
 
+	if f.cleanState() {
+		defer func() { f.flatRT = nil }()
+	}
+
 	if err := f.flatRT.Run(prog); err != nil {
 		if _, ok := flatstack.IsExit(err); ok {
 			return out.String(), reqCtx, nil
@@ -683,10 +847,10 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	return out.String(), reqCtx, nil
 }
 
-func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, rootDir, entrypoint string, flatIncludeCache *flatstack.IncludeCache) *flatstack.Runtime {
+func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, rootDir, entrypoint string, flatIncludeCache *flatstack.IncludeCache, flatExpr *flatstack.ExprCache) *flatstack.Runtime {
 	runtime := flatstack.New(out, options)
 	runtime.SetIncludeCache(flatIncludeCache)
-	runtime.SetExprCache(flatExprCache)
+	runtime.SetExprCache(flatExpr)
 	runtime.RegisterConstructor("Storage", NewStorage)
 	runtime.RegisterConstructor("FailStorage", NewFailStorage)
 	registerPanicBindings(runtime)
