@@ -36,8 +36,8 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | list                  | 76.85%   | 136       | 472   |
 | ❌     | model                 | 36.82%   | 325       | 1130  |
 | ✅     | parser                | 91.34%   | 1039      | 3399  |
-| ✅     | runner                | 86.62%   | 1656      | 7178  |
-| ❌     | runner/bindings       | 79.02%   | 27        | 160   |
+| ✅     | runner                | 86.62%   | 1656      | 7163  |
+| ✅     | runner/bindings       | 86.72%   | 95        | 538   |
 | ✅     | runner/coverage       | 92.37%   | 45        | 187   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | stdlib                | 96.30%   | 4         | 94    |
@@ -45,7 +45,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | stdlib/core           | 85.99%   | 931       | 4049  |
 | ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
 | ✅     | stdlib/database       | 84.59%   | 105       | 791   |
-| ✅     | stdlib/files          | 88.92%   | 191       | 763   |
+| ✅     | stdlib/files          | 87.78%   | 272       | 1041  |
 | ❌     | stdlib/gd             | 76.99%   | 154       | 577   |
 | ❌     | stdlib/http           | 72.75%   | 61        | 417   |
 | ✅     | stdlib/info           | 75.00%   | 0         | 10    |
@@ -1127,13 +1127,25 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | uploadValue                           | 87.50%   | 1         |
 | ✅     |                      | varIdent                              | 100.00%  | 1         |
 | ✅     |                      | wantsContext                          | 100.00%  | 1         |
-| ✅     | runner/bindings      | clampLength                           | 60.00%   | 2         |
+| ✅     | runner/bindings      | applyCookieOptions                    | 100.00%  | 6         |
+| ✅     |                      | applyCookiePositional                 | 100.00%  | 3         |
+| ✅     |                      | clampLength                           | 60.00%   | 2         |
 | ✅     |                      | compareBytes                          | 100.00%  | 10        |
 | ✅     |                      | digestString                          | 100.00%  | 2         |
+| ✅     |                      | edgeKey                               | 100.00%  | 1         |
+| ✅     |                      | filterByKey                           | 100.00%  | 5         |
+| ✅     |                      | filterByValue                         | 100.00%  | 5         |
 | ✅     |                      | lowerASCII                            | 100.00%  | 2         |
 | ✅     |                      | newDigest                             | 75.00%   | 1         |
+| ✅     |                      | registerArrays                        | 95.70%   | 27        |
 | ❌     |                      | registerCrypto                        | 55.20%   | 10        |
+| ❌     |                      | registerRequest                       | 62.10%   | 10        |
 | ✅     |                      | registerStrings                       | 100.00%  | 0         |
+| ✅     |                      | sameSite                              | 40.00%   | 1         |
+| ✅     |                      | setCookieExpires                      | 100.00%  | 1         |
+| ✅     |                      | stageCookie                           | 93.30%   | 8         |
+| ✅     |                      | valueList                             | 100.00%  | 0         |
+| ✅     |                      | wanted                                | 100.00%  | 1         |
 | ✅     | runner/coverage      | Collector.Blocks                      | 97.00%   | 10        |
 | ✅     |                      | Collector.Files                       | 100.00%  | 1         |
 | ✅     |                      | Collector.Functions                   | 91.70%   | 5         |
@@ -1444,6 +1456,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | copyFile                              | 85.70%   | 3         |
 | ✅     |                      | countingWriter.Write                  | 100.00%  | 0         |
 | ✅     |                      | csvControls                           | 90.90%   | 10        |
+| ✅     |                      | entryNames                            | 100.00%  | 1         |
 | ✅     |                      | inputSource                           | 100.00%  | 5         |
 | ✅     |                      | lookupGroup                           | 60.00%   | 5         |
 | ✅     |                      | lookupUser                            | 70.00%   | 5         |
@@ -1453,15 +1466,19 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | registerCSV                           | 94.30%   | 14        |
 | ✅     |                      | registerPaths                         | 75.00%   | 0         |
 | ❌     |                      | registerReads                         | 79.20%   | 47        |
+| ✅     |                      | registerStat                          | 85.70%   | 19        |
+| ✅     |                      | registerStreamReads                   | 81.70%   | 51        |
 | ✅     |                      | registerStreams                       | 82.90%   | 25        |
 | ✅     |                      | registerUploads                       | 93.30%   | 7         |
 | ✅     |                      | registerWorkDir                       | 100.00%  | 0         |
 | ✅     |                      | registerWrites                        | 92.30%   | 39        |
 | ✅     |                      | root.fsPath                           | 66.70%   | 1         |
 | ✅     |                      | root.globSpelling                     | 100.00%  | 7         |
+| ❌     |                      | root.readDir                          | 63.60%   | 8         |
 | ✅     |                      | root.resolve                          | 100.00%  | 0         |
 | ✅     |                      | root.resolveWrite                     | 100.00%  | 1         |
 | ✅     |                      | root.sourceFS                         | 100.00%  | 0         |
+| ✅     |                      | root.stat                             | 71.40%   | 2         |
 | ✅     |                      | root.statSource                       | 85.70%   | 2         |
 | ✅     |                      | root.unresolve                        | 85.70%   | 2         |
 | ✅     |                      | root.uploadPath                       | 100.00%  | 3         |

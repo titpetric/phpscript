@@ -44,6 +44,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | array_key_exists.phpt    | PASS       | PASS    | PASS |
 | array_reverse_sum.phpt   | PASS       | PASS    | PASS |
 | array_search.phpt        | PASS       | PASS    | PASS |
+| array_sets.phpt          | PASS       | PASS    | PASS |
 | array_stack.phpt         | PASS       | PASS    | PASS |
 | array_union.phpt         | PASS       | PASS    | PASS |
 | chained_assignment.phpt  | PASS       | PASS    | PASS |
@@ -88,6 +89,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | platform_database.phpt                | PASS       | PASS    | SKIP |
 | request_and_response_handling.phpt    | PASS       | PASS    | SKIP |
 | session_manager.phpt                  | PASS       | PASS    | SKIP |
+| setcookie.phpt                        | PASS       | PASS    | SKIP |
 | storage_constructor_error.phpt        | PASS       | PASS    | SKIP |
 | storage_constructor_error_caught.phpt | PASS       | PASS    | SKIP |
 | storage_context.phpt                  | PASS       | PASS    | SKIP |
@@ -220,6 +222,8 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | chdir.phpt           | PASS       | PASS    | PASS |
 | magic_constants.phpt | PASS       | PASS    | PASS |
 | root_filesystem.phpt | PASS       | PASS    | PASS |
+| stat.phpt            | PASS       | PASS    | PASS |
+| streamread.phpt      | PASS       | PASS    | PASS |
 
 ## tests/fixtures/pexec
 
@@ -326,9 +330,9 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | Area                       | Fixtures | Passed | Failed |
 |----------------------------|----------|--------|--------|
 | tests/fixtures/arithmetic  | 21       | 21     | 0      |
-| tests/fixtures/arrays      | 19       | 19     | 0      |
+| tests/fixtures/arrays      | 20       | 20     | 0      |
 | tests/fixtures/autoloading | 8        | 8      | 0      |
-| tests/fixtures/bindings    | 23       | 23     | 0      |
+| tests/fixtures/bindings    | 24       | 24     | 0      |
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 9        | 9      | 0      |
 | tests/fixtures/flatstack   | 7        | 7      | 0      |
@@ -338,11 +342,11 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/namespaces  | 3        | 3      | 0      |
 | tests/fixtures/oop         | 24       | 24     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
-| tests/fixtures/paths       | 3        | 3      | 0      |
+| tests/fixtures/paths       | 5        | 5      | 0      |
 | tests/fixtures/pexec       | 2        | 2      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
 | tests/fixtures/stdlib      | 21       | 21     | 0      |
 | tests/fixtures/strings     | 18       | 18     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 214      | 214    | 0      |
+| **Total**                  | 218      | 218    | 0      |
