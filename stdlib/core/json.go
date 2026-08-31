@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -22,6 +23,16 @@ func registerJSON(rt *runner.Runtime) {
 	rt.RegisterFunc("json_encode", phpJSONEncode)
 	// json_decode parses the JSON in $text; $associative must be true or omitted because decoding into objects is not implemented, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
 	rt.RegisterFunc("json_decode", phpJSONDecode)
+
+	// The streaming pair. json_encode() and json_decode() work on a whole
+	// string, which means holding the whole document; these work on a stream,
+	// which is what a request body and a response are.
+	// `new JSON\Decoder(fopen("php://input", "r"))` reads a POST body without a
+	// string of it existing first, and an encoder over php://output writes the
+	// response as it is built. Both take the io.Reader or io.Writer they wrap,
+	// so any handle fopen() returns works, and so do STDIN and STDOUT.
+	rt.RegisterConstructor("JSON\\Encoder", NewJSONEncoder)
+	rt.RegisterConstructor("JSON\\Decoder", NewJSONDecoder)
 }
 
 // phpJSONEncode encodes value. $flags is accepted and ignored, the way
@@ -243,4 +254,99 @@ func jsonDecodeValue(v any) any {
 	default:
 		return v
 	}
+}
+
+// JSONEncoder writes JSON values to a stream. It is Go's json.Encoder with the
+// one difference PHP forces: the value it is given is a PHP value, so it is
+// converted the way json_encode() converts one, and the two spellings answer
+// the same JSON for the same array.
+type JSONEncoder struct {
+	enc *json.Encoder
+}
+
+// NewJSONEncoder returns an encoder writing to $stream.
+func NewJSONEncoder(stream io.Writer) (*JSONEncoder, error) {
+	if stream == nil {
+		return nil, errNilStream("JSON\\Encoder", "writer")
+	}
+	return &JSONEncoder{enc: json.NewEncoder(stream)}, nil
+}
+
+// encode writes $value to the stream as JSON, followed by a newline.
+//
+// The newline is Go's, not php's: an Encoder writes a stream of values, and the
+// newline is what separates one from the next. A single value followed by a
+// newline is still valid JSON to any reader.
+func (e *JSONEncoder) Encode(value any) error {
+	return e.enc.Encode(jsonEncodeValue(value))
+}
+
+// set_indent makes the encoder write each value across several lines, $indent
+// per level under $prefix; called with two empty strings it goes back to one
+// line per value.
+func (e *JSONEncoder) SetIndent(prefix, indent string) {
+	e.enc.SetIndent(prefix, indent)
+}
+
+// JSONDecoder reads JSON values from a stream, one call per value.
+type JSONDecoder struct {
+	dec *json.Decoder
+}
+
+// NewJSONDecoder returns a decoder reading from $stream.
+//
+// UseNumber is on, as it is in json_decode(): without it Go reads every number
+// as a float, and the 7 in a document would come back as 7.0. With it a whole
+// number is an int and only a fractional one is a float, which is what php
+// answers and what a row written back out has to preserve.
+func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
+	if stream == nil {
+		return nil, errNilStream("JSON\\Decoder", "reader")
+	}
+	dec := json.NewDecoder(stream)
+	dec.UseNumber()
+	return &JSONDecoder{dec: dec}, nil
+}
+
+// decode reads the next value from the stream and returns it, or throws at the
+// end of the stream.
+//
+// Go's Decode fills a pointer and answers an error; PHP has no out-parameter,
+// so the value comes back instead and the error is thrown.
+//
+// It goes through jsonDecodeStream, which json_decode() uses, rather than
+// through Go's Decode into an any. Decode would build a map[string]any, and a
+// Go map has no order: the same document would hand back its keys in a
+// different order on every run. The two spellings of decoding therefore agree
+// on the shape as well as the values - an object is an ordered array keyed by
+// its field names.
+//
+// The end of the stream is an error rather than a null, because a null is a
+// value JSON can carry: `while ($d->more())` is the loop, not a test against
+// what decode() returned.
+func (d *JSONDecoder) Decode() (any, error) {
+	return jsonDecodeStream(d.dec)
+}
+
+// more reports whether another value is waiting in the stream. It is what ends
+// a decode loop, and it is false at the end of the stream and inside a document
+// that has been read to its close.
+func (d *JSONDecoder) More() bool {
+	return d.dec.More()
+}
+
+// errNilStream phrases the one refusal both constructors make. A stream is not
+// optional: fopen() answers false for a file it cannot open, and false is not a
+// stream.
+func errNilStream(class, kind string) error {
+	return &jsonStreamError{class: class, kind: kind}
+}
+
+type jsonStreamError struct {
+	class string
+	kind  string
+}
+
+func (e *jsonStreamError) Error() string {
+	return e.class + ": argument #1 ($stream) must be a " + e.kind + ", none given"
 }
