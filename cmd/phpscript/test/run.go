@@ -23,7 +23,6 @@ const Name = "Run .phpt test fixtures"
 
 // Options holds CLI flag options for the test command.
 type Options struct {
-	Autoload   string
 	Include    string
 	JSON       bool
 	Matrix     bool
@@ -95,7 +94,6 @@ func NewCommand() *cli.Command {
 		Name:  "test",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
-			fs.StringVar(&opts.Autoload, "autoload", "", "Resolve class references against this folder on first use (Acme\\Thing is <folder>/Acme/Thing.php)")
 			fs.StringVar(&opts.Include, "include", "", "Include this file before every fixture when it exists, for globally available functions")
 			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
 			fs.BoolVar(&opts.Matrix, "matrix", false, "Run every fixture through all runtimes and report a matrix")
@@ -314,15 +312,14 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		fx.SetCacheScope(mode)
 	}
 
-	if opts.Autoload != "" || opts.Include != "" {
-		// The flags speak from the invocation root: that is where the autoload
-		// folder and the include file live, below no fixture directory.
-		var includes []string
-		if opts.Include != "" {
-			includes = append(includes, opts.Include)
-		}
+	if opts.Include != "" {
+		// The flag speaks from the invocation root: that is where the include
+		// file lives, below no fixture directory. It is the one mechanism -
+		// composer's autoloader resolves the classes, and the file's own
+		// includes bring the helpers, so a second folder convention on the
+		// command line had nothing left to do.
 		for _, fx := range fixtures {
-			fx.SetAppRoot(".", opts.Autoload, includes...)
+			fx.SetAppRoot(".", opts.Include)
 		}
 	}
 

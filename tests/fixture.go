@@ -408,12 +408,9 @@ func absPath(p string) string {
 // cleanState reports whether the run drops what it built when it ends.
 func (f *Fixture) cleanState() bool { return f.cacheScope == CacheOff }
 
-func (f *Fixture) SetAppRoot(root, autoload string, includes ...string) {
+func (f *Fixture) SetAppRoot(root string, includes ...string) {
 	f.appRoot = root
 	f.includes = includes
-	if autoload != "" {
-		f.Options.Autoload = autoload
-	}
 }
 
 // SetCoverage installs a statement-coverage collector for the fixture's

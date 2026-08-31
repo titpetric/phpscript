@@ -123,7 +123,10 @@ func TestRunCommandAppRoot(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("autoload.php", "<?php\n\ninclude \"lib/functions.php\";\n")
+	// The include file is the whole mechanism now: it pulls in the helper and
+	// the class, the way an application's bootstrap pulls in composer's
+	// autoloader. There is no --autoload folder flag to do half of it.
+	write("autoload.php", "<?php\n\ninclude \"lib/functions.php\";\ninclude \"code/Acme/Thing.php\";\n")
 	write("lib/functions.php", "<?php\n\nfunction app_name()\n{\n\treturn \"acme\";\n}\n")
 	write("code/Acme/Thing.php", "<?php\n\nnamespace Acme;\n\nclass Thing\n{\n\tpublic function greet()\n\t{\n\t\treturn \"hello\";\n\t}\n}\n")
 	write("suite/prelude.phpt", `name: prelude reaches include and autoload
@@ -140,13 +143,14 @@ hello acme
 `)
 	write("plain/noprelude.phpt", `name: missing include is skipped
 description: >
-  An include file that is not there is not an error; the fixture runs with
-  only the autoload folder.
+  An include file that is not there is not an error: the run carries on and
+  the fixture answers for itself. It names nothing the include would have
+  brought, because with --include as the only resolution mechanism there is
+  nothing else to fall back to.
 ---
 <?php
 
-$thing = new \Acme\Thing();
-echo $thing->greet(), "\n";
+echo "hello\n";
 ---
 hello
 `)
@@ -159,14 +163,14 @@ hello
 		t.Fatal(err)
 	}
 	os.Stdout = w
-	errAll := test.Run(context.Background(), nil, test.Options{Autoload: "code", Include: "autoload.php"})
-	errMissing := test.Run(context.Background(), []string{"plain"}, test.Options{Autoload: "code", Include: "missing.php"})
+	errAll := test.Run(context.Background(), nil, test.Options{Include: "autoload.php"})
+	errMissing := test.Run(context.Background(), []string{"plain"}, test.Options{Include: "missing.php"})
 	w.Close()
 	os.Stdout = old
 	io.Copy(io.Discard, r)
 
 	if errAll != nil {
-		t.Errorf("bare run with --autoload code --include autoload.php: %v", errAll)
+		t.Errorf("bare run with --include autoload.php: %v", errAll)
 	}
 	if errMissing != nil {
 		t.Errorf("run with a missing include file: %v", errMissing)
