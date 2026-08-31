@@ -428,6 +428,26 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	}
 }
 
+// Reset returns the runtime to the state a new one is in, so a pool can hand
+// the same value to the next program instead of building another.
+//
+// It is ResetSession plus everything that outlives a session: the parse caches,
+// and the two maps keyed by AST node - compiled expressions and source spans.
+// Those are what ResetSession deliberately keeps, because a --count loop runs
+// one program repeatedly and the keys are the same nodes each time. Across two
+// different programs they are keys nothing will look up again, holding the
+// previous program's tree alive behind them.
+//
+// The caches are cleared rather than replaced: a cleared map keeps the buckets
+// it grew, so the next program allocates nothing to start.
+func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
+	rt.ResetSession(out, stdin)
+	clear(rt.compiled)
+	clear(rt.sourceSpans)
+	rt.includeCache.Clear()
+	rt.exprCache.Clear()
+}
+
 // SetContext installs the lifecycle context auto-injected into registered Go
 // callables whose first parameter is a context.Context (constructors, methods,
 // functions). Defaults to context.Background().
