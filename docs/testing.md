@@ -78,7 +78,7 @@ PHP accesses this constructor as `SharedMemory`. The binding exposes `set` and `
 
 ## `.phpt` fixtures
 
-Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `exceptions`, `flatstack`, `functions`, `includes`, `oop`, `runtime`, `stdlib`, `strings` and `syntax`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it.
+Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `runtime`, `stdlib`, `strings` and `syntax`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it.
 
 A fixture's own folder is its include root. That is what lets all three runtimes agree: the `php` runner executes with its working directory set to the folder holding the fixture, and both Go runtimes are rooted at the same folder, so a relative path in the fixture names the same file whichever runtime reads it.
 
