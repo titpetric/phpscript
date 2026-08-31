@@ -18,24 +18,24 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | cmd/phpscript/ast     | 0.00%    | 5         | 31    |
 | ❌     | cmd/phpscript/fmt     | 0.00%    | 5         | 42    |
 | ❌     | cmd/phpscript/info    | 79.20%   | 52        | 183   |
-| ❌     | cmd/phpscript/lint    | 73.07%   | 57        | 218   |
+| ❌     | cmd/phpscript/lint    | 73.10%   | 57        | 223   |
 | ✅     | cmd/phpscript/list    | 30.00%   | 4         | 38    |
 | ❌     | cmd/phpscript/run     | 26.67%   | 11        | 86    |
 | ✅     | cmd/phpscript/server  | 80.88%   | 121       | 881   |
-| ✅     | cmd/phpscript/test    | 80.94%   | 490       | 1891  |
+| ✅     | cmd/phpscript/test    | 80.96%   | 486       | 1886  |
 | ❌     | cmd/phpscript/version | 0.00%    | 31        | 81    |
 | ✅     | config                | 94.49%   | 55        | 256   |
 | ✅     | flatstack             | 50.00%   | 0         | 18    |
 | ✅     | flatstack/engine      | 88.21%   | 935       | 2008  |
-| ✅     | formatter             | 80.45%   | 288       | 1273  |
+| ❌     | formatter             | 79.26%   | 298       | 1326  |
 | ✅     | internal/apidoc       | 84.01%   | 364       | 1075  |
 | ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
 | ✅     | internal/phpval       | 90.60%   | 142       | 575   |
 | ✅     | internal/table        | 100.00%  | 24        | 135   |
-| ✅     | lint                  | 87.32%   | 238       | 846   |
+| ✅     | lint                  | 85.90%   | 241       | 895   |
 | ❌     | list                  | 76.85%   | 136       | 472   |
 | ❌     | model                 | 36.84%   | 325       | 1130  |
-| ✅     | parser                | 91.37%   | 1041      | 3434  |
+| ✅     | parser                | 91.33%   | 1041      | 3434  |
 | ✅     | runner                | 86.48%   | 1662      | 7205  |
 | ✅     | runner/bindings       | 86.72%   | 95        | 538   |
 | ✅     | runner/coverage       | 92.37%   | 45        | 187   |
@@ -58,7 +58,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | stdlib/span           | 100.00%  | 0         | 11    |
 | ✅     | stdlib/time           | 42.78%   | 5         | 137   |
 | ❌     | telemetry             | 73.04%   | 10        | 209   |
-| ✅     | tests                 | 84.80%   | 224       | 1262  |
+| ✅     | tests                 | 84.80%   | 223       | 1259  |
 
 ## Functions
 
@@ -127,7 +127,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | line                                  | 100.00%  | 1         |
 | ✅     |                      | newTable                              | 66.70%   | 1         |
 | ✅     |                      | reportArgs                            | 83.30%   | 2         |
-| ✅     |                      | run                                   | 95.30%   | 24        |
+| ✅     |                      | run                                   | 95.70%   | 24        |
 | ✅     |                      | sink.summary                          | 75.00%   | 1         |
 | ✅     |                      | statusColor                           | 100.00%  | 1         |
 | ✅     |                      | writeReportHeader                     | 100.00%  | 0         |
@@ -169,7 +169,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | writeAutoindexRow                     | 92.30%   | 5         |
 | ✅     | cmd/phpscript/test   | Options.coverReport                   | 100.00%  | 1         |
 | ✅     |                      | Options.runners                       | 100.00%  | 4         |
-| ✅     |                      | Run                                   | 81.00%   | 99        |
+| ✅     |                      | Run                                   | 80.60%   | 96        |
 | ✅     |                      | cacheMode                             | 50.00%   | 1         |
 | ✅     |                      | coverFilePath                         | 83.30%   | 2         |
 | ✅     |                      | coverFiles                            | 92.90%   | 9         |
@@ -214,7 +214,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | percentOf                             | 66.70%   | 1         |
 | ✅     |                      | percentileNs                          | 75.00%   | 3         |
 | ✅     |                      | ratio                                 | 100.00%  | 0         |
-| ❌     |                      | reportArgs                            | 66.70%   | 8         |
+| ❌     |                      | reportArgs                            | 68.80%   | 7         |
 | ✅     |                      | reportBlocks                          | 100.00%  | 3         |
 | ✅     |                      | runFixtureLoop                        | 100.00%  | 19        |
 | ✅     |                      | runFixtureSamples                     | 90.00%   | 5         |
@@ -327,7 +327,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | isDecl                                | 100.00%  | 1         |
 | ✅     |                      | isFuncDecl                            | 100.00%  | 0         |
 | ✅     |                      | phpQuote                              | 78.60%   | 5         |
-| ✅     |                      | printProgram                          | 100.00%  | 11        |
+| ✅     |                      | printProgram                          | 94.90%   | 15        |
 | ✅     |                      | printer.appendToLine                  | 71.40%   | 2         |
 | ✅     |                      | printer.args                          | 71.40%   | 3         |
 | ✅     |                      | printer.arrayLit                      | 100.00%  | 9         |
@@ -338,7 +338,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | printer.body                          | 100.00%  | 1         |
 | ✅     |                      | printer.comment                       | 90.00%   | 7         |
 | ✅     |                      | printer.ensurePHP                     | 100.00%  | 1         |
-| ✅     |                      | printer.expr                          | 80.30%   | 42        |
+| ✅     |                      | printer.expr                          | 81.70%   | 42        |
 | ✅     |                      | printer.field                         | 100.00%  | 4         |
 | ✅     |                      | printer.flushComments                 | 100.00%  | 4         |
 | ✅     |                      | printer.indent                        | 100.00%  | 0         |
@@ -347,14 +347,13 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | printer.lit                           | 77.80%   | 3         |
 | ✅     |                      | printer.params                        | 100.00%  | 11        |
 | ✅     |                      | printer.printClass                    | 97.40%   | 17        |
-| ✅     |                      | printer.printDeclare                  | 70.00%   | 2         |
 | ✅     |                      | printer.printFor                      | 38.50%   | 3         |
 | ✅     |                      | printer.printForeach                  | 84.60%   | 5         |
 | ❌     |                      | printer.printFunc                     | 77.80%   | 7         |
 | ✅     |                      | printer.printIf                       | 36.80%   | 5         |
 | ✅     |                      | printer.printInterface                | 96.00%   | 11        |
 | ✅     |                      | printer.printMembers                  | 100.00%  | 9         |
-| ✅     |                      | printer.printStmt                     | 93.20%   | 16        |
+| ✅     |                      | printer.printStmt                     | 90.90%   | 16        |
 | ✅     |                      | printer.printSwitch                   | 88.20%   | 4         |
 | ✅     |                      | printer.printTry                      | 78.60%   | 5         |
 | ✅     |                      | printer.signature                     | 85.70%   | 2         |
@@ -365,10 +364,11 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | printer.thenEnd                       | 66.70%   | 1         |
 | ✅     |                      | printer.trailingComment               | 100.00%  | 4         |
 | ✅     |                      | printer.typeName                      | 83.30%   | 6         |
-| ✅     |                      | printer.use                           | 100.00%  | 4         |
+| ✅     |                      | printer.use                           | 90.00%   | 4         |
 | ✅     |                      | returnType                            | 100.00%  | 1         |
 | ✅     |                      | shortName                             | 100.00%  | 1         |
 | ✅     |                      | splitDeclarePreamble                  | 80.00%   | 4         |
+| ✅     |                      | splitImportPreamble                   | 84.60%   | 6         |
 | ✅     |                      | splitShebang                          | 83.30%   | 2         |
 | ✅     |                      | trimOpenTag                           | 80.00%   | 3         |
 | ✅     |                      | tryEnd                                | 66.70%   | 1         |
@@ -473,6 +473,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | File                                  | 93.30%   | 2         |
 | ✅     |                      | FlatstackFile                         | 77.80%   | 3         |
 | ❌     |                      | Paths                                 | 76.90%   | 6         |
+| ✅     |                      | SetInclude                            | 100.00%  | 0         |
 | ✅     |                      | assignExprs                           | 100.00%  | 0         |
 | ✅     |                      | astWalker.exprs                       | 100.00%  | 1         |
 | ✅     |                      | astWalker.fields                      | 50.00%   | 1         |
@@ -496,6 +497,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | lintSource                            | 81.80%   | 3         |
 | ✅     |                      | lintStmts                             | 100.00%  | 1         |
 | ✅     |                      | lintUndefinedNames                    | 94.40%   | 63        |
+| ✅     |                      | loadInclude                           | 25.00%   | 3         |
 | ✅     |                      | stmtWalker.lintAbstract               | 100.00%  | 6         |
 | ✅     |                      | stmtWalker.lintExtends                | 100.00%  | 1         |
 | ✅     |                      | stmtWalker.lintGlobal                 | 100.00%  | 0         |
@@ -708,7 +710,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | parser.parseTypeHint                  | 100.00%  | 14        |
 | ✅     |                      | parser.parseUnary                     | 84.40%   | 19        |
 | ✅     |                      | parser.parseUnset                     | 82.40%   | 7         |
-| ✅     |                      | parser.parseUse                       | 85.70%   | 16        |
+| ❌     |                      | parser.parseUse                       | 78.60%   | 16        |
 | ❌     |                      | parser.parseVarRef                    | 76.50%   | 14        |
 | ✅     |                      | parser.parseWhile                     | 66.70%   | 4         |
 | ✅     |                      | parser.peek                           | 75.00%   | 1         |
@@ -1675,7 +1677,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Fixture.Coverage                      | 100.00%  | 0         |
 | ✅     |                      | Fixture.RootDir                       | 100.00%  | 1         |
 | ✅     |                      | Fixture.Runs                          | 100.00%  | 3         |
-| ✅     |                      | Fixture.SetAppRoot                    | 100.00%  | 1         |
+| ✅     |                      | Fixture.SetAppRoot                    | 100.00%  | 0         |
 | ✅     |                      | Fixture.SetCacheScope                 | 100.00%  | 0         |
 | ✅     |                      | Fixture.SetCoverage                   | 100.00%  | 0         |
 | ✅     |                      | Fixture.SetRootFS                     | 100.00%  | 0         |

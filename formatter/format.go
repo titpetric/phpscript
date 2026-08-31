@@ -160,7 +160,7 @@ func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
 // further down the file, after real work has started, is left where the
 // author put it.
 func splitImportPreamble(stmts []model.Stmt) (includes, uses, rest []model.Stmt) {
-	var from = len(stmts)
+	from := len(stmts)
 	for i, s := range stmts {
 		switch node := s.(type) {
 		case *model.Use:
