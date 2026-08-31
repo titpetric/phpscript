@@ -35,7 +35,6 @@ func lintRedeclared(file string, prog *model.Program, out *[]Diagnostic) {
 	}
 	guards.walk(prog.Stmts)
 
-	rt := knownRuntime()
 	seen := map[string]int{}
 	declarations := &astWalker{prog: prog}
 	declarations.stmt = func(s model.Stmt) {
@@ -56,7 +55,7 @@ func lintRedeclared(file string, prog *model.Program, out *[]Diagnostic) {
 				Message: fmt.Sprintf("Cannot redeclare function %s() (previously declared on line %d)", decl.Name, previous),
 				Fatal:   true,
 			})
-		case rt.FunctionExists(decl.Name):
+		case hostFunc(decl.Name):
 			*out = append(*out, Diagnostic{
 				File:    file,
 				Line:    line,

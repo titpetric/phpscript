@@ -24,6 +24,7 @@ var (
 	registryOnce sync.Once
 	registry     *runner.Runtime
 	includeFile  string
+	hostFuncs    map[string]bool
 )
 
 // SetInclude names a file to run against the name registry before any file is
@@ -59,6 +60,18 @@ func knownRuntime() *runner.Runtime {
 		// stdlib.Register; a server-targeted file still names them, so an
 		// empty request context registers them for the name check.
 		runner.NewContext().Register(rt)
+		// The host bindings, before the include runs. What the include then
+		// declares is PHP, and a file declaring a function of the same name
+		// is either that same file being checked - bootstrap.php lints
+		// against itself otherwise, and every function it defines reads as a
+		// redeclaration - or a duplicate the same-file check already covers.
+		// Only a name the runtime itself provides can be redeclared over.
+		internal, _ := rt.DefinedFunctions()
+		hostFuncs = make(map[string]bool, len(internal))
+		for _, name := range internal {
+			hostFuncs[strings.ToLower(name)] = true
+		}
+
 		loadInclude(rt)
 		registry = rt
 	})
@@ -86,6 +99,14 @@ func loadInclude(rt *runner.Runtime) {
 		return
 	}
 	_ = rt.Run(prog)
+}
+
+// hostFunc reports whether the runtime itself provides a function, as against
+// one the --include file declared in PHP.
+func hostFunc(name string) bool {
+	knownRuntime()
+
+	return hostFuncs[strings.ToLower(strings.TrimPrefix(name, "\\"))]
 }
 
 // declaredNames is what one file provides for itself: functions, classes and
