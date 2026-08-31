@@ -42,6 +42,8 @@ func (s FuncSite) String() string {
 type RedeclareError struct {
 	// Name is the function as a script spells it.
 	Name string
+	// At is the declaration being refused.
+	At FuncSite
 	// Previous is where it was declared first, zero when the name belongs to
 	// a registered binding rather than to a declaration in PHP source.
 	Previous FuncSite
@@ -49,11 +51,25 @@ type RedeclareError struct {
 	Builtin bool
 }
 
+// Error writes PHP's fatal-error text for the same condition, with one
+// deliberate difference: the paths are the ones the script named, resolved
+// against the root the shims are bound to, where PHP prints host paths. A
+// runtime serving scripts out of an fs.FS has no host path to print.
+//
+// A program a host assembled itself carries no file or spans, so the clauses
+// that would name a location are left out rather than written empty.
 func (e *RedeclareError) Error() string {
-	if e.Builtin {
-		return fmt.Sprintf("Cannot redeclare function %s()", e.Name)
+	message := fmt.Sprintf("Cannot redeclare function %s()", e.Name)
+	if !e.Builtin {
+		message += fmt.Sprintf(" (previously declared in %s)", e.Previous)
 	}
-	return fmt.Sprintf("Cannot redeclare function %s() (previously declared in %s)", e.Name, e.Previous)
+	if e.At.File == "" {
+		return message
+	}
+	if e.At.Line == 0 {
+		return message + fmt.Sprintf(" in %s", e.At.File)
+	}
+	return message + fmt.Sprintf(" in %s on line %d", e.At.File, e.At.Line)
 }
 
 // GetMessage and GetCode are what a script reads off the caught value.
@@ -78,13 +94,13 @@ func (e *RedeclareError) ThrowableClass() string { return "Exception" }
 // no special case here.
 func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 	if previous, ok := rt.funcSites[name]; ok {
-		return &RedeclareError{Name: name, Previous: previous}
+		return &RedeclareError{Name: name, At: site, Previous: previous}
 	}
 	// A name the runtime already answers to, with no site recorded for it, is
 	// one of the bindings stdlib registered. PHP refuses those too, and says
-	// less about them: there is no file to point at.
+	// less about them: there is no earlier declaration to point at.
 	if _, taken := rt.lookupFunc(name); taken {
-		return &RedeclareError{Name: name, Builtin: true}
+		return &RedeclareError{Name: name, At: site, Builtin: true}
 	}
 	rt.funcSites[name] = site
 	return nil

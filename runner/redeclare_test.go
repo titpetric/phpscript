@@ -90,9 +90,31 @@ try {
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	want := "caught: Exception: Cannot redeclare function dup() (previously declared in dup.php:2)"
+	want := "caught: Exception: Cannot redeclare function dup() (previously declared in dup.php:2) in dup.php on line 3"
 	if out != want {
 		t.Errorf("output = %q, want %q", out, want)
+	}
+}
+
+// TestRedeclareNamesTheWholePathBelowTheRoot pins the spelling of the file in
+// the message. php prints host paths; a runtime whose scripts may come out of
+// an fs.FS has none to print, so the path is the one the script named, resolved
+// against the root. What it must not do is shorten to a basename: two files
+// called helpers.php in different folders is exactly the case the message
+// exists to tell apart.
+func TestRedeclareNamesTheWholePathBelowTheRoot(t *testing.T) {
+	files := fstest.MapFS{
+		"a/b/c/deep.php": {Data: []byte("<?php\n\nfunction deepfn() { return 1; }\n\nfunction deepfn() { return 2; }\n")},
+	}
+	_, err := runRedeclare(t, `<?php
+include "a/b/c/deep.php";
+`, files)
+	if err == nil {
+		t.Fatal("run returned nil error")
+	}
+	want := "Cannot redeclare function deepfn() (previously declared in a/b/c/deep.php:3) in a/b/c/deep.php on line 5"
+	if err.Error() != want {
+		t.Errorf("error = %q, want %q", err, want)
 	}
 }
 

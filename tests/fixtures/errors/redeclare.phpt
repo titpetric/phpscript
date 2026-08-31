@@ -34,4 +34,4 @@ echo strlen("abc"), ";";
 echo "still running\n";
 ?>
 ---
-Exception: Cannot redeclare function widget() (previously declared in redeclared_function.php:3);Exception: Cannot redeclare function strlen();widget declared;first;3;still running
+Exception: Cannot redeclare function widget() (previously declared in redeclared_function.php:3) in redeclared_function.php on line 4;Exception: Cannot redeclare function strlen() in redeclared_binding.php on line 3;widget declared;first;3;still running

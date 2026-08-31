@@ -156,12 +156,18 @@ Strings:
 Functions:
 
 - Declaring a function twice, or declaring one over a name the runtime
-  registers, raises a catchable `Exception` carrying PHP's own message. PHP
-  treats it as a compile-time fatal error no `catch` can reach, so a script
-  that includes a file which redeclares can answer for it here and cannot
-  there. `memory_limit` and an undefined constant diverge the same way. The
-  first declaration stands and the program keeps running; `phpscript lint`
-  reports the condition before the file is ever hoisted.
+  registers, raises a catchable `Exception`. PHP treats it as a compile-time
+  fatal error no `catch` can reach, so a script that includes a file which
+  redeclares can answer for it here and cannot there. `memory_limit` and an
+  undefined constant diverge the same way. The first declaration stands and the
+  program keeps running; `phpscript lint` reports the condition before the file
+  is ever hoisted.
+- The message is PHP's, word for word, except for the paths in it. PHP prints
+  host paths (`/srv/app/lib/helpers.php`); a runtime whose scripts may be
+  served out of an `fs.FS` has none to print, so both paths are the ones the
+  script named, resolved against the root the shims are bound to, including
+  every directory below it. `__FILE__` and `__DIR__` answer the same way and
+  for the same reason.
 - Only a declaration written at the top level of a file is honoured. A
   `function` inside an `if` body or another function is parsed and confers
   nothing, so `if (!function_exists('f')) { function f() {} }` leaves `f`
