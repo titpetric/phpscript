@@ -36,7 +36,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | list                  | 76.85%   | 136       | 472   |
 | ❌     | model                 | 36.82%   | 325       | 1130  |
 | ✅     | parser                | 91.34%   | 1039      | 3399  |
-| ✅     | runner                | 86.54%   | 1658      | 7081  |
+| ✅     | runner                | 86.51%   | 1660      | 7095  |
 | ✅     | runner/coverage       | 92.37%   | 45        | 187   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | stdlib                | 96.30%   | 4         | 88    |
@@ -806,7 +806,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Options.inputLimits                   | 100.00%  | 0         |
 | ✅     |                      | ParseFileMode                         | 100.00%  | 4         |
 | ✅     |                      | ParseSize                             | 94.40%   | 9         |
-| ✅     |                      | RedeclareError.Error                  | 100.00%  | 1         |
+| ✅     |                      | RedeclareError.Error                  | 87.50%   | 3         |
 | ✅     |                      | RedeclareError.GetMessage             | 100.00%  | 0         |
 | ✅     |                      | RedeclareError.ThrowableClass         | 100.00%  | 0         |
 | ✅     |                      | RegisterBinding                       | 80.00%   | 1         |
