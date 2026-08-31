@@ -26,17 +26,17 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | cmd/phpscript/version | 0.00%    | 31        | 81    |
 | ✅     | config                | 94.49%   | 55        | 256   |
 | ✅     | flatstack             | 50.00%   | 0         | 18    |
-| ✅     | flatstack/engine      | 88.19%   | 935       | 2008  |
+| ✅     | flatstack/engine      | 88.21%   | 935       | 2008  |
 | ✅     | formatter             | 80.45%   | 288       | 1273  |
 | ✅     | internal/apidoc       | 84.01%   | 364       | 1075  |
 | ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
 | ✅     | internal/phpval       | 90.60%   | 142       | 575   |
 | ✅     | internal/table        | 100.00%  | 24        | 135   |
-| ✅     | lint                  | 86.78%   | 223       | 783   |
+| ✅     | lint                  | 87.32%   | 238       | 844   |
 | ❌     | list                  | 76.85%   | 136       | 472   |
 | ❌     | model                 | 36.82%   | 325       | 1130  |
 | ✅     | parser                | 91.34%   | 1039      | 3399  |
-| ✅     | runner                | 86.62%   | 1648      | 7002  |
+| ✅     | runner                | 86.54%   | 1658      | 7081  |
 | ✅     | runner/coverage       | 92.37%   | 45        | 187   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
 | ✅     | stdlib                | 96.30%   | 4         | 88    |
@@ -304,7 +304,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | lookupUserFunc                        | 100.00%  | 4         |
 | ✅     |                      | phpEmptyContainer                     | 100.00%  | 0         |
 | ✅     |                      | restoreHostLocals                     | 83.30%   | 1         |
-| ❌     |                      | run                                   | 79.50%   | 551       |
+| ❌     |                      | run                                   | 79.90%   | 551       |
 | ✅     |                      | unsupported                           | 100.00%  | 0         |
 | ✅     |                      | vmScratch.release                     | 100.00%  | 0         |
 | ✅     | formatter            | Changed                               | 100.00%  | 3         |
@@ -465,7 +465,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Table.writeRow                        | 100.00%  | 4         |
 | ✅     |                      | Text                                  | 100.00%  | 0         |
 | ✅     | lint                 | Diagnostic.String                     | 66.70%   | 1         |
-| ✅     |                      | File                                  | 92.90%   | 2         |
+| ✅     |                      | File                                  | 93.30%   | 2         |
 | ✅     |                      | FlatstackFile                         | 77.80%   | 3         |
 | ❌     |                      | Paths                                 | 76.90%   | 6         |
 | ✅     |                      | assignExprs                           | 100.00%  | 0         |
@@ -476,7 +476,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     |                      | astWalker.walk                        | 65.40%   | 27        |
 | ✅     |                      | chainedValue                          | 100.00%  | 3         |
 | ✅     |                      | collectAssignExprList                 | 100.00%  | 1         |
-| ❌     |                      | collectAssignExprs                    | 25.00%   | 19        |
+| ❌     |                      | collectAssignExprs                    | 29.20%   | 19        |
 | ✅     |                      | declaredNames.hasClass                | 100.00%  | 1         |
 | ✅     |                      | declaredNames.hasFunc                 | 100.00%  | 1         |
 | ✅     |                      | isScalarLiteral                       | 100.00%  | 7         |
@@ -485,6 +485,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | lintCondition                         | 100.00%  | 1         |
 | ✅     |                      | lintInterfaces                        | 100.00%  | 1         |
 | ✅     |                      | lintJSONFlags                         | 100.00%  | 7         |
+| ✅     |                      | lintRedeclared                        | 100.00%  | 15        |
 | ✅     |                      | lintReferences                        | 100.00%  | 14        |
 | ✅     |                      | lintRoutes                            | 100.00%  | 3         |
 | ✅     |                      | lintSource                            | 81.80%   | 3         |
@@ -784,6 +785,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | FileMode.UnmarshalYAML                | 100.00%  | 1         |
 | ✅     |                      | FromRequest                           | 100.00%  | 0         |
 | ✅     |                      | FromRequestOptions                    | 100.00%  | 9         |
+| ✅     |                      | FuncSite.String                       | 80.00%   | 2         |
 | ✅     |                      | HostPanicError.Error                  | 100.00%  | 0         |
 | ✅     |                      | IncludeCache.Clear                    | 80.00%   | 1         |
 | ✅     |                      | IncludeCache.Get                      | 83.30%   | 1         |
@@ -804,6 +806,9 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Options.inputLimits                   | 100.00%  | 0         |
 | ✅     |                      | ParseFileMode                         | 100.00%  | 4         |
 | ✅     |                      | ParseSize                             | 94.40%   | 9         |
+| ✅     |                      | RedeclareError.Error                  | 100.00%  | 1         |
+| ✅     |                      | RedeclareError.GetMessage             | 100.00%  | 0         |
+| ✅     |                      | RedeclareError.ThrowableClass         | 100.00%  | 0         |
 | ✅     |                      | RegisterBinding                       | 80.00%   | 1         |
 | ✅     |                      | RequestContext                        | 100.00%  | 0         |
 | ✅     |                      | Runtime.AccountRequest                | 100.00%  | 1         |
@@ -844,7 +849,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.RegisterConstructor           | 100.00%  | 0         |
 | ✅     |                      | Runtime.RegisterFunc                  | 100.00%  | 0         |
 | ✅     |                      | Runtime.RegisterShutdown              | 100.00%  | 0         |
-| ✅     |                      | Runtime.ResetSession                  | 96.00%   | 3         |
+| ✅     |                      | Runtime.ResetSession                  | 97.00%   | 4         |
 | ✅     |                      | Runtime.Run                           | 100.00%  | 11        |
 | ✅     |                      | Runtime.SAPI                          | 100.00%  | 0         |
 | ❌     |                      | Runtime.SPLAutoload                   | 73.30%   | 11        |
@@ -881,6 +886,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.compile                       | 83.30%   | 5         |
 | ✅     |                      | Runtime.compileExpr                   | 92.60%   | 6         |
 | ✅     |                      | Runtime.container                     | 77.80%   | 4         |
+| ✅     |                      | Runtime.declareFunc                   | 100.00%  | 2         |
 | ✅     |                      | Runtime.evalConcat                    | 100.00%  | 0         |
 | ✅     |                      | Runtime.evalIncDec                    | 81.80%   | 4         |
 | ✅     |                      | Runtime.evalInclude                   | 90.00%   | 8         |
@@ -906,8 +912,8 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.helperSet                     | 100.00%  | 0         |
 | ❌     |                      | Runtime.helperStaticCall              | 78.60%   | 23        |
 | ✅     |                      | Runtime.helperStaticProp              | 80.00%   | 2         |
-| ✅     |                      | Runtime.hoist                         | 96.80%   | 15        |
-| ❌     |                      | Runtime.includeFile                   | 80.00%   | 7         |
+| ✅     |                      | Runtime.hoist                         | 97.00%   | 17        |
+| ✅     |                      | Runtime.includeFile                   | 83.30%   | 7         |
 | ✅     |                      | Runtime.installFunc                   | 100.00%  | 2         |
 | ✅     |                      | Runtime.invokeClosure                 | 95.00%   | 6         |
 | ✅     |                      | Runtime.invokeFunc                    | 90.00%   | 2         |
@@ -929,7 +935,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.resolveFSPath                 | 75.00%   | 2         |
 | ✅     |                      | Runtime.resolveInclude                | 84.60%   | 6         |
 | ✅     |                      | Runtime.runDeferred                   | 88.90%   | 3         |
-| ✅     |                      | Runtime.runFlat                       | 86.70%   | 8         |
+| ❌     |                      | Runtime.runFlat                       | 72.20%   | 10        |
 | ✅     |                      | Runtime.runInterpreted                | 100.00%  | 4         |
 | ✅     |                      | Runtime.runShutdown                   | 92.30%   | 4         |
 | ✅     |                      | Runtime.setCompiledExpr               | 100.00%  | 1         |
@@ -1005,6 +1011,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | contentLength                         | 100.00%  | 3         |
 | ✅     |                      | contextWithEnv                        | 100.00%  | 0         |
 | ✅     |                      | contextWithScope                      | 100.00%  | 6         |
+| ✅     |                      | declSite                              | 100.00%  | 0         |
 | ✅     |                      | evalEnv.layer                         | 50.00%   | 3         |
 | ✅     |                      | fieldByNameFold                       | 100.00%  | 2         |
 | ✅     |                      | flatHost.Array                        | 100.00%  | 0         |
@@ -1021,7 +1028,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | flatHost.Echo                         | 100.00%  | 0         |
 | ❌     |                      | flatHost.Entries                      | 65.00%   | 8         |
 | ✅     |                      | flatHost.GetProperty                  | 100.00%  | 0         |
-| ✅     |                      | flatHost.Include                      | 89.50%   | 13        |
+| ✅     |                      | flatHost.Include                      | 94.70%   | 13        |
 | ✅     |                      | flatHost.Index                        | 100.00%  | 0         |
 | ✅     |                      | flatHost.Lookup                       | 100.00%  | 1         |
 | ✅     |                      | flatHost.MatchCatch                   | 100.00%  | 0         |
