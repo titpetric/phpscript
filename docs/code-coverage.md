@@ -13,52 +13,52 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 
 | Status | Package               | Coverage | Cognitive | Lines |
 |--------|-----------------------|----------|-----------|-------|
-| ❌     | .                     | 34.80%   | 22        | 96    |
-| ✅     | annotations           | 88.26%   | 149       | 701   |
-| ❌     | cmd/phpscript/ast     | 0.00%    | 5         | 31    |
-| ❌     | cmd/phpscript/fmt     | 0.00%    | 5         | 42    |
+| ❌     | .                     | 34.80%   | 22        | 93    |
+| ✅     | annotations           | 88.26%   | 149       | 638   |
+| ❌     | cmd/phpscript/ast     | 0.00%    | 5         | 29    |
+| ❌     | cmd/phpscript/fmt     | 0.00%    | 5         | 38    |
 | ❌     | cmd/phpscript/info    | 79.20%   | 52        | 183   |
-| ❌     | cmd/phpscript/lint    | 73.10%   | 57        | 223   |
-| ✅     | cmd/phpscript/list    | 30.00%   | 4         | 38    |
-| ❌     | cmd/phpscript/run     | 26.67%   | 11        | 86    |
-| ✅     | cmd/phpscript/server  | 80.88%   | 121       | 881   |
-| ✅     | cmd/phpscript/test    | 80.96%   | 486       | 1886  |
-| ❌     | cmd/phpscript/version | 0.00%    | 31        | 81    |
-| ✅     | config                | 94.49%   | 55        | 256   |
-| ✅     | flatstack             | 50.00%   | 0         | 18    |
-| ✅     | flatstack/engine      | 88.21%   | 935       | 2008  |
-| ❌     | formatter             | 79.26%   | 298       | 1326  |
-| ✅     | internal/apidoc       | 84.01%   | 364       | 1075  |
+| ❌     | cmd/phpscript/lint    | 73.10%   | 57        | 209   |
+| ✅     | cmd/phpscript/list    | 30.00%   | 4         | 35    |
+| ❌     | cmd/phpscript/run     | 26.67%   | 11        | 77    |
+| ✅     | cmd/phpscript/server  | 80.88%   | 121       | 693   |
+| ✅     | cmd/phpscript/test    | 80.96%   | 486       | 1747  |
+| ❌     | cmd/phpscript/version | 0.00%    | 31        | 79    |
+| ✅     | config                | 94.49%   | 55        | 218   |
+| ✅     | flatstack             | 50.00%   | 0         | 15    |
+| ✅     | flatstack/engine      | 88.21%   | 935       | 1934  |
+| ❌     | formatter             | 79.59%   | 307       | 1252  |
+| ✅     | internal/apidoc       | 84.01%   | 364       | 968   |
 | ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
-| ✅     | internal/phpval       | 90.60%   | 142       | 575   |
-| ✅     | internal/table        | 100.00%  | 24        | 135   |
-| ✅     | lint                  | 85.90%   | 241       | 895   |
-| ❌     | list                  | 76.85%   | 136       | 472   |
-| ❌     | model                 | 36.84%   | 325       | 1130  |
-| ✅     | parser                | 91.33%   | 1041      | 3434  |
-| ✅     | runner                | 86.48%   | 1662      | 7205  |
-| ✅     | runner/bindings       | 86.72%   | 95        | 538   |
-| ✅     | runner/coverage       | 92.37%   | 45        | 187   |
+| ✅     | internal/phpval       | 90.60%   | 142       | 482   |
+| ✅     | internal/table        | 100.00%  | 24        | 117   |
+| ✅     | lint                  | 86.29%   | 243       | 792   |
+| ❌     | list                  | 76.85%   | 136       | 427   |
+| ❌     | model                 | 36.84%   | 325       | 956   |
+| ✅     | parser                | 91.33%   | 1041      | 3167  |
+| ✅     | runner                | 86.48%   | 1662      | 6005  |
+| ✅     | runner/bindings       | 86.72%   | 95        | 462   |
+| ✅     | runner/coverage       | 92.37%   | 45        | 157   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
-| ✅     | stdlib                | 96.30%   | 4         | 94    |
-| ✅     | stdlib/compat         | 86.92%   | 184       | 901   |
-| ✅     | stdlib/core           | 85.48%   | 959       | 4275  |
-| ✅     | stdlib/crypto         | 85.97%   | 56        | 312   |
-| ✅     | stdlib/database       | 84.59%   | 105       | 791   |
-| ✅     | stdlib/files          | 87.78%   | 272       | 1041  |
-| ❌     | stdlib/gd             | 76.99%   | 154       | 577   |
-| ❌     | stdlib/http           | 72.75%   | 61        | 417   |
-| ✅     | stdlib/info           | 75.00%   | 0         | 10    |
-| ✅     | stdlib/internals      | 100.00%  | 0         | 18    |
-| ✅     | stdlib/logger         | 100.00%  | 9         | 73    |
-| ✅     | stdlib/pexec          | 92.55%   | 41        | 272   |
-| ❌     | stdlib/session        | 78.20%   | 72        | 341   |
-| ✅     | stdlib/shared         | 95.90%   | 57        | 197   |
-| ✅     | stdlib/smtp           | 86.89%   | 38        | 347   |
-| ✅     | stdlib/span           | 100.00%  | 0         | 11    |
-| ✅     | stdlib/time           | 42.78%   | 5         | 137   |
-| ❌     | telemetry             | 73.04%   | 10        | 209   |
-| ✅     | tests                 | 84.80%   | 223       | 1259  |
+| ✅     | stdlib                | 96.30%   | 4         | 53    |
+| ✅     | stdlib/compat         | 86.92%   | 184       | 756   |
+| ✅     | stdlib/core           | 85.48%   | 959       | 3730  |
+| ✅     | stdlib/crypto         | 85.97%   | 56        | 270   |
+| ✅     | stdlib/database       | 84.59%   | 105       | 625   |
+| ✅     | stdlib/files          | 87.78%   | 272       | 881   |
+| ❌     | stdlib/gd             | 76.99%   | 154       | 535   |
+| ❌     | stdlib/http           | 72.75%   | 61        | 346   |
+| ✅     | stdlib/info           | 75.00%   | 0         | 9     |
+| ✅     | stdlib/internals      | 100.00%  | 0         | 16    |
+| ✅     | stdlib/logger         | 100.00%  | 9         | 53    |
+| ✅     | stdlib/pexec          | 92.55%   | 41        | 205   |
+| ❌     | stdlib/session        | 78.20%   | 72        | 313   |
+| ✅     | stdlib/shared         | 95.90%   | 57        | 165   |
+| ✅     | stdlib/smtp           | 86.89%   | 38        | 280   |
+| ✅     | stdlib/span           | 100.00%  | 0         | 9     |
+| ✅     | stdlib/time           | 42.78%   | 5         | 135   |
+| ❌     | telemetry             | 73.04%   | 10        | 143   |
+| ✅     | tests                 | 84.80%   | 223       | 1129  |
 
 ## Functions
 
@@ -320,6 +320,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Source                                | 88.20%   | 7         |
 | ✅     |                      | catchClause                           | 100.00%  | 2         |
 | ✅     |                      | collapseBlankLines                    | 100.00%  | 8         |
+| ✅     |                      | collectImports                        | 100.00%  | 8         |
 | ❌     |                      | format                                | 80.00%   | 6         |
 | ✅     |                      | includeKeyword                        | 40.00%   | 2         |
 | ✅     |                      | isBlockStmt                           | 100.00%  | 1         |
@@ -327,7 +328,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | isDecl                                | 100.00%  | 1         |
 | ✅     |                      | isFuncDecl                            | 100.00%  | 0         |
 | ✅     |                      | phpQuote                              | 78.60%   | 5         |
-| ✅     |                      | printProgram                          | 94.90%   | 15        |
+| ✅     |                      | printProgram                          | 95.00%   | 15        |
 | ✅     |                      | printer.appendToLine                  | 71.40%   | 2         |
 | ✅     |                      | printer.args                          | 71.40%   | 3         |
 | ✅     |                      | printer.arrayLit                      | 100.00%  | 9         |
@@ -363,7 +364,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | printer.stmts                         | 100.00%  | 4         |
 | ✅     |                      | printer.thenEnd                       | 66.70%   | 1         |
 | ✅     |                      | printer.trailingComment               | 100.00%  | 4         |
-| ✅     |                      | printer.typeName                      | 83.30%   | 6         |
+| ✅     |                      | printer.typeName                      | 85.70%   | 7         |
 | ✅     |                      | printer.use                           | 90.00%   | 4         |
 | ✅     |                      | returnType                            | 100.00%  | 1         |
 | ✅     |                      | shortName                             | 100.00%  | 1         |
@@ -485,8 +486,9 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     |                      | collectAssignExprs                    | 29.20%   | 19        |
 | ✅     |                      | declaredNames.hasClass                | 100.00%  | 1         |
 | ✅     |                      | declaredNames.hasFunc                 | 100.00%  | 1         |
+| ✅     |                      | hostFunc                              | 100.00%  | 0         |
 | ✅     |                      | isScalarLiteral                       | 100.00%  | 7         |
-| ✅     |                      | knownRuntime                          | 100.00%  | 0         |
+| ✅     |                      | knownRuntime                          | 100.00%  | 2         |
 | ✅     |                      | lintChainedAssign                     | 100.00%  | 2         |
 | ✅     |                      | lintCondition                         | 100.00%  | 1         |
 | ✅     |                      | lintInterfaces                        | 100.00%  | 1         |
