@@ -197,6 +197,15 @@ Filesystem:
   climbs stops at the root. Matches come back in the shape the pattern was
   written in, as PHP's do. `glob()` takes no `$flags` argument, so `GLOB_BRACE`
   and the rest are not defined. See the path rules under Includes.
+- `opendir()` takes no `$context` argument, there being no stream contexts to
+  pass it, and the handle it returns carries the listing rather than an open
+  directory: a source filesystem an embedded application ships has no
+  descriptor to hold. `readdir()` and `closedir()` require that handle. PHP
+  falls back to the last directory `opendir()` opened, which needs a global the
+  runtime does not keep. Names come back sorted, with `"."` and `".."` first, as
+  `scandir()` answers; PHP's `readdir()` answers in the directory's own order,
+  so a script that depends on an order sorts either way. Reading a handle after
+  `closedir()` reports the end of the listing, where PHP throws.
 
 Arrays:
 
