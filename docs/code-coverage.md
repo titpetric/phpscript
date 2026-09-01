@@ -21,7 +21,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | cmd/phpscript/lint    | 73.10%   | 57        | 209   |
 | ✅     | cmd/phpscript/list    | 30.00%   | 4         | 35    |
 | ❌     | cmd/phpscript/run     | 26.67%   | 11        | 77    |
-| ✅     | cmd/phpscript/server  | 80.88%   | 121       | 693   |
+| ✅     | cmd/phpscript/server  | 80.88%   | 121       | 692   |
 | ✅     | cmd/phpscript/test    | 80.96%   | 486       | 1747  |
 | ❌     | cmd/phpscript/version | 0.00%    | 31        | 79    |
 | ✅     | config                | 94.49%   | 55        | 218   |
@@ -57,7 +57,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | stdlib/smtp           | 86.89%   | 38        | 280   |
 | ✅     | stdlib/span           | 100.00%  | 0         | 9     |
 | ✅     | stdlib/time           | 42.78%   | 5         | 135   |
-| ❌     | telemetry             | 73.04%   | 10        | 143   |
+| ✅     | telemetry             | 94.00%   | 12        | 119   |
 | ✅     | tests                 | 84.80%   | 223       | 1129  |
 
 ## Functions
@@ -157,7 +157,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | hostMux.ServeHTTP                     | 100.00%  | 1         |
 | ✅     |                      | newHandler                            | 77.80%   | 2         |
 | ✅     |                      | newHostMux                            | 100.00%  | 1         |
-| ✅     |                      | newVirtualHost                        | 93.00%   | 10        |
+| ✅     |                      | newVirtualHost                        | 92.90%   | 10        |
 | ✅     |                      | nonFatal                              | 100.00%  | 0         |
 | ✅     |                      | nonFatalModule.Start                  | 100.00%  | 3         |
 | ✅     |                      | normalizeHost                         | 100.00%  | 1         |
@@ -1669,9 +1669,8 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Start                                 | 100.00%  | 0         |
 | ✅     |                      | StartSpan                             | 100.00%  | 0         |
 | ✅     |                      | TraceFromContext                      | 100.00%  | 0         |
-| ✅     |                      | TraceHost                             | 100.00%  | 0         |
+| ✅     |                      | TraceHost                             | 66.70%   | 2         |
 | ✅     |                      | TraceID                               | 100.00%  | 0         |
-| ✅     |                      | TracingMiddleware                     | 100.00%  | 0         |
 | ✅     |                      | WithSpanFilename                      | 100.00%  | 1         |
 | ✅     |                      | WithSpanLine                          | 100.00%  | 1         |
 | ✅     |                      | WithTrace                             | 100.00%  | 0         |
