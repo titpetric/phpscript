@@ -20,7 +20,11 @@ func discard(l *Logger) *Logger {
 // the extent of it: an error fails the span the work runs in, and nothing else
 // that was logged is recorded anywhere near it.
 func TestLoggerFailsSpanOnError(t *testing.T) {
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+	// oida records only when it is asked to; a test that reads its
+	// traces back is asking.
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,15 +51,19 @@ func TestLoggerFailsSpanOnError(t *testing.T) {
 
 	// A migration that did not apply is red on the front end rather than a line
 	// to read, and the error it failed with is the one mig reported.
-	if spans[0].Err() == nil || !strings.Contains(spans[0].Error, "failed: syntax error") {
-		t.Fatalf("span error = %q", spans[0].Error)
+	if spans[0].Err() == nil || !strings.Contains(spans[0].ErrorText, "failed: syntax error") {
+		t.Fatalf("span error = %q", spans[0].ErrorText)
 	}
 }
 
 // TestLoggerErrorWithoutErrorValue covers a caller that reported what happened
 // without an error to go with it: the message is what the span fails with.
 func TestLoggerErrorWithoutErrorValue(t *testing.T) {
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+	// oida records only when it is asked to; a test that reads its
+	// traces back is asking.
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +77,7 @@ func TestLoggerErrorWithoutErrorValue(t *testing.T) {
 	span.End()
 
 	spans := trace.Clone().Spans[1:]
-	if len(spans) != 1 || spans[0].Error != "failed" {
+	if len(spans) != 1 || spans[0].ErrorText != "failed" {
 		t.Fatalf("spans = %+v", spans)
 	}
 }

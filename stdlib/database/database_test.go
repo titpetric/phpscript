@@ -14,7 +14,11 @@ import (
 )
 
 func TestDatabaseObserverRecordsQuerySpan(t *testing.T) {
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+	// oida records only when it is asked to; a test that reads its
+	// traces back is asking.
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +101,7 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 			observe(client.QueryLogEntry{Query: "select 1", Err: test.err})
 
 			if got := span.Err() != nil; got != test.wantError {
-				t.Fatalf("failed = %t, error = %q", got, span.Error)
+				t.Fatalf("failed = %t, error = %q", got, span.ErrorText)
 			}
 		})
 	}
@@ -199,7 +203,11 @@ func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 // call is where it is recorded. Otherwise a boundary that refuses the wrong
 // thing leaves nothing behind to debug it with.
 func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+	// oida records only when it is asked to; a test that reads its
+	// traces back is asking.
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +223,7 @@ func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
 
 	spans := trace.Clone().Spans
 	span := spans[len(spans)-1]
-	if span.Name != "db.Query" || span.Err() == nil || !strings.Contains(span.Error, "delete is not allowed") {
+	if span.Name != "db.Query" || span.Err() == nil || !strings.Contains(span.ErrorText, "delete is not allowed") {
 		t.Fatalf("span = %+v", span)
 	}
 	if span.Attributes["query_type"] != "delete" || span.Attributes["query_comment"] != "purge" {
@@ -228,7 +236,15 @@ func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
 func newObservedSpan(t *testing.T) (*telemetry.Span, func(client.QueryLogEntry)) {
 	t.Helper()
 
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+
+	// oida records only when it is asked to; a test that reads its
+
+	// traces back is asking.
+
+	traceOptions.Enabled = true
+
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}

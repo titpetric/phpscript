@@ -24,7 +24,15 @@ type telemetryRecorder struct {
 func newTelemetryRecorder(t *testing.T) *telemetryRecorder {
 	t.Helper()
 
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+
+	// oida records only when it is asked to; a test that reads its
+
+	// traces back is asking.
+
+	traceOptions.Enabled = true
+
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,13 +114,17 @@ func TestRuntimeObserverReceivesExecutionErrorSpan(t *testing.T) {
 	// The message is the recorded error, not part of the span name: names stay
 	// stable so one kind of failure reads as one kind of failure.
 	span := recorder.spans[0]
-	if span.Name != "php error" || span.Error != "assign: target is not an array" || span.Filename != "/main.php" || span.Line != 1 {
+	if span.Name != "php error" || span.ErrorText != "assign: target is not an array" || span.Filename != "/main.php" || span.Line != 1 {
 		t.Fatalf("error span = %+v", span)
 	}
 }
 
 func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+	// oida records only when it is asked to; a test that reads its
+	// traces back is asking.
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}

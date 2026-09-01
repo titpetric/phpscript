@@ -176,22 +176,21 @@ func newTracedHandler(root fstest.MapFS) (http.Handler, error) {
 // middleware and the front end the platform would wire, and hands the observer
 // the tracer that recorder owns.
 func newTracedServer(root fstest.MapFS) (http.Handler, *telemetry.Module, error) {
-	options := telemetry.NewOptions()
+	options := telemetry.NewOptions("phpscript")
+	options.Enabled = true
 	options.ServiceName = "phpscript"
 	tracer, err := telemetry.New(options)
 	if err != nil {
 		return nil, nil, err
 	}
-	options.Tracer = tracer
-
 	recorder := telemetry.NewModule(tracer)
 	handler, err := newHandler(root, "", DefaultDocumentRoot, runner.Options{}, false, false, recorder)
 	if err != nil {
 		return nil, nil, err
 	}
 	router := chi.NewRouter()
-	router.Use(telemetry.TracingMiddleware(options))
-	if err := telemetry.Mount(router, options); err != nil {
+	router.Use(tracer.Middleware)
+	if err := telemetry.Mount(router, tracer); err != nil {
 		return nil, nil, err
 	}
 	router.Handle("/*", handler)

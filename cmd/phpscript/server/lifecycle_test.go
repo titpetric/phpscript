@@ -27,7 +27,11 @@ func (m *failingModule) Start(context.Context) error {
 // contract: the platform is told the module started, and the operator can still
 // find out that it did not.
 func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+	// oida records only when it is asked to; a test that reads its
+	// traces back is asking.
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +57,7 @@ func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 	if trace.Name != "phpstartup:shop.example.com" {
 		t.Fatalf("trace name = %q, want the module name", trace.Name)
 	}
-	if trace.Error == "" || trace.State != telemetry.StateError {
+	if trace.ErrorText == "" || trace.State != telemetry.StateError {
 		t.Fatalf("trace = %+v, want it marked failed", trace)
 	}
 }
@@ -61,7 +65,11 @@ func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 // A module that starts cleanly records as a successful trace and still returns
 // nil, so the wrapper is not something to reach for only when things break.
 func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+	// oida records only when it is asked to; a test that reads its
+	// traces back is asking.
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +80,7 @@ func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	snapshot := recorder.Snapshot()
-	if len(snapshot.Log) != 1 || snapshot.Log[0].Error != "" {
+	if len(snapshot.Log) != 1 || snapshot.Log[0].ErrorText != "" {
 		t.Fatalf("traces = %+v, want one clean trace", snapshot.Log)
 	}
 }

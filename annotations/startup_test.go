@@ -105,7 +105,11 @@ func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 		{name: "failure", source: "<?php\n// @startup\nmissing_function();", wantFailure: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			tracer, err := telemetry.New(telemetry.NewOptions())
+			traceOptions := telemetry.NewOptions("phpscript")
+			// oida records only when it is asked to; a test that reads its
+			// traces back is asking.
+			traceOptions.Enabled = true
+			tracer, err := telemetry.New(traceOptions)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -135,11 +139,11 @@ func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 			if len(trace.Spans) == 0 || trace.Spans[0].Name != "@startup startup.php" || trace.Spans[0].Filename != "startup.php" {
 				t.Fatalf("unexpected startup spans: %+v", trace.Spans)
 			}
-			if gotError := trace.Spans[0].Error != ""; gotError != test.wantFailure {
-				t.Fatalf("span error = %q, wantFailure = %t", trace.Spans[0].Error, test.wantFailure)
+			if gotError := trace.Spans[0].ErrorText != ""; gotError != test.wantFailure {
+				t.Fatalf("span error = %q, wantFailure = %t", trace.Spans[0].ErrorText, test.wantFailure)
 			}
-			if gotError := trace.Error != ""; gotError != test.wantFailure {
-				t.Fatalf("trace error = %q, wantFailure = %t", trace.Error, test.wantFailure)
+			if gotError := trace.ErrorText != ""; gotError != test.wantFailure {
+				t.Fatalf("trace error = %q, wantFailure = %t", trace.ErrorText, test.wantFailure)
 			}
 		})
 	}

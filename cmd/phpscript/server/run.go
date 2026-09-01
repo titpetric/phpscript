@@ -517,9 +517,8 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 		if err != nil {
 			return nil, nil, fmt.Errorf("virtualhost %q: telemetry: %w", name, err)
 		}
-		telemetryOptions.Tracer = tracer
-		router.Use(telemetry.TracingMiddleware(telemetryOptions))
-		if err := telemetry.Mount(router, telemetryOptions); err != nil {
+		router.Use(tracer.Middleware)
+		if err := telemetry.Mount(router, tracer); err != nil {
 			return nil, nil, fmt.Errorf("virtualhost %q: telemetry: %w", name, err)
 		}
 		observers = append(observers, telemetry.NewModule(tracer))

@@ -2,10 +2,10 @@ package telemetry
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/titpetric/oida"
-	"github.com/titpetric/oida/frontend"
+	"github.com/titpetric/oida/model"
+	"github.com/titpetric/oida/storage"
 )
 
 // The recorded data and the recorder both live in oida. These aliases spell
@@ -35,41 +35,18 @@ type (
 	// Tracer records traces and backs the debug front end.
 	Tracer = oida.Tracer
 
-	// Recorder is the substitutable subset of Tracer.
-	Recorder = oida.Recorder
-
 	// Sampler decides whether a request is traced.
 	Sampler = oida.Sampler
 
 	// Storage retains completed traces.
 	Storage = oida.Storage
 
-	// HTTPInfo describes the request a trace was created for.
-	HTTPInfo = oida.HTTPInfo
-
-	// Memory describes current process memory and GC pressure.
-	Memory = oida.Memory
-
-	// MemoryUse holds the allocation deltas observed while a trace ran.
-	MemoryUse = oida.MemoryUse
-
-	// PoolEstimate is a heuristic concurrency estimate.
-	PoolEstimate = oida.PoolEstimate
-
-	// StateDuration is the lifetime trace time observed in one state.
-	StateDuration = oida.StateDuration
-
-	// Statistic aggregates one group of traces in the rolling window.
-	Statistic = oida.Statistic
-
-	// HostStat aggregates the traffic of one host.
-	HostStat = oida.HostStat
-
-	// Stats contains the most frequent trace groups in the rolling window.
-	Stats = oida.Stats
-
 	// Snapshot is the complete read model of a tracer at one point in time.
 	Snapshot = oida.Snapshot
+
+	// Router is the subset of a router needed to mount the debug front end,
+	// satisfied by chi.Router, which is what platform.Router is.
+	Router = oida.Router
 )
 
 // Span kinds. The set is open: an unrecognized value is valid, which is what
@@ -106,8 +83,11 @@ const (
 	RequestIDHeader = oida.RequestIDHeader
 
 	// BackgroundHost is the host label of traces that did not arrive over the
-	// network: startup steps, cron ticks, queue consumers.
-	BackgroundHost = oida.BackgroundHost
+	// network: startup steps, cron ticks, queue consumers. oida stopped
+	// re-exporting it from its root package; the constant itself is still the
+	// recorded data's, so this reads it from model rather than inventing a
+	// second label for the same group.
+	BackgroundHost = model.BackgroundHost
 )
 
 // Recording and configuration failures. Every configuration failure wraps
@@ -121,38 +101,19 @@ var (
 	ErrDisabled          = oida.ErrDisabled
 )
 
-// NewOptions returns the default options.
-func NewOptions() Options {
-	return oida.NewOptions()
+// NewOptions returns the default options for a service of that name, which the
+// front end displays and every trace records. oida applies the OIDA_*
+// environment to options built this way, so a deployment still configures
+// itself; options built as a literal read none.
+func NewOptions(serviceName string) Options {
+	return oida.NewOptions(serviceName)
 }
 
-// New returns a tracer configured with opts. Prefer it over Configure in
-// libraries and tests: it does not touch process wide state.
+// New returns a tracer configured with opts. It is the only constructor: oida
+// no longer keeps a process wide tracer, so a caller holds the one it built and
+// hands it to whatever records into it.
 func New(opts Options) (*Tracer, error) {
 	return oida.New(opts)
-}
-
-// Configure replaces the process wide tracer with one built from opts and
-// returns it.
-func Configure(opts Options) (*Tracer, error) {
-	return oida.Configure(opts)
-}
-
-// Default returns the process wide tracer, creating it on first use.
-func Default() *Tracer {
-	return oida.Default()
-}
-
-// Resolve returns the tracer the options point at: the explicit one when set,
-// the process default otherwise.
-func Resolve(opts Options) (*Tracer, error) {
-	return oida.Resolve(opts)
-}
-
-// TracingMiddleware returns middleware recording every sampled request into the
-// tracer resolved from opts.
-func TracingMiddleware(opts Options) func(http.Handler) http.Handler {
-	return oida.TracingMiddleware(opts)
 }
 
 // Start records a span in the trace carried by ctx and returns a context
@@ -198,51 +159,33 @@ func TraceID(ctx context.Context) string {
 	return oida.TraceID(ctx)
 }
 
-// TraceHost returns the host a trace belongs to. Background traces have none,
-// so they group under BackgroundHost.
+// TraceHost returns the host a trace belongs to. Background traces did not
+// arrive over the network and have no host, so they group under
+// BackgroundHost. oida dropped the function along with the rest of its view
+// model; the grouping is still what the server's own reporting reads by, so it
+// is stated here rather than at each caller.
 func TraceHost(trace Trace) string {
-	return oida.TraceHost(trace)
-}
-
-// ValidID reports whether id looks like a recorded trace identifier. It keeps
-// hostile input out of lookups and out of rendered links.
-func ValidID(id string) bool {
-	return oida.ValidID(id)
-}
-
-// NewStorageMemory returns in-memory storage retaining size traces.
-func NewStorageMemory(size int) Storage {
-	return oida.NewStorageMemory(size)
+	if trace.HTTP == nil || trace.HTTP.Host == "" {
+		return BackgroundHost
+	}
+	return trace.HTTP.Host
 }
 
 // NewStorageDisk returns storage retaining at most limit traces as JSON
 // documents, so they survive a restart.
+//
+// This is the one place phpscript names an oida sub-package. oida selects a
+// driver from OIDA_STORAGE_DRIVER and the OIDA_STORAGE_* variables, and the
+// telemetry block in a site's configuration is what phpscript configures a
+// site by; reaching the constructor directly is what keeps `driver: disk`
+// meaning what it says instead of moving that choice into the environment.
 func NewStorageDisk(limit int, paths ...string) (Storage, error) {
-	return oida.NewStorageDisk(limit, paths...)
+	return storage.NewDiskStorage(limit, paths...)
 }
 
-// NewRateSampler returns a sampler tracing the given fraction of requests.
-func NewRateSampler(rate float64) Sampler {
-	return oida.NewRateSampler(rate)
-}
-
-// Router is the subset of a router needed to mount the debug front end. It is
-// satisfied by chi.Router, which is what platform.Router is.
-type Router = frontend.Router
-
-// Mount registers the debug front end on r under Options.Path, wired to the
-// tracer resolved from opts.
-func Mount(r Router, opts Options) error {
-	return frontend.Mount(r, opts)
-}
-
-// Handler returns the debug front end handler for the tracer resolved from
-// opts.
-func Handler(opts Options) http.Handler {
-	return frontend.Handler(opts)
-}
-
-// HandlerFor returns the debug front end handler of one tracer.
-func HandlerFor(tracer *Tracer) http.Handler {
-	return frontend.HandlerFor(tracer)
+// Mount registers the debug front end on r under Options.Path, serving the
+// traces of that tracer. oida takes the tracer itself now, there being no
+// process wide one to resolve from options.
+func Mount(r Router, tracer *Tracer) error {
+	return oida.Mount(r, tracer)
 }

@@ -8,7 +8,11 @@ import (
 )
 
 func TestSessionStorageRecordsSpans(t *testing.T) {
-	tracer, err := telemetry.New(telemetry.NewOptions())
+	traceOptions := telemetry.NewOptions("phpscript")
+	// oida records only when it is asked to; a test that reads its
+	// traces back is asking.
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
 		t.Fatal(err)
 	}

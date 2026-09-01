@@ -13,10 +13,11 @@ import (
 
 // newTestModule stands in for the host: it builds the recorder the platform
 // would build and hands the module its tracer.
-func newTestModule(t *testing.T) (*Module, Options) {
+func newTestModule(t *testing.T) *Module {
 	t.Helper()
 
-	options := NewOptions()
+	options := NewOptions("phpscript")
+	options.Enabled = true
 	options.ServiceName = "phpscript"
 	options.RouteFunc = func(r *http.Request) string {
 		if routeContext := chi.RouteContext(r.Context()); routeContext != nil {
@@ -28,16 +29,16 @@ func newTestModule(t *testing.T) (*Module, Options) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	options.Tracer = tracer
-	return NewModule(tracer), options
+	return NewModule(tracer)
 }
 
 func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
-	module, options := newTestModule(t)
+	module := newTestModule(t)
+	tracer := module.Tracer()
 
 	router := chi.NewRouter()
-	router.Use(TracingMiddleware(options))
-	if err := Mount(router, options); err != nil {
+	router.Use(tracer.Middleware)
+	if err := Mount(router, tracer); err != nil {
 		t.Fatal(err)
 	}
 	router.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +86,7 @@ func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
 }
 
 func TestModuleObservesRuntimeReports(t *testing.T) {
-	module, _ := newTestModule(t)
+	module := newTestModule(t)
 
 	ctx, trace, err := module.Tracer().StartTrace(context.Background(), "GET /index.php")
 	if err != nil {
@@ -115,7 +116,7 @@ func TestModuleObservesRuntimeReports(t *testing.T) {
 }
 
 func TestModuleTracksLifecycleWork(t *testing.T) {
-	module, _ := newTestModule(t)
+	module := newTestModule(t)
 	failure := errors.New("startup failed")
 
 	err := module.TrackLifecycle(context.Background(), "@startup boot.php", "boot.php", func(ctx context.Context) error {
@@ -137,8 +138,8 @@ func TestModuleTracksLifecycleWork(t *testing.T) {
 	if trace.Name != "@startup boot.php" || trace.HTTP != nil || TraceHost(trace) != BackgroundHost {
 		t.Fatalf("trace = %+v", trace)
 	}
-	if trace.State != StateError || trace.Error != failure.Error() {
-		t.Fatalf("state = %q, error = %q", trace.State, trace.Error)
+	if trace.State != StateError || trace.ErrorText != failure.Error() {
+		t.Fatalf("state = %q, error = %q", trace.State, trace.ErrorText)
 	}
 	if len(trace.Spans) != 2 || trace.Spans[0].Filename != "boot.php" || trace.Spans[1].Filename != "boot.php" {
 		t.Fatalf("spans = %+v", trace.Spans)
