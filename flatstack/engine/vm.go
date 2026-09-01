@@ -54,6 +54,18 @@ type iteratorState struct {
 	key    any
 }
 
+// yieldIterators hands a live-value walker everything one frame's foreach state
+// is holding: the container being walked and every entry taken off it.
+func yieldIterators(yield func(any), iterators map[int]*iteratorState) {
+	for _, iterator := range iterators {
+		yield(iterator.source)
+		for _, entry := range iterator.entries {
+			yield(entry.Key)
+			yield(entry.Value)
+		}
+	}
+}
+
 type errorHandler struct {
 	// target is the finally block of the try, entered either by a matching
 	// catch clause falling through it or by an unmatched error on its way out.
@@ -74,6 +86,13 @@ type callFrame struct {
 	initialized []bool
 	extras      map[string]any
 	refWrites   []bool
+
+	// iterators is the caller's live foreach state. The compiler numbers
+	// iterators per function, so a callee reuses the numbers its caller is
+	// standing in, and a recursive call reuses them exactly. Saving the map
+	// here and handing the callee an empty one is what keeps a foreach that
+	// calls a function from being closed by the call it made.
+	iterators map[int]*iteratorState
 }
 
 // MemoryHost is an optional Host extension for memory accounting, discovered
@@ -154,7 +173,10 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 	// without by-reference calls pays nothing, and per frame, so a nested call
 	// cannot see the caller's marks.
 	var refWrites []bool
-	iterators := make(map[int]*iteratorState)
+	// iterators is the live foreach state of the frame in flight, allocated on
+	// the first opIterInit so a function that runs no foreach - which is most of
+	// them - pays nothing for the call that enters it.
+	var iterators map[int]*iteratorState
 	var handlers []errorHandler
 	var callFrames []callFrame
 	defer func() {
@@ -210,6 +232,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			initialized = frame.initialized
 			extras = frame.extras
 			refWrites = frame.refWrites
+			iterators = frame.iterators
 			if extras == nil {
 				extras = map[string]any{}
 			}
@@ -279,14 +302,12 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 						yield(frame.locals[i])
 					}
 				}
+				// A suspended frame's foreach still holds its listing, so
+				// the walk has to reach it or a recursive walk under-reports
+				// everything but the innermost loop.
+				yieldIterators(yield, frame.iterators)
 			}
-			for _, iterator := range iterators {
-				yield(iterator.source)
-				for _, entry := range iterator.entries {
-					yield(entry.Key)
-					yield(entry.Value)
-				}
-			}
+			yieldIterators(yield, iterators)
 		})
 		defer memHost.PopLiveWalker()
 	}
@@ -592,11 +613,13 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 						initialized: initialized,
 						extras:      extras,
 						refWrites:   refWrites,
+						iterators:   iterators,
 					})
 					locals = make([]any, len(program.localNames))
 					initialized = make([]bool, len(program.localNames))
 					extras = map[string]any{}
 					refWrites = nil
+					iterators = nil
 					for i, paramName := range def.params {
 						if i < len(arguments) {
 							slot := -1
@@ -647,11 +670,13 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 						initialized: initialized,
 						extras:      extras,
 						refWrites:   refWrites,
+						iterators:   iterators,
 					})
 					locals = make([]any, len(program.localNames))
 					initialized = make([]bool, len(program.localNames))
 					extras = map[string]any{}
 					refWrites = nil
+					iterators = nil
 					bound := append([]any{receiver}, arguments...)
 					for i, paramName := range def.params {
 						if i >= len(bound) {
@@ -717,6 +742,9 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			value, popErr := pop()
 			if popErr != nil {
 				return popErr
+			}
+			if iterators == nil {
+				iterators = make(map[int]*iteratorState)
 			}
 			iterators[inst.a] = &iteratorState{entries: host.Entries(value), source: value}
 		case opIterNext:
@@ -829,6 +857,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				initialized = lastFrame.initialized
 				extras = lastFrame.extras
 				refWrites = lastFrame.refWrites
+				iterators = lastFrame.iterators
 				if extras == nil {
 					extras = map[string]any{}
 				}
