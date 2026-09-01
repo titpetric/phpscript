@@ -1262,6 +1262,23 @@ function fgetcsv(resource $stream, mixed ...$opts): mixed
 function fputcsv(resource $stream, mixed $fields, mixed ...$opts): mixed
 ```
 
+#### dirs
+
+```php
+// closedir drops the listing $dir_handle was holding and answers nothing, as php's does; a handle it closed reads as exhausted rather than raising, which is where php throws.
+function closedir(mixed $dir_handle): void
+```
+
+```php
+// opendir returns a handle for reading the names in $directory, or false when it is not a directory; php's $context argument is not taken, because there are no stream contexts to pass it.
+function opendir(string $directory): mixed
+```
+
+```php
+// readdir returns the next name in $dir_handle, or false once the listing is exhausted; "." and ".." are listed, as php lists them, and the handle is required, because there is no last-opened directory to fall back on.
+function readdir(mixed $dir_handle): mixed
+```
+
 #### paths
 
 ```php

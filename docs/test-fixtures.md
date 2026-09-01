@@ -135,6 +135,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | flatstack_arithmetic.phpt                  | PASS       | PASS    | PASS |
 | flatstack_destructuring_assignment.phpt    | PASS       | PASS    | PASS |
 | flatstack_runner_compatible_fast_path.phpt | PASS       | PASS    | SKIP |
+| foreach_across_a_call.phpt                 | PASS       | PASS    | PASS |
 | list_into_property.phpt                    | PASS       | PASS    | PASS |
 
 ## tests/fixtures/functions
@@ -283,6 +284,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | json_encode_flags.phpt           | PASS       | PASS    | SKIP |
 | json_key_order.phpt              | PASS       | PASS    | PASS |
 | mail_unconfigured.phpt           | PASS       | PASS    | SKIP |
+| opendir.phpt                     | PASS       | PASS    | PASS |
 | output_buffering.phpt            | PASS       | PASS    | PASS |
 | parse_str.phpt                   | PASS       | PASS    | PASS |
 | parse_str_edge_cases.phpt        | PASS       | PASS    | PASS |
@@ -341,7 +343,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/bindings    | 27       | 27     | 0      |
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 9        | 9      | 0      |
-| tests/fixtures/flatstack   | 7        | 7      | 0      |
+| tests/fixtures/flatstack   | 8        | 8      | 0      |
 | tests/fixtures/functions   | 10       | 10     | 0      |
 | tests/fixtures/gd          | 7        | 7      | 0      |
 | tests/fixtures/includes    | 3        | 3      | 0      |
@@ -352,7 +354,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/pexec       | 2        | 2      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
-| tests/fixtures/stdlib      | 22       | 22     | 0      |
+| tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 224      | 224    | 0      |
+| **Total**                  | 226      | 226    | 0      |

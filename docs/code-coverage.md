@@ -26,7 +26,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ❌     | cmd/phpscript/version | 0.00%    | 31        | 79    |
 | ✅     | config                | 94.49%   | 55        | 218   |
 | ✅     | flatstack             | 50.00%   | 0         | 15    |
-| ✅     | flatstack/engine      | 88.21%   | 935       | 1934  |
+| ✅     | flatstack/engine      | 86.57%   | 934       | 1953  |
 | ❌     | formatter             | 79.59%   | 307       | 1252  |
 | ✅     | internal/apidoc       | 84.01%   | 364       | 968   |
 | ✅     | internal/arrayi64     | 100.00%  | 6         | 18    |
@@ -34,9 +34,9 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | internal/table        | 100.00%  | 24        | 117   |
 | ✅     | lint                  | 86.29%   | 246       | 802   |
 | ❌     | list                  | 76.85%   | 136       | 427   |
-| ❌     | model                 | 36.84%   | 325       | 956   |
+| ❌     | model                 | 37.06%   | 325       | 956   |
 | ✅     | parser                | 91.33%   | 1041      | 3167  |
-| ✅     | runner                | 86.51%   | 1662      | 6008  |
+| ✅     | runner                | 86.52%   | 1662      | 6008  |
 | ✅     | runner/bindings       | 86.72%   | 95        | 462   |
 | ✅     | runner/coverage       | 92.37%   | 45        | 157   |
 | ❌     | scripts/list-apis     | 0.00%    | 1         | 13    |
@@ -45,7 +45,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     | stdlib/core           | 85.48%   | 959       | 3730  |
 | ✅     | stdlib/crypto         | 85.97%   | 56        | 270   |
 | ✅     | stdlib/database       | 84.59%   | 105       | 625   |
-| ✅     | stdlib/files          | 87.78%   | 272       | 881   |
+| ✅     | stdlib/files          | 89.06%   | 279       | 915   |
 | ❌     | stdlib/gd             | 76.99%   | 154       | 535   |
 | ❌     | stdlib/http           | 72.75%   | 61        | 346   |
 | ✅     | stdlib/info           | 75.00%   | 0         | 9     |
@@ -300,7 +300,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | compiler.listAssignment               | 84.60%   | 6         |
 | ✅     |                      | compiler.resolveClass                 | 100.00%  | 3         |
 | ✅     |                      | compiler.slot                         | 100.00%  | 1         |
-| ❌     |                      | compiler.stmt                         | 77.60%   | 50        |
+| ❌     |                      | compiler.stmt                         | 79.10%   | 50        |
 | ❌     |                      | compiler.storeTop                     | 71.40%   | 9         |
 | ✅     |                      | compiler.switchStmt                   | 84.60%   | 9         |
 | ✅     |                      | compiler.tryStmt                      | 90.20%   | 12        |
@@ -309,9 +309,10 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | lookupUserFunc                        | 100.00%  | 4         |
 | ✅     |                      | phpEmptyContainer                     | 100.00%  | 0         |
 | ✅     |                      | restoreHostLocals                     | 83.30%   | 1         |
-| ✅     |                      | run                                   | 80.10%   | 551       |
+| ✅     |                      | run                                   | 81.00%   | 547       |
 | ✅     |                      | unsupported                           | 100.00%  | 0         |
 | ✅     |                      | vmScratch.release                     | 100.00%  | 0         |
+| ✅     |                      | yieldIterators                        | 20.00%   | 3         |
 | ✅     | formatter            | Changed                               | 100.00%  | 3         |
 | ✅     |                      | CollectComments                       | 100.00%  | 5         |
 | ✅     |                      | NeedFormatting                        | 100.00%  | 0         |
@@ -578,12 +579,12 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | collectContract                       | 93.30%   | 7         |
 | ✅     |                      | contractOf                            | 100.00%  | 0         |
 | ✅     |                      | declaredMethods                       | 100.00%  | 7         |
-| ❌     |                      | exprAssignsTo                         | 48.00%   | 34        |
+| ❌     |                      | exprAssignsTo                         | 60.00%   | 34        |
 | ✅     |                      | exprsAssignTo                         | 100.00%  | 3         |
 | ✅     |                      | interfaceIndex                        | 100.00%  | 5         |
 | ✅     |                      | listAssignsTo                         | 42.90%   | 5         |
 | ✅     |                      | parseRouteParam                       | 100.00%  | 10        |
-| ❌     |                      | stmtAssignsTo                         | 25.00%   | 30        |
+| ❌     |                      | stmtAssignsTo                         | 45.80%   | 30        |
 | ✅     |                      | stmtsAssignTo                         | 100.00%  | 3         |
 | ✅     |                      | validRouteName                        | 100.00%  | 11        |
 | ✅     | parser               | Parse                                 | 100.00%  | 2         |
@@ -908,7 +909,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | Runtime.execAssign                    | 81.80%   | 43        |
 | ❌     |                      | Runtime.execDoWhile                   | 78.60%   | 11        |
 | ✅     |                      | Runtime.execFor                       | 81.00%   | 23        |
-| ✅     |                      | Runtime.execForeach                   | 82.10%   | 44        |
+| ✅     |                      | Runtime.execForeach                   | 85.70%   | 44        |
 | ✅     |                      | Runtime.execOne                       | 84.00%   | 21        |
 | ✅     |                      | Runtime.execStaticVar                 | 91.70%   | 10        |
 | ✅     |                      | Runtime.execTry                       | 92.00%   | 22        |
@@ -1486,6 +1487,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | openMode                              | 60.00%   | 1         |
 | ✅     |                      | outputStream.Write                    | 100.00%  | 0         |
 | ✅     |                      | registerCSV                           | 94.30%   | 14        |
+| ✅     |                      | registerDirs                          | 100.00%  | 7         |
 | ✅     |                      | registerPaths                         | 75.00%   | 0         |
 | ❌     |                      | registerReads                         | 79.20%   | 47        |
 | ✅     |                      | registerStat                          | 85.70%   | 19        |
@@ -1496,7 +1498,7 @@ cover. Tests with cognitive complexity 0 would be covered by invocation.
 | ✅     |                      | registerWrites                        | 92.30%   | 39        |
 | ✅     |                      | root.fsPath                           | 66.70%   | 1         |
 | ✅     |                      | root.globSpelling                     | 100.00%  | 7         |
-| ❌     |                      | root.readDir                          | 63.60%   | 8         |
+| ✅     |                      | root.readDir                          | 100.00%  | 8         |
 | ✅     |                      | root.resolve                          | 100.00%  | 0         |
 | ✅     |                      | root.resolveWrite                     | 100.00%  | 1         |
 | ✅     |                      | root.sourceFS                         | 100.00%  | 0         |

@@ -267,6 +267,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [stdlib/database](extensions/implemented-apis.md#stdlibdatabase)
     - [stdlib/files](extensions/implemented-apis.md#stdlibfiles)
       - [csv](extensions/implemented-apis.md#csv)
+      - [dirs](extensions/implemented-apis.md#dirs)
       - [paths](extensions/implemented-apis.md#paths)
       - [reads](extensions/implemented-apis.md#reads)
       - [stat](extensions/implemented-apis.md#stat)
