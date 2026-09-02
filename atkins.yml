@@ -223,8 +223,7 @@ tasks:
   lint:
     passthru: true
     cmds:
-      - gofsck ./...
-      - go-fsck lint ./...
+      - splint ./...
 
   # Every generated document in one target. The coverage pair over Go sources
   # regenerates from the profile the test job wrote; the dbadmin pair needs

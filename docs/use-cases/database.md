@@ -185,7 +185,7 @@ inside string values.
 
 ### Run them at startup
 
-Migrations belong in an [`@startup`](../usage.md) file, so they finish before
+Migrations belong in an [`@startup`](../cli/server.md) file, so they finish before
 the server accepts requests. Create `migrate.php`:
 
 ```php
