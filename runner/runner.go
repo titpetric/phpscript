@@ -164,7 +164,9 @@ func (rt *Runtime) recordTraceError(err error) {
 	rt.traceContext(ctx, "php error").RecordError(err)
 }
 
-// runPrelude includes Options.Include before the first program of a session.
+// runPrelude includes Options.Include ahead of this request's entrypoint, so
+// the entrypoint and everything it includes see what it declared.
+//
 // A file that is not there is skipped: the option names what to load when the
 // application provides it, so one configuration covers a tree whether or not
 // the bootstrap file it names has been written yet.

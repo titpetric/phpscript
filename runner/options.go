@@ -31,15 +31,17 @@ type Options struct {
 	// Empty means the RootFS root.
 	WorkDir string `yaml:"work_dir"`
 
-	// Include names a file included once per session before the entrypoint, for
-	// the functions and classes an application expects to be there whatever it
-	// is running: a composer autoloader, a bootstrap file. It is the
-	// `--include` flag, and a virtual host sets its own in the runner block of
-	// its phpscript.yml.
+	// Include names a file included ahead of every entrypoint, for the
+	// functions and classes an application expects to be there whatever it is
+	// running: a composer autoloader, a bootstrap file. It is the `--include`
+	// flag, and a virtual host sets its own in the runner block of its
+	// phpscript.yml.
 	//
-	// A file that is not there is skipped rather than reported. The name says
-	// what to load when the application provides it, and one setting covers a
-	// server, a script run and a fixture run of the same tree.
+	// It is included once per request, before the entrypoint the request
+	// resolved to, so the entrypoint and everything it includes see what it
+	// declared. A file that is not there is skipped rather than reported: the
+	// name says what to load when the application provides it, and one setting
+	// covers a server, a script run and a fixture run of the same tree.
 	Include string `yaml:"include"`
 
 	// WritablePaths optionally restricts filesystem writes. When empty, writes are

@@ -1,11 +1,11 @@
 runner:
   work_dir: "."
   writable_paths: []
-  # A file included once per session before the entrypoint, for the functions
-  # and classes an application expects to be there whatever it is running: a
-  # composer autoloader, a bootstrap file. It is the --include flag, which
-  # overrides this, and a virtual host sets its own in the runner block of its
-  # phpscript.yml. A file that is not there is skipped.
+  # A file included ahead of every entrypoint, once per request, for the
+  # functions and classes an application expects to be there whatever it is
+  # running: a composer autoloader, a bootstrap file. It is the --include flag,
+  # which overrides this, and a virtual host sets its own in the runner block
+  # of its phpscript.yml. A file that is not there is skipped.
   include: ""
   # Upload limits, spelled and defaulted as php.ini spells them. A bare number
   # is bytes and an M suffix is megabytes; nothing else parses, and 0 is no

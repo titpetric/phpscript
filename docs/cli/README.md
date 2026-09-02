@@ -35,7 +35,7 @@ They may be written before the command name or after it, so
 |-------------------|--------------------------------------------------------------------------------------------------------------------------|
 | `-f`, `--file`    | Read a configuration file over the built-in defaults.                                                                    |
 | `-w`, `--workdir` | Change to this directory first, so every relative path resolves below it. The configuration file is read from there too. |
-| `--include`       | Include a PHP file before the entrypoint, when it exists. Also the `runner.include` configuration key.                   |
+| `--include`       | Include a PHP file ahead of every entrypoint, when it exists. Also the `runner.include` configuration key.               |
 | `-v`, `--verbose` | Report more. What that means is the command's: fixture failures, bound names, a coverage percentage.                     |
 | `--cpuprofile`    | Write a pprof CPU profile of the command.                                                                                |
 | `--memprofile`    | Write a pprof heap profile when the command ends.                                                                        |
@@ -43,9 +43,10 @@ They may be written before the command name or after it, so
 | `--coverfile`     | Where the profile goes. Implies `--cover`; `{time}` expands to a UTC timestamp and missing directories are created.      |
 
 `--include` is what makes one setting cover every way a tree is executed: the
-server includes it before each request, `run` before the script, `test` before
-each fixture and `lint` before the checks, so the names a linter knows are the
-names a request will find. A composer autoloader is the usual file:
+server includes it ahead of each request's entrypoint, `run` ahead of the
+script, `test` ahead of each fixture and `lint` ahead of the checks, so the
+names a linter knows are the names a request will find. A composer autoloader
+is the usual file:
 
 ```bash
 phpscript --include vendor/autoload.php server

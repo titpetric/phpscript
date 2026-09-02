@@ -75,7 +75,7 @@ created by the bundled server.
 |---------------------------|--------:|------------------------------------------------------------------------------------------------------------------------------------------------|
 | `work_dir`                |     `.` | Directory inside the runtime source filesystem relative paths resolve against. `chdir()` moves it, per request; this is where each one starts. |
 | `writable_paths`          |    `[]` | Directories a script may write to, relative to the application root. An empty list allows every write.                                         |
-| `include`                 |    `""` | File included once per session before the entrypoint, when it exists. `--include` overrides it.                                                |
+| `include`                 |    `""` | File included ahead of every entrypoint, once per request, when it exists. `--include` overrides it.                                           |
 | `upload_max_filesize`     |    `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.                                                    |
 | `post_max_size`           |    `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.                                                |
 | `upload_file_mode`        |  `0644` | Mode `move_uploaded_file()` gives a stored upload. Octal, as `chmod()` takes it.                                                               |
@@ -87,9 +87,10 @@ created by the bundled server.
 
 ### Include
 
-`include` names a file pulled in once per session before the entrypoint, for
-the functions and classes an application expects to be there whatever it is
-running. A composer autoloader is the usual one:
+`include` names a file pulled in ahead of every entrypoint, once per request,
+for the functions and classes an application expects to be there whatever it is
+running. The entrypoint and everything it includes see what it declared. A
+composer autoloader is the usual one:
 
 ```yaml
 runner:
