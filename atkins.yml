@@ -243,9 +243,8 @@ tasks:
     desc: "Generate architectural diagrams of the project"
     passthru: true
     cmds:
-      - defer: rm -f splint-doc.json go-fsck.json
-      - splint -output splint-doc.json ./... || true
-      - jq '.Packages' splint-doc.json > go-fsck.json
-      - go-fsck docs --render imports | plantuml -tsvg -pipe > docs/assets/imports.svg
-      - go-fsck docs --render puml | plantuml -tsvg -pipe > docs/assets/structure.svg
+      - defer: rm -f splint.json go-fsck.json
+      - splint -save ./... || true
+      - go-fsck docs -i splint.json --render imports | plantuml -tsvg -pipe > docs/assets/imports.svg
+      - go-fsck docs -i splint.json --render puml | plantuml -tsvg -pipe > docs/assets/structure.svg
       - go-ddd-stats -d2 - | d2 --layout elk - docs/assets/size.svg
