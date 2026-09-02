@@ -79,11 +79,6 @@ type Runtime struct {
 	autoloaders  []any
 	includePath  string
 
-	// autoloading holds the autoload-folder files currently being included, so
-	// a file that names the class it was loaded for without declaring it stops
-	// rather than including itself until the stack runs out.
-	autoloading map[string]struct{}
-
 	// ctx is the request/lifecycle context auto-injected into any registered
 	// callable (constructor, method, function) whose first parameter is a
 	// context.Context, mirroring vuego's wrapContextFunc. It lets PHP call
@@ -162,6 +157,11 @@ type Runtime struct {
 	// with SetCoverage. Nil means off, which is the only cost the common path
 	// pays for it.
 	coverage *coverage.Collector
+
+	// preludeDone records that Options.Include has been included in this
+	// session, so a program run after another one does not include it twice.
+	// ResetSession clears it along with the rest of the session.
+	preludeDone bool
 
 	// frames is the stack of live interpreter frames, global frame first;
 	// vmWalkers enumerate the live values of any flat VM currently running.
@@ -408,11 +408,11 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	clear(rt.funcSites)
 	rt.opts.WorkDir = rt.workDirBase
 	rt.included = nil
+	rt.preludeDone = false
 	clear(rt.classes)
 	clear(rt.globals)
 	rt.shutdown = nil
 	rt.autoloaders = nil
-	clear(rt.autoloading)
 	clear(rt.classConsts)
 	clear(rt.classStatics)
 	clear(rt.funcStatics)

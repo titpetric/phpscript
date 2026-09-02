@@ -31,19 +31,16 @@ type Options struct {
 	// Empty means the RootFS root.
 	WorkDir string `yaml:"work_dir"`
 
-	// Autoload names the directory below the application root whose class
-	// declarations load on first reference, without an include and without a
-	// registered autoloader. A class resolves to the file its namespace spells:
-	// `Acme\Thing` is `autoload/Acme/Thing.php`, and a class in no namespace is
-	// `autoload/Bare.php`. Empty is DefaultAutoloadDir, so an embedding host
-	// that configures nothing still gets the convention.
+	// Include names a file included once per session before the entrypoint, for
+	// the functions and classes an application expects to be there whatever it
+	// is running: a composer autoloader, a bootstrap file. It is the
+	// `--include` flag, and a virtual host sets its own in the runner block of
+	// its phpscript.yml.
 	//
-	// There is no key that turns it off, because a directory that is not there
-	// is already off: the lookup happens once, on a class reference that was
-	// otherwise about to fail. Note this is the application root and not the
-	// document root below it; a folder published over HTTP would serve its own
-	// class files as text.
-	Autoload string `yaml:"autoload"`
+	// A file that is not there is skipped rather than reported. The name says
+	// what to load when the application provides it, and one setting covers a
+	// server, a script run and a fixture run of the same tree.
+	Include string `yaml:"include"`
 
 	// WritablePaths optionally restricts filesystem writes. When empty, writes are
 	// left to normal OS/user permissions. Enforcement is done by filesystem shims.
@@ -100,17 +97,6 @@ type Options struct {
 	//
 	// NOT ENFORCED YET. See TimeLimit.
 	ConcurrencyLimit int `yaml:"concurrency_limit"`
-}
-
-// DefaultAutoloadDir is the directory Options.Autoload names when it is empty.
-const DefaultAutoloadDir = "autoload"
-
-// autoloadDir is the folder the class-name convention resolves against.
-func (o Options) autoloadDir() string {
-	if o.Autoload == "" {
-		return DefaultAutoloadDir
-	}
-	return o.Autoload
 }
 
 // inputLimits renders the two input limits as the form decoder takes them.
