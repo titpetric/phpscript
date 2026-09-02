@@ -20,6 +20,43 @@ Use `phpscript -f config.yml ...` to load runtime and server settings from a
 YAML file. Without `-f`, the binary uses its embedded defaults. See
 [Configuration](./configuration.md) for every available setting.
 
+`phpscript --help` prints the whole document: the commands, the global flags,
+each command's own flags and a table of worked examples per command. On a
+terminal the tables are drawn; redirected, the same document comes out as
+markdown.
+
+## Global flags
+
+Every command accepts these, and a command reads the ones it has a use for.
+They may be written before the command name or after it, so
+`phpscript --cover server` and `phpscript server --cover` are the same run.
+
+| Flag              | What it does                                                                                                             |
+|-------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `-f`, `--file`    | Read a configuration file over the built-in defaults.                                                                    |
+| `-w`, `--workdir` | Change to this directory first, so every relative path resolves below it. The configuration file is read from there too. |
+| `--include`       | Include a PHP file before the entrypoint, when it exists. Also the `runner.include` configuration key.                   |
+| `-v`, `--verbose` | Report more. What that means is the command's: fixture failures, bound names, a coverage percentage.                     |
+| `--cpuprofile`    | Write a pprof CPU profile of the command.                                                                                |
+| `--memprofile`    | Write a pprof heap profile when the command ends.                                                                        |
+| `--cover`         | Measure statement coverage. `line` writes the profile, `func` and `file` also print a report.                            |
+| `--coverfile`     | Where the profile goes. Implies `--cover`; `{time}` expands to a UTC timestamp and missing directories are created.      |
+
+`--include` is what makes one setting cover every way a tree is executed: the
+server includes it before each request, `run` before the script, `test` before
+each fixture and `lint` before the checks, so the names a linter knows are the
+names a request will find. A composer autoloader is the usual file:
+
+```bash
+phpscript --include vendor/autoload.php server
+phpscript --include vendor/autoload.php lint ./...
+```
+
+A tree that always wants it sets `runner.include` in its configuration instead.
+A virtual host sets its own in the `runner` block of its `phpscript.yml`,
+because each site has its own vendor directory; `--include` is what the
+operator sets for a tenant that named none.
+
 ## Commands
 
 ### `phpscript run <file.php>`
@@ -496,6 +533,44 @@ my-app/
 ```
 
 See [PHP routing](./use-cases/routing.md) for route annotation details.
+
+#### Coverage from a running server
+
+`--cover` counts the statements the server executes, across every request, every
+routed endpoint, every `@startup` job and every scheduled run, for the life of
+the process. A request's counts are folded into one aggregator when it ends, so
+what the process holds is one entry per statement range rather than one per
+parsed program.
+
+```bash
+phpscript --cover --coverfile cover/site.{time}.cov server
+```
+
+The profile is written when the server shuts down gracefully, with `{time}`
+expanded and the directory created. A test flow that cannot wait for that, or
+that runs the server in a container with nothing writable, reads it off the
+process instead:
+
+```bash
+curl http://localhost:8080/debug/phpscript/coverage              # the profile
+curl "http://localhost:8080/debug/phpscript/coverage?mode=file"  # per file
+curl "http://localhost:8080/debug/phpscript/coverage?mode=func"  # per function
+```
+
+The modes are `--cover`'s: `line` is the profile itself and is the default,
+`func` and `file` are the report `go tool cover -func` prints, which
+`summary coverfunc --packages` and `--files` fold per folder and per file. The
+endpoint is registered only when `--cover` is set.
+
+Counting turns the flatstack backend off for the process: coverage is an
+interpreter feature and the fallback is atomic, so a counted program runs
+interpreted whole. A server measuring coverage is not a server measuring
+throughput.
+
+The dbadmin demo is wired this way end to end. `compose.yml` starts it with
+`--cover`, the venom suite in `demos/dbadmin/tests` reads the endpoint after it
+runs, and `atkins gen:coverage:dbadmin` renders
+[docs/coverage/dbadmin.md](coverage/dbadmin.md) from it.
 
 ### `phpscript version`
 
