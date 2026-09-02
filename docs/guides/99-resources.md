@@ -18,7 +18,7 @@ Everything under `docs/` in this repository.
   no exception hierarchy, and what an interface is when it does not dispatch.
 - [Configuration](../configuration.md) - every key of `config.yml`, its default and what
   it changes, including virtual hosts, writable paths and the execution limits.
-- [CLI usage](../usage.md) - every command and every flag, plus the Docker image and how
+- [CLI reference](../cli/README.md) - every command and every flag, plus the Docker image and how
   to embed the runtime in a Go program.
 - [Testing phpscript](../testing.md) - `.phpt` fixture format, the Go test helpers, and
   running the same fixture through three runtimes.
@@ -126,7 +126,7 @@ to change.
 
 ## The commands
 
-Full flags and examples are in [CLI usage](../usage.md).
+Full flags and examples are in the [CLI reference](../cli/README.md).
 
 | Command                    | What it does                                                                                        |
 |----------------------------|-----------------------------------------------------------------------------------------------------|

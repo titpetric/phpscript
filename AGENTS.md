@@ -32,6 +32,7 @@ These are decisions, not gaps. A prompt asking for one of them gets the pointer,
 | Writing or fixing a fixture | [docs/testing.md](docs/testing.md) |
 | Writing or changing a Go binding | [docs/allocation-performance.md](docs/allocation-performance.md), [docs/reference/extensions/bindings.md](docs/reference/extensions/bindings.md) |
 | Touching the bytecode engine | [docs/flatstack.md](docs/flatstack.md) |
+| Adding or changing a CLI flag | [docs/cli/README.md](docs/cli/README.md) and the command's page beside it |
 | Explaining output that differs from php | Known divergences in [docs/README.md](docs/README.md) |
 
 ## Checkouts

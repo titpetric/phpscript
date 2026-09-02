@@ -5,7 +5,7 @@ This is a PHP interpreter written in Go. It supports the basic php expression sy
 - [About phpscript](./docs/README.md)
 - [Design decisions](./docs/design.md)
 - [Language reference and PHP compatibility](./docs/reference/README.md)
-- [Installation and usage](./docs/usage.md)
+- [Installation and CLI reference](./docs/cli/README.md)
 - [Configuration](./docs/configuration.md)
 - [Testing and extending tests](./docs/testing.md)
 - [Test fixture results](./docs/test-fixtures.md)
