@@ -59,18 +59,6 @@ class Bootstrap
 
 ## Autoloading
 
-An `autoload/` directory at the application root loads classes on first
-reference, with nothing registered and nothing included. The namespace is the
-directory path below it and the class is the file, case for case, so
-`Acme\Thing` is `autoload/Acme/Thing.php`; the namespace is optional, so a class
-declaring none is `autoload/Bare.php`. This is a phpscript convention with no
-equivalent in php, configured by the
-[`runner.autoload`](../../configuration.md#autoload-folder) key and disabled by
-not having the directory. Files there are expected to declare and nothing else.
-
-The folder is consulted last. Everything below still comes first, so a script
-that registers its own loader keeps the resolution order it wrote.
-
 Register a loader with `spl_autoload_register()`,
 which accepts every PHP callable spelling: a closure, a function name,
 `"Class::method"`, or `array($object, "method")`. `spl_autoload_unregister()`

@@ -8,8 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/titpetric/phpscript/runner"
 )
 
 // Runner names an execution backend a fixture can be checked against.
@@ -140,39 +138,29 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 }
 
 // phpPrepend materializes the harness prelude for the php runner as an
-// auto_prepend_file: the autoload folder becomes an spl_autoload_register
-// callback and the include files are pulled in from the application root, so
-// php sees the same world the in-process runtimes assemble from SetAppRoot.
-// The includes run inside a function scope with the application root as the
-// working directory, mirroring the fresh scope and root-relative resolution
-// the Go runtimes give the prelude.
+// auto_prepend_file: the include files are pulled in from the application
+// root, so php sees the same world the in-process runtimes assemble from
+// SetAppRoot. The includes run inside a function scope with the application
+// root as the working directory, mirroring the fresh scope and root-relative
+// resolution the Go runtimes give the prelude.
 func phpPrepend(f *Fixture) ([]string, func(), error) {
-	if f.appRoot == "" {
+	if f.appRoot == "" || len(f.includes) == 0 {
 		return nil, func() {}, nil
 	}
 	root, err := filepath.Abs(f.appRoot)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolve application root: %w", err)
 	}
-	autoload := f.Options.Autoload
-	if autoload == "" {
-		autoload = runner.DefaultAutoloadDir
-	}
 
 	var b strings.Builder
 	b.WriteString("<?php\n")
-	b.WriteString("spl_autoload_register(function ($class) {\n")
-	fmt.Fprintf(&b, "\t$file = %s . '/' . str_replace('\\\\', '/', $class) . '.php';\n", phpQuote(filepath.ToSlash(filepath.Join(root, autoload))))
-	b.WriteString("\tif (is_file($file)) {\n\t\tinclude $file;\n\t}\n});\n")
-	if len(f.includes) > 0 {
-		b.WriteString("call_user_func(function () {\n\t$cwd = getcwd();\n")
-		fmt.Fprintf(&b, "\tchdir(%s);\n", phpQuote(filepath.ToSlash(root)))
-		for _, name := range f.includes {
-			quoted := phpQuote(filepath.ToSlash(name))
-			fmt.Fprintf(&b, "\tif (is_file(%s)) {\n\t\tinclude %s;\n\t}\n", quoted, quoted)
-		}
-		b.WriteString("\tchdir($cwd);\n});\n")
+	b.WriteString("call_user_func(function () {\n\t$cwd = getcwd();\n")
+	fmt.Fprintf(&b, "\tchdir(%s);\n", phpQuote(filepath.ToSlash(root)))
+	for _, name := range f.includes {
+		quoted := phpQuote(filepath.ToSlash(name))
+		fmt.Fprintf(&b, "\tif (is_file(%s)) {\n\t\tinclude %s;\n\t}\n", quoted, quoted)
 	}
+	b.WriteString("\tchdir($cwd);\n});\n")
 
 	file, err := os.CreateTemp("", ".phpscript-prepend.*.php")
 	if err != nil {
