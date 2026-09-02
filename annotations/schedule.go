@@ -109,6 +109,7 @@ func (s *Scheduler) execute(ctx context.Context, job scheduledJob) error {
 	rt := s.config.newRuntime(ctx, s.root, out, "cli", func(rt *runner.Runtime) {
 		req.Register(rt)
 	})
+	defer s.config.cover(rt)()
 	rt.UpdateFilename(job.file)
 	program, err := rt.Load(string(job.src))
 	if err == nil {

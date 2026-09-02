@@ -74,6 +74,7 @@ func (s *Startup) execute(ctx context.Context, file string, src []byte) error {
 	rt := s.config.newRuntime(ctx, s.root, s.config.output, "cli", func(rt *runner.Runtime) {
 		runner.NewContext().Register(rt)
 	})
+	defer s.config.cover(rt)()
 
 	rt.UpdateFilename(file)
 	program, err := rt.Load(string(src))

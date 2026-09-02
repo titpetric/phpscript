@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/coverage"
 )
 
 // Option configures how annotated PHP files are discovered and executed. The
@@ -25,6 +26,7 @@ type config struct {
 	excludedDirs  map[string]struct{}
 	moduleSuffix  string
 	errorPages    ErrorPageFunc
+	coverage      *coverage.Aggregator
 }
 
 // ErrorPageFunc renders a host's own page for an error response and reports
@@ -126,6 +128,18 @@ func WithModuleSuffix(suffix string) Option {
 func WithErrorPages(fn ErrorPageFunc) Option {
 	return func(c *config) {
 		c.errorPages = fn
+	}
+}
+
+// WithCoverage counts the statements annotated PHP files execute, folding each
+// run's counts into an aggregator that outlives them.
+//
+// Routed endpoints, startup jobs and scheduled jobs are the application code a
+// server spends its life in, so a coverage measurement that skipped them would
+// report the document root and call it the site.
+func WithCoverage(aggregator *coverage.Aggregator) Option {
+	return func(c *config) {
+		c.coverage = aggregator
 	}
 }
 

@@ -58,6 +58,7 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 		rt.SetExprCache(h.exprCache)
 		request.Register(rt)
 	})
+	defer h.config.cover(rt)()
 
 	// The parsed request and the response writer live for this request too;
 	// Register accounted the Context, these are the host structures around it.

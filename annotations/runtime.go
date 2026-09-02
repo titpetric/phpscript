@@ -6,6 +6,7 @@ import (
 	"io/fs"
 
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
 )
 
@@ -44,4 +45,19 @@ func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi 
 		fn(rt)
 	}
 	return rt
+}
+
+// cover installs a collector on rt and returns the function that folds what it
+// counted into the process aggregator. With no aggregator both do nothing.
+//
+// The collector is per run because it keys statements by the AST node the
+// parser produced: one kept across runs would grow with every re-parse, while
+// the aggregator holds one entry per statement range however often it is seen.
+func (c config) cover(rt *runner.Runtime) func() {
+	if c.coverage == nil {
+		return func() {}
+	}
+	collector := coverage.New()
+	rt.SetCoverage(collector)
+	return func() { c.coverage.Add(collector) }
 }
