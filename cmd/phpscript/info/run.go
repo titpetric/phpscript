@@ -9,6 +9,7 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/internal/flags"
 	phplist "github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
@@ -22,16 +23,14 @@ type Options struct {
 	Verbose bool
 }
 
-func NewCommand() *cli.Command {
-	var opts Options
+// NewCommand creates a new info command. The verbosity dial is the shared -v:
+// here it lists every bound function, class and method under the summary.
+func NewCommand(globals *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "info",
 		Title: Name,
-		Bind: func(fs *cli.FlagSet) {
-			fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "List bound functions, classes and methods")
-		},
 		Run: func(ctx context.Context, args []string) error {
-			return Run(ctx, args, opts)
+			return Run(ctx, args, Options{Verbose: globals.Verbose})
 		},
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/titpetric/phpscript/internal/table"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -28,7 +29,7 @@ type folderCover struct {
 	LinesCovered int
 	LinesTotal   int
 	// Files is the per-file breakdown, which -v prints below the folder row.
-	Files []coverRow
+	Files []coverage.Row
 }
 
 // files renders the file column: "4/50 (8%)". The header says what is counted,
@@ -74,12 +75,12 @@ func percentOf(covered, total int) int {
 func folderCoverage(groups []fixtureGroup) []folderCover {
 	out := make([]folderCover, 0, len(groups))
 	for _, group := range groups {
-		rows := fileRows(mergeCoverBlocks(group.Fixtures), coverFiles(group.Fixtures))
+		rows := coverage.FileRows(reportBlocks(mergeCoverBlocks(group.Fixtures)), coverFiles(group.Fixtures))
 		summary := folderCover{Dir: group.Dir, FilesTotal: len(rows), Files: rows}
 		for _, r := range rows {
 			// A file holding no runnable statement, a bag of declarations,
 			// has nothing left to reach and counts as reached. This is the
-			// same adjustment coverRow.percent makes.
+			// same adjustment coverage.Row.Percent makes.
 			if r.Covered > 0 || r.Total == 0 {
 				summary.FilesCovered++
 			}
@@ -160,7 +161,7 @@ func writeFolderFileReport(w io.Writer, covers []folderCover) {
 		fmt.Fprintf(w, "\n## coverage: %s\n\n", cover.Dir)
 		tw := tabwriter.NewWriter(w, 0, 8, 1, ' ', 0)
 		for _, r := range cover.Files {
-			fmt.Fprintf(tw, "%s\t%d/%d lines covered\t%.1f%%\n", r.File, r.Covered, r.Total, r.percent())
+			fmt.Fprintf(tw, "%s\t%d/%d lines covered\t%.1f%%\n", r.File, r.Covered, r.Total, r.Percent())
 		}
 		_ = tw.Flush()
 		fmt.Fprintln(w)
@@ -231,5 +232,5 @@ func fixtureCoverage(fx *tests.Fixture) string {
 	if len(blocks) == 0 {
 		return "-"
 	}
-	return fmt.Sprintf("%.1f%%", coveragePercent(blocks))
+	return fmt.Sprintf("%.1f%%", coverage.Percent(blocks))
 }

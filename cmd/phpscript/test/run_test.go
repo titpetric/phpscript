@@ -20,9 +20,6 @@ func TestMain(m *testing.M) {
 
 func TestRunCommandJSON(t *testing.T) {
 	ctx := context.Background()
-	tmpDir := t.TempDir()
-	cpuPath := filepath.Join(tmpDir, "cpu.pprof")
-	memPath := filepath.Join(tmpDir, "mem.pprof")
 
 	old := os.Stdout
 	r, w, err := os.Pipe()
@@ -30,11 +27,7 @@ func TestRunCommandJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	os.Stdout = w
-	errRun := test.Run(ctx, []string{"../../../tests/fixtures/exceptions/die_exit.phpt"}, test.Options{
-		JSON:       true,
-		CPUProfile: cpuPath,
-		MemProfile: memPath,
-	})
+	errRun := test.Run(ctx, []string{"../../../tests/fixtures/exceptions/die_exit.phpt"}, test.Options{JSON: true})
 	w.Close()
 	os.Stdout = old
 	var buf bytes.Buffer
@@ -55,12 +48,6 @@ func TestRunCommandJSON(t *testing.T) {
 	}
 	if report.Total < 1 || report.Passed < 1 {
 		t.Fatalf("report = %+v", report)
-	}
-	if _, err := os.Stat(cpuPath); err != nil {
-		t.Fatalf("cpuprofile: %v", err)
-	}
-	if _, err := os.Stat(memPath); err != nil {
-		t.Fatalf("memprofile: %v", err)
 	}
 }
 

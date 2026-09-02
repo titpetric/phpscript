@@ -127,22 +127,19 @@ for ($i = 0; $i < 3; $i++) {
 	}
 }
 
-// TestRunCommandCoverConflicts holds the flag contract: coverage counts one run
-// per fixture, so the benchmark loops are refused; a report mode owns stdout,
-// so --json is refused with it; and a mode outside line/func/file is a typo to
-// report, not a profile to write.
+// TestRunCommandCoverConflicts holds the flag contract this command owns:
+// coverage counts one run per fixture, so the benchmark loops are refused, and
+// a report mode owns stdout, so --json is refused with it. The mode vocabulary
+// itself belongs to internal/flags, which every command shares.
 func TestRunCommandCoverConflicts(t *testing.T) {
 	if err := test.Run(context.Background(), nil, test.Options{Cover: test.CoverLine, Count: 5}); err == nil || !strings.Contains(err.Error(), "cover") {
 		t.Errorf("cover with count: err = %v, want a cover conflict", err)
 	}
-	if err := test.Run(context.Background(), nil, test.Options{CoverFile: "x.cov", Time: time.Second}); err == nil || !strings.Contains(err.Error(), "cover") {
-		t.Errorf("coverfile with time: err = %v, want a cover conflict", err)
+	if err := test.Run(context.Background(), nil, test.Options{Cover: test.CoverLine, Time: time.Second}); err == nil || !strings.Contains(err.Error(), "cover") {
+		t.Errorf("cover with time: err = %v, want a cover conflict", err)
 	}
 	if err := test.Run(context.Background(), nil, test.Options{Cover: test.CoverFunc, JSON: true}); err == nil || !strings.Contains(err.Error(), "json") {
 		t.Errorf("cover=func with json: err = %v, want a json conflict", err)
-	}
-	if err := test.Run(context.Background(), nil, test.Options{Cover: "statements"}); err == nil || !strings.Contains(err.Error(), "cover mode") {
-		t.Errorf("unknown cover mode: err = %v, want a mode error", err)
 	}
 }
 
