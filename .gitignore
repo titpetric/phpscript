@@ -10,6 +10,12 @@ vendor
 *.cov
 /bin
 
+# Coverage profiles, both Go and PHP, written here by the test job and by a
+# server started with --cover. The directory is committed empty because the
+# compose stack bind mounts it into the container.
+/cover/*
+!/cover/.gitkeep
+
 # Build and run artifacts: the templates a demo compiles on first request, and
 # venom's per-run logs. Neither is committed.
 venom*.log

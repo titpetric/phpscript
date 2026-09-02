@@ -6,6 +6,12 @@ services:
   phpscript:
     image: titpetric/phpscript:latest
     env_file: .env.docker
+    # Coverage is on for the demo, because the venom suite is what measures it:
+    # every request folds into one aggregator, /debug/phpscript/coverage
+    # publishes it while the container is up, and the profile is written to the
+    # mounted cover/ when the container is stopped. {time} names one file per
+    # run rather than overwriting the last.
+    command: ["--cover", "--coverfile", "cover/dbadmin.{time}.cov", "server"]
     # Two networks: the ingress one publishes it, and the project default is
     # where mysql and postgres are. dbadmin opens connections to both, and a
     # service that cannot resolve them reports every driver but sqlite as
@@ -23,6 +29,7 @@ services:
       caddy.reverse_proxy: "{{upstreams 8080}}"
     volumes:
       - $PWD/demos/dbadmin/:/app
+      - $PWD/cover:/app/cover
 
   # The tutorial application. It carries its own config.yml, so it is started
   # with -f rather than through .env.docker.

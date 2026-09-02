@@ -2,10 +2,16 @@
 # the suite is pointed at the container address. atkins resolves $(...) itself
 # before bash sees it, so the lookup is written as a pipeline of xargs instead
 # of command substitution.
+#
+# The service is on two networks, the ingress one and the project default, so
+# the template emits both addresses and awk takes the first. A template that
+# wrapped the address in the URL itself produced one unusable string of the two.
 
 vars:
   compose: ../../../compose.yml
-  address: "{{range .NetworkSettings.Networks}}http://{{.IPAddress}}:8080{{end}}"
+  address: "{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}"
+  url: awk '{ print "http://" $1 ":8080" }'
+  cover: ../../../cover
 
 tasks:
   default:
@@ -18,7 +24,33 @@ tasks:
       - >
         docker compose -f ${{ compose }} ps -q phpscript
         | xargs --no-run-if-empty docker inspect -f '${{ address }}'
+        | ${{ url }}
         | xargs --no-run-if-empty -I {} venom run venom.yml --var=host={}
+      - task: cover
+
+  # What the suite covered, read off the container before it is stopped. The
+  # service is started with --cover (see compose.yml), so the aggregator holds
+  # every request the suite made; the endpoint publishes it without the
+  # container having to be shut down first.
+  #
+  # Two files because two reports are generated from them: the profile is the
+  # artifact, and the per-file report is what `summary coverfunc` reads.
+  cover:
+    desc: "Read the coverage the venom suite produced off the running service"
+    cmds:
+      - mkdir -p ${{ cover }}
+      - >
+        docker compose -f ${{ compose }} ps -q phpscript
+        | xargs --no-run-if-empty docker inspect -f '${{ address }}'
+        | ${{ url }}
+        | xargs --no-run-if-empty -I {} curl -fsS "{}/debug/phpscript/coverage"
+        > ${{ cover }}/dbadmin.cov
+      - >
+        docker compose -f ${{ compose }} ps -q phpscript
+        | xargs --no-run-if-empty docker inspect -f '${{ address }}'
+        | ${{ url }}
+        | xargs --no-run-if-empty -I {} curl -fsS "{}/debug/phpscript/coverage?mode=file"
+        > ${{ cover }}/dbadmin.file.txt
 
   restart:
     desc: "Reload the service so edited PHP sources are picked up"
@@ -32,4 +64,5 @@ tasks:
       - >
         docker compose -f ${{ compose }} ps -q phpscript
         | xargs --no-run-if-empty docker inspect -f '${{ address }}'
+        | ${{ url }}
         | grep . || { echo "dbadmin container is not running; run 'atkins up' in the repository root" >&2; exit 1; }
