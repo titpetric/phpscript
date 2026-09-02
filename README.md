@@ -9,7 +9,7 @@ This is a PHP interpreter written in Go. It supports the basic php expression sy
 - [Configuration](./docs/configuration.md)
 - [Testing and extending tests](./docs/testing.md)
 - [Test fixture results](./docs/test-fixtures.md)
-- [Code coverage](./docs/code-coverage.md)
+- [Code coverage](./docs/coverage/phpscript.md)
 - [Naming conventions](./docs/naming-conventions.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
 - [Creating phpscript applications](./docs/guides/creating-phpscript-applications.md)
@@ -47,9 +47,11 @@ the bird's-eye view per area:
 | tests/fixtures/syntax      | 8        | 8      | 0      |
 | **Total**                  | 197      | 197    | 0      |
 
-The Go test run collects a coverage profile (about 84% of statements at the
-time of writing), and `atkins cover` renders it into the generated
-[code coverage](./docs/code-coverage.md) report, per package and per function.
+The Go test run collects a coverage profile, and `atkins cover` renders it into
+the generated [code coverage](./docs/coverage/phpscript.md) report, per package,
+with [the detail](./docs/coverage/phpscript-detail.md) per file. The dbadmin
+demo is measured the same way from a running server, in
+[dbadmin.md](./docs/coverage/dbadmin.md).
 
 ## Building a docker image
 
