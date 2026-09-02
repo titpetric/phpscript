@@ -2,44 +2,26 @@ package test
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/tests"
 )
 
-// DefaultCoverFile is where --cover writes the profile when --coverfile does
-// not name one.
-const DefaultCoverFile = "phpscript.cov"
-
-// The --cover modes. Line is what a bare --cover means: measure, write the
-// profile, print the one-line percentage. Func and file also write the profile,
-// then print a per-symbol report in the format go tool cover -func prints.
+// The coverage vocabulary is the runner's; these names are what the test
+// command's own code reads, so the two spell the same thing.
 const (
-	CoverLine = "line"
-	CoverFunc = "func"
-	CoverFile = "file"
+	DefaultCoverFile = coverage.DefaultCoverFile
+	CoverLine        = coverage.ModeLine
+	CoverFunc        = coverage.ModeFunc
+	CoverFile        = coverage.ModeFile
 )
 
-// profileBlock is one line of a written profile: a coverage block with its
-// columns resolved from the source text. The collector reports lines only; the
-// columns exist so the profile is the format go test writes and go tool cover
-// renders, spanning the statement text rather than the indentation around it.
-type profileBlock struct {
-	File      string
-	StartLine int
-	StartCol  int
-	EndLine   int
-	EndCol    int
-	NumStmt   int
-	Count     int
-}
+// profileBlock is one line of a written profile.
+type profileBlock = coverage.ProfileBlock
 
 // writeCoverage renders the collectors installed on the fixtures: one profile
 // per fixture next to it when --split is set, and the merged profile at
@@ -64,16 +46,16 @@ func writeCoverage(fixtures []*tests.Fixture, opts Options) error {
 	}
 	switch opts.Cover {
 	case CoverFunc:
-		return writeCoverReport(os.Stdout, funcRows(blocks, coverFuncs(fixtures), coverFiles(fixtures)))
+		return coverage.WriteReport(os.Stdout, coverage.FuncRows(reportBlocks(blocks), coverFuncs(fixtures), coverFiles(fixtures)))
 	case CoverFile:
-		return writeCoverReport(os.Stdout, fileRows(blocks, coverFiles(fixtures)))
+		return coverage.WriteReport(os.Stdout, coverage.FileRows(reportBlocks(blocks), coverFiles(fixtures)))
 	default:
 		// The folder table is the fuller answer and it has already been
 		// printed, so this line would only invite a comparison between two
 		// numbers measuring different things: the profile counts the .phpt
 		// entrypoints, which run by definition, and the table does not.
 		if !opts.JSON && opts.Verbose {
-			fmt.Printf("coverage: %.1f%% of statements\n", coveragePercent(blocks))
+			fmt.Printf("coverage: %.1f%% of statements\n", coverage.Percent(blocks))
 		}
 	}
 	return nil
@@ -111,7 +93,7 @@ func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	for _, b := range merged {
 		blocks = append(blocks, *b)
 	}
-	sortProfile(blocks)
+	coverage.SortProfile(blocks)
 	return blocks
 }
 
@@ -191,57 +173,18 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 		}
 		out = append(out, block)
 	}
-	sortProfile(out)
+	coverage.SortProfile(out)
 	return out
 }
 
-func sortProfile(blocks []profileBlock) {
-	sort.Slice(blocks, func(i, j int) bool {
-		if blocks[i].File != blocks[j].File {
-			return blocks[i].File < blocks[j].File
-		}
-		if blocks[i].StartLine != blocks[j].StartLine {
-			return blocks[i].StartLine < blocks[j].StartLine
-		}
-		return blocks[i].EndLine < blocks[j].EndLine
-	})
-}
-
-// writeCoverProfile writes blocks in the format go test -coverprofile writes,
-// with the measurement mode go names "count".
+// writeCoverProfile writes blocks in the format go test -coverprofile writes.
 func writeCoverProfile(path string, blocks []profileBlock) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("create coverfile: %w", err)
 	}
 	defer f.Close()
-	if _, err := fmt.Fprintln(f, "mode: count"); err != nil {
-		return fmt.Errorf("write coverfile: %w", err)
-	}
-	for _, b := range blocks {
-		_, err := fmt.Fprintf(f, "%s:%d.%d,%d.%d %d %d\n",
-			b.File, b.StartLine, b.StartCol, b.EndLine, b.EndCol, b.NumStmt, b.Count)
-		if err != nil {
-			return fmt.Errorf("write coverfile: %w", err)
-		}
-	}
-	return nil
-}
-
-// coveragePercent is the statement-weighted percentage go test reports:
-// statements in blocks that ran, over all registered statements.
-func coveragePercent(blocks []profileBlock) float64 {
-	var covered, total int
-	for _, b := range blocks {
-		total += b.NumStmt
-		if b.Count > 0 {
-			covered += b.NumStmt
-		}
-	}
-	if total == 0 {
-		return 0
-	}
-	return float64(covered) / float64(total) * 100
+	return coverage.WriteProfile(f, blocks)
 }
 
 // coverFixtures installs one collector per fixture. Per-fixture collectors are
@@ -251,26 +194,6 @@ func coverFixtures(fixtures []*tests.Fixture) {
 	for _, fx := range fixtures {
 		fx.SetCoverage(coverage.New())
 	}
-}
-
-// coverRow is one line of a func or file report: the location column go tool
-// cover -func prints, the symbol charged, and its statement-weighted percent.
-type coverRow struct {
-	File    string
-	Line    int
-	Name    string
-	Covered int
-	Total   int
-}
-
-// percent is the row's statement-weighted coverage, adjusted for the empty
-// case: a symbol with no runnable statement has nothing left uncovered, so
-// 0/0 reads as covered rather than as a zero dragging every average down.
-func (r coverRow) percent() float64 {
-	if r.Total == 0 {
-		return 100
-	}
-	return float64(r.Covered) / float64(r.Total) * 100
 }
 
 // coverFuncs merges every fixture's declaration spans, resolved to the paths
@@ -357,130 +280,4 @@ func reportBlocks(blocks []profileBlock) []profileBlock {
 		out = append(out, b)
 	}
 	return out
-}
-
-// funcRows charges each profile block to the innermost declaration span
-// containing its start line. A block inside no declaration is the file's
-// top-level code, reported as {main} — the name PHP gives that scope — at the
-// first such line.
-func funcRows(blocks []profileBlock, funcs []coverage.FuncSpan, files []string) []coverRow {
-	type key struct {
-		file string
-		line int
-		name string
-	}
-	rows := map[key]*coverRow{}
-	row := func(file string, line int, name string) *coverRow {
-		k := key{file: file, line: line, name: name}
-		r, ok := rows[k]
-		if !ok {
-			r = &coverRow{File: file, Line: line, Name: name}
-			rows[k] = r
-		}
-		return r
-	}
-	for _, fn := range funcs {
-		row(fn.File, fn.StartLine, fn.Name)
-	}
-	for _, b := range reportBlocks(blocks) {
-		var at *coverage.FuncSpan
-		for i := range funcs {
-			fn := &funcs[i]
-			if fn.File != b.File || b.StartLine < fn.StartLine || b.StartLine > fn.EndLine {
-				continue
-			}
-			if at == nil || fn.EndLine-fn.StartLine < at.EndLine-at.StartLine {
-				at = fn
-			}
-		}
-		var r *coverRow
-		if at != nil {
-			r = row(at.File, at.StartLine, at.Name)
-		} else {
-			r = row(b.File, 1, "{main}")
-		}
-		r.Total += b.NumStmt
-		if b.Count > 0 {
-			r.Covered += b.NumStmt
-		}
-	}
-	// A registered file none of whose declarations or top-level lines charged
-	// anything holds nothing runnable; it reports as one adjusted {main} row
-	// rather than disappearing.
-	charged := map[string]bool{}
-	for k := range rows {
-		charged[k.file] = true
-	}
-	for _, file := range files {
-		if !charged[file] {
-			row(file, 1, "{main}")
-		}
-	}
-	out := make([]coverRow, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, *r)
-	}
-	sortRows(out)
-	return out
-}
-
-// fileRows reports one row per registered source file. A file with no
-// runnable statement stays in the report at its adjusted percentage.
-func fileRows(blocks []profileBlock, files []string) []coverRow {
-	rows := map[string]*coverRow{}
-	row := func(file string) *coverRow {
-		r, ok := rows[file]
-		if !ok {
-			r = &coverRow{File: file, Line: 1, Name: path.Base(file)}
-			rows[file] = r
-		}
-		return r
-	}
-	for _, file := range files {
-		row(file)
-	}
-	for _, b := range reportBlocks(blocks) {
-		r := row(b.File)
-		r.Total += b.NumStmt
-		if b.Count > 0 {
-			r.Covered += b.NumStmt
-		}
-	}
-	out := make([]coverRow, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, *r)
-	}
-	sortRows(out)
-	return out
-}
-
-func sortRows(rows []coverRow) {
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].File != rows[j].File {
-			return rows[i].File < rows[j].File
-		}
-		if rows[i].Line != rows[j].Line {
-			return rows[i].Line < rows[j].Line
-		}
-		return rows[i].Name < rows[j].Name
-	})
-}
-
-// writeCoverReport prints rows the way go tool cover -func does: location,
-// symbol and percent columns, and a statement-weighted total line that
-// downstream consumers recognize by name and skip.
-func writeCoverReport(w io.Writer, rows []coverRow) error {
-	tw := tabwriter.NewWriter(w, 0, 8, 1, '\t', 0)
-	var covered, total int
-	for _, r := range rows {
-		covered += r.Covered
-		total += r.Total
-		fmt.Fprintf(tw, "%s:%d:\t%s\t%.1f%%\n", r.File, r.Line, r.Name, r.percent())
-	}
-	pct := 0.0
-	if total > 0 {
-		pct = float64(covered) / float64(total) * 100
-	}
-	fmt.Fprintf(tw, "total:\t(statements)\t%.1f%%\n", pct)
-	return tw.Flush()
 }

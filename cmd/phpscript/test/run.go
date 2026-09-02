@@ -7,13 +7,13 @@ import (
 	"os"
 	"runtime"
 	"runtime/metrics"
-	"runtime/pprof"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
@@ -21,24 +21,24 @@ import (
 // Name is the command title.
 const Name = "Run .phpt test fixtures"
 
-// Options holds CLI flag options for the test command.
+// Options holds CLI flag options for the test command. Include, Verbose, Cover
+// and CoverFile are the shared flags, copied off internal/flags before the run
+// so the report writers keep taking one struct.
 type Options struct {
-	Include    string
-	JSON       bool
-	Matrix     bool
-	Verbose    bool
-	Parallel   int
-	Count      int
-	Time       time.Duration
-	Profile    bool
-	CPUProfile string
-	MemProfile string
-	Output     string
-	Cover      string
-	CoverFile  string
-	Split      bool
-	SkipPHP    bool
-	Cache      string
+	Include   string
+	JSON      bool
+	Matrix    bool
+	Verbose   bool
+	Parallel  int
+	Count     int
+	Time      time.Duration
+	Profile   bool
+	Output    string
+	Cover     string
+	CoverFile string
+	Split     bool
+	SkipPHP   bool
+	Cache     string
 }
 
 // coverReport reports whether the cover mode owns stdout with a per-symbol
@@ -88,31 +88,29 @@ type jsonReport struct {
 	Results []jsonFixture `json:"results"`
 }
 
-func NewCommand() *cli.Command {
+// NewCommand creates a new test command.
+func NewCommand(globals *flags.Options) *cli.Command {
 	var opts Options
 	return &cli.Command{
 		Name:  "test",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
-			fs.StringVar(&opts.Include, "include", "", "Include this file before every fixture when it exists, for globally available functions")
 			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
 			fs.BoolVar(&opts.Matrix, "matrix", false, "Run every fixture through all runtimes and report a matrix")
 			fs.BoolVar(&opts.SkipPHP, "skip-php", false, "With --matrix, leave the php binary out: the built-in runtimes alone")
-			fs.BoolVarP(&opts.Verbose, "verbose", "v", false, "Report the failure of each runtime below its fixture")
 			fs.IntVarP(&opts.Parallel, "parallel", "p", 1, "Run up to N fixtures concurrently")
 			fs.IntVarP(&opts.Count, "count", "c", 0, "Run each test N times; with --time, produce N benchmark samples")
 			fs.DurationVarP(&opts.Time, "time", "t", 0, "Run each test for this duration per benchmark sample (e.g. 10s)")
 			fs.BoolVar(&opts.Profile, "profile", false, "Report memory usage per run (allocs/op, B/op)")
-			fs.StringVar(&opts.CPUProfile, "cpuprofile", "", "Write CPU profile to file")
-			fs.StringVar(&opts.MemProfile, "memprofile", "", "Write memory profile to file")
 			fs.StringVarP(&opts.Output, "output", "o", "", "Write a Markdown report of the results to this file")
-			fs.StringVar(&opts.Cover, "cover", "", "Measure statement coverage: line writes the profile, func/file also print a coverage report")
-			fs.Lookup("cover").NoOptDefVal = CoverLine
-			fs.StringVar(&opts.CoverFile, "coverfile", "", "Write the coverage profile to this file (implies --cover; default "+DefaultCoverFile+")")
 			fs.BoolVar(&opts.Split, "split", false, "With --cover, also write each fixture's own coverage next to it as <fixture>.cov")
 			fs.StringVar(&opts.Cache, "cache", CacheWorker, "Scope of the parse caches: worker (one per worker loop, the default) or off (a new one per fixture run)")
 		},
 		Run: func(ctx context.Context, args []string) error {
+			opts.Include = globals.Include
+			opts.Verbose = globals.Verbose
+			opts.Cover = globals.Cover
+			opts.CoverFile = globals.CoverFile
 			return Run(ctx, args, opts)
 		},
 	}
@@ -253,15 +251,10 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	if opts.Parallel > 1 && opts.Profile {
 		return fmt.Errorf("profile cannot be combined with parallel fixture execution")
 	}
-	if opts.Cover == "" && (opts.CoverFile != "" || opts.Split) {
+	if opts.Cover == "" && opts.Split {
 		opts.Cover = CoverLine
 	}
 	if opts.Cover != "" {
-		switch opts.Cover {
-		case CoverLine, CoverFunc, CoverFile:
-		default:
-			return fmt.Errorf("cover mode must be %s, %s or %s, got %q", CoverLine, CoverFunc, CoverFile, opts.Cover)
-		}
 		// A coverage count is how many times the fixture reached a line, so a
 		// benchmark loop would multiply every count by its repetitions.
 		if opts.Count > 0 || opts.Time > 0 {
@@ -274,21 +267,6 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		if opts.CoverFile == "" {
 			opts.CoverFile = DefaultCoverFile
 		}
-	}
-
-	if opts.CPUProfile != "" {
-		f, err := os.Create(opts.CPUProfile)
-		if err != nil {
-			return fmt.Errorf("create cpuprofile: %w", err)
-		}
-		if err := pprof.StartCPUProfile(f); err != nil {
-			f.Close()
-			return fmt.Errorf("start cpuprofile: %w", err)
-		}
-		defer func() {
-			pprof.StopCPUProfile()
-			f.Close()
-		}()
 	}
 
 	paths := args
@@ -357,9 +335,6 @@ func Run(ctx context.Context, args []string, opts Options) error {
 
 	if opts.Matrix {
 		failed := runMatrix(ctx, groups, opts, report)
-		if err := writeMemProfile(opts); err != nil {
-			return err
-		}
 		// Only the runtime column collects: flatstack carries no coverage
 		// support and the php column is another process.
 		if opts.Cover != "" {
@@ -510,10 +485,6 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		}
 	}
 
-	if err := writeMemProfile(opts); err != nil {
-		return err
-	}
-
 	if opts.Cover != "" {
 		if err := writeCoverage(fixtures, opts); err != nil {
 			return err
@@ -524,23 +495,6 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		return fmt.Errorf("%d fixture(s) failed", failedCount)
 	}
 
-	return nil
-}
-
-// writeMemProfile dumps a heap profile when one was requested.
-func writeMemProfile(opts Options) error {
-	if opts.MemProfile == "" {
-		return nil
-	}
-	f, err := os.Create(opts.MemProfile)
-	if err != nil {
-		return fmt.Errorf("create memprofile: %w", err)
-	}
-	defer f.Close()
-	runtime.GC()
-	if err := pprof.WriteHeapProfile(f); err != nil {
-		return fmt.Errorf("write memprofile: %w", err)
-	}
 	return nil
 }
 

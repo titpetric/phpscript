@@ -11,6 +11,7 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
 	phplint "github.com/titpetric/phpscript/lint"
 	"github.com/titpetric/phpscript/list"
@@ -26,8 +27,10 @@ type Options struct {
 	Output    string
 }
 
-// NewCommand creates a new lint command.
-func NewCommand() *cli.Command {
+// NewCommand creates a new lint command. The file --include names is what puts
+// the application's own classes and functions in the name registry, so the same
+// flag that makes a request find them makes the checks know them.
+func NewCommand(globals *flags.Options) *cli.Command {
 	var opts Options
 
 	return &cli.Command{
@@ -35,10 +38,10 @@ func NewCommand() *cli.Command {
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
 			fs.BoolVar(&opts.Flatstack, "flatstack", false, "Check flatstack bytecode engine compatibility and print diagnostic reason if unsupported")
-			fs.StringVar(&opts.Include, "include", "", "Include this file before checking, so the classes it autoloads and the functions it registers are names the checks know")
 			fs.StringVarP(&opts.Output, "output", "o", "", "Write a Markdown report of the findings to this file")
 		},
 		Run: func(ctx context.Context, args []string) error {
+			opts.Include = globals.Include
 			return Run(args, opts)
 		},
 	}
