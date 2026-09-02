@@ -53,16 +53,16 @@ echo $total;
 	}
 
 	blocks := cov.Blocks()
-	if got := coverageBlock(t, blocks, "/main.php", 2).Count; got != 1 {
+	if got := coverageBlock(t, blocks, "main.php", 2).Count; got != 1 {
 		t.Errorf("assignment count = %d, want 1", got)
 	}
-	if got := coverageBlock(t, blocks, "/main.php", 3); got.Count != 1 || got.EndLine != 3 {
+	if got := coverageBlock(t, blocks, "main.php", 3); got.Count != 1 || got.EndLine != 3 {
 		t.Errorf("for header = %+v, want count 1 clamped to its own line", got)
 	}
-	if got := coverageBlock(t, blocks, "/main.php", 4).Count; got != 3 {
+	if got := coverageBlock(t, blocks, "main.php", 4).Count; got != 3 {
 		t.Errorf("loop body count = %d, want 3", got)
 	}
-	if got := coverageBlock(t, blocks, "/main.php", 7).Count; got != 0 {
+	if got := coverageBlock(t, blocks, "main.php", 7).Count; got != 0 {
 		t.Errorf("untaken branch count = %d, want 0", got)
 	}
 }
@@ -140,7 +140,7 @@ echo "covered";
 	if out.String() != "covered" {
 		t.Fatalf("output = %q", out.String())
 	}
-	if got := coverageBlock(t, cov.Blocks(), "/main.php", 2).Count; got != 1 {
+	if got := coverageBlock(t, cov.Blocks(), "main.php", 2).Count; got != 1 {
 		t.Errorf("echo count = %d, want 1", got)
 	}
 }

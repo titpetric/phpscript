@@ -9,6 +9,7 @@ package coverage
 
 import (
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/titpetric/phpscript/model"
@@ -78,6 +79,7 @@ func New() *Collector {
 // statements carry spans of their own. A statement already registered keeps its
 // count, so re-including a cached program does not reset it.
 func (c *Collector) Register(filename string, program *model.Program) {
+	filename = Name(filename)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.files[filename] = true
@@ -258,4 +260,15 @@ func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 		}
 	}
 	return span
+}
+
+// Name is how a file is spelled in a profile: below the directory the command
+// ran in, with no leading separator.
+//
+// The interpreter anchors an entrypoint at the source filesystem root for
+// __FILE__ ("/app.php") and names an include as it resolved it ("app.php").
+// Both are the same file, and a report that kept the two spellings apart would
+// count it twice.
+func Name(filename string) string {
+	return strings.TrimPrefix(filename, "/")
 }
