@@ -1,4 +1,8 @@
 name: Go build and test
+help: >-
+  Generates, formats, lints, tests and builds a Go module. go:test writes the
+  coverage profile cover/pkg.cov; go:build writes bin/<name>-<goos>-<goarch>. Reads
+  go.mod.
 
 when:
   files:
@@ -80,6 +84,8 @@ jobs:
       # precedes the flags. The profile is what `atkins cover` reports from.
       #
       # Every .cov file this repository produces goes under cover/, Go and PHP
-      # alike, so one directory is the coverage artifact of a run.
+      # alike, so one directory is the coverage artifact of a run. That is this
+      # repository's own, which is why the vendored copy differs from the one
+      # in $HOME: the other repositories read pkg.cov at their root.
       - mkdir -p cover
       - gotestsum -- -count 1 -cover -coverpkg=./... -coverprofile=cover/pkg.cov ./...

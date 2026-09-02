@@ -1,3 +1,9 @@
+name: Markdown formatting and linting
+help: >-
+  Formats and checks the markdown under docs/ and README.md with mdox, and
+  runs vale when .vale.ini is present. mdox:fmt rewrites the files in place;
+  mdox:lint only reports.
+
 when:
   files:
     - .vale.ini
@@ -17,7 +23,7 @@ tasks:
       - if: $(test -d docs)
         cmd: mdox fmt --soft-wraps ${{ files }} || true
         vars:
-          files: $(find ./docs -name '*.md' 2>/dev/null | xargs --no-run-if-empty echo)
+          files: $(find ./docs -name '*.md' 2>/dev/null | xargs --no-run-if-empty echo || true)
       - if: $(test -f README.md)
         cmd: mdox fmt --soft-wraps README.md
 
@@ -25,7 +31,7 @@ tasks:
     desc: "Run vale to lint language"
     passthru: true
     vars:
-      files: $(find ./docs -name '*.md' 2>/dev/null | xargs --no-run-if-empty echo)
+      files: $(find ./docs -name '*.md' 2>/dev/null | xargs --no-run-if-empty echo || true)
     cmds:
       - if: $(test -d docs)
         cmd: mdox fmt --check --soft-wraps ${{ files }}
