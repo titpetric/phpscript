@@ -158,9 +158,10 @@ type Runtime struct {
 	// pays for it.
 	coverage *coverage.Collector
 
-	// preludeDone records that Options.Include has been included in this
-	// session, so a program run after another one does not include it twice.
-	// ResetSession clears it along with the rest of the session.
+	// preludeDone records that Options.Include has been included, so the
+	// declarations it carries are installed once and not redeclared. A runtime
+	// serves one request, so this is once per request; ResetSession clears it
+	// with everything else a reused runtime drops between them.
 	preludeDone bool
 
 	// frames is the stack of live interpreter frames, global frame first;

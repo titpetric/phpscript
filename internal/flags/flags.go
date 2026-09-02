@@ -48,8 +48,8 @@ type Options struct {
 	// arguments and the scripts means the same thing.
 	WorkDir string
 
-	// Include is --include: a file included before the entrypoint, carried to
-	// the runtime as runner.Options.Include and to the linter as its name
+	// Include is --include: a file included ahead of every entrypoint, carried
+	// to the runtime as runner.Options.Include and to the linter as its name
 	// registry seed.
 	Include string
 
@@ -70,7 +70,7 @@ type Options struct {
 func (o *Options) Bind(fs *cli.FlagSet) {
 	fs.StringVarP(&o.ConfigFile, "file", "f", o.ConfigFile, "Read this configuration file over the built-in defaults")
 	fs.StringVarP(&o.WorkDir, "workdir", "w", o.WorkDir, "Change to this directory before running, so every relative path resolves below it")
-	fs.StringVar(&o.Include, "include", o.Include, "Include this PHP file before the entrypoint, when it exists")
+	fs.StringVar(&o.Include, "include", o.Include, "Include this PHP file ahead of every entrypoint, when it exists")
 	fs.BoolVarP(&o.Verbose, "verbose", "v", o.Verbose, "Report more per command: fixture failures, bound names, startup detail")
 	fs.StringVar(&o.CPUProfile, "cpuprofile", o.CPUProfile, "Write a pprof CPU profile of the command to this file")
 	fs.StringVar(&o.MemProfile, "memprofile", o.MemProfile, "Write a pprof heap profile to this file when the command ends")
