@@ -14,6 +14,7 @@ import (
 	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/internal/flags"
 )
 
 // newVirtualHostServer writes two sites to disk and returns the host mux and
@@ -84,7 +85,7 @@ echo "uploaded route";
 		{Domain: "Blog.Example.COM", Root: blog},
 	}
 
-	handler, modules, err := buildVirtualHosts(context.Background(), appConfig)
+	handler, modules, err := buildVirtualHosts(context.Background(), appConfig, &flags.Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -383,7 +384,7 @@ func TestVirtualHostModulesAreNamedPerSite(t *testing.T) {
 func TestVirtualHostRejectsARootOnTheCommandLine(t *testing.T) {
 	_, _, appConfig := newVirtualHostServer(t)
 
-	err := Run(context.Background(), []string{"."}, appConfig)
+	err := Run(context.Background(), []string{"."}, appConfig, &flags.Options{})
 	if err == nil || !strings.Contains(err.Error(), "no virtual host to belong to") {
 		t.Fatalf("err = %v, want the command line root to be rejected", err)
 	}

@@ -13,15 +13,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	chi "github.com/go-chi/chi/v5"
 	"github.com/titpetric/cli"
 	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
-	"github.com/titpetric/phpscript/stdlib/database"
 	"github.com/titpetric/phpscript/stdlib/files"
 	"github.com/titpetric/phpscript/stdlib/smtp"
 	"github.com/titpetric/phpscript/telemetry"
@@ -35,12 +35,12 @@ const Name = "Run php server"
 const DefaultDocumentRoot = "public"
 
 // NewCommand creates a new server command.
-func NewCommand(config config.Config) *cli.Command {
+func NewCommand(config config.Config, globals *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "server",
 		Title: Name,
 		Run: func(ctx context.Context, args []string) error {
-			return Run(ctx, args, config)
+			return Run(ctx, args, config, globals)
 		},
 	}
 }
@@ -85,6 +85,11 @@ type handler struct {
 	runnerOptions runner.Options
 	flatstack     bool
 	observers     []runner.Observer
+
+	// coverage counts the statements every request runs, folded in per request
+	// so nothing keyed by an AST node outlives the program it was parsed from.
+	// Nil is off, which is what a server started without --cover carries.
+	coverage *coverage.Aggregator
 
 	// autoindex answers a directory with no index page with a listing of
 	// what is in it. See serveAutoindex.
@@ -284,6 +289,13 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, v
 	for _, observer := range h.observers {
 		rt.Observe(observer)
 	}
+	if h.coverage != nil {
+		// A collector turns flatstack off for this request: coverage is an
+		// interpreter feature and the fallback is atomic.
+		collector := coverage.New()
+		rt.SetCoverage(collector)
+		defer h.coverage.Add(collector)
+	}
 
 	stdlib.Register(rt)
 	if h.rootDir != "" {
@@ -356,13 +368,21 @@ func serveStatus(w http.ResponseWriter, status int) {
 }
 
 // Run starts the platform lifecycle and waits for shutdown.
-func Run(ctx context.Context, args []string, appConfig config.Config) error {
+func Run(ctx context.Context, args []string, appConfig config.Config, globals *flags.Options) error {
 	options, err := appConfig.PlatformOptions()
 	if err != nil {
 		return err
 	}
 
 	svc := platform.New(options)
+
+	// One aggregator for the process. Every site folds into it, and the module
+	// writes the profile when the platform stops, which is the only moment a
+	// server knows it is finished.
+	var cover *coverageModule
+	if globals.Covering() {
+		cover = newCoverageModule(globals)
+	}
 
 	// The platform records, phpscript observes. Its recorder owns the tracer
 	// and its middleware is what puts a trace in the request context, so the
@@ -379,7 +399,7 @@ func Run(ctx context.Context, args []string, appConfig config.Config) error {
 		if len(args) > 0 {
 			return fmt.Errorf("server: the configuration lists virtual hosts, which name their own roots; %q on the command line has no virtual host to belong to", args[0])
 		}
-		if err := registerVirtualHosts(ctx, svc, appConfig); err != nil {
+		if err := registerVirtualHosts(ctx, svc, appConfig, globals, cover); err != nil {
 			return err
 		}
 	} else {
@@ -387,9 +407,16 @@ func Run(ctx context.Context, args []string, appConfig config.Config) error {
 		if len(args) > 0 {
 			root = args[0]
 		}
-		if err := registerSite(svc, appConfig, observers, root); err != nil {
+		if err := registerSite(svc, appConfig, observers, root, globals, cover); err != nil {
 			return err
 		}
+	}
+
+	// Last, so it stops last: the platform stops modules in registration
+	// order, and a profile written before the sites stopped would miss what
+	// they did on the way out.
+	if cover != nil {
+		svc.Register(cover)
 	}
 
 	if err := svc.Start(ctx); err != nil {
@@ -406,7 +433,7 @@ func Run(ctx context.Context, args []string, appConfig config.Config) error {
 // modules mounted straight onto the platform router. The route modules stay on
 // that router rather than a nested one so the platform keeps seeing the pattern
 // a request matched, which is what its traces are labelled with.
-func registerSite(svc *platform.Platform, appConfig config.Config, observers []runner.Observer, root string) error {
+func registerSite(svc *platform.Platform, appConfig config.Config, observers []runner.Observer, root string, globals *flags.Options, cover *coverageModule) error {
 	documentRoot := documentRoot(appConfig)
 
 	// One application owns the process, so its scripts read the process
@@ -414,10 +441,17 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	// variables are held back by runner.ScriptEnvironment either way.
 	runnerOptions := appConfig.Runner
 	runnerOptions.Env = append(append([]string{}, os.Environ()...), appConfig.Env...)
+	if globals.Include != "" {
+		runnerOptions.Include = globals.Include
+	}
 
 	// Startup jobs and routed endpoints read the same source tree and execute
 	// PHP the same way, so they share one set of options.
 	annotationOptions := annotationOptions(appConfig, runnerOptions, observers, root, "")
+	if cover != nil {
+		cover.watch(os.DirFS(root))
+		annotationOptions = append(annotationOptions, annotations.WithCoverage(cover.aggregator))
+	}
 
 	// A single application server keeps a failing @startup fatal: there is no
 	// other tenant to protect, and a process that came up with its schema
@@ -430,6 +464,9 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 		return err
 	}
 	files.smtp = appConfig.SMTP
+	if cover != nil {
+		files.coverage = cover.aggregator
+	}
 	// The routed endpoints are handed the file handler's error pages: they live
 	// under the site's document root, which is the file handler's to look in.
 	if appConfig.Routes.Enabled {
@@ -439,133 +476,6 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	}
 	svc.Register(newModule("phpserver", files))
 	return nil
-}
-
-// registerVirtualHosts wires one site per configured domain and puts a host mux
-// in front of them.
-func registerVirtualHosts(ctx context.Context, svc *platform.Platform, appConfig config.Config) error {
-	handler, modules, err := buildVirtualHosts(ctx, appConfig)
-	if err != nil {
-		return err
-	}
-	for _, module := range modules {
-		svc.Register(module)
-	}
-	svc.Register(newModule("phpvhost", handler))
-	return nil
-}
-
-// buildVirtualHosts returns the host mux serving every configured site and the
-// lifecycle modules the platform starts on their behalf. Every site is built
-// here, before the server starts, so a broken configuration fails startup
-// rather than one request.
-func buildVirtualHosts(ctx context.Context, appConfig config.Config) (http.Handler, []platform.Module, error) {
-	if err := appConfig.ValidateVirtualHosts(); err != nil {
-		return nil, nil, err
-	}
-
-	var modules []platform.Module
-	sites := make(map[string]http.Handler, len(appConfig.VirtualHost))
-	for _, host := range appConfig.VirtualHost {
-		host = host.Normalize()
-
-		siteConfig, err := host.Load(appConfig)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		handler, siteModules, err := newVirtualHost(ctx, host, siteConfig)
-		if err != nil {
-			return nil, nil, err
-		}
-		modules = append(modules, siteModules...)
-
-		// Every name the entry lists reaches the same handler. A further
-		// name is another way to spell the site, not another copy of it,
-		// so it shares the site's routes, recorder and connections.
-		for _, domain := range host.Domains() {
-			sites[domain] = handler
-		}
-	}
-
-	return newHostMux(sites), modules, nil
-}
-
-// newVirtualHost builds the router one site is served by and the lifecycle
-// modules the platform starts on its behalf.
-//
-// The site gets a router of its own because it owns its routes, its telemetry
-// and its databases. Nothing it registers is visible on another domain, and the
-// connections its scripts can name are only the ones its own env configured.
-func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config) (http.Handler, []platform.Module, error) {
-	router := chi.NewRouter()
-
-	// A site answering to several names is still one site, reported and named
-	// after the first of them.
-	name := host.Name()
-
-	// The site owns its telemetry block, so it owns the tracer and the debug
-	// front end that block describes. chi wants every middleware before the
-	// first route, so this comes first.
-	var observers []runner.Observer
-	telemetryOptions, err := siteConfig.Telemetry.Resolved()
-	if err != nil {
-		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
-	}
-	if telemetryOptions.Enabled {
-		tracer, err := telemetry.New(telemetryOptions)
-		if err != nil {
-			return nil, nil, fmt.Errorf("virtualhost %q: telemetry: %w", name, err)
-		}
-		router.Use(tracer.Middleware)
-		if err := telemetry.Mount(router, tracer); err != nil {
-			return nil, nil, fmt.Errorf("virtualhost %q: telemetry: %w", name, err)
-		}
-		observers = append(observers, telemetry.NewModule(tracer))
-	}
-
-	// The site's connections come from its own env and nowhere else. A
-	// provider holds the credentials it was given, so a site cannot name a
-	// connection another site configured.
-	runnerOptions := siteConfig.Runner
-	runnerOptions.Database = database.New(siteConfig.Env)
-
-	// So does the environment its scripts read. A site is handed the env it
-	// declared rather than the process environment, so getenv() cannot be
-	// used to read what the operator, or another site, was started with.
-	runnerOptions.Env = siteConfig.Env
-
-	documentRoot := documentRoot(siteConfig)
-	annotationOptions := annotationOptions(siteConfig, runnerOptions, observers, host.Root, name)
-
-	root := os.DirFS(host.Root)
-	files, err := newHandler(root, host.Root, documentRoot, runnerOptions, siteConfig.Flatstack.Enabled, siteConfig.Autoindex, observers...)
-	if err != nil {
-		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
-	}
-	files.smtp = siteConfig.SMTP
-
-	// A site's error pages are its own: they are found under its document root
-	// and rendered by its own handler, so nothing a site puts up is reachable
-	// from another domain.
-	if siteConfig.Routes.Enabled {
-		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
-		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
-		routes := annotations.NewRoute(root, options...)
-		if err := routes.Mount(ctx, router); err != nil {
-			return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
-		}
-	}
-
-	router.Handle("/*", files)
-
-	// A site's startup failure is its own. It is recorded on that site's
-	// recorder and the server carries on, because the alternative is one
-	// tenant's broken job stopping every other tenant.
-	return router, []platform.Module{
-		nonFatal(annotations.NewStartup(root, annotationOptions...), observers),
-		annotations.NewScheduler(root, annotationOptions...),
-	}, nil
 }
 
 // documentRoot returns the directory beneath the application root served over

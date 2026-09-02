@@ -11,7 +11,9 @@ import (
 	"github.com/titpetric/cli"
 
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/stdlib/smtp"
 )
@@ -19,19 +21,19 @@ import (
 // Name is the command title.
 const Name = "Run php script"
 
-// NewCommand creates a new version command with build information.
-func NewCommand(config config.Config) *cli.Command {
+// NewCommand creates a new run command.
+func NewCommand(config config.Config, globals *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "run",
 		Title: Name,
 		Run: func(ctx context.Context, args []string) error {
-			return Run(ctx, args, config)
+			return Run(ctx, args, config, globals)
 		},
 	}
 }
 
 // Run runs the command with options and CLI arguments.
-func Run(ctx context.Context, args []string, config config.Config) error {
+func Run(ctx context.Context, args []string, config config.Config, globals *flags.Options) error {
 	if len(args) == 0 {
 		return errors.New("usage: phpscript <file.php>")
 	}
@@ -55,6 +57,7 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 	options.SAPI = "cli"
 	options.RootFS = os.DirFS(root)
 	options.Stdin = os.Stdin
+	options.Include = globals.Include
 	// A CLI run reads the process environment, with what the configuration
 	// adds on top. runner.ScriptEnvironment holds the infrastructure
 	// variables back.
@@ -64,6 +67,16 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 		newRuntime = runner.NewFlatStack
 	}
 	rt := newRuntime(os.Stdout, options)
+
+	// A collector turns flatstack off for this runtime: coverage is an
+	// interpreter feature and the fallback is atomic, so a counted program runs
+	// interpreted whole.
+	var collector *coverage.Collector
+	if globals.Covering() {
+		collector = coverage.New()
+		rt.SetCoverage(collector)
+	}
+
 	prog, err := rt.LoadFile(script)
 	if err != nil {
 		return err
@@ -76,11 +89,54 @@ func Run(ctx context.Context, args []string, config config.Config) error {
 	reqCtx := runner.NewContext()
 	reqCtx.Register(rt)
 
-	if err := rt.Run(prog); err != nil {
-		if exitErr, ok := runner.IsExit(err); ok {
+	runErr := rt.Run(prog)
+	// The profile is written whatever the script ended with. A run that failed
+	// halfway is exactly the run whose coverage is worth reading.
+	if coverErr := writeCoverage(collector, globals, root); coverErr != nil {
+		return coverErr
+	}
+	if runErr != nil {
+		if exitErr, ok := runner.IsExit(runErr); ok {
 			os.Exit(exitErr.Code)
 		}
+		return runErr
+	}
+	return nil
+}
+
+// writeCoverage writes the profile the run collected, and the per-symbol report
+// when --cover asked for one. Columns come from the source text below root, the
+// way the profile format wants them.
+//
+// The report goes to stderr because the script owns stdout: a run pipes its own
+// echo somewhere, and a coverage table mixed into it is corruption of the
+// output the command exists to produce. `phpscript test` prints its report on
+// stdout, because there the runner owns it.
+func writeCoverage(collector *coverage.Collector, globals *flags.Options, root string) error {
+	if collector == nil {
+		return nil
+	}
+	source := func(file string) []string {
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(file)))
+		if err != nil {
+			return nil
+		}
+		return strings.Split(string(data), "\n")
+	}
+	blocks := coverage.Columns(collector.Blocks(), source)
+	name, err := globals.WriteCoverProfile(blocks)
+	if err != nil {
 		return err
+	}
+	switch globals.Cover {
+	case coverage.ModeFunc:
+		return coverage.WriteReport(os.Stderr, coverage.FuncRows(blocks, collector.Functions(), collector.Files()))
+	case coverage.ModeFile:
+		return coverage.WriteReport(os.Stderr, coverage.FileRows(blocks, collector.Files()))
+	default:
+		if globals.Verbose {
+			fmt.Fprintf(os.Stderr, "coverage: %.1f%% of statements, written to %s\n", coverage.Percent(blocks), name)
+		}
 	}
 	return nil
 }
