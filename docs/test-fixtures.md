@@ -117,6 +117,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 | tests/fixtures/exceptions    | Flat stack | Runtime | PHP  |
 |------------------------------|------------|---------|------|
+| catch_across_frames.phpt     | PASS       | PASS    | PASS |
 | catch_type_matching.phpt     | PASS       | PASS    | PASS |
 | die_exit.phpt                | PASS       | PASS    | PASS |
 | die_message.phpt             | PASS       | PASS    | PASS |
@@ -350,7 +351,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/bindings    | 27       | 27     | 0      |
 | tests/fixtures/comparison  | 1        | 1      | 0      |
 | tests/fixtures/errors      | 3        | 3      | 0      |
-| tests/fixtures/exceptions  | 9        | 9      | 0      |
+| tests/fixtures/exceptions  | 10       | 10     | 0      |
 | tests/fixtures/flatstack   | 8        | 8      | 0      |
 | tests/fixtures/functions   | 10       | 10     | 0      |
 | tests/fixtures/gd          | 7        | 7      | 0      |
@@ -365,4 +366,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| **Total**                  | 228      | 228    | 0      |
+| **Total**                  | 229      | 229    | 0      |

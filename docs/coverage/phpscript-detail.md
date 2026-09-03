@@ -43,7 +43,7 @@ github.com/titpetric/phpscript/config/config.go, symbols 4, coverage 88.75%
 github.com/titpetric/phpscript/config.go, symbols 2, coverage 69.60%
 github.com/titpetric/phpscript/config/server.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/config/virtualhost.go, symbols 9, coverage 96.42%
-github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 28, coverage 87.93%
+github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 28, coverage 87.60%
 github.com/titpetric/phpscript/flatstack/engine/vm.go, symbols 12, coverage 83.23%
 github.com/titpetric/phpscript/flatstack/flatstack.go, symbols 10, coverage 50.00%
 github.com/titpetric/phpscript/formatter/comments.go, symbols 7, coverage 91.63%
