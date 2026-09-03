@@ -691,6 +691,72 @@ class Store implements Reader {
 	}
 }
 
+func TestParseInstanceOfQualified(t *testing.T) {
+	// The right operand of instanceof gets the same name resolution as `new`:
+	// a use alias and the current namespace qualify a bare name, an absolute
+	// spelling and a runtime operand stay as written.
+	instanceOfRight := func(t *testing.T, e model.Expr) model.Expr {
+		t.Helper()
+		bin, ok := e.(*model.Binary)
+		if !ok || bin.Op != "instanceof" {
+			t.Fatalf("expr = %#v, want Binary(instanceof)", e)
+		}
+		return bin.Right
+	}
+
+	t.Run("use alias", func(t *testing.T) {
+		prog := mustParse(t, `<?php
+use Foo\Bar as Baz;
+$r = $b instanceof Baz;
+`)
+		as, ok := prog.Stmts[1].(*model.Assign)
+		if !ok {
+			t.Fatalf("statement = %T, want *model.Assign", prog.Stmts[1])
+		}
+		right := instanceOfRight(t, as.Value)
+		v, ok := right.(*model.Var)
+		if !ok || !v.Const || v.Name != `Foo\Bar` {
+			t.Errorf(`right = %#v, want const Var Foo\Bar`, right)
+		}
+	})
+
+	t.Run("current namespace", func(t *testing.T) {
+		prog := mustParse(t, `<?php
+namespace Foo;
+
+function check($b)
+{
+	return $b instanceof Bar && $b instanceof \Other\Bar && $b instanceof $cls;
+}
+`)
+		fd, ok := prog.Stmts[len(prog.Stmts)-1].(*model.FuncDecl)
+		if !ok {
+			t.Fatalf("statement = %T, want *model.FuncDecl", prog.Stmts[len(prog.Stmts)-1])
+		}
+		ret, ok := fd.Body[0].(*model.Return)
+		if !ok {
+			t.Fatalf("body = %T, want *model.Return", fd.Body[0])
+		}
+		outer, ok := ret.Value.(*model.Binary)
+		if !ok || outer.Op != "&&" {
+			t.Fatalf("value = %#v, want Binary(&&)", ret.Value)
+		}
+		inner, ok := outer.Left.(*model.Binary)
+		if !ok || inner.Op != "&&" {
+			t.Fatalf("left = %#v, want Binary(&&)", outer.Left)
+		}
+		if v, ok := instanceOfRight(t, inner.Left).(*model.Var); !ok || !v.Const || v.Name != `Foo\Bar` {
+			t.Errorf(`bare name = %#v, want const Var Foo\Bar`, inner.Left)
+		}
+		if v, ok := instanceOfRight(t, inner.Right).(*model.Var); !ok || !v.Const || v.Name != `Other\Bar` {
+			t.Errorf(`absolute name = %#v, want const Var Other\Bar`, inner.Right)
+		}
+		if v, ok := instanceOfRight(t, outer.Right).(*model.Var); !ok || v.Const || v.Name != "cls" {
+			t.Errorf(`variable operand = %#v, want Var $cls`, outer.Right)
+		}
+	})
+}
+
 // benchSource is a file of the shape the parser meets in an application: a
 // class with methods, a function, control flow and interpolation, repeated
 // until it is the size of a real source file rather than a snippet.

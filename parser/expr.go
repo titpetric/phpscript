@@ -208,10 +208,11 @@ func (p *parser) parseUnary() (model.Expr, error) {
 
 // parseInstanceOf parses `expr instanceof Class`. PHP binds it tighter than
 // `!`, so `!$e instanceof Foo` negates the test rather than testing the
-// negation, which is why it sits below parseUnary. The right operand is a bare
-// class name, or an expression naming one, and is left for the runtime to
-// resolve: a bare name reaches it as a constant reference, exactly as a class
-// name does everywhere else.
+// negation, which is why it sits below parseUnary. A bare class name on the
+// right is qualified, the same resolution `new` and a static call get, so a
+// `use` alias and an unqualified name inside a namespace reach the runtime
+// fully qualified. Any other operand - a variable, a parenthesized
+// expression - names the class at run time and passes through unresolved.
 func (p *parser) parseInstanceOf() (model.Expr, error) {
 	left, err := p.parsePow()
 	if err != nil {
@@ -219,9 +220,15 @@ func (p *parser) parseInstanceOf() (model.Expr, error) {
 	}
 	for p.isKw("instanceof") {
 		p.next()
+		// parsePrimary strips a leading `\` before the name reaches the
+		// constant-reference node, so absoluteness is only visible here.
+		absolute := p.isOp("\\")
 		right, err := p.parsePow()
 		if err != nil {
 			return nil, err
+		}
+		if v, ok := right.(*model.Var); ok && v.Const {
+			v.Name = p.qualify(v.Name, absolute)
 		}
 		left = p.newBinary("instanceof", left, right)
 	}

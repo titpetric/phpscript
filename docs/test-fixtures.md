@@ -175,6 +175,8 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/namespaces       | Flat stack | Runtime | PHP  |
 |---------------------------------|------------|---------|------|
 | class_inheritance_parses.phpt   | PASS       | PASS    | PASS |
+| instanceof_alias.phpt           | PASS       | PASS    | PASS |
+| instanceof_namespace.phpt       | PASS       | PASS    | PASS |
 | namespaced_class_modifiers.phpt | PASS       | PASS    | PASS |
 | use_case_insensitive.phpt       | PASS       | PASS    | PASS |
 
@@ -344,7 +346,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/functions   | 10       | 10     | 0      |
 | tests/fixtures/gd          | 7        | 7      | 0      |
 | tests/fixtures/includes    | 4        | 4      | 0      |
-| tests/fixtures/namespaces  | 3        | 3      | 0      |
+| tests/fixtures/namespaces  | 5        | 5      | 0      |
 | tests/fixtures/oop         | 24       | 24     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
 | tests/fixtures/paths       | 6        | 6      | 0      |
@@ -354,4 +356,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 223      | 223    | 0      |
+| **Total**                  | 225      | 225    | 0      |
