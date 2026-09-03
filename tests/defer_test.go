@@ -317,25 +317,15 @@ echo "-end";`)
 	}
 }
 
-// The deferred callable is a bound method rather than a closure: an inline
-// closure in the callee emits the jump that trips the handler-range bug a
-// caller's catch already suffers on main (opJump drops handlers whose pc range
-// excludes the target, and a callee's pcs are outside the caller's try). That
-// is a pre-existing engine defect, not defer's; this test pins the defer
-// unwind on the exception path without depending on it.
 func TestFlatstackDeferRunsWhenExceptionUnwindsFrame(t *testing.T) {
 	var out strings.Builder
 	rt := flatstack.New(&out, flatstack.Options{})
 	core.RegisterDefer(rt)
 	rt.RegisterConstructor("Exception", stdlib.NewException)
-	rt.RegisterConstructor("Resource", func() *closeRecorder {
-		return &closeRecorder{out: &out}
-	})
 
 	source := `<?php
 function work() {
-    $resource = new Resource;
-    defer($resource->close);
+    defer(function() { echo "-deferred"; });
     echo "body";
     throw new Exception("boom");
 }
@@ -357,7 +347,7 @@ echo "-end";`
 		t.Fatal(err)
 	}
 
-	if got, want := out.String(), "body-closed-caught-end"; got != want {
+	if got, want := out.String(), "body-deferred-caught-end"; got != want {
 		t.Fatalf("output = %q, want %q", got, want)
 	}
 }

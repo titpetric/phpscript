@@ -608,8 +608,16 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			}
 			stack = append(stack, host.Truthy(value))
 		case opJump:
+			// A jump out of a try's pc range discards its handler; that is how
+			// leaving the region disarms the catch. The range only means
+			// anything in the frame that armed it: a callee's pcs lie outside
+			// the caller's try body, so a jump there - an if, a loop, the skip
+			// over an inline closure - must leave the caller's handlers alone.
 			for len(handlers) > 0 {
 				handler := handlers[len(handlers)-1]
+				if handler.frameDepth != len(callFrames) {
+					break
+				}
 				if inst.target >= handler.start && inst.target <= handler.end {
 					break
 				}
