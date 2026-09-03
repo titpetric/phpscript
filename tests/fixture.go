@@ -790,6 +790,7 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 		rt.RegisterConstructor("Storage", NewStorage)
 		rt.RegisterConstructor("FailStorage", NewFailStorage)
 		registerPanicBindings(rt)
+		RegisterAnalytics(rt)
 		// Register installs the shims rooted at the process working directory;
 		// RegisterFS rebinds them to the fixture, so it has to run after it.
 		stdlib.Register(rt)
@@ -899,6 +900,7 @@ func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, ro
 	runtime.RegisterConstructor("Storage", NewStorage)
 	runtime.RegisterConstructor("FailStorage", NewFailStorage)
 	registerPanicBindings(runtime)
+	RegisterAnalytics(runtime)
 	stdlib.Register(runtime)
 	stdlib.RegisterFS(runtime, rootDir)
 	runtime.UpdateFilename(entrypoint)

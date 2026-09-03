@@ -112,6 +112,16 @@ tasks:
     cmds:
       - for dir in tests/testdata/plugins/*/; do (cd $dir && go build -buildmode=plugin -o plugin.so .); done
 
+  # Measures what a PHP to Go call costs, across both engines and both dispatch
+  # spellings. Not part of the default pipeline: benchmarks on a loaded CI box
+  # are noise, and correctness is already covered by test:phpscript:matrix.
+  # See docs/php-go-calls.md for what the numbers mean.
+  bench:bridge:
+    passthru: true
+    cmds:
+      - go test ./tests/ -run XXX -bench BenchmarkBridge -benchmem -count=6
+      - phpscript test --matrix --count 2000 --profile tests/fixtures/bindings/analytics_record.phpt
+
   # The demos are compose services, so their venom suites run against the image
   # test:demos builds. Each has a pipeline of its own because it has to resolve
   # the address of its container first, which is why this delegates to
