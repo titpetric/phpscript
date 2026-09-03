@@ -10,6 +10,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/stdlib/core"
 )
 
@@ -289,6 +290,74 @@ register_shutdown_function(function() { echo "-" . __FILE__ . "-close"; });
 		t.Fatal(err)
 	}
 	if got, want := out.String(), "/main.php-main-/bootstrap.php-open-/bootstrap.php-close"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+func TestDeferRunsWhenExceptionUnwindsFrame(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	core.RegisterDefer(rt)
+
+	runPHP(t, rt, `<?php
+function work() {
+    defer(function() { echo "-deferred"; });
+    echo "body";
+    throw new Exception("boom");
+}
+try {
+    work();
+} catch (Exception $e) {
+    echo "-caught";
+}
+echo "-end";`)
+
+	if got, want := out.String(), "body-deferred-caught-end"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+// The deferred callable is a bound method rather than a closure: an inline
+// closure in the callee emits the jump that trips the handler-range bug a
+// caller's catch already suffers on main (opJump drops handlers whose pc range
+// excludes the target, and a callee's pcs are outside the caller's try). That
+// is a pre-existing engine defect, not defer's; this test pins the defer
+// unwind on the exception path without depending on it.
+func TestFlatstackDeferRunsWhenExceptionUnwindsFrame(t *testing.T) {
+	var out strings.Builder
+	rt := flatstack.New(&out, flatstack.Options{})
+	core.RegisterDefer(rt)
+	rt.RegisterConstructor("Exception", stdlib.NewException)
+	rt.RegisterConstructor("Resource", func() *closeRecorder {
+		return &closeRecorder{out: &out}
+	})
+
+	source := `<?php
+function work() {
+    $resource = new Resource;
+    defer($resource->close);
+    echo "body";
+    throw new Exception("boom");
+}
+try {
+    work();
+} catch (Exception $e) {
+    echo "-caught";
+}
+echo "-end";`
+
+	program, err := parser.Parse(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("flatstack unexpectedly rejects program: %v", err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := out.String(), "body-closed-caught-end"; got != want {
 		t.Fatalf("output = %q, want %q", got, want)
 	}
 }
