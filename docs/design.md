@@ -123,6 +123,7 @@ planned, and each row names what to use instead.
 | `shmop_*`, `apcu_*`, `sem_*`                                             | `SharedMemory`                                                                                                                 |
 | `strftime`, `gmstrftime`, `gmdate`, `mktime`                             | `DateTime`, `Time`; Go layouts rather than format characters. `date` and `strtotime` exist as numeric-and-layout shims         |
 | `JSON_PRETTY_PRINT`, `JSON_UNESCAPED_SLASHES`, every other `JSON_*` flag | `json_encode($value)`; the encoding is not configurable                                                                        |
+| `uniqid`                                                                 | `ulid()`, `uuid()`, or `bin2hex(random_bytes($n))`                                                                             |
 | `create_function`                                                        | Closures                                                                                                                       |
 | `${var}` string interpolation                                            | `{$var}`                                                                                                                       |
 | `global`                                                                 | Pass collaborators as parameters; the statement parses and binds nothing                                                       |
