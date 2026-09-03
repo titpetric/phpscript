@@ -35,6 +35,7 @@ tasks:
     cmds:
       - task: go:fmt go:fmt:revise
       - go install .
+      - task: plugins:build
       - task: go:test
       - task: cover
       - task: go:build
@@ -92,6 +93,34 @@ tasks:
       - for: demo in demos.all
         dir: demos/${{ demo }}
         run: composer install --no-interaction
+
+  # The plugin fixtures load a .so, which needs cgo and has to be built by the
+  # same toolchain and module as the binary that opens it. Neither -trimpath
+  # nor -ldflags is passed, because neither `go test` nor `go install .` passes
+  # them; the released bin/ binary is CGO_ENABLED=0 and takes the loader's
+  # unsupported path instead, which is why go:build and docker:build are
+  # unaffected by this.
+  #
+  # The test harness rebuilds a missing or stale plugin by itself, so this task
+  # is not what makes the fixtures work. It is here so a build failure is
+  # reported as a named pipeline step rather than from inside a fixture.
+  plugins:build:
+    passthru: true
+    env:
+      vars:
+        CGO_ENABLED: 1
+    cmds:
+      - for dir in tests/testdata/plugins/*/; do (cd $dir && go build -buildmode=plugin -o plugin.so .); done
+
+  # Measures what a PHP to Go call costs, across both engines and both dispatch
+  # spellings. Not part of the default pipeline: benchmarks on a loaded CI box
+  # are noise, and correctness is already covered by test:phpscript:matrix.
+  # See docs/php-go-calls.md for what the numbers mean.
+  bench:bridge:
+    passthru: true
+    cmds:
+      - go test ./tests/ -run XXX -bench BenchmarkBridge -benchmem -count=6
+      - phpscript test --matrix --count 2000 --profile tests/fixtures/bindings/analytics_record.phpt
 
   # The demos are compose services, so their venom suites run against the image
   # test:demos builds. Each has a pipeline of its own because it has to resolve

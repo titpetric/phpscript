@@ -212,3 +212,31 @@ func TestMatrixMetricColumnsFollowProfileFlags(t *testing.T) {
 		}
 	}
 }
+
+// TestResultTableRendersSkip pins that a fixture the host could not run is
+// reported as SKIP rather than FAIL in the single-runner table. A Go plugin
+// fixture reaches this on a build without cgo, and reporting it as a failure
+// would make a static build look like a broken tree.
+func TestResultTableRendersSkip(t *testing.T) {
+	skipped := &fixtureRun{
+		DisplayPath: "plugins/plugin_bench.phpt",
+		Label:       "plugin_bench.phpt",
+		Result:      &tests.TestResult{Name: "go plugin call overhead", Skipped: true},
+	}
+
+	var markdown bytes.Buffer
+	md := newMarkdownTable(&markdown, Options{})
+	md.writeGroup("plugins", []string{"plugin_bench.phpt"})
+	md.writeResult(skipped)
+	if !strings.Contains(markdown.String(), "SKIP") {
+		t.Errorf("markdown table did not render SKIP:\n%s", markdown.String())
+	}
+
+	var terminal bytes.Buffer
+	term := newTerminalTable(&terminal, Options{})
+	term.writeGroup("plugins", []string{"plugin_bench.phpt"})
+	term.writeResult(skipped)
+	if !strings.Contains(terminal.String(), table.ColorDim+"SKIP") {
+		t.Errorf("terminal table did not render a dim SKIP:\n%q", terminal.String())
+	}
+}

@@ -11,6 +11,7 @@ This is a PHP interpreter written in Go. It supports the basic php expression sy
 - [Test fixture results](./docs/test-fixtures.md)
 - [Code coverage](./docs/coverage/phpscript.md)
 - [Naming conventions](./docs/naming-conventions.md)
+- [PHP to Go call latency](./docs/php-go-calls.md)
 - [Glossary](./docs/GLOSSARY.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
 - [Creating phpscript applications](./docs/guides/creating-phpscript-applications.md)

@@ -22,6 +22,12 @@ func TestFlatstackFixtures(t *testing.T) {
 				selected++
 				t.Run(fx.Name, func(t *testing.T) {
 					res := RunFixtureOn(t.Context(), fx, RunnerFlatstack)
+					// See TestFixtures: a host that cannot load a Go plugin
+					// skips the fixtures that need one rather than failing
+					// them.
+					if res.Skipped {
+						t.Skip(res.FailureReason)
+					}
 					if !res.Passed {
 						t.Fatalf("flatstack fixture failed: %s", res.FailureReason)
 					}

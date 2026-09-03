@@ -97,6 +97,8 @@ sitemap:
         description: defer, bare host bindings, function keyword aliases, and portability hazards.
       - path: extensions/bindings.md
         description: Exposing Go constructors, functions, methods, contexts, and values to PHP.
+      - path: extensions/plugins.md
+        description: Registering bindings at run time from a compiled Go plugin, loaded by filename.
       - path: extensions/regexp.md
         description: How PCRE patterns are compiled, and what differs between PHP's PCRE and Go's RE2.
       - path: extensions/implemented-apis.md

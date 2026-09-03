@@ -1,12 +1,9 @@
 name: http request and client construction
 description: >
-  HTTP\Request and HTTP\Client are host bindings with no PHP counterpart, so
-  the expected output is the runtime's contract rather than PHP's. A request is
-  a net/http request, so this covers the Go spellings a script uses to read and
-  write one. Only construction and introspection are covered: building a
-  request sends nothing, so this stays offline. Sending, including parallel(),
-  is tested against httptest in stdlib/http/client_test.go, because a fixture
-  that reached the network would fail whenever the network did.
+  Building a request and a client, and reading the request back through the
+  net/http fields a script uses. Sending is covered in
+  stdlib/http/client_test.go against httptest. HTTP\Request and HTTP\Client
+  have no PHP counterpart, so php cannot run this source.
 runner:
   php: false
 ---

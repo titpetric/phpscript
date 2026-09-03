@@ -71,6 +71,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 | tests/fixtures/bindings               | Flat stack | Runtime | PHP  |
 |---------------------------------------|------------|---------|------|
+| analytics_record.phpt                 | PASS       | PASS    | SKIP |
 | database_datetime.phpt                | PASS       | PASS    | SKIP |
 | database_datetime_bind.phpt           | PASS       | PASS    | SKIP |
 | database_datetime_roundtrip.phpt      | PASS       | PASS    | SKIP |
@@ -236,6 +237,13 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | exec.phpt            | PASS       | PASS    | PASS |
 | workdir.phpt         | PASS       | PASS    | PASS |
 
+## tests/fixtures/plugins
+
+| tests/fixtures/plugins | Flat stack | Runtime | PHP  |
+|------------------------|------------|---------|------|
+| http_client.phpt       | PASS       | PASS    | SKIP |
+| plugin_bench.phpt      | PASS       | PASS    | SKIP |
+
 ## tests/fixtures/regex
 
 | tests/fixtures/regex       | Flat stack | Runtime | PHP  |
@@ -340,7 +348,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/arithmetic  | 21       | 21     | 0      |
 | tests/fixtures/arrays      | 20       | 20     | 0      |
 | tests/fixtures/autoloading | 4        | 4      | 0      |
-| tests/fixtures/bindings    | 27       | 27     | 0      |
+| tests/fixtures/bindings    | 28       | 28     | 0      |
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 9        | 9      | 0      |
 | tests/fixtures/flatstack   | 8        | 8      | 0      |
@@ -352,9 +360,10 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/output      | 4        | 4      | 0      |
 | tests/fixtures/paths       | 6        | 6      | 0      |
 | tests/fixtures/pexec       | 2        | 2      | 0      |
+| tests/fixtures/plugins     | 2        | 2      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| **Total**                  | 226      | 226    | 0      |
+| **Total**                  | 229      | 229    | 0      |

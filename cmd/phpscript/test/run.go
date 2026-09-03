@@ -363,13 +363,13 @@ func Run(ctx context.Context, args []string, opts Options) error {
 
 	var jsonRows []jsonFixture
 	var failedRuns []*fixtureRun
-	var passedCount, failedCount int
+	var passedCount, failedCount, skippedCount int
 	var folders []folderSummary
 	startAll := time.Now()
 
 	for _, group := range groups {
 		sinks.writeGroup(group.Dir, group.Labels)
-		groupPassed, groupFailed := 0, 0
+		groupPassed, groupFailed, groupSkipped := 0, 0, 0
 		groupStart := time.Now()
 
 		fixtureRuns := mapFixtures(group.Fixtures, opts.Parallel, func(worker, _ int, fx *tests.Fixture) []*fixtureRun {
@@ -388,6 +388,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 					Path:        fr.DisplayPath,
 					Runner:      string(fr.Result.Runner),
 					Passed:      fr.Result.Passed,
+					Skipped:     fr.Result.Skipped,
 					Runs:        fr.Runs,
 					DurationNs:  fr.Total.Nanoseconds(),
 					P50Ns:       fr.P50.Nanoseconds(),
@@ -402,14 +403,21 @@ func Run(ctx context.Context, args []string, opts Options) error {
 				if fixtureResult == nil || fixtureResult.Passed {
 					fixtureResult = fr.Result
 				}
-				if !fr.Result.Passed && firstFailedRun == nil {
+				if !fr.Result.Passed && !fr.Result.Skipped && firstFailedRun == nil {
 					firstFailedRun = fr
 				}
 			}
 
-			if fixtureResult.Passed {
+			// A fixture the host cannot run, a Go plugin in a build without
+			// cgo or a missing php binary, is neither a pass nor a failure: it
+			// is a statement about the host. Counting it as a failure would
+			// make a static build report a broken tree.
+			switch {
+			case fixtureResult.Skipped:
+				groupSkipped++
+			case fixtureResult.Passed:
 				groupPassed++
-			} else {
+			default:
 				groupFailed++
 				failedRuns = append(failedRuns, firstFailedRun)
 			}
@@ -419,13 +427,14 @@ func Run(ctx context.Context, args []string, opts Options) error {
 			Dir:      group.Dir,
 			Passed:   groupPassed,
 			Failed:   groupFailed,
-			Total:    len(group.Fixtures),
+			Total:    len(group.Fixtures) - groupSkipped,
 			Duration: time.Since(groupStart),
 		}
 		sinks.closeGroup(totals)
 		folders = append(folders, folderSummary{groupTotals: totals})
 		passedCount += groupPassed
 		failedCount += groupFailed
+		skippedCount += groupSkipped
 	}
 
 	// Coverage is measured once every fixture has run, so the per-folder
@@ -445,10 +454,10 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		markdown := !table.IsTerminal(os.Stdout)
 		writeFolderTable(os.Stdout, folders, markdown, opts.Time > 0 || opts.Count > 0 || opts.Profile)
 		fmt.Printf("Test summary: %d passed, %d failed out of %d fixtures (%dms)\n",
-			passedCount, failedCount, len(fixtures), time.Since(startAll).Milliseconds())
+			passedCount, failedCount, len(fixtures)-skippedCount, time.Since(startAll).Milliseconds())
 	}
 
-	sinks.writeSummary(passedCount, failedCount, len(fixtures), time.Since(startAll))
+	sinks.writeSummary(passedCount, failedCount, len(fixtures)-skippedCount, time.Since(startAll))
 
 	// With -v, coverage drops to the file it was measured on, under the folder
 	// that loaded it. That is the reading a fixture table cannot give: a column
