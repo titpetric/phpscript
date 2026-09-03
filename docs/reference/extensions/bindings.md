@@ -20,7 +20,9 @@ if err == nil {
 }
 ```
 
-Registration is per runtime. Class and function names become part of that runtime's PHP environment; Go APIs are not exposed automatically. Registration is not a complete method allowlist, however: PHP reflection dispatch sees the dynamic concrete value returned by a constructor. Every exported method on that concrete type is callable and every exported field is readable, even when the constructor's declared return type is an interface. Return a dedicated facade type when the underlying implementation has exports that scripts must not see.
+Registration is per runtime, and it is last-one-wins: registering a name that is already bound replaces it. That is how [Go plugins](./plugins.md) override a standard library binding, since a plugin binds after `stdlib.Register` has run.
+
+Class and function names become part of that runtime's PHP environment; Go APIs are not exposed automatically. Registration is not a complete method allowlist, however: PHP reflection dispatch sees the dynamic concrete value returned by a constructor. Every exported method on that concrete type is callable and every exported field is readable, even when the constructor's declared return type is an interface. Return a dedicated facade type when the underlying implementation has exports that scripts must not see.
 
 Methods need no separate registration. If a constructor or registered function
 returns a concrete Go value, PHP invokes its exported methods through ordinary

@@ -13,6 +13,11 @@ Returning `any` costs nothing. Building a `*model.Array` costs a lot.
 This document is the guideline, the reasoning behind it, and a checklist of
 every binding in the tree.
 
+It covers what a binding pays to hand a value back. For the other half, what it
+costs to reach the binding at all, see
+[PHP to Go call latency](./php-go-calls.md): a call's dispatch cost is decided
+by how the script spells it, and varies by a factor of three.
+
 ## The measured baseline
 
 All numbers from `tests/bindings_test.go` on an Intel N150, Go 1.27. The

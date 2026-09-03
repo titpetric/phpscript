@@ -230,6 +230,17 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Context propagation](extensions/bindings.md#context-propagation)
   - [Value conversion](extensions/bindings.md#value-conversion)
   - [HTTP binding benchmark](extensions/bindings.md#http-binding-benchmark)
+- [Go plugins](extensions/plugins.md) - Registering bindings at run time from a compiled Go plugin, loaded by filename.
+  - [What a plugin has to know first](extensions/plugins.md#what-a-plugin-has-to-know-first)
+  - [The two entry points](extensions/plugins.md#the-two-entry-points)
+  - [Host is declared by the plugin](extensions/plugins.md#host-is-declared-by-the-plugin)
+  - [Bind registers constructors, not functions](extensions/plugins.md#bind-registers-constructors-not-functions)
+  - [Loading a plugin](extensions/plugins.md#loading-a-plugin)
+  - [Ordering, and replacing a standard library binding](extensions/plugins.md#ordering-and-replacing-a-standard-library-binding)
+  - [Building](extensions/plugins.md#building)
+  - [What the loader refuses](extensions/plugins.md#what-the-loader-refuses)
+  - [A complete plugin](extensions/plugins.md#a-complete-plugin)
+  - [Cost](extensions/plugins.md#cost)
 - [Regular expressions](extensions/regexp.md) - How PCRE patterns are compiled, and what differs between PHP's PCRE and Go's RE2.
   - [Two engines](extensions/regexp.md#two-engines)
   - [What still differs from PCRE](extensions/regexp.md#what-still-differs-from-pcre)
