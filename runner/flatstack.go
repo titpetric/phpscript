@@ -249,42 +249,12 @@ func (h flatHost) Binary(op string, left, right any) (any, error) {
 		return phpBitwise(op, left, right)
 	case "instanceof":
 		return phpInstanceOf(left, right), nil
-	case "==":
-		return phpLooseEqual(left, right), nil
-	case "!=":
-		return !phpLooseEqual(left, right), nil
-	case "===", "!==":
-		equal := reflect.TypeOf(left) == reflect.TypeOf(right) && reflect.DeepEqual(left, right)
-		if op == "!==" {
-			equal = !equal
-		}
-		return equal, nil
+	case "==", "!=", "===", "!==", "<", "<=", ">", ">=":
+		return phpCompare(op, left, right), nil
 	case "&&":
 		return phpTruthy(left) && phpTruthy(right), nil
 	case "||":
 		return phpTruthy(left) || phpTruthy(right), nil
-	case "<", "<=", ">", ">=":
-		var cmp int
-		if isNumeric(left) && isNumeric(right) {
-			a, b := toFloat(left), toFloat(right)
-			if a < b {
-				cmp = -1
-			} else if a > b {
-				cmp = 1
-			}
-		} else {
-			cmp = strings.Compare(phpString(left), phpString(right))
-		}
-		switch op {
-		case "<":
-			return cmp < 0, nil
-		case "<=":
-			return cmp <= 0, nil
-		case ">":
-			return cmp > 0, nil
-		default:
-			return cmp >= 0, nil
-		}
 	default:
 		return nil, fmt.Errorf("unsupported binary operator %q", op)
 	}

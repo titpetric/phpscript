@@ -490,6 +490,23 @@ var bitCallPrefix = map[string]string{
 	">>": `__bit(">>", `,
 }
 
+// cmpCallPrefix holds the __cmp call opening for each comparison operator.
+// Comparison goes through the helper, not expr's own operators: expr types
+// the operands as Go values, so `"1" == 1` would be a compile-time mismatch
+// as a literal and false through a variable, where PHP coerces and answers
+// true. The helper applies PHP 8's comparison table (phpval.Compare) for the
+// loose operators and identity for `===`/`!==`.
+var cmpCallPrefix = map[string]string{
+	"==":  `__cmp("==", `,
+	"!=":  `__cmp("!=", `,
+	"===": `__cmp("===", `,
+	"!==": `__cmp("!==", `,
+	"<":   `__cmp("<", `,
+	"<=":  `__cmp("<=", `,
+	">":   `__cmp(">", `,
+	">=":  `__cmp(">=", `,
+}
+
 func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 	l, err := t.emit(n.Left)
 	if err != nil {
@@ -513,10 +530,6 @@ func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 		return concat("__concat(", l, ", ", r, ")"), nil
 	case "instanceof":
 		return concat("__instanceof(", l, ", ", r, ")"), nil
-	case "===":
-		return concat("(", l, ") == (", r, ")"), nil
-	case "!==":
-		return concat("(", l, ") != (", r, ")"), nil
 	case "&&":
 		// Logical operators need bool operands in expr-lang.
 		return concat("__bool(", l, ") && __bool(", r, ")"), nil
@@ -540,18 +553,9 @@ func (t *Transpiler) emitBinary(n *model.Binary) (string, error) {
 		// through the helper. The call prefix comes from a table so that
 		// emitting one costs no concatenation of its own (rule 7).
 		return concat(bitCallPrefix[n.Op], l, ", ", r, ")"), nil
-	case "==":
-		return concat("(", l, ") == (", r, ")"), nil
-	case "!=":
-		return concat("(", l, ") != (", r, ")"), nil
-	case "<":
-		return concat("(", l, ") < (", r, ")"), nil
-	case "<=":
-		return concat("(", l, ") <= (", r, ")"), nil
-	case ">":
-		return concat("(", l, ") > (", r, ")"), nil
-	case ">=":
-		return concat("(", l, ") >= (", r, ")"), nil
+	case "==", "!=", "===", "!==", "<", "<=", ">", ">=":
+		// Comparison never reaches expr's operators; see cmpCallPrefix.
+		return concat(cmpCallPrefix[n.Op], l, ", ", r, ")"), nil
 	default:
 		return "", fmt.Errorf("transpile: unsupported operator %q", n.Op)
 	}
