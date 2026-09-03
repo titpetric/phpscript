@@ -138,6 +138,13 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		return c.foreachStmt(node, path)
 	case *model.Use:
 		// Imports are resolved while parsing and emit no code.
+	case *model.ConstDecl:
+		for i, entry := range node.Consts {
+			if err := c.expr(entry.Default, fmt.Sprintf("%s.const[%d]", path, i)); err != nil {
+				return err
+			}
+			c.emit(instruction{op: opDefineConst, name: entry.Name})
+		}
 	case *model.Global:
 		// A documented no-op (docs/design.md): the variable stays unset.
 		// StaticVar has no case on purpose — it needs the runtime's persistent

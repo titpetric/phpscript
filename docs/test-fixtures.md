@@ -325,6 +325,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 |-----------------------------|------------|---------|------|
 | bitwise_operators.phpt      | PASS       | PASS    | PASS |
 | condition_syntax.phpt       | PASS       | PASS    | SKIP |
+| const_declaration.phpt      | PASS       | PASS    | PASS |
 | do_while.phpt               | PASS       | PASS    | PASS |
 | operators_and_mutation.phpt | PASS       | PASS    | PASS |
 | pass_by_ref.phpt            | PASS       | PASS    | PASS |
@@ -355,5 +356,5 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/runtime     | 14       | 14     | 0      |
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
-| tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 225      | 225    | 0      |
+| tests/fixtures/syntax      | 9        | 9      | 0      |
+| **Total**                  | 226      | 226    | 0      |

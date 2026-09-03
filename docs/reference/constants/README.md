@@ -2,7 +2,7 @@
 
 | PHP language-reference feature | Status                | Notes                                                                   |
 |--------------------------------|-----------------------|-------------------------------------------------------------------------|
-| Global constant declarations   | Partial compatibility | `define()` declares a runtime constant; the `const` statement does not. |
+| Global constant declarations   | Compatibility         | `define()` and the `const` statement both declare a runtime constant.   |
 | Host-registered constants      | phpscript extension   | A Go host can register constants with `Runtime.SetConst`.               |
 | Class constants                | Compatibility         | `const NAME = value` and `Class::NAME` are supported.                   |
 | Predefined constants           | Partial compatibility | Standard-library registration installs a small runtime-defined set.     |
@@ -30,12 +30,15 @@ Embedded applications can expose a value before execution:
 rt.SetConst("APP_ENV", "production")
 ```
 
-The script can then read `APP_ENV` as a bare identifier. `define()`,
-`defined()`, and `constant()` do the same from PHP, and
-`get_defined_constants()` inspects the whole set.
+The script can then read `APP_ENV` as a bare identifier. `define()`, the
+top-level `const` statement, `defined()`, and `constant()` do the same from
+PHP, and `get_defined_constants()` inspects the whole set. `define()` and
+`const` write the same table; the `const` value is evaluated once at the
+declaration.
 
 ```php
 define("APP_ENV", "production");
+const APP_VERSION = "1.0";
 echo defined("APP_ENV") ? constant("APP_ENV") : "unset";
 ```
 

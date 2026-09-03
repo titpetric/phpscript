@@ -337,6 +337,10 @@ func (w *astWalker) walk(stmts []model.Stmt) {
 			for _, d := range n.Vars {
 				w.one(d.Default)
 			}
+		case *model.ConstDecl:
+			for _, c := range n.Consts {
+				w.one(c.Default)
+			}
 		}
 	}
 }

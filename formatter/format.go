@@ -413,6 +413,12 @@ func (p *printer) printStmt(s model.Stmt) {
 			}
 		}
 		p.line("static " + strings.Join(decls, ", ") + ";")
+	case *model.ConstDecl:
+		decls := make([]string, len(n.Consts))
+		for i, c := range n.Consts {
+			decls[i] = c.Name + " = " + p.expr(c.Default)
+		}
+		p.line("const " + strings.Join(decls, ", ") + ";")
 	case *model.Use:
 		p.line(p.use(n))
 	case *model.Declare:

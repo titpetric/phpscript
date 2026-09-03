@@ -560,6 +560,12 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				return constErr
 			}
 			stack = append(stack, value)
+		case opDefineConst:
+			value, popErr := pop()
+			if popErr != nil {
+				return popErr
+			}
+			host.SetConstant(inst.name, value)
 		case opTruthy:
 			value, popErr := pop()
 			if popErr != nil {

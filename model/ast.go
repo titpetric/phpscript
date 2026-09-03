@@ -277,6 +277,14 @@ type Global struct {
 	Names []string
 }
 
+// ConstDecl is a top-level `const NAME = value[, NAME = value];` declaration.
+// Each entry declares into the same constant table define() writes to, with
+// the value evaluated once at the declaration. Consts reuses Field the way
+// ClassDecl.Consts does; Visibility and Type stay empty.
+type ConstDecl struct {
+	Consts []Field
+}
+
 // Throw raises an exception. The VM has no exception model; it surfaces as a
 // runtime error (sufficient for minitpl's error-path `throw`s, which the happy
 // compile path never hits).
@@ -408,6 +416,8 @@ func (*StaticVar) node() {}
 
 func (*Global) node() {}
 
+func (*ConstDecl) node() {}
+
 func (*Use) node() {}
 
 func (*Declare) node() {}
@@ -453,6 +463,8 @@ func (*Unset) stmt() {}
 func (*StaticVar) stmt() {}
 
 func (*Global) stmt() {}
+
+func (*ConstDecl) stmt() {}
 
 func (*Use) stmt() {}
 

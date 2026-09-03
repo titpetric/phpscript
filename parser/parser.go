@@ -283,6 +283,12 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 			return p.parseModifiedClass()
 		case "class":
 			return p.parseClass(classModifiers{})
+		case "const":
+			consts, err := p.parseConsts()
+			if err != nil {
+				return nil, err
+			}
+			return &model.ConstDecl{Consts: consts}, nil
 		case "interface":
 			return p.parseInterface()
 		case "include", "include_once", "require", "require_once":

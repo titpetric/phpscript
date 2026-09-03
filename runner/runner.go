@@ -374,6 +374,18 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 	case *model.StaticVar:
 		return nil, flowNormal, rt.execStaticVar(n, scope)
 
+	case *model.ConstDecl:
+		// Each entry declares through the same table define() writes to, so
+		// the two spellings of a global constant behave identically.
+		for _, c := range n.Consts {
+			v, err := rt.Eval(c.Default, scope)
+			if err != nil {
+				return nil, flowNormal, err
+			}
+			rt.SetConst(c.Name, v)
+		}
+		return nil, flowNormal, nil
+
 	case *model.Global:
 		// A documented no-op: the variable stays unset (docs/design.md), and
 		// `phpscript lint` reports the statement.

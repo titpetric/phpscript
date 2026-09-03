@@ -138,6 +138,12 @@ func (h flatHost) Constant(name string) (any, error) {
 	return nil, &UndefinedConstantError{Name: name}
 }
 
+// SetConstant is the write side of Constant: a top-level `const` entry lands
+// in the same table define() writes through Runtime.SetConst.
+func (h flatHost) SetConstant(name string, value any) {
+	h.runtime.SetConst(name, value)
+}
+
 func (h flatHost) Array(items []model.ArrayItemValue) any { return helperArray(items...) }
 
 func (h flatHost) Index(base, index any) any { return helperIndex(base, index) }

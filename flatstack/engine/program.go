@@ -53,6 +53,9 @@ const (
 	opClassConst
 	opCast
 	opClosure
+	// opDefineConst pops the value and declares it under the name a top-level
+	// `const` statement wrote, through the same host table define() uses.
+	opDefineConst
 )
 
 type instruction struct {
@@ -141,6 +144,10 @@ type Host interface {
 	// Constant resolves a bare name. The error is what an undefined one
 	// raises, which Lookup has no way to report.
 	Constant(string) (any, error)
+	// SetConstant declares a constant, the write side of Constant. A
+	// top-level `const` entry goes through it so both spellings of a global
+	// constant share one table.
+	SetConstant(string, any)
 	Array([]model.ArrayItemValue) any
 	Index(any, any) any
 	SetIndex(any, any, any, bool, string) error
