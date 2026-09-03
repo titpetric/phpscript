@@ -2,12 +2,11 @@ name: getmypid, the core spelling of the process id
 description: >
   getmypid is core standard and posix_getpid is ext/posix, an optional
   extension a host can be built without; both name the running process and
-  return the identical value, so phpscript binds both. A pid differs per run,
-  so every assertion is on shape - the type, that it is positive, and that
-  the two spellings agree. putenv/getenv and bin2hex(random_bytes()) cover
-  the neighbouring jobs of a per-process key; uniqid stays unbound, argued
-  into the "Won't implement" table because ulid() and uuid() already own the
-  unique-id job. Guards the fix for
+  return the identical value, so phpscript binds both to one
+  implementation. A pid differs per run, so every assertion is on shape -
+  the type, that it is positive, and that the two spellings agree.
+  putenv/getenv and bin2hex(random_bytes()) cover the neighbouring jobs of
+  a per-process key. Guards the fix for
   https://github.com/titpetric/phpscript/issues/90.
 ---
 <?php
