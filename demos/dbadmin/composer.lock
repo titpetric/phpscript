@@ -8,16 +8,16 @@
     "packages": [
         {
             "name": "titpetric/minitpl",
-            "version": "v1.2.0",
+            "version": "v1.3.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/titpetric/minitpl.git",
-                "reference": "abd484bee37c6d65b6b6b25cae946e16cc7fb092"
+                "reference": "bb5360ee5b67bf15681a75de23cf9008fb61397c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/titpetric/minitpl/zipball/abd484bee37c6d65b6b6b25cae946e16cc7fb092",
-                "reference": "abd484bee37c6d65b6b6b25cae946e16cc7fb092",
+                "url": "https://api.github.com/repos/titpetric/minitpl/zipball/bb5360ee5b67bf15681a75de23cf9008fb61397c",
+                "reference": "bb5360ee5b67bf15681a75de23cf9008fb61397c",
                 "shasum": ""
             },
             "require": {
@@ -31,7 +31,7 @@
             },
             "archive": {
                 "exclude": [
-                    "/test",
+                    "/tests",
                     "/docs",
                     "/vendor",
                     "/phpunit.xml"
@@ -59,10 +59,10 @@
                 "tiny"
             ],
             "support": {
-                "source": "https://github.com/titpetric/minitpl/tree/v1.2.0",
+                "source": "https://github.com/titpetric/minitpl/tree/v1.3.1",
                 "issues": "https://github.com/titpetric/minitpl/issues"
             },
-            "time": "2026-08-17T13:34:59+00:00"
+            "time": "2026-09-03T10:28:17+00:00"
         }
     ],
     "packages-dev": [],
