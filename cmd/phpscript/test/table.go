@@ -96,7 +96,10 @@ func (t *terminalTable) writeGroup(dir string, labels []string) {
 
 func (t *terminalTable) writeResult(r *fixtureRun) {
 	status := table.ColorGreen + "PASS" + table.ColorReset
-	if !r.Result.Passed {
+	switch {
+	case r.Result.Skipped:
+		status = table.ColorDim + "SKIP" + table.ColorReset
+	case !r.Result.Passed:
 		status = table.ColorRed + "FAIL" + table.ColorReset
 	}
 	row := []string{
@@ -191,7 +194,10 @@ func (t *markdownTable) closeGroup(totals groupTotals) {
 
 func (t *markdownTable) writeResult(r *fixtureRun) {
 	status := "PASS"
-	if !r.Result.Passed {
+	switch {
+	case r.Result.Skipped:
+		status = "SKIP"
+	case !r.Result.Passed:
 		status = "FAIL"
 	}
 	row := []string{status, markdownCell(r.label()), formatDuration(r.Total)}
