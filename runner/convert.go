@@ -223,24 +223,125 @@ func stringToInt(s string) int64 {
 	return int64(f)
 }
 
-// phpLooseEqual approximates PHP's `==` for switch/case matching: numeric
-// operands compare numerically, everything else by string value.
+// phpLooseEqual is PHP's `==`, used by switch/case matching and the flatstack
+// host. It reads the same table as the comparison operators, so null equals 0,
+// "" and false, and two numeric strings compare numerically ("1" == "01").
 func phpLooseEqual(a, b any) bool {
-	if a == nil || b == nil {
-		return a == nil && b == nil
-	}
-	if isNumeric(a) && isNumeric(b) {
-		return toFloat(a) == toFloat(b)
-	}
-	return phpString(a) == phpString(b)
+	return phpCompare("==", a, b)
 }
 
-func isNumeric(v any) bool {
-	switch v.(type) {
-	case int, int64, float64:
+// phpCompare applies one comparison operator with PHP 8 semantics. The loose
+// operators read phpval.Compare's ordering; `===` and `!==` are identity and
+// never coerce.
+func phpCompare(op string, a, b any) bool {
+	switch op {
+	case "===":
+		return phpIdentical(a, b)
+	case "!==":
+		return !phpIdentical(a, b)
+	}
+	// A NaN operand answers false to every operator except `!=`, which PHP does
+	// not derive from its ordering (NAN <=> 1 and 1 <=> NAN are both 1). The
+	// one escape is a bool or null on the other side, where both operands go
+	// through the bool domain and (bool)NAN is true.
+	if (isNaNValue(a) || isNaNValue(b)) && !inBoolDomain(a) && !inBoolDomain(b) {
+		return op == "!="
+	}
+	c := phpval.Compare(a, b)
+	switch op {
+	case "==":
+		return c == 0
+	case "!=":
+		return c != 0
+	case "<":
+		return c < 0
+	case "<=":
+		return c <= 0
+	case ">":
+		return c > 0
+	default:
+		return c >= 0
+	}
+}
+
+// isNaNValue reports a float64 NaN operand, the value fdiv(0, 0) returns.
+func isNaNValue(v any) bool {
+	f, ok := v.(float64)
+	return ok && math.IsNaN(f)
+}
+
+// inBoolDomain reports an operand that drags a loose comparison into the bool
+// domain: nil or bool, phpval.Compare's isBoolish.
+func inBoolDomain(v any) bool {
+	if v == nil {
 		return true
 	}
-	return false
+	_, ok := v.(bool)
+	return ok
+}
+
+// phpIdentical is PHP's `===`: same type and same value, no coercion. The one
+// widening is int against int64, which are a single PHP type (int) that
+// arrives in two Go spellings: int64 from the parser and arithmetic, int from
+// a Go binding. Arrays compare pairwise in order, objects by instance, and a
+// host value a binding returned falls back to reflect equality on its own
+// type.
+func phpIdentical(a, b any) bool {
+	switch x := a.(type) {
+	case nil:
+		return b == nil
+	case bool:
+		y, ok := b.(bool)
+		return ok && x == y
+	case string:
+		y, ok := b.(string)
+		return ok && x == y
+	case int, int64:
+		switch b.(type) {
+		case int, int64:
+			return toInt(a) == toInt(b)
+		}
+		return false
+	case float64:
+		y, ok := b.(float64)
+		return ok && x == y
+	case *model.Array:
+		y, ok := b.(*model.Array)
+		return ok && identicalArrays(x, y)
+	case *model.Object:
+		// PHP's `===` on objects is same instance, not equal properties.
+		y, ok := b.(*model.Object)
+		return ok && x == y
+	}
+	if b == nil {
+		return false
+	}
+	// reflect.DeepEqual rather than ==: a binding's []string is not comparable
+	// and would panic under the operator.
+	return reflect.TypeOf(a) == reflect.TypeOf(b) && reflect.DeepEqual(a, b)
+}
+
+// identicalArrays reports whether two arrays are identical the way PHP's `===`
+// asks: the same key/value pairs, in the same order, with identical values.
+func identicalArrays(x, y *model.Array) bool {
+	if x == y {
+		return true
+	}
+	if x.Len() != y.Len() {
+		return false
+	}
+	xk, yk := x.Keys(), y.Keys()
+	for i := range xk {
+		if !phpIdentical(xk[i], yk[i]) {
+			return false
+		}
+		xv, _ := x.Get(xk[i])
+		yv, _ := y.Get(yk[i])
+		if !phpIdentical(xv, yv) {
+			return false
+		}
+	}
+	return true
 }
 
 // helperCast implements PHP type casts `(bool)`, `(int)`, `(float)`,
