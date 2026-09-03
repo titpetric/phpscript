@@ -26,6 +26,7 @@ import (
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/runner/coverage"
+	"github.com/titpetric/phpscript/runner/plugin"
 	"github.com/titpetric/phpscript/stdlib"
 )
 
@@ -137,6 +138,7 @@ type Fixture struct {
 	Root        string          `yaml:"root"`    // optional: include root, relative to the fixture's own directory
 	Serial      bool            `yaml:"serial"`  // optional: do not overlap this fixture with peers in its area
 	Runner      FixtureRunners  `yaml:"runner"`  // optional: runners the fixture opts out of
+	Plugins     Plugins         `yaml:"plugins"` // optional: Go plugins the fixture loads
 	Request     FixtureRequest  `yaml:"request"`
 	Response    FixtureResponse `yaml:"response"`
 
@@ -533,6 +535,12 @@ func ParseFixture(data []byte, path ...string) (*Fixture, error) {
 	if f.Description == "" {
 		return nil, errors.New("fixture metadata missing required 'description'")
 	}
+	// A plugin's classes come from a .so the php binary knows nothing about,
+	// so the opt-out is required rather than conventional: without it the
+	// failure would surface as an unexplained matrix cell.
+	if len(f.Plugins) > 0 && f.Runs(RunnerPHP) {
+		return nil, errors.New("fixture loads a Go plugin; opt the php runner out with runner: php: false")
+	}
 
 	f.PHP = strings.TrimPrefix(parts[1], "\n")
 	f.Expected = parts[2]
@@ -681,6 +689,18 @@ func RunFixtureOn(ctx context.Context, f *Fixture, r Runner) *TestResult {
 		headers = reqCtx.ResponseHeaders()
 	}
 
+	// A host built without cgo cannot load a Go plugin at all. That is the same
+	// kind of answer as a missing php binary, so a fixture that needs one is
+	// skipped rather than failed; a plugin that failed to build or to bind is
+	// still a failure and falls through.
+	if errors.Is(runErr, plugin.ErrUnsupported) {
+		res.Skipped = true
+		res.FailureReason = runErr.Error()
+		res.Error = runErr.Error()
+		res.DurationMs = time.Since(start).Milliseconds()
+		return res
+	}
+
 	res.GotOutput = out
 	res.WantOutput = strings.TrimSuffix(f.Expected, "\n")
 	res.DurationMs = time.Since(start).Milliseconds()
@@ -774,6 +794,22 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 		// RegisterFS rebinds them to the fixture, so it has to run after it.
 		stdlib.Register(rt)
 		stdlib.RegisterFS(rt, f.RootDir())
+	}
+	// Plugins load after the standard library, so a plugin constructor of the
+	// same name replaces the stdlib one rather than losing to it. Bind runs on
+	// every request; ResetSession keeps host constructors, so a re-bind
+	// overwrites the same entries rather than adding to them. A fixture naming
+	// no plugins pays a length check.
+	plugins, err := f.loadPlugins(ctx, rt)
+	if err != nil {
+		return "Internal Server Error", reqCtx, err
+	}
+	if err := plugin.BindAll(ctx, rt, plugins); err != nil {
+		return "Internal Server Error", reqCtx, err
+	}
+	if built {
+		// Freezing after the first Bind puts a constant a plugin defined
+		// inside the snapshot ResetSession restores.
 		rt.FreezeStdlib()
 	}
 	// The harness parses and runs the fixture directly rather than going
@@ -815,14 +851,26 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
-	if f.flatRT == nil {
+	built := f.flatRT == nil
+	if built {
 		// A nil cache is caching off, which is what SetNoCache asks for; both
 		// cache types answer a miss for nil rather than needing a branch here.
 		flatCache, flatExpr := f.flatCaches(ctx)
 		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions(), f.RootDir(), f.Path, flatCache, flatExpr)
-		f.flatRT.FreezeStdlib()
 	} else {
 		f.flatRT.ResetSession(&out, f.stdin())
+	}
+	// See executeFixturePHP: plugins load after the standard library so they
+	// can replace it, bind on every run, and freeze after the first bind.
+	plugins, err := f.loadPlugins(ctx, f.flatRT)
+	if err != nil {
+		return "Internal Server Error", reqCtx, err
+	}
+	if err := plugin.BindAll(ctx, f.flatRT, plugins); err != nil {
+		return "Internal Server Error", reqCtx, err
+	}
+	if built {
+		f.flatRT.FreezeStdlib()
 	}
 	f.flatRT.SetContext(ctx)
 	reqCtx.Register(f.flatRT)

@@ -120,22 +120,34 @@ func TestFixtures(t *testing.T) {
 	}
 
 	type result struct {
-		area   string
-		name   string
-		passed bool
+		area    string
+		name    string
+		passed  bool
+		skipped bool
 	}
 	var results []result
 
 	for _, area := range areas {
 		t.Run(area.Name, func(t *testing.T) {
 			for _, fx := range area.Fixtures {
+				// t.Run reports a skipped subtest as passing, so the skip is
+				// recorded here rather than read back from it: a fixture the
+				// host could not run must not be summarised as one that ran.
+				skipped := false
 				passed := t.Run(fx.Name, func(t *testing.T) {
 					res := RunFixture(t.Context(), fx)
+					// A fixture the host cannot run at all, a Go plugin in a
+					// build without cgo, is skipped the way a missing php
+					// binary is: the answer is about the host, not the fixture.
+					if res.Skipped {
+						skipped = true
+						t.Skip(res.FailureReason)
+					}
 					if !res.Passed {
 						t.Fatalf("fixture failed: %s", res.FailureReason)
 					}
 				})
-				results = append(results, result{area.Name, fx.Name, passed})
+				results = append(results, result{area.Name, fx.Name, passed, skipped})
 			}
 		})
 	}
@@ -144,7 +156,10 @@ func TestFixtures(t *testing.T) {
 	t.Log("Fixture summary:")
 	for _, r := range results {
 		status := "PASS"
-		if !r.passed {
+		switch {
+		case r.skipped:
+			status = "SKIP"
+		case !r.passed:
 			status = "FAIL"
 		}
 		t.Logf("  [%s] %s/%s", status, r.area, r.name)
