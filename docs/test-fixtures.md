@@ -234,6 +234,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/pexec | Flat stack | Runtime | PHP  |
 |----------------------|------------|---------|------|
 | exec.phpt            | PASS       | PASS    | PASS |
+| getmypid.phpt        | PASS       | PASS    | PASS |
 | workdir.phpt         | PASS       | PASS    | PASS |
 
 ## tests/fixtures/regex
@@ -351,10 +352,10 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/oop         | 24       | 24     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
 | tests/fixtures/paths       | 6        | 6      | 0      |
-| tests/fixtures/pexec       | 2        | 2      | 0      |
+| tests/fixtures/pexec       | 3        | 3      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| **Total**                  | 226      | 226    | 0      |
+| **Total**                  | 227      | 227    | 0      |

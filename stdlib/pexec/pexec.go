@@ -1,6 +1,6 @@
 // Package pexec exposes process execution to PHP: the ref.exec.php functions
 // that run a command through the shell, the two that quote for it, and
-// posix_getpid, which names the running process.
+// posix_getpid and getmypid, which name the running process.
 //
 // Running a command leaves the fs.FS sandbox behind on purpose. A process reads
 // and writes with the permissions of the user running the server, and
@@ -56,4 +56,7 @@ type root struct {
 func registerProcess(rt *runner.Runtime) {
 	// posix_getpid returns the process id of the running interpreter.
 	rt.RegisterFunc("posix_getpid", func() int64 { return int64(os.Getpid()) })
+
+	// getmypid returns the process id of the running interpreter.
+	rt.RegisterFunc("getmypid", func() int64 { return int64(os.Getpid()) })
 }

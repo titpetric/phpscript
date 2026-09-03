@@ -179,7 +179,7 @@ github.com/titpetric/phpscript/stdlib/internals/internals.go, symbols 2, coverag
 github.com/titpetric/phpscript/stdlib/logger/logger.go, symbols 7, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/pexec/escape.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/pexec/exec.go, symbols 12, coverage 92.37%
-github.com/titpetric/phpscript/stdlib/pexec/pexec.go, symbols 4, coverage 87.50%
+github.com/titpetric/phpscript/stdlib/pexec/pexec.go, symbols 4, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/session/manager.go, symbols 6, coverage 87.13%
 github.com/titpetric/phpscript/stdlib/session/session.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/session/storage_disk.go, symbols 6, coverage 72.90%
