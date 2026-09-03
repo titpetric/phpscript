@@ -46,7 +46,7 @@ github.com/titpetric/phpscript/stdlib/http, symbols 24, coverage 72.75%
 github.com/titpetric/phpscript/stdlib/info, symbols 2, coverage 75.00%
 github.com/titpetric/phpscript/stdlib/internals, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/logger, symbols 7, coverage 100.00%
-github.com/titpetric/phpscript/stdlib/pexec, symbols 19, coverage 92.55%
+github.com/titpetric/phpscript/stdlib/pexec, symbols 19, coverage 95.18%
 github.com/titpetric/phpscript/stdlib/session, symbols 25, coverage 78.20%
 github.com/titpetric/phpscript/stdlib/shared, symbols 13, coverage 95.90%
 github.com/titpetric/phpscript/stdlib/smtp, symbols 27, coverage 86.89%
