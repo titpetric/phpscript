@@ -27,6 +27,9 @@ tests/fixtures/**/.*.php
 tests/fixtures/**/filesystem_fixture_*.txt
 *.so
 
+# The plugin loader tests build throwaway plugins here.
+runner/plugin/testdata/build/
+
 # Local agent/editor state, never committed.
 /.claude
 
