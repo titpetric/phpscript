@@ -99,6 +99,12 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | time.phpt                             | PASS       | PASS    | SKIP |
 | time_values.phpt                      | PASS       | PASS    | SKIP |
 
+## tests/fixtures/comparison
+
+| tests/fixtures/comparison | Flat stack | Runtime | PHP  |
+|---------------------------|------------|---------|------|
+| loose_comparison.phpt     | PASS       | PASS    | PASS |
+
 ## tests/fixtures/errors
 
 | tests/fixtures/errors   | Flat stack | Runtime | PHP  |
@@ -342,6 +348,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/arrays      | 20       | 20     | 0      |
 | tests/fixtures/autoloading | 4        | 4      | 0      |
 | tests/fixtures/bindings    | 27       | 27     | 0      |
+| tests/fixtures/comparison  | 1        | 1      | 0      |
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 9        | 9      | 0      |
 | tests/fixtures/flatstack   | 8        | 8      | 0      |
@@ -358,4 +365,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| **Total**                  | 227      | 227    | 0      |
+| **Total**                  | 228      | 228    | 0      |
