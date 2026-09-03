@@ -70,19 +70,19 @@ func TestTranspileSource(t *testing.T) {
 		{
 			name: "identity comparison",
 			expr: &model.Binary{Op: "===", Left: v("a"), Right: lit(1)},
-			want: `(v_a) == (1)`,
+			want: `__cmp("===", v_a, 1)`,
 			vars: []string{"a"},
 		},
 		{
 			name: "not identical",
 			expr: &model.Binary{Op: "!==", Left: v("a"), Right: lit(1)},
-			want: `(v_a) != (1)`,
+			want: `__cmp("!==", v_a, 1)`,
 			vars: []string{"a"},
 		},
 		{
 			name: "loose comparison",
 			expr: &model.Binary{Op: ">=", Left: v("a"), Right: lit(1)},
-			want: `(v_a) >= (1)`,
+			want: `__cmp(">=", v_a, 1)`,
 			vars: []string{"a"},
 		},
 		{

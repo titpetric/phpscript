@@ -320,6 +320,7 @@ func New(w io.Writer, opts Options) *Runtime {
 			"__index":      adapt(helperIndex),
 			"__cast":       adapt(helperCast),
 			"__arith":      adapt(phpArith),
+			"__cmp":        adapt(phpCompare),
 			"__bit":        adapt(phpBitwise),
 			"__bitnot":     adapt(phpBitNot),
 			"__instanceof": adapt(phpInstanceOf),
@@ -1464,6 +1465,7 @@ func (rt *Runtime) typeEnvBase() map[string]any {
 	env["__new"] = typeEnvStub
 	env["__cast"] = typeEnvStub
 	env["__arith"] = typeEnvStub
+	env["__cmp"] = typeEnvStub
 	env["__bit"] = typeEnvStub
 	env["__bitnot"] = typeEnvStub
 	env["__instanceof"] = typeEnvStub

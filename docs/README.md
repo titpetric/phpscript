@@ -112,6 +112,13 @@ precision-14 float rendering), with the following exceptions:
   `DivisionByZeroError`. `intdiv()` does throw on a zero divisor;
   `fdiv()` returns `INF`/`-INF`/`NAN` as in PHP.
 
+Comparison follows PHP 8's table: `==` and `!=` coerce across types, so
+`"1" == 1`, `null == false` and `"1" == "01"` are true and a non-numeric
+string never compares numerically (`"abc" == 0` is false); `<`, `<=`, `>` and
+`>=` read the same table; `===` and `!==` are identity and never coerce.
+`switch`/`case` and `in_array()` apply the same rules. The `<=>` operator is
+not implemented.
+
 The bitwise operators `&`, `|`, `^`, `<<`, `>>` and `~` follow PHP's
 precedence and semantics: operands are cast to int, `&`/`|`/`^` between two
 strings work byte by byte and yield a string, shifts are int64 operations
