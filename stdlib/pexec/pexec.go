@@ -54,9 +54,11 @@ type root struct {
 // registerProcess installs what names the running process rather than a
 // command it starts.
 func registerProcess(rt *runner.Runtime) {
-	// posix_getpid returns the process id of the running interpreter.
-	rt.RegisterFunc("posix_getpid", func() int64 { return int64(os.Getpid()) })
+	pid := func() int64 { return int64(os.Getpid()) }
 
-	// getmypid returns the process id of the running interpreter.
-	rt.RegisterFunc("getmypid", func() int64 { return int64(os.Getpid()) })
+	// posix_getpid returns the process id of the running interpreter.
+	rt.RegisterFunc("posix_getpid", pid)
+
+	// getmypid returns the process id of the running interpreter, the core spelling of posix_getpid.
+	rt.RegisterFunc("getmypid", pid)
 }

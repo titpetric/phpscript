@@ -1675,7 +1675,7 @@ function system(string $command, &$result_code): mixed
 #### process
 
 ```php
-// getmypid returns the process id of the running interpreter.
+// getmypid returns the process id of the running interpreter, the core spelling of posix_getpid.
 function getmypid(): int
 ```
 
