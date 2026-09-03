@@ -1,0 +1,102 @@
+name: == and != do not coerce across types, silently through a variable
+description: >
+  The interpreter hands both operands of a comparison to expr, which types
+  them as Go values, so `==` between a string and an int never coerces.
+  Through a variable that is a silent false: `$copy == 1` against "1" answers
+  false with no error, no warning and nothing from phpscript lint. As a
+  literal the same expression aborts the statement with: invalid operation:
+  == (mismatched types string and int). `<`, `<=`, `>` and `>=` abort in both
+  spellings; `===` and `!==` are correct through a variable and abort as
+  literals, because the strict operator is lowered to `==` before the type
+  check runs.
+
+  The comparison already exists elsewhere in the runtime. `switch`/`case`
+  and the flatstack host both call phpLooseEqual, in_array and array_search
+  both call phpval.Compare, and arithmetic coerces as docs/README.md says it
+  does, so "1" + 1 is int(2) in the same script where "1" == 1 is false.
+  flatstack.enabled defaults to false, so the engine that gets this wrong is
+  the one phpscript run and phpscript server use.
+
+  This fixture bounds the report with the three spellings that do work: the
+  cast and a strict compare, the loose compare switch and in_array already
+  perform, and the coercion arithmetic already performs.
+
+  Reported: https://github.com/titpetric/phpscript/issues/88
+---
+<?php
+
+// Works today: cast, then compare strictly. This is the spelling every mobius
+// call site that reads a number out of a request has to use.
+$copy = "1";
+var_dump((int)$copy === 1);
+
+// Works today: the runtime already loose-compares, in switch and in_array.
+switch ($copy) {
+    case 1:
+        echo "switch matched\n";
+        break;
+}
+var_dump(in_array($copy, [1, 2]));
+
+// Works today: arithmetic coerces, as docs/README.md says it does.
+var_dump($copy + 1);
+
+// What this issue asks for, and what fails. Through a variable these answer
+// false silently; as literals they abort the statement with
+// "invalid operation: == (mismatched types string and int)".
+var_dump($copy == 1);
+var_dump(1 == $copy);
+var_dump($copy != 1);
+var_dump("1" == 1);
+
+// Strict comparison is unaffected in PHP and must stay unaffected here. The
+// variable form is already correct; the literal form aborts today.
+var_dump($copy === 1);
+var_dump($copy !== 1);
+var_dump("1" === 1);
+
+// The relational operators take the same table. Both spellings abort today.
+var_dump($copy < 2);
+var_dump($copy >= 1);
+
+// The rest of the table, on the operand pairs a request carries.
+$f = "1.5";
+var_dump($f == 1.5);
+
+$b = true;
+var_dump($b == 1);
+
+$n = null;
+var_dump($n == 0);
+var_dump($n == "");
+var_dump($n == false);
+
+$a = "1";
+$z = "01";
+var_dump($a == $z);
+
+// PHP 8 does not compare a non-numeric string numerically, and this runtime
+// already agrees. The fix must not change this row.
+var_dump("abc" == 0);
+?>
+---
+bool(true)
+switch matched
+bool(true)
+int(2)
+bool(true)
+bool(true)
+bool(false)
+bool(true)
+bool(false)
+bool(true)
+bool(false)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(true)
+bool(false)
