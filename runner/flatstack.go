@@ -386,3 +386,13 @@ func (h flatHost) PopLiveWalker() {
 func (h flatHost) CheckMemory() error {
 	return h.runtime.checkMemory()
 }
+
+func (h *flatHost) InvokeCallable(callable any) error {
+	if callable == nil {
+		return nil
+	}
+	scope := h.boundScope()
+	_, err := h.runtime.invokeWithScopeContext(callable, nil, scope)
+	h.pullScope(scope)
+	return err
+}

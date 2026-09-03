@@ -148,11 +148,6 @@ func TestFlatstackRejectsClosureForms(t *testing.T) {
 			source: `<?php $f = function () { return 1; }; echo $f();`,
 			want:   "unsupported expression *model.Invoke",
 		},
-		{
-			name:   "defer",
-			source: `<?php defer(function () { echo "late"; });`,
-			want:   "unsupported defer() registers on the calling frame",
-		},
 	}
 
 	for _, test := range tests {
@@ -169,5 +164,15 @@ func TestFlatstackRejectsClosureForms(t *testing.T) {
 				t.Fatalf("error = %v, want one containing %q", err, test.want)
 			}
 		})
+	}
+}
+
+func TestFlatstackSupportsDefer(t *testing.T) {
+	program, err := parser.Parse(`<?php defer(function () { echo "late"; });`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := flatstack.Supports(program); err != nil {
+		t.Fatalf("defer unexpectedly rejected: %v", err)
 	}
 }

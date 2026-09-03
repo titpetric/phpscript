@@ -98,3 +98,53 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 		})
 	}
 }
+
+// TestFlatstackCatchSurvivesCalleeJumps pins the handler discipline across
+// frames: opJump discards a handler when the jump leaves its try's pc range,
+// and a callee's pcs are always outside the caller's range, so the range rule
+// is scoped to the frame that armed the handler. Before that scoping, the
+// first branch in a called function silently disarmed the caller's catch.
+func TestFlatstackCatchSurvivesCalleeJumps(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{
+			name:   "branch in the callee",
+			source: `<?php function work() { if (true) { echo "body"; } throw new RuntimeException("x"); } try { work(); } catch (RuntimeException $e) { echo "-caught"; }`,
+			want:   "body-caught",
+		},
+		{
+			name:   "loop in the callee",
+			source: `<?php function work() { for ($i = 0; $i < 2; $i++) { echo "."; } throw new RuntimeException("x"); } try { work(); } catch (RuntimeException $e) { echo "-caught"; }`,
+			want:   "..-caught",
+		},
+		{
+			name:   "callee catches its own throw first",
+			source: `<?php function work() { try { throw new LogicException("inner"); } catch (LogicException $e) { echo "inner"; } throw new RuntimeException("x"); } try { work(); } catch (RuntimeException $e) { echo "-outer"; }`,
+			want:   "inner-outer",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := parser.Parse(test.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := flatstack.Supports(program); err != nil {
+				t.Fatalf("expected native bytecode support: %v", err)
+			}
+			var output strings.Builder
+			runtime := flatstack.New(&output, flatstack.Options{})
+			stdlib.Register(runtime)
+			if err := runtime.Run(program); err != nil {
+				t.Fatalf("run: %v", err)
+			}
+			if got := output.String(); got != test.want {
+				t.Fatalf("output = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
