@@ -40,7 +40,7 @@ github.com/titpetric/phpscript/cmd/phpscript/test/run.go, symbols 13, coverage 8
 github.com/titpetric/phpscript/cmd/phpscript/test/suite.go, symbols 9, coverage 92.71%
 github.com/titpetric/phpscript/cmd/phpscript/test/table.go, symbols 20, coverage 95.27%
 github.com/titpetric/phpscript/cmd/phpscript/version/version.go, symbols 2, coverage 0.00%
-github.com/titpetric/phpscript/config/config.go, symbols 4, coverage 88.75%
+github.com/titpetric/phpscript/config/config.go, symbols 5, coverage 71.00%
 github.com/titpetric/phpscript/config.go, symbols 2, coverage 69.60%
 github.com/titpetric/phpscript/config/overlay.go, symbols 3, coverage 86.67%
 github.com/titpetric/phpscript/config/server.go, symbols 1, coverage 100.00%
