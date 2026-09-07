@@ -136,3 +136,17 @@ func NewTestConfig() Config {
 	result.Telemetry.Enabled = false
 	return result
 }
+
+// Value is the configuration a pointer holds, and the zero configuration for a
+// nil one.
+//
+// Every command constructor takes a *Config so one signature covers all of
+// them, and a command that reads no configuration is handed whatever the
+// caller has. This is what lets the ones that do read it work with a value
+// without each repeating the nil check.
+func Value(c *Config) Config {
+	if c == nil {
+		return Config{}
+	}
+	return *c
+}

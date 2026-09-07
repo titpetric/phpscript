@@ -9,6 +9,7 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
 	phplist "github.com/titpetric/phpscript/list"
 	"github.com/titpetric/phpscript/model"
@@ -25,7 +26,10 @@ type Options struct {
 
 // NewCommand creates a new info command. The verbosity dial is the shared -v:
 // here it lists every bound function, class and method under the summary.
-func NewCommand(globals *flags.Options) *cli.Command {
+// The configuration is what every command constructor takes, so one
+// signature covers all of them. This command reads it through globals,
+// which main fills from the configuration before any command is built.
+func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "info",
 		Title: Name,

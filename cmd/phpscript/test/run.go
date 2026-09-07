@@ -120,7 +120,9 @@ type jsonReport struct {
 }
 
 // NewCommand creates a new test command.
-func NewCommand(appConfig config.Config, globals *flags.Options) *cli.Command {
+func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
+	appConfig := config.Value(cfg)
+
 	var opts Options
 	var bound *cli.FlagSet
 	return &cli.Command{

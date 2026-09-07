@@ -35,12 +35,14 @@ const Name = "Run php server"
 const DefaultDocumentRoot = "public"
 
 // NewCommand creates a new server command.
-func NewCommand(config config.Config, globals *flags.Options) *cli.Command {
+func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
+	appConfig := config.Value(cfg)
+
 	return &cli.Command{
 		Name:  "server",
 		Title: Name,
 		Run: func(ctx context.Context, args []string) error {
-			return Run(ctx, args, config, globals)
+			return Run(ctx, args, appConfig, globals)
 		},
 	}
 }

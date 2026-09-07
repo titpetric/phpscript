@@ -23,6 +23,7 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/server"
 	"github.com/titpetric/phpscript/cmd/phpscript/test"
 	"github.com/titpetric/phpscript/cmd/phpscript/version"
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/model"
@@ -69,28 +70,31 @@ func start() error {
 		}
 	}
 
+	version.Build = version.Info{
+		Version:    Version,
+		Commit:     Commit,
+		CommitTime: CommitTime,
+		Branch:     Branch,
+	}
+
+	// Every constructor takes the configuration and the global options, so the
+	// table names them rather than wrapping each one in a closure that closes
+	// over what it happens to need.
 	commands := []registration{
 		{"ast", ast.Name, ast.NewCommand},
 		{"fmt", fmt.Name, fmt.NewCommand},
-		{"info", info.Name, func() *cli.Command { return info.NewCommand(globals) }},
-		{"lint", lint.Name, func() *cli.Command { return lint.NewCommand(globals) }},
+		{"info", info.Name, info.NewCommand},
+		{"lint", lint.Name, lint.NewCommand},
 		{"list", list.Name, list.NewCommand},
-		{"run", run.Name, func() *cli.Command { return run.NewCommand(appConfig, globals) }},
-		{"server", server.Name, func() *cli.Command { return server.NewCommand(appConfig, globals) }},
-		{"test", test.Name, func() *cli.Command { return test.NewCommand(appConfig, globals) }},
-		{"version", version.Name, func() *cli.Command {
-			return version.NewCommand(version.Info{
-				Version:    Version,
-				Commit:     Commit,
-				CommitTime: CommitTime,
-				Branch:     Branch,
-			})
-		}},
+		{"run", run.Name, run.NewCommand},
+		{"server", server.Name, server.NewCommand},
+		{"test", test.Name, test.NewCommand},
+		{"version", version.Name, version.NewCommand},
 	}
 
 	app := cli.NewApp("phpscript")
 	for _, command := range commands {
-		app.AddCommand(command.name, command.title, decorate(globals, command))
+		app.AddCommand(command.name, command.title, decorate(&appConfig, globals, command))
 	}
 	app.DefaultCommand = "run"
 
@@ -110,16 +114,16 @@ func start() error {
 type registration struct {
 	name  string
 	title string
-	new   func() *cli.Command
+	new   func(*config.Config, *flags.Options) *cli.Command
 }
 
 // decorate binds the shared flags onto a command and wraps its Run with the
 // work they imply, so no command package repeats either. It also attaches the
 // command's examples, which is what `phpscript <command> --help` prints under
 // its usage line.
-func decorate(globals *flags.Options, command registration) func() *cli.Command {
+func decorate(appConfig *config.Config, globals *flags.Options, command registration) func() *cli.Command {
 	return func() *cli.Command {
-		c := command.new()
+		c := command.new(appConfig, globals)
 		c.Bind = globals.BindWith(c.Bind)
 		c.Run = globals.RunWith(c.Run)
 		if c.Usage == nil {
@@ -163,8 +167,10 @@ func writeHelp(f *os.File, commands []registration) error {
 		// The command is built and bound against a throwaway set holding both,
 		// then the shared names are dropped: what is left is what the command
 		// adds, which is the only part worth repeating per section.
+		// No configuration and no typed flags: the help lists what a command
+		// takes, which is the same whatever this run was pointed at.
 		both := pflag.NewFlagSet(command.name, pflag.ContinueOnError)
-		if bind := command.new().Bind; bind != nil {
+		if bind := command.new(nil, &flags.Options{}).Bind; bind != nil {
 			bind(both)
 		}
 		own := pflag.NewFlagSet(command.name, pflag.ContinueOnError)

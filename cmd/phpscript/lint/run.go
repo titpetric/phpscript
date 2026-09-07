@@ -11,6 +11,7 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
 	phplint "github.com/titpetric/phpscript/lint"
@@ -30,7 +31,10 @@ type Options struct {
 // NewCommand creates a new lint command. The file --include names is what puts
 // the application's own classes and functions in the name registry, so the same
 // flag that makes a request find them makes the checks know them.
-func NewCommand(globals *flags.Options) *cli.Command {
+// The configuration is what every command constructor takes, so one
+// signature covers all of them. This command reads it through globals,
+// which main fills from the configuration before any command is built.
+func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 	var opts Options
 
 	return &cli.Command{
