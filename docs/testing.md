@@ -33,15 +33,26 @@ func TestMain(m *testing.M) {
 }
 ```
 
-The helper sets (and overwrites) the database DSNs used by the integration fixtures before running the suite:
+A connection is named by a `PLATFORM_DB_<NAME>=<driver>://<dsn>` variable, and the name a script opens is that one lowercased. `TestMain` builds a provider from the process environment with these read over it, so a `go test` run has them whether or not the shell exported any:
 
-| Environment variable   | Configured test service          |
-|------------------------|----------------------------------|
-| `DB_DSN_SQLITE_TEST`   | Shared in-memory SQLite database |
-| `DB_DSN_POSTGRES_TEST` | PostgreSQL on `localhost:15432`  |
-| `DB_DSN_MYSQL_TEST`    | MySQL on `localhost:13306`       |
+| Environment variable        | `new Database(...)` | Configured test service          |
+|-----------------------------|---------------------|----------------------------------|
+| `PLATFORM_DB_SQLITE_TEST`   | `sqlite_test`       | Shared in-memory SQLite database |
+| `PLATFORM_DB_POSTGRES_TEST` | `postgres_test`     | PostgreSQL on `localhost:15432`  |
+| `PLATFORM_DB_MYSQL_TEST`    | `mysql_test`        | MySQL on `localhost:13306`       |
+| `PLATFORM_DB_SCAFFOLD`      | `scaffold`          | Shared in-memory SQLite database |
 
-The PostgreSQL and MySQL values correspond to the services in [`compose.yml`](../compose.yml). `TestMain` calls `os.Exit`, so call it as the external package's complete `TestMain` rather than from an individual test.
+It builds a provider; it does not write to the process environment. The PostgreSQL and MySQL services are [`docker/service/postgres.yml`](../docker/service/postgres.yml) and [`docker/service/mysql.yml`](../docker/service/mysql.yml), which [`compose.yml`](../compose.yml) includes. `TestMain` calls `os.Exit`, so call it as the external package's complete `TestMain` rather than from an individual test.
+
+`phpscript test` is a different process and reads none of that. It builds its connections from its own environment plus the `env` list of the configuration it is under, so the pipeline jobs that run the binary carry [`.env.testing`](../.env.testing):
+
+```yaml
+test:phpscript:matrix:
+  env:
+    include: .env.testing
+```
+
+A fixture area can also name its own connections. [`tests/fixtures/scaffold`](../tests/fixtures/scaffold) does; see [Suite configuration](#suite-configuration).
 
 ### Storage binding
 
@@ -78,13 +89,15 @@ PHP accesses this constructor as `SharedMemory`. The binding exposes `set` and `
 
 ## `.phpt` fixtures
 
-Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `runtime`, `stdlib`, `strings` and `syntax`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it.
+Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `comparison`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `routing`, `runtime`, `scaffold`, `stdlib`, `strings` and `syntax`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it. [`github`](../tests/fixtures/github) is the exception: it holds issue reproductions under a `.yml` extension and nothing there runs.
 
 A fixture's own folder is its include root. That is what lets all three runtimes agree: the `php` runner executes with its working directory set to the folder holding the fixture, and both Go runtimes are rooted at the same folder, so a relative path in the fixture names the same file whichever runtime reads it.
 
 Because the folder is the unit of discovery, a bare directory path is not recursive. `phpscript test ./...` is what runs a tree; `phpscript test .` matches only the fixtures sitting directly in that directory, and reports an error rather than success when it matches none. `phpscript test` with no path at all runs the whole tree below the working directory, the way a pipeline invoked from an application root means it.
 
-An application root can supply its bootstrap to every fixture. `--include vendor/autoload.php` includes the named file, resolved against the invocation root, before each fixture body — when the file exists, so the same pipeline line works in a tree that has no bootstrap. It is the whole of it: composer's autoloader resolves the classes and the file's own includes bring the helpers, so a fixture names neither. The fixture's own folder stays its include root: its relative includes answer first, and the invocation root answers for what the folder does not hold.
+An application root can supply its bootstrap to every fixture. `--include vendor/autoload.php` includes the named file, resolved against the invocation root, before each fixture body, when the file exists, so the same pipeline line works in a tree that has no bootstrap. It is the whole of it: composer's autoloader resolves the classes and the file's own includes bring the helpers, so a fixture names neither. The fixture's own folder stays its include root: its relative includes answer first, and the invocation root answers for what the folder does not hold.
+
+A tree that would repeat that flag on every invocation writes it down instead. See [Suite configuration](#suite-configuration).
 
 Each fixture has three sections separated by a line containing only `---`:
 
@@ -112,15 +125,18 @@ hello world
 
 The YAML metadata supports these fields:
 
-| Field         | Required | Purpose                                                                    |
-|---------------|---------:|----------------------------------------------------------------------------|
-| `name`        |      yes | Human-readable subtest name.                                               |
-| `description` |      yes | Behavior and intent covered by the fixture.                                |
-| `error`       |       no | Substring that must occur in the chain of an uncaught runtime error.       |
-| `stdin`       |       no | String exposed to the script through `STDIN`.                              |
-| `runner`      |       no | Runtimes the fixture opts out of; see [Runner metadata](#runner-metadata). |
-| `root`        |       no | Include root, relative to the fixture's own directory.                     |
-| `serial`      |       no | Do not overlap the fixture with peers when `--parallel` is enabled.        |
+| Field         | Required | Purpose                                                                                                                |
+|---------------|---------:|------------------------------------------------------------------------------------------------------------------------|
+| `name`        |      yes | Human-readable subtest name.                                                                                           |
+| `description` |      yes | Behavior and intent covered by the fixture.                                                                            |
+| `error`       |       no | Substring that must occur in the chain of an uncaught runtime error.                                                   |
+| `stdin`       |       no | String exposed to the script through `STDIN`.                                                                          |
+| `runner`      |       no | Runtimes the fixture opts out of; see [Runner metadata](#runner-metadata).                                             |
+| `root`        |       no | Include root, relative to the fixture's own directory.                                                                 |
+| `serial`      |       no | Do not overlap the fixture with peers when `--parallel` is enabled.                                                    |
+| `options`     |       no | Runner options for both Go runtimes, spelled as the `runner` configuration block.                                      |
+| `request`     |       no | Request state the harness exposes as superglobals: `args`, `get`, `post`, `cookie`, `env`, `headers`, `stdin`, `body`. |
+| `response`    |       no | Response headers the run must have set.                                                                                |
 
 The expected-output section is always checked. Trailing newline differences are ignored, but all other output must match exactly. For an uncaught error, set `error` to a stable identifying substring and normally expect the host response body `Internal Server Error`:
 
@@ -148,9 +164,9 @@ root: ..
 require 'vendor/autoload.php';
 ```
 
-Caches are keyed by include root, because a cache is keyed by the path as the script wrote it and two roots can both hold a `code/functions.php` — a fixture reaching a different tree must not be served a program cached for the embedded one. The key is absolute, since the relative spelling is ambiguous once the working directory moves.
+Caches are keyed by include root, because a cache is keyed by the path as the script wrote it and two roots can both hold a `code/functions.php`; a fixture reaching a different tree must not be served a program cached for the embedded one. The key is absolute, since the relative spelling is ambiguous once the working directory moves.
 
-How far a cached program travels is `--cache`. The default, `worker`, gives each worker loop one set of caches and one runtime, reused by the fixtures that worker runs serially: what a run holds scales with `--parallel` rather than with the number of fixtures. `--cache=off` gives every fixture run its own and drops them, and its runtime, when the run ends — nothing one fixture parsed or declared is visible to the next. That is the flag to reach for when a fixture passes alone and fails in the suite.
+How far a cached program travels is `--cache`. The default, `worker`, gives each worker loop one set of caches and one runtime, reused by the fixtures that worker runs serially: what a run holds scales with `--parallel` rather than with the number of fixtures. `--cache=off` gives every fixture run its own and drops them, and its runtime, when the run ends, so nothing one fixture parsed or declared is visible to the next. That is the flag to reach for when a fixture passes alone and fails in the suite.
 
 Files used by `include`, autoloading, templates, or filesystem APIs sit inside the area folder that uses them, and fixture code names them relative to that folder: `autoloading/psr4/loader.php` is `psr4/loader.php` to a fixture in `autoloading`. Keeping the support files with their fixture is what keeps the include root a single directory, and a support file that two areas need is copied rather than shared, because an include path that climbs out of the fixture's folder is rejected.
 
@@ -174,7 +190,7 @@ A fixture that ends its PHP section with `?>` needs no extraction at all. Everyt
 php tests/fixtures/arrays/sort.phpt
 ```
 
-Output: the metadata, `---`, what the code did, `---`, what it should have done. The two sections are adjacent, so a mismatch is visible by eye. **Close the tag by default** — use `awk` when a machine diffs the sections, `php <fixture>` when a person does.
+Output: the metadata, `---`, what the code did, `---`, what it should have done. The two sections are adjacent, so a mismatch is visible by eye. **Close the tag by default**: use `awk` when a machine diffs the sections, `php <fixture>` when a person does.
 
 The three kinds of fixture below still cannot be read this way: their names, paths or request state only exist inside the harness. They close the tag anyway, for one file shape.
 
@@ -189,6 +205,47 @@ Three kinds of fixture cannot be checked this way, and none of them is an excuse
 | Host request state (superglobals populated by the harness)       | The harness supplies the request, not the PHP CLI SAPI                        |
 
 A fixture in one of these groups states in its `description` what defines the expected output, because there is no second implementation to appeal to, and opts the php runtime out with `runner`.
+
+## Suite configuration
+
+A folder that needs a bootstrap, a connection or a schema writes it down rather than putting it on every command line that reaches it. A `phpscript.yml` in the fixture tree marks a **suite root**: the directory whose fixtures run under it. A fixture resolves the nearest such file at or above its own directory, and the run resolves the nearest one at or above the working directory. A tree holding none behaves as it always did, so this is a folder opting in.
+
+The block is documented key by key under [Test suites](configuration.md#test-suites). What a suite root gives the fixtures below it is the prelude they load, the connections they resolve, and two hook files:
+
+```yaml
+env:
+  - "PLATFORM_DB_SCAFFOLD=sqlite://file:phpscript-scaffold?mode=memory&cache=shared"
+
+test:
+  hooks:
+    setup: setup.php
+```
+
+Both hooks run once per session rather than once per fixture. `setup` is where the schema and the rows its fixtures assert against are laid down, and a failure fails the run before a fixture executes; `teardown` runs after them, whether they passed or failed. Their output reaches the terminal only under `-v`.
+
+[`tests/fixtures/scaffold`](../tests/fixtures/scaffold) is the worked example. The area holds its own configuration, its own schema, a setup hook that migrates and seeds, and the fixtures that read what it left:
+
+```text
+phpscript.yml               the connection and the hook
+setup.php                   the migration, then the rows
+schema/0001_catalogue.up.sql
+catalogue_rows.phpt         the seeded rows
+catalogue_lookup.phpt       a parameterised get() against one of them
+catalogue_count.phpt        aggregates over the seeded table
+catalogue_insert.phpt       serial: true, writes and removes what it wrote
+```
+
+It runs with nothing on the command line:
+
+```bash
+phpscript test tests/fixtures/scaffold
+```
+
+Writing a database area this way is what keeps its fixtures out of everyone else's flags, and what lets them stay parallel: three of the four here read the seed and need no `serial:`, because none of them builds the state the others depend on. Only the one that writes is serial.
+
+Seed the rows from the hook rather than from a `.up.sql`. A migration is recorded and never applied twice, so a seed inside one is laid down against a database that has never seen it and against no other. The hook deletes and reinserts, which leaves the same rows whatever state it found. Where a fixture asserts on generated ids, reset the sequence too: sqlite's `AUTOINCREMENT` keeps its high-water mark in `sqlite_sequence`, and a delete does not return it.
+
+`@startup` is not this mechanism. Annotations are server surface: `@route`, `@startup` and `@schedule` are scanned out of a source tree by `phpscript server`, per virtual host or per application root depending on how it is configured, and a fixture run is neither of those scopes.
 
 ## Runner metadata
 
@@ -230,10 +287,10 @@ A `SKIP` is a fixture that opted the runtime out, or a `php` binary that is not 
 `-o` writes the same tables as Markdown while the terminal output continues as normal:
 
 ```bash
-phpscript test --matrix -v -o ../../docs/test-fixtures.md ./...
+phpscript test --matrix -v -o docs/test-fixtures.md ./tests/...
 ```
 
-That is what produces [test-fixtures.md](./test-fixtures.md), which `atkins test:phpscript:matrix` regenerates on every pipeline run. One run reports the suite and writes the report, so the fixtures are not executed twice to produce both. The report ends with a summary table whose total is the sum of the per-area rows.
+That is what produces [test-fixtures.md](./test-fixtures.md), which `atkins test:phpscript:matrix` regenerates on every pipeline run, spelled exactly as above. One run reports the suite and writes the report, so the fixtures are not executed twice to produce both. The report ends with a summary table whose total is the sum of the per-area rows.
 
 `--profile`, `--count` and `--time` add their cost columns to the Markdown as well as the terminal. A matrix row has one cost column and three runners, so the numbers are the default runtime's: the matrix compares correctness across runtimes and cost on the runtime the other two are measured against, and `--json` keeps the per-runtime figures. The checked-in report is generated without them, because a timing that differs by a millisecond per run would be a diff in every commit.
 
@@ -285,7 +342,7 @@ tests/github/issue_062_test.go   Test_Issue062, the check that fails on a regres
 
 ## The pipeline
 
-`atkins` runs the default pipeline: format, build, `go test`, the fixtures on all three runtimes, the introspection step that regenerates the generated documentation, and the docker image. It needs a Go toolchain, a `php` binary, and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services and the deferred `db:down` stops them, so a pipeline that fails partway still leaves nothing running.
+`atkins` runs the default pipeline: format, `go install`, `go test`, the coverage reports, build, the fixtures on all three runtimes, the introspection step that regenerates the generated documentation, the docker image, and `mdox:fmt` over the markdown. It needs a Go toolchain, a `php` binary, and docker. Docker runs the mysql and postgres containers the database fixtures query, and builds the image. `db:up` starts those two services and the deferred `db:down` stops them, so a pipeline that fails partway still leaves nothing running.
 
 `docker:build` is in the default pipeline rather than with the demos: the image is what `compose:up` and `compose:down` operate on and what a deployment ships, so a pipeline run leaves a current one behind whether or not anybody asked for the demos.
 

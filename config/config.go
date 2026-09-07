@@ -25,6 +25,7 @@ type Config struct {
 	Routes    Routes         `yaml:"routes"`
 	Server    Server         `yaml:"server"`
 	Telemetry Telemetry      `yaml:"telemetry"`
+	Test      Test           `yaml:"test"`
 	Env       []string       `yaml:"env"`
 
 	// SMTP configures the sender mail() delivers through. Absent, mail()

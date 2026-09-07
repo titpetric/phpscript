@@ -32,6 +32,32 @@ flatstack:
 routes:
   enabled: true
 
+# The defaults `phpscript test` runs under. A fixture tree carries them in a
+# phpscript.yml of its own, so a suite says what it needs rather than the
+# command line repeating it on every invocation. A flag overrides whatever the
+# file said.
+#
+# include and hooks belong to the directory holding the file, and apply to the
+# fixtures below it. parallel, cache and skip_php describe one run of the whole
+# command and are read only from the file -f names or the one found above the
+# working directory; a phpscript.yml discovered below the invocation root that
+# sets one fails the run naming the key.
+#
+# The hooks run once per session rather than once per fixture. setup lays down
+# the schema and the rows its fixtures read, and a failure fails the run before
+# a fixture executes. teardown runs after them, whether they passed or failed.
+# Both are resolved against the directory holding the file. They are
+# configuration rather than the @startup annotation, which `phpscript server`
+# scans per virtual host or per application root; a fixture run is neither.
+test:
+  include: ""
+  hooks:
+    setup: ""
+    teardown: ""
+  parallel: 1
+  cache: worker
+  skip_php: false
+
 server:
   addr: ":8080"
   quiet: false

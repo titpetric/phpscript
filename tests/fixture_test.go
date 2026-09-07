@@ -18,6 +18,7 @@ package tests
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -118,6 +119,16 @@ func TestFixtures(t *testing.T) {
 	if len(areas) == 0 {
 		t.Fatal("no fixtures discovered")
 	}
+
+	teardown, err := setupAreas(t.Context(), areas, io.Discard)
+	if err != nil {
+		t.Fatalf("suite setup: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := teardown(); err != nil {
+			t.Errorf("suite teardown: %v", err)
+		}
+	})
 
 	type result struct {
 		area   string

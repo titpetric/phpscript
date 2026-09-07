@@ -24,6 +24,7 @@ the Go code below it spell the same and mean differently.
 | Document root     | The directory below the application root that is served over HTTP, `public/` by default. A `.php` file in it runs when its name is requested; a file outside it does not.                                |
 | Working directory | Where a relative path resolves from, inside the application root. `chdir()` moves it for the length of a request; `runner.work_dir` is where each one starts. `-w` moves the process before any of that. |
 | Include root      | The directory a fixture's own relative includes resolve against, which is the directory holding the `.phpt` file.                                                                                        |
+| Suite root        | A directory in a fixture tree holding a `phpscript.yml`. The fixtures below it resolve their prelude, their connections and their hooks through it; the nearest one at or above a fixture wins.          |
 | Writable path     | A directory under `writable_paths` that scripts may write to. A `.php` file that lands in one is served as bytes and never executed, because an upload directory is content and not code.                |
 
 ## Loading names
@@ -41,7 +42,7 @@ the Go code below it spell the same and mean differently.
 |-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Route             | A `// @route GET /path/{param}` comment on a PHP file outside the document root. The server scans for them at startup and mounts each on the router.                                 |
 | Virtual host      | One of several sites in one process, each with its own root, its own `phpscript.yml`, its own database connections and its own environment. Requests reach one by the `Host` header. |
-| Startup job       | A file carrying `// @startup`, executed once in path order before the server listens. Migrations go here.                                                                            |
+| Startup job       | A file carrying `// @startup`, executed once in path order before the server listens. Migrations go here. It is server scope; a fixture run uses a suite's `test.hooks` instead.     |
 | Scheduled job     | A file carrying `// @schedule`, started after the server listens and running until shutdown.                                                                                         |
 | Error page        | A file in the document root named after a status, `public/404.php`. It answers a browser; a program gets the plain status.                                                           |
 | Autoindex         | Answering a directory that holds no index page with a listing of what is in it, as nginx's `autoindex on;` does. Off by default.                                                     |

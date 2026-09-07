@@ -14,6 +14,12 @@ compiled into the binary. It does not search the working directory for a
 configuration file. A path passed with `-f` must exist and contain valid YAML;
 otherwise the command exits with an error.
 
+Two commands read a second file called `phpscript.yml`, found rather than named.
+A [virtual host](#virtual-hosts) reads the one in the application root its entry
+points at, and [`phpscript test`](#test-suites) reads the ones it finds in the
+fixture tree. Both are read over whatever `-f` produced, in the same way that
+file is read over the embedded defaults.
+
 ## Complete example
 
 ```yaml
@@ -33,6 +39,15 @@ flatstack:
 
 routes:
   enabled: true
+
+test:
+  include: ""
+  hooks:
+    setup: ""
+    teardown: ""
+  parallel: 1
+  cache: worker
+  skip_php: false
 
 server:
   addr: ":8080"
@@ -532,3 +547,117 @@ failure is reported rather than only the first.
 A single application server, one with no `virtualhost` entries, keeps a failing
 `@startup` fatal. There is no other tenant to protect, and a process that came
 up with its schema unapplied is worse than one that did not come up.
+
+## Test suites
+
+`test` configures [`phpscript test`](cli/test.md). It is what a folder of
+fixtures says about itself, so a suite that needs a bootstrap or a database
+carries that in a file rather than on every command line that reaches it.
+
+A `phpscript.yml` found in the fixture tree marks a **suite root**: the
+directory whose fixtures run under it. A fixture resolves the nearest such file
+at or above its own directory, and the run resolves the nearest one at or above
+the working directory. A tree holding none behaves as it always did.
+
+| Key              | Default  | Scope      | Purpose                                                    |
+|------------------|---------:|------------|------------------------------------------------------------|
+| `include`        |     none | suite root | File included ahead of every fixture below the suite root. |
+| `hooks.setup`    |     none | suite root | File run once before those fixtures.                       |
+| `hooks.teardown` |     none | suite root | File run once after them.                                  |
+| `parallel`       |      `1` | run        | Fixtures of one area running at once, `--parallel`.        |
+| `cache`          | `worker` | run        | How far a parsed include travels, `--cache`.               |
+| `skip_php`       |  `false` | run        | Leave the `php` binary out of a matrix run, `--skip-php`.  |
+
+The flag wins over the file. A configuration describes a tree and a flag is what
+an operator typed about this run of it, so `-p 1` over a file asking for four
+runs one at a time.
+
+### The suite root
+
+`include` and the hook files resolve against the directory holding the file,
+which is also the application root the fixtures below it run under. Their own
+folder still answers first, so a fixture's relative includes keep meaning what
+they always meant and the suite root answers for what the folder does not hold.
+
+`--include` is the operator's, and speaks from the directory the command was
+invoked in rather than from a suite. It replaces what any suite named.
+
+### Run keys
+
+`parallel`, `cache` and `skip_php` describe one run of the whole command, so a
+`phpscript.yml` discovered below the invocation root may not set them. Either is
+a startup error naming the key rather than a value silently dropped:
+
+```text
+tests/integration/phpscript.yml: "test.parallel" is set by the run, not by a suite
+```
+
+The file the run itself is under does set them. That is the one `-f` named, or
+the nearest `phpscript.yml` at or above the working directory. `server` and
+`virtualhost` are refused in a suite file for the reasons they are refused in a
+site's: a fixture run has no listen address and holds no sites.
+
+### Hooks
+
+Both hooks run once per session, not once per fixture, and both are ordinary
+PHP with the bindings a fixture below them gets. `setup` is where a suite lays
+down the schema its fixtures query and the rows they read:
+
+```yaml
+env:
+  - "PLATFORM_DB_SCAFFOLD=sqlite://file:phpscript-scaffold?mode=memory&cache=shared"
+
+test:
+  hooks:
+    setup: setup.php
+```
+
+```php
+<?php
+
+$migrate = new Database\Migrate("scaffold");
+$migrate->load("./schema/*.up.sql");
+$migrate->run();
+
+$db = new Database("scaffold");
+$db->insert("catalogue", array("name" => "Ada"));
+```
+
+A failing `setup` fails the run before a fixture executes. The fixtures below it
+assert against state that was not laid down, so running them reports the same
+missing table once per file and names the cause in none of them.
+
+`teardown` runs whether the fixtures passed or failed, and its failure is
+reported without displacing theirs. Where several suites are in one run, the
+setups run outermost first and the teardowns in reverse.
+
+Hook output reaches the terminal only under `-v`. Without it a run answers with
+a folder table, and a schema's log lines in the middle of it are noise.
+
+These are configuration rather than the `@startup` annotation. Annotations are
+server surface: `@route`, `@startup` and `@schedule` are scanned out of a source
+tree by `phpscript server` and run per virtual host or per application root
+depending on how it is configured. A fixture run is neither of those scopes, and
+a comment in a file that a walk happened to reach is not something a suite can
+be held to. The two also do different work: a server's `@startup` applies the
+schema an application boots with, where a suite's `setup` also seeds the rows
+its fixtures assert against.
+
+### Databases per suite
+
+A suite's `env` builds the connections its fixtures resolve, the same way a
+virtual host's does. The list replaces rather than extends, so a folder that
+names its connections gets those and no others:
+
+```php
+$db = new Database("scaffold");     // the folder configured it
+new Database("sqlite_test");        // no configuration found for database: [sqlite_test]
+```
+
+A suite that names no `env` of its own resolves what the run does, which for a
+CLI run is the process environment. A folder that configured no connections is
+not asking for a set of its own.
+
+The setup hook and the fixtures below it share one connection pool. Two pools
+over one DSN are two databases whenever the DSN names no shared file, and a
+schema applied through the first would not be in the one the fixtures query.

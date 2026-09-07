@@ -13,6 +13,7 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
@@ -39,6 +40,36 @@ type Options struct {
 	Split     bool
 	SkipPHP   bool
 	Cache     string
+
+	// Config is what the run started with: the embedded defaults, with the
+	// file -f named read over them. A phpscript.yml discovered in the fixture
+	// tree is read over this one in turn.
+	Config config.Config
+
+	// typed reports whether a flag was given on the command line, which is
+	// what decides between it and the value a configuration file supplied. It
+	// is nil for an Options a test assembled, where nothing was typed.
+	typed func(string) bool
+}
+
+// fromConfig fills the run-wide options a test block may also carry, where the
+// command line did not name one. The flag wins: a configuration describes a
+// tree, and a flag is what an operator typed about this run of it.
+func (o *Options) fromConfig(test config.Test) {
+	if !o.given("parallel") && test.Parallel > 0 {
+		o.Parallel = test.Parallel
+	}
+	if !o.given("cache") && test.Cache != "" {
+		o.Cache = test.Cache
+	}
+	if !o.given("skip-php") && test.SkipPHP {
+		o.SkipPHP = true
+	}
+}
+
+// given reports whether the named flag was typed.
+func (o Options) given(name string) bool {
+	return o.typed != nil && o.typed(name)
 }
 
 // coverReport reports whether the cover mode owns stdout with a per-symbol
@@ -89,12 +120,18 @@ type jsonReport struct {
 }
 
 // NewCommand creates a new test command.
-func NewCommand(globals *flags.Options) *cli.Command {
+func NewCommand(appConfig config.Config, globals *flags.Options) *cli.Command {
 	var opts Options
+	var bound *cli.FlagSet
 	return &cli.Command{
 		Name:  "test",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
+			// Kept so Run can ask which flags were typed. A configuration
+			// supplies a default and a flag overrides it, and the two are only
+			// distinguishable from the value when the flag was not given: an
+			// operator forcing -p 1 over a file asking for 4 means it.
+			bound = fs
 			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
 			fs.BoolVar(&opts.Matrix, "matrix", false, "Run every fixture through all runtimes and report a matrix")
 			fs.BoolVar(&opts.SkipPHP, "skip-php", false, "With --matrix, leave the php binary out: the built-in runtimes alone")
@@ -111,6 +148,8 @@ func NewCommand(globals *flags.Options) *cli.Command {
 			opts.Verbose = globals.Verbose
 			opts.Cover = globals.Cover
 			opts.CoverFile = globals.CoverFile
+			opts.Config = appConfig
+			opts.typed = func(name string) bool { return bound != nil && bound.Changed(name) }
 			return Run(ctx, args, opts)
 		},
 	}
@@ -242,6 +281,30 @@ func runFixtureSamples(ctx context.Context, fx *tests.Fixture, r tests.Runner, o
 
 // Run executes .phpt test fixtures matching the provided paths or patterns.
 func Run(ctx context.Context, args []string, opts Options) error {
+	paths := args
+	if len(paths) == 0 {
+		// A bare invocation means the whole tree: a pipeline that names no
+		// paths runs from the application root, where the fixtures live in
+		// the folders below. An explicit "." keeps its non-recursive meaning.
+		paths = []string{"./..."}
+	}
+
+	// The suites are read before the flags are checked, because the run-wide
+	// ones a phpscript.yml carries are among what is being checked.
+	found, err := discoverSuites(paths, opts.Config)
+	if err != nil {
+		return err
+	}
+	if found.run != nil {
+		opts.fromConfig(found.run.Config.Test)
+	} else {
+		opts.fromConfig(opts.Config.Test)
+	}
+
+	return run(ctx, args, paths, found, opts)
+}
+
+func run(ctx context.Context, args, paths []string, found suites, opts Options) error {
 	if opts.Parallel < 0 {
 		return fmt.Errorf("parallel must be at least 1")
 	}
@@ -269,14 +332,6 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		}
 	}
 
-	paths := args
-	if len(paths) == 0 {
-		// A bare invocation means the whole tree: a pipeline that names no
-		// paths runs from the application root, where the fixtures live in
-		// the folders below. An explicit "." keeps its non-recursive meaning.
-		paths = []string{"./..."}
-	}
-
 	fixtures, err := tests.FindFixtures(paths)
 	if err != nil {
 		return fmt.Errorf("discover fixtures: %w", err)
@@ -290,16 +345,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		fx.SetCacheScope(mode)
 	}
 
-	if opts.Include != "" {
-		// The flag speaks from the invocation root: that is where the include
-		// file lives, below no fixture directory. It is the one mechanism -
-		// composer's autoloader resolves the classes, and the file's own
-		// includes bring the helpers, so a second folder convention on the
-		// command line had nothing left to do.
-		for _, fx := range fixtures {
-			fx.SetAppRoot(".", opts.Include)
-		}
-	}
+	applySuites(fixtures, found, opts)
 
 	// An empty selection is a mis-scoped invocation, not a passing run: a
 	// pipeline that points the runner at the wrong directory should fail
@@ -332,6 +378,21 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	if report != nil {
 		defer report.Close()
 	}
+
+	// The state a suite lays down is what its fixtures assert against, so a
+	// setup that failed ends the run before a fixture reports the same missing
+	// table once per file. Teardown runs whatever the fixtures did, and its
+	// failure is reported without displacing theirs: a suite that could not
+	// clean up says less than a fixture that did not pass.
+	hooks := found.all()
+	if err := tests.RunSetup(ctx, hooks, hookOutput(opts)); err != nil {
+		return err
+	}
+	defer func() {
+		if err := tests.RunTeardown(ctx, hooks, hookOutput(opts)); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}()
 
 	if opts.Matrix {
 		failed := runMatrix(ctx, groups, opts, report)

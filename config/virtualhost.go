@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	yaml "github.com/goccy/go-yaml"
 )
 
 // VirtualHostConfigFile is the file in an application root that configures
@@ -17,6 +15,11 @@ const VirtualHostConfigFile = "phpscript.yml"
 // The listen address belongs to the operator and a site cannot contain further
 // sites.
 var tenantKeys = []string{"server", "virtualhost"}
+
+// tenantKeysOwner completes the sentence a rejected tenant key is reported
+// with. It is a whole clause rather than a word because the message is
+// documented verbatim in docs/configuration.md.
+const tenantKeysOwner = "is set by the operator, not by the site"
 
 // VirtualHost routes a set of domains to an application root. The operator owns
 // these fields; everything else about the site comes from the phpscript.yml in
@@ -95,33 +98,13 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	// A missing file is an error rather than a fall back to the operator's
 	// defaults. The file is the site's contract, and a site served under
 	// settings it never wrote is the failure mode worth avoiding.
-	data, err := os.ReadFile(filename)
+	result, declared, err := Overlay(base, filename, tenantKeys, tenantKeysOwner)
 	if err != nil {
-		return base, nil, fmt.Errorf("virtualhost %q: %w", name, err)
+		return base, declared, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
 
-	var declared map[string]any
-	if err := yaml.Unmarshal(data, &declared); err != nil {
-		return base, nil, fmt.Errorf("virtualhost %q: %s: %w", name, filename, err)
-	}
-
-	// Reject rather than drop what a site may not set, so a site author never
-	// believes they moved the listen address or nested a site of their own.
-	for _, key := range tenantKeys {
-		if _, ok := declared[key]; ok {
-			return base, declared, fmt.Errorf("virtualhost %q: %s: %q is set by the operator, not by the site", name, filename, key)
-		}
-	}
-
-	// The same overlay the base file gets: unmarshal over an already populated
-	// struct, so the file only has to name what it changes.
-	result := base
-	if err := yaml.Unmarshal(data, &result); err != nil {
-		return base, declared, fmt.Errorf("virtualhost %q: %s: %w", name, filename, err)
-	}
-
-	// Belt and braces over the rejection above: whatever the file contained,
-	// the server block is the operator's and a site holds no sites.
+	// Belt and braces over the rejection Overlay made: whatever the file
+	// contained, the server block is the operator's and a site holds no sites.
 	result.Server = base.Server
 	result.VirtualHost = nil
 
@@ -196,30 +179,12 @@ func (c Config) ValidateVirtualHosts() error {
 		// that path prefix on every host, so a site that asks for the same
 		// path gets a dashboard nothing can reach. A site that names no path
 		// of its own is not asking for one and is left alone.
-		if c.Telemetry.Enabled && declares(declared, "telemetry", "path") && loaded.Telemetry.Path == c.Telemetry.Path {
+		if c.Telemetry.Enabled && Declares(declared, "telemetry", "path") && loaded.Telemetry.Path == c.Telemetry.Path {
 			return fmt.Errorf("virtualhost %q: telemetry path %q is the path the server mounts its own dashboard on", name, loaded.Telemetry.Path)
 		}
 	}
 
 	return nil
-}
-
-// declares reports whether the file named the given key path.
-func declares(declared map[string]any, keys ...string) bool {
-	for i, key := range keys {
-		value, ok := declared[key]
-		if !ok {
-			return false
-		}
-		if i == len(keys)-1 {
-			return true
-		}
-		declared, ok = value.(map[string]any)
-		if !ok {
-			return false
-		}
-	}
-	return false
 }
 
 // statDir reports whether path exists and is a directory.
