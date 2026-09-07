@@ -7,6 +7,9 @@ import (
 	"os"
 
 	"github.com/titpetric/cli"
+
+	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/internal/flags"
 )
 
 // Info contains injected build environment information.
@@ -20,13 +23,25 @@ type Info struct {
 // Name is the command title.
 const Name = "Show version/build information"
 
-// NewCommand creates a new version command with build information.
-func NewCommand(info Info) *cli.Command {
+// Build is what the linker wrote into the binary, set by main before any
+// command is built.
+//
+// It is a package variable rather than a constructor argument because every
+// command constructor takes the same two arguments, and build information is
+// neither configuration nor a flag: it describes the binary rather than the
+// tree it is pointed at or the run an operator asked for.
+var Build Info
+
+// NewCommand creates a new version command.
+//
+// The configuration and the global options are what every command constructor
+// takes, so one signature covers all of them. This command reads neither.
+func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "version",
 		Title: Name,
 		Run: func(ctx context.Context, args []string) error {
-			return Run(info)
+			return Run(Build)
 		},
 	}
 }

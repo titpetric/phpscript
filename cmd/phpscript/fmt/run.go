@@ -8,6 +8,9 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/internal/flags"
+
 	"github.com/titpetric/phpscript/formatter"
 )
 
@@ -15,7 +18,10 @@ import (
 const Name = "Format php scripts"
 
 // NewCommand creates a new fmt command.
-func NewCommand() *cli.Command {
+//
+// The configuration and the global options are what every command constructor
+// takes, so one signature covers all of them. This command reads neither.
+func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	var list bool
 
 	return &cli.Command{

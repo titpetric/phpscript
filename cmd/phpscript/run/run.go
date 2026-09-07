@@ -22,12 +22,14 @@ import (
 const Name = "Run php script"
 
 // NewCommand creates a new run command.
-func NewCommand(config config.Config, globals *flags.Options) *cli.Command {
+func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
+	appConfig := config.Value(cfg)
+
 	return &cli.Command{
 		Name:  "run",
 		Title: Name,
 		Run: func(ctx context.Context, args []string) error {
-			return Run(ctx, args, config, globals)
+			return Run(ctx, args, appConfig, globals)
 		},
 	}
 }

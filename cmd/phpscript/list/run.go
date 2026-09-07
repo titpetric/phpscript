@@ -8,6 +8,9 @@ import (
 
 	"github.com/titpetric/cli"
 
+	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/internal/flags"
+
 	phplist "github.com/titpetric/phpscript/list"
 )
 
@@ -15,7 +18,10 @@ import (
 const Name = "List routes, files and classes"
 
 // NewCommand creates a new list command.
-func NewCommand() *cli.Command {
+//
+// The configuration and the global options are what every command constructor
+// takes, so one signature covers all of them. This command reads neither.
+func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	var stdlib bool
 
 	return &cli.Command{
