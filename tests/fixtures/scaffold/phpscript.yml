@@ -1,0 +1,16 @@
+# The scaffold area configures itself: the connection its fixtures open, and
+# the hook that lays down the schema and the rows they read. Nothing about this
+# folder is typed on the command line, which is what `phpscript test
+# tests/fixtures/scaffold` demonstrates.
+#
+# env replaces rather than extends, the rule a virtual host is held to, so the
+# fixtures here reach scaffold and nothing else. The DSN is the in-memory
+# spelling the rest of the suite uses: shared cache so one pool serves the hook
+# and the fixtures, and gone with the process, so a run starts from the schema
+# the hook applied and leaves nothing behind.
+env:
+  - "PLATFORM_DB_SCAFFOLD=sqlite://file:phpscript-scaffold?mode=memory&cache=shared"
+
+test:
+  hooks:
+    setup: setup.php

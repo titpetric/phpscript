@@ -275,6 +275,15 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | superglobals.phpt          | PASS       | PASS    | PASS |
 | undefined_constant.phpt    | PASS       | PASS    | SKIP |
 
+## tests/fixtures/scaffold
+
+| tests/fixtures/scaffold | Flat stack | Runtime | PHP  |
+|-------------------------|------------|---------|------|
+| catalogue_count.phpt    | PASS       | PASS    | SKIP |
+| catalogue_insert.phpt   | PASS       | PASS    | SKIP |
+| catalogue_lookup.phpt   | PASS       | PASS    | SKIP |
+| catalogue_rows.phpt     | PASS       | PASS    | SKIP |
+
 ## tests/fixtures/stdlib
 
 | tests/fixtures/stdlib            | Flat stack | Runtime | PHP  |
@@ -363,7 +372,8 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/pexec       | 3        | 3      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
+| tests/fixtures/scaffold    | 4        | 4      | 0      |
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| **Total**                  | 229      | 229    | 0      |
+| **Total**                  | 233      | 233    | 0      |

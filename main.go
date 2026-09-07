@@ -77,7 +77,7 @@ func start() error {
 		{"list", list.Name, list.NewCommand},
 		{"run", run.Name, func() *cli.Command { return run.NewCommand(appConfig, globals) }},
 		{"server", server.Name, func() *cli.Command { return server.NewCommand(appConfig, globals) }},
-		{"test", test.Name, func() *cli.Command { return test.NewCommand(globals) }},
+		{"test", test.Name, func() *cli.Command { return test.NewCommand(appConfig, globals) }},
 		{"version", version.Name, func() *cli.Command {
 			return version.NewCommand(version.Info{
 				Version:    Version,

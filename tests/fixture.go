@@ -21,6 +21,7 @@ import (
 
 	yaml "github.com/goccy/go-yaml"
 
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
@@ -47,16 +48,23 @@ func testPHPFS() fs.FS {
 	return phpFS
 }
 
-// fixtureArea is the fixtures of one area directory, in discovery order.
+// fixtureArea is the fixtures of one area directory, in discovery order, with
+// the suite governing them where the directory holds a phpscript.yml.
 type fixtureArea struct {
 	Name     string
 	Fixtures []*Fixture
+	Suite    *Suite
 }
 
 // embeddedFixtures walks the embedded tree and groups every .phpt by the area
 // directory holding it. A fixture's include root is that directory, which is
 // also where the php runner executes, so all three runners resolve a relative
 // include to the same file.
+//
+// An area holding a phpscript.yml is read as a suite, so the Go tests run under
+// the connections and the prelude the same folder gives the command. Discovery
+// is per area rather than per ancestor: the embedded tree is rooted at
+// tests/fixtures and has no invocation root above it to walk up to.
 func embeddedFixtures() ([]fixtureArea, error) {
 	index := map[string]int{}
 	var areas []fixtureArea
@@ -87,10 +95,24 @@ func embeddedFixtures() ([]fixtureArea, error) {
 
 		name := path.Base(dir)
 		if _, ok := index[name]; !ok {
+			suite, err := LoadSuiteFS(fixturesFS, dir, config.New())
+			if err != nil {
+				return fmt.Errorf("%s: %w", dir, err)
+			}
 			index[name] = len(areas)
-			areas = append(areas, fixtureArea{Name: name})
+			areas = append(areas, fixtureArea{Name: name, Suite: suite})
 		}
 		at := index[name]
+		if suite := areas[at].Suite; suite != nil {
+			// The area's own directory is not given as the app root: it is
+			// already the fixture's include root, and naming it twice would
+			// layer the same filesystem over itself. Only the prelude and the
+			// connections come from the suite here.
+			fx.SetDatabase(suite.Provider())
+			if include := suite.Include(); include != "" {
+				fx.SetAppRoot(dir, include)
+			}
+		}
 		areas[at].Fixtures = append(areas[at].Fixtures, fx)
 		return nil
 	})
@@ -98,6 +120,22 @@ func embeddedFixtures() ([]fixtureArea, error) {
 		return nil, err
 	}
 	return areas, nil
+}
+
+// setupAreas runs the setup hook of every area that has one, and returns the
+// teardown the caller defers. The Go tests take the same path a command run
+// does: a suite lays its state down once, before the fixtures that read it.
+func setupAreas(ctx context.Context, areas []fixtureArea, out io.Writer) (func() error, error) {
+	suites := make([]*Suite, 0, len(areas))
+	for _, area := range areas {
+		if area.Suite != nil {
+			suites = append(suites, area.Suite)
+		}
+	}
+	if err := RunSetup(ctx, suites, out); err != nil {
+		return func() error { return nil }, err
+	}
+	return func() error { return RunTeardown(ctx, suites, out) }, nil
 }
 
 func errorChainContains(err error, substr string) bool {
@@ -147,6 +185,7 @@ type Fixture struct {
 	appRoot    string
 	cacheScope string
 	includes   []string
+	database   model.DatabaseProvider
 	coverage   *coverage.Collector
 	rootFS     fs.FS
 	mu         sync.Mutex
@@ -179,16 +218,8 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 	f.rootFS = root
 }
 
-// SetAppRoot points the fixture at the application root the test command ran
-// in. The autoload folder convention and the prelude includes resolve there,
-// while the fixture's own relative includes keep resolving against its
-// directory: runnerOptions layers the two, fixture directory first.
-//
-// An include that is not there is not an error; the flag says what to load
-// when the application provides it, and a tree without an autoload.php simply
-// runs without one.
 // Cache scopes, naming how far a parsed include and a compiled expression
-// travel. The CLI spells them as --cache=off|worker|shared.
+// travel. The CLI spells them as --cache=off|worker.
 const (
 	CacheOff    = "off"
 	CacheWorker = "worker"
@@ -408,9 +439,31 @@ func absPath(p string) string {
 // cleanState reports whether the run drops what it built when it ends.
 func (f *Fixture) cleanState() bool { return f.cacheScope == CacheOff }
 
+// SetAppRoot points the fixture at the application root it runs under: the
+// directory the test command was invoked in, or the suite root of the
+// phpscript.yml governing the fixture. The autoload folder convention and the
+// prelude includes resolve there, while the fixture's own relative includes
+// keep resolving against its directory: runnerOptions layers the two, fixture
+// directory first.
+//
+// An include that is not there is not an error; the setting says what to load
+// when the application provides it, and a tree without an autoload.php simply
+// runs without one.
 func (f *Fixture) SetAppRoot(root string, includes ...string) {
 	f.appRoot = root
 	f.includes = includes
+}
+
+// SetDatabase names the connections this fixture's Database and
+// Database\Migrate bindings resolve through. Nil leaves the binding on the
+// process environment, which is what a fixture whose suite declared no env of
+// its own has always had.
+//
+// A suite passes the provider its setup hook applied the schema through, so the
+// fixtures below it query the database the hook prepared rather than a second
+// pool opened over the same DSN.
+func (f *Fixture) SetDatabase(provider model.DatabaseProvider) {
+	f.database = provider
 }
 
 // SetCoverage installs a statement-coverage collector for the fixture's
@@ -494,6 +547,7 @@ func (f *Fixture) runnerOptions() runner.Options {
 	// the same answer from both.
 	options.SAPI = "cli"
 	options.RootFS = f.rootFS
+	options.Database = f.database
 	if f.realRoot() {
 		// A fixture that names a root wants the real filesystem: it is reaching
 		// for a tree phpscript does not embed, a vendor directory being the
@@ -641,10 +695,6 @@ func RunFixtureOn(ctx context.Context, f *Fixture, r Runner) *TestResult {
 		Description: f.Description,
 		Path:        f.Path,
 		Runner:      r,
-	}
-
-	if os.Getenv("DB_DSN_SQLITE_TEST") == "" {
-		os.Setenv("DB_DSN_SQLITE_TEST", "sqlite://file:phpscript-test?mode=memory&cache=shared")
 	}
 
 	if ctx.Value(tenantKey) == nil {

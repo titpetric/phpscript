@@ -8,6 +8,12 @@ It also accepts the [global flags](README.md#global-flags): `-f`, `-w`,
 `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`.
 The flags below are this command's own.
 
+A `phpscript.yml` in the fixture tree supplies the defaults for the run below
+it, so a suite that needs a bootstrap, a connection or a schema carries that
+rather than the command line repeating it. See [Test
+suites](../configuration.md#test-suites) for the block; the paragraphs below
+name the flag each key defaults.
+
 A directory path is not recursive on its own: `./...` walks a tree, and a path
 that matches no fixture is an error rather than a silent pass.
 
@@ -56,6 +62,8 @@ Output remains in discovery order. Fixtures that share external state can set
 `serial: true` in their metadata to run as a barrier between parallel batches.
 `--profile` cannot be combined with parallel execution because Go's allocation
 counters are process-wide and cannot be attributed to one concurrent fixture.
+`test.parallel` is the configuration key, which only the file the run itself is
+under may set.
 
 Use `--profile` to add per-operation allocation and byte counts. `--json`
 writes a machine-readable report to stdout (no table).
@@ -64,10 +72,10 @@ Use `--cache` to say how far a parsed include and a compiled expression
 travel. `worker`, the default, gives each worker loop one set of caches and
 one runtime, reused by the fixtures that worker runs serially, so what a run
 holds scales with `--parallel` rather than with the number of fixtures. `off`
-gives every fixture run its own and drops them — and its runtime — when the run
+gives every fixture run its own and drops them, and its runtime, when the run
 ends: a clean state, at the cost of re-parsing what the caches would have kept.
 There is no `shared` mode, because a worker loop already is one: without
-`--parallel` there is a single worker.
+`--parallel` there is a single worker. `test.cache` is the configuration key.
 
 ```bash
 phpscript test --cache=off tests/fixtures/...
@@ -105,8 +113,8 @@ Files are charged to the folder whose fixtures loaded them, because a fixture's
 own directory is its include root: two folders including the same relative path
 are including their own copy of it.
 
-With `-v`, each fixture table gains a `Coverage` column — the coverage of the
-PHP that fixture loaded, not of the `.phpt` itself — and every folder that
+With `-v`, each fixture table gains a `Coverage` column, the coverage of the PHP
+that fixture loaded rather than of the `.phpt` itself, and every folder that
 loaded a file gets a per-file section below the tables, which is where an
 unvisited file is named rather than counted.
 
@@ -123,12 +131,12 @@ measures the written profile, which counts the `.phpt` entrypoints, and the
 tables do not; printing both without `-v` would invite a comparison between two
 numbers answering different questions. `--cover=func` and
 `--cover=file` still write the profile, but own stdout with a coverage report
-in the format `go tool cover -func` prints — one row per declared function
+in the format `go tool cover -func` prints: one row per declared function
 (methods as `Class::method`, a file's top-level code as `{main}`) or one row
 per file, each with its statement-weighted percentage, ending in a `total:`
 row. The report covers the application sources; the `.phpt` fixtures
 themselves are excluded, being the tests. A file or function with no runnable
-statement — an interface, a class of pure declarations — reports the adjusted
+statement (an interface, a class of pure declarations) reports the adjusted
 0/0 as 100%: nothing is left uncovered, and the row contributes no statements
 to the total. The fixture tables are suppressed so
 the report pipes clean (failures go to stderr, `-o` still writes the Markdown
@@ -148,6 +156,11 @@ contribute their columns to it.
 ```bash
 phpscript test --matrix -o docs/test-fixtures.md tests/fixtures/...
 ```
+
+Use `--skip-php` with `--matrix` to leave the `php` binary out and report the
+two built-in runtimes alone. The column leaves the table rather than reporting
+`SKIP` per row: a skipped column says the machine has no `php`, this flag says
+do not ask. `test.skip_php` is the configuration key.
 
 Use `--matrix` to run every fixture through all three runtimes (the flat
 bytecode engine, the default interpreter, and the `php` binary), reporting one
