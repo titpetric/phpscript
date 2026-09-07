@@ -10,7 +10,6 @@ import (
 
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
-
 	phplist "github.com/titpetric/phpscript/list"
 )
 
