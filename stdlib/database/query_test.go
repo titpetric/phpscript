@@ -1,6 +1,8 @@
 package database
 
-import "testing"
+import (
+	"testing"
+)
 
 // Classification reads the leading text of a statement, so what a query is
 // tagged with must not change what it is. The tag is the reason to look: a

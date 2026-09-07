@@ -1,6 +1,8 @@
 package core
 
-import "testing"
+import (
+	"testing"
+)
 
 // TestFnmatch pins the matcher against php. Every expectation here was produced
 // by running the same pattern, subject and flags through php's fnmatch, not

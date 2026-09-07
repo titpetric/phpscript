@@ -1,6 +1,8 @@
 package list
 
-import "path/filepath"
+import (
+	"path/filepath"
+)
 
 // PathGroup is the paths of one folder: Dir holds the folder, "." when the
 // paths sit in the run directory, and Indexes the positions of its paths in

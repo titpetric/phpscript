@@ -1,6 +1,8 @@
 package database
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSQLiteDatabaseOption(t *testing.T) {
 	tests := []struct {

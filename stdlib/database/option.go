@@ -1,6 +1,8 @@
 package database
 
-import "github.com/jmoiron/sqlx"
+import (
+	"github.com/jmoiron/sqlx"
+)
 
 // DatabaseOption configures database connection pooling settings.
 type DatabaseOption struct {

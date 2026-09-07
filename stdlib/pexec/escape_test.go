@@ -1,6 +1,8 @@
 package pexec
 
-import "testing"
+import (
+	"testing"
+)
 
 // TestEscapeshellcmd pins the quote pairing against php. A quote with a partner
 // later in the string is the author's own quoting and is left alone; a stray

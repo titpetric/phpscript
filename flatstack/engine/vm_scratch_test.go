@@ -1,6 +1,8 @@
 package engine
 
-import "testing"
+import (
+	"testing"
+)
 
 // release has to zero the whole backing array, not just the live prefix. The
 // pool holds the buffers for the life of the process, so a value left above

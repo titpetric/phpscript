@@ -1,6 +1,8 @@
 package model
 
-import "reflect"
+import (
+	"reflect"
+)
 
 // Values flow through phpscript as native Go types (see value.go). A PHP array
 // literal is an *Array, but a value handed back by a forwarded Go function is

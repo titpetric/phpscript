@@ -2,7 +2,9 @@
 // them against a host-provided PHP semantics bridge.
 package engine
 
-import "github.com/titpetric/phpscript/model"
+import (
+	"github.com/titpetric/phpscript/model"
+)
 
 type opcode uint8
 

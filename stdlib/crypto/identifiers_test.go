@@ -1,6 +1,8 @@
 package crypto
 
-import "testing"
+import (
+	"testing"
+)
 
 // TestEncodeCrockford pins the ULID text encoding to known vectors: the
 // all-zero value is 26 zeros, the all-ones value is the spec's maximum

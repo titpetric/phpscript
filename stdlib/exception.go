@@ -1,6 +1,8 @@
 package stdlib
 
-import "github.com/titpetric/phpscript/runner"
+import (
+	"github.com/titpetric/phpscript/runner"
+)
 
 // Exception holds an error code and error message.
 //
