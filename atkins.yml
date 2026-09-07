@@ -33,7 +33,7 @@ tasks:
   # change under demos/ is expected to.
   default:
     cmds:
-      - task: go:fmt go:fmt:revise
+      - task: go:fmt
       - go install .
       - task: go:test
       - task: cover
