@@ -1,0 +1,94 @@
+name: a child class answers the methods and properties its parent declares
+description: >
+  extends is parsed and is a no-op at runtime, so a child answers only what
+  it declares itself. Reported as a question rather than a defect: AGENTS.md
+  names the absence of an object model as a non-negotiable, docs/design.md
+  lists it, runner.TestNoInheritanceAtRuntime guards it, phpscript lint warns
+  "extends is a no-op: Child inherits nothing from Base", and the runtime
+  fails loudly with "call to undefined method Child::greet()" rather than
+  quietly. Nothing here is a surprise; it is one measurement of what the
+  decision costs an application that has two near-identical classes.
+
+  The fixture opens with the spelling that works today - delegation - and the
+  cost is visible inside it: greet() cannot be forwarded, because the base's
+  greet() would call the base's who(), so the one method that is genuinely
+  shared is the one that has to be written out again in both classes.
+
+  Expected output is what the php binary prints (8.5.10), not what phpscript
+  prints. Under phpscript the delegated half passes and the inherited half
+  stops at "call to undefined method Child::greet()".
+
+  https://github.com/titpetric/phpscript/issues/94
+---
+<?php
+
+// WHAT WORKS TODAY. Reuse by delegation: the child holds a base and forwards
+// what it needs. The cost is visible in greet() - it cannot be forwarded,
+// because the base's greet() would call the base's who(), so the one method
+// that is actually shared is the one that has to be written out again.
+class BaseDelegated {
+	public $name = "base";
+
+	function who() {
+		return "Base";
+	}
+
+	function greet() {
+		return "hello from " . $this->who();
+	}
+}
+
+class ChildDelegated {
+	public $name;
+	public $base;
+
+	function __construct() {
+		$this->base = new BaseDelegated();
+		$this->name = $this->base->name;
+	}
+
+	function who() {
+		return "Child";
+	}
+
+	function greet() {
+		return "hello from " . $this->who();
+	}
+}
+
+$d = new ChildDelegated();
+echo "delegated who:   ", $d->who(), "\n";
+echo "delegated greet: ", $d->greet(), "\n";
+echo "delegated name:  ", $d->name, "\n";
+
+// WHAT IS ASSERTED. The same three answers, without writing greet() twice or
+// copying $name across in a constructor.
+class Base {
+	public $name = "base";
+
+	function who() {
+		return "Base";
+	}
+
+	function greet() {
+		return "hello from " . $this->who();
+	}
+}
+
+class Child extends Base {
+	function who() {
+		return "Child";
+	}
+}
+
+$c = new Child();
+echo "inherited who:   ", $c->who(), "\n";
+echo "inherited greet: ", $c->greet(), "\n";
+echo "inherited name:  ", $c->name, "\n";
+---
+delegated who:   Child
+delegated greet: hello from Child
+delegated name:  base
+inherited who:   Child
+inherited greet: hello from Child
+inherited name:  base
