@@ -278,11 +278,22 @@ per-op latency dropped 1.4x with IO-bound fixtures unchanged. Compilation
 pays for the closure build once per source: +20 allocs, +0.8KiB, amortised
 by the same caches as the bytecode.
 
+The compile path takes the same exit: `runner/expr/direct.go::CompileExpr`
+walks the model AST and builds the closure chain without transpiling to
+source text or parsing it back, mirroring `Transpiler.emit` case for case.
+A compound expression compiles in 1.6µs and 37 allocs against the
+pipeline's 28µs and 187; expressions the direct compiler declines (the
+marked shapes: `++`/`--`, include) compile through the pipeline unchanged.
+`ExprCache.byExpr` shares direct compiles across runtimes by node identity,
+the role `bySrc` plays for transpiled programs. expr-lang stays as the
+fallback compiler and executable reference; no expression the direct
+compiler accepts touches it.
+
 The guards: `runner/expr_differential_test.go::TestClosureEngineMatchesVM`
-runs a 28-shape corpus through both engines on one scope and requires
-identical values and error presence, and pins that each shape actually
-closure-compiles; the bytecode identity guard above is unaffected because
-the closure is additive.
+runs each corpus shape three ways (pipeline closure, VM, direct) on one
+scope and requires identical values and error presence, and pins that each
+shape actually compiles on the engine it claims; the bytecode identity
+guard above is unaffected because the closure is additive.
 
 ## How to measure
 
