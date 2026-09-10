@@ -37,3 +37,6 @@ memprobe*
 # fails leaves it behind. go-fsck reads it and writes its own.
 splint.json
 go-fsck.json
+
+# Benchmark sweeps, compared with benchstat; never committed.
+bench*.txt
