@@ -129,6 +129,13 @@ type Runtime struct {
 	exprConfGen uint64
 	exprCache   *ExprCache
 	compiled    map[model.Expr]*compiledExpr
+	// concatParts caches the flattened operand list of a top-level `.`
+	// expression by node identity, the way compiled caches programs: the
+	// tree shape never changes, and reflattening it allocated a slice per
+	// evaluation of every echo with a concatenation in it.
+	concatParts map[*model.Binary][]model.Expr
+	// fileDirs caches path.Dir per loaded filename; see Runtime.fileDir.
+	fileDirs map[string]string
 	helpers     map[string]func(...any) (any, error)
 
 	// funcsGen is bumped whenever the function table changes (RegisterFunc, a
@@ -202,7 +209,6 @@ type evalEnv struct {
 	exprs   map[string]model.Expr
 	layered []string
 	shadow  map[string]any
-	gen     uint64
 	built   bool
 	// vars is the pooled slot buffer the closure engine reads variables
 	// from, and cenv the reused carrier handed to expr.Run; both exist so
@@ -820,8 +826,10 @@ func (rt *Runtime) Const(name string) (any, bool) {
 // { return len(s) }) makes `strlen($x)` work in transpiled code.
 func (rt *Runtime) RegisterFunc(name string, fn any) {
 	rt.funcs[name] = fn
-	// Prebuilt evaluation environments hold one closure per registered function;
-	// bumping the generation makes them rebuild before their next use.
+	// The generation invalidates the compile-time type env and the hoisted
+	// compile config, which carry the function table's names. Evaluation
+	// environments are not invalidated: their installed closures resolve the
+	// table per call (see installFunc).
 	rt.envMu.Lock()
 	rt.funcsGen++
 	rt.envMu.Unlock()
@@ -1331,14 +1339,16 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 		rt.envFree[n-1] = nil
 		rt.envFree = rt.envFree[:n-1]
 	}
-	gen := rt.funcsGen
 	rt.envMu.Unlock()
 
 	if st == nil {
 		st = &evalEnv{ref: &scopeRef{}, env: make(map[string]any, envSizeHint)}
 	}
-	if !st.built || st.gen != gen {
-		rt.buildEnv(st, gen)
+	// Built once per environment, for the runtime's lifetime: the helpers
+	// close over the stable scope reference and installed functions resolve
+	// per call, so a function-table change invalidates nothing here.
+	if !st.built {
+		rt.buildEnv(st)
 	}
 	st.ref.scope = scope
 	return st
@@ -1358,7 +1368,7 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 //
 // The closures read the scope through st.ref rather than capturing it, which is
 // what makes the environment reusable.
-func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
+func (rt *Runtime) buildEnv(st *evalEnv) {
 	env := st.env
 	clear(env)
 	st.layered = st.layered[:0]
@@ -1396,7 +1406,6 @@ func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
 	// iterates directly, so func_get_args() hands that slice back rather than
 	// rebuilding it as an *model.Array.
 	env["func_get_args"] = adapt(func() []any { return funcGetArgs(ref.scope) })
-	st.gen = gen
 	st.built = true
 }
 
@@ -1423,14 +1432,17 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 		return
 	}
 	ref := st.ref
-	fn, ok := rt.lookupFunc(name)
-	if !ok {
-		st.env[name] = func(...any) (any, error) {
+	// Resolution happens per call, not at install. The closure then survives
+	// every function-table change - a script re-declaring its functions on
+	// each run, a conditionally declared function appearing after the first
+	// call reported it undefined - which is what lets a built environment
+	// live for the runtime's lifetime instead of being rebuilt on every
+	// registration.
+	st.env[name] = func(args ...any) (any, error) {
+		fn, ok := rt.lookupFunc(name)
+		if !ok {
 			return nil, fmt.Errorf("call to undefined function %s()", name)
 		}
-		return
-	}
-	st.env[name] = func(args ...any) (any, error) {
 		result, err := rt.invokeWithScopeContext(fn, args, ref.scope)
 		return result, nameCallError(err, name)
 	}
@@ -1596,7 +1608,15 @@ func (rt *Runtime) evalIncDec(n *model.Unary, scope *Scope) (any, error) {
 }
 
 func (rt *Runtime) evalConcat(n *model.Binary, scope *Scope) (any, error) {
-	return rt.joinParts(flattenConcat(n, nil), scope)
+	parts, ok := rt.concatParts[n]
+	if !ok {
+		parts = flattenConcat(n, nil)
+		if rt.concatParts == nil {
+			rt.concatParts = make(map[*model.Binary][]model.Expr)
+		}
+		rt.concatParts[n] = parts
+	}
+	return rt.joinParts(parts, scope)
 }
 
 // joinParts evaluates each part and joins their PHP string forms. It is what a
