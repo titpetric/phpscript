@@ -228,8 +228,13 @@ fails loudly rather than becoming a subtle interpreter bug.
 With the env fixed, the remaining eval cost was the VM's dispatch itself:
 every helper call pays an OpCall argument slice, the adapt() indirection and
 a defer/recover, even though the transpiler only ever emits a fixed
-vocabulary - literals, `v_` identifiers, the pure `__*` helpers with constant
-op strings, `&&`/`||`/`!` and the ternary. `runner/expr/closure.go` compiles
+vocabulary:
+
+- literals and `v_` identifiers
+- the pure `__*` helpers with constant op strings
+- `&&`, `||`, `!` and the ternary
+
+`runner/expr/closure.go` compiles
 the checked, optimized tree into a chain of typed Go closures that call
 `phpArith`, `phpCompare` and friends directly, with one panic guard per
 evaluation instead of one per call. The technique is expr-cls's
@@ -241,12 +246,12 @@ instead of replacing it.
 Bytecode is always produced. A shape the closure compiler does not recognise
 drops the whole expression back to the VM at compile time, and calls that
 re-enter the interpreter (`__call`, `__get`, registered functions) stay env
-lookups with their variadic slice - that slice is the floor `reflect` sets,
-per the sections above.
+lookups; the `[]any` slice their variadic signature requires is the
+allocation that remains.
 
 Variables are bound by slot, not by map: the closure compiler assigns each
 per-evaluation identifier an index, and Eval fills a pooled `[]any` instead
-of layering the env map and deleting on release - after the engine landed,
+of layering the env map and deleting on release; after the engine landed,
 map writes, deletes and hashing were half of what remained in the profile.
 Functions and helpers still resolve through the persistent base map.
 
@@ -262,7 +267,7 @@ Measured pinned in one sweep, closure against its `VMOnly()` twin:
 | `strlen($s)` (closure)   |   16 |         1 |   216 |
 
 The binding call's one remaining allocation is the variadic argument slice.
-Two boxing leaks fell out of the same profile and pay off on both engines:
+The same profile showed two boxing allocations, fixed on both engines:
 `nameCallError` allocated its `errors.As` targets on every successful call
 (fixed with a nil guard), and `phpval.Key` reboxed the string and int64
 keys it returns unchanged.

@@ -12,8 +12,8 @@ import (
 // (PHP variables, bare-name constants, transpiled closures) live in Vars,
 // indexed by the slot the compiler assigned to their identifier; everything
 // persistent (the PHP-semantic helpers, installed functions) stays in Base,
-// which is the same map the VM path layers over. Slots are what let Eval skip
-// the per-evaluation map writes and deletes the VM path pays.
+// which is the same map the VM path layers over. Slots let Eval skip the
+// per-evaluation map writes and deletes the VM path pays.
 type Env struct {
 	Vars []any
 	Base map[string]any
@@ -25,10 +25,9 @@ type closure = func(env *Env) (any, error)
 // Helpers carries the typed implementations of the PHP-semantic helper
 // functions the transpiler emits. The closure engine calls them directly,
 // without the []any argument slice, the adapt() indirection or the per-call
-// panic guard the VM's env dispatch pays; that is the whole point of the
-// engine. Only the pure helpers belong here — anything that re-enters the
-// interpreter (__call, __get, __new, registered functions) stays an env
-// lookup, because those are per-runtime closures.
+// panic guard the VM's env dispatch pays. Only the pure helpers belong here;
+// anything that re-enters the interpreter (__call, __get, __new, registered
+// functions) stays an env lookup, because those are per-runtime closures.
 type Helpers struct {
 	Truthy     func(v any) bool
 	Concat     func(a, b any) string
@@ -468,8 +467,8 @@ func (cc *closureCompiler) compileCall(n *ast.CallNode) (closure, bool) {
 		}, true
 	}
 
-	// Everything else — registered functions, the interpreter-re-entering
-	// helpers, transpiled closures — is a per-runtime value in the eval env,
+	// Everything else (registered functions, the interpreter-re-entering
+	// helpers, transpiled closures) is a per-runtime value in the eval env,
 	// installed by Eval for exactly the names the expression calls. The
 	// argument slice is inherent to their variadic signature; what the
 	// closure path drops is the VM's own dispatch around it.
