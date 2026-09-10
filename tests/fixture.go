@@ -908,30 +908,24 @@ func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, ro
 }
 
 func buildFixtureRequestContext(f *Fixture) runner.Context {
+	// NewContext already carries empty maps; only a fixture that declares a
+	// section replaces one. The unconditional overwrite-then-refill spelled
+	// five discarded map allocations per fixture run.
 	reqCtx := runner.NewContext()
-	reqCtx.Get = f.Request.Get
-	reqCtx.Post = f.Request.Post
-	reqCtx.Cookie = f.Request.Cookie
-	reqCtx.Env = f.Request.Env
-	reqCtx.Headers = f.Request.Headers
-
-	if reqCtx.Get == nil {
-		reqCtx.Get = make(map[string]string)
+	if f.Request.Get != nil {
+		reqCtx.Get = f.Request.Get
 	}
-	if reqCtx.Post == nil {
-		reqCtx.Post = make(map[string]string)
+	if f.Request.Post != nil {
+		reqCtx.Post = f.Request.Post
 	}
-	if reqCtx.Cookie == nil {
-		reqCtx.Cookie = make(map[string]string)
+	if f.Request.Cookie != nil {
+		reqCtx.Cookie = f.Request.Cookie
 	}
-	if reqCtx.Env == nil {
-		reqCtx.Env = make(map[string]string)
+	if f.Request.Env != nil {
+		reqCtx.Env = f.Request.Env
 	}
-	if reqCtx.Headers == nil {
-		reqCtx.Headers = make(map[string]string)
-	}
-	if reqCtx.Server == nil {
-		reqCtx.Server = make(map[string]string)
+	if f.Request.Headers != nil {
+		reqCtx.Headers = f.Request.Headers
 	}
 
 	// Populate standard $_SERVER environment
