@@ -95,6 +95,21 @@ func BenchmarkExprConfig(b *testing.B) {
 	}
 }
 
+// BenchmarkExprCompileDirect measures the direct compiler on the same
+// compound expression BenchmarkExprCompileCold parses through expr-lang: one
+// AST walk building the closure chain, no source text.
+func BenchmarkExprCompileDirect(b *testing.B) {
+	e := benchNestedExpr()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		if _, ok := expr.CompileExpr(e, exprHelpers); !ok {
+			b.Fatal("direct compile declined the benchmark expression")
+		}
+	}
+}
+
 // BenchmarkExprCacheHit measures compile on a warm per-runtime cache: the
 // mutex and the map lookup every repeated evaluation of a source pays.
 func BenchmarkExprCacheHit(b *testing.B) {
@@ -184,11 +199,16 @@ func benchEvalVM(b *testing.B, e model.Expr) {
 	scope.Set("c", int64(10))
 	scope.Set("s", "hello")
 
+	// The pipeline program, not the direct one: only it carries the
+	// bytecode the VM twin measures.
+	ce, err := rt.compileTranspiled(e)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ce.prog = ce.prog.VMOnly()
 	if _, err := rt.Eval(e, scope); err != nil {
 		b.Fatal(err)
 	}
-	ce := rt.compiled[e]
-	ce.prog = ce.prog.VMOnly()
 
 	b.ReportAllocs()
 	b.ResetTimer()

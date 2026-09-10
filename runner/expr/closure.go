@@ -81,10 +81,14 @@ func compileClosure(node ast.Node, h *Helpers) (closure, map[string]int) {
 	if !ok {
 		return nil, nil
 	}
-	run := func(env *Env) (out any, err error) {
-		// One guard per evaluation instead of the VM path's one per helper
-		// call. Both engines surface a host panic as an error; PanicError
-		// keeps the error type identical.
+	return wrapRoot(body, h), cc.slots
+}
+
+// wrapRoot adds the per-evaluation panic guard: one recover per program
+// instead of the VM path's one per helper call. Both engines surface a host
+// panic as an error; PanicError keeps the error type identical.
+func wrapRoot(body closure, h *Helpers) closure {
+	return func(env *Env) (out any, err error) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				out = nil
@@ -97,7 +101,6 @@ func compileClosure(node ast.Node, h *Helpers) (closure, map[string]int) {
 		}()
 		return body(env)
 	}
-	return run, cc.slots
 }
 
 // constClosure returns v itself: literals are boxed once at compile time.

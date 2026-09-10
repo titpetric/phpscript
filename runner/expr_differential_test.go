@@ -82,30 +82,60 @@ func TestClosureEngineMatchesVM(t *testing.T) {
 			Then: &model.Binary{Op: "*", Left: v("c"), Right: lit(2)},
 			Else: &model.Call{Name: "strlen", Args: []model.Expr{v("s")}},
 		}, true},
+		{"assign expr", &model.AssignExpr{Target: v("x"), Op: "=", Value: lit(5)}, true},
+		{"interp nested", &model.Ternary{
+			Cond: v("t"),
+			Then: &model.Interp{Parts: []model.Expr{lit("n="), v("a")}},
+			Else: lit(""),
+		}, true},
+		{"instanceof const class", &model.Binary{Op: "instanceof", Left: v("a"), Right: &model.Var{Name: "Foo", Const: true}}, true},
+		{"invoke non-callable", &model.Invoke{Callee: v("a")}, true},
+		{"static call undefined", &model.StaticCall{Class: "Foo", Method: "bar"}, true},
+		{"namespaced fallback", &model.Call{Name: `App\strlen`, Fallback: "strlen", Args: []model.Expr{v("s")}}, true},
+		{"closure argument", &model.Call{Name: "count", Args: []model.Expr{&model.Closure{}}}, true},
+		{"bitnot", &model.Unary{Op: "~", X: v("c")}, true},
+		{"concat nested", &model.Binary{Op: "+", Left: v("a"), Right: &model.Binary{Op: ".", Left: v("s"), Right: lit("!")}}, true},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			closureOut, closureErr := rt.Eval(tc.expr, scope)
-
-			ce, ok := rt.compiled[tc.expr]
-			if !ok {
-				t.Fatal("expression missing from the compiled cache after Eval")
+			// The pipeline program: transpiled source through expr-lang,
+			// with the closure engine on top and the VM underneath.
+			ce, err := rt.compileTranspiled(tc.expr)
+			if err != nil {
+				t.Fatalf("compileTranspiled: %v", err)
 			}
 			if got := ce.prog.HasClosure(); got != tc.wantClosure {
 				t.Fatalf("HasClosure = %v, want %v", got, tc.wantClosure)
 			}
+			closureOut, closureErr := rt.Eval(tc.expr, scope)
 
 			prog := ce.prog
 			ce.prog = prog.VMOnly()
-			defer func() { ce.prog = prog }()
 			vmOut, vmErr := rt.Eval(tc.expr, scope)
+			ce.prog = prog
 
 			if (closureErr == nil) != (vmErr == nil) {
 				t.Fatalf("error mismatch: closure=%v vm=%v", closureErr, vmErr)
 			}
 			if !reflect.DeepEqual(closureOut, vmOut) {
 				t.Fatalf("value mismatch: closure=%#v (%T) vm=%#v (%T)", closureOut, closureOut, vmOut, vmOut)
+			}
+
+			// The direct engine: the same expression compiled from the
+			// model AST with no source round-trip, against the pipeline's
+			// answer.
+			delete(rt.compiled, tc.expr)
+			directOut, directErr := rt.Eval(tc.expr, scope)
+			dce := rt.compiled[tc.expr]
+			if dce.src != "" {
+				t.Fatalf("expected a direct compile, got the pipeline for %q", tc.name)
+			}
+			if (closureErr == nil) != (directErr == nil) {
+				t.Fatalf("error mismatch: pipeline=%v direct=%v", closureErr, directErr)
+			}
+			if !reflect.DeepEqual(closureOut, directOut) {
+				t.Fatalf("value mismatch: pipeline=%#v (%T) direct=%#v (%T)", closureOut, closureOut, directOut, directOut)
 			}
 		})
 	}

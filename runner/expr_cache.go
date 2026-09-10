@@ -71,6 +71,40 @@ func newCompiledExpr(src string, vars, idents, calls []string, closures map[stri
 	return ce
 }
 
+// newDirectCompiledExpr adapts a direct-compiled expression to the binding
+// lists Eval iterates. The identifiers are synthesized in the transpiler's
+// spelling so resolveVar's bare-name check reads them the same way.
+func newDirectCompiledExpr(dc *expr.Compiled) *compiledExpr {
+	n := len(dc.Vars)
+	buf := make([]string, 2*n)
+	varSlots := make([]int, n)
+	for i, b := range dc.Vars {
+		buf[i] = b.Name
+		if b.Const {
+			buf[n+i] = constIdent(b.Name)
+		} else {
+			buf[n+i] = varIdent(b.Name)
+		}
+		varSlots[i] = b.Slot
+	}
+	ce := &compiledExpr{
+		vars:     buf[:n:n],
+		idents:   buf[n:],
+		varSlots: varSlots,
+		calls:    dc.Calls,
+		prog:     dc.Program,
+	}
+	if len(dc.Closures) > 0 {
+		ce.closures = make(map[string]*model.Closure, len(dc.Closures))
+		ce.closureSlots = make(map[string]int, len(dc.Closures))
+		for _, c := range dc.Closures {
+			ce.closures[c.ID] = c.Decl
+			ce.closureSlots[c.ID] = c.Slot
+		}
+	}
+	return ce
+}
+
 // ExprCache stores immutable compiled expression programs by transpiled source
 // and optional flat bytecode by parsed program identity. Expression AST metadata
 // stays runtime-local; flat bytecode retains its source Program for the lifetime
@@ -80,6 +114,11 @@ type ExprCache struct {
 	maxEntries int
 	bySrc      map[string]*expr.Program
 	byAST      map[*model.Program]*flatvm.Program
+	// byExpr caches direct-compiled expressions by AST node identity, the
+	// role bySrc plays for the transpile pipeline: a runtime evaluating an
+	// expression another runtime compiled reuses the closure chain. Like
+	// byAST it retains the expression node for the cache's lifetime.
+	byExpr map[model.Expr]*expr.Compiled
 }
 
 // NewExprCache returns an empty compiled expression cache with default capacity (10,000 entries).
@@ -96,6 +135,7 @@ func NewExprCacheWithCapacity(maxEntries int) *ExprCache {
 		maxEntries: maxEntries,
 		bySrc:      make(map[string]*expr.Program),
 		byAST:      make(map[*model.Program]*flatvm.Program),
+		byExpr:     make(map[model.Expr]*expr.Compiled),
 	}
 }
 
@@ -108,6 +148,42 @@ func (c *ExprCache) Clear() {
 	defer c.mu.Unlock()
 	c.bySrc = make(map[string]*expr.Program)
 	c.byAST = make(map[*model.Program]*flatvm.Program)
+	c.byExpr = make(map[model.Expr]*expr.Compiled)
+}
+
+// GetExpr returns the direct-compiled expression cached for e, if any.
+func (c *ExprCache) GetExpr(e model.Expr) (*expr.Compiled, bool) {
+	if c == nil {
+		return nil, false
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	dc, ok := c.byExpr[e]
+	return dc, ok
+}
+
+// SetExpr stores a direct-compiled expression by node identity. Evicts one
+// item if max capacity is reached.
+func (c *ExprCache) SetExpr(e model.Expr, dc *expr.Compiled) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.byExpr == nil {
+		c.byExpr = make(map[model.Expr]*expr.Compiled)
+	}
+	limit := c.maxEntries
+	if limit <= 0 {
+		limit = DefaultMaxCacheSize
+	}
+	if _, exists := c.byExpr[e]; !exists && len(c.byExpr) >= limit {
+		for k := range c.byExpr {
+			delete(c.byExpr, k)
+			break
+		}
+	}
+	c.byExpr[e] = dc
 }
 
 // Len returns the number of currently cached source expressions.

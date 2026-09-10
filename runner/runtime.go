@@ -1100,6 +1100,11 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 		st.cenv.Base = st.env
 		out, err := expr.Run(ce.prog, &st.cenv)
 		if err != nil {
+			// A direct-compiled expression has no transpiled source to
+			// name; the error carries what the failing helper reported.
+			if ce.src == "" {
+				return nil, err
+			}
 			return nil, fmt.Errorf("eval %q: %w", ce.src, err)
 		}
 		return out, nil
@@ -1166,6 +1171,28 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 		}
 	}
 
+	// The direct compiler covers the transpiler's vocabulary minus the
+	// marked shapes; an expression it accepts never travels as source text,
+	// so the transpile, parse and check cost never happens. Anything it
+	// declines compiles through the pipeline below with identical semantics.
+	if dc, ok := rt.exprCache.GetExpr(e); ok {
+		ce := newDirectCompiledExpr(dc)
+		rt.setCompiledExpr(e, ce)
+		return ce, nil
+	}
+	if dc, ok := expr.CompileExpr(e, exprHelpers); ok {
+		rt.exprCache.SetExpr(e, dc)
+		ce := newDirectCompiledExpr(dc)
+		rt.setCompiledExpr(e, ce)
+		return ce, nil
+	}
+	return rt.compileTranspiled(e)
+}
+
+// compileTranspiled compiles through the transpile pipeline: expr source
+// text, expr-lang's parser and checker, the closure engine where it applies,
+// and the bytecode VM as the executable fallback.
+func (rt *Runtime) compileTranspiled(e model.Expr) (*compiledExpr, error) {
 	// The transpiler is pooled; newCompiledExpr copies the variable slices it
 	// hands out, so nothing survives the release.
 	tr := acquireTranspiler()
