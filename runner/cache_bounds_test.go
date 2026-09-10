@@ -39,8 +39,7 @@ func TestExprCacheCapacityBounds(t *testing.T) {
 	}
 
 	for i := 0; i < 10; i++ {
-		src := fmt.Sprintf("src_expr_%d", i)
-		cache.SetSource(src, &expr.Program{})
+		cache.SetExpr(&model.Lit{Value: i}, &expr.Compiled{})
 	}
 
 	if cache.Len() > 5 {

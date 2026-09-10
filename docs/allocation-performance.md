@@ -196,7 +196,7 @@ The two are now identical: a script pays for the functions it calls, not for
 the size of the table it could call from.
 `BenchmarkScriptEnvFullStdlib` / `BenchmarkScriptEnvMinimal` measure it.
 
-### The compile-time type env, and why it is still there
+### The compile-time type env of the expr-lang era
 
 The third bullet was the single largest item in the tree once the runtime env
 was fixed: `expr.Compile(src, expr.Env(typeEnv), ...)` makes expr walk the
@@ -213,15 +213,12 @@ only thing that stops a name being parsed as expr's predicate syntax is
 `expr.DisableAllBuiltins()` does not cover this. With no env, `count($x)`
 compiles to expr's `count` predicate instead of the registered PHP function.
 
-So the env stays; what was removed is the per-compile cost of deriving it. The
-config is built once per function-table generation, and because every entry is
-the same shared stub, one `nature.Nature` is derived and reused for all keys
-(`typeEnvNature`) instead of one reflective walk per key.
-
-If you change any of this, `runner/compile_test.go::TestCompileMatchesExprEnv`
-is the guard: it compiles a corpus both ways and diffs
-`vm.Program.Disassemble()`, so a config change that alters emitted bytecode
-fails loudly rather than becoming a subtle interpreter bug.
+So the env stayed while expr-lang was the compiler; what was removed was the
+per-compile cost of deriving it, one shared nature for all keys instead of a
+reflective walk per key. `TestCompileMatchesExprEnv` guarded the emitted
+bytecode until the engine below made the whole question moot: with no
+expr-lang compile there is no type env, no predicate collision and no
+bytecode to guard.
 
 ### The closure engine
 
@@ -234,20 +231,16 @@ vocabulary:
 - the pure `__*` helpers with constant op strings
 - `&&`, `||`, `!` and the ternary
 
-`runner/expr/closure.go` compiles
-the checked, optimized tree into a chain of typed Go closures that call
+The engine compiles the tree into a chain of typed Go closures that call
 `phpArith`, `phpCompare` and friends directly, with one panic guard per
 evaluation instead of one per call. The technique is expr-cls's
 (guamoko995/expr-cls compiles expressions to typed closure chains); its API
 wants a struct-typed env fixed at compile time, which PHP's per-expression
-variable map rules out, so the technique sits behind the existing pipeline
-instead of replacing it.
-
-Bytecode is always produced. A shape the closure compiler does not recognise
-drops the whole expression back to the VM at compile time, and calls that
-re-enter the interpreter (`__call`, `__get`, registered functions) stay env
-lookups; the `[]any` slice their variadic signature requires is the
-allocation that remains.
+variable map rules out, so the technique was rebuilt over the model AST. It
+landed as a fast path in front of the expr-lang pipeline and replaced it
+outright once its coverage was total. Calls that re-enter the interpreter
+(`__call`, `__get`, registered functions) stay env lookups; the `[]any`
+slice their variadic signature requires is the allocation that remains.
 
 Variables are bound by slot, not by map: the closure compiler assigns each
 per-evaluation identifier an index, and Eval fills a pooled `[]any` instead
@@ -255,7 +248,8 @@ of layering the env map and deleting on release; after the engine landed,
 map writes, deletes and hashing were half of what remained in the profile.
 Functions and helpers still resolve through the persistent base map.
 
-Measured pinned in one sweep, closure against its `VMOnly()` twin:
+Measured pinned in one sweep while both engines existed, closure against
+the same program's bytecode path:
 
 | Eval                     | B/op | allocs/op | ns/op |
 |--------------------------|-----:|----------:|------:|
@@ -278,22 +272,16 @@ per-op latency dropped 1.4x with IO-bound fixtures unchanged. Compilation
 pays for the closure build once per source: +20 allocs, +0.8KiB, amortised
 by the same caches as the bytecode.
 
-The compile path takes the same exit: `runner/expr/direct.go::CompileExpr`
-walks the model AST and builds the closure chain without transpiling to
-source text or parsing it back, mirroring `Transpiler.emit` case for case.
-A compound expression compiles in 1.6µs and 37 allocs against the
-pipeline's 28µs and 187; expressions the direct compiler declines (the
-marked shapes: `++`/`--`, include) compile through the pipeline unchanged.
-`ExprCache.byExpr` shares direct compiles across runtimes by node identity,
-the role `bySrc` plays for transpiled programs. expr-lang stays as the
-fallback compiler and executable reference; no expression the direct
-compiler accepts touches it.
-
-The guards: `runner/expr_differential_test.go::TestClosureEngineMatchesVM`
-runs each corpus shape three ways (pipeline closure, VM, direct) on one
-scope and requires identical values and error presence, and pins that each
-shape actually compiles on the engine it claims; the bytecode identity
-guard above is unaffected because the closure is additive.
+The compile path took the same exit: `runner/expr/direct.go::CompileExpr`
+walks the model AST and builds the closure chain with no source text. A
+compound expression compiles in 1.6µs and 37 allocs against the transpile
+pipeline's 28µs and 187. `ExprCache.byExpr` shares compiles across runtimes
+by node identity. Once the direct compiler covered the whole expression
+vocabulary, a full fixture-suite profile contained zero expr-lang frames,
+and the pipeline - transpiler, type env, bytecode VM and the expr-lang
+dependency - was removed. The `.phpt` fixtures, whose expected output is
+php's own and whose matrix runs every fixture on the interpreter, flatstack
+and php, are the semantic oracle.
 
 ## How to measure
 
@@ -512,11 +500,11 @@ given.
 
 ### Outside the binding layer
 
-| Item                    | Status                                                                                                                                                                                                                                                                                                                                                                                                                        |
-|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `runner.baseEnv`        | **Done.** Replaced by pooled environments with on-demand function installation and a cached compile config; see "The bigger lever (fixed)" above                                                                                                                                                                                                                                                                              |
-| `parser.TokenGetAll`    | **Done.** See `token_get_all` above                                                                                                                                                                                                                                                                                                                                                                                           |
-| `model.Array` internals | **Done.** `Array` has a list mode: while every key is the dense sequence `0..n-1` the values live in a `[]any` and neither the `map[any]any` nor the key slice is allocated. The first key that breaks the invariant promotes it, permanently. A 5-element build went 11 -> 9 allocs, 50 elements 66 -> 57, and `Range` over a list is ~17x faster with zero allocations                                                      |
-| `parser` lexer / AST    | **Done.** Operator tokens come from a package-level table of substrings instead of `string(c)` per token, the token slice is presized, and AST nodes are carved out of chunked backing arrays. Parsing a 10.8 KB file went 3197 -> 564 allocs                                                                                                                                                                                 |
-| expr compile pipeline   | **Remaining, external.** `runner.compile` is now the largest single block (~48% cumulative): expr's own parser and compiler turning the transpiled source into a `vm.Program`. It is a *cold-start* cost (`ExprCache` means a long-lived runtime pays it once per distinct expression), so it dominates one-shot CLI runs and not servers. Reducing it means emitting fewer or shorter expressions, not micro-optimising expr |
-| `reflect.Value.Call`    | **Remaining, by design.** ~43% cumulative. This is the reflection boundary the project trades throughput for; see "Where the guidance stops"                                                                                                                                                                                                                                                                                  |
+| Item                    | Status                                                                                                                                                                                                                                                                                                                                                                   |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `runner.baseEnv`        | **Done.** Replaced by pooled environments with on-demand function installation and a cached compile config; see "The bigger lever (fixed)" above                                                                                                                                                                                                                         |
+| `parser.TokenGetAll`    | **Done.** See `token_get_all` above                                                                                                                                                                                                                                                                                                                                      |
+| `model.Array` internals | **Done.** `Array` has a list mode: while every key is the dense sequence `0..n-1` the values live in a `[]any` and neither the `map[any]any` nor the key slice is allocated. The first key that breaks the invariant promotes it, permanently. A 5-element build went 11 -> 9 allocs, 50 elements 66 -> 57, and `Range` over a list is ~17x faster with zero allocations |
+| `parser` lexer / AST    | **Done.** Operator tokens come from a package-level table of substrings instead of `string(c)` per token, the token slice is presized, and AST nodes are carved out of chunked backing arrays. Parsing a 10.8 KB file went 3197 -> 564 allocs                                                                                                                            |
+| expr compile pipeline   | **Removed.** This was expr's own parser and compiler turning transpiled source into a `vm.Program`, ~48% cumulative at the time of this audit. `runner/expr` compiles the model AST to closures directly; the round-trip and the dependency are gone                                                                                                                     |
+| `reflect.Value.Call`    | **Remaining, by design.** ~43% cumulative. This is the reflection boundary the project trades throughput for; see "Where the guidance stops"                                                                                                                                                                                                                             |

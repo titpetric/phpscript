@@ -15,7 +15,7 @@ type BoundVar struct {
 	Slot  int
 }
 
-// BoundClosure is one transpiled closure literal: the synthetic identifier,
+// BoundClosure is one compiled closure literal: the synthetic identifier,
 // the declaration Eval binds a callable for, and its slot.
 type BoundClosure struct {
 	ID   string
@@ -39,23 +39,15 @@ type Compiled struct {
 	Exprs map[string]model.Expr
 }
 
-// CompileExpr compiles a model.Expr directly to a closure chain, or reports
-// that the tree contains a shape the direct compiler does not cover. The
-// decision is all-or-nothing: on false the caller compiles through the
-// transpile pipeline, whose closure engine or VM evaluates the expression
-// with identical semantics, so falling back loses correctness nothing.
-//
-// The node coverage mirrors Transpiler.emit case for case; the shapes that
-// re-enter the runtime through marked sub-expressions (`++`/`--`, include)
-// are the deliberate gaps, since they need the transpiler's expression marks.
-func CompileExpr(e model.Expr, h *Helpers) (*Compiled, bool) {
-	if h == nil {
-		return nil, false
-	}
+// CompileExpr compiles a model.Expr directly to a closure chain. It covers
+// the whole expression vocabulary the runtime evaluates; an expression shape
+// outside it is an error, spelled the way the transpiler spelled it when it
+// was the compiler.
+func CompileExpr(e model.Expr, h *Helpers) (*Compiled, error) {
 	dc := &directCompiler{h: h, slots: map[string]int{}}
-	body, ok := dc.compile(e)
-	if !ok {
-		return nil, false
+	body, err := dc.compile(e)
+	if err != nil {
+		return nil, err
 	}
 	if len(dc.exprs) > 0 && len(dc.vars) > 0 {
 		// A marked sub-expression writes the scope mid-evaluation, and a
@@ -63,8 +55,8 @@ func CompileExpr(e model.Expr, h *Helpers) (*Compiled, bool) {
 		// read the incremented $w. Recompile with variables read live
 		// through the __var helper.
 		dc = &directCompiler{h: h, liveVars: true, slots: map[string]int{}}
-		if body, ok = dc.compile(e); !ok {
-			return nil, false
+		if body, err = dc.compile(e); err != nil {
+			return nil, err
 		}
 	}
 	prog := &Program{slots: dc.slots}
@@ -75,7 +67,7 @@ func CompileExpr(e model.Expr, h *Helpers) (*Compiled, bool) {
 		Calls:    dc.calls,
 		Closures: dc.closures,
 		Exprs:    dc.exprs,
-	}, true
+	}, nil
 }
 
 type directCompiler struct {
@@ -161,40 +153,40 @@ func baseCall(name string, args []closure) closure {
 	}
 }
 
-func (dc *directCompiler) compileArgs(args []model.Expr) ([]closure, bool) {
+func (dc *directCompiler) compileArgs(args []model.Expr) ([]closure, error) {
 	out := make([]closure, len(args))
 	for i, a := range args {
-		c, ok := dc.compile(a)
-		if !ok {
-			return nil, false
+		c, err := dc.compile(a)
+		if err != nil {
+			return nil, err
 		}
 		out[i] = c
 	}
-	return out, true
+	return out, nil
 }
 
 // nameOrExpr compiles a runtime name: the constant string when the syntax
 // names it, or the expression when it is a value (`$obj->$m(...)`,
 // `new $class(...)`).
-func (dc *directCompiler) nameOrExpr(name string, e model.Expr) (closure, bool) {
+func (dc *directCompiler) nameOrExpr(name string, e model.Expr) (closure, error) {
 	if e == nil {
-		return constClosure(name), true
+		return constClosure(name), nil
 	}
 	return dc.compile(e)
 }
 
-func (dc *directCompiler) compile(e model.Expr) (closure, bool) {
+func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 	switch n := e.(type) {
 	case *model.Lit:
 		// The value goes in as itself, invalid UTF-8 included: with no
 		// source text to travel through there is nothing to mis-decode.
-		return constClosure(n.Value), true
+		return constClosure(n.Value), nil
 
 	case *model.Var:
 		if dc.liveVars {
-			return baseCall("__var", []closure{constClosure(n.Name), constClosure(n.Const)}), true
+			return baseCall("__var", []closure{constClosure(n.Name), constClosure(n.Const)}), nil
 		}
-		return slotRead(dc.bindVar(n.Name, n.Const)), true
+		return slotRead(dc.bindVar(n.Name, n.Const)), nil
 
 	case *model.Parenthesized:
 		return dc.compile(n.X)
@@ -213,17 +205,17 @@ func (dc *directCompiler) compile(e model.Expr) (closure, bool) {
 		return dc.compileBinary(n)
 
 	case *model.Ternary:
-		c, ok := dc.compile(n.Cond)
-		if !ok {
-			return nil, false
+		c, err := dc.compile(n.Cond)
+		if err != nil {
+			return nil, err
 		}
-		t, ok := dc.compile(n.Then)
-		if !ok {
-			return nil, false
+		t, err := dc.compile(n.Then)
+		if err != nil {
+			return nil, err
 		}
-		f, ok := dc.compile(n.Else)
-		if !ok {
-			return nil, false
+		f, err := dc.compile(n.Else)
+		if err != nil {
+			return nil, err
 		}
 		truthy := dc.h.Truthy
 		return func(env *Env) (any, error) {
@@ -235,22 +227,22 @@ func (dc *directCompiler) compile(e model.Expr) (closure, bool) {
 				return t(env)
 			}
 			return f(env)
-		}, true
+		}, nil
 
 	case *model.ArrayLit:
 		items := make([]closure, len(n.Items))
 		for i, it := range n.Items {
 			var key closure
 			if it.Key != nil {
-				k, ok := dc.compile(it.Key)
-				if !ok {
-					return nil, false
+				k, err := dc.compile(it.Key)
+				if err != nil {
+					return nil, err
 				}
 				key = k
 			}
-			val, ok := dc.compile(it.Val)
-			if !ok {
-				return nil, false
+			val, err := dc.compile(it.Val)
+			if err != nil {
+				return nil, err
 			}
 			items[i] = pairItem(key, val, dc.h.Pair)
 		}
@@ -265,16 +257,16 @@ func (dc *directCompiler) compile(e model.Expr) (closure, bool) {
 				vals[i] = v.(model.ArrayItemValue)
 			}
 			return fn(vals...), nil
-		}, true
+		}, nil
 
 	case *model.Index:
-		base, ok := dc.compile(n.Base)
-		if !ok {
-			return nil, false
+		base, err := dc.compile(n.Base)
+		if err != nil {
+			return nil, err
 		}
-		idx, ok := dc.compile(n.Index)
-		if !ok {
-			return nil, false
+		idx, err := dc.compile(n.Index)
+		if err != nil {
+			return nil, err
 		}
 		fn := dc.h.Index
 		return func(env *Env) (any, error) {
@@ -287,12 +279,12 @@ func (dc *directCompiler) compile(e model.Expr) (closure, bool) {
 				return nil, err
 			}
 			return fn(b, i), nil
-		}, true
+		}, nil
 
 	case *model.Cast:
-		x, ok := dc.compile(n.X)
-		if !ok {
-			return nil, false
+		x, err := dc.compile(n.X)
+		if err != nil {
+			return nil, err
 		}
 		typ := n.Type
 		fn := dc.h.Cast
@@ -302,96 +294,98 @@ func (dc *directCompiler) compile(e model.Expr) (closure, bool) {
 				return nil, err
 			}
 			return fn(typ, v), nil
-		}, true
+		}, nil
 
 	case *model.PropAccess:
-		base, ok := dc.compile(n.Base)
-		if !ok {
-			return nil, false
+		base, err := dc.compile(n.Base)
+		if err != nil {
+			return nil, err
 		}
-		return baseCall("__get", []closure{base, constClosure(n.Name)}), true
+		return baseCall("__get", []closure{base, constClosure(n.Name)}), nil
 
 	case *model.Call:
 		return dc.compileCall(n)
 
 	case *model.ClassConst:
-		return baseCall("__classconst", []closure{constClosure(n.Class), constClosure(n.Name)}), true
+		return baseCall("__classconst", []closure{constClosure(n.Class), constClosure(n.Name)}), nil
 
 	case *model.StaticProp:
-		return baseCall("__staticprop", []closure{constClosure(n.Class), constClosure(n.Name)}), true
+		return baseCall("__staticprop", []closure{constClosure(n.Class), constClosure(n.Name)}), nil
 
 	case *model.StaticCall:
-		method, ok := dc.nameOrExpr(n.Method, n.MethodExpr)
-		if !ok {
-			return nil, false
+		method, err := dc.nameOrExpr(n.Method, n.MethodExpr)
+		if err != nil {
+			return nil, err
 		}
-		args, ok := dc.compileArgs(n.Args)
-		if !ok {
-			return nil, false
+		args, err := dc.compileArgs(n.Args)
+		if err != nil {
+			return nil, err
 		}
-		return baseCall("__static", append([]closure{constClosure(n.Class), method}, args...)), true
+		return baseCall("__static", append([]closure{constClosure(n.Class), method}, args...)), nil
 
 	case *model.MethodCall:
-		base, ok := dc.compile(n.Base)
-		if !ok {
-			return nil, false
+		base, err := dc.compile(n.Base)
+		if err != nil {
+			return nil, err
 		}
-		method, ok := dc.nameOrExpr(n.Method, n.MethodExpr)
-		if !ok {
-			return nil, false
+		method, err := dc.nameOrExpr(n.Method, n.MethodExpr)
+		if err != nil {
+			return nil, err
 		}
-		args, ok := dc.compileArgs(n.Args)
-		if !ok {
-			return nil, false
+		args, err := dc.compileArgs(n.Args)
+		if err != nil {
+			return nil, err
 		}
-		return baseCall("__call", append([]closure{base, method}, args...)), true
+		return baseCall("__call", append([]closure{base, method}, args...)), nil
 
 	case *model.New:
-		class, ok := dc.nameOrExpr(n.Class, n.ClassExpr)
-		if !ok {
-			return nil, false
+		class, err := dc.nameOrExpr(n.Class, n.ClassExpr)
+		if err != nil {
+			return nil, err
 		}
-		args, ok := dc.compileArgs(n.Args)
-		if !ok {
-			return nil, false
+		args, err := dc.compileArgs(n.Args)
+		if err != nil {
+			return nil, err
 		}
-		return baseCall("__new", append([]closure{class}, args...)), true
+		return baseCall("__new", append([]closure{class}, args...)), nil
 
 	case *model.Invoke:
-		callee, ok := dc.compile(n.Callee)
-		if !ok {
-			return nil, false
+		callee, err := dc.compile(n.Callee)
+		if err != nil {
+			return nil, err
 		}
-		args, ok := dc.compileArgs(n.Args)
-		if !ok {
-			return nil, false
+		args, err := dc.compileArgs(n.Args)
+		if err != nil {
+			return nil, err
 		}
-		return baseCall("__invoke", append([]closure{callee}, args...)), true
+		return baseCall("__invoke", append([]closure{callee}, args...)), nil
 
 	case *model.AssignExpr:
 		v, ok := model.UnwrapParenthesized(n.Target).(*model.Var)
-		if !ok || (n.Op != "=" && n.Op != "") {
-			// The transpiler rejects these too; the fallback reports the
-			// same error.
-			return nil, false
-		}
-		val, ok := dc.compile(n.Value)
 		if !ok {
-			return nil, false
+			return nil, fmt.Errorf("transpile: assignment expression supports only $var targets, got %T", n.Target)
 		}
-		return baseCall("__set", []closure{constClosure(v.Name), val}), true
+		// Compound ops in an expression context are rare; support plain `=`.
+		if n.Op != "=" && n.Op != "" {
+			return nil, fmt.Errorf("transpile: assignment expression op %q unsupported", n.Op)
+		}
+		val, err := dc.compile(n.Value)
+		if err != nil {
+			return nil, err
+		}
+		return baseCall("__set", []closure{constClosure(v.Name), val}), nil
 
 	case *model.Include:
-		return dc.markCall(n), true
+		return dc.markCall(n), nil
 
 	case *model.Closure:
 		id := "__cl" + strconv.Itoa(len(dc.closures))
 		slot := len(dc.slots)
 		dc.slots[id] = slot
 		dc.closures = append(dc.closures, BoundClosure{ID: id, Slot: slot, Decl: n})
-		return slotRead(slot), true
+		return slotRead(slot), nil
 	}
-	return nil, false
+	return nil, fmt.Errorf("transpile: unsupported expression %T", e)
 }
 
 // pairItem builds one __pair value; a nil key is a list-style append.
@@ -415,18 +409,18 @@ func pairItem(key, val closure, pair func(key, val any) model.ArrayItemValue) cl
 // compileInterp folds an interpolated string over Concat, matching
 // Transpiler.emitInterp: a lone literal part is itself, a lone expression
 // part concatenates with "" so the result is a string either way.
-func (dc *directCompiler) compileInterp(n *model.Interp) (closure, bool) {
+func (dc *directCompiler) compileInterp(n *model.Interp) (closure, error) {
 	if len(n.Parts) == 0 {
-		return constClosure(""), true
+		return constClosure(""), nil
 	}
-	out, ok := dc.compile(n.Parts[0])
-	if !ok {
-		return nil, false
+	out, err := dc.compile(n.Parts[0])
+	if err != nil {
+		return nil, err
 	}
 	fn := dc.h.Concat
 	if len(n.Parts) == 1 {
 		if _, isLit := n.Parts[0].(*model.Lit); isLit {
-			return out, true
+			return out, nil
 		}
 		part := out
 		return func(env *Env) (any, error) {
@@ -435,12 +429,12 @@ func (dc *directCompiler) compileInterp(n *model.Interp) (closure, bool) {
 				return nil, err
 			}
 			return fn("", v), nil
-		}, true
+		}, nil
 	}
 	for _, p := range n.Parts[1:] {
-		next, ok := dc.compile(p)
-		if !ok {
-			return nil, false
+		next, err := dc.compile(p)
+		if err != nil {
+			return nil, err
 		}
 		left, right := out, next
 		out = func(env *Env) (any, error) {
@@ -455,10 +449,10 @@ func (dc *directCompiler) compileInterp(n *model.Interp) (closure, bool) {
 			return fn(a, b), nil
 		}
 	}
-	return out, true
+	return out, nil
 }
 
-func (dc *directCompiler) compileUnary(n *model.Unary) (closure, bool) {
+func (dc *directCompiler) compileUnary(n *model.Unary) (closure, error) {
 	switch n.Op {
 	case "!", "~", "-", "+":
 	case "++", "--":
@@ -466,13 +460,13 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, bool) {
 		// not from the slot snapshot, and the target is a general lvalue:
 		// the mark re-enters the runtime, exactly as the transpiled form
 		// does through __eval.
-		return dc.markCall(n), true
+		return dc.markCall(n), nil
 	default:
-		return nil, false
+		return nil, fmt.Errorf("transpile: unsupported operator %q", n.Op)
 	}
-	x, ok := dc.compile(n.X)
-	if !ok {
-		return nil, false
+	x, err := dc.compile(n.X)
+	if err != nil {
+		return nil, err
 	}
 	switch n.Op {
 	case "+":
@@ -484,7 +478,7 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, bool) {
 				return nil, err
 			}
 			return fn("+", int64(0), v), nil
-		}, true
+		}, nil
 	case "!":
 		truthy := dc.h.Truthy
 		return func(env *Env) (any, error) {
@@ -493,7 +487,7 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, bool) {
 				return nil, err
 			}
 			return !truthy(v), nil
-		}, true
+		}, nil
 	case "~":
 		fn := dc.h.BitNot
 		return func(env *Env) (any, error) {
@@ -502,7 +496,7 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, bool) {
 				return nil, err
 			}
 			return fn(v), nil
-		}, true
+		}, nil
 	default:
 		fn := dc.h.Negate
 		return func(env *Env) (any, error) {
@@ -511,18 +505,18 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, bool) {
 				return nil, err
 			}
 			return fn(v), nil
-		}, true
+		}, nil
 	}
 }
 
-func (dc *directCompiler) compileBinary(n *model.Binary) (closure, bool) {
+func (dc *directCompiler) compileBinary(n *model.Binary) (closure, error) {
 	// `instanceof` with a bare name on the right is the class, not a
 	// constant to resolve.
 	if n.Op == "instanceof" {
 		if v, ok := model.UnwrapParenthesized(n.Right).(*model.Var); ok && v.Const {
-			l, ok := dc.compile(n.Left)
-			if !ok {
-				return nil, false
+			l, err := dc.compile(n.Left)
+			if err != nil {
+				return nil, err
 			}
 			fn := dc.h.InstanceOf
 			name := v.Name
@@ -532,17 +526,17 @@ func (dc *directCompiler) compileBinary(n *model.Binary) (closure, bool) {
 					return nil, err
 				}
 				return fn(a, name), nil
-			}, true
+			}, nil
 		}
 	}
 
-	l, ok := dc.compile(n.Left)
-	if !ok {
-		return nil, false
+	l, err := dc.compile(n.Left)
+	if err != nil {
+		return nil, err
 	}
-	r, ok := dc.compile(n.Right)
-	if !ok {
-		return nil, false
+	r, err := dc.compile(n.Right)
+	if err != nil {
+		return nil, err
 	}
 
 	switch n.Op {
@@ -562,27 +556,27 @@ func (dc *directCompiler) compileBinary(n *model.Binary) (closure, bool) {
 				return nil, err
 			}
 			return truthy(b), nil
-		}, true
+		}, nil
 	case ".":
 		fn := dc.h.Concat
-		return binary2(l, r, func(a, b any) (any, error) { return fn(a, b), nil }), true
+		return binary2(l, r, func(a, b any) (any, error) { return fn(a, b), nil }), nil
 	case "instanceof":
 		fn := dc.h.InstanceOf
-		return binary2(l, r, func(a, b any) (any, error) { return fn(a, b), nil }), true
+		return binary2(l, r, func(a, b any) (any, error) { return fn(a, b), nil }), nil
 	case "+", "-", "*", "/", "%", "**":
 		fn := dc.h.Arith
 		op := n.Op
-		return binary2(l, r, func(a, b any) (any, error) { return fn(op, a, b), nil }), true
+		return binary2(l, r, func(a, b any) (any, error) { return fn(op, a, b), nil }), nil
 	case "&", "|", "^", "<<", ">>":
 		fn := dc.h.Bitwise
 		op := n.Op
-		return binary2(l, r, func(a, b any) (any, error) { return fn(op, a, b) }), true
+		return binary2(l, r, func(a, b any) (any, error) { return fn(op, a, b) }), nil
 	case "==", "!=", "===", "!==", "<", "<=", ">", ">=":
 		fn := dc.h.Compare
 		op := n.Op
-		return binary2(l, r, func(a, b any) (any, error) { return fn(op, a, b), nil }), true
+		return binary2(l, r, func(a, b any) (any, error) { return fn(op, a, b), nil }), nil
 	}
-	return nil, false
+	return nil, fmt.Errorf("transpile: unsupported operator %q", n.Op)
 }
 
 func binary2(l, r closure, apply func(a, b any) (any, error)) closure {
@@ -603,7 +597,7 @@ func binary2(l, r closure, apply func(a, b any) (any, error)) closure {
 // that are plain variables become __ref setters, namespaced names and calls
 // carrying a global fallback dispatch through __func, and a plain global
 // call resolves its name in the base env, installed by Eval.
-func (dc *directCompiler) compileCall(n *model.Call) (closure, bool) {
+func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	args := make([]closure, len(n.Args))
 	for i, a := range n.Args {
 		if model.ByRefArg(n.Name, n.Fallback, i) {
@@ -615,17 +609,17 @@ func (dc *directCompiler) compileCall(n *model.Call) (closure, bool) {
 				continue
 			}
 		}
-		c, ok := dc.compile(a)
-		if !ok {
-			return nil, false
+		c, err := dc.compile(a)
+		if err != nil {
+			return nil, err
 		}
 		args[i] = c
 	}
 	if n.Fallback != "" || containsBackslash(n.Name) {
-		return baseCall("__func", append([]closure{constClosure(n.Name), constClosure(n.Fallback)}, args...)), true
+		return baseCall("__func", append([]closure{constClosure(n.Name), constClosure(n.Fallback)}, args...)), nil
 	}
 	dc.addCall(n.Name)
-	return baseCall(n.Name, args), true
+	return baseCall(n.Name, args), nil
 }
 
 func containsBackslash(s string) bool {

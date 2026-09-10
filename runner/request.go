@@ -608,7 +608,7 @@ func (c Context) memoryFootprint(visited visitedSet) int64 {
 }
 
 // Register seeds the request superglobals and puts the request itself on the
-// runtime context. After this, transpiled PHP reads $_GET, $_POST and
+// runtime context. After this, PHP reads $_GET, $_POST and
 // $_REQUEST from this Context, and the request-aware functions find it.
 //
 // The functions themselves - getallheaders(), header(), http_response_code(),

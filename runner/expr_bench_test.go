@@ -8,15 +8,14 @@ import (
 	"github.com/titpetric/phpscript/runner/expr"
 )
 
-// The benchmarks below pin the cost of the expr-lang seam before it moves
-// behind runner/expr: the compile pipeline, the hoisted config, the compile
-// caches, and Eval per transpiled node shape. They are the before/after
-// evidence for any engine change; docs/allocation-performance.md describes
-// how a run is taken.
+// The benchmarks below pin the cost of the expression engine: compilation
+// and Eval per node shape. They are the before/after evidence for any engine
+// change; docs/allocation-performance.md describes how a run is taken and
+// carries the measured history, including the expr-lang engine these
+// replaced.
 
-// benchExprRuntime builds a runtime with just enough of a function table to
-// exercise the type env: names that collide with expr's own builtins plus a
-// plain binding, the same set the compile guard tests use.
+// benchExprRuntime builds a runtime with a small function table: names that
+// collide with common builtins plus a plain binding.
 func benchExprRuntime() *Runtime {
 	rt := New(io.Discard, Options{})
 	for _, name := range []string{"count", "filter", "map", "len", "sum", "implode"} {
@@ -27,20 +26,6 @@ func benchExprRuntime() *Runtime {
 		return int64(len(s))
 	})
 	return rt
-}
-
-// benchCompileSrc is transpiled once from a compound expression so the compile
-// benchmarks measure the source shape Eval actually produces, not hand-written
-// expr syntax.
-func benchCompileSrc(b *testing.B) string {
-	b.Helper()
-	e := benchNestedExpr()
-	tr := NewTranspiler()
-	src, _, err := tr.Transpile(e)
-	if err != nil {
-		b.Fatalf("Transpile: %v", err)
-	}
-	return src
 }
 
 func benchNestedExpr() model.Expr {
@@ -57,79 +42,22 @@ func benchNestedExpr() model.Expr {
 	}
 }
 
-// BenchmarkExprCompileCold measures the parse/check/optimize/compile pipeline
-// against the cached config, bypassing both program caches: the cost of the
-// first sighting of a source string. The nature cache inside the config fills
-// on the first iteration and stays, which is also what a warm runtime carries.
-func BenchmarkExprCompileCold(b *testing.B) {
-	rt := benchExprRuntime()
-	src := benchCompileSrc(b)
-	rt.mu.Lock()
-	cfg := rt.exprConfig()
-	rt.mu.Unlock()
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	for b.Loop() {
-		if _, err := expr.CompileWith(src, cfg, exprHelpers); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-// BenchmarkExprConfig measures rebuilding the compile config after a
-// function-table change: the reflective type-env walk that exprConfig exists
-// to amortise. RegisterFunc is in the loop because it is what invalidates the
-// config; its own cost is two map writes and a counter.
-func BenchmarkExprConfig(b *testing.B) {
-	rt := benchExprRuntime()
-	fn := func(args ...any) any { return nil }
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	for b.Loop() {
-		rt.RegisterFunc("strlen", fn)
-		rt.mu.Lock()
-		rt.exprConfig()
-		rt.mu.Unlock()
-	}
-}
-
-// BenchmarkExprCompileDirect measures the direct compiler on the same
-// compound expression BenchmarkExprCompileCold parses through expr-lang: one
-// AST walk building the closure chain, no source text.
+// BenchmarkExprCompileDirect measures compiling a compound expression: one
+// AST walk building the closure chain.
 func BenchmarkExprCompileDirect(b *testing.B) {
 	e := benchNestedExpr()
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if _, ok := expr.CompileExpr(e, exprHelpers); !ok {
-			b.Fatal("direct compile declined the benchmark expression")
-		}
-	}
-}
-
-// BenchmarkExprCacheHit measures compile on a warm per-runtime cache: the
-// mutex and the map lookup every repeated evaluation of a source pays.
-func BenchmarkExprCacheHit(b *testing.B) {
-	rt := benchExprRuntime()
-	src := benchCompileSrc(b)
-	if _, err := rt.compile(src); err != nil {
-		b.Fatal(err)
-	}
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	for b.Loop() {
-		if _, err := rt.compile(src); err != nil {
+		if _, err := expr.CompileExpr(e, exprHelpers); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 // benchEval evaluates e once to fill every cache layer, then measures the
-// steady state: env acquire, variable layering, and the VM run.
+// steady state: env acquire, slot binding, and the closure run.
 func benchEval(b *testing.B, e model.Expr) {
 	b.Helper()
 	rt := benchExprRuntime()
@@ -185,48 +113,4 @@ func BenchmarkEvalCallBinding(b *testing.B) {
 
 func BenchmarkEvalNested(b *testing.B) {
 	benchEval(b, benchNestedExpr())
-}
-
-// benchEvalVM measures the same expression with the closure chain stripped,
-// forcing the bytecode VM: the old engine kept alongside the new one so a
-// sweep reports the change, per docs/allocation-performance.md.
-func benchEvalVM(b *testing.B, e model.Expr) {
-	b.Helper()
-	rt := benchExprRuntime()
-	scope := NewScope()
-	scope.Set("a", int64(2))
-	scope.Set("b", int64(3))
-	scope.Set("c", int64(10))
-	scope.Set("s", "hello")
-
-	// The pipeline program, not the direct one: only it carries the
-	// bytecode the VM twin measures.
-	ce, err := rt.compileTranspiled(e)
-	if err != nil {
-		b.Fatal(err)
-	}
-	ce.prog = ce.prog.VMOnly()
-	if _, err := rt.Eval(e, scope); err != nil {
-		b.Fatal(err)
-	}
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	for b.Loop() {
-		if _, err := rt.Eval(e, scope); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkEvalArithVM(b *testing.B) {
-	benchEvalVM(b, &model.Binary{Op: "+", Left: &model.Var{Name: "a"}, Right: &model.Var{Name: "b"}})
-}
-
-func BenchmarkEvalCallBindingVM(b *testing.B) {
-	benchEvalVM(b, &model.Call{Name: "strlen", Args: []model.Expr{&model.Var{Name: "s"}}})
-}
-
-func BenchmarkEvalNestedVM(b *testing.B) {
-	benchEvalVM(b, benchNestedExpr())
 }

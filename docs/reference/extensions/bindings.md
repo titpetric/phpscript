@@ -161,7 +161,7 @@ Bindings run in-process and may expose mutable Go pointers. Their lifetime, thre
 2. call `Set`, `Get`, and `Tenant`; and
 3. write `acme:blue` to the HTTP response.
 
-The `go_handler` sub-benchmark calls the Go constructor and methods directly. The `php_vm_handler` sub-benchmark creates a runtime for the request, registers the constructor, and performs the equivalent calls from a pre-parsed PHP program. It uses a shared source-keyed expression cache, warmed by the correctness check before timing, as production HTTP hosts should. Source parsing, VM compilation, and request creation are excluded, with one request reused across iterations. Each fresh runtime still transpiles the current AST so closures and nested-expression metadata remain request-local. Per-iteration response-recorder allocation, runtime setup, transpilation, VM execution, reflective dispatch, and response writing are included where applicable.
+The `go_handler` sub-benchmark calls the Go constructor and methods directly. The `php_vm_handler` sub-benchmark creates a runtime for the request, registers the constructor, and performs the equivalent calls from a pre-parsed PHP program. It uses a shared expression cache keyed by AST node, warmed by the correctness check before timing, as production HTTP hosts should. Source parsing and request creation are excluded, with one request reused across iterations. Per-iteration response-recorder allocation, runtime setup, expression compilation on a cache miss, closure execution, reflective dispatch, and response writing are included where applicable.
 
 Run it with:
 
