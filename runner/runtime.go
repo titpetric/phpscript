@@ -1168,7 +1168,7 @@ func (rt *Runtime) compile(src string) (*expr.Program, error) {
 			return p, nil
 		}
 	}
-	p, err := expr.CompileWith(src, rt.exprConfig())
+	p, err := expr.CompileWith(src, rt.exprConfig(), exprHelpers)
 	if err != nil {
 		return nil, err
 	}

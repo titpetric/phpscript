@@ -46,6 +46,20 @@ func (p *Program) Disassemble() string {
 	return p.vm.Disassemble()
 }
 
+// VMOnly returns the same program stripped of its closure chain, so Run takes
+// the bytecode path. The differential test and the fallback benchmarks use it
+// to hold the two engines against each other.
+func (p *Program) VMOnly() *Program {
+	return &Program{vm: p.vm}
+}
+
+// HasClosure reports whether the closure engine compiled this program. The
+// differential test uses it to prove the engine is actually reached for the
+// shapes it claims, rather than everything silently falling back to the VM.
+func (p *Program) HasClosure() bool {
+	return p.run != nil
+}
+
 // Run evaluates a compiled program against env. The closure engine only ever
 // sees the runner's map environment; any other env shape runs on the VM.
 func Run(p *Program, env any) (any, error) {
@@ -66,7 +80,12 @@ func NewConfig() *Config {
 // prebuilt config. It mirrors expr.Compile, which cannot be used here because
 // it insists on constructing a fresh conf.Config (and re-deriving the type
 // env) on every call.
-func CompileWith(src string, c *Config) (*Program, error) {
+//
+// With a non-nil Helpers the checked tree is also compiled to a closure
+// chain where the engine recognises every node; the bytecode is produced
+// either way, so the closure is strictly additive and h == nil is the plain
+// VM pipeline.
+func CompileWith(src string, c *Config, h *Helpers) (*Program, error) {
 	tree, err := checker.ParseCheck(src, c)
 	if err != nil {
 		return nil, err
@@ -84,7 +103,11 @@ func CompileWith(src string, c *Config) (*Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Program{vm: prog}, nil
+	p := &Program{vm: prog}
+	if h != nil {
+		p.run = compileClosure(tree.Node, h)
+	}
+	return p, nil
 }
 
 // The upstream reference surface. The compile guard tests compare the hoisted

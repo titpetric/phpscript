@@ -71,7 +71,7 @@ func BenchmarkExprCompileCold(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if _, err := expr.CompileWith(src, cfg); err != nil {
+		if _, err := expr.CompileWith(src, cfg, exprHelpers); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -170,4 +170,43 @@ func BenchmarkEvalCallBinding(b *testing.B) {
 
 func BenchmarkEvalNested(b *testing.B) {
 	benchEval(b, benchNestedExpr())
+}
+
+// benchEvalVM measures the same expression with the closure chain stripped,
+// forcing the bytecode VM: the old engine kept alongside the new one so a
+// sweep reports the change, per docs/allocation-performance.md.
+func benchEvalVM(b *testing.B, e model.Expr) {
+	b.Helper()
+	rt := benchExprRuntime()
+	scope := NewScope()
+	scope.Set("a", int64(2))
+	scope.Set("b", int64(3))
+	scope.Set("c", int64(10))
+	scope.Set("s", "hello")
+
+	if _, err := rt.Eval(e, scope); err != nil {
+		b.Fatal(err)
+	}
+	ce := rt.compiled[e]
+	ce.prog = ce.prog.VMOnly()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		if _, err := rt.Eval(e, scope); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEvalArithVM(b *testing.B) {
+	benchEvalVM(b, &model.Binary{Op: "+", Left: &model.Var{Name: "a"}, Right: &model.Var{Name: "b"}})
+}
+
+func BenchmarkEvalCallBindingVM(b *testing.B) {
+	benchEvalVM(b, &model.Call{Name: "strlen", Args: []model.Expr{&model.Var{Name: "s"}}})
+}
+
+func BenchmarkEvalNestedVM(b *testing.B) {
+	benchEvalVM(b, benchNestedExpr())
 }

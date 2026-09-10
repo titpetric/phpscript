@@ -132,7 +132,9 @@ func TestCompileMatchesExprEnv(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expr.Compile %q: %v", src, err)
 		}
-		got, err := expr.CompileWith(src, rt.exprConfig())
+		// The closure engine is deliberately absent here: the guard compares
+		// bytecode, and h == nil is the pure VM pipeline.
+		got, err := expr.CompileWith(src, rt.exprConfig(), nil)
 		if err != nil {
 			t.Fatalf("CompileWith %q: %v", src, err)
 		}

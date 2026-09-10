@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner/expr"
 )
 
 // contextType is the reflect type of context.Context, used to detect callables
@@ -201,6 +202,29 @@ func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...
 // still be written with natural Go signatures.
 func adapt(fn any) func(...any) (any, error) {
 	return func(args ...any) (any, error) { return invokeAny(fn, args) }
+}
+
+// exprHelpers hands the closure engine the typed helper implementations the
+// VM path reaches through adapt(). Package-level because the helpers are
+// stateless: a compiled closure chain is as shareable across runtimes as the
+// bytecode beside it. PanicError mirrors invokeAny's recover, so a host
+// panic surfaces as the same catchable error on both engines.
+var exprHelpers = &expr.Helpers{
+	Truthy:     phpTruthy,
+	Concat:     helperConcat,
+	Pair:       helperPair,
+	Array:      helperArray,
+	Index:      helperIndex,
+	Cast:       helperCast,
+	Arith:      phpArith,
+	Compare:    phpCompare,
+	Bitwise:    phpBitwise,
+	BitNot:     phpBitNot,
+	InstanceOf: phpInstanceOf,
+	Negate:     phpNegate,
+	PanicError: func(recovered any) error {
+		return &HostPanicError{Callable: "expr", Value: recovered}
+	},
 }
 
 // ArgumentCountError reports a call that passed more arguments than the
