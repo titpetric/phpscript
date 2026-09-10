@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/expr-lang/expr/vm"
-
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/expr"
 )
 
 func TestIncludeCacheCapacityBounds(t *testing.T) {
@@ -41,7 +40,7 @@ func TestExprCacheCapacityBounds(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		src := fmt.Sprintf("src_expr_%d", i)
-		cache.SetSource(src, &vm.Program{})
+		cache.SetSource(src, &expr.Program{})
 	}
 
 	if cache.Len() > 5 {

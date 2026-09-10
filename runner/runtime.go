@@ -15,17 +15,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/expr-lang/expr"
-	"github.com/expr-lang/expr/checker"
-	"github.com/expr-lang/expr/checker/nature"
-	"github.com/expr-lang/expr/compiler"
-	"github.com/expr-lang/expr/conf"
-	"github.com/expr-lang/expr/file"
-	"github.com/expr-lang/expr/optimizer"
-	"github.com/expr-lang/expr/vm"
-
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner/coverage"
+	"github.com/titpetric/phpscript/runner/expr"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -127,12 +119,12 @@ type Runtime struct {
 	funcStatics map[*model.StaticVar]map[string]any
 
 	mu    sync.Mutex
-	cache map[string]*vm.Program // expr source -> compiled program
+	cache map[string]*expr.Program // expr source -> compiled program
 	// exprConf is the expr-lang compile configuration derived from the
 	// compile-time type env. Deriving it is the expensive half of a compile
 	// (expr walks the whole function table reflectively), so it is built once per
 	// function-table generation and reused. Guarded by mu, which compile holds.
-	exprConf    *conf.Config
+	exprConf    *expr.Config
 	exprConfGen uint64
 	exprCache   *ExprCache
 	compiled    map[model.Expr]*compiledExpr
@@ -1168,7 +1160,7 @@ func (rt *Runtime) setCompiledExpr(e model.Expr, ce *compiledExpr) {
 // forwarded/registered functions (RegisterFunc), and expr's builtins (count,
 // len, all, ...) would otherwise shadow PHP functions of the same name. With
 // builtins off, a registered `count` resolves to the user's implementation.
-func (rt *Runtime) compile(src string) (*vm.Program, error) {
+func (rt *Runtime) compile(src string) (*expr.Program, error) {
 	rt.mu.Lock()
 	defer rt.mu.Unlock()
 	if rt.cache != nil {
@@ -1176,12 +1168,12 @@ func (rt *Runtime) compile(src string) (*vm.Program, error) {
 			return p, nil
 		}
 	}
-	p, err := compileWith(src, rt.exprConfig())
+	p, err := expr.CompileWith(src, rt.exprConfig())
 	if err != nil {
 		return nil, err
 	}
 	if rt.cache == nil {
-		rt.cache = make(map[string]*vm.Program)
+		rt.cache = make(map[string]*expr.Program)
 	}
 	rt.cache[src] = p
 	return p, nil
@@ -1198,7 +1190,7 @@ func (rt *Runtime) compile(src string) (*vm.Program, error) {
 // is filled as a side effect and is guarded by rt.mu, which compile holds.
 //
 // Callers must hold rt.mu.
-func (rt *Runtime) exprConfig() *conf.Config {
+func (rt *Runtime) exprConfig() *expr.Config {
 	rt.envMu.Lock()
 	gen := rt.funcsGen
 	rt.envMu.Unlock()
@@ -1207,7 +1199,7 @@ func (rt *Runtime) exprConfig() *conf.Config {
 	}
 
 	env := rt.typeEnvBase()
-	c := conf.CreateNew()
+	c := expr.NewConfig()
 	c.EnvObject = env
 	c.Env = typeEnvNature(&c.NtCache, env)
 	// expr.AllowUndefinedVariables: PHP variables are not in the type env.
@@ -1221,27 +1213,6 @@ func (rt *Runtime) exprConfig() *conf.Config {
 
 	rt.exprConf, rt.exprConfGen = c, gen
 	return c
-}
-
-// compileWith runs expr's parse/check/optimize/compile pipeline against a
-// prebuilt config. It mirrors expr.Compile, which cannot be used here because it
-// insists on constructing a fresh conf.Config (and re-deriving the type env)
-// on every call.
-func compileWith(src string, c *conf.Config) (*vm.Program, error) {
-	tree, err := checker.ParseCheck(src, c)
-	if err != nil {
-		return nil, err
-	}
-	if c.Optimize {
-		if err := optimizer.Optimize(&tree.Node, c); err != nil {
-			var fileError *file.Error
-			if errors.As(err, &fileError) {
-				return nil, fileError.Bind(tree.Source)
-			}
-			return nil, err
-		}
-	}
-	return compiler.Compile(tree, c)
 }
 
 // acquireEnv returns an evaluation environment bound to scope. Environments are
@@ -1420,13 +1391,13 @@ var typeEnvMapType = reflect.TypeOf(map[string]any(nil))
 // identical for every entry. The one field that carries per-name state,
 // TypeData.Func, is set by the checker only for conf.Config.Functions and
 // Builtins, both empty here, never for a nature that came out of the env.
-func typeEnvNature(cache *nature.Cache, env map[string]any) nature.Nature {
+func typeEnvNature(cache *expr.NatureCache, env map[string]any) expr.Nature {
 	n := cache.FromType(typeEnvMapType)
 	if n.TypeData == nil {
-		n.TypeData = new(nature.TypeData)
+		n.TypeData = new(expr.TypeData)
 	}
 	n.Strict = true
-	n.Fields = make(map[string]nature.Nature, len(env))
+	n.Fields = make(map[string]expr.Nature, len(env))
 	stub := cache.NatureOf(typeEnvStub)
 	for name := range env {
 		n.Fields[name] = stub

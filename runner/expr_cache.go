@@ -3,10 +3,9 @@ package runner
 import (
 	"sync"
 
-	"github.com/expr-lang/expr/vm"
-
 	flatvm "github.com/titpetric/phpscript/flatstack/engine"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner/expr"
 )
 
 type compiledExpr struct {
@@ -22,14 +21,14 @@ type compiledExpr struct {
 	calls    []string
 	closures map[string]*model.Closure
 	exprs    map[string]model.Expr
-	prog     *vm.Program
+	prog     *expr.Program
 }
 
 // newCompiledExpr snapshots one compiled expression. vars, idents and calls come
 // from the pooled transpiler and are copied into a single backing array here,
 // both because the transpiler reuses its own storage and because one allocation
 // is cheaper than three.
-func newCompiledExpr(src string, vars, idents, calls []string, closures map[string]*model.Closure, exprs map[string]model.Expr, prog *vm.Program) *compiledExpr {
+func newCompiledExpr(src string, vars, idents, calls []string, closures map[string]*model.Closure, exprs map[string]model.Expr, prog *expr.Program) *compiledExpr {
 	n := len(vars)
 	c := len(calls)
 	buf := make([]string, 2*n+c)
@@ -54,7 +53,7 @@ func newCompiledExpr(src string, vars, idents, calls []string, closures map[stri
 type ExprCache struct {
 	mu         sync.RWMutex
 	maxEntries int
-	bySrc      map[string]*vm.Program
+	bySrc      map[string]*expr.Program
 	byAST      map[*model.Program]*flatvm.Program
 }
 
@@ -70,7 +69,7 @@ func NewExprCacheWithCapacity(maxEntries int) *ExprCache {
 	}
 	return &ExprCache{
 		maxEntries: maxEntries,
-		bySrc:      make(map[string]*vm.Program),
+		bySrc:      make(map[string]*expr.Program),
 		byAST:      make(map[*model.Program]*flatvm.Program),
 	}
 }
@@ -82,7 +81,7 @@ func (c *ExprCache) Clear() {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.bySrc = make(map[string]*vm.Program)
+	c.bySrc = make(map[string]*expr.Program)
 	c.byAST = make(map[*model.Program]*flatvm.Program)
 }
 
@@ -129,7 +128,7 @@ func (c *ExprCache) setFlat(p *model.Program, program *flatvm.Program) {
 }
 
 // GetSource returns the compiled expression cached for src, if any.
-func (c *ExprCache) GetSource(src string) (*vm.Program, bool) {
+func (c *ExprCache) GetSource(src string) (*expr.Program, bool) {
 	if c == nil {
 		return nil, false
 	}
@@ -140,14 +139,14 @@ func (c *ExprCache) GetSource(src string) (*vm.Program, bool) {
 }
 
 // SetSource stores a compiled program for transpiled source. Evicts one item if max capacity is reached.
-func (c *ExprCache) SetSource(src string, prog *vm.Program) {
+func (c *ExprCache) SetSource(src string, prog *expr.Program) {
 	if c == nil {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.bySrc == nil {
-		c.bySrc = make(map[string]*vm.Program)
+		c.bySrc = make(map[string]*expr.Program)
 	}
 	limit := c.maxEntries
 	if limit <= 0 {

@@ -5,11 +5,8 @@ import (
 	"maps"
 	"testing"
 
-	"github.com/expr-lang/expr"
-	"github.com/expr-lang/expr/checker/nature"
-	"github.com/expr-lang/expr/conf"
-
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner/expr"
 )
 
 // TestTypeEnvNatureMatchesExprEnv pins the invariant behind typeEnvNature: the
@@ -23,9 +20,9 @@ func TestTypeEnvNatureMatchesExprEnv(t *testing.T) {
 	rt.RegisterFunc("count", func(args ...any) any { return nil })
 	env := rt.typeEnvBase()
 
-	var mine, theirs nature.Cache
+	var mine, theirs expr.NatureCache
 	got := typeEnvNature(&mine, env)
-	want := conf.EnvWithCache(&theirs, env)
+	want := expr.EnvWithCache(&theirs, env)
 
 	if got.Type != want.Type || got.Kind != want.Kind || got.Strict != want.Strict {
 		t.Fatalf("nature = %v/%v/strict=%v, want %v/%v/strict=%v",
@@ -135,9 +132,9 @@ func TestCompileMatchesExprEnv(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expr.Compile %q: %v", src, err)
 		}
-		got, err := compileWith(src, rt.exprConfig())
+		got, err := expr.CompileWith(src, rt.exprConfig())
 		if err != nil {
-			t.Fatalf("compileWith %q: %v", src, err)
+			t.Fatalf("CompileWith %q: %v", src, err)
 		}
 		if a, b := want.Disassemble(), got.Disassemble(); a != b {
 			t.Errorf("bytecode differs for %q\n--- expr.Env ---\n%s--- cached config ---\n%s", src, a, b)

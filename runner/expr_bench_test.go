@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner/expr"
 )
 
 // The benchmarks below pin the cost of the expr-lang seam before it moves
@@ -70,7 +71,7 @@ func BenchmarkExprCompileCold(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		if _, err := compileWith(src, cfg); err != nil {
+		if _, err := expr.CompileWith(src, cfg); err != nil {
 			b.Fatal(err)
 		}
 	}
