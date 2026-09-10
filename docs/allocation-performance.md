@@ -244,22 +244,34 @@ re-enter the interpreter (`__call`, `__get`, registered functions) stay env
 lookups with their variadic slice - that slice is the floor `reflect` sets,
 per the sections above.
 
+Variables are bound by slot, not by map: the closure compiler assigns each
+per-evaluation identifier an index, and Eval fills a pooled `[]any` instead
+of layering the env map and deleting on release - after the engine landed,
+map writes, deletes and hashing were half of what remained in the profile.
+Functions and helpers still resolve through the persistent base map.
+
 Measured pinned in one sweep, closure against its `VMOnly()` twin:
 
 | Eval                     | B/op | allocs/op | ns/op |
 |--------------------------|-----:|----------:|------:|
-| `$a + $b` (VM)           |  480 |        13 |  2286 |
-| `$a + $b` (closure)      |    0 |         0 |   265 |
-| ternary+call nested (VM) | 1865 |        52 |  8697 |
-| nested (closure)         |    0 |         0 |   670 |
-| `strlen($s)` (VM)        |  168 |         8 |   948 |
-| `strlen($s)` (closure)   |   32 |         3 |   390 |
+| `$a + $b` (VM)           |  480 |        13 |  2013 |
+| `$a + $b` (closure)      |    0 |         0 |   118 |
+| ternary+call nested (VM) | 1865 |        52 |  7677 |
+| nested (closure)         |    0 |         0 |   245 |
+| `strlen($s)` (VM)        |  152 |         6 |   902 |
+| `strlen($s)` (closure)   |   16 |         1 |   216 |
+
+The binding call's one remaining allocation is the variadic argument slice.
+Two boxing leaks fell out of the same profile and pay off on both engines:
+`nameCallError` allocated its `errors.As` targets on every successful call
+(fixed with a nil guard), and `phpval.Key` reboxed the string and int64
+keys it returns unchanged.
 
 End to end, `BenchmarkScriptExprHeavy` (an expression-dense loop) went from
-332KiB and 52 allocs per statement-mix iteration to 6.1KiB, 8.4x faster; the
-fixture suite's median per-op latency dropped 1.3x with IO-bound fixtures
-unchanged. Compilation pays for the closure build once per source: +20
-allocs, +0.6KiB, amortised by the same caches as the bytecode.
+332KiB per iteration to 5.4KiB, 10.7x faster; the fixture suite's median
+per-op latency dropped 1.4x with IO-bound fixtures unchanged. Compilation
+pays for the closure build once per source: +20 allocs, +0.8KiB, amortised
+by the same caches as the bytecode.
 
 The guards: `runner/expr_differential_test.go::TestClosureEngineMatchesVM`
 runs a 28-shape corpus through both engines on one scope and requires
