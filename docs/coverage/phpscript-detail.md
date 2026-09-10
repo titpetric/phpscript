@@ -46,7 +46,7 @@ github.com/titpetric/phpscript/config/overlay.go, symbols 3, coverage 86.67%
 github.com/titpetric/phpscript/config/server.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/config/test.go, symbols 2, coverage 72.30%
 github.com/titpetric/phpscript/config/virtualhost.go, symbols 8, coverage 99.24%
-github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 28, coverage 87.60%
+github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 28, coverage 87.93%
 github.com/titpetric/phpscript/flatstack/engine/vm.go, symbols 12, coverage 83.23%
 github.com/titpetric/phpscript/flatstack/flatstack.go, symbols 10, coverage 50.00%
 github.com/titpetric/phpscript/formatter/comments.go, symbols 7, coverage 91.63%
@@ -98,11 +98,11 @@ github.com/titpetric/phpscript/runner/coverage/coverage.go, symbols 10, coverage
 github.com/titpetric/phpscript/runner/coverage/profile.go, symbols 4, coverage 92.85%
 github.com/titpetric/phpscript/runner/coverage/row.go, symbols 5, coverage 100.00%
 github.com/titpetric/phpscript/runner/expr_cache.go, symbols 9, coverage 81.37%
-github.com/titpetric/phpscript/runner/expr/closure.go, symbols 6, coverage 75.68%
-github.com/titpetric/phpscript/runner/expr/expr.go, symbols 10, coverage 96.25%
+github.com/titpetric/phpscript/runner/expr/closure.go, symbols 7, coverage 79.84%
+github.com/titpetric/phpscript/runner/expr/expr.go, symbols 12, coverage 96.88%
 github.com/titpetric/phpscript/runner/filemode.go, symbols 5, coverage 77.50%
 github.com/titpetric/phpscript/runner/flatstack.go, symbols 36, coverage 92.40%
-github.com/titpetric/phpscript/runner/helpers.go, symbols 34, coverage 89.47%
+github.com/titpetric/phpscript/runner/helpers.go, symbols 35, coverage 89.77%
 github.com/titpetric/phpscript/runner/include_cache.go, symbols 6, coverage 81.43%
 github.com/titpetric/phpscript/runner/instanceof.go, symbols 5, coverage 61.88%
 github.com/titpetric/phpscript/runner/memory.go, symbols 8, coverage 46.24%
@@ -113,7 +113,7 @@ github.com/titpetric/phpscript/runner/redeclare.go, symbols 7, coverage 81.07%
 github.com/titpetric/phpscript/runner/request.go, symbols 42, coverage 94.96%
 github.com/titpetric/phpscript/runner/response.go, symbols 6, coverage 100.00%
 github.com/titpetric/phpscript/runner/runner.go, symbols 52, coverage 81.27%
-github.com/titpetric/phpscript/runner/runtime.go, symbols 93, coverage 92.84%
+github.com/titpetric/phpscript/runner/runtime.go, symbols 95, coverage 92.93%
 github.com/titpetric/phpscript/runner/scope.go, symbols 11, coverage 88.89%
 github.com/titpetric/phpscript/runner/size.go, symbols 6, coverage 82.40%
 github.com/titpetric/phpscript/runner/static.go, symbols 11, coverage 77.98%
