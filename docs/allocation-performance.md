@@ -223,6 +223,50 @@ is the guard: it compiles a corpus both ways and diffs
 `vm.Program.Disassemble()`, so a config change that alters emitted bytecode
 fails loudly rather than becoming a subtle interpreter bug.
 
+### The closure engine
+
+With the env fixed, the remaining eval cost was the VM's dispatch itself:
+every helper call pays an OpCall argument slice, the adapt() indirection and
+a defer/recover, even though the transpiler only ever emits a fixed
+vocabulary - literals, `v_` identifiers, the pure `__*` helpers with constant
+op strings, `&&`/`||`/`!` and the ternary. `runner/expr/closure.go` compiles
+the checked, optimized tree into a chain of typed Go closures that call
+`phpArith`, `phpCompare` and friends directly, with one panic guard per
+evaluation instead of one per call. The technique is expr-cls's
+(guamoko995/expr-cls compiles expressions to typed closure chains); its API
+wants a struct-typed env fixed at compile time, which PHP's per-expression
+variable map rules out, so the technique sits behind the existing pipeline
+instead of replacing it.
+
+Bytecode is always produced. A shape the closure compiler does not recognise
+drops the whole expression back to the VM at compile time, and calls that
+re-enter the interpreter (`__call`, `__get`, registered functions) stay env
+lookups with their variadic slice - that slice is the floor `reflect` sets,
+per the sections above.
+
+Measured pinned in one sweep, closure against its `VMOnly()` twin:
+
+| Eval                     | B/op | allocs/op | ns/op |
+|--------------------------|-----:|----------:|------:|
+| `$a + $b` (VM)           |  480 |        13 |  2286 |
+| `$a + $b` (closure)      |    0 |         0 |   265 |
+| ternary+call nested (VM) | 1865 |        52 |  8697 |
+| nested (closure)         |    0 |         0 |   670 |
+| `strlen($s)` (VM)        |  168 |         8 |   948 |
+| `strlen($s)` (closure)   |   32 |         3 |   390 |
+
+End to end, `BenchmarkScriptExprHeavy` (an expression-dense loop) went from
+332KiB and 52 allocs per statement-mix iteration to 6.1KiB, 8.4x faster; the
+fixture suite's median per-op latency dropped 1.3x with IO-bound fixtures
+unchanged. Compilation pays for the closure build once per source: +20
+allocs, +0.6KiB, amortised by the same caches as the bytecode.
+
+The guards: `runner/expr_differential_test.go::TestClosureEngineMatchesVM`
+runs a 28-shape corpus through both engines on one scope and requires
+identical values and error presence, and pins that each shape actually
+closure-compiles; the bytecode identity guard above is unaffected because
+the closure is additive.
+
 ## How to measure
 
 `tests/bindings.go` defines one binding per return shape; `tests/bindings_test.go`
