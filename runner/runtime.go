@@ -15,6 +15,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/runner/expr"
@@ -1148,6 +1149,20 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 // defines is an error - PHP 8 raises Error there, while an unset variable of
 // the same spelling stays null, which is why the two carry different
 // identifiers.
+// helperVar reads a variable or bare name from the live scope at evaluation
+// time. The closure engine uses it instead of the slot snapshot inside
+// expressions that contain a marked sub-expression, whose scope writes a
+// snapshot taken before the run would miss.
+func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
+	return func(name string, isConst bool) (any, error) {
+		ident := varIdent(name)
+		if isConst {
+			ident = constIdent(name)
+		}
+		return rt.resolveVar(name, ident, ref.scope)
+	}
+}
+
 func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if v, ok := scope.Get(name); ok {
 		return v, nil
@@ -1355,6 +1370,7 @@ func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
 	for name, fn := range rt.helpers {
 		env[name] = fn
 	}
+	env["__var"] = adapt(rt.helperVar(ref))
 	env["__call"] = adapt(rt.helperCall(ref))
 	env["__get"] = adapt(rt.helperGet(ref))
 	env["__new"] = adapt(rt.helperNew(ref))
@@ -1566,9 +1582,9 @@ func (rt *Runtime) evalIncDec(n *model.Unary, scope *Scope) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	next := toInt(cur) + 1
+	next := phpval.Increment(cur)
 	if n.Op == "--" {
-		next = toInt(cur) - 1
+		next = phpval.Decrement(cur)
 	}
 	if err := rt.assignTo(n.X, next, scope); err != nil {
 		return nil, err

@@ -92,6 +92,7 @@ func newDirectCompiledExpr(dc *expr.Compiled) *compiledExpr {
 		idents:   buf[n:],
 		varSlots: varSlots,
 		calls:    dc.Calls,
+		exprs:    dc.Exprs,
 		prog:     dc.Program,
 	}
 	if len(dc.Closures) > 0 {

@@ -33,6 +33,10 @@ type Compiled struct {
 	Vars     []BoundVar
 	Calls    []string
 	Closures []BoundClosure
+	// Exprs holds the marked sub-expressions (`++`/`--`, include) the
+	// compiled closures evaluate through the __eval base helper, keyed by
+	// the mark id, the same contract the transpiler's marks use.
+	Exprs map[string]model.Expr
 }
 
 // CompileExpr compiles a model.Expr directly to a closure chain, or reports
@@ -53,6 +57,16 @@ func CompileExpr(e model.Expr, h *Helpers) (*Compiled, bool) {
 	if !ok {
 		return nil, false
 	}
+	if len(dc.exprs) > 0 && len(dc.vars) > 0 {
+		// A marked sub-expression writes the scope mid-evaluation, and a
+		// slot snapshot taken before the run would miss it: $w++ . $w must
+		// read the incremented $w. Recompile with variables read live
+		// through the __var helper.
+		dc = &directCompiler{h: h, liveVars: true, slots: map[string]int{}}
+		if body, ok = dc.compile(e); !ok {
+			return nil, false
+		}
+	}
 	prog := &Program{slots: dc.slots}
 	prog.run = wrapRoot(body, h)
 	return &Compiled{
@@ -60,16 +74,31 @@ func CompileExpr(e model.Expr, h *Helpers) (*Compiled, bool) {
 		Vars:     dc.vars,
 		Calls:    dc.calls,
 		Closures: dc.closures,
+		Exprs:    dc.exprs,
 	}, true
 }
 
 type directCompiler struct {
 	h        *Helpers
+	liveVars bool
 	slots    map[string]int
 	vars     []BoundVar
 	calls    []string
 	callSeen map[string]struct{}
 	closures []BoundClosure
+	exprs    map[string]model.Expr
+}
+
+// markCall registers e as a marked sub-expression and compiles to an __eval
+// call on its id: the runtime evaluates the node itself, with live scope
+// reads and lvalue writes the closure environment cannot express.
+func (dc *directCompiler) markCall(e model.Expr) closure {
+	if dc.exprs == nil {
+		dc.exprs = map[string]model.Expr{}
+	}
+	id := "__m" + strconv.Itoa(len(dc.exprs))
+	dc.exprs[id] = e
+	return baseCall("__eval", []closure{constClosure(id)})
 }
 
 // bindVar returns the slot for a PHP variable or bare name, registering the
@@ -162,6 +191,9 @@ func (dc *directCompiler) compile(e model.Expr) (closure, bool) {
 		return constClosure(n.Value), true
 
 	case *model.Var:
+		if dc.liveVars {
+			return baseCall("__var", []closure{constClosure(n.Name), constClosure(n.Const)}), true
+		}
 		return slotRead(dc.bindVar(n.Name, n.Const)), true
 
 	case *model.Parenthesized:
@@ -349,6 +381,9 @@ func (dc *directCompiler) compile(e model.Expr) (closure, bool) {
 		}
 		return baseCall("__set", []closure{constClosure(v.Name), val}), true
 
+	case *model.Include:
+		return dc.markCall(n), true
+
 	case *model.Closure:
 		id := "__cl" + strconv.Itoa(len(dc.closures))
 		slot := len(dc.slots)
@@ -424,11 +459,14 @@ func (dc *directCompiler) compileInterp(n *model.Interp) (closure, bool) {
 }
 
 func (dc *directCompiler) compileUnary(n *model.Unary) (closure, bool) {
-	// `++`/`--` re-enter the runtime through a transpiler mark; anything
-	// else the transpiler passes to expr-lang as a bare operator falls back
-	// with it.
 	switch n.Op {
-	case "!", "~", "-":
+	case "!", "~", "-", "+":
+	case "++", "--":
+		// The value must be read from the live scope at evaluation time,
+		// not from the slot snapshot, and the target is a general lvalue:
+		// the mark re-enters the runtime, exactly as the transpiled form
+		// does through __eval.
+		return dc.markCall(n), true
 	default:
 		return nil, false
 	}
@@ -437,6 +475,16 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, bool) {
 		return nil, false
 	}
 	switch n.Op {
+	case "+":
+		// PHP's unary plus is the numeric cast 0 + $x.
+		fn := dc.h.Arith
+		return func(env *Env) (any, error) {
+			v, err := x(env)
+			if err != nil {
+				return nil, err
+			}
+			return fn("+", int64(0), v), nil
+		}, true
 	case "!":
 		truthy := dc.h.Truthy
 		return func(env *Env) (any, error) {

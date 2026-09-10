@@ -218,6 +218,12 @@ func (t *Transpiler) emit(e model.Expr) (string, error) {
 			// and keeps the sign of a negative zero.
 			return "__neg(" + x + ")", nil
 		}
+		if op == "+" {
+			// PHP's unary plus is the numeric cast 0 + $x; expr-lang's is a
+			// no-op that would hand "5x" through as a string. The flatstack
+			// host applies the same arithmetic (flatHost.Unary).
+			return `__arith("+", 0, ` + x + ")", nil
+		}
 		return op + "(" + x + ")", nil
 
 	case *model.Parenthesized:

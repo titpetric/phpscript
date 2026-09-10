@@ -97,6 +97,37 @@ func TestClosureEngineMatchesVM(t *testing.T) {
 		{"concat nested", &model.Binary{Op: "+", Left: v("a"), Right: &model.Binary{Op: ".", Left: v("s"), Right: lit("!")}}, true},
 	}
 
+	t.Run("marked incdec reads live", func(t *testing.T) {
+		// $w++ . $w inside a compiled expression: the mark writes the scope
+		// mid-evaluation and the later read must see it, which the slot
+		// snapshot cannot provide; the compiler switches to live reads.
+		// Direct only: the transpile pipeline still snapshots, so this is
+		// pinned against php's answer, not against the pipeline.
+		scope.Set("w", "aa")
+		e := &model.Ternary{
+			Cond: lit(true),
+			Then: &model.Binary{
+				Op:    ".",
+				Left:  &model.Unary{Op: "++", X: v("w"), Postfix: true},
+				Right: v("w"),
+			},
+			Else: lit(""),
+		}
+		out, err := rt.Eval(e, scope)
+		if err != nil {
+			t.Fatalf("Eval: %v", err)
+		}
+		if ce := rt.compiled[e]; ce.src != "" || !ce.prog.HasClosure() {
+			t.Fatal("expected a direct compile with a closure")
+		}
+		if out != "aaab" {
+			t.Fatalf("out = %#v, want %q (php's answer)", out, "aaab")
+		}
+		if w, _ := scope.Get("w"); w != "ab" {
+			t.Fatalf("w = %#v after eval, want %q", w, "ab")
+		}
+	})
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			// The pipeline program: transpiled source through expr-lang,
