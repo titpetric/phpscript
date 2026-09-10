@@ -18,6 +18,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | divide_float.phpt         | PASS       | PASS    | PASS |
 | divide_int.phpt           | PASS       | PASS    | PASS |
 | float_format.phpt         | PASS       | PASS    | PASS |
+| increment_decrement.phpt  | PASS       | PASS    | PASS |
 | int64_precision.phpt      | PASS       | PASS    | PASS |
 | int_overflow.phpt         | PASS       | PASS    | PASS |
 | intdiv_fdiv.phpt          | PASS       | PASS    | PASS |
@@ -28,10 +29,12 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | multiply_int.phpt         | PASS       | PASS    | PASS |
 | number_format.phpt        | PASS       | PASS    | PASS |
 | numeric_literals.phpt     | PASS       | PASS    | PASS |
+| numeric_strings.phpt      | PASS       | PASS    | PASS |
 | pow_float.phpt            | PASS       | PASS    | PASS |
 | pow_int.phpt              | PASS       | PASS    | PASS |
 | subtract_float.phpt       | PASS       | PASS    | PASS |
 | subtract_int.phpt         | PASS       | PASS    | PASS |
+| unary_plus.phpt           | PASS       | PASS    | PASS |
 
 ## tests/fixtures/arrays
 
@@ -354,7 +357,7 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 | Area                       | Fixtures | Passed | Failed |
 |----------------------------|----------|--------|--------|
-| tests/fixtures/arithmetic  | 21       | 21     | 0      |
+| tests/fixtures/arithmetic  | 24       | 24     | 0      |
 | tests/fixtures/arrays      | 20       | 20     | 0      |
 | tests/fixtures/autoloading | 4        | 4      | 0      |
 | tests/fixtures/bindings    | 27       | 27     | 0      |
@@ -376,4 +379,4 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| **Total**                  | 233      | 233    | 0      |
+| **Total**                  | 236      | 236    | 0      |

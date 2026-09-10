@@ -1,6 +1,8 @@
 package phpval
 
-import "math"
+import (
+	"math"
+)
 
 // Increment applies PHP's ++ operator: numbers and numeric strings step by
 // one (an int64 that would overflow becomes a float, as PHP's do), null
