@@ -22,6 +22,12 @@ type compiledExpr struct {
 	closures map[string]*model.Closure
 	exprs    map[string]model.Expr
 	prog     *expr.Program
+	// varSlots maps each entry of vars to the closure engine's slot for its
+	// identifier, -1 when the optimizer folded the identifier out of the
+	// tree. closureSlots does the same for transpiled closure ids. Both are
+	// resolved once here so Eval binds by index instead of by map key.
+	varSlots     []int
+	closureSlots map[string]int
 }
 
 // newCompiledExpr snapshots one compiled expression. vars, idents and calls come
@@ -35,7 +41,7 @@ func newCompiledExpr(src string, vars, idents, calls []string, closures map[stri
 	copy(buf, vars)
 	copy(buf[n:], idents)
 	copy(buf[2*n:], calls)
-	return &compiledExpr{
+	ce := &compiledExpr{
 		src:      src,
 		vars:     buf[:n:n],
 		idents:   buf[n : 2*n : 2*n],
@@ -44,6 +50,25 @@ func newCompiledExpr(src string, vars, idents, calls []string, closures map[stri
 		exprs:    exprs,
 		prog:     prog,
 	}
+	if slots := prog.Slots(); slots != nil {
+		ce.varSlots = make([]int, len(ce.idents))
+		for i, id := range ce.idents {
+			if s, ok := slots[id]; ok {
+				ce.varSlots[i] = s
+			} else {
+				ce.varSlots[i] = -1
+			}
+		}
+		if len(closures) > 0 {
+			ce.closureSlots = make(map[string]int, len(closures))
+			for id := range closures {
+				if s, ok := slots[id]; ok {
+					ce.closureSlots[id] = s
+				}
+			}
+		}
+	}
+	return ce
 }
 
 // ExprCache stores immutable compiled expression programs by transpiled source

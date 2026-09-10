@@ -203,6 +203,21 @@ type evalEnv struct {
 	shadow  map[string]any
 	gen     uint64
 	built   bool
+	// vars is the pooled slot buffer the closure engine reads variables
+	// from, and cenv the reused carrier handed to expr.Run; both exist so
+	// the slot path allocates nothing per evaluation.
+	vars []any
+	cenv expr.Env
+}
+
+// slots returns the pooled slot buffer sized to n. releaseEnv cleared it, so
+// an evaluation sees only what it wrote.
+func (st *evalEnv) slots(n int) []any {
+	if cap(st.vars) < n {
+		st.vars = make([]any, n)
+	}
+	st.vars = st.vars[:n]
+	return st.vars
 }
 
 // layer installs a per-expression key, remembering it so release can remove it.
@@ -1040,17 +1055,63 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 
 	st := rt.acquireEnv(scope)
 	st.exprs = ce.exprs
-	base := st.env
 	defer rt.releaseEnv(st)
+
+	// Registered functions are installed on demand: an environment carries the
+	// PHP-semantic helpers plus whatever the expressions evaluated with it have
+	// called so far, rather than a closure per entry of the function table. The
+	// installed closures persist across evaluations (see installFunc). An
+	// immediately invoked anonymous function appears in ce.calls under its
+	// synthetic identifier, which is in no function table; it is bound per
+	// evaluation below, so installFunc must not stub it as undefined.
+	for _, name := range ce.calls {
+		if _, ok := ce.closures[name]; ok {
+			continue
+		}
+		rt.installFunc(st, name)
+	}
+
+	// The closure engine binds per-expression values by slot into a pooled
+	// slice: no map writes on the way in, no deletes on the way out, which
+	// the VM path below pays per variable per evaluation.
+	if ce.prog.HasClosure() {
+		vars := st.slots(ce.prog.NumSlots())
+		for id, cl := range ce.closures {
+			slot, ok := ce.closureSlots[id]
+			if !ok {
+				continue
+			}
+			decl := cl
+			env := captureClosureEnv(decl, scope)
+			vars[slot] = adapt(func(args ...any) (any, error) {
+				return rt.invokeClosure(decl, args, env)
+			})
+		}
+		for i, name := range ce.vars {
+			v, err := rt.resolveVar(name, ce.idents[i], scope)
+			if err != nil {
+				return nil, err
+			}
+			if slot := ce.varSlots[i]; slot >= 0 {
+				vars[slot] = v
+			}
+		}
+		st.cenv.Vars = vars
+		st.cenv.Base = st.env
+		out, err := expr.Run(ce.prog, &st.cenv)
+		if err != nil {
+			return nil, fmt.Errorf("eval %q: %w", ce.src, err)
+		}
+		return out, nil
+	}
+
+	base := st.env
 
 	// Anonymous functions become callables in the env (bound by their synthetic
 	// identifier) so transpiled code can pass them, e.g. usort's comparator. They
 	// capture the scope directly rather than reading it through st: a closure
 	// assigned to a variable outlives this evaluation.
 	//
-	// They are layered before the calls below: an immediately invoked closure
-	// appears in ce.calls under its synthetic identifier, which is in no
-	// function table, and installFunc would stub it as undefined.
 	for id, cl := range ce.closures {
 		decl := cl
 		env := captureClosureEnv(decl, scope)
@@ -1059,35 +1120,13 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 		}))
 	}
 
-	// Registered functions are installed on demand: an environment carries the
-	// PHP-semantic helpers plus whatever the expressions evaluated with it have
-	// called so far, rather than a closure per entry of the function table. The
-	// installed closures persist across evaluations (see installFunc).
-	for _, name := range ce.calls {
-		rt.installFunc(st, name)
-	}
-
 	// Run env: same functions/helpers, but variables carry their real values.
-	// Bare identifiers that are not set in the current scope fall back to the
-	// constant table (PHP constants are visible in every scope, whereas plain
-	// variables are confined to their frame). This is what lets a method body
-	// reference T_VARIABLE / a define()d constant the same way top-level code
-	// can.
 	for i, name := range ce.vars {
-		if v, ok := scope.Get(name); ok {
-			st.layer(ce.idents[i], v)
-		} else if c, ok := rt.constants[name]; ok {
-			st.layer(ce.idents[i], c)
-		} else if _, ok := phpSuperglobals[name]; ok {
-			st.layer(ce.idents[i], rt.globals[name])
-		} else if strings.HasPrefix(ce.idents[i], constIdentPrefix) {
-			// A bare name nothing defines. PHP 8 raises Error here; an unset
-			// variable of the same spelling stays null, which is why the two
-			// carry different identifiers.
-			return nil, &UndefinedConstantError{Name: name}
-		} else {
-			st.layer(ce.idents[i], nil)
+		v, err := rt.resolveVar(name, ce.idents[i], scope)
+		if err != nil {
+			return nil, err
 		}
+		st.layer(ce.idents[i], v)
 	}
 
 	out, err := expr.Run(ce.prog, base)
@@ -1095,6 +1134,29 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 		return nil, fmt.Errorf("eval %q: %w", ce.src, err)
 	}
 	return out, nil
+}
+
+// resolveVar returns the value Eval binds for one variable entry. Bare
+// identifiers that are not set in the current scope fall back to the constant
+// table (PHP constants are visible in every scope, whereas plain variables
+// are confined to their frame), then the superglobals. A bare name nothing
+// defines is an error - PHP 8 raises Error there, while an unset variable of
+// the same spelling stays null, which is why the two carry different
+// identifiers.
+func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
+	if v, ok := scope.Get(name); ok {
+		return v, nil
+	}
+	if c, ok := rt.constants[name]; ok {
+		return c, nil
+	}
+	if _, ok := phpSuperglobals[name]; ok {
+		return rt.globals[name], nil
+	}
+	if strings.HasPrefix(ident, constIdentPrefix) {
+		return nil, &UndefinedConstantError{Name: name}
+	}
+	return nil, nil
 }
 
 func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
@@ -1352,6 +1414,11 @@ func (rt *Runtime) releaseEnv(st *evalEnv) {
 	st.layered = st.layered[:0]
 	st.exprs = nil
 	st.ref.scope = nil
+	for i := range st.vars {
+		st.vars[i] = nil
+	}
+	st.vars = st.vars[:0]
+	st.cenv = expr.Env{}
 
 	rt.envMu.Lock()
 	if len(rt.envFree) < maxFreeEnvs {

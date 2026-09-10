@@ -225,6 +225,30 @@ var exprHelpers = &expr.Helpers{
 	PanicError: func(recovered any) error {
 		return &HostPanicError{Callable: "expr", Value: recovered}
 	},
+	Slotted: isSlotIdent,
+}
+
+// isSlotIdent reports whether an identifier is one Eval binds per evaluation:
+// a PHP variable (varIdent: `v_` or bare `this`), a bare-name constant
+// (constIdent: `c_`), or a transpiled closure (`__cl<N>`). The digit check
+// keeps `__classconst`, which shares the `__cl` prefix, on the Base path with
+// the other helpers.
+func isSlotIdent(name string) bool {
+	if name == "this" {
+		return true
+	}
+	if strings.HasPrefix(name, "v_") || strings.HasPrefix(name, constIdentPrefix) {
+		return true
+	}
+	if len(name) > 4 && name[:4] == "__cl" {
+		for i := 4; i < len(name); i++ {
+			if name[i] < '0' || name[i] > '9' {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // ArgumentCountError reports a call that passed more arguments than the
@@ -278,6 +302,12 @@ func (e *TypeError) Error() string {
 // invokeAny works from the Go signature alone and has no name to report; the
 // name a script typed is known only at the dispatch site.
 func nameCallError(err error, name string) error {
+	// The nil check is load-bearing for allocation: the errors.As targets
+	// below take their address and escape, which costs a heap allocation on
+	// every call, including the ones that succeeded.
+	if err == nil {
+		return nil
+	}
 	var count *ArgumentCountError
 	if errors.As(err, &count) && count.Name == "" {
 		count.Name = name

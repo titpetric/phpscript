@@ -37,8 +37,9 @@ type (
 // Disassemble reports and what Run falls back to, so an expression the
 // closure engine declines loses nothing.
 type Program struct {
-	vm  *Bytecode
-	run func(env map[string]any) (any, error)
+	vm    *Bytecode
+	run   func(env *Env) (any, error)
+	slots map[string]int
 }
 
 // Disassemble reports the program's bytecode.
@@ -61,14 +62,27 @@ func (p *Program) HasClosure() bool {
 }
 
 // Run evaluates a compiled program against env. The closure engine only ever
-// sees the runner's map environment; any other env shape runs on the VM.
+// sees its own *Env carrier; any other env shape runs on the VM.
 func Run(p *Program, env any) (any, error) {
 	if p.run != nil {
-		if m, ok := env.(map[string]any); ok {
-			return p.run(m)
+		if e, ok := env.(*Env); ok {
+			return p.run(e)
 		}
 	}
 	return upstream.Run(p.vm, env)
+}
+
+// Slots reports the slot index the closure engine assigned to each
+// per-evaluation identifier, keyed by identifier. The runner resolves its
+// variable list against it once per compiled expression; the map is
+// read-only after compilation. Nil when no closure was compiled.
+func (p *Program) Slots() map[string]int {
+	return p.slots
+}
+
+// NumSlots is the size of the Vars slice Run expects.
+func (p *Program) NumSlots() int {
+	return len(p.slots)
 }
 
 // NewConfig returns an empty compile configuration.
@@ -105,7 +119,7 @@ func CompileWith(src string, c *Config, h *Helpers) (*Program, error) {
 	}
 	p := &Program{vm: prog}
 	if h != nil {
-		p.run = compileClosure(tree.Node, h)
+		p.run, p.slots = compileClosure(tree.Node, h)
 	}
 	return p, nil
 }
@@ -120,8 +134,9 @@ func Compile(src string, opts ...Option) (*Bytecode, error) {
 	return upstream.Compile(src, opts...)
 }
 
-// Env is upstream expr.Env: derive the compile-time type env from v.
-func Env(v any) Option {
+// TypeEnv is upstream expr.Env: derive the compile-time type env from v. The
+// upstream name is taken by the closure engine's Env carrier.
+func TypeEnv(v any) Option {
 	return upstream.Env(v)
 }
 

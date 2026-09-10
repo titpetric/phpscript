@@ -128,7 +128,7 @@ func TestCompileMatchesExprEnv(t *testing.T) {
 			typeEnv[varIdent(name)] = dyn
 		}
 
-		want, err := expr.Compile(src, expr.Env(typeEnv), expr.DisableAllBuiltins())
+		want, err := expr.Compile(src, expr.TypeEnv(typeEnv), expr.DisableAllBuiltins())
 		if err != nil {
 			t.Fatalf("expr.Compile %q: %v", src, err)
 		}

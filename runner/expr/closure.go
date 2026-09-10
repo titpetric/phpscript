@@ -8,8 +8,19 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
+// Env is the closure engine's evaluation environment. Per-expression values
+// (PHP variables, bare-name constants, transpiled closures) live in Vars,
+// indexed by the slot the compiler assigned to their identifier; everything
+// persistent (the PHP-semantic helpers, installed functions) stays in Base,
+// which is the same map the VM path layers over. Slots are what let Eval skip
+// the per-evaluation map writes and deletes the VM path pays.
+type Env struct {
+	Vars []any
+	Base map[string]any
+}
+
 // closure evaluates one node against the runner's evaluation environment.
-type closure = func(env map[string]any) (any, error)
+type closure = func(env *Env) (any, error)
 
 // Helpers carries the typed implementations of the PHP-semantic helper
 // functions the transpiler emits. The closure engine calls them directly,
@@ -36,18 +47,42 @@ type Helpers struct {
 	// call boundary would have produced, so a host panic stays catchable as
 	// the same PHP exception on both engines.
 	PanicError func(recovered any) error
+
+	// Slotted reports whether an identifier is a per-evaluation value the
+	// runner would have layered into the env map: a PHP variable, a bare
+	// name, a transpiled closure. Those compile to slot reads; everything
+	// else (function names) stays a Base lookup.
+	Slotted func(name string) bool
 }
 
-// compileClosure builds the closure chain for a checked, optimized tree, or
-// reports that the tree contains a shape the engine does not recognise. The
-// decision is all-or-nothing per expression: a nil return means the whole
-// program runs on the VM, never a mix.
-func compileClosure(node ast.Node, h *Helpers) closure {
-	body, ok := compileNode(node, h)
-	if !ok {
-		return nil
+// closureCompiler carries the compile state: the helper table and the slot
+// index it assigns to each per-evaluation identifier as it meets one.
+type closureCompiler struct {
+	h     *Helpers
+	slots map[string]int
+}
+
+func (cc *closureCompiler) slot(name string) int {
+	if i, ok := cc.slots[name]; ok {
+		return i
 	}
-	return func(env map[string]any) (out any, err error) {
+	i := len(cc.slots)
+	cc.slots[name] = i
+	return i
+}
+
+// compileClosure builds the closure chain for a checked, optimized tree and
+// the slot table its identifiers resolve through, or reports that the tree
+// contains a shape the engine does not recognise. The decision is
+// all-or-nothing per expression: a nil return means the whole program runs
+// on the VM, never a mix.
+func compileClosure(node ast.Node, h *Helpers) (closure, map[string]int) {
+	cc := &closureCompiler{h: h, slots: map[string]int{}}
+	body, ok := cc.compileNode(node)
+	if !ok {
+		return nil, nil
+	}
+	run := func(env *Env) (out any, err error) {
 		// One guard per evaluation instead of the VM path's one per helper
 		// call. Both engines surface a host panic as an error; PanicError
 		// keeps the error type identical.
@@ -63,17 +98,18 @@ func compileClosure(node ast.Node, h *Helpers) closure {
 		}()
 		return body(env)
 	}
+	return run, cc.slots
 }
 
 // constClosure returns v itself: literals are boxed once at compile time.
 func constClosure(v any) closure {
-	return func(map[string]any) (any, error) { return v, nil }
+	return func(*Env) (any, error) { return v, nil }
 }
 
 // boolOperand evaluates c and asserts the result is a bool, which is what the
 // VM's jump and not opcodes do. The transpiler wraps every logical operand in
 // __bool, so the assertion only fails where the VM would have failed too.
-func boolOperand(c closure, env map[string]any) (bool, error) {
+func boolOperand(c closure, env *Env) (bool, error) {
 	v, err := c(env)
 	if err != nil {
 		return false, err
@@ -85,7 +121,7 @@ func boolOperand(c closure, env map[string]any) (bool, error) {
 	return b, nil
 }
 
-func compileNode(node ast.Node, h *Helpers) (closure, bool) {
+func (cc *closureCompiler) compileNode(node ast.Node) (closure, bool) {
 	switch n := node.(type) {
 	case *ast.NilNode:
 		return constClosure(nil), true
@@ -102,19 +138,25 @@ func compileNode(node ast.Node, h *Helpers) (closure, bool) {
 
 	case *ast.IdentifierNode:
 		name := n.Value
-		return func(env map[string]any) (any, error) {
-			return env[name], nil
+		if cc.h.Slotted != nil && cc.h.Slotted(name) {
+			slot := cc.slot(name)
+			return func(env *Env) (any, error) {
+				return env.Vars[slot], nil
+			}, true
+		}
+		return func(env *Env) (any, error) {
+			return env.Base[name], nil
 		}, true
 
 	case *ast.UnaryNode:
 		if n.Operator != "!" && n.Operator != "not" {
 			return nil, false
 		}
-		x, ok := compileNode(n.Node, h)
+		x, ok := cc.compileNode(n.Node)
 		if !ok {
 			return nil, false
 		}
-		return func(env map[string]any) (any, error) {
+		return func(env *Env) (any, error) {
 			b, err := boolOperand(x, env)
 			if err != nil {
 				return nil, err
@@ -123,17 +165,17 @@ func compileNode(node ast.Node, h *Helpers) (closure, bool) {
 		}, true
 
 	case *ast.BinaryNode:
-		l, ok := compileNode(n.Left, h)
+		l, ok := cc.compileNode(n.Left)
 		if !ok {
 			return nil, false
 		}
-		r, ok := compileNode(n.Right, h)
+		r, ok := cc.compileNode(n.Right)
 		if !ok {
 			return nil, false
 		}
 		switch n.Operator {
 		case "&&", "and":
-			return func(env map[string]any) (any, error) {
+			return func(env *Env) (any, error) {
 				lb, err := boolOperand(l, env)
 				if err != nil {
 					return nil, err
@@ -148,7 +190,7 @@ func compileNode(node ast.Node, h *Helpers) (closure, bool) {
 				return rb, nil
 			}, true
 		case "||", "or":
-			return func(env map[string]any) (any, error) {
+			return func(env *Env) (any, error) {
 				lb, err := boolOperand(l, env)
 				if err != nil {
 					return nil, err
@@ -166,19 +208,19 @@ func compileNode(node ast.Node, h *Helpers) (closure, bool) {
 		return nil, false
 
 	case *ast.ConditionalNode:
-		c, ok := compileNode(n.Cond, h)
+		c, ok := cc.compileNode(n.Cond)
 		if !ok {
 			return nil, false
 		}
-		t, ok := compileNode(n.Exp1, h)
+		t, ok := cc.compileNode(n.Exp1)
 		if !ok {
 			return nil, false
 		}
-		f, ok := compileNode(n.Exp2, h)
+		f, ok := cc.compileNode(n.Exp2)
 		if !ok {
 			return nil, false
 		}
-		return func(env map[string]any) (any, error) {
+		return func(env *Env) (any, error) {
 			b, err := boolOperand(c, env)
 			if err != nil {
 				return nil, err
@@ -190,7 +232,7 @@ func compileNode(node ast.Node, h *Helpers) (closure, bool) {
 		}, true
 
 	case *ast.CallNode:
-		return compileCall(n, h)
+		return cc.compileCall(n)
 	}
 	return nil, false
 }
@@ -205,7 +247,7 @@ func opArg(n ast.Node) (string, bool) {
 	return s.Value, true
 }
 
-func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
+func (cc *closureCompiler) compileCall(n *ast.CallNode) (closure, bool) {
 	callee, ok := n.Callee.(*ast.IdentifierNode)
 	if !ok {
 		return nil, false
@@ -218,12 +260,12 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 	switch name {
 	case "__bool":
 		if len(n.Arguments) == 1 {
-			x, ok := compileNode(n.Arguments[0], h)
+			x, ok := cc.compileNode(n.Arguments[0])
 			if !ok {
 				return nil, false
 			}
-			fn := h.Truthy
-			return func(env map[string]any) (any, error) {
+			fn := cc.h.Truthy
+			return func(env *Env) (any, error) {
 				v, err := x(env)
 				if err != nil {
 					return nil, err
@@ -241,18 +283,18 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 		if !ok {
 			return nil, false
 		}
-		l, ok := compileNode(n.Arguments[1], h)
+		l, ok := cc.compileNode(n.Arguments[1])
 		if !ok {
 			return nil, false
 		}
-		r, ok := compileNode(n.Arguments[2], h)
+		r, ok := cc.compileNode(n.Arguments[2])
 		if !ok {
 			return nil, false
 		}
 		switch name {
 		case "__arith":
-			fn := h.Arith
-			return func(env map[string]any) (any, error) {
+			fn := cc.h.Arith
+			return func(env *Env) (any, error) {
 				a, err := l(env)
 				if err != nil {
 					return nil, err
@@ -264,8 +306,8 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 				return fn(op, a, b), nil
 			}, true
 		case "__cmp":
-			fn := h.Compare
-			return func(env map[string]any) (any, error) {
+			fn := cc.h.Compare
+			return func(env *Env) (any, error) {
 				a, err := l(env)
 				if err != nil {
 					return nil, err
@@ -277,8 +319,8 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 				return fn(op, a, b), nil
 			}, true
 		default:
-			fn := h.Bitwise
-			return func(env map[string]any) (any, error) {
+			fn := cc.h.Bitwise
+			return func(env *Env) (any, error) {
 				a, err := l(env)
 				if err != nil {
 					return nil, err
@@ -295,18 +337,18 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 		if len(n.Arguments) != 2 {
 			return nil, false
 		}
-		l, ok := compileNode(n.Arguments[0], h)
+		l, ok := cc.compileNode(n.Arguments[0])
 		if !ok {
 			return nil, false
 		}
-		r, ok := compileNode(n.Arguments[1], h)
+		r, ok := cc.compileNode(n.Arguments[1])
 		if !ok {
 			return nil, false
 		}
 		switch name {
 		case "__concat":
-			fn := h.Concat
-			return func(env map[string]any) (any, error) {
+			fn := cc.h.Concat
+			return func(env *Env) (any, error) {
 				a, err := l(env)
 				if err != nil {
 					return nil, err
@@ -318,8 +360,8 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 				return fn(a, b), nil
 			}, true
 		case "__index":
-			fn := h.Index
-			return func(env map[string]any) (any, error) {
+			fn := cc.h.Index
+			return func(env *Env) (any, error) {
 				a, err := l(env)
 				if err != nil {
 					return nil, err
@@ -331,8 +373,8 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 				return fn(a, b), nil
 			}, true
 		case "__instanceof":
-			fn := h.InstanceOf
-			return func(env map[string]any) (any, error) {
+			fn := cc.h.InstanceOf
+			return func(env *Env) (any, error) {
 				a, err := l(env)
 				if err != nil {
 					return nil, err
@@ -344,8 +386,8 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 				return fn(a, b), nil
 			}, true
 		default:
-			fn := h.Pair
-			return func(env map[string]any) (any, error) {
+			fn := cc.h.Pair
+			return func(env *Env) (any, error) {
 				a, err := l(env)
 				if err != nil {
 					return nil, err
@@ -362,15 +404,15 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 		if len(n.Arguments) != 1 {
 			return nil, false
 		}
-		x, ok := compileNode(n.Arguments[0], h)
+		x, ok := cc.compileNode(n.Arguments[0])
 		if !ok {
 			return nil, false
 		}
-		fn := h.Negate
+		fn := cc.h.Negate
 		if name == "__bitnot" {
-			fn = h.BitNot
+			fn = cc.h.BitNot
 		}
-		return func(env map[string]any) (any, error) {
+		return func(env *Env) (any, error) {
 			v, err := x(env)
 			if err != nil {
 				return nil, err
@@ -386,12 +428,12 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 		if !ok {
 			return nil, false
 		}
-		x, ok := compileNode(n.Arguments[1], h)
+		x, ok := cc.compileNode(n.Arguments[1])
 		if !ok {
 			return nil, false
 		}
-		fn := h.Cast
-		return func(env map[string]any) (any, error) {
+		fn := cc.h.Cast
+		return func(env *Env) (any, error) {
 			v, err := x(env)
 			if err != nil {
 				return nil, err
@@ -402,14 +444,14 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 	case "__array":
 		items := make([]closure, len(n.Arguments))
 		for i, a := range n.Arguments {
-			c, ok := compileNode(a, h)
+			c, ok := cc.compileNode(a)
 			if !ok {
 				return nil, false
 			}
 			items[i] = c
 		}
-		fn := h.Array
-		return func(env map[string]any) (any, error) {
+		fn := cc.h.Array
+		return func(env *Env) (any, error) {
 			vals := make([]model.ArrayItemValue, len(items))
 			for i, c := range items {
 				v, err := c(env)
@@ -433,14 +475,25 @@ func compileCall(n *ast.CallNode, h *Helpers) (closure, bool) {
 	// closure path drops is the VM's own dispatch around it.
 	args := make([]closure, len(n.Arguments))
 	for i, a := range n.Arguments {
-		c, ok := compileNode(a, h)
+		c, ok := cc.compileNode(a)
 		if !ok {
 			return nil, false
 		}
 		args[i] = c
 	}
-	return func(env map[string]any) (any, error) {
-		fn, ok := env[name].(func(...any) (any, error))
+	slotted := cc.h.Slotted != nil && cc.h.Slotted(name)
+	slot := -1
+	if slotted {
+		slot = cc.slot(name)
+	}
+	return func(env *Env) (any, error) {
+		var callee any
+		if slotted {
+			callee = env.Vars[slot]
+		} else {
+			callee = env.Base[name]
+		}
+		fn, ok := callee.(func(...any) (any, error))
 		if !ok {
 			return nil, fmt.Errorf("cannot call %s: not a function", name)
 		}
