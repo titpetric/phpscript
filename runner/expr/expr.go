@@ -18,11 +18,12 @@ import (
 	"github.com/expr-lang/expr/vm"
 )
 
-// Aliases, not wrappers: the runner reads and writes Config fields, hands
-// Nature values back to the checker, and shares Program pointers across its
-// caches, so the identities must match upstream's exactly.
+// Aliases, not wrappers: the runner reads and writes Config fields and hands
+// Nature values back to the checker, so the identities must match upstream's
+// exactly. Bytecode is upstream's program type, kept nameable because the
+// reference surface below still produces one.
 type (
-	Program     = vm.Program
+	Bytecode    = vm.Program
 	Config      = conf.Config
 	Nature      = nature.Nature
 	NatureCache = nature.Cache
@@ -30,9 +31,30 @@ type (
 	Option      = upstream.Option
 )
 
-// Run evaluates a compiled program against env.
+// Program is one compiled expression: the bytecode the VM runs and, when the
+// closure engine recognises the expression's shape, a closure chain that
+// evaluates it without the VM. The bytecode is always present; it is what
+// Disassemble reports and what Run falls back to, so an expression the
+// closure engine declines loses nothing.
+type Program struct {
+	vm  *Bytecode
+	run func(env map[string]any) (any, error)
+}
+
+// Disassemble reports the program's bytecode.
+func (p *Program) Disassemble() string {
+	return p.vm.Disassemble()
+}
+
+// Run evaluates a compiled program against env. The closure engine only ever
+// sees the runner's map environment; any other env shape runs on the VM.
 func Run(p *Program, env any) (any, error) {
-	return upstream.Run(p, env)
+	if p.run != nil {
+		if m, ok := env.(map[string]any); ok {
+			return p.run(m)
+		}
+	}
+	return upstream.Run(p.vm, env)
 }
 
 // NewConfig returns an empty compile configuration.
@@ -58,7 +80,11 @@ func CompileWith(src string, c *Config) (*Program, error) {
 			return nil, err
 		}
 	}
-	return compiler.Compile(tree, c)
+	prog, err := compiler.Compile(tree, c)
+	if err != nil {
+		return nil, err
+	}
+	return &Program{vm: prog}, nil
 }
 
 // The upstream reference surface. The compile guard tests compare the hoisted
@@ -67,7 +93,7 @@ func CompileWith(src string, c *Config) (*Program, error) {
 // these stay thin forwards whatever the engine behind Run does.
 
 // Compile compiles src with upstream expr.Compile.
-func Compile(src string, opts ...Option) (*Program, error) {
+func Compile(src string, opts ...Option) (*Bytecode, error) {
 	return upstream.Compile(src, opts...)
 }
 
