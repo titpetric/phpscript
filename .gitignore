@@ -40,3 +40,4 @@ go-fsck.json
 
 # Benchmark sweeps, compared with benchstat; never committed.
 bench*.txt
+bench*.json
