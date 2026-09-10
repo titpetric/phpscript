@@ -258,7 +258,9 @@ func Key(v any) any {
 	case int:
 		return int64(x)
 	case int64:
-		return x
+		// v, not x: returning the typed value would box it again, an
+		// allocation for every int64 key outside the small-int cache.
+		return v
 	case float64:
 		return floatKey(x)
 	case float32:
@@ -267,9 +269,10 @@ func Key(v any) any {
 		if i, ok := NumericKey(x); ok {
 			return i
 		}
-		return x
+		// v, not x, for the same reason as int64 above.
+		return v
 	default:
-		return x
+		return v
 	}
 }
 
