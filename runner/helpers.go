@@ -176,11 +176,12 @@ func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 
 func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...any) (any, error) {
 	return func(args ...any) (any, error) {
-		callScope := scope
-		if callScope == nil {
-			callScope = rt.newScope()
-		}
-		return rt.callGoMethod(base, method, args, callScope)
+		return rt.callGoMethod(base, method, args, func() *Scope {
+			if scope != nil {
+				return scope
+			}
+			return rt.newScope()
+		})
 	}
 }
 
@@ -627,7 +628,7 @@ func (rt *Runtime) helperCall(ref *scopeRef) func(base any, methodValue any, arg
 				return rt.invokeMethod(obj, decl, args, scope)
 			}
 		}
-		return rt.callGoMethod(base, method, args, scope)
+		return rt.callGoMethod(base, method, args, func() *Scope { return scope })
 	}
 }
 
@@ -726,7 +727,11 @@ func (rt *Runtime) helperNew(ref *scopeRef) func(classValue any, args ...any) (a
 // so `$obj->get()` resolves Go's exported Get). When the method's first
 // parameter is a context.Context the runtime context is auto-injected, and
 // arguments are coerced to the declared parameter types.
-func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scope) (result any, err error) {
+// callGoMethod invokes a Go method by reflection. scopeFor is consulted only
+// when the method's first parameter is a context, which is the one moment
+// the PHP frame has to be materialised; a caller with the scope in hand
+// passes a closure returning it, which never escapes and costs nothing.
+func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor func() *Scope) (result any, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil
@@ -755,7 +760,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 	}
 	mt := m.Type()
 	if wantsContext(mt) {
-		args = append([]any{contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope)}, args...)
+		args = append([]any{contextWithScope(contextWithEnv(rt.ctx, rt.Env), scopeFor())}, args...)
 	}
 	in, err := buildArgs(mt, args, method)
 	if err != nil {

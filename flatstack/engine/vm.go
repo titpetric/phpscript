@@ -3,6 +3,7 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -148,13 +149,18 @@ func (st *execState) pop() (any, error) {
 	return value, nil
 }
 
+// args hands the callee the top count operands as a borrowed slice: the
+// values stay in the stack's backing array above the truncated top, valid
+// for the duration of the call, and the next push overwrites them. A binding
+// that keeps arguments copies them - the same contract the interpreter's
+// variadic tails alias under. The cap is pinched so a callee appending to
+// its variadic pack reallocates instead of writing into the stack.
 func (st *execState) args(count int) ([]any, error) {
 	if count < 0 || count > len(st.stack) {
 		return nil, fmt.Errorf("argument stack underflow")
 	}
 	start := len(st.stack) - count
-	values := append([]any(nil), st.stack[start:]...)
-	clear(st.stack[start:])
+	values := st.stack[start:len(st.stack):len(st.stack)]
 	st.stack = st.stack[:start]
 	return values, nil
 }
@@ -1198,8 +1204,17 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 func fastBinary(class int, left, right any) (any, bool) {
 	if class == binConcat {
 		if l, ok := left.(string); ok {
-			if r, ok := right.(string); ok {
+			switch r := right.(type) {
+			case string:
 				return l + r, true
+			case int64:
+				// The one mixed shape hot loops build ($tag . $i);
+				// FormatInt is exactly phpString's int spelling.
+				return l + strconv.FormatInt(r, 10), true
+			}
+		} else if l, ok := left.(int64); ok {
+			if r, ok := right.(string); ok {
+				return strconv.FormatInt(l, 10) + r, true
 			}
 		}
 		return nil, false

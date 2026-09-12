@@ -47,7 +47,12 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		}
 		return false, nil
 	}
-	return true, flatvm.Run(program, &flatHost{runtime: rt})
+	if rt.hostFlat == nil {
+		// One host per runtime: the only per-run state it carries is the
+		// frame handle, which the VM binds and restores itself.
+		rt.hostFlat = &flatHost{runtime: rt}
+	}
+	return true, flatvm.Run(program, rt.hostFlat)
 }
 
 type flatHost struct {
@@ -100,9 +105,25 @@ func (h *flatHost) Construct(class string, args []any) (any, error) {
 }
 
 func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
-	scope := h.boundScope()
-	result, err := h.runtime.helperCall(&scopeRef{scope: scope})(receiver, method, args...)
-	h.pullScope(scope)
+	// A method on a PHP-declared object dispatches through the interpreter
+	// and sees the frame. A Go receiver's method sees the frame only through
+	// a context parameter, so the scope is materialised inside callGoMethod's
+	// scopeFor and only for the methods that ask - which is none of the
+	// common data-access shapes.
+	if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
+		scope := h.boundScope()
+		result, err := h.runtime.helperCall(&scopeRef{scope: scope})(receiver, method, args...)
+		h.pullScope(scope)
+		return result, err
+	}
+	var scope *Scope
+	result, err := h.runtime.callGoMethod(receiver, method, args, func() *Scope {
+		scope = h.boundScope()
+		return scope
+	})
+	if scope != nil {
+		h.pullScope(scope)
+	}
 	return result, err
 }
 

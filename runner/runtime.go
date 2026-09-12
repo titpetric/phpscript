@@ -62,6 +62,9 @@ type Runtime struct {
 	// include re-declaring a function is a real PHP error and keeps being one.
 	hoisted map[*model.Program]bool
 	classes map[string]*model.Class
+	// hostFlat is the runtime's bytecode host, created on the first flat run;
+	// see runFlat.
+	hostFlat *flatHost
 
 	// Env is the environment visible to PHP for this Runtime. New snapshots the
 	// host environment so mutations remain local to a single request/runtime.
