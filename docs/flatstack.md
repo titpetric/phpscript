@@ -274,6 +274,14 @@ go test ./tests -run '^$' \
   -bench 'BenchmarkGoBindingHTTP|BenchmarkFlatstackMinitplImportSwap' -benchmem
 ```
 
+The `BenchmarkEngine*` benchmarks run the same Supports-gated programs
+through both engines as `engine=` sub-benchmarks:
+
+```bash
+go test ./flatstack -run '^$' -bench '^BenchmarkEngine' -benchmem -count 6 | tee engines.txt
+benchstat -col /engine engines.txt
+```
+
 Run individual fuzz targets in isolated jobs:
 
 ```bash
