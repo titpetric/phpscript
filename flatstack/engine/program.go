@@ -75,7 +75,10 @@ type instruction struct {
 
 type userFuncDef struct {
 	entryPC int
-	params  []string
+	// paramSlots holds one slot per declared parameter, in order, resolved at
+	// compile time the way closureDef's are. An argument the caller did not
+	// pass leaves the slot uninitialized.
+	paramSlots []int
 }
 
 // closureDef is one compiled anonymous function. Its body sits inline in the
@@ -116,8 +119,15 @@ type Program struct {
 	code       []instruction
 	constants  []any
 	localNames []string
-	userFuncs  map[string]userFuncDef
-	classes    []*model.Class
+	// nameSlots is the inverse of localNames, built once by the compiler so
+	// run-time name resolution is a map hit instead of a linear scan.
+	nameSlots map[string]int
+	userFuncs map[string]userFuncDef
+	// userFuncsFold indexes userFuncs by lowercased name; PHP function and
+	// class names are case-insensitive, so a fold collision is already a
+	// redeclaration error before this map is built.
+	userFuncsFold map[string]userFuncDef
+	classes       []*model.Class
 	// catchGroups holds the clause list of every compiled try, in source
 	// order; opTryPush carries the index of its own group.
 	catchGroups [][]catchClause

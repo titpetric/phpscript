@@ -418,9 +418,11 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				return popErr
 			}
 			if inst.name != "" && inst.name != "=" {
-				current := host.Lookup(program.localNames[inst.a])
+				var current any
 				if initialized[inst.a] {
 					current = locals[inst.a]
+				} else {
+					current = host.Lookup(program.localNames[inst.a])
 				}
 				operator := inst.name[:len(inst.name)-1]
 				updated, binaryErr := host.Binary(operator, current, value)
@@ -498,9 +500,11 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				stack = append(stack, value)
 			}
 		case opIncDecLocal:
-			current := host.Lookup(program.localNames[inst.a])
+			var current any
 			if initialized[inst.a] {
 				current = locals[inst.a]
+			} else {
+				current = host.Lookup(program.localNames[inst.a])
 			}
 			next := phpval.Increment(current)
 			if inst.name == "--" {
@@ -642,7 +646,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			bindHostLocals(host, program, locals, initialized, extras)
 			var value any
 			if inst.op == opCall {
-				if def, ok := lookupUserFunc(program.userFuncs, inst.name); ok {
+				if def, ok := lookupUserFunc(program, inst.name); ok {
 					callFrames = append(callFrames, callFrame{
 						returnPC:    pc,
 						locals:      locals,
@@ -657,18 +661,9 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 					extras = map[string]any{}
 					refWrites = nil
 					iterators = nil
-					for i, paramName := range def.params {
+					for i, slot := range def.paramSlots {
 						if i < len(arguments) {
-							slot := -1
-							for s, name := range program.localNames {
-								if name == paramName {
-									slot = s
-									break
-								}
-							}
-							if slot >= 0 {
-								locals[slot], initialized[slot] = arguments[i], true
-							}
+							locals[slot], initialized[slot] = arguments[i], true
 						}
 					}
 					pc = def.entryPC
@@ -700,7 +695,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			}
 			if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
 				key := obj.Class.Name + "::" + inst.name
-				if def, ok := lookupUserFunc(program.userFuncs, key); ok {
+				if def, ok := lookupUserFunc(program, key); ok {
 					callFrames = append(callFrames, callFrame{
 						returnPC:    pc,
 						locals:      locals,
@@ -715,16 +710,14 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 					extras = map[string]any{}
 					refWrites = nil
 					iterators = nil
-					bound := append([]any{receiver}, arguments...)
-					for i, paramName := range def.params {
-						if i >= len(bound) {
-							break
-						}
-						for s, name := range program.localNames {
-							if name == paramName {
-								locals[s], initialized[s] = bound[i], true
-								break
-							}
+					// paramSlots[0] is the receiver slot; arguments fill the rest,
+					// shifted by one, without materialising a combined slice.
+					for i, slot := range def.paramSlots {
+						switch {
+						case i == 0:
+							locals[slot], initialized[slot] = receiver, true
+						case i-1 < len(arguments):
+							locals[slot], initialized[slot] = arguments[i-1], true
 						}
 					}
 					pc = def.entryPC
@@ -1122,14 +1115,12 @@ func applyNamedValues(program *Program, locals []any, initialized []bool, extras
 	}
 }
 
-func lookupUserFunc(funcs map[string]userFuncDef, key string) (userFuncDef, bool) {
-	if def, ok := funcs[key]; ok {
+func lookupUserFunc(program *Program, key string) (userFuncDef, bool) {
+	if def, ok := program.userFuncs[key]; ok {
 		return def, true
 	}
-	for name, def := range funcs {
-		if strings.EqualFold(name, key) {
-			return def, true
-		}
+	if def, ok := program.userFuncsFold[strings.ToLower(key)]; ok {
+		return def, true
 	}
 	return userFuncDef{}, false
 }
