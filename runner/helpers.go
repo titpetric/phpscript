@@ -463,8 +463,62 @@ func invokeFast(fn any, args []any) (any, error, bool) {
 		return f(args...), nil, true
 	case func(...any) bool:
 		return f(args...), nil, true
+	case func(string) any:
+		return f(phpString(argAt(args, 0))), nil, true
+	case func(string) bool:
+		return f(phpString(argAt(args, 0))), nil, true
+	case func(string) int64:
+		return f(phpString(argAt(args, 0))), nil, true
+	case func() int64:
+		return f(), nil, true
+	case func(string, string) bool:
+		return f(phpString(argAt(args, 0)), phpString(argAt(args, 1))), nil, true
+	case func(string, string) string:
+		return f(phpString(argAt(args, 0)), phpString(argAt(args, 1))), nil, true
+	case func(string, string) (bool, error):
+		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)))
+		return v, err, true
+	case func(any) int64:
+		return f(argAt(args, 0)), nil, true
+	case func(any) float64:
+		return f(argAt(args, 0)), nil, true
+	case func(any) (any, error):
+		v, err := f(argAt(args, 0))
+		return v, err, true
+	case func(any) (bool, error):
+		v, err := f(argAt(args, 0))
+		return v, err, true
+	case func(any, any) (bool, error):
+		v, err := f(argAt(args, 0), argAt(args, 1))
+		return v, err, true
+	case func(any, ...any) (any, error):
+		v, err := f(argAt(args, 0), argsTail(args)...)
+		return v, err, true
+	case func(any, ...any) *model.Array:
+		return f(argAt(args, 0), argsTail(args)...), nil, true
+	case func(string, ...any) string:
+		return f(phpString(argAt(args, 0)), argsTail(args)...), nil, true
+	case func(string, ...string) string:
+		rest := argsTail(args)
+		tail := make([]string, len(rest))
+		for i, v := range rest {
+			tail[i] = phpString(v)
+		}
+		return f(phpString(argAt(args, 0)), tail...), nil, true
+	case func() *model.Array:
+		return f(), nil, true
 	}
 	return nil, nil, false
+}
+
+// argsTail is the variadic remainder after the first fixed parameter. The
+// slice is aliased, not copied: args is built fresh for each call, so the
+// binding sees exactly what reflect.Value.Call would have handed it.
+func argsTail(args []any) []any {
+	if len(args) > 1 {
+		return args[1:]
+	}
+	return nil
 }
 
 // invokeAny calls fn (any Go callable) with args, coercing arguments to the
