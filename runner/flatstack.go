@@ -60,6 +60,11 @@ type flatHost struct {
 
 func (h *flatHost) BindFrame(frame flatvm.FrameLocals) { h.frame = frame }
 
+// ReassignError shapes a type-reassignment violation as the RuntimeException
+// the interpreter throws for the same write, so both engines' catch clauses
+// select it identically.
+func (h flatHost) ReassignError(msg string) error { return NewRuntimeException(msg, 0) }
+
 func (h *flatHost) TakeFrame() flatvm.FrameLocals { return h.frame }
 
 // boundScope materialises the running frame as an interpreter scope, for the

@@ -45,7 +45,7 @@ foreach ($refRows as &$refRow) {
 unset($refRow);
 echo "ref array: " . $refRows[0]["n"] . "," . $refRows[1]["n"] . "\n";
 
-$keyed = array("x" => 1, "y" => 2);
+$keyed = array("x" => "1", "y" => "2");
 foreach ($keyed as $key => &$keyedValue) {
 	$keyedValue = $key . ":" . $keyedValue;
 }

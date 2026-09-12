@@ -32,9 +32,8 @@ $in = fopen($path, "r");
 $dec = new JSON\Decoder($in);
 $seen = 0;
 while ($dec->more()) {
-	$value = $dec->decode();
 	$seen = $seen + 1;
-	echo $seen, ": ", var_export($value, true), "\n";
+	echo $seen, ": ", var_export($dec->decode(), true), "\n";
 }
 fclose($in);
 var_dump($seen);

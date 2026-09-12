@@ -600,6 +600,11 @@ func TestLintTypeReassign(t *testing.T) {
 			var lines []int
 			for _, d := range diags {
 				if strings.Contains(d.Message, "no reassignment") {
+					// The runtime throws for the same write, so the finding
+					// fails the lint run rather than advising.
+					if !d.Fatal {
+						t.Errorf("finding %q is not fatal", d.Message)
+					}
 					got = append(got, d.Message)
 					lines = append(lines, d.Line)
 				}

@@ -26,20 +26,22 @@ echo "reference: " . $refBoxes[0]->n . "," . $refBoxes[1]->n . "\n";
 
 // Rebinding the loop variable is where the two differ: by value the array keeps
 // its object, by reference the element becomes the replacement.
+$replacement = new Box;
+$replacement->n = 42;
 $swapped = array(new Box);
 foreach ($swapped as $each) {
-	$each = "replaced";
+	$each = $replacement;
 }
 echo "value rebind: " . $swapped[0]->n . "\n";
 
 $swappedRef = array(new Box);
 foreach ($swappedRef as &$eachRef) {
-	$eachRef = "replaced";
+	$eachRef = $replacement;
 }
 unset($eachRef);
-echo "reference rebind: " . $swappedRef[0] . "\n";
+echo "reference rebind: " . $swappedRef[0]->n . "\n";
 ---
 value: 7,7
 reference: 9,9
 value rebind: 1
-reference rebind: replaced
+reference rebind: 42

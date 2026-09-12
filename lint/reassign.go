@@ -149,6 +149,9 @@ func (w *reassignWalker) assign(n *model.Assign, types map[string]string) {
 		File:    w.file,
 		Line:    w.prog.SourceSpans[n].Start,
 		Message: fmt.Sprintf("no reassignment: $%s previously declared as %s", target.Name, previous),
+		// The runtime throws a RuntimeException for the same write, so the
+		// finding is a promise, not advice, and the lint run fails on it.
+		Fatal: true,
 	})
 }
 

@@ -698,7 +698,14 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 	switch target := target.(type) {
 	case *model.Var:
-		c.emit(instruction{op: opStore, a: c.slot(target.Name)})
+		// A foreach target declares per iteration the way the interpreter's
+		// bindTo does, so its store skips the type-reassignment check
+		// (inst.c); a list() element is an assignment and keeps it.
+		binding := 0
+		if kind == "foreach" {
+			binding = 1
+		}
+		c.emit(instruction{op: opStore, a: c.slot(target.Name), c: binding})
 	case *model.Index:
 		if target.Index == nil {
 			return unsupported(path, "append %s target", kind)

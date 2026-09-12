@@ -61,7 +61,7 @@ type Runtime struct {
 	// of a redeclaration error. Only the top-level Run entry consults it: an
 	// include re-declaring a function is a real PHP error and keeps being one.
 	hoisted map[*model.Program]bool
-	classes   map[string]*model.Class
+	classes map[string]*model.Class
 
 	// Env is the environment visible to PHP for this Runtime. New snapshots the
 	// host environment so mutations remain local to a single request/runtime.
@@ -124,7 +124,7 @@ type Runtime struct {
 	funcStatics map[*model.StaticVar]map[string]any
 
 	exprCache *ExprCache
-	compiled    map[model.Expr]*compiledExpr
+	compiled  map[model.Expr]*compiledExpr
 	// concatParts caches the flattened operand list of a top-level `.`
 	// expression by node identity, the way compiled caches programs: the
 	// tree shape never changes, and reflattening it allocated a slice per
@@ -192,9 +192,9 @@ type scopeRef struct {
 // PHP-semantic helpers, built once per function-table generation, plus the
 // per-expression keys layered on top by Eval and removed again on release.
 type evalEnv struct {
-	ref     *scopeRef
-	env     map[string]any
-	exprs   map[string]model.Expr
+	ref   *scopeRef
+	env   map[string]any
+	exprs map[string]model.Expr
 	built bool
 	// vars is the pooled slot buffer the closure engine reads variables
 	// from, and cenv the reused carrier handed to expr.Run; both exist so
@@ -1276,10 +1276,14 @@ func (rt *Runtime) releaseEnv(st *evalEnv) {
 // helperSet implements assignment used as an expression (AssignExpr with a Var
 // target): it mutates the current scope and returns the assigned value so the
 // surrounding expression (e.g. a comparison) can use it.
-func (rt *Runtime) helperSet(ref *scopeRef) func(name string, val any) any {
-	return func(name string, val any) any {
+func (rt *Runtime) helperSet(ref *scopeRef) func(name string, val any) (any, error) {
+	return func(name string, val any) (any, error) {
+		cur, _ := ref.scope.Get(name)
+		if !phpval.ReassignAllowed(cur, val) {
+			return nil, NewRuntimeException(phpval.ReassignMessage(name, cur, val), 0)
+		}
 		ref.scope.Set(name, val)
-		return val
+		return val, nil
 	}
 }
 

@@ -369,6 +369,20 @@ type hostFrame interface {
 	TakeFrame() FrameLocals
 }
 
+// reassignHost turns a type-reassignment violation into the host's exception
+// type, so `catch (RuntimeException $e)` selects it the way it selects the
+// interpreter's. A host without the capability gets a plain error.
+type reassignHost interface {
+	ReassignError(msg string) error
+}
+
+func reassignError(host Host, msg string) error {
+	if h, ok := host.(reassignHost); ok {
+		return h.ReassignError(msg)
+	}
+	return errors.New(msg)
+}
+
 // Snapshot builds the map bindHostLocals used to build per host call: every
 // initialised, non-hidden local, then the extras a host call introduced.
 func (st *execState) Snapshot() map[string]any {
@@ -555,6 +569,21 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if identifiable, ok := value.(interface{ SetID(string) }); ok && inst.extra != "" {
 				identifiable.SetID(inst.extra)
 			}
+			// Type immutability: the first non-null value declared the slot's
+			// type, and only frame-owned, non-hidden slots participate. The
+			// rule itself lives in phpval so both engines read one table.
+			// inst.c marks a loop-binding store, which declares rather than
+			// assigns and is exempt, matching the interpreter's bindTo. The
+			// message is built only on the throw path.
+			if inst.c == 0 && st.initialized[inst.a] && !phpval.ReassignAllowed(st.locals[inst.a], value) {
+				if name := program.localNames[inst.a]; len(name) > 0 && name[0] != 0 {
+					reassignErr := reassignError(host, phpval.ReassignMessage(name, st.locals[inst.a], value))
+					if st.handle(reassignErr) {
+						continue
+					}
+					return reassignErr
+				}
+			}
 			if host.SetGlobal(program.localNames[inst.a], value) {
 				// The host claimed the name — a superglobal — so the store is
 				// request state, not frame state.
@@ -625,6 +654,15 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			next := phpval.Increment(current)
 			if inst.name == "--" {
 				next = phpval.Decrement(current)
+			}
+			if st.initialized[inst.a] && !phpval.ReassignAllowed(current, next) {
+				if name := program.localNames[inst.a]; len(name) > 0 && name[0] != 0 {
+					reassignErr := reassignError(host, phpval.ReassignMessage(name, current, next))
+					if st.handle(reassignErr) {
+						continue
+					}
+					return reassignErr
+				}
 			}
 			st.locals[inst.a], st.initialized[inst.a] = next, true
 			if inst.b != 0 {

@@ -353,6 +353,13 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | php_foreach_syntax.phpt     | PASS       | PASS    | PASS |
 | ternary_conditions.phpt     | PASS       | PASS    | PASS |
 
+## tests/fixtures/types
+
+| tests/fixtures/types | Flat stack | Runtime | PHP  |
+|----------------------|------------|---------|------|
+| reassign_rules.phpt  | PASS       | PASS    | SKIP |
+| reassign_throws.phpt | PASS       | PASS    | SKIP |
+
 ## Summary
 
 | Area                       | Fixtures | Passed | Failed |
@@ -379,4 +386,5 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| **Total**                  | 236      | 236    | 0      |
+| tests/fixtures/types       | 2        | 2      | 0      |
+| **Total**                  | 238      | 238    | 0      |

@@ -2,12 +2,10 @@
 
 function array_keep($arr, $keep)
 {
-	if (is_string($keep)) {
-		$keep = array_slice(func_get_args(), 1);
-	}
+	$keys = is_string($keep) ? array_slice(func_get_args(), 1) : $keep;
 
 	$retval = array();
-	foreach ($keep as $key) {
+	foreach ($keys as $key) {
 		if (isset($arr[$key])) {
 			$retval[$key] = $arr[$key];
 		}
