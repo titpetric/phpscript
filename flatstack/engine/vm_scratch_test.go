@@ -8,50 +8,66 @@ import (
 // pool holds the buffers for the life of the process, so a value left above
 // the high-water mark of a later, smaller program would stay reachable through
 // the pool and never be collected.
-func TestVMScratchReleaseClearsToCapacity(t *testing.T) {
-	scratch := &vmScratch{
+func TestExecStateReleaseClearsToCapacity(t *testing.T) {
+	st := &execState{
 		stack:       make([]any, 0, 8),
 		locals:      make([]any, 4),
 		initialized: make([]bool, 4),
+		iterators:   make([]*iteratorState, 2),
+		handlers:    make([]errorHandler, 1),
+		callFrames:  make([]callFrame, 1),
 	}
 
 	// Fill every slot, including the part of the stack above its length.
-	stack := scratch.stack[:cap(scratch.stack)]
-	for i := range stack {
-		stack[i] = "retained"
+	st.stack = st.stack[:cap(st.stack)]
+	for i := range st.stack {
+		st.stack[i] = "retained"
 	}
-	for i := range scratch.locals {
-		scratch.locals[i] = "retained"
-		scratch.initialized[i] = true
+	for i := range st.locals {
+		st.locals[i] = "retained"
+		st.initialized[i] = true
 	}
+	st.iterators[0] = &iteratorState{source: "retained"}
+	st.callFrames[0] = callFrame{locals: []any{"retained"}}
 
 	// A program that used two stack slots and returned hands back a short
 	// slice; the six slots above it still hold values.
-	scratch.release(stack[:2])
+	st.stack = st.stack[:2]
+	st.release()
 
-	for i, slot := range scratch.stack[:cap(scratch.stack)] {
+	for i, slot := range st.stack[:cap(st.stack)] {
 		if slot != nil {
 			t.Errorf("stack[%d] = %v, want nil", i, slot)
 		}
 	}
-	for i, slot := range scratch.locals[:cap(scratch.locals)] {
+	for i, slot := range st.locals[:cap(st.locals)] {
 		if slot != nil {
 			t.Errorf("locals[%d] = %v, want nil", i, slot)
 		}
 	}
-	for i, slot := range scratch.initialized[:cap(scratch.initialized)] {
+	for i, slot := range st.initialized[:cap(st.initialized)] {
 		if slot {
 			t.Errorf("initialized[%d] = true, want false", i)
 		}
 	}
-	if len(scratch.stack) != 0 {
-		t.Errorf("stack length = %d, want 0", len(scratch.stack))
+	for i, it := range st.iterators[:cap(st.iterators)] {
+		if it != nil {
+			t.Errorf("iterators[%d] = %v, want nil", i, it)
+		}
+	}
+	for i, frame := range st.callFrames[:cap(st.callFrames)] {
+		if frame.locals != nil {
+			t.Errorf("callFrames[%d].locals = %v, want nil", i, frame.locals)
+		}
+	}
+	if len(st.stack) != 0 {
+		t.Errorf("stack length = %d, want 0", len(st.stack))
 	}
 }
 
-// A nil scratch is what the pool hands out for the first program with no
+// An empty state is what the pool hands out for the first program with no
 // locals, and release must not panic on it.
-func TestVMScratchReleaseEmpty(t *testing.T) {
-	scratch := &vmScratch{}
-	scratch.release(nil)
+func TestExecStateReleaseEmpty(t *testing.T) {
+	st := &execState{}
+	st.release()
 }
