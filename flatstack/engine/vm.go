@@ -320,11 +320,44 @@ type localSeed struct {
 	value any
 }
 
-// hostLocals is the optional Host capability that exposes the script's
-// variables to a binding for the duration of a call.
-type hostLocals interface {
-	BindLocals(map[string]any)
-	TakeLocals() map[string]any
+// FrameLocals is the engine's view of the frame in flight, bound to the host
+// once per run instead of copied around every call. Snapshot materialises the
+// frame's variables only when a callee actually needs them, and WriteBack
+// applies the mutations such a call made. The snapshot-before-call ordering
+// the old map handshake had is preserved because the host decides both
+// moments: it snapshots before the binding body runs and writes back after.
+type FrameLocals interface {
+	Snapshot() map[string]any
+	WriteBack(vars map[string]any)
+}
+
+// hostFrame is the optional Host capability that receives the frame handle.
+type hostFrame interface {
+	BindFrame(FrameLocals)
+	TakeFrame() FrameLocals
+}
+
+// Snapshot builds the map bindHostLocals used to build per host call: every
+// initialised, non-hidden local, then the extras a host call introduced.
+func (st *execState) Snapshot() map[string]any {
+	vars := make(map[string]any, len(st.program.localNames)+len(st.extras))
+	for i, name := range st.program.localNames {
+		if st.initialized[i] && (len(name) == 0 || name[0] != 0) {
+			vars[name] = st.locals[i]
+		}
+	}
+	for name, value := range st.extras {
+		if _, ok := vars[name]; !ok {
+			vars[name] = value
+		}
+	}
+	return vars
+}
+
+// WriteBack writes host-visible variables into their slots, respecting the
+// by-reference marks the way the old applyHostLocals did.
+func (st *execState) WriteBack(vars map[string]any) {
+	st.extras = applyNamedValues(st.program, st.locals, st.initialized, st.extras, vars, st.refWrites)
 }
 
 // Run executes a previously validated flat instruction stream.
@@ -386,6 +419,17 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 		// so registration allocates nothing after the state's first use.
 		memHost.PushLiveWalker(st.walker)
 		defer memHost.PopLiveWalker()
+	}
+
+	// The frame handle replaces the per-call locals copy: the host holds it
+	// for the whole run and snapshots only when a callee needs the scope. A
+	// nested run (a closure invoked from a binding) binds its own state here
+	// and puts the caller's back on the way out, which is what the old
+	// restoreHostLocals defer did.
+	if binder, ok := host.(hostFrame); ok {
+		prev := binder.TakeFrame()
+		binder.BindFrame(st)
+		defer binder.BindFrame(prev)
 	}
 
 	for st.pc < len(program.code) {
@@ -683,7 +727,6 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if argErr != nil {
 				return argErr
 			}
-			bindHostLocals(host, program, st.locals, st.initialized, st.extras)
 			var value any
 			if inst.op == opCall {
 				if def, ok := lookupUserFunc(program, inst.name); ok {
@@ -710,10 +753,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 					continue
 				}
 				value, err = host.Call(inst.name, inst.extra, arguments)
-				st.extras = applyHostLocals(host, program, st.locals, st.initialized, st.extras, st.refWrites)
 			} else {
 				value, err = host.Construct(inst.name, arguments)
-				st.extras = applyHostLocals(host, program, st.locals, st.initialized, st.extras, st.refWrites)
 			}
 			clear(st.refWrites)
 			if err != nil {
@@ -728,7 +769,6 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if argErr != nil {
 				return argErr
 			}
-			bindHostLocals(host, program, st.locals, st.initialized, st.extras)
 			receiver, popErr := st.pop()
 			if popErr != nil {
 				return popErr
@@ -765,7 +805,6 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				}
 			}
 			value, callErr := host.CallMethod(receiver, inst.name, arguments)
-			st.extras = applyHostLocals(host, program, st.locals, st.initialized, st.extras, st.refWrites)
 			clear(st.refWrites)
 			if callErr != nil {
 				if st.handle(callErr) {
@@ -997,17 +1036,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if popErr != nil {
 				return popErr
 			}
-			vars := make(map[string]any, len(program.localNames)+len(st.extras))
-			for i, name := range program.localNames {
-				if st.initialized[i] && (len(name) == 0 || name[0] != 0) {
-					vars[name] = st.locals[i]
-				}
-			}
-			for name, value := range st.extras {
-				if _, ok := vars[name]; !ok {
-					vars[name] = value
-				}
-			}
+			vars := st.Snapshot()
 			includer, ok := host.(interface {
 				Include(path any, keyword string, once bool, vars map[string]any) (any, map[string]any, error)
 			})
@@ -1072,56 +1101,15 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 			}
 			seeds = append(seeds, localSeed{slot: slot, value: value})
 		}
-		// The locals the host is holding belong to the call this closure was
-		// handed to: usort() had a snapshot taken before it invoked the
-		// comparator, and the VM writes that snapshot back when usort()
-		// returns. The body installs its own on every call it makes, so the
-		// caller's has to be put back on the way out.
-		defer restoreHostLocals(host)()
+		// run binds its own frame handle and puts the caller's back on the
+		// way out, so the snapshot usort() took before invoking this
+		// comparator stays the one usort()'s write-back sees.
 		var result any
 		if err := run(program, host, def.entryPC, seeds, &result); err != nil {
 			return nil, err
 		}
 		return result, nil
 	}
-}
-
-// restoreHostLocals captures the host's current variable binding and returns the
-// call that reinstates it.
-func restoreHostLocals(host Host) func() {
-	binder, ok := host.(hostLocals)
-	if !ok {
-		return func() {}
-	}
-	saved := binder.TakeLocals()
-	return func() { binder.BindLocals(saved) }
-}
-
-func bindHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any) {
-	binder, ok := host.(interface{ BindLocals(map[string]any) })
-	if !ok {
-		return
-	}
-	vars := make(map[string]any, len(program.localNames)+len(extras))
-	for i, name := range program.localNames {
-		if initialized[i] && (len(name) == 0 || name[0] != 0) {
-			vars[name] = locals[i]
-		}
-	}
-	for name, value := range extras {
-		if _, ok := vars[name]; !ok {
-			vars[name] = value
-		}
-	}
-	binder.BindLocals(vars)
-}
-
-func applyHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any, refWrites []bool) map[string]any {
-	taker, ok := host.(interface{ TakeLocals() map[string]any })
-	if !ok {
-		return extras
-	}
-	return applyNamedValues(program, locals, initialized, extras, taker.TakeLocals(), refWrites)
 }
 
 // applyNamedValues writes host-visible variables back into their slots. A slot

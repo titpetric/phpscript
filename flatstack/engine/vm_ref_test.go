@@ -7,11 +7,13 @@ import (
 )
 
 // refTestHost is the part of the host contract these tests exercise: the
-// locals snapshot a real host takes around a call, plus the calls themselves.
-// Every other method is left to the embedded nil interface, so a test program
-// that reaches one fails loudly rather than silently.
+// frame handle a real host holds, the snapshot-before-call and write-back-
+// after ordering of its slow path, plus the calls themselves. Every other
+// method is left to the embedded nil interface, so a test program that
+// reaches one fails loudly rather than silently.
 type refTestHost struct {
 	Host
+	frame  FrameLocals
 	locals map[string]any
 	echoed []any
 	// calls names what each call does, keyed by function name: it either
@@ -22,14 +24,19 @@ type refTestHost struct {
 
 func (h *refTestHost) SetGlobal(string, any) bool { return false }
 
-func (h *refTestHost) BindLocals(vars map[string]any) { h.locals = vars }
+func (h *refTestHost) BindFrame(frame FrameLocals) { h.frame = frame }
 
-func (h *refTestHost) TakeLocals() map[string]any { return h.locals }
+func (h *refTestHost) TakeFrame() FrameLocals { return h.frame }
 
+// Call takes the slow path a scope-reading binding takes: snapshot before the
+// body runs, write the snapshot back after. That ordering is what the
+// by-reference mark tests pin.
 func (h *refTestHost) Call(name, fallback string, args []any) (any, error) {
+	h.locals = h.frame.Snapshot()
 	if fn, ok := h.calls[name]; ok {
 		fn(h, args)
 	}
+	h.frame.WriteBack(h.locals)
 	return int64(0), nil
 }
 
