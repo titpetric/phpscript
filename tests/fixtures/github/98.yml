@@ -1,0 +1,41 @@
+name: a string offset returns one byte, including bytes above 0x7f
+description: >
+  $s[$i] should return the single byte at position $i. For ASCII it does; for
+  any byte of 0x80 or more it returns two different bytes, so a UTF-8 letter
+  such as Č (C4 8C) comes apart when a string is walked byte by byte.
+  Reported transcript on d4fc71f, both engines: bin2hex($s[0]) of "Čedo" is
+  c384 instead of c4, strlen($s[0]) is 2, ord($s[0]) is 195, and the string
+  rebuilt from $s[$i] is not equal to the original. Cause: helperIndex
+  returns string(b[i]), which Go reads as a code point and UTF-8 encodes.
+
+  Open: issue 98.
+---
+<?php
+
+// Works today: substr() hands back the byte itself.
+$s = "Čedo";
+echo bin2hex(substr($s, 0, 1)), " ", bin2hex(substr($s, 1, 1)), "\n";
+
+// What fails: $s[$i] should hand back the same single byte.
+echo bin2hex($s[0]), " ", bin2hex($s[1]), "\n";
+echo strlen($s[0]), "\n";
+echo ord($s[0]), "\n";
+$ff = chr(255);
+echo bin2hex($ff[0]), "\n";
+echo bin2hex($s[-1]), "\n";
+
+// Walking a UTF-8 string byte by byte and gluing it back gives the same string.
+$copy = "";
+for ($i = 0; $i < strlen($s); $i++) {
+	$copy .= $s[$i];
+}
+var_dump($copy === $s);
+?>
+---
+c4 8c
+c4 8c
+1
+196
+ff
+6f
+bool(true)
