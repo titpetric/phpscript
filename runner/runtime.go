@@ -56,6 +56,11 @@ type Runtime struct {
 	// declaration can name the first one the way PHP's fatal error does.
 	// userFns alone cannot: it is a set, and the message is the useful half.
 	funcSites map[string]FuncSite
+	// hoisted records the programs Run already hoisted, by node identity, so
+	// re-running a compiled program on the same runtime is idempotent instead
+	// of a redeclaration error. Only the top-level Run entry consults it: an
+	// include re-declaring a function is a real PHP error and keeps being one.
+	hoisted map[*model.Program]bool
 	classes   map[string]*model.Class
 
 	// Env is the environment visible to PHP for this Runtime. New snapshots the
@@ -281,6 +286,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		funcs:        map[string]any{},
 		userFns:      map[string]struct{}{},
 		funcSites:    map[string]FuncSite{},
+		hoisted:      map[*model.Program]bool{},
 		workDirBase:  opts.WorkDir,
 		classes:      map[string]*model.Class{},
 		constructors: map[string]any{},
@@ -386,6 +392,7 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	}
 	clear(rt.userFns)
 	clear(rt.funcSites)
+	clear(rt.hoisted)
 	rt.opts.WorkDir = rt.workDirBase
 	rt.included = nil
 	rt.preludeDone = false

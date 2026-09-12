@@ -42,10 +42,41 @@ type execState struct {
 	deferred   []any
 	pc         int
 
+	// spareLocals/spareInits hold cleared frame arrays returned by popped
+	// user-function frames, so a call loop reuses two slabs instead of
+	// allocating them per call. Safe because nothing outlives the frame that
+	// borrowed them: an opRef setter is consumed within the host call it was
+	// pushed for, and closures copy their seeds at creation.
+	spareLocals [][]any
+	spareInits  [][]bool
+
 	// walker is created once per pooled state and closes over the state
 	// itself, so registering it with a MemoryHost allocates nothing after the
 	// state's first use.
 	walker func(yield func(any))
+}
+
+// frameSlots hands out a locals/initialized pair for a fresh user-function
+// frame, reusing a stashed slab when one fits.
+func (st *execState) frameSlots(n int) ([]any, []bool) {
+	if k := len(st.spareLocals) - 1; k >= 0 {
+		locals, init := st.spareLocals[k], st.spareInits[k]
+		st.spareLocals[k], st.spareInits[k] = nil, nil
+		st.spareLocals, st.spareInits = st.spareLocals[:k], st.spareInits[:k]
+		if cap(locals) >= n && cap(init) >= n {
+			return locals[:n], init[:n]
+		}
+	}
+	return make([]any, n), make([]bool, n)
+}
+
+// stashFrame clears a popped frame's arrays to capacity and keeps them for
+// the next call.
+func (st *execState) stashFrame(locals []any, init []bool) {
+	clear(locals[:cap(locals)])
+	clear(init[:cap(init)])
+	st.spareLocals = append(st.spareLocals, locals)
+	st.spareInits = append(st.spareInits, init)
 }
 
 // release returns the state to the pool with every slot zeroed.
@@ -170,6 +201,7 @@ func (st *execState) handle(runErr error) bool {
 		frame := st.callFrames[len(st.callFrames)-1]
 		_ = st.unwindDeferred(frame.deferMark)
 		st.callFrames = st.callFrames[:len(st.callFrames)-1]
+		st.stashFrame(st.locals, st.initialized)
 		st.locals = frame.locals
 		st.initialized = frame.initialized
 		st.extras = frame.extras
@@ -739,8 +771,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 						iterators:   st.iterators,
 						deferMark:   len(st.deferred),
 					})
-					st.locals = make([]any, len(program.localNames))
-					st.initialized = make([]bool, len(program.localNames))
+					st.locals, st.initialized = st.frameSlots(len(program.localNames))
 					st.extras = nil
 					st.refWrites = nil
 					st.iterators = nil
@@ -785,8 +816,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 						iterators:   st.iterators,
 						deferMark:   len(st.deferred),
 					})
-					st.locals = make([]any, len(program.localNames))
-					st.initialized = make([]bool, len(program.localNames))
+					st.locals, st.initialized = st.frameSlots(len(program.localNames))
 					st.extras = nil
 					st.refWrites = nil
 					st.iterators = nil
@@ -968,6 +998,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				}
 				st.callFrames = st.callFrames[:len(st.callFrames)-1]
 				st.pc = lastFrame.returnPC
+				st.stashFrame(st.locals, st.initialized)
 				st.locals = lastFrame.locals
 				st.initialized = lastFrame.initialized
 				st.extras = lastFrame.extras

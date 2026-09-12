@@ -199,11 +199,27 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 	}
 	// Hoist declarations so functions/classes are callable before their textual
 	// position (PHP semantics for top-level function/class definitions).
-	if err := rt.hoist(p, rt.entrypoint); err != nil {
+	if err := rt.hoistOnce(p, rt.entrypoint); err != nil {
 		return err
 	}
 	_, _, runErr := rt.exec(p.Stmts, scope)
 	return combineErrors(runErr, rt.runDeferred(scope, 0))
+}
+
+// hoistOnce hoists a top-level program the first time this runtime sees it
+// and is a no-op after. Re-running a compiled program on one runtime is the
+// embedding reuse pattern, not PHP's redeclaration, which a single program
+// cannot express at this seam; includes keep calling hoist directly, so a
+// file included twice still raises the error PHP raises.
+func (rt *Runtime) hoistOnce(p *model.Program, filename string) error {
+	if rt.hoisted[p] {
+		return nil
+	}
+	if err := rt.hoist(p, filename); err != nil {
+		return err
+	}
+	rt.hoisted[p] = true
+	return nil
 }
 
 // hoist registers all function and class declarations found at the given level.

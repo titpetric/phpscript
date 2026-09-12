@@ -35,7 +35,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		}
 		rt.exprCache.setFlat(ast, program)
 	}
-	if err := rt.hoist(ast, rt.entrypoint); err != nil {
+	if err := rt.hoistOnce(ast, rt.entrypoint); err != nil {
 		// A redeclaration is a verdict on the program, like a violated
 		// interface contract above: the interpreter would reach it too, so
 		// falling back would only run the same hoist a second time, over a
