@@ -166,11 +166,11 @@ It supports these expressions:
 - Anonymous functions, including a by-value `use (...)` capture list, a `$this`
   carried away from an enclosing method, and `static function () {}`
 
-The native operations above do not use `expr-lang`; arithmetic, coercion,
-comparison, array access, and truthiness are implemented by the flat VM and its
-small PHP-semantics host boundary. The bridge uses runner's existing reflection
-path for registered Go constructors/functions/methods. `expr-lang` remains in
-the compatibility interpreter for unsupported programs.
+Arithmetic, coercion, comparison, array access, and truthiness are implemented
+by the flat VM and its small PHP-semantics host boundary. The bridge uses
+runner's existing reflection path for registered Go constructors, functions and
+methods. The compatibility interpreter evaluates expressions on runner/expr,
+its closure-chain engine, for unsupported programs.
 
 The current end-to-end corpus result is **14 native and 14 compatibility
 fallback fixtures (28 total)**. Both paths pass all fixtures. `Supports` is the
@@ -272,6 +272,14 @@ Run the flatstack benchmarks with:
 go test ./flatstack -run '^$' -bench '^BenchmarkFlatstack' -benchmem
 go test ./tests -run '^$' \
   -bench 'BenchmarkGoBindingHTTP|BenchmarkFlatstackMinitplImportSwap' -benchmem
+```
+
+The `BenchmarkEngine*` benchmarks run the same Supports-gated programs
+through both engines as `engine=` sub-benchmarks:
+
+```bash
+go test ./flatstack -run '^$' -bench '^BenchmarkEngine' -benchmem -count 6 | tee engines.txt
+benchstat -col /engine engines.txt
 ```
 
 Run individual fuzz targets in isolated jobs:

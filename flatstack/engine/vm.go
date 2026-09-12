@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 )
 
@@ -501,16 +502,9 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if initialized[inst.a] {
 				current = locals[inst.a]
 			}
-			operator := "+"
+			next := phpval.Increment(current)
 			if inst.name == "--" {
-				operator = "-"
-			}
-			next, binaryErr := host.Binary(operator, current, int64(1))
-			if binaryErr != nil {
-				if handle(binaryErr) {
-					continue
-				}
-				return binaryErr
+				next = phpval.Decrement(current)
 			}
 			locals[inst.a], initialized[inst.a] = next, true
 			if inst.b != 0 {
@@ -528,16 +522,9 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				return popErr
 			}
 			current := host.Index(base, index)
-			operator := "+"
+			next := phpval.Increment(current)
 			if inst.name == "--" {
-				operator = "-"
-			}
-			next, binaryErr := host.Binary(operator, current, int64(1))
-			if binaryErr != nil {
-				if handle(binaryErr) {
-					continue
-				}
-				return binaryErr
+				next = phpval.Decrement(current)
 			}
 			if err = host.SetIndex(base, index, next, false, "="); err != nil {
 				if handle(err) {

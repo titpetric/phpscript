@@ -9,23 +9,15 @@ import (
 	"maps"
 	"os"
 	"path"
-	"reflect"
 	goruntime "runtime"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/expr-lang/expr"
-	"github.com/expr-lang/expr/checker"
-	"github.com/expr-lang/expr/checker/nature"
-	"github.com/expr-lang/expr/compiler"
-	"github.com/expr-lang/expr/conf"
-	"github.com/expr-lang/expr/file"
-	"github.com/expr-lang/expr/optimizer"
-	"github.com/expr-lang/expr/vm"
-
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner/coverage"
+	"github.com/titpetric/phpscript/runner/expr"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -49,7 +41,7 @@ func (rt *Runtime) setVar(scope *Scope, name string, val any) {
 	scope.Set(name, val)
 }
 
-// Runtime executes parsed PHP statements and evaluates transpiled expressions
+// Runtime executes parsed PHP statements and evaluates compiled expressions
 // with registered functions, classes, constructors, and runtime state.
 type Runtime struct {
 	out        io.Writer
@@ -126,29 +118,20 @@ type Runtime struct {
 	// which is PHP's per-instance static semantics.
 	funcStatics map[*model.StaticVar]map[string]any
 
-	mu    sync.Mutex
-	cache map[string]*vm.Program // expr source -> compiled program
-	// exprConf is the expr-lang compile configuration derived from the
-	// compile-time type env. Deriving it is the expensive half of a compile
-	// (expr walks the whole function table reflectively), so it is built once per
-	// function-table generation and reused. Guarded by mu, which compile holds.
-	exprConf    *conf.Config
-	exprConfGen uint64
-	exprCache   *ExprCache
+	exprCache *ExprCache
 	compiled    map[model.Expr]*compiledExpr
-	helpers     map[string]func(...any) (any, error)
-
-	// funcsGen is bumped whenever the function table changes (RegisterFunc, a
-	// hoisted user function). Prebuilt evaluation environments and the cached
-	// compile-time type env are stamped with the generation they were built
-	// from and rebuilt when they fall behind.
-	funcsGen uint64
+	// concatParts caches the flattened operand list of a top-level `.`
+	// expression by node identity, the way compiled caches programs: the
+	// tree shape never changes, and reflattening it allocated a slice per
+	// evaluation of every echo with a concatenation in it.
+	concatParts map[*model.Binary][]model.Expr
+	// fileDirs caches path.Dir per loaded filename; see Runtime.fileDir.
+	fileDirs map[string]string
+	helpers  map[string]func(...any) (any, error)
 
 	// envMu guards envFree, the free list of reusable evaluation environments.
-	envMu      sync.Mutex
-	envFree    []*evalEnv
-	typeEnv    map[string]any
-	typeEnvGen uint64
+	envMu   sync.Mutex
+	envFree []*evalEnv
 
 	sourceSpans map[model.Stmt]model.SourceSpan
 	currentLine int
@@ -207,24 +190,22 @@ type evalEnv struct {
 	ref     *scopeRef
 	env     map[string]any
 	exprs   map[string]model.Expr
-	layered []string
-	shadow  map[string]any
-	gen     uint64
-	built   bool
+	built bool
+	// vars is the pooled slot buffer the closure engine reads variables
+	// from, and cenv the reused carrier handed to expr.Run; both exist so
+	// the slot path allocates nothing per evaluation.
+	vars []any
+	cenv expr.Env
 }
 
-// layer installs a per-expression key, remembering it so release can remove it.
-// A key that already exists in the prebuilt base (only possible if a registered
-// function is named like a variable identifier) is restored rather than deleted.
-func (st *evalEnv) layer(key string, val any) {
-	if old, ok := st.env[key]; ok {
-		if st.shadow == nil {
-			st.shadow = map[string]any{}
-		}
-		st.shadow[key] = old
+// slots returns the pooled slot buffer sized to n. releaseEnv cleared it, so
+// an evaluation sees only what it wrote.
+func (st *evalEnv) slots(n int) []any {
+	if cap(st.vars) < n {
+		st.vars = make([]any, n)
 	}
-	st.layered = append(st.layered, key)
-	st.env[key] = val
+	st.vars = st.vars[:n]
+	return st.vars
 }
 
 // ExitError is returned when PHP die()/exit() interrupts script execution.
@@ -403,9 +384,6 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	for name := range rt.userFns {
 		delete(rt.funcs, name)
 	}
-	rt.envMu.Lock()
-	rt.funcsGen++
-	rt.envMu.Unlock()
 	clear(rt.userFns)
 	clear(rt.funcSites)
 	rt.opts.WorkDir = rt.workDirBase
@@ -809,14 +787,11 @@ func (rt *Runtime) Const(name string) (any, bool) {
 
 // RegisterFunc forwards a Go function (or any callable) into the VM under name.
 // This is the shim mechanism: e.g. rt.RegisterFunc("strlen", func(s string) int
-// { return len(s) }) makes `strlen($x)` work in transpiled code.
+// { return len(s) }) makes `strlen($x)` work in script expressions.
 func (rt *Runtime) RegisterFunc(name string, fn any) {
+	// Nothing is invalidated: evaluation environments resolve the table per
+	// call (see installFunc), and the direct compiler reads no type env.
 	rt.funcs[name] = fn
-	// Prebuilt evaluation environments hold one closure per registered function;
-	// bumping the generation makes them rebuild before their next use.
-	rt.envMu.Lock()
-	rt.funcsGen++
-	rt.envMu.Unlock()
 }
 
 // LookupFunc returns the host function registered for name. Introspection
@@ -1011,19 +986,14 @@ func (rt *Runtime) OnError(fn func(error)) {
 	rt.errorHandler = fn
 }
 
-// Eval transpiles e, binds the referenced variables from scope, and runs the
-// resulting program through the expr-lang VM.
+// Eval compiles e to a closure chain, binds the referenced variables from
+// scope by slot, and runs it.
 func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
-	// A literal is its own value. Everything below this transpiles to expr
-	// source and runs it on the VM, which for a constant is the whole machine
-	// to answer what the parser already knew - and, for a string holding a
-	// byte that is not valid UTF-8, cannot answer correctly: the value would
-	// travel as \xff in source text and come back as the two bytes UTF-8
-	// spells U+00FF with.
+	// A literal is its own value; nothing needs compiling to answer what the
+	// parser already knew.
 	if l, ok := e.(*model.Lit); ok {
 		if n, ok := l.Value.(int); ok {
-			// PHP integers are int64 everywhere else in the runtime, and the
-			// VM would have widened this one on the way out.
+			// PHP integers are int64 everywhere else in the runtime.
 			return int64(n), nil
 		}
 		return l.Value, nil
@@ -1048,61 +1018,85 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 
 	st := rt.acquireEnv(scope)
 	st.exprs = ce.exprs
-	base := st.env
 	defer rt.releaseEnv(st)
-
-	// Anonymous functions become callables in the env (bound by their synthetic
-	// identifier) so transpiled code can pass them, e.g. usort's comparator. They
-	// capture the scope directly rather than reading it through st: a closure
-	// assigned to a variable outlives this evaluation.
-	//
-	// They are layered before the calls below: an immediately invoked closure
-	// appears in ce.calls under its synthetic identifier, which is in no
-	// function table, and installFunc would stub it as undefined.
-	for id, cl := range ce.closures {
-		decl := cl
-		env := captureClosureEnv(decl, scope)
-		st.layer(id, adapt(func(args ...any) (any, error) {
-			return rt.invokeClosure(decl, args, env)
-		}))
-	}
 
 	// Registered functions are installed on demand: an environment carries the
 	// PHP-semantic helpers plus whatever the expressions evaluated with it have
 	// called so far, rather than a closure per entry of the function table. The
-	// installed closures persist across evaluations (see installFunc).
+	// installed closures persist across evaluations (see installFunc). An
+	// immediately invoked anonymous function appears in ce.calls under its
+	// synthetic identifier, which is in no function table; it is bound per
+	// evaluation below, so installFunc must not stub it as undefined.
 	for _, name := range ce.calls {
+		if _, ok := ce.closures[name]; ok {
+			continue
+		}
 		rt.installFunc(st, name)
 	}
 
-	// Run env: same functions/helpers, but variables carry their real values.
-	// Bare identifiers that are not set in the current scope fall back to the
-	// constant table (PHP constants are visible in every scope, whereas plain
-	// variables are confined to their frame). This is what lets a method body
-	// reference T_VARIABLE / a define()d constant the same way top-level code
-	// can.
+	// Per-expression values bind by slot into a pooled slice; the base env
+	// carries only the persistent helpers and installed functions.
+	vars := st.slots(ce.prog.NumSlots())
+	for id, cl := range ce.closures {
+		slot, ok := ce.closureSlots[id]
+		if !ok {
+			continue
+		}
+		decl := cl
+		env := captureClosureEnv(decl, scope)
+		vars[slot] = adapt(func(args ...any) (any, error) {
+			return rt.invokeClosure(decl, args, env)
+		})
+	}
 	for i, name := range ce.vars {
-		if v, ok := scope.Get(name); ok {
-			st.layer(ce.idents[i], v)
-		} else if c, ok := rt.constants[name]; ok {
-			st.layer(ce.idents[i], c)
-		} else if _, ok := phpSuperglobals[name]; ok {
-			st.layer(ce.idents[i], rt.globals[name])
-		} else if strings.HasPrefix(ce.idents[i], constIdentPrefix) {
-			// A bare name nothing defines. PHP 8 raises Error here; an unset
-			// variable of the same spelling stays null, which is why the two
-			// carry different identifiers.
-			return nil, &UndefinedConstantError{Name: name}
-		} else {
-			st.layer(ce.idents[i], nil)
+		v, err := rt.resolveVar(name, ce.idents[i], scope)
+		if err != nil {
+			return nil, err
+		}
+		if slot := ce.varSlots[i]; slot >= 0 {
+			vars[slot] = v
 		}
 	}
+	st.cenv.Vars = vars
+	st.cenv.Base = st.env
+	return expr.Run(ce.prog, &st.cenv)
+}
 
-	out, err := expr.Run(ce.prog, base)
-	if err != nil {
-		return nil, fmt.Errorf("eval %q: %w", ce.src, err)
+// resolveVar returns the value Eval binds for one variable entry. Bare
+// identifiers that are not set in the current scope fall back to the constant
+// table (PHP constants are visible in every scope, whereas plain variables
+// are confined to their frame), then the superglobals. A bare name nothing
+// defines is an error - PHP 8 raises Error there, while an unset variable of
+// the same spelling stays null, which is why the two carry different
+// identifiers.
+// helperVar reads a variable or bare name from the live scope at evaluation
+// time. The closure engine uses it instead of the slot snapshot inside
+// expressions that contain a marked sub-expression, whose scope writes a
+// snapshot taken before the run would miss.
+func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
+	return func(name string, isConst bool) (any, error) {
+		ident := varIdent(name)
+		if isConst {
+			ident = constIdent(name)
+		}
+		return rt.resolveVar(name, ident, ref.scope)
 	}
-	return out, nil
+}
+
+func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
+	if v, ok := scope.Get(name); ok {
+		return v, nil
+	}
+	if c, ok := rt.constants[name]; ok {
+		return c, nil
+	}
+	if _, ok := phpSuperglobals[name]; ok {
+		return rt.globals[name], nil
+	}
+	if strings.HasPrefix(ident, constIdentPrefix) {
+		return nil, &UndefinedConstantError{Name: name}
+	}
+	return nil, nil
 }
 
 func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
@@ -1112,31 +1106,17 @@ func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {
 		}
 	}
 
-	// The transpiler is pooled; newCompiledExpr copies the variable slices it
-	// hands out, so nothing survives the release.
-	tr := acquireTranspiler()
-	defer releaseTranspiler(tr)
-
-	src, vars, err := tr.Transpile(e)
-	if err != nil {
-		return nil, err
-	}
-	idents := tr.Idents()
-	calls := tr.Calls()
-	closures := tr.Closures()
-	exprs := tr.Exprs()
-	if prog, ok := rt.exprCache.GetSource(src); ok {
-		ce := newCompiledExpr(src, vars, idents, calls, closures, exprs, prog)
+	if dc, ok := rt.exprCache.GetExpr(e); ok {
+		ce := newDirectCompiledExpr(dc)
 		rt.setCompiledExpr(e, ce)
 		return ce, nil
 	}
-
-	prog, err := rt.compile(src)
+	dc, err := expr.CompileExpr(e, exprHelpers)
 	if err != nil {
-		return nil, fmt.Errorf("compile %q: %w", src, err)
+		return nil, err
 	}
-	ce := newCompiledExpr(src, vars, idents, calls, closures, exprs, prog)
-	rt.exprCache.SetSource(src, prog)
+	rt.exprCache.SetExpr(e, dc)
+	ce := newDirectCompiledExpr(dc)
 	rt.setCompiledExpr(e, ce)
 	return ce, nil
 }
@@ -1146,102 +1126,6 @@ func (rt *Runtime) setCompiledExpr(e model.Expr, ce *compiledExpr) {
 		rt.compiled = make(map[model.Expr]*compiledExpr)
 	}
 	rt.compiled[e] = ce
-}
-
-// compile returns a cached compiled program for src.
-//
-// Expression-local identifiers (PHP variables, closure bindings) are
-// deliberately absent from the compile-time type env: PHP is dynamically typed
-// and the same expression may see different value types across invocations, so
-// static type checking of them would be counter-productive. They are compiled
-// as undefined variables (conf.Strict is off, the equivalent of
-// expr.AllowUndefinedVariables) and resolve from the runtime env map instead.
-//
-// The function table *is* part of the type env, and must be: expr's parser
-// consults it (conf.Config.IsOverridden) to decide that names shared with
-// expr's own predicate builtins (`count`, `map`, `filter`, `find`, `sum` and
-// the rest) are user functions rather than builtin predicate syntax. Disabling the
-// builtins is not enough on its own; predicates are parsed before the disabled
-// list is consulted.
-//
-// All expr-lang builtins are disabled. PHP brings its own standard library via
-// forwarded/registered functions (RegisterFunc), and expr's builtins (count,
-// len, all, ...) would otherwise shadow PHP functions of the same name. With
-// builtins off, a registered `count` resolves to the user's implementation.
-func (rt *Runtime) compile(src string) (*vm.Program, error) {
-	rt.mu.Lock()
-	defer rt.mu.Unlock()
-	if rt.cache != nil {
-		if p, ok := rt.cache[src]; ok {
-			return p, nil
-		}
-	}
-	p, err := compileWith(src, rt.exprConfig())
-	if err != nil {
-		return nil, err
-	}
-	if rt.cache == nil {
-		rt.cache = make(map[string]*vm.Program)
-	}
-	rt.cache[src] = p
-	return p, nil
-}
-
-// exprConfig returns the expr compile configuration for the current function
-// table, building it on first use and whenever the table changes.
-//
-// This is what expr.Compile(expr.Env(...)) does per call, and the reason it is
-// hoisted: conf.Config.WithEnv walks the ~100-entry function table reflectively
-// (MapKeys, MapIndex, a nature per entry) and used to dominate the interpreter's
-// allocation profile. Nothing in the parse/check/optimize/compile pipeline
-// writes to the Config, so one instance is reusable; the nature cache it carries
-// is filled as a side effect and is guarded by rt.mu, which compile holds.
-//
-// Callers must hold rt.mu.
-func (rt *Runtime) exprConfig() *conf.Config {
-	rt.envMu.Lock()
-	gen := rt.funcsGen
-	rt.envMu.Unlock()
-	if rt.exprConf != nil && rt.exprConfGen == gen {
-		return rt.exprConf
-	}
-
-	env := rt.typeEnvBase()
-	c := conf.CreateNew()
-	c.EnvObject = env
-	c.Env = typeEnvNature(&c.NtCache, env)
-	// expr.AllowUndefinedVariables: PHP variables are not in the type env.
-	c.Strict = false
-	// expr.DisableAllBuiltins, plus the pruning expr.Compile does afterwards.
-	for name := range c.Builtins {
-		c.Disabled[name] = true
-		delete(c.Builtins, name)
-	}
-	c.Check()
-
-	rt.exprConf, rt.exprConfGen = c, gen
-	return c
-}
-
-// compileWith runs expr's parse/check/optimize/compile pipeline against a
-// prebuilt config. It mirrors expr.Compile, which cannot be used here because it
-// insists on constructing a fresh conf.Config (and re-deriving the type env)
-// on every call.
-func compileWith(src string, c *conf.Config) (*vm.Program, error) {
-	tree, err := checker.ParseCheck(src, c)
-	if err != nil {
-		return nil, err
-	}
-	if c.Optimize {
-		if err := optimizer.Optimize(&tree.Node, c); err != nil {
-			var fileError *file.Error
-			if errors.As(err, &fileError) {
-				return nil, fileError.Bind(tree.Source)
-			}
-			return nil, err
-		}
-	}
-	return compiler.Compile(tree, c)
 }
 
 // acquireEnv returns an evaluation environment bound to scope. Environments are
@@ -1256,14 +1140,16 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 		rt.envFree[n-1] = nil
 		rt.envFree = rt.envFree[:n-1]
 	}
-	gen := rt.funcsGen
 	rt.envMu.Unlock()
 
 	if st == nil {
 		st = &evalEnv{ref: &scopeRef{}, env: make(map[string]any, envSizeHint)}
 	}
-	if !st.built || st.gen != gen {
-		rt.buildEnv(st, gen)
+	// Built once per environment, for the runtime's lifetime: the helpers
+	// close over the stable scope reference and installed functions resolve
+	// per call, so a function-table change invalidates nothing here.
+	if !st.built {
+		rt.buildEnv(st)
 	}
 	st.ref.scope = scope
 	return st
@@ -1283,11 +1169,9 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 //
 // The closures read the scope through st.ref rather than capturing it, which is
 // what makes the environment reusable.
-func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
+func (rt *Runtime) buildEnv(st *evalEnv) {
 	env := st.env
 	clear(env)
-	st.layered = st.layered[:0]
-	clear(st.shadow)
 	ref := st.ref
 	// PHP-semantic helpers (see helpers.go). They close over rt and the scope
 	// reference so that method dispatch and instantiation can re-enter the
@@ -1295,6 +1179,7 @@ func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
 	for name, fn := range rt.helpers {
 		env[name] = fn
 	}
+	env["__var"] = adapt(rt.helperVar(ref))
 	env["__call"] = adapt(rt.helperCall(ref))
 	env["__get"] = adapt(rt.helperGet(ref))
 	env["__new"] = adapt(rt.helperNew(ref))
@@ -1320,7 +1205,6 @@ func (rt *Runtime) buildEnv(st *evalEnv, gen uint64) {
 	// iterates directly, so func_get_args() hands that slice back rather than
 	// rebuilding it as an *model.Array.
 	env["func_get_args"] = adapt(func() []any { return funcGetArgs(ref.scope) })
-	st.gen = gen
 	st.built = true
 }
 
@@ -1347,143 +1231,39 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 		return
 	}
 	ref := st.ref
-	fn, ok := rt.lookupFunc(name)
-	if !ok {
-		st.env[name] = func(...any) (any, error) {
+	// Resolution happens per call, not at install. The closure then survives
+	// every function-table change - a script re-declaring its functions on
+	// each run, a conditionally declared function appearing after the first
+	// call reported it undefined - which is what lets a built environment
+	// live for the runtime's lifetime instead of being rebuilt on every
+	// registration.
+	st.env[name] = func(args ...any) (any, error) {
+		fn, ok := rt.lookupFunc(name)
+		if !ok {
 			return nil, fmt.Errorf("call to undefined function %s()", name)
 		}
-		return
-	}
-	st.env[name] = func(args ...any) (any, error) {
 		result, err := rt.invokeWithScopeContext(fn, args, ref.scope)
 		return result, nameCallError(err, name)
 	}
 }
 
-// releaseEnv strips the per-expression keys layered on by Eval, drops the
-// references the environment held to the scope and expression, and returns it
-// to the free list.
+// releaseEnv clears the per-expression slots, drops the references the
+// environment held to the scope and expression, and returns it to the free
+// list.
 func (rt *Runtime) releaseEnv(st *evalEnv) {
-	if len(st.shadow) == 0 {
-		for _, key := range st.layered {
-			delete(st.env, key)
-		}
-	} else {
-		for _, key := range st.layered {
-			if old, ok := st.shadow[key]; ok {
-				st.env[key] = old
-				delete(st.shadow, key)
-				continue
-			}
-			delete(st.env, key)
-		}
-	}
-	st.layered = st.layered[:0]
 	st.exprs = nil
 	st.ref.scope = nil
+	for i := range st.vars {
+		st.vars[i] = nil
+	}
+	st.vars = st.vars[:0]
+	st.cenv = expr.Env{}
 
 	rt.envMu.Lock()
 	if len(rt.envFree) < maxFreeEnvs {
 		rt.envFree = append(rt.envFree, st)
 	}
 	rt.envMu.Unlock()
-}
-
-// typeEnvStub is the value every entry of the compile-time type env holds. The
-// type env carries types, never values (expr derives one "nature" per entry and
-// never calls it), and every callable the runtime exposes has been through
-// adapt(), so they all share this one signature. A single shared stub therefore
-// describes the whole function table exactly as well as a per-function wrapper
-// would, and costs one closure instead of one per registered function.
-var typeEnvStub any = func(...any) (any, error) { return nil, nil }
-
-// typeEnvMapType is the reflect type of the compile-time type env map.
-var typeEnvMapType = reflect.TypeOf(map[string]any(nil))
-
-// typeEnvNature builds the conf.Config.Env nature for the compile-time type env
-// without expr's reflective walk over it.
-//
-// conf.Config.WithEnv -> conf.EnvWithCache derives one nature per entry through
-// reflect.Value.MapKeys + MapIndex + copyVal + a fresh nature.TypeData, which for
-// a ~100-entry function table was the single largest allocation site left in the
-// interpreter (12% of all objects). It exists because a general env map holds
-// values of many different types.
-//
-// This one does not: every entry is typeEnvStub (see above), so every entry's
-// nature is the nature of that one func type. Deriving it once and storing the
-// same value under every key produces a nature that is equal to the one expr
-// builds; TestCompileMatchesExprEnv pins that by comparing emitted bytecode.
-//
-// The shared nature.TypeData that all the entries then point at is written to
-// only by nature's own lazy memoisation (NumIn, NumOut, Out, IsVariadic, the
-// method set), all of which are functions of the type alone and therefore
-// identical for every entry. The one field that carries per-name state,
-// TypeData.Func, is set by the checker only for conf.Config.Functions and
-// Builtins, both empty here, never for a nature that came out of the env.
-func typeEnvNature(cache *nature.Cache, env map[string]any) nature.Nature {
-	n := cache.FromType(typeEnvMapType)
-	if n.TypeData == nil {
-		n.TypeData = new(nature.TypeData)
-	}
-	n.Strict = true
-	n.Fields = make(map[string]nature.Nature, len(env))
-	stub := cache.NatureOf(typeEnvStub)
-	for name := range env {
-		n.Fields[name] = stub
-	}
-	return n
-}
-
-// typeEnvBase returns the compile-time type env for the current function table:
-// every registered function plus the PHP-semantic helpers, each mapped to
-// typeEnvStub.
-//
-// It exists so expr knows which names are functions. Two things depend on that:
-// the parser, which must not read `count(...)` as its own builtin predicate
-// (conf.Config.IsOverridden), and the checker, which resolves a call on a known
-// name to (any, error). The result is cached per function-table generation and
-// must be treated as read-only by callers.
-func (rt *Runtime) typeEnvBase() map[string]any {
-	rt.envMu.Lock()
-	cached, gen, current := rt.typeEnv, rt.typeEnvGen, rt.funcsGen
-	rt.envMu.Unlock()
-	if cached != nil && gen == current {
-		return cached
-	}
-
-	env := make(map[string]any, len(rt.funcs)+16)
-	for name := range rt.funcs {
-		env[name] = typeEnvStub
-	}
-	env["__bool"] = typeEnvStub
-	env["__concat"] = typeEnvStub
-	env["__pair"] = typeEnvStub
-	env["__array"] = typeEnvStub
-	env["__index"] = typeEnvStub
-	env["__get"] = typeEnvStub
-	env["__call"] = typeEnvStub
-	env["__new"] = typeEnvStub
-	env["__cast"] = typeEnvStub
-	env["__arith"] = typeEnvStub
-	env["__cmp"] = typeEnvStub
-	env["__bit"] = typeEnvStub
-	env["__bitnot"] = typeEnvStub
-	env["__instanceof"] = typeEnvStub
-	env["__neg"] = typeEnvStub
-	env["__classconst"] = typeEnvStub
-	env["__set"] = typeEnvStub
-	env["__ref"] = typeEnvStub
-	env["__func"] = typeEnvStub
-	env["__static"] = typeEnvStub
-	env["__staticprop"] = typeEnvStub
-	env["__invoke"] = typeEnvStub
-	env["__eval"] = typeEnvStub
-	env["func_get_args"] = typeEnvStub
-
-	rt.envMu.Lock()
-	rt.typeEnv, rt.typeEnvGen = env, current
-	rt.envMu.Unlock()
-	return env
 }
 
 // helperSet implements assignment used as an expression (AssignExpr with a Var
@@ -1501,9 +1281,9 @@ func (rt *Runtime) evalIncDec(n *model.Unary, scope *Scope) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	next := toInt(cur) + 1
+	next := phpval.Increment(cur)
 	if n.Op == "--" {
-		next = toInt(cur) - 1
+		next = phpval.Decrement(cur)
 	}
 	if err := rt.assignTo(n.X, next, scope); err != nil {
 		return nil, err
@@ -1515,7 +1295,15 @@ func (rt *Runtime) evalIncDec(n *model.Unary, scope *Scope) (any, error) {
 }
 
 func (rt *Runtime) evalConcat(n *model.Binary, scope *Scope) (any, error) {
-	return rt.joinParts(flattenConcat(n, nil), scope)
+	parts, ok := rt.concatParts[n]
+	if !ok {
+		parts = flattenConcat(n, nil)
+		if rt.concatParts == nil {
+			rt.concatParts = make(map[*model.Binary][]model.Expr)
+		}
+		rt.concatParts[n] = parts
+	}
+	return rt.joinParts(parts, scope)
 }
 
 // joinParts evaluates each part and joins their PHP string forms. It is what a

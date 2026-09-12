@@ -223,6 +223,19 @@ tasks:
           summary coverfunc --files < cover/dbadmin.file.txt | sort;
           echo '```'; } > docs/coverage/dbadmin-detail.md
 
+  # Deliberately not part of default: a bench sweep costs minutes of pinned
+  # CPU and answers a performance question, not a correctness one. Pinned to
+  # one core at top priority so two sweeps are comparable with
+  # `benchstat before.txt after.txt`; bench.txt is gitignored, durable
+  # numbers land as curated tables in docs/allocation-performance.md.
+  bench:
+    desc: "Run the benchmarks and summarise bench.txt with benchstat"
+    timeout: 1200s
+    passthru: true
+    cmds:
+      - taskset -c 3 nice -n -20 go test -run XXX -bench . -benchmem -benchtime 1s -count 3 ./... | tee bench.txt
+      - benchstat bench.txt
+
   lint:
     passthru: true
     cmds:

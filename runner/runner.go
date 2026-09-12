@@ -195,7 +195,7 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 		scope.Set(name, val)
 	}
 	if rt.entrypoint != "" {
-		setScopeFile(scope, rt.entrypoint)
+		rt.setScopeFile(scope, rt.entrypoint)
 	}
 	// Hoist declarations so functions/classes are callable before their textual
 	// position (PHP semantics for top-level function/class definitions).
@@ -826,8 +826,8 @@ func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error
 	}
 	rt.included = append(rt.included, rootPath(filename))
 	rt.UpdateIncludedFiles(len(rt.included))
-	restoreFile := setScopeFile(scope, rootPath(filename))
-	defer restoreFile()
+	restoreFile := rt.pushScopeFile(scope, rootPath(filename))
+	defer restoreFile.restore(scope)
 	if err := rt.hoist(prog, rootPath(filename)); err != nil {
 		return nil, err
 	}
@@ -851,22 +851,56 @@ func (rt *Runtime) addSourceSpans(program *model.Program) {
 	}
 }
 
-func setScopeFile(scope *Scope, filename string) func() {
-	previousFile, hadFile := scope.Get("__FILE__")
-	previousDir, hadDir := scope.Get("__DIR__")
+// setScopeFile binds __FILE__ and __DIR__ into a fresh call frame. The frame
+// is new, so nothing is shadowed and nothing needs restoring; includeFile,
+// which layers onto a live scope, goes through pushScopeFile.
+func (rt *Runtime) setScopeFile(scope *Scope, filename string) {
 	scope.Set("__FILE__", filename)
-	scope.Set("__DIR__", path.Dir(filename))
-	return func() {
-		if hadFile {
-			scope.Set("__FILE__", previousFile)
-		} else {
-			delete(scope.vars, "__FILE__")
-		}
-		if hadDir {
-			scope.Set("__DIR__", previousDir)
-		} else {
-			delete(scope.vars, "__DIR__")
-		}
+	scope.Set("__DIR__", rt.fileDir(filename))
+}
+
+// fileDir caches path.Dir per filename: every invocation of a function binds
+// its declaring file's directory, and the set of filenames is the set of
+// loaded scripts, so the split is paid once per file instead of once per call.
+func (rt *Runtime) fileDir(filename string) string {
+	if d, ok := rt.fileDirs[filename]; ok {
+		return d
+	}
+	d := path.Dir(filename)
+	if rt.fileDirs == nil {
+		rt.fileDirs = make(map[string]string, 8)
+	}
+	rt.fileDirs[filename] = d
+	return d
+}
+
+// scopeFileState is what pushScopeFile shadowed; a value rather than a
+// closure, so the caller's deferred restore stays on the stack.
+type scopeFileState struct {
+	file, dir       any
+	hadFile, hadDir bool
+}
+
+// pushScopeFile binds __FILE__ and __DIR__ over a live scope, remembering
+// what an enclosing file had bound.
+func (rt *Runtime) pushScopeFile(scope *Scope, filename string) scopeFileState {
+	s := scopeFileState{}
+	s.file, s.hadFile = scope.Get("__FILE__")
+	s.dir, s.hadDir = scope.Get("__DIR__")
+	rt.setScopeFile(scope, filename)
+	return s
+}
+
+func (s scopeFileState) restore(scope *Scope) {
+	if s.hadFile {
+		scope.Set("__FILE__", s.file)
+	} else {
+		delete(scope.vars, "__FILE__")
+	}
+	if s.hadDir {
+		scope.Set("__DIR__", s.dir)
+	} else {
+		delete(scope.vars, "__DIR__")
 	}
 }
 
@@ -1437,7 +1471,7 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 	rt.pushFrame(scope)
 	defer rt.popFrame()
 	if decl.Filename != "" {
-		setScopeFile(scope, decl.Filename)
+		rt.setScopeFile(scope, decl.Filename)
 	}
 	scope.Set(argsKey, args)
 	if err := rt.bindParams(decl, args, scope); err != nil {
@@ -1455,7 +1489,7 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	rt.pushFrame(scope)
 	defer rt.popFrame()
 	if decl.Filename != "" {
-		setScopeFile(scope, decl.Filename)
+		rt.setScopeFile(scope, decl.Filename)
 	}
 	scope.Set("this", obj)
 	scope.Set(argsKey, args)

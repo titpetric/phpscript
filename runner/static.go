@@ -225,7 +225,7 @@ func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args [
 	rt.pushFrame(scope)
 	defer rt.popFrame()
 	if decl.Filename != "" {
-		setScopeFile(scope, decl.Filename)
+		rt.setScopeFile(scope, decl.Filename)
 	}
 	scope.Set(argsKey, args)
 	scope.Set("__class__", class.Name)

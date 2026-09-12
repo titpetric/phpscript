@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner/expr"
 )
 
 // contextType is the reflect type of context.Context, used to detect callables
@@ -61,13 +62,10 @@ func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any
 	return result, err
 }
 
-// This file implements the PHP-semantic helpers injected into every expr env.
-// They encapsulate the behaviour expr-lang has no opinion about: PHP's ordered
-// hybrid arrays, lenient index/property access, dynamic method dispatch (PHP
-// objects vs. forwarded Go values), and object construction.
-//
-// Keeping these in Go (rather than emitting inline expr) means the transpiler
-// output stays small and type-agnostic, and PHP semantics have one home.
+// This file implements the PHP-semantic helpers the expression engine calls:
+// PHP's ordered hybrid arrays, lenient index/property access, dynamic method
+// dispatch (PHP objects vs. forwarded Go values), and object construction.
+// Keeping them in Go means PHP semantics have one home.
 
 // helperConcat implements PHP's `.` string concatenation with stringy coercion.
 func helperConcat(a, b any) string {
@@ -186,21 +184,59 @@ func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...
 	}
 }
 
-// adapt wraps any Go callable in the uniform func(...any) (any, error) signature
-// used throughout the env. This serves two purposes:
-//
-//   - Type checking: the compile-time env (expr.Env) needs each function to have
-//     a callable type, but a concrete signature (e.g. func(string) int) would
-//     make expr reject dynamically-typed PHP arguments. A variadic-any signature
-//     accepts anything.
-//   - Runtime correctness: expr's compiled fast path asserts the env value has
-//     the exact type seen at compile time. Using the same adapted value in both
-//     the type env and the run env keeps those in sync.
-//
-// The wrapper performs PHP-ish argument coercion via reflection so shims can
-// still be written with natural Go signatures.
+// adapt wraps any Go callable in the uniform func(...any) (any, error)
+// signature the evaluation environment carries, which is the one shape the
+// engine's call closures assert. The wrapper performs PHP-ish argument
+// coercion via reflection so shims can still be written with natural Go
+// signatures.
 func adapt(fn any) func(...any) (any, error) {
 	return func(args ...any) (any, error) { return invokeAny(fn, args) }
+}
+
+// exprHelpers hands the engine the typed helper implementations.
+// Package-level because the helpers are stateless: a compiled closure chain
+// is shareable across runtimes. PanicError mirrors invokeAny's recover, so
+// a host panic surfaces as the same catchable error either way.
+var exprHelpers = &expr.Helpers{
+	Truthy:     phpTruthy,
+	Concat:     helperConcat,
+	Pair:       helperPair,
+	Array:      helperArray,
+	Index:      helperIndex,
+	Cast:       helperCast,
+	Arith:      phpArith,
+	Compare:    phpCompare,
+	Bitwise:    phpBitwise,
+	BitNot:     phpBitNot,
+	InstanceOf: phpInstanceOf,
+	Negate:     phpNegate,
+	PanicError: func(recovered any) error {
+		return &HostPanicError{Callable: "expr", Value: recovered}
+	},
+	Slotted: isSlotIdent,
+}
+
+// isSlotIdent reports whether an identifier is one Eval binds per evaluation:
+// a PHP variable (varIdent: `v_` or bare `this`), a bare-name constant
+// (constIdent: `c_`), or a closure literal (`__cl<N>`). The digit check
+// keeps `__classconst`, which shares the `__cl` prefix, on the Base path with
+// the other helpers.
+func isSlotIdent(name string) bool {
+	if name == "this" {
+		return true
+	}
+	if strings.HasPrefix(name, "v_") || strings.HasPrefix(name, constIdentPrefix) {
+		return true
+	}
+	if len(name) > 4 && name[:4] == "__cl" {
+		for i := 4; i < len(name); i++ {
+			if name[i] < '0' || name[i] > '9' {
+				return false
+			}
+		}
+		return true
+	}
+	return false
 }
 
 // ArgumentCountError reports a call that passed more arguments than the
@@ -254,6 +290,12 @@ func (e *TypeError) Error() string {
 // invokeAny works from the Go signature alone and has no name to report; the
 // name a script typed is known only at the dispatch site.
 func nameCallError(err error, name string) error {
+	// The nil check is load-bearing for allocation: the errors.As targets
+	// below take their address and escape, which costs a heap allocation on
+	// every call, including the ones that succeeded.
+	if err == nil {
+		return nil
+	}
 	var count *ArgumentCountError
 	if errors.As(err, &count) && count.Name == "" {
 		count.Name = name

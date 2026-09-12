@@ -451,6 +451,20 @@ func phpArith(op string, a, b any) any {
 			}
 		}
 	}
+	// A numeric string operand is its number, keeping PHP's int/float
+	// distinction by the string's own spelling: "5.5" + 1 is float 6.5 and
+	// "1e2" * 2 is float 200. A string with trailing junk ("5x") stays a
+	// string for the prefix conversion below.
+	if s, ok := a.(string); ok {
+		if n, ok := phpval.StringNumber(s); ok {
+			a = n
+		}
+	}
+	if s, ok := b.(string); ok {
+		if n, ok := phpval.StringNumber(s); ok {
+			b = n
+		}
+	}
 	// `%` casts both operands to int, as PHP's modulo does.
 	if op == "%" {
 		y := toInt(b)
