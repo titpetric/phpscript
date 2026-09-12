@@ -326,11 +326,12 @@ The highest-value next steps are:
    can measure bytecode coverage without calling `Supports` separately.
 
 Operand, local, iterator, handler and call-frame storage is pooled on the
-run's exec state, user-function frames reuse stashed slabs, and the host
-locals copy is gone (the frame handle above), so the per-run allocation floor
-is three and a host call in a loop adds nothing beyond the callee's own work.
-`TestFlatstackPrecompiledAllocationBudget` fails, not skips, when any of that
-regresses.
+run's exec state, user-function frames reuse stashed slabs, call arguments
+are borrowed off the operand stack for the duration of the call, and the
+host locals copy is gone (the frame handle above): a precompiled loop runs
+at zero allocations per run, and a host call in a loop adds nothing beyond
+the callee's own work. `TestFlatstackPrecompiledAllocationBudget` fails, not
+skips, when any of that regresses.
 
 Flatstack is therefore interchangeable as an embedding API and for observable
 fixture behavior, but it is not yet a standalone replacement for runner's

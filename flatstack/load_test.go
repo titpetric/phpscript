@@ -517,16 +517,17 @@ func TestFlatstackPrecompiledAllocationBudget(t *testing.T) {
 		budget float64
 	}{
 		{
-			// Measured 3: the hoist's class map, the result box of the concat,
-			// and the echo's write path.
+			// Measured 2: the result box of the concat and the echo's write
+			// path; the host and the hoist are amortised across runs.
 			name:   "concat",
 			source: `<?php $left = "flat"; $right = "stack"; echo $left . $right; ?>`,
-			budget: 4,
+			budget: 3,
 		},
 		{
 			// The ExprHeavy shape: arithmetic, ternary, concat and a strlen
-			// host call per iteration. Measured 195 for 100 iterations; the
-			// per-call scope maps this test exists to keep out would add ~250.
+			// host call per iteration. Measured 145 for 100 iterations; the
+			// per-call scope maps and argument copies this test exists to
+			// keep out would roughly double it.
 			name: "expression loop with host calls",
 			source: `<?php
 $total = 0;
@@ -540,11 +541,12 @@ for ($i = 0; $i < 100; $i++) {
 }
 echo $total, " ", $tag;
 `,
-			budget: 200,
+			budget: 150,
 		},
 		{
-			// Measured 87 for 50 calls: the frame slab pool holds the
-			// per-call locals/initialized pair at zero.
+			// Measured 36 for 50 calls: the frame slab pool holds the
+			// per-call locals/initialized pair at zero and the arguments are
+			// borrowed off the operand stack.
 			name: "user function loop",
 			source: `<?php
 function twice($x) {
@@ -556,7 +558,7 @@ for ($i = 0; $i < 50; $i++) {
 }
 echo $sum;
 `,
-			budget: 92,
+			budget: 40,
 		},
 	}
 	for _, test := range tests {

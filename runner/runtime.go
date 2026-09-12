@@ -137,9 +137,19 @@ type Runtime struct {
 	fileDirs map[string]string
 	helpers  map[string]func(...any) (any, error)
 
-	// envMu guards envFree, the free list of reusable evaluation environments.
-	envMu   sync.Mutex
-	envFree []*evalEnv
+	// envMu guards envFree, the free list of reusable evaluation environments,
+	// and scopeFree, the free list of call scopes user-function invocations
+	// reuse; both are bounded by maxFreeEnvs.
+	envMu     sync.Mutex
+	envFree   []*evalEnv
+	scopeFree []*Scope
+
+	// goMethods caches Go method resolution per (receiver type, spelled name):
+	// the method index, its bound signature and whether it takes a context.
+	// MethodByName plus the case-insensitive fallback plus Type() allocate on
+	// every call otherwise, and a method loop pays them per iteration. Misses
+	// are cached too, so a probe does not rescan the method set.
+	goMethods map[goMethodKey]goMethodInfo
 
 	sourceSpans map[model.Stmt]model.SourceSpan
 	currentLine int
@@ -609,6 +619,36 @@ func (rt *Runtime) popFrame() {
 // newScope creates a fresh Scope.
 func (rt *Runtime) newScope() *Scope {
 	return NewScope()
+}
+
+// acquireScope returns a cleared scope from the free list, or a fresh one.
+// Pair with releaseScope at a call boundary whose scope cannot outlive the
+// call: expression evaluation inside the body holds it only through
+// scopeRef, which releaseEnv nils, and a closure captures values, never the
+// scope itself.
+func (rt *Runtime) acquireScope() *Scope {
+	rt.envMu.Lock()
+	defer rt.envMu.Unlock()
+	if n := len(rt.scopeFree) - 1; n >= 0 {
+		scope := rt.scopeFree[n]
+		rt.scopeFree[n] = nil
+		rt.scopeFree = rt.scopeFree[:n]
+		return scope
+	}
+	return NewScope()
+}
+
+func (rt *Runtime) releaseScope(scope *Scope) {
+	rt.envMu.Lock()
+	defer rt.envMu.Unlock()
+	if len(rt.scopeFree) >= maxFreeEnvs {
+		return
+	}
+	clear(scope.vars)
+	clear(scope.deferred[:cap(scope.deferred)])
+	scope.deferred = scope.deferred[:0]
+	scope.statics = nil
+	rt.scopeFree = append(rt.scopeFree, scope)
 }
 
 // Trace publishes a trace span to registered observers and returns the first

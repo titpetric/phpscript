@@ -1503,7 +1503,8 @@ func applyAssignOp(op string, cur, rhs any) (any, error) {
 
 // invokeFunc runs a user-defined function in a fresh scope.
 func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
-	scope := rt.newScope()
+	scope := rt.acquireScope()
+	defer rt.releaseScope(scope)
 	rt.pushFrame(scope)
 	defer rt.popFrame()
 	if decl.Filename != "" {
@@ -1521,7 +1522,8 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 // the caller scope; the fresh scope below identifies where the method body is
 // defined and is used for spans created from within that body.
 func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
-	scope := rt.newScope()
+	scope := rt.acquireScope()
+	defer rt.releaseScope(scope)
 	rt.pushFrame(scope)
 	defer rt.popFrame()
 	if decl.Filename != "" {
