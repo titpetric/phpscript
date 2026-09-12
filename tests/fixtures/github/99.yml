@@ -1,0 +1,42 @@
+name: basename takes the suffix argument and answers the empty and root paths like PHP
+description: >
+  basename() should accept PHP's optional second argument, a suffix to strip
+  when the name ends with it, keeping a name that is only the suffix and
+  matching case-sensitively. Without a suffix it should answer "" for ""
+  and for "/". Reported transcript on d4fc71f, both engines: any call with
+  a second argument stops with "basename() expects at most 1 argument, 2
+  given"; basename("") is "." and basename("/") is "/", which is Go
+  path.Base, not PHP.
+
+  Open: issue 99.
+---
+<?php
+
+// Works today: basename() and then substr() to drop the suffix.
+$base = basename("/srv/issues/088-wizard.yml");
+echo substr($base, 0, strlen($base) - 4), "\n";
+
+// What fails: the second argument, the suffix to strip.
+echo basename("/srv/issues/088-wizard.yml", ".yml"), "\n";
+echo basename("report.csv", ".csv"), "\n";
+echo basename(".yml", ".yml"), "\n";
+echo basename("a/b.YML", ".yml"), "\n";
+echo basename("a/b.yml/", ".yml"), "\n";
+
+// Without a suffix, PHP and Go path.Base differ on the first two.
+var_dump(basename(""));
+var_dump(basename("/"));
+var_dump(basename("a/b/"));
+var_dump(basename("."));
+?>
+---
+088-wizard
+088-wizard
+report
+.yml
+b.YML
+b
+string(0) ""
+string(0) ""
+string(1) "b"
+string(1) "."
