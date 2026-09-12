@@ -496,33 +496,18 @@ func phpArith(op string, a, b any) any {
 		}
 	}
 	// Integer arithmetic that overflows becomes float in PHP, so
-	// PHP_INT_MAX + 1 is 9.2233720368548E+18, not a wrapped negative.
+	// PHP_INT_MAX + 1 is 9.2233720368548E+18, not a wrapped negative. The
+	// rules live in phpval so the flat VM's integer opcodes share them.
 	x, y := toInt(a), toInt(b)
 	switch op {
 	case "+":
-		if z, ok := addInt(x, y); ok {
-			return z
-		}
-		return float64(x) + float64(y)
+		return phpval.AddInt(x, y)
 	case "-":
-		if z, ok := subInt(x, y); ok {
-			return z
-		}
-		return float64(x) - float64(y)
+		return phpval.SubInt(x, y)
 	case "*":
-		if z, ok := mulInt(x, y); ok {
-			return z
-		}
-		return float64(x) * float64(y)
+		return phpval.MulInt(x, y)
 	case "/":
-		if y == 0 {
-			return int64(0)
-		}
-		// Integer division that does not divide evenly is float in PHP.
-		if x%y != 0 {
-			return float64(x) / float64(y)
-		}
-		return x / y
+		return phpval.DivInt(x, y)
 	default:
 		return int64(0)
 	}
@@ -628,32 +613,6 @@ func phpBitNot(v any) any {
 	return ^toInt(v)
 }
 
-// addInt, subInt and mulInt perform int64 arithmetic, reporting false on
-// overflow so phpArith can fall back to float the way PHP does.
-func addInt(x, y int64) (int64, bool) {
-	z := x + y
-	if (y > 0 && z < x) || (y < 0 && z > x) {
-		return 0, false
-	}
-	return z, true
-}
-
-func subInt(x, y int64) (int64, bool) {
-	z := x - y
-	if (y < 0 && z < x) || (y > 0 && z > x) {
-		return 0, false
-	}
-	return z, true
-}
-
-func mulInt(x, y int64) (int64, bool) {
-	z := x * y
-	if x != 0 && (z/x != y || (x == -1 && y == math.MinInt64)) {
-		return 0, false
-	}
-	return z, true
-}
-
 // phpPow implements `**`. Two int operands with a non-negative exponent stay
 // int (2 ** 10 is int 1024) unless the result overflows; a float operand or a
 // negative exponent makes the result float, as in PHP.
@@ -668,14 +627,14 @@ func phpPow(a, b any) any {
 	result, sq := int64(1), base
 	for e := exp; e > 0; e >>= 1 {
 		if e&1 == 1 {
-			r, ok := mulInt(result, sq)
+			r, ok := phpval.OverflowMulInt(result, sq)
 			if !ok {
 				return math.Pow(float64(base), float64(exp))
 			}
 			result = r
 		}
 		if e > 1 {
-			s, ok := mulInt(sq, sq)
+			s, ok := phpval.OverflowMulInt(sq, sq)
 			if !ok {
 				return math.Pow(float64(base), float64(exp))
 			}

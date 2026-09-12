@@ -73,6 +73,66 @@ type instruction struct {
 	extra  string
 }
 
+// Binary operator classes, resolved at compile time into opBinary's b field,
+// the way runner/expr captures the operator when it compiles a closure. The
+// VM inlines the both-int64 (and both-string, for concat) cases through the
+// phpval helpers phpArith itself uses; every other operand shape falls
+// through to host.Binary with the operator name, so semantics have one home.
+// binNone is zero so an unclassified emit keeps its host dispatch.
+const (
+	binNone = iota
+	binAdd
+	binSub
+	binMul
+	binDiv
+	binMod
+	binLt
+	binLe
+	binGt
+	binGe
+	binEq
+	binNe
+	binIdent
+	binNotIdent
+	binConcat
+)
+
+// binOpClass classifies an operator spelling, binNone when the VM has no
+// inline case for it.
+func binOpClass(op string) int {
+	switch op {
+	case "+":
+		return binAdd
+	case "-":
+		return binSub
+	case "*":
+		return binMul
+	case "/":
+		return binDiv
+	case "%":
+		return binMod
+	case "<":
+		return binLt
+	case "<=":
+		return binLe
+	case ">":
+		return binGt
+	case ">=":
+		return binGe
+	case "==":
+		return binEq
+	case "!=":
+		return binNe
+	case "===":
+		return binIdent
+	case "!==":
+		return binNotIdent
+	case ".":
+		return binConcat
+	}
+	return binNone
+}
+
 type userFuncDef struct {
 	entryPC int
 	// paramSlots holds one slot per declared parameter, in order, resolved at

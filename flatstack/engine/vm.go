@@ -666,6 +666,16 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if popErr != nil {
 				return popErr
 			}
+			// The compiler resolved the operator to a class; the both-int64
+			// and both-string shapes are computed inline through the same
+			// phpval rules phpArith reads, and every other operand shape
+			// falls through to the host with the operator name.
+			if inst.b != binNone {
+				if value, ok := fastBinary(inst.b, left, right); ok {
+					st.stack = append(st.stack, value)
+					break
+				}
+			}
 			value, binaryErr := host.Binary(inst.name, left, right)
 			if binaryErr != nil {
 				if st.handle(binaryErr) {
@@ -1141,6 +1151,54 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 		}
 		return result, nil
 	}
+}
+
+// fastBinary computes a classified binary operator when both operands are
+// int64, or both strings under concat. Any other shape reports false and the
+// caller dispatches to the host, so numeric strings, floats, arrays and the
+// coercion table keep their one home in the host's phpArith/phpCompare.
+func fastBinary(class int, left, right any) (any, bool) {
+	if class == binConcat {
+		if l, ok := left.(string); ok {
+			if r, ok := right.(string); ok {
+				return l + r, true
+			}
+		}
+		return nil, false
+	}
+	x, ok := left.(int64)
+	if !ok {
+		return nil, false
+	}
+	y, ok := right.(int64)
+	if !ok {
+		return nil, false
+	}
+	switch class {
+	case binAdd:
+		return phpval.AddInt(x, y), true
+	case binSub:
+		return phpval.SubInt(x, y), true
+	case binMul:
+		return phpval.MulInt(x, y), true
+	case binDiv:
+		return phpval.DivInt(x, y), true
+	case binMod:
+		return phpval.ModInt(x, y), true
+	case binLt:
+		return x < y, true
+	case binLe:
+		return x <= y, true
+	case binGt:
+		return x > y, true
+	case binGe:
+		return x >= y, true
+	case binEq, binIdent:
+		return x == y, true
+	case binNe, binNotIdent:
+		return x != y, true
+	}
+	return nil, false
 }
 
 // applyNamedValues writes host-visible variables back into their slots. A slot
