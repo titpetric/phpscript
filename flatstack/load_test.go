@@ -505,23 +505,84 @@ try { $host = new PanicHost; } catch (Exception $e) { echo "caught: " . $e; }
 	}
 }
 
+// TestFlatstackPrecompiledAllocationBudget fails when a precompiled program's
+// per-run allocations regress past the measured budget plus one of headroom.
+// The budgets were measured after the frame-handle host bridge and the pooled
+// exec state landed; a regression here is a pooling or bridge leak, not noise,
+// because AllocsPerRun is exact.
 func TestFlatstackPrecompiledAllocationBudget(t *testing.T) {
-	program, err := parser.Parse(`<?php $left = "flat"; $right = "stack"; echo $left . $right; ?>`)
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		name   string
+		source string
+		budget float64
+	}{
+		{
+			// Measured 3: the hoist's class map, the result box of the concat,
+			// and the echo's write path.
+			name:   "concat",
+			source: `<?php $left = "flat"; $right = "stack"; echo $left . $right; ?>`,
+			budget: 4,
+		},
+		{
+			// The ExprHeavy shape: arithmetic, ternary, concat and a strlen
+			// host call per iteration. Measured 195 for 100 iterations; the
+			// per-call scope maps this test exists to keep out would add ~250.
+			name: "expression loop with host calls",
+			source: `<?php
+$total = 0;
+$tag = "";
+for ($i = 0; $i < 100; $i++) {
+	$total = ($total + $i * 3) % 97;
+	$tag = $total > 48 ? "hi" : "lo";
+	if ($tag === "hi") {
+		$total = $total + strlen($tag . $i);
 	}
-	runtime := flatstack.New(io.Discard, flatstack.Options{})
-	if err := runtime.Run(program); err != nil {
-		t.Fatal(err)
+}
+echo $total, " ", $tag;
+`,
+			budget: 200,
+		},
+		{
+			// Measured 87 for 50 calls: the frame slab pool holds the
+			// per-call locals/initialized pair at zero.
+			name: "user function loop",
+			source: `<?php
+function twice($x) {
+	return $x * 2 + 1;
+}
+$sum = 0;
+for ($i = 0; $i < 50; $i++) {
+	$sum = $sum + twice($i);
+}
+echo $sum;
+`,
+			budget: 92,
+		},
 	}
-	allocations := testing.AllocsPerRun(500, func() {
-		if err := runtime.Run(program); err != nil {
-			panic(err)
-		}
-	})
-	t.Logf("precompiled concat allocations/run = %.2f", allocations)
-	if allocations > 4 {
-		t.Skipf("precompiled concat allocations/run = %.2f, want <= 4", allocations)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			program, err := parser.Parse(test.source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := flatstack.Supports(program); err != nil {
+				t.Fatalf("budget program must run native: %v", err)
+			}
+			runtime := flatstack.New(io.Discard, flatstack.Options{})
+			stdlib.Register(runtime)
+			if err := runtime.Run(program); err != nil {
+				t.Fatal(err)
+			}
+			allocations := testing.AllocsPerRun(500, func() {
+				if err := runtime.Run(program); err != nil {
+					panic(err)
+				}
+			})
+			t.Logf("%s allocations/run = %.2f", test.name, allocations)
+			if allocations > test.budget {
+				t.Fatalf("%s allocations/run = %.2f, want <= %.0f", test.name, allocations, test.budget)
+			}
+		})
 	}
 }
 

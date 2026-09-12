@@ -212,6 +212,24 @@ Flat bytecode uses the runner's existing host bridge, including:
 - Go constructor and method error propagation
 - Exported Go struct field access
 
+The VM binds a frame handle (`engine.FrameLocals`) to the host once per run
+instead of copying its locals into a map around every call. The host decides
+when a callee needs the scope: a function-table hit whose signature does not
+take a `context.Context` is invoked with no scope at all, which is the
+interpreter's own contract for the same binding; context bindings, scope
+builtins such as `func_get_args`, and the undefined-function path materialise
+a scope from `Snapshot` before the callee body runs and write it back after.
+That snapshot-before-call ordering is what the by-reference marks rely on and
+is pinned by the engine's `vm_ref_test`.
+
+The compiler also resolves binary operators into an opcode class, and the VM
+computes the both-`int64` shapes (and both-string concat) inline through the
+same `internal/phpval` rules `phpArith` reads. Every other operand shape
+dispatches to the host with the operator name, so coercion has one home. Slot
+type inference beyond this was measured and rejected: values live in `[]any`,
+where the type assertion is the unboxing, so an opcode that knows its operand
+slots are monomorphic int saves nothing over the dynamic guard.
+
 Panics raised by registered Go constructors, functions, or methods become
 `HostPanicError` at the reflection boundary. Native bytecode `try`/`catch` can
 catch these errors exactly like a returned Go error:
@@ -300,13 +318,19 @@ The highest-value next steps are:
 3. Nested `class` declarations at runtime (PHP semantics).
 4. Complete exception `finally` semantics on `return`/`throw` and remaining lvalue/cast forms.
 5. Add instruction, call-depth, and deadline budgets to native execution.
-6. Pool operand/local/iterator storage to reduce per-run allocations.
-7. Cache native-rejection decisions and use a structural cache key where
+6. Cache native-rejection decisions and use a structural cache key where
    callers need to reparse identical source frequently.
-8. Let `annotations.Route` and CLI/server entry points select a runtime factory so
+7. Let `annotations.Route` and CLI/server entry points select a runtime factory so
    they can opt into flatstack instead of always constructing `runner.New`.
-9. Track native-versus-fallback execution in diagnostics so production users
+8. Track native-versus-fallback execution in diagnostics so production users
    can measure bytecode coverage without calling `Supports` separately.
+
+Operand, local, iterator, handler and call-frame storage is pooled on the
+run's exec state, user-function frames reuse stashed slabs, and the host
+locals copy is gone (the frame handle above), so the per-run allocation floor
+is three and a host call in a loop adds nothing beyond the callee's own work.
+`TestFlatstackPrecompiledAllocationBudget` fails, not skips, when any of that
+regresses.
 
 Flatstack is therefore interchangeable as an embedding API and for observable
 fixture behavior, but it is not yet a standalone replacement for runner's
