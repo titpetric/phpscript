@@ -45,7 +45,7 @@ type Runtime struct {
 	status     telemetry.State
 	entrypoint string
 	observers  []Observer
-	funcs      map[string]any
+	funcs      map[string]*funcEntry
 	userFns    map[string]struct{}
 	// funcSites records where each user function was declared, so a second
 	// declaration can name the first one the way PHP's fatal error does.
@@ -82,7 +82,7 @@ type Runtime struct {
 	// is the bridge for "bring your own type": a constructor like
 	// func(ctx context.Context) (Storage, error) makes `$s = new Storage;`
 	// behave like `s, err := NewStorage(ctx)` (the error surfaces as a throw).
-	constructors map[string]any
+	constructors map[string]*funcEntry
 	autoloaders  []any
 	includePath  string
 
@@ -303,13 +303,13 @@ func New(w io.Writer, opts Options) *Runtime {
 		Env:          ScriptEnvironment(opts.Env),
 		opts:         opts,
 		includeCache: NewIncludeCache(),
-		funcs:        map[string]any{},
+		funcs:        map[string]*funcEntry{},
 		userFns:      map[string]struct{}{},
 		funcSites:    map[string]FuncSite{},
 		hoisted:      map[*model.Program]bool{},
 		workDirBase:  opts.WorkDir,
 		classes:      map[string]*model.Class{},
-		constructors: map[string]any{},
+		constructors: map[string]*funcEntry{},
 		includePath:  ".",
 		ctx:          context.Background(),
 		globals:      map[string]any{},
@@ -743,13 +743,15 @@ func (rt *Runtime) UpdateIncludedFiles(count int) {
 //	rt.RegisterConstructor("Storage", func(ctx context.Context) (Storage, error) { ... }).
 //	// PHP:  $storage = new Storage;   // == storage, err := NewStorage(ctx).
 func (rt *Runtime) RegisterConstructor(name string, ctor any) {
-	rt.constructors[name] = ctor
+	rt.constructors[name] = &funcEntry{fn: ctor}
 }
 
 // LookupConstructor returns the host constructor registered for name.
 func (rt *Runtime) LookupConstructor(name string) (any, bool) {
-	fn, ok := rt.constructors[name]
-	return fn, ok
+	if entry, ok := rt.constructors[name]; ok {
+		return entry.fn, true
+	}
+	return nil, false
 }
 
 // SetCoverage installs a statement-coverage collector; nil turns collection
@@ -875,16 +877,20 @@ func (rt *Runtime) Const(name string) (any, bool) {
 // { return len(s) }) makes `strlen($x)` work in script expressions.
 func (rt *Runtime) RegisterFunc(name string, fn any) {
 	// Nothing is invalidated: evaluation environments resolve the table per
-	// call (see installFunc), and the direct compiler reads no type env.
-	rt.funcs[name] = fn
+	// call (see installFunc), the direct compiler reads no type env, and the
+	// entry's invoker is built on first dispatch, so a re-registration is a
+	// fresh entry with a fresh invoker.
+	rt.funcs[name] = &funcEntry{fn: fn}
 }
 
 // LookupFunc returns the host function registered for name. Introspection
 // tooling uses it to reflect over a binding's Go signature; a PHP user-defined
 // function resolves too, as whatever callable the runtime stored for it.
 func (rt *Runtime) LookupFunc(name string) (any, bool) {
-	fn, ok := rt.funcs[name]
-	return fn, ok
+	if entry, ok := rt.funcs[name]; ok {
+		return entry.fn, true
+	}
+	return nil, false
 }
 
 func (rt *Runtime) registerUserFunc(name string, fn any) {
@@ -1053,7 +1059,7 @@ func (rt *Runtime) lookupClass(name string) (*model.Class, bool) {
 	return nil, false
 }
 
-func (rt *Runtime) lookupConstructor(name string) (any, bool) {
+func (rt *Runtime) lookupConstructor(name string) (*funcEntry, bool) {
 	if ctor, ok := rt.constructors[name]; ok {
 		return ctor, true
 	}
@@ -1323,11 +1329,11 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	// live for the runtime's lifetime instead of being rebuilt on every
 	// registration.
 	st.env[name] = func(args ...any) (any, error) {
-		fn, ok := rt.lookupFunc(name)
+		entry, ok := rt.lookupEntry(name)
 		if !ok {
 			return nil, fmt.Errorf("call to undefined function %s()", name)
 		}
-		result, err := rt.invokeWithScopeContext(fn, args, ref.scope)
+		result, err := rt.invokeEntry(entry, args, ref.scope)
 		return result, nameCallError(err, name)
 	}
 }
@@ -1426,13 +1432,13 @@ func flattenConcat(e model.Expr, out []model.Expr) []model.Expr {
 func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ...any) (any, error) {
 	return func(name, fallback string, args ...any) (any, error) {
 		scope := ref.scope
-		if fn, ok := rt.lookupFunc(name); ok {
-			result, err := rt.invokeWithScopeContext(fn, args, scope)
+		if entry, ok := rt.lookupEntry(name); ok {
+			result, err := rt.invokeEntry(entry, args, scope)
 			return result, nameCallError(err, name)
 		}
 		if fallback != "" {
-			if fn, ok := rt.lookupFunc(fallback); ok {
-				result, err := rt.invokeWithScopeContext(fn, args, scope)
+			if entry, ok := rt.lookupEntry(fallback); ok {
+				result, err := rt.invokeEntry(entry, args, scope)
 				return result, nameCallError(err, fallback)
 			}
 			// Frame-aware builtins live in the evaluation environment rather
@@ -1473,12 +1479,21 @@ func funcGetArgs(scope *Scope) []any {
 }
 
 func (rt *Runtime) lookupFunc(name string) (any, bool) {
-	if fn, ok := rt.funcs[name]; ok {
-		return fn, true
+	if entry, ok := rt.lookupEntry(name); ok {
+		return entry.fn, true
 	}
-	for functionName, fn := range rt.funcs {
+	return nil, false
+}
+
+// lookupEntry resolves a function-table entry: exact name, then the
+// case-insensitive scan PHP's function names require.
+func (rt *Runtime) lookupEntry(name string) (*funcEntry, bool) {
+	if entry, ok := rt.funcs[name]; ok {
+		return entry, true
+	}
+	for functionName, entry := range rt.funcs {
 		if strings.EqualFold(functionName, name) {
-			return fn, true
+			return entry, true
 		}
 	}
 	return nil, false
