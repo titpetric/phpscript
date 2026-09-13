@@ -365,12 +365,12 @@ func (h flatHost) Entries(value any) []flatvm.Entry {
 // no Scope and no write-back are built for it. That is the interpreter's own
 // contract: installFunc calls the same bindings with no per-call scope.
 func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
-	if fn, ok := h.runtime.lookupFunc(fnName); ok {
-		return h.callResolved(fn, fnName, args)
+	if entry, ok := h.runtime.lookupEntry(fnName); ok {
+		return h.callResolved(entry, fnName, args)
 	}
 	if fallback != "" {
-		if fn, ok := h.runtime.lookupFunc(fallback); ok {
-			return h.callResolved(fn, fallback, args)
+		if entry, ok := h.runtime.lookupEntry(fallback); ok {
+			return h.callResolved(entry, fallback, args)
 		}
 	}
 	// Frame-aware builtins (func_get_args) and the undefined-function error
@@ -381,17 +381,17 @@ func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
 	return result, err
 }
 
-// callResolved invokes a function-table hit: lean when the signature does not
-// want a context, through a materialised scope when it does. The panic
-// boundary, the argument-count check and the memory burst guard all sit in
-// invokeWithScopeContext either way.
-func (h *flatHost) callResolved(fn any, name string, args []any) (any, error) {
-	if !wantsContext(reflect.TypeOf(fn)) {
-		result, err := h.runtime.invokeWithScopeContext(fn, args, nil)
+// callResolved invokes a function-table hit: lean when the entry's invoker
+// does not want a context, through a materialised scope when it does. The
+// panic boundary, the argument-count check and the memory burst guard all
+// sit in invokeEntry either way.
+func (h *flatHost) callResolved(entry *funcEntry, name string, args []any) (any, error) {
+	if !entry.invoker().wantsCtx {
+		result, err := h.runtime.invokeEntry(entry, args, nil)
 		return result, nameCallError(err, name)
 	}
 	scope := h.boundScope()
-	result, err := h.runtime.invokeWithScopeContext(fn, args, scope)
+	result, err := h.runtime.invokeEntry(entry, args, scope)
 	h.pullScope(scope)
 	return result, nameCallError(err, name)
 }
