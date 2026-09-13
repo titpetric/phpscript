@@ -131,11 +131,7 @@ func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, err
 // shared array per request, which interpreted and bytecode frames alike read
 // back through Lookup. Any other name stays with the storing frame.
 func (h flatHost) SetGlobal(name string, value any) bool {
-	if _, ok := phpSuperglobals[name]; !ok {
-		return false
-	}
-	h.runtime.globals[name] = value
-	return true
+	return h.runtime.auto.Set(name, value)
 }
 
 func (h flatHost) GetProperty(receiver any, name string) any {
@@ -168,6 +164,9 @@ func (h flatHost) Echo(value any) error {
 }
 
 func (h flatHost) Lookup(name string) any {
+	if value, ok := h.runtime.auto.Lookup(name); ok {
+		return value
+	}
 	if value, ok := h.runtime.globals[name]; ok {
 		return value
 	}
@@ -179,6 +178,9 @@ func (h flatHost) Lookup(name string) any {
 // the same expression, and an unset variable of that spelling stays null,
 // which is why this is not Lookup.
 func (h flatHost) Constant(name string) (any, error) {
+	if value, ok := h.runtime.auto.Lookup(name); ok {
+		return value, nil
+	}
 	if value, ok := h.runtime.globals[name]; ok {
 		return value, nil
 	}

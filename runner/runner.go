@@ -195,6 +195,9 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 	for name, val := range rt.globals {
 		scope.Set(name, val)
 	}
+	rt.auto.Range(func(name string, val any) {
+		scope.Set(name, val)
+	})
 	if rt.entrypoint != "" {
 		rt.setScopeFile(scope, rt.entrypoint)
 	}
@@ -1510,7 +1513,7 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 	if decl.Filename != "" {
 		rt.setScopeFile(scope, decl.Filename)
 	}
-	scope.Set(argsKey, args)
+	scope.args = args
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}
@@ -1530,7 +1533,7 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 		rt.setScopeFile(scope, decl.Filename)
 	}
 	scope.Set("this", obj)
-	scope.Set(argsKey, args)
+	scope.args = args
 	if obj.Class != nil {
 		scope.Set("__class__", obj.Class.Name)
 	}
@@ -1605,7 +1608,7 @@ func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) 
 	scope := rt.newScope()
 	rt.pushFrame(scope)
 	defer rt.popFrame()
-	scope.Set(argsKey, args)
+	scope.args = args
 	if env.filename != nil {
 		scope.Set("__FILE__", env.filename)
 	}
@@ -1684,10 +1687,6 @@ func combineErrors(errs ...error) error {
 		return errors.Join(nonNil...)
 	}
 }
-
-// argsKey is the scope slot holding the current call's positional arguments so
-// func_get_args() can return them.
-const argsKey = "__args__"
 
 // bindParams binds positional args to parameter names, applying defaults. A
 // variadic parameter collects every remaining argument into one array, an

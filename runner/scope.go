@@ -21,6 +21,12 @@ type Scope struct {
 	vars     map[string]any
 	deferred []any
 
+	// args holds the current call's positional arguments for
+	// func_get_args(). A typed field rather than a vars entry: storing the
+	// slice under a hidden name boxed it into an interface on every call,
+	// and the map write was a second cost on the same hot path.
+	args []any
+
 	// statics maps a name declared by a `static $x` statement in this frame to
 	// the persistent bag holding it (see Runtime.funcStatics). Reads and
 	// writes of a bound name go through the bag, which is what makes a later

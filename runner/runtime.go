@@ -21,20 +21,15 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// phpSuperglobals are visible in every scope without a `global` declaration.
-var phpSuperglobals = map[string]struct{}{
-	"_COOKIE": {}, "_ENV": {}, "_FILES": {}, "_GET": {},
-	"_POST": {}, "_REQUEST": {}, "_SERVER": {}, "_SESSION": {},
-}
-
 // setVar routes a whole-variable assignment. A superglobal is one binding per
 // request, visible in every scope, so writing the variable itself rebinds the
 // global — the way PHP lets a script replace $_POST wholesale — and clears any
 // scope-local shadow so reads keep resolving through the global. Every other
-// name belongs to the scope.
+// name belongs to the scope. The superglobal set lives in phpval.AutoGlobals,
+// whose claim check is a byte compare rather than a map probe: this runs on
+// every assignment.
 func (rt *Runtime) setVar(scope *Scope, name string, val any) {
-	if _, ok := phpSuperglobals[name]; ok {
-		rt.globals[name] = val
+	if rt.auto.Set(name, val) {
 		scope.Unset(name)
 		return
 	}
@@ -62,6 +57,18 @@ type Runtime struct {
 	// include re-declaring a function is a real PHP error and keeps being one.
 	hoisted map[*model.Program]bool
 	classes map[string]*model.Class
+
+	// auto holds the request superglobals in fixed fields; see
+	// phpval.AutoGlobals for why they are not globals map entries.
+	auto phpval.AutoGlobals
+
+	// sgScratch holds the superglobal containers this runtime rebuilds per
+	// request (_SERVER, _ENV, _REQUEST, _FILES, argv), reused across
+	// requests through model.Array.Reset so the buckets and slices a request
+	// grew serve the next one. Scripts alias arrays by reference, but every
+	// alias dies with its session; a Go binding that kept one across
+	// requests broke the borrowed-arguments contract already.
+	sgScratch map[string]*model.Array
 	// hostFlat is the runtime's bytecode host, created on the first flat run;
 	// see runFlat.
 	hostFlat *flatHost
@@ -411,6 +418,12 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	rt.preludeDone = false
 	clear(rt.classes)
 	clear(rt.globals)
+	rt.auto.Reset()
+	// The scratch containers stay for the next Register, emptied now so a
+	// reset session retains nothing of the last request's values.
+	for _, arr := range rt.sgScratch {
+		arr.Reset()
+	}
 	rt.shutdown = nil
 	rt.autoloaders = nil
 	clear(rt.classConsts)
@@ -564,6 +577,9 @@ func (rt *Runtime) MemoryWalk() int64 {
 	for _, val := range rt.globals {
 		total += DeepSize(val, visited)
 	}
+	rt.auto.Range(func(_ string, val any) {
+		total += DeepSize(val, visited)
+	})
 	for _, bag := range rt.classStatics {
 		for name, val := range bag {
 			total += 16 + int64(len(name)) + DeepSize(val, visited)
@@ -621,6 +637,21 @@ func (rt *Runtime) newScope() *Scope {
 	return NewScope()
 }
 
+// scratchArray returns the reusable container registered under name,
+// emptied and ready to refill.
+func (rt *Runtime) scratchArray(name string) *model.Array {
+	if arr, ok := rt.sgScratch[name]; ok {
+		arr.Reset()
+		return arr
+	}
+	if rt.sgScratch == nil {
+		rt.sgScratch = map[string]*model.Array{}
+	}
+	arr := model.NewArray()
+	rt.sgScratch[name] = arr
+	return arr
+}
+
 // acquireScope returns a cleared scope from the free list, or a fresh one.
 // Pair with releaseScope at a call boundary whose scope cannot outlive the
 // call: expression evaluation inside the body holds it only through
@@ -647,6 +678,7 @@ func (rt *Runtime) releaseScope(scope *Scope) {
 	clear(scope.vars)
 	clear(scope.deferred[:cap(scope.deferred)])
 	scope.deferred = scope.deferred[:0]
+	scope.args = nil
 	scope.statics = nil
 	rt.scopeFree = append(rt.scopeFree, scope)
 }
@@ -809,6 +841,9 @@ func (rt *Runtime) IncludedFiles() []string { return append([]string(nil), rt.in
 // injecting request data (the README's $_SERVER gray area) or, in tests, an
 // input value.
 func (rt *Runtime) SetGlobal(name string, val any) {
+	if rt.auto.Set(name, val) {
+		return
+	}
 	rt.globals[name] = val
 }
 
@@ -1140,8 +1175,8 @@ func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if c, ok := rt.constants[name]; ok {
 		return c, nil
 	}
-	if _, ok := phpSuperglobals[name]; ok {
-		return rt.globals[name], nil
+	if v, ok := rt.auto.Lookup(name); ok {
+		return v, nil
 	}
 	if strings.HasPrefix(ident, constIdentPrefix) {
 		return nil, &UndefinedConstantError{Name: name}
@@ -1434,12 +1469,7 @@ func scopeBuiltin(name string, scope *Scope) (any, bool) {
 
 // funcGetArgs returns the arguments of the frame scope belongs to.
 func funcGetArgs(scope *Scope) []any {
-	if v, ok := scope.Get(argsKey); ok {
-		if args, ok := v.([]any); ok {
-			return args
-		}
-	}
-	return nil
+	return scope.args
 }
 
 func (rt *Runtime) lookupFunc(name string) (any, bool) {

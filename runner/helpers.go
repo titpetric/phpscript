@@ -508,8 +508,47 @@ func invokeFast(fn any, args []any) (any, error, bool) {
 		return f(phpString(argAt(args, 0)), tail...), nil, true
 	case func() *model.Array:
 		return f(), nil, true
+	// The evaluation environment's own helpers (__call, __get, __func and
+	// friends) cross this boundary on every expression that uses them, and a
+	// method call or property read in a loop paid the reflect pack per
+	// iteration. The arguments are engine-generated, so the shapes are exact.
+	case func(any, any, ...any) (any, error):
+		v, err := f(argAt(args, 0), argAt(args, 1), argsTail2(args)...)
+		return v, err, true
+	case func(any, string) any:
+		return f(argAt(args, 0), phpString(argAt(args, 1))), nil, true
+	case func(string, any) (any, error):
+		v, err := f(phpString(argAt(args, 0)), argAt(args, 1))
+		return v, err, true
+	case func(string, any, ...any) (any, error):
+		v, err := f(phpString(argAt(args, 0)), argAt(args, 1), argsTail2(args)...)
+		return v, err, true
+	case func(string, string, ...any) (any, error):
+		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)), argsTail2(args)...)
+		return v, err, true
+	case func(string, string) (any, error):
+		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)))
+		return v, err, true
+	case func(string, bool) (any, error):
+		flag, ok := argAt(args, 1).(bool)
+		if !ok {
+			break
+		}
+		v, err := f(phpString(argAt(args, 0)), flag)
+		return v, err, true
+	case func(string) func(any):
+		return f(phpString(argAt(args, 0))), nil, true
 	}
 	return nil, nil, false
+}
+
+// argsTail2 is the variadic remainder after two fixed parameters, aliased
+// the way argsTail aliases.
+func argsTail2(args []any) []any {
+	if len(args) > 2 {
+		return args[2:]
+	}
+	return nil
 }
 
 // argsTail is the variadic remainder after the first fixed parameter. The

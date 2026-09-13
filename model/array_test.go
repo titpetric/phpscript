@@ -784,3 +784,40 @@ func BenchmarkArrayRange50Legacy(b *testing.B) {
 		a.Range(func(any, any) bool { n++; return true })
 	}
 }
+
+// Reset empties the array but keeps its storage, so a reused container
+// (a per-request superglobal) refills without reallocating, and holds no
+// stale reference above its new length.
+func TestArrayResetKeepsStorage(t *testing.T) {
+	arr := NewArray()
+	arr.Set("host", "a")
+	arr.Set("path", "b")
+	arr.Reset()
+	if arr.Len() != 0 {
+		t.Fatalf("Len after Reset = %d, want 0", arr.Len())
+	}
+	if _, ok := arr.Get("host"); ok {
+		t.Fatal("reset array still answers for a cleared key")
+	}
+	// Refill and read back: same container, next request's shape.
+	arr.Set("host", "c")
+	if v, _ := arr.Get("host"); v != "c" {
+		t.Fatalf("refilled value = %v, want c", v)
+	}
+	if arr.Len() != 1 {
+		t.Fatalf("Len after refill = %d, want 1", arr.Len())
+	}
+
+	// List mode resets and reuses too, and the append index restarts.
+	list := NewArray()
+	list.Append("x")
+	list.Append("y")
+	list.Reset()
+	list.Append("z")
+	if v, _ := list.Get(int64(0)); v != "z" {
+		t.Fatalf("list[0] after reset+append = %v, want z", v)
+	}
+	if list.Len() != 1 {
+		t.Fatalf("list Len = %d, want 1", list.Len())
+	}
+}

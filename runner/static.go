@@ -227,7 +227,7 @@ func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args [
 	if decl.Filename != "" {
 		rt.setScopeFile(scope, decl.Filename)
 	}
-	scope.Set(argsKey, args)
+	scope.args = args
 	scope.Set("__class__", class.Name)
 	if len(rt.observers) > 0 {
 		traceScope := caller
