@@ -104,6 +104,28 @@ Three consequences differ from PHP, and are the price of having no hierarchy:
 `instanceof` compares the class name, and an interface name against the list the
 class declared. Nothing follows `extends` on a class.
 
+## Immutable variable types
+
+The first non-null value assigned to a variable declares its type; assigning
+another type later throws a catchable `RuntimeException`, and `phpscript lint` fails on the same line before the program runs. PHP retypes the
+variable silently, so this is a deliberate divergence, listed with its exact
+allowances (the number class, the `false` sentinel, null-first declaration,
+per-iteration `foreach` binding) in [README.md](README.md).
+
+The reasons are the reasons Go has types. A variable that is a string on one
+line and an int three lines later carries no claim a reader can lean on, and
+every consumer pays for the doubt: the engines dispatch on runtime type per
+operation, and a program whose variables hold still is the shape both the
+closure engine and the flat VM run best. The check is stateless - a
+variable's current value is its declared type, so the engines compare two
+type classes per store and keep no table - and its rules live in
+`internal/phpval`, read by both engines, so they cannot fork.
+
+The escape hatches are the ones the stdlib itself needs: `T|false` returns
+end their read loops by writing `false` over the typed variable, and
+`unset()` releases a name for redeclaration. What has no escape hatch is
+laundering: null over a typed variable throws rather than resetting it.
+
 ## Won't implement
 
 Separate from the "Not implemented" rows in the

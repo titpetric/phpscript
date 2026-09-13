@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -61,6 +62,14 @@ func Compile(ast *model.Program) (program *Program, err error) {
 			if err := c.stmt(stmt, fmt.Sprintf("stmt[%d]", i)); err != nil {
 				return nil, err
 			}
+		}
+	}
+	fuseProgram(&c.program)
+	c.program.nameSlots = c.locals
+	if len(c.program.userFuncs) > 0 {
+		c.program.userFuncsFold = make(map[string]userFuncDef, len(c.program.userFuncs))
+		for name, def := range c.program.userFuncs {
+			c.program.userFuncsFold[strings.ToLower(name)] = def
 		}
 	}
 	return &c.program, nil
@@ -275,16 +284,14 @@ func (c *compiler) classMethod(className string, node *model.FuncDecl, path stri
 		c.loops = enclosing
 		c.class = enclosingClass
 	}()
-	params := make([]string, 0, 1+len(node.Params))
-	params = append(params, "this")
-	_ = c.slot("this")
+	paramSlots := make([]int, 0, 1+len(node.Params))
+	paramSlots = append(paramSlots, c.slot("this"))
 	for i, param := range node.Params {
 		if param.Variadic {
 			// See funcDecl: a collecting parameter has no slot to compile to.
 			return unsupported(fmt.Sprintf("%s.param[%d]", path, i), "variadic parameter")
 		}
-		params = append(params, param.Name)
-		_ = c.slot(param.Name)
+		paramSlots = append(paramSlots, c.slot(param.Name))
 	}
 	if err := c.block(node.Body, path+".body"); err != nil {
 		return err
@@ -295,7 +302,7 @@ func (c *compiler) classMethod(className string, node *model.FuncDecl, path stri
 	if c.program.userFuncs == nil {
 		c.program.userFuncs = make(map[string]userFuncDef)
 	}
-	c.program.userFuncs[className+"::"+node.Name] = userFuncDef{entryPC: funcPC, params: params}
+	c.program.userFuncs[className+"::"+node.Name] = userFuncDef{entryPC: funcPC, paramSlots: paramSlots}
 	return nil
 }
 
@@ -439,13 +446,13 @@ func (c *compiler) funcDecl(node *model.FuncDecl, path string) error {
 	if c.program.userFuncs == nil {
 		c.program.userFuncs = make(map[string]userFuncDef)
 	}
-	params := make([]string, len(node.Params))
+	paramSlots := make([]int, len(node.Params))
 	for i, p := range node.Params {
-		params[i] = p.Name
+		paramSlots[i] = c.slot(p.Name)
 	}
 	c.program.userFuncs[node.Name] = userFuncDef{
-		entryPC: funcPC,
-		params:  params,
+		entryPC:    funcPC,
+		paramSlots: paramSlots,
 	}
 	return nil
 }
@@ -462,7 +469,7 @@ func (c *compiler) switchStmt(node *model.Switch, path string) error {
 		if err := c.expr(switchCase.Value, fmt.Sprintf("%s.case[%d].value", path, i)); err != nil {
 			return err
 		}
-		c.emit(instruction{op: opBinary, name: "=="})
+		c.emit(instruction{op: opBinary, b: binEq, name: "=="})
 		caseJumps[i] = c.emit(instruction{op: opJumpTrue, target: -1})
 	}
 	defaultJump := c.emit(instruction{op: opJump, target: -1})
@@ -692,7 +699,14 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 	switch target := target.(type) {
 	case *model.Var:
-		c.emit(instruction{op: opStore, a: c.slot(target.Name)})
+		// A foreach target declares per iteration the way the interpreter's
+		// bindTo does, so its store skips the type-reassignment check
+		// (inst.c); a list() element is an assignment and keeps it.
+		binding := 0
+		if kind == "foreach" {
+			binding = 1
+		}
+		c.emit(instruction{op: opStore, a: c.slot(target.Name), c: binding})
 	case *model.Index:
 		if target.Index == nil {
 			return unsupported(path, "append %s target", kind)
@@ -1042,7 +1056,7 @@ func (c *compiler) interp(node *model.Interp, path string) error {
 		if err := c.expr(node.Parts[0], path+".part[0]"); err != nil {
 			return err
 		}
-		c.emit(instruction{op: opBinary, name: "."})
+		c.emit(instruction{op: opBinary, b: binConcat, name: "."})
 	} else if err := c.expr(node.Parts[0], path+".part[0]"); err != nil {
 		return err
 	}
@@ -1050,7 +1064,7 @@ func (c *compiler) interp(node *model.Interp, path string) error {
 		if err := c.expr(part, fmt.Sprintf("%s.part[%d]", path, i+1)); err != nil {
 			return err
 		}
-		c.emit(instruction{op: opBinary, name: "."})
+		c.emit(instruction{op: opBinary, b: binConcat, name: "."})
 	}
 	return nil
 }
@@ -1085,7 +1099,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		} else if err := c.expr(node.Right, path+".right"); err != nil {
 			return err
 		}
-		c.emit(instruction{op: opBinary, name: node.Op})
+		c.emit(instruction{op: opBinary, b: binOpClass(node.Op), name: node.Op})
 	case ".", "+", "-", "*", "/", "%", "**", "==", "!=", "===", "!==", "<", "<=", ">", ">=",
 		"&", "|", "^", "<<", ">>":
 		if err := c.expr(node.Left, path+".left"); err != nil {
@@ -1094,7 +1108,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		if err := c.expr(node.Right, path+".right"); err != nil {
 			return err
 		}
-		c.emit(instruction{op: opBinary, name: node.Op})
+		c.emit(instruction{op: opBinary, b: binOpClass(node.Op), name: node.Op})
 	default:
 		return unsupported(path, "binary operator %q", node.Op)
 	}

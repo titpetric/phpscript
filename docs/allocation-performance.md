@@ -18,7 +18,12 @@ every binding in the tree.
 All numbers from `tests/bindings_test.go` on an Intel N150, Go 1.27. The
 "call" benchmarks drive the real reflection return path
 (`runner.invokeAny` -> `runner.firstReturn`), so the floor of 2 allocs is
-`reflect.Value.Call` itself.
+`reflect.Value.Call` itself. That floor applies only to signatures outside
+the `invokeFast` type switch (`runner/helpers.go`), which was widened to the
+shapes a runtime survey found the stdlib registers most - `func(string) any`,
+`func(string) bool`, `func(string) int64` and the trim/sprintf variadic
+families among them; a covered shape dispatches directly and pays no reflect
+allocations at all.
 
 Same five-element list, five representations:
 

@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/telemetry"
@@ -194,16 +195,35 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 	for name, val := range rt.globals {
 		scope.Set(name, val)
 	}
+	rt.auto.Range(func(name string, val any) {
+		scope.Set(name, val)
+	})
 	if rt.entrypoint != "" {
 		rt.setScopeFile(scope, rt.entrypoint)
 	}
 	// Hoist declarations so functions/classes are callable before their textual
 	// position (PHP semantics for top-level function/class definitions).
-	if err := rt.hoist(p, rt.entrypoint); err != nil {
+	if err := rt.hoistOnce(p, rt.entrypoint); err != nil {
 		return err
 	}
 	_, _, runErr := rt.exec(p.Stmts, scope)
 	return combineErrors(runErr, rt.runDeferred(scope, 0))
+}
+
+// hoistOnce hoists a top-level program the first time this runtime sees it
+// and is a no-op after. Re-running a compiled program on one runtime is the
+// embedding reuse pattern, not PHP's redeclaration, which a single program
+// cannot express at this seam; includes keep calling hoist directly, so a
+// file included twice still raises the error PHP raises.
+func (rt *Runtime) hoistOnce(p *model.Program, filename string) error {
+	if rt.hoisted[p] {
+		return nil
+	}
+	if err := rt.hoist(p, filename); err != nil {
+		return err
+	}
+	rt.hoisted[p] = true
+	return nil
 }
 
 // hoist registers all function and class declarations found at the given level.
@@ -480,14 +500,14 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	// enclosing variables.
 	iter := func(k, v any) bool {
 		if keyTarget != nil {
-			if err = rt.assignTo(keyTarget, k, scope); err != nil {
+			if err = rt.bindTo(keyTarget, k, scope); err != nil {
 				return false
 			}
 		}
 		if copyValue {
 			v = model.CopyValue(v)
 		}
-		if err = rt.assignTo(valTarget, v, scope); err != nil {
+		if err = rt.bindTo(valTarget, v, scope); err != nil {
 			return false
 		}
 		var fl flow
@@ -1088,6 +1108,9 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		if err != nil {
 			return err
 		}
+		if !phpval.ReassignAllowed(cur, next) {
+			return NewRuntimeException(phpval.ReassignMessage(tgt.Name, cur, next), 0)
+		}
 		rt.setVar(scope, tgt.Name, next)
 		return nil
 
@@ -1319,9 +1342,25 @@ func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 
 // assignTo writes an already-evaluated value into an lvalue (used by list()
 // destructuring). Only plain `=` semantics are needed here.
+// bindTo writes a loop binding. foreach's key and value targets declare per
+// iteration the way a Go range clause does, so the reassignment check does
+// not apply and a mixed-type array iterates; every other target shape writes
+// the way assignTo writes it.
+func (rt *Runtime) bindTo(target model.Expr, val any, scope *Scope) error {
+	if tgt, ok := model.UnwrapParenthesized(target).(*model.Var); ok {
+		rt.setVar(scope, tgt.Name, val)
+		return nil
+	}
+	return rt.assignTo(target, val, scope)
+}
+
 func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
+		cur, _ := scope.Get(tgt.Name)
+		if !phpval.ReassignAllowed(cur, val) {
+			return NewRuntimeException(phpval.ReassignMessage(tgt.Name, cur, val), 0)
+		}
 		rt.setVar(scope, tgt.Name, val)
 		return nil
 	case *model.PropAccess:
@@ -1467,13 +1506,14 @@ func applyAssignOp(op string, cur, rhs any) (any, error) {
 
 // invokeFunc runs a user-defined function in a fresh scope.
 func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
-	scope := rt.newScope()
+	scope := rt.acquireScope()
+	defer rt.releaseScope(scope)
 	rt.pushFrame(scope)
 	defer rt.popFrame()
 	if decl.Filename != "" {
 		rt.setScopeFile(scope, decl.Filename)
 	}
-	scope.Set(argsKey, args)
+	scope.args = args
 	if err := rt.bindParams(decl, args, scope); err != nil {
 		return nil, err
 	}
@@ -1485,14 +1525,15 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 // the caller scope; the fresh scope below identifies where the method body is
 // defined and is used for spans created from within that body.
 func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
-	scope := rt.newScope()
+	scope := rt.acquireScope()
+	defer rt.releaseScope(scope)
 	rt.pushFrame(scope)
 	defer rt.popFrame()
 	if decl.Filename != "" {
 		rt.setScopeFile(scope, decl.Filename)
 	}
 	scope.Set("this", obj)
-	scope.Set(argsKey, args)
+	scope.args = args
 	if obj.Class != nil {
 		scope.Set("__class__", obj.Class.Name)
 	}
@@ -1567,7 +1608,7 @@ func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) 
 	scope := rt.newScope()
 	rt.pushFrame(scope)
 	defer rt.popFrame()
-	scope.Set(argsKey, args)
+	scope.args = args
 	if env.filename != nil {
 		scope.Set("__FILE__", env.filename)
 	}
@@ -1646,10 +1687,6 @@ func combineErrors(errs ...error) error {
 		return errors.Join(nonNil...)
 	}
 }
-
-// argsKey is the scope slot holding the current call's positional arguments so
-// func_get_args() can return them.
-const argsKey = "__args__"
 
 // bindParams binds positional args to parameter names, applying defaults. A
 // variadic parameter collects every remaining argument into one array, an

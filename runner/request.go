@@ -624,16 +624,19 @@ func (c Context) Register(rt *Runtime) {
 	// whose methods receive the runtime lifecycle context.
 	rt.SetContext(context.WithValue(rt.Context(), requestContextKey{}, c))
 
-	// Superglobals as ordinary PHP arrays.
+	// Superglobals as ordinary PHP arrays. $_GET, $_POST and $_COOKIE alias
+	// the arrays the request parse built; the ones assembled here refill the
+	// runtime's per-name scratch container instead of allocating a new one
+	// each request.
 	rt.SetGlobal("_GET", superglobal(c.GetVars, c.Get))
 	rt.SetGlobal("_POST", superglobal(c.PostVars, c.Post))
 	rt.SetGlobal("_COOKIE", superglobal(c.CookieVars, c.Cookie))
-	rt.SetGlobal("_SERVER", c.serverArray())
-	rt.SetGlobal("_ENV", mapToArray(c.Env))
-	rt.SetGlobal("_REQUEST", c.requestArray())
-	rt.SetGlobal("_FILES", c.filesArray())
+	rt.SetGlobal("_SERVER", c.serverArrayInto(rt.scratchArray("_SERVER")))
+	rt.SetGlobal("_ENV", mapToArrayInto(rt.scratchArray("_ENV"), c.Env))
+	rt.SetGlobal("_REQUEST", c.requestArrayInto(rt.scratchArray("_REQUEST")))
+	rt.SetGlobal("_FILES", c.filesArrayInto(rt.scratchArray("_FILES")))
 
-	argvArr := model.NewArray()
+	argvArr := rt.scratchArray("argv")
 	for i, arg := range c.Argv {
 		argvArr.Set(int64(i), arg)
 	}
@@ -822,9 +825,9 @@ func uploadValue(file *UploadedFile, key string) any {
 // array shape, $_FILES["files"]["name"][0]; any other field takes the scalar
 // shape, $_FILES["file"]["name"], and keeps the last file sent under it, the
 // way a repeated form value assigns over the one before it.
-func (c Context) filesArray() *model.Array {
+func (c Context) filesArrayInto(arr *model.Array) *model.Array {
 	if len(c.Files) == 0 {
-		return model.NewArray()
+		return arr
 	}
 	fields := make([]string, 0, len(c.Files))
 	for field := range c.Files {
@@ -832,7 +835,6 @@ func (c Context) filesArray() *model.Array {
 	}
 	sort.Strings(fields)
 
-	arr := model.NewArraySize(len(fields))
 	for _, field := range fields {
 		files := c.Files[field]
 		if len(files) == 0 {
@@ -874,8 +876,8 @@ func uploadListArray(files []*UploadedFile) *model.Array {
 // because that is what all but two of PHP's server keys are; the two that are
 // not, REQUEST_TIME as an integer and REQUEST_TIME_FLOAT as a float, get their
 // type back here, so a script comparing either with === sees what PHP gives it.
-func (c Context) serverArray() *model.Array {
-	arr := mapToArray(c.Server)
+func (c Context) serverArrayInto(arr *model.Array) *model.Array {
+	mapToArrayInto(arr, c.Server)
 	if seconds, err := strconv.ParseInt(c.Server["REQUEST_TIME"], 10, 64); err == nil {
 		arr.Set("REQUEST_TIME", seconds)
 	}
@@ -894,8 +896,7 @@ func (c Context) serverArray() *model.Array {
 //
 // Every entry is a copy. $_REQUEST is its own array in PHP, so a write to it
 // must not reach $_GET, $_POST or $_COOKIE, nor theirs reach it.
-func (c Context) requestArray() *model.Array {
-	arr := model.NewArray()
+func (c Context) requestArrayInto(arr *model.Array) *model.Array {
 	for _, source := range []*model.Array{
 		superglobal(c.GetVars, c.Get),
 		superglobal(c.PostVars, c.Post),
@@ -927,7 +928,15 @@ func mapToArray(m map[string]string) *model.Array {
 	if len(m) == 0 {
 		return model.NewArray()
 	}
-	arr := model.NewArraySize(len(m))
+	return mapToArrayInto(model.NewArraySize(len(m)), m)
+}
+
+// mapToArrayInto is mapToArray filling a caller-owned container, which a
+// per-request superglobal reuses across requests.
+func mapToArrayInto(arr *model.Array, m map[string]string) *model.Array {
+	if len(m) == 0 {
+		return arr
+	}
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)

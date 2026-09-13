@@ -3,6 +3,7 @@ package engine
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -19,36 +20,260 @@ type scriptExit interface {
 	ScriptExit() int
 }
 
-type vmScratch struct {
+// execState is one frame stack's worth of VM state, pooled across runs. The
+// former vmScratch buffers, the error handlers, the call frames and the pc
+// live here so the run loop's helpers are methods instead of closures: a
+// closure capturing a loop variable by reference forces that variable onto
+// the heap on every Run, and there were five of them.
+type execState struct {
+	program *Program
+	host    Host
+
 	stack       []any
 	locals      []any
 	initialized []bool
-	deferred    []any
+	// extras holds variables a host call introduced under names the compiler
+	// never saw. It starts nil and is allocated on first write, so a program
+	// that never gains one pays nothing.
+	extras     map[string]any
+	refWrites  []bool
+	iterators  []*iteratorState
+	handlers   []errorHandler
+	callFrames []callFrame
+	deferred   []any
+	pc         int
+
+	// spareLocals/spareInits hold cleared frame arrays returned by popped
+	// user-function frames, so a call loop reuses two slabs instead of
+	// allocating them per call. Safe because nothing outlives the frame that
+	// borrowed them: an opRef setter is consumed within the host call it was
+	// pushed for, and closures copy their seeds at creation.
+	spareLocals [][]any
+	spareInits  [][]bool
+
+	// walker is created once per pooled state and closes over the state
+	// itself, so registering it with a MemoryHost allocates nothing after the
+	// state's first use.
+	walker func(yield func(any))
 }
 
-// release returns the scratch buffers to the pool with every slot zeroed.
+// frameSlots hands out a locals/initialized pair for a fresh user-function
+// frame, reusing a stashed slab when one fits.
+func (st *execState) frameSlots(n int) ([]any, []bool) {
+	if k := len(st.spareLocals) - 1; k >= 0 {
+		locals, init := st.spareLocals[k], st.spareInits[k]
+		st.spareLocals[k], st.spareInits[k] = nil, nil
+		st.spareLocals, st.spareInits = st.spareLocals[:k], st.spareInits[:k]
+		if cap(locals) >= n && cap(init) >= n {
+			return locals[:n], init[:n]
+		}
+	}
+	return make([]any, n), make([]bool, n)
+}
+
+// stashFrame clears a popped frame's arrays to capacity and keeps them for
+// the next call.
+func (st *execState) stashFrame(locals []any, init []bool) {
+	clear(locals[:cap(locals)])
+	clear(init[:cap(init)])
+	st.spareLocals = append(st.spareLocals, locals)
+	st.spareInits = append(st.spareInits, init)
+}
+
+// release returns the state to the pool with every slot zeroed.
 //
 // The clears run to capacity rather than to length. The pool holds these
 // buffers for the life of the process, so a value left above the high-water
 // mark of a later, smaller program stays reachable from the pool and is never
-// collected. stack is passed back in because append may have moved it.
-func (s *vmScratch) release(stack []any) {
-	s.stack = stack[:0]
-	clear(s.stack[:cap(s.stack)])
-	clear(s.locals[:cap(s.locals)])
-	clear(s.initialized[:cap(s.initialized)])
-	clear(s.deferred[:cap(s.deferred)])
-	s.deferred = s.deferred[:0]
-	scratchPool.Put(s)
+// collected.
+func (st *execState) release() {
+	st.program, st.host = nil, nil
+	st.stack = st.stack[:0]
+	clear(st.stack[:cap(st.stack)])
+	clear(st.locals[:cap(st.locals)])
+	clear(st.initialized[:cap(st.initialized)])
+	st.extras = nil
+	st.refWrites = nil
+	st.iterators = st.iterators[:0]
+	clear(st.iterators[:cap(st.iterators)])
+	st.handlers = st.handlers[:0]
+	clear(st.handlers[:cap(st.handlers)])
+	st.callFrames = st.callFrames[:0]
+	clear(st.callFrames[:cap(st.callFrames)])
+	clear(st.deferred[:cap(st.deferred)])
+	st.deferred = st.deferred[:0]
+	st.pc = 0
+	statePool.Put(st)
 }
 
-var scratchPool = sync.Pool{
+var statePool = sync.Pool{
 	New: func() any {
-		return &vmScratch{
+		st := &execState{
 			stack:    make([]any, 0, 32),
 			deferred: make([]any, 0, 8),
 		}
+		st.walker = func(yield func(any)) {
+			for _, value := range st.stack {
+				yield(value)
+			}
+			for i := range st.locals {
+				if st.initialized[i] {
+					yield(st.locals[i])
+				}
+			}
+			for _, frame := range st.callFrames {
+				for i := range frame.locals {
+					if frame.initialized[i] {
+						yield(frame.locals[i])
+					}
+				}
+				// A suspended frame's foreach still holds its listing, so
+				// the walk has to reach it or a recursive walk under-reports
+				// everything but the innermost loop.
+				yieldIterators(yield, frame.iterators)
+			}
+			yieldIterators(yield, st.iterators)
+		}
+		return st
 	},
+}
+
+func (st *execState) pop() (any, error) {
+	if len(st.stack) == 0 {
+		return nil, fmt.Errorf("operand stack underflow")
+	}
+	last := len(st.stack) - 1
+	value := st.stack[last]
+	st.stack[last] = nil
+	st.stack = st.stack[:last]
+	return value, nil
+}
+
+// args hands the callee the top count operands as a borrowed slice: the
+// values stay in the stack's backing array above the truncated top, valid
+// for the duration of the call, and the next push overwrites them. A binding
+// that keeps arguments copies them - the same contract the interpreter's
+// variadic tails alias under. The cap is pinched so a callee appending to
+// its variadic pack reallocates instead of writing into the stack.
+func (st *execState) args(count int) ([]any, error) {
+	if count < 0 || count > len(st.stack) {
+		return nil, fmt.Errorf("argument stack underflow")
+	}
+	start := len(st.stack) - count
+	values := st.stack[start:len(st.stack):len(st.stack)]
+	st.stack = st.stack[:start]
+	return values, nil
+}
+
+func (st *execState) unwindDeferred(mark int) error {
+	var errs []error
+	for len(st.deferred) > mark {
+		last := len(st.deferred) - 1
+		cb := st.deferred[last]
+		st.deferred[last] = nil
+		st.deferred = st.deferred[:last]
+		if cb != nil {
+			if callErr := st.host.InvokeCallable(cb); callErr != nil {
+				errs = append(errs, callErr)
+			}
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
+}
+
+func (st *execState) handle(runErr error) bool {
+	if runErr == nil || len(st.handlers) == 0 {
+		return false
+	}
+	// exit() and die() are not catchable in PHP: a script that ends
+	// inside a try ends there. They unwind as an error here only because
+	// that is how the VM gets back to the top, so a handler declines
+	// them rather than binding them to a catch variable.
+	var exiting scriptExit
+	if errors.As(runErr, &exiting) {
+		return false
+	}
+	last := len(st.handlers) - 1
+	handler := st.handlers[last]
+	st.handlers = st.handlers[:last]
+	if handler.stackDepth < len(st.stack) {
+		clear(st.stack[handler.stackDepth:])
+		st.stack = st.stack[:handler.stackDepth]
+	}
+	for len(st.callFrames) > handler.frameDepth {
+		frame := st.callFrames[len(st.callFrames)-1]
+		_ = st.unwindDeferred(frame.deferMark)
+		st.callFrames = st.callFrames[:len(st.callFrames)-1]
+		st.stashFrame(st.locals, st.initialized)
+		st.locals = frame.locals
+		st.initialized = frame.initialized
+		st.extras = frame.extras
+		st.refWrites = frame.refWrites
+		st.iterators = frame.iterators
+	}
+	// A catch clause binds the throwable itself, not whatever forwarded
+	// it, and the host matches the declared type against the same value.
+	for errors.Unwrap(runErr) != nil {
+		runErr = errors.Unwrap(runErr)
+	}
+	var clauses []catchClause
+	if handler.group >= 0 {
+		clauses = st.program.catchGroups[handler.group]
+	}
+	for _, clause := range clauses {
+		if !st.host.MatchCatch(clause.declaredType, runErr) {
+			continue
+		}
+		if clause.local >= 0 && clause.local < len(st.locals) {
+			st.locals[clause.local], st.initialized[clause.local] = st.host.CatchValue(runErr), true
+		}
+		// A throw out of the clause body is this try's to see through
+		// its finally block, but not to catch: PHP does not re-enter a
+		// sibling clause. group -1 is a handler with no clauses, armed
+		// over the clause bodies and dropped by the jump that leaves
+		// them for the finally block.
+		st.handlers = append(st.handlers, errorHandler{
+			target:     handler.target,
+			group:      -1,
+			pending:    handler.pending,
+			start:      clause.target,
+			end:        handler.target - 1,
+			stackDepth: handler.stackDepth,
+			frameDepth: handler.frameDepth,
+		})
+		st.pc = clause.target
+		return true
+	}
+	// No clause declared a type that matches. The error keeps
+	// propagating, but this try's finally block still has to run first,
+	// so park it and let opRethrow pick it up on the other side.
+	if handler.pending < 0 || handler.pending >= len(st.locals) {
+		return false
+	}
+	st.locals[handler.pending], st.initialized[handler.pending] = runErr, true
+	st.pc = handler.target
+	return true
+}
+
+// iterator returns the live foreach state numbered n, or nil.
+func (st *execState) iterator(n int) *iteratorState {
+	if n < len(st.iterators) {
+		return st.iterators[n]
+	}
+	return nil
+}
+
+// setIterator grows the slice to hold iterator n. The compiler numbers
+// iterators per function from zero, so the slice stays as small as the
+// deepest loop nest.
+func (st *execState) setIterator(n int, it *iteratorState) {
+	for len(st.iterators) <= n {
+		st.iterators = append(st.iterators, nil)
+	}
+	st.iterators[n] = it
 }
 
 type iteratorState struct {
@@ -63,8 +288,11 @@ type iteratorState struct {
 
 // yieldIterators hands a live-value walker everything one frame's foreach state
 // is holding: the container being walked and every entry taken off it.
-func yieldIterators(yield func(any), iterators map[int]*iteratorState) {
+func yieldIterators(yield func(any), iterators []*iteratorState) {
 	for _, iterator := range iterators {
+		if iterator == nil {
+			continue
+		}
 		yield(iterator.source)
 		for _, entry := range iterator.entries {
 			yield(entry.Key)
@@ -96,10 +324,10 @@ type callFrame struct {
 
 	// iterators is the caller's live foreach state. The compiler numbers
 	// iterators per function, so a callee reuses the numbers its caller is
-	// standing in, and a recursive call reuses them exactly. Saving the map
+	// standing in, and a recursive call reuses them exactly. Saving the slice
 	// here and handing the callee an empty one is what keeps a foreach that
 	// calls a function from being closed by the call it made.
-	iterators map[int]*iteratorState
+	iterators []*iteratorState
 
 	// deferMark is the caller's boundary in scratch.deferred; opReturn unwinds
 	// the registrations above it, LIFO, before control leaves the frame.
@@ -130,11 +358,58 @@ type localSeed struct {
 	value any
 }
 
-// hostLocals is the optional Host capability that exposes the script's
-// variables to a binding for the duration of a call.
-type hostLocals interface {
-	BindLocals(map[string]any)
-	TakeLocals() map[string]any
+// FrameLocals is the engine's view of the frame in flight, bound to the host
+// once per run instead of copied around every call. Snapshot materialises the
+// frame's variables only when a callee actually needs them, and WriteBack
+// applies the mutations such a call made. The snapshot-before-call ordering
+// the old map handshake had is preserved because the host decides both
+// moments: it snapshots before the binding body runs and writes back after.
+type FrameLocals interface {
+	Snapshot() map[string]any
+	WriteBack(vars map[string]any)
+}
+
+// hostFrame is the optional Host capability that receives the frame handle.
+type hostFrame interface {
+	BindFrame(FrameLocals)
+	TakeFrame() FrameLocals
+}
+
+// reassignHost turns a type-reassignment violation into the host's exception
+// type, so `catch (RuntimeException $e)` selects it the way it selects the
+// interpreter's. A host without the capability gets a plain error.
+type reassignHost interface {
+	ReassignError(msg string) error
+}
+
+func reassignError(host Host, msg string) error {
+	if h, ok := host.(reassignHost); ok {
+		return h.ReassignError(msg)
+	}
+	return errors.New(msg)
+}
+
+// Snapshot builds the map bindHostLocals used to build per host call: every
+// initialised, non-hidden local, then the extras a host call introduced.
+func (st *execState) Snapshot() map[string]any {
+	vars := make(map[string]any, len(st.program.localNames)+len(st.extras))
+	for i, name := range st.program.localNames {
+		if st.initialized[i] && (len(name) == 0 || name[0] != 0) {
+			vars[name] = st.locals[i]
+		}
+	}
+	for name, value := range st.extras {
+		if _, ok := vars[name]; !ok {
+			vars[name] = value
+		}
+	}
+	return vars
+}
+
+// WriteBack writes host-visible variables into their slots, respecting the
+// by-reference marks the way the old applyHostLocals did.
+func (st *execState) WriteBack(vars map[string]any) {
+	st.extras = applyNamedValues(st.program, st.locals, st.initialized, st.extras, vars, st.refWrites)
 }
 
 // Run executes a previously validated flat instruction stream.
@@ -158,276 +433,139 @@ func Run(program *Program, host Host) error {
 // loop: the call arrives from a host binding (usort() invoking its comparator),
 // not from an instruction, so there is no loop to push onto.
 func run(program *Program, host Host, entryPC int, seeds []localSeed, result *any) (err error) {
-	pc := entryPC
-	scratch := scratchPool.Get().(*vmScratch)
-	stack := scratch.stack[:0]
+	st := statePool.Get().(*execState)
+	st.program, st.host = program, host
+	st.pc = entryPC
 	nlocal := len(program.localNames)
-	if cap(scratch.locals) < nlocal {
-		scratch.locals = make([]any, nlocal)
-		scratch.initialized = make([]bool, nlocal)
+	if cap(st.locals) < nlocal {
+		st.locals = make([]any, nlocal)
+		st.initialized = make([]bool, nlocal)
 	}
-	locals := scratch.locals[:nlocal]
-	initialized := scratch.initialized[:nlocal]
-	clear(locals)
-	clear(initialized)
+	st.locals = st.locals[:nlocal]
+	st.initialized = st.initialized[:nlocal]
+	clear(st.locals)
+	clear(st.initialized)
 	for _, seed := range seeds {
-		if seed.slot >= 0 && seed.slot < len(locals) {
-			locals[seed.slot], initialized[seed.slot] = seed.value, true
+		if seed.slot >= 0 && seed.slot < len(st.locals) {
+			st.locals[seed.slot], st.initialized[seed.slot] = seed.value, true
 		}
 	}
-	extras := map[string]any{}
-	// refWrites marks the local slots an opRef setter wrote during the host
-	// call in flight. bindHostLocals hands the host a snapshot of the locals
-	// taken before the call, and the host hands it back afterwards; writing a
-	// marked slot back from that snapshot would restore the value the output
-	// parameter just replaced. Allocated on the first opRef, so a program
-	// without by-reference calls pays nothing, and per frame, so a nested call
-	// cannot see the caller's marks.
-	var refWrites []bool
-	// iterators is the live foreach state of the frame in flight, allocated on
-	// the first opIterInit so a function that runs no foreach - which is most of
-	// them - pays nothing for the call that enters it.
-	var iterators map[int]*iteratorState
-	var handlers []errorHandler
-	var callFrames []callFrame
 
-	entryDeferMark := len(scratch.deferred)
-	unwindDeferred := func(mark int) error {
-		var errs []error
-		for len(scratch.deferred) > mark {
-			last := len(scratch.deferred) - 1
-			cb := scratch.deferred[last]
-			scratch.deferred[last] = nil
-			scratch.deferred = scratch.deferred[:last]
-			if cb != nil {
-				if callErr := host.InvokeCallable(cb); callErr != nil {
-					errs = append(errs, callErr)
-				}
-			}
-		}
-		if len(errs) > 0 {
-			return errors.Join(errs...)
-		}
-		return nil
-	}
-
+	entryDeferMark := len(st.deferred)
 	defer func() {
-		unwindErr := unwindDeferred(entryDeferMark)
-		scratch.release(stack)
+		unwindErr := st.unwindDeferred(entryDeferMark)
+		pcAt := st.pc
+		st.release()
 		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("flatstack: VM panic at pc %d: %v", pc, recovered)
+			err = fmt.Errorf("flatstack: VM panic at pc %d: %v", pcAt, recovered)
 		} else if err == nil && unwindErr != nil {
 			err = unwindErr
 		}
 	}()
 
-	pop := func() (any, error) {
-		if len(stack) == 0 {
-			return nil, fmt.Errorf("operand stack underflow")
-		}
-		last := len(stack) - 1
-		value := stack[last]
-		stack[last] = nil
-		stack = stack[:last]
-		return value, nil
-	}
-	args := func(count int) ([]any, error) {
-		if count < 0 || count > len(stack) {
-			return nil, fmt.Errorf("argument stack underflow")
-		}
-		start := len(stack) - count
-		values := append([]any(nil), stack[start:]...)
-		clear(stack[start:])
-		stack = stack[:start]
-		return values, nil
-	}
-	handle := func(runErr error) bool {
-		if runErr == nil || len(handlers) == 0 {
-			return false
-		}
-		// exit() and die() are not catchable in PHP: a script that ends
-		// inside a try ends there. They unwind as an error here only because
-		// that is how the VM gets back to the top, so a handler declines
-		// them rather than binding them to a catch variable.
-		var exiting scriptExit
-		if errors.As(runErr, &exiting) {
-			return false
-		}
-		last := len(handlers) - 1
-		handler := handlers[last]
-		handlers = handlers[:last]
-		if handler.stackDepth < len(stack) {
-			clear(stack[handler.stackDepth:])
-			stack = stack[:handler.stackDepth]
-		}
-		for len(callFrames) > handler.frameDepth {
-			frame := callFrames[len(callFrames)-1]
-			_ = unwindDeferred(frame.deferMark)
-			callFrames = callFrames[:len(callFrames)-1]
-			locals = frame.locals
-			initialized = frame.initialized
-			extras = frame.extras
-			refWrites = frame.refWrites
-			iterators = frame.iterators
-			if extras == nil {
-				extras = map[string]any{}
-			}
-		}
-		// A catch clause binds the throwable itself, not whatever forwarded
-		// it, and the host matches the declared type against the same value.
-		for errors.Unwrap(runErr) != nil {
-			runErr = errors.Unwrap(runErr)
-		}
-		var clauses []catchClause
-		if handler.group >= 0 {
-			clauses = program.catchGroups[handler.group]
-		}
-		for _, clause := range clauses {
-			if !host.MatchCatch(clause.declaredType, runErr) {
-				continue
-			}
-			if clause.local >= 0 && clause.local < len(locals) {
-				locals[clause.local], initialized[clause.local] = host.CatchValue(runErr), true
-			}
-			// A throw out of the clause body is this try's to see through
-			// its finally block, but not to catch: PHP does not re-enter a
-			// sibling clause. group -1 is a handler with no clauses, armed
-			// over the clause bodies and dropped by the jump that leaves
-			// them for the finally block.
-			handlers = append(handlers, errorHandler{
-				target:     handler.target,
-				group:      -1,
-				pending:    handler.pending,
-				start:      clause.target,
-				end:        handler.target - 1,
-				stackDepth: handler.stackDepth,
-				frameDepth: handler.frameDepth,
-			})
-			pc = clause.target
-			return true
-		}
-		// No clause declared a type that matches. The error keeps
-		// propagating, but this try's finally block still has to run first,
-		// so park it and let opRethrow pick it up on the other side.
-		if handler.pending < 0 || handler.pending >= len(locals) {
-			return false
-		}
-		locals[handler.pending], initialized[handler.pending] = runErr, true
-		pc = handler.target
-		return true
-	}
-
 	memHost, hasMemHost := host.(MemoryHost)
 	memInterval, memTick := 0, 0
 	if hasMemHost {
 		memInterval = memHost.MemoryCheckInterval()
-		// The walker closes over the loop variables themselves, so slice
-		// reassignment by append/opCall/opReturn stays visible to it.
-		memHost.PushLiveWalker(func(yield func(any)) {
-			for _, value := range stack {
-				yield(value)
-			}
-			for i := range locals {
-				if initialized[i] {
-					yield(locals[i])
-				}
-			}
-			for _, frame := range callFrames {
-				for i := range frame.locals {
-					if frame.initialized[i] {
-						yield(frame.locals[i])
-					}
-				}
-				// A suspended frame's foreach still holds its listing, so
-				// the walk has to reach it or a recursive walk under-reports
-				// everything but the innermost loop.
-				yieldIterators(yield, frame.iterators)
-			}
-			yieldIterators(yield, iterators)
-		})
+		// The pooled state carries its walker, created once in statePool.New,
+		// so registration allocates nothing after the state's first use.
+		memHost.PushLiveWalker(st.walker)
 		defer memHost.PopLiveWalker()
 	}
 
-	for pc < len(program.code) {
+	// The frame handle replaces the per-call locals copy: the host holds it
+	// for the whole run and snapshots only when a callee needs the scope. A
+	// nested run (a closure invoked from a binding) binds its own state here
+	// and puts the caller's back on the way out, which is what the old
+	// restoreHostLocals defer did.
+	if binder, ok := host.(hostFrame); ok {
+		prev := binder.TakeFrame()
+		binder.BindFrame(st)
+		defer binder.BindFrame(prev)
+	}
+
+	for st.pc < len(program.code) {
 		if memInterval > 0 {
 			if memTick++; memTick >= memInterval {
 				memTick = 0
 				if memErr := memHost.CheckMemory(); memErr != nil {
-					if handle(memErr) {
+					if st.handle(memErr) {
 						continue
 					}
 					return memErr
 				}
 			}
 		}
-		inst := program.code[pc]
+		inst := program.code[st.pc]
 		switch inst.op {
 		case opPushConst:
-			stack = append(stack, program.constants[inst.a])
+			st.stack = append(st.stack, program.constants[inst.a])
 		case opPop:
-			if _, err = pop(); err != nil {
+			if _, err = st.pop(); err != nil {
 				return err
 			}
 		case opDup:
-			if len(stack) == 0 {
-				return fmt.Errorf("flatstack: pc %d: duplicate stack underflow", pc)
+			if len(st.stack) == 0 {
+				return fmt.Errorf("flatstack: pc %d: duplicate st.stack underflow", st.pc)
 			}
-			stack = append(stack, stack[len(stack)-1])
+			st.stack = append(st.stack, st.stack[len(st.stack)-1])
 		case opLoad:
-			stack = append(stack, loadLocal(host, program, locals, initialized, extras, inst.a))
+			st.stack = append(st.stack, loadLocal(host, program, st.locals, st.initialized, st.extras, inst.a))
 		case opLoadConst:
 			name := program.localNames[inst.a]
 			// A scope value of the same name wins, which is how the magic
 			// constants set per frame answer before the constant table.
-			if initialized[inst.a] {
-				stack = append(stack, locals[inst.a])
+			if st.initialized[inst.a] {
+				st.stack = append(st.stack, st.locals[inst.a])
 				break
 			}
-			if extra, ok := extras[name]; ok {
-				stack = append(stack, extra)
+			if extra, ok := st.extras[name]; ok {
+				st.stack = append(st.stack, extra)
 				break
 			}
 			value, constErr := host.Constant(name)
 			if constErr != nil {
 				// Through handle, so a catch clause binds it the way it binds
 				// an error a binding returned.
-				if handle(constErr) {
+				if st.handle(constErr) {
 					continue
 				}
 				return constErr
 			}
-			stack = append(stack, value)
+			st.stack = append(st.stack, value)
 		case opClosure:
 			def := program.closures[inst.a]
 			captured := make([]localSeed, 0, len(def.captures)+1)
 			for _, slot := range def.captures {
 				captured = append(captured, localSeed{
 					slot:  slot,
-					value: loadLocal(host, program, locals, initialized, extras, slot),
+					value: loadLocal(host, program, st.locals, st.initialized, st.extras, slot),
 				})
 			}
 			// An unbound `$this` is left out rather than captured as null, so
 			// the closure body reads it the way any other unset local is read.
-			if def.thisSlot >= 0 && initialized[def.thisSlot] {
-				captured = append(captured, localSeed{slot: def.thisSlot, value: locals[def.thisSlot]})
+			if def.thisSlot >= 0 && st.initialized[def.thisSlot] {
+				captured = append(captured, localSeed{slot: def.thisSlot, value: st.locals[def.thisSlot]})
 			}
-			stack = append(stack, closureValue(program, host, def, captured))
+			st.stack = append(st.stack, closureValue(program, host, def, captured))
 		case opStore:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			if inst.name != "" && inst.name != "=" {
-				current := host.Lookup(program.localNames[inst.a])
-				if initialized[inst.a] {
-					current = locals[inst.a]
+				var current any
+				if st.initialized[inst.a] {
+					current = st.locals[inst.a]
+				} else {
+					current = host.Lookup(program.localNames[inst.a])
 				}
 				operator := inst.name[:len(inst.name)-1]
 				updated, binaryErr := host.Binary(operator, current, value)
 				if binaryErr != nil {
 					// A compound assignment can fail the same way the binary
 					// operator can ($x >>= -1), and it is as catchable.
-					if handle(binaryErr) {
+					if st.handle(binaryErr) {
 						continue
 					}
 					return binaryErr
@@ -437,87 +575,113 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if identifiable, ok := value.(interface{ SetID(string) }); ok && inst.extra != "" {
 				identifiable.SetID(inst.extra)
 			}
+			// Type immutability: the first non-null value declared the slot's
+			// type, and only frame-owned, non-hidden slots participate. The
+			// rule itself lives in phpval so both engines read one table.
+			// inst.c marks a loop-binding store, which declares rather than
+			// assigns and is exempt, matching the interpreter's bindTo. The
+			// message is built only on the throw path.
+			if inst.c == 0 && st.initialized[inst.a] && !phpval.ReassignAllowed(st.locals[inst.a], value) {
+				if name := program.localNames[inst.a]; len(name) > 0 && name[0] != 0 {
+					reassignErr := reassignError(host, phpval.ReassignMessage(name, st.locals[inst.a], value))
+					if st.handle(reassignErr) {
+						continue
+					}
+					return reassignErr
+				}
+			}
 			if host.SetGlobal(program.localNames[inst.a], value) {
 				// The host claimed the name — a superglobal — so the store is
 				// request state, not frame state.
-				initialized[inst.a] = false
+				st.initialized[inst.a] = false
 			} else {
-				locals[inst.a], initialized[inst.a] = value, true
+				st.locals[inst.a], st.initialized[inst.a] = value, true
 			}
 			if inst.b != 0 {
-				stack = append(stack, value)
+				st.stack = append(st.stack, value)
 			}
 		case opArray:
 			items := make([]model.ArrayItemValue, inst.a)
 			for i := inst.a - 1; i >= 0; i-- {
-				value, popErr := pop()
+				value, popErr := st.pop()
 				if popErr != nil {
 					return popErr
 				}
-				key, popErr := pop()
+				key, popErr := st.pop()
 				if popErr != nil {
 					return popErr
 				}
 				items[i] = model.ArrayItemValue{Key: key, Val: value}
 			}
-			stack = append(stack, host.Array(items))
+			st.stack = append(st.stack, host.Array(items))
 		case opIndex:
-			index, popErr := pop()
+			index, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			base, popErr := pop()
+			base, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			stack = append(stack, host.Index(base, index))
+			st.stack = append(st.stack, host.Index(base, index))
 		case opSetIndex:
 			var index any
 			var popErr error
 			if inst.b == 0 {
-				index, popErr = pop()
+				index, popErr = st.pop()
 				if popErr != nil {
 					return popErr
 				}
 			}
-			base, popErr := pop()
+			base, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			if err = host.SetIndex(base, index, value, inst.b != 0, inst.name); err != nil {
-				if handle(err) {
+				if st.handle(err) {
 					continue
 				}
 				return err
 			}
 			if inst.c != 0 {
-				stack = append(stack, value)
+				st.stack = append(st.stack, value)
 			}
 		case opIncDecLocal:
-			current := host.Lookup(program.localNames[inst.a])
-			if initialized[inst.a] {
-				current = locals[inst.a]
+			var current any
+			if st.initialized[inst.a] {
+				current = st.locals[inst.a]
+			} else {
+				current = host.Lookup(program.localNames[inst.a])
 			}
 			next := phpval.Increment(current)
 			if inst.name == "--" {
 				next = phpval.Decrement(current)
 			}
-			locals[inst.a], initialized[inst.a] = next, true
+			if st.initialized[inst.a] && !phpval.ReassignAllowed(current, next) {
+				if name := program.localNames[inst.a]; len(name) > 0 && name[0] != 0 {
+					reassignErr := reassignError(host, phpval.ReassignMessage(name, current, next))
+					if st.handle(reassignErr) {
+						continue
+					}
+					return reassignErr
+				}
+			}
+			st.locals[inst.a], st.initialized[inst.a] = next, true
 			if inst.b != 0 {
-				stack = append(stack, current)
+				st.stack = append(st.stack, current)
 			} else {
-				stack = append(stack, next)
+				st.stack = append(st.stack, next)
 			}
 		case opIncDecIndex:
-			index, popErr := pop()
+			index, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			base, popErr := pop()
+			base, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
@@ -527,334 +691,366 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				next = phpval.Decrement(current)
 			}
 			if err = host.SetIndex(base, index, next, false, "="); err != nil {
-				if handle(err) {
+				if st.handle(err) {
 					continue
 				}
 				return err
 			}
 			if inst.b != 0 {
-				stack = append(stack, current)
+				st.stack = append(st.stack, current)
 			} else {
-				stack = append(stack, next)
+				st.stack = append(st.stack, next)
 			}
-		case opBinary:
-			right, popErr := pop()
-			if popErr != nil {
-				return popErr
-			}
-			left, popErr := pop()
-			if popErr != nil {
-				return popErr
-			}
-			value, binaryErr := host.Binary(inst.name, left, right)
-			if binaryErr != nil {
-				if handle(binaryErr) {
-					continue
+		case opBinary, opBinLL, opBinLC, opBinTC:
+			// One body for the stack form and the fused register forms; only
+			// where the operands come from differs. See fuse.go.
+			var left, right any
+			switch inst.op {
+			case opBinLL:
+				left = loadLocal(host, program, st.locals, st.initialized, st.extras, inst.a)
+				right = loadLocal(host, program, st.locals, st.initialized, st.extras, inst.c)
+			case opBinLC:
+				left = loadLocal(host, program, st.locals, st.initialized, st.extras, inst.a)
+				right = program.constants[inst.c]
+			case opBinTC:
+				var popErr error
+				left, popErr = st.pop()
+				if popErr != nil {
+					return popErr
 				}
-				return binaryErr
+				right = program.constants[inst.c]
+			default:
+				var popErr error
+				right, popErr = st.pop()
+				if popErr != nil {
+					return popErr
+				}
+				left, popErr = st.pop()
+				if popErr != nil {
+					return popErr
+				}
 			}
-			stack = append(stack, value)
+			// The compiler resolved the operator to a class; the both-int64
+			// and both-string shapes are computed inline through the same
+			// phpval rules phpArith reads, and every other operand shape
+			// falls through to the host with the operator name.
+			value, ok := any(nil), false
+			if inst.b != binNone {
+				value, ok = fastBinary(inst.b, left, right)
+			}
+			if !ok {
+				var binaryErr error
+				value, binaryErr = host.Binary(inst.name, left, right)
+				if binaryErr != nil {
+					if st.handle(binaryErr) {
+						continue
+					}
+					return binaryErr
+				}
+			}
+			if inst.target == 0 {
+				st.stack = append(st.stack, value)
+				break
+			}
+			// Folded plain store: the same reassignment check and SetGlobal
+			// offer opStore makes for `$x = ...`.
+			dst := inst.target - 1
+			if st.initialized[dst] && !phpval.ReassignAllowed(st.locals[dst], value) {
+				if name := program.localNames[dst]; len(name) > 0 && name[0] != 0 {
+					reassignErr := reassignError(host, phpval.ReassignMessage(name, st.locals[dst], value))
+					if st.handle(reassignErr) {
+						continue
+					}
+					return reassignErr
+				}
+			}
+			if host.SetGlobal(program.localNames[dst], value) {
+				st.initialized[dst] = false
+			} else {
+				st.locals[dst], st.initialized[dst] = value, true
+			}
 		case opUnary:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			value, err = host.Unary(inst.name, value)
 			if err != nil {
-				if handle(err) {
+				if st.handle(err) {
 					continue
 				}
 				return err
 			}
-			stack = append(stack, value)
+			st.stack = append(st.stack, value)
 		case opCast:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			stack = append(stack, host.Cast(inst.name, value))
+			st.stack = append(st.stack, host.Cast(inst.name, value))
 		case opClassConst:
 			value, constErr := host.ClassConst(inst.name, inst.extra)
 			if constErr != nil {
-				if handle(constErr) {
+				if st.handle(constErr) {
 					continue
 				}
 				return constErr
 			}
-			stack = append(stack, value)
+			st.stack = append(st.stack, value)
 		case opDefineConst:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			host.SetConstant(inst.name, value)
 		case opTruthy:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			stack = append(stack, host.Truthy(value))
+			st.stack = append(st.stack, host.Truthy(value))
 		case opJump:
 			// A jump out of a try's pc range discards its handler; that is how
 			// leaving the region disarms the catch. The range only means
 			// anything in the frame that armed it: a callee's pcs lie outside
 			// the caller's try body, so a jump there - an if, a loop, the skip
-			// over an inline closure - must leave the caller's handlers alone.
-			for len(handlers) > 0 {
-				handler := handlers[len(handlers)-1]
-				if handler.frameDepth != len(callFrames) {
+			// over an inline closure - must leave the caller's st.handlers alone.
+			for len(st.handlers) > 0 {
+				handler := st.handlers[len(st.handlers)-1]
+				if handler.frameDepth != len(st.callFrames) {
 					break
 				}
 				if inst.target >= handler.start && inst.target <= handler.end {
 					break
 				}
-				handlers = handlers[:len(handlers)-1]
+				st.handlers = st.handlers[:len(st.handlers)-1]
 			}
-			pc = inst.target
+			st.pc = inst.target
 			continue
 		case opJumpFalse, opJumpTrue:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			truthy := host.Truthy(value)
 			if (inst.op == opJumpFalse && !truthy) || (inst.op == opJumpTrue && truthy) {
-				pc = inst.target
+				st.pc = inst.target
 				continue
 			}
 		case opRef:
 			// The setter writes the frame the call was made from; a user
-			// function called in between installs its own locals, and this one
+			// function called in between installs its own st.locals, and this one
 			// keeps pointing at the caller's.
-			if refWrites == nil {
-				refWrites = make([]bool, len(locals))
+			if st.refWrites == nil {
+				st.refWrites = make([]bool, len(st.locals))
 			}
-			frame, frameInitialized, frameRefWrites, slot := locals, initialized, refWrites, inst.a
-			stack = append(stack, func(value any) {
+			frame, frameInitialized, frameRefWrites, slot := st.locals, st.initialized, st.refWrites, inst.a
+			st.stack = append(st.stack, func(value any) {
 				frame[slot], frameInitialized[slot] = value, true
 				frameRefWrites[slot] = true
 			})
 		case opCall, opConstruct:
-			arguments, argErr := args(inst.a)
+			arguments, argErr := st.args(inst.a)
 			if argErr != nil {
 				return argErr
 			}
-			bindHostLocals(host, program, locals, initialized, extras)
 			var value any
 			if inst.op == opCall {
-				if def, ok := lookupUserFunc(program.userFuncs, inst.name); ok {
-					callFrames = append(callFrames, callFrame{
-						returnPC:    pc,
-						locals:      locals,
-						initialized: initialized,
-						extras:      extras,
-						refWrites:   refWrites,
-						iterators:   iterators,
-						deferMark:   len(scratch.deferred),
+				if def, ok := lookupUserFunc(program, inst.name); ok {
+					st.callFrames = append(st.callFrames, callFrame{
+						returnPC:    st.pc,
+						locals:      st.locals,
+						initialized: st.initialized,
+						extras:      st.extras,
+						refWrites:   st.refWrites,
+						iterators:   st.iterators,
+						deferMark:   len(st.deferred),
 					})
-					locals = make([]any, len(program.localNames))
-					initialized = make([]bool, len(program.localNames))
-					extras = map[string]any{}
-					refWrites = nil
-					iterators = nil
-					for i, paramName := range def.params {
+					st.locals, st.initialized = st.frameSlots(len(program.localNames))
+					st.extras = nil
+					st.refWrites = nil
+					st.iterators = nil
+					for i, slot := range def.paramSlots {
 						if i < len(arguments) {
-							slot := -1
-							for s, name := range program.localNames {
-								if name == paramName {
-									slot = s
-									break
-								}
-							}
-							if slot >= 0 {
-								locals[slot], initialized[slot] = arguments[i], true
-							}
+							st.locals[slot], st.initialized[slot] = arguments[i], true
 						}
 					}
-					pc = def.entryPC
+					st.pc = def.entryPC
 					continue
 				}
 				value, err = host.Call(inst.name, inst.extra, arguments)
-				applyHostLocals(host, program, locals, initialized, extras, refWrites)
 			} else {
 				value, err = host.Construct(inst.name, arguments)
-				applyHostLocals(host, program, locals, initialized, extras, refWrites)
 			}
-			clear(refWrites)
+			clear(st.refWrites)
 			if err != nil {
-				if handle(err) {
+				if st.handle(err) {
 					continue
 				}
 				return err
 			}
-			stack = append(stack, value)
+			st.stack = append(st.stack, value)
 		case opCallMethod:
-			arguments, argErr := args(inst.a)
+			arguments, argErr := st.args(inst.a)
 			if argErr != nil {
 				return argErr
 			}
-			bindHostLocals(host, program, locals, initialized, extras)
-			receiver, popErr := pop()
+			receiver, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
 				key := obj.Class.Name + "::" + inst.name
-				if def, ok := lookupUserFunc(program.userFuncs, key); ok {
-					callFrames = append(callFrames, callFrame{
-						returnPC:    pc,
-						locals:      locals,
-						initialized: initialized,
-						extras:      extras,
-						refWrites:   refWrites,
-						iterators:   iterators,
-						deferMark:   len(scratch.deferred),
+				if def, ok := lookupUserFunc(program, key); ok {
+					st.callFrames = append(st.callFrames, callFrame{
+						returnPC:    st.pc,
+						locals:      st.locals,
+						initialized: st.initialized,
+						extras:      st.extras,
+						refWrites:   st.refWrites,
+						iterators:   st.iterators,
+						deferMark:   len(st.deferred),
 					})
-					locals = make([]any, len(program.localNames))
-					initialized = make([]bool, len(program.localNames))
-					extras = map[string]any{}
-					refWrites = nil
-					iterators = nil
-					bound := append([]any{receiver}, arguments...)
-					for i, paramName := range def.params {
-						if i >= len(bound) {
-							break
-						}
-						for s, name := range program.localNames {
-							if name == paramName {
-								locals[s], initialized[s] = bound[i], true
-								break
-							}
+					st.locals, st.initialized = st.frameSlots(len(program.localNames))
+					st.extras = nil
+					st.refWrites = nil
+					st.iterators = nil
+					// paramSlots[0] is the receiver slot; arguments fill the rest,
+					// shifted by one, without materialising a combined slice.
+					for i, slot := range def.paramSlots {
+						switch {
+						case i == 0:
+							st.locals[slot], st.initialized[slot] = receiver, true
+						case i-1 < len(arguments):
+							st.locals[slot], st.initialized[slot] = arguments[i-1], true
 						}
 					}
-					pc = def.entryPC
+					st.pc = def.entryPC
 					continue
 				}
 			}
 			value, callErr := host.CallMethod(receiver, inst.name, arguments)
-			applyHostLocals(host, program, locals, initialized, extras, refWrites)
-			clear(refWrites)
+			clear(st.refWrites)
 			if callErr != nil {
-				if handle(callErr) {
+				if st.handle(callErr) {
 					continue
 				}
 				return callErr
 			}
-			stack = append(stack, value)
+			st.stack = append(st.stack, value)
 		case opGetProperty:
-			receiver, popErr := pop()
+			receiver, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			stack = append(stack, host.GetProperty(receiver, inst.name))
+			st.stack = append(st.stack, host.GetProperty(receiver, inst.name))
 		case opSetProperty:
-			receiver, popErr := pop()
+			receiver, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			if err = host.SetProperty(receiver, inst.name, value, inst.extra); err != nil {
-				if handle(err) {
+				if st.handle(err) {
 					continue
 				}
 				return err
 			}
 			if inst.b != 0 {
-				stack = append(stack, value)
+				st.stack = append(st.stack, value)
 			}
 		case opEcho:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			if err = host.Echo(value); err != nil {
-				if handle(err) {
+				if st.handle(err) {
 					continue
 				}
 				return err
 			}
 		case opIterInit:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			if iterators == nil {
-				iterators = make(map[int]*iteratorState)
-			}
-			iterators[inst.a] = &iteratorState{entries: host.Entries(value), source: value}
+			st.setIterator(inst.a, &iteratorState{entries: host.Entries(value), source: value})
 		case opIterNext:
-			iterator := iterators[inst.a]
+			iterator := st.iterator(inst.a)
 			if iterator == nil || iterator.index >= len(iterator.entries) {
-				pc = inst.target
+				st.pc = inst.target
 				continue
 			}
 			entry := iterator.entries[iterator.index]
 			iterator.index++
 			iterator.key = entry.Key
 			if inst.b >= 0 {
-				locals[inst.b], initialized[inst.b] = entry.Key, true
+				st.locals[inst.b], st.initialized[inst.b] = entry.Key, true
 			}
-			locals[inst.c], initialized[inst.c] = entry.Value, true
+			st.locals[inst.c], st.initialized[inst.c] = entry.Value, true
 		case opIterSet:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			iterator := iterators[inst.a]
+			iterator := st.iterator(inst.a)
 			if iterator == nil {
-				return fmt.Errorf("flatstack: pc %d: write-back to a closed iterator", pc)
+				return fmt.Errorf("flatstack: pc %d: write-back to a closed iterator", st.pc)
 			}
 			if err = host.SetEntry(iterator.source, iterator.key, value); err != nil {
-				if handle(err) {
+				if st.handle(err) {
 					continue
 				}
 				return err
 			}
 		case opUnsetLocal:
-			locals[inst.a], initialized[inst.a] = nil, false
+			st.locals[inst.a], st.initialized[inst.a] = nil, false
 		case opUnsetIndex:
-			index, popErr := pop()
+			index, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			base, popErr := pop()
+			base, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			if err = host.UnsetIndex(base, index); err != nil {
-				if handle(err) {
+				if st.handle(err) {
 					continue
 				}
 				return err
 			}
 		case opCopyValue:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			stack = append(stack, model.CopyValue(value))
+			st.stack = append(st.stack, model.CopyValue(value))
 		case opIterClose:
-			delete(iterators, inst.a)
+			if inst.a < len(st.iterators) {
+				st.iterators[inst.a] = nil
+			}
 		case opTryPush:
-			handlers = append(handlers, errorHandler{
+			st.handlers = append(st.handlers, errorHandler{
 				target:     inst.target,
 				group:      inst.a,
 				pending:    inst.c,
-				start:      pc + 1,
+				start:      st.pc + 1,
 				end:        inst.b,
-				stackDepth: len(stack),
-				frameDepth: len(callFrames),
+				stackDepth: len(st.stack),
+				frameDepth: len(st.callFrames),
 			})
 		case opTryPop:
-			if len(handlers) == 0 {
-				return fmt.Errorf("flatstack: pc %d: exception handler underflow", pc)
+			if len(st.handlers) == 0 {
+				return fmt.Errorf("flatstack: pc %d: exception handler underflow", st.pc)
 			}
-			handlers = handlers[:len(handlers)-1]
+			st.handlers = st.handlers[:len(st.handlers)-1]
 		case opThrow:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
@@ -862,7 +1058,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			// itself, so a catch clause binds the object rather than a
 			// rendering of it. A bare value still renders.
 			throwErr := host.Throw(value)
-			if handle(throwErr) {
+			if st.handle(throwErr) {
 				continue
 			}
 			return throwErr
@@ -870,45 +1066,43 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			// Sits after every finally block. It fires only for an error no
 			// catch clause of that try matched, which the handler parked here
 			// so the finally block could run on the way out.
-			if !initialized[inst.a] {
+			if !st.initialized[inst.a] {
 				break
 			}
-			pending, _ := locals[inst.a].(error)
-			locals[inst.a], initialized[inst.a] = nil, false
+			pending, _ := st.locals[inst.a].(error)
+			st.locals[inst.a], st.initialized[inst.a] = nil, false
 			if pending == nil {
 				break
 			}
-			if handle(pending) {
+			if st.handle(pending) {
 				continue
 			}
 			return pending
 		case opReturn:
-			retVal, popErr := pop()
+			retVal, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			if len(callFrames) > 0 {
-				lastFrame := callFrames[len(callFrames)-1]
-				if unwindErr := unwindDeferred(lastFrame.deferMark); unwindErr != nil {
-					if handle(unwindErr) {
+			if len(st.callFrames) > 0 {
+				lastFrame := st.callFrames[len(st.callFrames)-1]
+				if unwindErr := st.unwindDeferred(lastFrame.deferMark); unwindErr != nil {
+					if st.handle(unwindErr) {
 						continue
 					}
 					return unwindErr
 				}
-				callFrames = callFrames[:len(callFrames)-1]
-				pc = lastFrame.returnPC
-				locals = lastFrame.locals
-				initialized = lastFrame.initialized
-				extras = lastFrame.extras
-				refWrites = lastFrame.refWrites
-				iterators = lastFrame.iterators
-				if extras == nil {
-					extras = map[string]any{}
-				}
-				stack = append(stack, retVal)
+				st.callFrames = st.callFrames[:len(st.callFrames)-1]
+				st.pc = lastFrame.returnPC
+				st.stashFrame(st.locals, st.initialized)
+				st.locals = lastFrame.locals
+				st.initialized = lastFrame.initialized
+				st.extras = lastFrame.extras
+				st.refWrites = lastFrame.refWrites
+				st.iterators = lastFrame.iterators
+				st.stack = append(st.stack, retVal)
 			} else {
-				if unwindErr := unwindDeferred(entryDeferMark); unwindErr != nil {
-					if handle(unwindErr) {
+				if unwindErr := st.unwindDeferred(entryDeferMark); unwindErr != nil {
+					if st.handle(unwindErr) {
 						continue
 					}
 					return unwindErr
@@ -919,20 +1113,20 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				return nil
 			}
 		case opEnsureArray:
-			value, popErr := pop()
+			value, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
 				value = host.Array(nil)
 			}
-			stack = append(stack, value)
+			st.stack = append(st.stack, value)
 		case opVivifyIndex:
-			index, popErr := pop()
+			index, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			base, popErr := pop()
+			base, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
@@ -940,15 +1134,15 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
 				value = host.Array(nil)
 				if err = host.SetIndex(base, index, value, false, "="); err != nil {
-					if handle(err) {
+					if st.handle(err) {
 						continue
 					}
 					return err
 				}
 			}
-			stack = append(stack, value)
+			st.stack = append(st.stack, value)
 		case opVivifyProperty:
-			receiver, popErr := pop()
+			receiver, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
@@ -956,55 +1150,45 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if _, ok := value.(*model.Array); !ok && phpEmptyContainer(value) {
 				value = host.Array(nil)
 				if err = host.SetProperty(receiver, inst.name, value, "="); err != nil {
-					if handle(err) {
+					if st.handle(err) {
 						continue
 					}
 					return err
 				}
 			}
-			stack = append(stack, value)
+			st.stack = append(st.stack, value)
 		case opInclude:
-			pathValue, popErr := pop()
+			pathValue, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			vars := make(map[string]any, len(program.localNames)+len(extras))
-			for i, name := range program.localNames {
-				if initialized[i] && (len(name) == 0 || name[0] != 0) {
-					vars[name] = locals[i]
-				}
-			}
-			for name, value := range extras {
-				if _, ok := vars[name]; !ok {
-					vars[name] = value
-				}
-			}
+			vars := st.Snapshot()
 			includer, ok := host.(interface {
 				Include(path any, keyword string, once bool, vars map[string]any) (any, map[string]any, error)
 			})
 			if !ok {
-				return fmt.Errorf("flatstack: pc %d: host does not implement include", pc)
+				return fmt.Errorf("flatstack: pc %d: host does not implement include", st.pc)
 			}
 			value, exported, includeErr := includer.Include(pathValue, inst.name, inst.a != 0, vars)
 			if includeErr != nil {
-				if handle(includeErr) {
+				if st.handle(includeErr) {
 					continue
 				}
 				return includeErr
 			}
-			applyNamedValues(program, locals, initialized, extras, exported, refWrites)
-			stack = append(stack, value)
+			st.extras = applyNamedValues(program, st.locals, st.initialized, st.extras, exported, st.refWrites)
+			st.stack = append(st.stack, value)
 		case opDefer:
-			callable, popErr := pop()
+			callable, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
-			scratch.deferred = append(scratch.deferred, callable)
-			stack = append(stack, nil)
+			st.deferred = append(st.deferred, callable)
+			st.stack = append(st.stack, nil)
 		default:
-			return fmt.Errorf("flatstack: pc %d: invalid opcode %d", pc, inst.op)
+			return fmt.Errorf("flatstack: pc %d: invalid opcode %d", st.pc, inst.op)
 		}
-		pc++
+		st.pc++
 	}
 	return nil
 }
@@ -1043,12 +1227,9 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 			}
 			seeds = append(seeds, localSeed{slot: slot, value: value})
 		}
-		// The locals the host is holding belong to the call this closure was
-		// handed to: usort() had a snapshot taken before it invoked the
-		// comparator, and the VM writes that snapshot back when usort()
-		// returns. The body installs its own on every call it makes, so the
-		// caller's has to be put back on the way out.
-		defer restoreHostLocals(host)()
+		// run binds its own frame handle and puts the caller's back on the
+		// way out, so the snapshot usort() took before invoking this
+		// comparator stays the one usort()'s write-back sees.
 		var result any
 		if err := run(program, host, def.entryPC, seeds, &result); err != nil {
 			return nil, err
@@ -1057,79 +1238,93 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 	}
 }
 
-// restoreHostLocals captures the host's current variable binding and returns the
-// call that reinstates it.
-func restoreHostLocals(host Host) func() {
-	binder, ok := host.(hostLocals)
-	if !ok {
-		return func() {}
-	}
-	saved := binder.TakeLocals()
-	return func() { binder.BindLocals(saved) }
-}
-
-func bindHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any) {
-	binder, ok := host.(interface{ BindLocals(map[string]any) })
-	if !ok {
-		return
-	}
-	vars := make(map[string]any, len(program.localNames)+len(extras))
-	for i, name := range program.localNames {
-		if initialized[i] && (len(name) == 0 || name[0] != 0) {
-			vars[name] = locals[i]
+// fastBinary computes a classified binary operator when both operands are
+// int64, or both strings under concat. Any other shape reports false and the
+// caller dispatches to the host, so numeric strings, floats, arrays and the
+// coercion table keep their one home in the host's phpArith/phpCompare.
+func fastBinary(class int, left, right any) (any, bool) {
+	if class == binConcat {
+		if l, ok := left.(string); ok {
+			switch r := right.(type) {
+			case string:
+				return l + r, true
+			case int64:
+				// The one mixed shape hot loops build ($tag . $i);
+				// FormatInt is exactly phpString's int spelling.
+				return l + strconv.FormatInt(r, 10), true
+			}
+		} else if l, ok := left.(int64); ok {
+			if r, ok := right.(string); ok {
+				return strconv.FormatInt(l, 10) + r, true
+			}
 		}
+		return nil, false
 	}
-	for name, value := range extras {
-		if _, ok := vars[name]; !ok {
-			vars[name] = value
-		}
-	}
-	binder.BindLocals(vars)
-}
-
-func applyHostLocals(host Host, program *Program, locals []any, initialized []bool, extras map[string]any, refWrites []bool) {
-	taker, ok := host.(interface{ TakeLocals() map[string]any })
+	x, ok := left.(int64)
 	if !ok {
-		return
+		return nil, false
 	}
-	applyNamedValues(program, locals, initialized, extras, taker.TakeLocals(), refWrites)
+	y, ok := right.(int64)
+	if !ok {
+		return nil, false
+	}
+	switch class {
+	case binAdd:
+		return phpval.AddInt(x, y), true
+	case binSub:
+		return phpval.SubInt(x, y), true
+	case binMul:
+		return phpval.MulInt(x, y), true
+	case binDiv:
+		return phpval.DivInt(x, y), true
+	case binMod:
+		return phpval.ModInt(x, y), true
+	case binLt:
+		return x < y, true
+	case binLe:
+		return x <= y, true
+	case binGt:
+		return x > y, true
+	case binGe:
+		return x >= y, true
+	case binEq, binIdent:
+		return x == y, true
+	case binNe, binNotIdent:
+		return x != y, true
+	}
+	return nil, false
 }
 
 // applyNamedValues writes host-visible variables back into their slots. A slot
 // marked in refWrites keeps what the by-reference setter put there: names is a
-// snapshot from before the call, so it still carries the old value.
-func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any, refWrites []bool) {
-	if names == nil {
-		return
-	}
+// snapshot from before the call, so it still carries the old value. A name the
+// compiler never saw goes to extras, which is allocated here on first use and
+// handed back to the caller.
+func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any, refWrites []bool) map[string]any {
 	for name, value := range names {
 		if len(name) == 0 || name[0] == 0 {
 			continue
 		}
-		found := false
-		for i, localName := range program.localNames {
-			if localName == name {
-				if i >= len(refWrites) || !refWrites[i] {
-					locals[i], initialized[i] = value, true
-				}
-				found = true
-				break
+		if i, ok := program.nameSlots[name]; ok {
+			if i >= len(refWrites) || !refWrites[i] {
+				locals[i], initialized[i] = value, true
 			}
+			continue
 		}
-		if !found && extras != nil {
-			extras[name] = value
+		if extras == nil {
+			extras = make(map[string]any)
 		}
+		extras[name] = value
 	}
+	return extras
 }
 
-func lookupUserFunc(funcs map[string]userFuncDef, key string) (userFuncDef, bool) {
-	if def, ok := funcs[key]; ok {
+func lookupUserFunc(program *Program, key string) (userFuncDef, bool) {
+	if def, ok := program.userFuncs[key]; ok {
 		return def, true
 	}
-	for name, def := range funcs {
-		if strings.EqualFold(name, key) {
-			return def, true
-		}
+	if def, ok := program.userFuncsFold[strings.ToLower(key)]; ok {
+		return def, true
 	}
 	return userFuncDef{}, false
 }

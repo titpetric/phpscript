@@ -73,6 +73,21 @@ echo $total, " ", $tag;
 `, nil)
 }
 
+// BenchmarkEngineUserFunc measures the per-call cost of a PHP function frame:
+// push, parameter bind, body, return-value pop.
+func BenchmarkEngineUserFunc(b *testing.B) {
+	benchmarkEngines(b, `<?php
+function twice($x) {
+	return $x * 2 + 1;
+}
+$sum = 0;
+for ($i = 0; $i < 50; $i++) {
+	$sum = $sum + twice($i);
+}
+echo $sum;
+`, nil)
+}
+
 func BenchmarkEngineHostBridge(b *testing.B) {
 	benchmarkEngines(b, `<?php
 $storage = new Storage;

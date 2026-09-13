@@ -37,8 +37,7 @@ print_r(array_keys($row));
 $keys = array_keys($row);
 sort($keys);
 foreach ($keys as $key) {
-    $value = $row[$key];
-    echo $key, ": ", is_array($value) ? implode(",", $value) : var_export($value, true), "\n";
+    echo $key, ": ", is_array($row[$key]) ? implode(",", $row[$key]) : var_export($row[$key], true), "\n";
 }
 
 // The body held one value, so there is nothing left to read.

@@ -176,11 +176,12 @@ func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 
 func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...any) (any, error) {
 	return func(args ...any) (any, error) {
-		callScope := scope
-		if callScope == nil {
-			callScope = rt.newScope()
-		}
-		return rt.callGoMethod(base, method, args, callScope)
+		return rt.callGoMethod(base, method, args, func() *Scope {
+			if scope != nil {
+				return scope
+			}
+			return rt.newScope()
+		})
 	}
 }
 
@@ -463,8 +464,101 @@ func invokeFast(fn any, args []any) (any, error, bool) {
 		return f(args...), nil, true
 	case func(...any) bool:
 		return f(args...), nil, true
+	case func(string) any:
+		return f(phpString(argAt(args, 0))), nil, true
+	case func(string) bool:
+		return f(phpString(argAt(args, 0))), nil, true
+	case func(string) int64:
+		return f(phpString(argAt(args, 0))), nil, true
+	case func() int64:
+		return f(), nil, true
+	case func(string, string) bool:
+		return f(phpString(argAt(args, 0)), phpString(argAt(args, 1))), nil, true
+	case func(string, string) string:
+		return f(phpString(argAt(args, 0)), phpString(argAt(args, 1))), nil, true
+	case func(string, string) (bool, error):
+		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)))
+		return v, err, true
+	case func(any) int64:
+		return f(argAt(args, 0)), nil, true
+	case func(any) float64:
+		return f(argAt(args, 0)), nil, true
+	case func(any) (any, error):
+		v, err := f(argAt(args, 0))
+		return v, err, true
+	case func(any) (bool, error):
+		v, err := f(argAt(args, 0))
+		return v, err, true
+	case func(any, any) (bool, error):
+		v, err := f(argAt(args, 0), argAt(args, 1))
+		return v, err, true
+	case func(any, ...any) (any, error):
+		v, err := f(argAt(args, 0), argsTail(args)...)
+		return v, err, true
+	case func(any, ...any) *model.Array:
+		return f(argAt(args, 0), argsTail(args)...), nil, true
+	case func(string, ...any) string:
+		return f(phpString(argAt(args, 0)), argsTail(args)...), nil, true
+	case func(string, ...string) string:
+		rest := argsTail(args)
+		tail := make([]string, len(rest))
+		for i, v := range rest {
+			tail[i] = phpString(v)
+		}
+		return f(phpString(argAt(args, 0)), tail...), nil, true
+	case func() *model.Array:
+		return f(), nil, true
+	// The evaluation environment's own helpers (__call, __get, __func and
+	// friends) cross this boundary on every expression that uses them, and a
+	// method call or property read in a loop paid the reflect pack per
+	// iteration. The arguments are engine-generated, so the shapes are exact.
+	case func(any, any, ...any) (any, error):
+		v, err := f(argAt(args, 0), argAt(args, 1), argsTail2(args)...)
+		return v, err, true
+	case func(any, string) any:
+		return f(argAt(args, 0), phpString(argAt(args, 1))), nil, true
+	case func(string, any) (any, error):
+		v, err := f(phpString(argAt(args, 0)), argAt(args, 1))
+		return v, err, true
+	case func(string, any, ...any) (any, error):
+		v, err := f(phpString(argAt(args, 0)), argAt(args, 1), argsTail2(args)...)
+		return v, err, true
+	case func(string, string, ...any) (any, error):
+		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)), argsTail2(args)...)
+		return v, err, true
+	case func(string, string) (any, error):
+		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)))
+		return v, err, true
+	case func(string, bool) (any, error):
+		flag, ok := argAt(args, 1).(bool)
+		if !ok {
+			break
+		}
+		v, err := f(phpString(argAt(args, 0)), flag)
+		return v, err, true
+	case func(string) func(any):
+		return f(phpString(argAt(args, 0))), nil, true
 	}
 	return nil, nil, false
+}
+
+// argsTail2 is the variadic remainder after two fixed parameters, aliased
+// the way argsTail aliases.
+func argsTail2(args []any) []any {
+	if len(args) > 2 {
+		return args[2:]
+	}
+	return nil
+}
+
+// argsTail is the variadic remainder after the first fixed parameter. The
+// slice is aliased, not copied: args is built fresh for each call, so the
+// binding sees exactly what reflect.Value.Call would have handed it.
+func argsTail(args []any) []any {
+	if len(args) > 1 {
+		return args[1:]
+	}
+	return nil
 }
 
 // invokeAny calls fn (any Go callable) with args, coercing arguments to the
@@ -573,7 +667,7 @@ func (rt *Runtime) helperCall(ref *scopeRef) func(base any, methodValue any, arg
 				return rt.invokeMethod(obj, decl, args, scope)
 			}
 		}
-		return rt.callGoMethod(base, method, args, scope)
+		return rt.callGoMethod(base, method, args, func() *Scope { return scope })
 	}
 }
 
@@ -672,7 +766,61 @@ func (rt *Runtime) helperNew(ref *scopeRef) func(classValue any, args ...any) (a
 // so `$obj->get()` resolves Go's exported Get). When the method's first
 // parameter is a context.Context the runtime context is auto-injected, and
 // arguments are coerced to the declared parameter types.
-func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scope) (result any, err error) {
+// goMethodKey and goMethodInfo cache Go method resolution per receiver type
+// and spelled name; see Runtime.goMethods.
+type goMethodKey struct {
+	t    reflect.Type
+	name string
+}
+
+type goMethodInfo struct {
+	index    int
+	mtype    reflect.Type
+	wantsCtx bool
+	found    bool
+}
+
+// resolveGoMethod resolves the way callGoMethod always has: the exact name,
+// then case-insensitively, then without underscores so a snake_case PHP
+// spelling finds the idiomatic Go name (get_id -> GetID), the same ladder
+// methodByNameFold climbs. The bound signature and the context check are
+// computed here once, on the value, so the per-call path is one map hit and
+// an index.
+func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
+	t := rv.Type()
+	index := -1
+	if m, ok := t.MethodByName(name); ok {
+		index = m.Index
+	}
+	if index < 0 {
+		for i := 0; i < t.NumMethod(); i++ {
+			if strings.EqualFold(t.Method(i).Name, name) {
+				index = i
+				break
+			}
+		}
+	}
+	if index < 0 {
+		bare := strings.ReplaceAll(name, "_", "")
+		for i := 0; i < t.NumMethod(); i++ {
+			if strings.EqualFold(strings.ReplaceAll(t.Method(i).Name, "_", ""), bare) {
+				index = i
+				break
+			}
+		}
+	}
+	if index < 0 {
+		return goMethodInfo{}
+	}
+	mtype := rv.Method(index).Type()
+	return goMethodInfo{index: index, mtype: mtype, wantsCtx: wantsContext(mtype), found: true}
+}
+
+// callGoMethod invokes a Go method by reflection. scopeFor is consulted only
+// when the method's first parameter is a context, which is the one moment
+// the PHP frame has to be materialised; a caller with the scope in hand
+// passes a closure returning it, which never escapes and costs nothing.
+func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor func() *Scope) (result any, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil
@@ -686,11 +834,16 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 		return nil, fmt.Errorf("call %s on nil", method)
 	}
 	rv := reflect.ValueOf(base)
-	m := rv.MethodByName(method)
-	if !m.IsValid() {
-		m = methodByNameFold(rv, method)
+	key := goMethodKey{t: rv.Type(), name: method}
+	info, cached := rt.goMethods[key]
+	if !cached {
+		info = resolveGoMethod(rv, method)
+		if rt.goMethods == nil {
+			rt.goMethods = map[goMethodKey]goMethodInfo{}
+		}
+		rt.goMethods[key] = info
 	}
-	if !m.IsValid() {
+	if !info.found {
 		if value, ok := throwableMethod(base, method); ok {
 			return value, nil
 		}
@@ -699,15 +852,14 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scope *Scop
 		// author can look for in the source.
 		return nil, fmt.Errorf("call to undefined method %s::%s()", phpClassName(base), method)
 	}
-	mt := m.Type()
-	if wantsContext(mt) {
-		args = append([]any{contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope)}, args...)
+	if info.wantsCtx {
+		args = append([]any{contextWithScope(contextWithEnv(rt.ctx, rt.Env), scopeFor())}, args...)
 	}
-	in, err := buildArgs(mt, args, method)
+	in, err := buildArgs(info.mtype, args, method)
 	if err != nil {
 		return nil, err
 	}
-	out := m.Call(in)
+	out := rv.Method(info.index).Call(in)
 	return callResult(out)
 }
 

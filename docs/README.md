@@ -105,6 +105,30 @@ by the API bridge.
 
 ## Known divergences from PHP
 
+Variable types are immutable. The first non-null value assigned to a variable
+declares its type, and a later assignment of another type - by assignment,
+compound assignment or `++`/`--` on a numeric string - throws a catchable
+`RuntimeException` where PHP silently retypes the variable. `phpscript lint`
+reports the same line as a fatal finding. The classes are string, bool,
+number (int and float share one class, because PHP arithmetic widens int to
+float on overflow and uneven division), array and object, with three
+allowances:
+
+- `null` before the first real value declares nothing, so `$v = null;` ahead
+  of the real assignment stays the Go `var v any` it resembles. Writing
+  `null` over a typed variable is a violation; a variable is released with
+  `unset()`, not laundered through null.
+- `false` is the absence sentinel and writes over any type, because the
+  stdlib's own `T|false` return convention (`fgetcsv`, `readdir`, `strpos`)
+  ends every `while (($row = fgetcsv($r)) !== false)` loop by writing `false`
+  over an array. `true` is an honest bool and stays one.
+- A `foreach` target declares per iteration the way a Go range clause does,
+  so a mixed-type array iterates; `list()` elements are assignments and are
+  checked.
+
+The rule lives in `internal/phpval` and both engines read it; the fixtures
+under `tests/fixtures/types/` pin the behaviour on each.
+
 Arithmetic follows PHP semantics (int/float coercion, overflow to float,
 precision-14 float rendering), with the following exceptions:
 

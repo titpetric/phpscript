@@ -542,3 +542,86 @@ class Holder {
 		}
 	}
 }
+
+func TestLintTypeReassign(t *testing.T) {
+	tests := []struct {
+		name  string
+		src   string
+		want  []string
+		lines []int
+	}{
+		{
+			name:  "int over string warns",
+			src:   "<?php\n$a = \"text\";\n$a = 1;\n",
+			want:  []string{"no reassignment: $a previously declared as string"},
+			lines: []int{3},
+		},
+		{
+			name: "same type is clean",
+			src:  "<?php\n$a = \"x\";\n$a = \"y\";\n",
+		},
+		{
+			name: "computed values say nothing",
+			src:  "<?php\n$a = \"x\";\n$a = strlen($a);\n",
+		},
+		{
+			name: "null fixes no type",
+			src:  "<?php\n$a = null;\n$a = 1;\n$a = \"s\";\n",
+			want: []string{"no reassignment: $a previously declared as int"},
+		},
+		{
+			name: "function scope is fresh",
+			src:  "<?php\n$a = \"text\";\nfunction f() {\n\t$a = 1;\n}\n",
+		},
+		{
+			name:  "branches share the scope",
+			src:   "<?php\nif ($c) {\n\t$a = 1;\n} else {\n\t$a = \"s\";\n}\n",
+			want:  []string{"no reassignment: $a previously declared as int"},
+			lines: []int{5},
+		},
+		{
+			name:  "float over int in a method",
+			src:   "<?php\nclass C {\n\tfunction m() {\n\t\t$x = 1;\n\t\t$x = 1.5;\n\t}\n}\n",
+			want:  []string{"no reassignment: $x previously declared as int"},
+			lines: []int{5},
+		},
+		{
+			name: "negative numbers keep their class",
+			src:  "<?php\n$n = 1;\n$n = -5;\n",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			diags, err := lint.File("test.php", tc.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			var lines []int
+			for _, d := range diags {
+				if strings.Contains(d.Message, "no reassignment") {
+					// The runtime throws for the same write, so the finding
+					// fails the lint run rather than advising.
+					if !d.Fatal {
+						t.Errorf("finding %q is not fatal", d.Message)
+					}
+					got = append(got, d.Message)
+					lines = append(lines, d.Line)
+				}
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("findings = %v, want %v", got, tc.want)
+			}
+			for i := range tc.want {
+				if got[i] != tc.want[i] {
+					t.Errorf("finding[%d] = %q, want %q", i, got[i], tc.want[i])
+				}
+			}
+			for i := range tc.lines {
+				if lines[i] != tc.lines[i] {
+					t.Errorf("line[%d] = %d, want %d", i, lines[i], tc.lines[i])
+				}
+			}
+		})
+	}
+}

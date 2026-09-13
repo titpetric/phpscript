@@ -51,6 +51,7 @@ func File(name, src string) ([]Diagnostic, error) {
 	lintReferences(name, prog, &out)
 	lintUndefinedNames(name, prog, &out)
 	lintRedeclared(name, prog, &out)
+	lintTypeReassign(name, prog, &out)
 	return out, nil
 }
 

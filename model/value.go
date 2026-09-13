@@ -66,6 +66,20 @@ func NewArraySize(n int) *Array {
 	return &Array{list: make([]any, 0, n)}
 }
 
+// Reset empties the array while keeping its storage, so a per-request
+// container (a superglobal, argv) refills into the buckets and slices the
+// previous request grew instead of reallocating them. A reset map-mode array
+// stays in map mode with zero entries, which is observably the same as
+// fresh; the cleared slices hold no stale references.
+func (a *Array) Reset() {
+	clear(a.list)
+	a.list = a.list[:0]
+	clear(a.keys)
+	a.keys = a.keys[:0]
+	clear(a.values)
+	a.nextID = 0
+}
+
 // isList reports whether the array is still in list mode.
 func (a *Array) isList() bool { return a.values == nil }
 

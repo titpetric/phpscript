@@ -35,7 +35,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		}
 		rt.exprCache.setFlat(ast, program)
 	}
-	if err := rt.hoist(ast, rt.entrypoint); err != nil {
+	if err := rt.hoistOnce(ast, rt.entrypoint); err != nil {
 		// A redeclaration is a verdict on the program, like a violated
 		// interface contract above: the interpreter would reach it too, so
 		// falling back would only run the same hoist a second time, over a
@@ -47,20 +47,54 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		}
 		return false, nil
 	}
-	return true, flatvm.Run(program, &flatHost{runtime: rt})
+	if rt.hostFlat == nil {
+		// One host per runtime: the only per-run state it carries is the
+		// frame handle, which the VM binds and restores itself.
+		rt.hostFlat = &flatHost{runtime: rt}
+	}
+	return true, flatvm.Run(program, rt.hostFlat)
 }
 
 type flatHost struct {
 	runtime *Runtime
-	locals  map[string]any
+	// frame is the engine's handle on the frame in flight, bound once per
+	// run. It replaces the map copied in and out around every call: the host
+	// snapshots only when a callee actually needs the scope.
+	frame flatvm.FrameLocals
 }
 
-func (h flatHost) boundScope() *Scope {
+func (h *flatHost) BindFrame(frame flatvm.FrameLocals) { h.frame = frame }
+
+// ReassignError shapes a type-reassignment violation as the RuntimeException
+// the interpreter throws for the same write, so both engines' catch clauses
+// select it identically.
+func (h flatHost) ReassignError(msg string) error { return NewRuntimeException(msg, 0) }
+
+func (h *flatHost) TakeFrame() flatvm.FrameLocals { return h.frame }
+
+// boundScope materialises the running frame as an interpreter scope, for the
+// callees that read or write caller locals. The snapshot is taken here, before
+// the callee body runs, which is the ordering the by-reference marks rely on.
+func (h *flatHost) boundScope() *Scope {
 	scope := h.runtime.newScope()
-	for name, value := range h.locals {
-		scope.Set(name, value)
+	if h.frame != nil {
+		for name, value := range h.frame.Snapshot() {
+			scope.Set(name, value)
+		}
 	}
 	return scope
+}
+
+// pullScope writes a materialised scope's variables back into the frame. The
+// scope was built fresh for one call and is discarded after, so the magic
+// constants are deleted in place rather than filtered into another map.
+func (h *flatHost) pullScope(scope *Scope) {
+	if h.frame == nil {
+		return
+	}
+	delete(scope.vars, "__FILE__")
+	delete(scope.vars, "__DIR__")
+	h.frame.WriteBack(scope.vars)
 }
 
 func (h *flatHost) Construct(class string, args []any) (any, error) {
@@ -71,9 +105,25 @@ func (h *flatHost) Construct(class string, args []any) (any, error) {
 }
 
 func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
-	scope := h.boundScope()
-	result, err := h.runtime.helperCall(&scopeRef{scope: scope})(receiver, method, args...)
-	h.pullScope(scope)
+	// A method on a PHP-declared object dispatches through the interpreter
+	// and sees the frame. A Go receiver's method sees the frame only through
+	// a context parameter, so the scope is materialised inside callGoMethod's
+	// scopeFor and only for the methods that ask - which is none of the
+	// common data-access shapes.
+	if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
+		scope := h.boundScope()
+		result, err := h.runtime.helperCall(&scopeRef{scope: scope})(receiver, method, args...)
+		h.pullScope(scope)
+		return result, err
+	}
+	var scope *Scope
+	result, err := h.runtime.callGoMethod(receiver, method, args, func() *Scope {
+		scope = h.boundScope()
+		return scope
+	})
+	if scope != nil {
+		h.pullScope(scope)
+	}
 	return result, err
 }
 
@@ -81,11 +131,7 @@ func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, err
 // shared array per request, which interpreted and bytecode frames alike read
 // back through Lookup. Any other name stays with the storing frame.
 func (h flatHost) SetGlobal(name string, value any) bool {
-	if _, ok := phpSuperglobals[name]; !ok {
-		return false
-	}
-	h.runtime.globals[name] = value
-	return true
+	return h.runtime.auto.Set(name, value)
 }
 
 func (h flatHost) GetProperty(receiver any, name string) any {
@@ -118,6 +164,9 @@ func (h flatHost) Echo(value any) error {
 }
 
 func (h flatHost) Lookup(name string) any {
+	if value, ok := h.runtime.auto.Lookup(name); ok {
+		return value
+	}
 	if value, ok := h.runtime.globals[name]; ok {
 		return value
 	}
@@ -129,6 +178,9 @@ func (h flatHost) Lookup(name string) any {
 // the same expression, and an unset variable of that spelling stays null,
 // which is why this is not Lookup.
 func (h flatHost) Constant(name string) (any, error) {
+	if value, ok := h.runtime.auto.Lookup(name); ok {
+		return value, nil
+	}
 	if value, ok := h.runtime.globals[name]; ok {
 		return value, nil
 	}
@@ -308,31 +360,40 @@ func (h flatHost) Entries(value any) []flatvm.Entry {
 	return entries
 }
 
+// Call resolves a function the way helperFunc does, but a binding whose
+// signature does not ask for a context never sees the scope, so no snapshot,
+// no Scope and no write-back are built for it. That is the interpreter's own
+// contract: installFunc calls the same bindings with no per-call scope.
 func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
+	if fn, ok := h.runtime.lookupFunc(fnName); ok {
+		return h.callResolved(fn, fnName, args)
+	}
+	if fallback != "" {
+		if fn, ok := h.runtime.lookupFunc(fallback); ok {
+			return h.callResolved(fn, fallback, args)
+		}
+	}
+	// Frame-aware builtins (func_get_args) and the undefined-function error
+	// live behind helperFunc; both need the scope.
 	scope := h.boundScope()
 	result, err := h.runtime.helperFunc(&scopeRef{scope: scope})(fnName, fallback, args...)
 	h.pullScope(scope)
 	return result, err
 }
 
-func (h *flatHost) pullScope(scope *Scope) {
-	if h.locals == nil {
-		h.locals = map[string]any{}
+// callResolved invokes a function-table hit: lean when the signature does not
+// want a context, through a materialised scope when it does. The panic
+// boundary, the argument-count check and the memory burst guard all sit in
+// invokeWithScopeContext either way.
+func (h *flatHost) callResolved(fn any, name string, args []any) (any, error) {
+	if !wantsContext(reflect.TypeOf(fn)) {
+		result, err := h.runtime.invokeWithScopeContext(fn, args, nil)
+		return result, nameCallError(err, name)
 	}
-	for name, value := range scope.vars {
-		if name == "__FILE__" || name == "__DIR__" {
-			continue
-		}
-		h.locals[name] = value
-	}
-}
-
-func (h *flatHost) TakeLocals() map[string]any {
-	return h.locals
-}
-
-func (h *flatHost) BindLocals(vars map[string]any) {
-	h.locals = vars
+	scope := h.boundScope()
+	result, err := h.runtime.invokeWithScopeContext(fn, args, scope)
+	h.pullScope(scope)
+	return result, nameCallError(err, name)
 }
 
 func (h flatHost) RegisterClass(class *model.Class) {
@@ -390,6 +451,13 @@ func (h flatHost) CheckMemory() error {
 func (h *flatHost) InvokeCallable(callable any) error {
 	if callable == nil {
 		return nil
+	}
+	// A compiled closure arrives as func(...any) (any, error) and reads its
+	// frame through its own nested run, so only a context-taking callable
+	// needs the scope materialised.
+	if !wantsContext(reflect.TypeOf(callable)) {
+		_, err := h.runtime.invokeWithScopeContext(callable, nil, nil)
+		return err
 	}
 	scope := h.boundScope()
 	_, err := h.runtime.invokeWithScopeContext(callable, nil, scope)
