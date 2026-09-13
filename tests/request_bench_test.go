@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/oida"
+
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"

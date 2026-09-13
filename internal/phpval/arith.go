@@ -1,6 +1,8 @@
 package phpval
 
-import "math"
+import (
+	"math"
+)
 
 // This file holds PHP's int64 arithmetic, shared by the interpreter's
 // phpArith and the flat VM's specialised integer opcodes so the overflow and
