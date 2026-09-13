@@ -187,8 +187,8 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValu
 		// on the common path, where lookupFunc's case-insensitive fallback
 		// scans the whole function table on every miss, which every call to a
 		// PHP static method would be.
-		if fn, ok := rt.funcs[name+"::"+method]; ok {
-			return rt.invokeWithScopeContext(fn, args, scope)
+		if entry, ok := rt.funcs[name+"::"+method]; ok {
+			return rt.invokeEntry(entry, args, scope)
 		}
 		if !rt.hasClass(name) {
 			if err := rt.autoload(name, scope); err != nil {
@@ -209,8 +209,8 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValu
 		}
 		// No PHP class of that name: the target can only be a host static, so
 		// pay for the case-insensitive lookup here rather than on every call.
-		if fn, ok := rt.lookupFunc(name + "::" + method); ok {
-			return rt.invokeWithScopeContext(fn, args, scope)
+		if entry, ok := rt.lookupEntry(name + "::" + method); ok {
+			return rt.invokeEntry(entry, args, scope)
 		}
 		return nil, fmt.Errorf("static call %s::%s(): unknown class", name, method)
 	}

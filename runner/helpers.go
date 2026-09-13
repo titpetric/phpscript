@@ -191,7 +191,8 @@ func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...
 // coercion via reflection so shims can still be written with natural Go
 // signatures.
 func adapt(fn any) func(...any) (any, error) {
-	return func(args ...any) (any, error) { return invokeAny(fn, args) }
+	inv := newInvoker(fn)
+	return func(args ...any) (any, error) { return inv.call(args) }
 }
 
 // exprHelpers hands the engine the typed helper implementations.
@@ -376,43 +377,6 @@ func phpDebugType(v any) string {
 	return rv.Type().String()
 }
 
-// buildArgs coerces args to the declared parameter types of t, padding absent
-// trailing parameters with zero values: a Go binding spells PHP's optional
-// parameters as extra ones, so a short call is ordinary. A call with more
-// arguments than t declares is refused, because reflect.Value.Call panics on
-// it and PHP refuses the same call to an internal function. An argument that
-// converts to no declared type is refused for the same reason: reflect.Value
-// .Call panics on it, and PHP raises a catchable TypeError.
-func buildArgs(t reflect.Type, args []any, name string) ([]reflect.Value, error) {
-	if !t.IsVariadic() && len(args) > t.NumIn() {
-		return nil, &ArgumentCountError{Name: name, Want: t.NumIn(), Got: len(args)}
-	}
-	in := make([]reflect.Value, 0, len(args))
-	// The runtime context, when a binding asks for one, is injected ahead of
-	// the script's arguments and so does not count towards the PHP position.
-	offset := 1
-	if wantsContext(t) {
-		offset = 0
-	}
-	for i, a := range args {
-		want := paramType(t, i)
-		v, ok := coerceArg(a, want)
-		if !ok {
-			return nil, &TypeError{
-				Name:     name,
-				Position: i + offset,
-				Want:     phpParamTypeName(want),
-				Got:      phpDebugType(a),
-			}
-		}
-		in = append(in, v)
-	}
-	for len(in) < t.NumIn() && !(t.IsVariadic() && len(in) >= t.NumIn()-1) {
-		in = append(in, reflect.Zero(t.In(len(in))))
-	}
-	return in, nil
-}
-
 // plural renders a count with its noun, as PHP spells an argument count error.
 func plural(n int, noun string) string {
 	if n == 1 {
@@ -429,117 +393,6 @@ func argAt(args []any, i int) any {
 		return args[i]
 	}
 	return nil
-}
-
-// invokeFast calls the binding directly when its signature is one of the
-// shapes stdlib registers most, skipping reflect.Value.Call and the []reflect
-// .Value slice it needs. The final return reports whether the signature was
-// recognised; a false sends the caller to the reflect path.
-//
-// Callers must keep this behind invokeAny's panic boundary: a binding that
-// panics here has to surface as a HostPanicError just as it does under
-// reflection, or it unwinds the VM instead of becoming a PHP exception.
-func invokeFast(fn any, args []any) (any, error, bool) {
-	switch f := fn.(type) {
-	case func(...any) (any, error):
-		v, err := f(args...)
-		return v, err, true
-	case func(any) any:
-		return f(argAt(args, 0)), nil, true
-	case func(any) bool:
-		return f(argAt(args, 0)), nil, true
-	case func(any) string:
-		return f(argAt(args, 0)), nil, true
-	case func(any, any) string:
-		return f(argAt(args, 0), argAt(args, 1)), nil, true
-	case func(any, any) any:
-		return f(argAt(args, 0), argAt(args, 1)), nil, true
-	case func(string) string:
-		return f(phpString(argAt(args, 0))), nil, true
-	case func() string:
-		return f(), nil, true
-	case func() any:
-		return f(), nil, true
-	case func(...any) any:
-		return f(args...), nil, true
-	case func(...any) bool:
-		return f(args...), nil, true
-	case func(string) any:
-		return f(phpString(argAt(args, 0))), nil, true
-	case func(string) bool:
-		return f(phpString(argAt(args, 0))), nil, true
-	case func(string) int64:
-		return f(phpString(argAt(args, 0))), nil, true
-	case func() int64:
-		return f(), nil, true
-	case func(string, string) bool:
-		return f(phpString(argAt(args, 0)), phpString(argAt(args, 1))), nil, true
-	case func(string, string) string:
-		return f(phpString(argAt(args, 0)), phpString(argAt(args, 1))), nil, true
-	case func(string, string) (bool, error):
-		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)))
-		return v, err, true
-	case func(any) int64:
-		return f(argAt(args, 0)), nil, true
-	case func(any) float64:
-		return f(argAt(args, 0)), nil, true
-	case func(any) (any, error):
-		v, err := f(argAt(args, 0))
-		return v, err, true
-	case func(any) (bool, error):
-		v, err := f(argAt(args, 0))
-		return v, err, true
-	case func(any, any) (bool, error):
-		v, err := f(argAt(args, 0), argAt(args, 1))
-		return v, err, true
-	case func(any, ...any) (any, error):
-		v, err := f(argAt(args, 0), argsTail(args)...)
-		return v, err, true
-	case func(any, ...any) *model.Array:
-		return f(argAt(args, 0), argsTail(args)...), nil, true
-	case func(string, ...any) string:
-		return f(phpString(argAt(args, 0)), argsTail(args)...), nil, true
-	case func(string, ...string) string:
-		rest := argsTail(args)
-		tail := make([]string, len(rest))
-		for i, v := range rest {
-			tail[i] = phpString(v)
-		}
-		return f(phpString(argAt(args, 0)), tail...), nil, true
-	case func() *model.Array:
-		return f(), nil, true
-	// The evaluation environment's own helpers (__call, __get, __func and
-	// friends) cross this boundary on every expression that uses them, and a
-	// method call or property read in a loop paid the reflect pack per
-	// iteration. The arguments are engine-generated, so the shapes are exact.
-	case func(any, any, ...any) (any, error):
-		v, err := f(argAt(args, 0), argAt(args, 1), argsTail2(args)...)
-		return v, err, true
-	case func(any, string) any:
-		return f(argAt(args, 0), phpString(argAt(args, 1))), nil, true
-	case func(string, any) (any, error):
-		v, err := f(phpString(argAt(args, 0)), argAt(args, 1))
-		return v, err, true
-	case func(string, any, ...any) (any, error):
-		v, err := f(phpString(argAt(args, 0)), argAt(args, 1), argsTail2(args)...)
-		return v, err, true
-	case func(string, string, ...any) (any, error):
-		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)), argsTail2(args)...)
-		return v, err, true
-	case func(string, string) (any, error):
-		v, err := f(phpString(argAt(args, 0)), phpString(argAt(args, 1)))
-		return v, err, true
-	case func(string, bool) (any, error):
-		flag, ok := argAt(args, 1).(bool)
-		if !ok {
-			break
-		}
-		v, err := f(phpString(argAt(args, 0)), flag)
-		return v, err, true
-	case func(string) func(any):
-		return f(phpString(argAt(args, 0))), nil, true
-	}
-	return nil, nil, false
 }
 
 // argsTail2 is the variadic remainder after two fixed parameters, aliased
@@ -565,52 +418,21 @@ func argsTail(args []any) []any {
 // declared parameter types where convertible. Common signatures are dispatched
 // directly by invokeFast; the rest go through reflection.
 func invokeAny(fn any, args []any) (result any, err error) {
-	// The boundary covers both dispatch paths. Registered code is host code,
-	// and a panic crossing into the VM has to arrive as a catchable PHP
-	// exception rather than unwinding the interpreter.
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			result = nil
-			err = &HostPanicError{Callable: fmt.Sprintf("%T", fn), Value: recovered}
-		}
-	}()
-	ft := reflect.TypeOf(fn)
-	if ft == nil || ft.Kind() != reflect.Func {
-		return nil, fmt.Errorf("not callable: %T", fn)
+	// The uniform ABI is the hot entry-less shape: a compiled closure, a
+	// Callable resolution, an adapt output. One guard, no construction.
+	if f, ok := fn.(func(...any) (any, error)); ok {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				result = nil
+				err = &HostPanicError{Callable: fmt.Sprintf("%T", fn), Value: recovered}
+			}
+		}()
+		return f(args...)
 	}
-	// PHP's internal functions reject a call passing more arguments than they
-	// declare, and reflect.Value.Call panics on the same call. Report it as an
-	// ordinary error, before either dispatch path, so the two agree and a
-	// script can catch it. Too few arguments stay legal: a Go binding spells
-	// PHP's optional parameters as extra ones, and they are zero-padded below.
-	if !ft.IsVariadic() && len(args) > ft.NumIn() {
-		return nil, &ArgumentCountError{Want: ft.NumIn(), Got: len(args)}
-	}
-	if fast, fastErr, ok := invokeFast(fn, args); ok {
-		return fast, fastErr
-	}
-	rv := reflect.ValueOf(fn)
-	in, err := buildArgs(rv.Type(), args, "")
-	if err != nil {
-		return nil, err
-	}
-	out := rv.Call(in)
-	return callResult(out)
-}
-
-// paramType returns the declared parameter type at position i (handling variadic).
-func paramType(t reflect.Type, i int) reflect.Type {
-	n := t.NumIn()
-	if n == 0 {
-		return nil
-	}
-	if t.IsVariadic() && i >= n-1 {
-		return t.In(n - 1).Elem()
-	}
-	if i < n {
-		return t.In(i)
-	}
-	return nil
+	// Everything registered dispatches through a cached entry invoker; a
+	// callable that never had a registration point builds its invoker here,
+	// per call, which is what invokeAny always cost.
+	return newInvoker(fn).call(args)
 }
 
 // coerceArg converts a value to the target parameter type where a cheap
@@ -716,7 +538,7 @@ func (rt *Runtime) helperNew(ref *scopeRef) func(classValue any, args ...any) (a
 		// value (storage, err := NewStorage(ctx)) with the context auto-injected
 		// and any trailing error surfaced as a thrown error.
 		if ctor, ok := rt.lookupConstructor(class); ok {
-			v, err := rt.invokeWithScopeContext(ctor, args, scope)
+			v, err := rt.invokeEntry(ctor, args, scope)
 			if err != nil {
 				return nil, err
 			}
@@ -778,6 +600,11 @@ type goMethodInfo struct {
 	mtype    reflect.Type
 	wantsCtx bool
 	found    bool
+	// bind is the pre-planned call over the bound signature: coercion with
+	// the parameter types resolved once, padding, Call, result reduction.
+	// It takes the bound method value because the cache is per receiver
+	// type, not per receiver.
+	bind func(m reflect.Value, args []any) (any, error)
 }
 
 // resolveGoMethod resolves the way callGoMethod always has: the exact name,
@@ -813,7 +640,61 @@ func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 		return goMethodInfo{}
 	}
 	mtype := rv.Method(index).Type()
-	return goMethodInfo{index: index, mtype: mtype, wantsCtx: wantsContext(mtype), found: true}
+	return goMethodInfo{
+		index:    index,
+		mtype:    mtype,
+		wantsCtx: wantsContext(mtype),
+		found:    true,
+		bind:     bindGoMethod(mtype),
+	}
+}
+
+// bindGoMethod plans a method call the way reflectInvoker plans a function
+// call: parameter types, variadic element and padding resolved at cache
+// time, coercion through the one table per call.
+func bindGoMethod(mtype reflect.Type) func(reflect.Value, []any) (any, error) {
+	numIn, variadic := mtype.NumIn(), mtype.IsVariadic()
+	wantsCtx := wantsContext(mtype)
+	params := make([]reflect.Type, numIn)
+	for i := range params {
+		params[i] = mtype.In(i)
+	}
+	var elem reflect.Type
+	if variadic {
+		elem = params[numIn-1].Elem()
+	}
+	return func(m reflect.Value, args []any) (any, error) {
+		if !variadic && len(args) > numIn {
+			return nil, &ArgumentCountError{Want: numIn, Got: len(args)}
+		}
+		in := make([]reflect.Value, 0, len(args))
+		offset := 1
+		if wantsCtx {
+			offset = 0
+		}
+		for i, a := range args {
+			var want reflect.Type
+			switch {
+			case variadic && i >= numIn-1:
+				want = elem
+			case i < numIn:
+				want = params[i]
+			}
+			v, ok := coerceArg(a, want)
+			if !ok {
+				return nil, &TypeError{
+					Position: i + offset,
+					Want:     phpParamTypeName(want),
+					Got:      phpDebugType(a),
+				}
+			}
+			in = append(in, v)
+		}
+		for len(in) < numIn && !(variadic && len(in) >= numIn-1) {
+			in = append(in, reflect.Zero(params[len(in)]))
+		}
+		return callResult(m.Call(in))
+	}
 }
 
 // callGoMethod invokes a Go method by reflection. scopeFor is consulted only
@@ -855,12 +736,27 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor fu
 	if info.wantsCtx {
 		args = append([]any{contextWithScope(contextWithEnv(rt.ctx, rt.Env), scopeFor())}, args...)
 	}
-	in, err := buildArgs(info.mtype, args, method)
+	result, err = info.bind(rv.Method(info.index), args)
 	if err != nil {
-		return nil, err
+		return nil, methodCallError(err, method)
 	}
-	out := rv.Method(info.index).Call(in)
-	return callResult(out)
+	return result, nil
+}
+
+// methodCallError names the method on the errors bindGoMethod reports
+// nameless, the way buildArgs used to carry the name into them.
+func methodCallError(err error, method string) error {
+	var arity *ArgumentCountError
+	if errors.As(err, &arity) && arity.Name == "" {
+		arity.Name = method
+		return arity
+	}
+	var typeErr *TypeError
+	if errors.As(err, &typeErr) && typeErr.Name == "" {
+		typeErr.Name = method
+		return typeErr
+	}
+	return err
 }
 
 // throwableMethod implements PHP's Throwable interface over any Go error.
