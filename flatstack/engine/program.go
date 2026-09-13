@@ -61,6 +61,13 @@ const (
 	// opDefer pops the callable and registers it on the frame in flight; the
 	// VM runs the registrations LIFO when the frame returns.
 	opDefer
+	// Register-form binaries, written by the fusion pass (fuse.go): operands
+	// come from slots (L) or the constant pool (C) instead of the operand
+	// stack, and target selects push (0) or a plain store into slot
+	// target-1. opBinTC takes its left operand off the stack.
+	opBinLL
+	opBinLC
+	opBinTC
 )
 
 type instruction struct {

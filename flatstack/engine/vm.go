@@ -701,33 +701,74 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			} else {
 				st.stack = append(st.stack, next)
 			}
-		case opBinary:
-			right, popErr := st.pop()
-			if popErr != nil {
-				return popErr
-			}
-			left, popErr := st.pop()
-			if popErr != nil {
-				return popErr
+		case opBinary, opBinLL, opBinLC, opBinTC:
+			// One body for the stack form and the fused register forms; only
+			// where the operands come from differs. See fuse.go.
+			var left, right any
+			switch inst.op {
+			case opBinLL:
+				left = loadLocal(host, program, st.locals, st.initialized, st.extras, inst.a)
+				right = loadLocal(host, program, st.locals, st.initialized, st.extras, inst.c)
+			case opBinLC:
+				left = loadLocal(host, program, st.locals, st.initialized, st.extras, inst.a)
+				right = program.constants[inst.c]
+			case opBinTC:
+				var popErr error
+				left, popErr = st.pop()
+				if popErr != nil {
+					return popErr
+				}
+				right = program.constants[inst.c]
+			default:
+				var popErr error
+				right, popErr = st.pop()
+				if popErr != nil {
+					return popErr
+				}
+				left, popErr = st.pop()
+				if popErr != nil {
+					return popErr
+				}
 			}
 			// The compiler resolved the operator to a class; the both-int64
 			// and both-string shapes are computed inline through the same
 			// phpval rules phpArith reads, and every other operand shape
 			// falls through to the host with the operator name.
+			value, ok := any(nil), false
 			if inst.b != binNone {
-				if value, ok := fastBinary(inst.b, left, right); ok {
-					st.stack = append(st.stack, value)
-					break
+				value, ok = fastBinary(inst.b, left, right)
+			}
+			if !ok {
+				var binaryErr error
+				value, binaryErr = host.Binary(inst.name, left, right)
+				if binaryErr != nil {
+					if st.handle(binaryErr) {
+						continue
+					}
+					return binaryErr
 				}
 			}
-			value, binaryErr := host.Binary(inst.name, left, right)
-			if binaryErr != nil {
-				if st.handle(binaryErr) {
-					continue
-				}
-				return binaryErr
+			if inst.target == 0 {
+				st.stack = append(st.stack, value)
+				break
 			}
-			st.stack = append(st.stack, value)
+			// Folded plain store: the same reassignment check and SetGlobal
+			// offer opStore makes for `$x = ...`.
+			dst := inst.target - 1
+			if st.initialized[dst] && !phpval.ReassignAllowed(st.locals[dst], value) {
+				if name := program.localNames[dst]; len(name) > 0 && name[0] != 0 {
+					reassignErr := reassignError(host, phpval.ReassignMessage(name, st.locals[dst], value))
+					if st.handle(reassignErr) {
+						continue
+					}
+					return reassignErr
+				}
+			}
+			if host.SetGlobal(program.localNames[dst], value) {
+				st.initialized[dst] = false
+			} else {
+				st.locals[dst], st.initialized[dst] = value, true
+			}
 		case opUnary:
 			value, popErr := st.pop()
 			if popErr != nil {

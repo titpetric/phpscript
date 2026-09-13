@@ -64,6 +64,7 @@ func Compile(ast *model.Program) (program *Program, err error) {
 			}
 		}
 	}
+	fuseProgram(&c.program)
 	c.program.nameSlots = c.locals
 	if len(c.program.userFuncs) > 0 {
 		c.program.userFuncsFold = make(map[string]userFuncDef, len(c.program.userFuncs))
