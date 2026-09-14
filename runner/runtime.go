@@ -58,6 +58,12 @@ type Runtime struct {
 	hoisted map[*model.Program]bool
 	classes map[string]*model.Class
 
+	// interfaces holds the interface declarations hoist saw, keyed by name.
+	// An interface is still no value and no constructor: the table exists so
+	// Interface::CONST resolves through the name the constant was declared
+	// on. Implementing classes acquire nothing from it (docs/design.md).
+	interfaces map[string]*model.InterfaceDecl
+
 	// auto holds the request superglobals in fixed fields; see
 	// phpval.AutoGlobals for why they are not globals map entries.
 	auto phpval.AutoGlobals
@@ -309,6 +315,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		hoisted:      map[*model.Program]bool{},
 		workDirBase:  opts.WorkDir,
 		classes:      map[string]*model.Class{},
+		interfaces:   map[string]*model.InterfaceDecl{},
 		constructors: map[string]*funcEntry{},
 		includePath:  ".",
 		ctx:          context.Background(),
@@ -417,6 +424,7 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	rt.included = nil
 	rt.preludeDone = false
 	clear(rt.classes)
+	clear(rt.interfaces)
 	clear(rt.globals)
 	rt.auto.Reset()
 	// The scratch containers stay for the next Register, emptied now so a
@@ -1059,6 +1067,39 @@ func (rt *Runtime) lookupClass(name string) (*model.Class, bool) {
 	return nil, false
 }
 
+// lookupInterface resolves a declared interface by name, with the same
+// case-insensitive fallback PHP applies to class-like names.
+func (rt *Runtime) lookupInterface(name string) (*model.InterfaceDecl, bool) {
+	if id, ok := rt.interfaces[name]; ok {
+		return id, true
+	}
+	for interfaceName, id := range rt.interfaces {
+		if strings.EqualFold(interfaceName, name) {
+			return id, true
+		}
+	}
+	return nil, false
+}
+
+// InterfaceExists reports whether an interface is declared. If autoload is
+// true, registered autoloaders are given a chance to define a missing one;
+// composer's autoloader maps interfaces and classes through the same PSR-4
+// table.
+func (rt *Runtime) InterfaceExists(name string, autoload bool) (bool, error) {
+	name = strings.TrimPrefix(name, "\\")
+	if _, ok := rt.lookupInterface(name); ok {
+		return true, nil
+	}
+	if !autoload {
+		return false, nil
+	}
+	if err := rt.autoload(name, rt.newScope()); err != nil {
+		return false, err
+	}
+	_, ok := rt.lookupInterface(name)
+	return ok, nil
+}
+
 func (rt *Runtime) lookupConstructor(name string) (*funcEntry, bool) {
 	if ctor, ok := rt.constructors[name]; ok {
 		return ctor, true
@@ -1519,21 +1560,31 @@ func (rt *Runtime) helperClassConst(ref *scopeRef) func(class, name string) (any
 			return class, nil
 		}
 		if !rt.hasClass(class) {
-			if err := rt.autoload(class, scope); err != nil {
-				return nil, err
+			if _, ok := rt.lookupInterface(class); !ok {
+				if err := rt.autoload(class, scope); err != nil {
+					return nil, err
+				}
 			}
 		}
-		c, ok := rt.lookupClass(class)
-		if !ok {
+		var className string
+		var consts []model.Field
+		if c, ok := rt.lookupClass(class); ok {
+			className, consts = c.Name, c.Consts
+		} else if id, ok := rt.lookupInterface(class); ok {
+			// An interface holds its constants under its own name. Only this
+			// direct spelling resolves; an implementing class acquires none
+			// of them (docs/design.md).
+			className, consts = id.Name, id.Consts
+		} else {
 			return nil, fmt.Errorf("class constant %s::%s: unknown class", class, name)
 		}
-		class = c.Name
+		class = className
 		if cached, ok := rt.classConsts[class]; ok {
 			if v, ok := cached[name]; ok {
 				return v, nil
 			}
 		}
-		for _, k := range c.Consts {
+		for _, k := range consts {
 			if k.Name != name {
 				continue
 			}

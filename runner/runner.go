@@ -257,6 +257,12 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 		if cd, ok := s.(*model.ClassDecl); ok {
 			declare(cd)
 		}
+		// An interface registers under its own name so Interface::CONST
+		// resolves. It stays out of the class table: it has no constructor,
+		// no storage, and confers nothing on an implementing class.
+		if id, ok := s.(*model.InterfaceDecl); ok {
+			rt.interfaces[id.Name] = id
+		}
 	}
 	for _, cd := range prog.AnonClasses {
 		declare(cd)

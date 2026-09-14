@@ -239,6 +239,11 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 		case *model.ClassConst:
 			// `Name::class` is the name as a string and needs no declaration.
 			if n.Name != "class" && !classKnown(n.Class) {
+				// A constant also resolves through an interface's own name;
+				// the autoloader maps interfaces like classes.
+				if known, _ := rt.InterfaceExists(n.Class, includeFile != ""); known {
+					return
+				}
 				report(line, fmt.Sprintf("class constant %s::%s: unknown class", n.Class, n.Name))
 			}
 		}
