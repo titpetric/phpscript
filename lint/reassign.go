@@ -36,10 +36,29 @@ type reassignWalker struct {
 	out  *[]Diagnostic
 }
 
-// scope checks one function body's statements against a fresh type table.
+// scope checks one function body's statements against a fresh type table,
+// then flags $s[$i] on the strings it declared: advisory, and silent for
+// arrays and unknown variables under the same syntax.
 func (w *reassignWalker) scope(stmts []model.Stmt) {
 	types := map[string]string{}
 	w.walk(stmts, types)
+	offsets := &astWalker{prog: w.prog, skipDecls: true}
+	offsets.expr = func(e model.Expr, line int) {
+		idx, ok := e.(*model.Index)
+		if !ok {
+			return
+		}
+		v, ok := model.UnwrapParenthesized(idx.Base).(*model.Var)
+		if !ok || types[v.Name] != "string" {
+			return
+		}
+		*w.out = append(*w.out, Diagnostic{
+			File:    w.file,
+			Line:    line,
+			Message: fmt.Sprintf("string offset $%s[...]: offsets count characters, not bytes; substr($%s, ...) spells the read", v.Name, v.Name),
+		})
+	}
+	offsets.walk(stmts)
 }
 
 // declarations opens a new scope for every function and method body found at

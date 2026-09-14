@@ -625,3 +625,38 @@ func TestLintTypeReassign(t *testing.T) {
 		})
 	}
 }
+
+func TestLintStringOffset(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		want int
+	}{
+		{"read on a declared string", "<?php\n$s = \"text\";\necho $s[0];\n", 1},
+		{"negative offset", "<?php\n$s = \"text\";\necho $s[-1];\n", 1},
+		{"write through the offset", "<?php\n$s = \"text\";\n$s[0] = \"T\";\n", 1},
+		{"array index stays silent", "<?php\n$a = array(1, 2);\necho $a[0];\n", 0},
+		{"unknown variable stays silent", "<?php\necho $rows[0];\n", 0},
+		{"substr is the endorsed spelling", "<?php\n$s = \"text\";\necho substr($s, 0, 1);\n", 0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			diags, err := lint.File("test.php", tc.src)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := 0
+			for _, d := range diags {
+				if strings.Contains(d.Message, "string offset") {
+					got++
+					if d.Fatal {
+						t.Errorf("finding %q is fatal, want advisory", d.Message)
+					}
+				}
+			}
+			if got != tc.want {
+				t.Fatalf("findings = %d, want %d (%v)", got, tc.want, diags)
+			}
+		})
+	}
+}

@@ -760,26 +760,56 @@ function round(mixed $num, mixed ...$opts): float
 function sqrt(mixed $num): float
 ```
 
-#### mbstring
+#### multibyte
 
 ```php
-// mb_strlen returns the length of $string in characters rather than bytes; the $encoding argument is accepted and ignored, as only UTF-8 is implemented.
-function mb_strlen(string $str, mixed ...$encoding): int
+// mb_lcfirst returns $string with its first character lowercased.
+function mb_lcfirst(string $str): string
 ```
 
 ```php
-// mb_strtolower returns $string lowercased by Unicode rules; the $encoding argument is accepted and ignored, as only UTF-8 is implemented.
-function mb_strtolower(string $str, mixed ...$encoding): string
+// mb_str_split returns $string cut into chunks of $length characters; the "8bit" encoding cuts bytes, as PHP's does.
+function mb_str_split(string $s, mixed ...$rest): array
 ```
 
 ```php
-// mb_strtoupper returns $string uppercased by Unicode rules; the $encoding argument is accepted and ignored, as only UTF-8 is implemented.
-function mb_strtoupper(string $str, mixed ...$encoding): string
+// mb_stripos returns the character offset of the first case-insensitive $needle in $haystack, or false.
+function mb_stripos(string $haystack, string $needle, mixed ...$rest): mixed
 ```
 
 ```php
-// mb_substr returns the part of $string from character $start for $length characters, where a negative $start counts from the end and a negative $length stops that many characters before it; the $encoding argument is accepted and ignored.
-function mb_substr(string $str, int $start, mixed ...$optional): string
+// mb_strlen returns the number of characters in $string; the $encoding argument "8bit" answers in bytes, the byte-count escape hatch for binary data, and every other encoding is read as UTF-8.
+function mb_strlen(string $s, mixed ...$encoding): int
+```
+
+```php
+// mb_strpos returns the character offset of the first $needle in $haystack, or false; the "8bit" encoding reports byte offsets, as PHP's does.
+function mb_strpos(string $haystack, string $needle, mixed ...$rest): mixed
+```
+
+```php
+// mb_strrpos returns the character offset of the last $needle in $haystack, or false.
+function mb_strrpos(string $haystack, string $needle, mixed ...$rest): mixed
+```
+
+```php
+// mb_strtolower returns $string lowercased.
+function mb_strtolower(string $s, mixed ...$unused): string
+```
+
+```php
+// mb_strtoupper returns $string uppercased.
+function mb_strtoupper(string $s, mixed ...$unused): string
+```
+
+```php
+// mb_substr returns the part of $string selected by character offset $start and $length; the "8bit" encoding selects bytes, as PHP's does.
+function mb_substr(string $s, int $start, mixed ...$rest): string
+```
+
+```php
+// mb_ucfirst returns $string with its first character uppercased.
+function mb_ucfirst(string $str): string
 ```
 
 #### output
@@ -989,7 +1019,7 @@ function join(mixed $separator, mixed $array): string
 ```
 
 ```php
-// lcfirst returns $string with its first byte lowercased if it is an ASCII letter; like PHP's non-mb functions it never changes the byte length.
+// lcfirst returns $string with its first character lowercased; non-ASCII letters are converted too.
 function lcfirst(string $str): string
 ```
 
@@ -1027,7 +1057,7 @@ function str_ends_with(string $haystack, string $needle): bool
 ```
 
 ```php
-// str_pad returns $string padded with $pad_string to $length bytes on the side $pad_type selects; a $length below the current one is a no-op.
+// str_pad returns $string padded with $pad_string to $length characters on the side $pad_type selects; a $length below the current one is a no-op.
 function str_pad(string $str, int $length, mixed ...$optional): string
 ```
 
@@ -1045,7 +1075,7 @@ function str_replace(mixed $search, mixed $replace, mixed $subject): string
 ```
 
 ```php
-// str_split returns $string cut into chunks of $length bytes, the last one shorter when the string does not divide evenly; an empty string yields an empty array.
+// str_split returns $string cut into chunks of $length characters, the last one shorter when the string does not divide evenly; an empty string yields an empty array.
 function str_split(string $str, int ...$length): array
 ```
 
@@ -1055,27 +1085,27 @@ function str_starts_with(string $haystack, string $needle): bool
 ```
 
 ```php
-// stripos returns the byte offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+// stripos returns the character offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
 function stripos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
 ```php
-// strlen returns the length of $str in bytes.
+// strlen returns the length of $str in characters; byte lengths are what the binary functions (ord, bin2hex) speak.
 function strlen(string $str): int
 ```
 
 ```php
-// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+// strpos returns the character offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
 function strpos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
 ```php
-// strrev returns $string with its bytes in reverse order; multi-byte characters are not preserved, matching PHP.
+// strrev returns $string with its characters in reverse order; multi-byte characters are preserved.
 function strrev(string $str): string
 ```
 
 ```php
-// strripos returns the byte offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many bytes before the end.
+// strripos returns the character offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many characters before the end.
 function strripos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
@@ -1097,7 +1127,7 @@ function strtoupper(string $string): string
 ```php
 /**
  * substr implements substr($s, $start[, $length]) with PHP's negative
- * offset/length semantics.
+ * offset/length semantics, counting in characters.
  */
 function substr(string $s, int $start, int ...$length): string
 ```
@@ -1118,7 +1148,7 @@ function trim(string $string, string ...$args): string
 ```
 
 ```php
-// ucfirst returns $string with its first byte uppercased if it is an ASCII letter; like PHP's non-mb functions it never changes the byte length.
+// ucfirst returns $string with its first character uppercased; non-ASCII letters are converted too.
 function ucfirst(string $str): string
 ```
 
@@ -1277,13 +1307,13 @@ function readdir(mixed $dir_handle): mixed
 #### paths
 
 ```php
-// basename returns the trailing name component of $path; the $suffix argument is not accepted.
-function basename(string $path): string
+// basename returns the trailing name component of $path, less $suffix when the name ends with it. The empty and root paths answer "", as PHP's do.
+function basename(string $path, string ...$suffix): string
 ```
 
 ```php
-// dirname returns the parent directory of $path; the $levels argument is not accepted.
-function dirname(string $path): string
+// dirname returns the parent directory of $path, walking up $levels parents when given.
+function dirname(string $path, int ...$levels): string
 ```
 
 #### reads

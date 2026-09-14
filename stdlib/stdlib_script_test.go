@@ -217,7 +217,9 @@ func TestRandomBindingsScript(t *testing.T) {
 		},
 		{
 			name: "random_bytes length is honoured",
-			php:  `<?php echo strlen(random_bytes(1)), " ", strlen(random_bytes(64));`,
+			// strlen counts characters, so a binary length is counted
+			// through its hex spelling; see docs/README.md, known divergences.
+			php:  `<?php echo strlen(bin2hex(random_bytes(1))) / 2, " ", strlen(bin2hex(random_bytes(64))) / 2;`,
 			want: "1 64",
 		},
 		{

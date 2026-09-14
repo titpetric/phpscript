@@ -19,10 +19,10 @@ echo "\n";
 echo hash("sha256", ""), "\n";
 
 // $binary asks for the raw bytes. They arrive as an ordinary string, so
-// strlen counts them and bin2hex spells them back.
+// The hex spelling counts the raw bytes: two hex digits per byte.
 echo "\n";
 $raw = hash("sha256", "hello", true);
-echo strlen($raw), " ", bin2hex($raw), "\n";
+echo strlen(bin2hex($raw)) / 2, " ", bin2hex($raw), "\n";
 
 // HMAC under a short key, and under a key longer than the block size - which
 // HMAC digests first, so the answer is not the same as hashing the long key

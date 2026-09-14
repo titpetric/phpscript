@@ -256,7 +256,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [json](extensions/implemented-apis.md#json)
       - [lang](extensions/implemented-apis.md#lang)
       - [math](extensions/implemented-apis.md#math)
-      - [mbstring](extensions/implemented-apis.md#mbstring)
+      - [multibyte](extensions/implemented-apis.md#multibyte)
       - [output](extensions/implemented-apis.md#output)
       - [platform funcs](extensions/implemented-apis.md#platform-funcs)
       - [reflection](extensions/implemented-apis.md#reflection)

@@ -229,6 +229,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 
 | tests/fixtures/paths     | Flat stack | Runtime | PHP  |
 |--------------------------|------------|---------|------|
+| basename.phpt            | PASS       | PASS    | PASS |
 | chdir.phpt               | PASS       | PASS    | PASS |
 | chdir_include_cache.phpt | PASS       | PASS    | PASS |
 | magic_constants.phpt     | PASS       | PASS    | PASS |
@@ -325,6 +326,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | interpolation.phpt            | PASS       | PASS    | PASS |
 | interpolation_complex.phpt    | PASS       | PASS    | PASS |
 | join.phpt                     | PASS       | PASS    | PASS |
+| mb_defaults.phpt              | PASS       | PASS    | SKIP |
 | mbstring.phpt                 | PASS       | PASS    | PASS |
 | preg_engines.phpt             | PASS       | PASS    | PASS |
 | str_contains.phpt             | PASS       | PASS    | PASS |
@@ -374,13 +376,13 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/namespaces  | 5        | 5      | 0      |
 | tests/fixtures/oop         | 24       | 24     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
-| tests/fixtures/paths       | 6        | 6      | 0      |
+| tests/fixtures/paths       | 7        | 7      | 0      |
 | tests/fixtures/pexec       | 3        | 3      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
 | tests/fixtures/scaffold    | 4        | 4      | 0      |
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
-| tests/fixtures/strings     | 19       | 19     | 0      |
+| tests/fixtures/strings     | 20       | 20     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 1        | 1      | 0      |
-| **Total**                  | 237      | 237    | 0      |
+| **Total**                  | 239      | 239    | 0      |
