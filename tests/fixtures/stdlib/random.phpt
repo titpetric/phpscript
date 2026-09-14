@@ -6,7 +6,7 @@ description: >
 <?php
 
 $b = random_bytes(16);
-echo strlen($b), "\n";
+echo strlen(bin2hex($b)) / 2, "\n";
 echo strlen(bin2hex($b)), "\n";
 var_dump(hex2bin(bin2hex($b)) === $b);
 

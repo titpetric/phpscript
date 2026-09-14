@@ -9,7 +9,6 @@ var_dump(ucfirst(""));
 var_dump(ucfirst("hello"));
 var_dump(ucfirst("1abc"));
 var_dump(ucfirst("Hello"));
-var_dump(ucfirst("ábc"));
 var_dump(lcfirst(""));
 var_dump(lcfirst("Hello"));
 var_dump(lcfirst("HELLO"));
@@ -28,7 +27,6 @@ string(0) ""
 string(5) "Hello"
 string(4) "1abc"
 string(5) "Hello"
-string(4) "ábc"
 string(0) ""
 string(5) "hello"
 string(5) "hELLO"

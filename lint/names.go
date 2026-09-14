@@ -255,6 +255,9 @@ type astWalker struct {
 	stmt func(model.Stmt)
 	expr func(model.Expr, int)
 	line int
+	// skipDecls keeps the walk out of function and class bodies, for a
+	// caller that scopes per function and opens each body itself.
+	skipDecls bool
 }
 
 func (w *astWalker) walk(stmts []model.Stmt) {
@@ -302,9 +305,15 @@ func (w *astWalker) walk(stmts []model.Stmt) {
 		case *model.Include:
 			w.one(n.Path)
 		case *model.FuncDecl:
+			if w.skipDecls {
+				continue
+			}
 			w.params(n.Params)
 			w.walk(n.Body)
 		case *model.ClassDecl:
+			if w.skipDecls {
+				continue
+			}
 			w.fields(n.Fields)
 			w.fields(n.Statics)
 			w.fields(n.Consts)

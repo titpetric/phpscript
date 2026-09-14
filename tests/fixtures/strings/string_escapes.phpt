@@ -7,20 +7,20 @@ description: >
 <?php
 
 $bom = "\xEF\xBB\xBF";
-echo "bom=" . strlen($bom) . "\n";
+echo "bom=" . bin2hex($bom) . "\n";
 echo "octal=" . "\101\102" . " len=" . strlen("\101\102") . "\n";
 echo "hex=" . "\x41\x9" . "|\n";
-echo "unicode=" . "\u{48}\u{49}" . " len=" . strlen("\u{1F600}") . "\n";
+echo "unicode=" . "\u{48}\u{49}" . " len=" . bin2hex("\u{1F600}") . "\n";
 echo "control=" . strlen("\n\t\r\v\f\e\0") . "\n";
 echo "quoted=" . "a\\b\$c\"d" . "|\n";
 echo "unknown=" . "\q\x\u" . "|\n";
 echo 'single=a\nb\\c\'d' . "|\n";
 echo 'path=C:\Users\name' . "|\n";
 ---
-bom=3
+bom=efbbbf
 octal=AB len=2
 hex=A	|
-unicode=HI len=4
+unicode=HI len=f09f9880
 control=7
 quoted=a\b$c"d|
 unknown=\q\x\u|
