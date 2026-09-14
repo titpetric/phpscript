@@ -13,7 +13,7 @@ What exists:
 - static properties and methods, `self::` and `static::`, including the variable spelling `Class::$m()`
 - function-level `static $x` variables, persistent per function and per closure value
 - `Class::class`
-- `interface` declarations and `implements`, as a contract check and nothing more; see below
+- `interface` declarations and `implements`, as a contract check, plus constants read through the interface's own name; see below
 
 What does not, and will not:
 
@@ -30,7 +30,9 @@ Write composition instead, and declare the members a class uses. A class that ca
 
 An interface names method signatures. A class that says `implements` must declare every one of them itself, and that is the whole of what an interface does. Nothing is inherited: no method body comes from an interface, no property or constant is acquired from one, and there is no interface-based dispatch. A class that passes the check has exactly the members it wrote, which is the same rule the rest of this page states.
 
-`interface A extends B, C` is parsed, and the names a class is checked against are the union of what every listed interface declares. The union is computed when the check runs; no member moves anywhere, because an interface holds none.
+`interface A extends B, C` is parsed, and the names a class is checked against are the union of what every listed interface declares. The union is computed when the check runs; no member moves anywhere.
+
+An interface does hold its constants. `Hook::POSITION_PRE` resolves through the name the constant was declared on, exactly as a class constant does, on both backends and in the linter. That is direct resolution, not inheritance: an implementing class acquires none of them, so `Store::LIMIT` through `class Store implements Quota` fails as an undefined class constant where PHP answers it, and a constant declared on an extended interface does not answer through the extender's name. `tests/fixtures/oop/interface_constants_not_acquired.phpt` pins the divergence.
 
 The check runs on the AST before anything executes: in `runner.hoist` for the interpreter, and in the flatstack compiler's `collectClasses` for the bytecode engine, so both backends reach the same verdict. `phpscript lint` reports a missing method as a finding, and at run time it raises a `RuntimeException` naming the class, the interface and the method. A name no `interface` declaration in the same file defines is not a contract and is not checked, which is what lets `implements Countable` load: phpscript declares none of PHP's built-in interfaces, and a file is registered as a unit.
 
