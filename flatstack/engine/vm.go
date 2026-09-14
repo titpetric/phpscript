@@ -258,6 +258,50 @@ func (st *execState) handle(runErr error) bool {
 	return true
 }
 
+// enterUserFrame pushes a call frame for def and binds the arguments: the
+// receiver into paramSlots[0] when the def carries one, the positionals in
+// order, and the leftovers into a trailing variadic collector as an array —
+// an empty one when the caller stops short of it, which is bindParams'
+// answer too. An argument the caller did not pass leaves its slot cold, so
+// the entry prologue can bind the parameter's default.
+func (st *execState) enterUserFrame(def userFuncDef, receiver any, hasReceiver bool, arguments []any) {
+	st.callFrames = append(st.callFrames, callFrame{
+		returnPC:    st.pc,
+		locals:      st.locals,
+		initialized: st.initialized,
+		extras:      st.extras,
+		refWrites:   st.refWrites,
+		iterators:   st.iterators,
+		deferMark:   len(st.deferred),
+	})
+	st.locals, st.initialized = st.frameSlots(len(st.program.localNames))
+	st.extras = nil
+	st.refWrites = nil
+	st.iterators = nil
+	slots := def.paramSlots
+	if hasReceiver {
+		st.locals[slots[0]], st.initialized[slots[0]] = receiver, true
+		slots = slots[1:]
+	}
+	for i, slot := range slots {
+		if i < len(arguments) {
+			st.locals[slot], st.initialized[slot] = arguments[i], true
+		}
+	}
+	if def.variadicSlot >= 0 {
+		var rest []any
+		if len(arguments) > len(slots) {
+			rest = arguments[len(slots):]
+		}
+		items := make([]model.ArrayItemValue, len(rest))
+		for i, value := range rest {
+			items[i] = model.ArrayItemValue{Val: value}
+		}
+		st.locals[def.variadicSlot], st.initialized[def.variadicSlot] = st.host.Array(items), true
+	}
+	st.pc = def.entryPC
+}
+
 // iterator returns the live foreach state numbered n, or nil.
 func (st *execState) iterator(n int) *iteratorState {
 	if n < len(st.iterators) {
@@ -663,6 +707,135 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			} else {
 				st.stack = append(st.stack, next)
 			}
+		case opIncDecProp:
+			receiver, popErr := st.pop()
+			if popErr != nil {
+				return popErr
+			}
+			current := host.GetProperty(receiver, inst.name)
+			next := phpval.Increment(current)
+			if inst.extra == "--" {
+				next = phpval.Decrement(current)
+			}
+			if err = host.SetProperty(receiver, inst.name, next, "="); err != nil {
+				if st.handle(err) {
+					continue
+				}
+				return err
+			}
+			if inst.b != 0 {
+				st.stack = append(st.stack, current)
+			} else {
+				st.stack = append(st.stack, next)
+			}
+		case opUnsetProp:
+			receiver, popErr := st.pop()
+			if popErr != nil {
+				return popErr
+			}
+			remover, ok := host.(unsetPropHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement property unset", st.pc)
+			}
+			if err = remover.UnsetProperty(receiver, inst.name); err != nil {
+				if st.handle(err) {
+					continue
+				}
+				return err
+			}
+		case opStaticProp:
+			props, ok := host.(staticPropHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement static properties", st.pc)
+			}
+			value, propErr := props.GetStaticProp(inst.name, inst.extra)
+			if propErr != nil {
+				if st.handle(propErr) {
+					continue
+				}
+				return propErr
+			}
+			st.stack = append(st.stack, value)
+		case opSetStaticProp:
+			value, popErr := st.pop()
+			if popErr != nil {
+				return popErr
+			}
+			props, ok := host.(staticPropHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement static properties", st.pc)
+			}
+			op, _ := program.constants[inst.a].(string)
+			if err = props.SetStaticProp(inst.name, inst.extra, value, op); err != nil {
+				if st.handle(err) {
+					continue
+				}
+				return err
+			}
+			if inst.b != 0 {
+				st.stack = append(st.stack, value)
+			}
+		case opStaticSeeded:
+			bags, ok := host.(staticVarHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement function statics", st.pc)
+			}
+			node, _ := program.constants[inst.a].(*model.StaticVar)
+			_, seeded := bags.StaticVarBag(node)
+			st.stack = append(st.stack, seeded)
+		case opStaticLoad:
+			bags, ok := host.(staticVarHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement function statics", st.pc)
+			}
+			node, _ := program.constants[inst.a].(*model.StaticVar)
+			bag, _ := bags.StaticVarBag(node)
+			st.stack = append(st.stack, bag[inst.name])
+		case opStaticStore:
+			value, popErr := st.pop()
+			if popErr != nil {
+				return popErr
+			}
+			bags, ok := host.(staticVarHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement function statics", st.pc)
+			}
+			node, _ := program.constants[inst.a].(*model.StaticVar)
+			bag, _ := bags.StaticVarBag(node)
+			if inst.extra != "" && inst.extra != "=" {
+				updated, binaryErr := host.Binary(strings.TrimSuffix(inst.extra, "="), bag[inst.name], value)
+				if binaryErr != nil {
+					if st.handle(binaryErr) {
+						continue
+					}
+					return binaryErr
+				}
+				value = updated
+			}
+			bag[inst.name] = value
+			if inst.b != 0 {
+				st.stack = append(st.stack, value)
+			}
+		case opIncDecStatic:
+			bags, ok := host.(staticVarHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement function statics", st.pc)
+			}
+			node, _ := program.constants[inst.a].(*model.StaticVar)
+			bag, _ := bags.StaticVarBag(node)
+			current := bag[inst.name]
+			next := phpval.Increment(current)
+			if inst.extra == "--" {
+				next = phpval.Decrement(current)
+			}
+			bag[inst.name] = next
+			if inst.b != 0 {
+				st.stack = append(st.stack, current)
+			} else {
+				st.stack = append(st.stack, next)
+			}
+		case opInitialized:
+			st.stack = append(st.stack, st.initialized[inst.a])
 		case opBinary, opBinLL, opBinLC, opBinTC:
 			// One body for the stack form and the fused register forms; only
 			// where the operands come from differs. See fuse.go.
@@ -810,30 +983,22 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			var value any
 			if inst.op == opCall {
 				if def, ok := lookupUserFunc(program, inst.name); ok {
-					st.callFrames = append(st.callFrames, callFrame{
-						returnPC:    st.pc,
-						locals:      st.locals,
-						initialized: st.initialized,
-						extras:      st.extras,
-						refWrites:   st.refWrites,
-						iterators:   st.iterators,
-						deferMark:   len(st.deferred),
-					})
-					st.locals, st.initialized = st.frameSlots(len(program.localNames))
-					st.extras = nil
-					st.refWrites = nil
-					st.iterators = nil
-					for i, slot := range def.paramSlots {
-						if i < len(arguments) {
-							st.locals[slot], st.initialized[slot] = arguments[i], true
-						}
-					}
-					st.pc = def.entryPC
+					st.enterUserFrame(def, nil, false, arguments)
 					continue
 				}
 				value, err = host.Call(inst.name, inst.extra, arguments)
 			} else {
-				value, err = host.Construct(inst.name, arguments)
+				class := inst.name
+				if inst.b != 0 {
+					// `new $cls(...)`: the class name value sits beneath the
+					// arguments, stringified under the host's rules.
+					nameValue, popErr := st.pop()
+					if popErr != nil {
+						return popErr
+					}
+					class, _ = host.Cast("string", nameValue).(string)
+				}
+				value, err = host.Construct(class, arguments)
 			}
 			clear(st.refWrites)
 			if err != nil {
@@ -848,42 +1013,83 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if argErr != nil {
 				return argErr
 			}
+			method := inst.name
+			if inst.b != 0 {
+				// `$obj->$m(...)`: the method name value sits between the
+				// receiver and the arguments.
+				nameValue, popErr := st.pop()
+				if popErr != nil {
+					return popErr
+				}
+				method, _ = host.Cast("string", nameValue).(string)
+			}
 			receiver, popErr := st.pop()
 			if popErr != nil {
 				return popErr
 			}
 			if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
-				key := obj.Class.Name + "::" + inst.name
-				if def, ok := lookupUserFunc(program, key); ok {
-					st.callFrames = append(st.callFrames, callFrame{
-						returnPC:    st.pc,
-						locals:      st.locals,
-						initialized: st.initialized,
-						extras:      st.extras,
-						refWrites:   st.refWrites,
-						iterators:   st.iterators,
-						deferMark:   len(st.deferred),
-					})
-					st.locals, st.initialized = st.frameSlots(len(program.localNames))
-					st.extras = nil
-					st.refWrites = nil
-					st.iterators = nil
-					// paramSlots[0] is the receiver slot; arguments fill the rest,
-					// shifted by one, without materialising a combined slice.
-					for i, slot := range def.paramSlots {
-						switch {
-						case i == 0:
-							st.locals[slot], st.initialized[slot] = receiver, true
-						case i-1 < len(arguments):
-							st.locals[slot], st.initialized[slot] = arguments[i-1], true
-						}
-					}
-					st.pc = def.entryPC
+				if def, ok := lookupUserFunc(program, obj.Class.Name+"::"+method); ok {
+					st.enterUserFrame(def, receiver, true, arguments)
 					continue
 				}
 			}
-			value, callErr := host.CallMethod(receiver, inst.name, arguments)
+			value, callErr := host.CallMethod(receiver, method, arguments)
 			clear(st.refWrites)
+			if callErr != nil {
+				if st.handle(callErr) {
+					continue
+				}
+				return callErr
+			}
+			st.stack = append(st.stack, value)
+		case opInvoke:
+			arguments, argErr := st.args(inst.a)
+			if argErr != nil {
+				return argErr
+			}
+			callee, popErr := st.pop()
+			if popErr != nil {
+				return popErr
+			}
+			// A string naming a compiled function takes a VM frame; the host
+			// would miss it, since flat-declared functions are not in its
+			// tables.
+			if name, ok := callee.(string); ok {
+				if def, ok := lookupUserFunc(program, name); ok {
+					st.enterUserFrame(def, nil, false, arguments)
+					continue
+				}
+			}
+			invoker, ok := host.(invokeHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement value invocation", st.pc)
+			}
+			value, callErr := invoker.InvokeValue(callee, arguments)
+			if callErr != nil {
+				if st.handle(callErr) {
+					continue
+				}
+				return callErr
+			}
+			st.stack = append(st.stack, value)
+		case opCallStatic:
+			arguments, argErr := st.args(inst.a)
+			if argErr != nil {
+				return argErr
+			}
+			var method any = inst.extra
+			if inst.b != 0 {
+				popped, popErr := st.pop()
+				if popErr != nil {
+					return popErr
+				}
+				method = popped
+			}
+			caller, ok := host.(staticCallHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement static calls", st.pc)
+			}
+			value, callErr := caller.CallStatic(inst.name, method, arguments)
 			if callErr != nil {
 				if st.handle(callErr) {
 					continue

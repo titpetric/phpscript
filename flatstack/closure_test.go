@@ -143,11 +143,6 @@ func TestFlatstackRejectsClosureForms(t *testing.T) {
 			source: `<?php $f = function (...$rest) { return $rest; };`,
 			want:   "unsupported variadic closure parameter",
 		},
-		{
-			name:   "invoking a callable held in a value",
-			source: `<?php $f = function () { return 1; }; echo $f();`,
-			want:   "unsupported expression *model.Invoke",
-		},
 	}
 
 	for _, test := range tests {

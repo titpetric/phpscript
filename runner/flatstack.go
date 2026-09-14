@@ -443,6 +443,74 @@ func (h flatHost) CheckMemory() error {
 	return h.runtime.checkMemory()
 }
 
+// InvokeValue calls a callable held in a value, `$fn(...)`, through the same
+// resolution call_user_func uses, so every callable spelling works.
+func (h *flatHost) InvokeValue(callee any, args []any) (any, error) {
+	scope := h.boundScope()
+	result, err := h.runtime.helperInvoke(&scopeRef{scope: scope})(callee, args...)
+	h.pullScope(scope)
+	return result, err
+}
+
+// UnsetProperty removes a named property, PHP's unset($obj->prop). Only a
+// PHP object carries removable storage; anything else is left alone, the
+// leniency execUnset applies.
+func (h flatHost) UnsetProperty(receiver any, name string) error {
+	if object, ok := receiver.(*model.Object); ok {
+		object.DeleteProp(name)
+	}
+	return nil
+}
+
+// CallStatic dispatches `Class::method(args...)` through the interpreter's
+// resolution: host statics, then a declared PHP method with the current
+// `$this` forwarded for the `self::` instance-call form. The frame snapshot
+// is what carries `this` across.
+func (h *flatHost) CallStatic(class string, method any, args []any) (any, error) {
+	scope := h.boundScope()
+	result, err := h.runtime.helperStaticCall(&scopeRef{scope: scope})(class, method, args...)
+	h.pullScope(scope)
+	return result, err
+}
+
+// GetStaticProp reads `Class::$name`, autoloading the class the way the
+// interpreter would.
+func (h *flatHost) GetStaticProp(class, name string) (any, error) {
+	scope := h.boundScope()
+	result, err := h.runtime.helperStaticProp(&scopeRef{scope: scope})(class, name)
+	h.pullScope(scope)
+	return result, err
+}
+
+// SetStaticProp writes `Class::$name`, applying a compound operator against
+// the current value under the same rules a property assignment uses.
+func (h *flatHost) SetStaticProp(class, name string, value any, op string) error {
+	scope := h.boundScope()
+	defer h.pullScope(scope)
+	bag, err := h.runtime.staticStorage(class, scope)
+	if err != nil {
+		return err
+	}
+	next, err := applyAssignOp(op, bag[name], value)
+	if err != nil {
+		return err
+	}
+	bag[name] = next
+	return nil
+}
+
+// StaticVarBag returns the persistent storage of one `static $x` statement,
+// the same per-node table the interpreter's named functions use — so the
+// counts agree even when the two backends run the same program in turn.
+func (h flatHost) StaticVarBag(node *model.StaticVar) (map[string]any, bool) {
+	bag, seeded := h.runtime.funcStatics[node]
+	if !seeded {
+		bag = map[string]any{}
+		h.runtime.funcStatics[node] = bag
+	}
+	return bag, seeded
+}
+
 func (h *flatHost) InvokeCallable(callable any) error {
 	if callable == nil {
 		return nil

@@ -61,6 +61,44 @@ const (
 	// opDefer pops the callable and registers it on the frame in flight; the
 	// VM runs the registrations LIFO when the frame returns.
 	opDefer
+	// opInvoke calls a callable held in a value: a args, then the callee
+	// beneath them. A string callee naming a compiled function takes a VM
+	// frame; everything else goes to the host's InvokeValue.
+	opInvoke
+	// opIncDecProp is `$obj->prop++` and friends: pops the receiver, reads the
+	// property, steps it, writes it back. b selects postfix, name is the
+	// property, extra the operator.
+	opIncDecProp
+	// opUnsetProp pops the receiver and removes the named property through the
+	// host, PHP's unset($obj->prop).
+	opUnsetProp
+	// opCallStatic is `Class::method(args...)`: a args, name the class
+	// (contextual names already collapsed), extra the method. b=1 is the
+	// `Class::$m(...)` form: the method name value sits beneath the args and
+	// extra is empty.
+	opCallStatic
+	// opStaticProp reads `Class::$name`: name the class, extra the property.
+	opStaticProp
+	// opSetStaticProp writes `Class::$name`: pops the value, a indexes the
+	// constant pool for the assignment operator spelling, b keeps the value on
+	// the stack for the expression form.
+	opSetStaticProp
+	// opStaticSeeded pushes whether the function-static bag a indexes (a
+	// *model.StaticVar in the constant pool) already holds values from an
+	// earlier call, which is what decides whether the initializers run.
+	opStaticSeeded
+	// opStaticLoad and opStaticStore read and write one name in a
+	// function-static bag: a indexes the *model.StaticVar node, name is the
+	// variable. The bag is live shared storage, so a recursive call observes
+	// the writes of the frame above it. opStaticStore mirrors opStore's b
+	// (keep) and compound-operator name handling through extra.
+	opStaticLoad
+	opStaticStore
+	// opIncDecStatic is opIncDecLocal against a function-static bag entry.
+	opIncDecStatic
+	// opInitialized pushes whether slot a holds a value, the test a parameter
+	// default's prologue jumps on.
+	opInitialized
 	// Register-form binaries, written by the fusion pass (fuse.go): operands
 	// come from slots (L) or the constant pool (C) instead of the operand
 	// stack, and target selects push (0) or a plain store into slot
@@ -146,6 +184,10 @@ type userFuncDef struct {
 	// compile time the way closureDef's are. An argument the caller did not
 	// pass leaves the slot uninitialized.
 	paramSlots []int
+	// variadicSlot is the slot of a trailing `...$rest` parameter, -1 without
+	// one. It is not in paramSlots: the caller binds it to an array of the
+	// leftover arguments, empty when the caller stops short of it.
+	variadicSlot int
 }
 
 // closureDef is one compiled anonymous function. Its body sits inline in the
@@ -269,4 +311,43 @@ type Host interface {
 	Echo(any) error
 	// InvokeCallable runs a deferred callable value on the host bridge.
 	InvokeCallable(any) error
+}
+
+// The optional host capabilities, discovered by type assertion the way
+// MemoryHost and the include hook are. A Host built before these constructs
+// compiled keeps building; a program that reaches one against a host without
+// it reports the missing capability instead of misbehaving.
+
+// invokeHost calls a callable held in a value, `$fn(...)`, resolving every
+// PHP callable spelling.
+type invokeHost interface {
+	InvokeValue(callee any, args []any) (any, error)
+}
+
+// unsetPropHost removes a named property, PHP's unset($obj->prop). Removing
+// one that is not there, or from a value that has none, is not an error.
+type unsetPropHost interface {
+	UnsetProperty(receiver any, name string) error
+}
+
+// staticCallHost dispatches `Class::method(args...)`. method arrives as a
+// value because the `Class::$m(...)` spelling carries it at run time.
+type staticCallHost interface {
+	CallStatic(class string, method any, args []any) (any, error)
+}
+
+// staticPropHost reads and writes `Class::$name`, the storage the class owns.
+// SetStaticProp applies op, so a compound assignment reads and writes under
+// the host's rules.
+type staticPropHost interface {
+	GetStaticProp(class, name string) (any, error)
+	SetStaticProp(class, name string, value any, op string) error
+}
+
+// staticVarHost returns the persistent bag of one `static $x` statement and
+// whether an earlier call already seeded it. The bag is live shared storage:
+// the VM reads and writes it directly, so a recursive call observes the
+// frame above it.
+type staticVarHost interface {
+	StaticVarBag(node *model.StaticVar) (map[string]any, bool)
 }

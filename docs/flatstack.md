@@ -137,24 +137,27 @@ It supports these expressions:
 - Comparisons (`==`, `!=`, `===`, `!==`, `<`, `<=`, `>`, `>=`)
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>`)
 - Short-circuit logical operators and unary `!`, `+`, `-`, and `~`
-- Prefix/postfix increment and decrement of variables and array indexes
+- Prefix/postfix increment and decrement of variables, array indexes, properties and function statics
 - Assignment expressions and full/Elvis ternaries
-- Host and PHP object construction with `new`
-- Registered/free function calls and method calls
-- Property reads
+- Host and PHP object construction with `new`, including a dynamic class name `new $cls(...)`
+- Registered/free function calls and method calls, including a dynamic method name `$obj->$m(...)`, trailing variadic parameters and parameter defaults
+- Static calls `Class::method(...)` and static properties `Class::$name`, dispatched through the host bridge onto the interpreter's resolution
+- Function statics `static $x = ...` in named functions and methods, against the same per-statement storage the interpreter uses
+- Invoking a callable held in a value: `$fn(...)`; a string naming a compiled function takes a VM frame, everything else resolves through the host
+- Property reads, writes and `unset($obj->prop)`
 - String concatenation with `.`
 - Anonymous functions, including a by-value `use (...)` capture list, a `$this` carried away from an enclosing method, and `static function () {}`
 
 Arithmetic, coercion, comparison, array access, and truthiness are implemented by the flat VM and its small PHP-semantics host boundary. The bridge uses runner's existing reflection path for registered Go constructors, functions and methods. The compatibility interpreter evaluates expressions on runner/expr, its closure-chain engine, for unsupported programs.
 
-The current end-to-end corpus result is **14 native and 14 compatibility fallback fixtures (28 total)**. Both paths pass all fixtures. `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that half of the PHP language is implemented.
+The current end-to-end corpus result is **240 of the 242 `.phpt` fixtures compiling native** (`tests/fixtures/arrays/compact.phpt` and `tests/fixtures/functions/static_var_closure.phpt` remain with the interpreter). `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that the whole PHP language is implemented.
 
 ### Current native barriers
 
 The complete program atomically selects fallback when it contains any currently unsupported form. The major remaining forms are:
 
-- Property increment/decrement and class-constant / static-property forms
-- Invoking a callable held in a value: `$fn(...)`, `$array[0](...)`, `$this->handler(...)`. A closure compiles, but only a binding such as `usort()` or `call_user_func()` can call one
+- `compact()`, which reads the caller's variables by name at run time; flat frames erase names into slots
+- `static $x` inside a closure (its bag counts per closure value, which is interpreter state), at top level, or as a by-reference output parameter
 - By-reference closure captures `use (&$x)`, closure parameter defaults, and variadic or by-reference closure parameters
 - Anonymous classes, `new class { ... }`. The bytecode carries a class name where an anonymous class carries its declaration
 - `try` without a `catch` clause

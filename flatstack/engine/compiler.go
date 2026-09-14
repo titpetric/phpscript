@@ -29,6 +29,16 @@ type compiler struct {
 	// the same collapse the interpreter's resolveClassName makes at run time.
 	class    string
 	nextIter int
+	// statics maps a `static $x` name of the function being compiled to the
+	// constant-pool index of its declaring *model.StaticVar node. References
+	// after the declaration compile against the live bag instead of a frame
+	// slot, which is what lets a recursive call observe the caller's writes.
+	// It is nil at top level and inside closures, where the statement is
+	// unsupported.
+	statics map[string]int
+	// closure reports that a closure body is being compiled, where `static
+	// $x` counts per closure value and stays with the interpreter.
+	inClosure bool
 }
 
 // Compile validates and lowers the entire AST before execution can cause side
@@ -156,8 +166,8 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 		}
 	case *model.Global:
 		// A documented no-op (docs/design.md): the variable stays unset.
-		// StaticVar has no case on purpose — it needs the runtime's persistent
-		// storage, so a program using it takes the whole-program fallback.
+	case *model.StaticVar:
+		return c.staticVar(node, path)
 	case *model.Declare:
 		// No directive changes how the engine behaves; the block form still
 		// wraps ordinary code.
@@ -280,18 +290,21 @@ func (c *compiler) classMethod(className string, node *model.FuncDecl, path stri
 	c.loops = nil
 	enclosingClass := c.class
 	c.class = className
+	enclosingStatics, enclosingClosure := c.statics, c.inClosure
+	c.statics, c.inClosure = map[string]int{}, false
 	defer func() {
 		c.loops = enclosing
 		c.class = enclosingClass
+		c.statics, c.inClosure = enclosingStatics, enclosingClosure
 	}()
 	paramSlots := make([]int, 0, 1+len(node.Params))
 	paramSlots = append(paramSlots, c.slot("this"))
-	for i, param := range node.Params {
-		if param.Variadic {
-			// See funcDecl: a collecting parameter has no slot to compile to.
-			return unsupported(fmt.Sprintf("%s.param[%d]", path, i), "variadic parameter")
-		}
-		paramSlots = append(paramSlots, c.slot(param.Name))
+	variadicSlot, err := c.paramSlots(node, &paramSlots, path)
+	if err != nil {
+		return err
+	}
+	if err := c.paramDefaults(node, path); err != nil {
+		return err
 	}
 	if err := c.block(node.Body, path+".body"); err != nil {
 		return err
@@ -302,13 +315,60 @@ func (c *compiler) classMethod(className string, node *model.FuncDecl, path stri
 	if c.program.userFuncs == nil {
 		c.program.userFuncs = make(map[string]userFuncDef)
 	}
-	c.program.userFuncs[className+"::"+node.Name] = userFuncDef{entryPC: funcPC, paramSlots: paramSlots}
+	c.program.userFuncs[className+"::"+node.Name] = userFuncDef{entryPC: funcPC, paramSlots: paramSlots, variadicSlot: variadicSlot}
+	return nil
+}
+
+// paramSlots resolves a declaration's parameters into slots, appended to
+// slots, and returns the slot of a trailing variadic collector (-1 without
+// one). The collector is not among the positional slots: the caller binds it
+// to an array of whatever arguments remain.
+func (c *compiler) paramSlots(node *model.FuncDecl, slots *[]int, path string) (int, error) {
+	variadicSlot := -1
+	for i, param := range node.Params {
+		if param.Variadic {
+			if i != len(node.Params)-1 {
+				return -1, unsupported(fmt.Sprintf("%s.param[%d]", path, i), "variadic parameter before the last")
+			}
+			variadicSlot = c.slot(param.Name)
+			continue
+		}
+		*slots = append(*slots, c.slot(param.Name))
+	}
+	return variadicSlot, nil
+}
+
+// paramDefaults emits the entry prologue that binds parameter defaults: a
+// slot the caller left cold takes its compiled default expression. The
+// expression runs at call time in the callee's own frame, which is when and
+// where the interpreter's bindParams evaluates it.
+func (c *compiler) paramDefaults(node *model.FuncDecl, path string) error {
+	for i, param := range node.Params {
+		if param.Default == nil || param.Variadic {
+			continue
+		}
+		slot := c.slot(param.Name)
+		c.emit(instruction{op: opInitialized, a: slot})
+		bound := c.emit(instruction{op: opJumpTrue, target: -1})
+		if err := c.expr(param.Default, fmt.Sprintf("%s.param[%d].default", path, i)); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opStore, a: slot})
+		c.program.code[bound].target = len(c.program.code)
+	}
 	return nil
 }
 
 func (c *compiler) ensureContainer(expr model.Expr, path string) error {
 	switch node := model.UnwrapParenthesized(expr).(type) {
 	case *model.Var:
+		if nodeConst, ok := c.staticSlot(node.Name); ok {
+			c.emit(instruction{op: opStaticLoad, a: nodeConst, name: node.Name})
+			c.emit(instruction{op: opEnsureArray})
+			c.emit(instruction{op: opDup})
+			c.emit(instruction{op: opStaticStore, a: nodeConst, name: node.Name})
+			return nil
+		}
 		c.emit(instruction{op: opLoad, a: c.slot(node.Name)})
 		c.emit(instruction{op: opEnsureArray})
 		c.emit(instruction{op: opDup})
@@ -331,6 +391,15 @@ func (c *compiler) ensureContainer(expr model.Expr, path string) error {
 			return err
 		}
 		c.emit(instruction{op: opVivifyProperty, name: node.Name})
+		return nil
+	case *model.StaticProp:
+		// `self::$entries[$k] = $v`: the static property is ensured to be an
+		// array and written back, then indexing vivifies below it.
+		class := c.resolveClass(node.Class)
+		c.emit(instruction{op: opStaticProp, name: class, extra: node.Name})
+		c.emit(instruction{op: opEnsureArray})
+		c.emit(instruction{op: opDup})
+		c.emit(instruction{op: opSetStaticProp, a: c.constant("="), name: class, extra: node.Name})
 		return nil
 	default:
 		return c.expr(expr, path)
@@ -419,19 +488,21 @@ func (c *compiler) funcDecl(node *model.FuncDecl, path string) error {
 	c.loops = nil
 	enclosingClass := c.class
 	c.class = ""
+	enclosingStatics, enclosingClosure := c.statics, c.inClosure
+	c.statics, c.inClosure = map[string]int{}, false
 	defer func() {
 		c.loops = enclosing
 		c.class = enclosingClass
+		c.statics, c.inClosure = enclosingStatics, enclosingClosure
 	}()
 
-	for i, param := range node.Params {
-		if param.Variadic {
-			// The parameter table pairs one slot with one argument, so a
-			// collecting parameter has no slot to compile to; the interpreter
-			// binds it.
-			return unsupported(fmt.Sprintf("%s.param[%d]", path, i), "variadic parameter")
-		}
-		_ = c.slot(param.Name)
+	paramSlots := make([]int, 0, len(node.Params))
+	variadicSlot, err := c.paramSlots(node, &paramSlots, path)
+	if err != nil {
+		return err
+	}
+	if err := c.paramDefaults(node, path); err != nil {
+		return err
 	}
 
 	if err := c.block(node.Body, path+".body"); err != nil {
@@ -446,13 +517,10 @@ func (c *compiler) funcDecl(node *model.FuncDecl, path string) error {
 	if c.program.userFuncs == nil {
 		c.program.userFuncs = make(map[string]userFuncDef)
 	}
-	paramSlots := make([]int, len(node.Params))
-	for i, p := range node.Params {
-		paramSlots[i] = c.slot(p.Name)
-	}
 	c.program.userFuncs[node.Name] = userFuncDef{
-		entryPC:    funcPC,
-		paramSlots: paramSlots,
+		entryPC:      funcPC,
+		paramSlots:   paramSlots,
+		variadicSlot: variadicSlot,
 	}
 	return nil
 }
@@ -570,7 +638,19 @@ func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 		targetPath := fmt.Sprintf("%s.target[%d]", path, i)
 		switch t := model.UnwrapParenthesized(target).(type) {
 		case *model.Var:
+			if nodeConst, ok := c.staticSlot(t.Name); ok {
+				// `unset(static $x's name)` clears the binding for this call
+				// but leaves the bag entry, an interpreter subtlety no fixture
+				// exercises; keep the program with the interpreter.
+				_ = nodeConst
+				return unsupported(targetPath, "unset of a function static")
+			}
 			c.emit(instruction{op: opUnsetLocal, a: c.slot(t.Name)})
+		case *model.PropAccess:
+			if err := c.expr(t.Base, targetPath+".base"); err != nil {
+				return err
+			}
+			c.emit(instruction{op: opUnsetProp, name: t.Name})
 		case *model.Index:
 			if t.Index == nil {
 				return unsupported(targetPath, "unset of an append target")
@@ -699,6 +779,10 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 func (c *compiler) storeTop(target model.Expr, kind, path string) error {
 	switch target := target.(type) {
 	case *model.Var:
+		if nodeConst, ok := c.staticSlot(target.Name); ok {
+			c.emit(instruction{op: opStaticStore, a: nodeConst, name: target.Name})
+			return nil
+		}
 		c.emit(instruction{op: opStore, a: c.slot(target.Name)})
 	case *model.Index:
 		if target.Index == nil {
@@ -730,6 +814,10 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 	}
 	switch target := target.(type) {
 	case *model.Var:
+		if nodeConst, ok := c.staticSlot(target.Name); ok {
+			c.emit(instruction{op: opStaticStore, a: nodeConst, b: boolInt(keep), name: target.Name, extra: operator})
+			return nil
+		}
 		constructorID := ""
 		if operator == "" || operator == "=" {
 			if _, ok := model.UnwrapParenthesized(value).(*model.New); ok {
@@ -753,6 +841,10 @@ func (c *compiler) assignment(target model.Expr, operator string, value model.Ex
 			return err
 		}
 		c.emit(instruction{op: opSetProperty, b: boolInt(keep), name: target.Name, extra: operator})
+	case *model.StaticProp:
+		// The operator travels through the constant pool: name and extra
+		// already carry the class and the property.
+		c.emit(instruction{op: opSetStaticProp, a: c.constant(operator), b: boolInt(keep), name: c.resolveClass(target.Class), extra: target.Name})
 	case *model.ListExpr:
 		return c.listAssignment(target.Elems, keep, path)
 	case *model.ArrayLit:
@@ -801,6 +893,10 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 	case *model.Var:
 		if node.Const {
 			c.emit(instruction{op: opLoadConst, a: c.slot(node.Name)})
+			return nil
+		}
+		if nodeConst, ok := c.staticSlot(node.Name); ok {
+			c.emit(instruction{op: opStaticLoad, a: nodeConst, name: node.Name})
 			return nil
 		}
 		c.emit(instruction{op: opLoad, a: c.slot(node.Name)})
@@ -877,9 +973,13 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		for i, argument := range node.Args {
 			// An output parameter is handed to the binding as a setter for the
-			// caller's variable, the way the interpreter emits __ref.
+			// caller's variable, the way the interpreter emits __ref. A
+			// function static has no frame slot for the setter to write.
 			if variable, ok := model.UnwrapParenthesized(argument).(*model.Var); ok &&
 				model.ByRefArg(node.Name, node.Fallback, i) {
+				if _, isStatic := c.staticSlot(variable.Name); isStatic {
+					return unsupported(fmt.Sprintf("%s.arg[%d]", path, i), "function static as an output parameter")
+				}
 				c.emit(instruction{op: opRef, a: c.slot(variable.Name)})
 				continue
 			}
@@ -896,23 +996,43 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		if node.Decl != nil {
 			return unsupported(path, "anonymous class")
 		}
+		dynamic := 0
 		if node.ClassExpr != nil {
-			// The class name is a runtime value; opConstruct carries a static
-			// one, so the program takes the interpreter fallback.
-			return unsupported(path, "dynamic class name")
+			// `new $cls(...)`: the class name is a runtime value, pushed
+			// beneath the arguments; b tells opConstruct to pop it.
+			if err := c.expr(node.ClassExpr, path+".class"); err != nil {
+				return err
+			}
+			dynamic = 1
 		}
 		for i, argument := range node.Args {
 			if err := c.expr(argument, fmt.Sprintf("%s.arg[%d]", path, i)); err != nil {
 				return err
 			}
 		}
-		c.emit(instruction{op: opConstruct, a: len(node.Args), name: node.Class})
+		c.emit(instruction{op: opConstruct, a: len(node.Args), b: dynamic, name: node.Class})
 	case *model.MethodCall:
-		if node.MethodExpr != nil {
-			// opCallMethod carries a static method name; see the New case.
-			return unsupported(path, "dynamic method name")
-		}
 		if err := c.expr(node.Base, path+".base"); err != nil {
+			return err
+		}
+		dynamic := 0
+		if node.MethodExpr != nil {
+			// `$obj->$m(...)`: the method name is a runtime value, pushed
+			// between the receiver and the arguments; b tells opCallMethod to
+			// pop it.
+			if err := c.expr(node.MethodExpr, path+".method"); err != nil {
+				return err
+			}
+			dynamic = 1
+		}
+		for i, argument := range node.Args {
+			if err := c.expr(argument, fmt.Sprintf("%s.arg[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+		c.emit(instruction{op: opCallMethod, a: len(node.Args), b: dynamic, name: node.Method})
+	case *model.Invoke:
+		if err := c.expr(node.Callee, path+".callee"); err != nil {
 			return err
 		}
 		for i, argument := range node.Args {
@@ -920,7 +1040,25 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 				return err
 			}
 		}
-		c.emit(instruction{op: opCallMethod, a: len(node.Args), name: node.Method})
+		c.emit(instruction{op: opInvoke, a: len(node.Args)})
+	case *model.StaticCall:
+		dynamic := 0
+		if node.MethodExpr != nil {
+			// `Class::$m(...)`: the method name is a runtime value, pushed
+			// beneath the arguments.
+			if err := c.expr(node.MethodExpr, path+".method"); err != nil {
+				return err
+			}
+			dynamic = 1
+		}
+		for i, argument := range node.Args {
+			if err := c.expr(argument, fmt.Sprintf("%s.arg[%d]", path, i)); err != nil {
+				return err
+			}
+		}
+		c.emit(instruction{op: opCallStatic, a: len(node.Args), b: dynamic, name: c.resolveClass(node.Class), extra: node.Method})
+	case *model.StaticProp:
+		c.emit(instruction{op: opStaticProp, name: c.resolveClass(node.Class), extra: node.Name})
 	case *model.PropAccess:
 		if err := c.expr(node.Base, path+".base"); err != nil {
 			return err
@@ -994,13 +1132,18 @@ func (c *compiler) closure(node *model.Closure, path string) error {
 
 	// The body is its own control-flow scope: a loop around the closure is not
 	// one its `break` can leave, and a `return` in it returns from the closure.
+	// `static $x` in the body stays unsupported: its bag counts per closure
+	// value, which the shared per-node storage cannot express.
 	enclosingLoops, enclosingClass := c.loops, c.class
+	enclosingStatics, enclosingClosure := c.statics, c.inClosure
 	c.loops = nil
+	c.statics, c.inClosure = nil, true
 	if node.Static {
 		c.class = ""
 	}
 	err := c.block(node.Body, path+".body")
 	c.loops, c.class = enclosingLoops, enclosingClass
+	c.statics, c.inClosure = enclosingStatics, enclosingClosure
 	if err != nil {
 		return err
 	}
@@ -1016,7 +1159,16 @@ func (c *compiler) closure(node *model.Closure, path string) error {
 func (c *compiler) incDec(node *model.Unary, path string) error {
 	switch target := node.X.(type) {
 	case *model.Var:
+		if nodeConst, ok := c.staticSlot(target.Name); ok {
+			c.emit(instruction{op: opIncDecStatic, a: nodeConst, b: boolInt(node.Postfix), name: target.Name, extra: node.Op})
+			return nil
+		}
 		c.emit(instruction{op: opIncDecLocal, a: c.slot(target.Name), b: boolInt(node.Postfix), name: node.Op})
+	case *model.PropAccess:
+		if err := c.expr(target.Base, path+".base"); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opIncDecProp, b: boolInt(node.Postfix), name: target.Name, extra: node.Op})
 	case *model.Index:
 		if target.Index == nil {
 			return unsupported(path, "increment append target")
@@ -1106,6 +1258,48 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		return unsupported(path, "binary operator %q", node.Op)
 	}
 	return nil
+}
+
+// staticVar lowers `static $x [= expr][, $y ...];`. The bag is the same
+// per-statement storage the interpreter uses, fetched live from the host, so
+// a recursive call sees the writes of the frame above it instead of a copy.
+// The initializers run only when the bag is unseeded, which is once per
+// function lifetime; after the statement, every reference to the declared
+// names in this function compiles against the bag.
+//
+// The statement is only supported in a named function or method: at top level
+// there is no function lifetime to persist across, and in a closure the bag
+// counts per closure value, which is interpreter state the flat frame does
+// not carry.
+func (c *compiler) staticVar(node *model.StaticVar, path string) error {
+	if c.statics == nil || c.inClosure {
+		return unsupported(path, "statement *model.StaticVar outside a named function")
+	}
+	nodeConst := c.constant(node)
+	c.emit(instruction{op: opStaticSeeded, a: nodeConst})
+	seeded := c.emit(instruction{op: opJumpTrue, target: -1})
+	for i, decl := range node.Vars {
+		if decl.Default != nil {
+			if err := c.expr(decl.Default, fmt.Sprintf("%s.static[%d]", path, i)); err != nil {
+				return err
+			}
+		} else {
+			c.emit(instruction{op: opPushConst, a: c.constant(nil)})
+		}
+		c.emit(instruction{op: opStaticStore, a: nodeConst, name: decl.Name})
+	}
+	c.program.code[seeded].target = len(c.program.code)
+	for _, decl := range node.Vars {
+		c.statics[decl.Name] = nodeConst
+	}
+	return nil
+}
+
+// staticSlot reports whether name is a function-static of the function being
+// compiled, and the constant-pool index of its declaring node.
+func (c *compiler) staticSlot(name string) (int, bool) {
+	nodeConst, ok := c.statics[name]
+	return nodeConst, ok
 }
 
 // resolveClass collapses the contextual class names onto the class being
