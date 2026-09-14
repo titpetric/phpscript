@@ -25,8 +25,7 @@ if ($foo) {
 }
 ```
 
-An `if` body must be wrapped in braces. Prefer parentheses for PHP-portable
-source; phpscript also accepts `if $foo { ... }`.
+An `if` body must be wrapped in braces. Prefer parentheses for PHP-portable source; phpscript also accepts `if $foo { ... }`.
 
 ## Loops
 
@@ -48,19 +47,12 @@ do {
 } while ($attempts < 3);
 ```
 
-`do-while` runs the body before the condition is first checked, so it executes
-at least once. `continue` jumps to the condition check.
+`do-while` runs the body before the condition is first checked, so it executes at least once. `continue` jumps to the condition check.
 
-`foreach` assignment targets may be variables, indexes, or properties.
-`list(...)` destructuring works in ordinary assignment but not as a `foreach`
-target.
+`foreach` assignment targets may be variables, indexes, or properties. `list(...)` destructuring works in ordinary assignment but not as a `foreach` target.
 
-`foreach ($a as &$v)` binds the element rather than a copy of it, so writing to
-`$v` edits `$a`. Only the value half may take `&`; a key cannot. See
-[Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element)
-for what the two spellings cost and where they stop matching PHP.
+`foreach ($a as &$v)` binds the element rather than a copy of it, so writing to `$v` edits `$a`. Only the value half may take `&`; a key cannot. See [Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element) for what the two spellings cost and where they stop matching PHP.
 
 ## Switch
 
-Cases fall through until `break`, matching PHP. Both `case value:` and
-`case value;` separators are accepted.
+Cases fall through until `break`, matching PHP. Both `case value:` and `case value;` separators are accepted.

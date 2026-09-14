@@ -2,9 +2,7 @@
 
 Parse and execute a PHP script in CLI mode.
 
-It accepts the [global flags](README.md#global-flags) and nothing else: `-f`,
-`-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and
-`--coverfile`.
+It accepts the [global flags](README.md#global-flags) and nothing else: `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`.
 
 ```bash
 phpscript run tests/fixtures/test-hello-world.php

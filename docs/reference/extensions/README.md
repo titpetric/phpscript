@@ -34,10 +34,7 @@ defer($db->rollback);
 
 ### `DateTime` and `Time`
 
-`Time`, `Time\Duration`, and `Time\Location` expose Go's `time.Time`,
-`time.Duration`, and `time.Location` values directly. Go's package-level
-functions are registered as `DateTime` statics; the returned `Time` values
-supply their exported methods automatically:
+`Time`, `Time\Duration`, and `Time\Location` expose Go's `time.Time`, `time.Duration`, and `time.Location` values directly. Go's package-level functions are registered as `DateTime` statics; the returned `Time` values supply their exported methods automatically:
 
 ```php
 set_timezone("Europe/Ljubljana");
@@ -48,21 +45,14 @@ $end = $start->add("30m");
 echo $end->format("2006-01-02 15:04 MST");
 ```
 
-Any PHP argument passed to a Go `time.Duration` parameter may be a duration
-string accepted by Go's `time.ParseDuration`, such as `"500ms"`, `"30m"`, or
-`"2h45m"`. A reusable value can be constructed explicitly:
+Any PHP argument passed to a Go `time.Duration` parameter may be a duration string accepted by Go's `time.ParseDuration`, such as `"500ms"`, `"30m"`, or `"2h45m"`. A reusable value can be constructed explicitly:
 
 ```php
 $retention = new Time\Duration("168h");
 $expires = $start->add($retention);
 ```
 
-`new Time\Location($name)` and `Time\Location::load($name)` load an IANA
-timezone. `set_timezone()` accepts either that value or its name and changes
-the default used by `new Time`, `DateTime::now()`, `DateTime::parse()`,
-`DateTime::date()`, and the Unix constructors. The setting belongs to the
-current runtime; it does not mutate Go's process-wide `time.Local` and cannot
-leak into another request.
+`new Time\Location($name)` and `Time\Location::load($name)` load an IANA timezone. `set_timezone()` accepts either that value or its name and changes the default used by `new Time`, `DateTime::now()`, `DateTime::parse()`, `DateTime::date()`, and the Unix constructors. The setting belongs to the current runtime; it does not mutate Go's process-wide `time.Local` and cannot leak into another request.
 
 ### `Database`
 

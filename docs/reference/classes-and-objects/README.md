@@ -37,14 +37,11 @@ $user = new User("Ada");
 echo $user->label();
 ```
 
-Properties can be declared with `var` or with a visibility modifier, and may
-carry a type hint, but visibility is not enforced and the type is not checked.
+Properties can be declared with `var` or with a visibility modifier, and may carry a type hint, but visibility is not enforced and the type is not checked.
 
 ## Static members
 
-A `static` property is storage on the class rather than on an instance. Every
-instance, and every static call, reads and writes the same value, and it
-outlives the object that first set it.
+A `static` property is storage on the class rather than on an instance. Every instance, and every static call, reads and writes the same value, and it outlives the object that first set it.
 
 ```php
 class Registry
@@ -65,29 +62,15 @@ echo count(Registry::all());          // 1
 echo Registry::class;                 // Registry
 ```
 
-`self::` and `static::` both resolve to the class of the running method. There
-is no inheritance, so late static binding has nothing to bind late to and the
-two spellings are equivalent. Inside an instance method, calling a non-static
-method through `self::method()` forwards the current instance just like
-`$this->method()`, so the called method can read and write `$this`. A genuinely
-static method still runs without a receiver: `$this` is unbound inside it, as it
-is in PHP.
+`self::` and `static::` both resolve to the class of the running method. There is no inheritance, so late static binding has nothing to bind late to and the two spellings are equivalent. Inside an instance method, calling a non-static method through `self::method()` forwards the current instance just like `$this->method()`, so the called method can read and write `$this`. A genuinely static method still runs without a receiver: `$this` is unbound inside it, as it is in PHP.
 
-`new self()` and `new static()` are not resolved: both fail loudly as an
-undefined class, a won't-implement recorded in
-[Design decisions](../../design.md). Spell the class name, `new Registry()`,
-which is the one class either keyword could ever name here.
+`new self()` and `new static()` are not resolved: both fail loudly as an undefined class, a won't-implement recorded in [Design decisions](../../design.md). Spell the class name, `new Registry()`, which is the one class either keyword could ever name here.
 
-`Class::method` is also a callable value, so `array($object, "method")`,
-`"Class::method"` and `Closure::fromCallable(...)` all resolve through the same
-lookup; see [Functions](../functions/README.md).
+`Class::method` is also a callable value, so `array($object, "method")`, `"Class::method"` and `Closure::fromCallable(...)` all resolve through the same lookup; see [Functions](../functions/README.md).
 
 ## Interfaces
 
-An interface names method signatures, and a class that declares `implements`
-must declare every one of them itself. That is the whole of it: the check runs
-before the program does, and a class that passes it has exactly the members it
-wrote.
+An interface names method signatures, and a class that declares `implements` must declare every one of them itself. That is the whole of it: the check runs before the program does, and a class that passes it has exactly the members it wrote.
 
 ```php
 interface Reader
@@ -109,26 +92,15 @@ class Store implements Listing
 }
 ```
 
-`interface A extends B, C` widens the contract: the names a class is checked
-against are the union of what every listed interface declares. Nothing is
-inherited, because an interface declares no body and holds no storage.
+`interface A extends B, C` widens the contract: the names a class is checked against are the union of what every listed interface declares. Nothing is inherited, because an interface declares no body and holds no storage.
 
-A missing method is reported by `phpscript lint` and raises a
-`RuntimeException` at run time, naming the class, the interface and the method.
-A name no `interface` declaration in the same file defines is not a contract and
-is not checked, which is what makes `implements Countable` load: phpscript does
-not declare PHP's built-in interfaces.
+A missing method is reported by `phpscript lint` and raises a `RuntimeException` at run time, naming the class, the interface and the method. A name no `interface` declaration in the same file defines is not a contract and is not checked, which is what makes `implements Countable` load: phpscript does not declare PHP's built-in interfaces.
 
-`instanceof` does not consult an interface. It is class-name equality, so
-`$store instanceof Reader` is false and `$store instanceof Store` is true.
-Constants declared on an interface are parsed and printed back, and reading one
-through `Interface::NAME` is not implemented.
+`instanceof` does not consult an interface. It is class-name equality, so `$store instanceof Reader` is false and `$store instanceof Store` is true. Constants declared on an interface are parsed and printed back, and reading one through `Interface::NAME` is not implemented.
 
 ## Host-backed objects
 
-An embedding Go application can register constructors. Returned Go values are
-then exposed through the same `new`, method-call, and property-access syntax.
-`Database` is the standard example.
+An embedding Go application can register constructors. Returned Go values are then exposed through the same `new`, method-call, and property-access syntax. `Database` is the standard example.
 
 ## References
 
