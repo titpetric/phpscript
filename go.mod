@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/dlclark/regexp2 v1.12.0
-	github.com/go-bridget/mig v0.6.3
+	github.com/go-bridget/mig v0.6.5
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/goccy/go-yaml v1.19.2
