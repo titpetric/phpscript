@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// TestFlatstackFixtures runs every fixture through the flat bytecode runtime,
-// which falls back to the compatibility interpreter for syntax it does not
-// compile yet.
+// TestFlatstackFixtures runs every fixture through the flat bytecode runtime.
+// A fixture the compiler rejects is skipped, not delegated: a fallback run
+// would test the compatibility interpreter a second time under this name.
 func TestFlatstackFixtures(t *testing.T) {
 	areas, err := embeddedFixtures()
 	if err != nil {
@@ -32,6 +32,9 @@ func TestFlatstackFixtures(t *testing.T) {
 				selected++
 				t.Run(fx.Name, func(t *testing.T) {
 					res := RunFixtureOn(t.Context(), fx, RunnerFlatstack)
+					if res.Skipped {
+						t.Skip(res.FailureReason)
+					}
 					if !res.Passed {
 						t.Fatalf("flatstack fixture failed: %s", res.FailureReason)
 					}

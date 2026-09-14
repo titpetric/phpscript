@@ -48,7 +48,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | array_stack.phpt         | PASS       | PASS    | PASS |
 | array_union.phpt         | PASS       | PASS    | PASS |
 | chained_assignment.phpt  | PASS       | PASS    | PASS |
-| compact.phpt             | PASS       | PASS    | PASS |
+| compact.phpt             | SKIP       | PASS    | PASS |
 | end_reset.phpt           | PASS       | PASS    | PASS |
 | keys.phpt                | PASS       | PASS    | PASS |
 | ksort_asort.phpt         | PASS       | PASS    | PASS |
@@ -149,8 +149,9 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | callables.phpt                          | PASS       | PASS    | PASS |
 | closure_capture.phpt                    | PASS       | PASS    | PASS |
 | defer-usage.phpt                        | PASS       | PASS    | SKIP |
+| parameter_defaults.phpt                 | PASS       | PASS    | PASS |
 | static_var.phpt                         | PASS       | PASS    | PASS |
-| static_var_closure.phpt                 | PASS       | PASS    | PASS |
+| static_var_closure.phpt                 | SKIP       | PASS    | PASS |
 | static_var_list.phpt                    | PASS       | PASS    | PASS |
 | static_var_recursion.phpt               | PASS       | PASS    | PASS |
 | user_function_declaration_and_call.phpt | PASS       | PASS    | PASS |
@@ -373,7 +374,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 10       | 10     | 0      |
 | tests/fixtures/flatstack   | 8        | 8      | 0      |
-| tests/fixtures/functions   | 10       | 10     | 0      |
+| tests/fixtures/functions   | 11       | 11     | 0      |
 | tests/fixtures/gd          | 7        | 7      | 0      |
 | tests/fixtures/includes    | 4        | 4      | 0      |
 | tests/fixtures/namespaces  | 5        | 5      | 0      |
@@ -388,4 +389,4 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/strings     | 20       | 20     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 1        | 1      | 0      |
-| **Total**                  | 242      | 242    | 0      |
+| **Total**                  | 243      | 243    | 0      |

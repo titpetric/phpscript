@@ -188,11 +188,14 @@ type Fixture struct {
 	database   model.DatabaseProvider
 	coverage   *coverage.Collector
 	rootFS     fs.FS
-	mu         sync.Mutex
-	parsed     *model.Program
-	parsedErr  error
-	interp     *runner.Runtime
-	flatRT     *flatstack.Runtime
+	mu          sync.Mutex
+	parsed      *model.Program
+	parsedErr   error
+	interp      *runner.Runtime
+	flatRT      *flatstack.Runtime
+	flatExpr    *flatstack.ExprCache
+	flatChecked bool
+	flatErr     error
 }
 
 // TestResult carries execution outcome for a single fixture.
@@ -712,6 +715,13 @@ func RunFixtureOn(ctx context.Context, f *Fixture, r Runner) *TestResult {
 	case RunnerFlatstack:
 		var reqCtx runner.Context
 		out, reqCtx, runErr = executeFlatstack(ctx, f)
+		if errors.Is(runErr, ErrFlatstackUnsupported) {
+			res.Skipped = true
+			res.FailureReason = runErr.Error()
+			res.Error = runErr.Error()
+			res.DurationMs = time.Since(start).Milliseconds()
+			return res
+		}
 		headers = reqCtx.ResponseHeaders()
 	case RunnerPHP:
 		php, hostErr := executePHP(ctx, f)
@@ -863,26 +873,48 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 		return "Internal Server Error", runner.Context{}, err
 	}
 
+	if f.cleanState() {
+		defer func() { f.flatRT = nil }()
+	}
+
 	var out strings.Builder
 	reqCtx := buildFixtureRequestContext(f)
-	if f.flatRT == nil {
-		// A nil cache is caching off, which is what SetNoCache asks for; both
-		// cache types answer a miss for nil rather than needing a branch here.
-		flatCache, flatExpr := f.flatCaches(ctx)
-		f.flatRT = newFlatstackTestRuntime(&out, f.runnerOptions(), f.RootDir(), f.Path, flatCache, flatExpr)
-		f.flatRT.FreezeStdlib()
-	} else {
-		f.flatRT.ResetSession(&out, f.stdin())
+	rt, expr, built := f.acquireFlatRuntime(ctx, &out)
+	if built {
+		rt.RegisterConstructor("Storage", NewStorage)
+		rt.RegisterConstructor("FailStorage", NewFailStorage)
+		registerPanicBindings(rt)
+		stdlib.Register(rt)
+		stdlib.RegisterFS(rt, f.RootDir())
+		rt.FreezeStdlib()
+	}
+	rt.UpdateFilename(f.Path)
+	f.flatRT = rt
+	f.flatExpr = expr
+
+	// The gate benchmarks are held to: a program the compiler rejects is
+	// skipped rather than delegated. The compile goes through the run's own
+	// expression cache, so the one the gate pays is the one the run reads
+	// back; the verdict is cached on the fixture so it is paid once. A
+	// violated interface contract is not a coverage gap: the flat path raises
+	// it as the program's own error, so the fixture runs and asserts it.
+	if !f.flatChecked {
+		f.flatChecked = true
+		if err := f.flatExpr.EnsureFlat(prog); err != nil {
+			var contract *model.InterfaceContractError
+			if !errors.As(err, &contract) {
+				f.flatErr = err
+			}
+		}
+	}
+	if f.flatErr != nil {
+		return "", runner.Context{}, fmt.Errorf("%w: %v", ErrFlatstackUnsupported, f.flatErr)
 	}
 	f.flatRT.SetContext(ctx)
 	reqCtx.Register(f.flatRT)
 
 	if err := f.includePrelude(f.flatRT); err != nil {
 		return "Internal Server Error", reqCtx, err
-	}
-
-	if f.cleanState() {
-		defer func() { f.flatRT = nil }()
 	}
 
 	if err := f.flatRT.Run(prog); err != nil {
@@ -894,17 +926,47 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	return out.String(), reqCtx, nil
 }
 
-func newFlatstackTestRuntime(out *strings.Builder, options flatstack.Options, rootDir, entrypoint string, flatIncludeCache *flatstack.IncludeCache, flatExpr *flatstack.ExprCache) *flatstack.Runtime {
-	runtime := flatstack.New(out, options)
-	runtime.SetIncludeCache(flatIncludeCache)
-	runtime.SetExprCache(flatExpr)
-	runtime.RegisterConstructor("Storage", NewStorage)
-	runtime.RegisterConstructor("FailStorage", NewFailStorage)
-	registerPanicBindings(runtime)
-	stdlib.Register(runtime)
-	stdlib.RegisterFS(runtime, rootDir)
-	runtime.UpdateFilename(entrypoint)
-	return runtime
+// acquireFlatRuntime is acquireRuntime for the bytecode runtime: worker scope
+// hands back the worker's flat runtime, Reset for this run and rebuilt once
+// per folder rather than once per fixture. Building a runtime is a full
+// stdlib registration, which single-shot runs were paying per fixture on
+// this engine while the interpreter amortised it per folder.
+func (f *Fixture) acquireFlatRuntime(ctx context.Context, out io.Writer) (*flatstack.Runtime, *flatstack.ExprCache, bool) {
+	include, expr := f.flatCaches(ctx)
+
+	build := func() *flatstack.Runtime {
+		rt := flatstack.New(out, f.runnerOptions())
+		rt.SetIncludeCache(include)
+		rt.SetExprCache(expr)
+		return rt
+	}
+
+	if f.cacheScope != CacheWorker {
+		if f.flatRT != nil {
+			// The same fixture again, under --count: the session resets and
+			// the caches stay.
+			f.flatRT.ResetSession(out, f.stdin())
+			return f.flatRT, f.flatExpr, false
+		}
+		return build(), expr, true
+	}
+
+	w := currentWorker(ctx)
+	key := f.runtimeKey()
+	if w.flatRT != nil && w.flatKey == key {
+		// Reset, not ResetSession, between fixtures: see acquireRuntime.
+		if f.flatRT == w.flatRT {
+			w.flatRT.ResetSession(out, f.stdin())
+		} else {
+			w.flatRT.Reset(out, f.stdin())
+		}
+		return w.flatRT, expr, false
+	}
+
+	rt := build()
+	w.flatRT = rt
+	w.flatKey = key
+	return rt, expr, true
 }
 
 func buildFixtureRequestContext(f *Fixture) runner.Context {

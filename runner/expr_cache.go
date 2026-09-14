@@ -149,6 +149,22 @@ func (c *ExprCache) Len() int {
 	return len(c.byExpr)
 }
 
+// EnsureFlat compiles p into the flat-program table when it is not there yet
+// and reports the compile verdict. It is the write-through form of the check
+// flatstack.Supports makes: a caller gating a run on the compiler pays one
+// compile, and the run reads it back instead of repeating it.
+func (c *ExprCache) EnsureFlat(p *model.Program) error {
+	if _, ok := c.getFlat(p); ok {
+		return nil
+	}
+	program, err := flatvm.Compile(p)
+	if err != nil {
+		return err
+	}
+	c.setFlat(p, program)
+	return nil
+}
+
 func (c *ExprCache) getFlat(p *model.Program) (*flatvm.Program, bool) {
 	if c == nil {
 		return nil, false

@@ -258,7 +258,7 @@ runner:
 
 Both `flatstack` and `php` are accepted, and an omitted key means the runtime is used. The default runtime cannot be opted out of, because its output is what the expected-output section states.
 
-Opt out only where the runtime has nothing to say about the fixture: `php: false` for the three groups above, `flatstack: false` where the bytecode engine cannot execute the program at all. Syntax the bytecode engine does not compile is not a reason on its own, because it falls back to the compatibility interpreter and produces the same output.
+Opt out only where the runtime has nothing to say about the fixture: `php: false` for the three groups above, `flatstack: false` where a program the bytecode engine compiles should still not run there. Syntax the bytecode engine does not compile needs no opt-out: the harness compiles the program through the flat compiler before running — into the run's own cache, so the run reuses the result — and reports the fixture as SKIP for that column. It does not delegate to the compatibility interpreter, which embedding does, because a fallback run would record the interpreter's result and cost under the flatstack name.
 
 ## Testing across runtimes
 

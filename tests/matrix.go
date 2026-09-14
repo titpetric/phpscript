@@ -33,6 +33,12 @@ var Runners = []Runner{RunnerFlatstack, RunnerRuntime, RunnerPHP}
 // binary is installed.
 var ErrRunnerUnavailable = errors.New("runner unavailable")
 
+// ErrFlatstackUnsupported reports that the flat bytecode compiler rejected the
+// fixture's program. The fixture is skipped for the flatstack runner rather
+// than delegated: a fallback run would report the compatibility interpreter's
+// result and cost under the flatstack column.
+var ErrFlatstackUnsupported = errors.New("program not supported by flatstack")
+
 // FixtureRunners opts a fixture out of individual runners. An absent field
 // means the runner is used; the default runtime can not be opted out of
 // because it defines the fixture's expected output.
