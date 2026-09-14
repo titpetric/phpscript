@@ -1356,10 +1356,6 @@ func (rt *Runtime) releaseEnv(st *evalEnv) {
 // surrounding expression (e.g. a comparison) can use it.
 func (rt *Runtime) helperSet(ref *scopeRef) func(name string, val any) (any, error) {
 	return func(name string, val any) (any, error) {
-		cur, _ := ref.scope.Get(name)
-		if !phpval.ReassignAllowed(cur, val) {
-			return nil, NewRuntimeException(phpval.ReassignMessage(name, cur, val), 0)
-		}
 		ref.scope.Set(name, val)
 		return val, nil
 	}

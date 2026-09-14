@@ -600,10 +600,10 @@ func TestLintTypeReassign(t *testing.T) {
 			var lines []int
 			for _, d := range diags {
 				if strings.Contains(d.Message, "no reassignment") {
-					// The runtime throws for the same write, so the finding
-					// fails the lint run rather than advising.
-					if !d.Fatal {
-						t.Errorf("finding %q is not fatal", d.Message)
+					// Advisory by decision: the runtime retypes the way PHP
+					// does, so the finding must not fail the lint run.
+					if d.Fatal {
+						t.Errorf("finding %q is fatal, want advisory", d.Message)
 					}
 					got = append(got, d.Message)
 					lines = append(lines, d.Line)

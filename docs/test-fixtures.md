@@ -355,10 +355,9 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 
 ## tests/fixtures/types
 
-| tests/fixtures/types | Flat stack | Runtime | PHP  |
-|----------------------|------------|---------|------|
-| reassign_rules.phpt  | PASS       | PASS    | SKIP |
-| reassign_throws.phpt | PASS       | PASS    | SKIP |
+| tests/fixtures/types  | Flat stack | Runtime | PHP  |
+|-----------------------|------------|---------|------|
+| reassign_dynamic.phpt | PASS       | PASS    | PASS |
 
 ## Summary
 
@@ -386,5 +385,5 @@ last. See [testing.md](./testing.md) for the fixture format and how to add one.
 | tests/fixtures/stdlib      | 23       | 23     | 0      |
 | tests/fixtures/strings     | 19       | 19     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| tests/fixtures/types       | 2        | 2      | 0      |
-| **Total**                  | 238      | 238    | 0      |
+| tests/fixtures/types       | 1        | 1      | 0      |
+| **Total**                  | 237      | 237    | 0      |

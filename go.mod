@@ -12,8 +12,8 @@ require (
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/spf13/pflag v1.0.10
-	github.com/titpetric/cli v0.6.0
-	github.com/titpetric/oida v0.3.0
+	github.com/titpetric/cli v0.6.1
+	github.com/titpetric/oida v0.4.0
 	github.com/titpetric/pdo v0.2.5
 	github.com/titpetric/platform v0.7.2
 	golang.org/x/crypto v0.57.0

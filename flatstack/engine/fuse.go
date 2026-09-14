@@ -16,8 +16,8 @@ package engine
 // followed by an optional store fold: any of the above, or a plain
 // opBinary, directly followed by a plain `=` store into a slot writes the
 // result there instead of pushing it (instruction.target = slot+1; 0 keeps
-// the push). The VM's fused case reproduces opLoad's extras/host fallback,
-// opStore's reassignment check and the SetGlobal offer exactly.
+// the push). The VM's fused case reproduces opLoad's extras/host fallback
+// and opStore's SetGlobal offer exactly.
 //
 // An instruction that is a jump target, a try boundary, a catch target or a
 // function entry stays addressable: a run containing one anywhere but its
@@ -107,7 +107,7 @@ func fuseAt(p *Program, protected map[int]bool, i int) (instruction, int) {
 	// instruction is a plain `=` store that keeps nothing on the stack.
 	if j := i + width; fusable(j) && code[j].op == opStore &&
 		(code[j].name == "" || code[j].name == "=") &&
-		code[j].b == 0 && code[j].c == 0 && code[j].extra == "" {
+		code[j].b == 0 && code[j].extra == "" {
 		fused.target = code[j].a + 1
 		width++
 	}
