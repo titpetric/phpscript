@@ -28,12 +28,28 @@ func registerWorkDir(rt *runner.Runtime) {
 // shape of a path and never touch the filesystem, so they are not bound to the
 // root and work the same on a path that does not exist.
 func registerPaths(rt *runner.Runtime) {
-	// dirname returns the parent directory of $path; the $levels argument is not accepted.
-	rt.RegisterFunc("dirname", func(path string) string {
-		return stdpath.Dir(strings.TrimRight(filepath.ToSlash(path), "/"))
+	// dirname returns the parent directory of $path, walking up $levels parents when given.
+	rt.RegisterFunc("dirname", func(path string, levels ...int64) string {
+		up := int64(1)
+		if len(levels) > 0 && levels[0] > 1 {
+			up = levels[0]
+		}
+		p := strings.TrimRight(filepath.ToSlash(path), "/")
+		for ; up > 0; up-- {
+			p = stdpath.Dir(p)
+		}
+		return p
 	})
-	// basename returns the trailing name component of $path; the $suffix argument is not accepted.
-	rt.RegisterFunc("basename", func(path string) string {
-		return stdpath.Base(filepath.ToSlash(path))
+	// basename returns the trailing name component of $path, less $suffix when the name ends with it. The empty and root paths answer "", as PHP's do.
+	rt.RegisterFunc("basename", func(path string, suffix ...string) string {
+		p := strings.TrimRight(filepath.ToSlash(path), "/")
+		if p == "" {
+			return ""
+		}
+		base := stdpath.Base(p)
+		if len(suffix) > 0 && suffix[0] != "" && base != suffix[0] && strings.HasSuffix(base, suffix[0]) {
+			base = strings.TrimSuffix(base, suffix[0])
+		}
+		return base
 	})
 }
