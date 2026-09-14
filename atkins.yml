@@ -31,21 +31,41 @@ tasks:
   # answers a question about the demo applications, not about the runtime.
   # `atkins test:demos` runs them against the image this pipeline built, and a
   # change under demos/ is expected to.
-  default:
+  # Formatting is one notion: the Go source and the markdown together. Every
+  # place that formats invokes this task, never go:fmt or mdox:fmt alone, so
+  # the two cannot drift apart. It runs twice in default: once ahead of the
+  # build, and once at the end over the documentation the pipeline generated.
+  fmt:
+    desc: "Format the Go source and the markdown"
     cmds:
       - task: go:fmt
-      - go install .
+      - task: mdox:fmt
+
+  default:
+    cmds:
+      - task: fmt
       - task: go:test
       - task: cover
-      - task: go:build
+      - task: build
       - task: db:down
         deferred: true
       - task: db:up
       - task: test:phpscript:run
       - task: test:phpscript:matrix
       - task: test:introspection
+      - task: fmt
+
+  # The build alone, without the docs regeneration the default pipeline runs
+  # first. cover rewrites docs/coverage/ right before go:build, and a rewrite
+  # leaves the index stale, so a binary built by `atkins` carries a -dirty
+  # version stamp even when nothing changed. Release assets come from here:
+  # tag, `atkins build`, then release:publish.
+  build:
+    desc: "Build the release binary and the docker image, skipping docs regeneration"
+    cmds:
+      - go install .
+      - task: go:build
       - task: docker:build
-      - task: mdox:fmt
 
   # mysql and postgres are test infrastructure, not demos: test-database.php and
   # the platform_database fixtures query all three dialects, and sqlite alone
@@ -122,7 +142,7 @@ tasks:
   # One run produces both outputs: -o writes the checked-in report while the
   # ansi table still goes to the terminal, so the suite is not executed twice
   # to report it twice. The report is generated documentation, so this runs
-  # before test:introspection, whose last step formats everything under docs/.
+  # before the closing fmt pass that formats everything under docs/.
   # Written without --profile: timings would differ on every run and show up as
   # a diff in every commit.
   test:phpscript:matrix:
@@ -257,7 +277,7 @@ tasks:
     passthru: true
     cmds:
       - defer: rm -f splint.json
-      - splint --linters none -save ./...
+      - splint --save ./...
       - splint docs --input splint.json --render imports | plantuml -tsvg -pipe > docs/assets/imports.svg
       - splint docs --input splint.json --render puml | plantuml -tsvg -pipe > docs/assets/structure.svg
       - go-ddd-stats -d2 - | d2 --layout elk - docs/assets/size.svg
