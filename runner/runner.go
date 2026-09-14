@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/telemetry"
@@ -500,14 +499,14 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	// enclosing variables.
 	iter := func(k, v any) bool {
 		if keyTarget != nil {
-			if err = rt.bindTo(keyTarget, k, scope); err != nil {
+			if err = rt.assignTo(keyTarget, k, scope); err != nil {
 				return false
 			}
 		}
 		if copyValue {
 			v = model.CopyValue(v)
 		}
-		if err = rt.bindTo(valTarget, v, scope); err != nil {
+		if err = rt.assignTo(valTarget, v, scope); err != nil {
 			return false
 		}
 		var fl flow
@@ -1108,9 +1107,6 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		if err != nil {
 			return err
 		}
-		if !phpval.ReassignAllowed(cur, next) {
-			return NewRuntimeException(phpval.ReassignMessage(tgt.Name, cur, next), 0)
-		}
 		rt.setVar(scope, tgt.Name, next)
 		return nil
 
@@ -1342,25 +1338,9 @@ func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 
 // assignTo writes an already-evaluated value into an lvalue (used by list()
 // destructuring). Only plain `=` semantics are needed here.
-// bindTo writes a loop binding. foreach's key and value targets declare per
-// iteration the way a Go range clause does, so the reassignment check does
-// not apply and a mixed-type array iterates; every other target shape writes
-// the way assignTo writes it.
-func (rt *Runtime) bindTo(target model.Expr, val any, scope *Scope) error {
-	if tgt, ok := model.UnwrapParenthesized(target).(*model.Var); ok {
-		rt.setVar(scope, tgt.Name, val)
-		return nil
-	}
-	return rt.assignTo(target, val, scope)
-}
-
 func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
-		cur, _ := scope.Get(tgt.Name)
-		if !phpval.ReassignAllowed(cur, val) {
-			return NewRuntimeException(phpval.ReassignMessage(tgt.Name, cur, val), 0)
-		}
 		rt.setVar(scope, tgt.Name, val)
 		return nil
 	case *model.PropAccess:

@@ -169,12 +169,15 @@ func TestFusedStoreOffersSetGlobal(t *testing.T) {
 	}
 }
 
-// A folded store applies the type-reassignment check the way opStore does.
-func TestFusedStoreKeepsReassignCheck(t *testing.T) {
-	program := compileSource(t, `<?php $s = "text"; $s = $a + $b;`)
+// A folded store retypes the slot the way opStore does: variable types are
+// dynamic, as in PHP, and the fold must not change that.
+func TestFusedStoreRetypes(t *testing.T) {
+	program := compileSource(t, `<?php $s = "text"; $s = $a + $b; echo $s;`)
 	host := &fusedRunHost{globals: map[string]any{"a": int64(1), "b": int64(2)}}
-	err := Run(program, host)
-	if err == nil || !strings.Contains(err.Error(), "no reassignment: $s") {
-		t.Fatalf("err = %v, want the reassignment violation", err)
+	if err := Run(program, host); err != nil {
+		t.Fatal(err)
+	}
+	if got := host.out.String(); got != "3" {
+		t.Fatalf("output = %q, want 3", got)
 	}
 }
