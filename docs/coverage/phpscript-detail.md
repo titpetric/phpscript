@@ -69,7 +69,7 @@ github.com/titpetric/phpscript/internal/phpval/phpval.go, symbols 12, coverage 8
 github.com/titpetric/phpscript/internal/table/style.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/internal/table/table.go, symbols 12, coverage 100.00%
 github.com/titpetric/phpscript/lint/lint.go, symbols 23, coverage 86.79%
-github.com/titpetric/phpscript/lint/names.go, symbols 12, coverage 84.25%
+github.com/titpetric/phpscript/lint/names.go, symbols 12, coverage 84.12%
 github.com/titpetric/phpscript/lint/reassign.go, symbols 8, coverage 84.35%
 github.com/titpetric/phpscript/lint/redeclare.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/list/group.go, symbols 1, coverage 100.00%
@@ -122,7 +122,7 @@ github.com/titpetric/phpscript/runner/redeclare.go, symbols 7, coverage 81.07%
 github.com/titpetric/phpscript/runner/request.go, symbols 43, coverage 95.06%
 github.com/titpetric/phpscript/runner/response.go, symbols 6, coverage 100.00%
 github.com/titpetric/phpscript/runner/runner.go, symbols 56, coverage 82.63%
-github.com/titpetric/phpscript/runner/runtime.go, symbols 95, coverage 92.62%
+github.com/titpetric/phpscript/runner/runtime.go, symbols 97, coverage 91.90%
 github.com/titpetric/phpscript/runner/scope.go, symbols 11, coverage 88.89%
 github.com/titpetric/phpscript/runner/size.go, symbols 6, coverage 82.40%
 github.com/titpetric/phpscript/runner/static.go, symbols 11, coverage 77.98%

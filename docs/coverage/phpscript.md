@@ -26,11 +26,11 @@ github.com/titpetric/phpscript/internal/arrayi64, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/internal/flags, symbols 14, coverage 91.37%
 github.com/titpetric/phpscript/internal/phpval, symbols 43, coverage 93.64%
 github.com/titpetric/phpscript/internal/table, symbols 13, coverage 100.00%
-github.com/titpetric/phpscript/lint, symbols 44, coverage 85.95%
+github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
 github.com/titpetric/phpscript/model, symbols 154, coverage 36.99%
 github.com/titpetric/phpscript/parser, symbols 165, coverage 91.34%
-github.com/titpetric/phpscript/runner, symbols 399, coverage 86.72%
+github.com/titpetric/phpscript/runner, symbols 401, coverage 86.58%
 github.com/titpetric/phpscript/runner/bindings, symbols 24, coverage 86.72%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
 github.com/titpetric/phpscript/runner/expr, symbols 21, coverage 83.37%
