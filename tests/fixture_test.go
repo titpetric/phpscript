@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	yaml "gopkg.in/yaml.v3"
+	yaml "github.com/goccy/go-yaml"
 
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/parser"
