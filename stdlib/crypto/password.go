@@ -62,10 +62,19 @@ var (
 	dummyOnce sync.Once
 )
 
-func timingDecoy(password string) {
+// Warm builds the timing decoy ahead of its first use. A serving process is
+// right to pay the cost-12 derivation lazily, on the first invalid-hash
+// verify; a measuring harness is not: the quarter second lands on whichever
+// engine reaches it first and reads as that engine's cost. The test runner
+// calls this in the background before any fixture is timed.
+func Warm() {
 	dummyOnce.Do(func() {
 		dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy-password-for-timing"), defaultCost)
 	})
+}
+
+func timingDecoy(password string) {
+	Warm()
 	_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
+	"github.com/titpetric/phpscript/stdlib/crypto"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -307,6 +308,12 @@ func Run(ctx context.Context, args []string, opts Options) error {
 }
 
 func run(ctx context.Context, args, paths []string, found suites, opts Options) error {
+	// Process-wide lazy state a fixture would otherwise build inside its own
+	// timing. The bcrypt decoy is a quarter second; built here in the
+	// background, it overlaps discovery and the earlier areas, and the
+	// sync.Once blocks a fixture that arrives first.
+	go crypto.Warm()
+
 	if opts.Parallel < 0 {
 		return fmt.Errorf("parallel must be at least 1")
 	}
