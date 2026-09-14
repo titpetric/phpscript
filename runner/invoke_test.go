@@ -27,7 +27,7 @@ func runBinding(t *testing.T, name string, fn any, src string) (string, error) {
 }
 
 // Both dispatch paths coerce a string parameter the way PHP renders the value.
-// invokeFast recognises func(string) string; func(string, string) string falls
+// fastInvoker covers func(string) string; func(string, string) string falls
 // through to reflection, where Go's own conversion would render int64(65) as
 // the code point "A".
 func TestInvokeStringArgumentCoercion(t *testing.T) {
