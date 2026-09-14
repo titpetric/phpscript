@@ -26,6 +26,18 @@ type groupTotals struct {
 	Failed   int
 	Total    int
 	Duration time.Duration
+	// Engines is the per-runner share of the time, in report order. Only a
+	// matrix run carries it: a plain run has one engine and Duration already
+	// is its figure.
+	Engines []engineDuration
+}
+
+// engineDuration is the time one runner spent, summed over its fixture runs.
+// Under --parallel the engines together can exceed the wall-clock Duration
+// they sit beside, which measures the run rather than the work.
+type engineDuration struct {
+	Runner   tests.Runner
+	Duration time.Duration
 }
 
 // mapFixtures runs fn over a group with bounded concurrency and returns values

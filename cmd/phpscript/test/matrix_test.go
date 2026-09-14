@@ -132,7 +132,7 @@ func TestMatrixTableFallsBackToMarkdown(t *testing.T) {
 	tbl.writeRow(matrixSample())
 	tbl.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
 	rows := strings.Split(strings.TrimSpace(buf.String()), "\n")
-	tbl.writeSummary(0, 1, 1, time.Millisecond)
+	tbl.writeSummary(0, 1, 1, time.Millisecond, nil)
 
 	got := buf.String()
 	if strings.Contains(got, table.BoxVertical) || strings.Contains(got, table.ColorGreen) {
@@ -189,6 +189,91 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 	lines = strings.Split(strings.TrimSpace(ansi.Strip(buf.String())), "\n")
 	if width := ansi.StringWidth(lines[0]); width != maxTableWidth {
 		t.Errorf("second folder width = %d, want %d", width, maxTableWidth)
+	}
+}
+
+// TestMatrixDurationsSplitPerEngine covers the per-runner share the matrix
+// subtotal and summary lines carry after the wall-clock figure.
+func TestMatrixDurationsSplitPerEngine(t *testing.T) {
+	engines := []engineDuration{
+		{Runner: tests.RunnerFlatstack, Duration: time.Millisecond},
+		{Runner: tests.RunnerRuntime, Duration: 2 * time.Millisecond},
+		{Runner: tests.RunnerPHP, Duration: 3 * time.Millisecond},
+	}
+
+	var buf bytes.Buffer
+	tbl := newTerminalMatrix(&buf, Options{})
+	tbl.sizeColumns("arrays", []string{"a.phpt"})
+	tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1, Duration: 6 * time.Millisecond, Engines: engines})
+	tbl.writeSummary(1, 0, 1, 6*time.Millisecond, engines)
+
+	output := ansi.Strip(buf.String())
+	for _, want := range []string{
+		"arrays: 1 passed, 0 failed out of 1 fixtures (6ms: flatstack 1ms, runtime 2ms, php 3ms)",
+		"Matrix summary: 1 passed, 0 failed out of 1 fixtures (6ms: flatstack 1ms, runtime 2ms, php 3ms)",
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output is missing %q:\n%s", want, output)
+		}
+	}
+}
+
+// TestFolderTableSplitsEngineDurations covers the folder summary of a matrix
+// run with cost columns: one duration column per runner after the wall-clock
+// one. Without engines the single column stays, which is what a plain run and
+// the checked-in report print.
+func TestFolderTableSplitsEngineDurations(t *testing.T) {
+	rows := []folderSummary{{groupTotals: groupTotals{
+		Dir: "arrays", Passed: 1, Total: 1, Duration: 6 * time.Millisecond,
+		Engines: []engineDuration{
+			{Runner: tests.RunnerFlatstack, Duration: time.Millisecond},
+			{Runner: tests.RunnerRuntime, Duration: 2 * time.Millisecond},
+			{Runner: tests.RunnerPHP, Duration: 3 * time.Millisecond},
+		},
+	}}}
+
+	var buf bytes.Buffer
+	writeFolderTable(&buf, rows, true, true)
+	got := buf.String()
+	for _, want := range []string{
+		"| Path   | Fixtures | Passed | Failed | Duration (ms) | Flat stack (ms) | Runtime (ms) | PHP (ms) |",
+		"| arrays | 1        | 1      | 0      | 6             | 1               | 2            | 3        |",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("folder table is missing %q:\n%s", want, got)
+		}
+	}
+
+	buf.Reset()
+	rows[0].Engines = nil
+	writeFolderTable(&buf, rows, true, true)
+	if got := buf.String(); !strings.Contains(got, "| Path   | Fixtures | Passed | Failed | Duration (ms) |") {
+		t.Errorf("plain folder table grew engine columns:\n%s", got)
+	}
+}
+
+// TestMarkdownSummarySplitsEngineDurations covers the closing summary table of
+// a -o matrix report with cost columns.
+func TestMarkdownSummarySplitsEngineDurations(t *testing.T) {
+	engines := []engineDuration{
+		{Runner: tests.RunnerFlatstack, Duration: time.Millisecond},
+		{Runner: tests.RunnerPHP, Duration: 3 * time.Millisecond},
+	}
+
+	var buf bytes.Buffer
+	tbl := newMarkdownMatrix(&buf, Options{Profile: true})
+	tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1, Duration: 4 * time.Millisecond, Engines: engines})
+	tbl.writeSummary(1, 0, 1, 4*time.Millisecond, engines)
+
+	got := buf.String()
+	for _, want := range []string{
+		"| Area      | Fixtures | Passed | Failed | Duration (ms) | Flat stack (ms) | PHP (ms) |",
+		"| arrays    | 1        | 1      | 0      | 4             | 1               | 3        |",
+		"| **Total** | 1        | 1      | 0      | 4             | 1               | 3        |",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("summary table is missing %q:\n%s", want, got)
+		}
 	}
 }
 

@@ -105,8 +105,17 @@ type folderSummary struct {
 // the issue asks for, without it the counts that exist.
 func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool) {
 	headers := []string{"Path", "Fixtures", "Passed", "Failed"}
+	// A matrix run carries a duration per engine, and the folder rows split
+	// theirs into a column per runner beside the wall-clock one.
+	var engines []engineDuration
+	if len(rows) > 0 {
+		engines = rows[0].Engines
+	}
 	if timings {
 		headers = append(headers, "Duration (ms)")
+		for _, engine := range engines {
+			headers = append(headers, matrixHeaders[engine.Runner]+" (ms)")
+		}
 	}
 	covered := len(rows) > 0 && rows[0].cover != nil
 	if covered {
@@ -123,6 +132,9 @@ func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool)
 		}
 		if timings {
 			cells = append(cells, formatDuration(row.Duration))
+			for _, engine := range engines {
+				cells = append(cells, formatDuration(engineTime(row.Engines, engine.Runner)))
+			}
 		}
 		if covered && row.cover != nil {
 			cells = append(cells, row.cover.files(), row.cover.lines())

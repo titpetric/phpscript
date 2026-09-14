@@ -58,9 +58,9 @@ func (t teeMatrixTable) closeGroup(totals groupTotals) {
 	}
 }
 
-func (t teeMatrixTable) writeSummary(passed, failed, total int, duration time.Duration) {
+func (t teeMatrixTable) writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration) {
 	for _, table := range t {
-		table.writeSummary(passed, failed, total, duration)
+		table.writeSummary(passed, failed, total, duration, engines)
 	}
 }
 

@@ -43,6 +43,9 @@ type matrixRow struct {
 type matrixFixtureResult struct {
 	Row      matrixRow
 	JSONRows []jsonFixture
+	// Durations is what each runner spent on the fixture, summed over its
+	// samples, which is what the per-engine folder and summary figures add up.
+	Durations map[tests.Runner]time.Duration
 }
 
 // label returns what a table cell should show for the row.
@@ -81,6 +84,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 	var passedCount, failedCount, total int
 	var folders []folderSummary
 	startAll := time.Now()
+	runEngines := make(map[tests.Runner]time.Duration, len(opts.runners()))
 
 	for _, group := range groups {
 		sinks.writeGroup(group.Dir, group.Labels)
@@ -90,6 +94,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 		results := mapFixtures(group.Fixtures, opts.Parallel, func(worker, i int, fx *tests.Fixture) matrixFixtureResult {
 			row := matrixRow{DisplayPath: group.Paths[i], Label: group.Labels[i]}
 			var fixtureJSONRows []jsonFixture
+			durations := make(map[tests.Runner]time.Duration, len(opts.runners()))
 			for _, name := range opts.runners() {
 				cell := matrixCell{Runner: name}
 				if !fx.Runs(name) {
@@ -109,6 +114,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 				for _, fr := range runFixtureSamples(tests.WithWorker(ctx, worker), fx, name, opts) {
 					fr.DisplayPath = row.DisplayPath
 					fr.Label = row.Label
+					durations[name] += fr.Total
 					if name == tests.RunnerRuntime {
 						row.Metrics = fr.fixtureMetrics
 					}
@@ -141,12 +147,17 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 				}
 				row.Cells = append(row.Cells, cell)
 			}
-			return matrixFixtureResult{Row: row, JSONRows: fixtureJSONRows}
+			return matrixFixtureResult{Row: row, JSONRows: fixtureJSONRows, Durations: durations}
 		})
 
+		groupEngines := make(map[tests.Runner]time.Duration, len(opts.runners()))
 		for _, result := range results {
 			row := result.Row
 			jsonRows = append(jsonRows, result.JSONRows...)
+			for runner, duration := range result.Durations {
+				groupEngines[runner] += duration
+				runEngines[runner] += duration
+			}
 			if row.Failed() {
 				groupFailed++
 			} else {
@@ -161,6 +172,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 			Failed:   groupFailed,
 			Total:    len(group.Fixtures),
 			Duration: time.Since(groupStart),
+			Engines:  engineOrder(opts.runners(), groupEngines),
 		}
 		sinks.closeGroup(totals)
 		folders = append(folders, folderSummary{groupTotals: totals})
@@ -169,6 +181,8 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 		total += len(group.Fixtures)
 	}
 
+	engines := engineOrder(opts.runners(), runEngines)
+
 	if !opts.JSON && !opts.Verbose {
 		if opts.Cover != "" {
 			for i, cover := range folderCoverage(groups) {
@@ -176,11 +190,11 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 			}
 		}
 		writeFolderTable(os.Stdout, folders, !table.IsTerminal(os.Stdout), opts.Time > 0 || opts.Count > 0 || opts.Profile)
-		fmt.Printf("Matrix summary: %d passed, %d failed out of %d fixtures (%dms)\n",
-			passedCount, failedCount, total, time.Since(startAll).Milliseconds())
+		fmt.Printf("Matrix summary: %d passed, %d failed out of %d fixtures (%s)\n",
+			passedCount, failedCount, total, formatEngineSplit(time.Since(startAll), engines))
 	}
 
-	sinks.writeSummary(passedCount, failedCount, total, time.Since(startAll))
+	sinks.writeSummary(passedCount, failedCount, total, time.Since(startAll), engines)
 
 	if opts.JSON {
 		_ = json.NewEncoder(os.Stdout).Encode(jsonReport{
@@ -192,4 +206,15 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 	}
 
 	return failedCount
+}
+
+// engineOrder lays the accumulated per-runner durations out in report order,
+// which is what every table and summary line prints them in. A runner whose
+// fixtures all opted out reports 0ms rather than leaving the report.
+func engineOrder(runners []tests.Runner, durations map[tests.Runner]time.Duration) []engineDuration {
+	engines := make([]engineDuration, 0, len(runners))
+	for _, runner := range runners {
+		engines = append(engines, engineDuration{Runner: runner, Duration: durations[runner]})
+	}
+	return engines
 }

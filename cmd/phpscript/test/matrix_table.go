@@ -30,7 +30,7 @@ type matrixTable interface {
 	writeGroup(dir string, labels []string)
 	writeRow(matrixRow)
 	closeGroup(groupTotals)
-	writeSummary(passed, failed, total int, duration time.Duration)
+	writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration)
 }
 
 // terminalMatrix writes the ansi table. Column widths are established per
@@ -192,14 +192,14 @@ func (t *terminalMatrix) writeRow(row matrixRow) {
 
 func (t *terminalMatrix) closeGroup(totals groupTotals) {
 	t.writeBorder(table.BoxBottomLeft, table.BoxTeeUp, table.BoxBottomRight)
-	fmt.Fprintf(t.w, "%s%s: %d passed, %d failed out of %d fixtures (%dms)%s\n\n",
+	fmt.Fprintf(t.w, "%s%s: %d passed, %d failed out of %d fixtures (%s)%s\n\n",
 		table.ColorHeader, totals.Dir, totals.Passed, totals.Failed, totals.Total,
-		totals.Duration.Milliseconds(), table.ColorReset)
+		formatEngineSplit(totals.Duration, totals.Engines), table.ColorReset)
 }
 
-func (t *terminalMatrix) writeSummary(passed, failed, total int, duration time.Duration) {
-	fmt.Fprintf(t.w, "%sMatrix summary: %d passed, %d failed out of %d fixtures (%dms)%s\n",
-		table.ColorHeader, passed, failed, total, duration.Milliseconds(), table.ColorReset)
+func (t *terminalMatrix) writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration) {
+	fmt.Fprintf(t.w, "%sMatrix summary: %d passed, %d failed out of %d fixtures (%s)%s\n",
+		table.ColorHeader, passed, failed, total, formatEngineSplit(duration, engines), table.ColorReset)
 }
 
 // detailWidth is the width of the runner columns merged into one cell, which
@@ -297,8 +297,8 @@ func (t *markdownMatrix) closeGroup(totals groupTotals) {
 
 // writeSummary closes the report with the per-folder totals, so the reader
 // sees the aggregate without adding up the tables above it.
-func (t *markdownMatrix) writeSummary(passed, failed, total int, duration time.Duration) {
-	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.metrics())
+func (t *markdownMatrix) writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration) {
+	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.metrics(), engines)
 }
 
 func (t *markdownMatrix) writeMarkdownRow(values []string) {
