@@ -1,8 +1,6 @@
 # Glossary
 
-The words this project uses, and what they mean here. Most are ordinary web
-development terms; the entries that matter are the ones php, this runtime and
-the Go code below it spell the same and mean differently.
+The words this project uses, and what they mean here. Most are ordinary web development terms; the entries that matter are the ones php, this runtime and the Go code below it spell the same and mean differently.
 
 ## The request
 

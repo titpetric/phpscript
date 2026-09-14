@@ -1,11 +1,8 @@
 # Flat-stack runtime
 
-The `flatstack` package is an alternative entry point for embedding phpscript.
-It keeps the `runner` API while adding a compile-once flat-bytecode path for a
-growing subset of the public `model.Program` AST.
+The `flatstack` package is an alternative entry point for embedding phpscript. It keeps the `runner` API while adding a compile-once flat-bytecode path for a growing subset of the public `model.Program` AST.
 
-The API is experimental and may change at any point before a stable release,
-or be absorbed into the already provided runner APIs.
+The API is experimental and may change at any point before a stable release, or be absorbed into the already provided runner APIs.
 
 ```diagram
 parser.Parse
@@ -24,10 +21,7 @@ model.Program
      └── unsupported ─────────────▶ runner interpreter + expr VM
 ```
 
-The entire program is checked and compiled before execution. If any node is not
-supported, no flat instruction runs and the complete program is delegated to
-the runner. This prevents fallback from repeating constructors, method calls,
-output, or other side effects.
+The entire program is checked and compiled before execution. If any node is not supported, no flat instruction runs and the complete program is delegated to the runner. This prevents fallback from repeating constructors, method calls, output, or other side effects.
 
 ## Using flatstack
 
@@ -61,15 +55,13 @@ func main() {
 }
 ```
 
-To change only an existing import path while retaining the local identifier
-`runner`, use an import alias:
+To change only an existing import path while retaining the local identifier `runner`, use an import alias:
 
 ```go
 import runner "github.com/titpetric/phpscript/flatstack"
 ```
 
-Existing calls such as `runner.New`, `runner.Options`, `runner.IsExit`, and
-`runner.NewExprCache` then continue to compile.
+Existing calls such as `runner.New`, `runner.Options`, `runner.IsExit`, and `runner.NewExprCache` then continue to compile.
 
 ## API compatibility
 
@@ -81,9 +73,7 @@ The following flatstack types are aliases of their runner counterparts:
 - `ExitError` and `HostPanicError`
 - `IncludeFunc` and `Transpiler`
 
-Because `flatstack.Runtime` is an alias of `runner.Runtime`, APIs that accept a
-concrete `*runner.Runtime` remain usable. In particular, these calls require no
-adapter:
+Because `flatstack.Runtime` is an alias of `runner.Runtime`, APIs that accept a concrete `*runner.Runtime` remain usable. In particular, these calls require no adapter:
 
 ```go
 stdlib.Register(runtime)
@@ -101,22 +91,15 @@ The package also forwards the runner package functions used by embedders:
 
 ### Are runner and flatstack interchangeable?
 
-For code that directly constructs and runs a runtime, **yes at the API and
-fallback-behavior level**. The full fixture corpus is executed through both
-imports in CI-style tests.
+For code that directly constructs and runs a runtime, **yes at the API and fallback-behavior level**. The full fixture corpus is executed through both imports in CI-style tests.
 
 They are **not yet independent equivalent engines**:
 
-- `flatstack.Runtime` deliberately aliases `runner.Runtime`; this preserves the
-  complete embedding API rather than duplicating runtime, standard-library,
-  include, request, and reflection state.
+- `flatstack.Runtime` deliberately aliases `runner.Runtime`; this preserves the complete embedding API rather than duplicating runtime, standard-library, include, request, and reflection state.
 - Only the documented subset below executes as native flat bytecode.
 - Every other valid program uses the existing runner interpreter.
-- `annotations.Route` and the bundled CLI/server currently construct `runner.New`
-  internally. Merely changing a callback type does not make those paths use
-  flatstack.
-- `Runtime.OnError` selects the interpreter because its per-statement recovery
-  contract has not been added to bytecode.
+- `annotations.Route` and the bundled CLI/server currently construct `runner.New` internally. Merely changing a callback type does not make those paths use flatstack.
+- `Runtime.OnError` selects the interpreter because its per-statement recovery contract has not been added to bytecode.
 
 Use `flatstack.Supports` when native bytecode execution is required:
 
@@ -126,9 +109,7 @@ if err := flatstack.Supports(program); err != nil {
 }
 ```
 
-Applications normally do not need this check because transparent fallback is
-the compatibility contract. Benchmarks should always use it unless they are
-intentionally measuring fallback.
+Applications normally do not need this check because transparent fallback is the compatibility contract. Benchmarks should always use it unless they are intentionally measuring fallback.
 
 ## Native bytecode subset
 
@@ -145,8 +126,7 @@ Flat bytecode currently supports these statements:
 - Top-level PHP class declarations and free function declarations
 - `include` / `include_once` / `require` as statements or expressions
 - `list()` / array destructuring assignment
-- `defer()`, registered on the frame in flight and run LIFO when that frame
-  returns
+- `defer()`, registered on the frame in flight and run LIFO when that frame returns
 
 It supports these expressions:
 
@@ -163,33 +143,20 @@ It supports these expressions:
 - Registered/free function calls and method calls
 - Property reads
 - String concatenation with `.`
-- Anonymous functions, including a by-value `use (...)` capture list, a `$this`
-  carried away from an enclosing method, and `static function () {}`
+- Anonymous functions, including a by-value `use (...)` capture list, a `$this` carried away from an enclosing method, and `static function () {}`
 
-Arithmetic, coercion, comparison, array access, and truthiness are implemented
-by the flat VM and its small PHP-semantics host boundary. The bridge uses
-runner's existing reflection path for registered Go constructors, functions and
-methods. The compatibility interpreter evaluates expressions on runner/expr,
-its closure-chain engine, for unsupported programs.
+Arithmetic, coercion, comparison, array access, and truthiness are implemented by the flat VM and its small PHP-semantics host boundary. The bridge uses runner's existing reflection path for registered Go constructors, functions and methods. The compatibility interpreter evaluates expressions on runner/expr, its closure-chain engine, for unsupported programs.
 
-The current end-to-end corpus result is **14 native and 14 compatibility
-fallback fixtures (28 total)**. Both paths pass all fixtures. `Supports` is the
-authoritative per-program answer; a fixture count is useful progress evidence,
-not a claim that half of the PHP language is implemented.
+The current end-to-end corpus result is **14 native and 14 compatibility fallback fixtures (28 total)**. Both paths pass all fixtures. `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that half of the PHP language is implemented.
 
 ### Current native barriers
 
-The complete program atomically selects fallback when it contains any currently
-unsupported form. The major remaining forms are:
+The complete program atomically selects fallback when it contains any currently unsupported form. The major remaining forms are:
 
 - Property increment/decrement and class-constant / static-property forms
-- Invoking a callable held in a value: `$fn(...)`, `$array[0](...)`,
-  `$this->handler(...)`. A closure compiles, but only a binding such as
-  `usort()` or `call_user_func()` can call one
-- By-reference closure captures `use (&$x)`, closure parameter defaults, and
-  variadic or by-reference closure parameters
-- Anonymous classes, `new class { ... }`. The bytecode carries a class name
-  where an anonymous class carries its declaration
+- Invoking a callable held in a value: `$fn(...)`, `$array[0](...)`, `$this->handler(...)`. A closure compiles, but only a binding such as `usort()` or `call_user_func()` can call one
+- By-reference closure captures `use (&$x)`, closure parameter defaults, and variadic or by-reference closure parameters
+- Anonymous classes, `new class { ... }`. The bytecode carries a class name where an anonymous class carries its declaration
 - `try` without a `catch` clause
 - Casts
 - PHP constructors (`__construct`) still run in the interpreter
@@ -198,9 +165,7 @@ unsupported form. The major remaining forms are:
 - `include` and `require` both fail the request on a missing file (PHP `include` is a warning)
 - A host without Include fails at `opInclude`, after earlier opcodes have run
 
-These are not called "unsupported programs" at the public runtime boundary:
-they are valid phpscript programs and execute through runner. "Unsupported" in
-a `Supports` error means only "not yet lowerable to native flat bytecode."
+These are not called "unsupported programs" at the public runtime boundary: they are valid phpscript programs and execute through runner. "Unsupported" in a `Supports` error means only "not yet lowerable to native flat bytecode."
 
 ## Host calls, errors, and panics
 
@@ -212,27 +177,11 @@ Flat bytecode uses the runner's existing host bridge, including:
 - Go constructor and method error propagation
 - Exported Go struct field access
 
-The VM binds a frame handle (`engine.FrameLocals`) to the host once per run
-instead of copying its locals into a map around every call. The host decides
-when a callee needs the scope: a function-table hit whose signature does not
-take a `context.Context` is invoked with no scope at all, which is the
-interpreter's own contract for the same binding; context bindings, scope
-builtins such as `func_get_args`, and the undefined-function path materialise
-a scope from `Snapshot` before the callee body runs and write it back after.
-That snapshot-before-call ordering is what the by-reference marks rely on and
-is pinned by the engine's `vm_ref_test`.
+The VM binds a frame handle (`engine.FrameLocals`) to the host once per run instead of copying its locals into a map around every call. The host decides when a callee needs the scope: a function-table hit whose signature does not take a `context.Context` is invoked with no scope at all, which is the interpreter's own contract for the same binding; context bindings, scope builtins such as `func_get_args`, and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. That snapshot-before-call ordering is what the by-reference marks rely on and is pinned by the engine's `vm_ref_test`.
 
-The compiler also resolves binary operators into an opcode class, and the VM
-computes the both-`int64` shapes (and both-string concat) inline through the
-same `internal/phpval` rules `phpArith` reads. Every other operand shape
-dispatches to the host with the operator name, so coercion has one home. Slot
-type inference beyond this was measured and rejected: values live in `[]any`,
-where the type assertion is the unboxing, so an opcode that knows its operand
-slots are monomorphic int saves nothing over the dynamic guard.
+The compiler also resolves binary operators into an opcode class, and the VM computes the both-`int64` shapes (and both-string concat) inline through the same `internal/phpval` rules `phpArith` reads. Every other operand shape dispatches to the host with the operator name, so coercion has one home. Slot type inference beyond this was measured and rejected: values live in `[]any`, where the type assertion is the unboxing, so an opcode that knows its operand slots are monomorphic int saves nothing over the dynamic guard.
 
-Panics raised by registered Go constructors, functions, or methods become
-`HostPanicError` at the reflection boundary. Native bytecode `try`/`catch` can
-catch these errors exactly like a returned Go error:
+Panics raised by registered Go constructors, functions, or methods become `HostPanicError` at the reflection boundary. Native bytecode `try`/`catch` can catch these errors exactly like a returned Go error:
 
 ```php
 try {
@@ -242,15 +191,11 @@ try {
 }
 ```
 
-Without a catch, `Runtime.Run` returns the error to Go. The VM also has a
-last-resort recovery guard for engine defects; ordinary host panics do not rely
-on that guard.
+Without a catch, `Runtime.Run` returns the error to Go. The VM also has a last-resort recovery guard for engine defects; ordinary host panics do not rely on that guard.
 
 ## Compilation and caching
 
-`Runtime.Run` looks for flat bytecode in the configured `ExprCache`. On a cache
-miss it compiles the complete AST and stores the immutable bytecode by program
-identity. Share the cache between runtimes that execute the same parsed program:
+`Runtime.Run` looks for flat bytecode in the configured `ExprCache`. On a cache miss it compiles the complete AST and stores the immutable bytecode by program identity. Share the cache between runtimes that execute the same parsed program:
 
 ```go
 cache := flatstack.NewExprCache()
@@ -260,9 +205,7 @@ runtime.SetExprCache(cache)
 runtime.Run(program)
 ```
 
-For compile-once/run-many workloads, parse the source once and reuse both the
-`*model.Program` and cache. Re-parsing creates a different program identity and
-therefore a new flat compilation.
+For compile-once/run-many workloads, parse the source once and reuse both the `*model.Program` and cache. Re-parsing creates a different program identity and therefore a new flat compilation.
 
 ## Validation and benchmarks
 
@@ -273,8 +216,7 @@ The test suite contains:
 - Shared-cache parallel tests and race checks
 - Allocation-budget and deep-expression tests
 - Opted-in `.phpt` fixtures through both runtime imports
-- Compiler-input, malformed-AST, native differential, and fallback differential
-  fuzz targets
+- Compiler-input, malformed-AST, native differential, and fallback differential fuzz targets
 
 Run the normal and race suites with:
 
@@ -292,8 +234,7 @@ go test ./tests -run '^$' \
   -bench 'BenchmarkGoBindingHTTP|BenchmarkFlatstackMinitplImportSwap' -benchmem
 ```
 
-The `BenchmarkEngine*` benchmarks run the same Supports-gated programs
-through both engines as `engine=` sub-benchmarks:
+The `BenchmarkEngine*` benchmarks run the same Supports-gated programs through both engines as `engine=` sub-benchmarks:
 
 ```bash
 go test ./flatstack -run '^$' -bench '^BenchmarkEngine' -benchmem -count 6 | tee engines.txt
@@ -318,23 +259,10 @@ The highest-value next steps are:
 3. Nested `class` declarations at runtime (PHP semantics).
 4. Complete exception `finally` semantics on `return`/`throw` and remaining lvalue/cast forms.
 5. Add instruction, call-depth, and deadline budgets to native execution.
-6. Cache native-rejection decisions and use a structural cache key where
-   callers need to reparse identical source frequently.
-7. Let `annotations.Route` and CLI/server entry points select a runtime factory so
-   they can opt into flatstack instead of always constructing `runner.New`.
-8. Track native-versus-fallback execution in diagnostics so production users
-   can measure bytecode coverage without calling `Supports` separately.
+6. Cache native-rejection decisions and use a structural cache key where callers need to reparse identical source frequently.
+7. Let `annotations.Route` and CLI/server entry points select a runtime factory so they can opt into flatstack instead of always constructing `runner.New`.
+8. Track native-versus-fallback execution in diagnostics so production users can measure bytecode coverage without calling `Supports` separately.
 
-Operand, local, iterator, handler and call-frame storage is pooled on the
-run's exec state, user-function frames reuse stashed slabs, call arguments
-are borrowed off the operand stack for the duration of the call, and the
-host locals copy is gone (the frame handle above): a precompiled loop runs
-at zero allocations per run, and a host call in a loop adds nothing beyond
-the callee's own work. `TestFlatstackPrecompiledAllocationBudget` fails, not
-skips, when any of that regresses.
+Operand, local, iterator, handler and call-frame storage is pooled on the run's exec state, user-function frames reuse stashed slabs, call arguments are borrowed off the operand stack for the duration of the call, and the host locals copy is gone (the frame handle above): a precompiled loop runs at zero allocations per run, and a host call in a loop adds nothing beyond the callee's own work. `TestFlatstackPrecompiledAllocationBudget` fails, not skips, when any of that regresses.
 
-Flatstack is therefore interchangeable as an embedding API and for observable
-fixture behavior, but it is not yet a standalone replacement for runner's
-implementation. Replacing runner with copied or inlined code would be the wrong
-next step: shared runtime/bridge infrastructure avoids two diverging APIs while
-the opcode compiler and VM replace execution semantics incrementally.
+Flatstack is therefore interchangeable as an embedding API and for observable fixture behavior, but it is not yet a standalone replacement for runner's implementation. Replacing runner with copied or inlined code would be the wrong next step: shared runtime/bridge infrastructure avoids two diverging APIs while the opcode compiler and VM replace execution semantics incrementally.

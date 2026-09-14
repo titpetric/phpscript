@@ -18,11 +18,7 @@ This is a PHP interpreter written in Go. It supports the basic php expression sy
 
 ## Current state
 
-Behaviour is settled by `.phpt` fixtures: each one is written by running the
-source through real `php` first, and `phpscript test tests/fixtures/...`
-checks the runtime against that output. The generated
-[test fixture results](./docs/test-fixtures.md) hold the per-fixture matrix;
-the bird's-eye view per area:
+Behaviour is settled by `.phpt` fixtures: each one is written by running the source through real `php` first, and `phpscript test tests/fixtures/...` checks the runtime against that output. The generated [test fixture results](./docs/test-fixtures.md) hold the per-fixture matrix; the bird's-eye view per area:
 
 | Area                       | Fixtures | Passed | Failed |
 |----------------------------|----------|--------|--------|
@@ -47,11 +43,7 @@ the bird's-eye view per area:
 | tests/fixtures/syntax      | 8        | 8      | 0      |
 | **Total**                  | 197      | 197    | 0      |
 
-The Go test run collects a coverage profile, and `atkins cover` renders it into
-the generated [code coverage](./docs/coverage/phpscript.md) report, per package,
-with [the detail](./docs/coverage/phpscript-detail.md) per file. The dbadmin
-demo is measured the same way from a running server, in
-[dbadmin.md](./docs/coverage/dbadmin.md).
+The Go test run collects a coverage profile, and `atkins cover` renders it into the generated [code coverage](./docs/coverage/phpscript.md) report, per package, with [the detail](./docs/coverage/phpscript-detail.md) per file. The dbadmin demo is measured the same way from a running server, in [dbadmin.md](./docs/coverage/dbadmin.md).
 
 ## Building a docker image
 

@@ -17,11 +17,8 @@
 throw new Exception("message");
 ```
 
-Every SPL exception and error name is registered and constructible, all of them
-one type carrying the name the script used. A catch clause filters on that name;
-none of them is a subclass of another. See [Exceptions](../exceptions/README.md).
+Every SPL exception and error name is registered and constructible, all of them one type carrying the name the script used. A catch clause filters on that name; none of them is a subclass of another. See [Exceptions](../exceptions/README.md).
 
 ## Runtime class discovery
 
-`get_declared_classes()` returns user-defined and host-registered classes,
-including `Exception` and `Database` when the standard library is registered.
+`get_declared_classes()` returns user-defined and host-registered classes, including `Exception` and `Database` when the standard library is registered.

@@ -33,18 +33,13 @@ From lower to higher precedence, binary operators are grouped as follows:
 12. `instanceof`
 13. `**`
 
-This is PHP's own grouping: `1 | 2 == 2` folds the comparison first and is 1,
-and `1 << 2 + 3` shifts by five and is 32.
+This is PHP's own grouping: `1 | 2 == 2` folds the comparison first and is 1, and `1 << 2 + 3` shifts by five and is 32.
 
-`**` is right-associative and binds tighter than unary minus, so `2 ** 3 ** 2`
-is 512 and `-2 ** 2` is -4. `instanceof` binds tighter than `!`, so
-`!$e instanceof LogicException` negates the test.
+`**` is right-associative and binds tighter than unary minus, so `2 ** 3 ** 2` is 512 and `-2 ** 2` is -4. `instanceof` binds tighter than `!`, so `!$e instanceof LogicException` negates the test.
 
 ## Mutation
 
-Every compound assignment applies its operation to the current value and stores
-the result, so `$a = 5; $a *= 3;` leaves 15. The full set is `+=`, `-=`, `*=`,
-`/=`, `%=`, `**=`, `.=`, `&=`, `^=`, `<<=`, `>>=` and the bitwise-or form.
+Every compound assignment applies its operation to the current value and stores the result, so `$a = 5; $a *= 3;` leaves 15. The full set is `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `.=`, `&=`, `^=`, `<<=`, `>>=` and the bitwise-or form.
 
 ```php
 $i++;
@@ -54,5 +49,4 @@ $flags &= ~2;
 $items[] = $label;
 ```
 
-See
-[tests/fixtures/arithmetic/compound_assignment.phpt](../../../tests/fixtures/arithmetic/compound_assignment.phpt).
+See [tests/fixtures/arithmetic/compound_assignment.phpt](../../../tests/fixtures/arithmetic/compound_assignment.phpt).

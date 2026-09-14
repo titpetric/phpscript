@@ -1,9 +1,6 @@
 # Templating
 
-The phpscript engine is capable enough to load a fully featured template
-engine. [titpetric/minitpl](https://github.com/titpetric/minitpl) runs
-unmodified: it is pulled in with composer like in any PHP project, rather than
-copied into this repository and patched.
+The phpscript engine is capable enough to load a fully featured template engine. [titpetric/minitpl](https://github.com/titpetric/minitpl) runs unmodified: it is pulled in with composer like in any PHP project, rather than copied into this repository and patched.
 
 ```json
 {
@@ -29,15 +26,11 @@ $tpl->assign('name', 'phpscript');
 $tpl->render();
 ```
 
-Using templates and `$tpl->assign`, the arbitrary data which you can
-assign to the template can be rendered into HTML or other formats. The
-template engine supports the php syntax itself. A template is loaded,
-compiled into PHP code, and then ran with the use of `include`.
+Using templates and `$tpl->assign`, the arbitrary data which you can assign to the template can be rendered into HTML or other formats. The template engine supports the php syntax itself. A template is loaded, compiled into PHP code, and then ran with the use of `include`.
 
 ## The model
 
-While not templating specific, the mechanics of the language allow creating
-small reusable parts similar to storage repository packages in Go.
+While not templating specific, the mechanics of the language allow creating small reusable parts similar to storage repository packages in Go.
 
 ```php
 class UserStorage {
@@ -70,25 +63,15 @@ class UserStorage {
 }
 ```
 
-This makes any request just use very clear and very minimal database
-APIs which can be tested under very small scope. A complex request may
-perform hundreds of database interactions based on what's being rendered.
+This makes any request just use very clear and very minimal database APIs which can be tested under very small scope. A complex request may perform hundreds of database interactions based on what's being rendered.
 
-For example, for a news CMS website, you may fetch several sections of
-news articles, get their comment counts, their images, the journalist
-which posted the article, and the sections sorted by editorial system of
-weights. Using the PHPscript runtime makes such code much shorter than
-Go with it's type safety and explicit error handling.
+For example, for a news CMS website, you may fetch several sections of news articles, get their comment counts, their images, the journalist which posted the article, and the sections sorted by editorial system of weights. Using the PHPscript runtime makes such code much shorter than Go with it's type safety and explicit error handling.
 
-Go shines for CRUD-like APIs that usually fetch a single bit of data.
-Once this becomes a O(N) operation, the process to compose the returned
-data together can involve a lot of error handling boilerplate.
+Go shines for CRUD-like APIs that usually fetch a single bit of data. Once this becomes a O(N) operation, the process to compose the returned data together can involve a lot of error handling boilerplate.
 
 ## The view
 
-The basics are simple. A view takes many model outputs and composes them
-together into a HTML page. This may mean significant amount of database
-or cache interactions.
+The basics are simple. A view takes many model outputs and composes them together into a HTML page. This may mean significant amount of database or cache interactions.
 
 Even a simple CMS may:
 
@@ -132,8 +115,7 @@ $db = new UserStorage();
 $db->saveUserMemberships($id, $_POST['user_groups']);
 ```
 
-All the database interactions, including transactionality details, are
-left up to the `UserStorage` class. Keep this in mind as best practice.
+All the database interactions, including transactionality details, are left up to the `UserStorage` class. Keep this in mind as best practice.
 
 ## References
 

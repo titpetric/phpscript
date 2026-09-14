@@ -17,20 +17,16 @@ $items = array();
 $items[] = $name;
 ```
 
-Variables, array indexes, object properties, static properties, and `list(...)`
-targets can be assigned. Every PHP compound assignment applies: `+=`, `-=`,
-`*=`, `/=`, `%=`, `**=`, `.=`, `&=`, `|=`, `^=`, `<<=` and `>>=`.
+Variables, array indexes, object properties, static properties, and `list(...)` targets can be assigned. Every PHP compound assignment applies: `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `.=`, `&=`, `|=`, `^=`, `<<=` and `>>=`.
 
-Writing through an index that does not exist yet creates the arrays on the way
-down, as PHP does:
+Writing through an index that does not exist yet creates the arrays on the way down, as PHP does:
 
 ```php
 $tree = array();
 $tree["one"]["two"] = "deep";      // both levels are created
 ```
 
-`unset()` removes a variable, an array entry, an object property, or a static
-property. Removing an array entry does not renumber the entries around it.
+`unset()` removes a variable, an array entry, an object property, or a static property. Removing an array entry does not renumber the entries around it.
 
 ```php
 $row = array("a" => 1, "b" => 2, "c" => 3);
@@ -40,17 +36,11 @@ echo implode(",", array_keys($row));      // a,c
 
 ## Variable scope
 
-Each function call receives a local scope containing its arguments. A function
-does not implicitly see variables from its caller. Blocks do not create an
-additional scope.
+Each function call receives a local scope containing its arguments. A function does not implicitly see variables from its caller. Blocks do not create an additional scope.
 
-PHP's `global` statement will not be implemented: it parses and binds nothing,
-so the variable it names stays unset inside the function. Pass the collaborator
-as a parameter instead; [Design decisions](../../design.md) records why.
+PHP's `global` statement will not be implemented: it parses and binds nothing, so the variable it names stays unset inside the function. Pass the collaborator as a parameter instead; [Design decisions](../../design.md) records why.
 
-Function-level `static` variables work as PHP defines them: the initializer
-runs once per function lifetime, later writes persist across calls, and every
-closure value carries its own static storage.
+Function-level `static` variables work as PHP defines them: the initializer runs once per function lifetime, later writes persist across calls, and every closure value carries its own static storage.
 
 ```php
 function counter() {
@@ -68,5 +58,4 @@ function counter() {
 list($id, $name) = $row;
 ```
 
-PHP's `foreach ($rows as list($id, $name))` destructuring form is parsed but is
-not implemented by the runtime.
+PHP's `foreach ($rows as list($id, $name))` destructuring form is parsed but is not implemented by the runtime.

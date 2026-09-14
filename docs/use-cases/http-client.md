@@ -1,17 +1,12 @@
 # HTTP client bindings
 
-The standard runtime provides the Go-backed `HTTP\Client` and `HTTP\Request`
-classes. They are what a script calls instead of PHP's `curl_*` family, which
-phpscript does not implement.
+The standard runtime provides the Go-backed `HTTP\Client` and `HTTP\Request` classes. They are what a script calls instead of PHP's `curl_*` family, which phpscript does not implement.
 
-A request is a `net/http` request handed straight over, so a script reads and
-writes it the way Go names it. A response is a facade, because its body is read
-in full before the script sees it.
+A request is a `net/http` request handed straight over, so a script reads and writes it the way Go names it. A response is a facade, because its body is read in full before the script sees it.
 
 ## Create a client
 
-`new HTTP\Client` gives a client with a 30 second timeout that follows
-redirects:
+`new HTTP\Client` gives a client with a 30 second timeout that follows redirects:
 
 ```php
 $client = new HTTP\Client();
@@ -39,11 +34,9 @@ $client = new HTTP\Client(array(
 | `headers`          | Sent with every request the client makes                                                     |
 | `insecure`         | Disables certificate verification, for a test server and not for a service                   |
 
-A client always has a timeout. There is no way to ask for none, because a
-request with no deadline is the one failure a script cannot recover from.
+A client always has a timeout. There is no way to ask for none, because a request with no deadline is the one failure a script cannot recover from.
 
-An unrecognised key throws, so a typo is reported where it is written rather
-than at the far end of a request that did not carry what it was meant to:
+An unrecognised key throws, so a typo is reported where it is written rather than at the far end of a request that did not carry what it was meant to:
 
 ```php
 new HTTP\Client(array("timeuot" => 5));   // throws: unknown option "timeuot"
@@ -67,11 +60,9 @@ $request->header->set("Content-Type", "application/json");
 $response = $client->send($request);
 ```
 
-HTTP methods are written uppercase. A lowercase one is corrected before the
-request goes out, because a server treats the method as case-sensitive.
+HTTP methods are written uppercase. A lowercase one is corrected before the request goes out, because a server treats the method as case-sensitive.
 
-`send()` throws on a transport failure or a timeout. An HTTP error status is
-not a failure, so check the status:
+`send()` throws on a transport failure or a timeout. An HTTP error status is not a failure, so check the status:
 
 ```php
 if ($response->ok()) {
@@ -83,8 +74,7 @@ if ($response->ok()) {
 
 ## Read a request
 
-`HTTP\Request` is a `net/http` request, so its fields and methods are Go's,
-matched case-insensitively:
+`HTTP\Request` is a `net/http` request, so its fields and methods are Go's, matched case-insensitively:
 
 ```php
 $trace_id = "b7c1";
@@ -100,8 +90,7 @@ $request->header->add("X-Trace", $trace_id);
 echo $request->header->get("accept");
 ```
 
-Everything `net/http` exports on a request is reachable, so there is one
-vocabulary for a request rather than a PHP-side name for each part of it.
+Everything `net/http` exports on a request is reachable, so there is one vocabulary for a request rather than a PHP-side name for each part of it.
 
 ## Read a response
 
@@ -115,15 +104,11 @@ vocabulary for a request rather than a PHP-side name for each part of it.
 | `headers()`     | Every response header as an array                                    |
 | `json()`        | The body decoded into arrays and scalars; throws when it is not JSON |
 
-The body is read in full when the response is constructed, and bounded at
-32 MiB. A script has no way to close a stream, so an unread body would leak its
-connection when the request ended.
+The body is read in full when the response is constructed, and bounded at 32 MiB. A script has no way to close a stream, so an unread body would leak its connection when the request ended.
 
 ## Send several requests at once
 
-`parallel()` takes an array of requests keyed by a name the script chooses, and
-returns the responses under those names. A page making three calls waits for
-the slowest rather than the sum:
+`parallel()` takes an array of requests keyed by a name the script chooses, and returns the responses under those names. A page making three calls waits for the slowest rather than the sum:
 
 ```php
 $results = $client->parallel(array(
@@ -141,9 +126,7 @@ foreach ($results as $name => $response) {
 }
 ```
 
-One request failing does not fail the others and does not throw. That response
-reports `ok()` as false and `err()` as the reason, so a page renders what it
-has instead of losing every result to one unreachable host:
+One request failing does not fail the others and does not throw. That response reports `ok()` as false and `err()` as the reason, so a page renders what it has instead of losing every result to one unreachable host:
 
 ```php
 $results = $client->parallel(array(
@@ -159,9 +142,7 @@ $results["offline"]->status();  // 0, no response arrived
 $results["offline"]->err();     // the transport error, ending in "connection refused"
 ```
 
-`parallel()` throws when the argument is not an array of `HTTP\Request`, which
-is reported before any connection is opened. Each request is bounded by the
-client's timeout, and the client's headers and `base_url` apply to all of them.
+`parallel()` throws when the argument is not an array of `HTTP\Request`, which is reported before any connection is opened. Each request is bounded by the client's timeout, and the client's headers and `base_url` apply to all of them.
 
 ## A page that calls an API
 
@@ -196,12 +177,8 @@ foreach ($response->json() as $user) {
 }
 ```
 
-A transport failure throws and an error status does not, so both are handled,
-and neither leaves the page rendering a half-built list.
+A transport failure throws and an error status does not, so both are handled, and neither leaves the page rendering a half-built list.
 
 ## Tracing
 
-`send()` records an external span per request, carrying the method, host,
-status and byte count. `parallel()` records one span for the batch alongside
-the per-request spans, so a slow page shows which upstream call it waited on.
-See [Telemetry](../telemetry.md).
+`send()` records an external span per request, carrying the method, host, status and byte count. `parallel()` records one span for the batch alongside the per-request spans, so a slow page shows which upstream call it waited on. See [Telemetry](../telemetry.md).

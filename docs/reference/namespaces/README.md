@@ -12,8 +12,7 @@
 
 ## Defining a namespace
 
-The declaration must be the first PHP statement. A namespaced file may contain
-only class and function declarations.
+The declaration must be the first PHP statement. A namespaced file may contain only class and function declarations.
 
 ```php
 <?php
@@ -26,15 +25,11 @@ class User
 
 ## Name resolution
 
-Class names are relative to the current namespace unless they begin with `\`.
-Unqualified function calls try the current namespace first and global scope
-second.
+Class names are relative to the current namespace unless they begin with `\`. Unqualified function calls try the current namespace first and global scope second.
 
 ## Importing
 
-`use` aliases a fully-qualified name to its last segment, or to an explicit
-alias. The alias applies to every name resolved in the rest of the file,
-including the head of a longer name.
+`use` aliases a fully-qualified name to its last segment, or to an explicit alias. The alias applies to every name resolved in the rest of the file, including the head of a longer name.
 
 ```php
 <?php
@@ -59,16 +54,6 @@ class Bootstrap
 
 ## Autoloading
 
-Register a loader with `spl_autoload_register()`,
-which accepts every PHP callable spelling: a closure, a function name,
-`"Class::method"`, or `array($object, "method")`. `spl_autoload_unregister()`
-removes it again, matching by what the callable names rather than by identity.
-Calling `spl_autoload_register()` without a callback installs phpscript's
-default loader, which lowercases the class name and resolves it as a `.php` file
-on the include path.
+Register a loader with `spl_autoload_register()`, which accepts every PHP callable spelling: a closure, a function name, `"Class::method"`, or `array($object, "method")`. `spl_autoload_unregister()` removes it again, matching by what the callable names rather than by identity. Calling `spl_autoload_register()` without a callback installs phpscript's default loader, which lowercases the class name and resolves it as a `.php` file on the include path.
 
-composer's generated autoloader is interpreted as-is: `require "vendor/autoload.php"`
-runs `vendor/composer/ClassLoader.php` through the same interpreter as any other
-PHP, registers its `loadClass` method, and resolves PSR-4 and classmap entries
-from `composer.json`. Nothing about composer is special-cased in the runtime;
-see [demos/dbadmin](../../../demos/dbadmin) for a working application.
+composer's generated autoloader is interpreted as-is: `require "vendor/autoload.php"` runs `vendor/composer/ClassLoader.php` through the same interpreter as any other PHP, registers its `loadClass` method, and resolves PSR-4 and classmap entries from `composer.json`. Nothing about composer is special-cased in the runtime; see [demos/dbadmin](../../../demos/dbadmin) for a working application.

@@ -20,14 +20,11 @@ try {
 }
 ```
 
-The catch variable receives the object that was thrown, so `getMessage()` and
-`getCode()` report what it was constructed with, and `get_class()` reports the
-class the `throw` named.
+The catch variable receives the object that was thrown, so `getMessage()` and `getCode()` report what it was constructed with, and `get_class()` reports the class the `throw` named.
 
 ## Which clause takes it
 
-Every throwable class is one type carrying the name a script constructed, so a
-clause is answered from that name rather than by descending a hierarchy:
+Every throwable class is one type carrying the name a script constructed, so a clause is answered from that name rather than by descending a hierarchy:
 
 | Clause names                                    | Takes                                                                        |
 |-------------------------------------------------|------------------------------------------------------------------------------|
@@ -49,25 +46,19 @@ try {
 }
 ```
 
-The suffix separates a fault in the program from a condition it raised, and
-agrees with PHP for every built-in name: `ErrorException` is an `Exception`,
-`TypeError` and `AssertionError` are `Error`s.
+The suffix separates a fault in the program from a condition it raised, and agrees with PHP for every built-in name: `ErrorException` is an `Exception`, `TypeError` and `AssertionError` are `Error`s.
 
 Three things follow from having no hierarchy, and differ from PHP:
 
 - `catch (LogicException $e)` does not take an `InvalidArgumentException`.
-- `catch (Exception $e)` takes a class of your own named `NotFound`, and
-  `catch (Error $e)` takes one named `MyError`.
-- `$e instanceof Throwable` is false. `Throwable` is a PHP built-in interface,
-  and no declaration in the program lists it.
+- `catch (Exception $e)` takes a class of your own named `NotFound`, and `catch (Error $e)` takes one named `MyError`.
+- `$e instanceof Throwable` is false. `Throwable` is a PHP built-in interface, and no declaration in the program lists it.
 
-Where a catch has to find a throw, name the same class at both ends, or catch
-`Throwable` and branch on `get_class($e)`.
+Where a catch has to find a throw, name the same class at both ends, or catch `Throwable` and branch on `get_class($e)`.
 
 ## The Throwable methods
 
-The method set answers on whatever reached the catch, including an error a Go
-binding returned and a panic recovered at the host boundary:
+The method set answers on whatever reached the catch, including an error a Go binding returned and a panic recovered at the host boundary:
 
 | Method                             | Value                                                         |
 |------------------------------------|---------------------------------------------------------------|
@@ -79,11 +70,7 @@ binding returned and a panic recovered at the host boundary:
 
 ## Errors from Go
 
-An error a Go function returned, and a panic recovered at the host-call
-boundary, enter the same catch path as an explicit `throw`. Neither is an
-instance of a PHP class, so every clause takes one: a binding failure reaches
-the `catch (Exception $e)` a script already wrote around the call. Without a
-matching `try`/`catch` the error is returned to the embedding host.
+An error a Go function returned, and a panic recovered at the host-call boundary, enter the same catch path as an explicit `throw`. Neither is an instance of a PHP class, so every clause takes one: a binding failure reaches the `catch (Exception $e)` a script already wrote around the call. Without a matching `try`/`catch` the error is returned to the embedding host.
 
 ## References
 
