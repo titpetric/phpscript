@@ -42,4 +42,4 @@ tasks:
     desc: "Install bwplotka/mdox"
     interactive: true
     cmds:
-      - go install github.com/bwplotka/mdox@latest
+      - go install github.com/bwplotka/mdox@main
