@@ -114,3 +114,69 @@ func TestCleanSQLiteDSN(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveSQLiteDSN(t *testing.T) {
+	tests := []struct {
+		name string
+		root string
+		dsn  string
+		want string
+	}{
+		{
+			name: "relative path",
+			root: "goqu",
+			dsn:  "data/app.db",
+			want: "goqu/data/app.db",
+		},
+		{
+			name: "relative path with options",
+			root: "goqu",
+			dsn:  "data/app.db?_journal_mode=wal",
+			want: "goqu/data/app.db?_journal_mode=wal",
+		},
+		{
+			name: "no root",
+			root: "",
+			dsn:  "data/app.db",
+			want: "data/app.db",
+		},
+		{
+			name: "absolute path",
+			root: "goqu",
+			dsn:  "/var/lib/app.db",
+			want: "/var/lib/app.db",
+		},
+		{
+			name: "memory database",
+			root: "goqu",
+			dsn:  ":memory:",
+			want: ":memory:",
+		},
+		{
+			name: "named shared memory database",
+			root: "goqu",
+			dsn:  "file:app?mode=memory&cache=shared",
+			want: "file:app?mode=memory&cache=shared",
+		},
+		{
+			name: "file URI",
+			root: "goqu",
+			dsn:  "file:app.db?cache=shared",
+			want: "file:app.db?cache=shared",
+		},
+		{
+			name: "empty path",
+			root: "goqu",
+			dsn:  "",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveSQLiteDSN(tt.root, tt.dsn); got != tt.want {
+				t.Errorf("resolveSQLiteDSN(%q, %q) = %q, want %q", tt.root, tt.dsn, got, tt.want)
+			}
+		})
+	}
+}

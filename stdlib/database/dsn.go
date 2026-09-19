@@ -2,8 +2,30 @@ package database
 
 import (
 	"net/url"
+	"path/filepath"
 	"strings"
 )
+
+// resolveSQLiteDSN anchors a relative sqlite file path to root, so a DSN
+// written in a site's own configuration names a file under that site's tree
+// rather than under whatever directory the server process was started in.
+// Memory databases, absolute paths and file: URIs carry no such intent and
+// pass through unchanged, as does everything when there is no root to anchor
+// to, which is what a CLI run has.
+func resolveSQLiteDSN(root, dsn string) string {
+	if root == "" || isSQLiteMemoryDSN(dsn) {
+		return dsn
+	}
+	path, query, hasQuery := strings.Cut(dsn, "?")
+	if path == "" || strings.HasPrefix(path, "file:") || filepath.IsAbs(path) {
+		return dsn
+	}
+	path = filepath.Join(root, path)
+	if hasQuery {
+		return path + "?" + query
+	}
+	return path
+}
 
 func cleanDSN(driver, dsn string) string {
 	switch driver {

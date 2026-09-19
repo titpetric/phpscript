@@ -35,6 +35,11 @@ var (
 type DatabaseProvider struct {
 	open func(string, string) (*sqlx.DB, error)
 
+	// root is the directory a relative sqlite path resolves against. Empty
+	// leaves the path alone, which resolves against the process working
+	// directory as any relative path does.
+	root string
+
 	mu          sync.Mutex
 	cache       map[string]*sqlx.DB
 	credentials map[string]string
@@ -74,6 +79,15 @@ func New(environment []string) *DatabaseProvider {
 		provider.Register(name, dsn)
 	}
 
+	return provider
+}
+
+// NewAt is New with relative sqlite paths resolved against root. It is what a
+// virtual host's connections are built with: the site wrote its DSN against
+// its own tree, and the server's working directory is not the site's to know.
+func NewAt(root string, environment []string) *DatabaseProvider {
+	provider := New(environment)
+	provider.root = root
 	return provider
 }
 
@@ -222,6 +236,10 @@ func (r *DatabaseProvider) parseCredential(credential string) (driver string, ds
 			driver = "pgx"
 			dsn = "postgres://" + dsn
 		}
+	}
+
+	if driver == "sqlite" {
+		dsn = resolveSQLiteDSN(r.root, dsn)
 	}
 
 	return driver, cleanDSN(driver, dsn)

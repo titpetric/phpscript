@@ -157,12 +157,12 @@ github.com/titpetric/phpscript/stdlib/crypto/init.go, symbols 1, coverage 100.00
 github.com/titpetric/phpscript/stdlib/crypto/password.go, symbols 6, coverage 80.10%
 github.com/titpetric/phpscript/stdlib/crypto/random.go, symbols 2, coverage 85.85%
 github.com/titpetric/phpscript/stdlib/database/database.go, symbols 26, coverage 75.69%
-github.com/titpetric/phpscript/stdlib/database/dsn.go, symbols 3, coverage 100.00%
+github.com/titpetric/phpscript/stdlib/database/dsn.go, symbols 4, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/database/init.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/database/migrate.go, symbols 3, coverage 77.33%
 github.com/titpetric/phpscript/stdlib/database/open.go, symbols 1, coverage 75.00%
 github.com/titpetric/phpscript/stdlib/database/option.go, symbols 2, coverage 87.50%
-github.com/titpetric/phpscript/stdlib/database/provider.go, symbols 11, coverage 94.47%
+github.com/titpetric/phpscript/stdlib/database/provider.go, symbols 12, coverage 95.21%
 github.com/titpetric/phpscript/stdlib/database/query.go, symbols 5, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/database/register.go, symbols 4, coverage 90.55%
 github.com/titpetric/phpscript/stdlib/exception.go, symbols 7, coverage 95.24%

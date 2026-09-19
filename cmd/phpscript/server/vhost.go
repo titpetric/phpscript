@@ -150,9 +150,11 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 
 	// The site's connections come from its own env and nowhere else. A
 	// provider holds the credentials it was given, so a site cannot name a
-	// connection another site configured.
+	// connection another site configured. Relative sqlite paths anchor to the
+	// site's root: the site wrote its DSN against its own tree, and where the
+	// server process was started is not the site's to know.
 	runnerOptions := siteConfig.Runner
-	runnerOptions.Database = database.New(siteConfig.Env)
+	runnerOptions.Database = database.NewAt(host.Root, siteConfig.Env)
 
 	// So does the environment its scripts read. A site is handed the env it
 	// declared rather than the process environment, so getenv() cannot be

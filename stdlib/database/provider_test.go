@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -45,6 +46,26 @@ func TestDatabaseProviderOpenError(t *testing.T) {
 	}
 	if db != nil {
 		t.Errorf("Open returned %p, want nil on error", db)
+	}
+}
+
+func TestDatabaseProviderNewAt(t *testing.T) {
+	root := t.TempDir()
+	provider := NewAt(root, []string{"PLATFORM_DB_APP=sqlite://app.db"})
+
+	db, err := provider.Connect(t.Context(), "app")
+	if err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if _, err := db.ExecContext(t.Context(), "CREATE TABLE t (id INTEGER)"); err != nil {
+		t.Fatalf("Exec: %v", err)
+	}
+
+	// The write landed under root, not under the working directory.
+	if _, err := os.Stat(filepath.Join(root, "app.db")); err != nil {
+		t.Errorf("Stat: %v, want app.db under the provider root", err)
 	}
 }
 

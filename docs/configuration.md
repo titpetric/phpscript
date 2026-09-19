@@ -257,6 +257,8 @@ $reporting = new Database("reporting");
 
 The list is passed to the database connection registry; it does not add the entries to the process environment or PHP variables. Actual process environment variables named `PLATFORM_DB_*` are also registered when phpscript starts.
 
+Under a virtual host, a relative sqlite path resolves against the site's application root, so `sqlite://data/app.db` in a site's `phpscript.yml` names the `data/` directory of that site whatever directory the server was started in. Absolute paths, memory databases and `file:` URIs are used as written. Outside virtual hosts, a CLI run or a single application root, a relative path resolves against the process working directory.
+
 ## Virtual hosts
 
 `virtualhost` lists the sites one `phpscript server` answers for, one entry per site. While the list is empty the server serves a single application root, the one named on the command line. While it is not, the `Host` header selects the site, and an application root on the command line is an error: the entries name their own roots and a further one has no site to belong to.

@@ -39,7 +39,7 @@ github.com/titpetric/phpscript/stdlib, symbols 9, coverage 96.30%
 github.com/titpetric/phpscript/stdlib/compat, symbols 49, coverage 86.92%
 github.com/titpetric/phpscript/stdlib/core, symbols 223, coverage 84.70%
 github.com/titpetric/phpscript/stdlib/crypto, symbols 13, coverage 86.40%
-github.com/titpetric/phpscript/stdlib/database, symbols 56, coverage 84.84%
+github.com/titpetric/phpscript/stdlib/database, symbols 58, coverage 85.42%
 github.com/titpetric/phpscript/stdlib/files, symbols 38, coverage 89.71%
 github.com/titpetric/phpscript/stdlib/gd, symbols 34, coverage 76.40%
 github.com/titpetric/phpscript/stdlib/http, symbols 24, coverage 72.37%
