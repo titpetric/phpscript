@@ -1453,19 +1453,34 @@ func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 
 // unsetGoIndex removes a key from a native Go map returned by a binding, the
 // unset counterpart of assignGoIndex. A map is a reference type, so the script
-// observes the delete the way it observes a write. Anything else has nothing to
-// remove - null, a scalar, a key the map cannot hold - which is what lets
-// `unset($map[$key])` run unconditionally.
+// observes the delete the way it observes a write.
+//
+// A slice is the other way round. PHP's unset leaves a hole and keeps the keys
+// around it, and a slice can hold neither a hole nor a shorter length through
+// the interface value holding it, so an element that exists is an error rather
+// than a removal the script cannot observe - the rule `$a[] =` and
+// array_shift() follow. Anything else has nothing to remove - null, a scalar,
+// a key that is not there - which is what lets `unset($map[$key])` run
+// unconditionally.
 func unsetGoIndex(base, key any) error {
 	rv := reflect.ValueOf(base)
-	if rv.Kind() != reflect.Map || rv.IsNil() {
-		return nil
+	switch rv.Kind() {
+	case reflect.Map:
+		if rv.IsNil() {
+			return nil
+		}
+		mapKey, ok := coerceArg(normalizeKey(key), rv.Type().Key())
+		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
+			return nil
+		}
+		rv.SetMapIndex(mapKey, reflect.Value{})
+	case reflect.Slice, reflect.Array:
+		index, ok := normalizeKey(key).(int64)
+		if !ok || index < 0 || index >= int64(rv.Len()) {
+			return nil
+		}
+		return fmt.Errorf("unset: cannot remove an element of %T; copy it into a script array first, array_merge($list) does", base)
 	}
-	mapKey, ok := coerceArg(normalizeKey(key), rv.Type().Key())
-	if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
-		return nil
-	}
-	rv.SetMapIndex(mapKey, reflect.Value{})
 	return nil
 }
 

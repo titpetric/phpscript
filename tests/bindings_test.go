@@ -464,6 +464,32 @@ func TestBindingMapUnset(t *testing.T) {
 	}
 }
 
+// TestBindingSliceUnsetIsAnError covers unset($l[$i]) on a returned slice. It
+// cannot be done - a slice holds no hole - and it was a silent no-op, so a
+// loop that filtered explode()'s result by unset() kept every element.
+func TestBindingSliceUnsetIsAnError(t *testing.T) {
+	prog, err := parser.Parse(`<?php $l = bind_list_any(); unset($l[1]); echo count($l);`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	err = newBindingRuntime(&out).Run(prog)
+	if err == nil || !strings.Contains(err.Error(), "unset: cannot remove an element of []interface {}") {
+		t.Fatalf("got error %v and output %q, want the unset refusal", err, out.String())
+	}
+
+	// An index that is not there has nothing to remove, as on a script array,
+	// and the documented way round is a copy the script owns.
+	missing := `<?php $l = bind_list_any(); unset($l[99]); unset($l["name"]); echo count($l);`
+	if got := runBinding(t, missing); got != "5" {
+		t.Fatalf("missing index: got %q, want %q", got, "5")
+	}
+	copied := `<?php $l = array_merge(bind_list_any()); unset($l[1]); echo implode(",", $l);`
+	if got, want := runBinding(t, copied), "alpha,gamma,delta,epsilon"; got != want {
+		t.Fatalf("script copy: got %q, want %q", got, want)
+	}
+}
+
 // TestBindingListDestructuring covers list($a, $b) = over a native slice, the
 // shape explode() returns.
 func TestBindingListDestructuring(t *testing.T) {

@@ -148,6 +148,7 @@ Filesystem:
 Arrays:
 
 - `array_shift()`, `array_unshift()`, `array_pop()`, `array_push()` and `array_splice()` require a script array. They resize their argument, and a Go slice cannot grow through the interface value holding it, so a value a binding returned as a native slice (`explode()`, `array_keys()`) is an error rather than a mutation the script cannot observe. Assign it to a variable built by the script first: `$parts = array_merge(explode(",", $s));`.
+- `unset($list[$i])` on a native slice is an error for the same reason. PHP leaves a hole and keeps the keys around it, which a slice cannot hold, so an element that exists is refused rather than kept in silence; an index that is not there is still not an error. `unset($map[$key])` on a native map, a Database row or a `compact()` result, removes the key as PHP does.
 
 JSON:
 
