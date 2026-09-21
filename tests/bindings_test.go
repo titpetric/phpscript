@@ -419,6 +419,51 @@ func TestBindingCollectionsAreWritableInPlace(t *testing.T) {
 	}
 }
 
+// TestBindingMapUnset covers unset($m[$k]) on a returned map. It was a silent
+// no-op: the key stayed, so a script stripping a column from a row before
+// json_encode() still sent it.
+func TestBindingMapUnset(t *testing.T) {
+	cases := []struct {
+		name string
+		php  string
+		want string
+	}{
+		{
+			name: "remove a map key",
+			php:  `<?php $m = bind_map(); unset($m["name"]); echo (isset($m["name"]) ? "set" : "gone") . ":" . count($m);`,
+			want: "gone:1",
+		},
+		{
+			name: "the removed key is not encoded",
+			php:  `<?php $m = bind_map(); unset($m["name"]); echo json_encode($m);`,
+			want: `{"id":1}`,
+		},
+		{
+			name: "a missing key is not an error",
+			php:  `<?php $m = bind_map(); unset($m["nope"]); echo count($m);`,
+			want: "2",
+		},
+		{
+			name: "remove a column of a returned row",
+			php:  `<?php $rows = bind_rows_maps(); unset($rows[0]["name"]); echo implode(",", array_keys($rows[0])) . "|" . count($rows[1]);`,
+			want: "id|2",
+		},
+		{
+			name: "the write and the unset meet on one map",
+			php:  `<?php $m = bind_map(); $m["extra"] = 9; unset($m["extra"]); echo count($m);`,
+			want: "2",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := runBinding(t, tc.php); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestBindingListDestructuring covers list($a, $b) = over a native slice, the
 // shape explode() returns.
 func TestBindingListDestructuring(t *testing.T) {

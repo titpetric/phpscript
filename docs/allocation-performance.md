@@ -71,7 +71,7 @@ rt.RegisterFunc("explode", func(delim, s string) *model.Array {
 
 **4. Return `*model.Array` for exactly three reasons.**
 
-- **The script appends to it.** A Go slice cannot grow through the interface value holding it, so `$a[] = "x"` on a returned slice is an error. Element writes (`$a[0] = "x"`) and map key writes (`$m["k"] = "x"`, including new keys) do work; see `TestBindingCollectionsAreWritableInPlace`.
+- **The script appends to it.** A Go slice cannot grow through the interface value holding it, so `$a[] = "x"` on a returned slice is an error. Element writes (`$a[0] = "x"`) and map key writes (`$m["k"] = "x"`, including new keys) do work; see `TestBindingCollectionsAreWritableInPlace`. So does `unset($m["k"])` on a returned map; see `TestBindingMapUnset`.
 - **Insertion order is part of the contract.** A Go map re-randomises on every `foreach`. If a value is iterated more than once and the output must match, it needs an `*model.Array`. This is why `json_decode` returns one for JSON objects and why the introspection listings keep theirs.
 - **Hybrid int/string keys with PHP's ordering.** Nothing else models it.
 
