@@ -57,6 +57,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | sort.phpt                | PASS       | PASS    | PASS |
 | uasort_uksort.phpt       | PASS       | PASS    | PASS |
 | unset_and_vivify.phpt    | PASS       | PASS    | PASS |
+| unset_native_map.phpt    | PASS       | PASS    | PASS |
 
 ## tests/fixtures/autoloading
 
@@ -375,7 +376,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | Area                       | Fixtures | Passed | Failed |
 |----------------------------|----------|--------|--------|
 | tests/fixtures/arithmetic  | 24       | 24     | 0      |
-| tests/fixtures/arrays      | 20       | 20     | 0      |
+| tests/fixtures/arrays      | 21       | 21     | 0      |
 | tests/fixtures/autoloading | 4        | 4      | 0      |
 | tests/fixtures/bindings    | 27       | 27     | 0      |
 | tests/fixtures/comparison  | 1        | 1      | 0      |
@@ -398,4 +399,4 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/strings     | 20       | 20     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 1        | 1      | 0      |
-| **Total**                  | 246      | 246    | 0      |
+| **Total**                  | 247      | 247    | 0      |

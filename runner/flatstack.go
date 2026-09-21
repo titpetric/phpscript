@@ -210,11 +210,12 @@ func (h flatHost) SetEntry(container, key, value any) error {
 	return nil
 }
 
-// UnsetIndex implements unset($a[$k]) for the bytecode engine.
+// UnsetIndex implements unset($a[$k]) for the bytecode engine. A native Go
+// collection goes through unsetGoIndex, the same as in the interpreter.
 func (h flatHost) UnsetIndex(container, key any) error {
 	array, ok := container.(*model.Array)
 	if !ok {
-		return nil
+		return unsetGoIndex(container, key)
 	}
 	array.Delete(normalizeKey(key))
 	return nil

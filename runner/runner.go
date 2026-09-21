@@ -1290,6 +1290,10 @@ func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 			}
 			if arr, ok := base.(*model.Array); ok {
 				arr.Delete(normalizeKey(key))
+				continue
+			}
+			if err := unsetGoIndex(base, key); err != nil {
+				return err
 			}
 		default:
 			return fmt.Errorf("unset: unsupported target %T", target)
@@ -1445,6 +1449,24 @@ func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 		return nil
 	}
 	return fmt.Errorf("assign: target is not an array")
+}
+
+// unsetGoIndex removes a key from a native Go map returned by a binding, the
+// unset counterpart of assignGoIndex. A map is a reference type, so the script
+// observes the delete the way it observes a write. Anything else has nothing to
+// remove - null, a scalar, a key the map cannot hold - which is what lets
+// `unset($map[$key])` run unconditionally.
+func unsetGoIndex(base, key any) error {
+	rv := reflect.ValueOf(base)
+	if rv.Kind() != reflect.Map || rv.IsNil() {
+		return nil
+	}
+	mapKey, ok := coerceArg(normalizeKey(key), rv.Type().Key())
+	if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
+		return nil
+	}
+	rv.SetMapIndex(mapKey, reflect.Value{})
+	return nil
 }
 
 func assignGoField(base any, name string, value func(any) (any, error)) error {
