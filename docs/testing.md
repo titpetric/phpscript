@@ -89,7 +89,7 @@ PHP accesses this constructor as `SharedMemory`. The binding exposes `set` and `
 
 ## `.phpt` fixtures
 
-Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `comparison`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `routing`, `runtime`, `scaffold`, `stdlib`, `strings` and `syntax`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it. [`github`](../tests/fixtures/github) is the exception: it holds issue reproductions under a `.yml` extension and nothing there runs.
+Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `comparison`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `mail`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `routing`, `runtime`, `scaffold`, `stdlib`, `strings`, `syntax` and `types`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it. [`github`](../tests/fixtures/github) is the exception: it holds issue reproductions under a `.yml` extension and nothing there runs.
 
 A fixture's own folder is its include root. That is what lets all three runtimes agree: the `php` runner executes with its working directory set to the folder holding the fixture, and both Go runtimes are rooted at the same folder, so a relative path in the fixture names the same file whichever runtime reads it.
 
@@ -198,11 +198,11 @@ Write the fixture this way around. Run the source through `php` first, paste tha
 
 Three kinds of fixture cannot be checked this way, and none of them is an excuse to skip the check on the ones that can:
 
-| Fixture uses                                                     | Why `php` cannot run it                                                       |
-|------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| A host binding (`Storage`, `Database`, `SharedMemory`, `tenant`) | The name does not exist in PHP; the expected output is the runtime's contract |
-| Runtime introspection (`phpinfo`, `get_included_files`)          | The output names phpscript, or absolute paths that differ per machine         |
-| Host request state (superglobals populated by the harness)       | The harness supplies the request, not the PHP CLI SAPI                        |
+| Fixture uses                                                             | Why `php` cannot run it                                                       |
+|--------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| A host binding (`Storage`, `Database`, `Mail`, `SharedMemory`, `tenant`) | The name does not exist in PHP; the expected output is the runtime's contract |
+| Runtime introspection (`phpinfo`, `get_included_files`)                  | The output names phpscript, or absolute paths that differ per machine         |
+| Host request state (superglobals populated by the harness)               | The harness supplies the request, not the PHP CLI SAPI                        |
 
 A fixture in one of these groups states in its `description` what defines the expected output, because there is no second implementation to appeal to, and opts the php runtime out with `runner`.
 

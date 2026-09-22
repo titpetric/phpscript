@@ -68,28 +68,27 @@ $expires = $start->add($retention);
 
 `new SharedMemory` creates a process-local key/value and counter store. An embedding host can place one shared instance in each runtime context to retain state across requests. See the [shared-memory guide](../../use-cases/shared-memory.md).
 
-### `SMTP`
+### `Mail`
 
-`new SMTP` creates a sender from script-supplied connection settings and delivers with `send($recipient, $subject, $body)`. Authentication (PLAIN) is used when both `username` and `password` are set; `port` defaults to 25. `from` may carry a display name, which becomes the message's `From` header while the bare address is used as the envelope sender.
+`new Mail($name)` selects one of the mail servers the host configured and delivers with `send($recipient, $subject, $body)`. `new Mail` selects `default`.
 
 ```php
-$smtp = new SMTP(array(
-	"host" => "smtp.example.com",
-	"port" => 587,
-	"username" => "noreply@example.com",
-	"password" => "secret",
-	"from" => "Example Robot <noreply@example.com>",
-));
-$smtp->send("hello@example.com", "Subject", "Body");
+$mail = new Mail;
+$mail->send("hello@example.com", "Subject", "Body");
+
+$campaigns = new Mail("marketing");
+$campaigns->send("list@example.com", "Newsletter", "Issue 1");
 ```
 
-The connection is upgraded with STARTTLS whenever the server offers it. `insecure => true` accepts the certificate without verifying its chain or names, which is what a host with a self-signed certificate requires, or one carrying no `subjectAltName`, the case Go reports as `certificate is not valid for any names`. The session stays encrypted, but it is no longer protected against a man in the middle, so prefer a certificate the host can verify.
+The name is the whole of what a script says about a server. Where the servers come from, what keys they take, and why a script can neither supply nor read a credential are in [Mail servers](../../configuration.md#mail-servers).
 
-A failed delivery throws, so wrap the call in `try`/`catch` when the request should survive an unreachable mail server.
+Constructing throws when the name is not a configured server, so a typo is caught before a message is composed rather than at the first delivery. A failed delivery throws too, so wrap `send()` in `try`/`catch` when the request should survive an unreachable mail server.
 
 ### `mail()`
 
-The optional SMTP binding also exposes the bare `mail($recipient, $subject, $body)` function when an embedding host registers `stdlib/smtp` with a configured sender. Unlike `SMTP`, it is not installed by the standard CLI runtime.
+`mail($recipient, $subject, $body)` sends through the host's `default` server. It is installed on every runtime: with no server configured it still exists and throws catchably, so calling code keeps one spelling and its own fallback.
+
+PHP's `$additional_headers` and `$additional_params` are not accepted.
 
 ## Function keyword aliases
 
@@ -129,10 +128,11 @@ New bindings follow the [naming conventions](../../naming-conventions.md): PHP's
 
 Embedding hosts opt into runtime services separately:
 
-- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterBinding`: `Time`, `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `SMTP`, and `start_span`.
+- `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterBinding`: `Time`, `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `Mail`, and `start_span`.
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
-- `smtp.Register(rt, sender)` adds the bare `mail()` SMTP binding for a host-configured sender.
-- `smtp.SenderContext(ctx, sender)` makes `new SMTP` deliver through `sender` instead of dialing its configured host. `smtp.NewMemory()` is a sender that queues messages in memory, which is how tests and dry runs capture mail without a mail server.
+- `runner.Options.Mail` names the `model.MailProvider` `Mail` and `mail()` resolve through, the way `Options.Database` names the connections. `mail.NewProvider(servers)` builds one from a configuration block; nil leaves both bindings on a provider holding no servers, which refuses catchably.
+- `mail.NewProviderFunc(servers, deliver)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector its pools are opened with. Name resolution and the rule that a script cannot read a credential sit above the seam and are unaffected.
+- `mail.NewMemory(names...)` is a provider that queues messages in memory instead of delivering them, which is how tests and dry runs capture mail without a mail server. Naming no servers configures every name.
 - `runner.Context.Register(rt)` adds the request-aware header functions and seeds `$_GET`, `$_POST`, `$_COOKIE`, `$_SERVER`, `$_ENV`, `$_REQUEST`, `$_FILES`, `$argv` and `$argc`. See [Predefined variables](../predefined-variables/README.md).
 
 Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterBinding(Register)`, and `stdlib/imports.go` blank-imports them. A host that wants a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.

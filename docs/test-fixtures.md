@@ -178,6 +178,13 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | include_option.phpt     | PASS       | PASS    | SKIP |
 | once.phpt               | PASS       | PASS    | PASS |
 
+## tests/fixtures/mail
+
+| tests/fixtures/mail | Flat stack | Runtime | PHP  |
+|---------------------|------------|---------|------|
+| named_servers.phpt  | PASS       | PASS    | SKIP |
+| no_credentials.phpt | PASS       | PASS    | SKIP |
+
 ## tests/fixtures/namespaces
 
 | tests/fixtures/namespaces       | Flat stack | Runtime | PHP  |
@@ -304,6 +311,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | is_null.phpt                     | PASS       | PASS    | PASS |
 | json_encode_flags.phpt           | PASS       | PASS    | SKIP |
 | json_key_order.phpt              | PASS       | PASS    | PASS |
+| mail_takes_a_server_name.phpt    | PASS       | PASS    | SKIP |
 | mail_unconfigured.phpt           | PASS       | PASS    | SKIP |
 | opendir.phpt                     | PASS       | PASS    | PASS |
 | output_buffering.phpt            | PASS       | PASS    | PASS |
@@ -377,6 +385,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/functions   | 11       | 11     | 0      |
 | tests/fixtures/gd          | 7        | 7      | 0      |
 | tests/fixtures/includes    | 4        | 4      | 0      |
+| tests/fixtures/mail        | 2        | 2      | 0      |
 | tests/fixtures/namespaces  | 5        | 5      | 0      |
 | tests/fixtures/oop         | 27       | 27     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
@@ -385,8 +394,8 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/regex       | 7        | 7      | 0      |
 | tests/fixtures/runtime     | 14       | 14     | 0      |
 | tests/fixtures/scaffold    | 4        | 4      | 0      |
-| tests/fixtures/stdlib      | 23       | 23     | 0      |
+| tests/fixtures/stdlib      | 24       | 24     | 0      |
 | tests/fixtures/strings     | 20       | 20     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 1        | 1      | 0      |
-| **Total**                  | 243      | 243    | 0      |
+| **Total**                  | 246      | 246    | 0      |

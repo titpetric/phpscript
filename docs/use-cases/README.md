@@ -10,6 +10,7 @@ The `phpscript` project has similar use cases to PHP. With implicit error checki
 - [Virtual hosting](virtual-hosting.md)
 - [Database bindings](database.md)
 - [HTTP client bindings](http-client.md)
+- [Mail bindings](mail.md)
 - [Shared memory bindings](shared-memory.md)
 - [Templating](templating.md)
 
