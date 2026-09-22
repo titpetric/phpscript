@@ -1,0 +1,19 @@
+# The mail area configures itself: two named mail servers, so its fixtures can
+# prove that the name a script asks for is resolved by the host and that the
+# credentials behind it never reach the script.
+#
+# mail replaces rather than extends, the rule a virtual host is held to, so the
+# fixtures here name default and marketing and nothing else. Nothing is
+# delivered: `new Mail` is a name lookup, and a fixture run has no mail server
+# to dial. marketing carries a password because the fixture that proves a
+# script cannot read one back is only worth anything when there is one to read.
+mail:
+  default:
+    host: mail.example.test
+    from: default@example.test
+  marketing:
+    host: mail.example.test
+    port: 587
+    username: campaigns
+    password: not-readable
+    from: Marketing <marketing@example.test>

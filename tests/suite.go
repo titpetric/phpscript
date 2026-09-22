@@ -16,6 +16,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/stdlib/database"
+	"github.com/titpetric/phpscript/stdlib/mail"
 )
 
 // SuiteFile is the file a directory of fixtures configures itself with. It is
@@ -50,6 +51,9 @@ type Suite struct {
 
 	once     sync.Once
 	provider model.DatabaseProvider
+
+	mailOnce sync.Once
+	mail     model.MailProvider
 }
 
 // LoadSuite reads dir/phpscript.yml off disk over base, and returns nil when
@@ -110,6 +114,31 @@ func (s *Suite) Provider() model.DatabaseProvider {
 	return s.provider
 }
 
+// Mail answers the mail servers the fixtures below this suite root deliver
+// through.
+//
+// A suite that declared no mail block of its own resolves what the run does,
+// which is nothing: a folder that named no servers is not asking for a set of
+// its own. A suite that declared one gets only what it named, the rule a
+// virtual host is already held to, so a fixture cannot name a server its
+// folder did not configure.
+//
+// Nothing is delivered in a fixture run: construction is a name lookup, and a
+// fixture that calls send() reaches for a mail server that is not there. What
+// a suite block buys is the names, which is what the fixtures are about.
+func (s *Suite) Mail() model.MailProvider {
+	if s == nil {
+		return nil
+	}
+	s.mailOnce.Do(func() {
+		if !config.Declares(s.Declared, "mail") {
+			return
+		}
+		s.mail = mail.NewProvider(s.Config.Mail)
+	})
+	return s.mail
+}
+
 // Include is the prelude the fixtures below this suite root load, or "".
 func (s *Suite) Include() string {
 	if s == nil {
@@ -153,6 +182,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	options.SAPI = "cli"
 	options.RootFS = s.root
 	options.Database = s.Provider()
+	options.Mail = s.Mail()
 	// The prelude is the hook's as much as the fixtures': a hook calling into
 	// the application's own helpers needs what the autoloader declares.
 	options.Include = s.Include()
