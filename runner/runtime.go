@@ -832,6 +832,10 @@ func (rt *Runtime) SetWorkDir(dir string) bool {
 // the host configured none. The binding decides what nil falls back to.
 func (rt *Runtime) Database() model.DatabaseProvider { return rt.opts.Database }
 
+// Mail returns the provider named mail servers resolve through, or nil when the
+// host configured none. The binding decides what nil falls back to.
+func (rt *Runtime) Mail() model.MailProvider { return rt.opts.Mail }
+
 // WritablePaths returns the configured writable path whitelist.
 func (rt *Runtime) WritablePaths() []string { return append([]string(nil), rt.opts.WritablePaths...) }
 

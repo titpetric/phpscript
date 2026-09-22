@@ -82,11 +82,13 @@ Span names are stable and low cardinality, because a name is an identity: the sp
 | `$db.Begin` to `$db.Commit`/`$db.Rollback` | `database`                        | one span covering the transaction                                                    |
 | `migrate`                                  | `database`                        | `migrations`                                                                         |
 | `session load`/`save`/`delete`/`prune`     | `cache`                           | `hit`, `bytes`                                                                       |
-| `mail`                                     | `external`                        | `to`, `subject`, `bytes`, `host`                                                     |
+| `mail`                                     | `external`                        | `server`, `to`, `subject`, `bytes`                                                   |
 
 `query_type` is the keyword the statement starts with, lowercased, and `query_comment` is the text of a `/* */` comment in front of it: a query written as `/* userGet */ SELECT * FROM user ...` records `select` and `userGet`. Both group a trace by the query behind it, which the statement text alone does not. The comment stays in the statement sent to the server, so `SHOW PROCESSLIST` and the slow query log show the same tag as the trace does.
 
 `args` carries the values bound to the statement, positional ones as a list and named ones as the map they came from. A placeholder query says nothing about which row was read, so the values are the point; they are as sensitive as the columns they filter on, which is a reason to set `Options.Authorize` before exposing the front end. Message bodies and session IDs are the two things never recorded: only their size, and nothing at all, respectively.
+
+`server` on a `mail` span is the name the mail server was configured under, not its hostname. The name is what an operator reads the trace against, and it is the only thing the binding knows: the provider hands out no part of a credential, hostname included. Nothing in a mail span carries a username or a password.
 
 Expected outcomes are not failures. A `get()` that found no row, a session that is not there, and a request the client cancelled are recorded as a miss or an empty result, not as an error, because a recorded error fails the trace and the SLA computed from it. The same rule decides the scoreboard: a page ending in `exit()` ran to completion, and only `exit(1)` and above is an error.
 

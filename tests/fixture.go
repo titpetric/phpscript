@@ -109,6 +109,7 @@ func embeddedFixtures() ([]fixtureArea, error) {
 			// layer the same filesystem over itself. Only the prelude and the
 			// connections come from the suite here.
 			fx.SetDatabase(suite.Provider())
+			fx.SetMail(suite.Mail())
 			if include := suite.Include(); include != "" {
 				fx.SetAppRoot(dir, include)
 			}
@@ -182,12 +183,13 @@ type Fixture struct {
 	Expected string `yaml:"-"`
 	Path     string `yaml:"-"`
 
-	appRoot    string
-	cacheScope string
-	includes   []string
-	database   model.DatabaseProvider
-	coverage   *coverage.Collector
-	rootFS     fs.FS
+	appRoot     string
+	cacheScope  string
+	includes    []string
+	database    model.DatabaseProvider
+	mail        model.MailProvider
+	coverage    *coverage.Collector
+	rootFS      fs.FS
 	mu          sync.Mutex
 	parsed      *model.Program
 	parsedErr   error
@@ -469,6 +471,16 @@ func (f *Fixture) SetDatabase(provider model.DatabaseProvider) {
 	f.database = provider
 }
 
+// SetMail names the mail servers this fixture's Mail binding and mail()
+// resolve through. Nil leaves the binding on the default provider, which holds
+// no servers, so both refuse catchably naming the server they looked for.
+//
+// A suite passes the servers its own phpscript.yml named, so a fixture can
+// name a server its folder configured and no others.
+func (f *Fixture) SetMail(provider model.MailProvider) {
+	f.mail = provider
+}
+
 // SetCoverage installs a statement-coverage collector for the fixture's
 // runtime runner. Only that runner reports coverage: flatstack carries no
 // coverage support, and the php runner is another process.
@@ -551,6 +563,7 @@ func (f *Fixture) runnerOptions() runner.Options {
 	options.SAPI = "cli"
 	options.RootFS = f.rootFS
 	options.Database = f.database
+	options.Mail = f.mail
 	if f.realRoot() {
 		// A fixture that names a root wants the real filesystem: it is reaching
 		// for a tree phpscript does not embed, a vendor directory being the

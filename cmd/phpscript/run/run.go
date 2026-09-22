@@ -15,7 +15,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
-	"github.com/titpetric/phpscript/stdlib/smtp"
+	"github.com/titpetric/phpscript/stdlib/mail"
 )
 
 // Name is the command title.
@@ -64,6 +64,9 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 	// adds on top. runner.ScriptEnvironment holds the infrastructure
 	// variables back.
 	options.Env = append(append([]string{}, os.Environ()...), config.Env...)
+	// The mail servers the script can name are the ones the configuration
+	// named. With none, mail() and `new Mail` refuse catchably.
+	options.Mail = mail.NewProvider(config.Mail)
 	newRuntime := runner.New
 	if config.Flatstack.Enabled {
 		newRuntime = runner.NewFlatStack
@@ -86,7 +89,6 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, root)
-	smtp.RegisterConfig(rt, config.SMTP)
 
 	reqCtx := runner.NewContext()
 	reqCtx.Register(rt)

@@ -1,4 +1,4 @@
-package smtp_test
+package mail_test
 
 import (
 	"bytes"
@@ -8,31 +8,27 @@ import (
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
-	smtpstdlib "github.com/titpetric/phpscript/stdlib/smtp"
+	mailstdlib "github.com/titpetric/phpscript/stdlib/mail"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
 // Mail leaves the process, so it is recorded as external work on the trace of
-// the request that sent it, whether the script used mail() or `new SMTP`.
+// the request that sent it, whether the script used mail() or `new Mail`.
 func TestMailRecordsAnExternalSpan(t *testing.T) {
 	for _, test := range []struct {
-		name     string
-		script   string
-		register func(*runner.Runtime, smtpstdlib.Sender)
-		wantHost string
+		name   string
+		script string
 	}{
 		{
-			name:     "mail",
-			script:   `<?php mail("recipient@example.com", "Subject", "Body line");`,
-			register: smtpstdlib.Register,
+			name:   "mail",
+			script: `<?php mail("recipient@example.com", "Subject", "Body line");`,
 		},
 		{
-			name: "SMTP",
+			name: "Mail",
 			script: `<?php
-				$smtp = new SMTP(array("host" => "mail.example.com", "from" => "noreply@example.com"));
-				$smtp->send("recipient@example.com", "Subject", "Body line");
+				$mail = new Mail("marketing");
+				$mail->send("recipient@example.com", "Subject", "Body line");
 			`,
-			wantHost: "mail.example.com",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -54,13 +50,10 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			queue := smtpstdlib.NewMemory()
-			rt := runner.New(&bytes.Buffer{}, runner.Options{})
-			rt.SetContext(smtpstdlib.SenderContext(ctx, queue))
+			queue := mailstdlib.NewMemory("default", "marketing")
+			rt := runner.New(&bytes.Buffer{}, runner.Options{Mail: queue})
+			rt.SetContext(ctx)
 			stdlib.Register(rt)
-			if test.register != nil {
-				test.register(rt, queue)
-			}
 			if err := rt.Run(program); err != nil {
 				t.Fatal(err)
 			}
@@ -84,9 +77,6 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 				if value == "Body line" {
 					t.Fatalf("the message body was recorded in %q", key)
 				}
-			}
-			if span.Attributes["host"] != nil && span.Attributes["host"] != test.wantHost {
-				t.Fatalf("recorded host = %#v, want %q", span.Attributes["host"], test.wantHost)
 			}
 		})
 	}

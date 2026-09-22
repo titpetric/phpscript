@@ -134,6 +134,12 @@ Processes:
 - `shell_exec()` answers `null` for a command that produced no output, as PHP does, which is also its answer for one that could not start. `exec()`'s `$output` is appended to rather than replaced, as PHP's is.
 - The `proc_*` family is not implemented. It needs a process handle and pipe resources `fopen()` can work with, which is a kind of value the runtime does not have.
 
+Mail:
+
+- `mail()` takes three arguments and **throws** rather than answering `false`. PHP's returns a bool and takes `$additional_headers` and `$additional_params`, neither of which is accepted here: they are how a script sets its own `From`, `Cc` and envelope, and those belong to the server the host configured. A caller that wants PHP's shape wraps the call, which is what makes the failure legible either way, since PHP's `false` says nothing about why.
+- There is no `sendmail_path` and no local MTA. Every delivery goes to a server named in the [`mail` block](configuration.md#mail-servers), and `mail()` uses the one called `default`. With none configured the call still exists, and throws naming the server it looked for.
+- A script cannot supply or read a credential. `new Mail($name)` selects a configured server by name, and the object it returns carries no properties, so there is no phpscript equivalent of building a mailer out of settings a script holds. See [Credentials stay with the host](configuration.md#credentials-stay-with-the-host).
+
 Filesystem:
 
 - `glob()` searches the source filesystem, so `glob("/etc/host*")` lists `etc/host*` inside the root rather than the host's `/etc`, and a pattern that climbs stops at the root. Matches come back in the shape the pattern was written in, as PHP's do. `glob()` takes no `$flags` argument, so `GLOB_BRACE` and the rest are not defined. See the path rules under Includes.

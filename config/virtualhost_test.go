@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/stdlib/mail"
 )
 
 // writeSite creates an application root holding a phpscript.yml and a document
@@ -445,29 +446,82 @@ func TestValidateVirtualHosts(t *testing.T) {
 	})
 }
 
-// TestVirtualHostSMTPIsTheSitesOwn pins the smtp overlay: a site's block
-// replaces the operator's for that site, and a site that says nothing
-// inherits the server default.
-func TestVirtualHostSMTPIsTheSitesOwn(t *testing.T) {
-	base := config.New()
-	base.SMTP.Host = "mail.operator.example"
-	base.SMTP.From = "operator@example.com"
+// TestVirtualHostMailIsTheSitesOwn pins the mail overlay across every spelling
+// a site's file can use.
+//
+// The rule is the one env is already held to: a site that names servers gets
+// only the ones it named. It is worth a table rather than two assertions
+// because the previous shape, a single unnamed block, did not hold it. A
+// struct merges field by field, so a site setting only a host kept the
+// operator's username and password and went on sending as the operator. The
+// test that covered it checked the host and the from address, which are
+// exactly the two fields the site did set, and passed throughout.
+func TestVirtualHostMailIsTheSitesOwn(t *testing.T) {
+	operator := config.Mail{"default": mail.Config{
+		Host:     "mail.operator.example",
+		From:     "operator@example.com",
+		Username: "operator",
+		Password: "operator-secret",
+	}}
 
-	own := writeSite(t, "smtp:\n  host: mail.site.example\n  from: site@example.com\n")
-	result, err := config.VirtualHost{Domain: "site.test", Root: own}.Load(base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.SMTP.Host != "mail.site.example" || result.SMTP.From != "site@example.com" {
-		t.Errorf("smtp = %+v, want the site's own block", result.SMTP)
+	tests := map[string]struct {
+		file string
+		want config.Mail
+	}{
+		"names nothing inherits the operator's": {
+			file: "autoindex: false\n",
+			want: operator,
+		},
+		"names its own servers and gets only those": {
+			file: "mail:\n  marketing:\n    host: mail.site.example\n    from: site@example.com\n",
+			want: config.Mail{"marketing": mail.Config{
+				Host: "mail.site.example",
+				From: "site@example.com",
+			}},
+		},
+		"an empty map is no servers": {
+			file: "mail: {}\n",
+			want: config.Mail{},
+		},
+		// A null node is the spelling the decoder leaves as the inherited
+		// value, so without the guard in OverlayBytes this is the one way a
+		// site declaring it had no servers would be handed the operator's.
+		"naming the key with nothing under it is no servers": {
+			file: "mail:\n",
+			want: nil,
+		},
 	}
 
-	silent := writeSite(t, "autoindex: false\n")
-	result, err = config.VirtualHost{Domain: "quiet.test", Root: silent}.Load(base)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.SMTP.Host != "mail.operator.example" {
-		t.Errorf("smtp host = %q, want the inherited default", result.SMTP.Host)
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			base := config.New()
+			base.Mail = operator
+
+			root := writeSite(t, test.file)
+			result, err := config.VirtualHost{Domain: "site.test", Root: root}.Load(base)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(result.Mail) != len(test.want) {
+				t.Fatalf("mail = %+v, want %+v", result.Mail, test.want)
+			}
+			for server, want := range test.want {
+				if result.Mail[server] != want {
+					t.Errorf("mail[%q] = %+v, want %+v", server, result.Mail[server], want)
+				}
+			}
+
+			// The assertion the old test was missing: whatever the site
+			// declared, no part of the operator's credential may survive into
+			// a server the site did not inherit wholesale.
+			if test.want["default"] != operator["default"] {
+				for server, config := range result.Mail {
+					if config.Password == "operator-secret" {
+						t.Errorf("mail[%q] carries the operator's password", server)
+					}
+				}
+			}
+		})
 	}
 }

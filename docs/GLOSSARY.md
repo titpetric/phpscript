@@ -46,6 +46,17 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 | Autoindex         | Answering a directory that holds no index page with a listing of what is in it, as nginx's `autoindex on;` does. Off by default.                                                     |
 | Graceful shutdown | The path a server takes on SIGINT or SIGTERM: stop accepting, finish what is in flight, then stop the modules in registration order. It is when a coverage profile is written.       |
 
+## Mail
+
+**Mail is the subject; SMTP is a protocol it happens to speak.** The class a script types is `Mail`, the configuration key is `mail`, the Go package is `stdlib/mail`. SMTP appears only where the wire protocol is genuinely meant: `net/smtp`, the STARTTLS settings, the conversation `deliverSMTP` runs. Naming the subject after one of its transports would have to be undone the first time a server is reached by an API instead.
+
+| Term          | What it means                                                                                                                                                                                                    |
+|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Mail server   | One named entry in the `mail` block: a host, a port, credentials and a from address. A script names it and never spells it.                                                                                      |
+| Server name   | The key the entry sits under, and the whole of what a script says about a server. `new Mail` asks for `default`, `new Mail($name)` for the rest. Compared lowercased.                                            |
+| Mail provider | What resolves a name to a credential, `model.MailProvider`. It is per site, holds the servers that site configured, and has no method that returns one, which is what keeps a password out of the runtime scope. |
+| Deliver       | The transport a provider hands a resolved message to, `mail.Deliver`. SMTP by default; a host swaps it for an API or a queue without touching name resolution.                                                   |
+
 ## Running the code
 
 | Term       | What it means                                                                                                                                                                            |

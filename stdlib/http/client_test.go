@@ -196,7 +196,7 @@ func TestClientRelativeURLWithoutBaseIsReported(t *testing.T) {
 }
 
 // TestClientRejectsUnknownOption pins that a typo is reported rather than
-// silently doing nothing, which is the SMTP binding's rule too.
+// silently doing nothing, which is the Mail binding's rule too.
 func TestClientRejectsUnknownOption(t *testing.T) {
 	_, err := http.NewClient(context.Background(), map[string]any{"timeuot": int64(5)})
 	if err == nil {

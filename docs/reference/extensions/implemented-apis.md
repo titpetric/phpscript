@@ -1661,6 +1661,13 @@ function memory_get_peak_usage(bool ...$real_usage): int
 function memory_get_usage(bool ...$real_usage): int
 ```
 
+### stdlib/mail
+
+```php
+// mail sends a plain-text message to $recipient with $subject and $body through the host's "default" mail server, throwing when none is configured; PHP's $additional_headers and $additional_params are not accepted.
+function mail(string $recipient, string $subject, string $body): void
+```
+
 ### stdlib/pexec
 
 #### escape
@@ -1707,13 +1714,6 @@ function getmypid(): int
 ```php
 // posix_getpid returns the process id of the running interpreter.
 function posix_getpid(): int
-```
-
-### stdlib/smtp
-
-```php
-// mail sends a plain-text message to $recipient with $subject and $body through the host-configured smtp sender, throwing when none is configured; PHP's $additional_headers and $additional_params are not accepted.
-function mail(string $recipient, string $subject, string $body): void
 ```
 
 ### stdlib/span
@@ -2163,41 +2163,33 @@ class JSON\Encoder
 }
 ```
 
-### `SMTP`
+### `Mail`
 
-Registered from `stdlib/smtp`.
+Registered from `stdlib/mail`.
 
 ```php
 /**
- * SMTP is a mail sender configured for one SMTP server. It takes the
- * connection settings as an associative array:
+ * Mail delivers through one of the mail servers the host configured,
+ * selected by $name; `new Mail` selects "default". The credentials stay
+ * with the host: a script names a server and never spells, or reads back,
+ * a host, a username or a password. The constructor throws when $name is
+ * not a configured server.
  * 
- * 	$smtp = new SMTP(array(
- * 		"host"     => "mail.example.com",
- * 		"port"     => 587,
- * 		"username" => "noreply@example.com",
- * 		"password" => "secret",
- * 		"from"     => "Example <noreply@example.com>",
- * 		"insecure" => true,
- * 	));
+ * 	$mail = new Mail;              // the "default" server
+ * 	$mail = new Mail("marketing"); // a server the host named
+ * 	$mail->send("hello@example.com", "Subject", "Body");
  */
-class SMTP
+class Mail
 {
-    public function __construct(mixed $options) {}
+    public function __construct(mixed ...$names) {}
 
     /**
-     * send sends an email via SMTP. It takes a context so the delivery is recorded
-     * on the trace of the request that asked for it; the runtime injects it, so a
-     * script still calls `$smtp->send($to, $subject, $body)`.
+     * send sends an email through the server this client names. It takes a context
+     * so the delivery is recorded on the trace of the request that asked for it;
+     * the runtime injects it, so a script still calls
+     * `$mail->send($to, $subject, $body)`.
      */
     public function send(string $recipient, string $subject, string $body): void {}
-
-    /**
-     * sender returns the client as the context-free Sender mail() takes. The
-     * mail() binding opens the delivery span itself, so this path delivers
-     * without opening a second one.
-     */
-    public function sender(): mixed {}
 }
 ```
 

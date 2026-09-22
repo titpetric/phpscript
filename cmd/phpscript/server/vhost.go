@@ -16,6 +16,7 @@ import (
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/database"
+	"github.com/titpetric/phpscript/stdlib/mail"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -156,6 +157,11 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	runnerOptions := siteConfig.Runner
 	runnerOptions.Database = database.NewAt(host.Root, siteConfig.Env)
 
+	// So do its mail servers. A provider holds the credentials it was given,
+	// so a site can name the servers its own file configured and no others,
+	// and a script on it never sees what any of them are reached with.
+	runnerOptions.Mail = mail.NewProvider(siteConfig.Mail)
+
 	// So does the environment its scripts read. A site is handed the env it
 	// declared rather than the process environment, so getenv() cannot be
 	// used to read what the operator, or another site, was started with.
@@ -182,7 +188,6 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	if err != nil {
 		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
-	files.smtp = siteConfig.SMTP
 	if cover != nil {
 		files.coverage = cover.aggregator
 	}

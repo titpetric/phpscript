@@ -28,8 +28,8 @@ github.com/titpetric/phpscript/cmd/phpscript/server/coverage.go, symbols 7, cove
 github.com/titpetric/phpscript/cmd/phpscript/server/errorpage.go, symbols 7, coverage 97.96%
 github.com/titpetric/phpscript/cmd/phpscript/server/indexpage.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/cmd/phpscript/server/lifecycle.go, symbols 2, coverage 100.00%
-github.com/titpetric/phpscript/cmd/phpscript/server/run.go, symbols 19, coverage 67.62%
-github.com/titpetric/phpscript/cmd/phpscript/server/vhost.go, symbols 6, coverage 78.83%
+github.com/titpetric/phpscript/cmd/phpscript/server/run.go, symbols 19, coverage 67.61%
+github.com/titpetric/phpscript/cmd/phpscript/server/vhost.go, symbols 6, coverage 79.05%
 github.com/titpetric/phpscript/cmd/phpscript/test/cover.go, symbols 9, coverage 89.78%
 github.com/titpetric/phpscript/cmd/phpscript/test/folder.go, symbols 10, coverage 75.29%
 github.com/titpetric/phpscript/cmd/phpscript/test/group.go, symbols 3, coverage 100.00%
@@ -41,11 +41,12 @@ github.com/titpetric/phpscript/cmd/phpscript/test/suite.go, symbols 9, coverage 
 github.com/titpetric/phpscript/cmd/phpscript/test/table.go, symbols 22, coverage 95.11%
 github.com/titpetric/phpscript/cmd/phpscript/version/version.go, symbols 2, coverage 0.00%
 github.com/titpetric/phpscript/config/config.go, symbols 5, coverage 71.00%
-github.com/titpetric/phpscript/config.go, symbols 2, coverage 69.60%
-github.com/titpetric/phpscript/config/overlay.go, symbols 3, coverage 86.67%
+github.com/titpetric/phpscript/config.go, symbols 2, coverage 72.10%
+github.com/titpetric/phpscript/config/mail.go, symbols 2, coverage 86.65%
+github.com/titpetric/phpscript/config/overlay.go, symbols 3, coverage 86.20%
 github.com/titpetric/phpscript/config/server.go, symbols 1, coverage 100.00%
-github.com/titpetric/phpscript/config/test.go, symbols 2, coverage 72.30%
-github.com/titpetric/phpscript/config/virtualhost.go, symbols 8, coverage 99.24%
+github.com/titpetric/phpscript/config/test.go, symbols 2, coverage 70.00%
+github.com/titpetric/phpscript/config/virtualhost.go, symbols 8, coverage 98.92%
 github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 32, coverage 87.12%
 github.com/titpetric/phpscript/flatstack/engine/fuse.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/flatstack/engine/program.go, symbols 1, coverage 100.00%
@@ -122,7 +123,7 @@ github.com/titpetric/phpscript/runner/redeclare.go, symbols 7, coverage 81.07%
 github.com/titpetric/phpscript/runner/request.go, symbols 43, coverage 95.06%
 github.com/titpetric/phpscript/runner/response.go, symbols 6, coverage 100.00%
 github.com/titpetric/phpscript/runner/runner.go, symbols 56, coverage 82.63%
-github.com/titpetric/phpscript/runner/runtime.go, symbols 97, coverage 91.90%
+github.com/titpetric/phpscript/runner/runtime.go, symbols 98, coverage 91.98%
 github.com/titpetric/phpscript/runner/scope.go, symbols 11, coverage 88.89%
 github.com/titpetric/phpscript/runner/size.go, symbols 6, coverage 82.40%
 github.com/titpetric/phpscript/runner/static.go, symbols 11, coverage 77.98%
@@ -139,13 +140,13 @@ github.com/titpetric/phpscript/stdlib/core/defer.go, symbols 2, coverage 94.45%
 github.com/titpetric/phpscript/stdlib/core/encoding.go, symbols 17, coverage 97.86%
 github.com/titpetric/phpscript/stdlib/core/env.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/core/fnmatch.go, symbols 3, coverage 94.97%
-github.com/titpetric/phpscript/stdlib/core/json.go, symbols 19, coverage 79.54%
+github.com/titpetric/phpscript/stdlib/core/json.go, symbols 19, coverage 79.71%
 github.com/titpetric/phpscript/stdlib/core/lang.go, symbols 8, coverage 89.59%
 github.com/titpetric/phpscript/stdlib/core/math.go, symbols 14, coverage 87.39%
 github.com/titpetric/phpscript/stdlib/core/mbstring.go, symbols 11, coverage 83.48%
 github.com/titpetric/phpscript/stdlib/core/output.go, symbols 25, coverage 79.27%
 github.com/titpetric/phpscript/stdlib/core/platform.go, symbols 10, coverage 43.67%
-github.com/titpetric/phpscript/stdlib/core/reflect.go, symbols 4, coverage 50.73%
+github.com/titpetric/phpscript/stdlib/core/reflect.go, symbols 4, coverage 53.92%
 github.com/titpetric/phpscript/stdlib/core/shared_memory.go, symbols 12, coverage 72.92%
 github.com/titpetric/phpscript/stdlib/core/shutdown.go, symbols 2, coverage 91.65%
 github.com/titpetric/phpscript/stdlib/core/strings.go, symbols 31, coverage 87.65%
@@ -190,6 +191,11 @@ github.com/titpetric/phpscript/stdlib/http/value.go, symbols 5, coverage 48.26%
 github.com/titpetric/phpscript/stdlib/info/info.go, symbols 2, coverage 75.00%
 github.com/titpetric/phpscript/stdlib/internals/internals.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/logger/logger.go, symbols 7, coverage 100.00%
+github.com/titpetric/phpscript/stdlib/mail/config.go, symbols 7, coverage 57.14%
+github.com/titpetric/phpscript/stdlib/mail/init.go, symbols 1, coverage 100.00%
+github.com/titpetric/phpscript/stdlib/mail/mail.go, symbols 4, coverage 93.75%
+github.com/titpetric/phpscript/stdlib/mail/memory.go, symbols 6, coverage 59.17%
+github.com/titpetric/phpscript/stdlib/mail/provider.go, symbols 8, coverage 68.54%
 github.com/titpetric/phpscript/stdlib/pexec/escape.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/pexec/exec.go, symbols 12, coverage 92.37%
 github.com/titpetric/phpscript/stdlib/pexec/pexec.go, symbols 4, coverage 100.00%
@@ -200,9 +206,6 @@ github.com/titpetric/phpscript/stdlib/session/storage_memory.go, symbols 5, cove
 github.com/titpetric/phpscript/stdlib/session/storage_traced.go, symbols 6, coverage 59.93%
 github.com/titpetric/phpscript/stdlib/shared/parsestr.go, symbols 8, coverage 95.84%
 github.com/titpetric/phpscript/stdlib/shared/urldecode.go, symbols 5, coverage 96.00%
-github.com/titpetric/phpscript/stdlib/smtp/init.go, symbols 2, coverage 100.00%
-github.com/titpetric/phpscript/stdlib/smtp/memory.go, symbols 5, coverage 77.14%
-github.com/titpetric/phpscript/stdlib/smtp/smtp.go, symbols 20, coverage 88.64%
 github.com/titpetric/phpscript/stdlib/span/span.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/stdlib.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/time/time.go, symbols 11, coverage 42.78%
@@ -211,10 +214,10 @@ github.com/titpetric/phpscript/telemetry/context.go, symbols 4, coverage 100.00%
 github.com/titpetric/phpscript/telemetry/error.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/telemetry/module.go, symbols 8, coverage 97.91%
 github.com/titpetric/phpscript/tests/bindings.go, symbols 8, coverage 81.51%
-github.com/titpetric/phpscript/tests/fixture.go, symbols 41, coverage 86.37%
+github.com/titpetric/phpscript/tests/fixture.go, symbols 42, coverage 86.70%
 github.com/titpetric/phpscript/tests/main.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/tests/matrix.go, symbols 8, coverage 61.20%
 github.com/titpetric/phpscript/tests/panics.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/tests/storage.go, symbols 7, coverage 96.43%
-github.com/titpetric/phpscript/tests/suite.go, symbols 10, coverage 86.08%
+github.com/titpetric/phpscript/tests/suite.go, symbols 11, coverage 87.35%
 ```

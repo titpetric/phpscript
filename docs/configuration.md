@@ -57,6 +57,8 @@ telemetry:
   live_stream: true
   driver: memory
 
+mail: {}
+
 document_root: public
 
 autoindex: false
@@ -259,6 +261,77 @@ The list is passed to the database connection registry; it does not add the entr
 
 Under a virtual host, a relative sqlite path resolves against the site's application root, so `sqlite://data/app.db` in a site's `phpscript.yml` names the `data/` directory of that site whatever directory the server was started in. Absolute paths, memory databases and `file:` URIs are used as written. Outside virtual hosts, a CLI run or a single application root, a relative path resolves against the process working directory.
 
+## Mail servers
+
+`mail` is a map of named mail servers. The name is the key, and it is the whole of what a script says about a server:
+
+```yaml
+mail:
+  default:
+    host: mail.example.com
+    port: 587
+    username: noreply@example.com
+    password: secret
+    from: Example <noreply@example.com>
+  marketing:
+    host: relay.example.net
+    username: campaigns
+    password: another-secret
+    from: Marketing <marketing@example.com>
+```
+
+is available to PHP as:
+
+```php
+$mail = new Mail;              // the "default" server
+$campaigns = new Mail("marketing");
+$campaigns->send("hello@example.com", "Subject", "Body");
+
+mail("hello@example.com", "Subject", "Body");  // also the "default" server
+```
+
+| Key        | Default  | Purpose                                                                                                         |
+|------------|---------:|-----------------------------------------------------------------------------------------------------------------|
+| `host`     | required | The mail server to reach.                                                                                       |
+| `port`     |     `25` | The port to reach it on. A submission host usually wants 587.                                                   |
+| `username` |       "" | Sent with `password` as PLAIN authentication. Neither set means no authentication, which is what mailhog wants. |
+| `password` |       "" | See `username`.                                                                                                 |
+| `from`     | required | The `From` header. It may carry a display name, in which case the bare address is used as the envelope sender.  |
+| `insecure` |  `false` | Accept the STARTTLS certificate without verifying its chain or names. See below.                                |
+
+Names are compared lowercased. A server the configuration did not name is refused when the object is constructed, before a script has composed a message:
+
+```text
+no configuration found for mail server: transactional
+```
+
+With no server configured at all, `mail()` and `new Mail` still exist and fail the same catchable way naming `default`, so calling code keeps one spelling and its own fallback.
+
+The connection is upgraded with STARTTLS whenever the server offers it. `insecure: true` accepts the certificate without verifying its chain or names, which is what a host with a self-signed certificate requires, or one carrying no `subjectAltName`. The session stays encrypted but is no longer protected against a man in the middle, so prefer a certificate the host can verify.
+
+### Credentials stay with the host
+
+A script names a server. It cannot spell one, and it cannot read one back:
+
+- The constructor takes a name. There is no way to hand a host or a password to a binding.
+- The object it returns carries no properties. `$mail->password`, `get_object_vars($mail)`, `var_dump`, `print_r` and `json_encode` all find nothing.
+- There is no listing call. `Mail` has no counterpart to [`Database::connections()`](#database-connections), because naming what exists is itself a disclosure.
+- The block is configuration, not `env`, so `getenv()` was never in reach of it.
+
+This is why the settings are not accepted as a constructor argument. A script that passes them is refused rather than coerced:
+
+```text
+Mail(): argument #1 ($name) must be the name of a configured server, not the settings of one: connection settings are the host's, and belong in the mail block of its configuration
+```
+
+A flat block, the single unnamed server phpscript carried before the key became a map, fails the command naming what to write instead:
+
+```text
+config.yml: mail.host is not a server name: mail is a map of named servers, so a flat block moves under a name such as "default"
+```
+
+A server naming no `host`, no `from`, or a `from` that is not an address fails the command too, rather than failing the first delivery. On a site whose only sender is a `@schedule` job, that is the middle of the night on the one path nobody is watching.
+
 ## Virtual hosts
 
 `virtualhost` lists the sites one `phpscript server` answers for, one entry per site. While the list is empty the server serves a single application root, the one named on the command line. While it is not, the `Host` header selects the site, and an application root on the command line is an error: the entries name their own roots and a further one has no site to belong to.
@@ -331,6 +404,25 @@ Two sites running `driver: disk` may not share a `storage_path`, or their traces
 A site's connections are built from its own `env`, and the provider holding them sees nothing else, so a site can open the connections its own file names and no others. `new Database("shop")` on a site that did not configure `shop` fails with `no configuration found for database: [shop]`.
 
 `env` is a list, and the overlay replaces a list wholesale rather than appending to it. A site that declares an `env` of its own therefore gets only its own connections, while a site that declares none inherits every connection the operator configured. The shipped `config/config.yml` carries one `PLATFORM_DB_*` entry, so setting `env: []` in the operator's file is the way to run virtual hosts with no shared connections.
+
+### Mail servers per site
+
+A site's mail servers are the ones its own `mail` block names, and a provider holds only those, so a site can name the servers its file configured and no others. `new Mail("marketing")` on a site that did not configure `marketing` fails with `no configuration found for mail server: marketing`.
+
+The map replaces rather than merges. A site that declares any server therefore gets only its own, while a site that declares none inherits the operator's:
+
+```yaml
+mail:
+  marketing:
+    host: relay.example.net
+    from: marketing@shop.example.com
+```
+
+A site writing that has `marketing` and no `default`, even though the operator configured one.
+
+`mail:` with nothing under it means no servers, not the inherited ones. It is the way a site says it sends no mail.
+
+This replacing is why the block is a map. It was a single unnamed server, and a struct merges field by field: a site setting only `host` and `from` kept the operator's `username` and `password` and went on authenticating as the operator.
 
 ### The environment per site
 
@@ -439,3 +531,9 @@ new Database("sqlite_test");        // no configuration found for database: [sql
 A suite that names no `env` of its own resolves what the run does, which for a CLI run is the process environment. A folder that configured no connections is not asking for a set of its own.
 
 The setup hook and the fixtures below it share one connection pool. Two pools over one DSN are two databases whenever the DSN names no shared file, and a schema applied through the first would not be in the one the fixtures query.
+
+### Mail servers per suite
+
+A suite's `mail` block names the servers its fixtures may open, under the same replacing rule, so a fixture cannot name a server its folder did not configure. `tests/fixtures/mail` is the worked example.
+
+Nothing is delivered in a fixture run. Constructing a `Mail` is a name lookup and dials nothing; only `send()` reaches a server, and a fixture run has none. What the block buys a suite is the names, which is what a fixture about resolution needs.

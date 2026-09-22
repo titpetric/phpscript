@@ -197,6 +197,7 @@ func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 	for _, fx := range fixtures {
 		suite := found.resolve(fx.Path)
 		fx.SetDatabase(suite.Provider())
+		fx.SetMail(suite.Mail())
 
 		switch {
 		case opts.Include != "":

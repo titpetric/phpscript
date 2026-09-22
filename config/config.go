@@ -11,7 +11,6 @@ import (
 	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/runner"
-	"github.com/titpetric/phpscript/stdlib/smtp"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -28,11 +27,9 @@ type Config struct {
 	Test      Test           `yaml:"test"`
 	Env       []string       `yaml:"env"`
 
-	// SMTP configures the sender mail() delivers through. Absent, mail()
-	// still exists and fails catchably naming the missing configuration. A
-	// virtual host overlays its own smtp block over the server's, so each
-	// site may deliver through its own host.
-	SMTP smtp.Config `yaml:"smtp"`
+	// Mail configures the mail servers mail() and `new Mail($name)` deliver
+	// through, keyed by the name a script asks for.
+	Mail Mail `yaml:"mail"`
 
 	// DocumentRoot is the directory beneath the application root that is
 	// served over HTTP. It is "public" and almost never worth setting; it
