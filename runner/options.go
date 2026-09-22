@@ -20,6 +20,13 @@ type Options struct {
 	// configured.
 	Database model.DatabaseProvider `yaml:"-"`
 
+	// Mail resolves the named mail servers the Mail binding and mail()
+	// deliver through. Nil leaves the choice to the binding, which falls back
+	// to a provider holding no servers, so mail() refuses catchably naming
+	// what is missing. A virtual host sets its own, so the servers a site can
+	// name are only the ones it configured.
+	Mail model.MailProvider `yaml:"-"`
+
 	// Stdin is exposed to scripts as the STDIN stream. A nil reader produces an
 	// empty stream; CLI hosts should pass os.Stdin explicitly.
 	Stdin io.Reader `yaml:"-"`

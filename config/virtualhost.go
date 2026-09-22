@@ -167,6 +167,13 @@ func (c Config) ValidateVirtualHosts() error {
 			return fmt.Errorf("virtualhost %q: document root: %w", name, err)
 		}
 
+		// A server the site got wrong fails startup rather than the first
+		// delivery, which on a site whose only sender is a @schedule job is
+		// the middle of the night on the one path nobody is watching.
+		if err := loaded.Mail.Validate(filepath.Join(host.Root, VirtualHostConfigFile)); err != nil {
+			return fmt.Errorf("virtualhost %q: %w", name, err)
+		}
+
 		if strings.EqualFold(strings.TrimSpace(loaded.Telemetry.Driver), "disk") {
 			path := loaded.Telemetry.StoragePath
 			if other, ok := storagePaths[path]; ok {

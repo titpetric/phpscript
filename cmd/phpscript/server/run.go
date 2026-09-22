@@ -23,7 +23,7 @@ import (
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/stdlib/files"
-	"github.com/titpetric/phpscript/stdlib/smtp"
+	"github.com/titpetric/phpscript/stdlib/mail"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -96,11 +96,6 @@ type handler struct {
 	// autoindex answers a directory with no index page with a listing of
 	// what is in it. See serveAutoindex.
 	autoindex bool
-
-	// smtp is the sender mail() delivers through, the site's own block for a
-	// virtual host. The zero value keeps the stdlib default, a catchable
-	// refusal naming the missing configuration.
-	smtp smtp.Config
 
 	// writable is where scripts may write, resolved against the application
 	// root. Nothing in one of these directories is executed.
@@ -303,7 +298,6 @@ func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, v
 	if h.rootDir != "" {
 		stdlib.RegisterFS(rt, h.rootDir)
 	}
-	smtp.RegisterConfig(rt, h.smtp)
 	reqCtx := runner.FromRequestOptions(r, options)
 	// Uploaded parts are copied to temporary files for the script to read; they
 	// belong to this request and nothing outlives it.
@@ -443,6 +437,11 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	// variables are held back by runner.ScriptEnvironment either way.
 	runnerOptions := appConfig.Runner
 	runnerOptions.Env = append(append([]string{}, os.Environ()...), appConfig.Env...)
+
+	// The mail servers its scripts can name are the ones the configuration
+	// named, and the credentials behind them stay with the provider.
+	runnerOptions.Mail = mail.NewProvider(appConfig.Mail)
+
 	if globals.Include != "" {
 		runnerOptions.Include = globals.Include
 	}
@@ -465,7 +464,6 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	if err != nil {
 		return err
 	}
-	files.smtp = appConfig.SMTP
 	if cover != nil {
 		files.coverage = cover.aggregator
 	}
@@ -501,11 +499,6 @@ func annotationOptions(appConfig config.Config, runnerOptions runner.Options, ob
 		annotations.WithFlatstack(appConfig.Flatstack.Enabled),
 		annotations.WithObservers(observers...),
 		annotations.WithModuleSuffix(suffix),
-		// mail() delivers through the site's smtp block; with none configured
-		// the stdlib default, a catchable refusal, is re-registered unchanged.
-		annotations.WithRuntimeFunc(func(rt *runner.Runtime) {
-			smtp.RegisterConfig(rt, appConfig.SMTP)
-		}),
 	}
 }
 

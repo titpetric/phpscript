@@ -48,10 +48,30 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 		}
 	}
 
+	if err := ValidateMailDeclaration(filename, declared); err != nil {
+		return base, declared, err
+	}
+
 	result := base
 	if err := yaml.Unmarshal(data, &result); err != nil {
 		return base, declared, fmt.Errorf("%s: %w", filename, err)
 	}
+
+	// A mapping decoded into a map replaces it, so a file that names servers
+	// holds only the ones it named and a site cannot inherit the operator's
+	// credentials. The one spelling that does not behave that way is `mail:`
+	// with nothing under it: that is a null node, which the decoder leaves as
+	// the inherited value, so a file declaring it had no servers would be
+	// handed the operator's. Naming the key with nothing under it means no
+	// servers.
+	//
+	// This is here rather than beside the virtual host checks because a test
+	// suite's phpscript.yml overlays through this same function and needs the
+	// same guarantee.
+	if servers, ok := declared["mail"]; ok && servers == nil {
+		result.Mail = nil
+	}
+
 	return result, declared, nil
 }
 

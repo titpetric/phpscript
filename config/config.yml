@@ -78,18 +78,28 @@ telemetry:
   live_stream: true
   driver: memory
 
-# The sender mail() delivers through. With no host configured, mail() still
-# exists and fails catchably ("mail: no smtp configured"), so calling code
-# keeps one spelling and its own fallback. A virtual host may set its own
-# smtp block in phpscript.yml over this one. `insecure` accepts the STARTTLS
-# certificate without verifying it, for hosts presenting a self-signed one.
-smtp:
-  host: ""
-  port: 25
-  username: ""
-  password: ""
-  from: ""
-  insecure: false
+# The mail servers mail() and `new Mail($name)` deliver through, keyed by the
+# name a script asks for; `new Mail` with no name asks for "default". The
+# credentials stay here: a script names a server, it never spells a host or a
+# password, and nothing it can call reads one back or lists what is configured.
+# With no server configured, mail() still exists and fails catchably naming the
+# one it looked for, so calling code keeps one spelling and its own fallback.
+#
+# A virtual host that declares a mail block gets only the servers it named; one
+# that declares none inherits these. `mail:` with nothing under it means no
+# servers, not the inherited ones. `port` defaults to 25. `insecure` accepts the
+# STARTTLS certificate without verifying it, for a host presenting a self-signed
+# one.
+#
+#   mail:
+#     default:
+#       host: mail.example.com
+#       port: 587
+#       username: noreply@example.com
+#       password: secret
+#       from: Example <noreply@example.com>
+#       insecure: false
+mail: {}
 
 # The directory beneath an application root that is served over HTTP. Sites
 # are expected to leave this alone; it is here for a tree that already calls

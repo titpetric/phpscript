@@ -114,6 +114,9 @@ func LoadTestSuite(dir, filename string, data []byte, base Config, forbidden boo
 	if err := result.Test.Validate(filename); err != nil {
 		return nil, err
 	}
+	if err := result.Mail.Validate(filename); err != nil {
+		return nil, err
+	}
 	return &TestSuite{Dir: dir, Config: result, Declared: declared}, nil
 }
 
