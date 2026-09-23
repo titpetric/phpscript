@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"io/fs"
+	"sync/atomic"
 	"testing"
 	"testing/fstest"
 	"time"
 
 	"github.com/titpetric/phpscript/annotations"
+	"github.com/titpetric/phpscript/runner"
 )
 
 func TestParseSchedules(t *testing.T) {
@@ -85,5 +87,38 @@ func TestSchedulerStartScansFS(t *testing.T) {
 	}
 	if err := annotations.NewScheduler(fs.FS(root)).Start(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestSchedulerStopEndsItsJobs pins what a reload depends on. The context
+// the platform hands Start belongs to the caller rather than to the
+// generation being retired, so a scheduler that ignored Stop would leave the
+// previous tree's jobs running beside every generation that followed.
+func TestSchedulerStopEndsItsJobs(t *testing.T) {
+	var runs atomic.Int64
+
+	root := fstest.MapFS{
+		"cron.php": {Data: []byte("<?php\n// @schedule every 1 seconds\n")},
+	}
+
+	scheduler := annotations.NewScheduler(fs.FS(root), annotations.WithRuntimeFunc(func(rt *runner.Runtime) {
+		runs.Add(1)
+	}))
+
+	if err := scheduler.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err := scheduler.Stop(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Whatever had already started is allowed to finish, and nothing new
+	// may begin.
+	time.Sleep(50 * time.Millisecond)
+	settled := runs.Load()
+
+	time.Sleep(1200 * time.Millisecond)
+	if after := runs.Load(); after != settled {
+		t.Fatalf("jobs ran %d more times after Stop", after-settled)
 	}
 }
