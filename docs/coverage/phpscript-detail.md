@@ -52,7 +52,7 @@ github.com/titpetric/phpscript/config/server.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/config/test.go, symbols 2, coverage 80.00%
 github.com/titpetric/phpscript/config/validate.go, symbols 2, coverage 95.45%
 github.com/titpetric/phpscript/config/virtualhost.go, symbols 9, coverage 96.27%
-github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 33, coverage 87.03%
+github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 33, coverage 87.07%
 github.com/titpetric/phpscript/flatstack/engine/fuse.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/flatstack/engine/program.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/flatstack/engine/vm.go, symbols 22, coverage 86.67%
@@ -220,7 +220,7 @@ github.com/titpetric/phpscript/telemetry/context.go, symbols 4, coverage 100.00%
 github.com/titpetric/phpscript/telemetry/error.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/telemetry/module.go, symbols 8, coverage 97.91%
 github.com/titpetric/phpscript/tests/bindings.go, symbols 8, coverage 81.61%
-github.com/titpetric/phpscript/tests/fixture.go, symbols 42, coverage 86.70%
+github.com/titpetric/phpscript/tests/fixture.go, symbols 44, coverage 87.35%
 github.com/titpetric/phpscript/tests/main.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/tests/matrix.go, symbols 8, coverage 61.20%
 github.com/titpetric/phpscript/tests/panics.go, symbols 3, coverage 100.00%
