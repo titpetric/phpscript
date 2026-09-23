@@ -282,19 +282,19 @@ $storage->get("missing");
 // The constructor counts its calls, so a compile that gave up after the `new`
 // had already run would report two.
 //
-// compact() is the unsupported construct: it reads the caller's variables by
-// name, which the compiler has no scope to reflect over, so it stays rejected.
+// An anonymous class is the unsupported construct: the bytecode carries a
+// class name where one carries its declaration.
 func TestFlatstackRejectsWholeProgramBeforeSideEffects(t *testing.T) {
 	program, err := parser.Parse(`<?php
 $storage = new Storage;
-$keep = compact('storage');
+$keep = new class { public $x = 1; };
 echo 42;
 `)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := flatstack.Supports(program); err == nil {
-		t.Fatal("program with compact() should require interpreter fallback")
+		t.Fatal("program with an anonymous class should require interpreter fallback")
 	}
 
 	var constructions atomic.Int64

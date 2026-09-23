@@ -150,13 +150,13 @@ It supports these expressions:
 
 Arithmetic, coercion, comparison, array access, and truthiness are implemented by the flat VM and its small PHP-semantics host boundary. The bridge uses runner's existing reflection path for registered Go constructors, functions and methods. The compatibility interpreter evaluates expressions on runner/expr, its closure-chain engine, for unsupported programs.
 
-The current end-to-end corpus result is **240 of the 242 `.phpt` fixtures compiling native** (`tests/fixtures/arrays/compact.phpt` and `tests/fixtures/functions/static_var_closure.phpt` remain with the interpreter). `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that the whole PHP language is implemented.
+The current end-to-end corpus result is **249 of the 250 `.phpt` fixtures compiling native** (`tests/fixtures/functions/static_var_closure.phpt` remains with the interpreter). `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that the whole PHP language is implemented.
 
 ### Current native barriers
 
 The complete program atomically selects fallback when it contains any currently unsupported form. The major remaining forms are:
 
-- `compact()`, which reads the caller's variables by name at run time; flat frames erase names into slots
+- `compact()` of a name declared `static $x`, which lives in a bag rather than a frame slot. Every other form compiles: a literal name becomes the slot it stands for, and one computed at run time is looked up in the name table the program carries
 - `static $x` inside a closure (its bag counts per closure value, which is interpreter state), at top level, or as a by-reference output parameter
 - By-reference closure captures `use (&$x)`, closure parameter defaults, and variadic or by-reference closure parameters
 - Anonymous classes, `new class { ... }`. The bytecode carries a class name where an anonymous class carries its declaration

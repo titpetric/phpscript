@@ -72,6 +72,20 @@ const (
 	// opUnsetProp pops the receiver and removes the named property through the
 	// host, PHP's unset($obj->prop).
 	opUnsetProp
+	// opCompactInit pushes the empty map[string]any that compact() fills. A
+	// native map rather than a script array, which is what the binding
+	// returns and what the allocation rules prefer.
+	opCompactInit
+	// opCompactEntry writes one name into the map on top of the stack, which
+	// it leaves there: a is the local's slot and name is the key. A slot
+	// holding nothing is skipped, which is how compact() omits a name that is
+	// not set; a slot holding null is not, because null is a value.
+	opCompactEntry
+	// opCompactDynamic is opCompactEntry for a name the compiler could not
+	// read off the source: it pops the name and looks the slot up in the
+	// table the program carries. compact($which) and compact(name()) take
+	// this path.
+	opCompactDynamic
 	// opCallStatic is `Class::method(args...)`: a args, name the class
 	// (contextual names already collapsed), extra the method. b=1 is the
 	// `Class::$m(...)` form: the method name value sits beneath the args and

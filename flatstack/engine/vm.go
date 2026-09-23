@@ -436,6 +436,17 @@ func (st *execState) Snapshot() map[string]any {
 	return vars
 }
 
+// lookupName reads a variable the script named at run time, which compact()
+// does when its argument is not a literal. Slots first, then the extras a
+// host call introduced, which is the order Snapshot builds in.
+func (st *execState) lookupName(name string) (any, bool) {
+	if slot, ok := st.program.nameSlots[name]; ok && st.initialized[slot] {
+		return st.locals[slot], true
+	}
+	value, ok := st.extras[name]
+	return value, ok
+}
+
 // WriteBack writes host-visible variables into their slots, respecting the
 // by-reference marks the way the old applyHostLocals did.
 func (st *execState) WriteBack(vars map[string]any) {
@@ -629,6 +640,34 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				items[i] = model.ArrayItemValue{Key: key, Val: value}
 			}
 			st.stack = append(st.stack, host.Array(items))
+		case opCompactInit:
+			st.stack = append(st.stack, make(map[string]any, inst.a))
+		case opCompactEntry:
+			// The map stays on the stack: one entry is written per name and
+			// the last one leaves it as the call's value.
+			entries, ok := st.stack[len(st.stack)-1].(map[string]any)
+			if !ok {
+				return fmt.Errorf("compact: %q has no map to go into", inst.name)
+			}
+			if st.initialized[inst.a] {
+				entries[inst.name] = st.locals[inst.a]
+			} else if value, found := st.extras[inst.name]; found {
+				entries[inst.name] = value
+			}
+		case opCompactDynamic:
+			name, popErr := st.pop()
+			if popErr != nil {
+				return popErr
+			}
+			entries, ok := st.stack[len(st.stack)-1].(map[string]any)
+			if !ok {
+				return fmt.Errorf("compact: no map to go into")
+			}
+			if key, isString := name.(string); isString {
+				if value, found := st.lookupName(key); found {
+					entries[key] = value
+				}
+			}
 		case opIndex:
 			index, popErr := st.pop()
 			if popErr != nil {

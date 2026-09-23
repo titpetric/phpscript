@@ -633,6 +633,50 @@ func (c *compiler) doWhileStmt(node *model.DoWhile, path string) error {
 // unsetStmt lowers `unset($a, $b[$k])`. A local is cleared in place; an array
 // entry is removed through the host. Property and static-property targets have
 // no instruction yet, so a program using one falls back to the interpreter.
+// compactCall translates compact("a", "b") into the array it names,
+// array("a" => $a, "b" => $b), with a name that is not set left out.
+//
+// The binding reads the caller's scope by name, which a flat frame has
+// erased into slots. The compiler still has both, so it writes the entries
+// out rather than asking at run time. Only literal names can be resolved
+// that way; anything else keeps the program with the interpreter.
+func (c *compiler) compactCall(node *model.Call, path string) error {
+	if len(node.Args) == 0 {
+		return unsupported(path, "compact() with no names")
+	}
+
+	// A function static lives in a bag rather than a slot, so a name that
+	// resolves to one has nothing for either form to read.
+	for _, argument := range node.Args {
+		if literal, ok := model.UnwrapParenthesized(argument).(*model.Lit); ok {
+			if name, isString := literal.Value.(string); isString {
+				if _, isStatic := c.staticSlot(name); isStatic {
+					return unsupported(path, "compact() of a function static")
+				}
+			}
+		}
+	}
+
+	c.emit(instruction{op: opCompactInit, a: len(node.Args)})
+	for i, argument := range node.Args {
+		if literal, ok := model.UnwrapParenthesized(argument).(*model.Lit); ok {
+			if name, isString := literal.Value.(string); isString && name != "" {
+				c.emit(instruction{op: opCompactEntry, a: c.slot(name), name: name})
+				continue
+			}
+		}
+		// The name is whatever the expression answers. A cast gives the
+		// lookup a string to work with, the way the binding's variadic
+		// string parameter coerces one.
+		if err := c.expr(argument, fmt.Sprintf("%s.name[%d]", path, i)); err != nil {
+			return err
+		}
+		c.emit(instruction{op: opCast, name: "string"})
+		c.emit(instruction{op: opCompactDynamic})
+	}
+	return nil
+}
+
 func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 	for i, target := range node.Targets {
 		targetPath := fmt.Sprintf("%s.target[%d]", path, i)
@@ -974,7 +1018,7 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 	case *model.Call:
 		switch node.Name {
 		case "compact":
-			return unsupported(path, "compact() requires scope reflection")
+			return c.compactCall(node, path)
 		case "defer":
 			if len(node.Args) != 1 {
 				return unsupported(path, "defer() expects 1 argument")
