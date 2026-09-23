@@ -66,6 +66,12 @@ func (rt *Runtime) Load(src string) (*model.Program, error) {
 }
 
 // LoadFile reads and parses a PHP file from the runtime source FS.
+//
+// Options.Precompile makes the include cache answer for entrypoints as well as
+// for includes: the file is parsed once for the life of the process, so the
+// bytecode and the compiled expressions keyed by that AST are read back instead
+// of built again per request. Without it the file is read and parsed every
+// time, which is what a CLI run and an unconfigured host want.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 	rt.UpdateFilename(path)
 	rt.UpdateStatus(telemetry.StateReading)
@@ -73,7 +79,19 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 		rt.UpdateStatus(telemetry.StateError)
 		return nil, fmt.Errorf("load %q: no source FS configured", path)
 	}
-	return rt.loadResolved(rt.resolveFSPath(path))
+	resolved := rt.resolveFSPath(path)
+	if !rt.opts.Precompile {
+		return rt.loadResolved(resolved)
+	}
+	if prog, ok := rt.includeCache.Get(resolved); ok {
+		return prog, nil
+	}
+	prog, err := rt.loadResolved(resolved)
+	if err != nil {
+		return nil, err
+	}
+	rt.includeCache.Set(resolved, prog)
+	return prog, nil
 }
 
 // loadResolved reads and parses a path the caller has already put through
