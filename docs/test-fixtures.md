@@ -48,7 +48,8 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | array_stack.phpt                  | PASS       | PASS    | PASS |
 | array_union.phpt                  | PASS       | PASS    | PASS |
 | chained_assignment.phpt           | PASS       | PASS    | PASS |
-| compact.phpt                      | SKIP       | PASS    | PASS |
+| compact.phpt                      | PASS       | PASS    | PASS |
+| compact_flatstack.phpt            | PASS       | PASS    | PASS |
 | end_reset.phpt                    | PASS       | PASS    | PASS |
 | keys.phpt                         | PASS       | PASS    | PASS |
 | ksort_asort.phpt                  | PASS       | PASS    | PASS |
@@ -378,7 +379,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | Area                       | Fixtures | Passed | Failed |
 |----------------------------|----------|--------|--------|
 | tests/fixtures/arithmetic  | 24       | 24     | 0      |
-| tests/fixtures/arrays      | 23       | 23     | 0      |
+| tests/fixtures/arrays      | 24       | 24     | 0      |
 | tests/fixtures/autoloading | 4        | 4      | 0      |
 | tests/fixtures/bindings    | 27       | 27     | 0      |
 | tests/fixtures/comparison  | 1        | 1      | 0      |
@@ -401,4 +402,4 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/strings     | 20       | 20     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 1        | 1      | 0      |
-| **Total**                  | 249      | 249    | 0      |
+| **Total**                  | 250      | 250    | 0      |
