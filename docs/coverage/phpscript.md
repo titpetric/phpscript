@@ -5,8 +5,8 @@
 Statement coverage of the Go packages, one row per package. [phpscript-detail.md](phpscript-detail.md) has the same run per file.
 
 ```
-github.com/titpetric/phpscript, symbols 7, coverage 20.60%
-github.com/titpetric/phpscript/annotations, symbols 47, coverage 85.36%
+github.com/titpetric/phpscript, symbols 8, coverage 21.15%
+github.com/titpetric/phpscript/annotations, symbols 48, coverage 86.16%
 github.com/titpetric/phpscript/cmd/phpscript/ast, symbols 3, coverage 0.00%
 github.com/titpetric/phpscript/cmd/phpscript/fmt, symbols 3, coverage 0.00%
 github.com/titpetric/phpscript/cmd/phpscript/helpdocs, symbols 11, coverage 96.48%
@@ -14,16 +14,16 @@ github.com/titpetric/phpscript/cmd/phpscript/info, symbols 12, coverage 79.20%
 github.com/titpetric/phpscript/cmd/phpscript/lint, symbols 12, coverage 73.10%
 github.com/titpetric/phpscript/cmd/phpscript/list, symbols 3, coverage 30.00%
 github.com/titpetric/phpscript/cmd/phpscript/run, symbols 4, coverage 20.00%
-github.com/titpetric/phpscript/cmd/phpscript/server, symbols 47, coverage 79.03%
+github.com/titpetric/phpscript/cmd/phpscript/server, symbols 57, coverage 85.35%
 github.com/titpetric/phpscript/cmd/phpscript/test, symbols 104, coverage 83.36%
 github.com/titpetric/phpscript/cmd/phpscript/version, symbols 2, coverage 0.00%
-github.com/titpetric/phpscript/config, symbols 21, coverage 86.59%
+github.com/titpetric/phpscript/config, symbols 24, coverage 88.04%
 github.com/titpetric/phpscript/flatstack, symbols 9, coverage 55.56%
 github.com/titpetric/phpscript/flatstack/engine, symbols 57, coverage 88.50%
 github.com/titpetric/phpscript/formatter, symbols 70, coverage 79.60%
 github.com/titpetric/phpscript/internal/apidoc, symbols 55, coverage 84.01%
 github.com/titpetric/phpscript/internal/arrayi64, symbols 1, coverage 100.00%
-github.com/titpetric/phpscript/internal/flags, symbols 14, coverage 91.37%
+github.com/titpetric/phpscript/internal/flags, symbols 14, coverage 91.52%
 github.com/titpetric/phpscript/internal/phpval, symbols 43, coverage 93.64%
 github.com/titpetric/phpscript/internal/table, symbols 13, coverage 100.00%
 github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
