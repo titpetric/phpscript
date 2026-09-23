@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/titpetric/cli"
@@ -365,26 +366,93 @@ func serveStatus(w http.ResponseWriter, status int) {
 
 // Run starts the platform lifecycle and waits for shutdown.
 func Run(ctx context.Context, args []string, appConfig config.Config, globals *flags.Options) error {
-	options, err := appConfig.PlatformOptions()
+	manager, err := newManager(ctx, args, appConfig, globals)
 	if err != nil {
 		return err
 	}
 
-	svc := platform.New(options)
+	if err := manager.Start(ctx); err != nil {
+		return err
+	}
 
-	// One aggregator for the process. Every site folds into it, and the module
-	// writes the profile when the platform stops, which is the only moment a
-	// server knows it is finished.
+	// Until SIGINT or SIGTERM. A SIGHUP reloads instead, which replaces
+	// what is serving without ending this.
+	manager.Wait()
+
+	return nil
+}
+
+// newManager builds the manager Run starts, with nothing bound yet.
+//
+// A manager rather than a bare platform is what makes SIGHUP a reload: a
+// platform value is one-shot, and the manager owns the socket and replaces
+// the platform serving on it. Run is one call on this; a test drives Reload
+// directly, without a signal.
+func newManager(ctx context.Context, args []string, started config.Config, globals *flags.Options) (*platform.Manager, error) {
+	options, err := started.PlatformOptions()
+	if err != nil {
+		return nil, err
+	}
+
+	manager := platform.NewManager(options)
+
+	// One aggregator for the process. A reload replaces the sites, not the
+	// measurement of what this process ran, so it is built once out here and
+	// the profile covers every generation.
 	var cover *coverageModule
 	if globals.Covering() {
 		cover = newCoverageModule(globals)
 	}
 
+	// Checked before the swap, while the sites that are serving still are.
+	// It runs everything `phpscript -t` runs, because anything found after
+	// the swap is found with the old generation already stopped, and the
+	// manager then takes the process down. Loading the file is not enough
+	// on its own: a virtual host naming a root that is not there parses.
+	name, root := configName(globals.ConfigFile), rootArg(args)
+	manager.Check = func() error {
+		appConfig, err := reloadConfig(started, globals)
+		if err != nil {
+			return err
+		}
+		return check(appConfig, name, root)
+	}
+
+	// Registration is against a platform value and a reload discards the one
+	// it was made against, so all of it belongs here rather than in Run.
+	manager.Setup = func(svc *platform.Platform) error {
+		appConfig, err := reloadConfig(started, globals)
+		if err != nil {
+			return err
+		}
+		warnFrozen(svc.Logger, started, appConfig)
+		return setup(ctx, svc, appConfig, args, globals, cover)
+	}
+
+	return manager, nil
+}
+
+// reloadConfig returns the configuration a generation runs under, read from
+// disk again so an edit made while the process ran is applied.
+//
+// A run given no -f has no file to re-read and keeps what it started with:
+// the built-in defaults do not change.
+func reloadConfig(started config.Config, globals *flags.Options) (config.Config, error) {
+	if globals.ConfigFile == "" {
+		return started, nil
+	}
+	return config.Load(globals.ConfigFile)
+}
+
+// setup registers what one generation serves.
+func setup(ctx context.Context, svc *platform.Platform, appConfig config.Config, args []string, globals *flags.Options, cover *coverageModule) error {
 	// The platform records, phpscript observes. Its recorder owns the tracer
 	// and its middleware is what puts a trace in the request context, so the
 	// interpreter reports onto that trace instead of into a second recorder of
 	// its own. Telemetry turned off leaves no recorder to find, and the
 	// observers stay empty.
+	//
+	// It is looked up per generation, because each one builds its own.
 	var observers []runner.Observer
 	var recorder *platform.TelemetryModule
 	if svc.Find(&recorder) {
@@ -393,15 +461,15 @@ func Run(ctx context.Context, args []string, appConfig config.Config, globals *f
 
 	if len(appConfig.VirtualHost) > 0 {
 		if len(args) > 0 {
-			return fmt.Errorf("server: the configuration lists virtual hosts, which name their own roots; %q on the command line has no virtual host to belong to", args[0])
+			return errRootWithVirtualHosts(args[0])
 		}
 		if err := registerVirtualHosts(ctx, svc, appConfig, globals, cover); err != nil {
 			return err
 		}
 	} else {
-		root := "."
-		if len(args) > 0 {
-			root = args[0]
+		root := rootArg(args)
+		if root == "" {
+			root = "."
 		}
 		if err := registerSite(svc, appConfig, observers, root, globals, cover); err != nil {
 			return err
@@ -414,15 +482,38 @@ func Run(ctx context.Context, args []string, appConfig config.Config, globals *f
 	if cover != nil {
 		svc.Register(cover)
 	}
+	return nil
+}
 
-	if err := svc.Start(ctx); err != nil {
-		return err
+// warnFrozen reports a reloaded setting that will not take effect, because
+// the manager reads it once: the socket is bound in Start, and the recorder
+// and the logger are built with the platform.
+//
+// Reporting rather than refusing is deliberate. Refusing means Setup returns
+// an error, which means the reload fails, which takes a working server down
+// over a setting that needs a restart either way.
+func warnFrozen(log platform.Logger, started, reloaded config.Config) {
+	if log == nil {
+		return
 	}
 
-	// Wait until SIGINT/SIGTERM shutdown.
-	svc.Wait()
+	var changed []string
+	if started.Server.Addr != reloaded.Server.Addr {
+		changed = append(changed, "server.addr")
+	}
+	if started.Server.Quiet != reloaded.Server.Quiet {
+		changed = append(changed, "server.quiet")
+	}
+	if !slices.Equal(started.Server.Modules, reloaded.Server.Modules) {
+		changed = append(changed, "server.modules")
+	}
+	if started.Server.PidFile != reloaded.Server.PidFile {
+		changed = append(changed, "server.pid_file")
+	}
 
-	return nil
+	if len(changed) > 0 {
+		log.Info("reloaded settings that need a restart", "keys", changed)
+	}
 }
 
 // registerSite wires the single tenant server: one application root, its
