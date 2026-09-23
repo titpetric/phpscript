@@ -51,10 +51,10 @@ github.com/titpetric/phpscript/config/server.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/config/test.go, symbols 2, coverage 80.00%
 github.com/titpetric/phpscript/config/validate.go, symbols 2, coverage 95.45%
 github.com/titpetric/phpscript/config/virtualhost.go, symbols 9, coverage 96.27%
-github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 32, coverage 87.14%
+github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 33, coverage 87.03%
 github.com/titpetric/phpscript/flatstack/engine/fuse.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/flatstack/engine/program.go, symbols 1, coverage 100.00%
-github.com/titpetric/phpscript/flatstack/engine/vm.go, symbols 21, coverage 88.41%
+github.com/titpetric/phpscript/flatstack/engine/vm.go, symbols 22, coverage 86.67%
 github.com/titpetric/phpscript/flatstack/flatstack.go, symbols 9, coverage 55.56%
 github.com/titpetric/phpscript/formatter/comments.go, symbols 7, coverage 91.63%
 github.com/titpetric/phpscript/formatter/format.go, symbols 54, coverage 81.57%
@@ -137,7 +137,7 @@ github.com/titpetric/phpscript/stdlib/compat/buffers.go, symbols 5, coverage 98.
 github.com/titpetric/phpscript/stdlib/compat/compat.go, symbols 3, coverage 98.90%
 github.com/titpetric/phpscript/stdlib/compat/datetime.go, symbols 3, coverage 95.57%
 github.com/titpetric/phpscript/stdlib/compat/regex.go, symbols 38, coverage 83.84%
-github.com/titpetric/phpscript/stdlib/core/arrays.go, symbols 44, coverage 92.99%
+github.com/titpetric/phpscript/stdlib/core/arrays.go, symbols 44, coverage 93.28%
 github.com/titpetric/phpscript/stdlib/core/arrays_sort.go, symbols 8, coverage 94.79%
 github.com/titpetric/phpscript/stdlib/core/closure.go, symbols 2, coverage 72.75%
 github.com/titpetric/phpscript/stdlib/core/defer.go, symbols 2, coverage 94.45%
