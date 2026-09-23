@@ -36,9 +36,8 @@ func main() {
 	switch {
 	case err == nil:
 	case errors.Is(err, server.ErrReported):
-		// -t and -s print what failed in their own words. A configuration
-		// that does not pass its own test is an expected outcome, not an
-		// unexpected error, and saying it twice helps nobody.
+		// Already reported. A configuration that fails its own test is an
+		// expected outcome, not an unexpected error.
 		os.Exit(1)
 	default:
 		log.Fatalf("Unexpected error: %v", err)
@@ -56,8 +55,8 @@ func start() error {
 	if err := globals.Chdir(); err != nil {
 		return err
 	}
-	// -t reports a configuration that does not load in its own voice, so it
-	// reads the file itself rather than failing here first.
+	// -t reads the file itself: a configuration that does not load is one
+	// of the things it reports.
 	if globals.TestConfig {
 		return testConfig(globals, args)
 	}
@@ -127,9 +126,8 @@ func start() error {
 	return app.RunWithArgs(flags.Hoist(args, app.HasCommand))
 }
 
-// testConfig is `phpscript -t`. args holds what is left after the shared
-// flags, so an application root may be named the way `phpscript server
-// ./site` names one.
+// testConfig is phpscript -t, with args holding an application root when one
+// was named.
 func testConfig(globals *flags.Options, args []string) error {
 	var root string
 	if len(args) > 0 {

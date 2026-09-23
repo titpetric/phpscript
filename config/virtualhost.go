@@ -194,12 +194,9 @@ func (c Config) ValidateVirtualHosts() error {
 	return nil
 }
 
-// ValidateRoot checks the single application root a server is pointed at,
-// which is the shape `virtualhost` entries get from ValidateVirtualHosts and
-// this one had nothing.
-//
-// fs.Sub does not stat, so a document root that is not there has been a 404
-// on the first request rather than a startup failure.
+// ValidateRoot checks a single application root the way ValidateVirtualHosts
+// checks an entry: fs.Sub does not stat, so a missing document root is
+// otherwise a 404 on the first request.
 func (c Config) ValidateRoot(root string) error {
 	if err := statDir(root); err != nil {
 		return fmt.Errorf("root: %w", err)

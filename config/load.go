@@ -5,18 +5,8 @@ import (
 	"os"
 )
 
-// Load returns the defaults from the embedded config/config.yml, with
-// filename read over them, so that file only has to name what it changes. An
-// empty filename is the defaults alone.
-//
-// It layers through OverlayBytes rather than unmarshalling here, so the
-// operator's file gets the same reading a virtual host's phpscript.yml and a
-// test suite's get: the same refusals for a block written the old way, and the
-// same rule that naming a key with nothing under it means nothing rather than
-// the inherited value.
-//
-// It lives here rather than in the command, because a reload reads the file
-// again from inside the server and a command cannot be imported.
+// Load reads filename over the embedded defaults, through the same overlay a
+// virtual host and a test suite get. An empty filename is the defaults alone.
 func Load(filename string) (Config, error) {
 	base := New()
 	if filename == "" {

@@ -65,12 +65,11 @@ type Options struct {
 	Cover     string
 	CoverFile string
 
-	// TestConfig is -t: read the configuration, report whatever would stop a
-	// server from starting under it, and exit. No command runs.
+	// TestConfig is -t: test the configuration and exit, running no command.
 	TestConfig bool
 
-	// Signal is -s: the verb sent to the server named by server.pid_file.
-	// No command runs.
+	// Signal is -s: the verb sent to the server named by server.pid_file,
+	// running no command.
 	Signal string
 }
 
@@ -129,11 +128,8 @@ func Pre(args []string) (*Options, []string, error) {
 	o := &Options{}
 	remaining := make([]string, 0, len(args))
 
-	// leading is true until the first argument that is not a flag or a
-	// flag's value, which is the command name. -t and -s are only read
-	// before it: `phpscript test -t 10s` is the test command's -t, the
-	// shorthand for --time, and stripping it here would silently change
-	// what that run measures.
+	// leading is true until the command name. -t and -s are read only
+	// before it, because the test command declares -t as --time.
 	leading := true
 
 	for i := 0; i < len(args); i++ {
@@ -168,8 +164,7 @@ func Pre(args []string) (*Options, []string, error) {
 			}
 			continue
 		default:
-			// A flag keeps the leading run open, and so does the value of
-			// one that takes an argument; anything else is the command.
+			// A flag keeps the leading run open, and so does its value.
 			if leading && !strings.HasPrefix(arg, "-") {
 				leading = false
 			}

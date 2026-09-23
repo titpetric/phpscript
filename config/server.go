@@ -22,12 +22,8 @@ type Server struct {
 	Modules []string `yaml:"modules"`
 
 	// PidFile is the file the server records its process id in, and the one
-	// `phpscript -s reload` reads it back from. Empty writes none, and a
-	// reload then has no way to find the server.
-	//
-	// The path resolves against the working directory, so `-s reload` has to
-	// be given the same -w the server was started with. An absolute path is
-	// what a service unit wants.
+	// -s reload reads it back from. Empty writes none. The path resolves
+	// against the working directory, so -s needs the same -w.
 	PidFile string `yaml:"pid_file"`
 }
 

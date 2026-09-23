@@ -75,11 +75,7 @@ type Telemetry struct {
 }
 
 // Validate reports a telemetry block the server could not run under, without
-// building the storage the driver names.
-//
-// Resolved creates that storage, and `phpscript -t` must not: a test of a
-// configuration that left a trace directory behind, owned by whoever ran the
-// test rather than by the service, is a side effect nobody asked for.
+// building the storage the driver names, which Resolved does.
 func (t Telemetry) Validate() error {
 	switch strings.ToLower(strings.TrimSpace(t.Driver)) {
 	case "", "memory", "disk":
@@ -91,7 +87,6 @@ func (t Telemetry) Validate() error {
 
 // Resolved returns oida options with storage applied.
 func (t Telemetry) Resolved() (telemetry.Options, error) {
-	// The driver name is checked in one place, so the two cannot drift.
 	if err := t.Validate(); err != nil {
 		return t.Options, err
 	}

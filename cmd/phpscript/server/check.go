@@ -8,25 +8,12 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// ErrReported ends the process non-zero without a second report. `-t` and
-// `-s` print what failed in their own words, and main would otherwise print
-// it again as an unexpected error, which a failed configuration test is not.
+// ErrReported ends the process non-zero without a second report: -t and -s
+// have already printed what failed in their own words.
 var ErrReported = errors.New("reported")
 
-// Check reports whatever would stop a server from starting under appConfig,
-// and writes a verdict naming the file it read.
-//
-// It is `phpscript -t`, and it answers the question the server answers on the
-// way up without doing any of what the server does: no socket is bound, no
-// @startup job runs, nothing is dialled, and no trace storage is created. A
-// command that tests a configuration must not leave anything behind.
-//
-// root is the application root a single-root server would serve. It is an
-// error beside a configuration that lists virtual hosts, which name their own.
-//
-// It reads filename itself rather than being handed a configuration, because
-// a file that does not parse is one of the things it reports, and the caller
-// failing on that first would report it in the wrong voice.
+// Check is `phpscript -t`: it reports whatever would stop a server starting
+// under filename, writes a verdict, and starts nothing.
 func Check(filename, root string, out, errOut io.Writer) error {
 	name := configName(filename)
 
@@ -47,12 +34,11 @@ func Check(filename, root string, out, errOut io.Writer) error {
 	return nil
 }
 
-// check stops at the first failure. A configuration is read top to bottom,
-// and the second complaint is usually a consequence of the first.
+// check stops at the first failure: the second complaint is usually a
+// consequence of the first.
 func check(appConfig config.Config, name, root string) error {
 	// The server never reaches the test block, but -t is a question about
-	// the file rather than about one command, so a test.cache nothing
-	// accepts fails it here.
+	// the file rather than about one command.
 	if err := appConfig.Test.Validate(name); err != nil {
 		return err
 	}
@@ -73,15 +59,13 @@ func check(appConfig config.Config, name, root string) error {
 	return appConfig.ValidateRoot(root)
 }
 
-// errRootWithVirtualHosts is the refusal a root on the command line gets
-// beside a virtual host list. Check and Run both give it, so it is spelled
-// once.
+// errRootWithVirtualHosts is the refusal Check and Run both give a root named
+// beside a virtual host list.
 func errRootWithVirtualHosts(root string) error {
 	return fmt.Errorf("server: the configuration lists virtual hosts, which name their own roots; %q on the command line has no virtual host to belong to", root)
 }
 
-// configName is what a verdict and a validation error name the configuration
-// as. A run given no -f read the defaults compiled into the binary.
+// configName is what a verdict names the configuration as.
 func configName(filename string) string {
 	if filename == "" {
 		return "built-in defaults"

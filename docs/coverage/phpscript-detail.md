@@ -30,7 +30,7 @@ github.com/titpetric/phpscript/cmd/phpscript/server/errorpage.go, symbols 7, cov
 github.com/titpetric/phpscript/cmd/phpscript/server/indexpage.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/cmd/phpscript/server/lifecycle.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/cmd/phpscript/server/run.go, symbols 23, coverage 77.15%
-github.com/titpetric/phpscript/cmd/phpscript/server/signal.go, symbols 1, coverage 84.00%
+github.com/titpetric/phpscript/cmd/phpscript/server/signal.go, symbols 2, coverage 85.35%
 github.com/titpetric/phpscript/cmd/phpscript/server/vhost.go, symbols 6, coverage 93.33%
 github.com/titpetric/phpscript/cmd/phpscript/test/cover.go, symbols 9, coverage 89.78%
 github.com/titpetric/phpscript/cmd/phpscript/test/folder.go, symbols 10, coverage 75.29%

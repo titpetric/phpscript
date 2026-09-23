@@ -23,11 +23,9 @@ type Scheduler struct {
 	config config
 	now    func() time.Time
 
-	// cancel ends the job goroutines Start launched. A reload replaces the
-	// scheduler, and the context the platform hands Start belongs to the
-	// caller rather than to the generation being retired, so without this
-	// every reload would leave the previous tree's jobs running alongside
-	// the new ones.
+	// cancel ends the jobs Start launched. The context a module is started
+	// with belongs to the caller rather than to the platform being retired,
+	// so without this a reload leaves the previous tree's jobs running.
 	mu     sync.Mutex
 	cancel context.CancelFunc
 }
@@ -74,9 +72,7 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop ends the jobs Start launched. The platform calls it when a module is
-// torn down, which for a scheduler is what a reload does to the generation it
-// retires.
+// Stop ends the jobs Start launched.
 func (s *Scheduler) Stop(context.Context) error {
 	s.mu.Lock()
 	cancel := s.cancel

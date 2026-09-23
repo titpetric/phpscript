@@ -375,19 +375,14 @@ func Run(ctx context.Context, args []string, appConfig config.Config, globals *f
 		return err
 	}
 
-	// Until SIGINT or SIGTERM. A SIGHUP reloads instead, which replaces
-	// what is serving without ending this.
+	// Until SIGINT or SIGTERM. A SIGHUP reloads and does not end this.
 	manager.Wait()
 
 	return nil
 }
 
-// newManager builds the manager Run starts, with nothing bound yet.
-//
-// A manager rather than a bare platform is what makes SIGHUP a reload: a
-// platform value is one-shot, and the manager owns the socket and replaces
-// the platform serving on it. Run is one call on this; a test drives Reload
-// directly, without a signal.
+// newManager builds the manager Run starts, with nothing bound yet. A test
+// drives Reload on it directly, without a signal.
 func newManager(ctx context.Context, args []string, started config.Config, globals *flags.Options) (*platform.Manager, error) {
 	options, err := started.PlatformOptions()
 	if err != nil {
@@ -396,19 +391,16 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 
 	manager := platform.NewManager(options)
 
-	// One aggregator for the process. A reload replaces the sites, not the
-	// measurement of what this process ran, so it is built once out here and
-	// the profile covers every generation.
+	// One aggregator for the process: a reload replaces the sites, not the
+	// measurement of what this process ran.
 	var cover *coverageModule
 	if globals.Covering() {
 		cover = newCoverageModule(globals)
 	}
 
-	// Checked before the swap, while the sites that are serving still are.
-	// It runs everything `phpscript -t` runs, because anything found after
-	// the swap is found with the old generation already stopped, and the
-	// manager then takes the process down. Loading the file is not enough
-	// on its own: a virtual host naming a root that is not there parses.
+	// Everything -t runs, before the swap: anything found after it is found
+	// with the old generation stopped, and the manager then exits. Loading
+	// the file is not enough, a virtual host with no root parses.
 	name, root := configName(globals.ConfigFile), rootArg(args)
 	manager.Check = func() error {
 		appConfig, err := reloadConfig(started, globals)
@@ -418,8 +410,8 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 		return check(appConfig, name, root)
 	}
 
-	// Registration is against a platform value and a reload discards the one
-	// it was made against, so all of it belongs here rather than in Run.
+	// A reload discards the platform value registration was made against,
+	// so all of it belongs here rather than in Run.
 	manager.Setup = func(svc *platform.Platform) error {
 		appConfig, err := reloadConfig(started, globals)
 		if err != nil {
@@ -433,10 +425,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 }
 
 // reloadConfig returns the configuration a generation runs under, read from
-// disk again so an edit made while the process ran is applied.
-//
-// A run given no -f has no file to re-read and keeps what it started with:
-// the built-in defaults do not change.
+// disk again. A run given no -f has no file and keeps what it started with.
 func reloadConfig(started config.Config, globals *flags.Options) (config.Config, error) {
 	if globals.ConfigFile == "" {
 		return started, nil
@@ -446,13 +435,10 @@ func reloadConfig(started config.Config, globals *flags.Options) (config.Config,
 
 // setup registers what one generation serves.
 func setup(ctx context.Context, svc *platform.Platform, appConfig config.Config, args []string, globals *flags.Options, cover *coverageModule) error {
-	// The platform records, phpscript observes. Its recorder owns the tracer
-	// and its middleware is what puts a trace in the request context, so the
-	// interpreter reports onto that trace instead of into a second recorder of
-	// its own. Telemetry turned off leaves no recorder to find, and the
-	// observers stay empty.
-	//
-	// It is looked up per generation, because each one builds its own.
+	// The platform records, phpscript observes: the interpreter reports onto
+	// the trace the recorder's middleware put in the request context rather
+	// than into a second recorder. Looked up per generation, each of which
+	// builds its own. Telemetry off leaves the observers empty.
 	var observers []runner.Observer
 	var recorder *platform.TelemetryModule
 	if svc.Find(&recorder) {
@@ -485,13 +471,8 @@ func setup(ctx context.Context, svc *platform.Platform, appConfig config.Config,
 	return nil
 }
 
-// warnFrozen reports a reloaded setting that will not take effect, because
-// the manager reads it once: the socket is bound in Start, and the recorder
-// and the logger are built with the platform.
-//
-// Reporting rather than refusing is deliberate. Refusing means Setup returns
-// an error, which means the reload fails, which takes a working server down
-// over a setting that needs a restart either way.
+// warnFrozen reports a reloaded setting the manager read once and cannot
+// apply. Refusing instead would take a working server down over one.
 func warnFrozen(log platform.Logger, started, reloaded config.Config) {
 	if log == nil {
 		return

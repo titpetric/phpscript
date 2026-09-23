@@ -6,25 +6,19 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"strconv"
+	"strings"
 	"syscall"
-
-	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/config"
 )
 
-// SignalReload is the one verb `-s` takes.
-//
-// nginx also has stop, quit and reopen. stop and quit are a kill with extra
-// steps, and there are no log files to reopen, so each would be a second
-// lifecycle to document and test for nothing.
+// SignalReload is the one verb -s takes. nginx also has stop, quit and
+// reopen; the first two are a kill with extra steps, and there are no log
+// files to reopen.
 const SignalReload = "reload"
 
-// Signal sends verb to the server named by server.pid_file.
-//
-// It reads the pidfile from the same configuration the server was started
-// with, so `-s` needs the `-f` and the `-w` the server got: a relative
-// pid_file resolves against the working directory.
+// Signal sends verb to the server recorded in server.pid_file.
 func Signal(appConfig config.Config, verb string, errOut io.Writer) error {
 	if verb != SignalReload {
 		fmt.Fprintf(errOut, "-s: unknown signal %q, want %s\n", verb, SignalReload)
@@ -37,20 +31,14 @@ func Signal(appConfig config.Config, verb string, errOut io.Writer) error {
 		return ErrReported
 	}
 
-	pid, err := platform.ReadPidFile(path)
+	pid, err := readPid(path)
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			fmt.Fprintf(errOut, "-s: no pidfile at %q, so no server is running under this configuration\n", path)
-			return ErrReported
-		}
-		fmt.Fprintf(errOut, "-s: read pidfile: %v\n", err)
+		fmt.Fprintf(errOut, "-s: %v\n", err)
 		return ErrReported
 	}
 
-	// FindProcess never fails on unix; the send is what reports a process
-	// that is gone. Probing first with signal 0 would add a race without
-	// removing one, since the process can exit between the probe and the
-	// send either way.
+	// FindProcess never fails on unix. The send is what reports a process
+	// that is gone, so probing first would add a race without removing one.
 	process, err := os.FindProcess(pid)
 	if err != nil {
 		fmt.Fprintf(errOut, "-s: %v\n", err)
@@ -66,8 +54,24 @@ func Signal(appConfig config.Config, verb string, errOut io.Writer) error {
 		return ErrReported
 	}
 
-	// Nothing on success, as nginx gives nothing. Whether the reload was
-	// applied is in the server's log: a signal carries no way to answer
-	// back, which is what -t and Manager.Check are for.
+	// Nothing on success, as nginx prints nothing: a signal carries no way
+	// to answer back, and what the reload did is in the server's log.
 	return nil
+}
+
+// readPid returns the process id recorded in the file at path.
+func readPid(path string) (int, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return 0, fmt.Errorf("no pidfile at %q, so no server is running under this configuration", path)
+		}
+		return 0, fmt.Errorf("read pidfile: %w", err)
+	}
+
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || pid <= 0 {
+		return 0, fmt.Errorf("pidfile %q does not hold a process id", path)
+	}
+	return pid, nil
 }
