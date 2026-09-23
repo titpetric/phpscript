@@ -210,6 +210,8 @@ runtime.Run(program)
 
 For compile-once/run-many workloads, parse the source once and reuse both the `*model.Program` and cache. Re-parsing creates a different program identity and therefore a new flat compilation.
 
+`runner.Precompiler` is that reuse as a setting. It walks the `.php` files of a source tree, parses each into an `IncludeCache` and compiles each into an `ExprCache`, and `runner.Options.Precompile` makes `Runtime.LoadFile` read an entrypoint back out of the include cache instead of parsing the file again. A server that does not is re-parsing every entrypoint per request and paying a flat compilation for each, because the bytecode is keyed by the AST the parse produced. `phpscript server` runs one pass per site before it accepts a request; see [Precompilation](configuration.md#precompilation).
+
 ## Validation and benchmarks
 
 The test suite contains:

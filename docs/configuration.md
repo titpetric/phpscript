@@ -17,6 +17,7 @@ Two commands read a second file called `phpscript.yml`, found rather than named.
 ```yaml
 runner:
   work_dir: "."
+  precompile: true
   writable_paths: []
   include: ""
   upload_max_filesize: 2M
@@ -79,6 +80,7 @@ Apart from the `env` entry, this is the embedded [`config/config.yml`](../config
 | Key                       | Default | Purpose                                                                                                                                        |
 |---------------------------|--------:|------------------------------------------------------------------------------------------------------------------------------------------------|
 | `work_dir`                |     `.` | Directory inside the runtime source filesystem relative paths resolve against. `chdir()` moves it, per request; this is where each one starts. |
+| `precompile`              |  `true` | Parse and compile the source tree at startup rather than per request. See [Precompilation](#precompilation).                                   |
 | `writable_paths`          |    `[]` | Directories a script may write to, relative to the application root. An empty list allows every write.                                         |
 | `include`                 |    `""` | File included ahead of every entrypoint, once per request, when it exists. `--include` overrides it.                                           |
 | `upload_max_filesize`     |    `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.                                                    |
@@ -89,6 +91,25 @@ Apart from the `env` entry, this is the embedded [`config/config.yml`](../config
 | `memory_limit`            |     `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                                                                   |
 | `time_limit`              |     `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.                                                 |
 | `concurrency_limit`       |     `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                                                               |
+
+### Precompilation
+
+`precompile` decides when a `.php` file is parsed and compiled. With it on, `phpscript server` walks the application root before it accepts a request, parses every `.php` file below it and compiles each program, and a request reads both back out of the caches the site shares. With it off, a file is parsed the first time a request reaches it and an entrypoint is parsed again on every request after that, because the caches only answer for `include` and `require`.
+
+The parse is not all of it. Flat bytecode is keyed by the parsed program and so are the interpreter's compiled expressions, so a re-parsed entrypoint discards both and rebuilds them for the request that re-parsed it. Precompilation gives each file one AST for the life of the process, and both caches then keep their entries across requests.
+
+```yaml
+runner:
+  precompile: false
+```
+
+Nothing is invalidated and no modification time is read. An edited file is picked up by [a reload or a restart](cli/server.md#reloading). The memory a tree parses to is resident from startup instead of growing as requests reach files, so a process serving a few megabytes of PHP starts at what all of it parses to.
+
+Files are parsed in parallel, `GOMAXPROCS` at a time. A file that does not parse, and a program the bytecode compiler does not accept, are left out of the caches: startup is not where a source error is reported, and a request that names such a file gets the same answer it gets with precompilation off. One broken file below the root therefore cannot stop the server coming up.
+
+A virtual host sets its own in the `runner` block of its `phpscript.yml`, and precompiles its own tree under it, so one site paying the startup cost says nothing about what another does.
+
+Only `phpscript server` walks a tree. The include cache it walks into holds 10,000 programs, so a tree with more files than that keeps whichever the walk left in it and parses the rest when a request arrives.
 
 ### Include
 
