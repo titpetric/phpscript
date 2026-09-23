@@ -68,6 +68,51 @@ my-app/
 
 See [PHP routing](../use-cases/routing.md) for route annotation details.
 
+## Testing a configuration
+
+`phpscript -t` reports whatever would stop a server from starting, and exits non-zero when there is anything:
+
+```bash
+phpscript -f config.yml -t
+```
+
+```text
+config.yml: ok
+```
+
+```text
+virtualhost "shop.example.com": document root: stat /srv/shop/public: no such file or directory
+config.yml: failed
+```
+
+It runs the [startup checks](../configuration.md#startup-checks) against every virtual host, and for a single application root checks that the root and its document root exist, which the server itself does not: `fs.Sub` does not stat, so a missing `public/` is otherwise a 404 on the first request. It also reads the `mail` and `test` blocks, which the server never reaches.
+
+It binds no socket, runs no `@startup` job, opens no connection and creates no trace storage. A `telemetry.driver: disk` under test does not get its directory made, because a command that tests a configuration must not leave one behind owned by whoever ran the test.
+
+## Reloading
+
+`phpscript -s reload` re-reads the configuration without dropping connections:
+
+```bash
+phpscript -f config.yml -s reload
+```
+
+It reads `server.pid_file` from the same configuration the server was started with and sends that process a `SIGHUP`, so it needs the same `-f` and `-w`. `kill -HUP $(cat /run/phpscript.pid)` does the same thing. Nothing is printed on success; what the reload did is in the server's log.
+
+The socket is held across the reload, so the address survives and connections queued on it are served by whichever generation takes them. Everything above it is rebuilt from the file as it is on disk now: the virtual host list, each site's `phpscript.yml`, the routes, and the `@startup` jobs, which run again.
+
+A configuration the server cannot use is refused before anything is torn down, and the server goes on serving what it already was:
+
+```text
+ERROR reload refused, still serving error="reload refused: virtualhost \"c.example.com\": root: stat /srv/c: no such file or directory"
+```
+
+That check is the same one `-t` runs, so `-t` passing is a good predictor of a reload being applied. `-t` is still worth running first: it reports to the terminal, and a signal has no way to answer back.
+
+Some settings are read once and a reload cannot change them: `server.addr`, `server.quiet`, `server.modules`, `server.pid_file` and the operator's `telemetry` block. A reload that changes one of them logs which, and keeps the value it started with. Those need a restart.
+
+A `SIGINT` or a `SIGTERM` stops the server instead: it stops accepting, finishes what is in flight, stops the modules in registration order and removes the pidfile.
+
 ## Coverage from a running server
 
 `--cover` counts the statements the server executes, across every request, every routed endpoint, every `@startup` job and every scheduled run, for the life of the process. A request's counts are folded into one aggregator when it ends, so what the process holds is one entry per statement range rather than one per parsed program.
