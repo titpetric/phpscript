@@ -1290,6 +1290,14 @@ func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 			}
 			if arr, ok := base.(*model.Array); ok {
 				arr.Delete(normalizeKey(key))
+				continue
+			}
+			// A reindexed slice is a new value, so it goes back to where the
+			// base was read from. A map deleted in place answers nothing.
+			if replacement, changed := unsetGoIndex(base, key); changed {
+				if err := rt.assignTo(tgt.Base, replacement, scope); err != nil {
+					return err
+				}
 			}
 		default:
 			return fmt.Errorf("unset: unsupported target %T", target)
@@ -1402,6 +1410,45 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 // observes the write), and existing slice elements are addressable through the
 // shared backing array. A slice cannot grow through the interface value holding
 // it, so callers reject `$a[] =` before reaching here.
+// unsetGoIndex removes key from a native Go collection, returning the
+// container to store back and whether it changed.
+//
+// A map is a reference type and the delete is in place, so it answers nil.
+// A slice cannot hold a hole where PHP leaves one, and cannot shrink through
+// the interface value holding it either, so it answers a reslice around the
+// element for the caller to assign. Anything with nothing to remove, a
+// scalar, a nil map, a key that is not there, answers nil, which is what
+// lets unset($x[$k]) run unconditionally.
+func unsetGoIndex(base, key any) (replacement any, changed bool) {
+	rv := reflect.ValueOf(base)
+	switch rv.Kind() {
+	case reflect.Map:
+		if rv.IsNil() {
+			return nil, false
+		}
+		mapKey, ok := coerceArg(normalizeKey(key), rv.Type().Key())
+		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
+			return nil, false
+		}
+		rv.SetMapIndex(mapKey, reflect.Value{})
+		return nil, false
+
+	case reflect.Slice:
+		index, ok := normalizeKey(key).(int64)
+		if !ok || index < 0 || index >= int64(rv.Len()) {
+			return nil, false
+		}
+		// PHP keeps the keys around the hole and phpscript renumbers, as
+		// array_values() does, because a slice is dense. It is the divergence
+		// docs/README.md records.
+		shorter := reflect.MakeSlice(rv.Type(), 0, rv.Len()-1)
+		shorter = reflect.AppendSlice(shorter, rv.Slice(0, int(index)))
+		shorter = reflect.AppendSlice(shorter, rv.Slice(int(index)+1, rv.Len()))
+		return shorter.Interface(), true
+	}
+	return nil, false
+}
+
 func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 	rv := reflect.ValueOf(base)
 	switch rv.Kind() {

@@ -1177,11 +1177,19 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 			if popErr != nil {
 				return popErr
 			}
-			if err = host.UnsetIndex(base, index); err != nil {
-				if st.handle(err) {
+			replacement, unsetErr := host.UnsetIndex(base, index)
+			if unsetErr != nil {
+				if st.handle(unsetErr) {
 					continue
 				}
-				return err
+				return unsetErr
+			}
+			// A removal the host could not make in place answers the
+			// container to put back. The compiler emits a slot in a only
+			// when the base is a local, which is the one lvalue still
+			// reachable from here.
+			if replacement != nil && inst.a >= 0 {
+				st.locals[inst.a], st.initialized[inst.a] = replacement, true
 			}
 		case opCopyValue:
 			value, popErr := st.pop()

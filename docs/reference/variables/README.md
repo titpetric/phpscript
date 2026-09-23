@@ -34,6 +34,14 @@ unset($row["b"]);
 echo implode(",", array_keys($row));      // a,c
 ```
 
+A value a binding returned as a native slice is the exception, because a slice is dense and cannot hold the hole PHP leaves. Removing an element renumbers the ones after it, as `array_values()` does; see the [divergences](../../README.md#known-divergences-from-php).
+
+```php
+$e = explode(",", "x,y,z");
+unset($e[1]);
+echo implode(",", array_keys($e));        // 0,1   php answers 0,2
+```
+
 ## Variable scope
 
 Each function call receives a local scope containing its arguments. A function does not implicitly see variables from its caller. Blocks do not create an additional scope.

@@ -35,28 +35,31 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 
 ## tests/fixtures/arrays
 
-| tests/fixtures/arrays    | Flat stack | Runtime | PHP  |
-|--------------------------|------------|---------|------|
-| array_callbacks.phpt     | PASS       | PASS    | PASS |
-| array_column_flip.phpt   | PASS       | PASS    | PASS |
-| array_filter_reduce.phpt | PASS       | PASS    | PASS |
-| array_indexing.phpt      | PASS       | PASS    | PASS |
-| array_key_exists.phpt    | PASS       | PASS    | PASS |
-| array_reverse_sum.phpt   | PASS       | PASS    | PASS |
-| array_search.phpt        | PASS       | PASS    | PASS |
-| array_sets.phpt          | PASS       | PASS    | PASS |
-| array_stack.phpt         | PASS       | PASS    | PASS |
-| array_union.phpt         | PASS       | PASS    | PASS |
-| chained_assignment.phpt  | PASS       | PASS    | PASS |
-| compact.phpt             | SKIP       | PASS    | PASS |
-| end_reset.phpt           | PASS       | PASS    | PASS |
-| keys.phpt                | PASS       | PASS    | PASS |
-| ksort_asort.phpt         | PASS       | PASS    | PASS |
-| php_array_splice.phpt    | PASS       | PASS    | PASS |
-| range.phpt               | PASS       | PASS    | PASS |
-| sort.phpt                | PASS       | PASS    | PASS |
-| uasort_uksort.phpt       | PASS       | PASS    | PASS |
-| unset_and_vivify.phpt    | PASS       | PASS    | PASS |
+| tests/fixtures/arrays             | Flat stack | Runtime | PHP  |
+|-----------------------------------|------------|---------|------|
+| array_callbacks.phpt              | PASS       | PASS    | PASS |
+| array_column_flip.phpt            | PASS       | PASS    | PASS |
+| array_filter_reduce.phpt          | PASS       | PASS    | PASS |
+| array_indexing.phpt               | PASS       | PASS    | PASS |
+| array_key_exists.phpt             | PASS       | PASS    | PASS |
+| array_reverse_sum.phpt            | PASS       | PASS    | PASS |
+| array_search.phpt                 | PASS       | PASS    | PASS |
+| array_sets.phpt                   | PASS       | PASS    | PASS |
+| array_stack.phpt                  | PASS       | PASS    | PASS |
+| array_union.phpt                  | PASS       | PASS    | PASS |
+| chained_assignment.phpt           | PASS       | PASS    | PASS |
+| compact.phpt                      | SKIP       | PASS    | PASS |
+| end_reset.phpt                    | PASS       | PASS    | PASS |
+| keys.phpt                         | PASS       | PASS    | PASS |
+| ksort_asort.phpt                  | PASS       | PASS    | PASS |
+| php_array_splice.phpt             | PASS       | PASS    | PASS |
+| range.phpt                        | PASS       | PASS    | PASS |
+| sort.phpt                         | PASS       | PASS    | PASS |
+| uasort_uksort.phpt                | PASS       | PASS    | PASS |
+| unset_and_vivify.phpt             | PASS       | PASS    | PASS |
+| unset_native_map.phpt             | PASS       | PASS    | PASS |
+| unset_native_slice.phpt           | PASS       | PASS    | PASS |
+| unset_native_slice_reindexes.phpt | PASS       | PASS    | SKIP |
 
 ## tests/fixtures/autoloading
 
@@ -375,7 +378,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | Area                       | Fixtures | Passed | Failed |
 |----------------------------|----------|--------|--------|
 | tests/fixtures/arithmetic  | 24       | 24     | 0      |
-| tests/fixtures/arrays      | 20       | 20     | 0      |
+| tests/fixtures/arrays      | 23       | 23     | 0      |
 | tests/fixtures/autoloading | 4        | 4      | 0      |
 | tests/fixtures/bindings    | 27       | 27     | 0      |
 | tests/fixtures/comparison  | 1        | 1      | 0      |
@@ -398,4 +401,4 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/strings     | 20       | 20     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 1        | 1      | 0      |
-| **Total**                  | 246      | 246    | 0      |
+| **Total**                  | 249      | 249    | 0      |

@@ -148,6 +148,8 @@ Filesystem:
 Arrays:
 
 - `array_shift()`, `array_unshift()`, `array_pop()`, `array_push()` and `array_splice()` require a script array. They resize their argument, and a Go slice cannot grow through the interface value holding it, so a value a binding returned as a native slice (`explode()`, `array_keys()`) is an error rather than a mutation the script cannot observe. Assign it to a variable built by the script first: `$parts = array_merge(explode(",", $s));`.
+- `unset($list[$i])` on a native slice renumbers the elements after it, the way `array_values()` does. PHP leaves a hole and keeps the keys around it, so `unset($e[1])` on a three-element list answers keys `0,2` there and `0,1` here, and `json_encode()` writes an object where this writes an array. `count()`, `implode()` and a `foreach` over the values read the same on both. A script array keeps PHP's numbering, and so does a list a binding keyed by position, `map[int]string`, because a map holds the hole a slice cannot.
+- `unset($map[$key])` removes the key from a native map, a `Database` row or a `get_defined_functions()` result, as PHP does. A key that is not there is not an error.
 
 JSON:
 

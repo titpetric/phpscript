@@ -114,8 +114,9 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 
 // Get returns the first result row, or false when the query matches no rows.
 //
-// A row is a native map: foreach walks it, $row["col"] indexes it, and
-// $row["extra"] = 1 writes to it. A map carries no column order, so
+// A row is a native map: foreach walks it, $row["col"] indexes it,
+// $row["extra"] = 1 writes to it and unset($row["col"]) takes a column out of
+// it. A map carries no column order, so
 // `foreach ($row as $column => $value)` visits columns in arbitrary order;
 // a script that needs a stable order names its columns in the SELECT and
 // indexes them.

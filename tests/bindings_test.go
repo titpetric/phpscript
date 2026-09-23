@@ -419,6 +419,105 @@ func TestBindingCollectionsAreWritableInPlace(t *testing.T) {
 	}
 }
 
+// TestBindingKeyedMapReads covers reading a map whose key is not a string.
+// The index arrives as an int64 and the map wants an int, which panicked the
+// host before the key was coerced.
+func TestBindingKeyedMapReads(t *testing.T) {
+	cases := []struct {
+		name string
+		php  string
+		want string
+	}{
+		{
+			name: "read by index",
+			php:  `<?php $k = bind_list_keyed(); echo $k[0] . "," . $k[4];`,
+			want: "alpha,epsilon",
+		},
+		{
+			name: "isset",
+			php:  `<?php $k = bind_list_keyed(); echo (isset($k[2]) ? "y" : "n") . (isset($k[9]) ? "y" : "n");`,
+			want: "yn",
+		},
+		{
+			name: "an index that is not there reads as null",
+			php:  `<?php $k = bind_list_keyed(); var_dump($k[9]);`,
+			want: "NULL\n",
+		},
+		{
+			name: "a string index the key type cannot hold reads as null",
+			php:  `<?php $k = bind_list_keyed(); var_dump($k["nope"]);`,
+			want: "NULL\n",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := runBinding(t, tc.php); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestBindingCollectionsUnset covers unset($x[$k]) over the shapes a binding
+// returns.
+//
+// Whether php's numbering survives is a property of the shape rather than of
+// unset: a map holds the hole php leaves, and a dense slice cannot, so a
+// slice renumbers the way array_values() does. A list a binding keyed by
+// position is a map, and keeps the hole.
+func TestBindingCollectionsUnset(t *testing.T) {
+	cases := []struct {
+		name string
+		php  string
+		want string
+	}{
+		{
+			name: "a map loses the key",
+			php:  `<?php $m = bind_map(); unset($m["name"]); echo count($m) . ":" . (isset($m["name"]) ? "y" : "n");`,
+			want: "1:n",
+		},
+		{
+			name: "a key that is not there is a no-op",
+			php:  `<?php $m = bind_map(); unset($m["absent"]); echo count($m);`,
+			want: "2",
+		},
+		{
+			name: "a column comes off a returned row",
+			php:  `<?php $rows = bind_rows_maps(); unset($rows[0]["name"]); echo json_encode($rows[0]);`,
+			want: `{"id":0}`,
+		},
+		{
+			name: "a slice renumbers",
+			php:  `<?php $l = bind_list_strings(); unset($l[1]); echo implode(",", $l) . ":" . implode(",", array_keys($l));`,
+			want: "alpha,gamma,delta,epsilon:0,1,2,3",
+		},
+		{
+			name: "a slice index that is not there is a no-op",
+			php:  `<?php $l = bind_list_strings(); unset($l[99]); echo count($l);`,
+			want: "5",
+		},
+		{
+			// The key numbering survives, which a slice cannot manage. The
+			// keys are read one at a time rather than listed, because a Go
+			// map has no iteration order to assert.
+			name: "a keyed list keeps the hole",
+			php: `<?php $k = bind_list_keyed(); unset($k[1]);
+				echo count($k) . ":";
+				foreach ([0, 1, 2, 3, 4] as $i) { echo isset($k[$i]) ? "y" : "n"; }`,
+			want: "4:ynyyy",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := runBinding(t, tc.php); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestBindingListDestructuring covers list($a, $b) = over a native slice, the
 // shape explode() returns.
 func TestBindingListDestructuring(t *testing.T) {

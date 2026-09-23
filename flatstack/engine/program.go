@@ -282,7 +282,12 @@ type Host interface {
 	SetEntry(container, key, value any) error
 	// UnsetIndex removes key from container, PHP's unset($a[$k]). Removing a
 	// key that is not there is not an error.
-	UnsetIndex(container, key any) error
+	//
+	// It answers the container to store back, or nil when the removal was in
+	// place. A native slice cannot hold a hole and cannot shrink through the
+	// interface value holding it, so removing from one answers a shorter
+	// slice for the caller to assign.
+	UnsetIndex(container, key any) (replacement any, err error)
 	// MatchCatch reports whether a catch clause declaring declaredType handles
 	// err. The class hierarchy, the `A|B` union form and the rule that
 	// `catch (Exception)` does not catch an engine error all live in the host,
