@@ -211,13 +211,14 @@ func (h flatHost) SetEntry(container, key, value any) error {
 }
 
 // UnsetIndex implements unset($a[$k]) for the bytecode engine.
-func (h flatHost) UnsetIndex(container, key any) error {
+func (h flatHost) UnsetIndex(container, key any) (any, error) {
 	array, ok := container.(*model.Array)
 	if !ok {
-		return nil
+		replacement, _ := unsetGoIndex(container, key)
+		return replacement, nil
 	}
 	array.Delete(normalizeKey(key))
-	return nil
+	return nil, nil
 }
 
 func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) error {

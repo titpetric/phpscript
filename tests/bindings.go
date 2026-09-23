@@ -176,6 +176,16 @@ func registerBindings(rt registrar) {
 	rt.RegisterFunc("bind_map", func() map[string]any {
 		return map[string]any{"id": int64(1), "name": "alpha"}
 	})
+	// A list a binding keyed by position rather than packed into a slice. It
+	// is the shape that keeps PHP's numbering through an unset, because a map
+	// holds the hole a slice cannot.
+	rt.RegisterFunc("bind_list_keyed", func() map[int]string {
+		keyed := make(map[int]string, len(bindingWords))
+		for i, w := range bindingWords {
+			keyed[i] = w
+		}
+		return keyed
+	})
 
 	// --- struct shapes -----------------------------------------------------
 	//

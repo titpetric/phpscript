@@ -655,13 +655,27 @@ func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 			if t.Index == nil {
 				return unsupported(targetPath, "unset of an append target")
 			}
+			// Removing from a native slice answers a shorter one, which has
+			// to go back where the base came from. A local is the only lvalue
+			// the stack still knows at that point, so any other base keeps
+			// the program with the interpreter rather than dropping the
+			// replacement on the floor.
+			slot := -1
+			if base, ok := model.UnwrapParenthesized(t.Base).(*model.Var); ok {
+				if _, isStatic := c.staticSlot(base.Name); isStatic {
+					return unsupported(targetPath, "unset of an index of a function static")
+				}
+				slot = c.slot(base.Name)
+			} else {
+				return unsupported(targetPath, "unset of an index of %T", t.Base)
+			}
 			if err := c.expr(t.Base, targetPath+".base"); err != nil {
 				return err
 			}
 			if err := c.expr(t.Index, targetPath+".index"); err != nil {
 				return err
 			}
-			c.emit(instruction{op: opUnsetIndex})
+			c.emit(instruction{op: opUnsetIndex, a: slot})
 		default:
 			return unsupported(targetPath, "unset target %T", target)
 		}
