@@ -124,7 +124,14 @@ func helperIndex(base, idx any) any {
 	rv := reflect.ValueOf(base)
 	switch rv.Kind() {
 	case reflect.Map:
-		mv := rv.MapIndex(reflect.ValueOf(idx))
+		// The key is coerced to the map's own type first. A script index is
+		// an int64 or a string, so reading a map[int]T with the value handed
+		// straight to MapIndex panics rather than answering.
+		mapKey, ok := coerceArg(normalizeKey(idx), rv.Type().Key())
+		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
+			return nil
+		}
+		mv := rv.MapIndex(mapKey)
 		if !mv.IsValid() {
 			return nil
 		}
