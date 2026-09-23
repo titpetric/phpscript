@@ -52,6 +52,7 @@ tasks:
       - task: db:up
       - task: test:phpscript:run
       - task: test:phpscript:matrix
+      - task: test:lifecycle
       - task: test:introspection
       - task: fmt
 
@@ -152,6 +153,16 @@ tasks:
       include: .env.testing
     cmds:
       - phpscript test --matrix -v -o docs/test-fixtures.md ./tests/...
+
+  # The server's own lifecycle, driven as an operator drives it: a real
+  # process, a real pidfile and a real signal. None of it is reachable from a
+  # fixture, and the parts that matter most, that the pidfile names the
+  # running process and that a refused reload leaves it serving, are not
+  # reachable from a Go test in the same process either.
+  test:lifecycle:
+    passthru: true
+    cmds:
+      - ./scripts/test-lifecycle.sh
 
   test:phpscript:run:
     dir: tests/fixtures
