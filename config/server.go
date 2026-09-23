@@ -20,6 +20,15 @@ type Server struct {
 	// Modules limits which platform modules load, by name. An empty list
 	// loads all of them.
 	Modules []string `yaml:"modules"`
+
+	// PidFile is the file the server records its process id in, and the one
+	// `phpscript -s reload` reads it back from. Empty writes none, and a
+	// reload then has no way to find the server.
+	//
+	// The path resolves against the working directory, so `-s reload` has to
+	// be given the same -w the server was started with. An absolute path is
+	// what a service unit wants.
+	PidFile string `yaml:"pid_file"`
 }
 
 // Options returns the platform options this block describes, with no recorder
@@ -29,5 +38,6 @@ func (s Server) Options() *platform.Options {
 		ServerAddr: s.Addr,
 		Quiet:      s.Quiet,
 		Modules:    s.Modules,
+		PidFile:    s.PidFile,
 	}
 }
