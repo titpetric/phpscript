@@ -52,8 +52,11 @@ log "building"
 go build -o "$work/phpscript" "$root" || die "build"
 
 site() {
-	mkdir -p "$work/site-$1/public"
+	mkdir -p "$work/site-$1/public" "$work/site-$1/lib"
 	printf '<?php echo "%s";' "$1" > "$work/site-$1/public/index.php"
+	# A file the parser rejects. Precompilation leaves it out and the site comes
+	# up regardless; the request that names one is where its error belongs.
+	printf '<?php function ( { ' > "$work/site-$1/lib/broken.php"
 	printf 'telemetry:\n  enabled: false\n' > "$work/site-$1/phpscript.yml"
 }
 site a
@@ -97,6 +100,13 @@ log "ok: the pidfile names the running server"
 [ "$(get b)" = "404" ] || die "b.localhost answered before it was configured"
 log "ok: the configured site serves and an unconfigured one does not"
 
+# 2a. The tree was parsed before the first request. The site holds one file
+#     that parses and one that does not, so the walk reports one and the
+#     server is up with the other still on disk.
+grep -q 'precompiled a.localhost: 1 files' "$work/server.log" \
+	|| die "the log does not report the precompiled site: $(grep -c precompiled "$work/server.log") lines mention it"
+log "ok: the site is precompiled at startup and a file that does not parse did not stop it"
+
 # 3. A test of a broken configuration does not touch the running server.
 config a b
 printf '  - domain: c.localhost\n    root: %s/absent\n' "$work" >> "$work/config.yml"
@@ -132,7 +142,8 @@ done
 [ "$(body b)" = "b" ] || die "the reloaded site never answered"
 [ "$(body a)" = "a" ] || die "the site that was already there stopped answering"
 [ "$(cat "$pidfile")" = "$pid" ] || die "the reload replaced the process instead of the platform"
-log "ok: -s reload applies an edit without replacing the process"
+grep -q 'precompiled b.localhost: 1 files' "$work/server.log" || die "the reloaded site was not precompiled"
+log "ok: -s reload applies an edit without replacing the process, and precompiles the site it added"
 
 # 6. The errors -s gives.
 if "$work/phpscript" -f "$work/config.yml" -s restart > "$work/s.out" 2>&1; then
