@@ -1,10 +1,13 @@
 package annotations_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"testing/fstest"
 
 	"github.com/titpetric/phpscript/annotations"
+	"github.com/titpetric/phpscript/runner"
 )
 
 var testModuleFileSystem = fstest.MapFS{}
@@ -70,5 +73,26 @@ func TestModuleSuffixEmpty(t *testing.T) {
 				t.Fatalf("Name() = %q, want %q", got, "phpschedule")
 			}
 		})
+	}
+}
+
+// TestWithIncludeCache covers the cache a host that precompiled its tree hands
+// over: the endpoint reads its entrypoint back out of it rather than parsing
+// the file, so the program that ran is the one the cache holds.
+func TestWithIncludeCache(t *testing.T) {
+	cache := runner.NewIncludeCache()
+	mux := newTestMux(t,
+		annotations.WithIncludeCache(cache),
+		annotations.WithRunnerOptions(runner.Options{Precompile: true}),
+	)
+
+	response := httptest.NewRecorder()
+	mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/", nil))
+	if response.Code != http.StatusOK || response.Body.String() != "home" {
+		t.Fatalf("status = %d, body = %q", response.Code, response.Body.String())
+	}
+
+	if _, ok := cache.Get("index.php"); !ok {
+		t.Fatal("the endpoint did not read through the supplied include cache")
 	}
 }

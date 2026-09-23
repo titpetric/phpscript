@@ -24,13 +24,17 @@ func newHandler(root fs.FS, config config) *handler {
 	if exprCache == nil {
 		exprCache = runner.NewExprCache()
 	}
+	// Include paths are relative to one filesystem root. A cache belongs to one
+	// source tree, so two roots containing the same path cannot share a parsed
+	// program accidentally; the host of this tree may pass the one it filled.
+	includeCache := config.includeCache
+	if includeCache == nil {
+		includeCache = runner.NewIncludeCache()
+	}
 	return &handler{
-		root:   root,
-		config: config,
-		// Include paths are relative to one filesystem root. Keep a cache per
-		// source tree so two roots containing the same path cannot share a
-		// parsed program accidentally.
-		includeCache: runner.NewIncludeCache(),
+		root:         root,
+		config:       config,
+		includeCache: includeCache,
 		exprCache:    exprCache,
 	}
 }
