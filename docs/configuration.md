@@ -45,6 +45,7 @@ server:
   addr: ":8080"
   quiet: false
   modules: []
+  pid_file: ""
 
 telemetry:
   enabled: true
@@ -175,11 +176,16 @@ Set `flatstack.enabled` to `true` to select the experimental flat-stack bytecode
 
 `server` configures the [platform](https://github.com/titpetric/platform) that `phpscript server` runs on, and applies to that command only.
 
-| Key       | Default | Purpose                                                             |
-|-----------|--------:|---------------------------------------------------------------------|
-| `addr`    | `:8080` | Address the HTTP server listens on.                                 |
-| `quiet`   | `false` | Turn down platform lifecycle logging.                               |
-| `modules` |    `[]` | Load only the platform modules named here. An empty list loads all. |
+| Key        | Default | Purpose                                                             |
+|------------|--------:|---------------------------------------------------------------------|
+| `addr`     | `:8080` | Address the HTTP server listens on.                                 |
+| `quiet`    | `false` | Turn down platform lifecycle logging.                               |
+| `modules`  |    `[]` | Load only the platform modules named here. An empty list loads all. |
+| `pid_file` |    `""` | File the server records its process id in. Empty writes none.       |
+
+`pid_file` is what makes a running server reachable. [`phpscript -s reload`](cli/server.md#reloading) reads the pid back out of it, and so does `kill -HUP $(cat ...)`. The file holds the decimal pid and a newline, and is removed on a clean shutdown, so one left behind means the process did not get one. The path resolves against the working directory, so `-s reload` needs the same `-w` the server was started with; an absolute path is what a service unit wants.
+
+Every key here is read once, when the process starts. A reload re-reads the file and cannot apply any of them, and says which it skipped; see [Reloading](cli/server.md#reloading).
 
 This section, together with `telemetry` below, is the only source of the platform's options. phpscript builds them from the configuration file, so the platform's own `PLATFORM_SERVER_ADDR`, `PLATFORM_MODULES` and `PLATFORM_TELEMETRY_*` environment variables are not read. The `PLATFORM_DB_*` variables are unrelated to this and still are; see [Database connections](#database-connections).
 
@@ -447,6 +453,8 @@ The whole list is loaded and checked before the server listens, so a broken entr
 | Two `driver: disk` sites do not share a `storage_path`     | error   |
 | A site does not claim the operator's telemetry path        | error   |
 | An application root is not also passed on the command line | error   |
+
+`phpscript -t` runs all of these without starting anything, so a configuration can be checked before it is served and before a reload applies it. For a single application root, which has no entries to check, it checks that the root and its document root exist. See [Testing a configuration](cli/server.md#testing-a-configuration).
 
 ### Startup jobs per site
 

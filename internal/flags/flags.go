@@ -64,6 +64,13 @@ type Options struct {
 	// the profile is written, TimePlaceholder expanded.
 	Cover     string
 	CoverFile string
+
+	// TestConfig is -t: test the configuration and exit, running no command.
+	TestConfig bool
+
+	// Signal is -s: the verb sent to the server named by server.pid_file,
+	// running no command.
+	Signal string
 }
 
 // Bind declares the shared flags on a command's flag set.
@@ -120,10 +127,26 @@ func (o *Options) RunWith(run func(context.Context, []string) error) func(contex
 func Pre(args []string) (*Options, []string, error) {
 	o := &Options{}
 	remaining := make([]string, 0, len(args))
+
+	// leading is true until the command name. -t and -s are read only
+	// before it, because the test command declares -t as --time.
+	leading := true
+
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		var target *string
 		switch {
+		case leading && (arg == "-t" || arg == "--testconfig"):
+			o.TestConfig = true
+			continue
+		case leading && (arg == "-s" || arg == "--signal"):
+			target = &o.Signal
+		case leading && strings.HasPrefix(arg, "--signal="):
+			o.Signal = strings.TrimPrefix(arg, "--signal=")
+			if o.Signal == "" {
+				return nil, nil, fmt.Errorf("--signal requires a signal")
+			}
+			continue
 		case arg == "-f" || arg == "--file":
 			target = &o.ConfigFile
 		case arg == "-w" || arg == "--workdir":
@@ -141,7 +164,15 @@ func Pre(args []string) (*Options, []string, error) {
 			}
 			continue
 		default:
+			// A flag keeps the leading run open, and so does its value.
+			if leading && !strings.HasPrefix(arg, "-") {
+				leading = false
+			}
 			remaining = append(remaining, arg)
+			if leading && valued[arg] && i+1 < len(args) && arg != "--cover" {
+				i++
+				remaining = append(remaining, args[i])
+			}
 			continue
 		}
 		if i+1 == len(args) {
@@ -149,6 +180,10 @@ func Pre(args []string) (*Options, []string, error) {
 		}
 		i++
 		*target = args[i]
+	}
+
+	if o.TestConfig && o.Signal != "" {
+		return nil, nil, fmt.Errorf("-t and -s do not go together: one tests a configuration, the other signals a running server")
 	}
 	return o, remaining, nil
 }

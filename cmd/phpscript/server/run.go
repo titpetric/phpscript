@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/titpetric/cli"
@@ -365,26 +366,79 @@ func serveStatus(w http.ResponseWriter, status int) {
 
 // Run starts the platform lifecycle and waits for shutdown.
 func Run(ctx context.Context, args []string, appConfig config.Config, globals *flags.Options) error {
-	options, err := appConfig.PlatformOptions()
+	manager, err := newManager(ctx, args, appConfig, globals)
 	if err != nil {
 		return err
 	}
 
-	svc := platform.New(options)
+	if err := manager.Start(ctx); err != nil {
+		return err
+	}
 
-	// One aggregator for the process. Every site folds into it, and the module
-	// writes the profile when the platform stops, which is the only moment a
-	// server knows it is finished.
+	// Until SIGINT or SIGTERM. A SIGHUP reloads and does not end this.
+	manager.Wait()
+
+	return nil
+}
+
+// newManager builds the manager Run starts, with nothing bound yet. A test
+// drives Reload on it directly, without a signal.
+func newManager(ctx context.Context, args []string, started config.Config, globals *flags.Options) (*platform.Manager, error) {
+	options, err := started.PlatformOptions()
+	if err != nil {
+		return nil, err
+	}
+
+	manager := platform.NewManager(options)
+
+	// One aggregator for the process: a reload replaces the sites, not the
+	// measurement of what this process ran.
 	var cover *coverageModule
 	if globals.Covering() {
 		cover = newCoverageModule(globals)
 	}
 
-	// The platform records, phpscript observes. Its recorder owns the tracer
-	// and its middleware is what puts a trace in the request context, so the
-	// interpreter reports onto that trace instead of into a second recorder of
-	// its own. Telemetry turned off leaves no recorder to find, and the
-	// observers stay empty.
+	// Everything -t runs, before the swap: anything found after it is found
+	// with the old generation stopped, and the manager then exits. Loading
+	// the file is not enough, a virtual host with no root parses.
+	name, root := configName(globals.ConfigFile), rootArg(args)
+	manager.Check = func() error {
+		appConfig, err := reloadConfig(started, globals)
+		if err != nil {
+			return err
+		}
+		return appConfig.Validate(name, root)
+	}
+
+	// A reload discards the platform value registration was made against,
+	// so all of it belongs here rather than in Run.
+	manager.Setup = func(svc *platform.Platform) error {
+		appConfig, err := reloadConfig(started, globals)
+		if err != nil {
+			return err
+		}
+		warnFrozen(svc.Logger, started, appConfig)
+		return setup(ctx, svc, appConfig, args, globals, cover)
+	}
+
+	return manager, nil
+}
+
+// reloadConfig returns the configuration a generation runs under, read from
+// disk again. A run given no -f has no file and keeps what it started with.
+func reloadConfig(started config.Config, globals *flags.Options) (config.Config, error) {
+	if globals.ConfigFile == "" {
+		return started, nil
+	}
+	return config.Load(globals.ConfigFile)
+}
+
+// setup registers what one generation serves.
+func setup(ctx context.Context, svc *platform.Platform, appConfig config.Config, args []string, globals *flags.Options, cover *coverageModule) error {
+	// The platform records, phpscript observes: the interpreter reports onto
+	// the trace the recorder's middleware put in the request context rather
+	// than into a second recorder. Looked up per generation, each of which
+	// builds its own. Telemetry off leaves the observers empty.
 	var observers []runner.Observer
 	var recorder *platform.TelemetryModule
 	if svc.Find(&recorder) {
@@ -393,15 +447,15 @@ func Run(ctx context.Context, args []string, appConfig config.Config, globals *f
 
 	if len(appConfig.VirtualHost) > 0 {
 		if len(args) > 0 {
-			return fmt.Errorf("server: the configuration lists virtual hosts, which name their own roots; %q on the command line has no virtual host to belong to", args[0])
+			return config.ErrRootWithVirtualHosts(args[0])
 		}
 		if err := registerVirtualHosts(ctx, svc, appConfig, globals, cover); err != nil {
 			return err
 		}
 	} else {
-		root := "."
-		if len(args) > 0 {
-			root = args[0]
+		root := rootArg(args)
+		if root == "" {
+			root = "."
 		}
 		if err := registerSite(svc, appConfig, observers, root, globals, cover); err != nil {
 			return err
@@ -414,15 +468,33 @@ func Run(ctx context.Context, args []string, appConfig config.Config, globals *f
 	if cover != nil {
 		svc.Register(cover)
 	}
+	return nil
+}
 
-	if err := svc.Start(ctx); err != nil {
-		return err
+// warnFrozen reports a reloaded setting the manager read once and cannot
+// apply. Refusing instead would take a working server down over one.
+func warnFrozen(log platform.Logger, started, reloaded config.Config) {
+	if log == nil {
+		return
 	}
 
-	// Wait until SIGINT/SIGTERM shutdown.
-	svc.Wait()
+	var changed []string
+	if started.Server.Addr != reloaded.Server.Addr {
+		changed = append(changed, "server.addr")
+	}
+	if started.Server.Quiet != reloaded.Server.Quiet {
+		changed = append(changed, "server.quiet")
+	}
+	if !slices.Equal(started.Server.Modules, reloaded.Server.Modules) {
+		changed = append(changed, "server.modules")
+	}
+	if started.Server.PidFile != reloaded.Server.PidFile {
+		changed = append(changed, "server.pid_file")
+	}
 
-	return nil
+	if len(changed) > 0 {
+		log.Info("reloaded settings that need a restart", "keys", changed)
+	}
 }
 
 // registerSite wires the single tenant server: one application root, its

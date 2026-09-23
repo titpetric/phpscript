@@ -20,6 +20,11 @@ type Server struct {
 	// Modules limits which platform modules load, by name. An empty list
 	// loads all of them.
 	Modules []string `yaml:"modules"`
+
+	// PidFile is the file the server records its process id in, and the one
+	// -s reload reads it back from. Empty writes none. The path resolves
+	// against the working directory, so -s needs the same -w.
+	PidFile string `yaml:"pid_file"`
 }
 
 // Options returns the platform options this block describes, with no recorder
@@ -29,5 +34,6 @@ func (s Server) Options() *platform.Options {
 		ServerAddr: s.Addr,
 		Quiet:      s.Quiet,
 		Modules:    s.Modules,
+		PidFile:    s.PidFile,
 	}
 }

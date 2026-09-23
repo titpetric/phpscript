@@ -194,6 +194,24 @@ func (c Config) ValidateVirtualHosts() error {
 	return nil
 }
 
+// ValidateRoot checks a single application root the way ValidateVirtualHosts
+// checks an entry: fs.Sub does not stat, so a missing document root is
+// otherwise a 404 on the first request.
+func (c Config) ValidateRoot(root string) error {
+	if err := statDir(root); err != nil {
+		return fmt.Errorf("root: %w", err)
+	}
+
+	documentRoot := c.DocumentRoot
+	if documentRoot == "" {
+		documentRoot = "public"
+	}
+	if err := statDir(filepath.Join(root, documentRoot)); err != nil {
+		return fmt.Errorf("document root: %w", err)
+	}
+	return nil
+}
+
 // statDir reports whether path exists and is a directory.
 func statDir(path string) error {
 	info, err := os.Stat(path)

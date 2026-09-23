@@ -22,6 +22,12 @@ type Scheduler struct {
 	root   fs.FS
 	config config
 	now    func() time.Time
+
+	// cancel ends the jobs Start launched. The context a module is started
+	// with belongs to the caller rather than to the platform being retired,
+	// so without this a reload leaves the previous tree's jobs running.
+	mu     sync.Mutex
+	cancel context.CancelFunc
 }
 
 type scheduledJob struct {
@@ -41,7 +47,8 @@ func NewScheduler(root fs.FS, options ...Option) *Scheduler {
 	}
 }
 
-// Start discovers jobs and runs them until ctx is cancelled.
+// Start discovers jobs and runs them until ctx is cancelled or Stop is
+// called.
 func (s *Scheduler) Start(ctx context.Context) error {
 	var jobs []scheduledJob
 	err := scanner{root: s.root, excluded: s.config.excludedDirs}.walk(func(file string, src []byte) error {
@@ -53,8 +60,27 @@ func (s *Scheduler) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithCancel(ctx)
+
+	s.mu.Lock()
+	s.cancel = cancel
+	s.mu.Unlock()
+
 	for _, job := range jobs {
 		go s.loop(ctx, job)
+	}
+	return nil
+}
+
+// Stop ends the jobs Start launched.
+func (s *Scheduler) Stop(context.Context) error {
+	s.mu.Lock()
+	cancel := s.cancel
+	s.cancel = nil
+	s.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
 	}
 	return nil
 }

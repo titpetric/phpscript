@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -384,5 +385,81 @@ func TestOptions_Chdir(t *testing.T) {
 	}
 	if err := (&flags.Options{WorkDir: filepath.Join(dir, "absent")}).Chdir(); err == nil {
 		t.Error("err = nil, want a missing directory to fail the command")
+	}
+}
+
+// TestPreControlFlags covers -t and -s, which replace a command rather than
+// modify one, and the rule that keeps them from eating a command's own flags.
+func TestPreControlFlags(t *testing.T) {
+	tests := map[string]struct {
+		args      []string
+		test      bool
+		signal    string
+		remaining []string
+		wantErr   bool
+	}{
+		"bare -t": {
+			args: []string{"-t"}, test: true, remaining: []string{},
+		},
+		"long form": {
+			args: []string{"--testconfig"}, test: true, remaining: []string{},
+		},
+		"-t with a root": {
+			args: []string{"-t", "./site"}, test: true, remaining: []string{"./site"},
+		},
+		"-t after a valued flag": {
+			args:      []string{"--coverfile", "x.cov", "-t"},
+			test:      true,
+			remaining: []string{"--coverfile", "x.cov"},
+		},
+		"-s reload": {
+			args: []string{"-s", "reload"}, signal: "reload", remaining: []string{},
+		},
+		"--signal=reload": {
+			args: []string{"--signal=reload"}, signal: "reload", remaining: []string{},
+		},
+		// The collision this rule exists for: -t is the test command's
+		// shorthand for --time, so after a command name it is the command's.
+		"-t after a command name is the command's": {
+			args:      []string{"test", "-t", "10s", "./..."},
+			remaining: []string{"test", "-t", "10s", "./..."},
+		},
+		"-s after a command name is the command's": {
+			args:      []string{"run", "-s", "x"},
+			remaining: []string{"run", "-s", "x"},
+		},
+		"-s with no value": {
+			args: []string{"-s"}, wantErr: true,
+		},
+		"--signal= with no value": {
+			args: []string{"--signal="}, wantErr: true,
+		},
+		"-t and -s together": {
+			args: []string{"-t", "-s", "reload"}, wantErr: true,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, remaining, err := flags.Pre(test.args)
+			if test.wantErr {
+				if err == nil {
+					t.Fatalf("error = nil, want one")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.TestConfig != test.test {
+				t.Errorf("TestConfig = %v, want %v", got.TestConfig, test.test)
+			}
+			if got.Signal != test.signal {
+				t.Errorf("Signal = %q, want %q", got.Signal, test.signal)
+			}
+			if !reflect.DeepEqual(remaining, test.remaining) {
+				t.Errorf("remaining = %#v, want %#v", remaining, test.remaining)
+			}
+		})
 	}
 }

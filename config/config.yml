@@ -62,6 +62,13 @@ server:
   addr: ":8080"
   quiet: false
   modules: []
+  # The file the server records its process id in, and the one
+  # `phpscript -s reload` reads it back from. Empty writes none, and a reload
+  # then has nothing to signal. The path resolves against the working
+  # directory, so `-s reload` needs the same -w the server was started with;
+  # an absolute path is what a service unit wants. The file is removed on a
+  # clean shutdown, so one left behind means the process did not get one.
+  pid_file: ""
 
 # The platform is the recorder: it wraps every module in the tracing
 # middleware and mounts the debug front end under path. phpscript adds no

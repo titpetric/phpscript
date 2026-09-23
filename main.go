@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"log"
 	"os"
 
@@ -31,7 +32,14 @@ import (
 )
 
 func main() {
-	if err := start(); err != nil {
+	err := start()
+	switch {
+	case err == nil:
+	case errors.Is(err, server.ErrReported):
+		// Already reported. A configuration that fails its own test is an
+		// expected outcome, not an unexpected error.
+		os.Exit(1)
+	default:
 		log.Fatalf("Unexpected error: %v", err)
 	}
 }
@@ -47,11 +55,21 @@ func start() error {
 	if err := globals.Chdir(); err != nil {
 		return err
 	}
+	// -t reads the file itself: a configuration that does not load is one
+	// of the things it reports.
+	if globals.TestConfig {
+		return testConfig(globals, args)
+	}
+
 	appConfig, err := loadConfig(globals.ConfigFile)
 	if err != nil {
 		return err
 	}
 	globals.FromConfig(appConfig)
+
+	if globals.Signal != "" {
+		return server.Signal(appConfig, globals.Signal, os.Stderr)
+	}
 
 	// The process environment comes first so `phpscript run` keeps the
 	// connections it had, with config/config.yml env overriding them.
@@ -106,6 +124,16 @@ func start() error {
 		return writeHelp(os.Stdout, commands)
 	}
 	return app.RunWithArgs(flags.Hoist(args, app.HasCommand))
+}
+
+// testConfig is phpscript -t, with args holding an application root when one
+// was named.
+func testConfig(globals *flags.Options, args []string) error {
+	var root string
+	if len(args) > 0 {
+		root = args[0]
+	}
+	return server.Check(globals.ConfigFile, root, os.Stdout, os.Stderr)
 }
 
 // registration is one command as main knows it: what it is called, what it

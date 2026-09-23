@@ -74,8 +74,23 @@ type Telemetry struct {
 	StoragePath       string `yaml:"storage_path"`
 }
 
+// Validate reports a telemetry block the server could not run under, without
+// building the storage the driver names, which Resolved does.
+func (t Telemetry) Validate() error {
+	switch strings.ToLower(strings.TrimSpace(t.Driver)) {
+	case "", "memory", "disk":
+		return nil
+	default:
+		return fmt.Errorf("telemetry driver %q: want memory or disk", t.Driver)
+	}
+}
+
 // Resolved returns oida options with storage applied.
 func (t Telemetry) Resolved() (telemetry.Options, error) {
+	if err := t.Validate(); err != nil {
+		return t.Options, err
+	}
+
 	opts := t.Options
 	switch strings.ToLower(strings.TrimSpace(t.Driver)) {
 	case "", "memory":

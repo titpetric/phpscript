@@ -36,15 +36,18 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 
 ## Serving
 
-| Term              | What it means                                                                                                                                                                        |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Route             | A `// @route GET /path/{param}` comment on a PHP file outside the document root. The server scans for them at startup and mounts each on the router.                                 |
-| Virtual host      | One of several sites in one process, each with its own root, its own `phpscript.yml`, its own database connections and its own environment. Requests reach one by the `Host` header. |
-| Startup job       | A file carrying `// @startup`, executed once in path order before the server listens. Migrations go here. It is server scope; a fixture run uses a suite's `test.hooks` instead.     |
-| Scheduled job     | A file carrying `// @schedule`, started after the server listens and running until shutdown.                                                                                         |
-| Error page        | A file in the document root named after a status, `public/404.php`. It answers a browser; a program gets the plain status.                                                           |
-| Autoindex         | Answering a directory that holds no index page with a listing of what is in it, as nginx's `autoindex on;` does. Off by default.                                                     |
-| Graceful shutdown | The path a server takes on SIGINT or SIGTERM: stop accepting, finish what is in flight, then stop the modules in registration order. It is when a coverage profile is written.       |
+| Term              | What it means                                                                                                                                                                                                                                |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Route             | A `// @route GET /path/{param}` comment on a PHP file outside the document root. The server scans for them at startup and mounts each on the router.                                                                                         |
+| Virtual host      | One of several sites in one process, each with its own root, its own `phpscript.yml`, its own database connections and its own environment. Requests reach one by the `Host` header.                                                         |
+| Startup job       | A file carrying `// @startup`, executed once in path order before the server listens. Migrations go here. It is server scope; a fixture run uses a suite's `test.hooks` instead.                                                             |
+| Scheduled job     | A file carrying `// @schedule`, started after the server listens and running until shutdown.                                                                                                                                                 |
+| Error page        | A file in the document root named after a status, `public/404.php`. It answers a browser; a program gets the plain status.                                                                                                                   |
+| Autoindex         | Answering a directory that holds no index page with a listing of what is in it, as nginx's `autoindex on;` does. Off by default.                                                                                                             |
+| Graceful shutdown | The path a server takes on SIGINT or SIGTERM: stop accepting, finish what is in flight, then stop the modules in registration order. It is when a coverage profile is written, and when the pidfile is removed.                              |
+| Reload            | What SIGHUP does, and what `phpscript -s reload` sends: the configuration is read again and the sites rebuilt, on the same socket and in the same process. A configuration the server cannot use is refused and the old one goes on serving. |
+| Generation        | One set of sites serving on the socket. A reload retires the current one and starts the next; they never overlap, and a request in flight is finished by the generation that took it.                                                        |
+| Pidfile           | The file `server.pid_file` names, holding the process id of the running server. It is what `-s reload` reads to find the process, and it is removed on a clean shutdown.                                                                     |
 
 ## Mail
 

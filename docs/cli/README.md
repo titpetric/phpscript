@@ -36,6 +36,24 @@ Every command accepts these, and a command reads the ones it has a use for. They
 
 `--include` is what makes one setting cover every way a tree is executed: the server includes it ahead of each request's entrypoint, `run` ahead of the script, `test` ahead of each fixture and `lint` ahead of the checks, so the names a linter knows are the names a request will find. A composer autoloader is the usual file:
 
+## Instead of a command
+
+These two run on their own and exit. They are not flags a command accepts, so they are read before a command name; after one they belong to that command, which is why `phpscript test -t 10s` is still the test command's `--time`.
+
+| Flag                 | What it does                                                                                                     |
+|----------------------|------------------------------------------------------------------------------------------------------------------|
+| `-t`, `--testconfig` | Report whatever would stop a server from starting under this configuration, and exit non-zero when there is any. |
+| `-s`, `--signal`     | Send a signal to the server named by `server.pid_file`. The only verb is `reload`.                               |
+
+```bash
+phpscript -t                       # the built-in defaults, against ./public
+phpscript -f config.yml -t         # a file, virtual hosts and all
+phpscript -t ./site                # an application root, as `server` takes one
+phpscript -f config.yml -s reload  # re-read the file without dropping connections
+```
+
+`-t` binds no socket, runs no `@startup` job, opens no connection and creates no trace storage: a configuration test leaves nothing behind. See [`phpscript server`](server.md#testing-a-configuration).
+
 ```bash
 phpscript --include vendor/autoload.php server
 phpscript --include vendor/autoload.php lint ./...
