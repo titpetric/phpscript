@@ -177,18 +177,19 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	}
 
 	documentRoot := documentRoot(siteConfig)
-	annotationOptions := annotationOptions(siteConfig, runnerOptions, observers, host.Root, name)
-
 	root := os.DirFS(host.Root)
-	if cover != nil {
-		cover.watch(root)
-		annotationOptions = append(annotationOptions, annotations.WithCoverage(cover.aggregator))
-	}
+
+	// The handler is built first because it owns the site's caches, and the
+	// annotated files run off the same pair.
 	files, err := newHandler(root, host.Root, documentRoot, runnerOptions, siteConfig.Flatstack.Enabled, siteConfig.Autoindex, observers...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
 	}
+
+	annotationOptions := sharedCaches(files, annotationOptions(siteConfig, runnerOptions, observers, host.Root, name))
 	if cover != nil {
+		cover.watch(root)
+		annotationOptions = append(annotationOptions, annotations.WithCoverage(cover.aggregator))
 		files.coverage = cover.aggregator
 	}
 
@@ -205,6 +206,10 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	}
 
 	router.Handle("/*", files)
+
+	// Each site precompiles its own tree under its own runner block, so one
+	// site paying the startup cost says nothing about what another does.
+	precompile(files, name)
 
 	// A site's startup failure is its own. It is recorded on that site's
 	// recorder and the server carries on, because the alternative is one
