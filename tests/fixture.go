@@ -564,6 +564,7 @@ func (f *Fixture) runnerOptions() runner.Options {
 	options.RootFS = f.rootFS
 	options.Database = f.database
 	options.Mail = f.mail
+	options.Precompile = true
 	if f.realRoot() {
 		// A fixture that names a root wants the real filesystem: it is reaching
 		// for a tree phpscript does not embed, a vendor directory being the

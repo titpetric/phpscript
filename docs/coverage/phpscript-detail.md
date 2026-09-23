@@ -225,5 +225,5 @@ github.com/titpetric/phpscript/tests/main.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/tests/matrix.go, symbols 8, coverage 61.20%
 github.com/titpetric/phpscript/tests/panics.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/tests/storage.go, symbols 7, coverage 96.43%
-github.com/titpetric/phpscript/tests/suite.go, symbols 11, coverage 87.35%
+github.com/titpetric/phpscript/tests/suite.go, symbols 11, coverage 87.37%
 ```

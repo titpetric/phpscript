@@ -183,6 +183,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	options.RootFS = s.root
 	options.Database = s.Provider()
 	options.Mail = s.Mail()
+	options.Precompile = true
 	// The prelude is the hook's as much as the fixtures': a hook calling into
 	// the application's own helpers needs what the autoloader declares.
 	options.Include = s.Include()
