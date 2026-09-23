@@ -18,13 +18,10 @@ func Check(filename, root string, out, errOut io.Writer) error {
 	name := configName(filename)
 
 	appConfig, err := config.Load(filename)
-	if err != nil {
-		fmt.Fprintln(errOut, err)
-		fmt.Fprintf(errOut, "%s: failed\n", name)
-		return ErrReported
+	if err == nil {
+		err = appConfig.Validate(name, root)
 	}
-
-	if err := check(appConfig, name, root); err != nil {
+	if err != nil {
 		fmt.Fprintln(errOut, err)
 		fmt.Fprintf(errOut, "%s: failed\n", name)
 		return ErrReported
@@ -32,37 +29,6 @@ func Check(filename, root string, out, errOut io.Writer) error {
 
 	fmt.Fprintf(out, "%s: ok\n", name)
 	return nil
-}
-
-// check stops at the first failure: the second complaint is usually a
-// consequence of the first.
-func check(appConfig config.Config, name, root string) error {
-	// The server never reaches the test block, but -t is a question about
-	// the file rather than about one command.
-	if err := appConfig.Test.Validate(name); err != nil {
-		return err
-	}
-	if err := appConfig.Telemetry.Validate(); err != nil {
-		return err
-	}
-
-	if len(appConfig.VirtualHost) > 0 {
-		if root != "" {
-			return errRootWithVirtualHosts(root)
-		}
-		return appConfig.ValidateVirtualHosts()
-	}
-
-	if root == "" {
-		root = "."
-	}
-	return appConfig.ValidateRoot(root)
-}
-
-// errRootWithVirtualHosts is the refusal Check and Run both give a root named
-// beside a virtual host list.
-func errRootWithVirtualHosts(root string) error {
-	return fmt.Errorf("server: the configuration lists virtual hosts, which name their own roots; %q on the command line has no virtual host to belong to", root)
 }
 
 // configName is what a verdict names the configuration as.

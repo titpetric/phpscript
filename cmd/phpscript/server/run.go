@@ -407,7 +407,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 		if err != nil {
 			return err
 		}
-		return check(appConfig, name, root)
+		return appConfig.Validate(name, root)
 	}
 
 	// A reload discards the platform value registration was made against,
@@ -447,7 +447,7 @@ func setup(ctx context.Context, svc *platform.Platform, appConfig config.Config,
 
 	if len(appConfig.VirtualHost) > 0 {
 		if len(args) > 0 {
-			return errRootWithVirtualHosts(args[0])
+			return config.ErrRootWithVirtualHosts(args[0])
 		}
 		if err := registerVirtualHosts(ctx, svc, appConfig, globals, cover); err != nil {
 			return err

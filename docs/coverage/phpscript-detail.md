@@ -24,7 +24,7 @@ github.com/titpetric/phpscript/cmd/phpscript/lint/run.go, symbols 12, coverage 7
 github.com/titpetric/phpscript/cmd/phpscript/list/run.go, symbols 3, coverage 30.00%
 github.com/titpetric/phpscript/cmd/phpscript/run/run.go, symbols 4, coverage 20.00%
 github.com/titpetric/phpscript/cmd/phpscript/server/autoindex.go, symbols 5, coverage 96.80%
-github.com/titpetric/phpscript/cmd/phpscript/server/check.go, symbols 5, coverage 98.18%
+github.com/titpetric/phpscript/cmd/phpscript/server/check.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/cmd/phpscript/server/coverage.go, symbols 7, coverage 69.39%
 github.com/titpetric/phpscript/cmd/phpscript/server/errorpage.go, symbols 7, coverage 97.96%
 github.com/titpetric/phpscript/cmd/phpscript/server/indexpage.go, symbols 1, coverage 100.00%
@@ -49,6 +49,7 @@ github.com/titpetric/phpscript/config/mail.go, symbols 2, coverage 89.45%
 github.com/titpetric/phpscript/config/overlay.go, symbols 3, coverage 90.97%
 github.com/titpetric/phpscript/config/server.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/config/test.go, symbols 2, coverage 80.00%
+github.com/titpetric/phpscript/config/validate.go, symbols 2, coverage 95.45%
 github.com/titpetric/phpscript/config/virtualhost.go, symbols 9, coverage 96.27%
 github.com/titpetric/phpscript/flatstack/engine/compiler.go, symbols 32, coverage 87.12%
 github.com/titpetric/phpscript/flatstack/engine/fuse.go, symbols 3, coverage 100.00%

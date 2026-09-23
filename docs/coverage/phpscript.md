@@ -14,10 +14,10 @@ github.com/titpetric/phpscript/cmd/phpscript/info, symbols 12, coverage 79.20%
 github.com/titpetric/phpscript/cmd/phpscript/lint, symbols 12, coverage 73.10%
 github.com/titpetric/phpscript/cmd/phpscript/list, symbols 3, coverage 30.00%
 github.com/titpetric/phpscript/cmd/phpscript/run, symbols 4, coverage 20.00%
-github.com/titpetric/phpscript/cmd/phpscript/server, symbols 58, coverage 85.37%
+github.com/titpetric/phpscript/cmd/phpscript/server, symbols 56, coverage 85.01%
 github.com/titpetric/phpscript/cmd/phpscript/test, symbols 104, coverage 83.36%
 github.com/titpetric/phpscript/cmd/phpscript/version, symbols 2, coverage 0.00%
-github.com/titpetric/phpscript/config, symbols 24, coverage 88.04%
+github.com/titpetric/phpscript/config, symbols 26, coverage 88.61%
 github.com/titpetric/phpscript/flatstack, symbols 9, coverage 55.56%
 github.com/titpetric/phpscript/flatstack/engine, symbols 57, coverage 88.50%
 github.com/titpetric/phpscript/formatter, symbols 70, coverage 79.60%
