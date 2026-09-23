@@ -6,7 +6,7 @@ Statement coverage of the Go packages, one row per package. [phpscript-detail.md
 
 ```
 github.com/titpetric/phpscript, symbols 8, coverage 21.15%
-github.com/titpetric/phpscript/annotations, symbols 48, coverage 86.16%
+github.com/titpetric/phpscript/annotations, symbols 49, coverage 88.49%
 github.com/titpetric/phpscript/cmd/phpscript/ast, symbols 3, coverage 0.00%
 github.com/titpetric/phpscript/cmd/phpscript/fmt, symbols 3, coverage 0.00%
 github.com/titpetric/phpscript/cmd/phpscript/helpdocs, symbols 11, coverage 96.48%
@@ -14,7 +14,7 @@ github.com/titpetric/phpscript/cmd/phpscript/info, symbols 12, coverage 79.20%
 github.com/titpetric/phpscript/cmd/phpscript/lint, symbols 12, coverage 73.10%
 github.com/titpetric/phpscript/cmd/phpscript/list, symbols 3, coverage 30.00%
 github.com/titpetric/phpscript/cmd/phpscript/run, symbols 4, coverage 20.00%
-github.com/titpetric/phpscript/cmd/phpscript/server, symbols 56, coverage 85.01%
+github.com/titpetric/phpscript/cmd/phpscript/server, symbols 58, coverage 85.25%
 github.com/titpetric/phpscript/cmd/phpscript/test, symbols 104, coverage 83.36%
 github.com/titpetric/phpscript/cmd/phpscript/version, symbols 2, coverage 0.00%
 github.com/titpetric/phpscript/config, symbols 26, coverage 88.61%
@@ -29,8 +29,8 @@ github.com/titpetric/phpscript/internal/table, symbols 13, coverage 100.00%
 github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
 github.com/titpetric/phpscript/model, symbols 154, coverage 37.04%
-github.com/titpetric/phpscript/parser, symbols 165, coverage 91.34%
-github.com/titpetric/phpscript/runner, symbols 410, coverage 86.85%
+github.com/titpetric/phpscript/parser, symbols 165, coverage 91.66%
+github.com/titpetric/phpscript/runner, symbols 413, coverage 87.00%
 github.com/titpetric/phpscript/runner/bindings, symbols 24, coverage 86.72%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
 github.com/titpetric/phpscript/runner/expr, symbols 21, coverage 83.37%
