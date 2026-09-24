@@ -40,6 +40,7 @@ Source-file structure, runtime values, variables, constants, and expression eval
 - [Constants](constants/README.md) - Class constants and values registered by an embedding host.
   - [Class constants](constants/README.md#class-constants)
   - [Runtime constants](constants/README.md#runtime-constants)
+  - [Magic constants](constants/README.md#magic-constants)
   - [Predefined constants](constants/README.md#predefined-constants)
     - [Time layouts](constants/README.md#time-layouts)
 - [Expressions](expressions/README.md) - Assignment, ternary, call, construction, and include expressions.

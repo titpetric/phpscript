@@ -511,6 +511,21 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 	if name == "__NAMESPACE__" {
 		return p.newLit(p.namespace), nil
 	}
+	// The magic constants are compiled, not looked up, the way php compiles
+	// them. __LINE__ needs the token just consumed, which is the name itself.
+	// The other two need a file, and stay names when the caller gave none.
+	switch name {
+	case "__LINE__":
+		return p.newLit(p.toks[p.i-1].line), nil
+	case "__FILE__":
+		if p.file != "" {
+			return p.newLit(p.file), nil
+		}
+	case "__DIR__":
+		if p.file != "" {
+			return p.newLit(p.dir), nil
+		}
+	}
 	return p.newConstRef(name), nil
 }
 

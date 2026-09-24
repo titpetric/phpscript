@@ -24,13 +24,13 @@ github.com/titpetric/phpscript/formatter, symbols 70, coverage 79.60%
 github.com/titpetric/phpscript/internal/apidoc, symbols 55, coverage 84.01%
 github.com/titpetric/phpscript/internal/arrayi64, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/internal/flags, symbols 14, coverage 91.52%
-github.com/titpetric/phpscript/internal/phpval, symbols 43, coverage 93.64%
+github.com/titpetric/phpscript/internal/phpval, symbols 43, coverage 93.45%
 github.com/titpetric/phpscript/internal/table, symbols 13, coverage 100.00%
 github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
 github.com/titpetric/phpscript/model, symbols 154, coverage 37.04%
-github.com/titpetric/phpscript/parser, symbols 165, coverage 91.66%
-github.com/titpetric/phpscript/runner, symbols 413, coverage 87.00%
+github.com/titpetric/phpscript/parser, symbols 167, coverage 91.78%
+github.com/titpetric/phpscript/runner, symbols 415, coverage 86.96%
 github.com/titpetric/phpscript/runner/bindings, symbols 24, coverage 86.72%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
 github.com/titpetric/phpscript/runner/expr, symbols 21, coverage 83.37%
@@ -53,5 +53,5 @@ github.com/titpetric/phpscript/stdlib/shared, symbols 13, coverage 95.90%
 github.com/titpetric/phpscript/stdlib/span, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/time, symbols 11, coverage 42.78%
 github.com/titpetric/phpscript/telemetry, symbols 25, coverage 94.00%
-github.com/titpetric/phpscript/tests, symbols 85, coverage 85.97%
+github.com/titpetric/phpscript/tests, symbols 86, coverage 85.97%
 ```

@@ -262,7 +262,7 @@ func (rt *Runtime) invokeEntry(e *funcEntry, args []any, scope *Scope) (any, err
 	inv := e.invoker()
 	if inv.wantsCtx {
 		full := make([]any, 0, len(args)+1)
-		full = append(full, contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope))
+		full = append(full, rt.contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope))
 		full = append(full, args...)
 		args = full
 	}

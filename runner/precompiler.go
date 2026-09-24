@@ -103,7 +103,7 @@ func (p Precompiler) compile(name string) bool {
 	if err != nil {
 		return false
 	}
-	program, err := parser.Parse(string(src))
+	program, err := parser.ParseFile(rootPath(name), string(src))
 	if err != nil {
 		return false
 	}

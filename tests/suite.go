@@ -173,8 +173,7 @@ func (s *Suite) Teardown() string {
 func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	clean := path.Clean(filepath.ToSlash(file))
 
-	src, err := fs.ReadFile(s.root, clean)
-	if err != nil {
+	if _, err := fs.Stat(s.root, clean); err != nil {
 		return err
 	}
 
@@ -200,7 +199,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 	rt.SetContext(ctx)
 	rt.UpdateFilename(clean)
 
-	program, err := rt.Load(string(src))
+	program, err := rt.LoadFile(clean)
 	if err != nil {
 		return fmt.Errorf("parse: %w", err)
 	}

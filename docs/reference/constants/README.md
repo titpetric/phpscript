@@ -1,12 +1,12 @@
 # Constants
 
-| PHP language-reference feature | Status                | Notes                                                                   |
-|--------------------------------|-----------------------|-------------------------------------------------------------------------|
-| Global constant declarations   | Compatibility         | `define()` and the `const` statement both declare a runtime constant.   |
-| Host-registered constants      | phpscript extension   | A Go host can register constants with `Runtime.SetConst`.               |
-| Class constants                | Compatibility         | `const NAME = value` and `Class::NAME` are supported.                   |
-| Predefined constants           | Partial compatibility | Standard-library registration installs a small runtime-defined set.     |
-| Magic constants                | Partial compatibility | `__NAMESPACE__`, `__FILE__`, `__DIR__`, and `__LINE__` are implemented. |
+| PHP language-reference feature | Status                | Notes                                                                      |
+|--------------------------------|-----------------------|----------------------------------------------------------------------------|
+| Global constant declarations   | Compatibility         | `define()` and the `const` statement both declare a runtime constant.      |
+| Host-registered constants      | phpscript extension   | A Go host can register constants with `Runtime.SetConst`.                  |
+| Class constants                | Compatibility         | `const NAME = value` and `Class::NAME` are supported.                      |
+| Predefined constants           | Partial compatibility | Standard-library registration installs a small runtime-defined set.        |
+| Magic constants                | Partial compatibility | `__NAMESPACE__`, `__FILE__`, `__DIR__` and `__LINE__` compile to literals. |
 
 ## Class constants
 
@@ -37,7 +37,7 @@ const APP_VERSION = "1.0";
 echo defined("APP_ENV") ? constant("APP_ENV") : "unset";
 ```
 
-A constant is visible in every scope, including inside functions and methods. A bare identifier resolves from the current scope first and the constant table second, which is how the magic constants, set per frame, take precedence.
+A constant is visible in every scope, including inside functions and methods. A bare identifier resolves from the current scope first and the constant table second, so a variable of the same name shadows one.
 
 A bare identifier nothing defines throws:
 
@@ -49,6 +49,23 @@ echo $missing;        // null, and the script continues
 The two are separate lookups, which is why an unset variable is still the null PHP reads it as.
 
 PHP 8 raises `Error` for the same expression. This raises `RuntimeException`, so `catch (Exception $e)`, `catch (RuntimeException $e)` and `catch (Throwable $e)` take it and `catch (Error $e)` does not. An `Error` in PHP is a fault a caller is not expected to handle, and a name this runtime does not define is a condition a script can answer for. Use `defined()` to ask without throwing.
+
+## Magic constants
+
+`__NAMESPACE__`, `__FILE__`, `__DIR__` and `__LINE__` are resolved when a file is compiled, the way php resolves them, and each becomes a literal in the parsed program. Nothing looks them up while the script runs.
+
+That is what `defined()` and `get_defined_constants()` report on. Neither sees any of the four, because none of them is in the constant table:
+
+```php
+echo __LINE__;                  // the line this is written on
+var_dump(defined("__FILE__"));  // false, in php too
+```
+
+`__FILE__` and `__DIR__` are the path the file was read under, which is the source filesystem's spelling rather than the host's. See [Known divergences](../../README.md).
+
+Source handed to the runtime as a string, rather than read from a file, has no path to compile: there `__FILE__` and `__DIR__` fall back to the entrypoint the runtime was given. `__LINE__` never does, because a line is known either way.
+
+`__CLASS__`, `__FUNCTION__`, `__METHOD__` and `__TRAIT__` are not implemented.
 
 ## Predefined constants
 

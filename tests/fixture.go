@@ -229,11 +229,34 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 // sourceName is the file a fixture's PHP section is read from.
 //
 // A fixture is a document rather than a file the runtime can open, so its body
-// is served as one beside the area it belongs to. The name carries the .phpt
-// through, which no real file in the tree ends in, so nothing it includes can
-// be shadowed by it.
+// is served as one. The name carries the .phpt through, which no real file in
+// the tree ends in, so nothing it includes can be shadowed by it.
+//
+// It keeps the fixture's whole path rather than its base, because the parser
+// compiles __DIR__ from the name a file is read under: served at the area root
+// the name has no directory, and a fixture reading __DIR__ would see "/"
+// instead of the folder it was written in.
 func (f *Fixture) sourceName() string {
-	return path.Base(f.Path) + ".php"
+	return fsName(filepath.ToSlash(f.Path)) + ".php"
+}
+
+// fsName turns a path as the caller spelled it into one an fs.FS accepts,
+// keeping as much of the directory as it can.
+//
+// A fixture is named from the working directory, so it arrives absolute or
+// with leading ".." segments, and fs.ValidPath rejects both. Dropping the
+// leading segments keeps the folder the fixture sits in, which is what __DIR__
+// is compiled from.
+func fsName(p string) string {
+	p = path.Clean(p)
+	p = strings.TrimPrefix(p, "/")
+	for strings.HasPrefix(p, "../") {
+		p = strings.TrimPrefix(p, "../")
+	}
+	if p == ".." || p == "." || p == "" || !fs.ValidPath(p) {
+		return path.Base(p)
+	}
+	return p
 }
 
 // sourceFS lays the fixture bodies over the tree they belong to, as the second

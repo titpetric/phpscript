@@ -44,7 +44,7 @@ func wantsContext(t reflect.Type) bool {
 func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any, error) {
 	if wantsContext(reflect.TypeOf(fn)) {
 		full := make([]any, 0, len(args)+1)
-		full = append(full, contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope))
+		full = append(full, rt.contextWithScope(contextWithEnv(rt.ctx, rt.Env), scope))
 		full = append(full, args...)
 		args = full
 	}
@@ -751,7 +751,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor fu
 		return nil, fmt.Errorf("call to undefined method %s::%s()", phpClassName(base), method)
 	}
 	if info.wantsCtx {
-		args = append([]any{contextWithScope(contextWithEnv(rt.ctx, rt.Env), scopeFor())}, args...)
+		args = append([]any{rt.contextWithScope(contextWithEnv(rt.ctx, rt.Env), scopeFor())}, args...)
 	}
 	result, err = info.bind(rv.Method(info.index), args)
 	if err != nil {

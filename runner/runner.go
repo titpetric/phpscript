@@ -55,10 +55,17 @@ func (rt *Runtime) RegisterInclude(path string, fn func() (any, error)) {
 	rt.includeHooks[cleanFSPath(path)] = fn
 }
 
-// Load parses PHP source into a program.
+// Load parses PHP source into a program. The source names no file, so
+// __FILE__ and __DIR__ stay names for the runtime to answer.
 func (rt *Runtime) Load(src string) (*model.Program, error) {
+	return rt.loadNamed("", src)
+}
+
+// loadNamed parses src as the contents of name, which is the path a script
+// sees. An empty name is source with no file behind it.
+func (rt *Runtime) loadNamed(name, src string) (*model.Program, error) {
 	rt.UpdateStatus(telemetry.StateReading)
-	program, err := parser.Parse(src)
+	program, err := parser.ParseFile(name, src)
 	if err != nil {
 		rt.UpdateStatus(telemetry.StateError)
 	}
@@ -105,7 +112,7 @@ func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 		rt.UpdateStatus(telemetry.StateError)
 		return nil, fmt.Errorf("load %q: %w", cleanPath, err)
 	}
-	prog, err := rt.Load(string(b))
+	prog, err := rt.loadNamed(rootPath(cleanPath), string(b))
 	if err != nil {
 		return nil, fmt.Errorf("parse %q: %w", cleanPath, err)
 	}
@@ -327,7 +334,6 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 		}
 		if source, ok := rt.sourceSpans[s]; ok {
 			rt.currentLine = source.Start
-			scope.Set("__LINE__", source.Start)
 		}
 		if rt.coverage != nil {
 			rt.coverage.Hit(s)
@@ -821,7 +827,7 @@ func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) f
 	if len(rt.observers) == 0 {
 		return noopTrace
 	}
-	span := rt.traceContext(contextWithScope(rt.ctx, scope), message, kind...)
+	span := rt.traceContext(rt.contextWithScope(rt.ctx, scope), message, kind...)
 	if span == nil {
 		return noopTrace
 	}
