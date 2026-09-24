@@ -83,6 +83,8 @@ Separate from the "Not implemented" rows in the [language reference](reference/R
 | `curl_*`                                                                 | `HTTP\Client`, `HTTP\Request`                                                                                                  |
 | PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                                     | `Database`, `Database\Migrate`                                                                                                 |
 | `shmop_*`, `apcu_*`, `sem_*`                                             | `SharedMemory`                                                                                                                 |
+| `extension_loaded`                                                       | nothing; it answers false for every name, because phpscript loads no extensions and never will                                 |
+| `opcache_*`                                                              | `phpinfo()`; the parsed and compiled tree is reported there, and there is no arena for the rest of the family to describe      |
 | `strftime`, `gmstrftime`, `gmdate`, `mktime`                             | `DateTime`, `Time`; Go layouts rather than format characters. `date` and `strtotime` exist as numeric-and-layout shims         |
 | `JSON_PRETTY_PRINT`, `JSON_UNESCAPED_SLASHES`, every other `JSON_*` flag | `json_encode($value)`; the encoding is not configurable                                                                        |
 | `uniqid`                                                                 | `ulid()`, `uuid()`, or `bin2hex(random_bytes($n))`                                                                             |

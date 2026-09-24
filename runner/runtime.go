@@ -186,6 +186,9 @@ type Runtime struct {
 	vmWalkers []func(yield func(any))
 
 	memBase    int64 // host request overhead accounted at the boundary (AccountRequest)
+	// infoSections are the blocks phpinfo() prints after the runtime's own,
+	// contributed by whatever holds memory across requests.
+	infoSections []namedInfoSection
 	memUsage   int64 // cached result of the last MemoryWalk
 	memPeak    int64 // high-water mark, refreshed at every walk
 	memTick    int   // statements since the last checkpoint walk
@@ -342,6 +345,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		},
 		memUsage: runtimeBaseline,
 	}
+	rt.registerCompiledTreeInfo()
 	return rt
 }
 
@@ -550,6 +554,24 @@ func (rt *Runtime) MemoryPeak() int64 {
 func (rt *Runtime) MemoryLimit() Size {
 	return rt.opts.MemoryLimit
 }
+
+// CompiledTree reports what the parsed and compiled source tree costs this
+// runtime: the programs its include cache holds, the expressions its
+// expression cache has compiled, and the heap a precompile pass measured
+// itself adding.
+//
+// The heap figure is zero until a pass runs. None of it is in what
+// memory_get_usage answers or charged against memory_limit: the tree is shared
+// by every request the process serves and outlives all of them, so charging it
+// to whichever script asked would report one process-lifetime cost once per
+// request. php draws the same line, keeping a compiled script under
+// opcache.memory_consumption rather than memory_limit.
+func (rt *Runtime) CompiledTree() (programs, expressions int, heap int64) {
+	return rt.includeCache.Len(), rt.exprCache.Len(), rt.includeCache.Precompiled()
+}
+
+// Precompiled reports whether this runtime was configured to precompile.
+func (rt *Runtime) Precompiled() bool { return rt.opts.Precompile }
 
 // AccountRequest folds the size of host-owned request-lifetime values into
 // the baseline the memory walk starts from: the request Context, the parsed
@@ -1001,6 +1023,14 @@ func (rt *Runtime) PHPInfo() error {
 		rt.SAPI(), goruntime.Version(), goruntime.GOOS, goruntime.GOARCH,
 		rt.IncludePath(), rt.WorkDir(), len(internal), len(user),
 		len(rt.DeclaredClasses()), len(rt.constants))
+	if err != nil {
+		return err
+	}
+	report := rt.infoReport()
+	if report == "" {
+		return nil
+	}
+	_, err = fmt.Fprint(rt.Output(), report)
 	return err
 }
 
