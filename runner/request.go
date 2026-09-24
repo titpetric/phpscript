@@ -141,26 +141,47 @@ type decoder struct {
 	getVars    *model.Array
 	postVars   *model.Array
 	cookieVars *model.Array
+
+	// The flat forms, allocated by the decode that fills them. A request that
+	// reads no query allocates no query map, which is why they are not in
+	// NewContext with the rest.
+	get     map[string]string
+	post    map[string]string
+	cookie  map[string]string
+	headers map[string]string
+	files   map[string][]*UploadedFile
+
+	headerOnce sync.Once
 }
 
 type requestContextKey struct{}
 
-// NewContext returns an allocated empty Context value.
+// NewContext returns an allocated empty Context value, which is what a host
+// assembling a request by hand writes into: a CLI run, a scheduled job, a test.
 func NewContext() Context {
+	c := newContext()
+	c.Get = map[string]string{}
+	c.Post = map[string]string{}
+	c.Cookie = map[string]string{}
+	c.Headers = map[string]string{}
+	c.Files = map[string][]*UploadedFile{}
+	return c
+}
+
+// newContext allocates what every Context has. The maps a request is decoded
+// into are not among them: each is allocated by the decode that fills it, so a
+// page reading no query allocates no query map. NewContext adds them because a
+// host writes into the fields directly.
+func newContext() Context {
 	status := 0
 	var errs []error
 	return Context{
 		errors:   &errs,
 		rawBody:  new([]byte),
-		Get:      map[string]string{},
-		Post:     map[string]string{},
 		Path:     map[string]string{},
-		Cookie:   map[string]string{},
 		Server:   map[string]string{},
 		Env:      map[string]string{},
-		Headers:  map[string]string{},
 		Argv:     []string{},
-		Files:    map[string][]*UploadedFile{},
 		response: http.Header{},
 		status:   &status,
 	}
@@ -211,7 +232,7 @@ func FromRequest(r *http.Request) Context {
 // upload_max_filesize and post_max_size limit what the body may carry;
 // max_input_vars and max_input_nesting_level bound what is built from it.
 func FromRequestOptions(r *http.Request, opts Options) Context {
-	c := NewContext()
+	c := newContext()
 	c.decode = &decoder{request: r, options: opts}
 
 	// The query, the body and the cookie header are not read here. Each is
@@ -235,14 +256,9 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	// Path values from the matched route, merged into $_REQUEST.
 	c.pathValues(r)
 
-	// Request headers (canonical name -> first value).
-	// The HTTP_ spelling of each header is derived rather than copied: a
-	// request carries a dozen and a script reads one.
-	for k, v := range r.Header {
-		if len(v) > 0 {
-			c.Headers[k] = v[0]
-		}
-	}
+	// The headers are not copied into a map here either. HeaderMap builds one
+	// on the first read, and the HTTP_ spelling of each is derived from the
+	// request by mapmap.RequestSource.
 
 	return c
 }
@@ -255,22 +271,89 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 // is called there is nothing in the field to read.
 func (c Context) GetMap() map[string]string {
 	c.decodeQuery()
-	return c.Get
+	if c.Get != nil || c.decode == nil {
+		return c.Get
+	}
+	return c.decode.get
 }
 
 func (c Context) PostMap() map[string]string {
 	c.decodeForm()
-	return c.Post
+	if c.Post != nil || c.decode == nil {
+		return c.Post
+	}
+	return c.decode.post
 }
 
 func (c Context) CookieMap() map[string]string {
 	c.decodeCookies()
-	return c.Cookie
+	if c.Cookie != nil || c.decode == nil {
+		return c.Cookie
+	}
+	return c.decode.cookie
 }
 
 func (c Context) FileMap() map[string][]*UploadedFile {
 	c.decodeForm()
-	return c.Files
+	if c.Files != nil || c.decode == nil {
+		return c.Files
+	}
+	return c.decode.files
+}
+
+// postInto and filesInto answer the map parseBody fills, allocating it on the
+// way. A host that set the field keeps it; otherwise the decoder owns it.
+func (c Context) postInto() map[string]string {
+	if c.Post != nil || c.decode == nil {
+		if c.Post == nil {
+			c.Post = map[string]string{}
+		}
+		return c.Post
+	}
+	if c.decode.post == nil {
+		c.decode.post = map[string]string{}
+	}
+	return c.decode.post
+}
+
+func (c Context) filesInto() map[string][]*UploadedFile {
+	if c.Files != nil || c.decode == nil {
+		if c.Files == nil {
+			c.Files = map[string][]*UploadedFile{}
+		}
+		return c.Files
+	}
+	if c.decode.files == nil {
+		c.decode.files = map[string][]*UploadedFile{}
+	}
+	return c.decode.files
+}
+
+// files answers what has been decoded so far, forcing nothing. Cleanup and the
+// memory accounting read it: neither should parse a body to do its job.
+func (c Context) files() map[string][]*UploadedFile {
+	if c.Files != nil || c.decode == nil {
+		return c.Files
+	}
+	return c.decode.files
+}
+
+// HeaderMap answers the request headers by canonical name, building the map on
+// the first call. A request carries a dozen and most pages read none.
+func (c Context) HeaderMap() map[string]string {
+	if c.Headers != nil || c.decode == nil {
+		return c.Headers
+	}
+	c.decode.headerOnce.Do(func() {
+		r := c.decode.request
+		c.decode.headers = make(map[string]string, len(r.Header))
+		for name, values := range r.Header {
+			if len(values) > 0 {
+				c.decode.headers[name] = values[0]
+			}
+		}
+	})
+	return c.decode.headers
 }
 
 // getVars, postVars and cookieVars answer the decoded form of each input,
@@ -319,9 +402,11 @@ func (c Context) decodeQuery() {
 	}
 	c.decode.query.Do(func() {
 		r := c.decode.request
-		for k, v := range r.URL.Query() {
+		query := r.URL.Query()
+		c.decode.get = make(map[string]string, len(query))
+		for k, v := range query {
 			if len(v) > 0 {
-				c.Get[k] = v[len(v)-1]
+				c.decode.get[k] = v[len(v)-1]
 			}
 		}
 		c.decode.getVars = shared.ParseStr(r.URL.RawQuery, c.decode.options.inputLimits())
@@ -337,8 +422,9 @@ func (c Context) decodeCookies() {
 	c.decode.cookies.Do(func() {
 		cookies := c.decode.request.Cookies()
 		pairs := make([]shared.Pair, 0, len(cookies))
+		c.decode.cookie = make(map[string]string, len(cookies))
 		for _, ck := range cookies {
-			c.Cookie[ck.Name] = ck.Value
+			c.decode.cookie[ck.Name] = ck.Value
 			pairs = append(pairs, shared.Pair{
 				Name:  shared.URLDecode(ck.Name),
 				Value: shared.URLDecode(ck.Value),
@@ -539,7 +625,7 @@ func (c *Context) parseBody(r *http.Request, opts Options) {
 
 	for k, v := range r.PostForm {
 		if len(v) > 0 {
-			c.Post[k] = v[len(v)-1]
+			c.postInto()[k] = v[len(v)-1]
 		}
 	}
 	if c.decode != nil {
@@ -607,7 +693,8 @@ func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 				c.recordError(fmt.Errorf("uploaded file %q of %d bytes exceeds the upload_max_filesize limit of %d bytes",
 					upload.Name, header.Size, maxFileSize.Bytes()))
 			}
-			c.Files[field] = append(c.Files[field], upload)
+			files := c.filesInto()
+			files[field] = append(files[field], upload)
 		}
 	}
 	// net/http spills the parts it could not hold in memory into temporary
@@ -684,7 +771,7 @@ func uploadBaseName(name string) string {
 // request. A host handler defers it for the lifetime of one request; a file the
 // script moved with move_uploaded_file is already gone and is skipped.
 func (c Context) Cleanup() {
-	for _, files := range c.Files {
+	for _, files := range c.files() {
 		for _, file := range files {
 			if file.TmpName != "" {
 				_ = os.Remove(file.TmpName)
@@ -699,7 +786,7 @@ func (c Context) Cleanup() {
 // moved away is no longer one of them, so the copy has to still be there.
 func (c Context) IsUpload(path string) bool {
 	c.decodeForm()
-	for _, files := range c.Files {
+	for _, files := range c.files() {
 		for _, file := range files {
 			if file.TmpName != "" && file.TmpName == path {
 				_, err := os.Stat(path)
@@ -737,18 +824,29 @@ func (c Context) Errors() []error {
 // separate copies the walk counts on its own.
 func (c Context) memoryFootprint(visited visitedSet) int64 {
 	total := int64(unsafe.Sizeof(c))
-	for _, m := range []map[string]string{c.Get, c.Post, c.Path, c.Cookie, c.Server, c.Env, c.Headers} {
+	// What has been decoded, not what could be: forcing a parse to measure
+	// one would be the accounting deciding to do the work it is measuring.
+	for _, m := range c.decodedMaps() {
 		total += DeepSize(m, visited)
 	}
 	total += DeepSize(c.Argv, visited)
 	total += DeepSize(map[string][]string(c.response), visited)
-	for name, files := range c.Files {
+	for name, files := range c.files() {
 		total += 16 + int64(len(name)) + 24
 		for _, file := range files {
 			total += DeepSize(file, visited)
 		}
 	}
 	return total
+}
+
+// decodedMaps lists the string maps this Context holds right now.
+func (c Context) decodedMaps() []map[string]string {
+	maps := []map[string]string{c.Path, c.Server, c.Env}
+	if c.decode == nil {
+		return append(maps, c.Get, c.Post, c.Cookie, c.Headers)
+	}
+	return append(maps, c.decode.get, c.decode.post, c.decode.cookie, c.decode.headers)
 }
 
 // Register seeds the request superglobals and puts the request itself on the
@@ -778,9 +876,9 @@ func (c Context) Register(rt *Runtime) {
 	// is the moment the last one is done with them.
 	releaseMapMaps(rt, superglobalNames...)
 
-	rt.SetGlobal("_GET", c.lazyInput(c.getVars, c.Get, c.decodeQuery))
-	rt.SetGlobal("_POST", c.lazyInput(c.postVars, c.Post, c.decodeForm))
-	rt.SetGlobal("_COOKIE", c.lazyInput(c.cookieVars, c.Cookie, c.decodeCookies))
+	rt.SetGlobal("_GET", c.lazyInput(c.getVars, c.GetMap))
+	rt.SetGlobal("_POST", c.lazyInput(c.postVars, c.PostMap))
+	rt.SetGlobal("_COOKIE", c.lazyInput(c.cookieVars, c.CookieMap))
 	rt.SetGlobal("_SERVER", c.ServerMap())
 	rt.SetGlobal("_ENV", mapmap.New(mapmap.MapSource(c.Env)))
 	rt.SetGlobal("_REQUEST", c.lazyArray(func() *model.Array {
@@ -809,7 +907,7 @@ func (c Context) Register(rt *Runtime) {
 // GetAllHeaders implements PHP getallheaders(): an associative array of the
 // incoming request headers keyed by canonical header name.
 func (c Context) GetAllHeaders() *model.Array {
-	return mapToArray(c.Headers)
+	return mapToArray(c.HeaderMap())
 }
 
 // Header implements PHP header($header[, $replace[, $code]]): it parses a
@@ -984,17 +1082,17 @@ func uploadValue(file *UploadedFile, key string) any {
 // shape, $_FILES["file"]["name"], and keeps the last file sent under it, the
 // way a repeated form value assigns over the one before it.
 func (c Context) filesArrayInto(arr *model.Array) *model.Array {
-	if len(c.Files) == 0 {
+	if len(c.files()) == 0 {
 		return arr
 	}
-	fields := make([]string, 0, len(c.Files))
-	for field := range c.Files {
+	fields := make([]string, 0, len(c.files()))
+	for field := range c.files() {
 		fields = append(fields, field)
 	}
 	sort.Strings(fields)
 
 	for _, field := range fields {
-		files := c.Files[field]
+		files := c.files()[field]
 		if len(files) == 0 {
 			continue
 		}
@@ -1065,13 +1163,12 @@ func (c Context) lazyArray(build func() *model.Array) *mapmap.MapMap {
 // decoded answers the bracket-decoded array once it exists, and flat the map a
 // host set. A Context with nothing to decode reads flat directly, which is
 // every CLI run.
-func (c Context) lazyInput(decoded func() *model.Array, flat map[string]string, force func()) *mapmap.MapMap {
+func (c Context) lazyInput(decoded func() *model.Array, flat func() map[string]string) *mapmap.MapMap {
 	if c.decode == nil {
-		return mapmap.New(arraySource{superglobal(decoded(), flat)})
+		return mapmap.New(arraySource{superglobal(decoded(), flat())})
 	}
 	return mapmap.New(mapmap.Lazy(func() mapmap.Source {
-		force()
-		return arraySource{superglobal(decoded(), flat)}
+		return arraySource{superglobal(decoded(), flat())}
 	}))
 }
 
@@ -1154,9 +1251,9 @@ func (c Context) requestArrayInto(arr *model.Array) *model.Array {
 	// it is a read of each: the fields hold nothing until the request is
 	// decoded into them.
 	for _, source := range []*model.Array{
-		superglobal(c.getVars(), c.Get),
-		superglobal(c.postVars(), c.Post),
-		superglobal(c.cookieVars(), c.Cookie),
+		superglobal(c.getVars(), c.GetMap()),
+		superglobal(c.postVars(), c.PostMap()),
+		superglobal(c.cookieVars(), c.CookieMap()),
 		mapToArray(c.Path),
 	} {
 		source.Range(func(key, val any) bool {

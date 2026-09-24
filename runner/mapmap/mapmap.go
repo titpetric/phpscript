@@ -40,10 +40,32 @@ type Source interface {
 type MapMap struct {
 	src Source
 
-	// edits holds what a script wrote, and dropped the keys it unset. Both are
-	// nil until the first write, because most requests never make one.
-	edits   map[string]any
-	dropped map[string]struct{}
+	// edits holds what a script wrote, in write order, and is nil until the
+	// first write because most requests never make one.
+	//
+	// A slice rather than a map: a request writes a key or two, and a linear
+	// scan over that beats hashing, with one allocation for the backing array
+	// instead of one for the map and its bucket. Nothing here grows to the
+	// size where the scan would lose.
+	edits []edit
+}
+
+// edit is one write, or one removal when gone is set. A removal is recorded
+// rather than applied, because the source it hides is read-only.
+type edit struct {
+	key   string
+	value any
+	gone  bool
+}
+
+// find answers the position of key in the edits, or -1.
+func (m *MapMap) find(key string) int {
+	for i := range m.edits {
+		if m.edits[i].key == key {
+			return i
+		}
+	}
+	return -1
 }
 
 // New returns a MapMap reading through src. A nil source reads as empty.
@@ -56,11 +78,11 @@ func (m *MapMap) Read(key string) any {
 	if m == nil {
 		return nil
 	}
-	if v, ok := m.edits[key]; ok {
-		return v
-	}
-	if _, gone := m.dropped[key]; gone {
-		return nil
+	if i := m.find(key); i >= 0 {
+		if m.edits[i].gone {
+			return nil
+		}
+		return m.edits[i].value
 	}
 	if m.src != nil {
 		if v, ok := m.src.Get(key); ok {
@@ -75,11 +97,8 @@ func (m *MapMap) Has(key string) bool {
 	if m == nil {
 		return false
 	}
-	if _, ok := m.edits[key]; ok {
-		return true
-	}
-	if _, gone := m.dropped[key]; gone {
-		return false
+	if i := m.find(key); i >= 0 {
+		return !m.edits[i].gone
 	}
 	if m.src == nil {
 		return false
@@ -90,26 +109,35 @@ func (m *MapMap) Has(key string) bool {
 
 // Write records a value for key, leaving the source as it was.
 func (m *MapMap) Write(key string, value any) {
-	if m.edits == nil {
-		m.edits = editsPool.Get().(map[string]any)
+	if i := m.find(key); i >= 0 {
+		m.edits[i].value, m.edits[i].gone = value, false
+		return
 	}
-	m.edits[key] = value
-	delete(m.dropped, key)
+	m.edits = append(m.edits, edit{key: key, value: value})
 }
 
 // Delete forgets key, including one the source holds.
 func (m *MapMap) Delete(key string) {
-	delete(m.edits, key)
-	if m.src == nil {
+	i := m.find(key)
+	inSource := false
+	if m.src != nil {
+		_, inSource = m.src.Get(key)
+	}
+	// A key the source does not hold leaves no trace: forgetting the write is
+	// the whole removal. One it does hold is marked, because the source cannot
+	// be written to.
+	if i >= 0 && !inSource {
+		m.edits = append(m.edits[:i], m.edits[i+1:]...)
 		return
 	}
-	if _, ok := m.src.Get(key); !ok {
+	if !inSource {
 		return
 	}
-	if m.dropped == nil {
-		m.dropped = map[string]struct{}{}
+	if i >= 0 {
+		m.edits[i].value, m.edits[i].gone = nil, true
+		return
 	}
-	m.dropped[key] = struct{}{}
+	m.edits = append(m.edits, edit{key: key, gone: true})
 }
 
 // Len counts what Range would visit, which is count().
@@ -117,18 +145,19 @@ func (m *MapMap) Len() int {
 	if m == nil {
 		return 0
 	}
-	n := len(m.edits)
+	n := 0
+	for i := range m.edits {
+		if !m.edits[i].gone {
+			n++
+		}
+	}
 	if m.src == nil {
 		return n
 	}
 	m.src.Range(func(key string, _ any) bool {
-		if _, written := m.edits[key]; written {
-			return true
+		if m.find(key) < 0 {
+			n++
 		}
-		if _, gone := m.dropped[key]; gone {
-			return true
-		}
-		n++
 		return true
 	})
 	return n
@@ -142,15 +171,13 @@ func (m *MapMap) Range(fn func(key, value any) bool) {
 	if m == nil {
 		return
 	}
-	seen := 0
 	if m.src != nil {
 		ok := m.src.Range(func(key string, value any) bool {
-			if _, gone := m.dropped[key]; gone {
-				return true
-			}
-			if written, ok := m.edits[key]; ok {
-				seen++
-				return fn(key, written)
+			if i := m.find(key); i >= 0 {
+				if m.edits[i].gone {
+					return true
+				}
+				return fn(key, m.edits[i].value)
 			}
 			return fn(key, value)
 		})
@@ -158,16 +185,16 @@ func (m *MapMap) Range(fn func(key, value any) bool) {
 			return
 		}
 	}
-	if len(m.edits) == seen {
-		return
-	}
-	for key, value := range m.edits {
+	for i := range m.edits {
+		if m.edits[i].gone {
+			continue
+		}
 		if m.src != nil {
-			if _, ok := m.src.Get(key); ok {
+			if _, ok := m.src.Get(m.edits[i].key); ok {
 				continue
 			}
 		}
-		if !fn(key, value) {
+		if !fn(m.edits[i].key, m.edits[i].value) {
 			return
 		}
 	}
@@ -176,19 +203,11 @@ func (m *MapMap) Range(fn func(key, value any) bool) {
 // Release returns the layer to the pool. The MapMap reads as the source alone
 // afterwards, so a caller releases when the request it belongs to is over.
 func (m *MapMap) Release() {
-	if m == nil || m.edits == nil {
+	if m == nil {
 		return
 	}
-	clear(m.edits)
-	editsPool.Put(m.edits)
 	m.edits = nil
-	m.dropped = nil
 }
-
-// editsPool holds the written-key maps between requests. A map returned to it
-// is cleared rather than dropped, so the next request writes into buckets that
-// are already there.
-var editsPool = sync.Pool{New: func() any { return map[string]any{} }}
 
 // MapSource reads a plain map. It is the source for a run with no request
 // behind it, which is every CLI invocation.

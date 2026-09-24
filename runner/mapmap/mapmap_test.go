@@ -119,12 +119,14 @@ func TestReleaseDropsTheEdits(t *testing.T) {
 	if m.Has("B") {
 		t.Fatal("a written key survived Release")
 	}
-	// The pooled map is reused, so a release followed by a write must not
-	// resurrect what the previous holder wrote.
-	next := mapmap.New(mapmap.MapSource{})
-	next.Write("C", "4")
-	if next.Has("B") {
-		t.Fatal("a pooled map came back with its old keys")
+	// Writing after a release starts from nothing rather than from what the
+	// previous request left behind.
+	m.Write("C", "4")
+	if m.Has("B") {
+		t.Fatal("a released edit came back")
+	}
+	if got := m.Read("C"); got != "4" {
+		t.Fatalf("Read after writing past a release = %v, want 4", got)
 	}
 }
 

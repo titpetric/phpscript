@@ -19,7 +19,7 @@ func ExampleContext() {
 
 	fmt.Println(ctx.GetMap()["tab"])
 	fmt.Println(ctx.Path["id"])
-	fmt.Println(ctx.Headers["X-Request-Id"])
+	fmt.Println(ctx.HeaderMap()["X-Request-Id"])
 	fmt.Println(ctx.ResponseHeaders().Get("X-Powered-By"))
 
 	// Output:

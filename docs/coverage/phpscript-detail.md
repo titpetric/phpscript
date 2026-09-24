@@ -120,14 +120,14 @@ github.com/titpetric/phpscript/runner/helpers.go, symbols 37, coverage 87.53%
 github.com/titpetric/phpscript/runner/ident.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/runner/include_cache.go, symbols 6, coverage 81.43%
 github.com/titpetric/phpscript/runner/instanceof.go, symbols 5, coverage 76.34%
-github.com/titpetric/phpscript/runner/mapmap/mapmap.go, symbols 25, coverage 75.10%
+github.com/titpetric/phpscript/runner/mapmap/mapmap.go, symbols 26, coverage 75.17%
 github.com/titpetric/phpscript/runner/memory.go, symbols 8, coverage 46.24%
 github.com/titpetric/phpscript/runner/object_error.go, symbols 5, coverage 46.68%
 github.com/titpetric/phpscript/runner/options.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/runner/output.go, symbols 3, coverage 47.23%
 github.com/titpetric/phpscript/runner/precompiler.go, symbols 3, coverage 96.67%
 github.com/titpetric/phpscript/runner/redeclare.go, symbols 7, coverage 81.07%
-github.com/titpetric/phpscript/runner/request.go, symbols 60, coverage 90.59%
+github.com/titpetric/phpscript/runner/request.go, symbols 66, coverage 89.78%
 github.com/titpetric/phpscript/runner/response.go, symbols 6, coverage 100.00%
 github.com/titpetric/phpscript/runner/runner.go, symbols 58, coverage 83.22%
 github.com/titpetric/phpscript/runner/runtime.go, symbols 99, coverage 91.66%
