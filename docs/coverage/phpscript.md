@@ -53,5 +53,5 @@ github.com/titpetric/phpscript/stdlib/shared, symbols 13, coverage 95.90%
 github.com/titpetric/phpscript/stdlib/span, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/time, symbols 11, coverage 42.78%
 github.com/titpetric/phpscript/telemetry, symbols 25, coverage 94.00%
-github.com/titpetric/phpscript/tests, symbols 83, coverage 85.81%
+github.com/titpetric/phpscript/tests, symbols 85, coverage 85.97%
 ```

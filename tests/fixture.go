@@ -195,6 +195,7 @@ type Fixture struct {
 	rootFS      fs.FS
 	sources     fstest.MapFS
 	mu          sync.Mutex
+	prog        *model.Program
 	interp      *runner.Runtime
 	flatRT      *flatstack.Runtime
 	flatExpr    *flatstack.ExprCache
@@ -297,7 +298,27 @@ func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.Exp
 		return runner.NewIncludeCache(), runner.NewExprCache()
 	}
 	w := currentWorker(ctx)
-	return w.includeFor(f.cacheRoot(), f.runnerOptions().RootFS, w.expr), w.expr
+	// The tree is a thunk because this runs per execution and building it
+	// means building the fixture's whole options struct; under --count that
+	// is once per repeat for a cache that was filled on the first.
+	return w.includeFor(f.cacheRoot(), f.precompileFS, w.expr), w.expr
+}
+
+// precompileFS is the tree the precompiler walks: the fixture's own root, and
+// the bodies of the directory as a second filesystem.
+//
+// They are two rather than one because a walk cannot see through the overlay.
+// unionFS answers Open from the first layer that has the name and implements
+// no ReadDir, so fs.WalkDir over it lists the real tree alone and every body
+// would be skipped. Merging the listings instead is not open: scandir(".") is
+// the same call, and a fixture reading its own directory would start seeing
+// the other fixtures' bodies in it.
+func (f *Fixture) precompileFS() []fs.FS {
+	trees := []fs.FS{f.runnerOptions().RootFS}
+	if f.sources != nil {
+		trees = append(trees, f.sources)
+	}
+	return trees
 }
 
 // flatCaches is caches for the bytecode runtime.
@@ -412,13 +433,15 @@ func newWorker() *worker {
 // below the root, the bodies among them, is parsed and compiled once, so a
 // fixture and a repeat of it read the program back rather than building it
 // again.
-func (w *worker) includeFor(root string, tree fs.FS, expr *runner.ExprCache) *runner.IncludeCache {
+func (w *worker) includeFor(root string, trees func() []fs.FS, expr *runner.ExprCache) *runner.IncludeCache {
 	if c, ok := w.include[root]; ok {
 		return c
 	}
 	c := runner.NewIncludeCache()
 	w.include[root] = c
-	runner.Precompiler{Root: tree, Includes: c, Exprs: expr}.Run()
+	for _, tree := range trees() {
+		runner.Precompiler{Root: tree, Includes: c, Exprs: expr}.Run()
+	}
 	return c
 }
 
@@ -851,6 +874,28 @@ func RunFixtureOn(ctx context.Context, f *Fixture, r Runner) *TestResult {
 	return res
 }
 
+// programLoader is the half of a runtime the harness loads through, which both
+// engines answer.
+type programLoader interface {
+	LoadFile(string) (*model.Program, error)
+}
+
+// load answers the fixture's program, reading its body through the runtime the
+// first time so the parse and the compile land in the caches the tree was
+// precompiled into. The program is held because it is the same one on a repeat:
+// --count re-runs the body, it does not re-read it.
+func (f *Fixture) load(rt programLoader) (*model.Program, error) {
+	if f.prog != nil {
+		return f.prog, nil
+	}
+	prog, err := rt.LoadFile(f.sourceName())
+	if err != nil {
+		return nil, err
+	}
+	f.prog = prog
+	return prog, nil
+}
+
 func (f *Fixture) stdin() io.Reader {
 	content := f.Request.Stdin
 	if content == "" {
@@ -895,9 +940,7 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 	// escaping the root: a confusing two-step failure a long way from its cause.
 	rt.UpdateFilename(f.Path)
 
-	// The body is read through the runtime, so it comes back from the cache the
-	// tree was precompiled into rather than being parsed again.
-	prog, err := rt.LoadFile(f.sourceName())
+	prog, err := f.load(rt)
 	if err != nil {
 		return "Internal Server Error", runner.Context{}, err
 	}
@@ -944,7 +987,7 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	}
 	rt.UpdateFilename(f.Path)
 
-	prog, err := rt.LoadFile(f.sourceName())
+	prog, err := f.load(rt)
 	if err != nil {
 		return "Internal Server Error", runner.Context{}, err
 	}
