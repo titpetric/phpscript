@@ -194,6 +194,8 @@ type Fixture struct {
 	coverage    *coverage.Collector
 	rootFS      fs.FS
 	sources     fstest.MapFS
+	rootKey     string
+	runtimeKeyS string
 	mu          sync.Mutex
 	prog        *model.Program
 	interp      *runner.Runtime
@@ -414,7 +416,10 @@ func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Ru
 // bindings to a directory, so neither survives a move. Fixtures arrive grouped
 // by folder, so the key changes once per group rather than once per fixture.
 func (f *Fixture) runtimeKey() string {
-	return fmt.Sprintf("%s\x00%v", f.cacheRoot(), f.Options)
+	if f.runtimeKeyS == "" {
+		f.runtimeKeyS = fmt.Sprintf("%s\x00%v", f.cacheRoot(), f.Options)
+	}
+	return f.runtimeKeyS
 }
 
 // worker holds what one serial worker loop reuses across the fixtures it runs.
@@ -521,6 +526,16 @@ func currentWorker(ctx context.Context) *worker {
 // can both be called "suite". A fixture given an app root resolves against that
 // too, so the key names both trees.
 func (f *Fixture) cacheRoot() string {
+	if f.rootKey != "" {
+		return f.rootKey
+	}
+	f.rootKey = f.buildCacheRoot()
+	return f.rootKey
+}
+
+// buildCacheRoot spells the key. It is held because absPath reaches the OS for
+// the working directory, and this is asked once per execution.
+func (f *Fixture) buildCacheRoot() string {
 	root := absPath(f.RootDir())
 	if f.appRoot != "" {
 		return root + "\x00" + absPath(f.appRoot)

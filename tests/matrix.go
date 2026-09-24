@@ -188,8 +188,11 @@ func phpPrepend(f *Fixture) ([]string, func(), error) {
 
 // phpQuote renders s as a single-quoted PHP string literal.
 func phpQuote(s string) string {
-	return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(s) + "'"
+	return "'" + shellQuoteReplacer.Replace(s) + "'"
 }
+
+// shellQuoteReplacer is built once, for the reason exportReplacer is.
+var shellQuoteReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 
 // writePHPScript materializes the fixture source as a hidden file in dir. The
 // name is derived from the fixture path so parallel fixtures never collide.
