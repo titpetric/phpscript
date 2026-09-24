@@ -1,6 +1,6 @@
 # `phpscript test <path>...`
 
-Discover and run `.phpt` fixtures. With no path, the command searches the current directory. Results are printed as they complete, using a colored table in a terminal and Markdown when output is redirected.
+Discover and run fixtures, both the `.phpt` document and the `_test.php` body with its `_test.txt` output. With no path, the command searches the current directory. Results are printed as they complete, using a colored table in a terminal and Markdown when output is redirected.
 
 It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`. The flags below are this command's own.
 

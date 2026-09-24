@@ -21,4 +21,4 @@ phpscript list --stdlib | grep '| function' # Just the functions
 
 The listing comes from the runtime itself, so it is what this build binds rather than what a checked-in file says it binds; its counts agree with `phpscript info`. Two things are missing from it, and both need the Go source the binary was built from: the doc comment written next to each registration, and the PHP spelling of each parameter name. Signatures here carry reflected types and no parameter names, because the names reflection recovers are invented (`$string1`, `$string2`) and would read as the real ones. The annotated listing is [Implemented PHP APIs](../reference/extensions/implemented-apis.md), generated from the same reflection plus a scan of the source.
 
-The other half of the question — what a tree calls that this build does not have — is `phpscript lint`, which reports every `call to undefined function` and `new: undefined class` against the same registered set.
+The other half of the question, what a tree calls that this build does not have, is `phpscript lint`, which reports every `call to undefined function` and `new: undefined class` against the same registered set.

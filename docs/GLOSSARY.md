@@ -21,7 +21,7 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 | Application root  | The directory a site is served from, the one `phpscript server` is pointed at. Includes resolve against it, and nothing above it is reachable.                                                           |
 | Document root     | The directory below the application root that is served over HTTP, `public/` by default. A `.php` file in it runs when its name is requested; a file outside it does not.                                |
 | Working directory | Where a relative path resolves from, inside the application root. `chdir()` moves it for the length of a request; `runner.work_dir` is where each one starts. `-w` moves the process before any of that. |
-| Include root      | The directory a fixture's own relative includes resolve against, which is the directory holding the `.phpt` file.                                                                                        |
+| Include root      | The directory a fixture's own relative includes resolve against, which is the directory holding the fixture file.                                                                                        |
 | Suite root        | A directory in a fixture tree holding a `phpscript.yml`. The fixtures below it resolve their prelude, their connections and their hooks through it; the nearest one at or above a fixture wins.          |
 | Writable path     | A directory under `writable_paths` that scripts may write to. A `.php` file that lands in one is served as bytes and never executed, because an upload directory is content and not code.                |
 
@@ -66,7 +66,7 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 |------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Runtime    | `runner.Runtime`, the tree-walking interpreter and the state one request executes against: the declarations, the globals, the output buffer, the registered bindings.                    |
 | Flat stack | The compile-once bytecode backend. It compiles a whole program or delegates the whole program to the interpreter; there is no partial execution, because that would repeat side effects. |
-| Fixture    | A `.phpt` file: metadata, PHP source, and the output php itself produces for it. `phpscript test` runs one and compares.                                                                 |
+| Fixture    | PHP source and the output php itself produces for it, as one `.phpt` document or as a `_test.php` body with a `_test.txt` beside it. `phpscript test` runs one and compares.             |
 | Matrix     | Running each fixture on all three runtimes, flat stack, interpreter and the `php` binary, and reporting a column per runtime. A divergence between any two is a failure.                 |
 
 ## Coverage

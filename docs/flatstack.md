@@ -235,8 +235,7 @@ Run the flatstack benchmarks with:
 
 ```bash
 go test ./flatstack -run '^$' -bench '^BenchmarkFlatstack' -benchmem
-go test ./tests -run '^$' \
-  -bench 'BenchmarkGoBindingHTTP|BenchmarkFlatstackMinitplImportSwap' -benchmem
+go test ./tests -run '^$' -bench 'BenchmarkGoBindingHTTP' -benchmem
 ```
 
 The `BenchmarkEngine*` benchmarks run the same Supports-gated programs through both engines as `engine=` sub-benchmarks:

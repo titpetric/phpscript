@@ -113,7 +113,7 @@ Installed, and filled for a scheduled job: `$argv[0]` is the file, and what foll
 
 ## `$_REQUEST`
 
-Contains the query, form and cookie fields merged the way PHP's default `request_order` merges them — `$_GET`, then `$_POST`, then `$_COOKIE`, a later source overwriting an earlier one — and then the values captured by the matched route pattern, such as `{id}` or `{rest...}`, written over all three.
+Contains the query, form and cookie fields merged the way PHP's default `request_order` merges them (`$_GET`, then `$_POST`, then `$_COOKIE`, a later source overwriting an earlier one), and then the values captured by the matched route pattern, such as `{id}` or `{rest...}`, written over all three.
 
 ```php
 // @route GET /users/{id}
