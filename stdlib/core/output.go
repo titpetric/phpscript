@@ -450,8 +450,12 @@ func exportScalar(value any) string {
 // exportString single-quotes a string the way var_export does: only the quote
 // and the backslash are escaped, so a newline stays a literal newline.
 func exportString(s string) string {
-	return "'" + strings.NewReplacer(`\`, `\\`, `'`, `\'`).Replace(s) + "'"
+	return "'" + exportReplacer.Replace(s) + "'"
 }
+
+// exportReplacer is built once. strings.NewReplacer compiles its table on first
+// use behind a sync.Once, so one per call means compiling it per call.
+var exportReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 
 // exportFloat keeps a float readable back as a float. Without the fraction,
 // var_export(1.0) would emit "1", which PHP would parse as an int.

@@ -722,8 +722,6 @@ func (rt *Runtime) UpdateFilename(filename string) {
 	// chdir has moved the working directory, and a span, a coverage key and a
 	// redeclaration message all spell the same file the same way.
 	rt.entrypoint = rootPath(filename)
-	rt.SetConst("__FILE__", rt.entrypoint)
-	rt.SetConst("__DIR__", path.Dir(rt.entrypoint))
 	for _, observer := range rt.observers {
 		if filenameObserver, ok := observer.(FilenameObserver); ok {
 			filenameObserver.UpdateFilename(rt.ctx, filename)
@@ -879,9 +877,36 @@ func (rt *Runtime) RegisterShutdown(callback any) {
 }
 
 // Const returns a registered constant value and whether it is defined.
+//
+// The magic constants are not among them, which is what defined("__FILE__")
+// and constant("__FILE__") are held to: php compiles those names and neither
+// function can see one.
 func (rt *Runtime) Const(name string) (any, bool) {
 	v, ok := rt.constants[name]
 	return v, ok
+}
+
+// entrypointConst answers __FILE__ and __DIR__ for source that named no file.
+//
+// parser.ParseFile compiles both to literals, so a program read from the
+// filesystem never asks. What is left is Runtime.Load, which is handed source
+// with nothing behind it, and there the entrypoint is the best answer there is.
+//
+// They are not in the constant table. php resolves them when it compiles, so
+// defined("__FILE__") is false there and get_defined_constants() omits them;
+// holding them as constants reported the opposite, and cost a copy of the whole
+// table per run because the first write after the stdlib is frozen clones it.
+func (rt *Runtime) entrypointConst(name string) (any, bool) {
+	if rt.entrypoint == "" {
+		return nil, false
+	}
+	switch name {
+	case "__FILE__":
+		return rt.entrypoint, true
+	case "__DIR__":
+		return path.Dir(rt.entrypoint), true
+	}
+	return nil, false
 }
 
 // RegisterFunc forwards a Go function (or any callable) into the VM under name.
@@ -1222,6 +1247,9 @@ func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
 func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if v, ok := scope.Get(name); ok {
 		return v, nil
+	}
+	if c, ok := rt.entrypointConst(name); ok {
+		return c, nil
 	}
 	if c, ok := rt.constants[name]; ok {
 		return c, nil

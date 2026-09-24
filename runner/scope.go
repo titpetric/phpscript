@@ -104,16 +104,22 @@ func (s *Scope) DefinedVars() map[string]any {
 	return vars
 }
 
-func contextWithScope(ctx context.Context, scope *Scope) context.Context {
+// contextWithScope hands a binding the frame it was called from, and the file
+// and line to attribute its spans to.
+//
+// The line is the runtime's, not the scope's. The parser compiles __LINE__ to a
+// literal, so no frame carries it, and writing it into one per statement to be
+// read back here was a map write on every statement executed.
+func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	if filename, ok := scope.Get("__FILE__"); ok {
 		if filename, ok := filename.(string); ok {
 			ctx = telemetry.WithSpanFilename(ctx, filename)
 		}
+	} else if rt.entrypoint != "" {
+		ctx = telemetry.WithSpanFilename(ctx, rt.entrypoint)
 	}
-	if line, ok := scope.Get("__LINE__"); ok {
-		if line, ok := line.(int); ok {
-			ctx = telemetry.WithSpanLine(ctx, line)
-		}
+	if rt.currentLine > 0 {
+		ctx = telemetry.WithSpanLine(ctx, rt.currentLine)
 	}
 	return context.WithValue(ctx, scopeContextKey{}, scope)
 }

@@ -55,10 +55,17 @@ func (rt *Runtime) RegisterInclude(path string, fn func() (any, error)) {
 	rt.includeHooks[cleanFSPath(path)] = fn
 }
 
-// Load parses PHP source into a program.
+// Load parses PHP source into a program. The source names no file, so
+// __FILE__ and __DIR__ stay names for the runtime to answer.
 func (rt *Runtime) Load(src string) (*model.Program, error) {
+	return rt.loadNamed("", src)
+}
+
+// loadNamed parses src as the contents of name, which is the path a script
+// sees. An empty name is source with no file behind it.
+func (rt *Runtime) loadNamed(name, src string) (*model.Program, error) {
 	rt.UpdateStatus(telemetry.StateReading)
-	program, err := parser.Parse(src)
+	program, err := parser.ParseFile(name, src)
 	if err != nil {
 		rt.UpdateStatus(telemetry.StateError)
 	}
@@ -66,6 +73,12 @@ func (rt *Runtime) Load(src string) (*model.Program, error) {
 }
 
 // LoadFile reads and parses a PHP file from the runtime source FS.
+//
+// Options.Precompile makes the include cache answer for entrypoints as well as
+// for includes: the file is parsed once for the life of the process, so the
+// bytecode and the compiled expressions keyed by that AST are read back instead
+// of built again per request. Without it the file is read and parsed every
+// time, which is what a CLI run and an unconfigured host want.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 	rt.UpdateFilename(path)
 	rt.UpdateStatus(telemetry.StateReading)
@@ -73,7 +86,19 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 		rt.UpdateStatus(telemetry.StateError)
 		return nil, fmt.Errorf("load %q: no source FS configured", path)
 	}
-	return rt.loadResolved(rt.resolveFSPath(path))
+	resolved := rt.resolveFSPath(path)
+	if !rt.opts.Precompile {
+		return rt.loadResolved(resolved)
+	}
+	if prog, ok := rt.includeCache.Get(resolved); ok {
+		return prog, nil
+	}
+	prog, err := rt.loadResolved(resolved)
+	if err != nil {
+		return nil, err
+	}
+	rt.includeCache.Set(resolved, prog)
+	return prog, nil
 }
 
 // loadResolved reads and parses a path the caller has already put through
@@ -87,7 +112,7 @@ func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 		rt.UpdateStatus(telemetry.StateError)
 		return nil, fmt.Errorf("load %q: %w", cleanPath, err)
 	}
-	prog, err := rt.Load(string(b))
+	prog, err := rt.loadNamed(rootPath(cleanPath), string(b))
 	if err != nil {
 		return nil, fmt.Errorf("parse %q: %w", cleanPath, err)
 	}
@@ -309,7 +334,6 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 		}
 		if source, ok := rt.sourceSpans[s]; ok {
 			rt.currentLine = source.Start
-			scope.Set("__LINE__", source.Start)
 		}
 		if rt.coverage != nil {
 			rt.coverage.Hit(s)
@@ -542,6 +566,8 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 
 	switch src := src.(type) {
 	case *model.Array:
+		src.Range(iter)
+	case model.Collection:
 		src.Range(iter)
 	case *model.Object:
 		// An object yields its properties, name and value, in the order it
@@ -803,7 +829,7 @@ func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) f
 	if len(rt.observers) == 0 {
 		return noopTrace
 	}
-	span := rt.traceContext(contextWithScope(rt.ctx, scope), message, kind...)
+	span := rt.traceContext(rt.contextWithScope(rt.ctx, scope), message, kind...)
 	if span == nil {
 		return noopTrace
 	}
@@ -1292,6 +1318,10 @@ func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 				arr.Delete(normalizeKey(key))
 				continue
 			}
+			if keyed, ok := base.(model.Keyed); ok {
+				keyed.Delete(keyString(key))
+				continue
+			}
 			// A reindexed slice is a new value, so it goes back to where the
 			// base was read from. A map deleted in place answers nothing.
 			if replacement, changed := unsetGoIndex(base, key); changed {
@@ -1381,6 +1411,14 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 		}
 		arr, ok := base.(*model.Array)
 		if !ok {
+			if keyed, ok := base.(model.Keyed); ok && tgt.Index != nil {
+				key, err := rt.Eval(tgt.Index, scope)
+				if err != nil {
+					return err
+				}
+				keyed.Write(keyString(key), val)
+				return nil
+			}
 			if tgt.Index == nil {
 				return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
 			}
@@ -1420,6 +1458,10 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 // scalar, a nil map, a key that is not there, answers nil, which is what
 // lets unset($x[$k]) run unconditionally.
 func unsetGoIndex(base, key any) (replacement any, changed bool) {
+	if keyed, ok := base.(model.Keyed); ok {
+		keyed.Delete(keyString(key))
+		return nil, false
+	}
 	rv := reflect.ValueOf(base)
 	switch rv.Kind() {
 	case reflect.Map:
@@ -1450,6 +1492,15 @@ func unsetGoIndex(base, key any) (replacement any, changed bool) {
 }
 
 func assignGoIndex(base, key any, value func(current any) (any, error)) error {
+	if keyed, ok := base.(model.Keyed); ok {
+		name := keyString(key)
+		next, err := value(keyed.Read(name))
+		if err != nil {
+			return err
+		}
+		keyed.Write(name, next)
+		return nil
+	}
 	rv := reflect.ValueOf(base)
 	switch rv.Kind() {
 	case reflect.Map:

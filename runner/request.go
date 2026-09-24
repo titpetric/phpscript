@@ -14,10 +14,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 
+	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner/mapmap"
 	"github.com/titpetric/phpscript/stdlib/shared"
 )
 
@@ -64,6 +67,16 @@ type Context struct {
 	Headers map[string]string
 	Argv    []string
 
+	// ServerSource is what $_SERVER reads through when the names it holds can
+	// be answered without a map. A request answers most of them itself, so
+	// serving one fills Server with the few it cannot and leaves the rest to
+	// be derived on the first read that asks for them.
+	//
+	// Nil reads Server alone, which is what a run with no request behind it
+	// has. A host setting keys on Server is answered either way: they are the
+	// source's extras, and an extra wins over a derived name.
+	ServerSource mapmap.Source
+
 	// GetVars, PostVars and CookieVars are the same fields decoded through
 	// PHP's bracket syntax, and seed $_GET, $_POST and $_COOKIE.
 	//
@@ -98,26 +111,77 @@ type Context struct {
 	// pointer for the same reason status is, so a copy of a Context reads
 	// what another copy buffered.
 	rawBody *[]byte
+
+	// decode holds the request and what has been decoded out of it so far. A
+	// Context built by a host has none: there is nothing to decode, and the
+	// fields above are what it was given. It is a pointer for the same reason
+	// status is, so decoding through one copy is seen by every other.
+	decode *decoder
+}
+
+// decoder defers reading a request until a script asks for what it holds.
+//
+// A page reads one superglobal or none, and each of them costs a parse: the
+// query through ParseStr, the cookie header pair by pair, the body through
+// ParseForm and again for the bracket names. Each parse runs at most once, on
+// the first read that needs it, and writes into the Context fields the eager
+// version filled.
+type decoder struct {
+	request *http.Request
+	options Options
+
+	query   sync.Once
+	body    sync.Once
+	cookies sync.Once
+
+	// The decoded forms, held here rather than on the Context because a
+	// Context is a value: a method that assigned to its field would be
+	// assigning to a copy. The exported fields stay what a host sets, and
+	// win over these.
+	getVars    *model.Array
+	postVars   *model.Array
+	cookieVars *model.Array
+
+	// The flat forms, allocated by the decode that fills them. A request that
+	// reads no query allocates no query map, which is why they are not in
+	// NewContext with the rest.
+	get     map[string]string
+	post    map[string]string
+	cookie  map[string]string
+	headers map[string]string
+	files   map[string][]*UploadedFile
+
+	headerOnce sync.Once
 }
 
 type requestContextKey struct{}
 
-// NewContext returns an allocated empty Context value.
+// NewContext returns an allocated empty Context value, which is what a host
+// assembling a request by hand writes into: a CLI run, a scheduled job, a test.
 func NewContext() Context {
+	c := newContext()
+	c.Get = map[string]string{}
+	c.Post = map[string]string{}
+	c.Cookie = map[string]string{}
+	c.Headers = map[string]string{}
+	c.Files = map[string][]*UploadedFile{}
+	return c
+}
+
+// newContext allocates what every Context has. The maps a request is decoded
+// into are not among them: each is allocated by the decode that fills it, so a
+// page reading no query allocates no query map. NewContext adds them because a
+// host writes into the fields directly.
+func newContext() Context {
 	status := 0
 	var errs []error
 	return Context{
 		errors:   &errs,
 		rawBody:  new([]byte),
-		Get:      map[string]string{},
-		Post:     map[string]string{},
 		Path:     map[string]string{},
-		Cookie:   map[string]string{},
 		Server:   map[string]string{},
 		Env:      map[string]string{},
-		Headers:  map[string]string{},
 		Argv:     []string{},
-		Files:    map[string][]*UploadedFile{},
 		response: http.Header{},
 		status:   &status,
 	}
@@ -168,57 +232,219 @@ func FromRequest(r *http.Request) Context {
 // upload_max_filesize and post_max_size limit what the body may carry;
 // max_input_vars and max_input_nesting_level bound what is built from it.
 func FromRequestOptions(r *http.Request, opts Options) Context {
-	c := NewContext()
+	c := newContext()
+	c.decode = &decoder{request: r, options: opts}
 
-	// Query string ($_GET). Decoded from RawQuery, not r.URL.Query(): a
-	// url.Values is a map, so field order is already gone, and the decoder
-	// needs it.
-	for k, v := range r.URL.Query() {
-		if len(v) > 0 {
-			c.Get[k] = v[len(v)-1]
-		}
-	}
-	c.GetVars = shared.ParseStr(r.URL.RawQuery, opts.inputLimits())
-
-	// Form body ($_POST) and file uploads ($_FILES). A body over post_max_size
-	// is not parsed at all: PHP leaves both superglobals empty rather than
-	// giving a script half a form, and says so in its log.
+	// The query, the body and the cookie header are not read here. Each is
+	// decoded by the first read that needs it, so a page that names no
+	// superglobal parses nothing; see decoder.
+	//
+	// A body over post_max_size is refused now rather than later, because PHP
+	// says so in its log whether or not the script goes on to read $_POST, and
+	// the announced length is there to be compared without reading anything.
 	if opts.PostMaxSize.Exceeds(r.ContentLength) {
 		c.recordError(fmt.Errorf("POST Content-Length of %d bytes exceeds the post_max_size limit of %d bytes",
 			r.ContentLength, opts.PostMaxSize.Bytes()))
-	} else {
-		c.parseBody(r, opts)
+		c.decode.body.Do(func() {})
 	}
 
-	// Cookies ($_COOKIE). r.Cookies() is ordered. Go does not percent-decode a
-	// cookie the way PHP does, so that happens here.
-	cookies := r.Cookies()
-	pairs := make([]shared.Pair, 0, len(cookies))
-	for _, ck := range cookies {
-		c.Cookie[ck.Name] = ck.Value
-		pairs = append(pairs, shared.Pair{
-			Name:  shared.URLDecode(ck.Name),
-			Value: shared.URLDecode(ck.Value),
-		})
-	}
-	c.CookieVars = shared.ParsePairs(pairs, opts.inputLimits())
-
-	// Server variables ($_SERVER).
+	// Server variables ($_SERVER). The request is the source and Server holds
+	// the extras, so the two are read together and neither is copied.
 	c.serverVars(r)
+	c.ServerSource = &mapmap.RequestSource{Request: r, Extra: mapmap.MapSource(c.Server)}
 
 	// Path values from the matched route, merged into $_REQUEST.
 	c.pathValues(r)
 
-	// Request headers (canonical name -> first value).
-	for k, v := range r.Header {
-		if len(v) > 0 {
-			c.Headers[k] = v[0]
-			key := "HTTP_" + strings.ToUpper(strings.ReplaceAll(k, "-", "_"))
-			c.Server[key] = v[0]
-		}
-	}
+	// The headers are not copied into a map here either. HeaderMap builds one
+	// on the first read, and the HTTP_ spelling of each is derived from the
+	// request by mapmap.RequestSource.
 
 	return c
+}
+
+// GetMap, PostMap, CookieMap and FileMap answer the flat form of each input,
+// decoding the request on the first call.
+//
+// The fields behind them are what a host sets; these are what anything reading
+// a request built from an *http.Request goes through, because until one of them
+// is called there is nothing in the field to read.
+func (c Context) GetMap() map[string]string {
+	c.decodeQuery()
+	if c.Get != nil || c.decode == nil {
+		return c.Get
+	}
+	return c.decode.get
+}
+
+func (c Context) PostMap() map[string]string {
+	c.decodeForm()
+	if c.Post != nil || c.decode == nil {
+		return c.Post
+	}
+	return c.decode.post
+}
+
+func (c Context) CookieMap() map[string]string {
+	c.decodeCookies()
+	if c.Cookie != nil || c.decode == nil {
+		return c.Cookie
+	}
+	return c.decode.cookie
+}
+
+func (c Context) FileMap() map[string][]*UploadedFile {
+	c.decodeForm()
+	if c.Files != nil || c.decode == nil {
+		return c.Files
+	}
+	return c.decode.files
+}
+
+// postInto and filesInto answer the map parseBody fills, allocating it on the
+// way. A host that set the field keeps it; otherwise the decoder owns it.
+func (c Context) postInto() map[string]string {
+	if c.Post != nil || c.decode == nil {
+		if c.Post == nil {
+			c.Post = map[string]string{}
+		}
+		return c.Post
+	}
+	if c.decode.post == nil {
+		c.decode.post = map[string]string{}
+	}
+	return c.decode.post
+}
+
+func (c Context) filesInto() map[string][]*UploadedFile {
+	if c.Files != nil || c.decode == nil {
+		if c.Files == nil {
+			c.Files = map[string][]*UploadedFile{}
+		}
+		return c.Files
+	}
+	if c.decode.files == nil {
+		c.decode.files = map[string][]*UploadedFile{}
+	}
+	return c.decode.files
+}
+
+// files answers what has been decoded so far, forcing nothing. Cleanup and the
+// memory accounting read it: neither should parse a body to do its job.
+func (c Context) files() map[string][]*UploadedFile {
+	if c.Files != nil || c.decode == nil {
+		return c.Files
+	}
+	return c.decode.files
+}
+
+// HeaderMap answers the request headers by canonical name, building the map on
+// the first call. A request carries a dozen and most pages read none.
+func (c Context) HeaderMap() map[string]string {
+	if c.Headers != nil || c.decode == nil {
+		return c.Headers
+	}
+	c.decode.headerOnce.Do(func() {
+		r := c.decode.request
+		c.decode.headers = make(map[string]string, len(r.Header))
+		for name, values := range r.Header {
+			if len(values) > 0 {
+				c.decode.headers[name] = values[0]
+			}
+		}
+	})
+	return c.decode.headers
+}
+
+// getVars, postVars and cookieVars answer the decoded form of each input,
+// decoding it on the first call. A host that set the exported field is answered
+// with that, and nothing is decoded.
+func (c Context) getVars() *model.Array {
+	if c.GetVars != nil {
+		return c.GetVars
+	}
+	c.decodeQuery()
+	if c.decode == nil {
+		return nil
+	}
+	return c.decode.getVars
+}
+
+func (c Context) postVars() *model.Array {
+	if c.PostVars != nil {
+		return c.PostVars
+	}
+	c.decodeForm()
+	if c.decode == nil {
+		return nil
+	}
+	return c.decode.postVars
+}
+
+func (c Context) cookieVars() *model.Array {
+	if c.CookieVars != nil {
+		return c.CookieVars
+	}
+	c.decodeCookies()
+	if c.decode == nil {
+		return nil
+	}
+	return c.decode.cookieVars
+}
+
+// decodeQuery fills $_GET, reading the query string on the first call.
+//
+// RawQuery rather than r.URL.Query(): a url.Values is a map, so field order is
+// already gone, and the bracket decoder needs it.
+func (c Context) decodeQuery() {
+	if c.decode == nil {
+		return
+	}
+	c.decode.query.Do(func() {
+		r := c.decode.request
+		query := r.URL.Query()
+		c.decode.get = make(map[string]string, len(query))
+		for k, v := range query {
+			if len(v) > 0 {
+				c.decode.get[k] = v[len(v)-1]
+			}
+		}
+		c.decode.getVars = shared.ParseStr(r.URL.RawQuery, c.decode.options.inputLimits())
+	})
+}
+
+// decodeCookies fills $_COOKIE on the first call. r.Cookies() is ordered, and
+// Go does not percent-decode a cookie the way PHP does, so that happens here.
+func (c Context) decodeCookies() {
+	if c.decode == nil {
+		return
+	}
+	c.decode.cookies.Do(func() {
+		cookies := c.decode.request.Cookies()
+		pairs := make([]shared.Pair, 0, len(cookies))
+		c.decode.cookie = make(map[string]string, len(cookies))
+		for _, ck := range cookies {
+			c.decode.cookie[ck.Name] = ck.Value
+			pairs = append(pairs, shared.Pair{
+				Name:  shared.URLDecode(ck.Name),
+				Value: shared.URLDecode(ck.Value),
+			})
+		}
+		c.decode.cookieVars = shared.ParsePairs(pairs, c.decode.options.inputLimits())
+	})
+}
+
+// decodeForm fills $_POST, $_FILES and php://input on the first call.
+//
+// A body is read once and cannot be read again, so every path that wants any
+// part of it comes through here.
+func (c Context) decodeForm() {
+	if c.decode == nil {
+		return
+	}
+	c.decode.body.Do(func() {
+		c.parseBody(c.decode.request, c.decode.options)
+	})
 }
 
 // pathValues fills c.Path from the route parameters the pattern declares,
@@ -262,11 +488,10 @@ func (c Context) pathValues(r *http.Request) {
 // owns the listener is the one that can say. Set them on Context.Server after
 // building the context.
 func (c Context) serverVars(r *http.Request) {
-	c.Server["REQUEST_METHOD"] = r.Method
-	c.Server["REQUEST_URI"] = r.URL.RequestURI()
-	c.Server["QUERY_STRING"] = r.URL.RawQuery
-	c.Server["HTTP_HOST"] = r.Host
-	c.Server["SERVER_PROTOCOL"] = r.Proto
+	// REQUEST_METHOD, REQUEST_URI, QUERY_STRING, HTTP_HOST and SERVER_PROTOCOL
+	// are not written here. The request answers all five, and mapmap derives
+	// them on the read that asks, so a script that never names one costs
+	// nothing for it. What follows is what the request cannot answer alone.
 
 	// PHP splits the peer address in two, the address in REMOTE_ADDR and the
 	// port in REMOTE_PORT, where Go keeps both in RemoteAddr as "address:port".
@@ -400,8 +625,12 @@ func (c *Context) parseBody(r *http.Request, opts Options) {
 
 	for k, v := range r.PostForm {
 		if len(v) > 0 {
-			c.Post[k] = v[len(v)-1]
+			c.postInto()[k] = v[len(v)-1]
 		}
+	}
+	if c.decode != nil {
+		c.decode.postVars = c.decodeBody(r, opts)
+		return
 	}
 	c.PostVars = c.decodeBody(r, opts)
 }
@@ -464,7 +693,8 @@ func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 				c.recordError(fmt.Errorf("uploaded file %q of %d bytes exceeds the upload_max_filesize limit of %d bytes",
 					upload.Name, header.Size, maxFileSize.Bytes()))
 			}
-			c.Files[field] = append(c.Files[field], upload)
+			files := c.filesInto()
+			files[field] = append(files[field], upload)
 		}
 	}
 	// net/http spills the parts it could not hold in memory into temporary
@@ -541,7 +771,7 @@ func uploadBaseName(name string) string {
 // request. A host handler defers it for the lifetime of one request; a file the
 // script moved with move_uploaded_file is already gone and is skipped.
 func (c Context) Cleanup() {
-	for _, files := range c.Files {
+	for _, files := range c.files() {
 		for _, file := range files {
 			if file.TmpName != "" {
 				_ = os.Remove(file.TmpName)
@@ -555,7 +785,8 @@ func (c Context) Cleanup() {
 // refuse any path the request did not produce. A path the script has already
 // moved away is no longer one of them, so the copy has to still be there.
 func (c Context) IsUpload(path string) bool {
-	for _, files := range c.Files {
+	c.decodeForm()
+	for _, files := range c.files() {
 		for _, file := range files {
 			if file.TmpName != "" && file.TmpName == path {
 				_, err := os.Stat(path)
@@ -593,18 +824,29 @@ func (c Context) Errors() []error {
 // separate copies the walk counts on its own.
 func (c Context) memoryFootprint(visited visitedSet) int64 {
 	total := int64(unsafe.Sizeof(c))
-	for _, m := range []map[string]string{c.Get, c.Post, c.Path, c.Cookie, c.Server, c.Env, c.Headers} {
+	// What has been decoded, not what could be: forcing a parse to measure
+	// one would be the accounting deciding to do the work it is measuring.
+	for _, m := range c.decodedMaps() {
 		total += DeepSize(m, visited)
 	}
 	total += DeepSize(c.Argv, visited)
 	total += DeepSize(map[string][]string(c.response), visited)
-	for name, files := range c.Files {
+	for name, files := range c.files() {
 		total += 16 + int64(len(name)) + 24
 		for _, file := range files {
 			total += DeepSize(file, visited)
 		}
 	}
 	return total
+}
+
+// decodedMaps lists the string maps this Context holds right now.
+func (c Context) decodedMaps() []map[string]string {
+	maps := []map[string]string{c.Path, c.Server, c.Env}
+	if c.decode == nil {
+		return append(maps, c.Get, c.Post, c.Cookie, c.Headers)
+	}
+	return append(maps, c.decode.get, c.decode.post, c.decode.cookie, c.decode.headers)
 }
 
 // Register seeds the request superglobals and puts the request itself on the
@@ -625,16 +867,27 @@ func (c Context) Register(rt *Runtime) {
 	rt.SetContext(context.WithValue(rt.Context(), requestContextKey{}, c))
 
 	// Superglobals as ordinary PHP arrays. $_GET, $_POST and $_COOKIE alias
-	// the arrays the request parse built; the ones assembled here refill the
-	// runtime's per-name scratch container instead of allocating a new one
-	// each request.
-	rt.SetGlobal("_GET", superglobal(c.GetVars, c.Get))
-	rt.SetGlobal("_POST", superglobal(c.PostVars, c.Post))
-	rt.SetGlobal("_COOKIE", superglobal(c.CookieVars, c.Cookie))
-	rt.SetGlobal("_SERVER", c.serverArrayInto(rt.scratchArray("_SERVER")))
-	rt.SetGlobal("_ENV", mapToArrayInto(rt.scratchArray("_ENV"), c.Env))
-	rt.SetGlobal("_REQUEST", c.requestArrayInto(rt.scratchArray("_REQUEST")))
-	rt.SetGlobal("_FILES", c.filesArrayInto(rt.scratchArray("_FILES")))
+	// Every superglobal is a view over what the request holds, and each one
+	// decodes what it needs on the first read. A page that names none of them
+	// parses nothing.
+	//
+	// The layers of the request this one replaces go back to the pool. A
+	// runtime serves one request at a time, so the moment the next registers
+	// is the moment the last one is done with them.
+	releaseMapMaps(rt, superglobalNames...)
+
+	rt.SetGlobal("_GET", c.lazyInput(c.getVars, c.GetMap))
+	rt.SetGlobal("_POST", c.lazyInput(c.postVars, c.PostMap))
+	rt.SetGlobal("_COOKIE", c.lazyInput(c.cookieVars, c.CookieMap))
+	rt.SetGlobal("_SERVER", c.ServerMap())
+	rt.SetGlobal("_ENV", mapmap.New(mapmap.MapSource(c.Env)))
+	rt.SetGlobal("_REQUEST", c.lazyArray(func() *model.Array {
+		return c.requestArrayInto(model.NewArray())
+	}))
+	rt.SetGlobal("_FILES", c.lazyArray(func() *model.Array {
+		c.decodeForm()
+		return c.filesArrayInto(model.NewArray())
+	}))
 
 	argvArr := rt.scratchArray("argv")
 	for i, arg := range c.Argv {
@@ -654,7 +907,7 @@ func (c Context) Register(rt *Runtime) {
 // GetAllHeaders implements PHP getallheaders(): an associative array of the
 // incoming request headers keyed by canonical header name.
 func (c Context) GetAllHeaders() *model.Array {
-	return mapToArray(c.Headers)
+	return mapToArray(c.HeaderMap())
 }
 
 // Header implements PHP header($header[, $replace[, $code]]): it parses a
@@ -764,6 +1017,9 @@ func (c Context) RawBody() []byte {
 	if c.rawBody == nil {
 		return nil
 	}
+	// php://input is the body, so asking for it is a read of the body and
+	// decodes it if nothing has yet.
+	c.decodeForm()
 	return *c.rawBody
 }
 
@@ -826,17 +1082,17 @@ func uploadValue(file *UploadedFile, key string) any {
 // shape, $_FILES["file"]["name"], and keeps the last file sent under it, the
 // way a repeated form value assigns over the one before it.
 func (c Context) filesArrayInto(arr *model.Array) *model.Array {
-	if len(c.Files) == 0 {
+	if len(c.files()) == 0 {
 		return arr
 	}
-	fields := make([]string, 0, len(c.Files))
-	for field := range c.Files {
+	fields := make([]string, 0, len(c.files()))
+	for field := range c.files() {
 		fields = append(fields, field)
 	}
 	sort.Strings(fields)
 
 	for _, field := range fields {
-		files := c.Files[field]
+		files := c.files()[field]
 		if len(files) == 0 {
 			continue
 		}
@@ -876,6 +1132,100 @@ func uploadListArray(files []*UploadedFile) *model.Array {
 // because that is what all but two of PHP's server keys are; the two that are
 // not, REQUEST_TIME as an integer and REQUEST_TIME_FLOAT as a float, get their
 // type back here, so a script comparing either with === sees what PHP gives it.
+// releaseMapMaps hands back the edit layers of the named globals, if they are
+// views and if anything wrote to them.
+func releaseMapMaps(rt *Runtime, names ...string) {
+	for _, name := range names {
+		if previous, ok := rt.auto.Lookup(name); ok {
+			if m, ok := previous.(*mapmap.MapMap); ok {
+				m.Release()
+			}
+		}
+	}
+}
+
+// superglobalNames are the request variables Register seeds, which are the
+// views whose layers go back to the pool when the next request arrives.
+var superglobalNames = []string{"_GET", "_POST", "_COOKIE", "_SERVER", "_ENV", "_REQUEST", "_FILES"}
+
+// lazyArray renders a superglobal that is assembled rather than decoded, as
+// $_REQUEST is from the four inputs it merges and $_FILES from the body.
+func (c Context) lazyArray(build func() *model.Array) *mapmap.MapMap {
+	if c.decode == nil {
+		return mapmap.New(arraySource{build()})
+	}
+	return mapmap.New(mapmap.Lazy(func() mapmap.Source { return arraySource{build()} }))
+}
+
+// lazyInput renders one decoded input as a view whose source is the decode
+// itself, so naming the variable is what parses it.
+//
+// decoded answers the bracket-decoded array once it exists, and flat the map a
+// host set. A Context with nothing to decode reads flat directly, which is
+// every CLI run.
+func (c Context) lazyInput(decoded func() *model.Array, flat func() map[string]string) *mapmap.MapMap {
+	if c.decode == nil {
+		return mapmap.New(arraySource{superglobal(decoded(), flat())})
+	}
+	return mapmap.New(mapmap.Lazy(func() mapmap.Source {
+		return arraySource{superglobal(decoded(), flat())}
+	}))
+}
+
+// arraySource reads a *model.Array as a mapmap source, so a decoded input is
+// read where it lies instead of being copied into a second shape.
+type arraySource struct{ array *model.Array }
+
+// Get answers the entry under key.
+func (s arraySource) Get(key string) (any, bool) {
+	if s.array == nil {
+		return nil, false
+	}
+	return s.array.Get(normalizeKey(key))
+}
+
+// Len counts the entries.
+func (s arraySource) Len() int {
+	if s.array == nil {
+		return 0
+	}
+	return s.array.Len()
+}
+
+// Range visits the entries in the order they were decoded.
+func (s arraySource) Range(fn func(key string, value any) bool) bool {
+	if s.array == nil {
+		return true
+	}
+	done := true
+	s.array.Range(func(key, val any) bool {
+		done = fn(phpval.String(key), val)
+		return done
+	})
+	return done
+}
+
+// ServerMap renders $_SERVER as a view rather than an array.
+//
+// The names are read through the source, which is the request where there is
+// one, so nothing is copied for a script that reads a key or two and nothing at
+// all for one that reads none. The two times are seeded because PHP answers
+// them as numbers and every other name as a string.
+func (c Context) ServerMap() *mapmap.MapMap {
+	src := c.ServerSource
+	if src == nil {
+		src = mapmap.MapSource(c.Server)
+	}
+	m := mapmap.New(src)
+	if seconds, err := strconv.ParseInt(c.Server["REQUEST_TIME"], 10, 64); err == nil {
+		m.Write("REQUEST_TIME", seconds)
+	}
+	if exact, err := strconv.ParseFloat(c.Server["REQUEST_TIME_FLOAT"], 64); err == nil {
+		m.Write("REQUEST_TIME_FLOAT", exact)
+	}
+	return m
+}
+
 func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 	mapToArrayInto(arr, c.Server)
 	if seconds, err := strconv.ParseInt(c.Server["REQUEST_TIME"], 10, 64); err == nil {
@@ -897,10 +1247,13 @@ func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 // Every entry is a copy. $_REQUEST is its own array in PHP, so a write to it
 // must not reach $_GET, $_POST or $_COOKIE, nor theirs reach it.
 func (c Context) requestArrayInto(arr *model.Array) *model.Array {
+	// Through the accessors, because $_REQUEST is the four merged and reading
+	// it is a read of each: the fields hold nothing until the request is
+	// decoded into them.
 	for _, source := range []*model.Array{
-		superglobal(c.GetVars, c.Get),
-		superglobal(c.PostVars, c.Post),
-		superglobal(c.CookieVars, c.Cookie),
+		superglobal(c.getVars(), c.GetMap()),
+		superglobal(c.postVars(), c.PostMap()),
+		superglobal(c.cookieVars(), c.CookieMap()),
 		mapToArray(c.Path),
 	} {
 		source.Range(func(key, val any) bool {

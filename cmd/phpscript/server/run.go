@@ -518,12 +518,20 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 		runnerOptions.Include = globals.Include
 	}
 
+	// The handler is built first because it owns the site's caches, and the
+	// annotated files run off the same pair.
+	files, err := newHandler(os.DirFS(root), root, documentRoot, runnerOptions, appConfig.Flatstack.Enabled, appConfig.Autoindex, observers...)
+	if err != nil {
+		return err
+	}
+
 	// Startup jobs and routed endpoints read the same source tree and execute
 	// PHP the same way, so they share one set of options.
-	annotationOptions := annotationOptions(appConfig, runnerOptions, observers, root, "")
+	annotationOptions := sharedCaches(files, annotationOptions(appConfig, runnerOptions, observers, root, ""))
 	if cover != nil {
 		cover.watch(os.DirFS(root))
 		annotationOptions = append(annotationOptions, annotations.WithCoverage(cover.aggregator))
+		files.coverage = cover.aggregator
 	}
 
 	// A single application server keeps a failing @startup fatal: there is no
@@ -532,13 +540,6 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	svc.Register(annotations.NewStartup(os.DirFS(root), annotationOptions...))
 	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
 
-	files, err := newHandler(os.DirFS(root), root, documentRoot, runnerOptions, appConfig.Flatstack.Enabled, appConfig.Autoindex, observers...)
-	if err != nil {
-		return err
-	}
-	if cover != nil {
-		files.coverage = cover.aggregator
-	}
 	// The routed endpoints are handed the file handler's error pages: they live
 	// under the site's document root, which is the file handler's to look in.
 	if appConfig.Routes.Enabled {
@@ -546,6 +547,7 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
 		svc.Register(annotations.NewRoute(os.DirFS(root), options...))
 	}
+	precompile(files, root)
 	svc.Register(newModule("phpserver", files))
 	return nil
 }

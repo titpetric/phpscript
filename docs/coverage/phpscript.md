@@ -6,7 +6,7 @@ Statement coverage of the Go packages, one row per package. [phpscript-detail.md
 
 ```
 github.com/titpetric/phpscript, symbols 8, coverage 21.15%
-github.com/titpetric/phpscript/annotations, symbols 48, coverage 86.16%
+github.com/titpetric/phpscript/annotations, symbols 49, coverage 88.49%
 github.com/titpetric/phpscript/cmd/phpscript/ast, symbols 3, coverage 0.00%
 github.com/titpetric/phpscript/cmd/phpscript/fmt, symbols 3, coverage 0.00%
 github.com/titpetric/phpscript/cmd/phpscript/helpdocs, symbols 11, coverage 96.48%
@@ -14,30 +14,31 @@ github.com/titpetric/phpscript/cmd/phpscript/info, symbols 12, coverage 79.20%
 github.com/titpetric/phpscript/cmd/phpscript/lint, symbols 12, coverage 73.10%
 github.com/titpetric/phpscript/cmd/phpscript/list, symbols 3, coverage 30.00%
 github.com/titpetric/phpscript/cmd/phpscript/run, symbols 4, coverage 20.00%
-github.com/titpetric/phpscript/cmd/phpscript/server, symbols 56, coverage 85.01%
+github.com/titpetric/phpscript/cmd/phpscript/server, symbols 58, coverage 85.25%
 github.com/titpetric/phpscript/cmd/phpscript/test, symbols 104, coverage 83.36%
 github.com/titpetric/phpscript/cmd/phpscript/version, symbols 2, coverage 0.00%
 github.com/titpetric/phpscript/config, symbols 26, coverage 88.61%
 github.com/titpetric/phpscript/flatstack, symbols 9, coverage 55.56%
-github.com/titpetric/phpscript/flatstack/engine, symbols 59, coverage 87.77%
+github.com/titpetric/phpscript/flatstack/engine, symbols 59, coverage 87.80%
 github.com/titpetric/phpscript/formatter, symbols 70, coverage 79.60%
 github.com/titpetric/phpscript/internal/apidoc, symbols 55, coverage 84.01%
 github.com/titpetric/phpscript/internal/arrayi64, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/internal/flags, symbols 14, coverage 91.52%
-github.com/titpetric/phpscript/internal/phpval, symbols 43, coverage 93.64%
+github.com/titpetric/phpscript/internal/phpval, symbols 43, coverage 93.45%
 github.com/titpetric/phpscript/internal/table, symbols 13, coverage 100.00%
 github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
 github.com/titpetric/phpscript/model, symbols 154, coverage 37.04%
-github.com/titpetric/phpscript/parser, symbols 165, coverage 91.34%
-github.com/titpetric/phpscript/runner, symbols 410, coverage 86.85%
+github.com/titpetric/phpscript/parser, symbols 167, coverage 91.82%
+github.com/titpetric/phpscript/runner, symbols 439, coverage 86.59%
 github.com/titpetric/phpscript/runner/bindings, symbols 24, coverage 86.72%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
 github.com/titpetric/phpscript/runner/expr, symbols 21, coverage 83.37%
+github.com/titpetric/phpscript/runner/mapmap, symbols 26, coverage 75.17%
 github.com/titpetric/phpscript/scripts/list-apis, symbols 1, coverage 0.00%
 github.com/titpetric/phpscript/stdlib, symbols 9, coverage 96.30%
 github.com/titpetric/phpscript/stdlib/compat, symbols 49, coverage 86.92%
-github.com/titpetric/phpscript/stdlib/core, symbols 223, coverage 84.83%
+github.com/titpetric/phpscript/stdlib/core, symbols 223, coverage 84.82%
 github.com/titpetric/phpscript/stdlib/crypto, symbols 13, coverage 86.40%
 github.com/titpetric/phpscript/stdlib/database, symbols 58, coverage 85.42%
 github.com/titpetric/phpscript/stdlib/files, symbols 38, coverage 89.71%
@@ -53,5 +54,5 @@ github.com/titpetric/phpscript/stdlib/shared, symbols 13, coverage 95.90%
 github.com/titpetric/phpscript/stdlib/span, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/time, symbols 11, coverage 42.78%
 github.com/titpetric/phpscript/telemetry, symbols 25, coverage 94.00%
-github.com/titpetric/phpscript/tests, symbols 81, coverage 85.43%
+github.com/titpetric/phpscript/tests, symbols 90, coverage 85.74%
 ```

@@ -23,6 +23,7 @@ type config struct {
 	observers     []runner.Observer
 	runtimeFuncs  []RuntimeFunc
 	exprCache     *runner.ExprCache
+	includeCache  *runner.IncludeCache
 	excludedDirs  map[string]struct{}
 	moduleSuffix  string
 	errorPages    ErrorPageFunc
@@ -110,6 +111,18 @@ func WithRuntimeFunc(fn RuntimeFunc) Option {
 func WithExprCache(cache *runner.ExprCache) Option {
 	return func(c *config) {
 		c.exprCache = cache
+	}
+}
+
+// WithIncludeCache sets a shared include cache used by routed endpoints.
+//
+// Include paths are relative to one filesystem root, so a cache belongs to one
+// source tree. A host that precompiles that tree passes the cache it filled,
+// and the endpoints read their entrypoints back out of it rather than parsing
+// them per request; a host that passes none gets a cache of its own.
+func WithIncludeCache(cache *runner.IncludeCache) Option {
+	return func(c *config) {
+		c.includeCache = cache
 	}
 }
 

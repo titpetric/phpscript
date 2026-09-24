@@ -101,7 +101,7 @@ func (s *Manager) currentID(ctx context.Context) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	for name, value := range request.Headers {
+	for name, value := range request.HeaderMap() {
 		if strings.EqualFold(name, "Authorize") && strings.TrimSpace(value) != "" {
 			return validSessionID(strings.TrimSpace(value))
 		}

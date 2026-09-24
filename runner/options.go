@@ -51,6 +51,16 @@ type Options struct {
 	// covers a server, a script run and a fixture run of the same tree.
 	Include string `yaml:"include"`
 
+	// Precompile moves parsing and bytecode compilation off the request and
+	// onto startup. A host walks its source tree through a Precompiler before
+	// it serves anything, and LoadFile reads an entrypoint back out of the
+	// include cache rather than parsing the file again, so every request after
+	// the first runs the AST the caches are already keyed by.
+	//
+	// Nothing is invalidated. An edited file is picked up by a reload or a
+	// restart, and what the tree parsed to is resident until then.
+	Precompile bool `yaml:"precompile"`
+
 	// WritablePaths optionally restricts filesystem writes. When empty, writes are
 	// left to normal OS/user permissions. Enforcement is done by filesystem shims.
 	WritablePaths []string `yaml:"writable_paths"`

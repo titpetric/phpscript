@@ -16,6 +16,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -23,7 +24,27 @@ import (
 )
 
 // Parse compiles PHP source into a model.Program.
+//
+// __FILE__, __DIR__ and __LINE__ are left as names for the runtime to answer,
+// because a caller with no file cannot say what they are. The formatter and the
+// linter read this, and both have to print back what was written.
 func Parse(src string) (*model.Program, error) {
+	return parse(src, "")
+}
+
+// ParseFile compiles src as the contents of name, resolving the magic constants
+// that name settles.
+//
+// php resolves __FILE__, __DIR__ and __LINE__ when it compiles a file, and this
+// does the same: each becomes a literal in the AST. A program then carries no
+// lookup for them, so neither engine writes them into a scope per call frame or
+// per statement, and neither reads them back. name is the path a script sees,
+// which is the runtime's own spelling rather than the host's.
+func ParseFile(name, src string) (*model.Program, error) {
+	return parse(src, name)
+}
+
+func parse(src, file string) (*model.Program, error) {
 	toks, err := newLexer(src).run()
 	if err != nil {
 		return nil, err
@@ -37,6 +58,9 @@ func Parse(src string) (*model.Program, error) {
 	// One span per statement; statements run around one per sixteen tokens, so
 	// the hint saves the map's rehash-and-copy cycle (rule 6).
 	p := &parser{toks: toks, spans: make(map[model.Stmt]model.SourceSpan, len(toks)/16+8)}
+	if file != "" {
+		p.file, p.dir = file, path.Dir(file)
+	}
 	stmts, err := p.parseStmts(true)
 	if err != nil {
 		return nil, err
@@ -54,6 +78,16 @@ type parser struct {
 	toks      []token
 	i         int
 	namespace string
+	// file and dir are what __FILE__ and __DIR__ compile to, empty when the
+	// caller named no file.
+	file string
+	dir  string
+
+	// function and class are what __FUNCTION__ and __CLASS__ compile to in
+	// the body being parsed. Both are empty at the top level, which is what
+	// php answers there.
+	function string
+	class     string
 	// imports maps the short name (or explicit alias) declared by a `use`
 	// statement to the fully-qualified name it stands for. It stays nil in the
 	// common case of a file with no imports.
@@ -1002,7 +1036,14 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 	}
 	fd.Params = params
 	fd.ReturnType = p.parseReturnType()
+
+	// The body is parsed under this function's name, so __FUNCTION__ and
+	// __METHOD__ compile to it. fd.Name is already what php answers: the
+	// namespace-qualified name of a free function, the bare name of a method.
+	wasFunction := p.function
+	p.function = fd.Name
 	body, err := p.parseBlock()
+	p.function = wasFunction
 	if err != nil {
 		return nil, err
 	}
@@ -1220,6 +1261,9 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 	if err := p.parseClassHeritage(cd); err != nil {
 		return nil, err
 	}
+	wasClass := p.class
+	p.class = cd.Name
+	defer func() { p.class = wasClass }()
 	return cd, p.parseClassBody(cd)
 }
 

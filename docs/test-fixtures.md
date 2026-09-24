@@ -240,6 +240,12 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | var_dump.phpt         | PASS       | PASS    | PASS |
 | var_export.phpt       | PASS       | PASS    | PASS |
 
+## tests/fixtures/paths/api
+
+| tests/fixtures/paths/api | Flat stack | Runtime | PHP  |
+|--------------------------|------------|---------|------|
+| magic_scope_test.php     | PASS       | PASS    | PASS |
+
 ## tests/fixtures/paths
 
 | tests/fixtures/paths     | Flat stack | Runtime | PHP  |
@@ -393,6 +399,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/namespaces  | 5        | 5      | 0      |
 | tests/fixtures/oop         | 27       | 27     | 0      |
 | tests/fixtures/output      | 4        | 4      | 0      |
+| tests/fixtures/paths/api   | 1        | 1      | 0      |
 | tests/fixtures/paths       | 7        | 7      | 0      |
 | tests/fixtures/pexec       | 3        | 3      | 0      |
 | tests/fixtures/regex       | 7        | 7      | 0      |
@@ -402,4 +409,4 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/strings     | 20       | 20     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 1        | 1      | 0      |
-| **Total**                  | 250      | 250    | 0      |
+| **Total**                  | 251      | 251    | 0      |

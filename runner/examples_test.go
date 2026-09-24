@@ -17,9 +17,9 @@ func ExampleContext() {
 	ctx := runner.FromRequest(req)
 	ctx.Header("X-Powered-By: phpscript")
 
-	fmt.Println(ctx.Get["tab"])
+	fmt.Println(ctx.GetMap()["tab"])
 	fmt.Println(ctx.Path["id"])
-	fmt.Println(ctx.Headers["X-Request-Id"])
+	fmt.Println(ctx.HeaderMap()["X-Request-Id"])
 	fmt.Println(ctx.ResponseHeaders().Get("X-Powered-By"))
 
 	// Output:

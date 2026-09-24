@@ -511,6 +511,32 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 	if name == "__NAMESPACE__" {
 		return p.newLit(p.namespace), nil
 	}
+	// The magic constants are compiled, not looked up, the way php compiles
+	// them. __LINE__ needs the token just consumed, which is the name itself.
+	// The other two need a file, and stay names when the caller gave none.
+	switch name {
+	case "__LINE__":
+		return p.newLit(p.toks[p.i-1].line), nil
+	case "__FUNCTION__":
+		return p.newLit(p.function), nil
+	case "__CLASS__":
+		return p.newLit(p.class), nil
+	case "__METHOD__":
+		// php spells a method Class::method and a free function by its name
+		// alone, not ::name.
+		if p.class != "" && p.function != "" {
+			return p.newLit(p.class + "::" + p.function), nil
+		}
+		return p.newLit(p.function), nil
+	case "__FILE__":
+		if p.file != "" {
+			return p.newLit(p.file), nil
+		}
+	case "__DIR__":
+		if p.file != "" {
+			return p.newLit(p.dir), nil
+		}
+	}
 	return p.newConstRef(name), nil
 }
 

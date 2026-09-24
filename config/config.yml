@@ -1,5 +1,11 @@
 runner:
   work_dir: "."
+  # Parse and compile every .php file below the application root when the
+  # server starts, instead of when a request first reaches one. The cost moves
+  # from the request to startup and the memory it holds is resident from there
+  # on. Nothing is invalidated: an edited file needs `kill -HUP` or a restart.
+  # A virtual host sets its own in the runner block of its phpscript.yml.
+  precompile: true
   writable_paths: []
   # A file included ahead of every entrypoint, once per request, for the
   # functions and classes an application expects to be there whatever it is

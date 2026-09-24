@@ -92,7 +92,7 @@ echo "uploaded route";
 	return handler, modules, appConfig
 }
 
-func write(t *testing.T, name, content string) {
+func write(t testing.TB, name, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 		t.Fatal(err)
@@ -102,7 +102,7 @@ func write(t *testing.T, name, content string) {
 	}
 }
 
-func get(t *testing.T, handler http.Handler, host, path string) *httptest.ResponseRecorder {
+func get(t testing.TB, handler http.Handler, host, path string) *httptest.ResponseRecorder {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodGet, path, nil)
 	request.Host = host

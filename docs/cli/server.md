@@ -101,6 +101,8 @@ It reads `server.pid_file` from the same configuration the server was started wi
 
 The socket is held across the reload, so the address survives and connections queued on it are served by whichever generation takes them. Everything above it is rebuilt from the file as it is on disk now: the virtual host list, each site's `phpscript.yml`, the routes, and the `@startup` jobs, which run again.
 
+That rebuild includes the caches, so a reload is also how an edited `.php` file is picked up under [`runner.precompile`](../configuration.md#precompilation). Nothing reads a modification time; the new generation walks each site's tree and the old one's parsed programs go with it.
+
 A configuration the server cannot use is refused before anything is torn down, and the server goes on serving what it already was:
 
 ```text

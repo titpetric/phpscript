@@ -1,0 +1,10 @@
+4
+1:5
+magic_scope_test.php
+api
+[][][]
+freeFunction||freeFunction
+instance|Widget|Widget::instance
+statically|Widget|Widget::statically
+27
+instance|Widget|Widget::instance|ask

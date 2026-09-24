@@ -206,6 +206,50 @@ Three kinds of fixture cannot be checked this way, and none of them is an excuse
 
 A fixture in one of these groups states in its `description` what defines the expected output, because there is no second implementation to appeal to, and opts the php runtime out with `runner`.
 
+## `_test.php` fixtures
+
+The second form is two files rather than one document. `<name>_test.php` holds the body and `<name>_test.txt` beside it holds the output the runtimes are held to. `phpscript test` collects the pair from the same paths as a `.phpt`, under the same flags, and reports it in the same tables.
+
+`tests/fixtures/paths/api/magic_scope_test.php`:
+
+```php
+<?php
+
+echo __LINE__, "\n";
+echo basename(__FILE__), "\n";
+echo basename(__DIR__), "\n";
+
+class Widget {
+	public function instance() {
+		return __FUNCTION__ . "|" . __CLASS__ . "|" . __METHOD__;
+	}
+}
+echo (new Widget)->instance(), "\n";
+```
+
+`tests/fixtures/paths/api/magic_scope_test.txt`:
+
+```
+3
+magic_scope_test.php
+api
+instance|Widget|Widget::instance
+```
+
+The body is an ordinary php file, and two things follow from that.
+
+Every runtime reads it from where it lies, the php column included, so `__FILE__` and `__DIR__` compile to a path all three agree on. A `.phpt` body is a section of a document, and the php column runs a throwaway copy under a name nothing else sees, so a fixture reading either constant cannot assert the file name.
+
+It also runs by hand. `php tests/fixtures/paths/api/magic_scope_test.php` executes the body, which is how the `.txt` is written:
+
+```sh
+cd tests/fixtures/paths/api && php magic_scope_test.php > magic_scope_test.txt
+```
+
+That is the same rule a `.phpt` expected section is written under: the output is php's, pasted, not phpscript's.
+
+What the form gives up is the frontmatter. There is nowhere to declare `runner`, `request`, `options`, `root` or `serial`, so a fixture needing one of those is a `.phpt`. A `_test.php` with no `_test.txt` beside it is a php file someone put in the tree rather than a fixture, and is not collected.
+
 ## Suite configuration
 
 A folder that needs a bootstrap, a connection or a schema writes it down rather than putting it on every command line that reaches it. A `phpscript.yml` in the fixture tree marks a **suite root**: the directory whose fixtures run under it. A fixture resolves the nearest such file at or above its own directory, and the run resolves the nearest one at or above the working directory. A tree holding none behaves as it always did, so this is a folder opting in.
@@ -258,7 +302,7 @@ runner:
 
 Both `flatstack` and `php` are accepted, and an omitted key means the runtime is used. The default runtime cannot be opted out of, because its output is what the expected-output section states.
 
-Opt out only where the runtime has nothing to say about the fixture: `php: false` for the three groups above, `flatstack: false` where a program the bytecode engine compiles should still not run there. Syntax the bytecode engine does not compile needs no opt-out: the harness compiles the program through the flat compiler before running — into the run's own cache, so the run reuses the result — and reports the fixture as SKIP for that column. It does not delegate to the compatibility interpreter, which embedding does, because a fallback run would record the interpreter's result and cost under the flatstack name.
+Opt out only where the runtime has nothing to say about the fixture: `php: false` for the three groups above, `flatstack: false` where a program the bytecode engine compiles should still not run there. Syntax the bytecode engine does not compile needs no opt-out: the harness compiles the program through the flat compiler before running, into the run's own cache so the run reuses the result, and reports the fixture as SKIP for that column. It does not delegate to the compatibility interpreter, which embedding does, because a fallback run would record the interpreter's result and cost under the flatstack name.
 
 ## Testing across runtimes
 

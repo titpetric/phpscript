@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"testing/fstest"
 	"time"
 
 	yaml "github.com/goccy/go-yaml"
@@ -24,7 +25,6 @@ import (
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/model"
-	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
@@ -56,6 +56,20 @@ type fixtureArea struct {
 	Suite    *Suite
 }
 
+// isFixturePath reports whether a file is a fixture: the .phpt document, or a
+// _test.php body with its expected output beside it. A _test.php with no .txt
+// is a php file someone put in the tree, not a fixture.
+func isFixturePath(name string) bool {
+	if strings.HasSuffix(name, ".phpt") {
+		return true
+	}
+	if !strings.HasSuffix(name, GoldenSuffix) {
+		return false
+	}
+	_, err := os.Stat(goldenOutput(name))
+	return err == nil
+}
+
 // embeddedFixtures walks the embedded tree and groups every .phpt by the area
 // directory holding it. A fixture's include root is that directory, which is
 // also where the php runner executes, so all three runners resolve a relative
@@ -73,7 +87,11 @@ func embeddedFixtures() ([]fixtureArea, error) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.HasSuffix(p, ".phpt") {
+		if d.IsDir() {
+			return nil
+		}
+		golden := strings.HasSuffix(p, GoldenSuffix)
+		if !golden && !strings.HasSuffix(p, ".phpt") {
 			return nil
 		}
 
@@ -81,8 +99,16 @@ func embeddedFixtures() ([]fixtureArea, error) {
 		if err != nil {
 			return fmt.Errorf("read %s: %w", p, err)
 		}
-		fx, err := ParseFixture(data, p)
-		if err != nil {
+		var fx *Fixture
+		if golden {
+			expected, err := fixturesFS.ReadFile(goldenOutput(p))
+			if err != nil {
+				// A body with no expected output beside it is a php file in
+				// the tree, not a fixture.
+				return nil
+			}
+			fx = ParseGolden(data, expected, p)
+		} else if fx, err = ParseFixture(data, p); err != nil {
 			return fmt.Errorf("parse %s: %w", p, err)
 		}
 
@@ -119,6 +145,9 @@ func embeddedFixtures() ([]fixtureArea, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+	for _, area := range areas {
+		ShareSources(area.Fixtures)
 	}
 	return areas, nil
 }
@@ -190,9 +219,11 @@ type Fixture struct {
 	mail        model.MailProvider
 	coverage    *coverage.Collector
 	rootFS      fs.FS
+	sources     fstest.MapFS
+	rootKey     string
+	runtimeKeyS string
 	mu          sync.Mutex
-	parsed      *model.Program
-	parsedErr   error
+	prog        *model.Program
 	interp      *runner.Runtime
 	flatRT      *flatstack.Runtime
 	flatExpr    *flatstack.ExprCache
@@ -221,6 +252,75 @@ type TestResult struct {
 // relative include to the same file.
 func (f *Fixture) SetRootFS(root fs.FS) {
 	f.rootFS = root
+}
+
+// sourceName is the file a fixture's PHP section is read from.
+//
+// A fixture is a document rather than a file the runtime can open, so its body
+// is served as one. The name carries the .phpt through, which no real file in
+// the tree ends in, so nothing it includes can be shadowed by it.
+//
+// It keeps the fixture's whole path rather than its base, because the parser
+// compiles __DIR__ from the name a file is read under: served at the area root
+// the name has no directory, and a fixture reading __DIR__ would see "/"
+// instead of the folder it was written in.
+func (f *Fixture) sourceName() string {
+	name := fsName(filepath.ToSlash(f.Path))
+	// A .php fixture is already a file the runtime can open, under a name it
+	// reads back from __FILE__. Only a .phpt needs one invented for it.
+	if path.Ext(name) == ".php" {
+		return name
+	}
+	return name + ".php"
+}
+
+// fsName turns a path as the caller spelled it into one an fs.FS accepts,
+// keeping as much of the directory as it can.
+//
+// A fixture is named from the working directory, so it arrives absolute or
+// with leading ".." segments, and fs.ValidPath rejects both. Dropping the
+// leading segments keeps the folder the fixture sits in, which is what __DIR__
+// is compiled from.
+func fsName(p string) string {
+	p = path.Clean(p)
+	p = strings.TrimPrefix(p, "/")
+	for strings.HasPrefix(p, "../") {
+		p = strings.TrimPrefix(p, "../")
+	}
+	if p == ".." || p == "." || p == "" || !fs.ValidPath(p) {
+		return path.Base(p)
+	}
+	return p
+}
+
+// sourceFS lays the fixture bodies over the tree they belong to, as the second
+// layer rather than the first: unionFS resolves a name to the first layer that
+// opens it and does not merge directory listings, so a leading layer holding
+// only the bodies would answer "." with a directory holding only those, and
+// scandir would stop seeing the tree.
+func (f *Fixture) sourceFS(root fs.FS) fs.FS {
+	sources := f.sources
+	if sources == nil {
+		sources = fstest.MapFS{f.sourceName(): &fstest.MapFile{Data: []byte(f.PHP)}}
+	}
+	return unionFS{root, sources}
+}
+
+// ShareSources gives the fixtures of one directory a filesystem holding every
+// body in it, so precompiling that tree compiles all of them at once rather
+// than one per fixture.
+func ShareSources(fixtures []*Fixture) {
+	byRoot := map[string]fstest.MapFS{}
+	for _, f := range fixtures {
+		root := f.cacheRoot()
+		if byRoot[root] == nil {
+			byRoot[root] = fstest.MapFS{}
+		}
+		byRoot[root][f.sourceName()] = &fstest.MapFile{Data: []byte(f.PHP)}
+	}
+	for _, f := range fixtures {
+		f.sources = byRoot[f.cacheRoot()]
+	}
 }
 
 // Cache scopes, naming how far a parsed include and a compiled expression
@@ -255,7 +355,28 @@ func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.Exp
 		return runner.NewIncludeCache(), runner.NewExprCache()
 	}
 	w := currentWorker(ctx)
-	return w.includeFor(f.cacheRoot()), w.expr
+	// The fixture is passed rather than its trees, because this runs per
+	// execution: building them means building the fixture's whole options
+	// struct, and a method value handed over as a thunk allocates a closure
+	// every time for a cache that was filled on the first run.
+	return w.includeFor(f.cacheRoot(), f, w.expr), w.expr
+}
+
+// precompileFS is the tree the precompiler walks: the fixture's own root, and
+// the bodies of the directory as a second filesystem.
+//
+// They are two rather than one because a walk cannot see through the overlay.
+// unionFS answers Open from the first layer that has the name and implements
+// no ReadDir, so fs.WalkDir over it lists the real tree alone and every body
+// would be skipped. Merging the listings instead is not open: scandir(".") is
+// the same call, and a fixture reading its own directory would start seeing
+// the other fixtures' bodies in it.
+func (f *Fixture) precompileFS() []fs.FS {
+	trees := []fs.FS{f.runnerOptions().RootFS}
+	if f.sources != nil {
+		trees = append(trees, f.sources)
+	}
+	return trees
 }
 
 // flatCaches is caches for the bytecode runtime.
@@ -327,7 +448,10 @@ func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Ru
 // bindings to a directory, so neither survives a move. Fixtures arrive grouped
 // by folder, so the key changes once per group rather than once per fixture.
 func (f *Fixture) runtimeKey() string {
-	return fmt.Sprintf("%s\x00%v", f.cacheRoot(), f.Options)
+	if f.runtimeKeyS == "" {
+		f.runtimeKeyS = fmt.Sprintf("%s\x00%v", f.cacheRoot(), f.Options)
+	}
+	return f.runtimeKeyS
 }
 
 // worker holds what one serial worker loop reuses across the fixtures it runs.
@@ -362,14 +486,23 @@ func newWorker() *worker {
 	}
 }
 
-// includeFor answers this worker's cache for one include root, building it on
-// first use. A worker runs its fixtures serially, so no lock is needed here.
-func (w *worker) includeFor(root string) *runner.IncludeCache {
+// includeFor answers this worker's cache for one include root, precompiling the
+// tree the first time a fixture of that root asks for it. A worker runs its
+// fixtures serially, so no lock is needed here.
+//
+// The pass puts the fixtures in the cache before one of them runs: every .php
+// below the root, the bodies among them, is parsed and compiled once, so a
+// fixture and a repeat of it read the program back rather than building it
+// again.
+func (w *worker) includeFor(root string, f *Fixture, expr *runner.ExprCache) *runner.IncludeCache {
 	if c, ok := w.include[root]; ok {
 		return c
 	}
 	c := runner.NewIncludeCache()
 	w.include[root] = c
+	for _, tree := range f.precompileFS() {
+		runner.Precompiler{Root: tree, Includes: c, Exprs: expr}.Run()
+	}
 	return c
 }
 
@@ -425,6 +558,16 @@ func currentWorker(ctx context.Context) *worker {
 // can both be called "suite". A fixture given an app root resolves against that
 // too, so the key names both trees.
 func (f *Fixture) cacheRoot() string {
+	if f.rootKey != "" {
+		return f.rootKey
+	}
+	f.rootKey = f.buildCacheRoot()
+	return f.rootKey
+}
+
+// buildCacheRoot spells the key. It is held because absPath reaches the OS for
+// the working directory, and this is asked once per execution.
+func (f *Fixture) buildCacheRoot() string {
 	root := absPath(f.RootDir())
 	if f.appRoot != "" {
 		return root + "\x00" + absPath(f.appRoot)
@@ -564,6 +707,7 @@ func (f *Fixture) runnerOptions() runner.Options {
 	options.RootFS = f.rootFS
 	options.Database = f.database
 	options.Mail = f.mail
+	options.Precompile = true
 	if f.realRoot() {
 		// A fixture that names a root wants the real filesystem: it is reaching
 		// for a tree phpscript does not embed, a vendor directory being the
@@ -580,11 +724,40 @@ func (f *Fixture) runnerOptions() runner.Options {
 	if options.RootFS == nil {
 		options.RootFS = testPHPFS()
 	}
+	options.RootFS = f.sourceFS(options.RootFS)
 	options.Stdin = f.stdin()
 	return options
 }
 
 // ParseFixture splits a .phpt file into its three sections and parses the YAML metadata.
+// GoldenSuffix and GoldenOutputSuffix name the second fixture form: a php file
+// the runtimes execute, and the output they are held to beside it.
+//
+// The body is an ordinary file rather than a section of a document, so php
+// runs it where it lies and __FILE__ and __DIR__ read back the path it was
+// written at. It also means the body can be run by hand, which a .phpt cannot.
+// What it gives up is the frontmatter: a fixture needing one declares a .phpt.
+const (
+	GoldenSuffix       = "_test.php"
+	GoldenOutputSuffix = "_test.txt"
+)
+
+// ParseGolden builds a fixture from a _test.php body and the _test.txt beside
+// it. Both are taken as they are; there is nothing to parse out of either.
+func ParseGolden(body, expected []byte, path string) *Fixture {
+	return &Fixture{
+		Name:     strings.TrimSuffix(filepath.Base(path), GoldenSuffix),
+		PHP:      strings.ReplaceAll(string(body), "\r\n", "\n"),
+		Expected: strings.TrimRight(strings.ReplaceAll(string(expected), "\r\n", "\n"), "\n"),
+		Path:     path,
+	}
+}
+
+// goldenOutput names the expected-output file beside a _test.php body.
+func goldenOutput(path string) string {
+	return strings.TrimSuffix(path, GoldenSuffix) + GoldenOutputSuffix
+}
+
 func ParseFixture(data []byte, path ...string) (*Fixture, error) {
 	normalized := strings.ReplaceAll(string(data), "\r\n", "\n")
 	parts := strings.SplitN(normalized, "\n---\n", 3)
@@ -661,7 +834,7 @@ func FindFixtures(paths []string) ([]*Fixture, error) {
 				}
 				return nil
 			}
-			if strings.HasSuffix(path, ".phpt") && !seen[path] {
+			if isFixturePath(path) && !seen[path] {
 				seen[path] = true
 				fx, err := loadFixtureFile(path)
 				if err != nil {
@@ -679,20 +852,30 @@ func FindFixtures(paths []string) ([]*Fixture, error) {
 	sort.Slice(fixtures, func(i, j int) bool {
 		return fixtures[i].Path < fixtures[j].Path
 	})
+	ShareSources(fixtures)
 
 	return fixtures, nil
 }
 
-func loadFixtureFile(path string) (*Fixture, error) {
-	data, err := os.ReadFile(path)
+func loadFixtureFile(name string) (*Fixture, error) {
+	data, err := os.ReadFile(name)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", path, err)
+		return nil, fmt.Errorf("read %s: %w", name, err)
 	}
-	fx, err := ParseFixture(data, path)
-	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+	var fx *Fixture
+	if strings.HasSuffix(name, GoldenSuffix) {
+		expected, err := os.ReadFile(goldenOutput(name))
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", goldenOutput(name), err)
+		}
+		fx = ParseGolden(data, expected, name)
+	} else {
+		fx, err = ParseFixture(data, name)
+		if err != nil {
+			return nil, fmt.Errorf("parse %s: %w", name, err)
+		}
 	}
-	fx.SetRootFS(os.DirFS(filepath.Dir(path)))
+	fx.SetRootFS(os.DirFS(filepath.Dir(name)))
 	return fx, nil
 }
 
@@ -799,12 +982,26 @@ func RunFixtureOn(ctx context.Context, f *Fixture, r Runner) *TestResult {
 	return res
 }
 
-func (f *Fixture) program() (*model.Program, error) {
-	if f.parsed != nil || f.parsedErr != nil {
-		return f.parsed, f.parsedErr
+// programLoader is the half of a runtime the harness loads through, which both
+// engines answer.
+type programLoader interface {
+	LoadFile(string) (*model.Program, error)
+}
+
+// load answers the fixture's program, reading its body through the runtime the
+// first time so the parse and the compile land in the caches the tree was
+// precompiled into. The program is held because it is the same one on a repeat:
+// --count re-runs the body, it does not re-read it.
+func (f *Fixture) load(rt programLoader) (*model.Program, error) {
+	if f.prog != nil {
+		return f.prog, nil
 	}
-	f.parsed, f.parsedErr = parser.Parse(f.PHP)
-	return f.parsed, f.parsedErr
+	prog, err := rt.LoadFile(f.sourceName())
+	if err != nil {
+		return nil, err
+	}
+	f.prog = prog
+	return prog, nil
 }
 
 func (f *Fixture) stdin() io.Reader {
@@ -821,11 +1018,6 @@ func (f *Fixture) stdin() io.Reader {
 func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-
-	prog, err := f.program()
-	if err != nil {
-		return "Internal Server Error", runner.Context{}, err
-	}
 
 	if f.cleanState() {
 		// A clean state is a new runtime, not only an empty cache. A runtime
@@ -849,12 +1041,17 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 		stdlib.RegisterFS(rt, f.RootDir())
 		rt.FreezeStdlib()
 	}
-	// The harness parses and runs the fixture directly rather than going
-	// through LoadFile, so nothing else sets the entrypoint and __FILE__ and
-	// __DIR__ would both be empty. An empty __DIR__ silently turns
-	// __DIR__ . "/x" into "/x", which is then rejected as escaping the root: a
-	// confusing two-step failure a long way from its cause.
+	// The fixture names itself before the load, because the first name a
+	// runtime is given wins: a fixture reading __DIR__ expects the directory it
+	// was written in, not the file its body is served from. An empty __DIR__
+	// silently turns __DIR__ . "/x" into "/x", which is then rejected as
+	// escaping the root: a confusing two-step failure a long way from its cause.
 	rt.UpdateFilename(f.Path)
+
+	prog, err := f.load(rt)
+	if err != nil {
+		return "Internal Server Error", runner.Context{}, err
+	}
 	f.interp = rt
 
 	f.interp.SetCoverage(f.coverage)
@@ -881,11 +1078,6 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	prog, err := f.program()
-	if err != nil {
-		return "Internal Server Error", runner.Context{}, err
-	}
-
 	if f.cleanState() {
 		defer func() { f.flatRT = nil }()
 	}
@@ -902,6 +1094,11 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 		rt.FreezeStdlib()
 	}
 	rt.UpdateFilename(f.Path)
+
+	prog, err := f.load(rt)
+	if err != nil {
+		return "Internal Server Error", runner.Context{}, err
+	}
 	f.flatRT = rt
 	f.flatExpr = expr
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/mapmap"
 	"github.com/titpetric/phpscript/stdlib"
 )
 
@@ -176,11 +177,11 @@ func TestFromRequestMultipart(t *testing.T) {
 	)
 
 	ctx := runner.FromRequest(r)
-	if got := ctx.Post["name"]; got != "bob" {
+	if got := ctx.PostMap()["name"]; got != "bob" {
 		t.Fatalf("$_POST[name] = %q, want %q", got, "bob")
 	}
 
-	files := ctx.Files["avatar"]
+	files := ctx.FileMap()["avatar"]
 	if len(files) != 1 {
 		t.Fatalf("uploads for avatar = %d, want 1", len(files))
 	}
@@ -229,7 +230,7 @@ $f = $_FILES["avatar"];
 echo $f["name"] . "|" . $f["full_path"] . "|" . $f["type"] . "|" . $f["size"] . "|" . $f["error"] . "|" . $f["tmp_name"];
 `
 	out := runCtx(t, ctx, src)
-	want := `photo.png|C:\Users\bob\photo.png|application/octet-stream|3|0|` + ctx.Files["avatar"][0].TmpName
+	want := `photo.png|C:\Users\bob\photo.png|application/octet-stream|3|0|` + ctx.FileMap()["avatar"][0].TmpName
 	if out != want {
 		t.Fatalf("got %q, want %q", out, want)
 	}
@@ -251,7 +252,7 @@ func TestFilesSuperglobalRepeatedField(t *testing.T) {
 		t.Fatalf("got %q, want %q", out, want)
 	}
 	// Both parts are still stored, so Cleanup removes both.
-	if got := len(ctx.Files["avatar"]); got != 2 {
+	if got := len(ctx.FileMap()["avatar"]); got != 2 {
 		t.Fatalf("uploads for avatar = %d, want 2", got)
 	}
 }
@@ -285,11 +286,11 @@ func TestFromRequestUrlencodedUnaffected(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	ctx := runner.FromRequest(r)
-	if got := ctx.Post["name"]; got != "bob" {
+	if got := ctx.PostMap()["name"]; got != "bob" {
 		t.Fatalf("$_POST[name] = %q", got)
 	}
-	if len(ctx.Files) != 0 {
-		t.Fatalf("files = %v, want none", ctx.Files)
+	if len(ctx.FileMap()) != 0 {
+		t.Fatalf("files = %v, want none", ctx.FileMap())
 	}
 }
 
@@ -404,10 +405,12 @@ echo read_job();
 // wantServer checks the $_SERVER keys a request produced. A want value of ""
 // asserts the key is absent, which is how PHP says "not this kind of request":
 // no HTTPS on a plain one, no CONTENT_LENGTH on a chunked one.
-func wantServer(t *testing.T, server map[string]string, want map[string]string) {
+func wantServer(t *testing.T, server *mapmap.MapMap, want map[string]string) {
 	t.Helper()
 	for key, value := range want {
-		got, ok := server[key]
+		read := server.Read(key)
+		got, _ := read.(string)
+		ok := server.Has(key)
 		if value == "" {
 			if ok {
 				t.Errorf("$_SERVER[%s] = %q, want it unset", key, got)
@@ -428,7 +431,7 @@ func TestServerVarsPlainGet(t *testing.T) {
 	r.RemoteAddr = "127.0.0.1:56138"
 
 	ctx := runner.FromRequest(r)
-	wantServer(t, ctx.Server, map[string]string{
+	wantServer(t, ctx.ServerMap(), map[string]string{
 		"REQUEST_METHOD":  "GET",
 		"REQUEST_URI":     "/index.php?a=1&b=two",
 		"QUERY_STRING":    "a=1&b=two",
@@ -465,7 +468,7 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 		r := httptest.NewRequest("GET", "/", nil)
 		r.RemoteAddr = tc.remote
 		ctx := runner.FromRequest(r)
-		wantServer(t, ctx.Server, map[string]string{
+		wantServer(t, ctx.ServerMap(), map[string]string{
 			"REMOTE_ADDR": tc.addr,
 			"REMOTE_PORT": tc.port,
 		})
@@ -481,7 +484,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	ctx := runner.FromRequest(r)
-	wantServer(t, ctx.Server, map[string]string{
+	wantServer(t, ctx.ServerMap(), map[string]string{
 		"REQUEST_METHOD": "POST",
 		"CONTENT_TYPE":   "application/x-www-form-urlencoded",
 		"CONTENT_LENGTH": "12",
@@ -492,7 +495,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 	// A content type without a body still reaches CONTENT_TYPE.
 	r = httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("Content-Type", "text/plain")
-	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+	wantServer(t, runner.FromRequest(r).ServerMap(), map[string]string{
 		"CONTENT_TYPE":   "text/plain",
 		"CONTENT_LENGTH": "",
 	})
@@ -501,7 +504,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 	r = httptest.NewRequest("POST", "/", strings.NewReader(""))
 	r.Header.Set("Content-Type", "text/plain")
 	r.Header.Set("Content-Length", "0")
-	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+	wantServer(t, runner.FromRequest(r).ServerMap(), map[string]string{
 		"CONTENT_LENGTH": "0",
 	})
 
@@ -509,7 +512,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 	r = httptest.NewRequest("POST", "/", strings.NewReader("hello"))
 	r.Header.Set("Content-Type", "text/plain")
 	r.ContentLength = -1
-	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+	wantServer(t, runner.FromRequest(r).ServerMap(), map[string]string{
 		"CONTENT_TYPE":   "text/plain",
 		"CONTENT_LENGTH": "",
 	})
@@ -531,14 +534,14 @@ func TestServerVarsTLS(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	wantServer(t, runner.FromRequest(got).Server, map[string]string{
+	wantServer(t, runner.FromRequest(got).ServerMap(), map[string]string{
 		"REQUEST_SCHEME": "https",
 		"HTTPS":          "on",
 	})
 
 	plain := httptest.NewRequest("GET", "/", nil)
 	plain.Header.Set("X-Forwarded-Proto", "https")
-	wantServer(t, runner.FromRequest(plain).Server, map[string]string{
+	wantServer(t, runner.FromRequest(plain).ServerMap(), map[string]string{
 		"REQUEST_SCHEME": "http",
 		"HTTPS":          "",
 		// The header is still readable, as any other header is.
@@ -773,8 +776,8 @@ func TestPostMaxSize(t *testing.T) {
 	ctx := runner.FromRequestOptions(r, opts)
 	defer ctx.Cleanup()
 
-	if len(ctx.Post) != 0 || len(ctx.Files) != 0 {
-		t.Fatalf("post = %v, files = %v, want both empty", ctx.Post, ctx.Files)
+	if len(ctx.PostMap()) != 0 || len(ctx.FileMap()) != 0 {
+		t.Fatalf("post = %v, files = %v, want both empty", ctx.Post, ctx.FileMap())
 	}
 	errs := ctx.Errors()
 	if len(errs) != 1 {
@@ -813,8 +816,8 @@ func TestPostMaxSizeUnknownLength(t *testing.T) {
 	r.ContentLength = -1
 
 	ctx := runner.FromRequestOptions(r, runner.Options{PostMaxSize: 1024})
-	if len(ctx.Post) != 0 {
-		t.Fatalf("post = %v, want empty", ctx.Post)
+	if len(ctx.PostMap()) != 0 {
+		t.Fatalf("post = %v, want empty", ctx.PostMap())
 	}
 	if errs := ctx.Errors(); len(errs) != 1 || !strings.Contains(errs[0].Error(), "post_max_size") {
 		t.Fatalf("errors = %v, want the post_max_size error", errs)
@@ -834,16 +837,16 @@ func TestUploadMaxFilesize(t *testing.T) {
 	ctx := runner.FromRequestOptions(r, runner.Options{UploadMaxFilesize: 1024})
 	defer ctx.Cleanup()
 
-	if got := ctx.Post["name"]; got != "bob" {
+	if got := ctx.PostMap()["name"]; got != "bob" {
 		t.Fatalf("$_POST[name] = %q, want the form to survive", got)
 	}
-	small := ctx.Files["small"][0]
+	small := ctx.FileMap()["small"][0]
 	if small.Error != runner.UploadErrOK || small.TmpName == "" {
 		t.Fatalf("small upload = %+v, want it stored", small)
 	}
 	// PHP describes a refused part by the names the client sent and nothing
 	// else: no type, no size, no temporary file.
-	big := ctx.Files["big"][0]
+	big := ctx.FileMap()["big"][0]
 	if big.Error != runner.UploadErrIniSize {
 		t.Fatalf("big upload error = %d, want %d", big.Error, runner.UploadErrIniSize)
 	}
