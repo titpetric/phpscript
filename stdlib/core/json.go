@@ -154,6 +154,18 @@ func jsonEncodeValue(v any) any {
 			return true
 		})
 		return out
+	case model.Collection:
+		// A view over request data, which is keyed by name and so encodes as
+		// an object. Reading it is what decodes the request behind it.
+		if x == nil {
+			return nil
+		}
+		out := newJSONObject(x.Len())
+		x.Range(func(k, v any) bool {
+			out.add(phpval.String(k), jsonEncodeValue(v))
+			return true
+		})
+		return out
 	case []any:
 		out := make([]any, len(x))
 		for i, item := range x {

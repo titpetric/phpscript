@@ -177,11 +177,11 @@ func TestFromRequestMultipart(t *testing.T) {
 	)
 
 	ctx := runner.FromRequest(r)
-	if got := ctx.Post["name"]; got != "bob" {
+	if got := ctx.PostMap()["name"]; got != "bob" {
 		t.Fatalf("$_POST[name] = %q, want %q", got, "bob")
 	}
 
-	files := ctx.Files["avatar"]
+	files := ctx.FileMap()["avatar"]
 	if len(files) != 1 {
 		t.Fatalf("uploads for avatar = %d, want 1", len(files))
 	}
@@ -230,7 +230,7 @@ $f = $_FILES["avatar"];
 echo $f["name"] . "|" . $f["full_path"] . "|" . $f["type"] . "|" . $f["size"] . "|" . $f["error"] . "|" . $f["tmp_name"];
 `
 	out := runCtx(t, ctx, src)
-	want := `photo.png|C:\Users\bob\photo.png|application/octet-stream|3|0|` + ctx.Files["avatar"][0].TmpName
+	want := `photo.png|C:\Users\bob\photo.png|application/octet-stream|3|0|` + ctx.FileMap()["avatar"][0].TmpName
 	if out != want {
 		t.Fatalf("got %q, want %q", out, want)
 	}
@@ -252,7 +252,7 @@ func TestFilesSuperglobalRepeatedField(t *testing.T) {
 		t.Fatalf("got %q, want %q", out, want)
 	}
 	// Both parts are still stored, so Cleanup removes both.
-	if got := len(ctx.Files["avatar"]); got != 2 {
+	if got := len(ctx.FileMap()["avatar"]); got != 2 {
 		t.Fatalf("uploads for avatar = %d, want 2", got)
 	}
 }
@@ -286,11 +286,11 @@ func TestFromRequestUrlencodedUnaffected(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	ctx := runner.FromRequest(r)
-	if got := ctx.Post["name"]; got != "bob" {
+	if got := ctx.PostMap()["name"]; got != "bob" {
 		t.Fatalf("$_POST[name] = %q", got)
 	}
-	if len(ctx.Files) != 0 {
-		t.Fatalf("files = %v, want none", ctx.Files)
+	if len(ctx.FileMap()) != 0 {
+		t.Fatalf("files = %v, want none", ctx.FileMap())
 	}
 }
 
@@ -776,8 +776,8 @@ func TestPostMaxSize(t *testing.T) {
 	ctx := runner.FromRequestOptions(r, opts)
 	defer ctx.Cleanup()
 
-	if len(ctx.Post) != 0 || len(ctx.Files) != 0 {
-		t.Fatalf("post = %v, files = %v, want both empty", ctx.Post, ctx.Files)
+	if len(ctx.PostMap()) != 0 || len(ctx.FileMap()) != 0 {
+		t.Fatalf("post = %v, files = %v, want both empty", ctx.Post, ctx.FileMap())
 	}
 	errs := ctx.Errors()
 	if len(errs) != 1 {
@@ -816,8 +816,8 @@ func TestPostMaxSizeUnknownLength(t *testing.T) {
 	r.ContentLength = -1
 
 	ctx := runner.FromRequestOptions(r, runner.Options{PostMaxSize: 1024})
-	if len(ctx.Post) != 0 {
-		t.Fatalf("post = %v, want empty", ctx.Post)
+	if len(ctx.PostMap()) != 0 {
+		t.Fatalf("post = %v, want empty", ctx.PostMap())
 	}
 	if errs := ctx.Errors(); len(errs) != 1 || !strings.Contains(errs[0].Error(), "post_max_size") {
 		t.Fatalf("errors = %v, want the post_max_size error", errs)
@@ -837,16 +837,16 @@ func TestUploadMaxFilesize(t *testing.T) {
 	ctx := runner.FromRequestOptions(r, runner.Options{UploadMaxFilesize: 1024})
 	defer ctx.Cleanup()
 
-	if got := ctx.Post["name"]; got != "bob" {
+	if got := ctx.PostMap()["name"]; got != "bob" {
 		t.Fatalf("$_POST[name] = %q, want the form to survive", got)
 	}
-	small := ctx.Files["small"][0]
+	small := ctx.FileMap()["small"][0]
 	if small.Error != runner.UploadErrOK || small.TmpName == "" {
 		t.Fatalf("small upload = %+v, want it stored", small)
 	}
 	// PHP describes a refused part by the names the client sent and nothing
 	// else: no type, no size, no temporary file.
-	big := ctx.Files["big"][0]
+	big := ctx.FileMap()["big"][0]
 	if big.Error != runner.UploadErrIniSize {
 		t.Fatalf("big upload error = %d, want %d", big.Error, runner.UploadErrIniSize)
 	}

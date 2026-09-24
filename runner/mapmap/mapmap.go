@@ -383,3 +383,53 @@ func cgiName(name string) string {
 	}
 	return string(out)
 }
+
+// Lazy defers building a source until something reads it, which is what lets a
+// superglobal cost nothing until a script names it.
+//
+// build runs at most once, on the first Get, Len or Range. A request that
+// reaches no read never parses, and one that reads twice parses once.
+func Lazy(build func() Source) Source { return &lazySource{build: build} }
+
+type lazySource struct {
+	once  sync.Once
+	build func() Source
+	src   Source
+}
+
+func (s *lazySource) resolve() Source {
+	s.once.Do(func() {
+		if s.build != nil {
+			s.src = s.build()
+		}
+		s.build = nil
+	})
+	return s.src
+}
+
+// Get builds the source if it has not been built, then reads it.
+func (s *lazySource) Get(key string) (any, bool) {
+	src := s.resolve()
+	if src == nil {
+		return nil, false
+	}
+	return src.Get(key)
+}
+
+// Len builds the source if it has not been built, then counts it.
+func (s *lazySource) Len() int {
+	src := s.resolve()
+	if src == nil {
+		return 0
+	}
+	return src.Len()
+}
+
+// Range builds the source if it has not been built, then walks it.
+func (s *lazySource) Range(fn func(key string, value any) bool) bool {
+	src := s.resolve()
+	if src == nil {
+		return true
+	}
+	return src.Range(fn)
+}

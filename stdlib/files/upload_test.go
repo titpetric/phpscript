@@ -115,7 +115,7 @@ func TestMoveUploadedFileUnwritable(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(root, "photo.png"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	tmpName := ctx.Files["avatar"][0].TmpName
+	tmpName := ctx.FileMap()["avatar"][0].TmpName
 
 	out := runFS(t, root, &ctx, `<?php
 if (move_uploaded_file($_FILES["avatar"]["tmp_name"], "photo.png")) { echo "moved"; } else { echo "failed"; }`)
