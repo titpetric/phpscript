@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -50,6 +51,42 @@ func init() {
 // RegisterSharedMemory installs SharedMemory in the runtime.
 func RegisterSharedMemory(rt *runner.Runtime) {
 	rt.RegisterConstructor("SharedMemory", NewSharedMemoryBinding)
+	rt.RegisterInfo("SharedMemory", sharedMemoryInfo)
+}
+
+// sharedMemoryInfo reports the store bound into the runtime, for phpinfo().
+//
+// A store outlives the requests that write to it, so none of it is in what
+// memory_get_usage() answers. A host that bound none has nothing to report and
+// the section does not print.
+func sharedMemoryInfo(rt *runner.Runtime) []runner.InfoField {
+	store, _ := rt.Context().Value(sharedMemoryKey{}).(*SharedMemory)
+	if store == nil {
+		return nil
+	}
+	entries, counters, bytes := store.Usage()
+	return []runner.InfoField{
+		{Name: "Entries", Value: strconv.Itoa(entries)},
+		{Name: "Counters", Value: strconv.Itoa(counters)},
+		{Name: "Size", Value: fmt.Sprintf("%.2f MiB", float64(bytes)/(1024*1024))},
+	}
+}
+
+// Usage reports what the store holds: how many entries, how many counters, and
+// the bytes of the keys and values behind them.
+//
+// The byte figure is the strings themselves, not the map overhead around them,
+// which is the same basis memory_get_usage() reports a PHP value on.
+func (s *SharedMemory) Usage() (entries, counters int, bytes int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for key, value := range s.data {
+		bytes += int64(len(key) + len(value))
+	}
+	for key := range s.counters {
+		bytes += int64(len(key)) + 8
+	}
+	return len(s.data), len(s.counters), bytes
 }
 
 // Set stores a string value.

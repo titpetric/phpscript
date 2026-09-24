@@ -18,6 +18,31 @@ type IncludeCache struct {
 	mu         sync.RWMutex
 	maxEntries int
 	programs   map[string]*model.Program
+
+	// precompiled is the heap a precompile pass over this cache added, as the
+	// pass measured it. Zero until one runs, which is what a lazily filled
+	// cache reports: the files in it were parsed for a request that asked.
+	precompiled int64
+}
+
+// Account records the heap a precompile pass added to this cache.
+func (c *IncludeCache) Account(bytes int64) {
+	if c == nil || bytes < 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.precompiled += bytes
+}
+
+// Precompiled answers the heap the passes over this cache added.
+func (c *IncludeCache) Precompiled() int64 {
+	if c == nil {
+		return 0
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.precompiled
 }
 
 // NewIncludeCache returns an empty parsed include cache with default capacity (10,000 entries).

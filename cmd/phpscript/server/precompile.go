@@ -35,5 +35,6 @@ func precompile(files *handler, name string) {
 		// nothing executes; the flat compile is only paid where it is read.
 		pass.Exprs = files.exprCache
 	}
-	log.Printf("precompiled %s: %d files", name, pass.Run())
+	cached := pass.Run()
+	log.Printf("precompiled %s: %d files, %d bytes", name, cached, files.includeCache.Precompiled())
 }

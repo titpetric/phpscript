@@ -2300,6 +2300,15 @@ class SharedMemory
 
     // set stores a string value.
     public function set(string $key, string $value): void {}
+
+    /**
+     * usage reports what the store holds: how many entries, how many counters, and
+     * the bytes of the keys and values behind them.
+     * 
+     * The byte figure is the strings themselves, not the map overhead around them,
+     * which is the same basis memory_get_usage() reports a PHP value on.
+     */
+    public function usage(): int {}
 }
 ```
 

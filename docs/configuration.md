@@ -160,6 +160,27 @@ Configuring it also changes what the server does with those directories, which i
 
 `memory_limit` is enforced. Usage is measured by walking the live variables of every execution frame, so it reflects what the script still holds, not what it allocated over its lifetime. The walk runs when the script calls `memory_get_usage()` and at periodic checkpoints while a limit is set; exceeding the limit raises a `RuntimeException` the script may catch. The number is an estimate of PHP value payloads, not Go allocator truth, and it is far below what PHP reports for the same script (no zval overhead).
 
+What outlives a request is outside that number and outside the limit: the parsed and compiled source tree, and a `SharedMemory` store a host bound. Both are shared by every request the process serves, so charging either to whichever script asked would report one process-lifetime cost once per request. PHP draws the same line, keeping a compiled script under `opcache.memory_consumption` rather than `memory_limit`.
+
+`phpinfo()` is where that side is visible. It prints the runtime block first, then a section per subsystem holding memory across requests:
+
+```
+OPcache
+
+Precompile => true
+Cached Files => 128
+Compiled Expressions => 3471
+Cached Size => 4.20 MiB
+
+SharedMemory
+
+Entries => 12
+Counters => 3
+Size => 0.06 MiB
+```
+
+`Cached Size` is the heap a precompile pass measured itself adding, and is absent when no pass ran: a cache filled request by request was never measured, and printing zero over it would read as a measurement rather than the absence of one. A section with nothing to report is left out rather than printed as a heading over nothing, so a run with no store bound shows no `SharedMemory` block. The `opcache_*` functions are not implemented and will not be; see [Won't implement](design.md#wont-implement).
+
 `time_limit` and `concurrency_limit` are **accepted but not enforced**. The keys parse and are carried through to the runtime so a configuration written today keeps working when enforcement lands, rather than failing to load.
 
 `memory_limit` is a size written the way the upload limits are. `time_limit` is php.ini's `max_execution_time`, in seconds. `concurrency_limit` has no php.ini equivalent, because there the SAPI owns it; here one process serves several sites and each gets its own share.

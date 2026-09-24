@@ -1,6 +1,7 @@
 package runner_test
 
 import (
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -107,4 +108,32 @@ func TestPrecompilerBrokenEntrypointStillFails(t *testing.T) {
 	if _, err := rt.LoadFile("lib/broken.php"); err == nil || !strings.Contains(err.Error(), "parse") {
 		t.Fatalf("err = %v, want a parse error", err)
 	}
+}
+
+// TestPrecompilerAccountsItsHeap covers what opcache_get_status reports: the
+// pass records the heap it added, and a cache nothing precompiled reports
+// none of it.
+func TestPrecompilerAccountsItsHeap(t *testing.T) {
+	// A tree large enough that the pass is visible above the noise of a
+	// collection, since the figure is a live-heap delta rather than a sum.
+	sources := fstest.MapFS{}
+	for i := range 200 {
+		sources[fmt.Sprintf("lib/file%03d.php", i)] = &fstest.MapFile{
+			Data: []byte(fmt.Sprintf(`<?php function f%d($a, $b) { return $a + $b * %d; }`, i, i)),
+		}
+	}
+
+	includes := runner.NewIncludeCache()
+	if got := includes.Precompiled(); got != 0 {
+		t.Fatalf("a cache nothing precompiled reports %d bytes, want 0", got)
+	}
+
+	cached := runner.Precompiler{Root: sources, Includes: includes, Exprs: runner.NewExprCache()}.Run()
+	if cached != 200 {
+		t.Fatalf("cached = %d, want 200", cached)
+	}
+	if got := includes.Precompiled(); got <= 0 {
+		t.Fatalf("the pass accounted %d bytes, want more than 0", got)
+	}
+	t.Logf("200 programs accounted %d bytes", includes.Precompiled())
 }
