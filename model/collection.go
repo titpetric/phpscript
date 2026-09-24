@@ -29,11 +29,45 @@ import (
 //
 // Anything else, nil included, iterates zero times. PHP's foreach over a
 // non-array warns and continues rather than failing.
+// Collection is a value that answers its own length and iteration, so a type
+// declared outside this package reads as an array without being one.
+//
+// *Array satisfies it, and so does any view a caller builds over data it would
+// rather not copy into one. Everything here that reads a collection accepts it,
+// which is what lets such a view reach count(), foreach and the array bindings.
+type Collection interface {
+	Len() int
+	Range(fn func(key, val any) bool)
+}
+
+// Keyed is a Collection whose entries are read, written and removed by name,
+// which is what indexing, isset() and unset() need of one.
+type Keyed interface {
+	Collection
+
+	// Read answers the value held under key, or nil.
+	Read(key string) any
+
+	// Has reports whether anything holds key.
+	Has(key string) bool
+
+	// Write records a value under key.
+	Write(key string, val any)
+
+	// Delete forgets key.
+	Delete(key string)
+}
+
 func RangeValues(v any, fn func(key, val any) bool) {
 	switch x := v.(type) {
 	case nil:
 		return
 	case *Array:
+		if x != nil {
+			x.Range(fn)
+		}
+		return
+	case Collection:
 		if x != nil {
 			x.Range(fn)
 		}
@@ -98,6 +132,11 @@ func LenValues(v any) (int, bool) {
 			return 0, false
 		}
 		return x.Len(), true
+	case Collection:
+		if x == nil {
+			return 0, false
+		}
+		return x.Len(), true
 	case []any:
 		return len(x), true
 	case []string:
@@ -120,9 +159,11 @@ func LenValues(v any) (int, bool) {
 // *Array or a native Go slice or map. Strings and structs are not, matching
 // is_array().
 func IsCollection(v any) bool {
-	switch v.(type) {
+	switch x := v.(type) {
 	case *Array, []any, []string, map[string]any, []map[string]any:
 		return true
+	case Collection:
+		return x != nil
 	case nil:
 		return false
 	}

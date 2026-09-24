@@ -567,6 +567,8 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	switch src := src.(type) {
 	case *model.Array:
 		src.Range(iter)
+	case model.Collection:
+		src.Range(iter)
 	case *model.Object:
 		// An object yields its properties, name and value, in the order it
 		// reads them back. PHP yields only the ones visible where the loop is
@@ -1316,6 +1318,10 @@ func (rt *Runtime) execUnset(n *model.Unset, scope *Scope) error {
 				arr.Delete(normalizeKey(key))
 				continue
 			}
+			if keyed, ok := base.(model.Keyed); ok {
+				keyed.Delete(keyString(key))
+				continue
+			}
 			// A reindexed slice is a new value, so it goes back to where the
 			// base was read from. A map deleted in place answers nothing.
 			if replacement, changed := unsetGoIndex(base, key); changed {
@@ -1405,6 +1411,14 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 		}
 		arr, ok := base.(*model.Array)
 		if !ok {
+			if keyed, ok := base.(model.Keyed); ok && tgt.Index != nil {
+				key, err := rt.Eval(tgt.Index, scope)
+				if err != nil {
+					return err
+				}
+				keyed.Write(keyString(key), val)
+				return nil
+			}
 			if tgt.Index == nil {
 				return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
 			}
@@ -1444,6 +1458,10 @@ func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 // scalar, a nil map, a key that is not there, answers nil, which is what
 // lets unset($x[$k]) run unconditionally.
 func unsetGoIndex(base, key any) (replacement any, changed bool) {
+	if keyed, ok := base.(model.Keyed); ok {
+		keyed.Delete(keyString(key))
+		return nil, false
+	}
 	rv := reflect.ValueOf(base)
 	switch rv.Kind() {
 	case reflect.Map:
@@ -1474,6 +1492,15 @@ func unsetGoIndex(base, key any) (replacement any, changed bool) {
 }
 
 func assignGoIndex(base, key any, value func(current any) (any, error)) error {
+	if keyed, ok := base.(model.Keyed); ok {
+		name := keyString(key)
+		next, err := value(keyed.Read(name))
+		if err != nil {
+			return err
+		}
+		keyed.Write(name, next)
+		return nil
+	}
 	rv := reflect.ValueOf(base)
 	switch rv.Kind() {
 	case reflect.Map:

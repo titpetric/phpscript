@@ -28,12 +28,13 @@ github.com/titpetric/phpscript/internal/phpval, symbols 43, coverage 93.45%
 github.com/titpetric/phpscript/internal/table, symbols 13, coverage 100.00%
 github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
-github.com/titpetric/phpscript/model, symbols 154, coverage 37.04%
+github.com/titpetric/phpscript/model, symbols 154, coverage 36.82%
 github.com/titpetric/phpscript/parser, symbols 167, coverage 91.78%
-github.com/titpetric/phpscript/runner, symbols 415, coverage 86.96%
+github.com/titpetric/phpscript/runner, symbols 418, coverage 86.60%
 github.com/titpetric/phpscript/runner/bindings, symbols 24, coverage 86.72%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
 github.com/titpetric/phpscript/runner/expr, symbols 21, coverage 83.37%
+github.com/titpetric/phpscript/runner/mapmap, symbols 20, coverage 76.38%
 github.com/titpetric/phpscript/scripts/list-apis, symbols 1, coverage 0.00%
 github.com/titpetric/phpscript/stdlib, symbols 9, coverage 96.30%
 github.com/titpetric/phpscript/stdlib/compat, symbols 49, coverage 86.92%

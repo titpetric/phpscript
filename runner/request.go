@@ -18,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner/mapmap"
 	"github.com/titpetric/phpscript/stdlib/shared"
 )
 
@@ -63,6 +64,16 @@ type Context struct {
 	Env     map[string]string
 	Headers map[string]string
 	Argv    []string
+
+	// ServerSource is what $_SERVER reads through when the names it holds can
+	// be answered without a map. A request answers most of them itself, so
+	// serving one fills Server with the few it cannot and leaves the rest to
+	// be derived on the first read that asks for them.
+	//
+	// Nil reads Server alone, which is what a run with no request behind it
+	// has. A host setting keys on Server is answered either way: they are the
+	// source's extras, and an extra wins over a derived name.
+	ServerSource mapmap.Source
 
 	// GetVars, PostVars and CookieVars are the same fields decoded through
 	// PHP's bracket syntax, and seed $_GET, $_POST and $_COOKIE.
@@ -203,18 +214,20 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	}
 	c.CookieVars = shared.ParsePairs(pairs, opts.inputLimits())
 
-	// Server variables ($_SERVER).
+	// Server variables ($_SERVER). The request is the source and Server holds
+	// the extras, so the two are read together and neither is copied.
 	c.serverVars(r)
+	c.ServerSource = &mapmap.RequestSource{Request: r, Extra: mapmap.MapSource(c.Server)}
 
 	// Path values from the matched route, merged into $_REQUEST.
 	c.pathValues(r)
 
 	// Request headers (canonical name -> first value).
+	// The HTTP_ spelling of each header is derived rather than copied: a
+	// request carries a dozen and a script reads one.
 	for k, v := range r.Header {
 		if len(v) > 0 {
 			c.Headers[k] = v[0]
-			key := "HTTP_" + strings.ToUpper(strings.ReplaceAll(k, "-", "_"))
-			c.Server[key] = v[0]
 		}
 	}
 
@@ -262,11 +275,10 @@ func (c Context) pathValues(r *http.Request) {
 // owns the listener is the one that can say. Set them on Context.Server after
 // building the context.
 func (c Context) serverVars(r *http.Request) {
-	c.Server["REQUEST_METHOD"] = r.Method
-	c.Server["REQUEST_URI"] = r.URL.RequestURI()
-	c.Server["QUERY_STRING"] = r.URL.RawQuery
-	c.Server["HTTP_HOST"] = r.Host
-	c.Server["SERVER_PROTOCOL"] = r.Proto
+	// REQUEST_METHOD, REQUEST_URI, QUERY_STRING, HTTP_HOST and SERVER_PROTOCOL
+	// are not written here. The request answers all five, and mapmap derives
+	// them on the read that asks, so a script that never names one costs
+	// nothing for it. What follows is what the request cannot answer alone.
 
 	// PHP splits the peer address in two, the address in REMOTE_ADDR and the
 	// port in REMOTE_PORT, where Go keeps both in RemoteAddr as "address:port".
@@ -628,11 +640,16 @@ func (c Context) Register(rt *Runtime) {
 	// the arrays the request parse built; the ones assembled here refill the
 	// runtime's per-name scratch container instead of allocating a new one
 	// each request.
+	// The layers of the request this one replaces go back to the pool. A
+	// runtime serves one request at a time, so the moment the next registers
+	// is the moment the last one is done with them.
+	releaseMapMaps(rt, "_SERVER", "_ENV")
+
 	rt.SetGlobal("_GET", superglobal(c.GetVars, c.Get))
 	rt.SetGlobal("_POST", superglobal(c.PostVars, c.Post))
 	rt.SetGlobal("_COOKIE", superglobal(c.CookieVars, c.Cookie))
-	rt.SetGlobal("_SERVER", c.serverArrayInto(rt.scratchArray("_SERVER")))
-	rt.SetGlobal("_ENV", mapToArrayInto(rt.scratchArray("_ENV"), c.Env))
+	rt.SetGlobal("_SERVER", c.ServerMap())
+	rt.SetGlobal("_ENV", mapmap.New(mapmap.MapSource(c.Env)))
 	rt.SetGlobal("_REQUEST", c.requestArrayInto(rt.scratchArray("_REQUEST")))
 	rt.SetGlobal("_FILES", c.filesArrayInto(rt.scratchArray("_FILES")))
 
@@ -876,6 +893,39 @@ func uploadListArray(files []*UploadedFile) *model.Array {
 // because that is what all but two of PHP's server keys are; the two that are
 // not, REQUEST_TIME as an integer and REQUEST_TIME_FLOAT as a float, get their
 // type back here, so a script comparing either with === sees what PHP gives it.
+// releaseMapMaps hands back the edit layers of the named globals, if they are
+// views and if anything wrote to them.
+func releaseMapMaps(rt *Runtime, names ...string) {
+	for _, name := range names {
+		if previous, ok := rt.auto.Lookup(name); ok {
+			if m, ok := previous.(*mapmap.MapMap); ok {
+				m.Release()
+			}
+		}
+	}
+}
+
+// ServerMap renders $_SERVER as a view rather than an array.
+//
+// The names are read through the source, which is the request where there is
+// one, so nothing is copied for a script that reads a key or two and nothing at
+// all for one that reads none. The two times are seeded because PHP answers
+// them as numbers and every other name as a string.
+func (c Context) ServerMap() *mapmap.MapMap {
+	src := c.ServerSource
+	if src == nil {
+		src = mapmap.MapSource(c.Server)
+	}
+	m := mapmap.New(src)
+	if seconds, err := strconv.ParseInt(c.Server["REQUEST_TIME"], 10, 64); err == nil {
+		m.Write("REQUEST_TIME", seconds)
+	}
+	if exact, err := strconv.ParseFloat(c.Server["REQUEST_TIME_FLOAT"], 64); err == nil {
+		m.Write("REQUEST_TIME_FLOAT", exact)
+	}
+	return m
+}
+
 func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 	mapToArrayInto(arr, c.Server)
 	if seconds, err := strconv.ParseInt(c.Server["REQUEST_TIME"], 10, 64); err == nil {

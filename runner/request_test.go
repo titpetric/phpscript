@@ -13,6 +13,7 @@ import (
 
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/mapmap"
 	"github.com/titpetric/phpscript/stdlib"
 )
 
@@ -404,10 +405,12 @@ echo read_job();
 // wantServer checks the $_SERVER keys a request produced. A want value of ""
 // asserts the key is absent, which is how PHP says "not this kind of request":
 // no HTTPS on a plain one, no CONTENT_LENGTH on a chunked one.
-func wantServer(t *testing.T, server map[string]string, want map[string]string) {
+func wantServer(t *testing.T, server *mapmap.MapMap, want map[string]string) {
 	t.Helper()
 	for key, value := range want {
-		got, ok := server[key]
+		read := server.Read(key)
+		got, _ := read.(string)
+		ok := server.Has(key)
 		if value == "" {
 			if ok {
 				t.Errorf("$_SERVER[%s] = %q, want it unset", key, got)
@@ -428,7 +431,7 @@ func TestServerVarsPlainGet(t *testing.T) {
 	r.RemoteAddr = "127.0.0.1:56138"
 
 	ctx := runner.FromRequest(r)
-	wantServer(t, ctx.Server, map[string]string{
+	wantServer(t, ctx.ServerMap(), map[string]string{
 		"REQUEST_METHOD":  "GET",
 		"REQUEST_URI":     "/index.php?a=1&b=two",
 		"QUERY_STRING":    "a=1&b=two",
@@ -465,7 +468,7 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 		r := httptest.NewRequest("GET", "/", nil)
 		r.RemoteAddr = tc.remote
 		ctx := runner.FromRequest(r)
-		wantServer(t, ctx.Server, map[string]string{
+		wantServer(t, ctx.ServerMap(), map[string]string{
 			"REMOTE_ADDR": tc.addr,
 			"REMOTE_PORT": tc.port,
 		})
@@ -481,7 +484,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	ctx := runner.FromRequest(r)
-	wantServer(t, ctx.Server, map[string]string{
+	wantServer(t, ctx.ServerMap(), map[string]string{
 		"REQUEST_METHOD": "POST",
 		"CONTENT_TYPE":   "application/x-www-form-urlencoded",
 		"CONTENT_LENGTH": "12",
@@ -492,7 +495,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 	// A content type without a body still reaches CONTENT_TYPE.
 	r = httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("Content-Type", "text/plain")
-	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+	wantServer(t, runner.FromRequest(r).ServerMap(), map[string]string{
 		"CONTENT_TYPE":   "text/plain",
 		"CONTENT_LENGTH": "",
 	})
@@ -501,7 +504,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 	r = httptest.NewRequest("POST", "/", strings.NewReader(""))
 	r.Header.Set("Content-Type", "text/plain")
 	r.Header.Set("Content-Length", "0")
-	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+	wantServer(t, runner.FromRequest(r).ServerMap(), map[string]string{
 		"CONTENT_LENGTH": "0",
 	})
 
@@ -509,7 +512,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 	r = httptest.NewRequest("POST", "/", strings.NewReader("hello"))
 	r.Header.Set("Content-Type", "text/plain")
 	r.ContentLength = -1
-	wantServer(t, runner.FromRequest(r).Server, map[string]string{
+	wantServer(t, runner.FromRequest(r).ServerMap(), map[string]string{
 		"CONTENT_TYPE":   "text/plain",
 		"CONTENT_LENGTH": "",
 	})
@@ -531,14 +534,14 @@ func TestServerVarsTLS(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	wantServer(t, runner.FromRequest(got).Server, map[string]string{
+	wantServer(t, runner.FromRequest(got).ServerMap(), map[string]string{
 		"REQUEST_SCHEME": "https",
 		"HTTPS":          "on",
 	})
 
 	plain := httptest.NewRequest("GET", "/", nil)
 	plain.Header.Set("X-Forwarded-Proto", "https")
-	wantServer(t, runner.FromRequest(plain).Server, map[string]string{
+	wantServer(t, runner.FromRequest(plain).ServerMap(), map[string]string{
 		"REQUEST_SCHEME": "http",
 		"HTTPS":          "",
 		// The header is still readable, as any other header is.

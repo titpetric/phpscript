@@ -99,6 +99,8 @@ func helperIndex(base, idx any) any {
 	case *model.Array:
 		v, _ := b.Get(normalizeKey(idx))
 		return v
+	case model.Keyed:
+		return b.Read(keyString(idx))
 	case string:
 		// String offset: $s[$i] returns the character at position i, counted
 		// in code points. PHP's offsets are bytes; character offsets are the

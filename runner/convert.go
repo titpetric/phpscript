@@ -700,3 +700,8 @@ func toFloat(v any) float64 {
 // library needs for array_key_exists() and array_flip(), so there is one
 // definition and this is a call to it.
 func normalizeKey(k any) any { return phpval.Key(k) }
+
+// keyString spells a script's index as the name a model.Keyed is read by. PHP
+// normalises a key to an int or a string; a Keyed is named by string, so an
+// int index reads as its decimal spelling.
+func keyString(k any) string { return phpval.String(phpval.Key(k)) }
