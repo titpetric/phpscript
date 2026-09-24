@@ -298,10 +298,11 @@ func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.Exp
 		return runner.NewIncludeCache(), runner.NewExprCache()
 	}
 	w := currentWorker(ctx)
-	// The tree is a thunk because this runs per execution and building it
-	// means building the fixture's whole options struct; under --count that
-	// is once per repeat for a cache that was filled on the first.
-	return w.includeFor(f.cacheRoot(), f.precompileFS, w.expr), w.expr
+	// The fixture is passed rather than its trees, because this runs per
+	// execution: building them means building the fixture's whole options
+	// struct, and a method value handed over as a thunk allocates a closure
+	// every time for a cache that was filled on the first run.
+	return w.includeFor(f.cacheRoot(), f, w.expr), w.expr
 }
 
 // precompileFS is the tree the precompiler walks: the fixture's own root, and
@@ -433,13 +434,13 @@ func newWorker() *worker {
 // below the root, the bodies among them, is parsed and compiled once, so a
 // fixture and a repeat of it read the program back rather than building it
 // again.
-func (w *worker) includeFor(root string, trees func() []fs.FS, expr *runner.ExprCache) *runner.IncludeCache {
+func (w *worker) includeFor(root string, f *Fixture, expr *runner.ExprCache) *runner.IncludeCache {
 	if c, ok := w.include[root]; ok {
 		return c
 	}
 	c := runner.NewIncludeCache()
 	w.include[root] = c
-	for _, tree := range trees() {
+	for _, tree := range f.precompileFS() {
 		runner.Precompiler{Root: tree, Includes: c, Exprs: expr}.Run()
 	}
 	return c
