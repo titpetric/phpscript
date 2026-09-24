@@ -56,6 +56,20 @@ type fixtureArea struct {
 	Suite    *Suite
 }
 
+// isFixturePath reports whether a file is a fixture: the .phpt document, or a
+// _test.php body with its expected output beside it. A _test.php with no .txt
+// is a php file someone put in the tree, not a fixture.
+func isFixturePath(name string) bool {
+	if strings.HasSuffix(name, ".phpt") {
+		return true
+	}
+	if !strings.HasSuffix(name, GoldenSuffix) {
+		return false
+	}
+	_, err := os.Stat(goldenOutput(name))
+	return err == nil
+}
+
 // embeddedFixtures walks the embedded tree and groups every .phpt by the area
 // directory holding it. A fixture's include root is that directory, which is
 // also where the php runner executes, so all three runners resolve a relative
@@ -73,7 +87,11 @@ func embeddedFixtures() ([]fixtureArea, error) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.HasSuffix(p, ".phpt") {
+		if d.IsDir() {
+			return nil
+		}
+		golden := strings.HasSuffix(p, GoldenSuffix)
+		if !golden && !strings.HasSuffix(p, ".phpt") {
 			return nil
 		}
 
@@ -81,8 +99,16 @@ func embeddedFixtures() ([]fixtureArea, error) {
 		if err != nil {
 			return fmt.Errorf("read %s: %w", p, err)
 		}
-		fx, err := ParseFixture(data, p)
-		if err != nil {
+		var fx *Fixture
+		if golden {
+			expected, err := fixturesFS.ReadFile(goldenOutput(p))
+			if err != nil {
+				// A body with no expected output beside it is a php file in
+				// the tree, not a fixture.
+				return nil
+			}
+			fx = ParseGolden(data, expected, p)
+		} else if fx, err = ParseFixture(data, p); err != nil {
 			return fmt.Errorf("parse %s: %w", p, err)
 		}
 
@@ -239,7 +265,13 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 // the name has no directory, and a fixture reading __DIR__ would see "/"
 // instead of the folder it was written in.
 func (f *Fixture) sourceName() string {
-	return fsName(filepath.ToSlash(f.Path)) + ".php"
+	name := fsName(filepath.ToSlash(f.Path))
+	// A .php fixture is already a file the runtime can open, under a name it
+	// reads back from __FILE__. Only a .phpt needs one invented for it.
+	if path.Ext(name) == ".php" {
+		return name
+	}
+	return name + ".php"
 }
 
 // fsName turns a path as the caller spelled it into one an fs.FS accepts,
@@ -698,6 +730,34 @@ func (f *Fixture) runnerOptions() runner.Options {
 }
 
 // ParseFixture splits a .phpt file into its three sections and parses the YAML metadata.
+// GoldenSuffix and GoldenOutputSuffix name the second fixture form: a php file
+// the runtimes execute, and the output they are held to beside it.
+//
+// The body is an ordinary file rather than a section of a document, so php
+// runs it where it lies and __FILE__ and __DIR__ read back the path it was
+// written at. It also means the body can be run by hand, which a .phpt cannot.
+// What it gives up is the frontmatter: a fixture needing one declares a .phpt.
+const (
+	GoldenSuffix       = "_test.php"
+	GoldenOutputSuffix = "_test.txt"
+)
+
+// ParseGolden builds a fixture from a _test.php body and the _test.txt beside
+// it. Both are taken as they are; there is nothing to parse out of either.
+func ParseGolden(body, expected []byte, path string) *Fixture {
+	return &Fixture{
+		Name:     strings.TrimSuffix(filepath.Base(path), GoldenSuffix),
+		PHP:      strings.ReplaceAll(string(body), "\r\n", "\n"),
+		Expected: strings.TrimRight(strings.ReplaceAll(string(expected), "\r\n", "\n"), "\n"),
+		Path:     path,
+	}
+}
+
+// goldenOutput names the expected-output file beside a _test.php body.
+func goldenOutput(path string) string {
+	return strings.TrimSuffix(path, GoldenSuffix) + GoldenOutputSuffix
+}
+
 func ParseFixture(data []byte, path ...string) (*Fixture, error) {
 	normalized := strings.ReplaceAll(string(data), "\r\n", "\n")
 	parts := strings.SplitN(normalized, "\n---\n", 3)
@@ -774,7 +834,7 @@ func FindFixtures(paths []string) ([]*Fixture, error) {
 				}
 				return nil
 			}
-			if strings.HasSuffix(path, ".phpt") && !seen[path] {
+			if isFixturePath(path) && !seen[path] {
 				seen[path] = true
 				fx, err := loadFixtureFile(path)
 				if err != nil {
@@ -797,16 +857,25 @@ func FindFixtures(paths []string) ([]*Fixture, error) {
 	return fixtures, nil
 }
 
-func loadFixtureFile(path string) (*Fixture, error) {
-	data, err := os.ReadFile(path)
+func loadFixtureFile(name string) (*Fixture, error) {
+	data, err := os.ReadFile(name)
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", path, err)
+		return nil, fmt.Errorf("read %s: %w", name, err)
 	}
-	fx, err := ParseFixture(data, path)
-	if err != nil {
-		return nil, fmt.Errorf("parse %s: %w", path, err)
+	var fx *Fixture
+	if strings.HasSuffix(name, GoldenSuffix) {
+		expected, err := os.ReadFile(goldenOutput(name))
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", goldenOutput(name), err)
+		}
+		fx = ParseGolden(data, expected, name)
+	} else {
+		fx, err = ParseFixture(data, name)
+		if err != nil {
+			return nil, fmt.Errorf("parse %s: %w", name, err)
+		}
 	}
-	fx.SetRootFS(os.DirFS(filepath.Dir(path)))
+	fx.SetRootFS(os.DirFS(filepath.Dir(name)))
 	return fx, nil
 }
 

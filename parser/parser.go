@@ -82,6 +82,12 @@ type parser struct {
 	// caller named no file.
 	file string
 	dir  string
+
+	// function and class are what __FUNCTION__ and __CLASS__ compile to in
+	// the body being parsed. Both are empty at the top level, which is what
+	// php answers there.
+	function string
+	class     string
 	// imports maps the short name (or explicit alias) declared by a `use`
 	// statement to the fully-qualified name it stands for. It stays nil in the
 	// common case of a file with no imports.
@@ -1030,7 +1036,14 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 	}
 	fd.Params = params
 	fd.ReturnType = p.parseReturnType()
+
+	// The body is parsed under this function's name, so __FUNCTION__ and
+	// __METHOD__ compile to it. fd.Name is already what php answers: the
+	// namespace-qualified name of a free function, the bare name of a method.
+	wasFunction := p.function
+	p.function = fd.Name
 	body, err := p.parseBlock()
+	p.function = wasFunction
 	if err != nil {
 		return nil, err
 	}
@@ -1248,6 +1261,9 @@ func (p *parser) parseClass(mods classModifiers) (model.Stmt, error) {
 	if err := p.parseClassHeritage(cd); err != nil {
 		return nil, err
 	}
+	wasClass := p.class
+	p.class = cd.Name
+	defer func() { p.class = wasClass }()
 	return cd, p.parseClassBody(cd)
 }
 

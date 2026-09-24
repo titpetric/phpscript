@@ -517,6 +517,17 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 	switch name {
 	case "__LINE__":
 		return p.newLit(p.toks[p.i-1].line), nil
+	case "__FUNCTION__":
+		return p.newLit(p.function), nil
+	case "__CLASS__":
+		return p.newLit(p.class), nil
+	case "__METHOD__":
+		// php spells a method Class::method and a free function by its name
+		// alone, not ::name.
+		if p.class != "" && p.function != "" {
+			return p.newLit(p.class + "::" + p.function), nil
+		}
+		return p.newLit(p.function), nil
 	case "__FILE__":
 		if p.file != "" {
 			return p.newLit(p.file), nil

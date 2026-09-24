@@ -29,7 +29,7 @@ github.com/titpetric/phpscript/internal/table, symbols 13, coverage 100.00%
 github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
 github.com/titpetric/phpscript/model, symbols 154, coverage 37.04%
-github.com/titpetric/phpscript/parser, symbols 167, coverage 91.78%
+github.com/titpetric/phpscript/parser, symbols 167, coverage 91.82%
 github.com/titpetric/phpscript/runner, symbols 439, coverage 86.59%
 github.com/titpetric/phpscript/runner/bindings, symbols 24, coverage 86.72%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
@@ -54,5 +54,5 @@ github.com/titpetric/phpscript/stdlib/shared, symbols 13, coverage 95.90%
 github.com/titpetric/phpscript/stdlib/span, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/time, symbols 11, coverage 42.78%
 github.com/titpetric/phpscript/telemetry, symbols 25, coverage 94.00%
-github.com/titpetric/phpscript/tests, symbols 87, coverage 85.84%
+github.com/titpetric/phpscript/tests, symbols 90, coverage 85.74%
 ```

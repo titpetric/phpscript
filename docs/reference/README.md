@@ -41,6 +41,9 @@ Source-file structure, runtime values, variables, constants, and expression eval
   - [Class constants](constants/README.md#class-constants)
   - [Runtime constants](constants/README.md#runtime-constants)
   - [Magic constants](constants/README.md#magic-constants)
+    - [What defined() sees](constants/README.md#what-defined-sees)
+    - [Where the path constants differ](constants/README.md#where-the-path-constants-differ)
+    - [Scope](constants/README.md#scope)
   - [Predefined constants](constants/README.md#predefined-constants)
     - [Time layouts](constants/README.md#time-layouts)
 - [Expressions](expressions/README.md) - Assignment, ternary, call, construction, and include expressions.

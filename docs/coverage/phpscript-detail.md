@@ -92,10 +92,10 @@ github.com/titpetric/phpscript/model/route.go, symbols 5, coverage 98.94%
 github.com/titpetric/phpscript/model/stdclass.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/model/value.go, symbols 28, coverage 98.79%
 github.com/titpetric/phpscript/parser/alloc.go, symbols 21, coverage 100.00%
-github.com/titpetric/phpscript/parser/expr.go, symbols 21, coverage 83.80%
+github.com/titpetric/phpscript/parser/expr.go, symbols 21, coverage 83.87%
 github.com/titpetric/phpscript/parser/interp.go, symbols 8, coverage 90.30%
 github.com/titpetric/phpscript/parser/lexer.go, symbols 31, coverage 96.95%
-github.com/titpetric/phpscript/parser/parser.go, symbols 63, coverage 87.63%
+github.com/titpetric/phpscript/parser/parser.go, symbols 63, coverage 87.72%
 github.com/titpetric/phpscript/parser/tokenizer.go, symbols 23, coverage 96.47%
 github.com/titpetric/phpscript/runner/arithmetic_error.go, symbols 4, coverage 50.00%
 github.com/titpetric/phpscript/runner/bindings/arrays.go, symbols 7, coverage 99.39%
@@ -221,9 +221,9 @@ github.com/titpetric/phpscript/telemetry/context.go, symbols 4, coverage 100.00%
 github.com/titpetric/phpscript/telemetry/error.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/telemetry/module.go, symbols 8, coverage 97.91%
 github.com/titpetric/phpscript/tests/bindings.go, symbols 8, coverage 81.61%
-github.com/titpetric/phpscript/tests/fixture.go, symbols 48, coverage 87.29%
+github.com/titpetric/phpscript/tests/fixture.go, symbols 51, coverage 87.04%
 github.com/titpetric/phpscript/tests/main.go, symbols 2, coverage 100.00%
-github.com/titpetric/phpscript/tests/matrix.go, symbols 8, coverage 61.20%
+github.com/titpetric/phpscript/tests/matrix.go, symbols 8, coverage 61.09%
 github.com/titpetric/phpscript/tests/panics.go, symbols 3, coverage 100.00%
 github.com/titpetric/phpscript/tests/storage.go, symbols 7, coverage 96.43%
 github.com/titpetric/phpscript/tests/suite.go, symbols 11, coverage 87.36%

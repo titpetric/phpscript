@@ -52,20 +52,61 @@ PHP 8 raises `Error` for the same expression. This raises `RuntimeException`, so
 
 ## Magic constants
 
-`__NAMESPACE__`, `__FILE__`, `__DIR__` and `__LINE__` are resolved when a file is compiled, the way php resolves them, and each becomes a literal in the parsed program. Nothing looks them up while the script runs.
+Each is resolved when a file is compiled, the way php resolves them, and becomes a literal in the parsed program. Nothing looks one up while the script runs.
 
-That is what `defined()` and `get_defined_constants()` report on. Neither sees any of the four, because none of them is in the constant table:
+The table is php's own list, in the order the [language reference](https://www.php.net/manual/en/language.constants.magic.php) gives it.
+
+| Name            | Status          | Answers                                                                                                                         |
+|-----------------|-----------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `__LINE__`      | Compatibility   | The line it is written on.                                                                                                      |
+| `__FILE__`      | Divergence      | The path the file was read under, which is the source filesystem's spelling.                                                    |
+| `__DIR__`       | Divergence      | The directory of that path, by the same rule.                                                                                   |
+| `__FUNCTION__`  | Compatibility   | The enclosing function, namespace-qualified; a method's bare name inside one.                                                   |
+| `__CLASS__`     | Compatibility   | The enclosing class, namespace-qualified. Empty outside one.                                                                    |
+| `__METHOD__`    | Compatibility   | `Class::method` inside a class, the function's own name outside one.                                                            |
+| `__NAMESPACE__` | Compatibility   | The namespace the file declares, empty in a file that declares none.                                                            |
+| `__TRAIT__`     | Won't implement | Nothing. There are no traits, so there is no name to answer. See [Design](../../design.md).                                     |
+| `__PROPERTY__`  | Won't implement | Nothing. There are no property hooks for it to name.                                                                            |
+| `::class`       | Partial         | The class name, namespace-qualified. `Name::class`, `self::class` and `static::class` resolve; `$object::class` does not parse. |
+
+A name in the last three rows is an ordinary undefined constant: reading `__TRAIT__` throws `Undefined constant "__TRAIT__"`, the same as any name nothing declares.
+
+### What defined() sees
+
+Nothing. None of these is in the constant table, which is what php reports too:
 
 ```php
 echo __LINE__;                  // the line this is written on
 var_dump(defined("__FILE__"));  // false, in php too
 ```
 
-`__FILE__` and `__DIR__` are the path the file was read under, which is the source filesystem's spelling rather than the host's. See [Known divergences](../../README.md).
+The name and the string are separate. `define("__FILE__", "x")` declares an ordinary constant that `defined()` and `constant()` answer, and the bare `__FILE__` still compiles to the path, because the token was resolved before that line ran. php behaves the same way.
 
-Source handed to the runtime as a string, rather than read from a file, has no path to compile: there `__FILE__` and `__DIR__` fall back to the entrypoint the runtime was given. `__LINE__` never does, because a line is known either way.
+### Where the path constants differ
 
-`__CLASS__`, `__FUNCTION__`, `__METHOD__` and `__TRAIT__` are not implemented.
+`__FILE__` and `__DIR__` name the path the file was read under, which is the source filesystem's spelling rather than the host's: `/public/index.php` where php says `/srv/site/public/index.php`. See [Known divergences](../../README.md).
+
+Source handed to the runtime as a string, rather than read from a file, has no path to compile. There `__FILE__` and `__DIR__` fall back to the entrypoint the runtime was given. The other magic constants never fall back, because a line, a function and a class are known either way.
+
+### Scope
+
+A name is resolved where it is written, not where it is called from. A method returning `__CLASS__` answers its own class whichever caller reached it.
+
+```php
+function freeFunction() {
+	return __FUNCTION__ . "|" . __CLASS__ . "|" . __METHOD__;
+}
+echo freeFunction();     // freeFunction||freeFunction
+
+class Widget {
+	public function instance() {
+		return __FUNCTION__ . "|" . __CLASS__ . "|" . __METHOD__;
+	}
+}
+echo (new Widget)->instance();   // instance|Widget|Widget::instance
+```
+
+At the top level all three are empty strings. The fixture that holds every one of these to php's own output is `tests/fixtures/paths/api/magic_scope_test.php`.
 
 ## Predefined constants
 

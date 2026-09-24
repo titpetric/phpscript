@@ -197,6 +197,12 @@ var shellQuoteReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 // writePHPScript materializes the fixture source as a hidden file in dir. The
 // name is derived from the fixture path so parallel fixtures never collide.
 func writePHPScript(dir string, f *Fixture) (string, func(), error) {
+	// A _test.php body is already a file php can run, at the path the other
+	// runtimes read it from. Copying it would move __FILE__ and __DIR__ to a
+	// name nothing else sees.
+	if strings.HasSuffix(f.Path, GoldenSuffix) {
+		return filepath.Base(f.Path), func() {}, nil
+	}
 	base := strings.TrimSuffix(filepath.Base(f.Path), ".phpt")
 	if base == "" || base == "." {
 		base = "fixture"
