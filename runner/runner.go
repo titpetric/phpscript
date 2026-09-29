@@ -331,6 +331,16 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 // exec runs a statement list, propagating return flow.
 func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 	for _, s := range stmts {
+		// Every statement, because the check is an atomic load off a flag a
+		// context armed: a script that slept past its limit and then does
+		// three more things has to stop at the first of them. A run with no
+		// limit and no request pays two bool loads it never enters.
+		if rt.watching || rt.watchClient {
+			if err := rt.checkDeadline(); err != nil {
+				return nil, flowNormal, err
+			}
+		}
+		// Memory is a walk of the live values, so it stays on a counter.
 		if rt.opts.MemoryLimit > 0 {
 			if rt.memTick++; rt.memTick >= memCheckStatements {
 				rt.memTick = 0
@@ -693,6 +703,14 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 	val, fl, err := rt.exec(n.Body, scope)
 	if _, exiting := IsExit(err); exiting {
 		// finally is skipped too: PHP runs no finally block on exit.
+		return val, fl, err
+	}
+	// Running out of time, or losing the client, is not a condition the script
+	// gets to handle and carry on from: there is no more time to carry on with,
+	// and the next statement would raise it again. Cleanup goes in a
+	// register_shutdown_function callback, which runs with the clock off.
+	var limit *TimeLimitError
+	if errors.As(err, &limit) {
 		return val, fl, err
 	}
 
@@ -1748,6 +1766,13 @@ func (rt *Runtime) runShutdown() error {
 	if len(rt.shutdown) == 0 {
 		return nil
 	}
+	// The clock is off for the shutdown pass. A script is here because it ran
+	// out of time as often as because it finished, and a callback registered to
+	// close what the script opened has to be able to run. php resets the timer
+	// for its shutdown functions for the same reason.
+	rt.releaseDeadline()
+	rt.watching, rt.watchClient = false, false
+
 	var errs []error
 	scope := rt.newScope()
 	rt.pushFrame(scope)
