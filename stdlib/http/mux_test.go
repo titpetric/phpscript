@@ -166,8 +166,20 @@ define("MUX", $mux);
 // TestMuxHandlerSeesItsOwnConnection is what EnterRequest is for: a client
 // that leaves mid-request is the one the handler asks about, and the handler
 // gets to decide what to do about it.
+//
+// What it found out comes back through a binding rather than through echo: a
+// handler's output goes to the response, and the point of this one is that
+// there is no response left.
 func TestMuxHandlerSeesItsOwnConnection(t *testing.T) {
-	out, handler := serveScriptOutput(t, `<?php
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	rt.SetContext(context.Background())
+
+	reported := make(chan string, 4)
+	rt.RegisterFunc("report", func(what string) { reported <- what })
+
+	program, err := rt.Load(`<?php
 $mux = new HTTP\Mux();
 $mux->handle("GET /slow", function ($w, $r) {
 	// Without this the handler stops on the statement after the client goes.
@@ -177,14 +189,22 @@ $mux->handle("GET /slow", function ($w, $r) {
 		usleep(5000);
 		$ticks++;
 		if (connection_aborted()) {
-			echo "noticed and stopped";
+			report("noticed and stopped");
 			return;
 		}
 	}
-	echo "never noticed";
+	report("never noticed");
 });
 define("MUX", $mux);
 `)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	value, _ := rt.Const("MUX")
+	handler := value.(http.Handler)
 
 	leaving, disconnect := context.WithCancel(context.Background())
 	request := httptest.NewRequest(http.MethodGet, "/slow", nil).WithContext(leaving)
@@ -204,19 +224,40 @@ define("MUX", $mux);
 		t.Fatal("the handler did not notice the client leaving")
 	}
 
-	if got := out.String(); !strings.Contains(got, "noticed and stopped") {
-		t.Errorf("handler wrote %q, want it to have noticed", got)
+	select {
+	case got := <-reported:
+		if got != "noticed and stopped" {
+			t.Errorf("handler reported %q, want it to have noticed", got)
+		}
+	default:
+		t.Error("the handler reported nothing")
 	}
 }
 
 // TestMuxSkipsADeadConnection keeps the work off a request nobody is waiting
 // for: the client was already gone, so the handler never ran.
 func TestMuxSkipsADeadConnection(t *testing.T) {
-	out, handler := serveScriptOutput(t, `<?php
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	rt.SetContext(context.Background())
+
+	var ran atomic.Bool
+	rt.RegisterFunc("mark_ran", func() { ran.Store(true) })
+
+	program, err := rt.Load(`<?php
 $mux = new HTTP\Mux();
-$mux->handle("GET /work", function ($w, $r) { echo "ran"; $w->write("answered"); });
+$mux->handle("GET /work", function ($w, $r) { mark_ran(); $w->write("answered"); });
 define("MUX", $mux);
 `)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	value, _ := rt.Const("MUX")
+	handler := value.(http.Handler)
 
 	gone, disconnect := context.WithCancel(context.Background())
 	disconnect()
@@ -224,8 +265,8 @@ define("MUX", $mux);
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/work", nil).WithContext(gone))
 
-	if got := out.String(); got != "" {
-		t.Errorf("the handler ran and wrote %q, want it skipped", got)
+	if ran.Load() {
+		t.Error("the handler ran for a client that had already gone")
 	}
 	if got := response.Body.String(); got != "" {
 		t.Errorf("body = %q, want nothing written", got)

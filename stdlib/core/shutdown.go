@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/titpetric/phpscript/runner"
 )
@@ -19,8 +18,10 @@ func RegisterShutdown(rt *runner.Runtime) {
 	// register_shutdown_function runs $callback after the script finishes,
 	// including after exit or an execution error, in registration order.
 	rt.RegisterFunc("register_shutdown_function", func(callback any) error {
-		value := reflect.ValueOf(callback)
-		if !value.IsValid() || value.Kind() != reflect.Func || value.IsNil() {
+		// The runtime's own answer rather than a reflect.Kind check: a PHP
+		// closure is a value carrying its declaration, not a bare func, and
+		// every other spelling of a callable was never a func either.
+		if _, ok := rt.Callable(callback); !ok {
 			return fmt.Errorf("register_shutdown_function: argument must be callable")
 		}
 		rt.RegisterShutdown(callback)

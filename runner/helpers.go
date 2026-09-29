@@ -439,6 +439,9 @@ func argsTail(args []any) []any {
 func invokeAny(fn any, args []any) (result any, err error) {
 	// The uniform ABI is the hot entry-less shape: a compiled closure, a
 	// Callable resolution, an adapt output. One guard, no construction.
+	if c, ok := fn.(*Closure); ok {
+		fn = c.uniform()
+	}
 	if f, ok := fn.(func(...any) (any, error)); ok {
 		defer func() {
 			if recovered := recover(); recovered != nil {
@@ -464,6 +467,14 @@ func coerceArg(v any, want reflect.Type) (reflect.Value, bool) {
 	}
 	if v == nil {
 		return reflect.Zero(want), true
+	}
+	// A closure is a value with a declaration on it rather than a bare func, so
+	// that a host can run one somewhere else; every binding that declares the
+	// uniform callable shape still gets it.
+	if c, ok := v.(*Closure); ok && want.Kind() == reflect.Func {
+		if uniform := reflect.ValueOf(c.uniform()); uniform.Type().AssignableTo(want) {
+			return uniform, true
+		}
 	}
 	rv := reflect.ValueOf(v)
 	if rv.Type().AssignableTo(want) {

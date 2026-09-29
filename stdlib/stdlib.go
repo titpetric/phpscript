@@ -23,4 +23,9 @@ func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
 	for _, register := range bindings {
 		register(rt)
 	}
+
+	// How to do this again, for a runtime forked off this one. A binding is a
+	// closure over the runtime it was registered on, so a fork has to install
+	// its own rather than inherit these.
+	rt.SetPreparer(func(child *runner.Runtime) { Register(child, bindings...) })
 }

@@ -104,6 +104,13 @@ function ignore_user_abort(bool ...$enable): void
 function set_time_limit(int $seconds): bool
 ```
 
+#### log
+
+```php
+// error_log records $message where the host is listening: on the trace of the request being served, through the handler a Go host installed, and on the process error stream when neither is there. It returns true. php also takes $message_type, $destination and $additional_headers to choose between destinations; those are not implemented.
+function error_log(string $message): bool
+```
+
 #### request
 
 ```php
@@ -2070,16 +2077,26 @@ class HTTP\Mux
      * path, or a method and a path, with {name} segments the handler reads back
      * through $r->path_value($name).
      * 
+     * $handler is a closure, or the name of a declared function. Either way it is a
+     * program counter: a request is answered on a runtime of its own, and what
+     * crosses is the declaration, with everything the call needs arriving in its
+     * arguments.
+     * 
+     * A closure that captures - `use (...)`, or the $this a closure written inside
+     * a method binds - is refused, because the captured scope belongs to the
+     * runtime that built it and two requests would be sharing it. A handler takes
+     * its state from $w and $r.
+     * 
      * The handler is called with the response writer and the request, the two
      * net/http values themselves, so it answers through $w->write($body) and
-     * $w->header()->set($name, $value) rather than by echoing. Output a handler
-     * echoes goes where the runtime's output goes, which is not the response.
+     * $w->header()->set($name, $value). What it echoes reaches the response too:
+     * the runtime answering the request writes there for the length of the call.
      * 
-     * A handler that throws is one request's problem: it is reported and answered
-     * with a 500, and the server goes on. Unless the host installed an error
-     * handler with Runtime.OnError, which means "report it and carry on from the
-     * next statement" for every PHP error: the throw is then reported there, the
-     * handler runs to its end, and the request is answered with whatever it had
+     * A handler that throws is one request's problem: it is reported to the
+     * runtime's error sink and answered with a 500 if nothing has gone out yet, and
+     * the server goes on. Unless the host installed Runtime.OnError, which means
+     * "report it and carry on from the next statement" for every PHP error; the
+     * handler then runs to its end and the request is answered with whatever it had
      * written by then.
      */
     public function handle(string $pattern, mixed $handler): void {}
@@ -2160,13 +2177,15 @@ Registered from `stdlib/http`.
 ```php
 /**
  * HTTP\Server listens on $addr and answers through $handler, an HTTP\Mux or
- * anything else that answers a request. $server->listen() binds and returns
- * the address, $server->wait() blocks until the script runs out of time,
- * and $server->shutdown() stops it, letting what is in flight finish.
+ * anything else that answers a request; $workers bounds how many requests
+ * are answered at once and defaults to the number of cores.
+ * $server->listen() binds and returns the address, $server->wait() blocks
+ * until the script runs out of time, and $server->shutdown() stops it,
+ * letting what is in flight finish.
  */
 class HTTP\Server
 {
-    public function __construct(string $addr, mixed $handler) {}
+    public function __construct(string $addr, mixed $handler, int ...$workers) {}
 
     // addr answers the address the server bound, empty until it has listened.
     public function addr(): string {}

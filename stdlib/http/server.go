@@ -22,6 +22,7 @@ type Server struct {
 	rt      *runner.Runtime
 	addr    string
 	handler nethttp.Handler
+	workers int
 
 	// mu guards the running server. listen starts it and shutdown stops it, and
 	// a register_shutdown_function callback reaches the second from a different
@@ -38,7 +39,13 @@ type Server struct {
 //
 // An $addr of "127.0.0.1:0" binds a port the system picks, which listen()
 // answers with, and is how a test takes a free one rather than hoping.
-func NewServer(rt *runner.Runtime, addr string, handler any) (*Server, error) {
+//
+// $workers is how many requests may be answered at once, because each is
+// answered on a runtime of its own and a runtime is memory. It is not how many
+// may arrive: the rest queue. Omitted, it is the number of cores, which is the
+// parallelism a handler doing no IO can use; a handler that waits on a database
+// wants more.
+func NewServer(rt *runner.Runtime, addr string, handler any, workers ...int64) (*Server, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("HTTP\\Server: addr is required")
 	}
@@ -46,7 +53,11 @@ func NewServer(rt *runner.Runtime, addr string, handler any) (*Server, error) {
 	if !ok {
 		return nil, fmt.Errorf("HTTP\\Server: handler must answer requests, %T does not", handler)
 	}
-	return &Server{rt: rt, addr: addr, handler: routed}, nil
+	count := 0
+	if len(workers) > 0 {
+		count = int(workers[0])
+	}
+	return &Server{rt: rt, addr: addr, handler: routed, workers: count}, nil
 }
 
 // listen binds the address and starts answering, and returns the address it
@@ -62,6 +73,13 @@ func (s *Server) Listen() (string, error) {
 	listener, err := net.Listen("tcp", s.addr)
 	if err != nil {
 		return "", fmt.Errorf("HTTP\\Server::listen: %w", err)
+	}
+	// The forks handlers run on, built now rather than when the mux was: a mux
+	// a Go host drives directly should not pay for a pool it never serves from.
+	// Each writes nowhere by default; a request pushes its response writer on
+	// for the length of the call.
+	if routed, ok := s.handler.(*Mux); ok {
+		routed.usePool(runner.NewPool(s.rt, s.workers, nil))
 	}
 	// Held locally as well as on the struct: shutdown() takes the fields back
 	// to nil the moment it is called, and this goroutine outlives that.
@@ -85,10 +103,7 @@ func (s *Server) Listen() (string, error) {
 // as php's is, so the next statement is where the script stops. Cleanup belongs
 // in a register_shutdown_function callback, which runs with the clock off.
 func (s *Server) Wait() {
-	// Parked, not merely blocked: the script holds the runtime while it runs,
-	// and its own handlers need it. ParkExec hands it back for exactly as long
-	// as this waits.
-	s.rt.ParkExec(func() { <-s.rt.Context().Done() })
+	<-s.rt.Context().Done()
 }
 
 // shutdown stops the server, letting the requests in flight finish first, and
@@ -109,14 +124,12 @@ func (s *Server) Shutdown() {
 	if server == nil {
 		return
 	}
-	s.rt.ParkExec(func() {
-		grace, cancel := context.WithTimeout(context.Background(), shutdownGrace)
-		defer cancel()
-		if err := server.Shutdown(grace); err != nil {
-			_ = server.Close()
-		}
-		<-stopped
-	})
+	grace, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+	defer cancel()
+	if err := server.Shutdown(grace); err != nil {
+		_ = server.Close()
+	}
+	<-stopped
 }
 
 // close stops the server at once, dropping whatever was in flight. shutdown()

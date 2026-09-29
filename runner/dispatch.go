@@ -126,6 +126,9 @@ func reflectInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 // arguments contract). nil sends the constructor to reflectInvoker.
 func fastInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 	switch f := fn.(type) {
+	case *Closure:
+		call := f.uniform()
+		return func(args []any) (any, error) { return call(args...) }
 	case func(...any) (any, error):
 		return func(args []any) (any, error) { return f(args...) }
 	case func(any) any:
