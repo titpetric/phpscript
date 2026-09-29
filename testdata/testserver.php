@@ -26,10 +26,12 @@ if ($addr === false || $addr === "") {
 
 $mux = new HTTP\Mux();
 
-$mux->handle("GET /", function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
+$mux->handle('GET /{$}', function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 	$w->header()->set("Content-Type", "text/plain; charset=utf-8");
 	$w->write("phpscript test server\n\n");
-	$w->write("GET  /             this page\n");
+	$w->write("GET  /             this page ({$} anchors it; a bare \"GET /\"\n");
+	$w->write("                   is a net/http subtree and would answer for\n");
+	$w->write("                   every path nothing else claimed)\n");
 	$w->write("GET  /hello        a greeting\n");
 	$w->write("GET  /users/{id}   reads a path value\n");
 	$w->write("POST /echo         reports the request it was given\n");
@@ -130,8 +132,10 @@ phpinfo();
 echo "\nserving on http://" . $bound . " until the time limit is up\n";
 
 // Returns when the script runs out of time, which is the whole of the run.
-// Nothing is written after it: the limit is a fatal, as php's is, so the next
-// statement is where the script ends. The shutdown callback above is what gets
-// the last word, and the process exits non-zero because running out of time is
-// how this one is meant to end but is still not a success.
+//
+// It is the last statement on purpose. The limit is a fatal, as php's is, so
+// anything written after it would not run and the process would exit non-zero;
+// ending here means the shutdown callback above gets the last word and the
+// process exits 0. The server stopping on its own schedule is how this script
+// is meant to end, not a failure.
 $server->wait();

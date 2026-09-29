@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -238,14 +240,15 @@ func TestServerListensAndStops(t *testing.T) {
 	stdlib.Register(rt)
 	rt.SetContext(context.Background())
 
+	addr := make(chan string, 1)
+	rt.RegisterFunc("publish_addr", func(bound string) { addr <- bound })
+
 	program, err := rt.Load(`<?php
 $mux = new HTTP\Mux();
 $mux->handle("GET /ping", function ($w, $r) { $w->write("pong"); });
 
 $server = new HTTP\Server("127.0.0.1:0", $mux);
-$bound = $server->listen();
-
-define("ADDR", $bound);
+publish_addr($server->listen());
 define("SERVER", $server);
 `)
 	if err != nil {
@@ -255,8 +258,7 @@ define("SERVER", $server);
 		t.Fatalf("run: %v", err)
 	}
 
-	addr, _ := rt.Const("ADDR")
-	bound, _ := addr.(string)
+	bound := <-addr
 	if bound == "" {
 		t.Fatal("listen answered no address")
 	}
@@ -296,4 +298,160 @@ func formRequest(target, body string) *http.Request {
 	request := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return request
+}
+
+// TestTwoMuxesShareOneRuntimeSafely is the defect the per-Mux mutex had: the
+// lock was a field of Mux, so handlers on two muxes interpreted on one Runtime
+// at the same time and took the process down with a concurrent map write.
+func TestTwoMuxesShareOneRuntimeSafely(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	rt.SetContext(context.Background())
+
+	program, err := rt.Load(`<?php
+$a = new HTTP\Mux();
+$a->handle("GET /a", function ($w, $r) {
+	$total = 0;
+	for ($i = 0; $i < 60; $i++) { $total += strlen("abc") * $i; }
+	$w->write("a:" . $total);
+});
+
+$b = new HTTP\Mux();
+$b->handle("GET /b", function ($w, $r) {
+	$parts = array();
+	for ($i = 0; $i < 60; $i++) { $parts[] = strtoupper("x" . $i); }
+	$w->write("b:" . count($parts));
+});
+
+define("A", $a);
+define("B", $b);
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	first, _ := rt.Const("A")
+	second, _ := rt.Const("B")
+	muxes := []struct {
+		handler http.Handler
+		path    string
+		want    string
+	}{
+		{first.(http.Handler), "/a", "a:5310"},
+		{second.(http.Handler), "/b", "b:60"},
+	}
+
+	var wg sync.WaitGroup
+	var bad atomic.Int64
+	for _, mux := range muxes {
+		for range 8 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for range 25 {
+					response := httptest.NewRecorder()
+					mux.handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, mux.path, nil))
+					if response.Body.String() != mux.want {
+						bad.Add(1)
+					}
+				}
+			}()
+		}
+	}
+	wg.Wait()
+
+	if got := bad.Load(); got != 0 {
+		t.Errorf("wrong answers = %d, want 0", got)
+	}
+}
+
+// TestScriptDoesNotRaceItsOwnHandlers is the other half: listen() returns and
+// the script keeps interpreting, so the script's goroutine and net/http's were
+// both running PHP on one runtime. wait() parks the runtime; everything before
+// it holds it.
+func TestScriptDoesNotRaceItsOwnHandlers(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	rt.SetContext(context.Background())
+
+	// The address comes out through a binding rather than a constant the test
+	// reads back: rt.Const is runtime state, and reading it from another
+	// goroutine while Run is writing is the very thing this test is about.
+	addr := make(chan string, 1)
+	rt.RegisterFunc("publish_addr", func(bound string) { addr <- bound })
+
+	program, err := rt.Load(`<?php
+$mux = new HTTP\Mux();
+$mux->handle("GET /ping", function ($w, $r) {
+	$total = 0;
+	for ($i = 0; $i < 40; $i++) { $total += $i; }
+	$w->write("pong:" . $total);
+});
+
+$server = new HTTP\Server("127.0.0.1:0", $mux);
+$bound = $server->listen();
+publish_addr($bound);
+
+// Work between listen() and wait(), which is the window the script's own
+// goroutine used to interpret in while handlers were answering.
+$noise = 0;
+for ($i = 0; $i < 4000; $i++) { $noise += strlen("abcdef") + $i; }
+
+publish_noise($noise);
+define("SERVER", $server);
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	noise := make(chan int64, 1)
+	rt.RegisterFunc("publish_noise", func(total int64) { noise <- total })
+
+	// The requests start while Run is still executing the loop above.
+	var wg sync.WaitGroup
+	var bad atomic.Int64
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		bound := <-addr
+		var inner sync.WaitGroup
+		for range 6 {
+			inner.Add(1)
+			go func() {
+				defer inner.Done()
+				for range 10 {
+					response, err := http.Get("http://" + bound + "/ping")
+					if err != nil {
+						continue
+					}
+					body, _ := io.ReadAll(response.Body)
+					_ = response.Body.Close()
+					if string(body) != "pong:780" {
+						bad.Add(1)
+					}
+				}
+			}()
+		}
+		inner.Wait()
+	}()
+
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	wg.Wait()
+
+	if got := <-noise; got != 8022000 {
+		t.Errorf("the script's own arithmetic came out %d, want 8022000", got)
+	}
+	if got := bad.Load(); got != 0 {
+		t.Errorf("wrong handler answers = %d, want 0", got)
+	}
+
+	stop, _ := rt.Load(`<?php $s = SERVER; $s->shutdown();`)
+	_ = rt.Run(stop)
 }

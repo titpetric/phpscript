@@ -7,6 +7,8 @@ import (
 	nethttp "net/http"
 	"sync"
 	"time"
+
+	"github.com/titpetric/phpscript/runner"
 )
 
 // shutdownGrace bounds how long a graceful shutdown waits for the requests in
@@ -17,6 +19,7 @@ const shutdownGrace = time.Second
 // ServeMux does not. The vocabulary is Go's: listen(), then shutdown() to let
 // the requests in flight finish, or close() to drop them.
 type Server struct {
+	rt      *runner.Runtime
 	addr    string
 	handler nethttp.Handler
 
@@ -35,7 +38,7 @@ type Server struct {
 //
 // An $addr of "127.0.0.1:0" binds a port the system picks, which listen()
 // answers with, and is how a test takes a free one rather than hoping.
-func NewServer(addr string, handler any) (*Server, error) {
+func NewServer(rt *runner.Runtime, addr string, handler any) (*Server, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("HTTP\\Server: addr is required")
 	}
@@ -43,7 +46,7 @@ func NewServer(addr string, handler any) (*Server, error) {
 	if !ok {
 		return nil, fmt.Errorf("HTTP\\Server: handler must answer requests, %T does not", handler)
 	}
-	return &Server{addr: addr, handler: routed}, nil
+	return &Server{rt: rt, addr: addr, handler: routed}, nil
 }
 
 // listen binds the address and starts answering, and returns the address it
@@ -81,27 +84,39 @@ func (s *Server) Listen() (string, error) {
 // Nothing runs after it in a script the time limit ended: the limit is a fatal,
 // as php's is, so the next statement is where the script stops. Cleanup belongs
 // in a register_shutdown_function callback, which runs with the clock off.
-func (s *Server) Wait(ctx context.Context) {
-	<-ctx.Done()
+func (s *Server) Wait() {
+	// Parked, not merely blocked: the script holds the runtime while it runs,
+	// and its own handlers need it. ParkExec hands it back for exactly as long
+	// as this waits.
+	s.rt.ParkExec(func() { <-s.rt.Context().Done() })
 }
 
-// shutdown stops the server, letting the requests in flight finish first.
+// shutdown stops the server, letting the requests in flight finish first, and
+// closing on whatever is still running after a second.
 //
-// Calling it without having listened, or twice, is not an error: it is written
-// into a shutdown callback, which runs however the script ended.
-func (s *Server) Shutdown() error {
+// It answers nothing and throws nothing. Calling it without having listened, or
+// twice, is not an error, and neither is a request that would not finish:
+// shutdown() is written into a register_shutdown_function callback, which runs
+// when the script has already ended and has nowhere to put a failure. A handler
+// calling it to stop its own server is the case that cannot finish gracefully -
+// the request doing the asking is itself in flight - and it closes rather than
+// hanging.
+//
+// The runtime is parked for the wait, so the requests being waited on can
+// actually run.
+func (s *Server) Shutdown() {
 	server, stopped := s.take()
 	if server == nil {
-		return nil
+		return
 	}
-	grace, cancel := context.WithTimeout(context.Background(), shutdownGrace)
-	defer cancel()
-	err := server.Shutdown(grace)
-	<-stopped
-	if err != nil {
-		return fmt.Errorf("HTTP\\Server::shutdown: %w", err)
-	}
-	return nil
+	s.rt.ParkExec(func() {
+		grace, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+		defer cancel()
+		if err := server.Shutdown(grace); err != nil {
+			_ = server.Close()
+		}
+		<-stopped
+	})
 }
 
 // close stops the server at once, dropping whatever was in flight. shutdown()
@@ -133,6 +148,6 @@ func (s *Server) take() (*nethttp.Server, chan struct{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	server, stopped := s.server, s.stopped
-	s.server, s.stopped = nil, nil
+	s.server, s.stopped, s.bound = nil, nil, ""
 	return server, stopped
 }

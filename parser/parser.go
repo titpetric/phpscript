@@ -87,7 +87,7 @@ type parser struct {
 	// the body being parsed. Both are empty at the top level, which is what
 	// php answers there.
 	function string
-	class     string
+	class    string
 	// imports maps the short name (or explicit alias) declared by a `use`
 	// statement to the fully-qualified name it stands for. It stays nil in the
 	// common case of a file with no imports.
@@ -1460,6 +1460,10 @@ func (p *parser) parseSignature(visibility string, isStatic bool) (*model.FuncDe
 		ReturnType: returnType,
 		Visibility: visibility,
 		Static:     isStatic,
+		// As parseFunction does, and for the same reason: hoist fills the field
+		// in when it is empty, and a declaration shared through the include
+		// cache would be written by every runtime that reached the file.
+		Filename: p.file,
 	}, nil
 }
 

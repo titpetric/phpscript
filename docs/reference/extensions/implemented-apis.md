@@ -96,7 +96,7 @@ function connection_aborted(): bool
 
 ```php
 // ignore_user_abort decides whether the client closing the connection ends the script: with $enable true the script runs to its own end and asks connection_aborted() when it wants to know, and with it false, the default, the disconnect stops the script where it next looks. A time limit still applies either way.
-function ignore_user_abort(bool $enable): void
+function ignore_user_abort(bool ...$enable): void
 ```
 
 ```php
@@ -1001,12 +1001,12 @@ function spl_object_id(mixed $object): int
 #### sleep
 
 ```php
-// sleep pauses the script for $seconds and returns 0. A negative count is refused with -1, as php refuses one. The wait ends early, still returning 0, when the script runs out of time or its client goes away: the pause is on the runtime context, not on the clock alone.
+// sleep pauses the script for $seconds and returns 0. A negative count throws, as it does in php. The wait ends early, still returning 0, when the script runs out of time or the client it is answering goes away.
 function sleep(int $seconds): int
 ```
 
 ```php
-// usleep pauses the script for $microseconds, and ends early for the same reasons sleep does. A negative count returns without waiting.
+// usleep pauses the script for $microseconds, and ends early for the same reasons sleep does. A negative count throws, as it does in php.
 function usleep(int $microseconds): void
 ```
 
@@ -2186,10 +2186,19 @@ class HTTP\Server
     public function listen(): string {}
 
     /**
-     * shutdown stops the server, letting the requests in flight finish first.
+     * shutdown stops the server, letting the requests in flight finish first, and
+     * closing on whatever is still running after a second.
      * 
-     * Calling it without having listened, or twice, is not an error: it is written
-     * into a shutdown callback, which runs however the script ended.
+     * It answers nothing and throws nothing. Calling it without having listened, or
+     * twice, is not an error, and neither is a request that would not finish:
+     * shutdown() is written into a register_shutdown_function callback, which runs
+     * when the script has already ended and has nowhere to put a failure. A handler
+     * calling it to stop its own server is the case that cannot finish gracefully -
+     * the request doing the asking is itself in flight - and it closes rather than
+     * hanging.
+     * 
+     * The runtime is parked for the wait, so the requests being waited on can
+     * actually run.
      */
     public function shutdown(): void {}
 

@@ -3,7 +3,6 @@ package http
 import (
 	"fmt"
 	nethttp "net/http"
-	"sync"
 
 	"github.com/titpetric/phpscript/runner"
 )
@@ -31,12 +30,6 @@ import (
 type Mux struct {
 	mux *nethttp.ServeMux
 	rt  *runner.Runtime
-
-	// serving guards the runtime while a handler runs. net/http answers each
-	// request on its own goroutine and a Runtime serves one at a time, so the
-	// handlers of one mux run one after another. That is the same arrangement
-	// php -S has, and for the same reason.
-	serving sync.Mutex
 }
 
 // NewMux returns a router with no routes on it.
@@ -78,18 +71,31 @@ func (m *Mux) Handle(pattern string, handler any) error {
 			return
 		}
 
-		m.serving.Lock()
-		defer m.serving.Unlock()
+		// The runtime, not this mux: net/http answers each request on its own
+		// goroutine, a Runtime interprets one program at a time, and the script
+		// that built this mux is a third caller. A mutex of its own would leave
+		// two muxes on one runtime interpreting at once, and would never hold
+		// the script itself out.
+		defer m.rt.LockExec()()
 		// The connection this handler is answering, so connection_aborted()
 		// reports the client that is waiting rather than whatever started the
 		// script, and a disconnect ends the handler unless it ignored that.
 		defer m.rt.EnterRequest(r.Context())()
-		if _, err := call(w, r); err != nil {
+
+		answered := &answerTracker{ResponseWriter: w}
+		if _, err := call(answered, r); err != nil {
 			// The handler threw. The script is still serving, so this is the
-			// one request's problem: it is reported to the runtime's error
-			// sink and answered with a status, not taken to the process.
+			// one request's problem: it is reported to the runtime's error sink
+			// and answered with a status, not taken to the process.
 			m.rt.RecordError(err)
-			nethttp.Error(w, nethttp.StatusText(nethttp.StatusInternalServerError), nethttp.StatusInternalServerError)
+			// Only when nothing has gone out yet. A handler that wrote half a
+			// document and then threw has already sent its status, and adding
+			// another appends "Internal Server Error" to the half document and
+			// logs a superfluous WriteHeader; the truncated body is the honest
+			// signal, and the error is on the runtime's sink either way.
+			if !answered.wrote {
+				nethttp.Error(w, nethttp.StatusText(nethttp.StatusInternalServerError), nethttp.StatusInternalServerError)
+			}
 		}
 	})
 	return nil
@@ -100,3 +106,27 @@ func (m *Mux) Handle(pattern string, handler any) error {
 func (m *Mux) ServeHTTP(w nethttp.ResponseWriter, r *nethttp.Request) {
 	m.mux.ServeHTTP(w, r)
 }
+
+// answerTracker records whether a handler has begun its response, so a throw
+// afterwards does not try to replace a status that is already on the wire.
+//
+// It forwards rather than buffers: a handler streaming a large body should not
+// have it held in memory for the sake of an error that may never come.
+type answerTracker struct {
+	nethttp.ResponseWriter
+	wrote bool
+}
+
+func (a *answerTracker) WriteHeader(status int) {
+	a.wrote = true
+	a.ResponseWriter.WriteHeader(status)
+}
+
+func (a *answerTracker) Write(p []byte) (int, error) {
+	a.wrote = true
+	return a.ResponseWriter.Write(p)
+}
+
+// Unwrap hands the real writer to net/http's ResponseController, so a handler
+// reaching for Flush or a deadline still finds it.
+func (a *answerTracker) Unwrap() nethttp.ResponseWriter { return a.ResponseWriter }

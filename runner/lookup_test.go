@@ -499,3 +499,52 @@ func TestLookupConcurrent(t *testing.T) {
 		t.Errorf("failed invocations = %d, want 0", got)
 	}
 }
+
+// TestLookupLeavesTheTreeLoadable is the flow the use-case page describes: bind
+// a handler out of a tree, then let the application that owns the tree load it.
+// Lookup hoists the declaring file, and without recording that the file counts
+// as loaded, the application's own require_once declared everything a second
+// time and the tree became unloadable.
+func TestLookupLeavesTheTreeLoadable(t *testing.T) {
+	files := fstest.MapFS{
+		"lib/greet.php": {Data: []byte(`<?php
+function greet($name) {
+	return "hi " . $name;
+}
+
+class Greeter {
+	public function say($name) {
+		return greet($name);
+	}
+}
+`)},
+		"index.php": {Data: []byte(`<?php
+require_once "lib/greet.php";
+$g = new Greeter();
+echo $g->say("bob");
+`)},
+	}
+
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{RootFS: files})
+	stdlib.Register(rt)
+
+	greet, err := runner.Lookup[func(string) string](rt, "greet")
+	if err != nil {
+		t.Fatalf("Lookup: %v", err)
+	}
+	if got := greet("alice"); got != "hi alice" {
+		t.Errorf("greet(alice) = %q, want %q", got, "hi alice")
+	}
+
+	program, err := rt.LoadFile("index.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("the application could not load its own tree: %v", err)
+	}
+	if got := out.String(); got != "hi bob" {
+		t.Errorf("output = %q, want %q", got, "hi bob")
+	}
+}

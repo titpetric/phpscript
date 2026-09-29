@@ -21,7 +21,7 @@ github.com/titpetric/phpscript/config, symbols 26, coverage 88.61%
 github.com/titpetric/phpscript/flatstack, symbols 9, coverage 55.56%
 github.com/titpetric/phpscript/flatstack/engine, symbols 59, coverage 87.80%
 github.com/titpetric/phpscript/formatter, symbols 70, coverage 79.60%
-github.com/titpetric/phpscript/internal/apidoc, symbols 55, coverage 84.16%
+github.com/titpetric/phpscript/internal/apidoc, symbols 55, coverage 84.01%
 github.com/titpetric/phpscript/internal/arrayi64, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/internal/flags, symbols 14, coverage 91.52%
 github.com/titpetric/phpscript/internal/phpval, symbols 43, coverage 93.45%
@@ -29,9 +29,9 @@ github.com/titpetric/phpscript/internal/table, symbols 13, coverage 100.00%
 github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
 github.com/titpetric/phpscript/model, symbols 154, coverage 37.04%
-github.com/titpetric/phpscript/parser, symbols 167, coverage 91.82%
-github.com/titpetric/phpscript/runner, symbols 480, coverage 86.36%
-github.com/titpetric/phpscript/runner/bindings, symbols 26, coverage 87.74%
+github.com/titpetric/phpscript/parser, symbols 167, coverage 91.85%
+github.com/titpetric/phpscript/runner, symbols 488, coverage 86.92%
+github.com/titpetric/phpscript/runner/bindings, symbols 27, coverage 88.20%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
 github.com/titpetric/phpscript/runner/expr, symbols 21, coverage 83.37%
 github.com/titpetric/phpscript/runner/mapmap, symbols 26, coverage 75.17%
@@ -43,7 +43,7 @@ github.com/titpetric/phpscript/stdlib/crypto, symbols 13, coverage 86.40%
 github.com/titpetric/phpscript/stdlib/database, symbols 58, coverage 85.42%
 github.com/titpetric/phpscript/stdlib/files, symbols 38, coverage 89.71%
 github.com/titpetric/phpscript/stdlib/gd, symbols 34, coverage 76.40%
-github.com/titpetric/phpscript/stdlib/http, symbols 34, coverage 69.50%
+github.com/titpetric/phpscript/stdlib/http, symbols 37, coverage 66.58%
 github.com/titpetric/phpscript/stdlib/info, symbols 2, coverage 75.00%
 github.com/titpetric/phpscript/stdlib/internals, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/logger, symbols 7, coverage 100.00%
