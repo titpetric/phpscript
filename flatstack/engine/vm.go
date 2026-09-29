@@ -395,6 +395,26 @@ type MemoryHost interface {
 	CheckMemory() error
 }
 
+// DeadlineHost is an optional Host extension for the execution deadline, found
+// by type assertion like the other optional host capabilities. A host that
+// implements it has runs interrupted when the script runs out of time, or when
+// the client it is answering goes away.
+//
+// The interval is a constant rather than something the host decides once per
+// run, because a script sets its own limit with set_time_limit and may do it
+// after the run has started. CheckDeadline answers cheaply when there is no
+// limit and no client, which is what a run pays when neither exists.
+type DeadlineHost interface {
+	// CheckDeadline reports the script having run out of time, or its client
+	// having gone away, as the error that ends the run.
+	CheckDeadline() error
+}
+
+// deadlineCheckInstructions is how often a run looks at its deadline. The
+// interpreter looks once per statement; an instruction is finer than a
+// statement, so this is the closer of the two either way.
+const deadlineCheckInstructions = 256
+
 // localSeed is one local written into a frame before it starts running: the
 // captures and the arguments of a closure call.
 type localSeed struct {
@@ -504,6 +524,9 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 		}
 	}()
 
+	deadlineHost, hasDeadline := host.(DeadlineHost)
+	deadlineTick := 0
+
 	memHost, hasMemHost := host.(MemoryHost)
 	memInterval, memTick := 0, 0
 	if hasMemHost {
@@ -526,6 +549,17 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 	}
 
 	for st.pc < len(program.code) {
+		if hasDeadline {
+			if deadlineTick++; deadlineTick >= deadlineCheckInstructions {
+				deadlineTick = 0
+				if timeErr := deadlineHost.CheckDeadline(); timeErr != nil {
+					// Not offered to st.handle: running out of time is not a
+					// condition the script gets to catch and carry on from,
+					// because there is no more time to carry on with.
+					return timeErr
+				}
+			}
+		}
 		if memInterval > 0 {
 			if memTick++; memTick >= memInterval {
 				memTick = 0

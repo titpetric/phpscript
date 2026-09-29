@@ -440,6 +440,15 @@ func (h flatHost) PopLiveWalker() {
 	h.runtime.vmWalkers = h.runtime.vmWalkers[:len(h.runtime.vmWalkers)-1]
 }
 
+// CheckDeadline answers the engine's per-run deadline check; see
+// runner/deadline.go for what the two watch flags mean.
+func (h flatHost) CheckDeadline() error {
+	if !h.runtime.watching && !h.runtime.watchClient {
+		return nil
+	}
+	return h.runtime.checkDeadline()
+}
+
 func (h flatHost) CheckMemory() error {
 	return h.runtime.checkMemory()
 }

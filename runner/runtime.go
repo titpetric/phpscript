@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
@@ -96,7 +97,34 @@ type Runtime struct {
 	// callable (constructor, method, function) whose first parameter is a
 	// context.Context, mirroring vuego's wrapContextFunc. It lets PHP call
 	// these symbols without supplying the context argument explicitly.
+	//
+	// It is derived rather than set: SetContext records client below and this
+	// is what set_time_limit and ignore_user_abort made of it. See deadline.go.
 	ctx context.Context
+
+	// host is the context the host set, which ctx is derived from. client is
+	// the connection being answered right now: host, until a handler enters a
+	// request. connection_aborted() reads client, which is why it survives
+	// ignore_user_abort detaching ctx from the disconnect. See deadline.go.
+	host   context.Context
+	client context.Context
+
+	// stopDeadline releases the timer a time limit installed, timeLimit is the
+	// limit in force, ignoreAbort whether a disconnect ends the script, and the
+	// two watch flags whether ctx and client can end at all - a run with no
+	// limit and no request is not worth a per-statement look.
+	// stopDeadline releases the timer a time limit installed. ctxDone and
+	// clientDone are the Done channels of ctx and client, read once and kept so
+	// the per-statement check is a select on a field; the watch flags say
+	// whether either can end at all, and a run with no limit and no request
+	// looks at neither.
+	stopDeadline context.CancelFunc
+	ctxDone      <-chan struct{}
+	clientDone   <-chan struct{}
+	timeLimit    time.Duration
+	ignoreAbort  bool
+	watching     bool
+	watchClient  bool
 
 	errorHandler func(error)
 	include      IncludeFunc
@@ -196,14 +224,14 @@ type Runtime struct {
 	frames    []*Scope
 	vmWalkers []func(yield func(any))
 
-	memBase    int64 // host request overhead accounted at the boundary (AccountRequest)
+	memBase int64 // host request overhead accounted at the boundary (AccountRequest)
 	// infoSections are the blocks phpinfo() prints after the runtime's own,
 	// contributed by whatever holds memory across requests.
 	infoSections []namedInfoSection
-	memUsage   int64 // cached result of the last MemoryWalk
-	memPeak    int64 // high-water mark, refreshed at every walk
-	memTick    int   // statements since the last checkpoint walk
-	memPending int64 // shallow bytes host calls produced since the last walk
+	memUsage     int64 // cached result of the last MemoryWalk
+	memPeak      int64 // high-water mark, refreshed at every walk
+	memTick      int   // statements since the last checkpoint walk
+	memPending   int64 // shallow bytes host calls produced since the last walk
 }
 
 // maxFreeEnvs bounds the per-Runtime free list of evaluation environments. Each
@@ -333,6 +361,8 @@ func New(w io.Writer, opts Options) *Runtime {
 		constructors: map[string]*funcEntry{},
 		includePath:  ".",
 		ctx:          context.Background(),
+		host:         context.Background(),
+		client:       context.Background(),
 		globals:      map[string]any{},
 		constants:    map[string]any{},
 		classConsts:  map[string]map[string]any{},
@@ -462,6 +492,7 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 		rt.constants = rt.frozenConsts
 		rt.constsShared = true
 	}
+	rt.resetLimits()
 }
 
 // Reset returns the runtime to the state a new one is in, so a pool can hand
@@ -497,7 +528,11 @@ func (rt *Runtime) SetContext(ctx context.Context) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	rt.ctx = ctx
+	// Recorded as the client, then derived: a limit already set survives a host
+	// swapping the context, and the derived one is what everything else reads.
+	rt.host, rt.client = ctx, ctx
+	rt.watchClient, rt.clientDone = watchEnd(ctx)
+	rt.deriveContext()
 	for _, observer := range rt.observers {
 		observer.UpdateStatus(rt.ctx, rt.status)
 	}
