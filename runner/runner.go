@@ -272,7 +272,15 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 	declare := func(cd *model.ClassDecl) {
 		c := &model.Class{Name: cd.Name, Implements: model.InterfaceNames(cd, stmts), Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
 		for _, m := range cd.Methods {
-			m.Filename = filename
+			// Only filled in, never overwritten: the parser names the file it
+			// read the declaration from, and a program parsed without a name
+			// takes the runtime's entrypoint instead. Assigning unconditionally
+			// made two runtimes hoisting one cached program write the same AST
+			// node at once, which is the same rule flatHost.RegisterClass
+			// already follows.
+			if m.Filename == "" {
+				m.Filename = filename
+			}
 			c.Methods[m.Name] = m
 		}
 		classes[cd.Name] = c
@@ -298,7 +306,9 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 		if !ok {
 			continue
 		}
-		fd.Filename = filename
+		if fd.Filename == "" {
+			fd.Filename = filename
+		}
 		if fd.Class != "" {
 			c, ok := classes[fd.Class]
 			if !ok {
