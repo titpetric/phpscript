@@ -29,7 +29,9 @@ function index(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 
 An `http.ResponseWriter` and an `*http.Request` are Go values, so they arrive as themselves. The script reads and writes them through the same reflection bridge every host object uses; there is no marshalling step and no copy.
 
-`HTTP\Request` is the name a script already has for `*net/http.Request`, the one `new HTTP\Request` builds for an outbound call, and `HTTP\ResponseWriter` is `http.ResponseWriter` under the same rule. Neither hint is enforced - phpscript parses a parameter type and never checks it - and `HTTP\ResponseWriter` names no constructor, because a response writer is handed to a handler rather than made by one. Writing the hints still says what the function expects, which is the whole job a type hint has here.
+`HTTP\Request` is the name a script already has for `*net/http.Request`, the one `new HTTP\Request` builds for an outbound call, and `HTTP\ResponseWriter` is `http.ResponseWriter` under the same rule. `HTTP\ResponseWriter` names no constructor, because a response writer is handed to a handler rather than made by one.
+
+Neither hint is checked, here or anywhere: parameter types are a [known divergence](../README.md#known-divergences-from-php), not something a lookup opts out of. Write them for the reader.
 
 ## What an invocation carries
 
