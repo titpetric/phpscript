@@ -378,6 +378,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 
 | tests/fixtures/types  | Flat stack | Runtime | PHP  |
 |-----------------------|------------|---------|------|
+| param_type_hints.phpt | PASS       | PASS    | SKIP |
 | reassign_dynamic.phpt | PASS       | PASS    | PASS |
 
 ## Summary
@@ -408,5 +409,5 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/stdlib      | 24       | 24     | 0      |
 | tests/fixtures/strings     | 20       | 20     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
-| tests/fixtures/types       | 1        | 1      | 0      |
-| **Total**                  | 251      | 251    | 0      |
+| tests/fixtures/types       | 2        | 2      | 0      |
+| **Total**                  | 252      | 252    | 0      |
