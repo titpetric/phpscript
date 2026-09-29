@@ -227,6 +227,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Runtime registration](extensions/README.md#runtime-registration)
 - [Go bindings](extensions/bindings.md) - Exposing Go constructors, functions, methods, contexts, and values to PHP.
   - [Runtime setup](extensions/bindings.md#runtime-setup)
+  - [Calling PHP from Go](extensions/bindings.md#calling-php-from-go)
   - [Binding a constructor](extensions/bindings.md#binding-a-constructor)
   - [Invoking Go methods](extensions/bindings.md#invoking-go-methods)
   - [Binding functions](extensions/bindings.md#binding-functions)
