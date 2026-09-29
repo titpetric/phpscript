@@ -87,6 +87,23 @@ function hash_equals(string $known_string, string $user_string): bool
 function hash_hmac(string $algo, string $data, string $key, bool ...$binary): string
 ```
 
+#### limits
+
+```php
+// connection_aborted returns true once the client has closed the connection, so a script can stop doing work nobody is waiting for: commit the transaction, skip rendering the page. It keeps answering after ignore_user_abort(true) detached the run from the disconnect, which is the only arrangement in which a script is still running to ask.
+function connection_aborted(): bool
+```
+
+```php
+// ignore_user_abort decides whether the client closing the connection ends the script: with $enable true the script runs to its own end and asks connection_aborted() when it wants to know, and with it false, the default, the disconnect stops the script where it next looks. A time limit still applies either way.
+function ignore_user_abort(bool $enable): void
+```
+
+```php
+// set_time_limit bounds the rest of this script to $seconds and answers true; the clock restarts from the call, as a second call in PHP does, and 0 removes the limit. The limit is a deadline on the context the interpreter checks and every binding is handed, so it ends a Go call that is waiting as well as a PHP loop that is spinning.
+function set_time_limit(int $seconds): bool
+```
+
 #### request
 
 ```php
@@ -979,6 +996,18 @@ function spl_object_hash(mixed $value): string
 ```php
 // spl_object_id returns a numeric identity for $object, stable for as long as the object is alive.
 function spl_object_id(mixed $object): int
+```
+
+#### sleep
+
+```php
+// sleep pauses the script for $seconds and returns 0. A negative count is refused with -1, as php refuses one. The wait ends early, still returning 0, when the script runs out of time or its client goes away: the pause is on the runtime context, not on the clock alone.
+function sleep(int $seconds): int
+```
+
+```php
+// usleep pauses the script for $microseconds, and ends early for the same reasons sleep does. A negative count returns without waiting.
+function usleep(int $microseconds): void
 ```
 
 #### strings
@@ -2021,6 +2050,48 @@ class HTTP\Client
 }
 ```
 
+### `HTTP\Mux`
+
+Registered from `stdlib/http`.
+
+```php
+/**
+ * HTTP\Mux routes requests to the PHP functions that answer them. It is
+ * net/http's ServeMux, so $mux->handle("GET /users/{id}", $fn) takes the
+ * patterns Go takes, and a handler is called with the response writer and
+ * the request themselves.
+ */
+class HTTP\Mux
+{
+    public function __construct() {}
+
+    /**
+     * handle registers $handler for $pattern, which is a net/http pattern: a bare
+     * path, or a method and a path, with {name} segments the handler reads back
+     * through $r->path_value($name).
+     * 
+     * The handler is called with the response writer and the request, the two
+     * net/http values themselves, so it answers through $w->write($body) and
+     * $w->header()->set($name, $value) rather than by echoing. Output a handler
+     * echoes goes where the runtime's output goes, which is not the response.
+     * 
+     * A handler that throws is one request's problem: it is reported and answered
+     * with a 500, and the server goes on. Unless the host installed an error
+     * handler with Runtime.OnError, which means "report it and carry on from the
+     * next statement" for every PHP error: the throw is then reported there, the
+     * handler runs to its end, and the request is answered with whatever it had
+     * written by then.
+     */
+    public function handle(string $pattern, mixed $handler): void {}
+
+    /**
+     * serve_http answers one request, so a Go host can mount a script's router
+     * without the script listening on anything.
+     */
+    public function serve_http(mixed $w, mixed $r): void {}
+}
+```
+
 ### `HTTP\Request`
 
 Registered from `stdlib/http`.
@@ -2079,6 +2150,59 @@ class HTTP\Request
     public function write(object $value2): void {}
 
     public function write_proxy(object $value2): void {}
+}
+```
+
+### `HTTP\Server`
+
+Registered from `stdlib/http`.
+
+```php
+/**
+ * HTTP\Server listens on $addr and answers through $handler, an HTTP\Mux or
+ * anything else that answers a request. $server->listen() binds and returns
+ * the address, $server->wait() blocks until the script runs out of time,
+ * and $server->shutdown() stops it, letting what is in flight finish.
+ */
+class HTTP\Server
+{
+    public function __construct(string $addr, mixed $handler) {}
+
+    // addr answers the address the server bound, empty until it has listened.
+    public function addr(): string {}
+
+    /**
+     * close stops the server at once, dropping whatever was in flight. shutdown()
+     * is the one to reach for; this is for a script that has decided the answers no
+     * longer matter.
+     */
+    public function close(): void {}
+
+    /**
+     * listen binds the address and starts answering, and returns the address it
+     * bound. It does not block: the script goes on, and calls wait() when it has
+     * nothing left to do.
+     */
+    public function listen(): string {}
+
+    /**
+     * shutdown stops the server, letting the requests in flight finish first.
+     * 
+     * Calling it without having listened, or twice, is not an error: it is written
+     * into a shutdown callback, which runs however the script ended.
+     */
+    public function shutdown(): void {}
+
+    /**
+     * wait blocks until the script runs out of time, or the client that started it
+     * goes away, and returns. A script with no limit and no client waits until the
+     * host's own context ends, which for a command line run is never.
+     * 
+     * Nothing runs after it in a script the time limit ended: the limit is a fatal,
+     * as php's is, so the next statement is where the script stops. Cleanup belongs
+     * in a register_shutdown_function callback, which runs with the clock off.
+     */
+    public function wait(): void {}
 }
 ```
 
