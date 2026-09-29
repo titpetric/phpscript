@@ -4,6 +4,7 @@ The `phpscript` project has similar use cases to PHP. With implicit error checki
 
 - [Building an application](application.md)
 - [Usage of Go bindings](bindings.md)
+- [Custom entrypoints](entrypoints.md)
 - [Error handling](error-handling.md)
 - [Serving static files](static-files.md)
 - [Routing](routing.md)

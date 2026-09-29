@@ -28,6 +28,49 @@ The argument bridge also recognizes Go's `time.Duration` type. A PHP string is p
 
 For request-oriented hosts, retain one concurrency-safe `runner.ExprCache` and install it on each fresh runtime with `SetExprCache`. This reuses compiled expression programs across requests while request globals, context, output, and registered capabilities remain isolated in their own runtime. The built-in HTTP server and annotated route service configure shared expression and include caches for their request runtimes.
 
+## Calling PHP from Go
+
+The sections above run a file. `runner.Lookup` goes the other way and reaches one function inside it, with the signature the host asks for:
+
+```go
+rt := runner.New(os.Stdout, runner.Options{RootFS: os.DirFS(root)})
+stdlib.Register(rt)
+
+handle, err := runner.Lookup[func(*http.Request) bool](rt, "App\\Handler\\main")
+if err != nil {
+	return err
+}
+ok := handle(request)
+```
+
+It is `plugin.Lookup` over a PHP source tree, with the type parameter standing in for the type assertion Go's own plugin API needs. The symbol may be declared anywhere in the tree: the name is matched against the functions already declared on the runtime and against every program in its include cache, and a runtime whose cache is empty parses its source root through a `Precompiler` on the first lookup that needs one.
+
+The parser qualifies a free function with the namespace its file declares, so `App\Handler\main` is the whole name. Resolution tries that name first, case-insensitively as PHP compares one, then falls back to matching the trailing segment, so a bare `main` finds it and `Handler\main` picks between two handlers that share the last segment. A name that matches nothing, or more than one declaration, is a `*runner.LookupError` carrying what it matched, so a host wiring its handlers hears about an ambiguity at startup rather than serving whichever one won.
+
+`T` must be a function type returning at most one value and an optional trailing `error`. The shape is checked at the lookup, not at the call. A signature with no error result has nowhere to report a failure, so a throw goes to the runtime's error sink, the same place the error of a script that ended badly goes; with one, it fills the slot and the value result is left at its zero.
+
+An invocation carries the arguments and nothing else. No `runner.Context` is registered, so `$_GET`, `$_POST` and `$_SERVER` are absent rather than empty, and no file body runs: the declaring program is hoisted for its declarations only. That is the point of the path. What the host passes arrives as the Go value it is, so an `*http.Request` handed in is the script's `HTTP\Request` and its headers, its query and its body read off the request itself:
+
+```php
+<?php
+namespace App\Handler;
+
+function main(\HTTP\Request $r) {
+	$r->parse_form();
+	return $r->method === "POST" && $r->post_form_value("name") !== "";
+}
+```
+
+Arguments are widened to the value set the interpreter operates on, which means the predeclared numeric types become `int64` and `float64`; a named scalar keeps its name, and everything else is passed through. Results take PHP's own coercions for the predeclared scalar kinds, so a function returning `1` fills a `bool` the way `if (1)` reads it, and a PHP array fills a `[]T` or a `map[K]V`.
+
+Two limits are worth knowing before building on it. A looked-up symbol executes through the interpreter even on a runtime built with `NewFlatStack`, because a flat-declared function lives in the bytecode program's own table rather than the runtime's. And `Options.Include` is not run per invocation, so a composer autoloader is not installed by a lookup; a function that needs one requires it in its own body, or the host runs the prelude on the runtime first.
+
+The returned function belongs to its runtime, and a runtime serves one goroutine. A host calling one concurrently builds a runtime per goroutine and shares the include and expression caches between them, which is exactly what the HTTP server does per request. `BenchmarkLookup` in `runner/lookup_bench_test.go` is that arrangement measured against `rt.Callable` and against a whole request cycle:
+
+```bash
+go test ./runner -run '^$' -bench '^BenchmarkLookup' -benchmem -cpu 1,2
+```
+
 ## Binding a constructor
 
 `RegisterConstructor` maps a PHP class name to any Go function accepted by the reflection bridge:
