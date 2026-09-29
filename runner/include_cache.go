@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"maps"
 	"sync"
 
 	"github.com/titpetric/phpscript/model"
@@ -79,6 +80,19 @@ func (c *IncludeCache) Len() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.programs)
+}
+
+// snapshot copies the entries so a caller can walk the whole cache without
+// holding the lock for the walk. The programs themselves are shared rather
+// than copied, which is the cache's own contract: a parsed program is treated
+// as immutable and hoisting reads it into per-runtime maps.
+func (c *IncludeCache) snapshot() map[string]*model.Program {
+	if c == nil {
+		return nil
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return maps.Clone(c.programs)
 }
 
 // Get returns the parsed program cached for path, if any.

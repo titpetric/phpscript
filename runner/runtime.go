@@ -121,6 +121,11 @@ type Runtime struct {
 	includeCache *IncludeCache
 	included     []string
 
+	// lookupScanned records that a Lookup has already considered parsing the
+	// source root into the include cache, so a tree that yielded nothing is
+	// walked once rather than once per symbol. See Runtime.scanTree.
+	lookupScanned bool
+
 	// classConsts caches evaluated class constants (Class::NAME) per class.
 	classConsts map[string]map[string]any
 
@@ -471,6 +476,9 @@ func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	clear(rt.sourceSpans)
 	rt.includeCache.Clear()
 	rt.exprCache.Clear()
+	// The tree a lookup indexed went with the include cache, so the next one
+	// parses it again rather than resolving against nothing.
+	rt.lookupScanned = false
 }
 
 // SetContext installs the lifecycle context auto-injected into registered Go
