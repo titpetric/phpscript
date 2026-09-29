@@ -31,6 +31,8 @@ func (rt *Runtime) callableWithScope(v any, scope *Scope) (func(...any) (any, er
 		return nil, false
 	case func(...any) (any, error):
 		return value, true
+	case *Closure:
+		return value.uniform(), true
 	case string:
 		return rt.callableFromString(value, scope)
 	case *model.Array:
@@ -43,7 +45,10 @@ func (rt *Runtime) callableWithScope(v any, scope *Scope) (func(...any) (any, er
 		}
 		return nil, false
 	}
-	if reflect.ValueOf(v).Kind() == reflect.Func {
+	// A typed nil func is a func-shaped value that cannot be called: invoking
+	// one panics inside reflect rather than reporting anything useful, so it is
+	// not callable and is_callable answers so.
+	if rv := reflect.ValueOf(v); rv.Kind() == reflect.Func && !rv.IsNil() {
 		return adapt(v), true
 	}
 	return nil, false

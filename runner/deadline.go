@@ -297,27 +297,3 @@ func (rt *Runtime) releaseDeadline() {
 	}
 	rt.refreshDeadlineArmed()
 }
-
-// LockExec claims the runtime for PHP execution and answers the release.
-//
-// A Runtime runs one program at a time: its frames, its compiled-expression
-// memo and its output are not guarded. A host that reaches PHP from more than
-// one goroutine - HTTP\Mux, which net/http calls on a goroutine per request -
-// holds this across the call, and so does Run, so a script and the handlers of
-// its own server never interpret at the same time.
-//
-// It is not reentrant. A binding that calls back into PHP on the goroutine that
-// already holds it must not take it again.
-func (rt *Runtime) LockExec() func() {
-	rt.execMu.Lock()
-	return rt.execMu.Unlock
-}
-
-// ParkExec releases the runtime while wait blocks and takes it back after, for
-// a binding whose whole job is to block: HTTP\Server::wait parks a serving
-// script here so that its own handlers can run.
-func (rt *Runtime) ParkExec(wait func()) {
-	rt.execMu.Unlock()
-	defer rt.execMu.Lock()
-	wait()
-}

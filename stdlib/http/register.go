@@ -24,10 +24,12 @@ func Register(rt *runner.Runtime) {
 	rt.RegisterConstructor("HTTP\\Mux", func() *Mux { return NewMux(rt) })
 
 	// HTTP\Server listens on $addr and answers through $handler, an HTTP\Mux or
-	// anything else that answers a request. $server->listen() binds and returns
-	// the address, $server->wait() blocks until the script runs out of time,
-	// and $server->shutdown() stops it, letting what is in flight finish.
-	rt.RegisterConstructor("HTTP\\Server", func(addr string, handler any) (*Server, error) {
-		return NewServer(rt, addr, handler)
+	// anything else that answers a request; $workers bounds how many requests
+	// are answered at once and defaults to the number of cores.
+	// $server->listen() binds and returns the address, $server->wait() blocks
+	// until the script runs out of time, and $server->shutdown() stops it,
+	// letting what is in flight finish.
+	rt.RegisterConstructor("HTTP\\Server", func(addr string, handler any, workers ...int64) (*Server, error) {
+		return NewServer(rt, addr, handler, workers...)
 	})
 }

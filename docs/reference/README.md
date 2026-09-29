@@ -246,6 +246,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
       - [arrays](extensions/implemented-apis.md#arrays)
       - [crypto](extensions/implemented-apis.md#crypto)
       - [limits](extensions/implemented-apis.md#limits)
+      - [log](extensions/implemented-apis.md#log)
       - [request](extensions/implemented-apis.md#request)
       - [strings](extensions/implemented-apis.md#strings)
     - [stdlib/compat](extensions/implemented-apis.md#stdlibcompat)

@@ -57,7 +57,10 @@ type Runtime struct {
 	// re-running a compiled program on the same runtime is idempotent instead
 	// of a redeclaration error. Only the top-level Run entry consults it: an
 	// include re-declaring a function is a real PHP error and keeps being one.
-	hoisted map[*model.Program]bool
+	//
+	// The value is the filename it was hoisted under, which is what Fork
+	// replays onto a sibling so it declares the same symbols.
+	hoisted map[*model.Program]string
 	classes map[string]*model.Class
 
 	// interfaces holds the interface declarations hoist saw, keyed by name.
@@ -127,10 +130,11 @@ type Runtime struct {
 	// when one changes so the statement loop reads a field.
 	deadlineArmed bool
 
-	// execMu serializes PHP execution on this runtime. A Runtime runs one
-	// program at a time and a host reaching it from several goroutines - a
-	// script serving its own HTTP requests - holds this across every call.
-	execMu sync.Mutex
+	// prepare is how the host installed this runtime's bindings, recorded so
+	// Fork can install them on a child the same way. Copying the tables is not
+	// enough: a binding is usually a closure over the runtime it was registered
+	// on, so a copied one would read and write the parent. See SetPreparer.
+	prepare func(*Runtime)
 
 	errorHandler func(error)
 	include      IncludeFunc
@@ -360,7 +364,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		funcs:        map[string]*funcEntry{},
 		userFns:      map[string]struct{}{},
 		funcSites:    map[string]FuncSite{},
-		hoisted:      map[*model.Program]bool{},
+		hoisted:      map[*model.Program]string{},
 		workDirBase:  opts.WorkDir,
 		classes:      map[string]*model.Class{},
 		interfaces:   map[string]*model.InterfaceDecl{},
@@ -451,15 +455,7 @@ func (rt *Runtime) FreezeStdlib() {
 // stdin, empty globals and user declarations. Host functions, constructors and
 // the expression/bytecode caches stay.
 func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
-	if out == nil {
-		out = os.Stdout
-	}
-	rt.out = out
-	rt.outStack = nil
-	if stdin == nil {
-		stdin = strings.NewReader("")
-	}
-	rt.opts.Stdin = stdin
+	rt.resetExecution(out, stdin)
 	// The closures a hoist installed have to come out of the function table
 	// too, not just out of the name set. Leaving them behind made
 	// function_exists answer for a function the reset session never declared,
@@ -471,11 +467,30 @@ func (rt *Runtime) ResetSession(out io.Writer, stdin io.Reader) {
 	clear(rt.userFns)
 	clear(rt.funcSites)
 	clear(rt.hoisted)
-	rt.opts.WorkDir = rt.workDirBase
 	rt.included = nil
-	rt.preludeDone = false
 	clear(rt.classes)
 	clear(rt.interfaces)
+}
+
+// resetExecution drops what one program wrote and keeps what declared it: the
+// function and class tables, and the record of which files were loaded.
+//
+// It is ResetSession without the forgetting, for a runtime a host hands to one
+// request after another - Pool.Put is the caller. A fork's declarations came
+// from its parent's tree and are the reason it exists; dropping them between
+// requests would leave it with nothing to answer.
+func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
+	if out == nil {
+		out = os.Stdout
+	}
+	rt.out = out
+	rt.outStack = nil
+	if stdin == nil {
+		stdin = strings.NewReader("")
+	}
+	rt.opts.Stdin = stdin
+	rt.opts.WorkDir = rt.workDirBase
+	rt.preludeDone = false
 	clear(rt.globals)
 	rt.auto.Reset()
 	// The scratch containers stay for the next Register, emptied now so a
@@ -1291,11 +1306,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 		if !ok {
 			continue
 		}
-		decl := cl
-		env := captureClosureEnv(decl, scope)
-		vars[slot] = adapt(func(args ...any) (any, error) {
-			return rt.invokeClosure(decl, args, env)
-		})
+		vars[slot] = rt.newClosure(cl, captureClosureEnv(cl, scope))
 	}
 	for i, name := range ce.vars {
 		v, err := rt.resolveVar(name, ce.idents[i], scope)

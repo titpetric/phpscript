@@ -121,11 +121,6 @@ func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 
 // Run executes a whole program in the global scope.
 func (rt *Runtime) Run(p *model.Program) (err error) {
-	// The runtime runs one program at a time. A script that serves its own HTTP
-	// requests reaches PHP from a goroutine per request, and this is what keeps
-	// those out while the script itself is running; HTTP\Server::wait hands the
-	// lock back through ParkExec for exactly as long as it is parked.
-	defer rt.LockExec()()
 	// The limit belonged to the program that set it. Left armed, it ends the
 	// next program run on this runtime, which never asked for one.
 	defer rt.resetLimits()
@@ -169,6 +164,10 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 // It records and returns. It does not unwind PHP execution, so nothing about it
 // is visible to a script through try/catch; a Go host observes it on the trace,
 // or through the handler installed with OnError.
+// HasErrorHandler reports whether a host installed one with OnError, for a
+// binding deciding where a message with nowhere obvious to go should go.
+func (rt *Runtime) HasErrorHandler() bool { return rt.errorHandler != nil }
+
 func (rt *Runtime) RecordError(err error) {
 	if err == nil {
 		return
@@ -248,13 +247,13 @@ func (rt *Runtime) runInterpreted(p *model.Program) error {
 // cannot express at this seam; includes keep calling hoist directly, so a
 // file included twice still raises the error PHP raises.
 func (rt *Runtime) hoistOnce(p *model.Program, filename string) error {
-	if rt.hoisted[p] {
+	if _, done := rt.hoisted[p]; done {
 		return nil
 	}
 	if err := rt.hoist(p, filename); err != nil {
 		return err
 	}
-	rt.hoisted[p] = true
+	rt.hoisted[p] = filename
 	return nil
 }
 
