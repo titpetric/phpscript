@@ -443,7 +443,7 @@ func (h flatHost) PopLiveWalker() {
 // CheckDeadline answers the engine's per-run deadline check; see
 // runner/deadline.go for what the two watch flags mean.
 func (h flatHost) CheckDeadline() error {
-	if !h.runtime.watching && !h.runtime.watchClient {
+	if !h.runtime.watchingDeadline() {
 		return nil
 	}
 	return h.runtime.checkDeadline()

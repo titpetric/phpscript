@@ -2,29 +2,32 @@ package runner
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 )
 
-// This file is the execution deadline and the client connection, which are two
-// things a script wants to end for and are kept apart on purpose.
+// This file is the execution deadline and the client connection: two things a
+// script wants to end for, kept apart because they end it differently.
 //
-// A Runtime holds three contexts. host is what the host handed it. ctx is what
-// the VM checks and every binding is handed, host with the time limit on it;
-// it is rebuilt only when the limit or the abort policy changes, so a binding
-// that is blocked on it - HTTP\Mux::serve, which is the script's whole run -
-// keeps watching the same one. client is the connection being answered right
-// now, which is host until a handler enters a request, and is what
-// connection_aborted() reads.
+// The context a binding is handed is built once per session and never rebuilt.
+// A time limit is a timer that cancels it, and changing the limit resets the
+// timer rather than deriving a new context, because a binding that blocks -
+// HTTP\Server::wait, which is a serving script's whole run - is parked on the
+// context it was handed and a rebuild would end it. A handler calling
+// set_time_limit is the ordinary way to reach that.
 //
-// The client is checked rather than merged into ctx, because merging would mean
-// rebuilding ctx per request and cancelling the one serve() is waiting on.
+// The connection is checked beside the context rather than merged into it, for
+// the same reason: a request is one of many and the context belongs to the
+// script.
+//
+// The limit is the runtime's, not a request's. A script that serves is still
+// one script, and set_time_limit inside a handler moves that script's deadline,
+// which is what php does where the request is the script. What a request does
+// own is its connection, and EnterRequest scopes that.
 
 // TimeLimitError ends a script that ran past set_time_limit, or whose client
 // went away while it was not ignoring that.
 //
-// It unwinds like the memory limit does, so an enclosing try still catches it.
 // A host distinguishes the two causes through Aborted, because they call for
 // different answers: a timeout is the site's problem and a disconnect is not.
 type TimeLimitError struct {
@@ -39,20 +42,39 @@ func (e *TimeLimitError) Error() string {
 	if e.Aborted {
 		return "Script ended: the client closed the connection"
 	}
-	return fmt.Sprintf("Maximum execution time of %d seconds exceeded", int(e.Limit.Seconds()))
+	// php's wording, down to the singular, for a whole number of seconds, which
+	// is every limit set_time_limit can express. A handler's limit is the only
+	// one that can be finer, and that one says the duration.
+	if e.Limit%time.Second == 0 {
+		seconds := int64(e.Limit / time.Second)
+		if seconds == 1 {
+			return "Maximum execution time of 1 second exceeded"
+		}
+		return fmt.Sprintf("Maximum execution time of %d seconds exceeded", seconds)
+	}
+	return fmt.Sprintf("Maximum execution time of %s exceeded", e.Limit)
 }
 
+// maxTimeLimit is the longest limit a script can ask for. It is past any real
+// one and keeps the seconds-to-Duration multiply from wrapping a large argument
+// into a short limit.
+const maxTimeLimit = 100 * 365 * 24 * time.Hour
+
 // SetTimeLimit bounds how long the script may run, restarting the clock from
-// now the way a second set_time_limit call does. Zero removes the limit.
+// now the way a second set_time_limit call does. Zero removes the limit, and a
+// limit past maxTimeLimit is held there.
 //
-// The limit is a deadline on the context the VM checks and bindings are handed,
-// so it ends a Go call that is waiting as well as a PHP loop that is spinning.
+// It is the runtime's limit wherever it is called from, including a handler of
+// the script's own HTTP server: a serving script is one script and this is its
+// deadline. The context every binding holds is cancelled with it, so a blocked
+// Go call ends too, and a handler extending the limit extends the server rather
+// than replacing the context the server is parked on.
 func (rt *Runtime) SetTimeLimit(limit time.Duration) {
 	if limit < 0 {
 		limit = 0
 	}
-	rt.timeLimit = limit
-	rt.deriveContext()
+	rt.timeLimit = min(limit, maxTimeLimit)
+	rt.armTimer()
 }
 
 // TimeLimit answers the limit in force, zero for none.
@@ -64,11 +86,6 @@ func (rt *Runtime) TimeLimit() time.Duration { return rt.timeLimit }
 // looks. On, the script runs to its own end and asks ConnectionAborted when it
 // wants to know. A time limit still applies either way: ignoring the client is
 // not permission to run forever.
-// It is a flag rather than a change to the context, because the context is
-// what a blocked binding is already waiting on: rebuilding it here would end
-// HTTP\Mux::serve the moment a handler called this. What it costs is that a Go
-// call made after the client left still sees the disconnect on its context and
-// may return early; the script itself continues, which is what was asked for.
 func (rt *Runtime) SetIgnoreUserAbort(enable bool) {
 	rt.ignoreAbort = enable
 }
@@ -76,39 +93,44 @@ func (rt *Runtime) SetIgnoreUserAbort(enable bool) {
 // IgnoreUserAbort reports whether a disconnect is being ignored.
 func (rt *Runtime) IgnoreUserAbort() bool { return rt.ignoreAbort }
 
-// ConnectionAborted reports that the client closed the connection.
-//
-// It answers for the connection being served rather than for the context the
-// VM checks, so it keeps answering after ignore_user_abort detached the two,
-// which is the only arrangement in which a script is still running to ask.
+// ConnectionAborted reports that the client closed the connection: the request
+// being answered inside a handler, and whatever started the script outside one.
 func (rt *Runtime) ConnectionAborted() bool {
 	return ended(rt.clientDone)
+}
+
+// ClientContext answers the connection being served, which is the request
+// inside a handler and the host's context outside one. A binding that should
+// end when the client leaves waits on this; one that should end when the script
+// does waits on Runtime.Context.
+func (rt *Runtime) ClientContext() context.Context {
+	if rt.client != nil {
+		return rt.client
+	}
+	return rt.Context()
 }
 
 // EnterRequest records the connection of one request while it is answered, and
 // returns the function that puts the previous one back.
 //
 // It is for a host answering several requests on one runtime, which HTTP\Mux
-// does: connection_aborted() then reports the client that is waiting rather
-// than whatever started the script, and a disconnect ends the handler unless it
-// asked to ignore that.
-//
-// Only the connection moves. The time limit bounds the script, and for a script
-// that is a server the script outlives every request in it.
+// does. Everything a request can change is saved: the connection
+// connection_aborted() reports, whether a disconnect ends it, and the limit,
+// because php settles all three per request and there a request is a script.
 func (rt *Runtime) EnterRequest(ctx context.Context) func() {
-	previous, previousDone, previousWatch := rt.client, rt.clientDone, rt.watchClient
-	previousIgnore := rt.ignoreAbort
+	client, clientDone, ignoreAbort := rt.client, rt.clientDone, rt.ignoreAbort
 
 	rt.client = ctx
-	// Off for every request, so a handler that called ignore_user_abort does
-	// not decide it for the next one. php settles it per request too, because
-	// there a request is a script and the setting dies with it.
+	_, rt.clientDone = watchEnd(ctx)
+	// Off for every request, so a handler that ignored a disconnect does not
+	// decide it for the next one. The limit is deliberately not saved: it is
+	// the runtime's and a handler moving it means to move it.
 	rt.ignoreAbort = false
-	rt.watchClient, rt.clientDone = watchEnd(ctx)
+	rt.refreshDeadlineArmed()
 
 	return func() {
-		rt.client, rt.clientDone, rt.watchClient = previous, previousDone, previousWatch
-		rt.ignoreAbort = previousIgnore
+		rt.client, rt.clientDone, rt.ignoreAbort = client, clientDone, ignoreAbort
+		rt.refreshDeadlineArmed()
 	}
 }
 
@@ -116,15 +138,10 @@ func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 // end at all.
 //
 // The channel is read once and kept, so the per-statement check is a
-// non-blocking select on a field rather than a call through a context. It has
-// to run on every statement: a script that slept past its limit and then does
-// three more things has to be stopped at the first of them, and a counter that
-// fires every couple of hundred statements would let all three through.
-//
-// A channel rather than a flag an AfterFunc sets, because an AfterFunc runs on
+// non-blocking select on a field rather than a call through a context. A
+// channel rather than a flag an AfterFunc sets, because an AfterFunc runs on
 // its own goroutine: a sleep that returned the instant its context ended would
-// reach the next statement before the flag was written, and the script would
-// carry on past a limit it had already passed.
+// reach the next statement before the flag was written.
 func watchEnd(ctx context.Context) (bool, <-chan struct{}) {
 	if ctx == nil {
 		return false, nil
@@ -147,72 +164,160 @@ func ended(done <-chan struct{}) bool {
 	}
 }
 
-// deriveContext rebuilds the context the VM checks from the one the host set.
+// bindContext builds the context this session's bindings are handed. SetContext
+// calls it and nothing else does, which is what lets a binding block on it
+// across a script changing its own limit.
 //
-// Called only by what changes an input to it: the host's context, the limit, or
-// whether a disconnect counts. Not per request - a rebuild cancels the context
-// the previous one produced, and a script serving requests is blocked on it.
-func (rt *Runtime) deriveContext() {
-	if rt.stopDeadline != nil {
-		rt.stopDeadline()
-		rt.stopDeadline = nil
-	}
-
+// It does not cancel the one it replaces. A host layering onto the context it
+// already gave - runner.Context.Register does exactly that, seeding the request
+// onto rt.Context() - would otherwise have its new context cancelled through
+// the old one it was derived from, and every script would end before its first
+// statement. The old one is released with the program, in resetLimits.
+func (rt *Runtime) bindContext() {
 	base := rt.host
 	if base == nil {
 		base = context.Background()
 	}
-	if rt.timeLimit > 0 {
-		rt.ctx, rt.stopDeadline = context.WithTimeout(base, rt.timeLimit)
-	} else {
-		rt.ctx = base
-	}
-	// A context that cannot end is not worth a look per statement, which is
-	// what a command line run with no limit has.
-	rt.watching, rt.ctxDone = watchEnd(rt.ctx)
+	rt.ctx, rt.stopCtx = context.WithCancel(base)
+	rt.ctxDone = rt.ctx.Done()
+	// Whether the host can end the run. Not whether the wrapper above has a
+	// Done channel, which it always does: the timer ends the run through
+	// timedOut, and a command line script with no limit and no request must
+	// check nothing per statement.
+	rt.watching = base.Done() != nil
+	rt.refreshDeadlineArmed()
 }
 
-// checkDeadline reports the script having run out of time, or its client having
-// gone away, as the error that unwinds it.
-func (rt *Runtime) checkDeadline() error {
-	if rt.watching && ended(rt.ctxDone) {
-		// The deadline firing is the limit; anything else is the host's context
-		// ending, which for a served request is the client going away and is
-		// reported as what it is rather than as a limit never reached.
-		if errors.Is(rt.ctx.Err(), context.DeadlineExceeded) {
-			return &TimeLimitError{Limit: rt.timeLimit}
-		}
-		if !rt.ignoreAbort {
-			return &TimeLimitError{Aborted: true}
-		}
+// armTimer restarts the clock. The flag is set before the context is cancelled,
+// so a check that finds the context ended already knows whether the limit is
+// why.
+func (rt *Runtime) armTimer() {
+	if rt.scriptTimer != nil {
+		rt.scriptTimer.Stop()
+		rt.scriptTimer = nil
 	}
-	// The connection being answered, which is the request inside a handler and
-	// is not in ctx: see the file comment.
-	if rt.watchClient && !rt.ignoreAbort && ended(rt.clientDone) {
+	rt.timedOut.Store(false)
+	if rt.timeLimit <= 0 {
+		rt.refreshDeadlineArmed()
+		return
+	}
+	rt.scriptTimer = time.AfterFunc(rt.timeLimit, func() {
+		rt.timedOut.Store(true)
+		if rt.stopCtx != nil {
+			rt.stopCtx()
+		}
+	})
+	rt.refreshDeadlineArmed()
+}
+
+// checkDeadline reports the script having run out of time, the handler having
+// run out of its own, or the client having gone away.
+func (rt *Runtime) checkDeadline() error {
+	if rt.timedOut.Load() {
+		return &TimeLimitError{Limit: rt.timeLimit}
+	}
+	if rt.ignoreAbort {
+		return nil
+	}
+	// The connection being answered, and the context the host gave the script,
+	// which for a served request is the same thing one level up.
+	if ended(rt.clientDone) || (rt.watching && ended(rt.ctxDone)) {
 		return &TimeLimitError{Aborted: true}
 	}
 	return nil
 }
 
-// resetLimits returns the deadline and the connection to what a fresh runtime
-// has, for a host that reuses one across programs. A limit one program set is
-// not the next one's limit, and a connection that went away belonged to the
-// program that was answering it; leaving either behind ends the next program
-// before its first statement.
-func (rt *Runtime) resetLimits() {
-	rt.releaseDeadline()
-	rt.timeLimit = 0
-	rt.ignoreAbort = false
-	rt.client = rt.host
-	rt.watchClient, rt.clientDone = watchEnd(rt.client)
-	rt.deriveContext()
+// watchingDeadline reports whether anything can stop this run. It is a field
+// rather than a computation, refreshed by whatever changes one of its inputs,
+// because the statement loop reads it on every statement.
+func (rt *Runtime) watchingDeadline() bool { return rt.deadlineArmed }
+
+// refreshDeadlineArmed recomputes it. Called by everything that arms or drops a
+// timer, changes the connection, or rebuilds the context - a limit a script
+// sets halfway through its own statement list has to be noticed by the rest of
+// that list.
+func (rt *Runtime) refreshDeadlineArmed() {
+	rt.deadlineArmed = rt.watching || rt.clientDone != nil || rt.scriptTimer != nil
 }
 
-// releaseDeadline drops the timer a limit installed, so a host reusing a
-// runtime does not leave one alive per session until it fires.
-func (rt *Runtime) releaseDeadline() {
-	if rt.stopDeadline != nil {
-		rt.stopDeadline()
-		rt.stopDeadline = nil
+// suspendDeadline turns the clock off and answers the function that turns it
+// back on, for the shutdown pass: a script is there because it ran out of time
+// as often as because it finished, and a callback registered to close what it
+// opened has to be able to run. php resets the timer for its shutdown functions
+// for the same reason.
+func (rt *Runtime) suspendDeadline() func() {
+	timedOut := rt.timedOut.Load()
+	watching, clientDone := rt.watching, rt.clientDone
+
+	rt.timedOut.Store(false)
+	rt.watching, rt.clientDone = false, nil
+	rt.refreshDeadlineArmed()
+
+	return func() {
+		rt.timedOut.Store(timedOut)
+		rt.watching, rt.clientDone = watching, clientDone
+		rt.refreshDeadlineArmed()
 	}
+}
+
+// resetLimits returns the deadline and the connection to what a fresh runtime
+// has, for a host that reuses one across programs. A limit one program set is
+// not the next one's, and a timer left armed would end a program that never
+// asked for a limit.
+func (rt *Runtime) resetLimits() {
+	// Only a program that armed something needs its context replaced. One that
+	// set no limit left the context untouched, and rebuilding it would cost an
+	// allocation per run for nothing; the budget in
+	// flatstack.TestFlatstackPrecompiledAllocationBudget is what holds that.
+	used := rt.scriptTimer != nil || rt.timedOut.Load()
+	rt.releaseDeadline()
+	if used && rt.stopCtx != nil {
+		// The program is over, so the context it was handed is released and a
+		// fresh one built from the same host: a runtime the host reuses without
+		// setting a context again must not start the next program on a
+		// cancelled one.
+		rt.stopCtx()
+		rt.stopCtx = nil
+		rt.bindContext()
+	}
+	rt.timeLimit = 0
+	rt.ignoreAbort = false
+	rt.timedOut.Store(false)
+	rt.client = rt.host
+	_, rt.clientDone = watchEnd(rt.client)
+	rt.refreshDeadlineArmed()
+}
+
+// releaseDeadline stops the timers a limit installed, so a host reusing a
+// runtime does not leave one alive per program until it fires.
+func (rt *Runtime) releaseDeadline() {
+	if rt.scriptTimer != nil {
+		rt.scriptTimer.Stop()
+		rt.scriptTimer = nil
+	}
+	rt.refreshDeadlineArmed()
+}
+
+// LockExec claims the runtime for PHP execution and answers the release.
+//
+// A Runtime runs one program at a time: its frames, its compiled-expression
+// memo and its output are not guarded. A host that reaches PHP from more than
+// one goroutine - HTTP\Mux, which net/http calls on a goroutine per request -
+// holds this across the call, and so does Run, so a script and the handlers of
+// its own server never interpret at the same time.
+//
+// It is not reentrant. A binding that calls back into PHP on the goroutine that
+// already holds it must not take it again.
+func (rt *Runtime) LockExec() func() {
+	rt.execMu.Lock()
+	return rt.execMu.Unlock
+}
+
+// ParkExec releases the runtime while wait blocks and takes it back after, for
+// a binding whose whole job is to block: HTTP\Server::wait parks a serving
+// script here so that its own handlers can run.
+func (rt *Runtime) ParkExec(wait func()) {
+	rt.execMu.Unlock()
+	defer rt.execMu.Lock()
+	wait()
 }

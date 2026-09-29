@@ -45,7 +45,7 @@ while (true) { $n = 1; }
 	if limit.Aborted {
 		t.Error("reported as an abort, want a limit")
 	}
-	if got := err.Error(); got != "Maximum execution time of 1 seconds exceeded" {
+	if got := err.Error(); got != "Maximum execution time of 1 second exceeded" {
 		t.Errorf("message = %q", got)
 	}
 	if elapsed := time.Since(started); elapsed > 3*time.Second {
@@ -229,5 +229,204 @@ func TestEnterRequestScopesTheConnection(t *testing.T) {
 	leave()
 	if rt.ConnectionAborted() {
 		t.Error("the script's own connection was reported as aborted")
+	}
+}
+
+// TestTimeLimitEndsAnEmptyLoop covers the shortest loop there is. The check
+// used to run per statement, and a body with no statements never reached it,
+// so `while (true) {}` outran every limit on the interpreter.
+func TestTimeLimitEndsAnEmptyLoop(t *testing.T) {
+	for _, body := range []string{"{}", "{ }", ";"} {
+		t.Run(body, func(t *testing.T) {
+			done := make(chan error, 1)
+			go func() {
+				_, err := runLimited(t, context.Background(), "<?php\nset_time_limit(1);\nwhile (true) "+body+"\n")
+				done <- err
+			}()
+			select {
+			case err := <-done:
+				var limit *runner.TimeLimitError
+				if !errors.As(err, &limit) {
+					t.Fatalf("error = %v, want *runner.TimeLimitError", err)
+				}
+			case <-time.After(10 * time.Second):
+				t.Fatal("the loop outran its 1s limit")
+			}
+		})
+	}
+}
+
+// TestTimeLimitHoldsPastAnAbortBeingIgnored is the contract SetIgnoreUserAbort
+// documents: ignoring the client is not permission to run forever. The limit
+// used to be unreachable once the host context had been cancelled, because the
+// cause was read off that context.
+func TestTimeLimitHoldsPastAnAbortBeingIgnored(t *testing.T) {
+	ctx, abort := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		abort()
+	}()
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := runLimited(t, ctx, `<?php
+ignore_user_abort(true);
+set_time_limit(1);
+while (true) { $n = 1; }
+`)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		var limit *runner.TimeLimitError
+		if !errors.As(err, &limit) {
+			t.Fatalf("error = %v, want *runner.TimeLimitError", err)
+		}
+		if limit.Aborted {
+			t.Error("reported as an abort; the script asked to ignore that")
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the script outran its 1s limit after ignoring the abort")
+	}
+}
+
+// TestTimeLimitDoesNotOutliveItsProgram covers a runtime a host reuses: the
+// timer one program armed used to end the next one, which had asked for
+// nothing.
+func TestTimeLimitDoesNotOutliveItsProgram(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+
+	first, err := rt.Load(`<?php set_time_limit(1); echo "one";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(first); err != nil {
+		t.Fatalf("first run: %v", err)
+	}
+	if rt.TimeLimit() != 0 {
+		t.Errorf("limit after the run = %s, want it cleared", rt.TimeLimit())
+	}
+
+	time.Sleep(1200 * time.Millisecond)
+
+	out.Reset()
+	second, err := rt.Load(`<?php echo "two";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(second); err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+	if out.String() != "two" {
+		t.Errorf("output = %q, want %q", out.String(), "two")
+	}
+}
+
+// TestDeadlineStillHoldsAfterAShutdownPass covers the other half of reuse: the
+// shutdown pass turns the clock off so its callbacks can run, and used to leave
+// it off, so every later program on that runtime was unbounded.
+func TestDeadlineStillHoldsAfterAShutdownPass(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+
+	first, err := rt.Load(`<?php register_shutdown_function(function () { echo "closed"; });`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(first); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "closed" {
+		t.Fatalf("output = %q, want the callback to have run", out.String())
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		second, loadErr := rt.Load(`<?php set_time_limit(1); while (true) { $n = 1; }`)
+		if loadErr != nil {
+			done <- loadErr
+			return
+		}
+		done <- rt.Run(second)
+	}()
+
+	select {
+	case err := <-done:
+		var limit *runner.TimeLimitError
+		if !errors.As(err, &limit) {
+			t.Fatalf("error = %v, want *runner.TimeLimitError", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("the second program was not bounded at all")
+	}
+}
+
+// TestSetTimeLimitKeepsTheContextABindingHolds is the server case directly: the
+// context is built once and a limit is a timer on it, because rebuilding it
+// ends whatever is parked on it.
+func TestSetTimeLimitKeepsTheContextABindingHolds(t *testing.T) {
+	rt := runner.New(io.Discard, runner.Options{})
+	stdlib.Register(rt)
+	rt.SetContext(context.Background())
+
+	parked := rt.Context()
+	rt.SetTimeLimit(time.Hour)
+	rt.SetTimeLimit(2 * time.Hour)
+	rt.SetIgnoreUserAbort(true)
+
+	if rt.Context() != parked {
+		t.Error("the context was replaced")
+	}
+	if err := parked.Err(); err != nil {
+		t.Errorf("the parked context was cancelled: %v", err)
+	}
+}
+
+// TestTimeLimitOverflow keeps an absurd argument from wrapping into a short
+// limit: 18446744074 seconds used to come out as 290ms.
+func TestTimeLimitOverflow(t *testing.T) {
+	out, err := runLimited(t, context.Background(), `<?php
+set_time_limit(18446744074);
+for ($i = 0; $i < 100000; $i++) { $n = $i; }
+echo "finished";
+`)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out != "finished" {
+		t.Errorf("output = %q, want %q", out, "finished")
+	}
+}
+
+// TestIgnoreUserAbortReadsWithoutClearing covers the idiomatic guard. The
+// binding took a required bool, so the no-argument spelling was zero-padded to
+// false and turned off the thing it was asking about: the loop below would then
+// be stopped by the disconnect the line above it had just said to ignore.
+func TestIgnoreUserAbortReadsWithoutClearing(t *testing.T) {
+	ctx, abort := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		abort()
+	}()
+
+	out, err := runLimited(t, ctx, `<?php
+ignore_user_abort(true);
+ignore_user_abort();
+$ticks = 0;
+while ($ticks < 60) {
+	usleep(5000);
+	$ticks++;
+}
+echo "ran to the end";
+`)
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out != "ran to the end" {
+		t.Errorf("output = %q, want the script to have finished past the abort", out)
 	}
 }

@@ -169,6 +169,15 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 	if err := rt.hoistOnce(sources[0].program, sources[0].path); err != nil {
 		return "", err
 	}
+	// The file counts as included from here. Its declarations are live, so an
+	// application that require_once's it must not declare them a second time;
+	// without this the tree a handler was bound out of could not be loaded by
+	// the application that owns it.
+	//
+	// What it costs is the file's top-level code, which a later require_once
+	// now skips. A file that declares handlers and also does work at include
+	// time has to be required before the lookup rather than after.
+	rt.markIncluded(sources[0].path)
 	return found, nil
 }
 

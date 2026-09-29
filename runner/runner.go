@@ -121,6 +121,14 @@ func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 
 // Run executes a whole program in the global scope.
 func (rt *Runtime) Run(p *model.Program) (err error) {
+	// The runtime runs one program at a time. A script that serves its own HTTP
+	// requests reaches PHP from a goroutine per request, and this is what keeps
+	// those out while the script itself is running; HTTP\Server::wait hands the
+	// lock back through ParkExec for exactly as long as it is parked.
+	defer rt.LockExec()()
+	// The limit belonged to the program that set it. Left armed, it ends the
+	// next program run on this runtime, which never asked for one.
+	defer rt.resetLimits()
 	defer func() {
 		err = combineErrors(err, rt.runShutdown())
 		if err == nil {
@@ -330,12 +338,23 @@ func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 
 // exec runs a statement list, propagating return flow.
 func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
+	// On entry as well as per statement. A loop body can be empty - `while
+	// (true) {}` is the shortest way to write one - and a check that only ran
+	// per statement would never run for it, so the limit would not hold.
+	if rt.deadlineArmed {
+		if err := rt.checkDeadline(); err != nil {
+			return nil, flowNormal, err
+		}
+	}
 	for _, s := range stmts {
 		// Every statement, because the check is an atomic load off a flag a
 		// context armed: a script that slept past its limit and then does
 		// three more things has to stop at the first of them. A run with no
 		// limit and no request pays two bool loads it never enters.
-		if rt.watching || rt.watchClient {
+		// Read per statement rather than once on entry: a script that calls
+		// set_time_limit halfway down its own statement list has to be bounded
+		// by the rest of that list.
+		if rt.deadlineArmed {
 			if err := rt.checkDeadline(); err != nil {
 				return nil, flowNormal, err
 			}
@@ -877,6 +896,18 @@ func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) f
 // thing: the file that was resolved, not the spelling the script used. After a
 // chdir two directories can spell one name, and a scan over spellings would
 // skip the second file as though it had already run.
+// markIncluded records a file as loaded without running it, for a caller that
+// installed its declarations another way. include_once and require_once answer
+// off this list.
+func (rt *Runtime) markIncluded(path string) {
+	name := rootPath(rt.resolveFSPath(path))
+	if slices.Contains(rt.included, name) {
+		return
+	}
+	rt.included = append(rt.included, name)
+	rt.UpdateIncludedFiles(len(rt.included))
+}
+
 func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error) {
 	resolved := rt.resolveFSPath(path)
 	if once && slices.Contains(rt.included, rootPath(resolved)) {
@@ -1766,12 +1797,7 @@ func (rt *Runtime) runShutdown() error {
 	if len(rt.shutdown) == 0 {
 		return nil
 	}
-	// The clock is off for the shutdown pass. A script is here because it ran
-	// out of time as often as because it finished, and a callback registered to
-	// close what the script opened has to be able to run. php resets the timer
-	// for its shutdown functions for the same reason.
-	rt.releaseDeadline()
-	rt.watching, rt.watchClient = false, false
+	defer rt.suspendDeadline()()
 
 	var errs []error
 	scope := rt.newScope()

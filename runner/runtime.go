@@ -13,6 +13,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -109,22 +110,27 @@ type Runtime struct {
 	host   context.Context
 	client context.Context
 
-	// stopDeadline releases the timer a time limit installed, timeLimit is the
-	// limit in force, ignoreAbort whether a disconnect ends the script, and the
-	// two watch flags whether ctx and client can end at all - a run with no
-	// limit and no request is not worth a per-statement look.
-	// stopDeadline releases the timer a time limit installed. ctxDone and
-	// clientDone are the Done channels of ctx and client, read once and kept so
-	// the per-statement check is a select on a field; the watch flags say
-	// whether either can end at all, and a run with no limit and no request
-	// looks at neither.
-	stopDeadline context.CancelFunc
-	ctxDone      <-chan struct{}
-	clientDone   <-chan struct{}
-	timeLimit    time.Duration
-	ignoreAbort  bool
-	watching     bool
-	watchClient  bool
+	// stopCtx cancels ctx, which is built once per session and never rebuilt;
+	// the timers below cancel through it rather than deriving a new context,
+	// because a binding that blocks is parked on the one it was handed. ctxDone
+	// and clientDone are their Done channels, read once and kept so the
+	// per-statement check is a select on a field. See deadline.go.
+	stopCtx     context.CancelFunc
+	ctxDone     <-chan struct{}
+	clientDone  <-chan struct{}
+	scriptTimer *time.Timer
+	timedOut    atomic.Bool
+	timeLimit   time.Duration
+	ignoreAbort bool
+	watching    bool
+	// deadlineArmed is whether any of the above can stop this run, refreshed
+	// when one changes so the statement loop reads a field.
+	deadlineArmed bool
+
+	// execMu serializes PHP execution on this runtime. A Runtime runs one
+	// program at a time and a host reaching it from several goroutines - a
+	// script serving its own HTTP requests - holds this across every call.
+	execMu sync.Mutex
 
 	errorHandler func(error)
 	include      IncludeFunc
@@ -531,8 +537,8 @@ func (rt *Runtime) SetContext(ctx context.Context) {
 	// Recorded as the client, then derived: a limit already set survives a host
 	// swapping the context, and the derived one is what everything else reads.
 	rt.host, rt.client = ctx, ctx
-	rt.watchClient, rt.clientDone = watchEnd(ctx)
-	rt.deriveContext()
+	_, rt.clientDone = watchEnd(ctx)
+	rt.bindContext()
 	for _, observer := range rt.observers {
 		observer.UpdateStatus(rt.ctx, rt.status)
 	}
