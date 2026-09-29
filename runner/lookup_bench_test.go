@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"testing/fstest"
 
@@ -255,6 +256,94 @@ function helper_b() { return 2; }
 			if bound == nil {
 				b.Fatal("nothing was bound")
 			}
+		})
+	}
+}
+
+// lookupHandlerTree is one PHP handler answering through the net/http values it
+// was handed, so the shapes below differ by what the host does around it.
+var lookupHandlerTree = fstest.MapFS{"h.php": {Data: []byte(`<?php
+namespace App;
+function index($w, $r) {
+	$w->header()->set("Content-Type", "text/plain");
+	$w->write("hello from " . $r->url->path);
+}
+`)}}
+
+func BenchmarkLookupHandler(b *testing.B) {
+	includes := runner.NewIncludeCache()
+	exprs := runner.NewExprCache()
+	runner.Precompiler{Root: lookupHandlerTree, Includes: includes}.Run()
+
+	newRuntime := func() *runner.Runtime {
+		rt := runner.New(io.Discard, runner.Options{RootFS: lookupHandlerTree, Precompile: true})
+		stdlib.Register(rt)
+		rt.SetIncludeCache(includes)
+		rt.SetExprCache(exprs)
+		return rt
+	}
+
+	goHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write([]byte("hello from " + r.URL.Path))
+	})
+
+	fresh := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h, err := runner.Lookup[http.HandlerFunc](newRuntime(), `App\index`)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		h(w, r)
+	})
+
+	pool := sync.Pool{New: func() any {
+		rt := newRuntime()
+		h, err := runner.Lookup[http.HandlerFunc](rt, `App\index`)
+		if err != nil {
+			panic(err)
+		}
+		return h
+	}}
+	pooled := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := pool.Get().(http.HandlerFunc)
+		defer pool.Put(h)
+		h(w, r)
+	})
+
+	// Same pool, but each request starts from a clean session: script globals,
+	// class and function statics, constants and declarations are dropped. The
+	// declaration goes with them, so the symbol is bound again per request.
+	rtPool := sync.Pool{New: func() any { return newRuntime() }}
+	reset := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rt := rtPool.Get().(*runner.Runtime)
+		defer rtPool.Put(rt)
+		rt.ResetSession(io.Discard, nil)
+		h, err := runner.Lookup[http.HandlerFunc](rt, `App\index`)
+		if err != nil {
+			b.Error(err)
+			return
+		}
+		h(w, r)
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/greet", nil)
+	for _, bm := range []struct {
+		name string
+		h    http.Handler
+	}{{"go", goHandler}, {"pooled", pooled}, {"pooled_reset", reset}, {"fresh", fresh}} {
+		b.Run(bm.name, func(b *testing.B) {
+			check := httptest.NewRecorder()
+			bm.h.ServeHTTP(check, request)
+			if got := check.Body.String(); got != "hello from /greet" {
+				b.Fatalf("body = %q", got)
+			}
+			b.ReportAllocs()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					bm.h.ServeHTTP(httptest.NewRecorder(), request)
+				}
+			})
 		})
 	}
 }

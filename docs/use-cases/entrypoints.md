@@ -98,6 +98,47 @@ handle, err := runner.Lookup[http.HandlerFunc](rt, "App\\Handler\\index")
 
 That is the arrangement the HTTP server already keeps per request: the parse and the bytecode compile are paid once for the process, everything an invocation allocates is its own, and the only thing two goroutines share is a read lock.
 
+Sharing one runtime instead is not a race to think carefully about, it is a crash. `rt.compiled`, `rt.goMethods` and `rt.frames` are written during evaluation with no lock, so two goroutines calling one closure take the process down with `fatal error: concurrent map writes` out of `setCompiledExpr`.
+
+## Reusing a runtime
+
+A runtime cannot serve two requests at once. It can serve them one after another, which is what a pool gives you, and it is where the 133us goes:
+
+```go
+pool := sync.Pool{New: func() any {
+	rt := newRuntime()
+	handle, err := runner.Lookup[http.HandlerFunc](rt, "App\\Handler\\index")
+	if err != nil {
+		panic(err)
+	}
+	return handle
+}}
+
+mux.Handle("GET /", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handle := pool.Get().(http.HandlerFunc)
+	defer pool.Put(handle)
+	handle(w, r)
+}))
+```
+
+`BenchmarkLookupHandler` runs the same PHP handler four ways, `go` being a native Go handler doing the same work as the floor:
+
+```
+                             │ sec/op   │ B/op     │ allocs/op │
+LookupHandler/go-4              422.5n     1.008Ki      10
+LookupHandler/pooled-4          2.441µ     1.619Ki      35
+LookupHandler/pooled_reset-4    6.269µ     1.954Ki      44
+LookupHandler/fresh-4           91.54µ    94.950Ki     872
+```
+
+A kilobyte of every row is the `httptest` recorder, which the native handler allocates too.
+
+Pooling is 37x a fresh runtime per request, and it is 59x less garbage, which is the part that decides whether more cores help. What it costs is PHP's request isolation: script globals, `static $x` in a function or a class, constants the script defined and anything `register_shutdown_function` collected all survive into the next request on that runtime. A handler that is a pure function of its arguments does not care. One that is not will read the last request's state.
+
+`pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops all of it. That also drops the declarations, so the symbol is bound again per request - at a few hundred nanoseconds, which is why the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
+
+One thing a pool does not carry: the writer is fixed when the runtime is built. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering is built on.
+
 ## Limits
 
 A looked-up symbol runs on the interpreter even when the runtime was built with `NewFlatStack`, because a flat-declared function lives in the bytecode program's own table rather than the runtime's.
