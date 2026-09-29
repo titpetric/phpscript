@@ -1016,7 +1016,11 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 		return nil, fmt.Errorf("line %d: expected function name", p.cur().line)
 	}
 	name := p.next().val
-	fd := &model.FuncDecl{Name: name, ByRef: byRef}
+	// The file is recorded here rather than left to the runtime, because a
+	// parsed program is shared: the include cache hands one *FuncDecl to every
+	// runtime that reaches the file, and a hoist filling the field in would be
+	// two runtimes writing the same AST node at once.
+	fd := &model.FuncDecl{Name: name, ByRef: byRef, Filename: p.file}
 
 	// `function Class::method()` form.
 	if p.isOp("::") {
