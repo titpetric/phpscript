@@ -24,6 +24,12 @@ type IncludeCache struct {
 	// pass measured it. Zero until one runs, which is what a lazily filled
 	// cache reports: the files in it were parsed for a request that asked.
 	precompiled int64
+
+	// version counts the writes. A reader deriving something from the whole
+	// cache keeps its own copy against the version it was built at, and the
+	// count is what tells it the copy is stale. Entry count would not: a Set
+	// replacing a re-parsed file leaves it where it was.
+	version uint64
 }
 
 // Account records the heap a precompile pass added to this cache.
@@ -70,6 +76,7 @@ func (c *IncludeCache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.programs = make(map[string]*model.Program)
+	c.version++
 }
 
 // Len returns the number of currently cached programs.
@@ -83,16 +90,27 @@ func (c *IncludeCache) Len() int {
 }
 
 // snapshot copies the entries so a caller can walk the whole cache without
-// holding the lock for the walk. The programs themselves are shared rather
-// than copied, which is the cache's own contract: a parsed program is treated
-// as immutable and hoisting reads it into per-runtime maps.
-func (c *IncludeCache) snapshot() map[string]*model.Program {
+// holding the lock for the walk, and reports the version it copied at. The
+// programs themselves are shared rather than copied, which is the cache's own
+// contract: a parsed program is treated as immutable and hoisting reads it into
+// per-runtime maps.
+func (c *IncludeCache) snapshot() (map[string]*model.Program, uint64) {
 	if c == nil {
-		return nil
+		return nil, 0
 	}
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return maps.Clone(c.programs)
+	return maps.Clone(c.programs), c.version
+}
+
+// changedSince reports whether the cache has been written since version.
+func (c *IncludeCache) changedSince(version uint64) bool {
+	if c == nil {
+		return false
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.version != version
 }
 
 // Get returns the parsed program cached for path, if any.
@@ -127,4 +145,5 @@ func (c *IncludeCache) Set(path string, prog *model.Program) {
 		}
 	}
 	c.programs[path] = prog
+	c.version++
 }

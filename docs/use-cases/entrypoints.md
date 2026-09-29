@@ -37,12 +37,19 @@ The arguments, and nothing else.
 
 No request is decoded, so `$_GET`, `$_POST` and `$_SERVER` are absent rather than empty. No file body runs: the declaring program is hoisted for the functions and classes it declares, and its top-level statements are skipped. The scope the function body executes in holds its parameters and whatever it declares itself.
 
-That is what makes the path cheap. Against the same handler reached as a whole-file entrypoint with a request decoded over it, on one machine:
+That is what makes the path cheap. `BenchmarkLookup` splits the cost up, on one pinned core:
 
 ```
-BenchmarkLookup/lookup      420163      2950 ns/op       320 B/op       18 allocs/op
-BenchmarkLookup/request       9415    117818 ns/op     96180 B/op      850 allocs/op
+BenchmarkLookup/bind         	 3142390	       381.0 ns/op	     128 B/op	       3 allocs/op
+BenchmarkLookup/invoke       	  299434	      3986 ns/op	     320 B/op	      18 allocs/op
+BenchmarkLookup/callable     	  388674	      3171 ns/op	     240 B/op	      14 allocs/op
+BenchmarkLookup/runtime      	   10000	    132753 ns/op	   84364 B/op	     684 allocs/op
+BenchmarkLookup/request      	    7159	    158615 ns/op	   96324 B/op	     850 allocs/op
 ```
+
+`bind` is resolving the symbol and building the closure, paid per runtime. `invoke` is calling it, the only line that scales with traffic, and `callable` is the same call through the untyped `rt.Callable`, so the gap between them is what the signature bridge costs. `runtime` runs no PHP at all: it is a runtime built and the standard library registered onto it.
+
+That last pair is the point. `request` less `runtime` is about 26us of script; the other 133us is the host getting ready to run it, four fifths of the figure, and it is what a lookup on a reused runtime skips. It is also why the request path stops scaling with cores while the lookup path keeps going - at ninety kilobytes a go, the collector becomes the limit before the CPU does.
 
 A host that wants the superglobals still has them: build the runtime, `runner.FromRequest(r).Register(rt)`, and look up afterwards. The lookup does not take them away, it just does not add them.
 

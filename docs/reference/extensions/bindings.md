@@ -65,10 +65,12 @@ Arguments are widened to the value set the interpreter operates on, which means 
 
 Two limits are worth knowing before building on it. A looked-up symbol executes through the interpreter even on a runtime built with `NewFlatStack`, because a flat-declared function lives in the bytecode program's own table rather than the runtime's. And `Options.Include` is not run per invocation, so a composer autoloader is not installed by a lookup; a function that needs one requires it in its own body, or the host runs the prelude on the runtime first.
 
-The returned function belongs to its runtime, and a runtime serves one goroutine. A host calling one concurrently builds a runtime per goroutine and shares the include and expression caches between them, which is exactly what the HTTP server does per request. `BenchmarkLookup` in `runner/lookup_bench_test.go` is that arrangement measured against `rt.Callable` and against a whole request cycle:
+The returned function belongs to its runtime, and a runtime serves one goroutine. A host calling one concurrently builds a runtime per goroutine and shares the include and expression caches between them, which is exactly what the HTTP server does per request.
+
+`BenchmarkLookup` in `runner/lookup_bench_test.go` is that arrangement, split into what is paid per runtime (`bind`), what is paid per call (`invoke`, against `callable` for the bridge's own share), and what a whole request cycle costs (`request`, against `runtime` for the part of it that is not the script). `BenchmarkLookupTreeSize` holds resolution to constant time against the size of the source root, which matters because a concurrent host binds per runtime and therefore often per request:
 
 ```bash
-go test ./runner -run '^$' -bench '^BenchmarkLookup' -benchmem -cpu 1,2
+go test ./runner -run '^$' -bench '^BenchmarkLookup' -benchmem -cpu 1,2,4
 ```
 
 ## Binding a constructor

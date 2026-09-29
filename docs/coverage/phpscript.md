@@ -30,7 +30,7 @@ github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
 github.com/titpetric/phpscript/model, symbols 154, coverage 37.04%
 github.com/titpetric/phpscript/parser, symbols 167, coverage 91.82%
-github.com/titpetric/phpscript/runner, symbols 463, coverage 86.67%
+github.com/titpetric/phpscript/runner, symbols 466, coverage 86.57%
 github.com/titpetric/phpscript/runner/bindings, symbols 24, coverage 86.72%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
 github.com/titpetric/phpscript/runner/expr, symbols 21, coverage 83.37%

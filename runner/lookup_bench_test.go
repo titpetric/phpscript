@@ -1,6 +1,7 @@
 package runner_test
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,19 +31,32 @@ echo $_SERVER["REQUEST_METHOD"], " ", $_SERVER["REQUEST_URI"];
 
 var lookupBenchmarkSink int
 
-// BenchmarkLookup measures one invocation into the VM three ways, all of them
+// BenchmarkLookup decomposes what reaching PHP from Go costs, every part of it
 // parallel over one shared cache pair with a runtime per goroutine, which is
 // the contract a host calling a looked-up symbol concurrently keeps.
 //
-// lookup is the typed closure. callable is rt.Callable, the untyped API that
-// existed before it, so the figure says what the signature bridge costs on top
-// of the call it wraps. request is the shape a host reaches PHP through today:
-// a fresh runtime with the standard library registered on it, the entrypoint
-// read back out of the include cache, and the file run top to bottom with the
-// request decoded over it.
+// The parts are separate because they are paid at different times, and reading
+// one for another is the mistake the split exists to prevent:
 //
-// Run with -cpu 1,2 to see the parallel scaling: nothing an invocation
-// allocates is shared, so the only contention is the two caches' read locks.
+//   - bind resolves the symbol and builds the closure. Paid per runtime.
+//   - invoke calls the closure. Paid per call, and the only figure that scales
+//     with traffic.
+//   - callable is the same call through rt.Callable, the untyped API that
+//     existed before this one, so the difference is what the signature bridge
+//     costs rather than what the call does.
+//   - runtime builds a runtime and registers the standard library onto it, and
+//     runs no PHP at all.
+//   - request is the shape a host reaches PHP through today: that runtime, the
+//     request decoded into superglobals over it, the entrypoint read back out
+//     of the include cache and the file run top to bottom.
+//
+// request less runtime is what the script cost; the rest is the host getting
+// ready to run it, which is the part a lookup on a reused runtime skips.
+//
+// Run with -cpu 1,2,4 for the parallel scaling. Nothing an invocation
+// allocates is shared, so the only contention is the two caches' read locks,
+// while request allocates ninety kilobytes a go and stops scaling where the
+// collector becomes the limit.
 func BenchmarkLookup(b *testing.B) {
 	includes := runner.NewIncludeCache()
 	exprs := runner.NewExprCache()
@@ -61,7 +75,30 @@ func BenchmarkLookup(b *testing.B) {
 	request := httptest.NewRequest(http.MethodGet, "/users/42", nil)
 	const want = "GET /users/42"
 
-	b.Run("lookup", func(b *testing.B) {
+	b.Run("bind", func(b *testing.B) {
+		b.ReportAllocs()
+		b.RunParallel(func(pb *testing.PB) {
+			rt := newRuntime(io.Discard)
+			// Resolved once outside the loop, so the figure is what binding the
+			// second handler of a tree costs rather than what installing the
+			// first one does.
+			if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
+				b.Error(err)
+				return
+			}
+			for pb.Next() {
+				// The error is checked, which is what keeps the call from
+				// being optimised away; the closure itself is the product and
+				// nothing here needs it.
+				if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
+					b.Error(err)
+					return
+				}
+			}
+		})
+	})
+
+	b.Run("invoke", func(b *testing.B) {
 		b.ReportAllocs()
 		b.RunParallel(func(pb *testing.PB) {
 			handle, err := runner.Lookup[func(*http.Request) string](newRuntime(io.Discard), "App\\Handler\\main")
@@ -102,6 +139,18 @@ func BenchmarkLookup(b *testing.B) {
 		})
 	})
 
+	b.Run("runtime", func(b *testing.B) {
+		b.ReportAllocs()
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				// No PHP at all: the runtime a request builds and the standard
+				// library registered onto it, which is the share of the figure
+				// below that has nothing to do with the script.
+				lookupBenchmarkSink = len(newRuntime(io.Discard).Env)
+			}
+		})
+	})
+
 	b.Run("request", func(b *testing.B) {
 		b.ReportAllocs()
 		b.RunParallel(func(pb *testing.PB) {
@@ -135,7 +184,7 @@ func BenchmarkLookup(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	verify("lookup", handle(request))
+	verify("invoke", handle(request))
 
 	var out responseBuffer
 	entrypoint := newRuntime(&out)
@@ -161,4 +210,51 @@ func (r *responseBuffer) Write(p []byte) (int, error) {
 	r.n += len(p)
 	r.text += string(p)
 	return len(p), nil
+}
+
+// BenchmarkLookupTreeSize holds the symbol index to constant time. Resolving a
+// name is a walk of every statement of every program in the tree, and a host
+// serving concurrently binds per runtime and therefore per goroutine, which is
+// often per request: paying the size of the application there is the cost this
+// guards against coming back.
+func BenchmarkLookupTreeSize(b *testing.B) {
+	for _, files := range []int{2, 50, 200, 800} {
+		b.Run(fmt.Sprintf("files=%d", files), func(b *testing.B) {
+			tree := fstest.MapFS{}
+			for i := range files {
+				tree[fmt.Sprintf("pkg%03d/handlers.php", i)] = &fstest.MapFile{Data: fmt.Appendf(nil, `<?php
+namespace App\Pkg%03d;
+
+function handle($r) { return "pkg%03d"; }
+function helper_a() { return 1; }
+function helper_b() { return 2; }
+`, i, i)}
+			}
+
+			includes := runner.NewIncludeCache()
+			runner.Precompiler{Root: tree, Includes: includes}.Run()
+			rt := runner.New(io.Discard, runner.Options{RootFS: tree, Precompile: true})
+			rt.SetIncludeCache(includes)
+
+			// The last package, so a resolution that scanned would scan the
+			// whole tree before reaching it.
+			name := fmt.Sprintf(`App\Pkg%03d\handle`, files-1)
+			if _, err := runner.Lookup[func(*http.Request) string](rt, name); err != nil {
+				b.Fatal(err)
+			}
+
+			b.ReportAllocs()
+			var bound func(*http.Request) string
+			for b.Loop() {
+				handle, err := runner.Lookup[func(*http.Request) string](rt, name)
+				if err != nil {
+					b.Fatal(err)
+				}
+				bound = handle
+			}
+			if bound == nil {
+				b.Fatal("nothing was bound")
+			}
+		})
+	}
 }

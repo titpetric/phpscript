@@ -2,6 +2,7 @@ package runner
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -110,24 +111,32 @@ type symbolSource struct {
 
 // resolveSymbol turns the name a host asked for into the name the function
 // table holds, installing the declaration if it is only in the tree so far.
+//
+// The three passes are ordered rather than merged, so a tree holding both
+// `main` and `App\Handler\main` answers the first for "main" and needs no
+// disambiguation. Only the last one scans anything: it covers a function
+// declared by a program the source root does not hold, which is a runtime the
+// host ran a string on rather than one serving a tree.
 func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 	name := strings.TrimPrefix(strings.TrimSpace(symName), "\\")
 	if name == "" {
 		return "", &LookupError{Symbol: symName, Reason: "the symbol name is empty"}
 	}
 
-	index := rt.symbolIndex()
-	names := make([]string, 0, len(index)+len(rt.userFns))
-	for declared := range index {
-		names = append(names, declared)
-	}
-	for declared := range rt.userFns {
-		if _, listed := index[declared]; !listed {
-			names = append(names, declared)
+	table := rt.symbolIndex()
+	folded := strings.ToLower(name)
+
+	matches := table.exact[folded]
+	if len(matches) == 0 {
+		if declared, ok := rt.declaredUserFunc(name); ok {
+			return declared, nil
 		}
+		matches = table.suffix[folded]
+	}
+	if len(matches) == 0 {
+		matches = matchSymbols(slices.Collect(maps.Keys(rt.userFns)), name)
 	}
 
-	matches := matchSymbols(names, name)
 	switch len(matches) {
 	case 0:
 		return "", &LookupError{Symbol: symName, Reason: "no PHP function of that name is declared"}
@@ -142,7 +151,10 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 		return found, nil
 	}
 
-	sources := index[found]
+	sources := table.sources[found]
+	if len(sources) == 0 {
+		return "", &LookupError{Symbol: symName, Reason: "resolved to " + found + ", which the tree does not declare"}
+	}
 	if len(sources) > 1 {
 		// One qualified name declared by two files. Hoisting either would raise
 		// PHP's redeclaration error the moment the other was reached, so the
@@ -160,16 +172,46 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 	return found, nil
 }
 
-// symbolIndex lists the free functions the loaded tree declares, by the
-// qualified name the parser gave each one.
+// symbolTable is the tree's free functions, indexed for the two ways a host
+// spells one. Both name maps are keyed by the folded name, because PHP compares
+// a function name case-insensitively, and both answer with names as declared.
+type symbolTable struct {
+	// sources says where a declared name was read from. A name can be held by
+	// more than one file: the tree is the whole source root rather than one
+	// program, so nothing has refused the second declaration yet, and reporting
+	// both is more use than picking one.
+	sources map[string][]symbolSource
+
+	// exact answers a name spelled in full.
+	exact map[string][]string
+
+	// suffix answers a trailing segment chain, so `main` and `Handler\main`
+	// both reach `App\Handler\main`. The whole name is not a key here; exact
+	// holds that, and keeping them apart is what lets a tree declaring both
+	// `main` and `App\Handler\main` answer the first without a tie.
+	suffix map[string][]string
+}
+
+// symbolIndex indexes the free functions the loaded tree declares.
 //
-// A name can be held by more than one file. The tree is the whole source root
-// rather than one program, so nothing has refused the second declaration yet,
-// and reporting both is more use than picking one.
-func (rt *Runtime) symbolIndex() map[string][]symbolSource {
+// The table is kept until the cache it was built from is written to again. It
+// is a walk of every statement of every program in the tree, so rebuilding it
+// per lookup made binding a handler cost the size of the application: 546us
+// and 470KB over eight hundred files, paid again for the next handler. A host
+// serving concurrently binds per runtime and therefore per goroutine, which is
+// often per request, so that is not a startup cost it could have absorbed.
+func (rt *Runtime) symbolIndex() *symbolTable {
 	rt.scanTree()
-	programs := rt.includeCache.snapshot()
-	index := make(map[string][]symbolSource, len(programs))
+	if rt.symbols != nil && !rt.includeCache.changedSince(rt.symbolsVersion) {
+		return rt.symbols
+	}
+
+	programs, version := rt.includeCache.snapshot()
+	table := &symbolTable{
+		sources: make(map[string][]symbolSource, len(programs)),
+		exact:   make(map[string][]string, len(programs)),
+		suffix:  make(map[string][]string, len(programs)),
+	}
 	for path, program := range programs {
 		for _, stmt := range program.Stmts {
 			decl, ok := stmt.(*model.FuncDecl)
@@ -178,10 +220,50 @@ func (rt *Runtime) symbolIndex() map[string][]symbolSource {
 			if !ok || decl.Class != "" {
 				continue
 			}
-			index[decl.Name] = append(index[decl.Name], symbolSource{path: path, program: program})
+			// The name maps are filled the first time a spelling is seen, so a
+			// name two files declare is one entry in each and two sources.
+			if _, seen := table.sources[decl.Name]; !seen {
+				table.index(decl.Name)
+			}
+			table.sources[decl.Name] = append(table.sources[decl.Name], symbolSource{path: path, program: program})
 		}
 	}
-	return index
+
+	rt.symbols, rt.symbolsVersion = table, version
+	return table
+}
+
+// index records one declared name under its full spelling and under every
+// trailing segment chain of it.
+func (t *symbolTable) index(name string) {
+	folded := strings.ToLower(name)
+	t.exact[folded] = append(t.exact[folded], name)
+	for at := 0; ; {
+		cut := strings.Index(folded[at:], "\\")
+		if cut < 0 {
+			return
+		}
+		at += cut + 1
+		t.suffix[folded[at:]] = append(t.suffix[folded[at:]], name)
+	}
+}
+
+// declaredUserFunc answers the spelling a PHP function is declared under on
+// this runtime, for a name given in full.
+//
+// The fold scan behind it is the one lookupEntry performs for every call PHP
+// makes under a spelling the table does not hold, and it is reached only when
+// the tree has no function of that name.
+func (rt *Runtime) declaredUserFunc(name string) (string, bool) {
+	if _, ok := rt.userFns[name]; ok {
+		return name, true
+	}
+	for declared := range rt.userFns {
+		if strings.EqualFold(declared, name) {
+			return declared, true
+		}
+	}
+	return "", false
 }
 
 // scanTree parses the source root into the include cache the first time a

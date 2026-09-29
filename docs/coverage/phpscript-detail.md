@@ -118,10 +118,10 @@ github.com/titpetric/phpscript/runner/filemode.go, symbols 5, coverage 77.50%
 github.com/titpetric/phpscript/runner/flatstack.go, symbols 43, coverage 92.86%
 github.com/titpetric/phpscript/runner/helpers.go, symbols 37, coverage 87.53%
 github.com/titpetric/phpscript/runner/ident.go, symbols 2, coverage 100.00%
-github.com/titpetric/phpscript/runner/include_cache.go, symbols 9, coverage 83.18%
+github.com/titpetric/phpscript/runner/include_cache.go, symbols 10, coverage 83.33%
 github.com/titpetric/phpscript/runner/info.go, symbols 4, coverage 100.00%
 github.com/titpetric/phpscript/runner/instanceof.go, symbols 5, coverage 76.34%
-github.com/titpetric/phpscript/runner/lookup.go, symbols 14, coverage 81.30%
+github.com/titpetric/phpscript/runner/lookup.go, symbols 16, coverage 79.29%
 github.com/titpetric/phpscript/runner/mapmap/mapmap.go, symbols 26, coverage 75.17%
 github.com/titpetric/phpscript/runner/memory.go, symbols 8, coverage 46.24%
 github.com/titpetric/phpscript/runner/object_error.go, symbols 5, coverage 46.68%

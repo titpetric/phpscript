@@ -126,6 +126,12 @@ type Runtime struct {
 	// walked once rather than once per symbol. See Runtime.scanTree.
 	lookupScanned bool
 
+	// symbols is what the tree's free functions were last indexed to, held
+	// against the include cache version it was built at so binding a second
+	// handler does not walk the application again. See Runtime.symbolIndex.
+	symbols        *symbolTable
+	symbolsVersion uint64
+
 	// classConsts caches evaluated class constants (Class::NAME) per class.
 	classConsts map[string]map[string]any
 
@@ -479,6 +485,9 @@ func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	// The tree a lookup indexed went with the include cache, so the next one
 	// parses it again rather than resolving against nothing.
 	rt.lookupScanned = false
+	// The index is version-guarded and would rebuild on its own, but it holds a
+	// program pointer per symbol, which is the tree Reset exists to let go of.
+	rt.symbols = nil
 }
 
 // SetContext installs the lifecycle context auto-injected into registered Go
