@@ -57,6 +57,21 @@ func (c *Closure) Captures() bool {
 	return len(c.decl.Uses) > 0 || c.env.this != nil || c.env.class != nil
 }
 
+// invokeCallbackClosure runs a callback's declaration on this runtime with what
+// it captured, and a statics bag of its own.
+//
+// The bag is per call rather than per closure value: two goroutines running one
+// declaration are two calls, and a `static $x` shared between them would be a
+// counter two requests were incrementing at once. php gives a closure instance
+// one bag because there a request is a process.
+func (rt *Runtime) invokeCallbackClosure(decl *model.Closure, env closureEnv, args []any) (any, error) {
+	if decl == nil {
+		return nil, &LookupError{Symbol: "closure", Reason: "no declaration"}
+	}
+	env.statics = map[*model.StaticVar]map[string]any{}
+	return rt.invokeClosure(decl, args, env)
+}
+
 // InvokeClosure runs a closure declaration on this runtime, in a scope holding
 // its arguments and nothing else.
 //
@@ -79,12 +94,19 @@ func (rt *Runtime) InvokeClosure(decl *model.Closure, args ...any) (any, error) 
 }
 
 // AsCallback describes v as something a host can run on another runtime: a
-// declared function by name, or a closure that captures nothing.
+// closure, or a declared function by name.
 //
-// Anything else is refused with the reason, because the alternatives are worse
-// than an error. Running it on the runtime it belongs to would serialise every
-// caller behind that one runtime; pretending the captures came along would hand
-// two goroutines the same scope.
+// A closure brings what it captured. `use (...)` values and the $this a closure
+// written inside a method binds come along as they are, which means every
+// runtime running it shares them. That is what a handler closing over its
+// configuration wants and it is how a Go handler closing over a struct behaves;
+// it is also why a callback must not write to what it captured. Reading is
+// fine, and a handler's own state arrives in its arguments.
+//
+// The `array($object, "method")` spelling of a callable is not accepted. It is
+// a callable everywhere else - call_user_func and usort take it - but not a
+// handler: a handler is a closure, including one held in a property, and
+// docs/README.md records that.
 func (rt *Runtime) AsCallback(v any) (Callback, error) {
 	switch value := v.(type) {
 	case string:
@@ -97,18 +119,11 @@ func (rt *Runtime) AsCallback(v any) (Callback, error) {
 		}
 		return Callback{name: name}, nil
 	case *Closure:
-		if value.Captures() {
-			return Callback{}, &LookupError{
-				Symbol: "closure",
-				Reason: "a callback runs on a runtime of its own, so it takes its state from its arguments; " +
-					"this one captures the scope it was written in, through use (...) or $this",
-			}
-		}
-		return Callback{closure: value.Declaration()}, nil
+		return Callback{closure: value.decl, env: value.env}, nil
 	}
 	return Callback{}, &LookupError{
 		Symbol: "callback",
-		Reason: "a callback is a function name or a closure that captures nothing",
+		Reason: "a callback is a closure, or the name of a declared function",
 	}
 }
 
@@ -127,12 +142,13 @@ func (rt *Runtime) SetPreparer(prepare func(*Runtime)) { rt.prepare = prepare }
 type Callback struct {
 	name    string
 	closure *model.Closure
+	env     closureEnv
 }
 
 // Invoke runs the callback on rt, in a scope holding args and nothing else.
 func (c Callback) Invoke(rt *Runtime, args ...any) (any, error) {
 	if c.closure != nil {
-		return rt.InvokeClosure(c.closure, args...)
+		return rt.invokeCallbackClosure(c.closure, c.env, args)
 	}
 	return rt.InvokeNamed(c.name, args...)
 }

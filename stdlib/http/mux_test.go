@@ -496,3 +496,67 @@ define("SERVER", $server);
 	stop, _ := rt.Load(`<?php $s = SERVER; $s->shutdown();`)
 	_ = rt.Run(stop)
 }
+
+// TestMuxTakesAHandlerFromAProperty is the shape testdata/testserver.php uses:
+// a server class holding its handlers in properties and registering each as
+// $this->fnName. The closure binds $this, which comes along and is shared by
+// every request, so a handler reads its configuration and writes to its
+// arguments.
+func TestMuxTakesAHandlerFromAProperty(t *testing.T) {
+	_, handler := serveScript(t, `<?php
+class Site {
+	public $greeting;
+	public $hello;
+
+	public function boot() {
+		$this->greeting = "hei";
+		$this->hello = function ($w, $r) {
+			$w->write($this->greeting . " " . $r->url->query()->get("name"));
+		};
+	}
+}
+
+$site = new Site;
+$site->boot();
+
+$mux = new HTTP\Mux();
+$mux->handle("GET /hello", $site->hello);
+define("MUX", $mux);
+`)
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/hello?name=tit", nil))
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %q", response.Code, response.Body.String())
+	}
+	if got := response.Body.String(); got != "hei tit" {
+		t.Errorf("body = %q, want %q", got, "hei tit")
+	}
+}
+
+// TestMuxRefusesAnArrayCallable pins the one callable spelling the router does
+// not take. It is a callable everywhere else; here a handler is a closure.
+func TestMuxRefusesAnArrayCallable(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+
+	program, err := rt.Load(`<?php
+class Site {
+	public function hello($w, $r) { $w->write("hi"); }
+}
+$site = new Site;
+$mux = new HTTP\Mux();
+$mux->handle("GET /hello", array($site, "hello"));
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = rt.Run(program)
+	if err == nil {
+		t.Fatal("an array callable was accepted as a handler")
+	}
+	if !strings.Contains(err.Error(), "a callback is a closure") {
+		t.Errorf("error %q does not say what a handler is", err)
+	}
+}
