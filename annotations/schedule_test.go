@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io/fs"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/fstest"
@@ -64,20 +65,50 @@ func TestSchedulerRunsWithArgv(t *testing.T) {
 	root := fstest.MapFS{
 		"job.php": {Data: []byte("<?php\n// @schedule every 1 seconds -- prune\necho $argv[1];\n")},
 	}
-	var buf bytes.Buffer
-	s := annotations.NewScheduler(root, annotations.WithOutput(&buf))
+	// Guarded, because a job writes from the scheduler's goroutine while this
+	// one reads: a bytes.Buffer shared that way is a data race, and the writer
+	// a host hands a scheduler has to be safe for the same reason.
+	var out syncBuffer
+	s := annotations.NewScheduler(root, annotations.WithOutput(&out))
 	if err := s.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+	// Stopped before the test returns, so its jobs do not outlive it and write
+	// into a buffer the next test is not expecting.
+	defer func() {
+		if err := s.Stop(context.Background()); err != nil {
+			t.Errorf("stop: %v", err)
+		}
+	}()
+
 	// Drive one execution through the same path Start uses by calling after a tick.
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if buf.String() == "prune" {
+		if out.String() == "prune" {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	t.Fatalf("output = %q, want prune", buf.String())
+	t.Fatalf("output = %q, want prune", out.String())
+}
+
+// syncBuffer is a writer two goroutines may use: a scheduled job writes what it
+// printed, and the test reads it.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 func TestSchedulerStartScansFS(t *testing.T) {

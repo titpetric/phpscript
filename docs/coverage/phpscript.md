@@ -13,7 +13,7 @@ github.com/titpetric/phpscript/cmd/phpscript/helpdocs, symbols 11, coverage 96.4
 github.com/titpetric/phpscript/cmd/phpscript/info, symbols 12, coverage 79.20%
 github.com/titpetric/phpscript/cmd/phpscript/lint, symbols 12, coverage 73.10%
 github.com/titpetric/phpscript/cmd/phpscript/list, symbols 3, coverage 30.00%
-github.com/titpetric/phpscript/cmd/phpscript/run, symbols 4, coverage 20.00%
+github.com/titpetric/phpscript/cmd/phpscript/run, symbols 6, coverage 13.33%
 github.com/titpetric/phpscript/cmd/phpscript/server, symbols 58, coverage 85.29%
 github.com/titpetric/phpscript/cmd/phpscript/test, symbols 104, coverage 83.36%
 github.com/titpetric/phpscript/cmd/phpscript/version, symbols 2, coverage 0.00%
@@ -30,7 +30,7 @@ github.com/titpetric/phpscript/lint, symbols 44, coverage 85.92%
 github.com/titpetric/phpscript/list, symbols 24, coverage 76.85%
 github.com/titpetric/phpscript/model, symbols 154, coverage 37.04%
 github.com/titpetric/phpscript/parser, symbols 167, coverage 91.85%
-github.com/titpetric/phpscript/runner, symbols 507, coverage 85.36%
+github.com/titpetric/phpscript/runner, symbols 508, coverage 85.33%
 github.com/titpetric/phpscript/runner/bindings, symbols 29, coverage 86.25%
 github.com/titpetric/phpscript/runner/coverage, symbols 29, coverage 93.99%
 github.com/titpetric/phpscript/runner/expr, symbols 21, coverage 83.37%
@@ -43,7 +43,7 @@ github.com/titpetric/phpscript/stdlib/crypto, symbols 13, coverage 86.40%
 github.com/titpetric/phpscript/stdlib/database, symbols 58, coverage 85.42%
 github.com/titpetric/phpscript/stdlib/files, symbols 38, coverage 89.71%
 github.com/titpetric/phpscript/stdlib/gd, symbols 34, coverage 76.40%
-github.com/titpetric/phpscript/stdlib/http, symbols 41, coverage 69.67%
+github.com/titpetric/phpscript/stdlib/http, symbols 42, coverage 70.59%
 github.com/titpetric/phpscript/stdlib/info, symbols 2, coverage 75.00%
 github.com/titpetric/phpscript/stdlib/internals, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/logger, symbols 7, coverage 100.00%

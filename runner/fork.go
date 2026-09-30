@@ -1,8 +1,10 @@
 package runner
 
 import (
+	"context"
 	"io"
 	goruntime "runtime"
+	"sync"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -117,77 +119,134 @@ func copyEntries(dst, src map[string]*funcEntry) {
 	}
 }
 
-// Pool hands out forks, and bounds how many run at once.
+// DefaultQueue is how many runs a pool holds waiting for a worker. It is deep
+// enough that a burst does not block the caller that produced it and shallow
+// enough that a queue this long means the workers are not keeping up, which is
+// a thing to find out rather than to absorb.
+const DefaultQueue = 1024
+
+// Pool runs PHP on a fixed set of forks, fed from one queue.
 //
-// A host reaching PHP from a goroutine per request takes one, runs, and gives
-// it back. The bound is the point: a fork is a runtime and a runtime is memory,
-// so the pool is how many programs may interpret at the same moment rather than
-// how many requests may arrive.
+// A host reaching PHP from a goroutine per request submits a run; a worker
+// picks it up on a fork of its own and answers when it is done. Workers are the
+// parallelism and the queue is the backpressure: a run that finds every worker
+// busy waits its turn rather than starting a runtime of its own, and a queue
+// that fills means the caller waits, which is the signal that it should.
 //
-// It is a buffered channel rather than a sync.Pool because the count is the
-// contract. sync.Pool drops entries on a collection, which would turn the cap
-// into a suggestion and rebuild a fork mid-load.
+// A run is expected to be short - a handler answering a request is well under a
+// millisecond - so the queue is the right shape rather than a runtime per
+// caller. Nothing here is a sync.Pool: the worker count is the contract, and
+// sync.Pool drops entries on a collection.
 type Pool struct {
-	free   chan *Runtime
-	output func() io.Writer
-	size   int
+	runs    chan poolRun
+	workers int
+	queue   int
+
+	stop     chan struct{}
+	stopOnce sync.Once
+	done     sync.WaitGroup
 }
 
-// NewPool builds size forks of rt, each writing to what output answers.
+// poolRun is one unit of work and the channel its submitter waits on.
+type poolRun struct {
+	run  func(*Runtime)
+	done chan struct{}
+}
+
+// NewPool forks rt into workers runtimes, each reading from a queue of depth
+// queue, and starts them.
 //
-// Zero size is GOMAXPROCS, which is the parallelism the machine has for work
-// that is all CPU, and is what a PHP handler doing no IO is. A host expecting
-// its handlers to block on a database wants more.
+// Zero workers is GOMAXPROCS, which is the parallelism the machine has for work
+// that is all CPU, and is what a PHP handler doing no IO is; a host whose
+// handlers wait on a database wants more. Zero queue is DefaultQueue.
 //
-// output is called once per fork. A host that wants a handler's echo to reach
-// the response writer pushes one per call instead; see Runtime.PushOutput.
-func NewPool(rt *Runtime, size int, output func() io.Writer) *Pool {
-	if size <= 0 {
-		size = goruntime.GOMAXPROCS(0)
+// output is called once per worker, for where that worker's runtime writes when
+// nothing has been pushed over it. A host wanting a run's output to reach
+// somewhere of its own pushes a writer inside the run; see Runtime.PushOutput.
+func NewPool(rt *Runtime, workers, queue int, output func() io.Writer) *Pool {
+	if workers <= 0 {
+		workers = goruntime.GOMAXPROCS(0)
+	}
+	if queue <= 0 {
+		queue = DefaultQueue
 	}
 	if output == nil {
 		output = func() io.Writer { return io.Discard }
 	}
 
-	pool := &Pool{free: make(chan *Runtime, size), output: output, size: size}
-	for range size {
-		pool.free <- rt.Fork(output())
+	pool := &Pool{
+		runs:    make(chan poolRun, queue),
+		workers: workers,
+		queue:   queue,
+		stop:    make(chan struct{}),
+	}
+
+	pool.done.Add(workers)
+	for range workers {
+		worker := rt.Fork(output())
+		go func() {
+			defer pool.done.Done()
+			for run := range pool.runs {
+				run.run(worker)
+				// Reset after rather than before, so the next run starts on a
+				// runtime holding nothing and the values this one built are
+				// released now instead of at the next request.
+				worker.resetExecution(output(), nil)
+				close(run.done)
+			}
+		}()
 	}
 	return pool
 }
 
-// Size answers how many forks the pool holds.
-func (p *Pool) Size() int { return p.size }
+// Workers answers how many runs the pool executes at once.
+func (p *Pool) Workers() int { return p.workers }
 
-// Get takes a fork, waiting for one when every fork is busy. A nil done channel
-// waits indefinitely; a caller with a request context passes its Done so a
-// client that leaves while queued is not waited for.
-func (p *Pool) Get(done <-chan struct{}) (*Runtime, bool) {
-	select {
-	case rt := <-p.free:
-		return rt, true
-	default:
+// Queue answers how many runs it holds waiting.
+func (p *Pool) Queue() int { return p.queue }
+
+// Submit runs fn on a worker and waits for it, and reports whether it ran.
+//
+// It answers false when ctx ends first, which for a served request is the
+// client leaving: a run still queued is dropped rather than started for nobody,
+// and a run already started is left to notice the disconnect itself, because
+// stopping one halfway is the handler's decision and connection_aborted is how
+// it makes it.
+//
+// It also answers false once the pool is closed.
+func (p *Pool) Submit(ctx context.Context, fn func(*Runtime)) bool {
+	var done <-chan struct{}
+	if ctx != nil {
+		done = ctx.Done()
 	}
+	run := poolRun{run: fn, done: make(chan struct{})}
+
 	select {
-	case rt := <-p.free:
-		return rt, true
+	case p.runs <- run:
 	case <-done:
-		return nil, false
+		return false
+	case <-p.stop:
+		return false
+	}
+
+	select {
+	case <-run.done:
+		return true
+	case <-done:
+		// Queued or running, it is the worker's now: the run channel is closed
+		// by the worker and waiting here any longer would hold the caller for a
+		// client that has gone.
+		return false
 	}
 }
 
-// Put gives a fork back, dropping whatever the last request left on it and
-// keeping what it was forked for.
-//
-// resetExecution rather than ResetSession: the latter forgets the declarations
-// too, which on a fork are the whole point of it, and the next request would
-// find nothing to call.
-func (p *Pool) Put(rt *Runtime) {
-	if rt == nil {
-		return
-	}
-	rt.resetExecution(p.output(), nil)
-	p.free <- rt
+// Close stops the workers once the runs already queued have been answered.
+func (p *Pool) Close() {
+	p.stopOnce.Do(func() {
+		close(p.stop)
+		close(p.runs)
+	})
+	p.done.Wait()
 }
 
 // InvokeNamed runs the PHP function name with args, on a clean stack holding

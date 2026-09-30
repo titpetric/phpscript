@@ -23,6 +23,7 @@ type Server struct {
 	addr    string
 	handler nethttp.Handler
 	workers int
+	queue   int
 
 	// mu guards the running server. listen starts it and shutdown stops it, and
 	// a register_shutdown_function callback reaches the second from a different
@@ -40,11 +41,12 @@ type Server struct {
 // An $addr of "127.0.0.1:0" binds a port the system picks, which listen()
 // answers with, and is how a test takes a free one rather than hoping.
 //
-// $workers is how many requests may be answered at once, because each is
-// answered on a runtime of its own and a runtime is memory. It is not how many
-// may arrive: the rest queue. Omitted, it is the number of cores, which is the
+// $workers is how many requests are answered at once, because each is answered
+// on a runtime of its own and a runtime is memory. It is not how many may
+// arrive: the rest queue. Omitted, it is the number of cores, which is the
 // parallelism a handler doing no IO can use; a handler that waits on a database
-// wants more.
+// wants more. A second argument after it is how deep that queue is, defaulting
+// to 1024.
 func NewServer(rt *runner.Runtime, addr string, handler any, workers ...int64) (*Server, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("HTTP\\Server: addr is required")
@@ -53,11 +55,14 @@ func NewServer(rt *runner.Runtime, addr string, handler any, workers ...int64) (
 	if !ok {
 		return nil, fmt.Errorf("HTTP\\Server: handler must answer requests, %T does not", handler)
 	}
-	count := 0
+	count, depth := 0, 0
 	if len(workers) > 0 {
 		count = int(workers[0])
 	}
-	return &Server{rt: rt, addr: addr, handler: routed, workers: count}, nil
+	if len(workers) > 1 {
+		depth = int(workers[1])
+	}
+	return &Server{rt: rt, addr: addr, handler: routed, workers: count, queue: depth}, nil
 }
 
 // listen binds the address and starts answering, and returns the address it
@@ -79,7 +84,7 @@ func (s *Server) Listen() (string, error) {
 	// Each writes nowhere by default; a request pushes its response writer on
 	// for the length of the call.
 	if routed, ok := s.handler.(*Mux); ok {
-		routed.usePool(runner.NewPool(s.rt, s.workers, nil))
+		routed.usePool(runner.NewPool(s.rt, s.workers, s.queue, nil))
 	}
 	// Held locally as well as on the struct: shutdown() takes the fields back
 	// to nil the moment it is called, and this goroutine outlives that.
@@ -130,6 +135,12 @@ func (s *Server) Shutdown() {
 		_ = server.Close()
 	}
 	<-stopped
+
+	// The workers last: whatever was still answering has finished by now, and
+	// the runtimes they hold are the largest thing the server was keeping.
+	if routed, ok := s.handler.(*Mux); ok {
+		routed.closeWorkers()
+	}
 }
 
 // close stops the server at once, dropping whatever was in flight. shutdown()

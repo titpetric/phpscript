@@ -224,12 +224,16 @@ define("MUX", $mux);
 		t.Fatal("the handler did not notice the client leaving")
 	}
 
+	// Waited for rather than read straight off: the handler asked to ignore the
+	// disconnect, so it is still running after ServeHTTP has stopped waiting
+	// for it. That is the whole point of ignore_user_abort, and it means the
+	// report lands a moment after the request is over.
 	select {
 	case got := <-reported:
 		if got != "noticed and stopped" {
 			t.Errorf("handler reported %q, want it to have noticed", got)
 		}
-	default:
+	case <-time.After(5 * time.Second):
 		t.Error("the handler reported nothing")
 	}
 }
@@ -558,5 +562,64 @@ $mux->handle("GET /hello", array($site, "hello"));
 	}
 	if !strings.Contains(err.Error(), "a callback is a closure") {
 		t.Errorf("error %q does not say what a handler is", err)
+	}
+}
+
+// TestMuxQueuesBeyondItsWorkers holds the shape the pool is: workers are the
+// parallelism and the queue is what waits behind them. Two workers against six
+// slow requests is three rounds, not six and not one.
+func TestMuxQueuesBeyondItsWorkers(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	rt.SetContext(context.Background())
+
+	program, err := rt.Load(`<?php
+$mux = new HTTP\Mux();
+$mux->handle("GET /slow", function ($w, $r) {
+	usleep(150000);
+	$w->write("done");
+});
+define("MUX", $mux);
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	value, _ := rt.Const("MUX")
+	handler := value.(http.Handler)
+
+	// Two workers, so six requests of 150ms are three rounds: over 300ms and
+	// well under the 900ms they would take one at a time.
+	if mux, ok := value.(interface{ UsePoolForTest(*runner.Pool) }); ok {
+		mux.UsePoolForTest(runner.NewPool(rt, 2, 64, nil))
+	}
+
+	const requests = 6
+	started := time.Now()
+
+	var wg sync.WaitGroup
+	var bad atomic.Int64
+	for range requests {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/slow", nil))
+			if response.Body.String() != "done" {
+				bad.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got := bad.Load(); got != 0 {
+		t.Fatalf("failed requests = %d", got)
+	}
+	elapsed := time.Since(started)
+	if elapsed > 800*time.Millisecond {
+		t.Errorf("%d requests took %s, which is one at a time", requests, elapsed)
 	}
 }
