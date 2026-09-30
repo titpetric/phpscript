@@ -35,14 +35,13 @@
 // are answered at once, which is what a load test sweeps.
 
 class Server {
+	// Configuration, settled by configure().
 	public $addr;
 	public $workers;
 	public $queue;
 	public $limit;
 
-	public $mux;
-	public $http;
-
+	// The handlers, each registered under the name of the property holding it.
 	public $index;
 	public $hello;
 	public $show_user;
@@ -51,7 +50,7 @@ class Server {
 	public $info;
 
 	// configure settles what the server is before it is anything else.
-	public function configure() {
+	function configure() {
 		$this->addr = getenv("TESTSERVER_ADDR");
 		if ($this->addr === false || $this->addr === "") {
 			$this->addr = "127.0.0.1:8099";
@@ -80,7 +79,7 @@ class Server {
 	// handlers assigns each one to the property it is registered under. They
 	// are closures rather than methods because a handler is a function of its
 	// arguments, and a closure is that written down.
-	public function handlers() {
+	function handlers() {
 		$this->index = function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "text/plain; charset=utf-8");
 			// A handler's echo reaches the response: the runtime answering the
@@ -171,55 +170,53 @@ class Server {
 		};
 	}
 
-	// mount routes to the handlers, each named by the property holding it.
-	public function mount() {
-		$this->mux = new HTTP\Mux();
-		$this->mux->handle('GET /{$}', $this->index);
-		$this->mux->handle("GET /hello", $this->hello);
-		$this->mux->handle("GET /users/{id}", $this->show_user);
-		$this->mux->handle("POST /echo", $this->echo_request);
-		$this->mux->handle("GET /slow", $this->slow);
-		$this->mux->handle("GET /info", $this->info);
+	// mount builds the router and answers it, each route named by the property
+	// holding its handler.
+	function mount() {
+		$mux = new HTTP\Mux();
+		$mux->handle('GET /{$}', $this->index);
+		$mux->handle("GET /hello", $this->hello);
+		$mux->handle("GET /users/{id}", $this->show_user);
+		$mux->handle("POST /echo", $this->echo_request);
+		$mux->handle("GET /slow", $this->slow);
+		$mux->handle("GET /info", $this->info);
+		return $mux;
 	}
 
-	// listen binds and starts answering without blocking, and answers the
-	// address it bound, so asking for port 0 is how a test takes a free one
-	// rather than hoping.
-	public function listen() {
-		$this->http = new HTTP\Server($this->addr, $this->mux, $this->workers, $this->queue);
-		return $this->http->listen();
+	// listen builds the server over $mux, binds it, and answers it. Binding
+	// starts it answering without blocking; $http->addr() is the address it
+	// took, which is how asking for port 0 finds out what it got.
+	function listen($mux) {
+		$http = new HTTP\Server($this->addr, $mux, $this->workers, $this->queue);
+		$http->listen();
+		return $http;
 	}
 
 	// run is the entrypoint: everything above, in the order it has to happen.
-	public function run() {
+	function run() {
 		$this->configure();
 		set_time_limit($this->limit);
 
 		$this->handlers();
-		$this->mount();
-		$bound = $this->listen();
+		$http = $this->listen($this->mount());
 
 		// Stopping the server is the script's own business, so it is written
 		// here rather than left to whatever ends the script. The shutdown pass
 		// runs with the clock off, which is what makes this still run when the
 		// time limit is what ended us.
-		$http = $this->http;
 		register_shutdown_function(function () use ($http) {
 			$http->shutdown();
 			echo "server stopped\n";
 		});
 
-		// What this runtime is, before it starts answering for it.
-		phpinfo();
-
-		echo "\nserving on http://" . $bound . " until the time limit is up\n";
+		echo "serving on http://" . $http->addr() . " until the time limit is up\n";
 
 		// Returns when the script runs out of time, which is the whole of the
 		// run. It is the last statement on purpose: the limit is a fatal, as
 		// php's is, so anything after it would not run and the process would
 		// exit non-zero. Ending here lets the shutdown callback have the last
 		// word and the process exit 0.
-		$this->http->wait();
+		$http->wait();
 	}
 }
 
