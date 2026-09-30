@@ -170,19 +170,13 @@ type FuncDecl struct {
 	ByRef bool
 }
 
-// ClassDecl is a trimmed-down class: fields + methods + class constants, no
-// inheritance. The `abstract`, `final` and `readonly` modifiers are tolerated
-// (parsed) but not enforced (README omits abstract classes; minitpl's Hook is
-// abstract only to declare constants).
+// ClassDecl is a trimmed-down class: fields, methods and class constants, no
+// inheritance. abstract, final and readonly are parsed and not enforced.
 //
-// Parent is recorded so a file the formatter rewrites prints back what it read:
-// a name the AST cannot hold is a name the formatter deletes. Nothing in runner
-// may read it. phpscript has no inheritance, a catch clause filters on a class
-// name and `instanceof` is name equality. See docs/design.md.
-//
-// Implements is recorded for the same reason and is also checked, by
-// CheckInterfaces: every method the listed interfaces name must be declared by
-// this class. The check confers nothing; it only reports what is missing.
+// Parent is recorded so the formatter prints back the file it read, and nothing
+// in runner may read it: there is no inheritance here, and docs/design.md says
+// why. Implements is recorded and checked by CheckInterfaces, which confers
+// nothing and reports what a class does not declare.
 type ClassDecl struct {
 	Name       string
 	Parent     string   // `extends Name`, recorded for printing, never inherited from
@@ -489,14 +483,9 @@ type Lit struct {
 // Interp is a double-quoted string literal that embeds expressions, such as
 // `"hello $name"` or `"{$row['id']}: $count"`.
 //
-// Parts alternates literal runs, held as *Lit strings with their escapes already
-// decoded, and the expressions written between them. Evaluating one converts
-// every part to a string and joins them, which is what `.` concatenation does,
-// so an Interp and the equivalent concatenation produce the same value.
-//
-// Raw holds the source spelling, quotes included, for the same reason Lit does:
-// the formatter rewrites files in place and prints the literal the way it was
-// written rather than re-encoding it.
+// Parts alternates decoded literal runs and the expressions between them, which
+// evaluate and join as `.` concatenation does. Raw holds the source spelling for
+// the formatter, as Lit does.
 type Interp struct {
 	Parts []Expr
 	Raw   string
@@ -566,15 +555,11 @@ type MethodCall struct {
 
 // New is `new ClassName` / `new ClassName(args...)`.
 //
-// Decl is set for an anonymous class, `new class { ... }`, and holds the
-// declaration written in place of the name. Class still names the class, using
-// a name the parser synthesized, so that everything downstream of the parser
-// resolves an anonymous class the same way it resolves a written one. The
-// declarations a program builds this way are collected on Program.AnonClasses,
-// because they are not statements and nothing else would find them.
-// The variable spelling `new $className(...)` resolves the class at run time:
-// ClassExpr carries the expression and Class is empty. The value may name a
-// PHP class or a registered Go constructor, exactly as a written name would.
+// Decl holds an anonymous class, `new class { ... }`, under a name the parser
+// synthesized so everything downstream resolves it as a written one; the
+// declarations are collected on Program.AnonClasses. ClassExpr carries
+// `new $className(...)`, which resolves at run time and may name a PHP class or
+// a registered Go constructor.
 type New struct {
 	Class     string
 	ClassExpr Expr // set for `new $className(...)`; Class is "" then

@@ -8,18 +8,10 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// Mux routes requests to the PHP functions that answer them. It is net/http's
-// ServeMux and nothing more: routing is all it does, and serving is HTTP\Server.
-//
-// A request is answered on a runtime of its own, from a fixed set of workers
-// fed by one queue. See Handle for what a handler is and runner.Pool for what
-// bounds them.
-//
-// It is a facade over *net/http.ServeMux rather than the value itself, which is
-// the exception to how this package binds net/http. Registering the ServeMux
-// directly gets as far as `$mux->handle_func("GET /x", ...)` and no further:
-// the argument bridge coerces values, and nothing turns a PHP callable into the
-// func(ResponseWriter, *Request) the parameter declares.
+// Mux is net/http's ServeMux with PHP callables as its handlers, answered on a
+// worker runtime each. It is a facade rather than the ServeMux itself because
+// nothing turns a PHP callable into the func(ResponseWriter, *Request) that
+// HandleFunc declares. docs/use-cases/http-server.md is the surface.
 type Mux struct {
 	mux *nethttp.ServeMux
 	rt  *runner.Runtime
@@ -39,41 +31,13 @@ func NewMux(rt *runner.Runtime) *Mux {
 	return &Mux{mux: nethttp.NewServeMux(), rt: rt}
 }
 
-// Handle registers $handler for $pattern, which is a net/http pattern: a bare
-// path, or a method and a path, with {name} segments the handler reads back
-// through $r->path_value($name).
+// Handle registers $handler for $pattern, which is ServeMux.HandleFunc's
+// pattern, with {name} segments the handler reads through $r->path_value($name).
 //
 // $handler is a callable: a closure, a method read off its receiver as
-// $this->fnName, or the name of a declared function. Each is a program counter:
-// a request is answered on a runtime of its own, and what crosses is the
-// declaration, with everything the call needs arriving in its arguments.
-//
-// What a handler carries - a closure's `use (...)` values and the $this it
-// binds, a bound method's receiver - comes along and is shared by every request
-// answering through it, the way a Go handler closing over its configuration is.
-// Read it; writing to it from a handler is two requests writing one value. A
-// handler's own state arrives in $w and $r.
-//
-// A handler that calls another callable - middleware wrapping the handler it
-// captured, a comparator handed to usort, a closure read off a shared object -
-// runs that call on the worker too. The value crossed; the execution did not
-// follow it back to the runtime that built it, which is what keeps the wrapped
-// call writing to this request's response and off another worker's stack.
-//
-// The array($object, "method") spelling of a callable is not accepted here. It
-// stays a callable everywhere else; docs/README.md records the difference.
-//
-// The handler is called with the response writer and the request, the two
-// net/http values themselves, so it answers through $w->write($body) and
-// $w->header()->set($name, $value). What it echoes reaches the response too:
-// the runtime answering the request writes there for the length of the call.
-//
-// A handler that throws is one request's problem: it is reported to the
-// runtime's error sink and answered with a 500 if nothing has gone out yet, and
-// the server goes on. Unless the host installed Runtime.OnError, which means
-// "report it and carry on from the next statement" for every PHP error; the
-// handler then runs to its end and the request is answered with whatever it had
-// written by then.
+// $this->fnName, or the name of a declared function. It is called with the
+// response writer and the request, what it echoes reaches the response, and a
+// throw is answered with a 500. docs/use-cases/http-server.md is the contract.
 func (m *Mux) Handle(pattern string, handler any) error {
 	if pattern == "" {
 		return fmt.Errorf("HTTP\\Mux::handle: pattern is required")

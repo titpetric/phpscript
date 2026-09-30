@@ -293,8 +293,8 @@ func (e *JSONEncoder) Encode(value any) error {
 	return e.enc.Encode(jsonEncodeValue(value))
 }
 
-// set_indent makes the encoder write each value across several lines, $indent
-// per level under $prefix; called with two empty strings it goes back to one
+// SetIndent is json.Encoder.SetIndent: each value is written across several
+// lines, $indent per level under $prefix, and two empty strings go back to one
 // line per value.
 func (e *JSONEncoder) SetIndent(prefix, indent string) {
 	e.enc.SetIndent(prefix, indent)
@@ -320,29 +320,18 @@ func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
 	return &JSONDecoder{dec: dec}, nil
 }
 
-// decode reads the next value from the stream and returns it, or throws at the
-// end of the stream.
+// Decode reads the next value from the stream and returns it, or throws at the
+// end of the stream - a null is a value JSON carries, so `while ($d->more())`
+// is the loop rather than a test against what this returned.
 //
-// Go's Decode fills a pointer and answers an error; PHP has no out-parameter,
-// so the value comes back instead and the error is thrown.
-//
-// It goes through jsonDecodeStream, which json_decode() uses, rather than
-// through Go's Decode into an any. Decode would build a map[string]any, and a
-// Go map has no order: the same document would hand back its keys in a
-// different order on every run. The two spellings of decoding therefore agree
-// on the shape as well as the values - an object is an ordered array keyed by
-// its field names.
-//
-// The end of the stream is an error rather than a null, because a null is a
-// value JSON can carry: `while ($d->more())` is the loop, not a test against
-// what decode() returned.
+// It decodes through json_decode()'s own walk rather than json.Decoder.Decode,
+// which would build a map and lose the key order the two spellings agree on.
 func (d *JSONDecoder) Decode() (any, error) {
 	return jsonDecodeStream(d.dec)
 }
 
-// more reports whether another value is waiting in the stream. It is what ends
-// a decode loop, and it is false at the end of the stream and inside a document
-// that has been read to its close.
+// More is json.Decoder.More: another value is waiting in the stream. It is what
+// ends a decode loop.
 func (d *JSONDecoder) More() bool {
 	return d.dec.More()
 }

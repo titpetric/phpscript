@@ -1947,12 +1947,9 @@ class Database\Migrate
      * pattern matching nothing is only known to be wrong once Run looks.
      * 
      * A script names its migrations relative to itself ("./schema/*.up.sql"), so
-     * the work directory is joined in to reach them from the root of the runtime
-     * filesystem. What the pattern matched is also what mig records, so a file is
-     * recorded as "schema/bookmarks.up.sql" where this binding used to record the
-     * base name alone, under no project at all. A database migrated by the older
-     * binding holds no row under either new name and applies every file again,
-     * which for a CREATE TABLE is an error rather than a repeat.
+     * the work directory is joined in. What the pattern matched is what mig records,
+     * so a database migrated by the older binding - which recorded the base name
+     * under no project - applies every file again.
      */
     public function load(string $pattern): void {}
 
@@ -2069,41 +2066,13 @@ class HTTP\Mux
     public function __construct() {}
 
     /**
-     * handle registers $handler for $pattern, which is a net/http pattern: a bare
-     * path, or a method and a path, with {name} segments the handler reads back
-     * through $r->path_value($name).
+     * handle registers $handler for $pattern, which is ServeMux.HandleFunc's
+     * pattern, with {name} segments the handler reads through $r->path_value($name).
      * 
      * $handler is a callable: a closure, a method read off its receiver as
-     * $this->fnName, or the name of a declared function. Each is a program counter:
-     * a request is answered on a runtime of its own, and what crosses is the
-     * declaration, with everything the call needs arriving in its arguments.
-     * 
-     * What a handler carries - a closure's `use (...)` values and the $this it
-     * binds, a bound method's receiver - comes along and is shared by every request
-     * answering through it, the way a Go handler closing over its configuration is.
-     * Read it; writing to it from a handler is two requests writing one value. A
-     * handler's own state arrives in $w and $r.
-     * 
-     * A handler that calls another callable - middleware wrapping the handler it
-     * captured, a comparator handed to usort, a closure read off a shared object -
-     * runs that call on the worker too. The value crossed; the execution did not
-     * follow it back to the runtime that built it, which is what keeps the wrapped
-     * call writing to this request's response and off another worker's stack.
-     * 
-     * The array($object, "method") spelling of a callable is not accepted here. It
-     * stays a callable everywhere else; docs/README.md records the difference.
-     * 
-     * The handler is called with the response writer and the request, the two
-     * net/http values themselves, so it answers through $w->write($body) and
-     * $w->header()->set($name, $value). What it echoes reaches the response too:
-     * the runtime answering the request writes there for the length of the call.
-     * 
-     * A handler that throws is one request's problem: it is reported to the
-     * runtime's error sink and answered with a 500 if nothing has gone out yet, and
-     * the server goes on. Unless the host installed Runtime.OnError, which means
-     * "report it and carry on from the next statement" for every PHP error; the
-     * handler then runs to its end and the request is answered with whatever it had
-     * written by then.
+     * $this->fnName, or the name of a declared function. It is called with the
+     * response writer and the request, what it echoes reaches the response, and a
+     * throw is answered with a 500. docs/use-cases/http-server.md is the contract.
      */
     public function handle(string $pattern, mixed $handler): void {}
 
@@ -2217,19 +2186,12 @@ class HTTP\Server
     public function listen(): string {}
 
     /**
-     * shutdown stops the server, letting the requests in flight finish first, and
-     * closing on whatever is still running after a second.
+     * shutdown is http.Server.Shutdown with a second of grace, then Close.
      * 
-     * It answers nothing and throws nothing. Calling it without having listened, or
-     * twice, is not an error, and neither is a request that would not finish:
-     * shutdown() is written into a register_shutdown_function callback, which runs
-     * when the script has already ended and has nowhere to put a failure. A handler
-     * calling it to stop its own server is the case that cannot finish gracefully -
-     * the request doing the asking is itself in flight - and it closes rather than
-     * hanging.
-     * 
-     * The runtime is parked for the wait, so the requests being waited on can
-     * actually run.
+     * It answers nothing and throws nothing: it is written into a
+     * register_shutdown_function callback, which runs when the script has already
+     * ended and has nowhere to put a failure. Calling it twice, or without having
+     * listened, is not an error either.
      */
     public function shutdown(): void {}
 
@@ -2265,28 +2227,17 @@ class JSON\Decoder
 
     /**
      * decode reads the next value from the stream and returns it, or throws at the
-     * end of the stream.
+     * end of the stream - a null is a value JSON carries, so `while ($d->more())`
+     * is the loop rather than a test against what this returned.
      * 
-     * Go's Decode fills a pointer and answers an error; PHP has no out-parameter,
-     * so the value comes back instead and the error is thrown.
-     * 
-     * It goes through jsonDecodeStream, which json_decode() uses, rather than
-     * through Go's Decode into an any. Decode would build a map[string]any, and a
-     * Go map has no order: the same document would hand back its keys in a
-     * different order on every run. The two spellings of decoding therefore agree
-     * on the shape as well as the values - an object is an ordered array keyed by
-     * its field names.
-     * 
-     * The end of the stream is an error rather than a null, because a null is a
-     * value JSON can carry: `while ($d->more())` is the loop, not a test against
-     * what decode() returned.
+     * It decodes through json_decode()'s own walk rather than json.Decoder.Decode,
+     * which would build a map and lose the key order the two spellings agree on.
      */
     public function decode(): mixed {}
 
     /**
-     * more reports whether another value is waiting in the stream. It is what ends
-     * a decode loop, and it is false at the end of the stream and inside a document
-     * that has been read to its close.
+     * more is json.Decoder.More: another value is waiting in the stream. It is what
+     * ends a decode loop.
      */
     public function more(): bool {}
 }
@@ -2320,8 +2271,8 @@ class JSON\Encoder
     public function encode(mixed $value): void {}
 
     /**
-     * set_indent makes the encoder write each value across several lines, $indent
-     * per level under $prefix; called with two empty strings it goes back to one
+     * set_indent is json.Encoder.SetIndent: each value is written across several
+     * lines, $indent per level under $prefix, and two empty strings go back to one
      * line per value.
      */
     public function set_indent(string $prefix, string $indent): void {}

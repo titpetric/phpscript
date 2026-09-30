@@ -39,15 +39,11 @@ func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 
 // Run runs the command with options and CLI arguments.
 //
-// It runs the script once, and again for every SIGHUP: a reload ends the
-// generation that is running, by cancelling the context it was given, and
-// starts another that re-reads the file. A script that serves - one parked in
-// HTTP\Server::wait - sees its context end, returns, and runs its shutdown
-// callbacks, which is how it stops listening before the next generation binds.
-//
-// SIGINT and SIGTERM end it for good. Both arrive through ctx, which the caller
-// installed, and reach the script because the runtime is given it: without that
-// a served script ignores Ctrl-C, having nothing that notices.
+// It runs the script once, and again for every SIGHUP: a reload cancels the
+// generation running so a served script runs its shutdown callbacks and stops
+// listening, then re-reads the file. SIGINT and SIGTERM end it for good. All
+// three arrive through ctx, which the runtime is given, because a script with
+// nothing watching would ignore them.
 func Run(ctx context.Context, args []string, config config.Config, globals *flags.Options) error {
 	if len(args) == 0 {
 		return errors.New("usage: phpscript <file.php>")

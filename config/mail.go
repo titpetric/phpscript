@@ -13,19 +13,12 @@ import (
 var flatMailKeys = []string{"host", "port", "username", "password", "from", "insecure"}
 
 // Mail configures the mail servers mail() and `new Mail($name)` deliver
-// through, keyed by the name a script asks for; "default" is the one a script
-// that names none gets. With none configured, mail() still exists and fails
-// catchably naming the server it looked for.
+// through, keyed by the name a script asks for; "default" is what a script
+// naming none gets.
 //
-// The credentials stay here. Nothing a script can call spells a host or a
-// password, and nothing it can call reads one back or lists what is
-// configured: the map is handed to a provider, which reads a server's settings
-// at the moment of a delivery and returns only the outcome.
-//
-// A virtual host that declares a mail block of its own gets only the servers it
-// named, not the operator's with its own written over them. A map replaces
-// where the struct this used to be merged field by field, which had a site
-// inheriting the operator's password whenever it set only a host.
+// The credentials stay here: nothing a script can call spells a host or a
+// password or reads one back. A site declaring a mail block gets the servers it
+// named and none of the operator's, which docs/configuration.md records.
 type Mail map[string]mail.Config
 
 // Validate checks that every configured server can be delivered through, so a
@@ -51,17 +44,12 @@ func (m Mail) Validate(filename string) error {
 }
 
 // ValidateMailDeclaration rejects a flat mail block before the typed decode
-// reaches it.
+// reaches it, and says where to move it.
 //
-// It reads the generic map rather than the decoded configuration because that
-// is the only place the difference is still visible: by the time goccy has
-// tried to read "mail.example.com" as a Config it has nothing to say but that
-// it cannot unmarshal a string into a struct, which names neither the key nor
-// what to write instead. A file that carries the old block is told how to move
-// it.
-//
-// The keys are checked in slice order and the names in sorted order, so the
-// same file always fails on the same line.
+// It reads the generic map because that is the only place the difference is
+// still visible: the decoder can only report that a string is not a struct,
+// which names neither the key nor the fix. Keys and names are checked in a
+// fixed order, so the same file fails on the same line.
 func ValidateMailDeclaration(filename string, declared map[string]any) error {
 	servers, ok := declared["mail"].(map[string]any)
 	if !ok {

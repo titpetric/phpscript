@@ -11,38 +11,14 @@ import (
 )
 
 // Lookup resolves symName to a PHP function and returns it as T, a Go function
-// type. It is plugin.Lookup over a source tree: the host names a symbol and a
-// signature, and gets back something it can call.
+// type. It is plugin.Lookup over a source tree.
 //
-//	handle, err := runner.Lookup[func(*http.Request) bool](rt, "App\\Handler\\main")
-//	if err == nil {
-//		ok := handle(request)
-//	}
+// T returns at most one value and an optional trailing error, checked here
+// rather than at the call. A name matching nothing, or more than one
+// declaration, is a *LookupError naming what it matched. The returned function
+// belongs to rt, which serves one goroutine.
 //
-// The symbol may be declared anywhere in the tree rt serves, not only in a file
-// the host loaded. A name is matched against the functions already declared on
-// rt and against every program in its include cache; a cache that is empty and
-// a source root that is not runs a Precompiler pass first, so a runtime with
-// nothing loaded still resolves. The parser qualifies a free function with the
-// namespace its file declares, so "App\Handler\main" is the whole name and a
-// bare "main" matches it by its trailing segment. A name that matches nothing,
-// or more than one declaration, is a *LookupError naming what it matched.
-//
-// T must be a function type returning at most one value and an optional
-// trailing error. The shape is checked here rather than at the call, so a
-// signature the symbol cannot fill fails where the host binds it.
-//
-// An invocation carries the arguments and nothing else. No runner.Context is
-// registered, so $_GET, $_POST and $_SERVER are absent rather than empty, and
-// no file body runs: the declaring program is hoisted for its declarations. The
-// arguments arrive as the Go values they are, which is what makes an
-// *http.Request handed in reachable as HTTP\Request. Output goes where the
-// runtime's does.
-//
-// The returned function belongs to rt, and a Runtime serves one goroutine.
-// A host calling one concurrently builds a runtime per goroutine and shares the
-// include and expression caches between them, which is what the server does per
-// request.
+// docs/use-cases/entrypoints.md is the surface, with the example.
 func Lookup[T any](rt *Runtime, symName string) (T, error) {
 	var zero T
 	fn, err := rt.lookup(symName, reflect.TypeOf((*T)(nil)).Elem())

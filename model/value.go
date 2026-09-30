@@ -23,26 +23,13 @@ import (
 // any Go function or struct method registered on the runtime can be invoked
 // from transpiled code with no marshalling layer.
 
-// Array is PHP's ordered hash map. It preserves insertion order and allows both
-// integer and string keys, so it doubles as list and dictionary.
+// Array is PHP's ordered hash map: insertion order, integer and string keys,
+// list and dictionary in one value.
 //
-// It has two internal representations and switches between them by itself:
-//
-//	list mode  values live in `list`, the key of element i is int64(i).
-//	           `keys` and `values` are nil, so the array costs one slice.
-//	map mode   `values` holds key->value and `keys` holds insertion order.
-//
-// A new array starts in list mode, which is what `$a[] = v` (Append) and a PHP
-// list literal produce, and stays there for as long as every key so far is the
-// dense sequence 0,1,...,n-1. The first key that breaks the invariant (a
-// string key, a negative or sparse integer, an int that is not an int64)
-// promotes the array to map mode, permanently. See promote.
-//
-// Nothing about the observable behaviour differs between the two modes;
-// list mode exists only so that the common case does not allocate a
-// map[any]any, a key slice, and an interface box per key. Keys are still
-// treated as opaque: an Array never normalises "1" to 1 (its callers do, see
-// runner.normalizeKey), and only an int64 key advances the append index.
+// It starts as a dense slice and promotes itself to a map on the first key that
+// is not the next index, which no caller and no behaviour can tell apart; see
+// promote. Keys are opaque here, and normalising "1" to 1 is the caller's job
+// (runner.normalizeKey).
 type Array struct {
 	list   []any // list mode only: element i is the value of key int64(i)
 	keys   []any // map mode only: keys in insertion order

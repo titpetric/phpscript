@@ -24,18 +24,10 @@ var Default model.MailProvider = NewProvider(nil)
 var _ model.MailProvider = (*Provider)(nil)
 
 // Deliver hands one message to a transport, with the credential of the server
-// it resolved to.
-//
-// It is the seam a host swaps to send by something other than SMTP: an API, a
-// queue, a local sendmail. The name resolution, the tenant isolation and the
-// rule that a script cannot read a credential all sit above it and are
-// unaffected by what is plugged in here, which is why this is a function
-// rather than another MailProvider: replacing the whole provider would mean
-// reimplementing those too.
-//
-// A Deliver is host code and is handed the settings the host configured. The
-// boundary this package defends is the one between the host and a script, not
-// one inside the host.
+// it resolved to. It is the seam a host swaps to send by something other than
+// SMTP, and it is a function rather than another MailProvider because the name
+// resolution and the tenant isolation sit above it and are not to be
+// reimplemented. A Deliver is host code and is handed the host's settings.
 type Deliver func(config Config, recipient, subject, body string) error
 
 // Provider holds the credentials of a set of named mail servers.
@@ -57,17 +49,12 @@ func NewProvider(servers map[string]Config) *Provider {
 }
 
 // NewProviderFunc is NewProvider with the transport replaced, the way
-// database.NewDatabaseProvider takes the connector its pools are opened with.
-// A nil deliver is the SMTP one.
+// database.NewDatabaseProvider takes its connector. A nil deliver is SMTP.
 //
-// The map is copied rather than retained. Config layering hands the same map
-// to every site that declared no mail block of its own, so a provider that
-// held the caller's map would share storage across tenants, and the first
-// normalisation written into one would be written into all of them.
-//
-// Names are lowercased, as database connection names are, and a server that
-// named no port gets the default one. Both happen here so that the credential
-// a delivery reads is complete and nothing downstream has to re-derive it.
+// The map is copied rather than retained, because config layering hands one map
+// to every site that declared no mail block and a normalisation written into it
+// would be written into all of them. Names are lowercased and a missing port is
+// filled in here, so a delivery reads a complete credential.
 func NewProviderFunc(servers map[string]Config, deliver Deliver) *Provider {
 	if deliver == nil {
 		deliver = deliverSMTP

@@ -7,16 +7,10 @@ import (
 
 // RouteParam is one {...} segment of an @route path.
 //
-// Three spellings are accepted, and they are the intersection of what the two
-// routers this runtime registers on can express:
-//
-//	{name}        one path segment
-//	{name...}     the remaining segments, joined
-//	{name:regex}  one path segment matching regex
-//
-// Neither router accepts all three as written. chi has no {name...} and
-// ServeMux panics on {name:regex}, so RenderPath translates per router and
-// ParseRoutePath is the one grammar an author writes against.
+// Three spellings are accepted: {name} for one segment, {name...} for the rest
+// of them joined, {name:regex} for one matching a regex. Neither router takes
+// all three as written, so RenderPath translates per router and ParseRoutePath
+// is the one grammar an author writes against.
 type RouteParam struct {
 	Name string
 

@@ -31,18 +31,10 @@ import (
 // declaration answer the same thing.
 
 // Fork returns a runtime that can run the same symbols as this one, writing to
-// w, and shares its parse and bytecode caches.
-//
-// What is copied is the symbol tables a host registered and the declarations
-// the tree hoisted. What is not is every part of an execution: frames, globals,
-// statics, the constants a script defined, the superglobals, the output stack,
-// the included list, the shutdown callbacks and the memory accounting. A fork
-// starts as if nothing had run on it, which is what makes it safe to run on a
-// goroutine of its own.
-//
-// Forking is not cheap enough for a request. It installs the whole standard
-// library, which is around three hundred registrations. A Pool is how a host
-// pays it once per worker.
+// w, and shares its parse and bytecode caches. It carries no part of an
+// execution, which is what makes it safe on a goroutine of its own, and it
+// installs the whole standard library, which is why a Pool forks per worker
+// rather than per request. The file comment above is the arrangement.
 func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	child := New(w, rt.opts)
 	child.flat = rt.flat
@@ -137,18 +129,12 @@ func copyEntries(dst, src map[string]*funcEntry) {
 // a thing to find out rather than to absorb.
 const DefaultQueue = 1024
 
-// Pool runs PHP on a fixed set of forks, fed from one queue.
+// Pool runs PHP on a fixed set of forks, fed from one queue: the workers are
+// the parallelism and the queue is the backpressure, so a run that finds every
+// worker busy waits its turn rather than starting a runtime of its own.
 //
-// A host reaching PHP from a goroutine per request submits a run; a worker
-// picks it up on a fork of its own and answers when it is done. Workers are the
-// parallelism and the queue is the backpressure: a run that finds every worker
-// busy waits its turn rather than starting a runtime of its own, and a queue
-// that fills means the caller waits, which is the signal that it should.
-//
-// A run is expected to be short - a handler answering a request is well under a
-// millisecond - so the queue is the right shape rather than a runtime per
-// caller. Nothing here is a sync.Pool: the worker count is the contract, and
-// sync.Pool drops entries on a collection.
+// Nothing here is a sync.Pool. The worker count is the contract, and sync.Pool
+// drops entries on a collection.
 type Pool struct {
 	runs    chan poolRun
 	workers int

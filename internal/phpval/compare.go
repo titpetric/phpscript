@@ -9,20 +9,14 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Compare is PHP 8's comparison operator (<=>), which sort() and rsort()
-// order by. Its rules, in the order they are applied:
+// Compare is PHP 8's <=>, which sort() and rsort() order by, answering -1, 0 or
+// 1. Its rules in order:
 //
-//	arrays          the shorter array is smaller, an array beats any scalar
-//	null vs string  the null becomes "" and the two compare as strings
+//	arrays          the shorter is smaller, an array beats any scalar
+//	null vs string  the null becomes "" and both compare as strings
 //	bool or null    both sides are cast to bool
-//	numbers         two numbers, or a number and a numeric string, or two
-//	                numeric strings, compare numerically, so "9" is less than
-//	                "10", and a list of digits out of explode() sorts the way
-//	                the same list sorts in PHP
-//	anything else   both sides are cast to string and compared bytewise, which
-//	                is where a number meeting a non-numeric string ends up
-//
-// The answer is -1, 0 or 1, as the operator's is.
+//	numbers         numbers and numeric strings compare numerically
+//	anything else   both sides are cast to string, compared bytewise.
 func Compare(x, y any) int {
 	xa, xIsArray := comparableArray(x)
 	ya, yIsArray := comparableArray(y)

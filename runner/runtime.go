@@ -402,15 +402,8 @@ func New(w io.Writer, opts Options) *Runtime {
 
 // InfrastructurePrefix names the variables that configure phpscript and the
 // platform it runs on: connection strings, the listen address, the telemetry
-// block. They are the host's configuration, not the script's environment, and a
-// script never sees them.
-//
-// The rule already held for what a configuration file declares: a
-// PLATFORM_DB_* entry registers a connection and is not added to PHP variables.
-// It holds for the process environment for the same reason, and it matters more
-// now that one process serves several sites: a tenant reading the operator's
-// connection strings out of getenv() would make the per-site database boundary
-// pointless.
+// block. They are the host's configuration and getenv() does not answer them,
+// which is what keeps a tenant out of the operator's connection strings.
 const InfrastructurePrefix = "PLATFORM_"
 
 // ScriptEnvironment returns the environment scripts read with getenv().
@@ -519,15 +512,11 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 // Reset returns the runtime to the state a new one is in, so a pool can hand
 // the same value to the next program instead of building another.
 //
-// It is ResetSession plus everything that outlives a session: the parse caches,
-// and the two maps keyed by AST node - compiled expressions and source spans.
-// Those are what ResetSession deliberately keeps, because a --count loop runs
-// one program repeatedly and the keys are the same nodes each time. Across two
-// different programs they are keys nothing will look up again, holding the
-// previous program's tree alive behind them.
-//
-// The caches are cleared rather than replaced: a cleared map keeps the buckets
-// it grew, so the next program allocates nothing to start.
+// It is ResetSession plus what outlives a session: the parse caches and the two
+// maps keyed by AST node, which ResetSession keeps because a --count loop runs
+// one program and the keys are the same nodes each time. Across two programs
+// they hold the previous tree alive. The maps are cleared rather than replaced,
+// so the next program starts on the buckets they grew.
 func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	rt.ResetSession(out, stdin)
 	clear(rt.compiled)
@@ -629,16 +618,12 @@ func (rt *Runtime) MemoryLimit() Size {
 }
 
 // CompiledTree reports what the parsed and compiled source tree costs this
-// runtime: the programs its include cache holds, the expressions its
-// expression cache has compiled, and the heap a precompile pass measured
-// itself adding.
+// runtime: cached programs, compiled expressions, and the heap a precompile
+// pass measured itself adding, which is zero until one runs.
 //
-// The heap figure is zero until a pass runs. None of it is in what
-// memory_get_usage answers or charged against memory_limit: the tree is shared
-// by every request the process serves and outlives all of them, so charging it
-// to whichever script asked would report one process-lifetime cost once per
-// request. php draws the same line, keeping a compiled script under
-// opcache.memory_consumption rather than memory_limit.
+// None of it is charged against memory_limit. The tree is shared by every
+// request and outlives all of them, and php draws the same line by keeping a
+// compiled script under opcache.memory_consumption.
 func (rt *Runtime) CompiledTree() (programs, expressions int, heap int64) {
 	return rt.includeCache.Len(), rt.exprCache.Len(), rt.includeCache.Precompiled()
 }
@@ -896,16 +881,11 @@ func (rt *Runtime) ResolvePath(p string) string { return rt.resolveFSPath(p) }
 
 // SetWorkDir moves the working directory and reports whether it could. A
 // relative path resolves against the current one and an absolute path against
-// the source root; neither can climb out of it, so the directory is always one
-// the runtime can name.
+// the source root, and neither climbs out of it.
 //
-// The directory is per-runtime state. A host builds one runtime per request, so
-// a script that moves it moves nothing another request can see, and the process
-// working directory is never touched: os.Chdir is a global, and there is no
-// point in the runtime where owning one would be correct.
-//
-// A path naming no directory is refused rather than accepted and left to fail
-// later, which is what PHP's false return means.
+// The directory is per-runtime state, so a script moving it moves nothing
+// another request sees and os.Chdir is never called. A path naming no directory
+// is refused, which is what php's false return means.
 func (rt *Runtime) SetWorkDir(dir string) bool {
 	target := rt.resolveFSPath(dir)
 	if target == "" {

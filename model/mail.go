@@ -6,18 +6,10 @@ import (
 
 // MailProvider resolves the named mail servers a script delivers through.
 //
-// Nothing here returns a credential. A provider holds the host, the username
-// and the password of every server it was configured with, reads them inside
-// Send, and hands back only whether the delivery succeeded. A binding, and
-// through it a script, names a server; it never holds what the server is
-// reached with, and there is no call that lists what was configured.
-//
-// The interface lives here for the same reason DatabaseProvider does: a
-// runtime names it in its options without depending on the package that
-// implements it, which is stdlib/mail and which imports the runtime to
-// register its bindings. A runtime knows only that something answers to a
-// server name; which servers exist is the host's business, and a virtual host
-// answers differently from the process it shares.
+// Nothing here returns a credential: a provider reads the host, the username
+// and the password inside Send and hands back the outcome alone. The interface
+// lives here for the reason DatabaseProvider does, so a runtime can name it in
+// its options without importing stdlib/mail, which imports the runtime.
 type MailProvider interface {
 	// Configured reports why name cannot be delivered through, and nil when
 	// it can. The Mail constructor calls it so a script naming a server

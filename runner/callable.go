@@ -7,29 +7,12 @@ import (
 )
 
 // Callable is a php callable as a runtime value: one declaration to run, and
-// what it is bound to.
+// what it is bound to. It covers a closure literal, a method bound to the
+// receiver it was read off, and a declared function held by name, which is
+// what php's Closure covers and what a script sees it as.
 //
-// One type covers the three things a program can hand to something that calls
-// back, because they differ only in where the declaration came from and what
-// travels with it. docs/GLOSSARY.md records the word:
-//
-//   - a closure literal, `function ($a) use ($b) {}`, carrying what it captured;
-//   - a method bound to the receiver it was read off, `$this->fnName`;
-//   - a function the program declared, held by name, its receiver unfilled.
-//
-// A script sees all three as php's `Closure` class: `get_class()` answers
-// Closure and `instanceof Closure` is true. php answers a Closure for the
-// first-class callable syntax `$this->fnName(...)`, which `$this->fnName` is the
-// shorter spelling of here. `callable` is php's wider type, the one that also
-// admits the string and array spellings; Runtime.Callable resolves any of them
-// to a call.
-//
-// It is a value rather than the bare func(...any) (any, error) a closure and a
-// method read used to answer, so that a host can run one somewhere else. That
-// shape is still what everything invokes - coerceArg hands the call to any
-// binding declaring it, and Callable answers with it - but a bare func closes
-// over the runtime that built it, which left the declaration unreachable and a
-// handler able to run only where it was written.
+// docs/GLOSSARY.md records the word and docs/design.md the re-entry rule it
+// exists for: the value crosses to another runtime and the execution does not.
 type Callable struct {
 	// closure and fn are the declaration, one or the other: a literal is a
 	// model.Closure, and everything a name reaches is a model.FuncDecl.
@@ -168,21 +151,11 @@ func (c *Callable) Name() string {
 
 // AsCallable describes v as something a host can run on another runtime: a
 // closure, a method bound to its receiver, or a declared function by name.
+// What it captured comes along and is shared by every runtime running it, so a
+// callable must read what it captured and not write to it.
 //
-// A closure brings what it captured. `use (...)` values and the $this a closure
-// written inside a method binds come along as they are, which means every
-// runtime running it shares them. That is what a handler closing over its
-// configuration wants and it is how a Go handler closing over a struct behaves;
-// it is also why a callable must not write to what it captured. Reading is fine,
-// and a handler's own state arrives in its arguments.
-//
-// A bound method - `$this->fnName`, read without parentheses - is the same
-// arrangement with the capture named by the language rather than by a `use`
-// clause: the declaration travels, the receiver is shared.
-//
-// The `array($object, "method")` spelling of a callable is not accepted. It is a
-// callable everywhere else - call_user_func and usort take it - but not a
-// handler, and docs/README.md records that.
+// The array($object, "method") spelling is refused here and accepted
+// everywhere else, which docs/README.md records.
 func (rt *Runtime) AsCallable(v any) (*Callable, error) {
 	switch value := v.(type) {
 	case string:
@@ -226,19 +199,10 @@ func (rt *Runtime) InvokeClosure(decl *model.Closure, args ...any) (any, error) 
 // Callable resolves a PHP `callable` value into the uniform
 // func(...any) (any, error) signature the runtime invokes everywhere.
 //
-// PHP accepts several spellings of a callable and library code written for
-// stock PHP uses all of them, so `call_user_func`, `usort` and friends have to
-// understand each one:
-//
-//   - a *Callable, or any Go func already registered with the runtime,
-//   - "function_name", naming a free function,
-//   - "Class::method", naming a static method,
-//   - array($object, "method"), the bound-method form,
-//   - array("Class", "method"), the static form.
-//
-// It answers the call rather than the value, because the call is what every
-// binding taking a callable declares and what the engine invokes; AsCallable is
-// the other direction, for a host that has to carry one to another runtime.
+// Every spelling php accepts resolves: a *Callable, a Go func, "function_name",
+// "Class::method", array($object, "method") and array("Class", "method"). It
+// answers the call rather than the value, which is what a binding taking a
+// callable declares; AsCallable is the other direction.
 //
 // The second return reports whether v was callable at all; callers turn that
 // into PHP's "not a valid callback" error with their own function name.

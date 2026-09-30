@@ -8,22 +8,14 @@ import (
 )
 
 // Overlay reads filename over base and returns the configuration it describes,
-// together with the keys the file itself named.
+// together with the keys the file itself named, which is what tells a key it
+// set from one it inherited.
 //
-// It is the layering every phpscript.yml gets: the file is unmarshalled over an
-// already populated struct, so it only has to name what it changes and inherits
-// the rest. A virtual host reads its site's file over the operator's, and a test
-// suite reads its folder's file over the one the run started with.
-//
-// A missing file is an error rather than a fall back to base. The file is what
-// the caller went looking for, and a tree served or tested under settings its
-// author never wrote is the failure mode worth avoiding.
-//
-// forbidden names the keys the file may not set, and owned is the clause saying
-// who sets them instead. They are rejected rather than dropped, so nobody is
-// left believing a key took effect. The declared map is what tells a key the
-// file named from one it inherited, which is what a check on an inherited
-// default would otherwise get wrong.
+// It is the layering every phpscript.yml gets: a file names what it changes and
+// inherits the rest. A missing one is an error rather than a fall back to base,
+// because a tree served under settings nobody wrote is the failure worth
+// avoiding. forbidden names the keys the file may not set and owned says who
+// sets them instead; both are rejected rather than dropped.
 func Overlay(base Config, filename string, forbidden []string, owned string) (Config, map[string]any, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {

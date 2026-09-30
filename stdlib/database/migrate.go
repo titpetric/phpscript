@@ -30,12 +30,9 @@ type DatabaseMigrate struct {
 // pattern matching nothing is only known to be wrong once Run looks.
 //
 // A script names its migrations relative to itself ("./schema/*.up.sql"), so
-// the work directory is joined in to reach them from the root of the runtime
-// filesystem. What the pattern matched is also what mig records, so a file is
-// recorded as "schema/bookmarks.up.sql" where this binding used to record the
-// base name alone, under no project at all. A database migrated by the older
-// binding holds no row under either new name and applies every file again,
-// which for a CREATE TABLE is an error rather than a repeat.
+// the work directory is joined in. What the pattern matched is what mig records,
+// so a database migrated by the older binding - which recorded the base name
+// under no project - applies every file again.
 func (m *DatabaseMigrate) Load(pattern string) error {
 	pattern = strings.TrimPrefix(path.Clean(strings.TrimPrefix(pattern, "./")), "/")
 	if m.workDir != "" && m.workDir != "." {

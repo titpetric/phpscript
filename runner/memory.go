@@ -129,18 +129,11 @@ func DeepSize(v any, visited visitedSet) int64 {
 	}
 }
 
-// EstimateValueSize is a shallow estimate of what a value costs, in bytes. It is
-// closed and non-recursive, which is what makes it cheap enough to run on a
-// binding's result:
-//
-//	scalars, strings   the value's own size plus the string's length
-//	byte slices        the slice header plus its length
-//	arrays             the header, the keys, and one level of elements
-//	objects            the header, the property names, and one level of values
-//	pointers, structs  the shallow sizeof
-//
-// A graph deeper than one level is undercounted, deliberately: the walk that
-// would not be is DeepSize.
+// EstimateValueSize is a shallow estimate of what a value costs, in bytes: a
+// scalar or string is its own size, a collection is its header plus one level of
+// entries, and anything else is the shallow sizeof. It is cheap enough to run on
+// every binding's result, and it undercounts a deeper graph on purpose - the
+// walk that does not is DeepSize.
 func EstimateValueSize(v any) int64 {
 	if v == nil {
 		return 0

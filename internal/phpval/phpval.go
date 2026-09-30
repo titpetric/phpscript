@@ -238,17 +238,10 @@ func Number(v any) any {
 	}
 }
 
-// Key normalises an array key the way PHP does. Only int and string keys
-// exist; everything else converts:
-//
-//	null           the empty string
-//	true / false   1 / 0
-//	1.7 / -1.7     1 / -1, truncated toward zero
-//	"12"           12
-//	"08", "+1"     themselves, see NumericKey
-//
-// runner.normalizeKey is this function: a key has to be stored the same way
-// array_key_exists() and array_flip() later name it.
+// Key normalises an array key the way PHP does: only int and string keys
+// exist, null is "", a bool is 1 or 0, a float truncates toward zero, and a
+// canonical decimal string is its number - "08" and "+1" are not, see
+// NumericKey.
 func Key(v any) any {
 	switch x := v.(type) {
 	case nil:

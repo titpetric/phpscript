@@ -29,17 +29,11 @@ var (
 
 // SetInclude names a file to run against the name registry before any file is
 // checked, which is what lets the linter see an application rather than one
-// file of it.
+// file of it: with `--include vendor/autoload.php` a name resolves against the
+// classmap rather than against the standard library alone.
 //
-// Without it every check runs against the standard library alone: a class
-// composer autoloads and a helper bootstrap.php registers are both unknown,
-// so the findings are mostly false and a true one cannot be told from them.
-// With `--include vendor/autoload.php` the autoloader is registered and the
-// classmap is what a name resolves against.
-//
-// It must be called before the first File(), which is what the command does:
-// the registry is built once per process, because registration is
-// deterministic and nothing executes against it afterwards.
+// It must be called before the first File(). The registry is built once per
+// process, because registration is deterministic.
 func SetInclude(path string) {
 	includeFile = path
 }

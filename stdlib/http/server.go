@@ -34,19 +34,13 @@ type Server struct {
 	stopped chan struct{}
 }
 
-// NewServer builds a server for $addr answering through $handler, which is an
-// HTTP\Mux or anything else that answers a request. Building one listens on
-// nothing: listen() does that.
+// NewServer builds a server for $addr answering through $handler, an HTTP\Mux
+// or anything else that answers a request. Building one listens on nothing:
+// listen() does that.
 //
-// An $addr of "127.0.0.1:0" binds a port the system picks, which listen()
-// answers with, and is how a test takes a free one rather than hoping.
-//
-// $workers is how many requests are answered at once, because each is answered
-// on a runtime of its own and a runtime is memory. It is not how many may
-// arrive: the rest queue. Omitted, it is the number of cores, which is the
-// parallelism a handler doing no IO can use; a handler that waits on a database
-// wants more. A second argument after it is how deep that queue is, defaulting
-// to 1024.
+// $workers is how many requests are answered at once, the number of cores when
+// omitted, and the argument after it is how deep the queue behind them is,
+// 1024 when omitted. docs/use-cases/http-server.md is what to size them by.
 func NewServer(rt *runner.Runtime, addr string, handler any, workers ...int64) (*Server, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("HTTP\\Server: addr is required")
@@ -111,19 +105,12 @@ func (s *Server) Wait() {
 	<-s.rt.Context().Done()
 }
 
-// shutdown stops the server, letting the requests in flight finish first, and
-// closing on whatever is still running after a second.
+// Shutdown is http.Server.Shutdown with a second of grace, then Close.
 //
-// It answers nothing and throws nothing. Calling it without having listened, or
-// twice, is not an error, and neither is a request that would not finish:
-// shutdown() is written into a register_shutdown_function callback, which runs
-// when the script has already ended and has nowhere to put a failure. A handler
-// calling it to stop its own server is the case that cannot finish gracefully -
-// the request doing the asking is itself in flight - and it closes rather than
-// hanging.
-//
-// The runtime is parked for the wait, so the requests being waited on can
-// actually run.
+// It answers nothing and throws nothing: it is written into a
+// register_shutdown_function callback, which runs when the script has already
+// ended and has nowhere to put a failure. Calling it twice, or without having
+// listened, is not an error either.
 func (s *Server) Shutdown() {
 	server, stopped := s.take()
 	if server == nil {

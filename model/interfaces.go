@@ -55,16 +55,11 @@ func CheckInterfaceContracts(prog *Program) error {
 
 // CheckInterfaces checks every class in stmts that declares `implements`
 // against the interfaces declared alongside it, and returns what is missing in
-// declaration order.
+// declaration order. It is a name comparison and copies nothing onto the class.
 //
-// The check is a name comparison and nothing else: an interface names methods,
-// and the class must declare each of them itself. Nothing is copied onto the
-// class, so a class that passes the check has exactly the members it wrote.
-//
-// A name no `interface` declaration in stmts defines is skipped rather than
-// reported. It is either a PHP built-in such as Countable, which phpscript does
-// not declare, or an interface declared in a file that is not part of this
-// statement list; neither is a contract this program can be held to.
+// A name no interface declaration in stmts defines is skipped: it is a php
+// built-in this runtime does not declare, or an interface from another file,
+// and neither is a contract this program can be held to.
 func CheckInterfaces(stmts []Stmt, extra ...*ClassDecl) []InterfaceViolation {
 	interfaces := interfaceIndex(stmts)
 	if len(interfaces) == 0 {

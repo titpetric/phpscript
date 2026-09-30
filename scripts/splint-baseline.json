@@ -4,9 +4,7 @@
     "filecheck/long": 34,
     "func-args/order": 24,
     "func-returns/order": 3,
-    "godoc/format": 1,
-    "godoc/verbose": 35,
-    "grouping/filename": 211,
+    "grouping/filename": 138,
     "imports/collision": 2,
     "imports/pollution": 8,
     "pairing/unpaired": 125

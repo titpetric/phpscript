@@ -115,17 +115,9 @@ func (s *Suite) Provider() model.DatabaseProvider {
 }
 
 // Mail answers the mail servers the fixtures below this suite root deliver
-// through.
-//
-// A suite that declared no mail block of its own resolves what the run does,
-// which is nothing: a folder that named no servers is not asking for a set of
-// its own. A suite that declared one gets only what it named, the rule a
-// virtual host is already held to, so a fixture cannot name a server its
-// folder did not configure.
-//
-// Nothing is delivered in a fixture run: construction is a name lookup, and a
-// fixture that calls send() reaches for a mail server that is not there. What
-// a suite block buys is the names, which is what the fixtures are about.
+// through: what the suite declared, or nothing, which is the rule a virtual
+// host is held to. Nothing is delivered in a fixture run - construction is a
+// name lookup, and the names are what the fixtures are about.
 func (s *Suite) Mail() model.MailProvider {
 	if s == nil {
 		return nil
