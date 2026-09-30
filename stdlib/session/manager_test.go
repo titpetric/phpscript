@@ -3,6 +3,7 @@ package session_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -111,6 +112,64 @@ func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestSessionManagerReadsAServedRequestsCookie is the manager against the
+// context a server builds, rather than one a host filled in.
+//
+// A request decodes its cookies on the first read through Context.CookieMap, so
+// the Cookie field is empty until something asks. Reading the field instead made
+// every served request anonymous - valid() answered false for a cookie the same
+// manager had issued one request earlier - while $_COOKIE held it, because the
+// superglobal goes through the accessor. Issue #118.
+func TestSessionManagerReadsAServedRequestsCookie(t *testing.T) {
+	storage := session.NewStorageMemory()
+	manager, err := session.NewManager(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The first request has no cookie and starts a session.
+	first, firstRequest := servedContext(t, "")
+	if err := manager.Start(first, "row-1"); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	staged := &http.Response{Header: http.Header{
+		"Set-Cookie": firstRequest.ResponseHeaders().Values("Set-Cookie"),
+	}}
+	issued := staged.Cookies()
+	if len(issued) != 1 {
+		t.Fatalf("Set-Cookie count = %d, want 1", len(issued))
+	}
+
+	// The second request carries it, and is answered by a manager of its own,
+	// because a served request runs on a runtime that holds nothing from the
+	// last one.
+	next, err := session.NewManager(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, _ := servedContext(t, issued[0].Value)
+	if valid, err := next.Valid(second); err != nil || !valid {
+		t.Fatalf("Valid with the issued cookie = %v, %v; want true, nil", valid, err)
+	}
+	if got, err := next.Get(second); err != nil || got != "row-1" {
+		t.Fatalf("Get with the issued cookie = %q, %v; want row-1, nil", got, err)
+	}
+}
+
+// servedContext builds the request context a served request has: decoded from an
+// *http.Request, with nothing read off it yet.
+func servedContext(t *testing.T, cookie string) (context.Context, runner.Context) {
+	t.Helper()
+	rt := runner.New(nil, runner.Options{})
+	r := httptest.NewRequest(http.MethodGet, "/probe", nil)
+	if cookie != "" {
+		r.AddCookie(&http.Cookie{Name: "session", Value: cookie})
+	}
+	request := runner.FromRequest(r)
+	request.Register(rt)
+	return rt.Context(), request
 }
 
 func TestNewSessionManagerValidatesConfiguration(t *testing.T) {

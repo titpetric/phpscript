@@ -106,7 +106,10 @@ func (s *Manager) currentID(ctx context.Context) (string, bool) {
 			return validSessionID(strings.TrimSpace(value))
 		}
 	}
-	return validSessionID(request.Cookie[s.SessionCookieName])
+	// CookieMap and not the Cookie field: a request decodes its cookies on the
+	// first read through the accessor, so the field is empty until something
+	// asks. A host that fills the field itself is answered by the same call.
+	return validSessionID(request.CookieMap()[s.SessionCookieName])
 }
 
 func validSessionID(id string) (string, bool) {
