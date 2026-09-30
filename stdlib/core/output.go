@@ -312,6 +312,12 @@ func classOf(value any) string {
 	if object, ok := value.(*model.Object); ok && object.Class != nil {
 		return object.Class.Name
 	}
+	// A callable value prints as php's Closure: `$this->fn(...)`, the
+	// first-class callable syntax the shorter `$this->fn` stands in for, answers
+	// a Closure and has no other name.
+	if _, ok := value.(*runner.Callable); ok {
+		return "Closure"
+	}
 	t := reflect.TypeOf(value)
 	for t != nil && t.Kind() == reflect.Pointer {
 		t = t.Elem()

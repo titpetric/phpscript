@@ -2,6 +2,7 @@ package http_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -501,11 +502,10 @@ define("SERVER", $server);
 	_ = rt.Run(stop)
 }
 
-// TestMuxTakesAHandlerFromAProperty is the shape testdata/testserver.php uses:
-// a server class holding its handlers in properties and registering each as
-// $this->fnName. The closure binds $this, which comes along and is shared by
-// every request, so a handler reads its configuration and writes to its
-// arguments.
+// TestMuxTakesAHandlerFromAProperty is a server class holding its handlers in
+// properties and registering each as $this->fnName. The closure binds $this,
+// which comes along and is shared by every request, so a handler reads its
+// configuration and writes to its arguments.
 func TestMuxTakesAHandlerFromAProperty(t *testing.T) {
 	_, handler := serveScript(t, `<?php
 class Site {
@@ -538,8 +538,51 @@ define("MUX", $mux);
 	}
 }
 
+// TestMuxTakesABoundMethod is the shape testdata/testserver.php uses: the
+// handlers are methods and mount() registers each as $this->fnName, with no
+// property and no constructor in between. The receiver comes along the way a
+// closure's captured $this does, and it is the same object every request is
+// answered against.
+func TestMuxTakesABoundMethod(t *testing.T) {
+	_, handler := serveScript(t, `<?php
+class Site {
+	public function mount($mux) {
+		$mux->handle("GET /hello", $this->hello);
+		$mux->handle("GET /users/{id}", $this->showUser);
+	}
+
+	public function hello($w, $r) {
+		$w->write("hei " . $r->url->query()->get("name"));
+	}
+
+	public function showUser($w, $r) {
+		$w->write("user " . $r->path_value("id"));
+	}
+}
+
+$mux = new HTTP\Mux();
+(new Site)->mount($mux);
+define("MUX", $mux);
+`)
+
+	for _, want := range []struct{ path, body string }{
+		{"/hello?name=tit", "hei tit"},
+		{"/users/42", "user 42"},
+	} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, want.path, nil))
+		if response.Code != http.StatusOK {
+			t.Fatalf("GET %s: status = %d, body = %q", want.path, response.Code, response.Body.String())
+		}
+		if got := response.Body.String(); got != want.body {
+			t.Errorf("GET %s: body = %q, want %q", want.path, got, want.body)
+		}
+	}
+}
+
 // TestMuxRefusesAnArrayCallable pins the one callable spelling the router does
-// not take. It is a callable everywhere else; here a handler is a closure.
+// not take. It is a callable everywhere else; a handler is a closure or a
+// method read off its receiver, and array($object, "method") is neither.
 func TestMuxRefusesAnArrayCallable(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
@@ -560,7 +603,7 @@ $mux->handle("GET /hello", array($site, "hello"));
 	if err == nil {
 		t.Fatal("an array callable was accepted as a handler")
 	}
-	if !strings.Contains(err.Error(), "a callback is a closure") {
+	if !strings.Contains(err.Error(), "a callable is a closure") {
 		t.Errorf("error %q does not say what a handler is", err)
 	}
 }
@@ -621,5 +664,110 @@ define("MUX", $mux);
 	elapsed := time.Since(started)
 	if elapsed > 800*time.Millisecond {
 		t.Errorf("%d requests took %s, which is one at a time", requests, elapsed)
+	}
+}
+
+// A handler answers on a runtime of its own, so every call it makes has to run
+// on that runtime. A callable the script built before the server started is a
+// value like any other - it crosses into a worker as a capture, or is read off a
+// shared object - and calling one there must not reach back into the runtime
+// that built it: that runtime is unguarded by design (see runner/fork.go) and
+// the response it would write to belongs to a different request.
+//
+// Each case below is one spelling of that call, and every callable in them
+// echoes. An echo is what proves which runtime ran the body: the response writer
+// is pushed onto the worker only, so an echo that reaches the response ran
+// there, and one that reaches the process output ran on the parent.
+var reentrySpellings = []struct {
+	name  string
+	route string
+}{
+	{"captured callable", `$mux->handle("GET /x", wrap($site->index));`},
+	{"captured closure", `$mux->handle("GET /x", function ($w, $r) use ($echo) { $echo($w, $r); });`},
+	{"nested captures", `$mux->handle("GET /x", wrap(wrap($site->index)));`},
+	{"property holding a closure", `$mux->handle("GET /x", function ($w, $r) use ($site) { ($site->boxed)($w, $r); });`},
+	{"array element holding a closure", `$mux->handle("GET /x", function ($w, $r) use ($site) { ($site->bag["one"])($w, $r); });`},
+	{"bound method off a shared object", `$mux->handle("GET /x", $site->index);`},
+	{"call_user_func", `$mux->handle("GET /x", function ($w, $r) use ($echo) { call_user_func($echo, $w, $r); });`},
+	{"call_user_func_array", `$mux->handle("GET /x", function ($w, $r) use ($echo) { call_user_func_array($echo, array($w, $r)); });`},
+	{"usort comparator", `$mux->handle("GET /x", function ($w, $r) use ($cmp) { $a = array(2, 1); usort($a, $cmp); });`},
+	{"array_map", `$mux->handle("GET /x", function ($w, $r) use ($site) { array_map($site->twice, array(1)); });`},
+	{"array_filter", `$mux->handle("GET /x", function ($w, $r) use ($keep) { array_filter(array(1), $keep); });`},
+	{"array_reduce", `$mux->handle("GET /x", function ($w, $r) use ($add) { array_reduce(array(1), $add, 0); });`},
+	{"preg_replace_callback", `$mux->handle("GET /x", function ($w, $r) use ($site) { preg_replace_callback('/\d/', $site->digit, "a1"); });`},
+	{"shutdown callback", `$mux->handle("GET /x", function ($w, $r) use ($echo) { register_shutdown_function($echo); $echo($w, $r); });`},
+}
+
+// reentryScript builds one script per spelling: the same shared state, built on
+// the runtime that runs the script, and one route.
+func reentryScript(route string) string {
+	return `<?php
+class Site {
+	public $boxed;
+	public $twice;
+	public $digit;
+	public $bag;
+	function boot() {
+		$this->boxed = function ($w, $r) { echo "inner\n"; };
+		$this->twice = function ($n) { echo "inner\n"; return $n * 2; };
+		$this->digit = function ($m) { echo "inner\n"; return "<" . $m[0] . ">"; };
+		$this->bag = array("one" => function ($w, $r) { echo "inner\n"; });
+	}
+	function index($w, $r) { echo "inner\n"; }
+}
+function wrap($next) {
+	return function ($w, $r) use ($next) { $next($w, $r); };
+}
+$site = new Site;
+$site->boot();
+$echo = function ($w, $r) { echo "inner\n"; };
+$cmp = function ($a, $b) { echo "inner\n"; return $a - $b; };
+$keep = function ($n) { echo "inner\n"; return true; };
+$add = function ($carry, $n) { echo "inner\n"; return $carry + $n; };
+$mux = new HTTP\Mux();
+` + route + `
+define("MUX", $mux);
+`
+}
+
+// TestReentryAnswersOnTheWorker holds that the call reached the worker: what it
+// echoed is in the response, and the process output the parent runtime writes to
+// is untouched.
+func TestReentryAnswersOnTheWorker(t *testing.T) {
+	for _, spelling := range reentrySpellings {
+		t.Run(spelling.name, func(t *testing.T) {
+			out, handler := serveScriptOutput(t, reentryScript(spelling.route))
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/x", nil))
+
+			if got := response.Body.String(); !strings.Contains(got, "inner") {
+				t.Errorf("response = %q, want the echo of the callable the handler called", got)
+			}
+			if got := out.String(); got != "" {
+				t.Errorf("the parent runtime wrote %q; the call ran on the runtime that built the value", got)
+			}
+		})
+	}
+}
+
+// TestReentryIsNotARace drives each spelling concurrently. A call that reached
+// the parent runtime is two goroutines inside one unguarded execution, which the
+// race detector reports rather than the test asserting it.
+func TestReentryIsNotARace(t *testing.T) {
+	for _, spelling := range reentrySpellings {
+		t.Run(spelling.name, func(t *testing.T) {
+			_, handler := serveScriptOutput(t, reentryScript(spelling.route))
+			var wg sync.WaitGroup
+			for i := range 16 {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					response := httptest.NewRecorder()
+					handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet,
+						fmt.Sprintf("/x?n=%d", i), nil))
+				}()
+			}
+			wg.Wait()
+		})
 	}
 }

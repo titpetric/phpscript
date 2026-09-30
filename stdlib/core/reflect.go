@@ -109,6 +109,12 @@ func classNameOf(value any) string {
 			return class
 		}
 	}
+	// A callable value - a closure, a method bound to its receiver, a declared
+	// function - is php's Closure, which is the class php answers for a
+	// first-class callable.
+	if _, ok := value.(*runner.Callable); ok {
+		return "Closure"
+	}
 	t := reflect.TypeOf(value)
 	for t != nil && t.Kind() == reflect.Pointer {
 		t = t.Elem()

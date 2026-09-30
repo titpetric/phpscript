@@ -507,8 +507,8 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 			for i, args := range test.argSets {
 				// Each path gets its own copy: variadic dispatch aliases the
 				// argument slice into the binding.
-				fastV, fastErr := invokeAny(test.fast, append([]any(nil), args...))
-				slowV, slowErr := invokeAny(test.slow, append([]any(nil), args...))
+				fastV, fastErr := invokeAny(nil, test.fast, append([]any(nil), args...))
+				slowV, slowErr := invokeAny(nil, test.slow, append([]any(nil), args...))
 				if (fastErr == nil) != (slowErr == nil) {
 					t.Fatalf("args #%d %v: fast err = %v, reflect err = %v", i, args, fastErr, slowErr)
 				}
@@ -547,7 +547,7 @@ func TestDispatchPinArgumentCount(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := invokeAny(test.fn, test.args)
+			_, err := invokeAny(nil, test.fn, test.args)
 			var count *ArgumentCountError
 			if !errors.As(err, &count) {
 				t.Fatalf("err = %v, want *ArgumentCountError", err)
@@ -565,7 +565,7 @@ func TestDispatchPinArgumentCount(t *testing.T) {
 	}
 
 	// A variadic callable takes any surplus.
-	if _, err := invokeAny(func(vs ...any) any { return len(vs) }, []any{1, 2, 3, 4, 5}); err != nil {
+	if _, err := invokeAny(nil, func(vs ...any) any { return len(vs) }, []any{1, 2, 3, 4, 5}); err != nil {
 		t.Fatalf("variadic surplus: %v", err)
 	}
 }
@@ -574,7 +574,7 @@ func TestDispatchPinArgumentCount(t *testing.T) {
 // string parameter, on both paths.
 func TestDispatchPinArgumentPadding(t *testing.T) {
 	// Fast shape: func(string) string with no arguments.
-	v, err := invokeAny(func(s string) string { return "<" + s + ">" }, nil)
+	v, err := invokeAny(nil, func(s string) string { return "<" + s + ">" }, nil)
 	if err != nil {
 		t.Fatalf("fast: %v", err)
 	}
@@ -583,7 +583,7 @@ func TestDispatchPinArgumentPadding(t *testing.T) {
 	}
 
 	// Reflect shape: three parameters, one argument.
-	v, err = invokeAny(func(a string, b any, c string) string {
+	v, err = invokeAny(nil, func(a string, b any, c string) string {
 		return fmt.Sprintf("%q/%v(%T)/%q", a, b, b, c)
 	}, []any{"a"})
 	if err != nil {
@@ -600,7 +600,7 @@ func TestDispatchPinArgumentPadding(t *testing.T) {
 // naming the position and the PHP spellings of both types.
 func TestDispatchPinReflectCoercion(t *testing.T) {
 	// Three string parameters keep the signature out of the fast switch.
-	v, err := invokeAny(func(a, b, c string) string { return a + "|" + b + "|" + c }, []any{int64(65), 1.5, true})
+	v, err := invokeAny(nil, func(a, b, c string) string { return a + "|" + b + "|" + c }, []any{int64(65), 1.5, true})
 	if err != nil {
 		t.Fatalf("string coercion: %v", err)
 	}
@@ -609,7 +609,7 @@ func TestDispatchPinReflectCoercion(t *testing.T) {
 	}
 
 	// A Duration parameter parses a duration string, whitespace tolerated.
-	v, err = invokeAny(func(d time.Duration) int64 { return int64(d / time.Minute) }, []any{" 30m "})
+	v, err = invokeAny(nil, func(d time.Duration) int64 { return int64(d / time.Minute) }, []any{" 30m "})
 	if err != nil {
 		t.Fatalf("duration: %v", err)
 	}
@@ -618,14 +618,14 @@ func TestDispatchPinReflectCoercion(t *testing.T) {
 	}
 
 	// A string a Duration parameter cannot parse is a TypeError, not a panic.
-	_, err = invokeAny(func(d time.Duration) int64 { return 0 }, []any{"not a duration"})
+	_, err = invokeAny(nil, func(d time.Duration) int64 { return 0 }, []any{"not a duration"})
 	var mismatch *TypeError
 	if !errors.As(err, &mismatch) {
 		t.Fatalf("bad duration err = %v, want *TypeError", err)
 	}
 
 	// An unconvertible argument reports position, wanted and given types.
-	_, err = invokeAny(func(s string, limit int64) string { return s }, []any{"a", model.NewArray()})
+	_, err = invokeAny(nil, func(s string, limit int64) string { return s }, []any{"a", model.NewArray()})
 	mismatch = nil
 	if !errors.As(err, &mismatch) {
 		t.Fatalf("err = %v, want *TypeError", err)
@@ -651,7 +651,7 @@ func TestDispatchPinHostPanic(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			v, err := invokeAny(test.fn, []any{"x"})
+			v, err := invokeAny(nil, test.fn, []any{"x"})
 			if v != nil {
 				t.Fatalf("value = %#v, want nil", v)
 			}
@@ -851,7 +851,7 @@ func TestDispatchPinUniformABI(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			directV, directErr := invokeAny(test.fn, append([]any(nil), test.args...))
+			directV, directErr := invokeAny(nil, test.fn, append([]any(nil), test.args...))
 			adaptedV, adaptedErr := adapt(test.fn)(append([]any(nil), test.args...)...)
 			if (directErr == nil) != (adaptedErr == nil) {
 				t.Fatalf("direct err = %v, adapted err = %v", directErr, adaptedErr)
@@ -878,7 +878,7 @@ func TestDispatchPinUniformABI(t *testing.T) {
 	}
 
 	// A non-callable value is refused with the type it actually was.
-	if _, err := invokeAny(42, nil); err == nil || !strings.Contains(err.Error(), "not callable: int") {
+	if _, err := invokeAny(nil, 42, nil); err == nil || !strings.Contains(err.Error(), "not callable: int") {
 		t.Fatalf("err = %v, want the not-callable report", err)
 	}
 }

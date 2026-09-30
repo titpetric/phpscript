@@ -19,8 +19,14 @@ import (
 // invoker is one callable's pre-bound dispatch. call owns the panic
 // boundary and the arity check; wantsCtx is the context-injection decision
 // invokeWithScopeContext and the flatstack host read without reflecting.
+//
+// call takes the runtime doing the calling because an entry is shared: a fork
+// copies the table, and a binding's *Callable argument has to bind to the
+// runtime the call is on rather than to the one that built the value. Only the
+// reflect path reads it - it is what coerceArg needs - so the specialised
+// signatures below are wrapped once instead of each taking it.
 type invoker struct {
-	call     func(args []any) (any, error)
+	call     func(rt *Runtime, args []any) (any, error)
 	wantsCtx bool
 }
 
@@ -28,15 +34,21 @@ type invoker struct {
 // fn's signature is one of the shapes the stdlib and the evaluation
 // environment register, the pre-planned reflect call otherwise.
 func newInvoker(fn any) invoker {
+	// A callable value is not a Go func and has no signature to plan: it is
+	// dispatched through the runtime doing the calling, which is the whole of
+	// what it needs.
+	if c, ok := fn.(*Callable); ok {
+		return invoker{call: func(rt *Runtime, args []any) (any, error) { return c.on(rt)(args...) }}
+	}
 	ft := reflect.TypeOf(fn)
 	if ft == nil || ft.Kind() != reflect.Func {
-		return invoker{call: func([]any) (any, error) {
+		return invoker{call: func(*Runtime, []any) (any, error) {
 			return nil, fmt.Errorf("not callable: %T", fn)
 		}}
 	}
-	call := fastInvoker(fn, ft)
-	if call == nil {
-		call = reflectInvoker(fn, ft)
+	call := reflectInvoker(fn, ft)
+	if fast := fastInvoker(fn, ft); fast != nil {
+		call = func(_ *Runtime, args []any) (any, error) { return fast(args) }
 	}
 	return invoker{
 		call:     guardInvoker(call, ft, fmt.Sprintf("%T", fn)),
@@ -50,9 +62,9 @@ func newInvoker(fn any) invoker {
 // signature declares is an ArgumentCountError before anything runs. Too few
 // arguments stay legal: a Go binding spells PHP's optional parameters as
 // extra ones, and the call paths zero-pad them.
-func guardInvoker(call func([]any) (any, error), ft reflect.Type, typeName string) func([]any) (any, error) {
+func guardInvoker(call func(*Runtime, []any) (any, error), ft reflect.Type, typeName string) func(*Runtime, []any) (any, error) {
 	numIn, variadic := ft.NumIn(), ft.IsVariadic()
-	return func(args []any) (result any, err error) {
+	return func(rt *Runtime, args []any) (result any, err error) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				result = nil
@@ -62,7 +74,7 @@ func guardInvoker(call func([]any) (any, error), ft reflect.Type, typeName strin
 		if !variadic && len(args) > numIn {
 			return nil, &ArgumentCountError{Want: numIn, Got: len(args)}
 		}
-		return call(args)
+		return call(rt, args)
 	}
 }
 
@@ -70,7 +82,7 @@ func guardInvoker(call func([]any) (any, error), ft reflect.Type, typeName strin
 // parameter plan - types, variadic element, context flag - computed here
 // instead of per argument per call. Coercion itself stays coerceArg, the
 // one table.
-func reflectInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
+func reflectInvoker(fn any, ft reflect.Type) func(*Runtime, []any) (any, error) {
 	rv := reflect.ValueOf(fn)
 	numIn, variadic := ft.NumIn(), ft.IsVariadic()
 	wantsCtx := wantsContext(ft)
@@ -91,7 +103,7 @@ func reflectInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 		}
 		return nil
 	}
-	return func(args []any) (any, error) {
+	return func(rt *Runtime, args []any) (any, error) {
 		in := make([]reflect.Value, 0, len(args))
 		// The runtime context, when a binding asks for one, is injected
 		// ahead of the script's arguments and does not count towards the
@@ -102,7 +114,7 @@ func reflectInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 		}
 		for i, a := range args {
 			want := paramAt(i)
-			v, ok := coerceArg(a, want)
+			v, ok := coerceArgOn(rt, a, want)
 			if !ok {
 				return nil, &TypeError{
 					Position: i + offset,
@@ -126,9 +138,6 @@ func reflectInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 // arguments contract). nil sends the constructor to reflectInvoker.
 func fastInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 	switch f := fn.(type) {
-	case *Closure:
-		call := f.uniform()
-		return func(args []any) (any, error) { return call(args...) }
 	case func(...any) (any, error):
 		return func(args []any) (any, error) { return f(args...) }
 	case func(any) any:
@@ -230,7 +239,7 @@ func fastInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 			if flag, ok := argAt(args, 1).(bool); ok {
 				return f(phpString(argAt(args, 0)), flag)
 			}
-			return slow(args)
+			return slow(nil, args)
 		}
 	case func(string) func(any):
 		return func(args []any) (any, error) { return f(phpString(argAt(args, 0))), nil }
@@ -269,7 +278,7 @@ func (rt *Runtime) invokeEntry(e *funcEntry, args []any, scope *Scope) (any, err
 		full = append(full, args...)
 		args = full
 	}
-	result, err := inv.call(args)
+	result, err := inv.call(rt, args)
 	if err == nil && rt.opts.MemoryLimit > 0 {
 		// Burst guard: a single host call can allocate far more than the
 		// per-statement checkpoint interval sees (str_repeat, file reads).

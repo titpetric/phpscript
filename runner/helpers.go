@@ -48,7 +48,7 @@ func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any
 		full = append(full, args...)
 		args = full
 	}
-	result, err := invokeAny(fn, args)
+	result, err := invokeAny(rt, fn, args)
 	if err == nil && rt.opts.MemoryLimit > 0 {
 		// Burst guard: a single host call can allocate far more than the
 		// per-statement checkpoint interval sees (str_repeat, file reads).
@@ -151,8 +151,9 @@ func helperIndex(base, idx any) any {
 // helperGet implements `base->name` / `base.name` property access against PHP
 // objects (Props bag) and, by reflection, exported fields of Go structs. When a
 // PHP object has no matching property but has a method by that name, it returns
-// a callable bound to that object; this supports PHP idioms such as
-// `call_user_func_array($this->query, $args)`.
+// a *Callable bound to that object; this supports PHP idioms such as
+// `call_user_func_array($this->query, $args)`, and it is what a router takes as
+// a handler registered as `$this->fnName`.
 func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 	return func(base any, name string) any {
 		// A bound callable produced here can outlive the expression that read it,
@@ -165,7 +166,7 @@ func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 			}
 			if b.Class != nil {
 				if decl, ok := b.Class.Methods[name]; ok {
-					return func(args ...any) (any, error) { return rt.invokeMethod(b, decl, args, scope) }
+					return rt.newMethod(b, decl, scope)
 				}
 			}
 			return nil
@@ -211,7 +212,16 @@ func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...
 // signatures.
 func adapt(fn any) func(...any) (any, error) {
 	inv := newInvoker(fn)
-	return func(args ...any) (any, error) { return inv.call(args) }
+	return func(args ...any) (any, error) { return inv.call(nil, args) }
+}
+
+// adaptOn is adapt for a wrapper whose runtime is known. A Go func declaring a
+// callable parameter gets one bound to the runtime doing the calling, which is
+// what makes a callable handed across a fork run where it was called from; the
+// helpers adapt() wraps take `any` and resolve their own.
+func adaptOn(rt *Runtime, fn any) func(...any) (any, error) {
+	inv := newInvoker(fn)
+	return func(args ...any) (any, error) { return inv.call(rt, args) }
 }
 
 // exprHelpers hands the engine the typed helper implementations.
@@ -385,6 +395,10 @@ func phpDebugType(v any) string {
 			return value.Class.Name
 		}
 		return "object"
+	case *Callable:
+		// get_debug_type() names it Closure, the class php answers for a
+		// first-class callable.
+		return "Closure"
 	}
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
@@ -436,11 +450,12 @@ func argsTail(args []any) []any {
 // invokeAny calls fn (any Go callable) with args, coercing arguments to the
 // declared parameter types where convertible. Common signatures are dispatched
 // directly by invokeFast; the rest go through reflection.
-func invokeAny(fn any, args []any) (result any, err error) {
-	// The uniform ABI is the hot entry-less shape: a compiled closure, a
-	// Callable resolution, an adapt output. One guard, no construction.
-	if c, ok := fn.(*Closure); ok {
-		fn = c.uniform()
+func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
+	// The uniform ABI is the hot entry-less shape: a compiled closure, a bound
+	// method, a Callable resolution, an adapt output. One guard, no construction.
+	// A callable value resolves against rt, the runtime doing the calling.
+	if c, ok := fn.(*Callable); ok {
+		fn = c.on(rt)
 	}
 	if f, ok := fn.(func(...any) (any, error)); ok {
 		defer func() {
@@ -454,27 +469,41 @@ func invokeAny(fn any, args []any) (result any, err error) {
 	// Everything registered dispatches through a cached entry invoker; a
 	// callable that never had a registration point builds its invoker here,
 	// per call, which is what invokeAny always cost.
-	return newInvoker(fn).call(args)
+	return newInvoker(fn).call(rt, args)
+}
+
+// coerceArgOn converts an argument of a call on rt.
+//
+// The runtime matters for one kind of value: a callable. A binding declaring the
+// uniform callable shape gets one bound to rt rather than to the runtime that
+// built the value, so a comparator handed to usort or a callback handed to
+// array_map inside a handler runs on the worker answering the request rather than
+// reaching back into the runtime the script built the value on.
+func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
+	if c, ok := v.(*Callable); ok && want != nil && want.Kind() == reflect.Func {
+		if uniform := reflect.ValueOf(c.on(rt)); uniform.Type().AssignableTo(want) {
+			return uniform, true
+		}
+	}
+	return coerceArg(v, want)
 }
 
 // coerceArg converts a value to the target parameter type where a cheap
 // conversion makes it assignable. The final return reports whether it did: a
 // false means the value cannot be passed, and the caller turns that into a PHP
 // TypeError rather than letting reflect.Value.Call panic on it.
+//
+// It converts everything except a callable, which needs the runtime the call is
+// on and goes through coerceArgOn: this one is reached by a map key, a slice
+// element and a struct field, none of which a callable arrives as, and keeping it
+// callable-free is also what keeps the expression helpers out of an
+// initialisation cycle with the interpreter.
 func coerceArg(v any, want reflect.Type) (reflect.Value, bool) {
 	if want == nil {
 		return reflect.ValueOf(v), true
 	}
 	if v == nil {
 		return reflect.Zero(want), true
-	}
-	// A closure is a value with a declaration on it rather than a bare func, so
-	// that a host can run one somewhere else; every binding that declares the
-	// uniform callable shape still gets it.
-	if c, ok := v.(*Closure); ok && want.Kind() == reflect.Func {
-		if uniform := reflect.ValueOf(c.uniform()); uniform.Type().AssignableTo(want) {
-			return uniform, true
-		}
 	}
 	rv := reflect.ValueOf(v)
 	if rv.Type().AssignableTo(want) {
