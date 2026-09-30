@@ -3,10 +3,10 @@
 // A PHP program that is the HTTP server rather than something a server runs.
 //
 // It is shaped the way a Go server is. config() reads the environment into one
-// value and returns it. Each handler is a method answering the closure that
-// serves it, which is what s.handleX is over there. routes() builds the router
-// and returns it. run() is main(): it holds what it built in locals, and
-// nothing is written onto the object.
+// value and returns it. Each handler is a closure held in a property and
+// registered as $this->fnName, which is what s.handleX is over there. routes()
+// builds the router and returns it. run() is main(): it holds what it built in
+// locals.
 //
 // A handler takes its state from its arguments. It starts on a clean stack
 // holding $w and $r and nothing else, no superglobals are decoded, nothing
@@ -37,6 +37,25 @@
 // are answered at once, which is what a load test sweeps.
 
 class Server {
+	// The handlers, each registered under the name of the property holding it.
+	public $index;
+	public $hello;
+	public $showUser;
+	public $echoRequest;
+	public $slow;
+	public $info;
+
+	// __construct is where the handlers are written, so routes() below reads
+	// like the registration it is and nothing builds them twice.
+	function __construct() {
+		$this->index = $this->indexHandler();
+		$this->hello = $this->helloHandler();
+		$this->showUser = $this->showUserHandler();
+		$this->echoRequest = $this->echoRequestHandler();
+		$this->slow = $this->slowHandler();
+		$this->info = $this->infoHandler();
+	}
+
 	// config reads the environment into the one value everything else is built
 	// from, before anything is built.
 	function config() {
@@ -70,16 +89,16 @@ class Server {
 	// routes builds the router and returns it.
 	function routes() {
 		$mux = new HTTP\Mux();
-		$mux->handle('GET /{$}', $this->index());
-		$mux->handle("GET /hello", $this->hello());
-		$mux->handle("GET /users/{id}", $this->showUser());
-		$mux->handle("POST /echo", $this->echoRequest());
-		$mux->handle("GET /slow", $this->slow());
-		$mux->handle("GET /info", $this->info());
+		$mux->handle('GET /{$}', $this->index);
+		$mux->handle("GET /hello", $this->hello);
+		$mux->handle("GET /users/{id}", $this->showUser);
+		$mux->handle("POST /echo", $this->echoRequest);
+		$mux->handle("GET /slow", $this->slow);
+		$mux->handle("GET /info", $this->info);
 		return $mux;
 	}
 
-	function index() {
+	function indexHandler() {
 		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "text/plain; charset=utf-8");
 			// A handler's echo reaches the response: the runtime answering the
@@ -96,7 +115,7 @@ class Server {
 		};
 	}
 
-	function hello() {
+	function helloHandler() {
 		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "text/plain; charset=utf-8");
 			// query() is net/http's url.Values, so ->get() answers the first
@@ -115,7 +134,7 @@ class Server {
 	// encoder writes straight to the response: there is no string of the
 	// document in between, and it converts a PHP array the way json_encode()
 	// does.
-	function showUser() {
+	function showUserHandler() {
 		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "application/json");
 			(new JSON\Encoder($w))->encode(array(
@@ -125,7 +144,7 @@ class Server {
 		};
 	}
 
-	function echoRequest() {
+	function echoRequestHandler() {
 		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "application/json");
 			(new JSON\Encoder($w))->encode(array(
@@ -145,7 +164,7 @@ class Server {
 	// is skipped is the part nobody is left to read. ignore_user_abort(true) is
 	// what keeps the handler running long enough to make that choice, because
 	// without it the disconnect ends the handler where it next looks.
-	function slow() {
+	function slowHandler() {
 		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			ignore_user_abort(true);
 
@@ -172,7 +191,7 @@ class Server {
 		};
 	}
 
-	function info() {
+	function infoHandler() {
 		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "text/markdown; charset=utf-8");
 			phpinfo();
