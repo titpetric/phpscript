@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
+	"syscall"
 
 	"github.com/titpetric/cli"
 
@@ -35,6 +38,16 @@ func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 }
 
 // Run runs the command with options and CLI arguments.
+//
+// It runs the script once, and again for every SIGHUP: a reload ends the
+// generation that is running, by cancelling the context it was given, and
+// starts another that re-reads the file. A script that serves - one parked in
+// HTTP\Server::wait - sees its context end, returns, and runs its shutdown
+// callbacks, which is how it stops listening before the next generation binds.
+//
+// SIGINT and SIGTERM end it for good. Both arrive through ctx, which the caller
+// installed, and reach the script because the runtime is given it: without that
+// a served script ignores Ctrl-C, having nothing that notices.
 func Run(ctx context.Context, args []string, config config.Config, globals *flags.Options) error {
 	if len(args) == 0 {
 		return errors.New("usage: phpscript <file.php>")
@@ -55,6 +68,56 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 		return err
 	}
 
+	for {
+		generation, reloaded, stop := reloadScope(ctx)
+		runErr := runOnce(generation, script, root, config, globals)
+		stop()
+
+		// A reload replaces the generation and its error with it: the script
+		// was ended on purpose, and what it ended with is not a failure of the
+		// run. Anything else is the end of the run.
+		if ctx.Err() != nil || !reloaded() {
+			return runErr
+		}
+	}
+}
+
+// reloadScope derives the context one generation runs under, and answers
+// whether a SIGHUP ended it.
+//
+// The signal cancels the generation rather than the run, so the script stops
+// the way it stops for anything else - its context ends - and the loop above
+// decides whether that was the last one.
+func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
+	generation, cancel := context.WithCancel(ctx)
+
+	hangup := make(chan os.Signal, 1)
+	signal.Notify(hangup, syscall.SIGHUP)
+
+	var seen atomic.Bool
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		select {
+		case <-hangup:
+			seen.Store(true)
+			cancel()
+		case <-generation.Done():
+		}
+	}()
+
+	stop := func() {
+		signal.Stop(hangup)
+		cancel()
+		<-done
+	}
+	return generation, seen.Load, stop
+}
+
+// runOnce is one generation: a runtime, the script read and parsed again, and
+// the run. Everything it builds is dropped when it returns, which is what makes
+// a reload pick up an edited file.
+func runOnce(ctx context.Context, script, root string, config config.Config, globals *flags.Options) error {
 	options := config.Runner
 	options.SAPI = "cli"
 	options.RootFS = os.DirFS(root)
@@ -72,6 +135,9 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 		newRuntime = runner.NewFlatStack
 	}
 	rt := newRuntime(os.Stdout, options)
+	// The signal context, so that Ctrl-C and a reload reach the script. A
+	// binding that blocks - a server parked in wait() - is waiting on this.
+	rt.SetContext(ctx)
 
 	// A collector turns flatstack off for this runtime: coverage is an
 	// interpreter feature and the fallback is atomic, so a counted program runs

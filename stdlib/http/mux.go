@@ -11,9 +11,9 @@ import (
 // Mux routes requests to the PHP functions that answer them. It is net/http's
 // ServeMux and nothing more: routing is all it does, and serving is HTTP\Server.
 //
-// A handler is named rather than written inline, because a request is answered
-// on a runtime of its own and a name is the only part of a callable that
-// travels. See Handle.
+// A request is answered on a runtime of its own, from a fixed set of workers
+// fed by one queue. See Handle for what a handler is and runner.Pool for what
+// bounds them.
 //
 // It is a facade over *net/http.ServeMux rather than the value itself, which is
 // the exception to how this package binds net/http. Registering the ServeMux
@@ -24,12 +24,12 @@ type Mux struct {
 	mux *nethttp.ServeMux
 	rt  *runner.Runtime
 
-	// pool is the forks handlers run on, shared by every route.
+	// pool is the workers handlers run on, shared by every route.
 	//
-	// HTTP\Server::listen installs one sized from its $workers; a mux a Go host
-	// mounts and drives through ServeHTTP itself builds one on its first
-	// request. Either way it is built once, which is what the Once is for: the
-	// two paths can both reach it, and every request reads it.
+	// HTTP\Server::listen installs one sized from its $workers and $queue; a mux
+	// a Go host mounts and drives through ServeHTTP itself builds a default one
+	// on its first request. Either way it is built once, which is what the Once
+	// is for: the two paths can both reach it, and every request reads it.
 	once sync.Once
 	pool *runner.Pool
 }
@@ -48,10 +48,14 @@ func NewMux(rt *runner.Runtime) *Mux {
 // crosses is the declaration, with everything the call needs arriving in its
 // arguments.
 //
-// A closure that captures - `use (...)`, or the $this a closure written inside
-// a method binds - is refused, because the captured scope belongs to the
-// runtime that built it and two requests would be sharing it. A handler takes
-// its state from $w and $r.
+// What a closure captures - `use (...)` values, and the $this a closure written
+// inside a method binds - comes along and is shared by every request answering
+// through it, the way a Go handler closing over its configuration is. Read it;
+// writing to it from a handler is two requests writing one value. A handler's
+// own state arrives in $w and $r.
+//
+// The array($object, "method") spelling of a callable is not accepted here. It
+// stays a callable everywhere else; docs/README.md records the difference.
 //
 // The handler is called with the response writer and the request, the two
 // net/http values themselves, so it answers through $w->write($body) and
@@ -88,56 +92,67 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	return nil
 }
 
-// answer runs one request on a runtime of its own.
+// answer submits one request to a worker and waits for it.
 func (m *Mux) answer(callback runner.Callback, w nethttp.ResponseWriter, r *nethttp.Request) {
-	rt, ok := m.checkout(r)
-	if !ok {
-		// Every fork is busy and the client left while queued. There is nobody
-		// left to answer.
+	answered := &answerTracker{ResponseWriter: w}
+	var failure error
+
+	ran := m.workers().Submit(r.Context(), func(rt *runner.Runtime) {
+		// The response for the length of the call, so a handler that echoes
+		// reaches the client rather than the process's own output.
+		rt.PushOutput(w)
+		defer rt.PopOutput()
+
+		// The connection being answered, so connection_aborted() reports the
+		// client that is waiting and a disconnect ends the handler unless it
+		// ignored that.
+		defer rt.EnterRequest(r.Context())()
+
+		if _, err := callback.Invoke(rt, answered, r); err != nil {
+			rt.RecordError(err)
+			failure = err
+		}
+	})
+
+	if !ran {
+		// The client left while the run was queued or in flight. Nothing
+		// written now would reach it.
 		return
 	}
-	defer m.checkin(rt)
-
-	// The response for the length of the call, so a handler that echoes reaches
-	// the client rather than the process's own output.
-	rt.PushOutput(w)
-	defer rt.PopOutput()
-
-	// The connection being answered, so connection_aborted() reports the client
-	// that is waiting and a disconnect ends the handler unless it ignored that.
-	defer rt.EnterRequest(r.Context())()
-
-	answered := &answerTracker{ResponseWriter: w}
-	if _, err := callback.Invoke(rt, answered, r); err != nil {
-		rt.RecordError(err)
-		// Only when nothing has gone out yet. A handler that wrote half a
-		// document and then threw has already sent its status, and adding
-		// another appends "Internal Server Error" to the half document and logs
-		// a superfluous WriteHeader; the truncated body is the honest signal.
-		if !answered.wrote {
-			nethttp.Error(w, nethttp.StatusText(nethttp.StatusInternalServerError), nethttp.StatusInternalServerError)
-		}
+	// Only when nothing has gone out yet. A handler that wrote half a document
+	// and then threw has already sent its status, and adding another appends
+	// "Internal Server Error" to the half document and logs a superfluous
+	// WriteHeader; the truncated body is the honest signal.
+	if failure != nil && !answered.wrote {
+		nethttp.Error(w, nethttp.StatusText(nethttp.StatusInternalServerError), nethttp.StatusInternalServerError)
 	}
 }
 
-// checkout takes the runtime this request runs on: a fork when the mux is
-// serving, and the one that built it when a Go host drives ServeHTTP directly.
-func (m *Mux) checkout(r *nethttp.Request) (*runner.Runtime, bool) {
-	// A mux nothing called listen() on still answers on a runtime of its own:
-	// a Go host that mounted it serves it concurrently too, and the runtime
-	// that built it is running the script.
-	m.once.Do(func() { m.pool = runner.NewPool(m.rt, 0, nil) })
-	return m.pool.Get(r.Context().Done())
+// workers answers the pool this mux runs on, building a default one for a mux
+// nothing called listen() on: a Go host that mounted it serves it concurrently
+// too, and the runtime that built it is running the script.
+func (m *Mux) workers() *runner.Pool {
+	m.once.Do(func() { m.pool = runner.NewPool(m.rt, 0, 0, nil) })
+	return m.pool
 }
 
-// checkin gives the runtime back.
-func (m *Mux) checkin(rt *runner.Runtime) { m.pool.Put(rt) }
-
-// usePool installs the forks handlers run on, sized by the server that is about
-// to serve them. It loses to a pool a request already built, which cannot
+// usePool installs the workers handlers run on, sized by the server that is
+// about to serve them. It loses to a pool a request already built, which cannot
 // happen through HTTP\Server: listen() is called before anything can arrive.
 func (m *Mux) usePool(pool *runner.Pool) {
 	m.once.Do(func() { m.pool = pool })
+}
+
+// UsePoolForTest installs the workers, for a test sizing them itself. The
+// server calls usePool; this is the same thing with a name a test can reach.
+func (m *Mux) UsePoolForTest(pool *runner.Pool) { m.usePool(pool) }
+
+// closeWorkers stops them once what is queued has been answered, for a server
+// shutting down.
+func (m *Mux) closeWorkers() {
+	if m.pool != nil {
+		m.pool.Close()
+	}
 }
 
 // ServeHTTP answers one request, so a Go host can mount a script's router

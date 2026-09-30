@@ -2082,10 +2082,14 @@ class HTTP\Mux
      * crosses is the declaration, with everything the call needs arriving in its
      * arguments.
      * 
-     * A closure that captures - `use (...)`, or the $this a closure written inside
-     * a method binds - is refused, because the captured scope belongs to the
-     * runtime that built it and two requests would be sharing it. A handler takes
-     * its state from $w and $r.
+     * What a closure captures - `use (...)` values, and the $this a closure written
+     * inside a method binds - comes along and is shared by every request answering
+     * through it, the way a Go handler closing over its configuration is. Read it;
+     * writing to it from a handler is two requests writing one value. A handler's
+     * own state arrives in $w and $r.
+     * 
+     * The array($object, "method") spelling of a callable is not accepted here. It
+     * stays a callable everywhere else; docs/README.md records the difference.
      * 
      * The handler is called with the response writer and the request, the two
      * net/http values themselves, so it answers through $w->write($body) and
@@ -2106,6 +2110,12 @@ class HTTP\Mux
      * without the script listening on anything.
      */
     public function serve_http(mixed $w, mixed $r): void {}
+
+    /**
+     * use_pool_for_test installs the workers, for a test sizing them itself. The
+     * server calls usePool; this is the same thing with a name a test can reach.
+     */
+    public function use_pool_for_test(mixed $pool): void {}
 }
 ```
 

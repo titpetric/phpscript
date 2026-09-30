@@ -13,8 +13,14 @@
 // shared by every request, the way a Go handler closing over its configuration
 // is. Read it; do not write to it.
 //
-// HTTP\Server's third argument is how many requests may be answered at once;
-// omitted it is the number of cores.
+// HTTP\Server's third argument is how many requests are answered at once and
+// its fourth is how deep the queue behind them is; omitted they are the number
+// of cores and 1024. Workers are the parallelism, the queue is the
+// backpressure: a request that finds every worker busy waits its turn rather
+// than starting a runtime of its own.
+//
+// Ctrl-C stops the server. SIGHUP reloads it: the generation running is ended,
+// its shutdown callback stops it listening, and the file is read again.
 //
 // set_time_limit ends the whole thing. The limit is a deadline on the context
 // the interpreter checks and every binding is handed, and wait() is a binding,
@@ -29,6 +35,7 @@
 class Server {
 	public $addr;
 	public $workers;
+	public $queue;
 	public $limit;
 
 	public $mux;
@@ -47,7 +54,12 @@ class Server {
 		if ($this->addr === false || $this->addr === "") {
 			$this->addr = "127.0.0.1:8099";
 		}
+		// Four workers answer at once; anything else waits in a queue of 64.
+		// A handler here is well under a millisecond, so the queue is depth
+		// rather than latency: it is what a burst waits in instead of starting
+		// a runtime of its own.
 		$this->workers = 4;
+		$this->queue = 64;
 		$this->limit = 10;
 	}
 
@@ -160,7 +172,7 @@ class Server {
 	// address it bound, so asking for port 0 is how a test takes a free one
 	// rather than hoping.
 	public function listen() {
-		$this->http = new HTTP\Server($this->addr, $this->mux, $this->workers);
+		$this->http = new HTTP\Server($this->addr, $this->mux, $this->workers, $this->queue);
 		return $this->http->listen();
 	}
 
