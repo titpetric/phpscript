@@ -8,6 +8,8 @@ go test ./...
 
 A change to language or runtime behavior lands with a `.phpt` fixture. Use a Go test in the package that owns the behavior when the assertion needs direct access to Go APIs, parser models, runtime state, concurrency, or error types, and add the fixture as well: a Go test proves the Go code does what its author meant, a fixture proves a script sees it.
 
+A Go test file is named after the file it covers: `dispatch_test.go` beside `dispatch.go`, which is what `splint`'s `pairing` linter reads, and two test files covering one source are one test file. A suite that reaches the package only through its public API and names no file of it - a behaviour table over the engine, a benchmark arrangement, a regression per issue - goes under [`tests/`](../tests) in a folder of its own: `tests/runner`, `tests/flatstack`, `tests/model`, `tests/github`. Nothing there is named after a source file, which is why the linter excuses the directory.
+
 A fixture does two jobs, and both are required of it:
 
 1. It states the behavior, so a change that alters the behavior fails a named test instead of surfacing in a benchmark or a demo.

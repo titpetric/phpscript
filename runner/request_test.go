@@ -2,6 +2,7 @@ package runner_test
 
 import (
 	"bytes"
+	"fmt"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -1019,4 +1020,25 @@ func TestBodyDecodeIsFormOnly(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ExampleContext() {
+	req := httptest.NewRequest(http.MethodGet, "/users/42?tab=profile", nil)
+	req.Header.Set("X-Request-Id", "abc123")
+	req.Pattern = "GET /users/{id}"
+	req.SetPathValue("id", "42")
+
+	ctx := runner.FromRequest(req)
+	ctx.Header("X-Powered-By: phpscript")
+
+	fmt.Println(ctx.GetMap()["tab"])
+	fmt.Println(ctx.Path["id"])
+	fmt.Println(ctx.HeaderMap()["X-Request-Id"])
+	fmt.Println(ctx.ResponseHeaders().Get("X-Powered-By"))
+
+	// Output:
+	// profile
+	// 42
+	// abc123
+	// phpscript
 }
