@@ -2,16 +2,18 @@
 
 // A PHP program that is the HTTP server rather than something a server runs.
 //
-// The server is a class. mount() builds the routes, run() is the entrypoint,
-// and each handler is a closure held in a property, registered as
-// $this->fnName. A handler takes its state from its arguments: it starts on a
-// clean stack holding $w and $r and nothing else, no superglobals are decoded,
-// nothing carries over from the last request, and two requests answered at the
-// same moment cannot see each other, because each runs on a runtime of its own.
+// It is shaped the way a Go server is. config() reads the environment into one
+// value and returns it. Each handler is a method answering the closure that
+// serves it, which is what s.handleX is over there. routes() builds the router
+// and returns it. run() is main(): it holds what it built in locals, and
+// nothing is written onto the object.
 //
-// What a handler captures - $this, and anything a use (...) clause names - is
-// shared by every request, the way a Go handler closing over its configuration
-// is. Read it; do not write to it.
+// A handler takes its state from its arguments. It starts on a clean stack
+// holding $w and $r and nothing else, no superglobals are decoded, nothing
+// carries over from the last request, and two requests answered at the same
+// moment cannot see each other, because each runs on a runtime of its own. A
+// closure copies what its use (...) clause names and nothing else, so what a
+// handler can reach is what it asked for.
 //
 // HTTP\Server's third argument is how many requests are answered at once and
 // its fourth is how deep the queue behind them is; omitted they are the number
@@ -35,52 +37,50 @@
 // are answered at once, which is what a load test sweeps.
 
 class Server {
-	// Configuration, settled by configure().
-	public $addr;
-	public $workers;
-	public $queue;
-	public $limit;
-
-	// The handlers, each registered under the name of the property holding it.
-	public $index;
-	public $hello;
-	public $show_user;
-	public $echo_request;
-	public $slow;
-	public $info;
-
-	// configure settles what the server is before it is anything else.
-	function configure() {
-		$this->addr = getenv("TESTSERVER_ADDR");
-		if ($this->addr === false || $this->addr === "") {
-			$this->addr = "127.0.0.1:8099";
+	// config reads the environment into the one value everything else is built
+	// from, before anything is built.
+	function config() {
+		$addr = getenv("TESTSERVER_ADDR");
+		if ($addr === false || $addr === "") {
+			$addr = "127.0.0.1:8099";
 		}
+
 		// Four workers answer at once; anything else waits in a queue of 64. A
 		// handler here is well under a millisecond, so the queue is depth
 		// rather than latency: it is what a burst waits in instead of starting
 		// a runtime of its own.
-		$this->workers = 4;
-		$workers = getenv("TESTSERVER_WORKERS");
-		if ($workers !== false && $workers !== "") {
-			$this->workers = intval($workers);
+		$workers = intval(getenv("TESTSERVER_WORKERS"));
+		if ($workers < 1) {
+			$workers = 4;
 		}
-		$this->queue = 64;
 
-		// Ten seconds unless the environment says otherwise, which is long
-		// enough to answer a few requests by hand and short enough that a
-		// forgotten one does not outlive the terminal. A load test wants more.
-		$this->limit = 10;
-		$limit = getenv("TESTSERVER_LIMIT");
-		if ($limit !== false && $limit !== "") {
-			$this->limit = intval($limit);
+		$limit = intval(getenv("TESTSERVER_LIMIT"));
+		if ($limit < 1) {
+			$limit = 10;
 		}
+
+		return array(
+			"addr" => $addr,
+			"workers" => $workers,
+			"queue" => 64,
+			"limit" => $limit,
+		);
 	}
 
-	// handlers assigns each one to the property it is registered under. They
-	// are closures rather than methods because a handler is a function of its
-	// arguments, and a closure is that written down.
-	function handlers() {
-		$this->index = function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
+	// routes builds the router and returns it.
+	function routes() {
+		$mux = new HTTP\Mux();
+		$mux->handle('GET /{$}', $this->index());
+		$mux->handle("GET /hello", $this->hello());
+		$mux->handle("GET /users/{id}", $this->showUser());
+		$mux->handle("POST /echo", $this->echoRequest());
+		$mux->handle("GET /slow", $this->slow());
+		$mux->handle("GET /info", $this->info());
+		return $mux;
+	}
+
+	function index() {
+		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "text/plain; charset=utf-8");
 			// A handler's echo reaches the response: the runtime answering the
 			// request writes there for the length of the call.
@@ -94,8 +94,10 @@ class Server {
 			echo "GET  /slow         holds the connection, and notices if you leave\n";
 			echo "GET  /info         phpinfo()\n";
 		};
+	}
 
-		$this->hello = function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
+	function hello() {
+		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "text/plain; charset=utf-8");
 			// query() is net/http's url.Values, so ->get() answers the first
 			// value under a name, or "" for a name that is not there.
@@ -107,20 +109,24 @@ class Server {
 			}
 			$w->write("hello " . $name . "\n");
 		};
+	}
 
-		// {id} is a net/http pattern segment, read back through the request.
-		// The encoder writes straight to the response: there is no string of
-		// the document in between, and it converts a PHP array the way
-		// json_encode() does.
-		$this->show_user = function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
+	// {id} is a net/http pattern segment, read back through the request. The
+	// encoder writes straight to the response: there is no string of the
+	// document in between, and it converts a PHP array the way json_encode()
+	// does.
+	function showUser() {
+		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "application/json");
 			(new JSON\Encoder($w))->encode(array(
 				"id" => $r->path_value("id"),
 				"path" => $r->url->path,
 			));
 		};
+	}
 
-		$this->echo_request = function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
+	function echoRequest() {
+		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "application/json");
 			(new JSON\Encoder($w))->encode(array(
 				"method" => $r->method,
@@ -132,14 +138,15 @@ class Server {
 				"name" => $r->form_value("name"),
 			));
 		};
+	}
 
-		// What connection_aborted() is for. The work is allowed to finish,
-		// because in a real application it is the transaction that already
-		// committed; what is skipped is the part nobody is left to read.
-		// ignore_user_abort(true) is what keeps the handler running long enough
-		// to make that choice, because without it the disconnect ends the
-		// handler where it next looks.
-		$this->slow = function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
+	// What connection_aborted() is for. The work is allowed to finish, because
+	// in a real application it is the transaction that already committed; what
+	// is skipped is the part nobody is left to read. ignore_user_abort(true) is
+	// what keeps the handler running long enough to make that choice, because
+	// without it the disconnect ends the handler where it next looks.
+	function slow() {
+		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			ignore_user_abort(true);
 
 			$ticks = 0;
@@ -163,47 +170,28 @@ class Server {
 			$w->header()->set("Content-Type", "text/plain; charset=utf-8");
 			$w->write("waited " . $ticks . " ticks, still connected\n");
 		};
+	}
 
-		$this->info = function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
+	function info() {
+		return function (\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 			$w->header()->set("Content-Type", "text/markdown; charset=utf-8");
 			phpinfo();
 		};
 	}
 
-	// mount builds the router and answers it, each route named by the property
-	// holding its handler.
-	function mount() {
-		$mux = new HTTP\Mux();
-		$mux->handle('GET /{$}', $this->index);
-		$mux->handle("GET /hello", $this->hello);
-		$mux->handle("GET /users/{id}", $this->show_user);
-		$mux->handle("POST /echo", $this->echo_request);
-		$mux->handle("GET /slow", $this->slow);
-		$mux->handle("GET /info", $this->info);
-		return $mux;
-	}
-
-	// listen builds the server over $mux, binds it, and answers it. Binding
-	// starts it answering without blocking; $http->addr() is the address it
-	// took, which is how asking for port 0 finds out what it got.
-	function listen($mux) {
-		$http = new HTTP\Server($this->addr, $mux, $this->workers, $this->queue);
-		$http->listen();
-		return $http;
-	}
-
-	// run is the entrypoint: everything above, in the order it has to happen.
+	// run is main().
 	function run() {
-		$this->configure();
-		set_time_limit($this->limit);
+		$config = $this->config();
+		set_time_limit($config["limit"]);
 
-		$this->handlers();
-		$http = $this->listen($this->mount());
+		$http = new HTTP\Server($config["addr"], $this->routes(), $config["workers"], $config["queue"]);
+		$http->listen();
 
 		// Stopping the server is the script's own business, so it is written
 		// here rather than left to whatever ends the script. The shutdown pass
 		// runs with the clock off, which is what makes this still run when the
-		// time limit is what ended us.
+		// time limit is what ended us. use ($http) copies the one value the
+		// callback needs and nothing else.
 		register_shutdown_function(function () use ($http) {
 			$http->shutdown();
 			echo "server stopped\n";
