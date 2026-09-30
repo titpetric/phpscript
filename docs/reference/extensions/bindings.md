@@ -67,7 +67,7 @@ Two limits are worth knowing before building on it. A looked-up symbol executes 
 
 The returned function belongs to its runtime, and a runtime serves one goroutine. A host calling one concurrently builds a runtime per goroutine and shares the include and expression caches between them, which is exactly what the HTTP server does per request.
 
-`BenchmarkLookup` in `runner/lookup_bench_test.go` is that arrangement, split into what is paid per runtime (`bind`), what is paid per call (`invoke`, against `callable` for the bridge's own share), and what a whole request cycle costs (`request`, against `runtime` for the part of it that is not the script). `BenchmarkLookupTreeSize` holds resolution to constant time against the size of the source root, which matters because a concurrent host binds per runtime and therefore often per request:
+`BenchmarkLookup` in `tests/runner/lookup_bench_test.go` is that arrangement, split into what is paid per runtime (`bind`), what is paid per call (`invoke`, against `callable` for the bridge's own share), and what a whole request cycle costs (`request`, against `runtime` for the part of it that is not the script). `BenchmarkLookupTreeSize` holds resolution to constant time against the size of the source root, which matters because a concurrent host binds per runtime and therefore often per request:
 
 ```bash
 go test ./runner -run '^$' -bench '^BenchmarkLookup' -benchmem -cpu 1,2,4
