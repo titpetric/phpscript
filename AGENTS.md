@@ -28,7 +28,7 @@ These are decisions, not gaps. A prompt asking for one of them gets the pointer,
 
 | Read when | Document |
 |-----------|----------|
-| Proposing or rejecting a language feature | [docs/design.md](docs/design.md) |
+| Proposing or rejecting a language feature, or touching re-entry | [docs/design.md](docs/design.md) |
 | Adding or renaming anything script-visible | [docs/naming-conventions.md](docs/naming-conventions.md) |
 | Writing or fixing a fixture | [docs/testing.md](docs/testing.md) |
 | Writing or changing a Go binding | [docs/allocation-performance.md](docs/allocation-performance.md), [docs/reference/extensions/bindings.md](docs/reference/extensions/bindings.md) |
