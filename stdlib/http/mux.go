@@ -43,16 +43,22 @@ func NewMux(rt *runner.Runtime) *Mux {
 // path, or a method and a path, with {name} segments the handler reads back
 // through $r->path_value($name).
 //
-// $handler is a closure, or the name of a declared function. Either way it is a
-// program counter: a request is answered on a runtime of its own, and what
-// crosses is the declaration, with everything the call needs arriving in its
-// arguments.
+// $handler is a callable: a closure, a method read off its receiver as
+// $this->fnName, or the name of a declared function. Each is a program counter:
+// a request is answered on a runtime of its own, and what crosses is the
+// declaration, with everything the call needs arriving in its arguments.
 //
-// What a closure captures - `use (...)` values, and the $this a closure written
-// inside a method binds - comes along and is shared by every request answering
-// through it, the way a Go handler closing over its configuration is. Read it;
-// writing to it from a handler is two requests writing one value. A handler's
-// own state arrives in $w and $r.
+// What a handler carries - a closure's `use (...)` values and the $this it
+// binds, a bound method's receiver - comes along and is shared by every request
+// answering through it, the way a Go handler closing over its configuration is.
+// Read it; writing to it from a handler is two requests writing one value. A
+// handler's own state arrives in $w and $r.
+//
+// A handler that calls another callable - middleware wrapping the handler it
+// captured, a comparator handed to usort, a closure read off a shared object -
+// runs that call on the worker too. The value crossed; the execution did not
+// follow it back to the runtime that built it, which is what keeps the wrapped
+// call writing to this request's response and off another worker's stack.
 //
 // The array($object, "method") spelling of a callable is not accepted here. It
 // stays a callable everywhere else; docs/README.md records the difference.
@@ -75,7 +81,7 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	// Described here, so a handler that cannot run on another runtime is an
 	// error where the route is written rather than a 500 on the first request
 	// that reaches it.
-	callback, err := m.rt.AsCallback(handler)
+	callable, err := m.rt.AsCallable(handler)
 	if err != nil {
 		return fmt.Errorf("HTTP\\Mux::handle: %q: %w", pattern, err)
 	}
@@ -87,13 +93,13 @@ func (m *Mux) Handle(pattern string, handler any) error {
 		if r.Context().Err() != nil {
 			return
 		}
-		m.answer(callback, w, r)
+		m.answer(callable, w, r)
 	})
 	return nil
 }
 
 // answer submits one request to a worker and waits for it.
-func (m *Mux) answer(callback runner.Callback, w nethttp.ResponseWriter, r *nethttp.Request) {
+func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *nethttp.Request) {
 	answered := &answerTracker{ResponseWriter: w}
 	var failure error
 
@@ -108,7 +114,7 @@ func (m *Mux) answer(callback runner.Callback, w nethttp.ResponseWriter, r *neth
 		// ignored that.
 		defer rt.EnterRequest(r.Context())()
 
-		if _, err := callback.Invoke(rt, answered, r); err != nil {
+		if _, err := callable.Invoke(rt, answered, r); err != nil {
 			rt.RecordError(err)
 			failure = err
 		}

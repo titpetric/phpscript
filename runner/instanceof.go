@@ -69,6 +69,10 @@ func instanceOfClass(value any) string {
 		return ""
 	case nil, bool, string, int, int64, float64, *model.Array:
 		return ""
+	case *Callable:
+		// A callable value is php's Closure whichever of the three it holds, and
+		// get_class() says the same.
+		return "Closure"
 	}
 	if err, ok := value.(error); ok {
 		if class, isThrowable := throwableClassOf(err); isThrowable {

@@ -275,3 +275,10 @@ func (rt *Runtime) DeclaredPrograms() map[*model.Program]string {
 	}
 	return out
 }
+
+// SetPreparer records how a host installs this runtime's bindings, so that Fork
+// can install the same ones on a child.
+//
+// stdlib.Register calls it. A host registering its own bindings on top passes a
+// function that installs those too, or its forks will not have them.
+func (rt *Runtime) SetPreparer(prepare func(*Runtime)) { rt.prepare = prepare }

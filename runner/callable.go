@@ -6,6 +6,223 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
+// Callable is a php callable as a runtime value: one declaration to run, and
+// what it is bound to.
+//
+// One type covers the three things a program can hand to something that calls
+// back, because they differ only in where the declaration came from and what
+// travels with it. docs/GLOSSARY.md records the word:
+//
+//   - a closure literal, `function ($a) use ($b) {}`, carrying what it captured;
+//   - a method bound to the receiver it was read off, `$this->fnName`;
+//   - a function the program declared, held by name, its receiver unfilled.
+//
+// A script sees all three as php's `Closure` class: `get_class()` answers
+// Closure and `instanceof Closure` is true. php answers a Closure for the
+// first-class callable syntax `$this->fnName(...)`, which `$this->fnName` is the
+// shorter spelling of here. `callable` is php's wider type, the one that also
+// admits the string and array spellings; Runtime.Callable resolves any of them
+// to a call.
+//
+// It is a value rather than the bare func(...any) (any, error) a closure and a
+// method read used to answer, so that a host can run one somewhere else. That
+// shape is still what everything invokes - coerceArg hands the call to any
+// binding declaring it, and Callable answers with it - but a bare func closes
+// over the runtime that built it, which left the declaration unreachable and a
+// handler able to run only where it was written.
+type Callable struct {
+	// closure and fn are the declaration, one or the other: a literal is a
+	// model.Closure, and everything a name reaches is a model.FuncDecl.
+	closure *model.Closure
+	fn      *model.FuncDecl
+
+	// obj is the receiver a bound method runs against. It is unfilled for a
+	// closure literal, whose `$this` arrives in env with the rest of its
+	// captures, and for a global function, which has none.
+	obj *model.Object
+
+	// env is what a closure literal took from the scope it was written in.
+	env closureEnv
+
+	// name holds a declared function the program named, resolved by the runtime
+	// running it rather than here. It is the one spelling whose meaning belongs
+	// to the runtime rather than to the value: a name is a program counter that
+	// each runtime looks up in its own function table, which is what lets a host
+	// register a binding under it.
+	name string
+
+	// rt is the runtime that built the value, and call is the uniform shape on
+	// it. The pair is what `on` compares against the runtime doing the calling:
+	// a value is a value and crosses freely, but an execution belongs to one
+	// goroutine, so a call from anywhere else has to be a call of its own.
+	//
+	// call is built here rather than taken as a method value where it is needed.
+	// coerceArg hands it to bindings, and a method value referenced from there
+	// would put the whole interpreter in the dependency graph of the package
+	// variable holding the expression helpers, which the compiler reports as an
+	// initialisation cycle.
+	rt   *Runtime
+	call func(...any) (any, error)
+}
+
+// on answers the call for the runtime doing the calling.
+//
+// The runtime that built the value gets the call built with it, which is every
+// ordinary script-level call and costs nothing. Any other runtime gets a call of
+// its own, because a Runtime is one goroutine's execution - its frames, its
+// output stack, its statics, its request - and reaching into another one is not
+// a race to reason about but a concurrent map write. See runner/fork.go.
+//
+// This is what makes a handler that wraps another callable answer on the worker
+// the request arrived on: the value crossed, the execution did not.
+func (c *Callable) on(rt *Runtime) func(...any) (any, error) {
+	if rt == nil || rt == c.rt {
+		return c.call
+	}
+	return func(args ...any) (any, error) { return c.Invoke(rt, args...) }
+}
+
+// newClosure materialises a closure literal as a value.
+func (rt *Runtime) newClosure(decl *model.Closure, env closureEnv) *Callable {
+	c := &Callable{closure: decl, env: env, rt: rt}
+	c.call = func(args ...any) (any, error) { return rt.invokeClosure(decl, args, env) }
+	return c
+}
+
+// newMethod binds a method declaration to the receiver it was read off. The
+// scope is the caller's, which is what an invocation's trace span is recorded
+// against.
+func (rt *Runtime) newMethod(obj *model.Object, decl *model.FuncDecl, scope *Scope) *Callable {
+	c := &Callable{fn: decl, obj: obj, rt: rt}
+	c.call = func(args ...any) (any, error) { return rt.invokeMethod(obj, decl, args, scope) }
+	return c
+}
+
+// newNamedCallable holds a declared function by name, for a host describing one
+// it was handed as a string.
+func (rt *Runtime) newNamedCallable(name string) *Callable {
+	c := &Callable{name: name, rt: rt}
+	c.call = func(args ...any) (any, error) { return rt.InvokeNamed(name, args...) }
+	return c
+}
+
+// Call invokes the callable on the runtime that built it, which is what a script
+// calling one means: `($this->fn)(...)` is the call `$this->fn(...)` makes.
+func (c *Callable) Call(args ...any) (any, error) { return c.call(args...) }
+
+// Invoke runs the callable on rt, in a scope holding args and nothing else -
+// and, for a bound method, the receiver it was read off.
+//
+// It is the cross-runtime call, and it is deliberately not Call: a request is
+// answered on a runtime of its own, and what crosses is the declaration rather
+// than the runtime the value was built on. A name crosses as a name, so the
+// runtime running it resolves it against its own function table.
+func (c *Callable) Invoke(rt *Runtime, args ...any) (any, error) {
+	switch {
+	case c.closure != nil:
+		// A statics bag per call rather than per value: two goroutines running
+		// one declaration are two calls, and a `static $x` shared between them
+		// would be a counter two requests were incrementing at once. php gives a
+		// closure instance one bag because there a request is a process.
+		env := c.env
+		env.statics = map[*model.StaticVar]map[string]any{}
+		return rt.invokeClosure(c.closure, args, env)
+	case c.fn != nil:
+		// The receiver is the object the method was read off, shared with every
+		// other runtime answering through this callable, the way a closure's
+		// captured $this is. A scope of its own, holding it and the arguments, is
+		// what invokeMethod builds.
+		return rt.invokeMethod(c.obj, c.fn, args, nil)
+	}
+	return rt.InvokeNamed(c.name, args...)
+}
+
+// Captures reports whether the callable took anything from where it was written:
+// a closure's `use (...)` clause or the `$this` one written inside a method
+// binds, and the receiver a bound method reads its properties off.
+//
+// It is the question a host asks before running one somewhere else. A callable
+// that captures nothing is a function of its arguments, and a function of its
+// arguments runs anywhere.
+func (c *Callable) Captures() bool {
+	if c.closure != nil {
+		return len(c.closure.Uses) > 0 || c.env.this != nil || c.env.class != nil
+	}
+	return c.obj != nil
+}
+
+// Name answers how the callable is spelled, for an error message. A closure has
+// no name and says so; a method is named the way a script reads it.
+func (c *Callable) Name() string {
+	switch {
+	case c.closure != nil:
+		return "closure"
+	case c.fn != nil:
+		if c.obj != nil && c.obj.Class != nil {
+			return c.obj.Class.Name + "::" + c.fn.Name
+		}
+		return c.fn.Name
+	}
+	return c.name
+}
+
+// AsCallable describes v as something a host can run on another runtime: a
+// closure, a method bound to its receiver, or a declared function by name.
+//
+// A closure brings what it captured. `use (...)` values and the $this a closure
+// written inside a method binds come along as they are, which means every
+// runtime running it shares them. That is what a handler closing over its
+// configuration wants and it is how a Go handler closing over a struct behaves;
+// it is also why a callable must not write to what it captured. Reading is fine,
+// and a handler's own state arrives in its arguments.
+//
+// A bound method - `$this->fnName`, read without parentheses - is the same
+// arrangement with the capture named by the language rather than by a `use`
+// clause: the declaration travels, the receiver is shared.
+//
+// The `array($object, "method")` spelling of a callable is not accepted. It is a
+// callable everywhere else - call_user_func and usort take it - but not a
+// handler, and docs/README.md records that.
+func (rt *Runtime) AsCallable(v any) (*Callable, error) {
+	switch value := v.(type) {
+	case string:
+		if value == "" {
+			return nil, &LookupError{Symbol: value, Reason: "the handler name is empty"}
+		}
+		if !rt.FunctionExists(value) {
+			return nil, &LookupError{Symbol: value, Reason: "no PHP function of that name is declared"}
+		}
+		return rt.newNamedCallable(value), nil
+	case *Callable:
+		return value, nil
+	}
+	return nil, &LookupError{
+		Symbol: "callable",
+		Reason: "a callable is a closure, a bound method, or the name of a declared function",
+	}
+}
+
+// InvokeClosure runs a closure declaration on this runtime, in a scope holding
+// its arguments and nothing else.
+//
+// It is the re-entry a host callback needs. The declaration is AST, so it runs
+// on whichever runtime the caller has; what it does not get is the scope the
+// closure was written in, which is why Captures has to be false for the result
+// to mean anything. A fresh statics bag per call is the other half of that: two
+// goroutines running the same declaration are two calls, not one function
+// accumulating.
+func (rt *Runtime) InvokeClosure(decl *model.Closure, args ...any) (any, error) {
+	if decl == nil {
+		return nil, &LookupError{Symbol: "closure", Reason: "no declaration"}
+	}
+	env := closureEnv{statics: map[*model.StaticVar]map[string]any{}}
+	if rt.entrypoint != "" {
+		env.filename = rt.entrypoint
+		env.directory = rt.fileDir(rt.entrypoint)
+	}
+	return rt.invokeClosure(decl, args, env)
+}
+
 // Callable resolves a PHP `callable` value into the uniform
 // func(...any) (any, error) signature the runtime invokes everywhere.
 //
@@ -13,11 +230,15 @@ import (
 // stock PHP uses all of them, so `call_user_func`, `usort` and friends have to
 // understand each one:
 //
-//   - a closure or any Go func already registered with the runtime,
+//   - a *Callable, or any Go func already registered with the runtime,
 //   - "function_name", naming a free function,
 //   - "Class::method", naming a static method,
 //   - array($object, "method"), the bound-method form,
 //   - array("Class", "method"), the static form.
+//
+// It answers the call rather than the value, because the call is what every
+// binding taking a callable declares and what the engine invokes; AsCallable is
+// the other direction, for a host that has to carry one to another runtime.
 //
 // The second return reports whether v was callable at all; callers turn that
 // into PHP's "not a valid callback" error with their own function name.
@@ -31,8 +252,8 @@ func (rt *Runtime) callableWithScope(v any, scope *Scope) (func(...any) (any, er
 		return nil, false
 	case func(...any) (any, error):
 		return value, true
-	case *Closure:
-		return value.uniform(), true
+	case *Callable:
+		return value.on(rt), true
 	case string:
 		return rt.callableFromString(value, scope)
 	case *model.Array:
@@ -49,7 +270,7 @@ func (rt *Runtime) callableWithScope(v any, scope *Scope) (func(...any) (any, er
 	// one panics inside reflect rather than reporting anything useful, so it is
 	// not callable and is_callable answers so.
 	if rv := reflect.ValueOf(v); rv.Kind() == reflect.Func && !rv.IsNil() {
-		return adapt(v), true
+		return adaptOn(rt, v), true
 	}
 	return nil, false
 }
@@ -112,9 +333,7 @@ func (rt *Runtime) boundMethod(obj *model.Object, method string, scope *Scope) (
 	if !ok {
 		return nil, false
 	}
-	return func(args ...any) (any, error) {
-		return rt.invokeMethod(obj, decl, args, scope)
-	}, true
+	return rt.newMethod(obj, decl, scope).on(rt), true
 }
 
 // staticMethod resolves Class::method without a receiver. The declaration is
