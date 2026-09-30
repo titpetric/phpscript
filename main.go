@@ -9,6 +9,9 @@ import (
 	_ "embed"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	_ "modernc.org/sqlite"
 
 	"github.com/spf13/pflag"

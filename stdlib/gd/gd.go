@@ -10,6 +10,12 @@
 // it, but there is one decoder set behind it and it always reports the same
 // three formats.
 //
+// image.Decode reads whichever formats are registered in the process, and the
+// registration is an init: png and jpeg arrive with the encoders this package
+// calls by name, and gif has nothing here to reach for. A program decides what
+// it links, so the phpscript main package names all three and a host embedding
+// this one answers imagecreatefromgif() once it does the same.
+//
 // A GD image reaches a script as a *Image, the way fopen hands back a stream.
 // A colour reaches it as an int packed the way libgd packs one,
 // 0xAARRGGBB with alpha in the top byte, so a script can hold a colour in a
@@ -26,8 +32,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-
-	_ "image/gif"
 
 	"golang.org/x/image/draw"
 
