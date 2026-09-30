@@ -696,6 +696,7 @@ var reentrySpellings = []struct {
 	{"array_reduce", `$mux->handle("GET /x", function ($w, $r) use ($add) { array_reduce(array(1), $add, 0); });`},
 	{"preg_replace_callback", `$mux->handle("GET /x", function ($w, $r) use ($site) { preg_replace_callback('/\d/', $site->digit, "a1"); });`},
 	{"shutdown callback", `$mux->handle("GET /x", function ($w, $r) use ($echo) { register_shutdown_function($echo); $echo($w, $r); });`},
+	{"autoloader", `$mux->handle("GET /x", function ($w, $r) { class_exists("Missing"); });`},
 }
 
 // reentryScript builds one script per spelling: the same shared state, built on
@@ -721,6 +722,10 @@ function wrap($next) {
 $site = new Site;
 $site->boot();
 $echo = function ($w, $r) { echo "inner\n"; };
+// An autoloader is script state a fork carries, because it is how a name becomes
+// a declaration. A worker that is the first to name a class has to be able to
+// load it, and the loading has to happen on the worker.
+spl_autoload_register(function ($class) { echo "inner\n"; });
 $cmp = function ($a, $b) { echo "inner\n"; return $a - $b; };
 $keep = function ($n) { echo "inner\n"; return true; };
 $add = function ($carry, $n) { echo "inner\n"; return $carry + $n; };
