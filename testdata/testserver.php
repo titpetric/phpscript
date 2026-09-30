@@ -29,8 +29,10 @@
 // requests by hand and short enough that a forgotten one does not outlive the
 // terminal it started in.
 //
-// Run it with `phpscript run testdata/testserver.php`, or against a port the
-// system picks with TESTSERVER_ADDR=127.0.0.1:0.
+// Run it with `phpscript run testdata/testserver.php`, against a port the
+// system picks with TESTSERVER_ADDR=127.0.0.1:0, and for longer than ten
+// seconds with TESTSERVER_LIMIT. TESTSERVER_WORKERS changes how many requests
+// are answered at once, which is what a load test sweeps.
 
 class Server {
 	public $addr;
@@ -54,13 +56,25 @@ class Server {
 		if ($this->addr === false || $this->addr === "") {
 			$this->addr = "127.0.0.1:8099";
 		}
-		// Four workers answer at once; anything else waits in a queue of 64.
-		// A handler here is well under a millisecond, so the queue is depth
+		// Four workers answer at once; anything else waits in a queue of 64. A
+		// handler here is well under a millisecond, so the queue is depth
 		// rather than latency: it is what a burst waits in instead of starting
 		// a runtime of its own.
 		$this->workers = 4;
+		$workers = getenv("TESTSERVER_WORKERS");
+		if ($workers !== false && $workers !== "") {
+			$this->workers = intval($workers);
+		}
 		$this->queue = 64;
+
+		// Ten seconds unless the environment says otherwise, which is long
+		// enough to answer a few requests by hand and short enough that a
+		// forgotten one does not outlive the terminal. A load test wants more.
 		$this->limit = 10;
+		$limit = getenv("TESTSERVER_LIMIT");
+		if ($limit !== false && $limit !== "") {
+			$this->limit = intval($limit);
+		}
 	}
 
 	// handlers assigns each one to the property it is registered under. They
