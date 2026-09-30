@@ -1,6 +1,6 @@
 # phpscript - A custom PHP-flavoured runtime written in Go
 
-This is a PHP interpreter written in Go. It supports the basic php expression syntax and some parts of the standard library. It's currently rudimentary and only enables limited functionality.
+This is a PHP interpreter written in Go, with a bytecode backend beside it and an HTTP server of its own. It runs a subset of the language and of the standard library - `phpscript list --stdlib` prints what this build carries, and `phpscript info` counts it - and the parts it does not run are decisions as often as gaps: see [Design decisions](./docs/design.md) for what it will not implement and [the language reference](./docs/reference/README.md) for what is not implemented yet.
 
 - [About phpscript](./docs/README.md)
 - [Design decisions](./docs/design.md)
@@ -18,30 +18,7 @@ This is a PHP interpreter written in Go. It supports the basic php expression sy
 
 ## Current state
 
-Behaviour is settled by `.phpt` fixtures: each one is written by running the source through real `php` first, and `phpscript test tests/fixtures/...` checks the runtime against that output. The generated [test fixture results](./docs/test-fixtures.md) hold the per-fixture matrix; the bird's-eye view per area:
-
-| Area                       | Fixtures | Passed | Failed |
-|----------------------------|----------|--------|--------|
-| tests/fixtures/arithmetic  | 21       | 21     | 0      |
-| tests/fixtures/arrays      | 18       | 18     | 0      |
-| tests/fixtures/autoloading | 8        | 8      | 0      |
-| tests/fixtures/bindings    | 23       | 23     | 0      |
-| tests/fixtures/errors      | 2        | 2      | 0      |
-| tests/fixtures/exceptions  | 9        | 9      | 0      |
-| tests/fixtures/flatstack   | 7        | 7      | 0      |
-| tests/fixtures/functions   | 9        | 9      | 0      |
-| tests/fixtures/gd          | 7        | 7      | 0      |
-| tests/fixtures/includes    | 3        | 3      | 0      |
-| tests/fixtures/namespaces  | 2        | 2      | 0      |
-| tests/fixtures/oop         | 24       | 24     | 0      |
-| tests/fixtures/output      | 4        | 4      | 0      |
-| tests/fixtures/paths       | 2        | 2      | 0      |
-| tests/fixtures/regex       | 7        | 7      | 0      |
-| tests/fixtures/runtime     | 11       | 11     | 0      |
-| tests/fixtures/stdlib      | 17       | 17     | 0      |
-| tests/fixtures/strings     | 15       | 15     | 0      |
-| tests/fixtures/syntax      | 8        | 8      | 0      |
-| **Total**                  | 197      | 197    | 0      |
+Behaviour is settled by `.phpt` fixtures: each one is written by running the source through real `php` first, and `phpscript test --matrix ./tests/...` checks the runtime against that output on both engines and on `php` itself. The [test fixture results](./docs/test-fixtures.md) are generated from that run and hold every fixture, its area and the three columns, which is where the counts live: a table copied into this page goes stale the moment an area grows, as this one did.
 
 The Go test run collects a coverage profile, and `atkins cover` renders it into the generated [code coverage](./docs/coverage/phpscript.md) report, per package, with [the detail](./docs/coverage/phpscript-detail.md) per file. The dbadmin demo is measured the same way from a running server, in [dbadmin.md](./docs/coverage/dbadmin.md).
 

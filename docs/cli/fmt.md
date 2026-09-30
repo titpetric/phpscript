@@ -11,6 +11,8 @@ phpscript fmt ./src/...    # PHP files in ./src and its subdirectories
 phpscript fmt -l ./src/... # list what needs formatting, rewrite nothing
 ```
 
+Use `--list` (`-l`) to name the files that would change and rewrite none of them, which is the CI check: the command exits 0 either way, so a pipeline reads the output rather than the status.
+
 The formatter uses tabs for indentation, keeps class, function and control-statement opening braces on the declaration line, and normalizes line endings to LF. Class members are printed as constants, then properties, then methods, keeping the blank lines written between them. An array literal with more than two key/value pairs, or one that does not fit in 100 columns, is printed one entry per line with a trailing comma. Comments, the quoting of string literals, type hints and imports are kept as they were written.
 
 A file the formatter cannot read in full is reported on standard error and left alone, and the remaining files are still formatted:
