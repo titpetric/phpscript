@@ -38,6 +38,7 @@ func GoString(v any) (string, bool) {
 	return "", false
 }
 
+// String renders v the way PHP renders a value in a string context.
 func String(v any) string {
 	switch x := v.(type) {
 	case nil:
@@ -69,6 +70,8 @@ func String(v any) string {
 	}
 }
 
+// Int reads v as PHP's (int) cast does: the leading numeric prefix of a string,
+// zero for what has none.
 func Int(v any) int64 {
 	switch x := v.(type) {
 	case int64:
@@ -324,6 +327,8 @@ func NumericKey(s string) (int64, bool) {
 	return n, true
 }
 
+// Truthy reads v the way `if ($v)` does: "" and "0" are false where "0.0" and
+// "00" are true, and an empty collection is false.
 func Truthy(v any) bool {
 	switch x := v.(type) {
 	case nil:

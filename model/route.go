@@ -31,6 +31,7 @@ type RouteParam struct {
 // RouteDialect names a router's pattern syntax.
 type RouteDialect int
 
+// The dialects an @route path is translated into.
 const (
 	// RouteChi is go-chi/chi: {name} and {name:regex} are native, and the
 	// remaining segments are the bare * wildcard, read as URL param "*".

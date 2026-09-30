@@ -758,6 +758,9 @@ func goldenOutput(path string) string {
 	return strings.TrimSuffix(path, GoldenSuffix) + GoldenOutputSuffix
 }
 
+// ParseFixture reads a .phpt document: the yaml header, the php body and the
+// expected output, separated by the two --- lines. The optional path is what the
+// fixture reports itself as, since the bytes carry no name.
 func ParseFixture(data []byte, path ...string) (*Fixture, error) {
 	normalized := strings.ReplaceAll(string(data), "\r\n", "\n")
 	parts := strings.SplitN(normalized, "\n---\n", 3)

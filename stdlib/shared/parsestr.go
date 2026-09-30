@@ -18,6 +18,8 @@ type Limits struct {
 	MaxVars int
 }
 
+// php.ini's defaults for the two limits, which is what a runtime uses when a
+// host names neither.
 const (
 	DefaultMaxNesting = 64
 	DefaultMaxVars    = 1000

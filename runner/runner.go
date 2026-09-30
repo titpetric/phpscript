@@ -155,6 +155,10 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 	return err
 }
 
+// HasErrorHandler reports whether a host installed one with OnError, for a
+// binding deciding where a message with nowhere obvious to go should go.
+func (rt *Runtime) HasErrorHandler() bool { return rt.errorHandler != nil }
+
 // RecordError reports err on the trace of the request this runtime is serving,
 // as the failure of the script it is running. Run calls it for the error a
 // script ends with; a host calls it for a failure that happened outside the
@@ -164,10 +168,6 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 // It records and returns. It does not unwind PHP execution, so nothing about it
 // is visible to a script through try/catch; a Go host observes it on the trace,
 // or through the handler installed with OnError.
-// HasErrorHandler reports whether a host installed one with OnError, for a
-// binding deciding where a message with nowhere obvious to go should go.
-func (rt *Runtime) HasErrorHandler() bool { return rt.errorHandler != nil }
-
 func (rt *Runtime) RecordError(err error) {
 	if err == nil {
 		return

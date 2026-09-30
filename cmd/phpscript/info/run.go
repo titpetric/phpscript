@@ -18,8 +18,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
+// Name is the command title.
 const Name = "Print runtime environment"
 
+// Options holds CLI flag options for the info command.
 type Options struct {
 	Verbose bool
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib/database"
 )
 
+// TestMain seeds the database connections the fixture areas name before any test
+// runs, because a connection is read at registration rather than at first use.
 func TestMain(m *testing.M) {
 	setTestEnv()
 	os.Exit(m.Run())

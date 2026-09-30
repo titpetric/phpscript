@@ -269,6 +269,8 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 // The fields behind them are what a host sets; these are what anything reading
 // a request built from an *http.Request goes through, because until one of them
 // is called there is nothing in the field to read.
+
+// GetMap answers the query string, one value per name.
 func (c Context) GetMap() map[string]string {
 	c.decodeQuery()
 	if c.Get != nil || c.decode == nil {
@@ -277,6 +279,7 @@ func (c Context) GetMap() map[string]string {
 	return c.decode.get
 }
 
+// PostMap answers the form body, one value per name.
 func (c Context) PostMap() map[string]string {
 	c.decodeForm()
 	if c.Post != nil || c.decode == nil {
@@ -285,6 +288,8 @@ func (c Context) PostMap() map[string]string {
 	return c.decode.post
 }
 
+// CookieMap answers the request's cookies, one value per name. Session\Manager
+// reads a session id through it.
 func (c Context) CookieMap() map[string]string {
 	c.decodeCookies()
 	if c.Cookie != nil || c.decode == nil {
@@ -293,6 +298,8 @@ func (c Context) CookieMap() map[string]string {
 	return c.decode.cookie
 }
 
+// FileMap answers the file parts of a multipart body, keyed by field name, in
+// the order they were sent.
 func (c Context) FileMap() map[string][]*UploadedFile {
 	c.decodeForm()
 	if c.Files != nil || c.decode == nil {

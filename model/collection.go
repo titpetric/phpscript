@@ -19,16 +19,6 @@ import (
 // *Array remains the right choice for values PHP mutates: it is the only shape
 // with insertion-ordered hybrid int/string keys and support for `$a[] = v`.
 
-// RangeValues iterates a collection in order, calling fn for each key/value
-// pair until fn returns false. It accepts:
-//
-//	*Array          insertion order, hybrid int64/string keys (a list-mode
-//	                Array walks its []any directly, with no map lookup)
-//	slice, array    int64 keys in index order
-//	map             key order is Go's (unordered), keys as declared
-//
-// Anything else, nil included, iterates zero times. PHP's foreach over a
-// non-array warns and continues rather than failing.
 // Collection is a value that answers its own length and iteration, so a type
 // declared outside this package reads as an array without being one.
 //
@@ -58,6 +48,16 @@ type Keyed interface {
 	Delete(key string)
 }
 
+// RangeValues iterates a collection in order, calling fn for each key/value
+// pair until fn returns false. It accepts:
+//
+//	*Array          insertion order, hybrid int64/string keys (a list-mode
+//	                Array walks its []any directly, with no map lookup)
+//	slice, array    int64 keys in index order
+//	map             key order is Go's (unordered), keys as declared
+//
+// Anything else, nil included, iterates zero times. PHP's foreach over a
+// non-array warns and continues rather than failing.
 func RangeValues(v any, fn func(key, val any) bool) {
 	switch x := v.(type) {
 	case nil:

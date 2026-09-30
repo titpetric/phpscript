@@ -24,14 +24,17 @@ type RuntimeException struct {
 	Code    int    `json:"code"`
 }
 
+// Error is the message, which is what a Go caller reads.
 func (e *RuntimeException) Error() string {
 	return e.Message
 }
 
+// GetMessage is the message under the name a script calls it by.
 func (e *RuntimeException) GetMessage() string {
 	return e.Message
 }
 
+// GetCode is the code under the name a script calls it by.
 func (e *RuntimeException) GetCode() int {
 	return e.Code
 }
@@ -126,13 +129,18 @@ func DeepSize(v any, visited visitedSet) int64 {
 	}
 }
 
-// EstimateValueSize calculates a shallow estimate of memory consumed by a PHP/Go value.
-// It is closed and non-recursive:
-// - scalars / strings: direct size + string length
-// - byte slices: slice header + length
-// - arrays: header + keys + shallow one-level elements
-// - objects: header + property names + shallow one-level properties
-// - pointers/structs: shallow sizeof
+// EstimateValueSize is a shallow estimate of what a value costs, in bytes. It is
+// closed and non-recursive, which is what makes it cheap enough to run on a
+// binding's result:
+//
+//	scalars, strings   the value's own size plus the string's length
+//	byte slices        the slice header plus its length
+//	arrays             the header, the keys, and one level of elements
+//	objects            the header, the property names, and one level of values
+//	pointers, structs  the shallow sizeof
+//
+// A graph deeper than one level is undercounted, deliberately: the walk that
+// would not be is DeepSize.
 func EstimateValueSize(v any) int64 {
 	if v == nil {
 		return 0

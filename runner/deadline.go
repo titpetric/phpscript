@@ -38,6 +38,8 @@ type TimeLimitError struct {
 	Aborted bool
 }
 
+// Error says which of the two deadlines ended the script, because the client
+// leaving and the clock running out read the same to everything downstream.
 func (e *TimeLimitError) Error() string {
 	if e.Aborted {
 		return "Script ended: the client closed the connection"

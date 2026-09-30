@@ -26,6 +26,8 @@ type Diagnostic struct {
 	Fatal bool
 }
 
+// String renders the finding as a line a terminal prints: file, line, message,
+// with the position left out when the finding is about no file in particular.
 func (d Diagnostic) String() string {
 	if d.File != "" {
 		return fmt.Sprintf("%s:%d: %s", d.File, d.Line, d.Message)

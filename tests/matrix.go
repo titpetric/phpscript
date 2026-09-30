@@ -13,6 +13,7 @@ import (
 // Runner names an execution backend a fixture can be checked against.
 type Runner string
 
+// The three backends, which is what a matrix column is.
 const (
 	// RunnerFlatstack executes the fixture through the flat bytecode runtime,
 	// which falls back to the compatibility interpreter for unsupported syntax.

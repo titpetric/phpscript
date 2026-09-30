@@ -29,6 +29,7 @@ type HostPanicError struct {
 	Value    any
 }
 
+// Error names the callable that panicked and what it panicked with.
 func (e *HostPanicError) Error() string {
 	return fmt.Sprintf("host panic in %s: %v", e.Callable, e.Value)
 }
@@ -283,6 +284,8 @@ type ArgumentCountError struct {
 // ThrowableClass names the PHP class, implementing Throwable.
 func (e *ArgumentCountError) ThrowableClass() string { return "ArgumentCountError" }
 
+// Error is php's wording, and says "at most" because a binding spells PHP's
+// optional parameters as extra ones: too few arguments is legal and zero-padded.
 func (e *ArgumentCountError) Error() string {
 	name := e.Name
 	if name == "" {
@@ -945,6 +948,7 @@ type UndefinedConstantError struct {
 // `catch (Error $e)` does not.
 func (e *UndefinedConstantError) ThrowableClass() string { return "RuntimeException" }
 
+// Error names the constant, quoted the way php quotes it.
 func (e *UndefinedConstantError) Error() string {
 	return fmt.Sprintf("Undefined constant %q", e.Name)
 }

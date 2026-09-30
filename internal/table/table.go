@@ -11,6 +11,7 @@ import (
 // Align is how a column pads its cells.
 type Align int
 
+// The two alignments a column takes.
 const (
 	// Left pads a cell on the right, which is what a label wants.
 	Left Align = iota

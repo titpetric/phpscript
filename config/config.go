@@ -14,6 +14,10 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
+// DefaultRuntimeConfig is config/config.yml as it was compiled in. Every
+// default lives in that file and nowhere else, so a file passed with -f is read
+// on top of this one and only has to name what it changes.
+//
 //go:embed config.yml
 var DefaultRuntimeConfig []byte
 

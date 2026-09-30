@@ -74,6 +74,9 @@ const (
 	StateError      = oida.StateError
 )
 
+// The names a host and a script agree on: where the front end is mounted, what
+// carries a trace identifier, and what a trace with no request behind it is
+// labelled.
 const (
 	// DefaultPath is the mount path of the debug front end.
 	DefaultPath = oida.DefaultPath

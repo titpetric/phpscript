@@ -17,6 +17,8 @@ type InterfaceViolation struct {
 	Method    string
 }
 
+// String names the class, the method it does not declare and the interface that
+// required it, which is the whole of what a reader needs to fix one.
 func (v InterfaceViolation) String() string {
 	return fmt.Sprintf("class %s does not declare method %s() required by interface %s",
 		v.Class, v.Method, v.Interface)
@@ -29,6 +31,8 @@ type InterfaceContractError struct {
 	Violations []InterfaceViolation
 }
 
+// Error lists every violation, one per line, so a class missing three methods
+// is reported once rather than three times.
 func (e *InterfaceContractError) Error() string {
 	parts := make([]string, 0, len(e.Violations))
 	for _, v := range e.Violations {

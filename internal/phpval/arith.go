@@ -8,9 +8,10 @@ import (
 // phpArith and the flat VM's specialised integer opcodes so the overflow and
 // division rules have one home.
 
-// OverflowAddInt, OverflowSubInt and OverflowMulInt perform int64 arithmetic,
-// reporting false on overflow so a caller can fall back to float the way PHP
-// does.
+// The Overflow* trio performs int64 arithmetic and reports false rather than
+// wrapping, so a caller can fall back to float the way PHP does.
+
+// OverflowAddInt adds x and y.
 func OverflowAddInt(x, y int64) (int64, bool) {
 	z := x + y
 	if (y > 0 && z < x) || (y < 0 && z > x) {
@@ -19,6 +20,7 @@ func OverflowAddInt(x, y int64) (int64, bool) {
 	return z, true
 }
 
+// OverflowSubInt subtracts y from x.
 func OverflowSubInt(x, y int64) (int64, bool) {
 	z := x - y
 	if (y < 0 && z < x) || (y > 0 && z > x) {
@@ -27,6 +29,8 @@ func OverflowSubInt(x, y int64) (int64, bool) {
 	return z, true
 }
 
+// OverflowMulInt multiplies x and y. MinInt64 * -1 is an overflow too: it has
+// no positive counterpart.
 func OverflowMulInt(x, y int64) (int64, bool) {
 	z := x * y
 	if x != 0 && (z/x != y || (x == -1 && y == math.MinInt64)) {
@@ -38,6 +42,8 @@ func OverflowMulInt(x, y int64) (int64, bool) {
 // AddInt, SubInt and MulInt add PHP semantics on top: integer arithmetic that
 // overflows becomes float, so PHP_INT_MAX + 1 is 9.2233720368548E+18 rather
 // than a wrapped negative.
+
+// AddInt is PHP's + on two ints.
 func AddInt(x, y int64) any {
 	if z, ok := OverflowAddInt(x, y); ok {
 		return z
@@ -45,6 +51,7 @@ func AddInt(x, y int64) any {
 	return float64(x) + float64(y)
 }
 
+// SubInt is PHP's - on two ints.
 func SubInt(x, y int64) any {
 	if z, ok := OverflowSubInt(x, y); ok {
 		return z
@@ -52,6 +59,7 @@ func SubInt(x, y int64) any {
 	return float64(x) - float64(y)
 }
 
+// MulInt is PHP's * on two ints.
 func MulInt(x, y int64) any {
 	if z, ok := OverflowMulInt(x, y); ok {
 		return z

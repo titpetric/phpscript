@@ -21,6 +21,8 @@ import (
 //	                the same list sorts in PHP
 //	anything else   both sides are cast to string and compared bytewise, which
 //	                is where a number meeting a non-numeric string ends up
+//
+// The answer is -1, 0 or 1, as the operator's is.
 func Compare(x, y any) int {
 	xa, xIsArray := comparableArray(x)
 	ya, yIsArray := comparableArray(y)

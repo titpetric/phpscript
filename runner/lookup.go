@@ -67,6 +67,8 @@ type LookupError struct {
 	Reason string
 }
 
+// Error names the symbol and the reason, and lists what the name matched when
+// it matched too much, so a host is told which spelling to use.
 func (e *LookupError) Error() string {
 	if len(e.Candidates) == 0 {
 		return fmt.Sprintf("lookup %s: %s", e.Symbol, e.Reason)
