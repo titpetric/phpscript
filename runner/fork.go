@@ -98,6 +98,18 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	}
 	child.FreezeStdlib()
 
+	// The autoloaders, which are the one piece of script state a fork does
+	// carry. They are how a name becomes a declaration, and a fork exists to run
+	// the same symbols: without them a class the parent had not needed yet is
+	// unresolvable on the child, so a handler that is the first to name one
+	// answers 500 where the same line at script level works. What they capture -
+	// composer's ClassLoader is an object - is shared and read the way a
+	// handler's `$this` is, and the call itself runs on the child, because
+	// Runtime.autoload resolves the callable against the runtime doing the
+	// autoloading. The file each one includes is recorded on the child, so every
+	// worker includes it once.
+	child.autoloaders = append(child.autoloaders, rt.autoloaders...)
+
 	// The declarations the tree contributed, replayed rather than copied, so
 	// the fork's own tables record where each one came from.
 	for program, filename := range rt.hoisted {
