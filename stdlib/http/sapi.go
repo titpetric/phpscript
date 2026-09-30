@@ -1,7 +1,7 @@
-package bindings
+package http
 
 import (
-	"net/http"
+	nethttp "net/http"
 	"net/url"
 	"time"
 
@@ -96,7 +96,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 		return false
 	}
 
-	cookie := &http.Cookie{Name: name}
+	cookie := &nethttp.Cookie{Name: name}
 	if len(opts) > 0 {
 		value := phpval.String(opts[0])
 		if encode {
@@ -122,7 +122,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 // applyCookiePositional reads the long argument list: $expires, $path,
 // $domain, $secure, $httponly. There is no samesite in this form, which is why
 // PHP grew the array one.
-func applyCookiePositional(cookie *http.Cookie, args []any) {
+func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 	for i, arg := range args {
 		switch i {
 		case 0:
@@ -141,7 +141,7 @@ func applyCookiePositional(cookie *http.Cookie, args []any) {
 
 // applyCookieOptions reads the array form. An option the array does not name
 // keeps its zero value, which is the same as PHP leaving it out of the header.
-func applyCookieOptions(cookie *http.Cookie, options *model.Array) {
+func applyCookieOptions(cookie *nethttp.Cookie, options *model.Array) {
 	if value, ok := options.Get("expires"); ok {
 		setCookieExpires(cookie, phpval.Int(value))
 	}
@@ -164,7 +164,7 @@ func applyCookieOptions(cookie *http.Cookie, options *model.Array) {
 
 // setCookieExpires reads PHP's $expires: a unix timestamp, where 0 means the
 // cookie lives as long as the browser session and carries no expiry at all.
-func setCookieExpires(cookie *http.Cookie, expires int64) {
+func setCookieExpires(cookie *nethttp.Cookie, expires int64) {
 	if expires == 0 {
 		return
 	}
@@ -173,14 +173,14 @@ func setCookieExpires(cookie *http.Cookie, expires int64) {
 
 // sameSite reads the attribute PHP spells as a string. An unrecognised value
 // stages no attribute, which is what a browser does with one it cannot read.
-func sameSite(value string) http.SameSite {
+func sameSite(value string) nethttp.SameSite {
 	switch value {
 	case "Lax", "lax":
-		return http.SameSiteLaxMode
+		return nethttp.SameSiteLaxMode
 	case "Strict", "strict":
-		return http.SameSiteStrictMode
+		return nethttp.SameSiteStrictMode
 	case "None", "none":
-		return http.SameSiteNoneMode
+		return nethttp.SameSiteNoneMode
 	}
-	return http.SameSiteDefaultMode
+	return nethttp.SameSiteDefaultMode
 }

@@ -1,4 +1,4 @@
-package bindings
+package core
 
 import (
 	"github.com/titpetric/phpscript/runner"
@@ -6,10 +6,10 @@ import (
 
 // init contributes the string comparisons to stdlib.Register.
 func init() {
-	runner.RegisterBinding(registerStrings)
+	runner.RegisterBinding(registerStringCompare)
 }
 
-func registerStrings(rt *runner.Runtime) {
+func registerStringCompare(rt *runner.Runtime) {
 	// strcmp compares $string1 and $string2 byte by byte, answering a negative number when $string1 sorts first, a positive one when it sorts last, and 0 when they are equal.
 	rt.RegisterFunc("strcmp", func(string1, string2 string) int64 {
 		return compareBytes(string1, string2, wholeString, false)
