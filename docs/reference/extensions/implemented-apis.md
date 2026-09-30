@@ -6,170 +6,6 @@ This file lists the functions and classes the standard phpscript CLI runtime reg
 
 ## Functions
 
-### runner/bindings
-
-#### arrays
-
-```php
-// array_chunk splits $array into arrays of at most $length entries; the chunks are keyed from zero either way, and $preserve_keys decides whether the entries inside them keep their own keys or are renumbered.
-function array_chunk(mixed $array, int $length, bool ...$preserve_keys): array
-```
-
-```php
-// array_combine returns an array keyed by the values of $keys and valued by the values of $values, paired in order; the two must hold the same number of entries.
-function array_combine(mixed $keys, mixed $values): array
-```
-
-```php
-// array_diff returns the entries of $array whose value is in none of the other arrays, keys kept; values are compared as strings, which is php's own rule and the reason 0 and "0" are the same entry here.
-function array_diff(mixed $array, mixed ...$others): array
-```
-
-```php
-// array_diff_key returns the entries of $array whose key is in none of the other arrays, values untouched and never compared.
-function array_diff_key(mixed $array, mixed ...$others): array
-```
-
-```php
-// array_fill returns an array of $count copies of $value, keyed from $start_index upwards; php 8 raises a ValueError below zero and this clamps to the empty array, which is what a count of zero already answers.
-function array_fill(int $start_index, int $count, mixed $value): array
-```
-
-```php
-// array_fill_keys returns an array whose keys are the values of $keys and whose every value is $value; a key repeated in $keys lands once, as the later assignment overwrites the earlier.
-function array_fill_keys(mixed $keys, mixed $value): array
-```
-
-```php
-// array_intersect returns the entries of $array whose value is in every one of the other arrays, keys kept; values are compared as strings, as array_diff compares them.
-function array_intersect(mixed $array, mixed ...$others): array
-```
-
-```php
-// array_intersect_key returns the entries of $array whose key is in every one of the other arrays, values untouched and never compared.
-function array_intersect_key(mixed $array, mixed ...$others): array
-```
-
-```php
-// array_is_list reports whether $array is keyed by the integers 0 to count-1 in that order, which is what makes it a list rather than a map; an empty array is a list.
-function array_is_list(mixed $array): bool
-```
-
-```php
-// array_key_first returns the first key of $array without moving anything, or null when it is empty.
-function array_key_first(mixed $array): mixed
-```
-
-```php
-// array_key_last returns the last key of $array, or null when it is empty.
-function array_key_last(mixed $array): mixed
-```
-
-#### crypto
-
-```php
-// hash returns the $algo digest of $data as lowercase hex characters, or as raw bytes when $binary is true; $algo is one of the names hash_algos() answers, which is a subset of PHP's.
-function hash(string $algo, string $data, bool ...$binary): string
-```
-
-```php
-// hash_algos returns the algorithm names hash() and hash_hmac() accept here, sorted; the list is shorter than PHP's, so a script that offers a choice should read it rather than assume one.
-function hash_algos(): array
-```
-
-```php
-// hash_equals reports whether $known_string and $user_string are the same, in time that does not depend on how far along they first differ; strings of different lengths are never equal, and the comparison of a wrong-length guess is the one case that does leak, because the lengths are compared first.
-function hash_equals(string $known_string, string $user_string): bool
-```
-
-```php
-// hash_hmac returns the $algo keyed digest of $data under $key as lowercase hex characters, or as raw bytes when $binary is true; a key longer than the algorithm's block size is itself digested first, which is HMAC's own rule and not a choice made here.
-function hash_hmac(string $algo, string $data, string $key, bool ...$binary): string
-```
-
-#### limits
-
-```php
-// connection_aborted returns true once the client has closed the connection, so a script can stop doing work nobody is waiting for: commit the transaction, skip rendering the page. It keeps answering after ignore_user_abort(true) detached the run from the disconnect, which is the only arrangement in which a script is still running to ask.
-function connection_aborted(): bool
-```
-
-```php
-// ignore_user_abort decides whether the client closing the connection ends the script: with $enable true the script runs to its own end and asks connection_aborted() when it wants to know, and with it false, the default, the disconnect stops the script where it next looks. A time limit still applies either way.
-function ignore_user_abort(bool ...$enable): void
-```
-
-```php
-// set_time_limit bounds the rest of this script to $seconds and answers true; the clock restarts from the call, as a second call in PHP does, and 0 removes the limit. The limit is a deadline on the context the interpreter checks and every binding is handed, so it ends a Go call that is waiting as well as a PHP loop that is spinning.
-function set_time_limit(int $seconds): bool
-```
-
-#### log
-
-```php
-// error_log records $message where the host is listening: on the trace of the request being served, through the handler a Go host installed, and on the process error stream when neither is there. It returns true. php also takes $message_type, $destination and $additional_headers to choose between destinations; those are not implemented.
-function error_log(string $message): bool
-```
-
-#### request
-
-```php
-// apache_request_headers is an alias of getallheaders.
-function apache_request_headers(): array
-```
-
-```php
-// get_all_headers is an alias spelling of getallheaders.
-function get_all_headers(): array
-```
-
-```php
-// getallheaders returns the request headers as an associative array keyed by canonical header name, and an empty array when there is no request.
-function getallheaders(): array
-```
-
-```php
-// header stages the "Name: value" response header in $header, written to the response after the script finishes; $replace (default true) overwrites an existing header of the same name, $code stages the response status, and a status line such as "HTTP/1.0 404 Not Found" stages the status it names.
-function header(string $header, mixed ...$opts): void
-```
-
-```php
-// http_response_code stages the response status in $response_code and returns the one it replaced; called without one it returns the status the response will be sent with, or false when there is no request to answer for.
-function http_response_code(mixed ...$opts): mixed
-```
-
-```php
-// setcookie stages a Set-Cookie header naming $name with $value url-encoded, and answers whether it could; $expires_or_options is a unix timestamp, 0 for a cookie that dies with the browser session, or an array of expires, path, domain, secure, httponly and samesite.
-function setcookie(string $name, mixed ...$opts): bool
-```
-
-```php
-// setrawcookie stages a Set-Cookie header the way setcookie does but writes $value as it stands, so a value carrying a semicolon or a space is the caller's problem rather than the encoder's.
-function setrawcookie(string $name, mixed ...$opts): bool
-```
-
-#### strings
-
-```php
-// strcasecmp compares $string1 and $string2 byte by byte with the ASCII letters folded to lower case, answering a negative number, a positive one, or 0 as strcmp does; a byte above 127 is compared as it is, so the folding does not reach an accented letter.
-function strcasecmp(string $string1, string $string2): int
-```
-
-```php
-// strcmp compares $string1 and $string2 byte by byte, answering a negative number when $string1 sorts first, a positive one when it sorts last, and 0 when they are equal.
-function strcmp(string $string1, string $string2): int
-```
-
-```php
-// strncasecmp compares at most $length leading bytes of $string1 and $string2 the way strcasecmp does, with the same reading of a $length past the end or below zero.
-function strncasecmp(string $string1, string $string2, int $length): int
-```
-
-```php
-// strncmp compares at most $length leading bytes of $string1 and $string2 the way strcmp does; a $length past the end of both compares what is there, and a negative one compares nothing and answers 0.
-function strncmp(string $string1, string $string2, int $length): int
-```
-
 ### stdlib/compat
 
 #### buffers
@@ -290,6 +126,63 @@ function defer(callable $callback): void
  * including after exit or an execution error, in registration order.
  */
 function register_shutdown_function(callable $callback): void
+```
+
+#### array sets
+
+```php
+// array_chunk splits $array into arrays of at most $length entries; the chunks are keyed from zero either way, and $preserve_keys decides whether the entries inside them keep their own keys or are renumbered.
+function array_chunk(mixed $array, int $length, bool ...$preserve_keys): array
+```
+
+```php
+// array_combine returns an array keyed by the values of $keys and valued by the values of $values, paired in order; the two must hold the same number of entries.
+function array_combine(mixed $keys, mixed $values): array
+```
+
+```php
+// array_diff returns the entries of $array whose value is in none of the other arrays, keys kept; values are compared as strings, which is php's own rule and the reason 0 and "0" are the same entry here.
+function array_diff(mixed $array, mixed ...$others): array
+```
+
+```php
+// array_diff_key returns the entries of $array whose key is in none of the other arrays, values untouched and never compared.
+function array_diff_key(mixed $array, mixed ...$others): array
+```
+
+```php
+// array_fill returns an array of $count copies of $value, keyed from $start_index upwards; php 8 raises a ValueError below zero and this clamps to the empty array, which is what a count of zero already answers.
+function array_fill(int $start_index, int $count, mixed $value): array
+```
+
+```php
+// array_fill_keys returns an array whose keys are the values of $keys and whose every value is $value; a key repeated in $keys lands once, as the later assignment overwrites the earlier.
+function array_fill_keys(mixed $keys, mixed $value): array
+```
+
+```php
+// array_intersect returns the entries of $array whose value is in every one of the other arrays, keys kept; values are compared as strings, as array_diff compares them.
+function array_intersect(mixed $array, mixed ...$others): array
+```
+
+```php
+// array_intersect_key returns the entries of $array whose key is in every one of the other arrays, values untouched and never compared.
+function array_intersect_key(mixed $array, mixed ...$others): array
+```
+
+```php
+// array_is_list reports whether $array is keyed by the integers 0 to count-1 in that order, which is what makes it a list rather than a map; an empty array is a list.
+function array_is_list(mixed $array): bool
+```
+
+```php
+// array_key_first returns the first key of $array without moving anything, or null when it is empty.
+function array_key_first(mixed $array): mixed
+```
+
+```php
+// array_key_last returns the last key of $array, or null when it is empty.
+function array_key_last(mixed $array): mixed
 ```
 
 #### array sort
@@ -727,6 +620,30 @@ function spl_autoload(string $class, mixed ...$file_extensions): void
 function spl_autoload_register(mixed ...$args): bool
 ```
 
+#### limits
+
+```php
+// connection_aborted returns true once the client has closed the connection, so a script can stop doing work nobody is waiting for: commit the transaction, skip rendering the page. It keeps answering after ignore_user_abort(true) detached the run from the disconnect, which is the only arrangement in which a script is still running to ask.
+function connection_aborted(): bool
+```
+
+```php
+// ignore_user_abort decides whether the client closing the connection ends the script: with $enable true the script runs to its own end and asks connection_aborted() when it wants to know, and with it false, the default, the disconnect stops the script where it next looks. A time limit still applies either way.
+function ignore_user_abort(bool ...$enable): void
+```
+
+```php
+// set_time_limit bounds the rest of this script to $seconds and answers true; the clock restarts from the call, as a second call in PHP does, and 0 removes the limit. The limit is a deadline on the context the interpreter checks and every binding is handed, so it ends a Go call that is waiting as well as a PHP loop that is spinning.
+function set_time_limit(int $seconds): bool
+```
+
+#### log
+
+```php
+// error_log records $message where the host is listening: on the trace of the request being served, through the handler a Go host installed, and on the process error stream when neither is there. It returns true. php also takes $message_type, $destination and $additional_headers to choose between destinations; those are not implemented.
+function error_log(string $message): bool
+```
+
 #### math
 
 ```php
@@ -1017,6 +934,28 @@ function sleep(int $seconds): int
 function usleep(int $microseconds): void
 ```
 
+#### string compare
+
+```php
+// strcasecmp compares $string1 and $string2 byte by byte with the ASCII letters folded to lower case, answering a negative number, a positive one, or 0 as strcmp does; a byte above 127 is compared as it is, so the folding does not reach an accented letter.
+function strcasecmp(string $string1, string $string2): int
+```
+
+```php
+// strcmp compares $string1 and $string2 byte by byte, answering a negative number when $string1 sorts first, a positive one when it sorts last, and 0 when they are equal.
+function strcmp(string $string1, string $string2): int
+```
+
+```php
+// strncasecmp compares at most $length leading bytes of $string1 and $string2 the way strcasecmp does, with the same reading of a $length past the end or below zero.
+function strncasecmp(string $string1, string $string2, int $length): int
+```
+
+```php
+// strncmp compares at most $length leading bytes of $string1 and $string2 the way strcmp does; a $length past the end of both compares what is there, and a negative one compares nothing and answers 0.
+function strncmp(string $string1, string $string2, int $length): int
+```
+
 #### strings
 
 ```php
@@ -1221,6 +1160,26 @@ function yaml_encode(mixed $value): mixed
 ```
 
 ### stdlib/crypto
+
+```php
+// hash returns the $algo digest of $data as lowercase hex characters, or as raw bytes when $binary is true; $algo is one of the names hash_algos() answers, which is a subset of PHP's.
+function hash(string $algo, string $data, bool ...$binary): string
+```
+
+```php
+// hash_algos returns the algorithm names hash() and hash_hmac() accept here, sorted; the list is shorter than PHP's, so a script that offers a choice should read it rather than assume one.
+function hash_algos(): array
+```
+
+```php
+// hash_equals reports whether $known_string and $user_string are the same, in time that does not depend on how far along they first differ; strings of different lengths are never equal, and the comparison of a wrong-length guess is the one case that does leak, because the lengths are compared first.
+function hash_equals(string $known_string, string $user_string): bool
+```
+
+```php
+// hash_hmac returns the $algo keyed digest of $data under $key as lowercase hex characters, or as raw bytes when $binary is true; a key longer than the algorithm's block size is itself digested first, which is HMAC's own rule and not a choice made here.
+function hash_hmac(string $algo, string $data, string $key, bool ...$binary): string
+```
 
 ```php
 // md5 returns the MD5 hash of $string as 32 lowercase hex characters, or as 16 raw bytes when $binary is true.
@@ -1669,6 +1628,43 @@ function imagejpeg(mixed $im, mixed ...$args): mixed
 ```php
 // imagepng writes $image to $filename as PNG, or to the output when $filename is null or empty. $quality selects the compression level.
 function imagepng(mixed $im, mixed ...$args): mixed
+```
+
+### stdlib/http
+
+```php
+// apache_request_headers is an alias of getallheaders.
+function apache_request_headers(): array
+```
+
+```php
+// get_all_headers is an alias spelling of getallheaders.
+function get_all_headers(): array
+```
+
+```php
+// getallheaders returns the request headers as an associative array keyed by canonical header name, and an empty array when there is no request.
+function getallheaders(): array
+```
+
+```php
+// header stages the "Name: value" response header in $header, written to the response after the script finishes; $replace (default true) overwrites an existing header of the same name, $code stages the response status, and a status line such as "HTTP/1.0 404 Not Found" stages the status it names.
+function header(string $header, mixed ...$opts): void
+```
+
+```php
+// http_response_code stages the response status in $response_code and returns the one it replaced; called without one it returns the status the response will be sent with, or false when there is no request to answer for.
+function http_response_code(mixed ...$opts): mixed
+```
+
+```php
+// setcookie stages a Set-Cookie header naming $name with $value url-encoded, and answers whether it could; $expires_or_options is a unix timestamp, 0 for a cookie that dies with the browser session, or an array of expires, path, domain, secure, httponly and samesite.
+function setcookie(string $name, mixed ...$opts): bool
+```
+
+```php
+// setrawcookie stages a Set-Cookie header the way setcookie does but writes $value as it stands, so a value carrying a semicolon or a space is the caller's problem rather than the encoder's.
+function setrawcookie(string $name, mixed ...$opts): bool
 ```
 
 ### stdlib/info

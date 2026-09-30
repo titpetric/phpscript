@@ -854,7 +854,7 @@ func (c Context) decodedMaps() []map[string]string {
 // $_REQUEST from this Context, and the request-aware functions find it.
 //
 // The functions themselves - getallheaders(), header(), http_response_code(),
-// setcookie() - are registered by runner/bindings, which reaches this Context
+// setcookie() - are registered by stdlib/http, which reaches this Context
 // through RequestContext at call time. They are registered before this runs,
 // because a host installs the standard library first and seeds the request
 // second; the indirection is what makes that order work either way.

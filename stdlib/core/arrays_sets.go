@@ -1,4 +1,4 @@
-package bindings
+package core
 
 import (
 	"errors"
@@ -10,14 +10,14 @@ import (
 
 // init contributes the set-shaped array functions to stdlib.Register.
 func init() {
-	runner.RegisterBinding(registerArrays)
+	runner.RegisterBinding(registerArraySets)
 }
 
-// registerArrays installs the array functions that build a new array from one
+// registerArraySets installs the array functions that build a new array from one
 // or two given ones. They read through model.RangeValues, so a script can pass
 // either a PHP array or the native Go slice or map a binding returned, which is
 // what stdlib/core/arrays.go does for the functions it carries.
-func registerArrays(rt *runner.Runtime) {
+func registerArraySets(rt *runner.Runtime) {
 	// array_fill returns an array of $count copies of $value, keyed from $start_index upwards; php 8 raises a ValueError below zero and this clamps to the empty array, which is what a count of zero already answers.
 	rt.RegisterFunc("array_fill", func(start_index, count int64, value any) *model.Array {
 		if count < 0 {

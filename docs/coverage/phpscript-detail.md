@@ -98,13 +98,7 @@ github.com/titpetric/phpscript/parser/lexer.go, symbols 31, coverage 96.95%
 github.com/titpetric/phpscript/parser/parser.go, symbols 63, coverage 87.78%
 github.com/titpetric/phpscript/parser/tokenizer.go, symbols 23, coverage 96.47%
 github.com/titpetric/phpscript/runner/arithmetic_error.go, symbols 4, coverage 50.00%
-github.com/titpetric/phpscript/runner/bindings/arrays.go, symbols 7, coverage 99.39%
-github.com/titpetric/phpscript/runner/bindings/crypto.go, symbols 5, coverage 66.04%
 github.com/titpetric/phpscript/runner/bindings.go, symbols 2, coverage 90.00%
-github.com/titpetric/phpscript/runner/bindings/limits.go, symbols 3, coverage 100.00%
-github.com/titpetric/phpscript/runner/bindings/log.go, symbols 2, coverage 60.00%
-github.com/titpetric/phpscript/runner/bindings/request.go, symbols 7, coverage 85.06%
-github.com/titpetric/phpscript/runner/bindings/strings.go, symbols 5, coverage 92.00%
 github.com/titpetric/phpscript/runner/callable.go, symbols 17, coverage 57.60%
 github.com/titpetric/phpscript/runner/convert.go, symbols 27, coverage 89.54%
 github.com/titpetric/phpscript/runner/coverage/aggregator.go, symbols 10, coverage 90.93%
@@ -147,6 +141,7 @@ github.com/titpetric/phpscript/stdlib/compat/compat.go, symbols 3, coverage 98.9
 github.com/titpetric/phpscript/stdlib/compat/datetime.go, symbols 3, coverage 95.57%
 github.com/titpetric/phpscript/stdlib/compat/regex.go, symbols 38, coverage 83.84%
 github.com/titpetric/phpscript/stdlib/core/arrays.go, symbols 44, coverage 93.28%
+github.com/titpetric/phpscript/stdlib/core/arrays_sets.go, symbols 7, coverage 99.39%
 github.com/titpetric/phpscript/stdlib/core/arrays_sort.go, symbols 8, coverage 94.79%
 github.com/titpetric/phpscript/stdlib/core/closure.go, symbols 2, coverage 72.75%
 github.com/titpetric/phpscript/stdlib/core/defer.go, symbols 2, coverage 93.75%
@@ -155,6 +150,8 @@ github.com/titpetric/phpscript/stdlib/core/env.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/core/fnmatch.go, symbols 3, coverage 94.97%
 github.com/titpetric/phpscript/stdlib/core/json.go, symbols 19, coverage 79.63%
 github.com/titpetric/phpscript/stdlib/core/lang.go, symbols 8, coverage 89.59%
+github.com/titpetric/phpscript/stdlib/core/limits.go, symbols 3, coverage 100.00%
+github.com/titpetric/phpscript/stdlib/core/log.go, symbols 2, coverage 60.00%
 github.com/titpetric/phpscript/stdlib/core/math.go, symbols 14, coverage 87.39%
 github.com/titpetric/phpscript/stdlib/core/mbstring.go, symbols 11, coverage 83.48%
 github.com/titpetric/phpscript/stdlib/core/output.go, symbols 25, coverage 79.14%
@@ -163,10 +160,11 @@ github.com/titpetric/phpscript/stdlib/core/reflect.go, symbols 4, coverage 56.00
 github.com/titpetric/phpscript/stdlib/core/shared_memory.go, symbols 14, coverage 76.79%
 github.com/titpetric/phpscript/stdlib/core/shutdown.go, symbols 2, coverage 90.00%
 github.com/titpetric/phpscript/stdlib/core/sleep.go, symbols 3, coverage 91.67%
+github.com/titpetric/phpscript/stdlib/core/strings_compare.go, symbols 5, coverage 92.00%
 github.com/titpetric/phpscript/stdlib/core/strings.go, symbols 31, coverage 87.65%
 github.com/titpetric/phpscript/stdlib/core/tokenizer.go, symbols 2, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/core/yaml.go, symbols 7, coverage 84.11%
-github.com/titpetric/phpscript/stdlib/crypto/hash.go, symbols 1, coverage 100.00%
+github.com/titpetric/phpscript/stdlib/crypto/hash.go, symbols 4, coverage 60.42%
 github.com/titpetric/phpscript/stdlib/crypto/identifiers.go, symbols 3, coverage 90.30%
 github.com/titpetric/phpscript/stdlib/crypto/init.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/crypto/password.go, symbols 6, coverage 80.10%
@@ -202,6 +200,7 @@ github.com/titpetric/phpscript/stdlib/http/mux.go, symbols 11, coverage 80.91%
 github.com/titpetric/phpscript/stdlib/http/register.go, symbols 1, coverage 100.00%
 github.com/titpetric/phpscript/stdlib/http/request.go, symbols 2, coverage 46.45%
 github.com/titpetric/phpscript/stdlib/http/response.go, symbols 7, coverage 85.71%
+github.com/titpetric/phpscript/stdlib/http/sapi.go, symbols 7, coverage 85.06%
 github.com/titpetric/phpscript/stdlib/http/server.go, symbols 7, coverage 48.26%
 github.com/titpetric/phpscript/stdlib/http/value.go, symbols 5, coverage 48.26%
 github.com/titpetric/phpscript/stdlib/info/info.go, symbols 2, coverage 75.00%
