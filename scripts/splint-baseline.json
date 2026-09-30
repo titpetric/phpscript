@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "coverage/uncovered": 426,
+    "filecheck/long": 34,
+    "func-args/order": 24,
+    "func-returns/order": 3,
+    "godoc/format": 9,
+    "godoc/missing": 50,
+    "godoc/verbose": 33,
+    "grouping/filename": 211,
+    "imports/collision": 2,
+    "imports/pollution": 8,
+    "modcheck/blank": 4,
+    "pairing/orphan": 43,
+    "pairing/unpaired": 138
+  }
+}
