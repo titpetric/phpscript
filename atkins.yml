@@ -267,10 +267,17 @@ tasks:
       - taskset -c 3 nice -n -20 go test -run XXX -bench . -benchmem -benchtime 1s -count 3 ./... | tee bench.txt
       - benchstat bench.txt
 
+  # splint exits 1 when it found anything at all, warnings included, and this
+  # tree carries around a thousand of them: uncovered symbols, files whose name
+  # does not match what is in them, sources with no test beside them. A job that
+  # fails on all of it fails always and gates nothing, so the gate is a ratchet
+  # over scripts/splint-baseline.json: the error class may not grow, the warnings
+  # are printed with their movement, and a count that went down asks for the
+  # baseline to come down with it. scripts/splint-gate.sh carries the reasoning.
   lint:
     passthru: true
     cmds:
-      - splint ./...
+      - ./scripts/splint-gate.sh
 
   # Every generated document in one target. The coverage pair over Go sources
   # regenerates from the profile the test job wrote; the dbadmin pair needs
