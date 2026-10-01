@@ -89,6 +89,9 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | json_request_body.phpt                | PASS       | PASS    | SKIP |
 | json_stream.phpt                      | PASS       | PASS    | SKIP |
 | platform_database.phpt                | PASS       | PASS    | SKIP |
+| regexp_bytes.phpt                     | PASS       | PASS    | SKIP |
+| regexp_callback.phpt                  | PASS       | PASS    | SKIP |
+| regexp_compile.phpt                   | PASS       | PASS    | SKIP |
 | request_and_response_handling.phpt    | PASS       | PASS    | SKIP |
 | request_body_stdin.phpt               | PASS       | PASS    | SKIP |
 | session_manager.phpt                  | PASS       | PASS    | SKIP |
@@ -393,7 +396,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/arithmetic  | 24       | 24     | 0      |
 | tests/fixtures/arrays      | 24       | 24     | 0      |
 | tests/fixtures/autoloading | 4        | 4      | 0      |
-| tests/fixtures/bindings    | 27       | 27     | 0      |
+| tests/fixtures/bindings    | 30       | 30     | 0      |
 | tests/fixtures/comparison  | 1        | 1      | 0      |
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 10       | 10     | 0      |
@@ -415,4 +418,4 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/strings     | 21       | 21     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 2        | 2      | 0      |
-| **Total**                  | 257      | 257    | 0      |
+| **Total**                  | 260      | 260    | 0      |

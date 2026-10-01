@@ -274,6 +274,8 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 | `preg_match_all` | `int64`; `$matches` is `[]any` of `[]string`                    | OK                  |
 | `preg_replace`   | `string`, compiled patterns cached                              | OK                  |
 
+`Regexp\Compile` and `Regexp\CompilePOSIX` are `regexp.Compile` and `regexp.CompilePOSIX` registered as they are, so the binding layer adds nothing to measure: the constructor allocates the compiled expression, and each method returns the `string`, `[]string`, `[]byte` or `[][]byte` the Go method built. The byte shapes cost nothing extra now that a `[]byte` reads as a PHP string rather than through a conversion.
+
 ### Filesystem
 
 | Binding                                             | Returns                       | Status                                                                                                                                                           |
@@ -347,6 +349,7 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 | `Session\Manager`                                | `(*SessionManager, error)`; `Get` `(string, error)`, `Valid` `(bool, error)`, `Start` `error`  | OK                                                                                                                                                                                         |
 | `Session\Storage\Disk`, `Session\Storage\Memory` | pointers                                                                                       | OK                                                                                                                                                                                         |
 | `SharedMemory`                                   | `*SharedMemory`; `Get`/`Count` `string`, `Incr` `int64`, `Has`/`Delete` `bool`                 | OK                                                                                                                                                                                         |
+| `Regexp\Compile`, `Regexp\CompilePOSIX`          | `(*regexp.Regexp, error)`; the whole method set forwarded, uncopied                            | OK: the constructors are the Go package functions, and no method return is converted                                                                                                       |
 | `Exception`                                      | `(*Exception, error)`                                                                          | OK: was a struct **value**, which boxed a copy and left `$e->message = "x"` failing with "not a writable object property". The pointer costs the same one allocation                       |
 
 ### Outside the binding layer

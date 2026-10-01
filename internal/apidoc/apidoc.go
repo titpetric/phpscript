@@ -208,11 +208,19 @@ func primaryClassName(names []string, src *sources) string {
 // registeredClassTypes maps the concrete value returned by each constructor
 // to the PHP class name scripts use for that value. Named integer types need
 // this just as much as structs: time.Duration would otherwise render as int.
+//
+// Two constructors may build the same type, as Regexp\Compile and
+// Regexp\CompilePOSIX both build a *regexp.Regexp. The first name wins, so a
+// method returning that type is documented under one class rather than under
+// whichever registration was read last.
 func registeredClassTypes(rt *runner.Runtime, src *sources) map[reflect.Type]string {
 	classTypes := map[reflect.Type]string{}
 	for _, group := range constructorGroups(rt) {
 		t, ok := constructorResultType(group.ctor)
 		if !ok {
+			continue
+		}
+		if _, taken := classTypes[t]; taken {
 			continue
 		}
 		sort.Strings(group.names)

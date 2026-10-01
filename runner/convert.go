@@ -98,6 +98,11 @@ func phpTruthy(v any) bool {
 	case *model.Array:
 		return x.Len() > 0
 	default:
+		// A []byte reads as the string it carries, so "" and "0" are falsey as
+		// they are for a string. See phpval.Bytes.
+		if s, ok := phpval.Bytes(v); ok {
+			return s != "" && s != "0"
+		}
 		// An empty collection is falsey whatever its Go type, so a binding that
 		// returns a []string behaves like one that returns an *Array in
 		// `if ($rows)` and `empty($rows)`.
@@ -294,8 +299,19 @@ func phpIdentical(a, b any) bool {
 		y, ok := b.(bool)
 		return ok && x == y
 	case string:
+		if y, ok := phpval.Bytes(b); ok {
+			return x == y
+		}
 		y, ok := b.(string)
 		return ok && x == y
+	case []byte:
+		// A []byte is the string it carries, so `===` against one compares text
+		// rather than reporting two different types. See phpval.Bytes.
+		if y, ok := phpval.Bytes(b); ok {
+			return string(x) == y
+		}
+		y, ok := b.(string)
+		return ok && string(x) == y
 	case int, int64:
 		switch b.(type) {
 		case int, int64:

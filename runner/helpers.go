@@ -33,6 +33,22 @@ func (e *HostPanicError) Error() string {
 	return fmt.Sprintf("host panic in %s: %v", e.Callable, e.Value)
 }
 
+// callbackPanic carries the error a PHP callback reported out of the Go frames
+// between it and the host boundary. A binding declaring func(string) string
+// leaves nowhere to return one, so the only way across is a panic; the boundary
+// unwraps this one instead of reporting a host panic, so a script that throws
+// inside a callback catches its own exception.
+type callbackPanic struct{ err error }
+
+// recoveredError turns a recovered value into the error a script sees. callable
+// names what panicked, for the host-panic case.
+func recoveredError(recovered any, callable string) error {
+	if carried, ok := recovered.(callbackPanic); ok {
+		return carried.err
+	}
+	return &HostPanicError{Callable: callable, Value: recovered}
+}
+
 // wantsContext reports whether fn's first parameter is a context.Context.
 func wantsContext(t reflect.Type) bool {
 	return t.Kind() == reflect.Func && t.NumIn() > 0 && t.In(0) == contextType
@@ -101,19 +117,23 @@ func helperIndex(base, idx any) any {
 		return v
 	case model.Keyed:
 		return b.Read(keyString(idx))
-	case string:
+	case string, []byte:
 		// String offset: $s[$i] is the byte at position i, as PHP's is, so it
 		// agrees with strlen and with the offsets strpos and
 		// PREG_OFFSET_CAPTURE report. A negative offset counts from the end.
 		// mb_substr($s, $i, 1) is the character read.
+		//
+		// A []byte takes the same branch, being the string it carries rather
+		// than a list of integers. See phpval.Bytes.
+		text := phpString(base)
 		i := toInt(idx)
 		if i < 0 {
-			i += int64(len(b))
+			i += int64(len(text))
 		}
-		if i < 0 || i >= int64(len(b)) {
+		if i < 0 || i >= int64(len(text)) {
 			return ""
 		}
-		return b[i : i+1]
+		return text[i : i+1]
 	case nil:
 		return nil
 	}
@@ -378,7 +398,7 @@ func phpDebugType(v any) string {
 		return "null"
 	case bool:
 		return "bool"
-	case string:
+	case string, []byte:
 		return "string"
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return "int"
@@ -457,7 +477,7 @@ func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				result = nil
-				err = &HostPanicError{Callable: fmt.Sprintf("%T", fn), Value: recovered}
+				err = recoveredError(recovered, fmt.Sprintf("%T", fn))
 			}
 		}()
 		return f(args...)
@@ -476,12 +496,60 @@ func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
 // array_map inside a handler runs on the worker answering the request rather than
 // reaching back into the runtime the script built the value on.
 func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
-	if c, ok := v.(*Callable); ok && want != nil && want.Kind() == reflect.Func {
+	if want == nil || want.Kind() != reflect.Func {
+		return coerceArg(v, want)
+	}
+	if rv := reflect.ValueOf(v); rv.IsValid() && rv.Type().AssignableTo(want) {
+		return rv, true
+	}
+	if c, ok := v.(*Callable); ok {
 		if uniform := reflect.ValueOf(c.on(rt)); uniform.Type().AssignableTo(want) {
 			return uniform, true
 		}
 	}
+	// A binding may declare its callback in its own terms rather than in the
+	// uniform shape, as regexp.Regexp.ReplaceAllStringFunc declares
+	// func(string) string. Every spelling PHP calls a callable reaches it,
+	// which is what rt.Callable answers: a closure on either engine, a declared
+	// function by name, Class::method, array($obj, "method").
+	if call, ok := rt.Callable(v); ok {
+		if fn, ok := adaptCallable(call, want); ok {
+			return fn, true
+		}
+	}
 	return coerceArg(v, want)
+}
+
+// adaptCallable wraps a PHP callable in want, the Go function type a binding
+// declared.
+//
+// want must return one value or none, since a PHP closure returns one. An error
+// the callable reports has nowhere to go in a signature that declares no error
+// slot, so it is raised as a panic, which the host boundary turns into a
+// catchable throwable the way it does any other panic in a binding.
+func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.Value, bool) {
+	if want.IsVariadic() || want.NumOut() > 1 {
+		return reflect.Value{}, false
+	}
+	fn := reflect.MakeFunc(want, func(in []reflect.Value) []reflect.Value {
+		args := make([]any, len(in))
+		for i, arg := range in {
+			args[i] = arg.Interface()
+		}
+		result, err := call(args...)
+		if err != nil {
+			panic(callbackPanic{err: err})
+		}
+		if want.NumOut() == 0 {
+			return nil
+		}
+		out, ok := coerceArg(result, want.Out(0))
+		if !ok {
+			panic(callbackPanic{err: fmt.Errorf("callback returned %s, want %s", phpDebugType(result), want.Out(0))})
+		}
+		return []reflect.Value{out}
+	})
+	return fn, true
 }
 
 // coerceArg converts a value to the target parameter type where a cheap
@@ -658,8 +726,9 @@ type goMethodInfo struct {
 	// bind is the pre-planned call over the bound signature: coercion with
 	// the parameter types resolved once, padding, Call, result reduction.
 	// It takes the bound method value because the cache is per receiver
-	// type, not per receiver.
-	bind func(m reflect.Value, args []any) (any, error)
+	// type, not per receiver, and the runtime because a callable argument is
+	// bound to the runtime making the call.
+	bind func(rt *Runtime, m reflect.Value, args []any) (any, error)
 }
 
 // resolveGoMethod resolves the way callGoMethod always has: the exact name,
@@ -707,7 +776,7 @@ func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 // bindGoMethod plans a method call the way reflectInvoker plans a function
 // call: parameter types, variadic element and padding resolved at cache
 // time, coercion through the one table per call.
-func bindGoMethod(mtype reflect.Type) func(reflect.Value, []any) (any, error) {
+func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any, error) {
 	numIn, variadic := mtype.NumIn(), mtype.IsVariadic()
 	wantsCtx := wantsContext(mtype)
 	params := make([]reflect.Type, numIn)
@@ -718,7 +787,7 @@ func bindGoMethod(mtype reflect.Type) func(reflect.Value, []any) (any, error) {
 	if variadic {
 		elem = params[numIn-1].Elem()
 	}
-	return func(m reflect.Value, args []any) (any, error) {
+	return func(rt *Runtime, m reflect.Value, args []any) (any, error) {
 		if !variadic && len(args) > numIn {
 			return nil, &ArgumentCountError{Want: numIn, Got: len(args)}
 		}
@@ -735,7 +804,7 @@ func bindGoMethod(mtype reflect.Type) func(reflect.Value, []any) (any, error) {
 			case i < numIn:
 				want = params[i]
 			}
-			v, ok := coerceArg(a, want)
+			v, ok := coerceArgOn(rt, a, want)
 			if !ok {
 				return nil, &TypeError{
 					Position: i + offset,
@@ -760,10 +829,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor fu
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			result = nil
-			err = &HostPanicError{
-				Callable: fmt.Sprintf("%T::%s", base, method),
-				Value:    recovered,
-			}
+			err = recoveredError(recovered, fmt.Sprintf("%T::%s", base, method))
 		}
 	}()
 	if base == nil {
@@ -791,7 +857,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor fu
 	if info.wantsCtx {
 		args = append([]any{rt.contextWithScope(contextWithEnv(rt.ctx, rt.Env), scopeFor())}, args...)
 	}
-	result, err = info.bind(rv.Method(info.index), args)
+	result, err = info.bind(rt, rv.Method(info.index), args)
 	if err != nil {
 		return nil, methodCallError(err, method)
 	}

@@ -155,6 +155,63 @@ func TestBindingReturnShapes(t *testing.T) {
 			want: "yes",
 		},
 
+		// A []byte is the string it carries, everywhere a string is read.
+		{
+			name: "[]byte return is a string",
+			php:  `<?php $b = bind_bytes(); echo $b . ":" . strlen($b) . ":" . gettype($b);`,
+			want: "alpha:5:string",
+		},
+		{
+			name: "[]byte is not an array",
+			php:  `<?php $b = bind_bytes(); echo is_array($b) ? "array" : "not an array";`,
+			want: "not an array",
+		},
+		{
+			name: "[]byte compares as a string",
+			php:  `<?php $b = bind_bytes(); echo ($b === "alpha") ? "identical" : "different";`,
+			want: "identical",
+		},
+		{
+			name: "[]byte takes a string offset",
+			php:  `<?php $b = bind_bytes(); echo $b[0] . $b[4];`,
+			want: "aa",
+		},
+		{
+			name: "empty []byte is falsey",
+			php:  `<?php $b = bind_bytes_empty(); echo $b ? "truthy" : "falsey";`,
+			want: "falsey",
+		},
+		{
+			name: "foreach over [][]byte yields strings",
+			php:  `<?php foreach (bind_bytes_list() as $v) { echo $v . " "; }`,
+			want: "alpha beta gamma delta epsilon ",
+		},
+		{
+			name: "foreach over []byte iterates zero times",
+			php:  `<?php echo "["; foreach (bind_bytes() as $v) { echo $v; } echo "]";`,
+			want: "[]",
+		},
+
+		// A binding declaring its own callback type takes every callable
+		// spelling, not only the uniform one.
+		{
+			name: "closure fills a typed Go callback",
+			php:  `<?php echo bind_callback("alpha", function ($s) { return strtoupper($s); });`,
+			want: "ALPHA",
+		},
+		{
+			name: "function name fills a typed Go callback",
+			php:  `<?php function shout($s) { return $s . "!"; } echo bind_callback("alpha", "shout");`,
+			want: "alpha!",
+		},
+		{
+			name: "a throw inside a callback keeps its message",
+			php: `<?php try {
+					bind_callback("alpha", function ($s) { throw new Exception("no:" . $s); });
+				} catch (Exception $e) { echo $e->getMessage(); }`,
+			want: "no:alpha",
+		},
+
 		// A trailing error surfaces to PHP as a catchable throw.
 		{
 			name: "error return is catchable",

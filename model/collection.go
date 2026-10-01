@@ -62,6 +62,10 @@ func RangeValues(v any, fn func(key, val any) bool) {
 	switch x := v.(type) {
 	case nil:
 		return
+	case []byte:
+		// A byte slice is a PHP string, not a list of integers, so it iterates
+		// zero times the way a string does. See phpval.Bytes.
+		return
 	case *Array:
 		if x != nil {
 			x.Range(fn)
@@ -127,6 +131,10 @@ func LenValues(v any) (int, bool) {
 	switch x := v.(type) {
 	case nil:
 		return 0, false
+	case []byte:
+		// Not a collection, so count() applies its scalar rule rather than
+		// answering a byte count. See phpval.Bytes.
+		return 0, false
 	case *Array:
 		if x == nil {
 			return 0, false
@@ -157,14 +165,15 @@ func LenValues(v any) (int, bool) {
 
 // IsCollection reports whether v is array-like from PHP's point of view: an
 // *Array or a native Go slice or map. Strings and structs are not, matching
-// is_array().
+// is_array(). A []byte is a string too, not the one slice that reads as a list
+// of integers; see phpval.Bytes.
 func IsCollection(v any) bool {
 	switch x := v.(type) {
 	case *Array, []any, []string, map[string]any, []map[string]any:
 		return true
 	case Collection:
 		return x != nil
-	case nil:
+	case nil, []byte:
 		return false
 	}
 	rv := reflect.ValueOf(v)

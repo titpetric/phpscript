@@ -32,10 +32,27 @@ func GoString(v any) (string, bool) {
 	switch x := v.(type) {
 	case time.Time:
 		return x.Format(time.DateTime), true
+	case []byte:
+		return string(x), true
 	case fmt.Stringer:
 		return x.String(), true
 	}
 	return "", false
+}
+
+// Bytes answers the string a []byte carries, and whether v was one.
+//
+// A PHP string is a byte string, so a binding's []byte is one of those rather
+// than a list of integers: regexp.Regexp.Find returns the text it matched, not
+// fifteen numbers. This is the test the value rules ask wherever a []byte would
+// otherwise fall through to the reflect path and read as a slice - truthiness,
+// identity, an offset read, gettype and model.IsCollection.
+func Bytes(v any) (string, bool) {
+	b, ok := v.([]byte)
+	if !ok {
+		return "", false
+	}
+	return string(b), true
 }
 
 // String renders v the way PHP renders a value in a string context.

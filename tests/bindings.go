@@ -232,6 +232,25 @@ func registerBindings(rt registrar) {
 	rt.RegisterFunc("bind_small_int", func() int64 { return 7 })
 	rt.RegisterFunc("bind_string", func() string { return "alpha" })
 	rt.RegisterFunc("bind_bool", func() bool { return true })
+	// A []byte is a string, not the one slice shape that reads as a list of
+	// integers: PHP's strings are byte strings, and Go's own text APIs are
+	// declared over []byte half the time. regexp.Regexp.Find is the case that
+	// brought it in.
+	rt.RegisterFunc("bind_bytes", func() []byte { return []byte("alpha") })
+	rt.RegisterFunc("bind_bytes_empty", func() []byte { return nil })
+	rt.RegisterFunc("bind_bytes_list", func() [][]byte {
+		out := make([][]byte, 0, len(bindingWords))
+		for _, w := range bindingWords {
+			out = append(out, []byte(w))
+		}
+		return out
+	})
+	// bind_callback takes its callback in its own terms rather than in the
+	// uniform func(...any) (any, error) shape, as regexp.Regexp's
+	// ReplaceAllStringFunc does.
+	rt.RegisterFunc("bind_callback", func(s string, fn func(string) string) string {
+		return fn(s)
+	})
 
 	// bind_compare_desc is a comparator for usort, to check that sorting a
 	// binding's slice mutates the slice the script holds.

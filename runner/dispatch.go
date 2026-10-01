@@ -68,7 +68,7 @@ func guardInvoker(call func(*Runtime, []any) (any, error), ft reflect.Type, type
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				result = nil
-				err = &HostPanicError{Callable: typeName, Value: recovered}
+				err = recoveredError(recovered, typeName)
 			}
 		}()
 		if !variadic && len(args) > numIn {

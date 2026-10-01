@@ -98,7 +98,7 @@ PHP construction invokes that function and leaves its first non-error return val
 $storage = new Storage;
 ```
 
-The constructor may take ordinary PHP-supplied arguments after an optional leading `context.Context`. Return slots declared exactly as `error` are omitted; a non-nil value in any such slot becomes a PHP runtime error and can be handled with `try`/`catch`. Among all other slots, the first non-nil interface value is exposed and later values are discarded. Prefer the conventional `(T, error)` shape and avoid additional returns.
+The constructor may take ordinary PHP-supplied arguments after an optional leading `context.Context`. Return slots declared exactly as `error` are omitted; a non-nil value in any such slot becomes a PHP runtime error and can be handled with `try`/`catch`. Every other slot is exposed: one value is the result, and several become a PHP list in declaration order, which a script destructures. `regexp.Regexp.LiteralPrefix` returns `(string, bool)`, so `list($prefix, $complete) = $rx->literal_prefix();` reads both, and keeping only the first would answer a different question.
 
 Missing non-variadic constructor arguments are padded with their Go zero values; relying on this differs from PHP default-parameter semantics and is best avoided.
 
@@ -116,7 +116,7 @@ echo $record->value;
 
 If the first method parameter is exactly `context.Context`, the runtime inserts its lifecycle context before the arguments supplied by PHP. Other arguments are matched positionally, and omitted trailing arguments are padded with their Go zero values, as they are for constructors and registered functions.
 
-Method returns follow the same exact-`error` and first-non-nil-value rules as constructors. A named concrete type that implements `error`, or an error stored in an `any` return slot, is not recognized as an error slot.
+Method returns follow the same exact-`error` and multiple-value rules as constructors. A named concrete type that implements `error`, or an error stored in an `any` return slot, is not recognized as an error slot.
 
 ## Binding functions
 
@@ -181,6 +181,10 @@ Passing more arguments than a non-variadic callable declares is refused, with a 
 This is not a complete PHP-to-Go coercion system. Prefer stable scalar signatures and validate values in the binding when scripts are untrusted.
 
 Go slices and arrays can be traversed with PHP `foreach`. Exported Go struct fields can be read with `->` using case-insensitive names. Go maps and slices support PHP-style index reads. phpscript arrays are `*model.Array`; they are not automatically converted to arbitrary Go map or slice types.
+
+A `[]byte` is the exception to that, and is a PHP string rather than a list of integers: PHP's strings are byte strings, and half of Go's text API is declared over byte slices. `echo`, `strlen`, `var_dump`, `gettype`, `is_string`, `===`, an offset read and truthiness all read a returned `[]byte` as its text, `is_array` is false, and `foreach` over one iterates zero times. A `[][]byte` is still a list, of strings. `phpval.Bytes` is the test, and [Regexp bindings](../../bindings-regexp.md) lists where it is asked.
+
+A binding may declare its callback in Go's own terms rather than as the uniform `func(...any) (any, error)`. `regexp.Regexp.ReplaceAllStringFunc` declares `func(string) string`, and every spelling PHP calls a callable fills it: a closure, a declared function by name, `Class::method`, `array($object, "method")`. A Go function type with no error slot leaves a callback nowhere to report one, so an error the PHP callable raises crosses the intervening Go frames as a panic and arrives at the caller as the throwable the script threw. A callback target must return one value or none, and must not be variadic.
 
 Bindings run in-process and may expose mutable Go pointers. Their lifetime, thread safety, authorization, and transaction boundaries remain the host application's responsibility.
 

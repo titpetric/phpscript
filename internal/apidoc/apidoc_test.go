@@ -173,6 +173,70 @@ type Thing struct{}
 	}
 }
 
+// TestScanQualifiedRegistration covers the three shapes a selector takes as the
+// registered expression: a package in the tree, a method on a value, and a
+// package outside the tree. The last one has no declaration to read, and
+// borrowing one that shares the name published the wrong parameters.
+func TestScanQualifiedRegistration(t *testing.T) {
+	dir := t.TempDir()
+	for name, body := range map[string]string{
+		"engine/compile.go": `package engine
+
+// Compile lowers an ast.
+func Compile(ast *Program) (*Program, error) { return nil, nil }
+`,
+		"host/host.go": `package host
+
+// SetRoot records the root.
+func (rt *Runtime) SetRoot(dir string) bool { return false }
+`,
+		"area/area.go": `package area
+
+// register installs the area.
+func register(rt *Runtime) {
+	rt.RegisterConstructor("Area\\Compile", stdregexp.Compile)
+	rt.RegisterFunc("in_tree", engine.Compile)
+	rt.RegisterFunc("chroot", rt.SetRoot)
+}
+`,
+	} {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	scanned, err := scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A package in the tree resolves, parameter name and all.
+	inTree := scanned.funcs["in_tree"]
+	if inTree == nil || len(inTree.params) != 1 || inTree.params[0].Name != "ast" {
+		t.Errorf("in_tree params = %+v, want one named ast", inTree)
+	}
+
+	// A method reached through a value resolves, the qualifier being a variable.
+	chroot := scanned.funcs["chroot"]
+	if chroot == nil || len(chroot.params) != 1 || chroot.params[0].Name != "dir" {
+		t.Errorf("chroot params = %+v, want one named dir", chroot)
+	}
+
+	// A package outside the tree has no signature here, whatever names it
+	// shares with one inside it.
+	ctor := scanned.ctors[`Area\Compile`]
+	if ctor == nil {
+		t.Fatal(`Area\Compile: not scanned`)
+	}
+	if ctor.params != nil {
+		t.Errorf(`Area\Compile params = %+v, want none so reflection decides`, ctor.params)
+	}
+}
+
 // Registered constructor return types are the source of truth for the PHP
 // class names used by function and method return hints. This matters for named
 // scalar types such as time.Duration as well as structs and pointers.

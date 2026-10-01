@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -238,9 +239,15 @@ func (src *sources) resolveSignature(entry *sourceEntry, pkg, name string, expr 
 			}
 		}
 	case *ast.SelectorExpr:
-		if info := src.lookupDecl(pkg, fn.Sel.Name, false); info != nil {
-			ft = info.decl.Type
-			doc = declComment(info.decl, name)
+		// The qualifier has to agree with the package the declaration was
+		// found in. Without that check a registration of regexp.Compile reads
+		// the signature of flatstack/engine.Compile, which shares the name and
+		// nothing else, and publishes its parameters.
+		if qualifier, ok := fn.X.(*ast.Ident); ok {
+			if info := src.lookupDeclIn(pkg, qualifier.Name, fn.Sel.Name); info != nil {
+				ft = info.decl.Type
+				doc = declComment(info.decl, name)
+			}
 		}
 	}
 	if ft != nil {
@@ -281,6 +288,28 @@ func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 		return nil
 	}
 	return fallback
+}
+
+// lookupDeclIn returns the declaration a qualified selector names.
+//
+// The qualifier is either a package, in which case the declaration has to be a
+// function in a package of that name, or a value, in which case it is a method
+// and the receiver is what the qualifier holds. A qualifier naming no package
+// in the tree, which every import of the Go standard library is, leaves the
+// signature to reflection: without that, registering regexp.Compile would
+// publish the parameters of flatstack/engine.Compile, which shares the name and
+// nothing else.
+func (src *sources) lookupDeclIn(pkg, qualifier, name string) *declInfo {
+	var method *declInfo
+	for _, info := range src.decls[name] {
+		switch {
+		case info.pkg == pkg, path.Base(info.pkg) == qualifier:
+			return info
+		case info.recvType != "" && method == nil:
+			method = info
+		}
+	}
+	return method
 }
 
 // stmtComment returns the comment written against the statement enclosing

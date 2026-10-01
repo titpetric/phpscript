@@ -45,6 +45,41 @@ func legacyToString(v any) string {
 	}
 }
 
+// TestBytes pins the rule the value helpers ask about a []byte: it is the
+// string it carries, so a binding returning one hands back text rather than a
+// list of integers.
+func TestBytes(t *testing.T) {
+	tests := []struct {
+		name  string
+		value any
+		want  string
+		ok    bool
+	}{
+		{name: "text", value: []byte("alpha"), want: "alpha", ok: true},
+		{name: "empty", value: []byte{}, want: "", ok: true},
+		{name: "nil slice", value: []byte(nil), want: "", ok: true},
+		{name: "a string is not one", value: "alpha", want: "", ok: false},
+		{name: "another slice is not one", value: []string{"alpha"}, want: "", ok: false},
+		{name: "nil", value: nil, want: "", ok: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := Bytes(test.value)
+			if got != test.want || ok != test.ok {
+				t.Errorf("Bytes(%#v) = %q, %v, want %q, %v", test.value, got, ok, test.want, test.ok)
+			}
+		})
+	}
+
+	// String and GoString agree with it, which is what echo and var_dump read.
+	if got := String([]byte("alpha")); got != "alpha" {
+		t.Errorf("String([]byte) = %q, want %q", got, "alpha")
+	}
+	if got, ok := GoString([]byte("alpha")); got != "alpha" || !ok {
+		t.Errorf("GoString([]byte) = %q, %v, want %q, true", got, ok, "alpha")
+	}
+}
+
 // TestInt pins Int against PHP's own integer cast. Every expectation here was
 // read from `php -r 'var_dump((int)$s);'` rather than from what the previous
 // implementation happened to return.
