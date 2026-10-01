@@ -34,13 +34,15 @@ $http->wait();
 
 ## What a handler is
 
-A handler is a callable, in three spellings:
+A handler is a callable, in five spellings:
 
-| Spelling                        | Written as                                          |
-|---------------------------------|-----------------------------------------------------|
-| A closure                       | `$mux->handle("GET /x", function ($w, $r) { ... })` |
-| A method bound to its receiver  | `$mux->handle("GET /x", $this->index)`              |
-| The name of a declared function | `$mux->handle("GET /x", "handle_index")`            |
+| Spelling                        | Written as                                                      |
+|---------------------------------|-----------------------------------------------------------------|
+| A closure                       | `$mux->handle("GET /x", function ($w, $r) { ... })`             |
+| A method bound to its receiver  | `$mux->handle("GET /x", $this->index)` or `$this->index(...)`   |
+| An object declaring `__invoke`  | `$mux->handle("GET /x", new Index)` or `(new Index)(...)`       |
+| The name of a declared function | `$mux->handle("GET /x", "handle_index")` or `handle_index(...)` |
+| A static method                 | `$mux->handle("GET /x", "Site::index")` or `Site::index(...)`   |
 
 `$this->fnName` reads the method without calling it, which is the [first-class callable syntax](../reference/functions/README.md#first-class-callable-syntax) `$this->fnName(...)` in a shorter spelling. Both spellings parse and answer the same bound method; the shorter one is the divergence, because php reads it as an undefined property. It is what a server written as a class registers:
 
@@ -58,7 +60,9 @@ class Server {
 }
 ```
 
-`array($object, "method")` is not accepted here. It stays a callable everywhere else - `call_user_func`, `usort` and the rest take it - and it is not going to be added: a handler is a function of its arguments, and wrapping one in an array to name a method is a spelling this does not want.
+An `__invoke` is that same binding under the name php reserves for one, and a static method names no receiver at all: an empty instance is built per call, so `self::` resolves and nothing is shared between two requests.
+
+`array($object, "method")` and `array("Class", "method")` are not accepted here. They stay callable everywhere else - `call_user_func`, `usort`, a Go binding's callback and the rest take them - and they are not going to be added: a handler is a function of its arguments, wrapping one in an array to name a method is a spelling this does not want, and `(...)` now writes the same thing. The refusal names the spelling and what to write instead, so a route registered with one fails where it is written rather than on the first request.
 
 ## Patterns
 

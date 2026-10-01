@@ -158,11 +158,17 @@ func (h flatHost) Echo(value any) error {
 	return err
 }
 
+// Globals hands the engine the table runInterpreted seeds its global scope from,
+// so the bytecode engine's top-level frame starts with the same names. It is not
+// answered from Lookup, which every frame reads: a global belongs to the global
+// scope, and resolveVar does not reach one from a function either.
+func (h flatHost) Globals() map[string]any { return h.runtime.globals }
+
+// Lookup is resolveVar's tail: the superglobals, which every frame sees, and
+// then the constant table. A frame's own names are the engine's slots, and a
+// global is seeded into the top-level frame by Globals.
 func (h flatHost) Lookup(name string) any {
 	if value, ok := h.runtime.auto.Lookup(name); ok {
-		return value
-	}
-	if value, ok := h.runtime.globals[name]; ok {
 		return value
 	}
 	return h.runtime.constants[name]
@@ -174,9 +180,6 @@ func (h flatHost) Lookup(name string) any {
 // which is why this is not Lookup.
 func (h flatHost) Constant(name string) (any, error) {
 	if value, ok := h.runtime.auto.Lookup(name); ok {
-		return value, nil
-	}
-	if value, ok := h.runtime.globals[name]; ok {
 		return value, nil
 	}
 	if value, ok := h.runtime.constants[name]; ok {

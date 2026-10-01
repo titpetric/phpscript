@@ -580,31 +580,126 @@ define("MUX", $mux);
 	}
 }
 
-// TestMuxRefusesAnArrayCallable pins the one callable spelling the router does
-// not take. It is a callable everywhere else; a handler is a closure or a
-// method read off its receiver, and array($object, "method") is neither.
-func TestMuxRefusesAnArrayCallable(t *testing.T) {
-	var out strings.Builder
-	rt := runner.New(&out, runner.Options{})
-	stdlib.Register(rt)
+// TestMuxTakesAStaticMethodAndAnInvokable is the rest of what AsCallable takes:
+// "Class::method", which has no receiver to share, and an object declaring
+// __invoke, which is a bound method under the name php reserves for one. Each
+// also goes in through the first-class spelling `callable(...)`, which hands the
+// router a Closure and is the form php itself writes.
+func TestMuxTakesAStaticMethodAndAnInvokable(t *testing.T) {
+	_, handler := serveScript(t, `<?php
+class Site {
+	static function hello($w, $r) {
+		$w->write("hei " . $r->url->query()->get("name"));
+	}
+}
 
-	program, err := rt.Load(`<?php
+class Greeter {
+	public $greeting = "moi";
+
+	public function __invoke($w, $r) {
+		$w->write($this->greeting . " " . $r->url->query()->get("name"));
+	}
+}
+
+function handle_root($w, $r) {
+	$w->write("root " . $r->url->query()->get("name"));
+}
+
+$mux = new HTTP\Mux();
+$mux->handle("GET /hello", "Site::hello");
+$mux->handle("GET /greet", new Greeter);
+// The first-class spellings arrive as a Closure, so the router takes the form
+// php itself writes for each of the three it accepts by name.
+$mux->handle("GET /static", Site::hello(...));
+$mux->handle("GET /bound", (new Greeter)(...));
+$mux->handle("GET /named", handle_root(...));
+define("MUX", $mux);
+`)
+
+	for _, want := range []struct{ path, body string }{
+		{"/hello?name=tit", "hei tit"},
+		{"/greet?name=tit", "moi tit"},
+		{"/static?name=tit", "hei tit"},
+		{"/bound?name=tit", "moi tit"},
+		{"/named?name=tit", "root tit"},
+	} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, want.path, nil))
+		if response.Code != http.StatusOK {
+			t.Fatalf("GET %s: status = %d, body = %q", want.path, response.Code, response.Body.String())
+		}
+		if got := response.Body.String(); got != want.body {
+			t.Errorf("GET %s: body = %q, want %q", want.path, got, want.body)
+		}
+	}
+}
+
+// TestMuxRefusesAnArrayCallable pins the one callable spelling the router does
+// not take, and the words it is refused in. It is a callable everywhere else; a
+// handler is a closure or a method read off its receiver, and
+// array($object, "method") is neither. A refusal that named neither the
+// spelling nor the alternative was the whole of what a script used to be told.
+func TestMuxRefusesAnArrayCallable(t *testing.T) {
+	tests := []struct {
+		name    string
+		handler string
+		want    string
+	}{
+		{
+			name:    "array with an object",
+			handler: `array($site, "hello")`,
+			want:    `the array($object, "method") spelling is not a handler here`,
+		},
+		{
+			name:    "array with a class name",
+			handler: `array("Site", "hello")`,
+			want:    `the array($object, "method") spelling is not a handler here`,
+		},
+		{
+			name:    "an int is no spelling at all",
+			handler: `42`,
+			want:    "a callable is a closure, an object with __invoke",
+		},
+		{
+			name:    "a class that declares no __invoke",
+			handler: `new Site`,
+			want:    "a callable is a closure, an object with __invoke",
+		},
+		{
+			name:    "a method the class does not declare",
+			handler: `"Site::missing"`,
+			want:    "the class declares no method of that name",
+		},
+		{
+			name:    "a class that is not declared",
+			handler: `"Missing::hello"`,
+			want:    "no class of that name is declared",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var out strings.Builder
+			rt := runner.New(&out, runner.Options{})
+			stdlib.Register(rt)
+
+			program, err := rt.Load(`<?php
 class Site {
 	public function hello($w, $r) { $w->write("hi"); }
 }
 $site = new Site;
 $mux = new HTTP\Mux();
-$mux->handle("GET /hello", array($site, "hello"));
+$mux->handle("GET /hello", ` + test.handler + `);
 `)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = rt.Run(program)
-	if err == nil {
-		t.Fatal("an array callable was accepted as a handler")
-	}
-	if !strings.Contains(err.Error(), "a callable is a closure") {
-		t.Errorf("error %q does not say what a handler is", err)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = rt.Run(program); err == nil {
+				t.Fatalf("%s was accepted as a handler", test.handler)
+			}
+			if !strings.Contains(err.Error(), test.want) {
+				t.Errorf("error %q does not contain %q", err, test.want)
+			}
+		})
 	}
 }
 

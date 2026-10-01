@@ -46,4 +46,5 @@ public static function getCurrent(): Closure
 - phpscript implements the value, not the class. `function () { ... }` produces a callable a script can store, pass and hand to `usort()` or `call_user_func()`.
 - php 8.1's [first-class callable syntax](../../functions/README.md#first-class-callable-syntax) produces the same value: `strlen(...)`, `Greeter::shout(...)`, `$obj->method(...)` and `$fn(...)` each answer the callable without calling it, and `get_class()` answers `Closure` for it. `Closure::fromCallable()` takes the same spellings as an argument.
 - The name is not declared, so `instanceof Closure` is false and none of the methods above exists. Rebinding `$this` is what they are for, and there is nothing here to rebind to.
-- A closure captures with `use ($x)`. `use (&$x)` is a documented won't-implement, along with the rest of `&` outside `foreach`.
+- A closure captures with `use ($x)`, and that list is the whole of what an invocation carries, together with the parameters and a bound `$this`. See [Anonymous functions](../../functions/README.md#anonymous-functions).
+- `use (&$x)` is a documented won't-implement, along with the rest of `&` outside `foreach`. It binds by value, and the bytecode engine refuses the spelling rather than compiling it as one, so a program containing it runs on the interpreter.

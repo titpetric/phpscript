@@ -232,6 +232,8 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Binding a constructor](extensions/bindings.md#binding-a-constructor)
   - [Invoking Go methods](extensions/bindings.md#invoking-go-methods)
   - [Binding functions](extensions/bindings.md#binding-functions)
+  - [Callbacks](extensions/bindings.md#callbacks)
+    - [Describing one to a host](extensions/bindings.md#describing-one-to-a-host)
   - [Output parameters](extensions/bindings.md#output-parameters)
   - [Context propagation](extensions/bindings.md#context-propagation)
   - [Value conversion](extensions/bindings.md#value-conversion)

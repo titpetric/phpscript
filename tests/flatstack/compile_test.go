@@ -198,3 +198,34 @@ func TestFlatstackDestructuringTargetKind(t *testing.T) {
 		})
 	}
 }
+
+// TestFlatstackRejectsFuncGetArgs pins the one function call the compiler
+// refuses by name. A compiled frame seeds its declared parameters into slots and
+// keeps no argument list, so the call used to answer an empty one wherever it
+// appeared - in a function, a closure or a method - while the interpreter and
+// php answered the arguments. Refusing it sends the whole program to the
+// interpreter, which answers it.
+func TestFlatstackRejectsFuncGetArgs(t *testing.T) {
+	sources := map[string]string{
+		"in a function":  `<?php function f($a) { return func_get_args(); } f(1, 2);`,
+		"in a closure":   `<?php $f = function ($a) { return func_get_args(); }; $f(1, 2);`,
+		"in a method":    `<?php class K { function m($a) { return func_get_args(); } }`,
+		"fully resolved": `<?php function f($a) { return \func_get_args(); }`,
+		"any casing":     `<?php function f($a) { return FUNC_GET_ARGS(); }`,
+	}
+	for name, source := range sources {
+		t.Run(name, func(t *testing.T) {
+			program, err := parser.Parse(source)
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = flatstack.Supports(program)
+			if err == nil {
+				t.Fatal("expected func_get_args() to be rejected")
+			}
+			if want := "unsupported func_get_args()"; !strings.Contains(err.Error(), want) {
+				t.Fatalf("error = %v, want one containing %q", err, want)
+			}
+		})
+	}
+}

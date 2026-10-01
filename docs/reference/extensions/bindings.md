@@ -138,6 +138,62 @@ Registered functions use the same positional conversion and return/error rules a
 
 The context injected into a free function also contains the active PHP scope; runtime helpers can retrieve it with `runner.ScopeFromContext`. Constructors and Go methods receive the runtime lifecycle context directly, without that scope value.
 
+## Callbacks
+
+A binding may take a callable. PHP has six spellings for one, and every one of them fills a Go function parameter, on a registered function, on a method of a bound Go value and on a constructor alike:
+
+| Spelling                   | Written as                              | Reaches                                        |
+|----------------------------|-----------------------------------------|------------------------------------------------|
+| A closure                  | `function ($s) { ... }`                 | The declaration, with its `use (...)` values   |
+| A declared function's name | `"strtoupper"`                          | The runtime's function table, binding included |
+| A static method            | `"Caser::quiet"`                        | The declaration, against an empty instance     |
+| A method on its receiver   | `array($obj, "method")`, `$obj->method` | The declaration, with that receiver            |
+| A class's static method    | `array("Caser", "quiet")`               | As the string spelling                         |
+| An object with `__invoke`  | `$obj`                                  | That method, with that receiver                |
+
+[First-class callable syntax](../functions/README.md#first-class-callable-syntax) adds no row: `strtoupper(...)` and `$obj->method(...)` resolve to the Closure of the first row, which is what a binding then receives.
+
+A binding declares the parameter in one of two shapes. The uniform one is what `Runtime.Callable` answers and what the runtime invokes everywhere:
+
+```go
+rt.RegisterFunc("each_word", func(s string, visit func(...any) (any, error)) error {
+	for _, word := range strings.Fields(s) {
+		if _, err := visit(word); err != nil {
+			return err
+		}
+	}
+	return nil
+})
+```
+
+The other is Go's own terms, which is what a library's method set already looks like - `regexp.Regexp.ReplaceAllStringFunc` takes a `func(string) string`. Those are wrapped with `reflect.MakeFunc` over the declared signature:
+
+```go
+rt.RegisterFunc("map_word", func(s string, fn func(string) string) string { return fn(s) })
+```
+
+Two rules apply to the declared signature. It returns one value or none, because a PHP closure answers one; a second result has nothing to come from and the argument is refused as a type error. And it is not variadic, apart from the uniform shape itself. What the callable answers is fitted to the declared result through the same conversion table an argument takes, so a string result reads the value as PHP renders it in a string context and a `bool` result takes a bool and not a truthy int.
+
+Errors differ between the two shapes, and that is the reason to prefer the uniform one for anything that can fail. A signature with an `error` slot gets the error the callback reported. A signature without one leaves it nowhere to go, so it crosses the intervening Go frames as a panic, which the host boundary unwraps into the throwable the script threw: a `catch` written around the call takes the script's own exception rather than a host panic naming a Go type. A binding between the callback and the boundary therefore must not recover a panic it did not raise.
+
+A callable is bound to the runtime making the call, not the one that built the value. That is what makes a comparator or a handler built before an HTTP server started run on the worker answering the request; see [program re-entry](../../design.md#program-re-entry).
+
+### Describing one to a host
+
+`Runtime.Callable` answers the call. `Runtime.AsCallable` answers the value, a `*runner.Callable`, which is what a host holds when it has to run the thing later and possibly on another runtime:
+
+```go
+callable, err := rt.AsCallable(handler)
+if err != nil {
+	return err
+}
+result, err := callable.Invoke(worker, w, r)
+```
+
+It is the narrower of the two, because it needs a declaration to carry. The two array spellings are refused, which is a decision rather than a gap: a handler is a function of its arguments, and wrapping one in an array to name a method is a spelling this does not want. They stay callable everywhere else. A Go func is refused for a different reason, that it is not a declaration and a host holding one already holds the call. The error names which it was and what the alternative is.
+
+`Callable.Captures` reports whether the value took anything from where it was written: a closure's `use (...)` list, the `$this` one written in a method binds, or the receiver a bound method was read off. What it captured is shared by every runtime running it and must be read rather than written to. A declared function and a static method capture nothing and run anywhere.
+
 ## Output parameters
 
 A binding returns its result; it cannot write back into a caller's variable, because a PHP variable in this runtime is a name in a frame table rather than a cell a Go function could hold. The one exception is arranged at compile time: `byRefArgs` in `model/byref.go` names the argument positions that are outputs, per function, which is where both runtimes read it from, and an argument at such a position that is a plain variable is emitted as a setter closure instead of its value. `preg_match`'s `$matches` is the case that exists.

@@ -45,6 +45,10 @@ echo $greet("world");                     // Hello, world
 
 A closure declared inside a method captures `$this`; `static function () {}` declares one that does not.
 
+The `use (...)` list is the whole of what comes along. An invocation gets a frame holding those values, the parameters, `__FILE__` and `__DIR__`, and the bound `$this`: a variable of the enclosing frame that the list did not name is unset inside the body, not shadowed and not inherited, and a nested closure names again whatever it needs. `get_defined_vars()` inside a closure reads that frame back, which is what [tests/fixtures/functions/closure_capture_scope.phpt](../../../tests/fixtures/functions/closure_capture_scope.phpt) states on both engines. The capture is taken where the closure value is created, so a later write to a captured variable is not visible to it. A parameter sharing a name with a capture is bound last and wins; php rejects that program outright, as "Cannot use lexical variable $x as a parameter name".
+
+`static $x` in a closure body belongs to the closure value, so two closures built by one factory count independently, and a call on another runtime gets a bag of its own. The bytecode engine does not compile that form; the program runs on the interpreter.
+
 ## Calling a callable value
 
 A callable held in a value is invoked directly, whatever holds it:
@@ -80,4 +84,4 @@ Both engines compile the syntax; nothing about it sends a program to the interpr
 
 ## Calling functions
 
-Unqualified calls in a namespace first resolve in that namespace and then fall back to a global function. Supported callbacks include closures, function names, and bound methods where an API accepts a callable.
+Unqualified calls in a namespace first resolve in that namespace and then fall back to a global function. Wherever an API takes a callable, every spelling above fills it, `usort()` and `array_map()` and a Go binding's callback alike; see [Callbacks](../extensions/bindings.md#callbacks) for what a binding declares to receive one.

@@ -151,7 +151,7 @@ It supports these expressions:
 
 Arithmetic, coercion, comparison, array access, and truthiness are implemented by the flat VM and its small PHP-semantics host boundary. The bridge uses runner's existing reflection path for registered Go constructors, functions and methods. The compatibility interpreter evaluates expressions on runner/expr, its closure-chain engine, for unsupported programs.
 
-The current end-to-end corpus result is **249 of the 250 `.phpt` fixtures compiling native** (`tests/fixtures/functions/static_var_closure.phpt` remains with the interpreter). `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that the whole PHP language is implemented.
+The current end-to-end corpus result is **262 of the 264 `.phpt` fixtures compiling native**; `tests/fixtures/functions/static_var_closure.phpt` and `tests/fixtures/functions/func_get_args.phpt` remain with the interpreter. `Supports` is the authoritative per-program answer; a fixture count is useful progress evidence, not a claim that the whole PHP language is implemented.
 
 ### Current native barriers
 
@@ -160,6 +160,7 @@ The complete program atomically selects fallback when it contains any currently 
 - `compact()` of a name declared `static $x`, which lives in a bag rather than a frame slot. Every other form compiles: a literal name becomes the slot it stands for, and one computed at run time is looked up in the name table the program carries
 - `static $x` inside a closure (its bag counts per closure value, which is interpreter state), at top level, or as a by-reference output parameter
 - By-reference closure captures `use (&$x)`, closure parameter defaults, and variadic or by-reference closure parameters
+- `func_get_args()`, refused by name wherever it is called. A compiled frame seeds its declared parameters into slots and keeps no argument list, so an argument past the last parameter is not in the frame to report; the call used to answer an empty list instead of the arguments. It is the one entry in `runner.ScopeBuiltins`, and the first-class reference `func_get_args(...)` is not refused, having no frame to read: it is a name resolved through the function table, which carries no scope builtin, so both engines report the same undefined function
 - Anonymous classes, `new class { ... }`. The bytecode carries a class name where an anonymous class carries its declaration
 - `try` without a `catch` clause
 - Casts
@@ -187,7 +188,11 @@ Flat bytecode uses the runner's existing host bridge, including:
 - Go constructor and method error propagation
 - Exported Go struct field access
 
-The VM binds a frame handle (`engine.FrameLocals`) to the host once per run instead of copying its locals into a map around every call. The host decides when a callee needs the scope: a function-table hit whose signature does not take a `context.Context` is invoked with no scope at all, which is the interpreter's own contract for the same binding; context bindings, scope builtins such as `func_get_args`, and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. That snapshot-before-call ordering is what the by-reference marks rely on and is pinned by the engine's `vm_test`.
+The VM binds a frame handle (`engine.FrameLocals`) to the host once per run instead of copying its locals into a map around every call. The host decides when a callee needs the scope: a function-table hit whose signature does not take a `context.Context` is invoked with no scope at all, which is the interpreter's own contract for the same binding; context bindings and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. That snapshot-before-call ordering is what the by-reference marks rely on and is pinned by the engine's `vm_test`.
+
+`Snapshot` is the frame's named variables, which is what `compact()`, `extract()` and `get_defined_vars()` read. It is not the call's arguments, which is why `func_get_args()` is refused at compile time rather than answered from it.
+
+A host's own variables are the other half of the same split. `Run` asks an optional `Globals() map[string]any` for them and seeds them into the top-level frame, the way `runInterpreted` seeds its global scope before executing a file, so a function and a closure reach a global exactly as far as they do in the interpreter: not at all. `Host.Lookup` answers the superglobals and the constant table, which every frame does see. Answering a global from `Lookup` instead handed `$argv` to every frame in the program.
 
 The compiler also resolves binary operators into an opcode class, and the VM computes the both-`int64` shapes (and both-string concat) inline through the same `internal/phpval` rules `phpArith` reads. Every other operand shape dispatches to the host with the operator name, so coercion has one home. Slot type inference beyond this was measured and rejected: values live in `[]any`, where the type assertion is the unboxing, so an opcode that knows its operand slots are monomorphic int saves nothing over the dynamic guard.
 

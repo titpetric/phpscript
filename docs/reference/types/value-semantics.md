@@ -136,7 +136,7 @@ preg_match_all("/(\d)/", "a1b2", $matches);
 echo implode(",", $matches[1]);      // 1,2
 ```
 
-It works because it is arranged at compile time rather than in the value model. `byRefArgs` in [transpile.go](../../../runner/transpile.go) lists the argument positions that are outputs, per function name. When the transpiler emits a call to one of them and the argument at that position is a plain variable, it emits a setter in place of the variable's value:
+It works because it is arranged at compile time rather than in the value model. `byRefArgs` in [model/byref.go](../../../model/byref.go) lists the argument positions that are outputs, per function name, which is where both engines read it from. When a call to one of them is emitted and the argument at that position is a plain variable, a setter goes in place of the variable's value:
 
 ```text
 preg_match_all($p, $s, $matches)   ->   preg_match_all($p, $s, __ref("matches"))
@@ -144,4 +144,4 @@ preg_match_all($p, $s, $matches)   ->   preg_match_all($p, $s, __ref("matches"))
 
 `__ref` is `Runtime.helperRef`, which returns a `func(any)` closed over the calling scope. The Go shim receives that closure as its trailing argument and calls it with whatever the variable should hold; the closure writes the name back into the frame. It captures the scope by value rather than through the evaluation's scope reference, so a shim may call the setter after the expression that produced it has finished.
 
-Two things follow from doing this at compile time. An argument that is not a plain variable, such as `preg_match($p, $s, $rows["m"])`, is passed by value like any other expression, because there is no name to write back to. And the table is a package-level variable in `runner` rather than part of the host API, so a binding outside the standard library cannot declare an output parameter; one that needs to hand several values back should return a collection instead. See [Bindings](../extensions/bindings.md).
+Two things follow from doing this at compile time. An argument that is not a plain variable, such as `preg_match($p, $s, $rows["m"])`, is passed by value like any other expression, because there is no name to write back to. And the table is a package-level variable in `model` rather than part of the host API, so a binding outside the standard library cannot declare an output parameter; one that needs to hand several values back should return a collection instead. See [Bindings](../extensions/bindings.md).

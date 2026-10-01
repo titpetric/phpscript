@@ -1744,8 +1744,10 @@ func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
 }
 
 // invokeClosure runs an anonymous function in a fresh scope seeded with its
-// captured environment. Parameters are bound after the captures, so a parameter
-// of the same name shadows the capture, as it does in PHP.
+// captured environment and nothing else: the enclosing frame's other variables
+// are not reachable from the body. Parameters are bound after the captures, so a
+// parameter of the same name wins; php rejects that overlap outright, as
+// "Cannot use lexical variable $x as a parameter name".
 func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) (any, error) {
 	scope := rt.newScope()
 	rt.pushFrame(scope)

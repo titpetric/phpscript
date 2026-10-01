@@ -513,6 +513,14 @@ func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 	// which is what rt.Callable answers: a closure on either engine, a declared
 	// function by name, Class::method, array($obj, "method").
 	if call, ok := rt.Callable(v); ok {
+		// The uniform shape is variadic, which adaptCallable refuses, and needs
+		// no wrapper anyway: it is what Callable already answers. Reaching it
+		// through the resolution rather than through the *Callable case above is
+		// what lets a name, a Class::method and the two array spellings fill a
+		// binding that declares one.
+		if uniform := reflect.ValueOf(call); uniform.Type().AssignableTo(want) {
+			return uniform, true
+		}
 		if fn, ok := adaptCallable(call, want); ok {
 			return fn, true
 		}
