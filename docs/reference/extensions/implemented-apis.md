@@ -588,7 +588,10 @@ function is_object(mixed $value): bool
 ```
 
 ```php
-// is_string reports whether $value is a string.
+/**
+ * is_string reports whether $value is a string. A binding's []byte is one,
+ * PHP's strings being byte strings; see phpval.Bytes.
+ */
 function is_string(mixed $value): bool
 ```
 
@@ -2313,6 +2316,186 @@ class Mail
      * `$mail->send($to, $subject, $body)`.
      */
     public function send(string $recipient, string $subject, string $body): void {}
+}
+```
+
+### `Regexp\Compile`
+
+Registered from `stdlib/regexp`.
+
+```php
+// Regexp\Compile compiles $expr as an RE2 expression and throws when it does not parse; the value it builds carries every method Go's regexp.Regexp has.
+class Regexp\Compile
+{
+    public function __construct(string $expr) {}
+
+    public function append_text(string $string): string {}
+
+    public function copy(): Regexp\Compile {}
+
+    public function expand(string $string1, string $string2, string $string3, array $array): string {}
+
+    public function expand_string(string $string1, string $string2, string $string3, array $array): string {}
+
+    public function find(string $string): string {}
+
+    public function find_all(string $string, int $num): array {}
+
+    public function find_all_index(string $string, int $num): array {}
+
+    public function find_all_string(string $string, int $num): array {}
+
+    public function find_all_string_index(string $string, int $num): array {}
+
+    public function find_all_string_submatch(string $string, int $num): array {}
+
+    public function find_all_string_submatch_index(string $string, int $num): array {}
+
+    public function find_all_submatch(string $string, int $num): array {}
+
+    public function find_all_submatch_index(string $string, int $num): array {}
+
+    public function find_index(string $string): array {}
+
+    public function find_reader_index(object $value2): array {}
+
+    public function find_reader_submatch_index(object $value2): array {}
+
+    public function find_string(string $string): string {}
+
+    public function find_string_index(string $string): array {}
+
+    public function find_string_submatch(string $string): array {}
+
+    public function find_string_submatch_index(string $string): array {}
+
+    public function find_submatch(string $string): array {}
+
+    public function find_submatch_index(string $string): array {}
+
+    public function literal_prefix(): array {}
+
+    public function longest(): void {}
+
+    public function marshal_text(): string {}
+
+    public function match(string $string): bool {}
+
+    public function match_reader(object $value2): bool {}
+
+    public function match_string(string $string): bool {}
+
+    public function num_subexp(): int {}
+
+    public function replace_all(string $string1, string $string2): string {}
+
+    public function replace_all_func(string $string, callable $callback): string {}
+
+    public function replace_all_literal(string $string1, string $string2): string {}
+
+    public function replace_all_literal_string(string $string1, string $string2): string {}
+
+    public function replace_all_string(string $string1, string $string2): string {}
+
+    public function replace_all_string_func(string $string, callable $callback): string {}
+
+    public function split(string $string, int $num): array {}
+
+    public function subexp_index(string $string): int {}
+
+    public function subexp_names(): array {}
+
+    public function unmarshal_text(string $string): void {}
+}
+```
+
+### `Regexp\CompilePOSIX`
+
+Registered from `stdlib/regexp`.
+
+```php
+// Regexp\CompilePOSIX compiles $expr as POSIX ERE, where a match is the leftmost-longest one rather than the leftmost one Perl syntax finds.
+class Regexp\CompilePOSIX
+{
+    public function __construct(string $expr) {}
+
+    public function append_text(string $string): string {}
+
+    public function copy(): Regexp\Compile {}
+
+    public function expand(string $string1, string $string2, string $string3, array $array): string {}
+
+    public function expand_string(string $string1, string $string2, string $string3, array $array): string {}
+
+    public function find(string $string): string {}
+
+    public function find_all(string $string, int $num): array {}
+
+    public function find_all_index(string $string, int $num): array {}
+
+    public function find_all_string(string $string, int $num): array {}
+
+    public function find_all_string_index(string $string, int $num): array {}
+
+    public function find_all_string_submatch(string $string, int $num): array {}
+
+    public function find_all_string_submatch_index(string $string, int $num): array {}
+
+    public function find_all_submatch(string $string, int $num): array {}
+
+    public function find_all_submatch_index(string $string, int $num): array {}
+
+    public function find_index(string $string): array {}
+
+    public function find_reader_index(object $value2): array {}
+
+    public function find_reader_submatch_index(object $value2): array {}
+
+    public function find_string(string $string): string {}
+
+    public function find_string_index(string $string): array {}
+
+    public function find_string_submatch(string $string): array {}
+
+    public function find_string_submatch_index(string $string): array {}
+
+    public function find_submatch(string $string): array {}
+
+    public function find_submatch_index(string $string): array {}
+
+    public function literal_prefix(): array {}
+
+    public function longest(): void {}
+
+    public function marshal_text(): string {}
+
+    public function match(string $string): bool {}
+
+    public function match_reader(object $value2): bool {}
+
+    public function match_string(string $string): bool {}
+
+    public function num_subexp(): int {}
+
+    public function replace_all(string $string1, string $string2): string {}
+
+    public function replace_all_func(string $string, callable $callback): string {}
+
+    public function replace_all_literal(string $string1, string $string2): string {}
+
+    public function replace_all_literal_string(string $string1, string $string2): string {}
+
+    public function replace_all_string(string $string1, string $string2): string {}
+
+    public function replace_all_string_func(string $string, callable $callback): string {}
+
+    public function split(string $string, int $num): array {}
+
+    public function subexp_index(string $string): int {}
+
+    public function subexp_names(): array {}
+
+    public function unmarshal_text(string $string): void {}
 }
 ```
 

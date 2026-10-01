@@ -50,6 +50,29 @@ The behaviour this replaced was worse than a missing feature: a pattern RE2 coul
 
 **Failure.** A pattern that does not compile makes `preg_match` and `preg_match_all` return `false` and `preg_replace_callback` return null, in each case leaving the by-reference argument as the caller left it. PHP also emits a warning, which phpscript has no equivalent of.
 
+## Go's regexp, under its own name
+
+`preg_*` is PHP's surface, and a pattern written for it is a PCRE pattern whichever engine ends up running it. `Regexp\` is the other direction: Go's `regexp` package reached as PHP classes, with RE2 syntax, RE2 semantics and no PCRE translation layer.
+
+| Class                 | Is                    | Returns          |
+|-----------------------|-----------------------|------------------|
+| `Regexp\Compile`      | `regexp.Compile`      | `*regexp.Regexp` |
+| `Regexp\CompilePOSIX` | `regexp.CompilePOSIX` | `*regexp.Regexp` |
+
+```php
+$rx = new Regexp\Compile('(\w+)@(\w+)\.com');
+echo $rx->find_string("mail tit@example.com now");
+foreach ($rx->find_all_string_submatch($subject, -1) as $match) {
+	echo $match[1], "@", $match[2], "\n";
+}
+```
+
+Both are constructors over the package function of the same name, so an expression that does not parse throws the error `regexp.Compile` returned, catchable by any clause. The value is a `*regexp.Regexp`, so every exported method of that type is callable as PHP spells it: `find_string`, `find_all_string_submatch`, `replace_all_string`, `split`, `num_subexp`, `subexp_names`. `get_class()` answers `Regexp`, which is the Go type behind the value.
+
+Three differences from `preg_*` are the reason to reach for it. Named groups are reported: `$rx->subexp_names()` and `$rx->subexp_index("host")` answer what `$matches["name"]` does not carry. A pattern is compiled once, where the `preg_*` cache is keyed by pattern text per runtime. And `Regexp\CompilePOSIX` has no `preg_*` equivalent at all: it takes the leftmost-longest match, so `a|ab` finds `ab` where the Perl-syntax engines find `a`.
+
+`MustCompile` and `MustCompilePOSIX` are not registered, because they panic where a script needs an error to catch. [Regexp bindings](../../bindings-regexp.md) is the walkthrough, including every fixture.
+
 ## Writing portable patterns
 
 A pattern that avoids backreferences and lookaround runs on the faster engine with a linear-time guarantee. That is worth doing where the input is untrusted, such as a search box or a route parameter, and not worth contorting a pattern for where the input is your own template source.
@@ -67,3 +90,5 @@ preg_match_all("/\{(block|inline) (\w+)\}(.*?)\{\/\\1\}/s", $template, $matches)
 `preg_*` lives in [stdlib/compat/regex.go](../../../stdlib/compat/regex.go), with the rest of the PHP surface whose behaviour is defined by what the interpreter does rather than by what it computes. `compat` is a binding package: the blank import in [stdlib/imports.go](../../../stdlib/imports.go) contributes it through `runner.RegisterBinding`, so a host that wants a different surface builds its runtime without it.
 
 The engine choice lives in `compilePCRE`. The `pattern` type in the same file is the only thing the shims talk to, which is what keeps the two engines indistinguishable from PHP.
+
+`Regexp\` is a separate package, [stdlib/regexp](../../../stdlib/regexp), because it computes rather than depending on what the interpreter does, and because it shares no code with the PCRE translation: it registers `regexp.Compile` and `regexp.CompilePOSIX` as they are.

@@ -239,6 +239,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
 - [Regular expressions](extensions/regexp.md) - How PCRE patterns are compiled, and what differs between PHP's PCRE and Go's RE2.
   - [Two engines](extensions/regexp.md#two-engines)
   - [What still differs from PCRE](extensions/regexp.md#what-still-differs-from-pcre)
+  - [Go's regexp, under its own name](extensions/regexp.md#gos-regexp-under-its-own-name)
   - [Writing portable patterns](extensions/regexp.md#writing-portable-patterns)
   - [Implementation](extensions/regexp.md#implementation)
 - [Implemented PHP APIs](extensions/implemented-apis.md) - Generated inventory of functions and classes in the standard CLI runtime.
@@ -310,6 +311,8 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
     - [`JSON\Decoder`](extensions/implemented-apis.md#jsondecoder)
     - [`JSON\Encoder`](extensions/implemented-apis.md#jsonencoder)
     - [`Mail`](extensions/implemented-apis.md#mail)
+    - [`Regexp\Compile`](extensions/implemented-apis.md#regexpcompile)
+    - [`Regexp\CompilePOSIX`](extensions/implemented-apis.md#regexpcompileposix)
     - [`Session\Manager`](extensions/implemented-apis.md#sessionmanager)
     - [`Session\Storage\Disk`](extensions/implemented-apis.md#sessionstoragedisk)
     - [`Session\Storage\Memory`](extensions/implemented-apis.md#sessionstoragememory)

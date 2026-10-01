@@ -11,6 +11,7 @@ This is a PHP interpreter written in Go, with a bytecode backend beside it and a
 - [Test fixture results](./docs/test-fixtures.md)
 - [Code coverage](./docs/coverage/phpscript.md)
 - [Naming conventions](./docs/naming-conventions.md)
+- [Adding a binding, start to finish](./docs/bindings-regexp.md)
 - [Glossary](./docs/GLOSSARY.md)
 - [Go Reference](https://pkg.go.dev/github.com/titpetric/phpscript)
 - [Building an application](./docs/use-cases/application.md)
