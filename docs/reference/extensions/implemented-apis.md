@@ -704,17 +704,22 @@ function sqrt(mixed $num): float
 #### multibyte
 
 ```php
-// mb_lcfirst returns $string with its first character lowercased.
+// mb_lcfirst returns $string with its first character lowercased, non-ASCII letters included.
 function mb_lcfirst(string $str): string
 ```
 
 ```php
-// mb_str_split returns $string cut into chunks of $length characters; the "8bit" encoding cuts bytes, as PHP's does.
+// mb_str_pad returns $string padded to $length characters with $pad_string, the character-counting str_pad PHP 8.3 added.
+function mb_str_pad(string $s, int $length, mixed ...$optional): string
+```
+
+```php
+// mb_str_split returns $string cut into chunks of $length characters; the "8bit" encoding cuts bytes, as str_split does.
 function mb_str_split(string $s, mixed ...$rest): array
 ```
 
 ```php
-// mb_stripos returns the character offset of the first case-insensitive $needle in $haystack, or false.
+// mb_stripos returns the character offset of the first case-insensitive $needle in $haystack, or false; the fold is Unicode-wide, where stripos folds A-Z only.
 function mb_stripos(string $haystack, string $needle, mixed ...$rest): mixed
 ```
 
@@ -724,7 +729,7 @@ function mb_strlen(string $s, mixed ...$encoding): int
 ```
 
 ```php
-// mb_strpos returns the character offset of the first $needle in $haystack, or false; the "8bit" encoding reports byte offsets, as PHP's does.
+// mb_strpos returns the character offset of the first $needle in $haystack, or false; the "8bit" encoding reports byte offsets, as strpos does.
 function mb_strpos(string $haystack, string $needle, mixed ...$rest): mixed
 ```
 
@@ -734,22 +739,27 @@ function mb_strrpos(string $haystack, string $needle, mixed ...$rest): mixed
 ```
 
 ```php
-// mb_strtolower returns $string lowercased.
+// mb_strtolower returns $string lowercased, non-ASCII letters included, where strtolower folds A-Z only.
 function mb_strtolower(string $s, mixed ...$unused): string
 ```
 
 ```php
-// mb_strtoupper returns $string uppercased.
+// mb_strtoupper returns $string uppercased, non-ASCII letters included, where strtoupper folds A-Z only.
 function mb_strtoupper(string $s, mixed ...$unused): string
 ```
 
 ```php
-// mb_substr returns the part of $string selected by character offset $start and $length; the "8bit" encoding selects bytes, as PHP's does.
+// mb_substr returns the part of $string selected by character offset $start and $length; the "8bit" encoding selects bytes, as substr does.
 function mb_substr(string $s, int $start, mixed ...$rest): string
 ```
 
 ```php
-// mb_ucfirst returns $string with its first character uppercased.
+// mb_substr_count returns the number of non-overlapping occurrences of $needle in $haystack, the whole string, $offset and $length not being arguments PHP's mb_ spelling takes.
+function mb_substr_count(string $haystack, string $needle, mixed ...$unused): int
+```
+
+```php
+// mb_ucfirst returns $string with its first character uppercased, non-ASCII letters included.
 function mb_ucfirst(string $str): string
 ```
 
@@ -1060,17 +1070,17 @@ function str_starts_with(string $haystack, string $needle): bool
 ```
 
 ```php
-// stripos returns the character offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+// stripos returns the byte offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
 function stripos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
 ```php
-// strlen returns the length of $str in characters; byte lengths are what the binary functions (ord, bin2hex) speak.
+// strlen returns the length of $str in bytes; mb_strlen counts characters.
 function strlen(string $str): int
 ```
 
 ```php
-// strpos returns the character offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
 function strpos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
@@ -1080,7 +1090,7 @@ function strrev(string $str): string
 ```
 
 ```php
-// strripos returns the character offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many characters before the end.
+// strripos returns the byte offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many bytes before the end.
 function strripos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
@@ -1090,25 +1100,22 @@ function strstr(string $haystack, string $needle): mixed
 ```
 
 ```php
-// strtolower returns $string lowercased; unlike PHP's ASCII-only mapping, non-ASCII letters are converted too.
-function strtolower(string $string): string
+// strtolower returns $string with A-Z mapped down and every other byte left alone; mb_strtolower converts non-ASCII letters too.
+function strtolower(string $s): string
 ```
 
 ```php
-// strtoupper returns $string uppercased; unlike PHP's ASCII-only mapping, non-ASCII letters are converted too.
-function strtoupper(string $string): string
+// strtoupper returns $string with A-Z mapped up and every other byte left alone; mb_strtoupper converts non-ASCII letters too.
+function strtoupper(string $s): string
 ```
 
 ```php
-/**
- * substr implements substr($s, $start[, $length]) with PHP's negative
- * offset/length semantics, counting in characters.
- */
+// substr returns the part of $string from byte $offset for $length bytes; a negative $offset counts from the end and a negative $length stops that many bytes before it. mb_substr counts characters.
 function substr(string $s, int $start, int ...$length): string
 ```
 
 ```php
-// substr_count returns the number of non-overlapping occurrences of $needle in $haystack, restricted to the window $offset and $length describe.
+// substr_count returns the number of non-overlapping occurrences of $needle in $haystack, restricted to the byte window $offset and $length describe.
 function substr_count(string $haystack, string $needle, mixed ...$optional): int
 ```
 
