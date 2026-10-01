@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/titpetric/phpscript/model"
@@ -325,4 +326,100 @@ func splitStaticCallable(name string) (string, string, bool) {
 		}
 	}
 	return "", "", false
+}
+
+// closureValue answers `greet(...)` and `$fn(...)`, php 8.1's first-class
+// callable syntax over a name or a value: the callable the call site names,
+// without calling it. fallback is the Call node's global-namespace name.
+//
+// A value that is already callable answers itself, which is what makes
+// `$fn(...) === $fn` true as it is in php. Everything else resolves to a
+// *Callable, so a script reads the result as php's Closure.
+func (rt *Runtime) closureValue(target any, fallback string, scope *Scope) (any, error) {
+	switch value := target.(type) {
+	case *Callable:
+		return value, nil
+	case string:
+		// The function table first: it holds declared functions, registered
+		// bindings and the host statics registered under a "Class::method" name,
+		// which is the order helperStaticCall resolves a call in.
+		for _, spelled := range [2]string{value, fallback} {
+			if spelled == "" {
+				continue
+			}
+			if _, ok := rt.lookupEntry(spelled); ok {
+				return rt.newNamedCallable(spelled), nil
+			}
+		}
+		if class, method, ok := splitStaticCallable(value); ok {
+			return rt.closureMember(class, method, scope)
+		}
+		return nil, fmt.Errorf("call to undefined function %s()", value)
+	case *model.Object:
+		// An object with __invoke is callable, and php answers a Closure over
+		// that method rather than the object.
+		return rt.closureMember(value, "__invoke", scope)
+	}
+	if _, ok := rt.callableWithScope(target, scope); ok {
+		return target, nil
+	}
+	return nil, fmt.Errorf("value of type %s is not callable", phpDebugType(target))
+}
+
+// closureMember answers `$obj->method(...)` and `Class::method(...)`: the
+// declaration bound to what it will run against, as a *Callable.
+//
+// A string target is a class name, and the declaration is bound to an empty
+// instance of it so `self::` inside the body resolves - the receiver staticMethod
+// builds for the same spelling. A host-backed receiver has no declaration to
+// bind, so its method resolves through reflection and the bound call is the value
+// itself.
+func (rt *Runtime) closureMember(target any, method string, scope *Scope) (any, error) {
+	switch receiver := target.(type) {
+	case *model.Object:
+		if receiver.Class != nil {
+			if decl, ok := lookupPHPMethod(receiver.Class, method); ok {
+				return rt.newMethod(receiver, decl, scope), nil
+			}
+		}
+	case string:
+		// A host static is registered under the whole spelling - DateTime::now is
+		// a function, not a class with methods - so the table answers first.
+		if _, ok := rt.lookupEntry(receiver + "::" + method); ok {
+			return rt.newNamedCallable(receiver + "::" + method), nil
+		}
+		if !rt.hasClass(receiver) {
+			if err := rt.autoload(receiver, scope); err != nil {
+				return nil, err
+			}
+		}
+		class, ok := rt.lookupClass(receiver)
+		if !ok {
+			return nil, fmt.Errorf("class %q not found", receiver)
+		}
+		decl, ok := lookupPHPMethod(class, method)
+		if !ok {
+			return nil, fmt.Errorf("call to undefined method %s::%s()", receiver, method)
+		}
+		return rt.newMethod(model.NewObject(class), decl, scope), nil
+	}
+	if fn, ok := rt.boundGoCallable(target, method, scope); ok {
+		return fn, nil
+	}
+	return nil, fmt.Errorf("call to undefined method %s::%s()", phpClassName(target), method)
+}
+
+// boundGoCallable binds an exported Go method as a callable value, the same
+// resolution helperGet gives `$db->close` without parentheses. It probes before
+// binding because a name no method answers is reported here rather than at the
+// call, where boundGoMethod would only find out.
+func (rt *Runtime) boundGoCallable(target any, method string, scope *Scope) (func(...any) (any, error), bool) {
+	rv := reflect.ValueOf(target)
+	if !rv.IsValid() {
+		return nil, false
+	}
+	if !rv.MethodByName(method).IsValid() && !methodByNameFold(rv, method).IsValid() {
+		return nil, false
+	}
+	return rt.boundGoMethod(target, method, scope), true
 }

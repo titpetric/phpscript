@@ -255,3 +255,25 @@ func (rt *Runtime) helperInvoke(ref *scopeRef) func(callee any, args ...any) (an
 		return fn(args...)
 	}
 }
+
+// helperCallable takes the callable `name(...)` and `$fn(...)` name, php 8.1's
+// first-class callable syntax over a function name or a value.
+func (rt *Runtime) helperCallable(ref *scopeRef) func(target any, fallback string) (any, error) {
+	return func(target any, fallback string) (any, error) {
+		return rt.closureValue(target, fallback, ref.scope)
+	}
+}
+
+// helperCallableMember is helperCallable for the two spellings that name a
+// member: `$obj->method(...)` and `Class::method(...)`, where target is the
+// receiver or the class name. A contextual class name is collapsed here, which
+// is what lets `self::method(...)` resolve inside a method body.
+func (rt *Runtime) helperCallableMember(ref *scopeRef) func(target, method any) (any, error) {
+	return func(target, method any) (any, error) {
+		scope := ref.scope
+		if class, ok := target.(string); ok {
+			target = resolveClassName(class, scope)
+		}
+		return rt.closureMember(target, phpString(method), scope)
+	}
+}
