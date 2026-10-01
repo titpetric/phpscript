@@ -245,13 +245,6 @@ func registerBindings(rt registrar) {
 		}
 		return out
 	})
-	// bind_callback takes its callback in its own terms rather than in the
-	// uniform func(...any) (any, error) shape, as regexp.Regexp's
-	// ReplaceAllStringFunc does.
-	rt.RegisterFunc("bind_callback", func(s string, fn func(string) string) string {
-		return fn(s)
-	})
-
 	// bind_compare_desc is a comparator for usort, to check that sorting a
 	// binding's slice mutates the slice the script holds.
 	rt.RegisterFunc("bind_compare_desc", func(a, b any) int64 {
@@ -264,6 +257,46 @@ func registerBindings(rt registrar) {
 		default:
 			return 0
 		}
+	})
+
+	// --- callback shapes ---------------------------------------------------
+	//
+	// One per shape a binding declares its callback in. The uniform one is what
+	// Runtime.Callable answers; the rest are Go's own terms, which is what a
+	// library's method set already looks like, and are filled through
+	// reflect.MakeFunc over the declared signature.
+
+	// bind_callback_uniform declares the shape Runtime.Callable answers, which
+	// is the one a binding gets handed without a reflect.MakeFunc wrapper, and
+	// the only one with a slot for an error the callback reports.
+	rt.RegisterFunc("bind_callback_uniform", func(s string, fn func(...any) (any, error)) (any, error) {
+		return fn(s)
+	})
+	// bind_callback is the mapper shape, as regexp.Regexp's
+	// ReplaceAllStringFunc declares it: the one a binding reaches for first and
+	// the one coerceArgOn could not fill at all.
+	rt.RegisterFunc("bind_callback", func(s string, fn func(string) string) string {
+		return fn(s)
+	})
+	// bind_callback_bool is the predicate shape, where the declared result is
+	// one a PHP value does not always fit into.
+	rt.RegisterFunc("bind_callback_bool", func(s string, fn func(string) bool) string {
+		if fn(s) {
+			return "kept"
+		}
+		return "dropped"
+	})
+	// bind_callback_void declares no result at all, so the value the callable
+	// returns is dropped rather than coerced.
+	rt.RegisterFunc("bind_callback_void", func(s string, fn func(string)) string {
+		fn(s)
+		return "done"
+	})
+	// bind_callback_two_results declares a shape a PHP callable cannot fill: a
+	// closure answers one value, so the second result has nothing to come from.
+	rt.RegisterFunc("bind_callback_two_results", func(fn func(string) (string, bool)) string {
+		s, _ := fn("alpha")
+		return s
 	})
 
 	// --- stdlib before/after ----------------------------------------------

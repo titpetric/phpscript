@@ -192,25 +192,9 @@ func TestBindingReturnShapes(t *testing.T) {
 			want: "[]",
 		},
 
-		// A binding declaring its own callback type takes every callable
-		// spelling, not only the uniform one.
-		{
-			name: "closure fills a typed Go callback",
-			php:  `<?php echo bind_callback("alpha", function ($s) { return strtoupper($s); });`,
-			want: "ALPHA",
-		},
-		{
-			name: "function name fills a typed Go callback",
-			php:  `<?php function shout($s) { return $s . "!"; } echo bind_callback("alpha", "shout");`,
-			want: "alpha!",
-		},
-		{
-			name: "a throw inside a callback keeps its message",
-			php: `<?php try {
-					bind_callback("alpha", function ($s) { throw new Exception("no:" . $s); });
-				} catch (Exception $e) { echo $e->getMessage(); }`,
-			want: "no:alpha",
-		},
+		// A callback is an argument shape rather than a return shape, so the
+		// table for it is TestBindingTakesEveryCallableSpelling below: every
+		// spelling against both declared shapes, with the errors beside it.
 
 		// A trailing error surfaces to PHP as a catchable throw.
 		{
@@ -581,6 +565,196 @@ func TestBindingListDestructuring(t *testing.T) {
 	got := runBinding(t, `<?php list($a, $b) = explode(" as ", "rows as row"); echo $a . "|" . $b;`)
 	if want := "rows|row"; got != want {
 		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+// callableDeclarations are the declarations every callable spelling below is
+// written against: a free function, a class with a method, a static method and
+// an __invoke.
+const callableDeclarations = `<?php
+function shout($s) { return strtoupper($s); }
+
+class Caser {
+	public $suffix = "!";
+
+	function shout($s) { return strtoupper($s) . $this->suffix; }
+
+	static function quiet($s) { return strtolower($s); }
+
+	function __invoke($s) { return $s . $s; }
+}
+
+$caser = new Caser;
+`
+
+// TestBindingTakesEveryCallableSpelling is the callable contract at the Go
+// boundary: every spelling php calls a callable fills a Go function parameter,
+// whether the binding declared the uniform func(...any) (any, error) shape or
+// its own.
+//
+// Both columns were unreachable for part of the table. coerceArgOn accepted a
+// *Callable only against the uniform type, so a binding declaring
+// func(string) string was told a Closure is not a callable, and the uniform type
+// itself was only ever filled from a *Callable, so the four spellings that are
+// not one could not fill it either.
+func TestBindingTakesEveryCallableSpelling(t *testing.T) {
+	spellings := []struct {
+		name string
+		php  string
+		want string
+	}{
+		{name: "closure", php: `function ($s) { return strtoupper($s); }`, want: "ALPHA"},
+		{name: "function name", php: `"shout"`, want: "ALPHA"},
+		{name: "Class::method", php: `"Caser::quiet"`, want: "alpha"},
+		{name: "array with an object", php: `array($caser, "shout")`, want: "ALPHA!"},
+		{name: "array with a class name", php: `array("Caser", "quiet")`, want: "alpha"},
+		{name: "an object with __invoke", php: `$caser`, want: "alphaalpha"},
+	}
+	for _, binding := range []string{"bind_callback", "bind_callback_uniform"} {
+		for _, spelling := range spellings {
+			t.Run(binding+"/"+spelling.name, func(t *testing.T) {
+				got := runBinding(t, callableDeclarations+
+					`echo `+binding+`("alpha", `+spelling.php+`);`)
+				if got != spelling.want {
+					t.Errorf("got %q, want %q", got, spelling.want)
+				}
+			})
+		}
+	}
+}
+
+// masher is a Go value built from a callback, for the constructor path.
+type masher struct{ out string }
+
+// Out is read back from PHP as $m->out().
+func (m *masher) Out() string { return m.out }
+
+// TestBindingConstructorTakesACallable covers the third place a callback arrives:
+// a registered constructor. Functions and constructors share reflectInvoker, so
+// one argument bridge answers for both, and a class built out of a callback is
+// the shape a host wiring a strategy object uses.
+func TestBindingConstructorTakesACallable(t *testing.T) {
+	var out strings.Builder
+	rt := newBindingRuntime(&out)
+	rt.RegisterConstructor("Masher", func(s string, fn func(string) string) (*masher, error) {
+		return &masher{out: fn(s)}, nil
+	})
+	program, err := rt.Load(`<?php
+function shout($s) { return strtoupper($s); }
+echo (new Masher("alpha", "shout"))->out();
+echo (new Masher("beta", function ($s) { return $s . "!"; }))->out();
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if want := "ALPHAbeta!"; out.String() != want {
+		t.Errorf("got %q, want %q", out.String(), want)
+	}
+}
+
+// TestBindingCallbackResults covers the two ends of a declared signature a PHP
+// callable has to be fitted into: no result at all, and one the callable's
+// answer has to be coerced into.
+func TestBindingCallbackResults(t *testing.T) {
+	cases := []struct {
+		name string
+		php  string
+		want string
+	}{
+		{
+			name: "a signature with no result drops the answer",
+			php:  `echo bind_callback_void("alpha", function ($s) { echo $s . ":"; return 42; });`,
+			want: "alpha:done",
+		},
+		{
+			name: "the answer is coerced into the declared result",
+			php:  `echo bind_callback("7", function ($s) { return $s + 1; });`,
+			want: "8",
+		},
+		{
+			name: "a declared bool takes a bool",
+			php:  `echo bind_callback_bool("alpha", function ($s) { return $s === "alpha"; });`,
+			want: "kept",
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			if got := runBinding(t, callableDeclarations+test.php); got != test.want {
+				t.Errorf("got %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+// TestBindingCallbackErrors pins what a script is told when a callback fails or
+// cannot be fitted.
+//
+// A declared signature with no error slot leaves a callback nowhere to report
+// one, so the error crosses the intervening Go frames as a panic. The host
+// boundary unwraps it into the throwable the script threw: a `catch` written
+// around the call takes it, rather than catching a host panic naming a Go type.
+func TestBindingCallbackErrors(t *testing.T) {
+	cases := []struct {
+		name string
+		php  string
+		want string
+	}{
+		{
+			name: "a throw in a typed callback keeps its message",
+			php: `try {
+				bind_callback("alpha", function ($s) { throw new Exception("no:" . $s); });
+			} catch (Exception $e) { echo $e->getMessage(); }`,
+			want: "no:alpha",
+		},
+		{
+			name: "a throw in a uniform callback keeps its message",
+			php: `try {
+				bind_callback_uniform("alpha", function ($s) { throw new Exception("no:" . $s); });
+			} catch (Exception $e) { echo $e->getMessage(); }`,
+			want: "no:alpha",
+		},
+		{
+			name: "a result the declared type cannot hold is reported",
+			php: `try {
+				bind_callback_bool("alpha", function ($s) { return array(1); });
+			} catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "callback returned array, want bool",
+		},
+		{
+			// The result takes the same coercion table a parameter does, where
+			// only a string target reads a value as php renders it. A truthy
+			// int is not a bool there either.
+			name: "a truthy int does not fill a declared bool",
+			php: `try {
+				bind_callback_bool("alpha", function ($s) { return strlen($s); });
+			} catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "callback returned int, want bool",
+		},
+		{
+			name: "a value that is no callable at all is a type error",
+			php: `try {
+				bind_callback("alpha", 42);
+			} catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "must be of type callable",
+		},
+		{
+			name: "two results is a shape no callable fills",
+			php: `try {
+				bind_callback_two_results(function ($s) { return $s; });
+			} catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "must be of type callable",
+		},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			got := runBinding(t, callableDeclarations+test.php)
+			if !strings.Contains(got, test.want) {
+				t.Errorf("got %q, want it to contain %q", got, test.want)
+			}
+		})
 	}
 }
 
