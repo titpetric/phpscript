@@ -66,6 +66,7 @@ Statements and declarations used to organize executable scripts.
   - [Defining functions](functions/README.md#defining-functions)
   - [Anonymous functions](functions/README.md#anonymous-functions)
   - [Calling a callable value](functions/README.md#calling-a-callable-value)
+  - [First-class callable syntax](functions/README.md#first-class-callable-syntax)
   - [Calling functions](functions/README.md#calling-functions)
 - [Classes and objects](classes-and-objects/README.md) - Basic classes, properties, methods, constructors, and host-backed objects.
   - [Declaring a class](classes-and-objects/README.md#declaring-a-class)
