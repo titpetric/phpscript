@@ -972,12 +972,12 @@ func (p *printer) expr(e model.Expr) string {
 		if n.Bare {
 			return name
 		}
-		return name + "(" + p.args(n.Args) + ")"
+		return name + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 	case *model.MethodCall:
 		if n.MethodExpr != nil {
-			return p.expr(n.Base) + "->" + p.expr(n.MethodExpr) + "(" + p.args(n.Args) + ")"
+			return p.expr(n.Base) + "->" + p.expr(n.MethodExpr) + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 		}
-		return p.expr(n.Base) + "->" + n.Method + "(" + p.args(n.Args) + ")"
+		return p.expr(n.Base) + "->" + n.Method + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 	case *model.New:
 		// The name an anonymous class carries was synthesized by the parser and
 		// is not the source spelling; printing it would rewrite a working file
@@ -1011,11 +1011,11 @@ func (p *printer) expr(e model.Expr) string {
 		return p.typeName(n.Class) + "::$" + n.Name
 	case *model.StaticCall:
 		if n.MethodExpr != nil {
-			return p.typeName(n.Class) + "::" + p.expr(n.MethodExpr) + "(" + p.args(n.Args) + ")"
+			return p.typeName(n.Class) + "::" + p.expr(n.MethodExpr) + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 		}
-		return p.typeName(n.Class) + "::" + n.Method + "(" + p.args(n.Args) + ")"
+		return p.typeName(n.Class) + "::" + n.Method + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 	case *model.Invoke:
-		return p.expr(n.Callee) + "(" + p.args(n.Args) + ")"
+		return p.expr(n.Callee) + "(" + p.callArgs(n.FirstClass, n.Args) + ")"
 	case *model.Ref:
 		return "&" + p.expr(n.X)
 	case *model.Cast:
@@ -1092,6 +1092,16 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 	b.WriteString(sub.buf.String())
 	b.WriteString(p.indent() + "}")
 	return b.String()
+}
+
+// callArgs prints the argument list of a call, which for PHP 8.1's first-class
+// callable syntax is the literal ellipsis. The node carries the spelling rather
+// than a desugared equivalent so that `greet(...)` is printed back as itself.
+func (p *printer) callArgs(firstClass bool, args []model.Expr) string {
+	if firstClass {
+		return "..."
+	}
+	return p.args(args)
 }
 
 func (p *printer) args(args []model.Expr) string {

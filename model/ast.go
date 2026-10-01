@@ -536,10 +536,11 @@ type PropAccess struct {
 // is "" for calls that need no fallback (the common, non-namespaced case), in
 // which case the call resolves as a bare env identifier exactly as before.
 type Call struct {
-	Name     string
-	Fallback string
-	Args     []Expr
-	Bare     bool // exit/die used without parentheses
+	Name       string
+	Fallback   string
+	Args       []Expr
+	Bare       bool // exit/die used without parentheses
+	FirstClass bool // `name(...)`, the callable rather than the call
 }
 
 // MethodCall is `Base->method(args...)` or `Base.method(args...)`.
@@ -551,6 +552,7 @@ type MethodCall struct {
 	Method     string
 	MethodExpr Expr // set for `Base->$m(...)`; Method is "" then
 	Args       []Expr
+	FirstClass bool // `Base->method(...)`, the callable rather than the call
 }
 
 // New is `new ClassName` / `new ClassName(args...)`.
@@ -637,6 +639,7 @@ type StaticCall struct {
 	Method     string
 	MethodExpr Expr // set for `Class::$m(...)`; Method is "" then
 	Args       []Expr
+	FirstClass bool // `Class::method(...)`, the callable rather than the call
 }
 
 // StaticProp is `Class::$name` / `self::$name` static-property access. Unlike a
@@ -652,8 +655,9 @@ type StaticProp struct {
 // callee is resolved through Runtime.Callable, so every PHP callable spelling
 // (closure, "func", array($obj, "method")) works.
 type Invoke struct {
-	Callee Expr
-	Args   []Expr
+	Callee     Expr
+	Args       []Expr
+	FirstClass bool // `$fn(...)`, the callable rather than the call
 }
 
 // Cast is a type cast like `(bool)$x`, `(int)$x`, `(string)$x`, `(array)$x`.

@@ -1,7 +1,7 @@
 {
   "rules": {
-    "coverage/uncovered": 425,
-    "filecheck/long": 34,
+    "coverage/uncovered": 422,
+    "filecheck/long": 36,
     "func-args/order": 24,
     "func-returns/order": 3,
     "grouping/filename": 138,

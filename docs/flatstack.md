@@ -143,7 +143,8 @@ It supports these expressions:
 - Registered/free function calls and method calls, including a dynamic method name `$obj->$m(...)`, trailing variadic parameters and parameter defaults
 - Static calls `Class::method(...)` and static properties `Class::$name`, dispatched through the host bridge onto the interpreter's resolution
 - Function statics `static $x = ...` in named functions and methods, against the same per-statement storage the interpreter uses
-- Invoking a callable held in a value: `$fn(...)`; a string naming a compiled function takes a VM frame, everything else resolves through the host
+- Invoking a callable held in a value: `$fn($x)`; a string naming a compiled function takes a VM frame, everything else resolves through the host
+- First-class callable syntax, `callable(...)`, in all four call forms. The callable is resolved by the host, so the value is the same Closure the interpreter builds and the declaration it names runs there when it is called
 - Property reads, writes and `unset($obj->prop)`
 - String concatenation with `.`
 - Anonymous functions, including a by-value `use (...)` capture list, a `$this` carried away from an enclosing method, and `static function () {}`
@@ -169,6 +170,12 @@ The complete program atomically selects fallback when it contains any currently 
 - A host without Include fails at `opInclude`, after earlier opcodes have run
 
 These are not called "unsupported programs" at the public runtime boundary: they are valid phpscript programs and execute through runner. "Unsupported" in a `Supports` error means only "not yet lowerable to native flat bytecode."
+
+### Closure identity
+
+A closure the bytecode engine creates is a Go function value, where the interpreter's is a `runner.Callable`. A Go function value has no identity `===` can read - Go cannot compare two of them, and `reflect.DeepEqual` calls every non-nil pair unequal - so `$a = function () {}; $b = $a; $a === $b;` is false here and true on the interpreter and in php. It is the one answer the two engines are known to disagree about, and it is not the first-class callable syntax: `greet(...)` and the other three spellings answer a `Callable` on both engines, so `$fn(...) === $fn` holds on both.
+
+Fixing it means giving the engine's closure value identity, which means a value type both packages can see rather than a bare `func(...any) (any, error)`, and a case for it everywhere a callable is resolved. Comparing the function pointer instead is not the fix: two closures built from one literal share it, which would answer true where php answers false.
 
 ## Host calls, errors, and panics
 

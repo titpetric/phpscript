@@ -1433,6 +1433,8 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 	env["__static"] = adapt(rt.helperStaticCall(ref))
 	env["__staticprop"] = adapt(rt.helperStaticProp(ref))
 	env["__invoke"] = adapt(rt.helperInvoke(ref))
+	env["__callable"] = adapt(rt.helperCallable(ref))
+	env["__callablemember"] = adapt(rt.helperCallableMember(ref))
 	// Expression markers (`__eval`) resolve against the expression currently
 	// evaluated with this environment, which Eval stores on st.
 	env["__eval"] = adapt(func(id string) (any, error) {

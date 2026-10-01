@@ -757,6 +757,72 @@ function check($b)
 	})
 }
 
+func TestParseFirstClassCallable(t *testing.T) {
+	prog := mustParse(t, `<?php
+$fn = greet(...);
+$shout = Greeter::shout(...);
+$pickedStatic = Greeter::$pick(...);
+$method = $obj->method(...);
+$pickedMethod = $obj->$pick(...);
+$value = $closure(...);
+`)
+	assign := func(i int) model.Expr {
+		t.Helper()
+		as, ok := prog.Stmts[i].(*model.Assign)
+		if !ok {
+			t.Fatalf("statement %d = %T, want *model.Assign", i, prog.Stmts[i])
+		}
+		return as.Value
+	}
+
+	call, ok := assign(0).(*model.Call)
+	if !ok || !call.FirstClass || call.Name != "greet" || call.Args != nil {
+		t.Errorf("greet(...) = %#v, want a first-class Call with no args", assign(0))
+	}
+	static, ok := assign(1).(*model.StaticCall)
+	if !ok || !static.FirstClass || static.Class != "Greeter" || static.Method != "shout" {
+		t.Errorf("Greeter::shout(...) = %#v, want a first-class StaticCall", assign(1))
+	}
+	picked, ok := assign(2).(*model.StaticCall)
+	if !ok || !picked.FirstClass || picked.MethodExpr == nil {
+		t.Errorf("Greeter::$pick(...) = %#v, want a first-class StaticCall naming $pick", assign(2))
+	}
+	method, ok := assign(3).(*model.MethodCall)
+	if !ok || !method.FirstClass || method.Method != "method" {
+		t.Errorf("$obj->method(...) = %#v, want a first-class MethodCall", assign(3))
+	}
+	dynamic, ok := assign(4).(*model.MethodCall)
+	if !ok || !dynamic.FirstClass || dynamic.MethodExpr == nil {
+		t.Errorf("$obj->$pick(...) = %#v, want a first-class MethodCall naming $pick", assign(4))
+	}
+	invoke, ok := assign(5).(*model.Invoke)
+	if !ok || !invoke.FirstClass || invoke.Args != nil {
+		t.Errorf("$closure(...) = %#v, want a first-class Invoke with no args", assign(5))
+	}
+}
+
+func TestParseFirstClassCallableRejectedForNew(t *testing.T) {
+	// php refuses it too: there is no callable in a construction to take.
+	if _, err := Parse(`<?php $a = new Greeter(...);`); err == nil {
+		t.Fatal("new Greeter(...) parsed, want an error")
+	} else if !strings.Contains(err.Error(), "Closure for a new expression") {
+		t.Errorf("error = %v, want it to name the new expression", err)
+	}
+}
+
+func TestParseEllipsisIsStillConcatenation(t *testing.T) {
+	// Three `.` operators are only the callable marker when they fill the whole
+	// argument list; a concatenation of three terms still parses as one.
+	prog := mustParse(t, `<?php $s = f($a . $b . $c);`)
+	call, ok := prog.Stmts[0].(*model.Assign).Value.(*model.Call)
+	if !ok || call.FirstClass || len(call.Args) != 1 {
+		t.Fatalf("f($a . $b . $c) = %#v, want a plain Call with one argument", prog.Stmts[0])
+	}
+	if _, ok := call.Args[0].(*model.Binary); !ok {
+		t.Errorf("argument = %#v, want a Binary concatenation", call.Args[0])
+	}
+}
+
 // benchSource is a file of the shape the parser meets in an application: a
 // class with methods, a function, control flow and interpolation, repeated
 // until it is the size of a real source file rather than a snippet.

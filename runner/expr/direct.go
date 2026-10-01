@@ -317,6 +317,9 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		if err != nil {
 			return nil, err
 		}
+		if n.FirstClass {
+			return baseCall("__callablemember", []closure{constClosure(n.Class), method}), nil
+		}
 		args, err := dc.compileArgs(n.Args)
 		if err != nil {
 			return nil, err
@@ -331,6 +334,9 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		method, err := dc.nameOrExpr(n.Method, n.MethodExpr)
 		if err != nil {
 			return nil, err
+		}
+		if n.FirstClass {
+			return baseCall("__callablemember", []closure{base, method}), nil
 		}
 		args, err := dc.compileArgs(n.Args)
 		if err != nil {
@@ -353,6 +359,9 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		callee, err := dc.compile(n.Callee)
 		if err != nil {
 			return nil, err
+		}
+		if n.FirstClass {
+			return baseCall("__callable", []closure{callee, constClosure("")}), nil
 		}
 		args, err := dc.compileArgs(n.Args)
 		if err != nil {
@@ -598,6 +607,12 @@ func binary2(l, r closure, apply func(a, b any) (any, error)) closure {
 // carrying a global fallback dispatch through __func, and a plain global
 // call resolves its name in the base env, installed by Eval.
 func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
+	if n.FirstClass {
+		// `greet(...)` takes the callable rather than calling it, so the name
+		// goes in as a value and the fallback with it: resolution is the
+		// runtime's, as it is for a call, and the result is a Closure.
+		return baseCall("__callable", []closure{constClosure(n.Name), constClosure(n.Fallback)}), nil
+	}
 	args := make([]closure, len(n.Args))
 	for i, a := range n.Args {
 		if model.ByRefArg(n.Name, n.Fallback, i) {

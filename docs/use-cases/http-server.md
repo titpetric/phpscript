@@ -42,7 +42,7 @@ A handler is a callable, in three spellings:
 | A method bound to its receiver  | `$mux->handle("GET /x", $this->index)`              |
 | The name of a declared function | `$mux->handle("GET /x", "handle_index")`            |
 
-`$this->fnName` reads the method without calling it, which is php's first-class callable syntax `$this->fnName(...)` in a shorter spelling. It is what a server written as a class registers:
+`$this->fnName` reads the method without calling it, which is the [first-class callable syntax](../reference/functions/README.md#first-class-callable-syntax) `$this->fnName(...)` in a shorter spelling. Both spellings parse and answer the same bound method; the shorter one is the divergence, because php reads it as an undefined property. It is what a server written as a class registers:
 
 ```php
 class Server {
