@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"hash/crc32"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/titpetric/phpscript/internal/phpval"
 	"github.com/titpetric/phpscript/model"
@@ -18,12 +16,12 @@ func init() {
 }
 
 func registerStrings(rt *runner.Runtime) {
-	// strlen returns the length of $str in characters; byte lengths are what the binary functions (ord, bin2hex) speak.
-	rt.RegisterFunc("strlen", func(str string) int64 { return runeLen(str) })
-	// strtoupper returns $string uppercased; unlike PHP's ASCII-only mapping, non-ASCII letters are converted too.
-	rt.RegisterFunc("strtoupper", strings.ToUpper)
-	// strtolower returns $string lowercased; unlike PHP's ASCII-only mapping, non-ASCII letters are converted too.
-	rt.RegisterFunc("strtolower", strings.ToLower)
+	// strlen returns the length of $str in bytes; mb_strlen counts characters.
+	rt.RegisterFunc("strlen", func(str string) int64 { return int64(len(str)) })
+	// strtoupper returns $string with A-Z mapped up and every other byte left alone; mb_strtoupper converts non-ASCII letters too.
+	rt.RegisterFunc("strtoupper", asciiUpper)
+	// strtolower returns $string with A-Z mapped down and every other byte left alone; mb_strtolower converts non-ASCII letters too.
+	rt.RegisterFunc("strtolower", asciiLower)
 	// trim strips whitespace, or the characters listed in $characters, from both ends of $string.
 	rt.RegisterFunc("trim", phpTrim(strings.Trim, " \t\n\r\x00\x0B"))
 	// rtrim strips whitespace, or the characters listed in $characters, from the end of $string.
@@ -31,16 +29,17 @@ func registerStrings(rt *runner.Runtime) {
 	// ltrim strips whitespace, or the characters listed in $characters, from the start of $string.
 	rt.RegisterFunc("ltrim", phpTrim(strings.TrimLeft, " \t\n\r\x00\x0B"))
 
+	// substr returns the part of $string from byte $offset for $length bytes; a negative $offset counts from the end and a negative $length stops that many bytes before it. mb_substr counts characters.
 	rt.RegisterFunc("substr", phpSubstr)
-	// strpos returns the character offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+	// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
 	rt.RegisterFunc("strpos", phpStrpos)
-	// stripos returns the character offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+	// stripos returns the byte offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
 	rt.RegisterFunc("stripos", phpStripos)
-	// strrpos returns the character offset of the last $needle in $haystack, or false when it does not occur.
+	// strrpos returns the byte offset of the last $needle in $haystack, or false when it does not occur.
 	rt.RegisterFunc("strrpos", phpStrrpos)
-	// strripos returns the character offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many characters before the end.
+	// strripos returns the byte offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many bytes before the end.
 	rt.RegisterFunc("strripos", phpStrripos)
-	// substr_count returns the number of non-overlapping occurrences of $needle in $haystack, restricted to the window $offset and $length describe.
+	// substr_count returns the number of non-overlapping occurrences of $needle in $haystack, restricted to the byte window $offset and $length describe.
 	rt.RegisterFunc("substr_count", phpSubstrCount)
 	// substr_replace returns $string with the bytes from $offset for $length replaced by $replace; a negative $offset counts from the end and a negative $length is a distance from it. Array arguments are not supported.
 	rt.RegisterFunc("substr_replace", phpSubstrReplace)
@@ -152,9 +151,9 @@ func phpTrim(fn func(string, string) string, def string) func(string, ...string)
 }
 
 // phpSubstr implements substr($s, $start[, $length]) with PHP's negative
-// offset/length semantics, counting in characters.
+// offset and length semantics, counting bytes. mbSubstr counts characters.
 func phpSubstr(s string, start int64, length ...int64) string {
-	n := runeLen(s)
+	n := int64(len(s))
 	if start < 0 {
 		start += n
 		if start < 0 {
@@ -179,9 +178,7 @@ func phpSubstr(s string, start int64, length ...int64) string {
 	if end < start {
 		return ""
 	}
-	from, _ := runeByteOffset(s, start)
-	to, _ := runeByteOffset(s, end)
-	return s[from:to]
+	return s[start:end]
 }
 
 // STR_PAD_* selectors, as PHP numbers them.
@@ -191,8 +188,9 @@ const (
 	strPadBoth  = 2
 )
 
-// phpStrpos implements strpos($haystack, $needle[, $offset]); the offset
-// taken and the position returned count characters.
+// phpStrpos implements strpos($haystack, $needle[, $offset]); the offset taken
+// and the position returned count bytes, which is what PREG_OFFSET_CAPTURE
+// reports and what substr consumes. mbStrpos counts characters.
 func phpStrpos(haystack, needle string, offset ...int64) any {
 	start, ok := searchStart(haystack, offset)
 	if !ok {
@@ -202,14 +200,14 @@ func phpStrpos(haystack, needle string, offset ...int64) any {
 	if i < 0 {
 		return false
 	}
-	return byteRuneOffset(haystack, i+start)
+	return int64(i + start)
 }
 
 // phpStripos implements stripos($haystack, $needle[, $offset]). Both operands
-// are folded rune by rune, which keeps the character count, so the returned
-// offset still indexes the original haystack.
+// are folded over A-Z only, which keeps their byte length, so the offset still
+// indexes the original haystack; PHP folds no wider than that either.
 func phpStripos(haystack, needle string, offset ...int64) any {
-	return phpStrpos(runeLower(haystack), runeLower(needle), offset...)
+	return phpStrpos(asciiLower(haystack), asciiLower(needle), offset...)
 }
 
 // phpStrrpos implements strrpos($haystack, $needle[, $offset]).
@@ -218,35 +216,38 @@ func phpStrrpos(haystack, needle string, offset ...int64) any {
 	if i < 0 {
 		return false
 	}
-	return byteRuneOffset(haystack, i)
+	return int64(i)
 }
 
 // phpStrripos implements strripos($haystack, $needle[, $offset]).
 func phpStrripos(haystack, needle string, offset ...int64) any {
-	i := searchLast(runeLower(haystack), runeLower(needle), offset)
+	i := searchLast(asciiLower(haystack), asciiLower(needle), offset)
 	if i < 0 {
 		return false
 	}
-	return byteRuneOffset(haystack, i)
+	return int64(i)
 }
 
-// searchStart resolves the strpos-family $offset, counted in characters,
-// into the byte position the search begins at. A negative offset counts from
-// the end; PHP 8 raises a ValueError when it lands before the start, which
-// phpscript clamps to 0 instead. The bool is false when the offset is past
-// the end, where the search cannot match.
+// searchStart resolves the strpos-family $offset, counted in bytes, into the
+// position the search begins at. A negative offset counts from the end; PHP 8
+// raises a ValueError when it lands before the start, which phpscript clamps to
+// 0 instead. The bool is false when the offset is past the end, where the
+// search cannot match.
 func searchStart(haystack string, offset []int64) (int, bool) {
 	if len(offset) == 0 {
 		return 0, true
 	}
 	start := offset[0]
 	if start < 0 {
-		start += runeLen(haystack)
+		start += int64(len(haystack))
 		if start < 0 {
 			start = 0
 		}
 	}
-	return runeByteOffset(haystack, start)
+	if start > int64(len(haystack)) {
+		return len(haystack), false
+	}
+	return int(start), true
 }
 
 // searchLast is the strrpos-family search: the last match at or before the
@@ -259,22 +260,20 @@ func searchLast(haystack, needle string, offset []int64) int {
 		return strings.LastIndex(haystack, needle)
 	}
 	if o := offset[0]; o > 0 {
-		start, ok := runeByteOffset(haystack, o)
-		if !ok {
+		if o > int64(len(haystack)) {
 			return -1
 		}
+		start := int(o)
 		i := strings.LastIndex(haystack[start:], needle)
 		if i < 0 {
 			return -1
 		}
 		return i + start
 	}
-	last := runeLen(haystack) + offset[0]
+	last := int64(len(haystack)) + offset[0]
 	if last < 0 {
 		last = 0
 	}
-	lastBytes, _ := runeByteOffset(haystack, last)
-	last = int64(lastBytes)
 	// A match inside the prefix that ends one needle past the cap starts at
 	// or before it, so LastIndex over that prefix answers directly.
 	end := last + int64(len(needle))
@@ -284,9 +283,10 @@ func searchLast(haystack, needle string, offset []int64) int {
 	return strings.LastIndex(haystack[:end], needle)
 }
 
-// asciiLower folds A-Z only. strings.ToLower is Unicode-aware and can change a
-// string's byte length, which would shift the offsets the case-insensitive
-// search functions report; PHP folds the ASCII range and nothing else.
+// asciiLower folds A-Z only, which is what PHP's strtolower does and all its
+// case-insensitive search functions fold by. strings.ToLower is Unicode-aware
+// and can change a string's byte length, which would shift the offsets those
+// searches report.
 func asciiLower(s string) string {
 	for i := 0; i < len(s); i++ {
 		if c := s[i]; c >= 'A' && c <= 'Z' {
@@ -302,34 +302,41 @@ func asciiLower(s string) string {
 	return s
 }
 
+// asciiUpper is asciiLower in the other direction, PHP's strtoupper.
+func asciiUpper(s string) string {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c >= 'a' && c <= 'z' {
+			b := []byte(s)
+			for ; i < len(b); i++ {
+				if c := b[i]; c >= 'a' && c <= 'z' {
+					b[i] = c - 'a' + 'A'
+				}
+			}
+			return string(b)
+		}
+	}
+	return s
+}
+
 // ucwordsDefaultSeparators is PHP's default $separators for ucwords.
 const ucwordsDefaultSeparators = " \t\r\n\f\v"
 
-// phpUcfirst uppercases the first character, non-ASCII letters included,
-// the case mapping strtoupper already applies to the whole string.
+// phpUcfirst maps the first byte up when it is a-z and leaves every other
+// first byte alone, so ucfirst("ábc") is unchanged. mbUcfirst converts the
+// first character whatever it is.
 func phpUcfirst(str string) string {
-	r, size := utf8.DecodeRuneInString(str)
-	if r == utf8.RuneError {
+	if str == "" || str[0] < 'a' || str[0] > 'z' {
 		return str
 	}
-	up := unicode.ToUpper(r)
-	if up == r {
-		return str
-	}
-	return string(up) + str[size:]
+	return string(str[0]-'a'+'A') + str[1:]
 }
 
 // phpLcfirst is phpUcfirst in the other direction.
 func phpLcfirst(str string) string {
-	r, size := utf8.DecodeRuneInString(str)
-	if r == utf8.RuneError {
+	if str == "" || str[0] < 'A' || str[0] > 'Z' {
 		return str
 	}
-	low := unicode.ToLower(r)
-	if low == r {
-		return str
-	}
-	return string(low) + str[size:]
+	return string(str[0]-'A'+'a') + str[1:]
 }
 
 // phpUcwords uppercases the first ASCII letter of every word. A word starts at
@@ -401,14 +408,15 @@ func phpStrStartsWith(haystack, needle string) bool { return strings.HasPrefix(h
 
 func phpStrEndsWith(haystack, needle string) bool { return strings.HasSuffix(haystack, needle) }
 
-// phpStrrev reverses bytes. PHP's strrev is byte-wise too, so a multi-byte
-// character comes out as its bytes in reverse.
+// phpStrrev reverses bytes, as PHP's strrev does, so a multi-byte character
+// comes out as its bytes in reverse and is no longer valid UTF-8. mbStrrev
+// reverses characters.
 func phpStrrev(str string) string {
-	r := []rune(str)
-	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
-		r[i], r[j] = r[j], r[i]
+	b := []byte(str)
+	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
+		b[i], b[j] = b[j], b[i]
 	}
-	return string(r)
+	return string(b)
 }
 
 // phpStrSplit returns the chunks as a []string for the reason phpExplode does:
@@ -424,18 +432,7 @@ func phpStrSplit(str string, length ...int64) []string {
 	if len(length) > 0 && length[0] > 1 {
 		n = length[0]
 	}
-	size := runeLen(str)
-	out := make([]string, 0, (size+n-1)/n)
-	for i := int64(0); i < size; i += n {
-		end := i + n
-		if end > size {
-			end = size
-		}
-		from, _ := runeByteOffset(str, i)
-		to, _ := runeByteOffset(str, end)
-		out = append(out, str[from:to])
-	}
-	return out
+	return byteSplit(str, n)
 }
 
 // phpStrPad implements str_pad($string, $length, $pad_string, $pad_type). Go
@@ -450,7 +447,7 @@ func phpStrPad(str string, length int64, optional ...any) string {
 	if len(optional) > 1 {
 		padType = phpval.Int(optional[1])
 	}
-	diff := length - runeLen(str)
+	diff := length - int64(len(str))
 	if diff <= 0 || pad == "" {
 		return str
 	}
@@ -466,16 +463,13 @@ func phpStrPad(str string, length int64, optional ...any) string {
 	}
 }
 
-// padTo repeats pad to exactly n characters, cutting the last repetition
-// short.
+// padTo repeats pad to exactly n bytes, cutting the last repetition short.
 func padTo(pad string, n int) string {
 	if n <= 0 {
 		return ""
 	}
-	padLen := int(runeLen(pad))
-	whole := strings.Repeat(pad, n/padLen+1)
-	cut, _ := runeByteOffset(whole, int64(n))
-	return whole[:cut]
+	whole := strings.Repeat(pad, n/len(pad)+1)
+	return whole[:n]
 }
 
 // phpSubstrCount implements substr_count($haystack, $needle[, $offset[, $length]]).
@@ -488,12 +482,12 @@ func phpSubstrCount(haystack, needle string, optional ...any) int64 {
 	return int64(strings.Count(substrWindow(haystack, optional), needle))
 }
 
-// substrWindow cuts the haystack down to the optional $offset and $length,
-// both counted in characters. A negative offset counts from the end and a
-// negative length stops that many characters before it. PHP 8 raises a
-// ValueError when either leaves the string; phpscript clamps.
+// substrWindow cuts the haystack down to the optional $offset and $length, both
+// counted in bytes. A negative offset counts from the end and a negative length
+// stops that many bytes before it. PHP 8 raises a ValueError when either leaves
+// the string; phpscript clamps.
 func substrWindow(haystack string, optional []any) string {
-	n := runeLen(haystack)
+	n := int64(len(haystack))
 	start := int64(0)
 	if len(optional) > 0 {
 		start = phpval.Int(optional[0])
@@ -522,15 +516,13 @@ func substrWindow(haystack string, optional []any) string {
 	if end < start {
 		end = start
 	}
-	from, _ := runeByteOffset(haystack, start)
-	to, _ := runeByteOffset(haystack, end)
-	return haystack[from:to]
+	return haystack[start:end]
 }
 
 // phpSubstrReplace implements substr_replace($string, $replace, $offset[, $length]).
 // PHP clamps an out-of-range offset here rather than raising, so this does too.
 func phpSubstrReplace(str, replace string, offset int64, length ...int64) string {
-	n := runeLen(str)
+	n := int64(len(str))
 	start := offset
 	if start < 0 {
 		start += n
@@ -557,9 +549,7 @@ func phpSubstrReplace(str, replace string, offset int64, length ...int64) string
 	if end < start {
 		end = start
 	}
-	from, _ := runeByteOffset(str, start)
-	to, _ := runeByteOffset(str, end)
-	return str[:from] + replace + str[to:]
+	return str[:start] + replace + str[end:]
 }
 
 // phpStrReplace implements str_replace where search may be a string or a

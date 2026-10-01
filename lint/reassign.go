@@ -55,7 +55,7 @@ func (w *reassignWalker) scope(stmts []model.Stmt) {
 		*w.out = append(*w.out, Diagnostic{
 			File:    w.file,
 			Line:    line,
-			Message: fmt.Sprintf("string offset $%s[...]: offsets count characters, not bytes; substr($%s, ...) spells the read", v.Name, v.Name),
+			Message: fmt.Sprintf("string offset $%s[...]: offsets count bytes, so a multi-byte character reads as one of its bytes; mb_substr($%s, ...) spells a character read", v.Name, v.Name),
 		})
 	}
 	offsets.walk(stmts)

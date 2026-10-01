@@ -1,9 +1,8 @@
 name: mb_strlen, mb_substr, mb_strtolower, mb_strtoupper
 description: >
   The mbstring functions count characters, and mb_substr accepts a negative
-  offset and a negative length. The str* functions are aliases of the same
-  implementations; the character-default divergence is pinned in
-  mb_defaults.phpt.
+  offset and a negative length. The str* functions count bytes instead, which
+  byte_and_character_units.phpt pins against both families.
 ---
 <?php
 $s = "héllo wörld";
