@@ -113,6 +113,11 @@ const (
 	// opInitialized pushes whether slot a holds a value, the test a parameter
 	// default's prologue jumps on.
 	opInitialized
+	// opCallable takes a callable without calling it, php 8.1's `callable(...)`.
+	// b=0 pops the function name or the callee value and reads the namespace
+	// fallback off name; b=1 is the member form, which pops the method name and
+	// then the receiver or class beneath it.
+	opCallable
 	// Register-form binaries, written by the fusion pass (fuse.go): operands
 	// come from slots (L) or the constant pool (C) instead of the operand
 	// stack, and target selects push (0) or a plain store into slot
@@ -361,6 +366,17 @@ type staticCallHost interface {
 type staticPropHost interface {
 	GetStaticProp(class, name string) (any, error)
 	SetStaticProp(class, name string, value any, op string) error
+}
+
+// closureHost answers php 8.1's first-class callable syntax, `callable(...)`:
+// the callable a call site names, as the Closure value a script holds.
+// CallableValue takes a function name, with the namespace fallback a call would
+// try, or a value that is callable already. CallableMember takes a receiver or a
+// class name together with the method, which arrives as a value because the
+// `$obj->$m(...)` spelling carries it at run time.
+type closureHost interface {
+	CallableValue(target any, fallback string) (any, error)
+	CallableMember(target any, method any) (any, error)
 }
 
 // staticVarHost returns the persistent bag of one `static $x` statement and

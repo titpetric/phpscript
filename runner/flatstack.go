@@ -462,6 +462,29 @@ func (h *flatHost) InvokeValue(callee any, args []any) (any, error) {
 	return result, err
 }
 
+// CallableValue takes `greet(...)` and `$fn(...)`, php 8.1's first-class
+// callable syntax over a name or a value, through the interpreter's resolution.
+//
+// A name the flat compiler declared is in the function table too - runFlat hoists
+// before it runs - so the Closure resolves here and the body it names runs on the
+// interpreter when the value is called, the way a callable held in a value
+// already does.
+func (h *flatHost) CallableValue(target any, fallback string) (any, error) {
+	scope := h.boundScope()
+	result, err := h.runtime.helperCallable(&scopeRef{scope: scope})(target, fallback)
+	h.pullScope(scope)
+	return result, err
+}
+
+// CallableMember takes `$obj->method(...)` and `Class::method(...)`. The frame
+// snapshot is what carries `this` across, as it does for a static call.
+func (h *flatHost) CallableMember(target any, method any) (any, error) {
+	scope := h.boundScope()
+	result, err := h.runtime.helperCallableMember(&scopeRef{scope: scope})(target, method)
+	h.pullScope(scope)
+	return result, err
+}
+
 // UnsetProperty removes a named property, PHP's unset($obj->prop). Only a
 // PHP object carries removable storage; anything else is left alone, the
 // leniency execUnset applies.

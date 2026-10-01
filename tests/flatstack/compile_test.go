@@ -77,6 +77,41 @@ func TestFlatstackCompilesConstructs(t *testing.T) {
 			source: `<?php class D { public $last = ""; function run() { foreach (array("a","b") as $this->last) {} return $this->last; } } $d = new D(); echo $d->run();`,
 			want:   "b",
 		},
+		{
+			name:   "first-class callable of a declared function",
+			source: `<?php function g($n) { return "g" . $n; } $f = g(...); echo $f("1");`,
+			want:   "g1",
+		},
+		{
+			name:   "first-class callable of a registered binding",
+			source: `<?php $f = strtoupper(...); echo $f("ab");`,
+			want:   "AB",
+		},
+		{
+			name:   "first-class callable of a static method",
+			source: `<?php class F { static function s($n) { return "s" . $n; } } $f = F::s(...); echo $f("1");`,
+			want:   "s1",
+		},
+		{
+			name:   "first-class callable of a bound method",
+			source: `<?php class G { function m($n) { return "m" . $n; } } $g = new G(); $f = $g->m(...); echo $f("1");`,
+			want:   "m1",
+		},
+		{
+			name:   "first-class callable of a closure answers the closure",
+			source: `<?php $c = function ($n) { return "c" . $n; }; $f = $c(...); echo $f("1");`,
+			want:   "c1",
+		},
+		{
+			name:   "first-class callable of a name held in a variable",
+			source: `<?php $name = "strrev"; $f = $name(...); echo $f("ab");`,
+			want:   "ba",
+		},
+		{
+			name:   "first-class callable is a Closure",
+			source: `<?php function g($n) { return $n; } echo get_class(g(...));`,
+			want:   "Closure",
+		},
 	}
 
 	for _, test := range tests {

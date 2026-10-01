@@ -1145,6 +1145,37 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 				return callErr
 			}
 			st.stack = append(st.stack, value)
+		case opCallable:
+			closures, ok := host.(closureHost)
+			if !ok {
+				return fmt.Errorf("flatstack: pc %d: host does not implement first-class callables", st.pc)
+			}
+			var value any
+			var callErr error
+			if inst.b != 0 {
+				method, popErr := st.pop()
+				if popErr != nil {
+					return popErr
+				}
+				target, popErr := st.pop()
+				if popErr != nil {
+					return popErr
+				}
+				value, callErr = closures.CallableMember(target, method)
+			} else {
+				target, popErr := st.pop()
+				if popErr != nil {
+					return popErr
+				}
+				value, callErr = closures.CallableValue(target, inst.name)
+			}
+			if callErr != nil {
+				if st.handle(callErr) {
+					continue
+				}
+				return callErr
+			}
+			st.stack = append(st.stack, value)
 		case opCallStatic:
 			arguments, argErr := st.args(inst.a)
 			if argErr != nil {

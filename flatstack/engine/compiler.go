@@ -97,6 +97,18 @@ func (c *compiler) constant(value any) int {
 	return index
 }
 
+// methodName pushes the method a first-class callable names: the literal when the
+// syntax spells it, the expression when the `$obj->$m(...)` spelling holds it in
+// a value. The two call opcodes carry it in their own fields instead, which is
+// why this is only the callable form's.
+func (c *compiler) methodName(name string, expr model.Expr, path string) error {
+	if expr == nil {
+		c.emit(instruction{op: opPushConst, a: c.constant(name)})
+		return nil
+	}
+	return c.expr(expr, path+".method")
+}
+
 func (c *compiler) slot(name string) int {
 	if slot, ok := c.locals[name]; ok {
 		return slot
@@ -1016,6 +1028,14 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.program.code[endJump].target = len(c.program.code)
 	case *model.Call:
+		if node.FirstClass {
+			// `greet(...)` is the name as a value, resolved by the host the way a
+			// call resolves it, so a registered binding and a declared function
+			// both answer and the result is a Closure.
+			c.emit(instruction{op: opPushConst, a: c.constant(node.Name)})
+			c.emit(instruction{op: opCallable, name: node.Fallback})
+			return nil
+		}
 		switch node.Name {
 		case "compact":
 			return c.compactCall(node, path)
@@ -1073,6 +1093,13 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		if err := c.expr(node.Base, path+".base"); err != nil {
 			return err
 		}
+		if node.FirstClass {
+			if err := c.methodName(node.Method, node.MethodExpr, path); err != nil {
+				return err
+			}
+			c.emit(instruction{op: opCallable, b: 1})
+			return nil
+		}
 		dynamic := 0
 		if node.MethodExpr != nil {
 			// `$obj->$m(...)`: the method name is a runtime value, pushed
@@ -1093,6 +1120,10 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		if err := c.expr(node.Callee, path+".callee"); err != nil {
 			return err
 		}
+		if node.FirstClass {
+			c.emit(instruction{op: opCallable})
+			return nil
+		}
 		for i, argument := range node.Args {
 			if err := c.expr(argument, fmt.Sprintf("%s.arg[%d]", path, i)); err != nil {
 				return err
@@ -1100,6 +1131,14 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		}
 		c.emit(instruction{op: opInvoke, a: len(node.Args)})
 	case *model.StaticCall:
+		if node.FirstClass {
+			c.emit(instruction{op: opPushConst, a: c.constant(c.resolveClass(node.Class))})
+			if err := c.methodName(node.Method, node.MethodExpr, path); err != nil {
+				return err
+			}
+			c.emit(instruction{op: opCallable, b: 1})
+			return nil
+		}
 		dynamic := 0
 		if node.MethodExpr != nil {
 			// `Class::$m(...)`: the method name is a runtime value, pushed
