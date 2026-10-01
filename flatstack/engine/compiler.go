@@ -1036,6 +1036,18 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 			c.emit(instruction{op: opCallable, name: node.Fallback})
 			return nil
 		}
+		// func_get_args() reads the arguments of the call in flight. A compiled
+		// frame seeds its declared parameters into slots and keeps no argument
+		// list, so an argument past the last parameter is not in the frame at
+		// all; the whole program goes to the interpreter rather than answering
+		// an empty list. It is the one entry in runner.ScopeBuiltins.
+		//
+		// The first-class form above reads no frame and is not refused: it is a
+		// name the host resolves through the function table, which carries no
+		// scope builtin, so both engines report the same undefined function.
+		if callNames(node, "func_get_args") {
+			return unsupported(path, "func_get_args()")
+		}
 		switch node.Name {
 		case "compact":
 			return c.compactCall(node, path)
@@ -1416,6 +1428,15 @@ func (c *compiler) resolveClass(name string) string {
 
 func unsupported(path, format string, args ...any) error {
 	return fmt.Errorf("flatstack: %s: unsupported %s", path, fmt.Sprintf(format, args...))
+}
+
+// callNames reports whether the call names fn, under the spelling the source
+// used or the unqualified fallback a namespaced file resolves through. PHP
+// function names are case-insensitive and a leading backslash is the global
+// namespace.
+func callNames(node *model.Call, fn string) bool {
+	return strings.EqualFold(strings.TrimPrefix(node.Name, "\\"), fn) ||
+		strings.EqualFold(strings.TrimPrefix(node.Fallback, "\\"), fn)
 }
 
 func boolInt(value bool) int {
