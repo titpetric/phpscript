@@ -153,6 +153,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | callables.phpt                          | PASS       | PASS    | PASS |
 | closure_capture.phpt                    | PASS       | PASS    | PASS |
 | defer-usage.phpt                        | PASS       | PASS    | SKIP |
+| first_class_callable.phpt               | PASS       | PASS    | PASS |
 | parameter_defaults.phpt                 | PASS       | PASS    | PASS |
 | static_var.phpt                         | PASS       | PASS    | PASS |
 | static_var_closure.phpt                 | SKIP       | PASS    | PASS |
@@ -397,7 +398,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/errors      | 3        | 3      | 0      |
 | tests/fixtures/exceptions  | 10       | 10     | 0      |
 | tests/fixtures/flatstack   | 8        | 8      | 0      |
-| tests/fixtures/functions   | 11       | 11     | 0      |
+| tests/fixtures/functions   | 12       | 12     | 0      |
 | tests/fixtures/gd          | 7        | 7      | 0      |
 | tests/fixtures/includes    | 4        | 4      | 0      |
 | tests/fixtures/mail        | 2        | 2      | 0      |
@@ -414,4 +415,4 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/strings     | 21       | 21     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 2        | 2      | 0      |
-| **Total**                  | 256      | 256    | 0      |
+| **Total**                  | 257      | 257    | 0      |
