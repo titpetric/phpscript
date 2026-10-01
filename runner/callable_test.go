@@ -30,6 +30,9 @@ define("CLOSURE", function ($who) { return "closure " . $who; });
 define("BOUND", $site->hello);
 define("SITE", $site);
 define("ARR", array($site, "hello"));
+define("FC_FUNC", plain(...));
+define("FC_METHOD", $site->hello(...));
+define("FC_STATIC", Site::shout(...));
 `
 
 // callableRuntime runs the declarations and answers the runtime holding them.
@@ -79,6 +82,11 @@ func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 		{name: "function name", value: "plain", want: "plain a", named: "plain"},
 		{name: "Class::method", value: "Site::shout", want: "HELLO a", named: "Site::shout"},
 		{name: "an object with __invoke", value: constant(t, rt, "SITE"), want: "invoked a", named: "Site::__invoke"},
+		// The first-class spellings arrive as a *Callable already, so the router
+		// takes the form php itself writes rather than only the string for it.
+		{name: "name(...)", value: constant(t, rt, "FC_FUNC"), want: "plain a", named: "plain"},
+		{name: "$obj->method(...)", value: constant(t, rt, "FC_METHOD"), want: "hei a", named: "Site::hello"},
+		{name: "Class::method(...)", value: constant(t, rt, "FC_STATIC"), want: "HELLO a", named: "Site::shout"},
 	}
 	for _, test := range accepted {
 		t.Run(test.name, func(t *testing.T) {
@@ -150,6 +158,12 @@ func TestAsCallableReportsWhatItCaptured(t *testing.T) {
 		{name: "an __invoke carries its receiver", value: constant(t, rt, "SITE"), want: true},
 		{name: "a declared function has nothing", value: "plain", want: false},
 		{name: "Class::method has no receiver to share", value: "Site::shout", want: false},
+		// The first-class spellings answer the same as the strings they are the
+		// written form of, which is what routing closureMember through
+		// newStaticMethod settles: the static one shares nothing.
+		{name: "name(...) has nothing", value: constant(t, rt, "FC_FUNC"), want: false},
+		{name: "$obj->method(...) carries its receiver", value: constant(t, rt, "FC_METHOD"), want: true},
+		{name: "Class::method(...) has no receiver to share", value: constant(t, rt, "FC_STATIC"), want: false},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

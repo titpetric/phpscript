@@ -582,7 +582,9 @@ define("MUX", $mux);
 
 // TestMuxTakesAStaticMethodAndAnInvokable is the rest of what AsCallable takes:
 // "Class::method", which has no receiver to share, and an object declaring
-// __invoke, which is a bound method under the name php reserves for one.
+// __invoke, which is a bound method under the name php reserves for one. Each
+// also goes in through the first-class spelling `callable(...)`, which hands the
+// router a Closure and is the form php itself writes.
 func TestMuxTakesAStaticMethodAndAnInvokable(t *testing.T) {
 	_, handler := serveScript(t, `<?php
 class Site {
@@ -599,15 +601,27 @@ class Greeter {
 	}
 }
 
+function handle_root($w, $r) {
+	$w->write("root " . $r->url->query()->get("name"));
+}
+
 $mux = new HTTP\Mux();
 $mux->handle("GET /hello", "Site::hello");
 $mux->handle("GET /greet", new Greeter);
+// The first-class spellings arrive as a Closure, so the router takes the form
+// php itself writes for each of the three it accepts by name.
+$mux->handle("GET /static", Site::hello(...));
+$mux->handle("GET /bound", (new Greeter)(...));
+$mux->handle("GET /named", handle_root(...));
 define("MUX", $mux);
 `)
 
 	for _, want := range []struct{ path, body string }{
 		{"/hello?name=tit", "hei tit"},
 		{"/greet?name=tit", "moi tit"},
+		{"/static?name=tit", "hei tit"},
+		{"/bound?name=tit", "moi tit"},
+		{"/named?name=tit", "root tit"},
 	} {
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, want.path, nil))

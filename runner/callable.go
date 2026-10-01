@@ -435,11 +435,11 @@ func (rt *Runtime) closureValue(target any, fallback string, scope *Scope) (any,
 // closureMember answers `$obj->method(...)` and `Class::method(...)`: the
 // declaration bound to what it will run against, as a *Callable.
 //
-// A string target is a class name, and the declaration is bound to an empty
-// instance of it so `self::` inside the body resolves - the receiver staticMethod
-// builds for the same spelling. A host-backed receiver has no declaration to
-// bind, so its method resolves through reflection and the bound call is the value
-// itself.
+// A string target is a class name, so it goes through newStaticMethod, which is
+// what staticMethod and AsCallable build for the same spelling: an empty instance
+// per call, so `self::` inside the body resolves and nothing is shared between two
+// invocations of the value. A host-backed receiver has no declaration to bind, so
+// its method resolves through reflection and the bound call is the value itself.
 func (rt *Runtime) closureMember(target any, method string, scope *Scope) (any, error) {
 	switch receiver := target.(type) {
 	case *model.Object:
@@ -467,7 +467,7 @@ func (rt *Runtime) closureMember(target any, method string, scope *Scope) (any, 
 		if !ok {
 			return nil, fmt.Errorf("call to undefined method %s::%s()", receiver, method)
 		}
-		return rt.newMethod(model.NewObject(class), decl, scope), nil
+		return rt.newStaticMethod(class, decl, scope), nil
 	}
 	if fn, ok := rt.boundGoCallable(target, method, scope); ok {
 		return fn, nil
