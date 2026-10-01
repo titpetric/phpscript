@@ -65,7 +65,7 @@ func phpGetType(value any) string {
 		return "integer"
 	case float64:
 		return "double"
-	case string:
+	case string, []byte:
 		return "string"
 	}
 	if model.IsCollection(value) {
@@ -192,8 +192,15 @@ func registerLang(rt *runner.Runtime) {
 	})
 	// gettype returns the type of $value under PHP's legacy names: "integer", "double", "boolean", "string", "array", "object" or "NULL".
 	rt.RegisterFunc("gettype", phpGetType)
-	// is_string reports whether $value is a string.
-	rt.RegisterFunc("is_string", func(value any) bool { _, ok := value.(string); return ok })
+	// is_string reports whether $value is a string. A binding's []byte is one,
+	// PHP's strings being byte strings; see phpval.Bytes.
+	rt.RegisterFunc("is_string", func(value any) bool {
+		if _, ok := value.(string); ok {
+			return true
+		}
+		_, ok := phpval.Bytes(value)
+		return ok
+	})
 	// is_bool reports whether $value is a boolean.
 	rt.RegisterFunc("is_bool", func(value any) bool { _, ok := value.(bool); return ok })
 	// is_null reports whether $value is null.
