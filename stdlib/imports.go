@@ -17,6 +17,7 @@ import (
 	_ "github.com/titpetric/phpscript/stdlib/internals"
 	_ "github.com/titpetric/phpscript/stdlib/mail"
 	_ "github.com/titpetric/phpscript/stdlib/pexec"
+	_ "github.com/titpetric/phpscript/stdlib/regexp"
 	_ "github.com/titpetric/phpscript/stdlib/session"
 	_ "github.com/titpetric/phpscript/stdlib/span"
 	_ "github.com/titpetric/phpscript/stdlib/time"
