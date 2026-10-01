@@ -278,11 +278,11 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			// the index here would call a different method than PHP does.
 			if p.cur().kind == tVar && p.peek(1).kind == tOp && p.peek(1).val == "(" {
 				varName := p.next().val
-				args, err := p.parseArgs()
+				args, firstClass, err := p.parseCallArgs()
 				if err != nil {
 					return nil, err
 				}
-				e = &model.MethodCall{Base: e, MethodExpr: &model.Var{Name: varName}, Args: args}
+				e = &model.MethodCall{Base: e, MethodExpr: &model.Var{Name: varName}, Args: args, FirstClass: firstClass}
 				continue
 			}
 			// `$obj->{expr}(...)` calls the method the expression names. The
@@ -301,11 +301,11 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 				if !p.isOp("(") {
 					return nil, fmt.Errorf("line %d: expected %q after a braced member name", p.cur().line, "(")
 				}
-				args, err := p.parseArgs()
+				args, firstClass, err := p.parseCallArgs()
 				if err != nil {
 					return nil, err
 				}
-				e = &model.MethodCall{Base: e, MethodExpr: method, Args: args}
+				e = &model.MethodCall{Base: e, MethodExpr: method, Args: args, FirstClass: firstClass}
 				continue
 			}
 			if p.cur().kind != tIdent {
@@ -313,11 +313,13 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			}
 			name := p.next().val
 			if p.isOp("(") {
-				args, err := p.parseArgs()
+				args, firstClass, err := p.parseCallArgs()
 				if err != nil {
 					return nil, err
 				}
-				e = p.newMethodCall(e, name, args)
+				call := p.newMethodCall(e, name, args)
+				call.FirstClass = firstClass
+				e = call
 			} else {
 				e = p.newProp(e, name)
 			}
@@ -341,11 +343,11 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			// Calling a value rather than a name: `$fn($x)`, `$handlers[0]($x)`,
 			// `(self::$includeFile)($file)`. Named calls never reach here;
 			// they are consumed by parsePrimary.
-			args, err := p.parseArgs()
+			args, firstClass, err := p.parseCallArgs()
 			if err != nil {
 				return nil, err
 			}
-			e = &model.Invoke{Callee: e, Args: args}
+			e = &model.Invoke{Callee: e, Args: args, FirstClass: firstClass}
 		case (p.isOp("++") || p.isOp("--")) && isLValue(e):
 			e = p.newUnary(p.next().val, e, true)
 		default:
@@ -471,11 +473,11 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 			// `Class::$m(...)` calls the static method named by `$m`;
 			// without the parens it reads the static property `Class::$m`.
 			if p.isOp("(") {
-				args, err := p.parseArgs()
+				args, firstClass, err := p.parseCallArgs()
 				if err != nil {
 					return nil, err
 				}
-				return &model.StaticCall{Class: class, MethodExpr: &model.Var{Name: varName}, Args: args}, nil
+				return &model.StaticCall{Class: class, MethodExpr: &model.Var{Name: varName}, Args: args, FirstClass: firstClass}, nil
 			}
 			return &model.StaticProp{Class: class, Name: varName}, nil
 		}
@@ -484,11 +486,11 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 		}
 		member := p.next().val
 		if p.isOp("(") {
-			args, err := p.parseArgs()
+			args, firstClass, err := p.parseCallArgs()
 			if err != nil {
 				return nil, err
 			}
-			return &model.StaticCall{Class: class, Method: member, Args: args}, nil
+			return &model.StaticCall{Class: class, Method: member, Args: args, FirstClass: firstClass}, nil
 		}
 		return &model.ClassConst{Class: class, Name: member}, nil
 	}
@@ -496,14 +498,18 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 	// Function call vs. bare identifier (treated as constant lookup via a Call
 	// with no args is wrong; use a zero-arg function only when parens present).
 	if p.isOp("(") {
-		args, err := p.parseArgs()
+		args, firstClass, err := p.parseCallArgs()
 		if err != nil {
 			return nil, err
 		}
+		var call *model.Call
 		if !absolute && p.namespace != "" && !strings.ContainsRune(name, '\\') {
-			return p.newCall(p.qualify(name, false), name, args), nil
+			call = p.newCall(p.qualify(name, false), name, args)
+		} else {
+			call = p.newCall(p.qualify(name, absolute), "", args)
 		}
-		return p.newCall(p.qualify(name, absolute), "", args), nil
+		call.FirstClass = firstClass
+		return call, nil
 	}
 	// Bare identifier: a constant. Model it as a Var so the env can resolve it,
 	// or as a literal string fallback. We use Call-free Var-like lookup via a
@@ -739,7 +745,39 @@ func (p *parser) parseAnonClass() (model.Expr, error) {
 	return n, nil
 }
 
+// parseCallArgs consumes an argument list that may be PHP 8.1's first-class
+// callable syntax, `(...)`, and reports which it was. Every spelling that builds
+// a Call, MethodCall, StaticCall or Invoke reads its arguments here; the three
+// `new` sites keep parseArgs, which refuses the ellipsis as php does.
+func (p *parser) parseCallArgs() ([]model.Expr, bool, error) {
+	if p.atFirstClassMarker() {
+		p.i += 5 // ( . . . )
+		return nil, true, nil
+	}
+	args, err := p.parseArgs()
+	return args, false, err
+}
+
+// atFirstClassMarker reports whether the argument list starting at the current
+// token is exactly `(...)`. The lexer has no ellipsis token - a variadic
+// parameter reads three `.` operators in parseParamDecoration - and `.` is
+// string concatenation, so the whole five-token shape is matched at once rather
+// than consumed one token at a time and backed out of.
+func (p *parser) atFirstClassMarker() bool {
+	return p.isOpAt(0, "(") && p.isOpAt(1, ".") && p.isOpAt(2, ".") && p.isOpAt(3, ".") && p.isOpAt(4, ")")
+}
+
+func (p *parser) isOpAt(n int, v string) bool {
+	t := p.peek(n)
+	return t.kind == tOp && t.val == v
+}
+
 func (p *parser) parseArgs() ([]model.Expr, error) {
+	// `new` is the only form left reaching here, and php refuses the ellipsis
+	// for it too: there is no callable to take, only a class to construct.
+	if p.atFirstClassMarker() {
+		return nil, fmt.Errorf("line %d: cannot create a Closure for a new expression", p.cur().line)
+	}
 	if err := p.eatOp("("); err != nil {
 		return nil, err
 	}

@@ -472,6 +472,51 @@ $other = include "f.php";
 	}
 }
 
+func TestFirstClassCallableSyntaxPreserved(t *testing.T) {
+	in := `<?php
+$fn = greet(...);
+$len = strlen(...);
+$shout = Greeter::shout(...);
+$dynamicStatic = Greeter::$pick(...);
+$method = $obj->method(...);
+$dynamicMethod = $obj->$pick(...);
+$braced = $obj->{$pick}(...);
+$again = $closure(...);
+$indexed = $handlers[0](...);
+`
+	out, err := formatter.Source(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`$fn = greet(...);`,
+		`$len = strlen(...);`,
+		`$shout = Greeter::shout(...);`,
+		`$dynamicStatic = Greeter::$pick(...);`,
+		`$method = $obj->method(...);`,
+		`$dynamicMethod = $obj->$pick(...);`,
+		`$braced = $obj->$pick(...);`,
+		`$again = $closure(...);`,
+		`$indexed = $handlers[0](...);`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("first-class callable syntax %q changed:\n%s", want, out)
+		}
+	}
+}
+
+func TestFirstClassCallableIsNotACall(t *testing.T) {
+	// A zero-argument call and the callable that names it print differently,
+	// which is the whole reason the spelling is recorded on the node.
+	out, err := formatter.Source("<?php\n$a = greet();\n$b = greet(...);\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "$a = greet();") || !strings.Contains(out, "$b = greet(...);") {
+		t.Fatalf("call and callable did not stay distinct:\n%s", out)
+	}
+}
+
 func TestIdempotent(t *testing.T) {
 	in := `<?php
 class Test {
