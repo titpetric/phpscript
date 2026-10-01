@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner/expr"
@@ -103,24 +102,18 @@ func helperIndex(base, idx any) any {
 	case model.Keyed:
 		return b.Read(keyString(idx))
 	case string:
-		// String offset: $s[$i] returns the character at position i, counted
-		// in code points. PHP's offsets are bytes; character offsets are the
-		// phpscript default (docs/README.md, known divergences), and the
-		// linter flags offset access so substr() reads as the intent.
+		// String offset: $s[$i] is the byte at position i, as PHP's is, so it
+		// agrees with strlen and with the offsets strpos and
+		// PREG_OFFSET_CAPTURE report. A negative offset counts from the end.
+		// mb_substr($s, $i, 1) is the character read.
 		i := toInt(idx)
 		if i < 0 {
-			i += int64(utf8.RuneCountInString(b))
+			i += int64(len(b))
 		}
-		if i < 0 {
+		if i < 0 || i >= int64(len(b)) {
 			return ""
 		}
-		for _, r := range b {
-			if i == 0 {
-				return string(r)
-			}
-			i--
-		}
-		return ""
+		return b[i : i+1]
 	case nil:
 		return nil
 	}

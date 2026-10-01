@@ -269,15 +269,16 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 
 ## tests/fixtures/regex
 
-| tests/fixtures/regex       | Flat stack | Runtime | PHP  |
-|----------------------------|------------|---------|------|
-| preg_combined_flags.phpt   | PASS       | PASS    | PASS |
-| preg_match_flags.phpt      | PASS       | PASS    | PASS |
-| preg_offset_capture.phpt   | PASS       | PASS    | PASS |
-| preg_out_param_reuse.phpt  | PASS       | PASS    | PASS |
-| preg_replace_callback.phpt | PASS       | PASS    | PASS |
-| preg_set_order.phpt        | PASS       | PASS    | PASS |
-| preg_split.phpt            | PASS       | PASS    | PASS |
+| tests/fixtures/regex            | Flat stack | Runtime | PHP  |
+|---------------------------------|------------|---------|------|
+| preg_combined_flags.phpt        | PASS       | PASS    | PASS |
+| preg_match_flags.phpt           | PASS       | PASS    | PASS |
+| preg_offset_capture.phpt        | PASS       | PASS    | PASS |
+| preg_offset_capture_substr.phpt | PASS       | PASS    | PASS |
+| preg_out_param_reuse.phpt       | PASS       | PASS    | PASS |
+| preg_replace_callback.phpt      | PASS       | PASS    | PASS |
+| preg_set_order.phpt             | PASS       | PASS    | PASS |
+| preg_split.phpt                 | PASS       | PASS    | PASS |
 
 ## tests/fixtures/runtime
 
@@ -342,6 +343,8 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/strings        | Flat stack | Runtime | PHP  |
 |-------------------------------|------------|---------|------|
 | base64.phpt                   | PASS       | PASS    | PASS |
+| byte_and_character_units.phpt | PASS       | PASS    | PASS |
+| byte_offset_edges.phpt        | PASS       | PASS    | PASS |
 | case_functions.phpt           | PASS       | PASS    | PASS |
 | chr_ord.phpt                  | PASS       | PASS    | PASS |
 | escapes_bytes.phpt            | PASS       | PASS    | PASS |
@@ -350,7 +353,6 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | interpolation.phpt            | PASS       | PASS    | PASS |
 | interpolation_complex.phpt    | PASS       | PASS    | PASS |
 | join.phpt                     | PASS       | PASS    | PASS |
-| mb_defaults.phpt              | PASS       | PASS    | SKIP |
 | mbstring.phpt                 | PASS       | PASS    | PASS |
 | preg_engines.phpt             | PASS       | PASS    | PASS |
 | str_contains.phpt             | PASS       | PASS    | PASS |
@@ -405,11 +407,11 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/paths/api   | 1        | 1      | 0      |
 | tests/fixtures/paths       | 7        | 7      | 0      |
 | tests/fixtures/pexec       | 3        | 3      | 0      |
-| tests/fixtures/regex       | 7        | 7      | 0      |
+| tests/fixtures/regex       | 8        | 8      | 0      |
 | tests/fixtures/runtime     | 15       | 15     | 0      |
 | tests/fixtures/scaffold    | 4        | 4      | 0      |
 | tests/fixtures/stdlib      | 24       | 24     | 0      |
-| tests/fixtures/strings     | 20       | 20     | 0      |
+| tests/fixtures/strings     | 21       | 21     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 2        | 2      | 0      |
-| **Total**                  | 254      | 254    | 0      |
+| **Total**                  | 256      | 256    | 0      |
