@@ -483,17 +483,22 @@ func Run(program *Program, host Host) error {
 			registrar.RegisterClass(class)
 		}
 	}
-	return run(program, host, 0, nil, nil)
+	var globals map[string]any
+	if source, ok := host.(globalHost); ok {
+		globals = source.Globals()
+	}
+	return run(program, host, 0, nil, globals, nil)
 }
 
 // run executes one frame, starting at entryPC with seeds already written into
-// its locals. The value the frame returns is reported through result, which is
-// nil for the top-level frame because nothing consumes it.
+// its locals. globals is the host's own variable table, seeded only into the
+// top-level frame. The value the frame returns is reported through result, which
+// is nil for the top-level frame because nothing consumes it.
 //
 // A closure call re-enters here rather than pushing a call frame on the running
 // loop: the call arrives from a host binding (usort() invoking its comparator),
 // not from an instruction, so there is no loop to push onto.
-func run(program *Program, host Host, entryPC int, seeds []localSeed, result *any) (err error) {
+func run(program *Program, host Host, entryPC int, seeds []localSeed, globals map[string]any, result *any) (err error) {
 	st := statePool.Get().(*execState)
 	st.program, st.host = program, host
 	st.pc = entryPC
@@ -510,6 +515,12 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, result *an
 		if seed.slot >= 0 && seed.slot < len(st.locals) {
 			st.locals[seed.slot], st.initialized[seed.slot] = seed.value, true
 		}
+	}
+	if len(globals) > 0 {
+		// A name the program never mentions has no slot and goes to extras, so
+		// get_defined_vars() at the top level lists it the way it does in the
+		// interpreter's global scope.
+		st.extras = applyNamedValues(program, st.locals, st.initialized, st.extras, globals, st.refWrites)
 	}
 
 	entryDeferMark := len(st.deferred)
@@ -1489,7 +1500,7 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 		seeds := make([]localSeed, 0, len(captured)+len(def.paramSlots))
 		seeds = append(seeds, captured...)
 		// Parameters are seeded after the captures, so a parameter of the same
-		// name shadows the capture, as it does in PHP. An argument the caller
+		// name wins; php rejects that overlap outright. An argument the caller
 		// omitted binds null, matching the interpreter's bindParams.
 		for i, slot := range def.paramSlots {
 			var value any
@@ -1502,7 +1513,7 @@ func closureValue(program *Program, host Host, def closureDef, captured []localS
 		// way out, so the snapshot usort() took before invoking this
 		// comparator stays the one usort()'s write-back sees.
 		var result any
-		if err := run(program, host, def.entryPC, seeds, &result); err != nil {
+		if err := run(program, host, def.entryPC, seeds, nil, &result); err != nil {
 			return nil, err
 		}
 		return result, nil

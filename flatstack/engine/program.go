@@ -348,6 +348,14 @@ type invokeHost interface {
 	InvokeValue(callee any, args []any) (any, error)
 }
 
+// globalHost holds variables of its own, which a host seeded before the run. Run
+// writes them into the top-level frame, which is where the language puts a
+// global: answering them from Lookup instead would hand them to every function
+// and every closure, which no frame below the first one was given them in.
+type globalHost interface {
+	Globals() map[string]any
+}
+
 // unsetPropHost removes a named property, PHP's unset($obj->prop). Removing
 // one that is not there, or from a value that has none, is not an error.
 type unsetPropHost interface {

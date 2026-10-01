@@ -87,11 +87,13 @@ func (s *Scope) Defer(callback any) {
 
 // DefinedVars returns a snapshot of PHP-visible variables in this frame.
 // Interpreter bookkeeping slots use a double-underscore prefix and are not PHP
-// variables, so they are omitted.
+// variables, so they are omitted. `this` goes with them: it is bound by the
+// call rather than declared in the body, and php leaves it out of
+// get_defined_vars() for that reason.
 func (s *Scope) DefinedVars() map[string]any {
 	vars := make(map[string]any, len(s.vars)+len(s.statics))
 	for name, value := range s.vars {
-		if len(name) >= 2 && name[:2] == "__" {
+		if name == "this" || (len(name) >= 2 && name[:2] == "__") {
 			continue
 		}
 		vars[name] = value

@@ -37,9 +37,16 @@ func TestFlatstackCompilesClosures(t *testing.T) {
 			want:   "3,6",
 		},
 		{
-			name:   "parameter shadows a capture of the same name",
+			// The frame holds the captures and the parameters and nothing else,
+			// so an enclosing variable the use list did not name is not in it.
+			name:   "an enclosing variable of the same name is not visible",
 			source: `<?php $x = "outer"; echo call_user_func(function ($x) { return $x; }, "inner");`,
 			want:   "inner",
+		},
+		{
+			name:   "an enclosing variable is not visible at all",
+			source: `<?php $x = "outer"; echo var_export(call_user_func(function () { return isset($x); }), true);`,
+			want:   "false",
 		},
 		{
 			name:   "an omitted argument binds null",
