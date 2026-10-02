@@ -283,6 +283,7 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | preg_match_flags.phpt           | PASS       | PASS    | PASS |
 | preg_offset_capture.phpt        | PASS       | PASS    | PASS |
 | preg_offset_capture_substr.phpt | PASS       | PASS    | PASS |
+| preg_offset_substr.phpt         | PASS       | PASS    | PASS |
 | preg_out_param_reuse.phpt       | PASS       | PASS    | PASS |
 | preg_replace_callback.phpt      | PASS       | PASS    | PASS |
 | preg_set_order.phpt             | PASS       | PASS    | PASS |
@@ -415,11 +416,11 @@ Every `.phpt` fixture in the suite, one table per folder. A fixture states a beh
 | tests/fixtures/paths/api   | 1        | 1      | 0      |
 | tests/fixtures/paths       | 7        | 7      | 0      |
 | tests/fixtures/pexec       | 3        | 3      | 0      |
-| tests/fixtures/regex       | 8        | 8      | 0      |
+| tests/fixtures/regex       | 9        | 9      | 0      |
 | tests/fixtures/runtime     | 15       | 15     | 0      |
 | tests/fixtures/scaffold    | 4        | 4      | 0      |
 | tests/fixtures/stdlib      | 24       | 24     | 0      |
 | tests/fixtures/strings     | 21       | 21     | 0      |
 | tests/fixtures/syntax      | 9        | 9      | 0      |
 | tests/fixtures/types       | 2        | 2      | 0      |
-| **Total**                  | 264      | 264    | 0      |
+| **Total**                  | 265      | 265    | 0      |
