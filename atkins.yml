@@ -64,7 +64,6 @@ tasks:
     cmds:
       - task: fmt
       - task: go:test
-      - task: cover
       - task: build
       - task: db:down
         deferred: true
@@ -75,13 +74,14 @@ tasks:
       - task: test:introspection
       - task: fmt
 
-  # The build alone, without the docs regeneration the default pipeline runs
-  # first. cover rewrites docs/coverage/ right before go:build, and a rewrite
-  # leaves the index stale, so a binary built by `atkins` carries a -dirty
-  # version stamp even when nothing changed. Release assets come from here:
-  # tag, `atkins build`, then release:publish.
+  # Release assets come from here: tag, `atkins build`, then `atkins publish`.
+  #
+  # Nothing in this job writes a tracked file, which is what keeps the version
+  # stamp honest. It used to run behind `cover`, and a rewritten docs/coverage/
+  # left the index dirty, so a binary built by `atkins` carried a -dirty stamp
+  # even when nothing had changed. Generation lives in `gen` now.
   build:
-    desc: "Build the release binary and the docker image, skipping docs regeneration"
+    desc: "Build the release binary and the docker image"
     cmds:
       - go install .
       - task: go:build
@@ -159,13 +159,27 @@ tasks:
   # The ./... is load-bearing: fixtures live in per-area subfolders, and a bare
   # path is not recursive, so without it the job would match nothing and pass.
   #
-  # One run produces both outputs: -o writes the checked-in report while the
-  # ansi table still goes to the terminal, so the suite is not executed twice
-  # to report it twice. The report is generated documentation, so this runs
-  # before the closing fmt pass that formats everything under docs/.
-  # Written without --profile: timings would differ on every run and show up as
-  # a diff in every commit.
+  # This is the gate and nothing else: it reports the suite and writes no file.
+  # `atkins gen:fixtures` is the same run with -o, and is what produces the
+  # report; a pipeline run leaves the tree clean because nothing here touches
+  # docs/.
   test:phpscript:matrix:
+    tty: true # enable ansi
+    passthru: true
+    env:
+      include: .env.testing
+    cmds:
+      - phpscript test --matrix -v ./tests/...
+
+  # The same matrix run as the gate above, with -o, which is what writes the
+  # report. It is a second execution of the suite and costs what that costs:
+  # the gate runs on every pipeline invocation and this does not, so paying for
+  # the report only when the report is wanted is the cheaper half.
+  #
+  # Written without --profile, --count or --time: a timing that differs by a
+  # millisecond per run would be a diff in every commit.
+  gen:fixtures:
+    desc: "Generate docs/test-fixtures.md from a matrix run of the whole suite"
     tty: true # enable ansi
     passthru: true
     env:
@@ -214,16 +228,26 @@ tasks:
   #
   # mdox repads the status column afterwards, counting the emoji as one column
   # where splint counts two, so this job always leaves a diff that mdox:fmt
-  # closes. The default pipeline ends with fmt, which is why a whole run leaves
-  # the tree clean; `atkins cover` on its own does not, and the fix is to run
-  # fmt rather than to chase the padding.
+  # closes. `atkins gen` ends with fmt for that reason; `atkins cover` on its
+  # own does not, and the fix is to run fmt rather than to chase the padding.
+  #
+  # A tree that has not been tested yet leaves the documents alone rather than
+  # rendering a report with no coverage in it. cover/pkg.cov is written by
+  # go:test, which is no longer upstream of this job in the default pipeline.
   cover:
     aliases: [gen:coverage:phpscript]
     desc: "Generate docs/coverage/phpscript*.md from the test run's coverage profile"
     cmds:
+      - >
+        test -s cover/pkg.cov
+        || { echo "cover/pkg.cov is missing; run 'atkins go:test' first" >&2; exit 0; }
       - mkdir -p docs/coverage
-      - splint coverage --append-coverage=cover/pkg.cov --template=docs/coverage/phpscript.md.tpl ./... > docs/coverage/phpscript.md
-      - splint coverage --append-coverage=cover/pkg.cov --template=docs/coverage/phpscript-detail.md.tpl ./... > docs/coverage/phpscript-detail.md
+      - >
+        test -s cover/pkg.cov || exit 0;
+        splint coverage --append-coverage=cover/pkg.cov --template=docs/coverage/phpscript.md.tpl ./... > docs/coverage/phpscript.md
+      - >
+        test -s cover/pkg.cov || exit 0;
+        splint coverage --append-coverage=cover/pkg.cov --template=docs/coverage/phpscript-detail.md.tpl ./... > docs/coverage/phpscript-detail.md
 
   # The PHP half. cover/dbadmin.file.txt is written by the dbadmin venom suite
   # (demos/dbadmin/tests/atkins.yml), which reads it off the running service, so
@@ -290,16 +314,27 @@ tasks:
     cmds:
       - ./scripts/splint-gate.sh
 
-  # Every generated document in one target. The coverage pair over Go sources
-  # regenerates from the profile the test job wrote; the dbadmin pair needs
-  # `atkins test:demos` to have run, and says so rather than writing an empty
-  # report.
+  # Every generated document in one target, and the only place they are
+  # generated. The default pipeline does not call this: five of these documents
+  # change on every run, so generating them inside a correctness run dirtied the
+  # tree on every invocation. They are gitignored and travel as release assets
+  # instead, which `atkins release:docs` attaches.
+  #
+  # The coverage pair over Go sources regenerates from the profile go:test
+  # wrote; the dbadmin pair needs `atkins test:demos` to have run. Each says so
+  # rather than writing an empty report.
+  #
+  # The closing fmt pass is load-bearing: splint and mdox disagree on how wide
+  # an emoji is, so the coverage tables come out of splint with padding mdox
+  # rewrites. Without it this target always leaves a diff.
   gen:
-    desc: "Regenerate the diagrams and the coverage reports"
+    desc: "Regenerate every generated document"
     cmds:
       - task: gen:architecture
       - task: cover
       - task: gen:coverage:dbadmin
+      - task: gen:fixtures
+      - task: fmt
 
   gen:architecture:
     desc: "Generate architectural diagrams of the project"
@@ -310,3 +345,54 @@ tasks:
       - splint docs --input splint.json --render imports | plantuml -tsvg -pipe > docs/assets/imports.svg
       - splint docs --input splint.json --render puml | plantuml -tsvg -pipe > docs/assets/structure.svg
       - splint sizes --input splint.json --render d2 | d2 --layout elk - docs/assets/size.svg
+
+  # The whole publish, in the order it has to happen: the release skill creates
+  # the release for the newest tag and uploads the binaries from bin/, then the
+  # generated documents go up beside them.
+  #
+  # This shadows the `publish` alias the release skill contributes, which is the
+  # point: `atkins publish` should attach everything a release carries, not only
+  # the binaries. release:publish is still reachable under its own name.
+  #
+  # Run `atkins build` and `atkins gen` first. The release skill creates a
+  # release for an existing tag and not the tag itself, bin/ is gitignored so the
+  # binaries have to be rebuilt, and the documents below are gitignored for the
+  # same reason.
+  publish:
+    desc: "Publish the release: the binaries, the generated documents, the image"
+    cmds:
+      - task: release:publish
+      - task: release:docs
+
+  # The five documents the pipeline generates and does not commit, attached to
+  # the release for the newest tag.
+  #
+  # Each asset keeps its own basename. docs/coverage/phpscript.md links
+  # phpscript-detail.md relatively, and a tag's assets are served from one flat
+  # directory, so the link resolves between two assets as long as neither is
+  # renamed. The part after # is gh's display label, which is what makes the
+  # list readable without renaming anything.
+  #
+  # A document that was not generated is skipped with a message rather than
+  # failing the publish: the dbadmin pair needs `atkins test:demos`, and the
+  # coverage pair needs `atkins go:test`.
+  release:docs:
+    desc: "Attach the generated documents to the GitHub release for the newest tag"
+    passthru: true
+    vars:
+      semver: $(git tag --sort=version:refname | tail -n 1)
+      assets:
+        - "docs/test-fixtures.md#Test fixture results"
+        - "docs/coverage/phpscript.md#Go coverage, per package"
+        - "docs/coverage/phpscript-detail.md#Go coverage, per function"
+        - "docs/coverage/dbadmin.md#dbadmin coverage, per folder"
+        - "docs/coverage/dbadmin-detail.md#dbadmin coverage, per file"
+    cmds:
+      - >
+        test -n "${{ semver }}"
+        || { echo "no tag to release; tag the commit first" >&2; exit 1; }
+      - for: asset in assets
+        run: >
+          entry="${{ asset }}"; path="${entry%%#*}";
+          test -s "$path" || { echo "skipping $path, not generated" >&2; exit 0; };
+          gh release upload --clobber ${{ semver }} "$entry"
