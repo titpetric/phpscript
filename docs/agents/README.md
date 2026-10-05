@@ -109,6 +109,33 @@ There is no `b.ReportMetric` anywhere in the tree, so there is no custom metric 
 
 `--time=100ms` per sample. A one-second sample over 264 fixtures on two runners does not finish, and the box runs with a few hundred megabytes free and several gigabytes of swap already in use, so a long run measures the swap.
 
+### Memory
+
+A measurement run has to be stopped from taking the box down. It is not a theoretical risk: a sampling run over the whole fixture suite in one process reached 7.9 GB resident and was killed by the kernel, taking the rest of the sprint with it.
+
+Three guards, all three required.
+
+**`GOMEMLIMIT` on every measured process.** 2 GiB unless there is a reason for more:
+
+```sh
+GOMEMLIMIT=2GiB GOGC=100 ...
+```
+
+It is a soft limit, so the collector works harder as the heap approaches it instead of the kernel choosing a victim. That changes GC behaviour, and therefore timing, which is why both sides of a before/after pair carry the same `GOMEMLIMIT` and the manifest records it. A pair measured at two different limits is two measurements of two programs, the same way a CGO mismatch is.
+
+**Scope a sampling run per area, not over the whole suite.** A runtime is retained for as long as its parse cache is, so a process that samples 264 fixtures holds 264 fixtures' worth of runtimes. One process per area releases it between areas:
+
+```sh
+for area in tests/fixtures/*/; do
+  phpscript test --matrix --skip-php --profile --json \
+    --count 6 --time 100ms "$area..." > "bench-fixtures-after-$(basename "$area").json"
+done
+```
+
+**Know what `--cache` costs in memory, not only in what it measures.** `worker` keeps one set of caches per worker loop, which is the production shape and the larger heap. `off` drops the runtime with the fixture, which is roughly two orders of magnitude less resident and prices the parser instead of execution. A whole-suite run that has to stay in one process uses `off`.
+
+`atkins bench` and `atkins default` are not exempt. Both compile and run the tree, and the OOM above was raised by atkins.
+
 ### GC and drift
 
 Four rules. They were enforced by a script that has been deleted; they are protocol now.
@@ -212,7 +239,7 @@ Body order, fixed:
 3. The before/after table, canonical shape, environment stated once.
 4. The `benchstat` block verbatim for whatever moved.
 5. Considered and rejected: at least one entry, each naming the approach, the number it produced and why it lost. Where a future reader would try it again, the same sentence also lands in the document that owns the subject, because a pull request body is not where anybody looks.
-6. `worktree verdict --from=main` output, that exact command, fenced, last.
+6. `worktree verdict --from=main` output, that exact command, last. It is already markdown - a heading, a verdict line and a table - so it goes in raw rather than fenced.
 7. The checklist from `.github/PULL_REQUEST_TEMPLATE.md`, ticked honestly.
 
 ### Extended reasoning for a possible breaking change

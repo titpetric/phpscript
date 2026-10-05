@@ -17,8 +17,10 @@ The contract's lock and `CGO_ENABLED=0`. A correctness run takes the lock too: i
 The database fixtures read their connection strings from `.env.testing`:
 
 ```sh
-set -a; . ./.env.testing; set +a
+set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
 ```
+
+Exported rather than sourced. `. ./.env.testing` does not work: three of the four values carry an unquoted `&` and the fourth carries unquoted parentheses, so bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser, which is why `env: include: .env.testing` works where the shell does not. The file is left as it is.
 
 The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression and is reported as a missing precondition.
 
@@ -30,7 +32,7 @@ The whole tree, with the machine-readable record:
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
-  set -a; . ./.env.testing; set +a
+  set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
   CGO_ENABLED=0 gotestsum --jsonfile bench-gotest-after.json \
     -- -count 1 ./...
 '
@@ -40,7 +42,7 @@ With coverage, which is the form `atkins cover` reads from:
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
-  set -a; . ./.env.testing; set +a
+  set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
   mkdir -p cover
   CGO_ENABLED=0 gotestsum -- -count 1 -cover -coverpkg=./... \
     -coverprofile=cover/pkg.cov ./...

@@ -22,7 +22,7 @@ The contract's lock and private binary. The private-binary rule bites hardest he
 The database fixtures need `.env.testing`:
 
 ```sh
-set -a; . ./.env.testing; set +a
+set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
 ```
 
 ## The run
@@ -34,7 +34,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
   CGO_ENABLED=0 go build -o bin/phpscript .
   PATH="$PWD/bin:$PATH"
   command -v phpscript | grep -q "^$PWD/bin/" || exit 1
-  set -a; . ./.env.testing; set +a
+  set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
   mkdir -p cover
   phpscript test --cover=file --coverfile cover/fixtures.cov ./tests/...
 '
@@ -42,16 +42,19 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 
 `--cover` takes `line`, `func` or `file`. `line` writes the profile only; `func` and `file` also print a report in the format `go tool cover -func` prints. `--coverfile` implies `--cover`, defaults to `phpscript.cov`, expands `{time}` to a UTC timestamp, and creates the directory. `--split` additionally writes each fixture's own profile beside it.
 
-Benchmark sampling, which is the percentile mode:
+Benchmark sampling, which is the percentile mode. One process per area, under `GOMEMLIMIT`, for the reason the contract's memory section gives: a runtime is retained as long as its parse cache, so one process over the whole suite holds every runtime it built and the kernel ends the run.
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
   CGO_ENABLED=0 go build -o bin/phpscript .
   PATH="$PWD/bin:$PATH"
   command -v phpscript | grep -q "^$PWD/bin/" || exit 1
-  set -a; . ./.env.testing; set +a
-  phpscript test --matrix --skip-php --profile --json \
-    --count 6 --time 100ms ./tests/... > bench-fixtures-after.json
+  set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
+  for area in tests/fixtures/*/; do
+    GOMEMLIMIT=2GiB phpscript test --matrix --skip-php --profile --json \
+      --count 6 --time 100ms "$area..." \
+      > "bench-fixtures-after-$(basename "$area").json"
+  done
 '
 ```
 
@@ -102,7 +105,7 @@ Which fields appear depends on which flags were given:
 
 `gc_runs` prints as `N (M%)` in the table, where M is the collector's share of that row's fixture execution count. A row whose GC share differs between before and after is not comparable and is re-measured, per the contract.
 
-`--cache` decides what was measured. `off` re-parses every run and prices the parser; `worker` amortises the parse and prices execution. A before/after pair that disagrees on `--cache` compares two different things.
+`--cache` decides what was measured, and what it costs in resident memory. `off` re-parses every run and prices the parser, and drops the runtime with the fixture. `worker` amortises the parse and prices execution, and keeps every runtime its worker built. A before/after pair that disagrees on `--cache` compares two different things, and a whole-suite run that has to stay in one process uses `off`.
 
 Coverage is the interpreter's alone. The bytecode engine does not collect, and `php` is another process. A coverage number from a `--matrix` run describes one runtime.
 

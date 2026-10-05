@@ -46,6 +46,8 @@ Both Go runners, through `--matrix --skip-php`. `php` is excluded on purpose: it
 
 `--cache` decides what is being timed. `worker` amortises the parse across the fixtures a worker runs, which is the production shape. `off` re-parses per fixture, which measures the parser. Picking the wrong one is the common error, and the report names which was used.
 
+It also decides what the run costs in resident memory, so layer 3 runs one process per area under `GOMEMLIMIT`. The contract's memory section has the reasoning and the loop.
+
 ## The two memory numbers
 
 They measure different things and the point is to put them side by side.
