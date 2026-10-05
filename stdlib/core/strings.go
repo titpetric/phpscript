@@ -22,12 +22,12 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("strtoupper", asciiUpper)
 	// strtolower returns $string with A-Z mapped down and every other byte left alone; mb_strtolower converts non-ASCII letters too.
 	rt.RegisterFunc("strtolower", asciiLower)
-	// trim strips whitespace, or the characters listed in $characters, from both ends of $string.
-	rt.RegisterFunc("trim", phpTrim(strings.Trim, " \t\n\r\x00\x0B"))
-	// rtrim strips whitespace, or the characters listed in $characters, from the end of $string.
-	rt.RegisterFunc("rtrim", phpTrim(strings.TrimRight, " \t\n\r\x00\x0B"))
-	// ltrim strips whitespace, or the characters listed in $characters, from the start of $string.
-	rt.RegisterFunc("ltrim", phpTrim(strings.TrimLeft, " \t\n\r\x00\x0B"))
+	// trim strips whitespace, or the bytes listed in $characters, from both ends of $string; "a..z" in the list is the range between the two.
+	rt.RegisterFunc("trim", phpTrim(trimBoth, defaultTrimChars))
+	// rtrim strips whitespace, or the bytes listed in $characters, from the end of $string; "a..z" in the list is the range between the two.
+	rt.RegisterFunc("rtrim", phpTrim(trimRight, defaultTrimChars))
+	// ltrim strips whitespace, or the bytes listed in $characters, from the start of $string; "a..z" in the list is the range between the two.
+	rt.RegisterFunc("ltrim", phpTrim(trimLeft, defaultTrimChars))
 
 	// substr returns the part of $string from byte $offset for $length bytes; a negative $offset counts from the end and a negative $length stops that many bytes before it. mb_substr counts characters.
 	rt.RegisterFunc("substr", phpSubstr)
@@ -139,15 +139,69 @@ func phpCRC32(str string) int64 {
 // See BenchmarkCRC32.
 const crc32NativeThreshold = 256
 
-// phpTrim adapts strings.Trim*-style functions to PHP's optional charlist arg.
-func phpTrim(fn func(string, string) string, def string) func(string, ...string) string {
+// trimSide selects which ends of a string phpTrim strips.
+type trimSide int
+
+const (
+	trimBoth trimSide = iota
+	trimLeft
+	trimRight
+)
+
+// defaultTrimChars is the character list PHP's trim family strips when a call
+// names none.
+const defaultTrimChars = " \t\n\r\x00\x0B"
+
+// phpTrim implements the trim family over PHP's optional charlist.
+//
+// The list is a set of bytes rather than of characters, which is the unit the
+// rest of the str* functions count in, so a charlist holding one byte of a
+// multi-byte character strips that byte. strings.Trim reads its cutset as runes
+// and cannot express either that or the "a..z" range.
+func phpTrim(side trimSide, def string) func(string, ...string) string {
+	defMask := charMask(def)
 	return func(s string, chars ...string) string {
-		cut := def
+		mask := defMask
 		if len(chars) > 0 {
-			cut = chars[0]
+			mask = charMask(chars[0])
 		}
-		return fn(s, cut)
+		start, end := 0, len(s)
+		if side != trimRight {
+			for start < end && mask[s[start]] {
+				start++
+			}
+		}
+		if side != trimLeft {
+			for end > start && mask[s[end-1]] {
+				end--
+			}
+		}
+		return s[start:end]
 	}
+}
+
+// charMask reads a trim character list into a byte set, as PHP's php_charmask
+// does: a byte stands for itself and "a..z" is every byte from the first to the
+// last, both included.
+//
+// A range whose end sorts below its start, or one missing either end, is read as
+// the literal bytes it is written with. PHP warns on each of those and then
+// reads it the same way; there are no warnings here, so the reading is the whole
+// of the behaviour.
+func charMask(list string) [256]bool {
+	var mask [256]bool
+	for i := 0; i < len(list); {
+		if i+3 < len(list) && list[i+1] == '.' && list[i+2] == '.' && list[i+3] >= list[i] {
+			for c := int(list[i]); c <= int(list[i+3]); c++ {
+				mask[c] = true
+			}
+			i += 4
+			continue
+		}
+		mask[list[i]] = true
+		i++
+	}
+	return mask
 }
 
 // phpSubstr implements substr($s, $start[, $length]) with PHP's negative
