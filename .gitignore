@@ -30,7 +30,6 @@ tests/fixtures/**/filesystem_fixture_*.txt
 # Local agent/editor state, never committed.
 /.claude
 
-memprobe*
 /LINT.md
 
 # splint writes its document beside the tree it describes, and a job that
@@ -40,3 +39,12 @@ splint.json
 # Benchmark sweeps, compared with benchstat; never committed.
 bench*.txt
 bench*.json
+
+# The documents `atkins gen` writes, which change on every run: the fixture
+# matrix carries a duration per area and the coverage reports carry a percentage
+# per package. Generating them inside the default pipeline dirtied the tree on
+# every invocation, so they travel as release assets instead and
+# `atkins release:docs` attaches them. The .md.tpl templates beside the coverage
+# reports are the source and stay tracked, which *.md does not match.
+/docs/test-fixtures.md
+/docs/coverage/*.md

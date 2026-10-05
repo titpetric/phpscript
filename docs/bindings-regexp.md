@@ -350,7 +350,7 @@ atkins test:introspection    # implemented-apis.md, phpscript info, reference RE
 atkins                       # the default pipeline: format, test, matrix, docs, image
 ```
 
-`atkins` rewrites `docs/test-fixtures.md` and `docs/coverage/`. Run it a second time after committing to prove the generated files it wrote stay clean. `atkins gen:architecture` is not part of the default target, so a new package leaves `docs/assets/*.svg` stale until it is run by hand.
+`atkins` rewrites the two generated documents under `docs/reference/`, so a new registration shows up there and is committed. It does not write `docs/test-fixtures.md` or `docs/coverage/`: those are gitignored and come from `atkins gen`, which is not part of the default target either, so a new package leaves them and `docs/assets/*.svg` stale until it is run by hand.
 
 The generated class entry lists the method set `*regexp.Regexp` published, which is the whole of it minus the six names `apidoc` treats as host plumbing (`Error`, `String`, `GoString`, `SetID`, `MarshalJSON`, `UnmarshalJSON`). Those are hidden from the reference and still callable.
 

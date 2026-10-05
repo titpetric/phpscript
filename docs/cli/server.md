@@ -135,4 +135,4 @@ The modes are `--cover`'s: `line` is the profile itself and is the default, `fun
 
 Counting turns the flatstack backend off for the process: coverage is an interpreter feature and the fallback is atomic, so a counted program runs interpreted whole. A server measuring coverage is not a server measuring throughput.
 
-The dbadmin demo is wired this way end to end. `compose.yml` starts it with `--cover`, the venom suite in `demos/dbadmin/tests` reads the endpoint after it runs, and `atkins gen:coverage:dbadmin` renders [docs/coverage/dbadmin.md](../coverage/dbadmin.md) from it.
+The dbadmin demo is wired this way end to end. `compose.yml` starts it with `--cover`, the venom suite in `demos/dbadmin/tests` reads the endpoint after it runs, and `atkins gen:coverage:dbadmin` renders the [dbadmin coverage report](https://github.com/titpetric/phpscript/releases/latest/download/dbadmin.md) from it.
