@@ -93,6 +93,24 @@ PARALLEL='BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHost
 
 The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and takes `-count 10` where the pinned job takes 6. A parallel benchmark on a shared box is the noisiest number in the set, and benchstat's interval decides whether it moved, not the delta.
 
+### The sprint gate
+
+`atkins default` is not the gate for a sprint. Its `build` task runs `go install .`, which is the one thing the private-binary rule exists to prevent, and it builds a docker image a sprint has no use for. Running it hands the binary on `PATH` to whoever measures next.
+
+The gate is the subset that compiles nothing into a shared location, with the private binary first on `PATH`:
+
+```sh
+atkins fmt
+atkins go:test
+atkins lint
+atkins test:phpscript:run
+atkins test:phpscript:matrix
+atkins test:lifecycle
+atkins test:introspection
+```
+
+A pull request says it ran that subset rather than ticking the template's "I ran the default atkins pipeline" box, because it did not. `atkins build` and `atkins gen` belong to a release, not to a sprint.
+
 ### Samples and statistics
 
 `-count 6` minimum, so `benchstat` has enough samples to report an interval. `-count 10` for the three parallel benchmarks.
