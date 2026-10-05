@@ -51,6 +51,54 @@ func TestRunCommandJSON(t *testing.T) {
 	}
 }
 
+// TestRunCommandEmptySelectionFails pins the exit code of a mis-scoped
+// invocation in both report modes. A path matching no fixture is a pipeline
+// pointed at the wrong directory, so it fails rather than reporting success
+// over nothing - and --json does not change that, it only adds the empty
+// report on stdout for whatever is parsing it.
+func TestRunCommandEmptySelectionFails(t *testing.T) {
+	ctx := context.Background()
+	empty := filepath.Join(t.TempDir(), "...")
+
+	t.Run("plain", func(t *testing.T) {
+		if err := test.Run(ctx, []string{empty}, test.Options{}); err == nil {
+			t.Fatal("empty selection returned nil, want an error")
+		}
+	})
+
+	t.Run("json", func(t *testing.T) {
+		old := os.Stdout
+		r, w, err := os.Pipe()
+		if err != nil {
+			t.Fatal(err)
+		}
+		os.Stdout = w
+		errRun := test.Run(ctx, []string{empty}, test.Options{JSON: true})
+		w.Close()
+		os.Stdout = old
+
+		var buf bytes.Buffer
+		_, _ = buf.ReadFrom(r)
+		if errRun == nil {
+			t.Fatal("empty selection with --json returned nil, want an error")
+		}
+
+		// The report is still well formed, so a consumer parsing stdout is not
+		// left with an empty stream to explain.
+		var report struct {
+			Total   int   `json:"total"`
+			Failed  int   `json:"failed"`
+			Results []any `json:"results"`
+		}
+		if err := json.Unmarshal(buf.Bytes(), &report); err != nil {
+			t.Fatalf("json: %v\n%s", err, buf.String())
+		}
+		if report.Total != 0 || len(report.Results) != 0 {
+			t.Fatalf("report = %+v, want an empty one", report)
+		}
+	})
+}
+
 // TestRunCommandOutputFile covers -o end to end over more than one area, which
 // is what the atkins report job does.
 func TestRunCommandOutputFile(t *testing.T) {

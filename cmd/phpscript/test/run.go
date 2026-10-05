@@ -360,9 +360,11 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	// pipeline that points the runner at the wrong directory should fail
 	// rather than report success over nothing.
 	if len(fixtures) == 0 {
+		// The empty report still goes out, the way a failing run's does at the
+		// end of this function: a consumer reading stdout gets well-formed JSON
+		// either way, and the error is what carries the exit code.
 		if opts.JSON {
 			_ = json.NewEncoder(os.Stdout).Encode(jsonReport{Results: []jsonFixture{}})
-			return nil
 		}
 		return fmt.Errorf("no .phpt test fixtures found in %s", strings.Join(paths, " "))
 	}
