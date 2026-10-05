@@ -38,13 +38,13 @@ Build and measure are one unit, not two. An exclusive lock wraps both:
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '...'
 ```
 
-The box has four cores and is shared with other agents. A concurrent `go install` overwrites the binary mid-run, and a concurrent `go test ./...` takes the cores a sample is being timed on. `-w 3600` so a stuck holder surfaces as a failure rather than as a hang.
+The box is shared with other agents. A concurrent `go install` overwrites the binary mid-run, and a concurrent `go test ./...` takes the cores a sample is being timed on. `-w 3600` so a stuck holder surfaces as a failure rather than as a hang.
 
-Anything that compiles the tree or runs the test tree takes the lock, including a correctness `go test ./...`: twenty-four seconds on four cores wrecks somebody else's sample. Reading code, grepping and editing do not.
+Anything that compiles the tree or runs the test tree takes the lock, including a correctness `go test ./...`: a full suite run wrecks somebody else's sample. Reading code, grepping and editing do not.
 
 ### The private binary
 
-Never `go install .`. `GOBIN` is `/usr/local/bin`, so that overwrites the binary on `PATH` - the one every other agent is measuring against.
+Never `go install .`. It writes to a shared `GOBIN`, which on a box running several sprints is the binary every other agent is measuring against.
 
 ```sh
 CGO_ENABLED=0 go build -o bin/phpscript .
@@ -67,9 +67,9 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 
 ### CGO and the toolchain
 
-`CGO_ENABLED=0` for every binary and every `go test` in every measurement, which is what `.atkins/skills/go.yml` builds with. The binary on `PATH` is `CGO_ENABLED=1` and is therefore not a valid baseline for anything.
+`CGO_ENABLED=0` always, for every build and every `go test`, which is what `.atkins/skills/go.yml` builds with. The only exception is `-race`, which needs cgo; a race run produces no number and is never a baseline.
 
-A before/after pair is two binaries built the same way by the same toolchain. A profile against a CGO binary and one against a CGO-free binary are two measurements of two programs.
+A before/after pair is two binaries built the same way by the same toolchain. A profile taken against a cgo binary and one taken without are two measurements of two programs, so a binary of unknown provenance is not a baseline.
 
 `GOFLAGS=""`, for the reason `atkins.yml` sets it: a `-mod=mod` inherited from a go.work environment breaks every go command.
 
@@ -91,7 +91,7 @@ Two benchmark jobs, not one.
 PARALLEL='BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
 ```
 
-The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and takes `-count 10` where the pinned job takes 6. A parallel benchmark on a shared four-core box is the noisiest number in the set, and benchstat's interval decides whether it moved, not the delta.
+The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and takes `-count 10` where the pinned job takes 6. A parallel benchmark on a shared box is the noisiest number in the set, and benchstat's interval decides whether it moved, not the delta.
 
 ### Samples and statistics
 
@@ -107,15 +107,15 @@ There is no `b.ReportMetric` anywhere in the tree, so there is no custom metric 
 
 ### Stress runs
 
-`--time=100ms` per sample. A one-second sample over 264 fixtures on two runners does not finish, and the box runs with a few hundred megabytes free and several gigabytes of swap already in use, so a long run measures the swap.
+`--time=100ms` per sample. A one-second sample over 264 fixtures on two runners does not finish, and once a long run starts swapping it measures the swap.
 
 ### Memory
 
-A measurement run has to be stopped from taking the box down. It is not a theoretical risk: a sampling run over the whole fixture suite in one process reached 7.9 GB resident and was killed by the kernel, taking the rest of the sprint with it.
+A measurement run has to be stopped from taking the box down. It is not a theoretical risk: a sampling run over the whole fixture suite in one process has been killed by the kernel, taking the rest of the sprint with it.
 
 Three guards, all three required.
 
-**`GOMEMLIMIT` on every measured process.** 2 GiB unless there is a reason for more:
+**`GOMEMLIMIT` on every measured process.** A ceiling well under what the box has free, 2 GiB by default:
 
 ```sh
 GOMEMLIMIT=2GiB GOGC=100 ...
@@ -132,7 +132,7 @@ for area in tests/fixtures/*/; do
 done
 ```
 
-**Know what `--cache` costs in memory, not only in what it measures.** `worker` keeps one set of caches per worker loop, which is the production shape and the larger heap. `off` drops the runtime with the fixture, which is roughly two orders of magnitude less resident and prices the parser instead of execution. A whole-suite run that has to stay in one process uses `off`.
+**Know what `--cache` costs in memory, not only in what it measures.** `worker` keeps one set of caches per worker loop, which is the production shape and the larger heap. `off` drops the runtime with the fixture, which is far less resident and prices the parser instead of execution. A whole-suite run that has to stay in one process uses `off`.
 
 `atkins bench` and `atkins default` are not exempt. Both compile and run the tree, and the OOM above was raised by atkins.
 

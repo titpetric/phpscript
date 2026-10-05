@@ -12,7 +12,7 @@ Not per-operation cost, and not percentiles. A duration here is one sample.
 
 ## Preconditions
 
-The contract's lock and `CGO_ENABLED=0`. A correctness run takes the lock too: it holds four cores for twenty-four seconds.
+The contract's lock and `CGO_ENABLED=0`. A correctness run takes the lock too: it holds every core it is given for the length of the suite.
 
 The database fixtures read their connection strings from `.env.testing`:
 
