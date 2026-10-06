@@ -57,6 +57,7 @@ type (
 	dispatchPinAnyVarAnyRetAnyErr    func(any, ...any) (any, error)
 	dispatchPinAnyVarAnyRetArr       func(any, ...any) *model.Array
 	dispatchPinStrVarAnyRetStr       func(string, ...any) string
+	dispatchPinStrVarAnyRetStrErr    func(string, ...any) (string, error)
 	dispatchPinStrVarStrRetStr       func(string, ...string) string
 	dispatchPinRetArr                func() *model.Array
 	dispatchPinAnyAnyVarAnyRetAnyErr func(any, any, ...any) (any, error)
@@ -369,6 +370,25 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 				return s + "|" + dispatchPinArgs(rest...)
 			}),
 			argSets: [][]any{{}, {int64(65), "a", nil}},
+		},
+		{
+			// sprintf's shape. The error slot is what distinguishes it from
+			// the case above, so the forced failure is the half that matters:
+			// a fast-path error has to surface exactly as the reflect path's.
+			name: "func(string, ...any) (string, error)",
+			fast: func(s string, rest ...any) (string, error) {
+				if s == "boom" {
+					return "", dispatchPinErr
+				}
+				return s + "|" + dispatchPinArgs(rest...), nil
+			},
+			slow: dispatchPinStrVarAnyRetStrErr(func(s string, rest ...any) (string, error) {
+				if s == "boom" {
+					return "", dispatchPinErr
+				}
+				return s + "|" + dispatchPinArgs(rest...), nil
+			}),
+			argSets: [][]any{{}, {int64(65), "a", nil}, {"boom"}},
 		},
 		{
 			// The variadic tail is coerced element by element: int64(1)

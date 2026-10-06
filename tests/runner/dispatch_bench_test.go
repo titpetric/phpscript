@@ -47,3 +47,17 @@ func BenchmarkDispatchReflect(b *testing.B) {
 func BenchmarkDispatchBaseline(b *testing.B) {
 	benchCalls(b, ``)
 }
+
+// BenchmarkDispatchSprintf prices one of the string family's most called
+// names. sprintf is func(string, ...any) (string, error): the error-returning
+// spelling of a shape fastInvoker already lists without the error, so the
+// figure moves with nothing but which invoker the registration built.
+//
+// It exists because the shape of a binding's return is not a local decision.
+// Giving a binding an error to return is a correctness change that reads as
+// one line, and it silently decides the dispatch path for every call to that
+// name afterwards; no benchmark in the tree covered sprintf, so the move was
+// free to happen unmeasured.
+func BenchmarkDispatchSprintf(b *testing.B) {
+	benchCalls(b, `sprintf("%s-%d", "a", 3);`)
+}
