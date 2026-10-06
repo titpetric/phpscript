@@ -107,7 +107,10 @@ atkins test:phpscript:run
 atkins test:phpscript:matrix
 atkins test:lifecycle
 atkins test:introspection
+atkins fmt
 ```
+
+`fmt` runs twice, for the reason `default` also runs it twice: `test:introspection` writes the two generated documents under `docs/reference/` as its generators emit them, and the committed copies are mdox-normalised. Without the closing pass the gate reports a dirty tree that is nothing but table padding.
 
 A pull request says it ran that subset rather than ticking the template's "I ran the default atkins pipeline" box, because it did not. `atkins build` and `atkins gen` belong to a release, not to a sprint.
 
@@ -126,6 +129,14 @@ There is no `b.ReportMetric` anywhere in the tree, so there is no custom metric 
 ### Stress runs
 
 `--time=100ms` per sample. A one-second sample over 264 fixtures on two runners does not finish, and once a long run starts swapping it measures the swap.
+
+The window has two edges, and a percentile is only a percentile between them.
+
+**A fixture whose single run costs more than the window** gets one run per sample, so `p50`, `p95` and `p99` come back equal and describe one execution each. They are reported as the single-run cost they are, never as a distribution.
+
+**A fixture whose single run costs far less than the window** fits tens of thousands of runs into it, so its `p99` is the hundredth-slowest of those and collects scheduler preemption and collector assists rather than interpreter work. The tell is a wide `p99`/`p50` ratio on a cheap fixture while `gc_runs` is zero: there is no such work in it to find. Those tails are a property of the host and the window. Report them, do not attribute them to the fixture, and look for real variance where the allocation counts are high enough for a collection inside the window to be plausible.
+
+**A percentile run uses `--cache=off`.** Under `--cache=worker` a runtime is retained per fixture, so a late sample window carries the collector load of every fixture the worker ran before it, and the set drifts upward across the run. That is the same retention the memory section is about, showing up as timing instead of as resident bytes, and it fails the drift guard below for a structural reason that re-measuring cannot clear. `off` prices the parser rather than execution, which is the trade a publishable percentile costs; one process per fixture is the alternative and is slower still.
 
 ### Memory
 

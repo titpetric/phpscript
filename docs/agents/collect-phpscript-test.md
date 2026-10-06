@@ -52,7 +52,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
   set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
   for area in tests/fixtures/*/; do
     GOMEMLIMIT=2GiB phpscript test --matrix --skip-php --profile --json \
-      --count 6 --time 100ms "$area..." \
+      --cache=off --count 6 --time 100ms "$area..." \
       > "bench-fixtures-after-$(basename "$area").json"
   done
 '
@@ -105,7 +105,7 @@ Which fields appear depends on which flags were given:
 
 `gc_runs` prints as `N (M%)` in the table, where M is the collector's share of that row's fixture execution count. A row whose GC share differs between before and after is not comparable and is re-measured, per the contract.
 
-`--cache` decides what was measured, and what it costs in resident memory. `off` re-parses every run and prices the parser, and drops the runtime with the fixture. `worker` amortises the parse and prices execution, and keeps every runtime its worker built. A before/after pair that disagrees on `--cache` compares two different things, and a whole-suite run that has to stay in one process uses `off`.
+`--cache` decides what was measured, what it costs in resident memory, and whether the set drifts. `off` re-parses every run and prices the parser, and drops the runtime with the fixture. `worker` amortises the parse and prices execution, and keeps every runtime its worker built - so a late sample window carries the collector load of every fixture before it and the run drifts upward. A before/after pair that disagrees on `--cache` compares two different things; a percentile run uses `off`, for the reason the contract's stress-run section gives.
 
 Coverage is the interpreter's alone. The bytecode engine does not collect, and `php` is another process. A coverage number from a `--matrix` run describes one runtime.
 
