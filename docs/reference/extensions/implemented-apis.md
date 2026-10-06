@@ -2525,7 +2525,7 @@ class Session\Manager
 Registered from `stdlib/session`.
 
 ```php
-// Session\Storage\Disk is session storage backed by files under $storage_path; with no path it uses the operating system's temporary directory.
+// Session\Storage\Disk is session storage backed by files under $storage_path, which resolves inside the application root and must be writable; with no path it uses a directory of this application's own under the operating system's temporary directory.
 class Session\Storage\Disk
 {
     public function __construct(string ...$storage_paths) {}
