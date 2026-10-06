@@ -198,6 +198,10 @@ func fastInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 		return func(args []any) (any, error) {
 			return f(phpString(argAt(args, 0)), argsTail(args)...), nil
 		}
+	case func(string, ...any) (string, error):
+		return func(args []any) (any, error) {
+			return f(phpString(argAt(args, 0)), argsTail(args)...)
+		}
 	case func(string, ...string) string:
 		return func(args []any) (any, error) {
 			rest := argsTail(args)
