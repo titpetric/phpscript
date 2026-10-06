@@ -1012,7 +1012,7 @@ function lcfirst(string $str): string
 ```
 
 ```php
-// ltrim strips whitespace, or the characters listed in $characters, from the start of $string.
+// ltrim strips whitespace, or the bytes listed in $characters, from the start of $string; "a..z" in the list is the range between the two.
 function ltrim(string $string, string ...$args): string
 ```
 
@@ -1022,7 +1022,7 @@ function ord(string $character): int
 ```
 
 ```php
-// rtrim strips whitespace, or the characters listed in $characters, from the end of $string.
+// rtrim strips whitespace, or the bytes listed in $characters, from the end of $string; "a..z" in the list is the range between the two.
 function rtrim(string $string, string ...$args): string
 ```
 
@@ -1125,7 +1125,7 @@ function substr_replace(string $str, string $replace, int $offset, int ...$lengt
 ```
 
 ```php
-// trim strips whitespace, or the characters listed in $characters, from both ends of $string.
+// trim strips whitespace, or the bytes listed in $characters, from both ends of $string; "a..z" in the list is the range between the two.
 function trim(string $string, string ...$args): string
 ```
 
