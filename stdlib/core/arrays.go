@@ -71,7 +71,7 @@ func registerArrays(rt *runner.Runtime) {
 		model.RangeValues(array, func(_, v any) bool { out = append(out, v); return true })
 		return out
 	})
-	// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end; keys are discarded and reindexed from zero, and a negative $length yields an empty array.
+	// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end and a negative $length stopping that many short of it; integer keys are reindexed from zero unless $preserve_keys is true, and string keys are kept either way.
 	rt.RegisterFunc("array_slice", phpArraySlice)
 	// array_splice removes $length elements of $array at $offset, inserts $replacement in their place, and returns the removed elements; a value that is not a script array is an error.
 	rt.RegisterFunc("array_splice", phpArraySplice)
@@ -820,24 +820,46 @@ func arrayIdentical(x, y any) bool {
 	return reflect.DeepEqual(x, y)
 }
 
-// phpArraySlice returns the selected run as a []any. PHP's array_slice
-// reindexes integer keys, which this shim has always done for every key, so a
-// list is a faithful representation of the result.
-func phpArraySlice(array any, offset int64, length ...int64) []any {
-	vals := phpval.Values(array)
+// phpArraySlice returns the selected run of $array.
+//
+// PHP reindexes the integer keys of the result and keeps the string ones, and
+// $preserve_keys asks it to keep the integers too. The result is therefore a
+// list only when nothing in the selected run carries a string key and nothing
+// asked for the original integers; that case returns []any, which is the cheap
+// shape (docs/allocation-performance.md), and the rest returns a *model.Array
+// because the keys are then part of the result.
+//
+// $length is read as PHP reads it: omitted or null runs to the end of the
+// array, and a negative value stops that many elements short of the end rather
+// than yielding nothing.
+func phpArraySlice(array any, offset int64, args ...any) any {
+	n, _ := model.LenValues(array)
+	keys := make([]any, 0, n)
+	vals := make([]any, 0, n)
+	model.RangeValues(array, func(k, v any) bool {
+		keys = append(keys, k)
+		vals = append(vals, v)
+		return true
+	})
+
 	start := int(offset)
 	if start < 0 {
 		start += len(vals)
-	}
-	if start < 0 {
-		start = 0
+		if start < 0 {
+			start = 0
+		}
 	}
 	if start > len(vals) {
-		return nil
+		start = len(vals)
 	}
+
 	end := len(vals)
-	if len(length) > 0 {
-		end = start + int(length[0])
+	if len(args) > 0 && args[0] != nil {
+		if l := phpval.Int(args[0]); l < 0 {
+			end = len(vals) + int(l)
+		} else {
+			end = start + int(l)
+		}
 		if end < start {
 			end = start
 		}
@@ -845,8 +867,32 @@ func phpArraySlice(array any, offset int64, length ...int64) []any {
 			end = len(vals)
 		}
 	}
-	out := make([]any, end-start)
-	copy(out, vals[start:end])
+
+	preserve := len(args) > 1 && phpval.Truthy(args[1])
+	keyed := preserve
+	if !keyed {
+		for _, k := range keys[start:end] {
+			if _, ok := k.(string); ok {
+				keyed = true
+				break
+			}
+		}
+	}
+
+	if !keyed {
+		out := make([]any, end-start)
+		copy(out, vals[start:end])
+		return out
+	}
+
+	out := model.NewArraySize(end - start)
+	for i := start; i < end; i++ {
+		if _, ok := keys[i].(string); ok || preserve {
+			out.Set(keys[i], vals[i])
+			continue
+		}
+		out.Append(vals[i])
+	}
 	return out
 }
 
