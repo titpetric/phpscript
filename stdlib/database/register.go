@@ -64,6 +64,15 @@ func RegisterConnections(rt *runner.Runtime) {
 			return false, fmt.Errorf("Database::register(): argument #2 ($dsn) must not be empty")
 		}
 
+		// A relative sqlite path resolves against the application root when the
+		// connection opens. An absolute one does not, and opening it creates the
+		// file, so a script could put a database anywhere the process can write
+		// while file_exists() on the same path answers false. Refused here
+		// rather than anchored, so the script sees which spelling is wrong.
+		if path, outside := scriptSQLitePath(dsn); outside {
+			return false, fmt.Errorf("Database::register(): argument #2 ($dsn) names %s outside the application root", path)
+		}
+
 		extended, ok := provider(rt).(model.ExtendedDatabaseProvider)
 		if !ok {
 			return false, fmt.Errorf("Database::register(): connections cannot be registered")
