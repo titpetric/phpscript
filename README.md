@@ -7,6 +7,7 @@ This is a PHP interpreter written in Go, with a bytecode backend beside it and a
 - [Language reference and PHP compatibility](./docs/reference/README.md)
 - [Installation and CLI reference](./docs/cli/README.md)
 - [Configuration](./docs/configuration.md)
+- [Virtual host delivery](./docs/vhost-delivery.md)
 - [Testing and extending tests](./docs/testing.md)
 - [Test fixture results](https://github.com/titpetric/phpscript/releases/latest/download/test-fixtures.md)
 - [Code coverage](https://github.com/titpetric/phpscript/releases/latest/download/phpscript.md)
