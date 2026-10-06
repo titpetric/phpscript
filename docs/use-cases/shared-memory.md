@@ -55,7 +55,7 @@ The available methods are:
 
 ## Sharing state between runtimes
 
-Without a host-provided instance, each `new SharedMemory` creates an empty store. To retain state between HTTP requests or other PHP runtimes, create one store in Go and add it to every runtime's context:
+Without a host-provided instance, each `new SharedMemory` creates an empty store. No command in this repository provides one, `phpscript server` included, so a script running under any of them gets a store per `new` and reads back only what it wrote itself. To retain state between HTTP requests or other PHP runtimes, create one store in Go and add it to every runtime's context:
 
 ```go
 shm := core.NewSharedMemory()
