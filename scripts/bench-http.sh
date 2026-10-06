@@ -27,6 +27,12 @@
 # on a shared box overwrites the binary mid-sweep. It builds a private
 # bin/phpscript and verifies it is what PATH finds, for the same reason.
 #
+# The lock is taken per step and not for the run. What has to be exclusive is the
+# build and each route's segment set, which is half a minute; a whole sweep is
+# twenty, and holding it for all of that serialised two other sprints behind the
+# first run of this script. A server stays up across the gaps, idle, which is why
+# TESTSERVER_LIMIT has to outlast the waiting as well as the measuring.
+#
 # PHPSCRIPT_MEASURE_LOCK=held says the caller already holds it, for a session
 # that sweeps and then runs the Go benchmarks without letting go in between. The
 # lock is per open file description, so taking it again from here would wait on
@@ -35,6 +41,13 @@
 # One server per side for the whole sweep. Restarting between segments is where
 # the provenance of a number gets lost, so the drift guard below is what catches
 # a segment the box disturbed instead.
+#
+# Both servers and the generator run at `nice -n -20`, symmetrically, which is
+# what `atkins bench:pinned` does and for the same reason. Without it the first
+# run of this sweep put 2 to 6 ms tails on a Go server whose p50 was 40 us and
+# failed its own drift guard twice: the lock keeps other agents from measuring,
+# not from running, and a default-priority server on a shared box is descheduled
+# for milliseconds at a time.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -45,7 +58,7 @@ side="${1:-before}"
 # A segment is one wrk run. Several of them per route rather than one long one,
 # because the drift guard needs two ends to compare and a single run reports one
 # distribution with no way to tell when inside it the box was busy.
-segments="${BENCH_SEGMENTS:-4}"
+segments="${BENCH_SEGMENTS:-6}"
 duration="${BENCH_DURATION:-3s}"
 warmup="${BENCH_WARMUP:-2s}"
 # Concurrency 1 is the delta. 4 is the queueing table and is never the headline:
@@ -56,9 +69,9 @@ concurrencies="${BENCH_CONCURRENCY:-1 4}"
 targets="${BENCH_TARGETS:-go php}"
 workers="${TESTSERVER_WORKERS:-4}"
 # Running out of time is a fatal on the PHP side: the shutdown callback fires,
-# the server stops listening and the process leaves mid-sweep. This has to
-# outlast the whole sweep, not one segment.
-limit="${TESTSERVER_LIMIT:-1800}"
+# the server stops listening and the process leaves mid-sweep. This has to outlast
+# the whole sweep and the waiting between its steps, not one segment.
+limit="${TESTSERVER_LIMIT:-7200}"
 
 export GOFLAGS=""
 export GOMEMLIMIT="${GOMEMLIMIT:-2GiB}"
@@ -67,6 +80,7 @@ export GOGC="${GOGC:-100}"
 out="$root/bench-http-$side.txt"
 manifest="$root/bench-manifest-$side.txt"
 work="$(mktemp -d)"
+segout="$work/segments.txt"
 server_pid=""
 server_addr=""
 
@@ -81,14 +95,32 @@ routes=(
 	"index|/|"
 )
 
-if [ "${PHPSCRIPT_MEASURE_LOCK:-}" != "held" ]; then
+lock_held="${PHPSCRIPT_MEASURE_LOCK:-}"
+if [ "$lock_held" != "held" ]; then
 	exec 9>/tmp/phpscript-measure.lock
-	flock -w 3600 9
-	export PHPSCRIPT_MEASURE_LOCK=held
 fi
 
-CGO_ENABLED=0 go build -o "$root/bin/phpscript" .
-CGO_ENABLED=0 go build -o "$root/bin/testserver-go" testdata/testserver.go
+# with_lock runs one step exclusively. A caller already holding the lock is run
+# through unchanged: the lock is per open file description, so taking it again
+# would wait on that caller's own hold and never return.
+with_lock() {
+	if [ "$lock_held" = "held" ]; then
+		"$@"
+		return $?
+	fi
+	flock -w 3600 9 || return 1
+	local status=0
+	"$@" || status=$?
+	flock -u 9
+	return $status
+}
+
+build_binaries() {
+	CGO_ENABLED=0 go build -o "$root/bin/phpscript" .
+	CGO_ENABLED=0 go build -o "$root/bin/testserver-go" testdata/testserver.go
+}
+
+with_lock build_binaries
 PATH="$root/bin:$PATH"
 export PATH
 command -v phpscript | grep -q "^$root/bin/" || {
@@ -110,6 +142,7 @@ command -v phpscript | grep -q "^$root/bin/" || {
 	echo "binary: $(command -v phpscript)"
 	echo "go twin: $root/bin/testserver-go"
 	echo "load generator: $(wrk --version 2>&1 | head -1)"
+	echo "priority: nice -n -20, server and generator alike"
 	echo "date: $(date -Is)"
 	echo "uname: $(uname -a)"
 	echo "segments per route: $segments"
@@ -123,10 +156,11 @@ command -v phpscript | grep -q "^$root/bin/" || {
 	echo "  CGO_ENABLED=0 go build -o bin/testserver-go testdata/testserver.go"
 	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit phpscript run testdata/testserver.php"
 	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit bin/testserver-go"
-	echo "  wrk --latency -t <threads> -c <c> -d $duration [-s scripts/bench-http-post.lua] <url>"
+	echo "  nice -n -20 wrk --latency -t <threads> -c <c> -d $duration [-s scripts/bench-http-post.lua] <url>"
 } >"$manifest"
 
 : >"$out"
+: >"$segout"
 
 # start_server brings one side up on a port the kernel picks and answers its
 # address. 127.0.0.1:0 rather than the default 8099 because several sprints
@@ -135,9 +169,9 @@ start_server() {
 	local target="$1" log="$2"
 	case "$target" in
 	php) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
-		phpscript run testdata/testserver.php >"$log" 2>&1 & ;;
+		nice -n -20 phpscript run testdata/testserver.php >"$log" 2>&1 & ;;
 	go) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
-		"$root/bin/testserver-go" >"$log" 2>&1 & ;;
+		nice -n -20 "$root/bin/testserver-go" >"$log" 2>&1 & ;;
 	*)
 		echo "unknown target $target" >&2
 		exit 1
@@ -163,6 +197,20 @@ stop_server() {
 	kill "$server_pid" 2>/dev/null || true
 	wait "$server_pid" 2>/dev/null || true
 	server_pid=""
+}
+
+# measure_route is the exclusive step: one warmup and one segment set for one
+# route, written as one line per segment. Nothing else belongs inside the lock.
+measure_route() {
+	local name="$1" target="$2" url="$3" rows="$4"
+	nice -n -20 wrk "${wrk_args[@]}" -d "$warmup" "$url" >/dev/null 2>&1 || true
+	: >"$rows"
+	local seg raw
+	for seg in $(seq 1 "$segments"); do
+		raw="$work/$side-$target-$conc-$name-$seg.wrk"
+		nice -n -20 wrk "${wrk_args[@]}" -d "$duration" "$url" >"$raw" 2>&1
+		segment "$raw" >>"$rows"
+	done
 }
 
 # A server left behind outlives the sprint: TESTSERVER_LIMIT is half an hour and
@@ -200,7 +248,8 @@ segment() {
 #
 # The drift column is the guard. A segment set whose two ends disagree was
 # measured against a box doing something else, and is re-measured rather than
-# published.
+# published - or, where the box will not go quiet, published as the interval the
+# segment appendix below holds rather than as this row's point estimate.
 summarise() {
 	awk '
 		function pct(arr, count, p,   idx) {
@@ -254,23 +303,32 @@ for conc in $concurrencies; do
 			if [ -n "$script" ]; then
 				wrk_args+=(-s "$root/$script")
 			fi
-			wrk "${wrk_args[@]}" -d "$warmup" "$url" >/dev/null 2>&1 || true
 			rows="$work/$side-$target-$conc-$name.rows"
-			: >"$rows"
-			for seg in $(seq 1 "$segments"); do
-				raw="$work/$side-$target-$conc-$name-$seg.wrk"
-				wrk "${wrk_args[@]}" -d "$duration" "$url" >"$raw" 2>&1
-				segment "$raw" >>"$rows"
-			done
-			# summarise answers eight fields; the split is what fills the row.
+			# One lock for the warmup and the segments of one route, which is the
+			# unit that has to be exclusive. It is released before the next route.
+			with_lock measure_route "$name" "$target" "$url" "$rows"
+			# summarise answers ten fields; the split is what fills the row.
 			# shellcheck disable=SC2046
 			printf '%-8s %-6s %9s %9s %9s %9s %5s %7s %7s %8s\n' \
 				"$name" "$target" $(summarise "$rows") >>"$out"
+			awk -v route="$name" -v target="$target" -v conc="$conc" \
+				'{ printf "%-8s %-6s %5s %5d %9s %9s %9s %9s\n", route, target, conc, NR, $1, $2, $3, $4 }' \
+				"$rows" >>"$segout"
 		done
 		stop_server
 	done
 	echo >>"$out"
 done
+
+# The segments behind every row. A row is their median, and a row published as an
+# interval rather than as a point estimate is quoted from here.
+{
+	echo "## segments, one wrk run each"
+	echo
+	printf '%-8s %-6s %5s %5s %9s %9s %9s %9s\n' route side conc seg "p50 us" "p90 us" "p99 us" "req/s"
+	cat "$segout"
+	echo
+} >>"$out"
 
 # /slow is not a latency row. What it is is the one place the deadline machinery
 # is observable from outside: the client leaves, ignore_user_abort(true) keeps
