@@ -136,10 +136,16 @@ type root struct {
 	writable []string
 }
 
+// resolve anchors every path inside the root, absolute ones included. An
+// absolute path names the root rather than the host filesystem, which is the
+// spelling stdlib/files answers for the same input: there is no spelling for a
+// host path outside the root, because a virtual host that could read one could
+// read another tenant's.
+//
+// This used to return an absolute path unchanged, which let the image functions
+// reach any file the process could while file_get_contents on the same path was
+// refused, and let imagepng write one.
 func (r root) resolve(p string) string {
-	if filepath.IsAbs(p) {
-		return path.Clean(p)
-	}
 	clean := path.Clean("/" + filepath.ToSlash(p))
 	return filepath.Join(r.dir, filepath.FromSlash(clean))
 }
