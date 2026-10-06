@@ -113,6 +113,6 @@ Where the simplification *is* the optimisation, it belongs to [performance.md](p
 
 ## Finishing
 
-One pull request per finding. The body shape, the verdict command and the considered-and-rejected entry are in the contract.
+One commit per finding, on the one draft branch the contract's "Where work lands" section defines. The body shape, the verdict command and the considered-and-rejected entry are in the contract.
 
 Before opening: the affected package tests, then `go test ./...`, then `phpscript test --matrix tests/fixtures/...`, then `atkins --final default`.

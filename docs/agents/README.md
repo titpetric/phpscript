@@ -8,23 +8,23 @@ Read this before running any document in this directory, and before quoting a me
 
 Each one is read and executed on its own. None of them repeats what is here.
 
-| Document                                               | Read when                                                 | What it leaves behind                                                          |
-|--------------------------------------------------------|-----------------------------------------------------------|--------------------------------------------------------------------------------|
-| [qa-sprint.md](qa-sprint.md)                           | Hunting bugs, dead code or duplication                    | One pull request per finding, each with the fixture that pins it               |
-| [performance.md](performance.md)                       | Cutting the per-request cost of `testdata/testserver.php` | A harness, a published baseline, and one pull request per measured improvement |
-| [profile.md](profile.md)                               | Answering where the cost is, before changing anything     | The cpu and memory map of the tree, per package, per function and per fixture  |
-| [collect-go-tests.md](collect-go-tests.md)             | Collecting pass/fail and duration from `go test`          | `bench-gotest-<side>.json`                                                     |
-| [collect-go-benchmarks.md](collect-go-benchmarks.md)   | Collecting `ns/op`, `B/op` and `allocs/op`                | `bench-go-<side>.txt` and its `benchstat` comparison                           |
-| [collect-phpscript-test.md](collect-phpscript-test.md) | Collecting fixture coverage, or percentiles               | `cover/<label>.cov`, or `bench-fixtures-<side>.json`                           |
-| [collect-phpscript-run.md](collect-phpscript-run.md)   | Profiling one script with no harness in the profile       | `cpu-<label>.pprof`, `mem-<label>.pprof`                                       |
+| Document                                               | Read when                                                 | What it leaves behind                                                         |
+|--------------------------------------------------------|-----------------------------------------------------------|-------------------------------------------------------------------------------|
+| [qa-sprint.md](qa-sprint.md)                           | Hunting bugs, dead code or duplication                    | One commit per finding on the draft, each with the fixture that pins it       |
+| [performance.md](performance.md)                       | Cutting the per-request cost of `testdata/testserver.php` | A harness, a published baseline, and one commit per measured improvement      |
+| [profile.md](profile.md)                               | Answering where the cost is, before changing anything     | The cpu and memory map of the tree, per package, per function and per fixture |
+| [collect-go-tests.md](collect-go-tests.md)             | Collecting pass/fail and duration from `go test`          | `bench-gotest-<side>.json`                                                    |
+| [collect-go-benchmarks.md](collect-go-benchmarks.md)   | Collecting `ns/op`, `B/op` and `allocs/op`                | `bench-go-<side>.txt` and its `benchstat` comparison                          |
+| [collect-phpscript-test.md](collect-phpscript-test.md) | Collecting fixture coverage, or percentiles               | `cover/<label>.cov`, or `bench-fixtures-<side>.json`                          |
+| [collect-phpscript-run.md](collect-phpscript-run.md)   | Profiling one script with no harness in the profile       | `cpu-<label>.pprof`, `mem-<label>.pprof`                                      |
 
 ## What a sprint is
 
-A sprint is a worktree, a measurement and one pull request per finding. An agent reads one document and runs it to a pull request without further instruction.
+A sprint is a worktree, a measurement and a commit per finding. An agent reads one document and runs it to a reviewable branch without further instruction.
 
 Each sprint runs in its own git worktree. That is what makes `$PWD/bin/phpscript` private, and it is what keeps two sprints off one branch.
 
-One finding is one pull request. A sprint that produces four findings opens four, each reviewable on its own. A branch holding an unrelated second change is the thing a reviewer cannot approve.
+One finding is one commit. A sprint that produces four findings writes four, each reading on its own, and they all land on the one draft the "Where work lands" section defines. An agent opens no pull request.
 
 Out of scope in every sprint: anything in the "Non-negotiable" list in [../../AGENTS.md](../../AGENTS.md), and anything in the "Won't implement" table in [../design.md](../design.md). A finding that needs one of those is an issue from the feature-gap template, not a half fix.
 
