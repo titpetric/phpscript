@@ -211,6 +211,23 @@ func Within(name, dir string) bool {
 	return strings.HasPrefix(name, strings.TrimSuffix(dir, string(filepath.Separator))+string(filepath.Separator))
 }
 
+// HostPath maps a path a script supplied onto the host filesystem beneath dir,
+// through the runtime's own resolution rule.
+//
+// It is what a binding in another package calls so that the file it opens is the
+// file file_get_contents would open for the same spelling. The rule lives in the
+// runtime rather than here, and every caller joining its answer onto the root is
+// what keeps one rule rather than one per package: a binding that resolves a path
+// itself is a binding that can be told to leave the root.
+//
+// An empty path names nothing and answers empty.
+func HostPath(rt *runner.Runtime, dir, p string) string {
+	if p == "" {
+		return ""
+	}
+	return filepath.Join(dir, filepath.FromSlash(rt.ResolvePath(p)))
+}
+
 // WritableRoots resolves the configured writable_paths against the directory
 // the shims are bound to. An entry is a path inside the project, so uploads is
 // the project's uploads directory and public/uploads is the one below the

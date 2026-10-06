@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib/files"
 )
 
 // StorageDisk stores sessions in a local folder.
@@ -15,8 +18,46 @@ type StorageDisk struct {
 	storagePath string
 }
 
+// newRootedStorageDisk is the Session\Storage\Disk constructor a rooted host
+// registers.
+//
+// A path the script named is resolved against the root through the runtime's own
+// rule, so it names the same file file_get_contents would and cannot climb out,
+// and is then held to writable_paths. The directory it creates is therefore one
+// the script could have written a file into by hand.
+//
+// With no path it falls through to the host's temporary directory, which is
+// outside the root and deliberately so: no script can name it, so it is not a
+// path a tenant chose. That is the spelling tests/fixtures/bindings/session_manager.phpt
+// uses.
+func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string) (*StorageDisk, error) {
+	if len(storagePaths) == 0 || storagePaths[0] == "" {
+		return NewStorageDisk()
+	}
+
+	target := files.HostPath(rt, dir, storagePaths[0])
+	writable := files.WritableRoots(dir, rt.WritablePaths())
+	if len(writable) > 0 {
+		allowed := false
+		for _, w := range writable {
+			if files.Within(target, w) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return nil, fmt.Errorf("Session\\Storage\\Disk: %s is outside writable_paths", storagePaths[0])
+		}
+	}
+	return NewStorageDisk(target)
+}
+
 // NewStorageDisk creates the storage folder and verifies that it is
 // writable. With no path, it uses the operating system's temporary directory.
+//
+// The path is taken as given. A Go host chooses it, so there is nothing to
+// confine it against; the path a PHP script names goes through
+// newRootedStorageDisk instead.
 func NewStorageDisk(storagePaths ...string) (*StorageDisk, error) {
 	storagePath := filepath.Join(os.TempDir(), "phpscript-sessions")
 	if len(storagePaths) > 0 {
