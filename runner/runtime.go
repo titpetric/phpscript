@@ -214,7 +214,13 @@ type Runtime struct {
 	goMethods map[goMethodKey]goMethodInfo
 
 	sourceSpans map[model.Stmt]model.SourceSpan
-	currentLine int
+	// currentStmt is the statement exec is running, for the two telemetry
+	// sites that attribute a span to a source line. It is the statement rather
+	// than the line because sourceSpans is keyed by an interface: storing the
+	// node is one word and resolving it through the map is a hash of an
+	// interface, which belongs on the error and tracing paths rather than on
+	// every statement executed.
+	currentStmt model.Stmt
 
 	// coverage counts statement executions when a host installed a collector
 	// with SetCoverage. Nil means off, which is the only cost the common path
@@ -493,6 +499,9 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 	}
 	rt.shutdown = nil
 	rt.autoloaders = nil
+	// Dropped with the rest: it is an AST node, and holding one past the run
+	// that executed it keeps the previous program's tree alive.
+	rt.currentStmt = nil
 	clear(rt.classConsts)
 	clear(rt.classStatics)
 	clear(rt.funcStatics)
