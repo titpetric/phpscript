@@ -32,6 +32,7 @@ func runLimited(t testing.TB, ctx context.Context, src string) (string, error) {
 // TestTimeLimitEndsALoop is the whole of set_time_limit: a script that would
 // not stop on its own is stopped, and told why.
 func TestTimeLimitEndsALoop(t *testing.T) {
+	t.Parallel()
 	started := time.Now()
 	_, err := runLimited(t, context.Background(), `<?php
 set_time_limit(1);
@@ -56,6 +57,7 @@ while (true) { $n = 1; }
 // TestTimeLimitSleepsAreCut holds the limit over a wait as well as over a
 // loop: a sleep is on the runtime context, so it ends when the script does.
 func TestTimeLimitSleepsAreCut(t *testing.T) {
+	t.Parallel()
 	started := time.Now()
 	_, err := runLimited(t, context.Background(), `<?php
 set_time_limit(1);
@@ -75,6 +77,7 @@ echo "woke";
 
 // TestTimeLimitZeroRemovesIt covers the spelling that turns the limit off.
 func TestTimeLimitZeroRemovesIt(t *testing.T) {
+	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
 set_time_limit(1);
 set_time_limit(0);
@@ -92,6 +95,7 @@ echo "finished";
 // TestClientAbortEndsTheScript is the default: the connection went away, so the
 // script does too.
 func TestClientAbortEndsTheScript(t *testing.T) {
+	t.Parallel()
 	ctx, abort := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(200 * time.Millisecond)
@@ -114,6 +118,7 @@ while (true) { $n = 1; }
 // TestIgnoreUserAbortRunsOn is the other half: the script asked to finish, and
 // connection_aborted is how it finds out anyway.
 func TestIgnoreUserAbortRunsOn(t *testing.T) {
+	t.Parallel()
 	ctx, abort := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(200 * time.Millisecond)
@@ -147,6 +152,7 @@ echo ", ran to the end";
 // TestConnectionAbortedWithoutARequest keeps the functions present and inert on
 // a runtime nothing is waiting on, which is every command line run.
 func TestConnectionAbortedWithoutARequest(t *testing.T) {
+	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
 var_dump(connection_aborted());
 var_dump(set_time_limit(30));
@@ -166,6 +172,7 @@ var_dump(connection_aborted());
 // own: there is no more time to carry on with, so the clause does not run and
 // the error reaches the host.
 func TestTimeLimitIsNotCatchable(t *testing.T) {
+	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
 set_time_limit(1);
 try {
@@ -188,6 +195,7 @@ try {
 // is off for the shutdown pass, so a callback registered to close what the
 // script opened gets to run.
 func TestShutdownRunsAfterTheLimit(t *testing.T) {
+	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
 set_time_limit(1);
 register_shutdown_function(function () {
@@ -208,6 +216,7 @@ while (true) { $n = 1; }
 // the connection being answered is the one connection_aborted reports on, and
 // the previous one comes back afterwards.
 func TestEnterRequestScopesTheConnection(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 	rt.SetContext(context.Background())
@@ -236,8 +245,10 @@ func TestEnterRequestScopesTheConnection(t *testing.T) {
 // used to run per statement, and a body with no statements never reached it,
 // so `while (true) {}` outran every limit on the interpreter.
 func TestTimeLimitEndsAnEmptyLoop(t *testing.T) {
+	t.Parallel()
 	for _, body := range []string{"{}", "{ }", ";"} {
 		t.Run(body, func(t *testing.T) {
+			t.Parallel()
 			done := make(chan error, 1)
 			go func() {
 				_, err := runLimited(t, context.Background(), "<?php\nset_time_limit(1);\nwhile (true) "+body+"\n")
@@ -261,6 +272,7 @@ func TestTimeLimitEndsAnEmptyLoop(t *testing.T) {
 // used to be unreachable once the host context had been cancelled, because the
 // cause was read off that context.
 func TestTimeLimitHoldsPastAnAbortBeingIgnored(t *testing.T) {
+	t.Parallel()
 	ctx, abort := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -295,6 +307,7 @@ while (true) { $n = 1; }
 // timer one program armed used to end the next one, which had asked for
 // nothing.
 func TestTimeLimitDoesNotOutliveItsProgram(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -329,6 +342,7 @@ func TestTimeLimitDoesNotOutliveItsProgram(t *testing.T) {
 // shutdown pass turns the clock off so its callbacks can run, and used to leave
 // it off, so every later program on that runtime was unbounded.
 func TestDeadlineStillHoldsAfterAShutdownPass(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -369,6 +383,7 @@ func TestDeadlineStillHoldsAfterAShutdownPass(t *testing.T) {
 // context is built once and a limit is a timer on it, because rebuilding it
 // ends whatever is parked on it.
 func TestSetTimeLimitKeepsTheContextABindingHolds(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 	rt.SetContext(context.Background())
@@ -389,6 +404,7 @@ func TestSetTimeLimitKeepsTheContextABindingHolds(t *testing.T) {
 // TestTimeLimitOverflow keeps an absurd argument from wrapping into a short
 // limit: 18446744074 seconds used to come out as 290ms.
 func TestTimeLimitOverflow(t *testing.T) {
+	t.Parallel()
 	out, err := runLimited(t, context.Background(), `<?php
 set_time_limit(18446744074);
 for ($i = 0; $i < 100000; $i++) { $n = $i; }
@@ -407,6 +423,7 @@ echo "finished";
 // false and turned off the thing it was asking about: the loop below would then
 // be stopped by the disconnect the line above it had just said to ignore.
 func TestIgnoreUserAbortReadsWithoutClearing(t *testing.T) {
+	t.Parallel()
 	ctx, abort := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(100 * time.Millisecond)
