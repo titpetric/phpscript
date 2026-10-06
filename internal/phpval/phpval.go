@@ -176,7 +176,7 @@ func Int(v any) int64 {
 	case int:
 		return int64(x)
 	case float64:
-		return int64(x)
+		return ToInt64(x)
 	case bool:
 		if x {
 			return 1
@@ -190,8 +190,13 @@ func Int(v any) int64 {
 		if isInt {
 			return parseInt(prefix)
 		}
-		return int64(parseFloat(prefix))
+		return ToInt64(parseFloat(prefix))
 	default:
+		// A collection answers zero here, which is what the numeric context
+		// wants: php refuses arithmetic on an array with a TypeError rather than
+		// coercing it, so this value never reaches an operator as a number. The
+		// explicit (int) cast is the one context that converts one, and it does
+		// so in runner.helperCast.
 		return 0
 	}
 }

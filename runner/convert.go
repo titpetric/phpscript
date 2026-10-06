@@ -77,7 +77,7 @@ func toInt(v any) int64 {
 	case int64:
 		return x
 	case float64:
-		return int64(x)
+		return phpval.ToInt64(x)
 	case bool:
 		if x {
 			return 1
@@ -105,7 +105,7 @@ func namedScalarInt(v any) int64 {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return int64(rv.Uint())
 	case reflect.Float32, reflect.Float64:
-		return int64(rv.Float())
+		return phpval.ToInt64(rv.Float())
 	}
 	return 0
 }
@@ -323,6 +323,16 @@ func helperCast(typ string, v any) any {
 	case "bool", "boolean":
 		return phpTruthy(v)
 	case "int", "integer":
+		// An array casts to 1 when it holds anything and 0 when it does not.
+		// This is the only context that converts one: php refuses arithmetic on
+		// an array with a TypeError rather than coercing it, so toInt answers
+		// zero and the rule lives here rather than there.
+		if model.IsCollection(v) {
+			if phpTruthy(v) {
+				return int64(1)
+			}
+			return int64(0)
+		}
 		return toInt(v)
 	case "float", "double", "real":
 		return toFloat(v)
