@@ -10,9 +10,9 @@
 | `hash_equals`                                  | n/a                 | Compare two digests without leaking where they differ |
 | `password_hash`, `password_verify`             | n/a                 | Store a password                                      |
 
-`hash_algos()` answers the seven names this build carries: `md5`, `sha1`, `sha224`, `sha256`, `sha384`, `sha512` and `crc32b`. The list is a seventh of php's, so a script that offers the choice reads it rather than assuming one.
+`hash_algos()` answers the seven names this build carries: `md5`, `sha1`, `sha224`, `sha256`, `sha384`, `sha512` and `crc32b`. The list is a seventh of php's, so a script that offers the choice reads it rather than assuming one. `password_algos()` answers the three php answers, in php's order: `2y`, `argon2i` and `argon2id`.
 
-The security posture these functions sit inside is [docs/security.md](../../security.md). This page is about the functions: what each one's output is worth, and which of them answers which question.
+This page is about the functions: what each one's output is worth, and which of them answers which question. The wider security posture they sit inside - secrets, key handling, what a vhost is allowed to reach - is issue #139's remaining scope and is not documented here.
 
 ## Four jobs, one word
 
@@ -85,9 +85,9 @@ Length extension is the one of these a script can hit by accident. `hash("sha256
 
 ## Passwords are not digests
 
-A digest is fast, and that is the whole problem. An attacker with a stolen table does not invert the digest, they guess: they run the same function over a wordlist and compare. A salt stops one precomputed table from answering every row at once, and it does nothing at all about the guessing rate. Salted sha256 at a few hundred nanoseconds per guess is a few billion guesses per second on rented hardware, which is every password a person would choose.
+A digest is fast, and that is the whole problem. An attacker with a stolen table does not invert the digest, they guess: they run the same function over a wordlist and compare. A salt stops one precomputed table from answering every row at once, and it does nothing at all about the guessing rate. `sha256` over a short input is 84 ns here, so the attacker spends 84 ns per guess exactly as the server does; the ratio between what a login costs and what a guess costs is 1 to 1 for any unkeyed digest, at any width.
 
-So there is no bit width that makes a bare digest safe for a password. `sha512` is not safer than `sha256` here; both are the wrong function, and the attribute that makes them wrong is their speed, which no parameter of theirs changes.
+So there is no bit width that makes a bare digest safe for a password. `sha512` is not safer than `sha256` here; both are the wrong function, and the attribute that makes them wrong is their speed, which no parameter of theirs changes. A salted digest is a weaker store than the one below at the same latency, not a faster one at the same strength.
 
 What makes a password hash a password hash is a **cost parameter**: a number that multiplies the work per guess, set so that one derivation is affordable for the one login a user performs and unaffordable for the billions an attacker needs. `password_hash` has one, and `PASSWORD_BCRYPT_DEFAULT_COST` is its default:
 
@@ -117,10 +117,67 @@ if (hash_equals($row["token_hash"], hash("sha256", $presented))) {
 }
 ```
 
-A deployment whose login latency is a problem has three levers, in this order: issue a token so the derivation happens once per session rather than once per request; tune the cost parameter against a measurement on the hardware that will run it; and bound how many derivations can be in flight at once, because each one holds a core for its whole duration.
+A deployment whose login latency is a problem has three levers, in this order: issue a token so the derivation happens once per session rather than once per request; tune the algorithm and its parameters against a measurement on the hardware that will run it; and bound how many derivations can be in flight at once, because each one holds a core for its whole duration.
+
+## What a derivation costs
+
+All numbers from [stdlib/crypto/password_test.go](../../../stdlib/crypto/password_test.go) on an Intel N150, Go 1.27, `CGO_ENABLED=0`, `GOMEMLIMIT=2GiB`, one pinned core: `benchstat` medians over `-count 6` at `-benchtime=100ms`. `password_verify` costs what `password_hash` costs at the same parameters, because it is the same derivation, so one column covers both.
+
+| Algorithm and parameters         | sec/op   | B/op     | allocs/op |
+|----------------------------------|---------:|---------:|----------:|
+| `bcrypt`, cost 4                 | 898.0 us | 5.03 KiB |         9 |
+| `bcrypt`, cost 8                 | 13.44 ms | 5.05 KiB |         9 |
+| `bcrypt`, cost 10                | 53.12 ms | 5.11 KiB |        10 |
+| `bcrypt`, cost 11                | 107.9 ms | 5.18 KiB |        11 |
+| `bcrypt`, cost 12 (the default)  | 214.7 ms | 5.18 KiB |        11 |
+| `bcrypt`, cost 13                | 431.4 ms | 5.18 KiB |        11 |
+| `argon2id`, m=65536, t=4 (php's) | 204.0 ms | 64.0 MiB |        48 |
+| `argon2id`, m=19456, t=2         | 29.65 ms | 19.0 MiB |        32 |
+| `argon2id`, m=9216, t=4          | 26.07 ms | 9.00 MiB |        48 |
+| `sha256` over a token            | 84.03 ns |        0 |         0 |
+| `hash_hmac` sha256 over a token  | 604.4 ns |      512 |         6 |
+
+Three things to read off it.
+
+**The default costs a fifth of a second of one core.** bcrypt cost 12 is 214.7 ms, and each derivation holds a core for the whole of it, so four cores saturated are about eighteen logins a second and nothing else. Cost 13 is double that and cost 11 is half; the parameter is a power of two and the latency follows it exactly.
+
+**The token path is five to six orders of magnitude cheaper.** 214.7 ms against 604.4 ns is a factor of 355,000. Every request that re-derives a password hash instead of checking a token is paying that factor, and no choice of algorithm recovers it.
+
+**argon2id buys the trade the cost parameter cannot.** At RFC 9106's second recommended parameter set, m=19456 KiB and t=2, a derivation is 29.65 ms: seven times less wall clock than bcrypt at cost 12, with a 19 MiB working set per guess against bcrypt's 4 KiB. The memory is the point. bcrypt's working set fits in a GPU core's local memory, so an attacker runs thousands of guesses in parallel on one card; argon2id's does not, and the parallelism an attacker can buy is bounded by memory bandwidth rather than by arithmetic. Lower wall clock and higher attacker cost at the same time is the only genuine answer to "bcrypt pegs a CPU".
+
+What it costs is resident memory on the serving side: 19 MiB allocated per derivation in flight, against bcrypt's 5 KiB. A hundred concurrent logins is 1.9 GiB, which is a limit to set rather than a cost to absorb - the same bound the third lever above names, now with a number attached to it.
+
+## Choosing a password algorithm
+
+| If                                                     | Store with                                                   |
+|--------------------------------------------------------|--------------------------------------------------------------|
+| Hashes have to be readable by php, or by anything else | `PASSWORD_DEFAULT`, which is bcrypt, as php's is             |
+| Login latency matters and memory is available          | `PASSWORD_ARGON2ID` at m=19456, t=2, p=1                     |
+| Memory per request is tight                            | `PASSWORD_ARGON2ID` at m=9216, t=4, p=1                      |
+| bcrypt has to stay and cost 12 is too slow             | `PASSWORD_BCRYPT` at cost 10, which is the lowest defensible |
+| The secret is a token rather than a password           | `hash("sha256", ...)` and `hash_equals`, not this family     |
+
+```php
+// 29.65 ms, 19 MiB, and a guess costs an attacker the same 19 MiB.
+$opts   = array("memory_cost" => 19456, "time_cost" => 2, "threads" => 1);
+$stored = password_hash($password, PASSWORD_ARGON2ID, $opts);
+
+// The upgrade path off bcrypt, taken on a successful login.
+if (password_verify($submitted, $stored) && password_needs_rehash($stored, PASSWORD_ARGON2ID, $opts)) {
+    $stored = password_hash($submitted, PASSWORD_ARGON2ID, $opts);
+}
+```
+
+`PASSWORD_DEFAULT` stays bcrypt, because php's does and a hash is a stored value two runtimes have to agree on. Both argon2 variants are registered and encode to the PHC string form libargon2 writes, so a hash written here verifies under php and the other way around; [password_argon2.phpt](../../../tests/fixtures/stdlib/password_argon2.phpt) carries pasted php output for both directions. `argon2i` exists because php registers it; `argon2id` is the one to choose, and RFC 9106 says so.
+
+`php -r` is not a benchmark for this. Measure on the hardware that will serve, with the fixture or the Go benchmark above, and set the parameters from that rather than from this table: a derivation whose cost was chosen on a developer laptop is the wrong cost on everything else.
+
+**One mismatch to know about.** `password_verify($password, "")` is the spelling an application uses when a user lookup found nothing, and it deliberately spends a derivation so that a missing account and a wrong password take the same time. That decoy is hard-coded to bcrypt at `PASSWORD_BCRYPT_DEFAULT_COST`, so a deployment on any other cost or on argon2 has a decoy that does not match what it stands in for: at argon2id m=19456 it is 214.8 ms against the real path's 30.29 ms, which leaks the absence just as loudly in the other direction and costs seven times as much to provoke.
 
 ## Implementation
 
 `md5`, `sha1` and the `hash` family are in [stdlib/crypto/hash.go](../../../stdlib/crypto/hash.go); `crc32` is in [stdlib/core/strings.go](../../../stdlib/core/strings.go) with the rest of the string functions, because it returns an integer and is reached for as one. The password functions are in [stdlib/crypto/password.go](../../../stdlib/crypto/password.go) and the CSPRNG in [stdlib/crypto/random.go](../../../stdlib/crypto/random.go).
 
-Three fixtures cover the surface: [hashing.phpt](../../../tests/fixtures/stdlib/hashing.phpt) for width and collisions, [hash.phpt](../../../tests/fixtures/stdlib/hash.phpt) for the vectors of every registered algorithm and for `hash_hmac` and `hash_equals`, and [password_hash.phpt](../../../tests/fixtures/stdlib/password_hash.phpt) for the password family.
+The argon2 encoding and its parsing are in [stdlib/crypto/argon2.go](../../../stdlib/crypto/argon2.go), separate from the registrations because the PHC string form is the whole of the interop and is the part a reader checks against php.
+
+Four fixtures cover the surface: [hashing.phpt](../../../tests/fixtures/stdlib/hashing.phpt) for width and collisions, [hash.phpt](../../../tests/fixtures/stdlib/hash.phpt) for the vectors of every registered algorithm and for `hash_hmac` and `hash_equals`, [password_hash.phpt](../../../tests/fixtures/stdlib/password_hash.phpt) for bcrypt, and [password_argon2.phpt](../../../tests/fixtures/stdlib/password_argon2.phpt) for the two argon2 variants.
