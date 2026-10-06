@@ -135,7 +135,9 @@ runner:
   writable_paths: ["upload", "public/upload"]
 ```
 
-`upload` is the project's own directory, reachable by scripts and by nothing else. `public/upload` is below the document root, so what a script stores there is served over HTTP at `/upload/...`, including files written while the server is running. An absolute entry is taken as given, for a host that writes outside its own tree on purpose.
+`upload` is the project's own directory, reachable by scripts and by nothing else. `public/upload` is below the document root, so what a script stores there is served over HTTP at `/upload/...`, including files written while the server is running.
+
+There is no entry that grants a write outside the application root. An absolute entry is accepted and then matches nothing: every path a script names is resolved against the root first, absolute ones included, so a script writing `/srv/shared/x` is writing to `/srv/shared/x` *below the root* and that is not inside the `/srv/shared` the entry named. A host that genuinely has to write elsewhere binds a different root.
 
 An empty list, the default, allows every write. A non-empty one is a tree: the directory and everything below it, and nothing that merely shares its name, so `upload-old` is not inside `upload`.
 

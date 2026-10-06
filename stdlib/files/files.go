@@ -31,12 +31,14 @@ func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, ".")
 }
 
-// RegisterRoot installs the filesystem shims rooted at dir. A relative path
-// from PHP resolves against dir and cannot climb out of it; an absolute path is
-// taken as the script wrote it and is not confined.
+// RegisterRoot installs the filesystem shims rooted at dir. Every path from PHP
+// resolves against dir and cannot climb out of it, absolute ones included: an
+// absolute path names the root rather than the host, which is the spelling
+// getcwd() answers with, so there is no spelling for a host path outside the
+// root.
 //
-// Writes are held to the runtime's writable_paths when it configures any, which
-// is what confines an absolute path: naming one does not make it writable.
+// Writes are additionally held to the runtime's writable_paths when it
+// configures any.
 //
 // It replaces whatever root was installed before it, so a host calls it after
 // stdlib.Register (stdlib.RegisterFS does exactly that).
@@ -212,8 +214,13 @@ func Within(name, dir string) bool {
 // WritableRoots resolves the configured writable_paths against the directory
 // the shims are bound to. An entry is a path inside the project, so uploads is
 // the project's uploads directory and public/uploads is the one below the
-// document root; an absolute entry is taken as given, for a host that writes
-// somewhere outside its own tree on purpose.
+// document root.
+//
+// An absolute entry is kept verbatim and then matches nothing, because the path
+// it is compared against has already been clamped into dir: a script's
+// /srv/shared resolves to dir + /srv/shared, which is not inside /srv/shared.
+// There is no way to grant a write outside the root, and an absolute entry is
+// not it.
 func WritableRoots(dir string, paths []string) []string {
 	if len(paths) == 0 {
 		return nil
