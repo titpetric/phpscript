@@ -259,7 +259,23 @@ Three tiers, and one rule that applies to all of them.
 
 **All three tiers.** A technique is explored by measuring it. A technique that was measured and lost is recorded, with its number and why it lost. Rejected is a result: `../flatstack.md` records the typed-slot verdict and `../allocation-performance.md` records two reverted shapes, and both issue templates carry a considered-and-rejected field.
 
+## Where work lands
+
+An agent does not open a pull request. Three destinations, decided by what changed.
+
+**A change under `docs/agents/`** is committed and pushed straight to `main`. These documents are the protocol agents read, not a product anybody reviews, and holding a protocol correction behind a review queue means every sprint in flight keeps following the version that was wrong.
+
+**Everything else** accumulates on one branch with one pull request, kept as a **draft** until the sprint it belongs to is finished. A draft is what stops it being merged half-built. One finding is still one commit, with the body shape below as its commit message, so the branch reads as the sequence of findings it is - the collapse is in the review unit, not in the history.
+
+**Documentation outside `docs/agents/`** goes on that same draft rather than a branch of its own.
+
+A sprint that produced nothing to commit reports and opens nothing.
+
+The reason is review load rather than taste. A sprint that opens a pull request per finding produces more review than the findings are worth, and the operator ends up merging a queue rather than reading a change. If you believe a finding genuinely has to ship on its own - a live security defect is the plausible case - say so in the report and leave it on the draft anyway. The operator splits it out; an agent does not.
+
 ## The pull request
+
+This shape is the commit message for each finding on the draft branch, and the body of the draft itself where it summarises them.
 
 Body order, fixed:
 
@@ -268,8 +284,8 @@ Body order, fixed:
 3. The before/after table, canonical shape, environment stated once.
 4. The `benchstat` block verbatim for whatever moved.
 5. Considered and rejected: at least one entry, each naming the approach, the number it produced and why it lost. Where a future reader would try it again, the same sentence also lands in the document that owns the subject, because a pull request body is not where anybody looks.
-6. `worktree verdict --from=main` output, that exact command, last. It is already markdown - a heading, a verdict line and a table - so it goes in raw rather than fenced.
-7. The checklist from `.github/PULL_REQUEST_TEMPLATE.md`, ticked honestly.
+6. `worktree verdict --from=main` output, that exact command, last, on the draft's body rather than in every commit message - it describes the branch, not one finding. It is already markdown - a heading, a verdict line and a table - so it goes in raw rather than fenced.
+7. The checklist from `.github/PULL_REQUEST_TEMPLATE.md`, ticked honestly, on the draft's body.
 
 ### Extended reasoning for a possible breaking change
 
