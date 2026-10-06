@@ -169,7 +169,7 @@ done
 
 Four rules. They were enforced by a script that has been deleted; they are protocol now.
 
-- **Medians and percentiles, never means.** `--json` gives `p50_ns`, `p95_ns` and `p99_ns`; `benchstat` gives medians; `hey` and `wrk` give distributions. All three percentiles go in the artifact. p50 and p99 go in the table.
+- **Medians and percentiles, never means.** `--json` gives `p50_ns`, `p95_ns` and `p99_ns`; `benchstat` gives medians; `wrk --latency` gives a distribution. All three percentiles go in the artifact. p50 and p99 go in the table. Check the generator's resolution before believing its percentiles: `hey` reports latency to four decimal places of a second, so every percentile of a sub-millisecond handler comes back as the same number, which is why `performance.md` uses wrk.
 - **A static control that never reaches the interpreter.** For the HTTP target the control is `testdata/testserver.go`, the route-for-route Go twin. It is the floor the PHP numbers are read against, not a target to reach.
 - **A drift guard across a segment.** Compare the first quartile of a segment's samples against the last and publish the percentage. A segment that drifted is re-measured, not published.
 - **Drop a sample whose window overlapped a collection.** `--json` reports `gc_runs` per row. A row whose GC share differs between before and after is not comparable. Where a single request is the unit, the sample is dropped outright.

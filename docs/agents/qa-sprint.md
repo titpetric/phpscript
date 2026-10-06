@@ -109,7 +109,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 
 Both unchanged, and no benchmark moved outside benchstat's noise band. A simplification that changes a number is not a simplification.
 
-Where the simplification *is* the optimisation, it belongs to [performance.md](performance.md) instead, because that pull request shape already requires the numbers that justify it.
+Where the simplification *is* the optimisation, it belongs to [performance.md](performance.md) instead, because that document already requires the numbers that justify it.
 
 ## Finishing
 

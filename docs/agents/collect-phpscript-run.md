@@ -54,7 +54,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
   TESTSERVER_ADDR=127.0.0.1:8099 TESTSERVER_LIMIT=60 \
     phpscript --cpuprofile=cpu-testserver.pprof run testdata/testserver.php &
   sleep 2
-  hey -n 20000 -c 1 http://127.0.0.1:8099/hello | tee bench-http-after.txt
+  wrk -t1 -c1 -d20s --latency http://127.0.0.1:8099/hello | tee bench-http-after.txt
   wait
 '
 ```

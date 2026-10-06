@@ -106,6 +106,6 @@ A pinned number for one of the three parallel benchmarks describes a single goro
 
 | Question                              | Document                                                                                                                        |
 |---------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
-| A latency distribution                | [collect-phpscript-test.md](collect-phpscript-test.md) for fixtures, or `hey` through [performance.md](performance.md) for HTTP |
+| A latency distribution                | [collect-phpscript-test.md](collect-phpscript-test.md) for fixtures, or `wrk` through [performance.md](performance.md) for HTTP |
 | Where inside a function the time goes | [collect-phpscript-run.md](collect-phpscript-run.md)                                                                            |
 | Whether the tree still passes         | [collect-go-tests.md](collect-go-tests.md)                                                                                      |

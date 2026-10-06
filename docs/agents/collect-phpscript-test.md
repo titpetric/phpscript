@@ -113,9 +113,9 @@ In the coverage summary, files and lines answer different questions: a high line
 
 ## What this cannot answer
 
-| Question                                 | Document                                                 |
-|------------------------------------------|----------------------------------------------------------|
-| Per-function Go cost                     | [collect-phpscript-run.md](collect-phpscript-run.md)     |
-| Go allocations attributable to a package | [collect-go-benchmarks.md](collect-go-benchmarks.md)     |
-| HTTP latency                             | `hey` or `wrk`, through [performance.md](performance.md) |
-| Whether the tree still passes            | [collect-go-tests.md](collect-go-tests.md)               |
+| Question                                 | Document                                             |
+|------------------------------------------|------------------------------------------------------|
+| Per-function Go cost                     | [collect-phpscript-run.md](collect-phpscript-run.md) |
+| Go allocations attributable to a package | [collect-go-benchmarks.md](collect-go-benchmarks.md) |
+| HTTP latency                             | `wrk`, through [performance.md](performance.md)      |
+| Whether the tree still passes            | [collect-go-tests.md](collect-go-tests.md)           |
