@@ -18,7 +18,7 @@ This sprint changes no code. That is what separates it from [performance.md](per
 
 `gotestsum` writes the durations and `gotestsum tool slowest` ranks them. The commands are in [collect-go-tests.md](collect-go-tests.md).
 
-The shape to expect: 53 packages, 43 of them with tests. One package, `tests/runner`, is close to half the suite's wall clock on its own, and `tests` is the next largest because it runs the whole fixture corpus twice, once per engine. Those are proportions, not durations - the contract keeps measurements out of these documents.
+The shape to expect: 53 packages, 43 of them with tests. `tests/runner` is the largest single package and `tests` is next, because `tests` runs the whole fixture corpus twice, once per engine. Those are proportions, not durations - the contract keeps measurements out of these documents.
 
 `tests/runner`'s share is real wall clock, not work. It holds the execution-limit and client-abort tests, which drive `set_time_limit`, `usleep` and `connection_aborted` against the clock. Those seconds are sleeps. They are excluded from any reading of what is slow, stated explicitly in the report, because the alternative is a sprint that tries to optimise a sleep.
 

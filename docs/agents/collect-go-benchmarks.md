@@ -36,7 +36,7 @@ The unpinned job, which is exactly the three parallel benchmarks:
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
-  CGO_ENABLED=0 nice -n -20 go test \
+  CGO_ENABLED=0 nice -n -20 go test -p 1 \
     -run XXX -bench "'"$PARALLEL"'" \
     -benchmem -benchtime 1s -count 10 \
     ./tests/runner ./tests/flatstack | tee -a bench-go-after.txt
@@ -50,7 +50,9 @@ CGO_ENABLED=0 taskset -c 3 nice -n -20 go test \
   -run XXX -bench '^BenchmarkEngineExprHeavy$' -benchmem -count 6 ./tests/flatstack
 ```
 
-`-benchtime 1s` rather than a fixed iteration count, so a benchmark that got faster takes more iterations and keeps its sample size. A fixed `-benchtime 200000x` is what `../allocation-performance.md` uses for the binding families, where the point is to hold the iteration count still across a shape change.
+`-benchtime 1s` rather than a fixed iteration count, so a benchmark that got faster takes more iterations and keeps its sample size.
+
+The binding families are the exception. `../allocation-performance.md` publishes their `ns/op` to the nanosecond and sweeps them at a fixed `-benchtime 200000x`, to hold the iteration count still across a shape change. A `1s` sweep of the same rows comes back an order of magnitude wider than the differences that document reports, so a sweep that contradicts its table has not found a regression - it has measured something else. Re-measure those rows the way that document does before reading anything into them.
 
 ## The artifact
 
@@ -72,20 +74,21 @@ benchstat -col /engine bench-go-after.txt
 
 ## Reading it
 
-Ninety-four benchmarks in thirteen files across nine packages. What each file prices:
+Ninety-four benchmarks in eighteen files across ten packages. What each file prices:
 
-| File                                                         | What it prices                                                                                                                                    |
-|--------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| `model/value_test.go`                                        | `model.Array` construction, every case paired against a legacy array to show list mode is cheaper                                                 |
-| `parser/parser_test.go`, `parser/tokenizer_test.go`          | Parse and tokenize throughput, with `b.SetBytes`                                                                                                  |
-| `runner/expr_cache_test.go`                                  | The expression engine, one benchmark per node shape, after every cache layer is warm                                                              |
-| `stdlib/core/*_test.go`, `stdlib/stdlib_test.go`             | Individual stdlib bindings, hoisted against legacy forms                                                                                          |
-| `tests/bindings_test.go`                                     | The binding surface: constructors, the reflection call path, and end-to-end scripts. The numbers in `../allocation-performance.md` come from here |
-| `tests/expr_bench_test.go`, `tests/singleshot_bench_test.go` | Expression-heavy scripts end to end, and a cold-compile fixture run                                                                               |
-| `tests/request_bench_test.go`                                | The request cycle, traced and untraced                                                                                                            |
-| `tests/runner/*_bench_test.go`                               | Symbol lookup against tree size, fast against reflect dispatch, superglobal registration, and the four host handler shapes                        |
-| `tests/flatstack/*_bench_test.go`                            | Precompiled programs, and the interpreter against bytecode on one source                                                                          |
-| `cmd/phpscript/server/precompile_test.go`                    | A served entrypoint, lazy against precompiled, on both engines                                                                                    |
+| File                                                         | What it prices                                                                                                                                                                                                               |
+|--------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `model/value_test.go`                                        | `model.Array` construction, each case paired against a legacy array. List mode wins where the array stays a list and costs a little where a string key promotes it, so read the pair rather than assuming the direction      |
+| `parser/parser_test.go`, `parser/tokenizer_test.go`          | Parse and tokenize throughput, with `b.SetBytes`                                                                                                                                                                             |
+| `runner/expr_cache_test.go`                                  | The expression engine, one benchmark per node shape, after every cache layer is warm                                                                                                                                         |
+| `stdlib/core/*_test.go`, `stdlib/stdlib_test.go`             | Individual stdlib bindings, hoisted against legacy forms                                                                                                                                                                     |
+| `tests/bindings_test.go`                                     | The binding surface: constructors, the reflection call path, and end-to-end scripts. The numbers in `../allocation-performance.md` come from here                                                                            |
+| `tests/expr_bench_test.go`, `tests/singleshot_bench_test.go` | Expression-heavy scripts end to end, and a cold-compile fixture run                                                                                                                                                          |
+| `tests/request_bench_test.go`                                | The request cycle, traced and untraced                                                                                                                                                                                       |
+| `tests/fixture_test.go`                                      | One HTTP handler on three engines, `go_handler` being the native control the two PHP arms are read against. That control is the least stable row in its own comparison, so a claim about the gap needs its spread quoted too |
+| `tests/runner/*_bench_test.go`                               | Symbol lookup against tree size, fast against reflect dispatch, superglobal registration, and the four host handler shapes                                                                                                   |
+| `tests/flatstack/*_bench_test.go`                            | Precompiled programs, and the interpreter against bytecode on one source                                                                                                                                                     |
+| `cmd/phpscript/server/precompile_test.go`                    | A served entrypoint, lazy against precompiled, on both engines                                                                                                                                                               |
 
 Three subtest naming conventions, each meaning something:
 
