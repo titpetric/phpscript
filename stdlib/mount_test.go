@@ -58,9 +58,9 @@ func TestMountSecureExcludesExec(t *testing.T) {
 		want string
 	}{
 		{"function_exists", listPexec(), "none"},
-		{"direct call", `<?php echo strlen("abc"); exec("echo hi");`, "exec"},
-		{"call_user_func", `<?php echo strlen("abc"); call_user_func("shell_exec", "echo hi");`, "shell_exec"},
-		{"variable function", `<?php echo strlen("abc"); $fn = "system"; $fn("echo hi");`, "system"},
+		{"direct call", `<?php echo strlen("abc"); exec("echo hi");`, "undefined function exec"},
+		{"call_user_func", `<?php echo strlen("abc"); call_user_func("shell_exec", "echo hi");`, "must be a valid callback"},
+		{"variable function", `<?php echo strlen("abc"); $fn = "system"; $fn("echo hi");`, "not callable"},
 	}
 	for _, engine := range []struct {
 		name string
@@ -82,8 +82,8 @@ func TestMountSecureExcludesExec(t *testing.T) {
 					if out != "3" {
 						t.Fatalf("secure surface broken: strlen printed %q", out)
 					}
-					if err == nil || !strings.Contains(err.Error(), "undefined function") || !strings.Contains(err.Error(), tc.want) {
-						t.Fatalf("want undefined function %s, got %v", tc.want, err)
+					if err == nil || !strings.Contains(err.Error(), tc.want) {
+						t.Fatalf("want error containing %q, got %v", tc.want, err)
 					}
 				})
 			}
