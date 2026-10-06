@@ -179,7 +179,10 @@ func formatArg(spec formatSpec, args []any, taken *int) (any, error) {
 func (spec formatSpec) render(arg any) (string, error) {
 	switch spec.verb {
 	case 's':
-		s := phpval.String(arg)
+		s, err := phpval.StringContext(arg)
+		if err != nil {
+			return "", err
+		}
 		if spec.hasPrec && spec.precision < len(s) {
 			s = s[:spec.precision]
 		}
