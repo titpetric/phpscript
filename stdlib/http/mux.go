@@ -62,10 +62,19 @@ func (m *Mux) Handle(pattern string, handler any) error {
 	return nil
 }
 
+// trackers is the free list the per-request answer trackers come from.
+//
+// A tracker's lifetime ends at the request boundary, which is what makes this a
+// free list and not a cache: a request takes one, the worker answers through it,
+// and answer puts it back having dropped the writer it wrapped. Nothing outside
+// one request ever holds a reference, and the one path where that is not certain
+// does not put it back; see answer.
+var trackers = sync.Pool{New: func() any { return &answerTracker{} }}
+
 // answer submits one request to a worker and waits for it.
 func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *nethttp.Request) {
-	answered := &answerTracker{ResponseWriter: w}
-	var failure error
+	answered := trackers.Get().(*answerTracker)
+	answered.ResponseWriter, answered.wrote, answered.failure = w, false, nil
 
 	ran := m.workers().Submit(r.Context(), func(rt *runner.Runtime) {
 		// The response for the length of the call, so a handler that echoes
@@ -80,22 +89,32 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 
 		if _, err := callable.Invoke(rt, answered, r); err != nil {
 			rt.RecordError(err)
-			failure = err
+			answered.failure = err
 		}
 	})
 
 	if !ran {
-		// The client left while the run was queued or in flight. Nothing
-		// written now would reach it.
+		// The client left while the run was queued or in flight. Nothing written
+		// now would reach it.
+		//
+		// The tracker is deliberately not put back. A run already started is left
+		// to notice the disconnect itself, so the worker may still be inside the
+		// handler and still holding this value; returning it here is the one way a
+		// free-list entry could outlive its request and be handed to a second one.
+		// Dropping it costs an allocation on a path a client has already left.
 		return
 	}
 	// Only when nothing has gone out yet. A handler that wrote half a document
 	// and then threw has already sent its status, and adding another appends
 	// "Internal Server Error" to the half document and logs a superfluous
 	// WriteHeader; the truncated body is the honest signal.
-	if failure != nil && !answered.wrote {
+	if answered.failure != nil && !answered.wrote {
 		nethttp.Error(w, nethttp.StatusText(nethttp.StatusInternalServerError), nethttp.StatusInternalServerError)
 	}
+	// The writer last, so nothing above reads a cleared field and no connection is
+	// held alive by an idle free-list entry.
+	answered.ResponseWriter, answered.failure = nil, nil
+	trackers.Put(answered)
 }
 
 // workers answers the pool this mux runs on, building a default one for a mux
@@ -132,13 +151,20 @@ func (m *Mux) ServeHTTP(w nethttp.ResponseWriter, r *nethttp.Request) {
 }
 
 // answerTracker records whether a handler has begun its response, so a throw
-// afterwards does not try to replace a status that is already on the wire.
+// afterwards does not try to replace a status that is already on the wire, and
+// carries the throw itself back out of the worker.
 //
 // It forwards rather than buffers: a handler streaming a large body should not
 // have it held in memory for the sake of an error that may never come.
+//
+// failure is here rather than beside the call because answer's closure captures
+// this value already: a local error written from inside the closure is a second
+// heap cell for the same request, and the thing that wants to read it is the same
+// thing that wants to read wrote.
 type answerTracker struct {
 	nethttp.ResponseWriter
-	wrote bool
+	wrote   bool
+	failure error
 }
 
 func (a *answerTracker) WriteHeader(status int) {

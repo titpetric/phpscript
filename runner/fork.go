@@ -212,6 +212,16 @@ func (p *Pool) Queue() int { return p.queue }
 // it makes it.
 //
 // It also answers false once the pool is closed.
+//
+// The done channel is allocated per submit and is not taken from a free list.
+// That was proposed as a way to remove the allocation and rejected without being
+// written: the path above, where this returns false and the worker goes on
+// running, is exactly the one that cannot prove the entry is free. A channel
+// recycled there would be handed to a second request while the first still waits
+// on it, and one request's completion signal satisfying another's wait is a wrong
+// answer under concurrency rather than a slow one, which no test here would
+// catch. Getting the allocation back means removing the handshake rather than
+// recycling it, and that is a change to how a run reports completion.
 func (p *Pool) Submit(ctx context.Context, fn func(*Runtime)) bool {
 	var done <-chan struct{}
 	if ctx != nil {

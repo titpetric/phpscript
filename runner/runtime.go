@@ -353,13 +353,26 @@ func (rt *Runtime) Output() io.Writer {
 	return rt.out
 }
 
+// emptyStdin is the input stream a runtime with no stdin of its own reads:
+// nothing, from any offset.
+//
+// One value, shared by every runtime and every reset, because it holds no state
+// to share. A strings.Reader over "" carries a read offset and is therefore a
+// value per use; this carries nothing, and a zero-size value costs no allocation
+// to put in an interface. The two readers of Runtime.Stdin - STDIN in
+// stdlib/core and php://input in stdlib/files - take it as an io.Reader and ask
+// nothing else of it.
+type emptyStdin struct{}
+
+func (emptyStdin) Read([]byte) (int, error) { return 0, io.EOF }
+
 // New returns a Runtime that writes echo output to w (defaults to os.Stdout).
 func New(w io.Writer, opts Options) *Runtime {
 	if w == nil {
 		w = os.Stdout
 	}
 	if opts.Stdin == nil {
-		opts.Stdin = strings.NewReader("")
+		opts.Stdin = emptyStdin{}
 	}
 	opts.WorkDir = cleanFSPath(opts.WorkDir)
 	rt := &Runtime{
@@ -483,9 +496,9 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 		out = os.Stdout
 	}
 	rt.out = out
-	rt.outStack = nil
+	rt.releaseOutput()
 	if stdin == nil {
-		stdin = strings.NewReader("")
+		stdin = emptyStdin{}
 	}
 	rt.opts.Stdin = stdin
 	rt.opts.WorkDir = rt.workDirBase
