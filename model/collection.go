@@ -197,7 +197,11 @@ func ToArray(v any) *Array {
 	if items, ok := v.([]any); ok {
 		out := NewArraySize(len(items))
 		out.list = append(out.list, items...)
-		out.nextID = int64(len(items))
+		// An empty slice held no integer key, so it keeps the sentinel
+		// NewArraySize gave it rather than claiming a next index of 0.
+		if len(items) > 0 {
+			out.nextID = int64(len(items))
+		}
 		return out
 	}
 	n, _ := LenValues(v)

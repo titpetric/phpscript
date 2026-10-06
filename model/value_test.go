@@ -19,13 +19,15 @@ type legacyArray struct {
 	nextID int64
 }
 
-func newLegacyArray() *legacyArray { return &legacyArray{values: map[any]any{}} }
+func newLegacyArray() *legacyArray {
+	return &legacyArray{values: map[any]any{}, nextID: noIntKey}
+}
 
 func newLegacyArraySize(n int) *legacyArray {
 	if n <= 0 {
 		return newLegacyArray()
 	}
-	return &legacyArray{keys: make([]any, 0, n), values: make(map[any]any, n)}
+	return &legacyArray{keys: make([]any, 0, n), values: make(map[any]any, n), nextID: noIntKey}
 }
 
 func (a *legacyArray) Set(key, val any) {
@@ -38,7 +40,13 @@ func (a *legacyArray) Set(key, val any) {
 	}
 }
 
-func (a *legacyArray) Append(val any) { a.Set(a.nextID, val) }
+func (a *legacyArray) Append(val any) {
+	if a.nextID == noIntKey {
+		a.Set(int64(0), val)
+		return
+	}
+	a.Set(a.nextID, val)
+}
 
 func (a *legacyArray) Get(key any) (any, bool) {
 	v, ok := a.values[key]
@@ -247,8 +255,11 @@ func TestArrayListModeOverwrite(t *testing.T) {
 	}
 }
 
-// TestArrayNegativeKey: PHP 7 semantics as this Array models them. A negative
-// key does not lower the append index (see the `i >= a.nextID` guard).
+// TestArrayNegativeKey: PHP 8.3 semantics, which is what php 8.5 prints for
+// `$a = [-3 => "x"]; $a[] = "y";` - keys -3 and -2. The first integer key sets
+// the append index to key+1 whatever its sign; PHP 7 left it at 0 and this
+// modelled that. Later keys only raise it, which is the `i >= a.nextID` guard,
+// and an array that never held an integer key appends at 0.
 func TestArrayNegativeKey(t *testing.T) {
 	a := NewArray()
 	a.Set(int64(-3), "x")
@@ -256,8 +267,21 @@ func TestArrayNegativeKey(t *testing.T) {
 		t.Fatal("a negative key must promote")
 	}
 	a.Append("y")
-	want := [][2]any{{int64(-3), "x"}, {int64(0), "y"}}
+	want := [][2]any{{int64(-3), "x"}, {int64(-2), "y"}}
 	if got := entries(a); !reflect.DeepEqual(got, want) {
+		t.Fatalf("Range() = %v, want %v", got, want)
+	}
+	// A lower key later does not pull the index back down.
+	a.Set(int64(-100), "z")
+	a.Append("w")
+	if got, want := a.nextID, int64(0); got != want {
+		t.Fatalf("nextID = %d, want %d (a lower key must not rewind it)", got, want)
+	}
+	// An array that never held an integer key still appends at 0.
+	b := NewArray()
+	b.Set("k", "v")
+	b.Append("first")
+	if got, want := entries(b), [][2]any{{"k", "v"}, {int64(0), "first"}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("Range() = %v, want %v", got, want)
 	}
 }
