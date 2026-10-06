@@ -978,14 +978,22 @@ func BenchmarkScriptPregMatch(b *testing.B) {
 }
 
 // ---------------------------------------------------------------------------
-// what a return shape is competing with
+// what the function table costs: nothing
 // ---------------------------------------------------------------------------
 
-// The script benchmarks above are dominated by a cost that has nothing to do
-// with return shapes: runner.baseEnv rebuilds the expression environment on
-// every Eval, allocating one closure per registered function. These two run the
-// same script against runtimes with different function-table sizes, so the
-// per-registration cost is visible next to the per-return cost.
+// These two run the same script against runtimes with different function-table
+// sizes. They used to differ by a wide margin, because the expression
+// environment was rebuilt on every Eval with one closure per registered
+// function, and that rebuild was most of a script's allocations. Pooled
+// environments with on-demand function installation removed it, and
+// docs/allocation-performance.md records the result.
+//
+// So the pair no longer measures a cost. It measures that there is not one: the
+// full stdlib and a single registered binding come out byte-identical, and a
+// script pays for the functions it calls rather than for the size of the table
+// it could call from. Keep them as the guard on that - a change that reintroduces
+// per-registration work in the environment shows up here as the two rows
+// separating, and nowhere else.
 
 func benchmarkScriptWith(b *testing.B, src string, register func(*runner.Runtime)) {
 	b.Helper()
