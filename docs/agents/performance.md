@@ -96,7 +96,7 @@ An engine comparison means nothing unless the program is gated on `flatstack.Sup
 
 `atkins bench` used to run every benchmark pinned to one core with `-count 3`. That is the pinned half only, with no exclusion, so its numbers for `BenchmarkLookup`, `BenchmarkLookupHandler` and `BenchmarkFlatstackParallelHostBridge` described a single goroutine.
 
-It is now `atkins bench:pinned` and `atkins bench:parallel`, the two jobs the contract defines, at `-count 6` and `-count 10`, both writing `bench-go-$SIDE.txt` and both taking the measure lock; `atkins bench` runs the pair and summarises the file with benchstat. `atkins bench:http` is the load sweep. None of them is in the default pipeline, for the reason the comment above them gives: a sweep costs minutes of pinned CPU and answers a performance question, not a correctness one.
+It is now `atkins bench:pinned` and `atkins bench:parallel`, the two jobs the contract defines, at `-count 6` and `-count 10`, both writing `bench-go-$SIDE.txt` and both taking the measure lock; `atkins bench` runs the pair and summarises the file with benchstat. Neither is in the default pipeline, for the reason the comment above them gives: a sweep costs minutes of pinned CPU and answers a performance question, not a correctness one. The load sweep has no atkins job: `scripts/bench-http.sh <side>` is the whole interface and a job wrapping it would only hide the side.
 
 ## Techniques
 

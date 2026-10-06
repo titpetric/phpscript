@@ -338,20 +338,6 @@ tasks:
       - go env GOMAXPROCS
       - flock -w 3600 /tmp/phpscript-measure.lock nice -n -20 go test -run XXX -bench "$PARALLEL" -benchmem -benchtime 1s -count 10 ./tests/runner ./tests/flatstack | tee -a "bench-go-${SIDE:-sweep}.txt"
 
-  # The HTTP sweep over testdata/testserver.php and its Go twin, which is Path B:
-  # HTTP\Mux on runner.Pool. Not part of default and not part of bench either:
-  # it starts two servers and drives them with hey, which takes minutes and
-  # answers a question about the request path rather than about a package.
-  #
-  # The script takes /tmp/phpscript-measure.lock and builds its own private
-  # binary, so this job must not be wrapped in another lock.
-  bench:http:
-    desc: "Sweep testdata/testserver.php and the Go twin through hey"
-    timeout: 3600s
-    passthru: true
-    cmds:
-      - ./scripts/bench-http.sh "${SIDE:-before}"
-
   # splint exits 1 when it found anything at all, warnings included, and this
   # tree carries around a thousand of them: uncovered symbols, files whose name
   # does not match what is in them, sources with no test beside them. A job that
