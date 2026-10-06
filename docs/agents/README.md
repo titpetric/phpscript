@@ -182,6 +182,44 @@ Before and after come from the same worktree at two commits, both rebuilt from s
 
 Every artifact set carries `bench-manifest-<side>.txt` holding the commit sha, `go version`, `CGO_ENABLED`, the binary path, `GOMAXPROCS`, the date, `uname -a` and the exact command lines. The manifest is where a CGO mismatch or a stale binary is caught before a number is published.
 
+### Counterbalance the blocks
+
+Measuring all of before and then all of after does not compare two commits. It compares two points in time, and on this box the governor is `powersave`, so the clock the pinned core runs at depends on how long it has been busy and on what else is running. A sequential pair measures that slope as if it were the change.
+
+It is not a small effect and it is not hypothetical. A main-against-main pair - the same binary measured twice - has produced a **-7.18% geomean** difference between adjacent blocks in one session. A published -7.11% improvement turned out to be exactly that artifact: re-measured with the blocks counterbalanced, the same commit was -1.96%.
+
+So alternate. Order the blocks `A B B A`, repeated, with one sample per block, which cancels a linear drift exactly: whatever the slope is, each side sits on it the same number of times and at the same average position.
+
+Compile once and interleave rather than rebuilding per side. `go test -c -o /tmp/x-A.test ./pkg` gives a test binary that runs as many times as you like, so a pair costs two builds rather than two per block, and no build time lands between the blocks to drift across:
+
+```sh
+go test -c -o /tmp/x-A.test ./tests/flatstack/     # at the baseline
+go test -c -o /tmp/x-B.test ./tests/flatstack/     # at the change
+cd tests/flatstack
+for round in 1 2 3; do
+  for side in A B B A; do
+    taskset -c 3 nice -n -20 "/tmp/x-$side.test" \
+      -test.run XXX -test.bench '^BenchmarkName$' \
+      -test.benchmem -test.benchtime 1s -test.count 1
+  done
+done
+```
+
+Report the drift guard alongside the result: the baseline's early blocks against its own late blocks. If that number is near the size of the effect being claimed, there is no effect to claim yet.
+
+### Rows that cannot carry a latency claim
+
+Some benchmarks do not resolve a small effect on this hardware, and saying so is the result rather than a failure to get one. Known so far, each with the spread that disqualifies it:
+
+| Benchmark                                   | Why                                                                                                                                                                                                                                                                      |
+|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `BenchmarkEngineExprHeavy/engine=flatstack` | 12-13% spread within a single six-sample block. A 2-5% claim on this row is unsupportable: one sequential run read +8.1% and a counterbalanced one read +2.2% against a 13% band. Its `B/op` and `allocs/op` are bit-identical across commits and are the columns to use |
+| `BenchmarkRequestCycleTraced`               | 5-30% across runs. The tracer is mutated across iterations and its ring buffer wraps mid-run                                                                                                                                                                             |
+| `BenchmarkGoBindingHTTP/go_handler`         | The widest row in the sweep, and it is the native control the PHP arms are read against, so the floor is the least stable term in its own comparison                                                                                                                     |
+| The sub-microsecond `BenchmarkCall*` family | 10-24% at `-benchtime 1s`. `../allocation-performance.md` publishes these to the nanosecond at a fixed `200000x`; measure them that way or not at all. Three of them have changed **sign** between runs of the same binaries                                             |
+
+An allocation column is usually trustworthy where the latency column is not: `allocs/op` and `B/op` come back bit-identical across samples for most of these, which is why an allocation delta is the stronger claim to lead with.
+
 ### Flag-parsing traps
 
 - `-t` before a command name is `--testconfig` and runs instead of a command. After `test` it is `--time`. The same two letters, two meanings, decided by position.
