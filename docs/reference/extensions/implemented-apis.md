@@ -1027,10 +1027,7 @@ function rtrim(string $string, string ...$args): string
 ```
 
 ```php
-/**
- * sprintf implements a subset of sprintf: %s %d %u %% and width/precision
- * pass-through to fmt where compatible.
- */
+// sprintf returns $format with each conversion replaced by the argument it names, coerced the way PHP renders a value in a string context; width, precision and padding count bytes.
 function sprintf(string $format, mixed ...$args): string
 ```
 

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"hash/crc32"
 	"strings"
 
@@ -95,6 +94,7 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("htmlspecialchars", func(s string, flags ...any) string {
 		return htmlSpecialCharsReplacer.Replace(s)
 	})
+	// sprintf returns $format with each conversion replaced by the argument it names, coerced the way PHP renders a value in a string context; width, precision and padding count bytes.
 	rt.RegisterFunc("sprintf", phpSprintf)
 	// crc32 returns the CRC-32 checksum of $str as an integer.
 	rt.RegisterFunc("crc32", phpCRC32)
@@ -603,17 +603,4 @@ func phpExplode(separator, str string, limit ...int64) []string {
 		parts[limit[0]-1] = tail
 	}
 	return parts
-}
-
-// phpSprintf implements a subset of sprintf: %s %d %u %% and width/precision
-// pass-through to fmt where compatible.
-func phpSprintf(format string, args ...any) string {
-	// Go has no %u; rewrite to %d with the value coerced to unsigned.
-	if strings.Contains(format, "%u") {
-		format = strings.ReplaceAll(format, "%u", "%d")
-		for i, a := range args {
-			args[i] = uint64(phpval.Int(a) & 0xFFFFFFFF)
-		}
-	}
-	return fmt.Sprintf(format, args...)
 }
