@@ -1,12 +1,12 @@
 {
   "rules": {
-    "coverage/uncovered": 417,
+    "coverage/uncovered": 415,
     "filecheck/long": 36,
     "func-args/order": 24,
     "func-returns/order": 3,
     "grouping/filename": 138,
     "imports/collision": 2,
     "imports/pollution": 8,
-    "pairing/unpaired": 124
+    "pairing/unpaired": 123
   }
 }
