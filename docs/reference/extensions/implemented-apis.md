@@ -285,8 +285,8 @@ function array_shift(mixed $array): mixed
 ```
 
 ```php
-// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end; keys are discarded and reindexed from zero, and a negative $length yields an empty array.
-function array_slice(mixed $array, int $offset, int ...$length): array
+// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end and a negative $length stopping that many short of it; integer keys are reindexed from zero unless $preserve_keys is true, and string keys are kept either way.
+function array_slice(mixed $array, int $offset, mixed ...$args): mixed
 ```
 
 ```php
