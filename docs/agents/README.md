@@ -261,17 +261,23 @@ Three tiers, and one rule that applies to all of them.
 
 ## Where work lands
 
-An agent does not open a pull request. Three destinations, decided by what changed.
+**An agent opens no pull request.** It commits to a branch named for its area, pushes that branch, and reports. The coordinator that dispatched it is what turns branches into pull requests, one per area.
 
-**A change under `docs/agents/`** is committed and pushed straight to `main`. These documents are the protocol agents read, not a product anybody reviews, and holding a protocol correction behind a review queue means every sprint in flight keeps following the version that was wrong.
+Three destinations, decided by what changed.
 
-**Everything else** accumulates on one branch with one pull request, kept as a **draft** until the sprint it belongs to is finished. A draft is what stops it being merged half-built. One finding is still one commit, with the body shape below as its commit message, so the branch reads as the sequence of findings it is - the collapse is in the review unit, not in the history.
+**A change under `docs/agents/`** is committed and pushed straight to `main`, by the coordinator. These documents are the protocol agents read, not a product anybody reviews, and holding a protocol correction behind a review queue means every sprint in flight keeps following the version that was wrong.
 
-**Documentation outside `docs/agents/`** goes on that same draft rather than a branch of its own.
+**Everything else** goes on `area/<subject>`, one branch per subject rather than per finding. One finding is still one commit, with the body shape below as its commit message, so the branch reads as the sequence of findings it is - the collapse is in the review unit, not in the history. Code, its tests, its fixtures and the documentation that describes it travel together: a reviewer cannot judge a behaviour change whose documentation is in another queue.
 
-A sprint that produced nothing to commit reports and opens nothing.
+**Documentation outside `docs/agents/`** goes on the area branch it belongs to, never a branch of its own.
 
-The reason is review load rather than taste. A sprint that opens a pull request per finding produces more review than the findings are worth, and the operator ends up merging a queue rather than reading a change. If you believe a finding genuinely has to ship on its own - a live security defect is the plausible case - say so in the report and leave it on the draft anyway. The operator splits it out; an agent does not.
+A sprint that produced nothing to commit reports and pushes nothing.
+
+### What the coordinator does with the branches
+
+One pull request per area, and it stays a **draft** while any agent is still adding to that area - a draft is what stops it being merged half-built. Several agents may share an area; their branches are assembled onto it in an order the body states, because within an area they tend to touch the same files.
+
+The reason is review load rather than taste. A pull request per finding produces more review than the findings are worth, and the operator ends up merging a queue rather than reading a change. If an agent believes a finding has to ship on its own - a live security defect is the plausible case - it says so in its report and leaves it on the area branch regardless. Splitting one out is the operator's call.
 
 ## The pull request
 
