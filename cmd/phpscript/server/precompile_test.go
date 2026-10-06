@@ -13,7 +13,9 @@ import (
 
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/internal/flags"
+	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -163,6 +165,19 @@ foreach ($rows as $row) {
 // entrypoint pays while it is parsed per request: the parse itself, and the
 // expression closures and the bytecode that are keyed by the AST it produced.
 func BenchmarkServeEntrypoint(b *testing.B) {
+	// The two flatstack rows are only flatstack numbers if the page compiles to
+	// bytecode. Fallback is per-program and silent, so without this the rows
+	// would report the interpreter's cost under the flatstack name and read as
+	// the two engines performing alike. Fail rather than skip: a page that
+	// stopped compiling is the finding.
+	prog, err := parser.Parse(benchPage)
+	if err != nil {
+		b.Fatal(err)
+	}
+	if err := flatstack.Supports(prog); err != nil {
+		b.Fatalf("flatstack rows would fall back to the interpreter: %v", err)
+	}
+
 	root := b.TempDir()
 	write(b, filepath.Join(root, "public", "index.php"), benchPage)
 
