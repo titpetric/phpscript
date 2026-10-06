@@ -15,6 +15,7 @@ import (
 
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
+	"github.com/titpetric/phpscript/runner"
 )
 
 // newVirtualHostServer writes two sites to disk and returns the host mux and
@@ -453,4 +454,146 @@ func named(name string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(name))
 	})
+}
+
+// confusableSites writes two application roots that are deliberately hard to
+// tell apart: every script sits at the same relative path in both trees and
+// only the string it prints differs.
+//
+// That is what a cache keyed by the path a script wrote collides on, and what a
+// store one process holds for every tenant answers with the wrong value. The
+// three tests below are what would see either.
+//
+// Both sites precompile, which is config.New's default, so the include cache
+// answers for entrypoints as well as for includes and a second request reads
+// back what the first one parsed. A lazy site parses per request and would
+// prove nothing about the cache.
+func confusableSites(t *testing.T) (one, two string) {
+	t.Helper()
+
+	dir := t.TempDir()
+	one, two = filepath.Join(dir, "one"), filepath.Join(dir, "two")
+
+	for _, site := range []struct{ root, name string }{{one, "one"}, {two, "two"}} {
+		write(t, filepath.Join(site.root, "phpscript.yml"), `
+env: []
+runner:
+  precompile: true
+`)
+		// The same relative include path in both trees, holding different code.
+		write(t, filepath.Join(site.root, "lib", "secret.php"),
+			`<?php function secret() { return "`+site.name+`-secret"; }`)
+		write(t, filepath.Join(site.root, "public", "index.php"),
+			`<?php include "lib/secret.php"; echo secret();`)
+
+		// A writer that proves the store works within one request, and a reader
+		// that asks for what the other site wrote.
+		write(t, filepath.Join(site.root, "public", "shm-write.php"),
+			`<?php $shm = new SharedMemory; $shm->set("key", "`+site.name+`-value"); echo "[" . $shm->get("key") . "]";`)
+		write(t, filepath.Join(site.root, "public", "shm-read.php"),
+			`<?php $shm = new SharedMemory; echo "[" . $shm->get("key") . "]";`)
+	}
+	return one, two
+}
+
+// confusableServer serves the two roots confusableSites wrote.
+func confusableServer(t *testing.T, one, two string) http.Handler {
+	t.Helper()
+
+	appConfig := config.NewTestConfig()
+	appConfig.VirtualHost = []config.VirtualHost{
+		{Domain: "one.example.com", Root: one},
+		{Domain: "two.example.com", Root: two},
+	}
+	handler, _, err := buildVirtualHosts(context.Background(), appConfig, &flags.Options{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return handler
+}
+
+// TestVirtualHostIncludeCacheIsItsOwn is the parsed-tree half of the isolation a
+// shared execution environment rests on: two sites holding different code at the
+// same relative path each run their own.
+//
+// The include cache is keyed by the path a script wrote, resolved against that
+// site's source root, so "lib/secret.php" is the key on both sites. What keeps
+// them apart is the cache object, one per handler. Hand two sites one and the
+// first request decides what the second one executes, which is this test's
+// negative control and the reason it is worth having.
+//
+// one is requested twice, before and after two, because a cache the first
+// request filled is only observable on a later one.
+func TestVirtualHostIncludeCacheIsItsOwn(t *testing.T) {
+	one, two := confusableSites(t)
+	handler := confusableServer(t, one, two)
+
+	for _, step := range []struct{ host, want string }{
+		{host: "one.example.com", want: "one-secret"},
+		{host: "two.example.com", want: "two-secret"},
+		{host: "one.example.com", want: "one-secret"},
+		{host: "two.example.com", want: "two-secret"},
+	} {
+		response := get(t, handler, step.host, "/index.php")
+		if response.Code != http.StatusOK {
+			t.Fatalf("%s: status = %d, body = %q", step.host, response.Code, response.Body.String())
+		}
+		if got := response.Body.String(); got != step.want {
+			t.Fatalf("%s: body = %q, want %q; a parsed program crossed between sites", step.host, got, step.want)
+		}
+	}
+}
+
+// TestVirtualHostSharedMemoryIsNotShared is the store half: a key one site
+// writes is not readable on another.
+//
+// The writer prints what it just read back, so the empty answer on the other
+// site is isolation and not a binding that does nothing. The server binds no
+// store, so `new SharedMemory` answers a fresh one per construction and nothing
+// crosses; a host that pooled one per site would pass this for the stronger
+// reason, and one that pooled a single store for the process would not pass it
+// at all.
+func TestVirtualHostSharedMemoryIsNotShared(t *testing.T) {
+	one, two := confusableSites(t)
+	handler := confusableServer(t, one, two)
+
+	response := get(t, handler, "one.example.com", "/shm-write.php")
+	if response.Code != http.StatusOK || response.Body.String() != "[one-value]" {
+		t.Fatalf("one: status = %d, body = %q, want [one-value]", response.Code, response.Body.String())
+	}
+
+	response = get(t, handler, "two.example.com", "/shm-read.php")
+	if response.Code != http.StatusOK {
+		t.Fatalf("two: status = %d, body = %q", response.Code, response.Body.String())
+	}
+	if got := response.Body.String(); got != "[]" {
+		t.Fatalf("two: body = %q, want []; one site read another's shared memory", got)
+	}
+}
+
+// TestVirtualHostHandlersOwnTheirCaches pins the structure the two tests above
+// observe from the outside: the caches belong to the handler, so two sites never
+// hold the same pair.
+//
+// A site's annotated endpoints do read the handler's caches, on purpose: one
+// source tree, one precompile pass. That is the only sharing there is.
+func TestVirtualHostHandlersOwnTheirCaches(t *testing.T) {
+	one, two := confusableSites(t)
+
+	var options runner.Options
+	first, err := newHandler(os.DirFS(one), one, DefaultDocumentRoot, options, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := newHandler(os.DirFS(two), two, DefaultDocumentRoot, options, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if first.includeCache == second.includeCache {
+		t.Fatal("two sites share one include cache")
+	}
+	if first.exprCache == second.exprCache {
+		t.Fatal("two sites share one expression cache")
+	}
 }

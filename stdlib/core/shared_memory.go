@@ -32,9 +32,14 @@ func SharedMemoryContext(ctx context.Context, s *SharedMemory) context.Context {
 	return context.WithValue(ctx, sharedMemoryKey{}, s)
 }
 
-// NewSharedMemoryBinding is a key-value and counter store shared across
-// requests: `new SharedMemory` returns the store the host bound into the
-// runtime context, or a fresh empty store when none is bound.
+// NewSharedMemoryBinding is a key-value and counter store: `new SharedMemory`
+// returns the store the host bound into the runtime context, and a store of its
+// own when none is bound.
+//
+// No command in this tree binds one, so under `phpscript server` and the rest
+// every `new SharedMemory` is its own store and holds nothing an earlier request
+// wrote. Retaining state across requests is something an embedding host adds
+// with SharedMemoryContext; see docs/use-cases/shared-memory.md.
 func NewSharedMemoryBinding(ctx context.Context) (*SharedMemory, error) {
 	s, _ := ctx.Value(sharedMemoryKey{}).(*SharedMemory)
 	if s == nil {
