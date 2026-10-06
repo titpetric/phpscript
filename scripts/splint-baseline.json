@@ -1,6 +1,6 @@
 {
   "rules": {
-    "coverage/uncovered": 417,
+    "coverage/uncovered": 415,
     "filecheck/long": 36,
     "func-args/order": 24,
     "func-returns/order": 3,

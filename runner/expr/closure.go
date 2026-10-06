@@ -26,6 +26,7 @@ type closure = func(env *Env) (any, error)
 type Helpers struct {
 	Truthy     func(v any) bool
 	Concat     func(a, b any) string
+	Str        func(v any) string
 	Pair       func(key, val any) model.ArrayItemValue
 	Array      func(items ...model.ArrayItemValue) *model.Array
 	Index      func(base, idx any) any
