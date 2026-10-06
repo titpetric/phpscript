@@ -285,8 +285,8 @@ function array_shift(mixed $array): mixed
 ```
 
 ```php
-// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end; keys are discarded and reindexed from zero, and a negative $length yields an empty array.
-function array_slice(mixed $array, int $offset, int ...$length): array
+// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end and a negative $length stopping that many short of it; integer keys are reindexed from zero unless $preserve_keys is true, and string keys are kept either way.
+function array_slice(mixed $array, int $offset, mixed ...$args): mixed
 ```
 
 ```php
@@ -1194,37 +1194,27 @@ function md5(string $str, bool ...$binary): string
 ```
 
 ```php
-/**
- * password_get_info returns the algorithm and options $hash records, as
- * PHP's does: an unrecognised hash reports algo "" rather than failing.
- */
+// password_algos returns the algorithm identifiers password_hash() accepts, in the order php lists them: bcrypt first, then the two argon2 variants.
+function password_algos(): array
+```
+
+```php
+// password_get_info returns the algorithm and the work factors $hash records, as PHP's does: an unrecognised hash reports a null algo and the name "unknown" rather than failing.
 function password_get_info(string $hash): array
 ```
 
 ```php
-/**
- * password_hash returns a bcrypt hash of $password, salted from the
- * system CSPRNG. $algo is accepted and must name bcrypt, which is the
- * only algorithm implemented; $options takes a "cost" between 4 and 31.
- */
+// password_hash returns a salted hash of $password under $algo, which is PASSWORD_BCRYPT, PASSWORD_ARGON2ID or PASSWORD_ARGON2I; $options takes "cost" for bcrypt and "memory_cost", "time_cost" and "threads" for argon2, and the salt comes from the system CSPRNG either way.
 function password_hash(string $password, mixed ...$opts): string
 ```
 
 ```php
-/**
- * password_needs_rehash reports whether $hash was made with a different
- * algorithm or cost than $algo and $options ask for, which is how a
- * login upgrades a stored hash without asking for the password twice.
- */
+// password_needs_rehash reports whether $hash was made with a different algorithm or different work factors than $algo and $options ask for, which is how a login upgrades a stored hash without asking for the password twice.
 function password_needs_rehash(string $hash, mixed ...$opts): bool
 ```
 
 ```php
-/**
- * password_verify reports whether $password produced $hash. A hash that
- * is empty or malformed is false, not an error: a login form asks a
- * question, and "no" is an answer.
- */
+// password_verify reports whether $password produced $hash, reading the algorithm and the work factors out of $hash rather than taking them again; a hash that is empty or malformed is false rather than an error, because a login form asks a question and "no" is an answer.
 function password_verify(string $password, string $hash): bool
 ```
 

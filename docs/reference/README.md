@@ -251,6 +251,8 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [crc16 and crc64 do not exist here, or in php](extensions/hashing.md#crc16-and-crc64-do-not-exist-here-or-in-php)
   - [What this build does not carry](extensions/hashing.md#what-this-build-does-not-carry)
   - [Passwords are not digests](extensions/hashing.md#passwords-are-not-digests)
+  - [What a derivation costs](extensions/hashing.md#what-a-derivation-costs)
+  - [Choosing a password algorithm](extensions/hashing.md#choosing-a-password-algorithm)
   - [Implementation](extensions/hashing.md#implementation)
 - [Implemented PHP APIs](extensions/implemented-apis.md) - Generated inventory of functions and classes in the standard CLI runtime.
   - [Functions](extensions/implemented-apis.md#functions)
