@@ -76,15 +76,95 @@ func String(v any) string {
 	case int:
 		return strconv.Itoa(x)
 	case float64:
-		// %v for a float64 is 'g' with the shortest representation that
-		// round-trips, which is exactly what FormatFloat(-1) produces.
-		return strconv.FormatFloat(x, 'g', -1, 64)
+		return FloatString(x)
 	default:
 		if s, ok := GoString(x); ok {
 			return s
 		}
-		return fmt.Sprintf("%v", x)
+		// PHP spells every array "Array" in a string context, whatever is in
+		// it, and warns. A value with no string form at all - an object, there
+		// being no __toString here - is the empty string; StringContext is the
+		// one that reports it as the Error PHP raises.
+		if model.IsCollection(v) {
+			return "Array"
+		}
+		return ""
 	}
+}
+
+// StringContext is String with the refusal PHP raises where a script's own
+// conversion reaches a value that has no string form.
+//
+// PHP distinguishes two situations and so does this: an array key and var_dump
+// never refuse a value, and a string context does. There is no __toString in
+// this runtime, so an object has no string form and php's Error is the whole of
+// the case. The renderer is String's, not a second one.
+func StringContext(v any) (string, error) {
+	if _, ok := v.(*model.Object); ok {
+		return "", &ConversionError{Class: classNameOf(v)}
+	}
+	return String(v), nil
+}
+
+// ConversionError reports a value a string context cannot convert, under the
+// class PHP raises for it: an object with no __toString. It names that class, so
+// `catch (Error $e)` matches it and `catch (Exception $e)` does not, as in PHP.
+type ConversionError struct {
+	Class string
+}
+
+// Error is php's wording for the same conversion.
+func (e *ConversionError) Error() string {
+	class := e.Class
+	if class == "" {
+		class = "stdClass"
+	}
+	return "Object of class " + class + " could not be converted to string"
+}
+
+// ThrowableClass names the PHP class, implementing runner.Throwable.
+func (e *ConversionError) ThrowableClass() string { return "Error" }
+
+// classNameOf answers the class an object was declared as, for the conversion
+// error's message.
+func classNameOf(v any) string {
+	object, ok := v.(*model.Object)
+	if !ok || object == nil || object.Class == nil {
+		return ""
+	}
+	return object.Class.Name
+}
+
+// FloatString renders a float the way PHP's echo does: precision=14 significant
+// digits, so 0.1*0.2 echoes as 0.02, not the round-tripping
+// 0.020000000000000004. PHP's exponent form differs from Go's: the mantissa
+// always carries a decimal point and the exponent has no leading zero, so 1e20
+// echoes as 1.0E+20, not 1E+20 or 1e+20.
+func FloatString(x float64) string {
+	switch {
+	case math.IsInf(x, 1):
+		return "INF"
+	case math.IsInf(x, -1):
+		return "-INF"
+	case math.IsNaN(x):
+		return "NAN"
+	}
+	s := strconv.FormatFloat(x, 'G', 14, 64)
+	if i := strings.IndexByte(s, 'E'); i >= 0 {
+		mant, exp := s[:i], s[i+1:]
+		if !strings.Contains(mant, ".") {
+			mant += ".0"
+		}
+		sign := ""
+		if exp != "" && (exp[0] == '+' || exp[0] == '-') {
+			sign, exp = exp[:1], exp[1:]
+		}
+		if trimmed := strings.TrimLeft(exp, "0"); trimmed != "" {
+			exp = trimmed
+		}
+		s = mant + "E" + sign + exp
+	}
+	return s
 }
 
 // Int reads v as PHP's (int) cast does: the leading numeric prefix of a string,
@@ -96,7 +176,7 @@ func Int(v any) int64 {
 	case int:
 		return int64(x)
 	case float64:
-		return int64(x)
+		return ToInt64(x)
 	case bool:
 		if x {
 			return 1
@@ -110,8 +190,13 @@ func Int(v any) int64 {
 		if isInt {
 			return parseInt(prefix)
 		}
-		return int64(parseFloat(prefix))
+		return ToInt64(parseFloat(prefix))
 	default:
+		// A collection answers zero here, which is what the numeric context
+		// wants: php refuses arithmetic on an array with a TypeError rather than
+		// coercing it, so this value never reaches an operator as a number. The
+		// explicit (int) cast is the one context that converts one, and it does
+		// so in runner.helperCast.
 		return 0
 	}
 }

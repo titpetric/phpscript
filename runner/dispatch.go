@@ -148,6 +148,8 @@ func fastInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 		return func(args []any) (any, error) { return f(argAt(args, 0)), nil }
 	case func(any, any) string:
 		return func(args []any) (any, error) { return f(argAt(args, 0), argAt(args, 1)), nil }
+	case func(any, any) (string, error):
+		return func(args []any) (any, error) { return f(argAt(args, 0), argAt(args, 1)) }
 	case func(any, any) any:
 		return func(args []any) (any, error) { return f(argAt(args, 0), argAt(args, 1)), nil }
 	case func(string) string:

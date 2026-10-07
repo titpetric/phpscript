@@ -608,17 +608,29 @@ func phpSubstrReplace(str, replace string, offset int64, length ...int64) string
 
 // phpStrReplace implements str_replace where search may be a string or a
 // collection (with a scalar or collection replacement), and subject is a string.
-func phpStrReplace(search, replace, subject any) string {
-	out := phpval.String(subject)
+func phpStrReplace(search, replace, subject any) (string, error) {
+	out, err := phpval.StringContext(subject)
+	if err != nil {
+		return "", err
+	}
 	if model.IsCollection(search) {
 		replIsList := model.IsCollection(replace)
-		repl := phpval.Strings(replace)
+		repl, err := phpval.Strings(replace)
+		if err != nil {
+			return "", err
+		}
 		// A scalar replacement converts once, not once per search term.
 		scalar := ""
 		if !replIsList {
-			scalar = phpval.String(replace)
+			if scalar, err = phpval.StringContext(replace); err != nil {
+				return "", err
+			}
 		}
-		for i, s := range phpval.Strings(search) {
+		terms, err := phpval.Strings(search)
+		if err != nil {
+			return "", err
+		}
+		for i, s := range terms {
 			r := scalar
 			if replIsList {
 				r = ""
@@ -628,22 +640,42 @@ func phpStrReplace(search, replace, subject any) string {
 			}
 			out = strings.ReplaceAll(out, s, r)
 		}
-		return out
+		return out, nil
 	}
-	return strings.ReplaceAll(out, phpval.String(search), phpval.String(replace))
+	from, err := phpval.StringContext(search)
+	if err != nil {
+		return "", err
+	}
+	to, err := phpval.StringContext(replace)
+	if err != nil {
+		return "", err
+	}
+	return strings.ReplaceAll(out, from, to), nil
 }
 
-func phpImplode(separator, array any) string {
+func phpImplode(separator, array any) (string, error) {
 	// implode($separator, $array) or implode($array), where the single
 	// array argument arrives in $separator.
 	if model.IsCollection(separator) {
-		return strings.Join(phpval.Strings(separator), "")
+		parts, err := phpval.Strings(separator)
+		if err != nil {
+			return "", err
+		}
+		return strings.Join(parts, ""), nil
+	}
+	glue, err := phpval.StringContext(separator)
+	if err != nil {
+		return "", err
 	}
 	// A []string joins without the per-element conversion phpval.Strings would do.
 	if parts, ok := array.([]string); ok {
-		return strings.Join(parts, phpval.String(separator))
+		return strings.Join(parts, glue), nil
 	}
-	return strings.Join(phpval.Strings(array), phpval.String(separator))
+	parts, err := phpval.Strings(array)
+	if err != nil {
+		return "", err
+	}
+	return strings.Join(parts, glue), nil
 }
 
 // phpExplode returns the parts as a []string: strings.Split already allocated

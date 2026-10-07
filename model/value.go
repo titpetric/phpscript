@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 )
@@ -37,9 +38,25 @@ type Array struct {
 	nextID int64
 }
 
+// noIntKey is nextID's value for a map-mode array that has never held an
+// integer key, which PHP distinguishes from one whose next index is 0.
+//
+// PHP 8.3 changed the rule: the first integer key inserted sets the next index
+// to key+1 whatever its sign, and later keys only raise it, so [-5 => a] then
+// $a[] lands on -4 where PHP 7 landed on 0. An array that never held one
+// appends at 0. Those two states are both "nextID is not above any key", so
+// they need telling apart, and math.MinInt64 is below every key a Set can see:
+// the sentinel costs no field, and the `i >= a.nextID` comparison that raises
+// the index reads it correctly without a special case.
+//
+// List mode does not use it. There nextID is len(list) by construction, and an
+// array in list mode has held every integer key from 0 up, so promote carries
+// the sentinel in only when it promotes an empty list.
+const noIntKey = math.MinInt64
+
 // NewArray returns an empty ordered array.
 func NewArray() *Array {
-	return &Array{}
+	return &Array{nextID: noIntKey}
 }
 
 // NewArraySize returns an empty ordered array with room for n entries. Building
@@ -50,7 +67,7 @@ func NewArraySize(n int) *Array {
 	if n <= 0 {
 		return NewArray()
 	}
-	return &Array{list: make([]any, 0, n)}
+	return &Array{list: make([]any, 0, n), nextID: noIntKey}
 }
 
 // Reset empties the array while keeping its storage, so a per-request
@@ -64,7 +81,10 @@ func (a *Array) Reset() {
 	clear(a.keys)
 	a.keys = a.keys[:0]
 	clear(a.values)
-	a.nextID = 0
+	// The sentinel, not 0, is what makes the claim above true: a reset array
+	// that held an integer key would otherwise append at 0 where a fresh one
+	// appends from the first key it is given.
+	a.nextID = noIntKey
 }
 
 // isList reports whether the array is still in list mode.
@@ -130,7 +150,15 @@ func (a *Array) Set(key, val any) {
 func (a *Array) Append(val any) {
 	if a.isList() {
 		a.list = append(a.list, val)
-		a.nextID++
+		// Assigned rather than incremented, because a list's next index is its
+		// length by definition and the counter may still hold the sentinel.
+		a.nextID = int64(len(a.list))
+		return
+	}
+	if a.nextID == noIntKey {
+		// Nothing has set the index, so this is the first integer key and PHP
+		// hands out 0.
+		a.Set(int64(0), val)
 		return
 	}
 	a.Set(a.nextID, val)
@@ -193,7 +221,10 @@ func (a *Array) Pop() (any, any, bool) {
 	key := keys[len(keys)-1]
 	value, _ := a.Get(key)
 	a.Delete(key)
-	if i, ok := key.(int64); ok && i == a.nextID-1 {
+	// The sentinel is excluded rather than decremented: an array holding an
+	// integer key has had the index set, so the two cannot both be true, and
+	// nextID-1 on the sentinel would wrap.
+	if i, ok := key.(int64); ok && a.nextID != noIntKey && i == a.nextID-1 {
 		a.nextID = i
 	}
 	return key, value, true
@@ -280,6 +311,9 @@ func (a *Array) ReplaceInt64List(vals []int64) {
 		a.list[i] = v
 	}
 	a.nextID = int64(len(vals))
+	if len(vals) == 0 {
+		a.nextID = noIntKey
+	}
 }
 
 // Clear removes all entries and resets list indexing, returning the array to

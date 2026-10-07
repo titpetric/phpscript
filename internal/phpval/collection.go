@@ -5,17 +5,38 @@ import (
 )
 
 // Strings returns a collection's values as strings in order.
-func Strings(a any) []string {
+//
+// Every caller is a string context - implode and str_replace - so an element
+// with no string form is the error StringContext reports rather than a spelling
+// invented for it.
+func Strings(a any) ([]string, error) {
 	if parts, ok := a.([]string); ok {
-		return parts
+		return parts, nil
 	}
 	n, _ := model.LenValues(a)
 	if n == 0 {
-		return nil
+		return nil, nil
 	}
-	out := make([]string, 0, n)
-	model.RangeValues(a, func(_, v any) bool { out = append(out, String(v)); return true })
-	return out
+	// One captured struct rather than two captured variables: each variable a
+	// closure captures by reference is its own heap allocation, and this runs
+	// under implode. The refused value is carried as its concrete type so the
+	// happy path stores nothing.
+	state := struct {
+		out     []string
+		refused *model.Object
+	}{out: make([]string, 0, n)}
+	model.RangeValues(a, func(_, v any) bool {
+		if object, ok := v.(*model.Object); ok {
+			state.refused = object
+			return false
+		}
+		state.out = append(state.out, String(v))
+		return true
+	})
+	if state.refused != nil {
+		return nil, &ConversionError{Class: classNameOf(state.refused)}
+	}
+	return state.out, nil
 }
 
 // Values returns a collection's values in order. A []any is returned as is:

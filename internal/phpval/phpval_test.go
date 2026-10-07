@@ -1,47 +1,126 @@
 package phpval
 
 import (
-	"fmt"
 	"math"
 	"testing"
+
+	"github.com/titpetric/phpscript/model"
 )
 
-// replaced.
-func TestString(t *testing.T) {
-	values := []any{
-		nil, "", "text", true, false,
-		int64(0), int64(-1), int64(4096), int64(math.MaxInt64), int64(math.MinInt64),
-		0, -1, 4096,
-		0.0, 1.5, -0.25, 1e21, 1e-7, math.Inf(1), math.NaN(),
-		[]string{"a"},
-	}
+// scriptArray builds a list-mode *model.Array of the given values, for the
+// cases that have to be a script array rather than a Go slice.
+func scriptArray(values ...any) *model.Array {
+	out := model.NewArraySize(len(values))
 	for _, v := range values {
-		want := legacyToString(v)
-		if got := String(v); got != want {
-			t.Errorf("String(%#v) = %q, want %q", v, got, want)
+		out.Append(v)
+	}
+	return out
+}
+
+// TestString pins each value against what php prints for `(string)$v`.
+//
+// The oracle used to be a second Go implementation rendering a float and an
+// unknown type with fmt's %v, which is how the shortest round-tripping float
+// form and Go's struct dump became the expected answers. A php name is a
+// behaviour claim settled by php, so the want column is php's output for the
+// same list, pasted.
+func TestString(t *testing.T) {
+	tests := []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{name: "nil", value: nil, want: ""},
+		{name: "empty string", value: "", want: ""},
+		{name: "text", value: "text", want: "text"},
+		{name: "true", value: true, want: "1"},
+		{name: "false", value: false, want: ""},
+		{name: "int64 zero", value: int64(0), want: "0"},
+		{name: "int64 negative", value: int64(-1), want: "-1"},
+		{name: "int64 4096", value: int64(4096), want: "4096"},
+		{name: "int64 max", value: int64(math.MaxInt64), want: "9223372036854775807"},
+		{name: "int64 min", value: int64(math.MinInt64), want: "-9223372036854775808"},
+		{name: "int zero", value: 0, want: "0"},
+		{name: "int negative", value: -1, want: "-1"},
+		{name: "int 4096", value: 4096, want: "4096"},
+		{name: "float zero", value: 0.0, want: "0"},
+		{name: "float 1.5", value: 1.5, want: "1.5"},
+		{name: "float negative", value: -0.25, want: "-0.25"},
+		{name: "float 1e21", value: 1e21, want: "1.0E+21"},
+		{name: "float 1e-7", value: 1e-7, want: "1.0E-7"},
+		{name: "infinity", value: math.Inf(1), want: "INF"},
+		{name: "not a number", value: math.NaN(), want: "NAN"},
+		{name: "list of one", value: []string{"a"}, want: "Array"},
+		{name: "script array", value: scriptArray("a"), want: "Array"},
+		{name: "nested script array", value: scriptArray(scriptArray("a")), want: "Array"},
+		{name: "map", value: map[string]any{"k": 1}, want: "Array"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := String(tt.value); got != tt.want {
+				t.Errorf("String(%#v) = %q, want %q", tt.value, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestStringPrecisionMatchesEcho pins the reason the renderer moved here: the
+// runner rendered a float at php's precision of 14 and this rendered the
+// shortest form that round-trips, so one value printed two ways depending on
+// whether it went through echo or through a binding.
+func TestStringPrecisionMatchesEcho(t *testing.T) {
+	tests := map[float64]string{
+		0.1 * 0.2:   "0.02",
+		1.0 / 3.0:   "0.33333333333333",
+		1e20:        "1.0E+20",
+		1e-7:        "1.0E-7",
+		2.0:         "2",
+		1234.5:      "1234.5",
+		0.000123456: "0.000123456",
+	}
+	for in, want := range tests {
+		if got := String(in); got != want {
+			t.Errorf("String(%v) = %q, want %q", in, got, want)
+		}
+		if got := FloatString(in); got != want {
+			t.Errorf("FloatString(%v) = %q, want %q", in, got, want)
 		}
 	}
 }
 
-func legacyToString(v any) string {
-	switch x := v.(type) {
-	case nil:
-		return ""
-	case string:
-		return x
-	case bool:
-		if x {
-			return "1"
+// TestStringContextRefusesAnObject pins the one case a string context refuses
+// and a key or a var_dump does not. There is no __toString here, so an object
+// has no string form at all and php's Error is the whole of the case.
+func TestStringContextRefusesAnObject(t *testing.T) {
+	object := model.NewObject(&model.Class{Name: "Point"})
+	_, err := StringContext(object)
+	if err == nil {
+		t.Fatal("StringContext(*model.Object) returned no error")
+	}
+	thrown, ok := err.(*ConversionError)
+	if !ok {
+		t.Fatalf("StringContext returned %T, want *ConversionError", err)
+	}
+	if got, want := thrown.Error(), "Object of class Point could not be converted to string"; got != want {
+		t.Errorf("ConversionError.Error() = %q, want %q", got, want)
+	}
+	if class := thrown.ThrowableClass(); class != "Error" {
+		t.Errorf("ThrowableClass() = %q, want %q", class, "Error")
+	}
+	// A class the object carries no declaration for still names something.
+	bare := &ConversionError{}
+	if got, want := bare.Error(), "Object of class stdClass could not be converted to string"; got != want {
+		t.Errorf("ConversionError.Error() = %q, want %q", got, want)
+	}
+	// Everything with a string form goes through unchanged.
+	for _, v := range []any{nil, "text", int64(7), 1.5, true, []string{"a"}} {
+		got, err := StringContext(v)
+		if err != nil {
+			t.Fatalf("StringContext(%#v) returned %v", v, err)
 		}
-		return ""
-	case int64:
-		return fmt.Sprintf("%d", x)
-	case int:
-		return fmt.Sprintf("%d", x)
-	case float64:
-		return fmt.Sprintf("%v", x)
-	default:
-		return fmt.Sprintf("%v", x)
+		if want := String(v); got != want {
+			t.Errorf("StringContext(%#v) = %q, want %q", v, got, want)
+		}
 	}
 }
 

@@ -15,69 +15,25 @@ import (
 // Go type (string output, truthiness for conditionals, integer indices).
 
 // phpString renders any value the way PHP would for string contexts/echo.
+//
+// The rendering is phpval's and not a second copy of it, so echo, implode and
+// var_dump cannot disagree about a float's precision, a time.Time's spelling or
+// what an array reads as. The one case that is the runner's own is a caught
+// exception: `echo $e` prints the error text.
 func phpString(v any) string {
 	switch x := v.(type) {
-	case nil:
-		return ""
 	case string:
+		// The two cases that cannot differ between the two, kept inline because
+		// concatenation and echo run through here: a string renders as itself
+		// and an int64 has one spelling. Everything that has ever disagreed -
+		// a float's precision, a collection, a Go value - goes to phpval.
 		return x
-	case bool:
-		if x {
-			return "1"
-		}
-		return ""
-	case int:
-		return strconv.FormatInt(int64(x), 10)
 	case int64:
 		return strconv.FormatInt(x, 10)
-	case float64:
-		return phpFloatString(x)
 	case error:
-		// A caught exception ($e in catch) renders as its message, so
-		// `echo $e` prints the error text.
 		return x.Error()
-	default:
-		// A Go value a binding returned renders the way the rest of the
-		// runtime renders it, so echo, implode and var_dump cannot disagree
-		// about a time.Time. See phpval.GoString for which spelling each type
-		// gets and why.
-		if s, ok := phpval.GoString(v); ok {
-			return s
-		}
-		return ""
 	}
-}
-
-// phpFloatString renders a float the way PHP's echo does: precision=14
-// significant digits, so 0.1*0.2 echoes as 0.02, not the round-tripping
-// 0.020000000000000004. PHP's exponent form differs from Go's: the mantissa
-// always carries a decimal point and the exponent has no leading zero, so
-// 1e20 echoes as 1.0E+20, not 1E+20 or 1e+20.
-func phpFloatString(x float64) string {
-	switch {
-	case math.IsInf(x, 1):
-		return "INF"
-	case math.IsInf(x, -1):
-		return "-INF"
-	case math.IsNaN(x):
-		return "NAN"
-	}
-	s := strconv.FormatFloat(x, 'G', 14, 64)
-	if i := strings.IndexByte(s, 'E'); i >= 0 {
-		mant, exp := s[:i], s[i+1:]
-		if !strings.Contains(mant, ".") {
-			mant += ".0"
-		}
-		sign := ""
-		if exp != "" && (exp[0] == '+' || exp[0] == '-') {
-			sign, exp = exp[:1], exp[1:]
-		}
-		if trimmed := strings.TrimLeft(exp, "0"); trimmed != "" {
-			exp = trimmed
-		}
-		s = mant + "E" + sign + exp
-	}
-	return s
+	return phpval.String(v)
 }
 
 // phpTruthy implements PHP's notion of truthiness for if/while/ternary.
@@ -121,7 +77,7 @@ func toInt(v any) int64 {
 	case int64:
 		return x
 	case float64:
-		return int64(x)
+		return phpval.ToInt64(x)
 	case bool:
 		if x {
 			return 1
@@ -149,7 +105,7 @@ func namedScalarInt(v any) int64 {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return int64(rv.Uint())
 	case reflect.Float32, reflect.Float64:
-		return int64(rv.Float())
+		return phpval.ToInt64(rv.Float())
 	}
 	return 0
 }
@@ -367,6 +323,16 @@ func helperCast(typ string, v any) any {
 	case "bool", "boolean":
 		return phpTruthy(v)
 	case "int", "integer":
+		// An array casts to 1 when it holds anything and 0 when it does not.
+		// This is the only context that converts one: php refuses arithmetic on
+		// an array with a TypeError rather than coercing it, so toInt answers
+		// zero and the rule lives here rather than there.
+		if model.IsCollection(v) {
+			if phpTruthy(v) {
+				return int64(1)
+			}
+			return int64(0)
+		}
 		return toInt(v)
 	case "float", "double", "real":
 		return toFloat(v)
