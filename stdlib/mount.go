@@ -1,6 +1,9 @@
 package stdlib
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -21,11 +24,44 @@ const (
 	Default = Secure
 )
 
+// All is every area. AreaNames are the --stdlib spellings.
+const All = ^Profile(0)
+
+const AreaNames = "all, secure, exec"
+
+var areas = map[string]Profile{"all": All, "secure": Secure, "exec": Exec}
+
+// profile is what Register mounts, for the whole process: --stdlib limits the
+// runtime an operator started, not one host inside it.
+var profile = All
+
+// ParseProfile reads a --stdlib value: area names separated by commas, empty
+// meaning All. An unknown name is refused, because a typo that fell back to All
+// would read as a narrowed runtime and serve an unnarrowed one.
+func ParseProfile(value string) (Profile, error) {
+	if strings.TrimSpace(value) == "" {
+		return All, nil
+	}
+	var out Profile
+	for name := range strings.SplitSeq(value, ",") {
+		area, ok := areas[strings.ToLower(strings.TrimSpace(name))]
+		if !ok {
+			return 0, fmt.Errorf("unknown area %q, want %s", name, AreaNames)
+		}
+		out |= area
+	}
+	return out, nil
+}
+
+// SetProfile narrows what Register mounts, for every runtime built after it.
+func SetProfile(p Profile) { profile = p }
+
 // Mount is Register narrowed to a profile: only the binding areas the bitmask
 // names are installed, so a name outside them is undefined in the runtime
 // rather than refused, unreachable through a call, a callable or either
 // engine. The extra bindings are the caller's own and are installed verbatim.
 func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime)) {
+	rt.SetProfile(profile)
 	registerExceptions(rt)
 
 	for _, register := range runner.BindingsFor(profile) {

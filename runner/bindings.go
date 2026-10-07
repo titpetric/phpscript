@@ -61,6 +61,14 @@ func RegisterProfileBinding(profile Profile, installer func(*Runtime)) {
 	bindings.installers = append(bindings.installers, binding{profile: profile, install: installer})
 }
 
+// SetProfile records the area mask this runtime's bindings were installed
+// under. stdlib.Mount calls it, so that a later reroot of one area can ask
+// whether the mount included it.
+func (rt *Runtime) SetProfile(profile Profile) { rt.profile = profile }
+
+// Profile reports the area mask this runtime's bindings were installed under.
+func (rt *Runtime) Profile() Profile { return rt.profile }
+
 // Bindings returns every contributed installer in registration order,
 // regardless of area; stdlib.Register runs the whole surface.
 func Bindings() []func(*Runtime) {

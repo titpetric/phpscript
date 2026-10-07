@@ -13,10 +13,10 @@ import (
 // binding contributed by an imported binding package (see
 // runner.RegisterBinding and imports.go), and any additional bindings passed by
 // the caller. The filesystem shims come in that way too, rooted at the process
-// working directory; use RegisterFS to bind them to another root. It is the
-// whole surface, every profile area included, which is what a CLI run, the
-// fixture runner and the demos expect; a host serving untrusted scripts calls
-// Mount with the profile it grants instead.
+// working directory; use RegisterFS to bind them to another root.
+//
+// It mounts the process profile, every area unless --stdlib narrowed it, which is
+// what makes one flag reach every runtime the process builds.
 func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
-	Mount(rt, ^Profile(0), bindings...)
+	Mount(rt, profile, bindings...)
 }

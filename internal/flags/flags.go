@@ -27,6 +27,7 @@ import (
 
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/runner/coverage"
+	"github.com/titpetric/phpscript/stdlib"
 )
 
 // TimePlaceholder is the token --coverfile expands to a timestamp. A server
@@ -71,6 +72,9 @@ type Options struct {
 	// Signal is -s: the verb sent to the server named by server.pid_file,
 	// running no command.
 	Signal string
+
+	// Stdlib is --stdlib: the binding areas this process installs.
+	Stdlib string
 }
 
 // Bind declares the shared flags on a command's flag set.
@@ -84,6 +88,7 @@ func (o *Options) Bind(fs *cli.FlagSet) {
 	fs.StringVar(&o.Cover, "cover", o.Cover, "Measure statement coverage: line writes the profile, func/file also print a coverage report")
 	fs.Lookup("cover").NoOptDefVal = coverage.ModeLine
 	fs.StringVar(&o.CoverFile, "coverfile", o.CoverFile, "Write the coverage profile to this file (implies --cover; default "+coverage.DefaultCoverFile+", "+TimePlaceholder+" expands to a timestamp)")
+	fs.StringVar(&o.Stdlib, "stdlib", o.Stdlib, "Install only these binding areas, comma separated: "+stdlib.AreaNames+" (default all)")
 }
 
 // BindWith returns a Bind that declares the shared flags before the command's
@@ -264,6 +269,11 @@ func (o *Options) Validate() error {
 	if o.Cover != "" && o.CoverFile == "" {
 		o.CoverFile = coverage.DefaultCoverFile
 	}
+	profile, err := stdlib.ParseProfile(o.Stdlib)
+	if err != nil {
+		return fmt.Errorf("--stdlib: %w", err)
+	}
+	stdlib.SetProfile(profile)
 	return nil
 }
 

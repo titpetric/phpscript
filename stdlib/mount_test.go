@@ -118,6 +118,90 @@ func TestRegisterKeepsFullSurface(t *testing.T) {
 	}
 }
 
+// TestRegisterFSKeepsTheProfile covers the reroot. RegisterFS reinstalls the
+// areas it reroots, so rerooting pexec unconditionally handed back every name
+// the secure mount had just left out - and every mount site calls Mount and
+// RegisterFS in that order, so the mask reached nothing.
+func TestRegisterFSKeepsTheProfile(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		profile stdlib.Profile
+		want    string
+	}{
+		{"secure", stdlib.Secure, "none"},
+		{"secure|exec", stdlib.Secure | stdlib.Exec, strings.Join(pexecNames, " ") + " none"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			prog, err := parser.Parse(listPexec())
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			var out strings.Builder
+			rt := runner.New(&out, runner.Options{})
+			stdlib.Mount(rt, tc.profile)
+			stdlib.RegisterFS(rt, ".")
+			if err := rt.Run(prog); err != nil {
+				t.Fatalf("run: %v", err)
+			}
+			if out.String() != tc.want {
+				t.Fatalf("after RegisterFS: got %q, want %q", out.String(), tc.want)
+			}
+		})
+	}
+}
+
+// TestParseProfile covers the --stdlib values. An unknown name is an error
+// rather than a fallback, because falling back to every area would narrow
+// nothing while reading as a narrowed runtime.
+func TestParseProfile(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		want  stdlib.Profile
+		fail  bool
+	}{
+		{value: "", want: stdlib.All},
+		{value: "all", want: stdlib.All},
+		{value: "secure", want: stdlib.Secure},
+		{value: "exec", want: stdlib.Exec},
+		{value: "secure,exec", want: stdlib.Secure | stdlib.Exec},
+		{value: " SECURE , Exec ", want: stdlib.Secure | stdlib.Exec},
+		{value: "sekure", fail: true},
+		{value: "secure,", fail: true},
+	} {
+		got, err := stdlib.ParseProfile(tc.value)
+		if tc.fail {
+			if err == nil {
+				t.Errorf("ParseProfile(%q) = %b, want an error", tc.value, got)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("ParseProfile(%q): %v", tc.value, err)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("ParseProfile(%q) = %b, want %b", tc.value, got, tc.want)
+		}
+	}
+}
+
+// TestSetProfileNarrowsRegister is what makes --stdlib one flag for the whole
+// process: Register reads the process profile, so narrowing it reaches every
+// runtime built afterwards without a call site passing anything.
+func TestSetProfileNarrowsRegister(t *testing.T) {
+	t.Cleanup(func() { stdlib.SetProfile(stdlib.All) })
+
+	stdlib.SetProfile(stdlib.Secure)
+	if got := runScript(t, listPexec()); got != "none" {
+		t.Fatalf("under a secure process profile Register defined %q", got)
+	}
+
+	stdlib.SetProfile(stdlib.All)
+	if got, want := runScript(t, listPexec()), strings.Join(pexecNames, " ")+" none"; got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
 // TestDefaultProfileIsSecure pins the constant the configuration story rests
 // on: the default profile for an untrusted host names no insecure area.
 func TestDefaultProfileIsSecure(t *testing.T) {
