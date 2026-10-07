@@ -112,7 +112,7 @@ atkins fmt
 
 `fmt` runs twice, for the reason `default` also runs it twice: `test:introspection` writes the two generated documents under `docs/reference/` as its generators emit them, and the committed copies are mdox-normalised. Without the closing pass the gate reports a dirty tree that is nothing but table padding.
 
-A pull request says it ran that subset rather than ticking the template's "I ran the default atkins pipeline" box, because it did not. `atkins build` and `atkins gen` belong to a release, not to a sprint.
+`atkins build` and `atkins gen` belong to a release, not to a sprint. Neither the gate nor what it reported goes in a pull request body; `worktree verdict --from=main` is what states the branch is green.
 
 ### Samples and statistics
 
@@ -247,7 +247,9 @@ HTTP, which no document carries yet:
 
 `--json` reports nanoseconds; the table reports microseconds, which is what `phpscript test` prints, to one decimal. p95 is collected and not published.
 
-Before and after are `(was)` and `(now)` row labels, never extra columns. The environment is stated once above the table, in the form [../allocation-performance.md](../allocation-performance.md) uses: the harness, the box, the Go version and the CGO setting.
+In a document, before and after are `(was)` and `(now)` row labels, never extra columns, because a document's table is a reference to the current shape with the previous one beside it. A pull request body is the other way round: its subject is the delta, so the columns are Before, After and the signed change. [The measurement table](#the-measurement-table) is that shape.
+
+The environment is stated once above the table, in the form [../allocation-performance.md](../allocation-performance.md) uses: the harness, the box, the Go version and the CGO setting.
 
 No document in this directory carries a measurement. A number in a prompt goes stale, and then the prompt lies. Numbers live in the pull request body, in the document that owns the subject, and in the gitignored artifact.
 
@@ -319,17 +321,34 @@ The reason is review load rather than taste. A pull request per finding produces
 
 ## The pull request
 
-This shape is the commit message for each finding on the draft branch, and the body of the draft itself where it summarises them.
+A reader opens it to learn what was broken and what the change does about it. Four parts, in this order, and nothing else.
 
-Body order, fixed:
+1. **`## Problem`.** What is broken, and the number or the symptom that shows it.
+2. **`## Change`.** What the pull request does, named in the terms of the code: the function, the type, the flag, the file. A paragraph, or a short list where there are several.
+3. **The measurements**, where anything was measured: a markdown table with a signed delta column. Never pasted `benchstat` output.
+4. **`worktree verdict --from=main`**, that exact command, its output raw and last. It is already markdown, so it renders rather than needing a fence.
 
-1. The summary statement, first line. For a positive change, this shape: `Optimized execution of expressions by changing the behaviour from _ to _. This nets a positive change of -X% in latency and a delta from X allocs/op to Y allocs/op (-30%).` The percentage is a signed delta; negative is the improvement for latency and allocations. An absolute number is never the claim. Both sides come from one protocol run.
-2. The problem-first body. `type(scope): subject` title, no line wrapping, no test walkthrough, no toolchain notes.
-3. The before/after table, canonical shape, environment stated once.
-4. The `benchstat` block verbatim for whatever moved.
-5. Considered and rejected: at least one entry, each naming the approach, the number it produced and why it lost. Where a future reader would try it again, the same sentence also lands in the document that owns the subject, because a pull request body is not where anybody looks.
-6. `worktree verdict --from=main` output, that exact command, last, on the draft's body rather than in every commit message - it describes the branch, not one finding. It is already markdown - a heading, a verdict line and a table - so it goes in raw rather than fenced.
-7. The checklist from `.github/PULL_REQUEST_TEMPLATE.md`, ticked honestly, on the draft's body.
+The title is `type(scope): subject`. A finding's commit message is the same Problem and Change in prose, without the table or the verdict.
+
+What is left out, because every one of these has gone in and made a body worse:
+
+| Not in a body                        | Why                                                                                    |
+|--------------------------------------|----------------------------------------------------------------------------------------|
+| Anything that did not change         | A call site that still works and a package that behaves the same are not the change    |
+| A section nobody asked for           | No audit, no reachability survey, no inventory, no "also on this branch"               |
+| How the work was done                | No agent, no sprint, no wave, no measure lock, no "verified on a private binary"       |
+| Anything addressed to a reviewer     | No "worth reviewing", no open questions, no checklist of what to look at               |
+| A proposal in place of a change      | Either the change is in the branch or it is in an issue. A body is not a design review |
+| An adjective where the number exists | "much faster" when the benchmark printed 214.7ms to 4.17ns                             |
+
+A rejected approach goes in the document that owns the subject, with its number and why it lost, not in the body. A body is read once; the document is read by whoever tries it next.
+
+### The measurement table
+
+One row per thing measured, one column per unit that moved, and a signed delta. The delta is the claim and the raw figures are what it was computed from, so both are present. State the box, the Go version and the CGO setting in one line above it.
+
+| Benchmark | Before | After | Delta |
+|-----------|-------:|------:|------:|
 
 ### Extended reasoning for a possible breaking change
 
