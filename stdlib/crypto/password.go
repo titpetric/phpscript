@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -116,39 +115,6 @@ func (p params) options() *model.Array {
 	return out
 }
 
-// dummyHash is compared against when there is no hash to check, so a caller
-// that looks up a user first spends the same time on a name that does not
-// exist as on one that does. Without it the response time answers "is this a
-// real account" for anyone who can measure it.
-//
-// It is built lazily rather than in init(), because a bcrypt derivation at
-// cost 12 is a quarter of a second and every phpscript process would pay it
-// whether or not the script ever asks about a password.
-//
-// The cost is defaultCost whatever the application stores its hashes at, so a
-// deployment on another cost or on argon2 has a decoy that does not match what
-// it is standing in for. See docs/reference/extensions/hashing.md.
-var (
-	dummyHash []byte
-	dummyOnce sync.Once
-)
-
-// Warm builds the timing decoy ahead of its first use. A serving process is
-// right to pay the cost-12 derivation lazily, on the first invalid-hash
-// verify; a measuring harness is not: the quarter second lands on whichever
-// engine reaches it first and reads as that engine's cost. The test runner
-// calls this in the background before any fixture is timed.
-func Warm() {
-	dummyOnce.Do(func() {
-		dummyHash, _ = bcrypt.GenerateFromPassword([]byte("dummy-password-for-timing"), defaultCost)
-	})
-}
-
-func timingDecoy(password string) {
-	Warm()
-	_ = bcrypt.CompareHashAndPassword(dummyHash, []byte(password))
-}
-
 // Register installs the password hashing functions and their constants on rt.
 func Register(rt *runner.Runtime) {
 	rt.SetConst("PASSWORD_BCRYPT", algoBcrypt)
@@ -175,16 +141,7 @@ func Register(rt *runner.Runtime) {
 	})
 
 	// password_verify reports whether $password produced $hash, reading the algorithm and the work factors out of $hash rather than taking them again; a hash that is empty or malformed is false rather than an error, because a login form asks a question and "no" is an answer.
-	rt.RegisterFunc("password_verify", func(password string, hash string) bool {
-		if hash == "" {
-			timingDecoy(password)
-			return false
-		}
-		if isArgon2(hash) {
-			return argon2Verify(password, hash)
-		}
-		return bcrypt.CompareHashAndPassword([]byte(goForm(hash)), []byte(password)) == nil
-	})
+	rt.RegisterFunc("password_verify", passwordVerify)
 
 	// password_needs_rehash reports whether $hash was made with a different algorithm or different work factors than $algo and $options ask for, which is how a login upgrades a stored hash without asking for the password twice.
 	rt.RegisterFunc("password_needs_rehash", func(hash string, opts ...any) (bool, error) {
@@ -224,6 +181,27 @@ func Register(rt *runner.Runtime) {
 	})
 }
 
+// passwordVerify answers password_verify. The stored hash names the algorithm
+// and the work factors, so a login costs whatever the hash was written at and
+// nothing here can lower that.
+//
+// What it can do is not pay a derivation for a value no derivation could match.
+// A string that is neither argon2 nor long enough to be bcrypt is false in the
+// time it takes to read its first byte, which is also what php answers in: an
+// empty hash is 31 ns there. Spending a derivation on it instead would turn a
+// request carrying a wrong-shaped cookie into a fifth of a second of one core,
+// which is a request-rate limit an unauthenticated caller sets.
+func passwordVerify(password, hash string) bool {
+	switch {
+	case isArgon2(hash):
+		return argon2Verify(password, hash)
+	case isBcrypt(hash):
+		return bcrypt.CompareHashAndPassword([]byte(goForm(hash)), []byte(password)) == nil
+	default:
+		return false
+	}
+}
+
 // algoName maps an identifier to the name password_get_info reports, which is
 // the identifier itself for argon2 and a different word for bcrypt.
 func algoName(algo string) string {
@@ -254,11 +232,26 @@ func paramsOf(hash string) (params, bool) {
 		p, _, _, err := argon2Decode(hash)
 		return p, err == nil
 	}
+	if !isBcrypt(hash) {
+		return params{}, false
+	}
 	cost, err := bcrypt.Cost([]byte(goForm(hash)))
 	if err != nil {
 		return params{}, false
 	}
 	return params{algo: algoBcrypt, cost: cost}, true
+}
+
+// isBcrypt reports whether a stored value is long enough and shaped right to be
+// a bcrypt hash. It is the two conditions x/crypto rejects a string on before it
+// parses anything - 59 bytes and a leading "$" - asked here so that a value
+// which is neither argon2 nor bcrypt is answered without copying it to a []byte.
+//
+// It decides nothing else. The revision marker, the cost digits and the base64
+// are x/crypto's to read, so a hash this accepts can still be refused, and the
+// set of hashes that verify is the same as if password_verify called it blind.
+func isBcrypt(hash string) bool {
+	return len(hash) >= 59 && hash[0] == '$'
 }
 
 // goForm rewrites a PHP-written hash into the revision x/crypto accepts.

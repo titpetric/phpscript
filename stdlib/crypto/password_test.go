@@ -3,12 +3,15 @@ package crypto
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"io"
 	"strconv"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/titpetric/phpscript/model"
+	"github.com/titpetric/phpscript/runner"
 )
 
 // benchPassword is the input every derivation below runs on. Its length
@@ -195,6 +198,114 @@ func BenchmarkPasswordVerify(b *testing.B) {
 					b.Fatal(err)
 				}
 			}
+		})
+	}
+}
+
+// refusedHashes are the spellings password_verify answers by shape. No
+// derivation can turn any of them into a match: the first three cannot carry a
+// salt and a tag at all, and the fourth is argon2 1.0, which derives a different
+// tag from the same parameters and is therefore unreadable rather than wrong.
+var refusedHashes = []struct{ name, hash string }{
+	{"empty", ""},
+	{"not-a-hash", "not-a-hash"},
+	{"bcrypt/truncated", "$2y$12$Lw1SjMDYJ.x6mKLVCqTfke"},
+	{"argon2id/version=16", "$argon2id$v=16$m=65536,t=4,p=1$c29tZXNhbHRzb21lc2FsdA$RdescudvJCsgt3ub+b+dWRWJTmaaJObG"},
+}
+
+// TestPasswordVerifyRefusesWithoutDeriving asserts the cost of the answer
+// rather than the answer, because the answer was already false.
+//
+// password_verify("x", "") spent a bcrypt cost-12 derivation before returning
+// it: 214 ms of one core, for a question php closes in 31 ns. The bound is what
+// a return value cannot state. 4000 refusals measure 804 us, and one
+// derivation at cost 4, the cheapest bcrypt accepts, is 898 us, so a ceiling of
+// 200 ms catches a decoy at any cost with two orders of magnitude of headroom
+// over the measurement.
+//
+// It runs through the registered function, not passwordVerify, because the decoy
+// lived in the registration.
+func TestPasswordVerifyRefusesWithoutDeriving(t *testing.T) {
+	rt := runner.New(io.Discard, runner.Options{})
+	Register(rt)
+
+	const rounds = 1000
+	start := time.Now()
+	for range rounds {
+		for _, tt := range refusedHashes {
+			got, err := rt.InvokeNamed("password_verify", benchPassword, tt.hash)
+			if err != nil {
+				t.Fatalf("%s: %v", tt.name, err)
+			}
+			if got != false {
+				t.Fatalf("%s: password_verify returned %v, want false", tt.name, got)
+			}
+		}
+	}
+
+	elapsed := time.Since(start)
+	t.Logf("%d refusals in %v", rounds*len(refusedHashes), elapsed)
+	if elapsed > 200*time.Millisecond {
+		t.Errorf("%d refusals took %v, want under 200ms: a derivation is being spent on a hash that cannot match", rounds*len(refusedHashes), elapsed)
+	}
+}
+
+// BenchmarkPasswordVerifyRefuse prices the path a stored value that is not a
+// hash takes. It is the one row in this file that is not a derivation, which is
+// the point of it: the cost is the length check and the prefix compare, and the
+// allocation count is zero because nothing is copied to a []byte.
+func BenchmarkPasswordVerifyRefuse(b *testing.B) {
+	for _, tt := range refusedHashes {
+		b.Run(tt.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				if passwordVerify(benchPassword, tt.hash) {
+					b.Fatal("verify accepted a hash it cannot read")
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkPasswordVerifyThroughput answers how many logins a host serves,
+// which is not one derivation divided into the core count.
+//
+// A bcrypt derivation holds a core and 5 KiB, so two of them run at twice the
+// rate of one. An argon2id derivation holds 19 MiB and streams it, so two of
+// them contend for memory bandwidth rather than for arithmetic and the rate
+// falls short of twice. Dividing BenchmarkPasswordVerify's sec/op into the core
+// count would report the bcrypt case correctly and overstate the argon2 one, so
+// the rate is measured: under RunParallel, sec/op is wall clock per completed
+// derivation across the cores in play, and logins per second is its reciprocal.
+//
+// `-cpu 1,2,4` is how the scaling is read, because RunParallel spawns GOMAXPROCS
+// goroutines and -cpu is what sets it. One row per core count, named by it.
+func BenchmarkPasswordVerifyThroughput(b *testing.B) {
+	stored := []params{
+		{algo: algoBcrypt, cost: defaultCost},
+		{algo: algoArgon2id, memory: 19456, time: 2, lanes: 1},
+	}
+
+	for _, p := range stored {
+		name := "bcrypt/cost=" + strconv.Itoa(p.cost)
+		if p.algo != algoBcrypt {
+			name = "argon2id/m=" + strconv.Itoa(int(p.memory)) +
+				",t=" + strconv.Itoa(int(p.time)) + ",p=1"
+		}
+		hash, err := derive(benchPassword, p)
+		if err != nil {
+			b.Fatal(err)
+		}
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					if !passwordVerify(benchPassword, hash) {
+						b.Error("verify failed")
+						return
+					}
+				}
+			})
 		})
 	}
 }
