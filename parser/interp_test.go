@@ -121,6 +121,22 @@ func TestInterpolationKeepsSourceSpelling(t *testing.T) {
 	}
 }
 
+// TestDollarBraceReadsTheVariableForm covers `${name}` and `${name[sub]}`, which
+// PHP's string grammar reads as the variable and its subscript.
+func TestDollarBraceReadsTheVariableForm(t *testing.T) {
+	for _, src := range []string{
+		`"${name}"`,
+		`"${arr['k']}"`,
+		`"${arr[2]}"`,
+		`"${arr[$i]}"`,
+		`"x${name}y"`,
+	} {
+		if _, err := Parse("<?php echo " + src + ";"); err != nil {
+			t.Errorf("%s: %v", src, err)
+		}
+	}
+}
+
 // TestInterpolationErrors covers the spellings that are reported rather than
 // guessed at. Each one would otherwise produce a literal the author did not
 // write, which is the failure worth stopping.
@@ -129,7 +145,8 @@ func TestInterpolationErrors(t *testing.T) {
 		src  string
 		want string
 	}{
-		{`"${name}"`, "${...} string interpolation is not supported"},
+		{`"${'na' . 'me'}"`, "needs $$name"},
+		{`"${name"`, "needs $$name"},
 		{`"$a[k"`, "unterminated ["},
 		{`"{$a[0]"`, "unterminated string in {$...}"},
 		{`"$a[k()]"`, "is not a simple subscript"},

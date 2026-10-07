@@ -135,10 +135,7 @@ func scanSimple(src string, i int, line int) (part interpPart, end int, ok bool,
 		return part, 0, false, nil
 	}
 	if src[i+1] == '{' {
-		// PHP deprecated `${name}` in 8.2 and removes it in 9. Reporting it
-		// beats accepting it: a literal that silently printed `${name}` back
-		// would be wrong output rather than a failure the author can see.
-		return part, 0, false, fmt.Errorf("line %d: ${...} string interpolation is not supported, write {$...}", line)
+		return scanDollarBrace(src, i, line)
 	}
 	if !isIdentStart(rune(src[i+1])) {
 		return part, 0, false, nil
@@ -307,4 +304,48 @@ func skipQuoted(src string, i int) (end int, ok bool) {
 		}
 	}
 	return 0, false
+}
+
+// scanDollarBrace reads the `${name}` and `${name[subscript]}` forms starting at
+// the `$` under src[i].
+//
+// PHP's string grammar admits two things after `${`: a STRING_VARNAME, which is
+// an identifier with an optional subscript and names the variable directly, and
+// an arbitrary expression, which names the variable whose name the expression
+// evaluates to. `${name}` is `$name` and `${arr['k']}` is `$arr['k']`; the
+// expression form is variable-variable syntax and needs `$$name`, which this
+// parser does not read, so it is reported rather than guessed at.
+//
+// PHP deprecated the whole syntax in 8.2 and removes it in 9. It parses here
+// because php 8.5 runs it.
+func scanDollarBrace(src string, i int, line int) (part interpPart, end int, ok bool, err error) {
+	j := i + 2
+	if j >= len(src) || !isIdentStart(rune(src[j])) {
+		return part, 0, false, dollarBraceErr(line)
+	}
+	start := j
+	for j < len(src) && isIdentPart(rune(src[j])) {
+		j++
+	}
+	part = interpPart{Kind: interpSimple, Name: src[start:j]}
+
+	if j < len(src) && src[j] == '[' {
+		k := strings.IndexByte(src[j:], ']')
+		if k < 0 {
+			return part, 0, false, fmt.Errorf("line %d: unterminated [ in string interpolation", line)
+		}
+		part.Sub = src[j+1 : j+k]
+		j += k + 1
+	}
+
+	if j >= len(src) || src[j] != '}' {
+		return part, 0, false, dollarBraceErr(line)
+	}
+	return part, j + 1, true, nil
+}
+
+// dollarBraceErr reports a `${...}` whose contents are not an identifier with an
+// optional subscript, which is the variable-variable form.
+func dollarBraceErr(line int) error {
+	return fmt.Errorf("line %d: ${expression} names a variable by its value and needs $$name, which is not implemented; write {$...} for an expression", line)
 }
