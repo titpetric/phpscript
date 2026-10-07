@@ -2,12 +2,17 @@ package session
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib/files"
 )
 
 // StorageDisk stores sessions in a local folder.
@@ -15,10 +20,75 @@ type StorageDisk struct {
 	storagePath string
 }
 
-// NewStorageDisk creates the storage folder and verifies that it is
-// writable. With no path, it uses the operating system's temporary directory.
+// newRootedStorageDisk is the Session\Storage\Disk constructor a rooted host
+// registers.
+//
+// A path the script named is resolved against the root through the runtime's own
+// rule, so it names the same file file_get_contents would and cannot climb out,
+// and is then held to writable_paths. The directory it creates is therefore one
+// the script could have written a file into by hand.
+//
+// With no path it falls through to the host's temporary directory, which is
+// outside the root and deliberately so: no script can name it, so it is not a
+// path a tenant chose. That is the spelling tests/fixtures/bindings/session_manager.phpt
+// uses, and DefaultStoragePath is what keeps two roots out of one directory
+// there.
+func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string) (*StorageDisk, error) {
+	if len(storagePaths) == 0 || storagePaths[0] == "" {
+		return NewStorageDisk(DefaultStoragePath(dir))
+	}
+
+	target := files.HostPath(rt, dir, storagePaths[0])
+	writable := files.WritableRoots(dir, rt.WritablePaths())
+	if len(writable) > 0 {
+		allowed := false
+		for _, w := range writable {
+			if files.Within(target, w) {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return nil, fmt.Errorf("Session\\Storage\\Disk: %s is outside writable_paths", storagePaths[0])
+		}
+	}
+	return NewStorageDisk(target)
+}
+
+// DefaultStoragePath answers the directory a Session\Storage\Disk named no path
+// writes to, for an application rooted at dir.
+//
+// One directory per root, not one for the process. prune() takes an age and not
+// an ID, so while every root shared a directory, `new Session\Storage\Disk`
+// followed by prune() on any site of a virtual-host server deleted every other
+// site's sessions. Nothing had to be guessed and no path had to be named, which
+// is why rooting the path a script writes does not reach this. The leaf is a
+// digest of the absolute root: two roots cannot collide, the same root answers
+// the same directory across restarts, and the name tells a reader nothing about
+// its neighbours.
+//
+// An empty dir has nothing to key on and keeps the bare directory. Prune skips
+// subdirectories, so a host that bound no root cannot reach a scoped one either.
+func DefaultStoragePath(dir string) string {
+	base := filepath.Join(os.TempDir(), "phpscript-sessions")
+	if dir == "" {
+		return base
+	}
+	if abs, err := filepath.Abs(dir); err == nil {
+		dir = abs
+	}
+	sum := sha256.Sum256([]byte(dir))
+	return filepath.Join(base, hex.EncodeToString(sum[:8]))
+}
+
+// NewStorageDisk creates the storage folder and verifies that it is writable.
+// With no path, it uses DefaultStoragePath for no application root.
+//
+// The path is taken as given. A Go host chooses it, so there is nothing to
+// confine it against; the path a PHP script names goes through
+// newRootedStorageDisk instead.
 func NewStorageDisk(storagePaths ...string) (*StorageDisk, error) {
-	storagePath := filepath.Join(os.TempDir(), "phpscript-sessions")
+	storagePath := DefaultStoragePath("")
 	if len(storagePaths) > 0 {
 		storagePath = storagePaths[0]
 	}

@@ -5,6 +5,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib/files"
 	"github.com/titpetric/phpscript/stdlib/gd"
 	"github.com/titpetric/phpscript/stdlib/pexec"
+	"github.com/titpetric/phpscript/stdlib/session"
 )
 
 // RegisterFS reroots the filesystem bindings Register installed at dir. A path
@@ -19,4 +20,5 @@ func RegisterFS(rt *runner.Runtime, dir string) {
 	files.RegisterRoot(rt, dir)
 	gd.RegisterRoot(rt, dir)
 	pexec.RegisterRoot(rt, dir)
+	session.RegisterRoot(rt, dir)
 }

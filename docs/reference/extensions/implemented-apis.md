@@ -2525,7 +2525,7 @@ class Session\Manager
 Registered from `stdlib/session`.
 
 ```php
-// Session\Storage\Disk is session storage backed by files under $storage_path; with no path it uses the operating system's temporary directory.
+// Session\Storage\Disk is session storage backed by files under $storage_path, which resolves inside the application root and must be writable; with no path it uses a directory of this application's own under the operating system's temporary directory.
 class Session\Storage\Disk
 {
     public function __construct(string ...$storage_paths) {}
@@ -2574,9 +2574,14 @@ Registered from `stdlib/core`.
 
 ```php
 /**
- * SharedMemory is a key-value and counter store shared across
- * requests: `new SharedMemory` returns the store the host bound into the
- * runtime context, or a fresh empty store when none is bound.
+ * SharedMemory is a key-value and counter store: `new SharedMemory`
+ * returns the store the host bound into the runtime context, and a store of its
+ * own when none is bound.
+ * 
+ * No command in this tree binds one, so under `phpscript server` and the rest
+ * every `new SharedMemory` is its own store and holds nothing an earlier request
+ * wrote. Retaining state across requests is something an embedding host adds
+ * with SharedMemoryContext; see docs/use-cases/shared-memory.md.
  */
 class SharedMemory
 {
