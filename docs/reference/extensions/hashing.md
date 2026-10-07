@@ -137,15 +137,28 @@ All numbers from [stdlib/crypto/password_test.go](../../../stdlib/crypto/passwor
 | `sha256` over a token            | 84.03 ns |        0 |         0 |
 | `hash_hmac` sha256 over a token  | 604.4 ns |      512 |         6 |
 
-Three things to read off it.
+### How many logins that is
 
-**The default costs a fifth of a second of one core.** bcrypt cost 12 is 214.7 ms, and each derivation holds a core for the whole of it, so four cores saturated are about eighteen logins a second and nothing else. Cost 13 is double that and cost 11 is half; the parameter is a power of two and the latency follows it exactly.
+One derivation divided into the core count is the wrong arithmetic. A bcrypt derivation holds a core and 5 KiB, so concurrent ones scale with cores; an argon2id derivation holds 19 MiB and streams it, so they contend for memory bandwidth and scale less. `BenchmarkPasswordVerifyThroughput` measures the rate instead, under `-cpu 1,2,4`: `sec/op` is wall clock per completed login across the cores in play, so logins per second is its reciprocal.
+
+| Stored at               | 1 core   | 2 cores  | 4 cores  | Logins/sec on 4 cores | Per day |
+|-------------------------|---------:|---------:|---------:|----------------------:|--------:|
+| `bcrypt` cost 12        | 233.2 ms | 137.4 ms | 69.43 ms |                  14.4 |   1.24M |
+| `argon2id` m=19456, t=2 | 29.16 ms | 17.70 ms | 13.04 ms |                  76.7 |   6.63M |
+
+bcrypt scales 3.4x over four cores and argon2id 2.2x, which is the bandwidth bound showing up. The ratio that matters is the last column: the same four cores serve 5.3 times as many logins on argon2id, and one login takes 29.16 ms rather than 233.2 ms.
+
+Two more things to read off the cost table.
+
+**Cost 13 is double cost 12 and cost 11 is half.** The parameter is a power of two and the latency follows it exactly, so lowering it is the only bcrypt lever and each step down halves the work an attacker does too.
 
 **The token path is five to six orders of magnitude cheaper.** 214.7 ms against 604.4 ns is a factor of 355,000. Every request that re-derives a password hash instead of checking a token is paying that factor, and no choice of algorithm recovers it.
 
 **argon2id buys the trade the cost parameter cannot.** At RFC 9106's second recommended parameter set, m=19456 KiB and t=2, a derivation is 29.65 ms: seven times less wall clock than bcrypt at cost 12, with a 19 MiB working set per guess against bcrypt's 4 KiB. The memory is the point. bcrypt's working set fits in a GPU core's local memory, so an attacker runs thousands of guesses in parallel on one card; argon2id's does not, and the parallelism an attacker can buy is bounded by memory bandwidth rather than by arithmetic. Lower wall clock and higher attacker cost at the same time is the only genuine answer to "bcrypt pegs a CPU".
 
-What it costs is resident memory on the serving side: 19 MiB allocated per derivation in flight, against bcrypt's 5 KiB. A hundred concurrent logins is 1.9 GiB, which is a limit to set rather than a cost to absorb - the same bound the third lever above names, now with a number attached to it.
+What it costs is resident memory on the serving side: 19 MiB allocated per derivation in flight, against bcrypt's 5 KiB. A hundred concurrent logins is 1.9 GiB, which is a limit to set rather than a cost to absorb.
+
+**The `threads` option trades the rate for the latency.** More lanes spread one derivation over cores, so `password_hash($p, PASSWORD_ARGON2ID, array("threads" => 2))` lowers what one login waits. It does not raise what the host serves: the cores a lane takes are cores the next login was going to run on. Set it when a single login's latency is the complaint and leave it at 1 when the rate is.
 
 ## Choosing a password algorithm
 
@@ -172,7 +185,9 @@ if (password_verify($submitted, $stored) && password_needs_rehash($stored, PASSW
 
 `php -r` is not a benchmark for this. Measure on the hardware that will serve, with the fixture or the Go benchmark above, and set the parameters from that rather than from this table: a derivation whose cost was chosen on a developer laptop is the wrong cost on everything else.
 
-**One mismatch to know about.** `password_verify($password, "")` is the spelling an application uses when a user lookup found nothing, and it deliberately spends a derivation so that a missing account and a wrong password take the same time. That decoy is hard-coded to bcrypt at `PASSWORD_BCRYPT_DEFAULT_COST`, so a deployment on any other cost or on argon2 has a decoy that does not match what it stands in for: at argon2id m=19456 it is 214.8 ms against the real path's 30.29 ms, which leaks the absence just as loudly in the other direction and costs seven times as much to provoke.
+**A hash that cannot match costs nothing.** `password_verify` reads the algorithm and the work factors out of the stored value, so a value that is neither argon2 nor long enough to be bcrypt is `false` without a derivation: 4.16 ns for `""`, 9.14 ns for a truncated bcrypt hash, no allocation. php answers the empty case in 31 ns.
+
+`password_verify($password, "")` is the spelling an application uses when a user lookup found nothing, and it is deliberately not a derivation. Making a missing account take as long as a wrong password is a rate-limiting problem, not a hashing one: the fix is to limit attempts per address and per account, which bounds what an attacker learns from any timing at all. A fixed-cost decoy does not, because its cost is fixed at one algorithm and one parameter set while the real path's is whatever the stored hash says.
 
 ## Implementation
 
