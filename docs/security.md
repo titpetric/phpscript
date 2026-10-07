@@ -65,7 +65,9 @@ The startup checks run over the whole list before the server listens, and `phpsc
 | `new Session\Storage\Disk($path)`          | `stdlib/session` | A directory the script names, created outside the root                           |
 | `imagecreatefrompng`, `imagepng`           | `stdlib/gd`      | A host path, until [#132](https://github.com/titpetric/phpscript/pull/132) lands |
 
-A production deployment is expected to leave the first row out. Selecting a profile is what issue 139's second item describes - `stdlib.Mount` taking a bitmask, with `stdlib.Default = stdlib.Secure` so a configuration always names the insecure area it turns on - and **it is not built**: there is no key, and no way to install a subset short of a host constructing its own runtime without this package. [Configuration](configuration.md) is where that key is signposted once it exists.
+A production deployment is expected to leave the first row out. `stdlib.Mount(rt, profile, bindings...)` installs only the areas a bitmask names, and `stdlib.Default` is `stdlib.Secure`, which excludes everything `stdlib/pexec` registers. A host embedding this package selects a profile today.
+
+**No configuration key reaches it.** `phpscript server` still calls `stdlib.Register`, which is `Mount` with every bit, so every vhost gets the whole surface whatever its file says. The key that would select a profile per site is proposed in [#151](https://github.com/titpetric/phpscript/pull/151) and not added, because the configuration model is frozen pending that decision. [Configuration](configuration.md) is where it is signposted once it exists.
 
 ## The filesystem boundary
 
@@ -138,14 +140,14 @@ Isolation stops at the process. One site's `exec`, one site's `HTTP\Server` and 
 
 Each of these is a design in issue 139 with nothing behind it in the code. A document that read as a description of today would be wrong about all six.
 
-| Intended                                                           | Issue 139 item | State                                                          |
-|--------------------------------------------------------------------|----------------|----------------------------------------------------------------|
-| A `stdlib.Mount` bitmask, and a per-site capability profile        | 2              | No key, no bitmask. Every binding is installed                 |
-| A `runtime.Cache` collapsing the per-site caches behind one setter | 4              | The caches are per site already, each set on its own           |
-| A `secrets:` block, and `get_secret()` in PHP                      | 5              | No key, no binding                                             |
-| `phpscript.key` in a vhost, encrypting that block at rest          | 1, 2           | No key file is read anywhere                                   |
-| `config/phpscript.yml` as a second location for a site's file      | 3              | Only `root/phpscript.yml` is read (`config/virtualhost.go:12`) |
-| A writable volume presented to a site as `/data`                   | 1              | No mapping. See [Writable storage](#writable-storage)          |
+| Intended                                                           | Issue 139 item | State                                                                                  |
+|--------------------------------------------------------------------|----------------|----------------------------------------------------------------------------------------|
+| A `stdlib.Mount` bitmask, and a per-site capability profile        | 2              | Bitmask built, `Default = Secure`. No key, so every vhost still installs every binding |
+| A `runtime.Cache` collapsing the per-site caches behind one setter | 4              | The caches are per site already, each set on its own                                   |
+| A `secrets:` block, and `get_secret()` in PHP                      | 5              | No key, no binding                                                                     |
+| `phpscript.key` in a vhost, encrypting that block at rest          | 1, 2           | No key file is read anywhere                                                           |
+| `config/phpscript.yml` as a second location for a site's file      | 3              | Only `root/phpscript.yml` is read (`config/virtualhost.go:12`)                         |
+| A writable volume presented to a site as `/data`                   | 1              | No mapping. See [Writable storage](#writable-storage)                                  |
 
 Two shapes the secrets work has to keep when it lands, because the rest of this page rests on them. A secret decrypted for a request is a local that is gone when the call returns, the way a mail credential already is (`stdlib/mail/provider.go:86`). And `get_secret()` names a secret the way `new Database` names a connection: a site's secrets are its own, there is no listing call, and a name another site declared does not resolve.
 
