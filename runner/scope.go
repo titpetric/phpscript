@@ -111,7 +111,8 @@ func (s *Scope) DefinedVars() map[string]any {
 //
 // The line is the runtime's, not the scope's. The parser compiles __LINE__ to a
 // literal, so no frame carries it, and writing it into one per statement to be
-// read back here was a map write on every statement executed.
+// read back here was a map write on every statement executed. It is resolved
+// here rather than recorded, for the reason currentStmt gives.
 func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	if filename, ok := scope.Get("__FILE__"); ok {
 		if filename, ok := filename.(string); ok {
@@ -120,8 +121,8 @@ func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.C
 	} else if rt.entrypoint != "" {
 		ctx = telemetry.WithSpanFilename(ctx, rt.entrypoint)
 	}
-	if rt.currentLine > 0 {
-		ctx = telemetry.WithSpanLine(ctx, rt.currentLine)
+	if line := rt.currentSourceLine(); line > 0 {
+		ctx = telemetry.WithSpanLine(ctx, line)
 	}
 	return context.WithValue(ctx, scopeContextKey{}, scope)
 }

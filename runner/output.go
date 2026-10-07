@@ -38,3 +38,16 @@ func (rt *Runtime) PopOutput() bool {
 
 // OutputDepth reports how many redirections are active.
 func (rt *Runtime) OutputDepth() int { return len(rt.outStack) }
+
+// releaseOutput drops every redirection and keeps the array they were held in,
+// for a runtime answering one request after another.
+//
+// The writers are cleared rather than left behind the length, because the
+// innermost one is the response of the request that has just ended and holding a
+// connection alive until the next request pushes over the slot is a retention
+// nobody asked for. The array itself is one pointer per nesting level and is
+// what the next PushOutput would otherwise allocate again.
+func (rt *Runtime) releaseOutput() {
+	clear(rt.outStack)
+	rt.outStack = rt.outStack[:0]
+}

@@ -188,7 +188,7 @@ func (rt *Runtime) recordTraceError(err error) {
 	if rt.entrypoint != "" {
 		ctx = telemetry.WithSpanFilename(ctx, rt.entrypoint)
 	}
-	ctx = telemetry.WithSpanLine(ctx, rt.currentLine)
+	ctx = telemetry.WithSpanLine(ctx, rt.currentSourceLine())
 	// The span is named for what happened, not for this instance of it: the
 	// message is the recorded error, which the front end renders under the
 	// span and filters on. A message in the name would make every failure its
@@ -370,9 +370,7 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 				}
 			}
 		}
-		if source, ok := rt.sourceSpans[s]; ok {
-			rt.currentLine = source.Start
-		}
+		rt.currentStmt = s
 		if rt.coverage != nil {
 			rt.coverage.Hit(s)
 		}
@@ -958,6 +956,16 @@ func (rt *Runtime) addSourceSpans(program *model.Program) {
 	for statement, source := range program.SourceSpans {
 		rt.sourceSpans[statement] = source
 	}
+}
+
+// currentSourceLine answers the line the statement being executed starts on, or
+// zero for a statement the parser recorded no span for - one the runner
+// synthesised, which no source line names.
+func (rt *Runtime) currentSourceLine() int {
+	if rt.currentStmt == nil {
+		return 0
+	}
+	return rt.sourceSpans[rt.currentStmt].Start
 }
 
 // setScopeFile binds __FILE__ and __DIR__ into a fresh call frame. The frame
