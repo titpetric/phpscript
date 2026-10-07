@@ -290,17 +290,53 @@ tasks:
           echo '```'; } > docs/coverage/dbadmin-detail.md
 
   # Deliberately not part of default: a bench sweep costs minutes of pinned
-  # CPU and answers a performance question, not a correctness one. Pinned to
-  # one core at top priority so two sweeps are comparable with
-  # `benchstat before.txt after.txt`; bench.txt is gitignored, durable
-  # numbers land as curated tables in docs/allocation-performance.md.
+  # CPU and answers a performance question, not a correctness one. Durable
+  # numbers land as curated tables in docs/allocation-performance.md; the
+  # bench*.txt files are gitignored.
+  #
+  # Two jobs rather than one. `taskset -c 3` narrows the affinity mask to one
+  # core, and Go reads that mask for GOMAXPROCS, so a b.RunParallel benchmark
+  # under it runs a single goroutine: a contention fix measures as zero and a
+  # contention regression measures as nothing. The three parallel benchmarks are
+  # excluded from the pinned job and run unpinned in bench:parallel, which is
+  # also where the higher -count goes, because a parallel benchmark on a shared
+  # box is the noisiest number in the set.
+  #
+  # BenchmarkLookupTreeSize is serial and belongs in the pinned job, which is
+  # why the selector anchors the first name with `$`.
+  #
+  # docs/agents/README.md is the protocol both halves are run under.
   bench:
-    desc: "Run the benchmarks and summarise bench.txt with benchstat"
-    timeout: 1200s
-    passthru: true
+    desc: "Run both benchmark halves into bench-go-$SIDE.txt and summarise it"
     cmds:
-      - taskset -c 3 nice -n -20 go test -run XXX -bench . -benchmem -benchtime 1s -count 3 ./... | tee bench.txt
-      - benchstat bench.txt
+      - task: bench:pinned
+      - task: bench:parallel
+      - benchstat "bench-go-${SIDE:-sweep}.txt"
+
+  bench:pinned:
+    desc: "The serial benchmarks, pinned to one core"
+    timeout: 2400s
+    passthru: true
+    env:
+      GOMEMLIMIT: 2GiB
+      GOGC: "100"
+      CGO_ENABLED: "0"
+      PARALLEL: 'BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
+    cmds:
+      - flock -w 3600 /tmp/phpscript-measure.lock taskset -c 3 nice -n -20 go test -run XXX -bench . -skip "$PARALLEL" -benchmem -benchtime 1s -count 6 ./... | tee "bench-go-${SIDE:-sweep}.txt"
+
+  bench:parallel:
+    desc: "The three parallel benchmarks, unpinned, appended to the same file"
+    timeout: 2400s
+    passthru: true
+    env:
+      GOMEMLIMIT: 2GiB
+      GOGC: "100"
+      CGO_ENABLED: "0"
+      PARALLEL: 'BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
+    cmds:
+      - go env GOMAXPROCS
+      - flock -w 3600 /tmp/phpscript-measure.lock nice -n -20 go test -run XXX -bench "$PARALLEL" -benchmem -benchtime 1s -count 10 ./tests/runner ./tests/flatstack | tee -a "bench-go-${SIDE:-sweep}.txt"
 
   # splint exits 1 when it found anything at all, warnings included, and this
   # tree carries around a thousand of them: uncovered symbols, files whose name
