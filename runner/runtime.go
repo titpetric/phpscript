@@ -28,7 +28,7 @@ import (
 // global, the way PHP lets a script replace $_POST wholesale, and clears any
 // scope-local shadow so reads keep resolving through the global. Every other
 // name belongs to the scope. The superglobal set lives in phpval.AutoGlobals,
-// whose claim check is a byte compare rather than a map probe: this runs on
+// whose claim check is a byte compare and no map probe: this runs on
 // every assignment.
 func (rt *Runtime) setVar(scope *Scope, name string, val any) {
 	if rt.auto.Set(name, val) {
@@ -58,7 +58,7 @@ type Runtime struct {
 	// of a redeclaration error. Only the top-level Run entry consults it: an
 	// include re-declaring a function is a real PHP error and keeps being one.
 	//
-	// The value is the filename it was hoisted under, which is what Fork
+	// The value is the filename it was hoisted under, and Fork
 	// replays onto a sibling so it declares the same symbols.
 	hoisted map[*model.Program]string
 	classes map[string]*model.Class
@@ -89,7 +89,7 @@ type Runtime struct {
 	Env map[string]string
 
 	// constructors maps a class name to a Go constructor function, so PHP's
-	// `new Name` instantiates a native Go value rather than a model.Object. This
+	// `new Name` instantiates a native Go value in place of a model.Object. This
 	// is the bridge for "bring your own type": a constructor like
 	// func(ctx context.Context) (Storage, error) makes `$s = new Storage;`
 	// behave like `s, err := NewStorage(ctx)` (the error surfaces as a throw).
@@ -102,7 +102,7 @@ type Runtime struct {
 	// context.Context, mirroring vuego's wrapContextFunc. It lets PHP call
 	// these symbols without supplying the context argument explicitly.
 	//
-	// It is derived rather than set: SetContext records client below and this
+	// It is derived, never set: SetContext records client below and this
 	// is what set_time_limit and ignore_user_abort made of it. See deadline.go.
 	ctx context.Context
 
@@ -114,7 +114,7 @@ type Runtime struct {
 	client context.Context
 
 	// stopCtx cancels ctx, which is built once per session and never rebuilt;
-	// the timers below cancel through it rather than deriving a new context,
+	// the timers below cancel through it and derive no new context,
 	// because a binding that blocks is parked on the one it was handed. ctxDone
 	// and clientDone are their Done channels, read once and kept so the
 	// per-statement check is a select on a field. See deadline.go.
@@ -158,7 +158,7 @@ type Runtime struct {
 	// opts holds runtime source root, working directory, and write policy.
 	// opts.WorkDir is the one field a script can move, through chdir; workDirBase
 	// is what the host configured, so a reset session starts where the first one
-	// did rather than wherever the last one wandered to.
+	// did, and not wherever the last one wandered to.
 	opts         Options
 	workDirBase  string
 	includeCache *IncludeCache
@@ -166,7 +166,7 @@ type Runtime struct {
 
 	// lookupScanned records that a Lookup has already considered parsing the
 	// source root into the include cache, so a tree that yielded nothing is
-	// walked once rather than once per symbol. See Runtime.scanTree.
+	// walked once, not once per symbol. See Runtime.scanTree.
 	lookupScanned bool
 
 	// symbols is what the tree's free functions were last indexed to, held
@@ -180,9 +180,9 @@ type Runtime struct {
 
 	// classStatics holds the live value of every `static $name` property, one
 	// bag per class. Unlike a constant a static is mutable and shared, so the
-	// bag is the storage itself rather than a cache: the declaration's default
+	// bag is the storage itself and no cache: the declaration's default
 	// seeds it the first time the class is touched, and every later read and
-	// write of Class::$name goes through it.
+	// write of Class::$name resolves through it.
 	classStatics map[string]map[string]any
 
 	// funcStatics holds the live bindings of function-level `static $x`
@@ -223,7 +223,7 @@ type Runtime struct {
 	// sites that attribute a span to a source line. It is the statement rather
 	// than the line because sourceSpans is keyed by an interface: storing the
 	// node is one word and resolving it through the map is a hash of an
-	// interface, which belongs on the error and tracing paths rather than on
+	// interface, which belongs on the error and tracing paths and not on
 	// every statement executed.
 	currentStmt model.Stmt
 
@@ -239,13 +239,13 @@ type Runtime struct {
 	preludeDone bool
 
 	// frames is the stack of live interpreter frames, global frame first;
-	// vmWalkers enumerate the live values of any flat VM currently running.
+	// vmWalkers enumerate the live values of every flat VM now running.
 	// Together with globals and classStatics they are the roots MemoryWalk
 	// measures.
 	frames    []*Scope
 	vmWalkers []func(yield func(any))
 
-	memBase int64 // host request overhead accounted at the boundary (AccountRequest)
+	memBase int64 // host request overhead, accounted by AccountRequest
 	// infoSections are the blocks phpinfo() prints after the runtime's own,
 	// contributed by whatever holds memory across requests.
 	infoSections []namedInfoSection
@@ -261,8 +261,8 @@ type Runtime struct {
 // every Eval used to.
 const maxFreeEnvs = 16
 
-// envSizeHint presizes an evaluation environment's map. It used to be the size
-// of the whole function table, which is no longer what an environment holds:
+// envSizeHint presizes an evaluation environment's map. The size it presizes to
+// is what an environment holds:
 // since installFunc adds registered functions on demand, an environment carries
 // the ~16 PHP-semantic helpers, the functions its expressions actually call, and
 // a handful of layered per-expression keys. The hint only has to avoid the first
@@ -270,7 +270,7 @@ const maxFreeEnvs = 16
 const envSizeHint = 48
 
 // scopeRef is the indirection that lets the environment's closures be built
-// once and still see the scope of the evaluation currently using them. Helpers
+// once and still see the scope of the evaluation using them. Helpers
 // read ref.scope at call time; anything that outlives the evaluation (a bound
 // method, a by-reference setter) copies the scope out of the ref first.
 type scopeRef struct {
@@ -313,12 +313,12 @@ func (e *ExitError) Error() string {
 }
 
 // ScriptExit reports the status a script ended with, and marks this error as
-// an ending rather than a failure.
+// an ending and no failure.
 //
 // It exists so a package that cannot name *ExitError can still recognise one:
 // runner imports flatstack/engine, so engine cannot import runner back, and
-// the VM has to know an exit when it unwinds one past a catch clause. Asking
-// the error what it is keeps that seam an interface rather than a string
+// the VM has to recognise an exit when it unwinds one past a catch clause. A
+// type assertion keeps runner.isExit an interface check, with no string
 // comparison on the message.
 func (e *ExitError) ScriptExit() int {
 	return e.Code
@@ -350,7 +350,7 @@ func (rt *Runtime) Exit(code int) error {
 //
 // While a redirection is active (PushOutput, which output buffering is built
 // on) this is the innermost writer, so everything the script emits is captured
-// rather than sent on.
+// and not sent on.
 func (rt *Runtime) Output() io.Writer {
 	if n := len(rt.outStack); n > 0 {
 		return rt.outStack[n-1]
@@ -428,15 +428,15 @@ func New(w io.Writer, opts Options) *Runtime {
 // InfrastructurePrefix names the variables that configure phpscript and the
 // platform it runs on: connection strings, the listen address, the telemetry
 // block. They are the host's configuration and getenv() does not answer them,
-// which is what keeps a tenant out of the operator's connection strings.
+// A tenant therefore cannot read the operator's connection strings.
 const InfrastructurePrefix = "PLATFORM_"
 
 // ScriptEnvironment returns the environment scripts read with getenv().
 //
-// A nil environment means the process environment, which is what a CLI run
-// has. A host that configured one passes it instead, and a virtual host always
-// does, so that a site sees the variables it declared rather than everything
-// the operator's process happens to carry. Either way the infrastructure
+// A nil environment means the process environment, as a CLI run has it. A host
+// that configured one passes it instead, and a virtual host always does, so
+// that a site sees the variables it declared and none of the rest the
+// operator's process happens to carry. Either way the infrastructure
 // variables are held back.
 func ScriptEnvironment(environment []string) map[string]string {
 	if environment == nil {
@@ -538,12 +538,12 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 }
 
 // Reset returns the runtime to the state a new one is in, so a pool can hand
-// the same value to the next program instead of building another.
+// the same value to the next program, with no second one built.
 //
 // It is ResetSession plus what outlives a session: the parse caches and the two
 // maps keyed by AST node, which ResetSession keeps because a --count loop runs
 // one program and the keys are the same nodes each time. Across two programs
-// they hold the previous tree alive. The maps are cleared rather than replaced,
+// they hold the previous tree alive. The maps are cleared and never replaced,
 // so the next program starts on the buckets they grew.
 func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	rt.ResetSession(out, stdin)
@@ -552,7 +552,7 @@ func (rt *Runtime) Reset(out io.Writer, stdin io.Reader) {
 	rt.includeCache.Clear()
 	rt.exprCache.Clear()
 	// The tree a lookup indexed went with the include cache, so the next one
-	// parses it again rather than resolving against nothing.
+	// parses it again, and resolves against nothing otherwise.
 	rt.lookupScanned = false
 	// The index is version-guarded and would rebuild on its own, but it holds a
 	// program pointer per symbol, which is the tree Reset exists to let go of.
@@ -584,8 +584,8 @@ func (rt *Runtime) Context() context.Context {
 // Observer receives lifecycle updates for a Runtime. Implementations must be
 // safe for use by concurrent runtimes. A span is returned so the interpreter
 // can measure the region it just reported; a nil span is valid and every
-// method on it does nothing, which is what an observer with no trace in the
-// context returns.
+// method on it does nothing, so an observer with no trace in the context can
+// return one.
 type Observer interface {
 	UpdateStatus(context.Context, telemetry.State)
 	Trace(context.Context, string, ...telemetry.Kind) *telemetry.Span
@@ -664,7 +664,7 @@ func (rt *Runtime) Precompiled() bool { return rt.opts.Precompile }
 // *http.Request, the response writer. It is called once per value at the
 // point a request crosses into the runtime; the walk then adds live script
 // values on top. It is an estimate of what the request costs before any PHP
-// evaluates, not an audit of every host allocation.
+// evaluates, and no audit of every host allocation.
 func (rt *Runtime) AccountRequest(values ...any) {
 	visited := make(visitedSet)
 	for _, v := range values {
@@ -720,7 +720,7 @@ func (rt *Runtime) MemoryWalk() int64 {
 }
 
 // lastMemoryUsage returns the cached result of the last walk. Trace spans
-// record this rather than pay for a walk apiece.
+// record this once, with no walk apiece.
 func (rt *Runtime) lastMemoryUsage() int64 {
 	if rt.memUsage < runtimeBaseline {
 		return runtimeBaseline
@@ -800,7 +800,7 @@ func (rt *Runtime) releaseScope(scope *Scope) {
 }
 
 // Trace publishes a trace span to registered observers and returns the first
-// mutable span provided by one of them.
+// mutable span one of them created.
 func (rt *Runtime) Trace(message string, kind ...telemetry.Kind) *telemetry.Span {
 	return rt.traceContext(rt.ctx, message, kind...)
 }
@@ -913,7 +913,7 @@ func (rt *Runtime) ResolvePath(p string) string { return rt.resolveFSPath(p) }
 //
 // The directory is per-runtime state, so a script moving it moves nothing
 // another request sees and os.Chdir is never called. A path naming no directory
-// is refused, which is what php's false return means.
+// is refused, which is the false return php documents.
 func (rt *Runtime) SetWorkDir(dir string) bool {
 	target := rt.resolveFSPath(dir)
 	if target == "" {
@@ -940,7 +940,7 @@ func (rt *Runtime) Mail() model.MailProvider { return rt.opts.Mail }
 // WritablePaths returns the configured writable path whitelist.
 func (rt *Runtime) WritablePaths() []string { return append([]string(nil), rt.opts.WritablePaths...) }
 
-// UploadFileMode returns the mode move_uploaded_file() gives a stored upload,
+// UploadFileMode returns the mode move_uploaded_file() sets on a stored upload,
 // which is DefaultUploadFileMode unless the host configured one.
 func (rt *Runtime) UploadFileMode() FileMode {
 	if rt.opts.UploadFileMode == 0 {
@@ -981,7 +981,7 @@ func (rt *Runtime) RegisterShutdown(callback any) {
 
 // Const returns a registered constant value and whether it is defined.
 //
-// The magic constants are not among them, which is what defined("__FILE__")
+// The magic constants are not among them, so defined("__FILE__")
 // and constant("__FILE__") are held to: php compiles those names and neither
 // function can see one.
 func (rt *Runtime) Const(name string) (any, bool) {
@@ -1075,7 +1075,7 @@ func (rt *Runtime) DefinedConstants() map[string]any {
 }
 
 // DeclaredClasses returns the names of PHP classes and host-backed constructor
-// classes currently available to the runtime. PHP does not guarantee ordering;
+// classes available to the runtime. PHP does not guarantee ordering;
 // phpscript sorts the snapshot for deterministic diagnostics.
 func (rt *Runtime) DeclaredClasses() []string {
 	names := make(map[string]struct{}, len(rt.classes)+len(rt.constructors))
@@ -1096,8 +1096,8 @@ func (rt *Runtime) DeclaredClasses() []string {
 }
 
 // PHPInfo prints a compact phpinfo-style text report for the phpscript
-// runtime. It intentionally reports runtime facts rather than PHP extensions
-// that phpscript does not provide.
+// runtime. It reports runtime facts; the PHP extensions phpscript does not
+// carry are outside it.
 func (rt *Runtime) PHPInfo() error {
 	internal, user := rt.DefinedFunctions()
 	_, err := fmt.Fprintf(rt.Output(), "phpscript\n\nRuntime => phpscript\nSAPI => %s\nGo Version => %s\nOperating System => %s\nArchitecture => %s\nInclude Path => %s\nWorking Directory => %s\nInternal Functions => %d\nUser Functions => %d\nDeclared Classes => %d\nDefined Constants => %d\n",
@@ -1253,7 +1253,7 @@ func (rt *Runtime) lookupConstructor(name string) (*funcEntry, bool) {
 }
 
 // OnError installs an error handler (register_error_handler). When set, runtime
-// evaluation errors are routed here instead of aborting the caller.
+// evaluation errors are routed here, and no caller is aborted.
 func (rt *Runtime) OnError(fn func(error)) {
 	rt.errorHandler = fn
 }
@@ -1291,7 +1291,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 
 	// Registered functions are installed on demand: an environment carries the
 	// PHP-semantic helpers plus whatever the expressions evaluated with it have
-	// called so far, rather than a closure per entry of the function table. The
+	// called so far, and no closure per entry of the function table. The
 	// installed closures persist across evaluations (see installFunc). An
 	// immediately invoked anonymous function appears in ce.calls under its
 	// synthetic identifier, which is in no function table; it is bound per
@@ -1335,7 +1335,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 // the same spelling stays null, so the two carry different
 // identifiers.
 // helperVar reads a variable or bare name from the live scope at evaluation
-// time. The closure engine uses it instead of the slot snapshot inside
+// time. The closure engine reads it in place of the slot snapshot inside
 // expressions that contain a marked sub-expression, whose scope writes a
 // snapshot taken before the run would miss.
 func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
@@ -1435,7 +1435,7 @@ func (rt *Runtime) acquireEnv(scope *Scope) *evalEnv {
 // typed PHP arguments and keeps the runtime func type in sync with the type
 // env (see helpers.go::adapt and Eval).
 //
-// The closures read the scope through st.ref rather than capturing it, which is
+// The closures read the scope through st.ref and capture nothing, which is
 // what makes the environment reusable.
 func (rt *Runtime) buildEnv(st *evalEnv) {
 	env := st.env
@@ -1460,7 +1460,7 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 	env["__invoke"] = adapt(rt.helperInvoke(ref))
 	env["__callable"] = adapt(rt.helperCallable(ref))
 	env["__callablemember"] = adapt(rt.helperCallableMember(ref))
-	// Expression markers (`__eval`) resolve against the expression currently
+	// Expression markers (`__eval`) resolve against the expression now
 	// evaluated with this environment, which Eval stores on st.
 	env["__eval"] = adapt(func(id string) (any, error) {
 		e := st.exprs[id]
@@ -1469,10 +1469,10 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 		}
 		return rt.Eval(e, ref.scope)
 	})
-	// func_get_args() needs the current frame's arguments, so it is provided as
-	// a scope-aware helper rather than a plain forwarded function.
+	// func_get_args() needs the current frame's arguments, so it is installed as
+	// a scope-aware helper and not a plain forwarded function.
 	// The frame already holds its arguments as a []any, which the VM indexes and
-	// iterates directly, so func_get_args() hands that slice back rather than
+	// iterates directly, so func_get_args() returns that slice and not
 	// rebuilding it as an *model.Array.
 	env["func_get_args"] = adapt(func() []any { return funcGetArgs(ref.scope) })
 	st.built = true
@@ -1482,12 +1482,12 @@ func (rt *Runtime) buildEnv(st *evalEnv) {
 // not already there. The closure is left in the environment (it is not one of
 // the per-expression keys releaseEnv strips), so a function is wrapped at most
 // once per environment per function-table generation: buildEnv clears the map
-// whenever the generation moves, which is exactly when a name could have been
+// whenever the generation moves, the one point at which a name could have been
 // re-registered with a different implementation.
 //
 // A name that is in no function table installs a stub that reports the call as
-// undefined, so this engine and flatstack (see helperFunc) give a script the
-// same message instead of the VM's "cannot call nil". The stub is bound to the
+// undefined, so this engine and flatstack (see helperFunc) report the same
+// message to a script where the VM would say "cannot call nil". The stub is bound to the
 // current generation like any other entry: declaring the function afterwards
 // re-registers it, which moves the generation and rebuilds the environment.
 //
@@ -1504,8 +1504,8 @@ func (rt *Runtime) installFunc(st *evalEnv, name string) {
 	// Resolution happens per call, not at install. The closure then survives
 	// every function-table change - a script re-declaring its functions on
 	// each run, a conditionally declared function appearing after the first
-	// call reported it undefined - which is what lets a built environment
-	// live for the runtime's lifetime instead of being rebuilt on every
+	// call reported it undefined, so a built environment
+	// lives for the runtime's lifetime and is never rebuilt on every
 	// registration.
 	st.env[name] = func(args ...any) (any, error) {
 		entry, ok := rt.lookupEntry(name)
@@ -1631,15 +1631,15 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 	}
 }
 
-// ScopeBuiltins names the builtins provided per-environment instead of through
-// the function table. function_exists() and the linter both ask the function
+// ScopeBuiltins names the builtins installed per-environment, outside
+// the function table. function_exists() and the linter both read the function
 // table, which does not carry these, so a script calling one reads as a call to
 // something undefined without this list.
 func ScopeBuiltins() []string {
 	return []string{"func_get_args"}
 }
 
-// scopeBuiltin resolves the builtins provided per-environment instead of
+// scopeBuiltin resolves the builtins installed per-environment, outside
 // through the function table, under the name a PHP script calls them by.
 func scopeBuiltin(name string, scope *Scope) (any, bool) {
 	if strings.EqualFold(name, "func_get_args") {
@@ -1674,12 +1674,12 @@ func (rt *Runtime) lookupEntry(name string) (*funcEntry, bool) {
 	return nil, false
 }
 
-// helperRef yields a setter for a by-reference output parameter (e.g.
+// helperRef returns a setter for a by-reference output parameter (e.g.
 // preg_match_all's $matches). The shim calls it to write back into scope.
 func (rt *Runtime) helperRef(ref *scopeRef) func(name string) func(any) {
 	return func(name string) func(any) {
 		// The setter is handed to a shim and may be called after this expression
-		// finishes, so it binds the scope value rather than the reference.
+		// finishes, so it binds the scope value and not the reference.
 		scope := ref.scope
 		return func(v any) { scope.Set(name, v) }
 	}
