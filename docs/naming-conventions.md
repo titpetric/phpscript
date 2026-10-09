@@ -25,7 +25,7 @@ The module root holds one package per responsibility. Each one is a stage of the
 | `telemetry`     | The only package that imports oida; everything else instruments through it           |
 | `tests`         | The fixture harness behind `phpscript test`                                          |
 
-`parser` and `runner` do not import each other; they meet in `model`. That split is why `model` exists as a package of its own, with the types on neither side.
+`parser` and `runner` do not import each other; they meet in `model`. That split is why `model` is a package of its own, with the types on neither side.
 
 `internal/` is where a package goes when it has no callers outside this module and no API worth committing to. `internal/arrayi64` holds a generated integer sort used by `stdlib`; the compiler enforces that nothing outside the module can import it, so the package can change shape without a deprecation. Prefer it over a root package for anything a host would never call.
 

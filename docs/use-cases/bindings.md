@@ -38,7 +38,7 @@ $ex1 = new Exception("Not found", 404);
 $ex2 = new Exception("Internal server error");
 ```
 
-The latter example for `ex2` will produce the `0` code (zero value for the argument). The functionality in comparison with PHP exceptions is restricted but serves as a good example of how to create a Go binding.
+The latter example for `ex2` will produce the `0` code (zero value for the argument). The functionality is narrower than PHP's exceptions, and the shape is what a Go binding looks like.
 
 ## Shared memory
 

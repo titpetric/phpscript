@@ -65,7 +65,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 '
 ```
 
-### CGO and the toolchain
+### The toolchain every measurement is built with
 
 `CGO_ENABLED=0` always, for every build and every `go test`; `.atkins/skills/go.yml` builds with it. The only exception is `-race`, which needs cgo; a race run produces no number and is never a baseline.
 

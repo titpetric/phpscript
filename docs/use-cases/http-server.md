@@ -92,7 +92,7 @@ echo "this reaches the response too\n";
 
 A handler that throws is one request's problem: it is reported to the runtime's error sink and answered with a 500 if nothing has gone out yet, and the server goes on.
 
-## Workers and the queue
+## The worker pool
 
 `HTTP\Server`'s third argument is how many requests are answered at once and its fourth is how deep the queue behind them is. Omitted, they are the number of cores and 1024.
 
