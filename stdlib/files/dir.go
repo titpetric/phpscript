@@ -8,10 +8,10 @@ import (
 
 // registerDirs installs the directory-handle functions. They are the other way
 // a script reads a directory: scandir answers with the whole listing at once,
-// while opendir hands out a handle a loop walks one name at a time, which is
+// while opendir returns a handle a loop walks one name at a time, which is
 // what a recursive walk written in PHP looks like.
 //
-// The handle carries the listing taken at open time rather than an open
+// The handle carries the listing taken at open time, and no open
 // descriptor. A source filesystem an embedded application ships has no
 // descriptor to hold open, and both filesystems have to answer the same way, so
 // the listing is read through root.readDir - the same reader scandir uses.

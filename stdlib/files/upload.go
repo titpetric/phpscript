@@ -25,7 +25,7 @@ func registerUploads(rt *runner.Runtime, r root) {
 		}
 		// The temporary copy is outside the root by design, so only the
 		// destination is held to writable_paths: storing an upload is the
-		// write, and it is the one a configuration wants to pin down.
+		// write, and the one a configuration pins down.
 		dst, err := r.resolveWrite("move_uploaded_file", to)
 		if err != nil {
 			return false, err

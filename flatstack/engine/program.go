@@ -73,7 +73,7 @@ const (
 	// host, PHP's unset($obj->prop).
 	opUnsetProp
 	// opCompactInit pushes the empty map[string]any that compact() fills. A
-	// native map and no script array, which is the shape the binding
+	// native map and no script array, the shape the binding
 	// returns and what the allocation rules prefer.
 	opCompactInit
 	// opCompactEntry writes one name into the map on top of the stack, which

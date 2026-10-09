@@ -19,7 +19,7 @@ import (
 // RegisterHash installs PHP's message digests: md5() and sha1(), and the
 // algorithm-agnostic hash() family over the table below. Like the CSPRNG, a
 // digest is something a script cannot write for itself at any usable speed,
-// which is what qualifies it for this package.
+// and that is what qualifies it for this package.
 //
 // Both return string, not []byte: a PHP string is a Go string in this
 // runtime, and a []byte would reach scripts as a foreign Go value that
@@ -89,11 +89,11 @@ func RegisterHash(rt *runner.Runtime) {
 }
 
 // digests is the algorithm table, spelled the way PHP spells the names. It is
-// deliberately shorter than PHP's hash_algos(): every entry here is one a Go
-// binary already carries, and hash_algos() below answers this table rather than
-// PHP's, so a script can ask instead of guessing.
+// shorter than PHP's hash_algos(): every entry here is one a Go binary already
+// carries, and hash_algos() below answers this table and not PHP's, so a
+// script reads the set it has.
 //
-// The family is here rather than absent because storing a token as a digest
+// The family is registered because storing a token as a digest
 // that can still be looked up by index needs it: bcrypt cannot answer a lookup,
 // and a fast digest chosen by name can.
 var digests = map[string]func() hash.Hash{
@@ -126,7 +126,7 @@ func unknownAlgo(fn, algo string) error {
 	return fmt.Errorf("%s(): Argument #1 ($algo) must be a valid hashing algorithm, %q given", fn, algo)
 }
 
-// digestString renders a sum the way PHP does: hex unless the call asked for
+// digestString renders a sum the way PHP does: hex unless the call named
 // the raw bytes, which reach a script as an ordinary string because that is
 // what a PHP string is in this runtime.
 func digestString(sum []byte, binary []bool) string {

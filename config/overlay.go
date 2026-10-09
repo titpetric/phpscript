@@ -8,7 +8,7 @@ import (
 )
 
 // Overlay reads filename over base and returns the configuration it describes,
-// together with the keys the file itself named, which is how a key it
+// together with the keys the file itself named, so a key it
 // set from one it inherited.
 //
 // It is the layering every phpscript.yml gets: a file names what it changes and

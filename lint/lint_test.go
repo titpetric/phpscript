@@ -119,7 +119,7 @@ function load() { return 1; }
 
 	// Every chained statement whose value is a handle, or a name whose type the
 	// source does not settle, is reported once, whatever scope it sits in, and
-	// a chain of three names is still one finding rather than one per link.
+	// a chain of three names is still one finding and not one per link.
 	wantLines := []int{2, 4, 5, 6, 7, 8, 9, 10, 11}
 	if len(diags) != len(wantLines) {
 		t.Fatalf("got %d diagnostics, want %d: %+v", len(diags), len(wantLines), diags)
@@ -265,7 +265,7 @@ func TestFileAcceptsInterfaceExtends(t *testing.T) {
 
 // A JSON_* constant is reported as a warning. The name is not defined, so it
 // arrives as null and json_encode ignores it: the call runs and encodes, and
-// what the author loses is the formatting they asked for.
+// what the author loses is the formatting they wrote.
 func TestLintJSONFlags(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -403,7 +403,7 @@ $d = Missing::$prop;
 
 // A magic method other than __construct and __invoke is never called
 // implicitly (docs/design.md), so a class relying on one holds dead code that
-// looks load-bearing. The two that run lint clean.
+// reads as if something depended on it. The two that run lint clean.
 func TestFileReportsMagicMethods(t *testing.T) {
 	src := `<?php
 class Inject {

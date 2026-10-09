@@ -84,7 +84,7 @@ func TestDatabaseObserverOmitsEmptyArguments(t *testing.T) {
 	}
 }
 
-// A query that found no rows is control flow, not a failure: recording it would
+// A query that found no rows is control flow and no failure: recording it would
 // fail the span, the trace, and the SLA computed from them.
 func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 	for _, test := range []struct {
@@ -122,7 +122,7 @@ func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 		t.Fatalf("query = %#v", span.Attributes["query"])
 	}
 
-	// An untagged statement has no attribute rather than an empty one.
+	// An untagged statement has no attribute, and never an empty one.
 	span, observe = newObservedSpan(t)
 	observe(client.QueryLogEntry{Query: "select 1"})
 	if _, ok := span.Attributes["query_comment"]; ok || span.Attributes["query_type"] != "select" {
@@ -269,7 +269,7 @@ func newObservedSpan(t *testing.T) (*telemetry.Span, func(client.QueryLogEntry))
 // TestDatabaseRowsAreReadableAsPHPArrays pins the row representation Get and
 // GetAll hand to the VM: the bridge's own []map[string]any, uncopied. The VM's
 // value-model helpers must see it as an array-like value with the columns
-// reachable by key, which is what foreach and $row["col"] rely on.
+// reachable by key, as foreach and $row["col"] both read it.
 func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 	rows := any([]map[string]any{{
 		"id":   int64(1),

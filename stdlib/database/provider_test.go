@@ -129,9 +129,9 @@ func TestNewReadsPlatformDBEnvironment(t *testing.T) {
 }
 
 // TestDatabaseProviderCachesUnderResolvedName covers the pool a caller naming
-// fallbacks gets. Database\Migrate asks for "shop:migrate" before "shop", so
+// fallbacks gets. Database\Migrate names "shop:migrate" before "shop", so
 // the credential that answers is not the name it asked under; caching under
-// the name asked for would hand it a second pool, which on a private DSN such
+// the name passed would open it a second pool, which on a private DSN such
 // as an in-memory sqlite is a second database, and the schema it applied would
 // not be in the one the script queries.
 func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
@@ -152,7 +152,7 @@ func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
 	}
 
 	// A registered "shop:migrate" is the credential migrations run under,
-	// and it is a connection of its own rather than the one queries use.
+	// and it is a connection of its own, and not the one queries use.
 	provider.Register("shop:migrate", "sqlite://:memory:")
 	privileged, err := provider.Open(t.Context(), "shop:migrate", "shop")
 	if err != nil {

@@ -81,7 +81,7 @@ func runRefProgram(t *testing.T, source string, calls map[string]func(*refTestHo
 
 // The locals snapshot the host was handed predates the call, so it still holds
 // the value the out parameter replaced. Writing it back would undo the write,
-// and that is what made a reused $m keep the first call's matches.
+// so a reused $m kept the first call's matches.
 func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
 	echoed := runRefProgram(t, `<?php
 		preg_match_all("/a/", "aa", $m);

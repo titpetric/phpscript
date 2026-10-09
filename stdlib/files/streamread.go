@@ -13,14 +13,14 @@ import (
 // of it at once.
 //
 // None of them buffers. A buffered reader would read further than the script
-// asked for, which fseek() and ftell() would then disagree with, so fgets()
+// named, which fseek() and ftell() would then disagree with, so fgets()
 // walks the handle a byte at a time instead. That is one syscall per byte on a
 // host file: reading a whole file and splitting it is cheaper here, and a
 // script that can should.
 func registerStreamReads(rt *runner.Runtime) {
 	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, and so does
 	// Go's io package, so the argument is passed through as it
-	// arrives rather than translated.
+	// arrives, and never translated.
 	rt.SetConst("SEEK_SET", int64(io.SeekStart))
 	rt.SetConst("SEEK_CUR", int64(io.SeekCurrent))
 	rt.SetConst("SEEK_END", int64(io.SeekEnd))

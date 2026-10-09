@@ -33,7 +33,7 @@ walk(".");`
 
 // TestOpendirWalksTheSourceFilesystem is the branch an embedded application
 // takes. There is nothing on disk to open a descriptor on, so a walk that
-// answers at all proves the handle carries the listing rather than a file.
+// answers at all proves the handle carries the listing and no file.
 func TestOpendirWalksTheSourceFilesystem(t *testing.T) {
 	opts := runner.Options{RootFS: sourceTree()}
 	got := runFSOptions(t, t.TempDir(), nil, opts, walkSrc)
@@ -61,8 +61,8 @@ func TestOpendirWalksTheHost(t *testing.T) {
 	}
 }
 
-// TestReaddirListsDotAndDotDot pins what readdir hands back that scandir also
-// hands back: php lists the two directory entries, and a script that does not
+// TestReaddirListsDotAndDotDot pins what readdir returns that scandir also
+// returns: php lists the two directory entries, and a script that does not
 // skip them recurses forever.
 func TestReaddirListsDotAndDotDot(t *testing.T) {
 	opts := runner.Options{RootFS: sourceTree()}
@@ -92,7 +92,7 @@ var_dump(opendir("missing"));`)
 // TestClosedirExhaustsTheHandle states what a closed handle answers. There is
 // no descriptor to invalidate, so closedir drops the listing and a further read
 // reports the end of it; php throws a TypeError there. A value readdir was
-// never handed answers the same way, which is what keeps a foreign one from
+// never issued answers the same way, which keeps a foreign one from
 // walking anything.
 func TestClosedirExhaustsTheHandle(t *testing.T) {
 	opts := runner.Options{RootFS: sourceTree()}
@@ -108,7 +108,7 @@ var_dump(readdir("not a handle"));`)
 
 // TestOpendirIsJailedToTheRoot holds the handle functions to the rule every
 // path in this package follows: "/" is the source filesystem's root, and a path
-// that climbs is cleaned against it rather than escaping.
+// that climbs is cleaned against it and escapes nothing.
 func TestOpendirIsJailedToTheRoot(t *testing.T) {
 	opts := runner.Options{RootFS: sourceTree()}
 	got := runFSOptions(t, t.TempDir(), nil, opts, `<?php

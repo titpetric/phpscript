@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// sourceEntry is what the scan knows about one registration site: where it
+// sourceEntry is what the scan records for one registration site: where it
 // is, the doc comment beside it, and the signature when the second argument
 // resolved to a function literal or declaration. A nil params or results
 // slice means the scan could not see the signature and reflection decides.

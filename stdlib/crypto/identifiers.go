@@ -13,7 +13,7 @@ import (
 // RegisterIdentifiers installs the id generators. Neither is a PHP name:
 // PHP's own library mints no unique ids, so ports reach for composer packages
 // (ramsey/uuid, symfony/ulid) whose value is exactly the entropy source this
-// package already owns. Both are implemented here rather than through a Go
+// package already owns. Both are implemented here and not through a Go
 // dependency, because each is a format over crypto/rand and nothing more.
 //
 // The two share one layout (a 48-bit millisecond timestamp followed by

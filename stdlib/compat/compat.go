@@ -1,5 +1,5 @@
-// Package compat implements PHP language surface that a script expects to be
-// there rather than a library it calls: functions whose behaviour is defined by
+// Package compat implements the PHP language surface a script reaches for
+// directly, and no library it calls: functions whose behaviour is defined by
 // what the interpreter does, not by what they compute.
 //
 // It is wired in by importing it, the way a program imports a database/sql
@@ -7,7 +7,7 @@
 //
 //	import _ "github.com/titpetric/phpscript/stdlib/compat"
 //
-// stdlib does that for you (see stdlib/imports.go). A host that wants a
+// stdlib does that for you (see stdlib/imports.go). A host needing a
 // different set builds its Runtime without stdlib.
 //
 // # Output buffering
@@ -26,7 +26,7 @@
 // builtins that emit text of their own, such as die() with a message.
 //
 // A function that reports "no buffer is active" returns false, as PHP does,
-// rather than an empty string; the two are distinguishable with ===.
+// and no empty string; the two are distinguishable with ===.
 //
 // # Regular expressions
 //

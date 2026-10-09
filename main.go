@@ -40,7 +40,7 @@ func main() {
 	case err == nil:
 	case errors.Is(err, server.ErrReported):
 		// Already reported. A configuration that fails its own test is an
-		// expected outcome, not an unexpected error.
+		// outcome the caller asked for, and no unexpected error.
 		os.Exit(1)
 	default:
 		log.Fatalf("Unexpected error: %v", err)
@@ -99,7 +99,7 @@ func start() error {
 	}
 
 	// Every constructor takes the configuration and the global options, so the
-	// table names them rather than wrapping each one in a closure that closes
+	// table names them, with no closure per command closing
 	// over what it happens to need.
 	commands := []registration{
 		{"ast", ast.Name, ast.NewCommand},
@@ -119,9 +119,9 @@ func start() error {
 	}
 	app.DefaultCommand = "run"
 
-	// The library's own help is the command list and nothing else. A request
+	// The library's own help is the command list alone. A request
 	// for the whole document is answered here, before a command is selected;
-	// `phpscript <command> --help` still goes through the library, which prints
+	// `phpscript <command> --help` still resolves through the library, which prints
 	// the command's flags and the Usage text decorate attached.
 	if wantsHelp(args) {
 		return writeHelp(os.Stdout, commands)
@@ -139,7 +139,7 @@ func testConfig(globals *flags.Options, args []string) error {
 	return server.Check(globals.ConfigFile, root, os.Stdout, os.Stderr)
 }
 
-// registration is one command as main knows it: what it is called, what it
+// registration is one command as main records it: what it is called, what it
 // does, and how to build it. The list is kept because the help document is
 // built from it; cli.App holds the same entries and does not publish them.
 type registration struct {
@@ -150,7 +150,7 @@ type registration struct {
 
 // decorate binds the shared flags onto a command and wraps its Run with the
 // work they imply, so no command package repeats either. It also attaches the
-// command's examples, which is what `phpscript <command> --help` prints under
+// command's examples, which `phpscript <command> --help` prints under
 // its usage line.
 func decorate(appConfig *config.Config, globals *flags.Options, command registration) func() *cli.Command {
 	return func() *cli.Command {
@@ -197,9 +197,9 @@ func writeHelp(f *os.File, commands []registration) error {
 	for _, command := range commands {
 		// The command is built and bound against a throwaway set holding both,
 		// then the shared names are dropped: what is left is what the command
-		// adds, which is the only part worth repeating per section.
+		// adds, the one part worth repeating per section.
 		// No configuration and no typed flags: the help lists what a command
-		// takes, which is the same whatever this run was pointed at.
+		// takes, the same set whatever this run was pointed at.
 		both := pflag.NewFlagSet(command.name, pflag.ContinueOnError)
 		if bind := command.new(nil, &flags.Options{}).Bind; bind != nil {
 			bind(both)

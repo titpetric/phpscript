@@ -15,7 +15,7 @@ import (
 )
 
 // The embedding API is runner's, aliased and never wrapped: a host that swaps
-// runner for flatstack changes its import and nothing else, and a value built
+// runner for flatstack changes its import alone, and a value built
 // here is the same value either package would hand back. Only New differs, and
 // and this package decides nothing else.
 

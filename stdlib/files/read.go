@@ -11,7 +11,7 @@ import (
 )
 
 // registerReads installs the read side. Each of these looks in the runtime's
-// source filesystem first, which is what an embedded or in-memory application
+// source filesystem first, the tree an embedded or in-memory application
 // ships, and falls back to the host filesystem for what only exists there, such
 // as a file an earlier write produced.
 func registerReads(rt *runner.Runtime, r root) {

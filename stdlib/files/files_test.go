@@ -44,7 +44,7 @@ echo "written";`)
 }
 
 // TestWritablePathsThrowsOutsideTheAllowlist pins the refusal and its shape: an
-// exception rather than a false return, so a script cannot carry on believing
+// exception and no false return, so a script cannot carry on believing
 // the write happened.
 func TestWritablePathsThrowsOutsideTheAllowlist(t *testing.T) {
 	for _, test := range []struct {

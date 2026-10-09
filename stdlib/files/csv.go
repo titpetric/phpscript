@@ -11,12 +11,12 @@ import (
 )
 
 // registerCSV installs the CSV pair over encoding/csv, which is RFC 4180 by
-// construction. That is a deliberate divergence: PHP's $escape mechanism is
+// construction. That is a divergence by decision: PHP's $escape mechanism is
 // its own invention, and PHP 8.4 deprecates relying on it precisely because it
 // produces non-standard CSV, so the parameter is accepted and ignored and the
 // output here is what PHP emits when a script passes $escape = "". The
 // enclosure cannot vary for the same reason encoding/csv gets the quoting
-// right: it is fixed at '"', and asking for another is refused rather than
+// right: it is fixed at '"', and naming another is refused and never
 // silently misquoted.
 func registerCSV(rt *runner.Runtime) {
 	// fputcsv writes $fields to $stream as one RFC 4180 record ending in \n and returns the number of bytes written, or false on failure; $escape is accepted and ignored, and an $enclosure other than '"' is refused.
@@ -97,7 +97,7 @@ func csvControls(fn string, opts []any) (rune, error) {
 	return sep, nil
 }
 
-// countingWriter reports how many bytes reached w, which is the int half of
+// countingWriter reports how many bytes reached w: the int half of
 // fputcsv's int|false contract.
 type countingWriter struct {
 	w io.Writer
@@ -110,10 +110,10 @@ func (c *countingWriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// byteReader hands encoding/csv one byte per Read so its internal buffering
+// byteReader passes encoding/csv one byte per Read so its internal buffering
 // stops exactly where the record ends: the next read from the handle, whether
 // another fgetcsv or a stream_get_contents, resumes at the following byte
-// rather than losing whatever a read-ahead buffer had swallowed.
+// and loses nothing a read-ahead buffer had swallowed.
 type byteReader struct {
 	r io.Reader
 }

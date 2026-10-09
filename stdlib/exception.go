@@ -43,7 +43,7 @@ func NewException(message string, code int) (*Exception, error) {
 }
 
 // newThrowable returns the constructor for one PHP throwable class. Each class
-// builds the same value and differs only in the name it records, which is what
+// builds the same value and differs only in the name it records, so
 // a catch clause filters on and what get_class() reports.
 func newThrowable(class string) func(string, int) (*Exception, error) {
 	return func(message string, code int) (*Exception, error) {
@@ -72,8 +72,8 @@ func (e *Exception) Error() string {
 
 // splExceptions are the SPL and Error class names a PHP library throws. None of
 // them adds behaviour over Exception, so they all construct the same value with
-// a different Class, which is what makes `throw new \InvalidArgumentException(...)`
-// work rather than fail on an undefined class.
+// a different Class, so `throw new \InvalidArgumentException(...)` runs
+// instead of failing on an undefined class.
 var splExceptions = []string{
 	"ErrorException",
 	"RuntimeException",

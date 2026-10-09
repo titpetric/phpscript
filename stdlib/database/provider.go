@@ -2,7 +2,7 @@
 // resolves through. It is a copy of the provider in
 // github.com/titpetric/platform, which lives in an internal package and
 // cannot be imported, so that a provider can be scoped to a virtual host
-// instead of being process global.
+// in place of a process global.
 package database
 
 import (
@@ -22,8 +22,8 @@ import (
 // depending on this package.
 type Provider = model.DatabaseProvider
 
-// Default is the provider used when a runtime's options name none. It is the
-// process environment, which is what a CLI run has.
+// Default is the provider a runtime whose options name none resolves through.
+// It is the process environment, as a CLI run has it.
 var Default Provider = New(os.Environ())
 
 var (
@@ -56,8 +56,8 @@ func NewDatabaseProvider(open func(string, string) (*sqlx.DB, error)) *DatabaseP
 
 // New returns a provider holding only the connections named in
 // environment, in PLATFORM_DB_<NAME>=<dsn> form, plus the built-in
-// default. A provider built this way sees nothing but what it was given,
-// which is what keeps one virtual host out of another's databases.
+// default. A provider built this way sees what it was given alone, which
+// keeps one virtual host out of another's databases.
 func New(environment []string) *DatabaseProvider {
 	provider := NewDatabaseProvider(Open)
 
@@ -103,7 +103,7 @@ func (r *DatabaseProvider) List() []string {
 	return result
 }
 
-// Register will add a new named credential into the provider.
+// Register adds a named credential to the provider.
 //
 // A host that keeps its connections in a database registers them per request,
 // from whichever goroutine is serving it, so the credentials map is guarded
@@ -138,7 +138,7 @@ func (r *DatabaseProvider) credential(name string) (string, bool) {
 }
 
 // Connect issues a PingContext to verify a live connection before returning.
-// The context is used to propagate tracing detail so ping is grouped correctly.
+// The context propagates tracing detail, so ping is grouped correctly.
 func (r *DatabaseProvider) Connect(ctx context.Context, names ...string) (*sqlx.DB, error) {
 	db, err := r.Open(ctx, names...)
 	if err != nil {
@@ -159,10 +159,10 @@ func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*sqlx.DB, e
 // cached will return a singleton *sqlx.DB from a named connection.
 //
 // The credential decides which name the pool belongs to, and the cache is read
-// and written under that one rather than under the first name the caller asked
-// for. Callers name fallbacks: Database\Migrate asks for "app:migrate" before
+// and written under that one, and not under the first name the caller passed.
+// Callers name fallbacks: Database\Migrate names "app:migrate" before
 // "app", and both mean the credential "app" until a deployment registers the
-// first. Keying on the name asked for instead would give that caller a pool of
+// first. Keying on the name passed would open that caller a pool of
 // its own and every caller naming "app" another, and two pools on a DSN that
 // names no shared file are two databases, so the schema one applied would not
 // be in the one the next script queries.
@@ -195,7 +195,7 @@ func (r *DatabaseProvider) cached(connector func(string, string) (*sqlx.DB, erro
 }
 
 // resolve returns the first of names that has a credential, with the credential
-// itself. No name is the default connection, which is what a caller that named
+// itself. No name is the default connection, which a caller that named
 // none has always meant.
 func (r *DatabaseProvider) resolve(names []string) (string, string, bool) {
 	if len(names) == 0 {

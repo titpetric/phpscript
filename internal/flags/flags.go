@@ -194,7 +194,7 @@ func Pre(args []string) (*Options, []string, error) {
 }
 
 // valued names the shared flags that take a value, so a walk over the
-// arguments knows which of them consume the word after them. --verbose is the
+// arguments can tell which of them consume the word after them. --verbose is the
 // only one that does not.
 var valued = map[string]bool{
 	"--include": true, "--cpuprofile": true, "--memprofile": true,

@@ -9,7 +9,7 @@ import (
 
 // TestStdlibReportsWhatTheRuntimeRegisters checks the listing against names the
 // runtime is known to bind, one per kind, and against the counts the runtime
-// reports for itself. The counts are the load-bearing part: they are what makes
+// reports for itself. The counts are what
 // this listing and `phpscript info` answer the same question about the same
 // build.
 func TestStdlibReportsWhatTheRuntimeRegisters(t *testing.T) {
@@ -90,7 +90,7 @@ func TestStdlibMarkdownIsATable(t *testing.T) {
 	if !strings.HasPrefix(lines[1], "  |---") {
 		t.Errorf("separator = %q", lines[1])
 	}
-	// Every row is padded to the same width, which is what makes the table
+	// Every row is padded to the same width, which keeps the table
 	// line up in a terminal as well as in a markdown renderer.
 	for i, line := range lines[1:] {
 		if len(line) != len(lines[0]) {

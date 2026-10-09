@@ -68,7 +68,7 @@ func RegisterConnections(rt *runner.Runtime) {
 		// connection opens. An absolute one does not, and opening it creates the
 		// file, so a script could put a database anywhere the process can write
 		// while file_exists() on the same path answers false. Refused here
-		// rather than anchored, so the script sees which spelling is wrong.
+		// and never anchored, so the script sees which spelling is wrong.
 		if path, outside := scriptSQLitePath(dsn); outside {
 			return false, fmt.Errorf("Database::register(): argument #2 ($dsn) names %s outside the application root", path)
 		}
@@ -93,7 +93,7 @@ func RegisterMigrate(rt *runner.Runtime) {
 	// The first name is also the project name mig records under, so two
 	// schemas sharing one database keep separate records by being opened
 	// under separate names. A script that names no connection migrates
-	// "default", which is the connection an unnamed one resolves to anyway.
+	// "default": the connection an unnamed one resolves to anyway.
 	//
 	// Each name is tried as "<name>:migrate" before "<name>", so a deployment
 	// can point migrations at a user allowed to alter tables while the script

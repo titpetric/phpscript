@@ -48,7 +48,7 @@ func TestRuneOffsetsByteOffset(t *testing.T) {
 			if got := offsets.byteOffset(len(test.want) + 5); got != len(test.subject) {
 				t.Errorf("byteOffset past end = %d, want %d", got, len(test.subject))
 			}
-			// A group that did not participate stays negative rather than
+			// A group that did not participate stays negative and is never
 			// becoming an offset into the subject.
 			if got := offsets.byteOffset(-1); got != -1 {
 				t.Errorf("byteOffset(-1) = %d, want -1", got)

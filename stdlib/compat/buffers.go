@@ -9,7 +9,7 @@ import (
 
 // buffers is one runtime's stack of output buffering levels. The runtime holds
 // the same writers as its output redirections; this side keeps them typed so
-// their contents can be read back, which is the half PHP scripts care about.
+// their contents can be read back, the half PHP scripts use.
 type buffers struct {
 	rt    *runner.Runtime
 	stack []*strings.Builder
@@ -51,7 +51,7 @@ func (b *buffers) pop(flush bool) (string, bool) {
 	b.stack = b.stack[:last]
 	b.rt.PopOutput()
 	if flush {
-		// Writing after the pop targets the enclosing level, which is what
+		// Writing after the pop targets the enclosing level, as
 		// makes nested buffers compose. WriteString, not Write: a []byte
 		// conversion here would copy the whole page every time a template
 		// engine flushes one.

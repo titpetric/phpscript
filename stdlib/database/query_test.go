@@ -91,7 +91,7 @@ func TestParseQuery(t *testing.T) {
 		notRead: true,
 	}, {
 		// A statement has to begin with its keyword to be classified, so a
-		// parenthesized union is refused rather than guessed at.
+		// parenthesized union is refused, and never guessed at.
 		name:    "leading parenthesis",
 		query:   "(select 1) union (select 2)",
 		notRead: true,
@@ -113,7 +113,7 @@ func TestParseQuery(t *testing.T) {
 }
 
 // The refusal names the statement, so a script catching the exception can say
-// which call it lost rather than that the database is read-only.
+// which call it lost, and not that the database is read-only.
 func TestQueryInfoRefusal(t *testing.T) {
 	if got := (queryInfo{Type: "drop"}).refusal(); got != "drop is not allowed" {
 		t.Fatalf("refusal = %q", got)

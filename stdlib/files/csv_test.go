@@ -71,7 +71,7 @@ echo "done";`)
 }
 
 // TestCSVRefusesAForeignEnclosure pins the honest edge of the binding: the
-// enclosure encoding/csv cannot vary is refused with a throw rather than
+// enclosure encoding/csv cannot vary is refused with a throw and never
 // producing misquoted output.
 func TestCSVRefusesAForeignEnclosure(t *testing.T) {
 	root := t.TempDir()
