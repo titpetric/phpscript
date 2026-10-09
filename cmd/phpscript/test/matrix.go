@@ -44,7 +44,7 @@ type matrixFixtureResult struct {
 	Row      matrixRow
 	JSONRows []jsonFixture
 	// Durations is what each runner spent on the fixture, summed over its
-	// samples, which is what the per-engine folder and summary figures add up.
+	// samples, and the per-engine folder and summary figures add those up.
 	Durations map[tests.Runner]time.Duration
 }
 
@@ -68,7 +68,7 @@ func (r matrixRow) Failed() bool {
 
 // runMatrix runs every fixture through every runner and reports the number of
 // failed fixtures. A fixture opted out of a runner, or a runner missing from
-// the machine, is skipped rather than failed.
+// the machine, is skipped and never failed.
 func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report io.Writer) int {
 	var sinks teeMatrixTable
 	if !opts.JSON && opts.Verbose {
@@ -209,8 +209,8 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 }
 
 // engineOrder lays the accumulated per-runner durations out in report order,
-// which is what every table and summary line prints them in. A runner whose
-// fixtures all opted out reports 0ms rather than leaving the report.
+// and every table and summary line prints them in it. A runner whose
+// fixtures all opted out reports 0ms and stays in the report.
 func engineOrder(runners []tests.Runner, durations map[tests.Runner]time.Duration) []engineDuration {
 	engines := make([]engineDuration, 0, len(runners))
 	for _, runner := range runners {

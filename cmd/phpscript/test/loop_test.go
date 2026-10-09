@@ -138,7 +138,7 @@ func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 		tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1})
 		output := ansi.Strip(buf.String())
 		// The trailing lines are the folder subtotal and its blank line, which
-		// are prose rather than table rows.
+		// are prose and not table rows.
 		lines := strings.Split(strings.TrimSpace(output), "\n")
 		lines = lines[:len(lines)-1]
 		header := strings.Join(strings.Fields(strings.ReplaceAll(lines[1], "│", "|")), " ")

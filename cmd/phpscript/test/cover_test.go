@@ -85,7 +85,7 @@ for ($i = 0; $i < 3; $i++) {
 		t.Fatalf("run with --cover --split: %v\n%s", errRun, stdout.String())
 	}
 	// Without -v the folder summary is the whole answer on stdout: the run
-	// reports what it measured per folder rather than per fixture.
+	// reports what it measured per folder and not per fixture.
 	for _, want := range []string{"| Path ", "| Files ", "| Lines ", "| suite "} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Errorf("stdout is missing %q from the folder summary:\n%s", want, stdout.String())
@@ -349,7 +349,7 @@ func TestRunCommandFolderSummary(t *testing.T) {
 }
 
 // TestRunCommandFolderSummaryVerbose covers the other half of the same switch:
-// -v restores the fixture tables, gives each one a coverage column, and drops
+// -v restores the fixture tables, adds a coverage column to each, and drops
 // to a per-file report under every folder that loaded a PHP file.
 func TestRunCommandFolderSummaryVerbose(t *testing.T) {
 	coverReportSuite(t)

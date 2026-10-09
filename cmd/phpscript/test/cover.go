@@ -63,7 +63,7 @@ func writeCoverage(fixtures []*tests.Fixture, opts Options) error {
 
 // mergeCoverBlocks folds every fixture's collected blocks into one profile.
 // The same statement reached by several fixtures is one block whose counts add
-// up, which is what makes a folder's total independent of how its fixtures are
+// up, so a folder's total is independent of how its fixtures are
 // split up.
 func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	merged := map[profileKey]*profileBlock{}
@@ -135,7 +135,7 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 		var src []string
 		if file == fx.Path {
 			// The entrypoint is the .phpt itself, but its lines count from the
-			// start of the PHP section, which is what the parser saw.
+			// start of the PHP section, the offset the parser saw.
 			src = strings.Split(fx.PHP, "\n")
 		} else if data, err := os.ReadFile(filepath.FromSlash(coverFilePath(fx, file))); err == nil {
 			src = strings.Split(string(data), "\n")

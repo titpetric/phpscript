@@ -38,7 +38,7 @@ func (e *SkipError) Error() string { return e.Path + ": " + e.Reason.Error() }
 func (e *SkipError) Unwrap() error { return e.Reason }
 
 // Paths formats each path argument in place and reports what happened to every
-// file it looked at. A file it cannot format is skipped rather than failing the
+// file it looked at. A file it cannot format is skipped and never fails the
 // run: a directory of PHP holds valid code phpscript does not support yet, and
 // one such file should not stop the rest from being formatted. Only reading
 // and writing errors are returned.

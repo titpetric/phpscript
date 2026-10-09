@@ -206,8 +206,8 @@ func (c *regexpCache) phpPregMatch(pattern, subject string, matches func(any), f
 
 // matchOffset resolves preg_match's $offset argument to a byte offset into
 // subject. A negative offset counts from the end. An offset outside the
-// subject is not a failed match but a failed call: PHP returns false, so the
-// second result reports whether the offset was usable at all.
+// subject is a failed call: PHP returns false, so the second result reports
+// whether the offset was usable at all.
 func matchOffset(subject string, offset any) (int, bool) {
 	if offset == nil {
 		return 0, true
@@ -348,8 +348,7 @@ func (s *splitPieces) add(subject string, start, end int) bool {
 }
 
 // result returns the pieces in the shape the script sees. An empty result is
-// an empty array and never null, which is what PHP returns when every piece
-// was dropped.
+// an empty array and never null, as PHP returns when every piece was dropped.
 func (s *splitPieces) result() any {
 	if s.flags&pregSplitOffsetCapture != 0 {
 		if s.pairs == nil {

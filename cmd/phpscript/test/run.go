@@ -73,7 +73,7 @@ func (o Options) given(name string) bool {
 }
 
 // coverReport reports whether the cover mode owns stdout with a per-symbol
-// report, and that is what suppresses the fixture tables.
+// report. The fixture tables are suppressed when it does.
 func (o Options) coverReport() bool {
 	return o.Cover == CoverFunc || o.Cover == CoverFile
 }
@@ -132,7 +132,7 @@ func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 			// Kept so Run can ask which flags were typed. A configuration
 			// supplies a default and a flag overrides it, and the two are only
 			// distinguishable from the value when the flag was not given: an
-			// operator forcing -p 1 over a file asking for 4 means it.
+			// operator forcing -p 1 over a file naming 4 means it.
 			bound = fs
 			fs.BoolVar(&opts.JSON, "json", false, "Write machine-readable JSON to stdout")
 			fs.BoolVar(&opts.Matrix, "matrix", false, "Run every fixture through all runtimes and report a matrix")
@@ -516,8 +516,8 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	sinks.writeSummary(passedCount, failedCount, len(fixtures), time.Since(startAll))
 
 	// With -v, coverage drops to the file it was measured on, under the folder
-	// that loaded it. That is the reading a fixture table cannot give: a column
-	// says how much of what a fixture loaded ran, not which file went unvisited.
+	// that loaded it. A fixture table cannot report that: its column says how
+	// much of what a fixture loaded ran, and never which file went unvisited.
 	// A folder whose fixtures loaded no PHP file of their own has no section.
 	if opts.Verbose {
 		writeFolderFileReport(os.Stdout, covers)

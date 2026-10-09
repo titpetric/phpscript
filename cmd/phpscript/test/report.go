@@ -66,7 +66,7 @@ func (t teeMatrixTable) writeSummary(passed, failed, total int, duration time.Du
 
 // writeReportHeader opens a generated markdown report with its title, the
 // command that produced it, and a sentence naming what it covers. The
-// provenance line is derived from the invocation rather than hardcoded, so it
+// provenance line is derived from the invocation and never hardcoded, so it
 // always names the job that actually wrote the file.
 func writeReportHeader(w io.Writer, argv []string) {
 	command := strings.Join(append([]string{"phpscript"}, argv...), " ")
@@ -81,7 +81,7 @@ func writeReportHeader(w io.Writer, argv []string) {
 
 // openReport creates the -o markdown sink and writes its header. It runs
 // before the first fixture, so an unwritable path fails the command
-// immediately rather than after the whole suite has executed.
+// immediately, and not after the whole suite has executed.
 func openReport(opts Options, args []string) (*os.File, error) {
 	if opts.Output == "" {
 		return nil, nil

@@ -730,7 +730,7 @@ func phpArrayUnshift(array any, values ...any) (int64, error) {
 
 // phpArrayPop removes the last element, keeping the keys of the rest. Unlike
 // shift and unshift it does not renumber: PHP leaves the surviving keys alone,
-// so popping 9 from [5 => a, 9 => c] leaves [5 => a] where PHP's renumbering would give [0 => a].
+// so popping 9 from [5 => a, 9 => c] leaves [5 => a], keeping the key 5.
 //
 // The append index is Array.Pop's business, since it is the one piece of state
 // a shim cannot reach.
@@ -784,8 +784,8 @@ func arrayStrict(strict []any) bool {
 
 // arrayFind backs both in_array and array_search so the pair cannot disagree
 // about what a match is. Loose matching resolves through phpval.Compare, the
-// runtime's canonical comparison, which is where PHP 8's rule that a
-// non-numeric string does not equal 0 comes from.
+// runtime's canonical comparison, and the source of PHP 8's rule that a
+// non-numeric string does not equal 0.
 func arrayFind(needle, haystack any, strict bool) (any, bool) {
 	var key any
 	found := false

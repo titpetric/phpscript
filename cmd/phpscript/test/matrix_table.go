@@ -93,9 +93,9 @@ func newTerminalMatrix(w io.Writer, opts Options) *terminalMatrix {
 	}
 }
 
-// metrics reports whether the run asked for cost columns. Without a
+// metrics reports whether the run named cost columns. Without a
 // benchmarking flag the matrix stays exactly as wide as it is without one,
-// which is what keeps the generated report stable.
+// which keeps the generated report stable.
 func (t *terminalMatrix) metrics() bool {
 	return t.loop || t.profile || t.lat
 }

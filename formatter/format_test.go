@@ -142,7 +142,7 @@ func TestQuoteStyleOfStringLiteralsIsKept(t *testing.T) {
 	}
 }
 
-// A literal that was built rather than parsed has no source spelling to keep,
+// A literal that was built and never parsed has no source spelling to keep,
 // so the printer picks the quoting: single quotes when they avoid escaping a
 // dollar sign, which a double-quoted literal would interpolate.
 func TestSyntheticStringLiteralAvoidsInterpolation(t *testing.T) {
@@ -507,7 +507,7 @@ $indexed = $handlers[0](...);
 
 func TestFirstClassCallableIsNotACall(t *testing.T) {
 	// A zero-argument call and the callable that names it print differently,
-	// which is the whole reason the spelling is recorded on the node.
+	// and the spelling is recorded on the node for that.
 	out, err := formatter.Source("<?php\n$a = greet();\n$b = greet(...);\n")
 	if err != nil {
 		t.Fatal(err)

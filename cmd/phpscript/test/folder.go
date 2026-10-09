@@ -100,9 +100,9 @@ type folderSummary struct {
 }
 
 // writeFolderTable prints one row per folder resolved from the arguments, which
-// is what a run without -v answers with instead of a table per fixture. The
+// is what a run without -v answers with in place of a table per fixture. The
 // columns follow what the run measured: with --cover the two coverage columns
-// the issue asks for, without it the counts that exist.
+// the issue names, without it the counts that exist.
 func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool) {
 	headers := []string{"Path", "Fixtures", "Passed", "Failed"}
 	// A matrix run carries a duration per engine, and the folder rows split
@@ -161,7 +161,7 @@ func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool)
 
 // writeFolderFileReport prints the per-file coverage of each folder, which is
 // what -v adds. It is the accounting the folder row summarises, one level down,
-// and it is where an unvisited file is named rather than counted.
+// and it is where an unvisited file is named and not counted.
 //
 // A folder whose fixtures loaded no PHP file of their own is skipped: a heading
 // over nothing reads as a folder that scored zero.

@@ -10,7 +10,7 @@ import (
 // holds no comments, so they are read from the source separately and placed by
 // line: a comment is written out before the first statement that starts below
 // it. OwnLine
-// records that nothing but whitespace preceded it, which is what separates a
+// records that nothing but whitespace preceded it, which separates a
 // comment written above a statement from one written after it.
 type Comment struct {
 	Text    string
@@ -20,7 +20,7 @@ type Comment struct {
 }
 
 // flushComments writes out every comment the author placed above line. A line
-// of zero writes out the rest of them, which is what ends the file.
+// of zero writes out the rest of them, ending the file.
 func (p *printer) flushComments(line int) {
 	for p.nextComment < len(p.comments) {
 		c := p.comments[p.nextComment]
