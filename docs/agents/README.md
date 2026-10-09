@@ -247,7 +247,7 @@ HTTP, which no document carries yet:
 
 `--json` reports nanoseconds; the table reports microseconds to one decimal, as `phpscript test` prints them. p95 is collected and not published.
 
-In a document, before and after are `(was)` and `(now)` row labels, never extra columns, because a document's table is a reference to the current shape with the previous one beside it. A pull request body is the other way round: its subject is the delta, so the columns are Before, After and the signed change. [The measurement table](#the-measurement-table) is that shape.
+In a document, before and after are `(was)` and `(now)` row labels, never extra columns: a document's table is a reference to the current shape with the previous one beside it. A pull request body carries the tool's own shape instead; [The measurement table](#the-measurement-table) is that rule.
 
 The environment is stated once above the table, in the form [../allocation-performance.md](../allocation-performance.md) uses: the harness, the box, the Go version and the CGO setting.
 
@@ -325,7 +325,7 @@ A reader opens it to learn what was broken and what the change does about it. Fo
 
 1. **`## Problem`.** What is broken, and the number or the symptom that shows it.
 2. **`## Change`.** What the pull request does, named in the terms of the code: the function, the type, the flag, the file. A paragraph, or a short list where there are several.
-3. **The measurements**, where anything was measured: a markdown table with a signed delta column. Never pasted `benchstat` output.
+3. **The measurements**, where anything was measured: the tool's output transcribed one to one, with the command above it.
 4. **`worktree verdict --from=main`**, that exact command, its output raw and last. It is already markdown, so it renders without a fence.
 
 The title is `type(scope): subject`. A finding's commit message is the same Problem and Change in prose, without the table or the verdict.
@@ -349,10 +349,7 @@ A rejected approach goes in the document that owns the subject, with its number 
 
 ### The measurement table
 
-One row per thing measured, one column per unit that moved, and a signed delta. The delta is the claim and the raw figures are what it was computed from, so both are present. State the box, the Go version and the CGO setting in one line above it.
-
-| Benchmark | Before | After | Delta |
-|-----------|-------:|------:|------:|
+The tool's output, one row per output line, one column per field it prints, in its order, with the command above the table. `go test -bench` is already tabular, so this is transcription. Do not pivot rows into columns or add a column the tool did not print. State the box, the Go version and the CGO setting in one line above it, and strip the rest of the machine.
 
 ### Extended reasoning for a possible breaking change
 
