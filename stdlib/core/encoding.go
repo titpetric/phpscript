@@ -84,7 +84,7 @@ func newBase64Values() [256]int8 {
 // phpBase64Decode returns any because PHP's contract is string|false: strict
 // mode reports a bad character by returning false, not by raising.
 //
-// The decode is written out rather than handed to encoding/base64 because
+// The decode is written out and never passed to encoding/base64 because
 // PHP's lenient mode drops every character outside the alphabet, padding
 // included, and decodes whatever is left over even when its length is not a
 // multiple of four. Neither StdEncoding nor RawStdEncoding does that.
@@ -176,7 +176,7 @@ func phpRawURLEncode(str string) string { return urlEncode(str, false) }
 
 // urlEncode percent-escapes str. In form mode a space becomes '+', matching
 // urlencode(); otherwise every escaped byte becomes '%XX', matching
-// rawurlencode(). Note that Go's url.QueryEscape leaves '~' literal where PHP
+// rawurlencode(). Go's url.QueryEscape leaves '~' literal where PHP
 // escapes it, so the tables above are spelled out here.
 func urlEncode(str string, form bool) string {
 	safe := &urlRawSafe
@@ -225,7 +225,7 @@ func phpRawURLDecode(str string) string { return shared.RawURLDecode(str) }
 //
 // The setter is nil when a script omitted the argument. PHP raises an
 // ArgumentCountError for that call, and this runtime pads a short call instead,
-// so the decode is skipped rather than written nowhere.
+// so the decode is skipped, and nothing is written nowhere.
 func phpParseStr(str string, result func(any)) {
 	if result == nil {
 		return
@@ -257,7 +257,7 @@ func buildQuery(b *strings.Builder, prefix string, data any) {
 		}
 		switch {
 		case val == nil:
-			// PHP drops a null entry rather than emitting an empty value.
+			// PHP drops a null entry and emits no empty value.
 		case model.IsCollection(val):
 			buildQuery(b, name, val)
 		default:

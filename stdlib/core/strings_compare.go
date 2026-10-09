@@ -36,7 +36,7 @@ const wholeString = -1
 
 // clampLength reads strncmp's $length. PHP 8 raises a ValueError below zero;
 // the bindings here clamp instead, and a length of zero compares nothing, which
-// is the answer PHP gives for that call.
+// is what PHP returns for that call.
 func clampLength(length int64) int {
 	if length < 0 {
 		return 0
@@ -52,10 +52,10 @@ func clampLength(length int64) int {
 // compareBytes is the one comparison the four functions differ only in the
 // arguments to.
 //
-// The answer is the difference between the first two bytes that disagree, not a
-// normalised -1/0/1, because that is what PHP's memcmp answers and a fixture
+// It returns the difference between the first two bytes that disagree, with no
+// normalisation to -1/0/1, because PHP's memcmp answers in that range and a fixture
 // recorded from php pins the number: strcmp("A", "a") is -32 there, not -1.
-// Bytes compare unsigned, so "\xff" sorts after "\x01" rather than before it.
+// Bytes compare unsigned, so "\xff" sorts after "\x01" and never before it.
 // Only a tie broken by length normalises, which is also PHP's reading:
 // strcmp("a", "abcdefgh") is -1 and not -7.
 func compareBytes(string1, string2 string, limit int, fold bool) int64 {

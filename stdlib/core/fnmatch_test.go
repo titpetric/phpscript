@@ -52,7 +52,7 @@ func TestFnmatch(t *testing.T) {
 		{"[a-c-e]", "d", 0, false},
 
 		// An unterminated '[' is a literal, so the first of
-		// these fails: the pattern then wants the four bytes "[abc".
+		// these fails: the pattern then matches the four bytes "[abc".
 		{"[abc", "[", 0, false},
 		{"[abc", "a", 0, false},
 		{"[abc", "[abc", 0, true},

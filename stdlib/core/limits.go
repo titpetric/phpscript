@@ -9,7 +9,7 @@ import (
 
 // limitFor turns a count of seconds into a duration without wrapping. The
 // multiply overflows around 292 years of nanoseconds, which would turn an
-// absurd limit into a short one rather than into no limit at all.
+// absurd limit into a short one and never into no limit at all.
 func limitFor(seconds int64) time.Duration {
 	const maxSeconds = int64(math.MaxInt64 / int64(time.Second))
 	if seconds > maxSeconds {
@@ -35,7 +35,11 @@ func registerLimits(rt *runner.Runtime) {
 		return true
 	})
 
-	// ignore_user_abort decides whether the client closing the connection ends the script: with $enable true the script runs to its own end and asks connection_aborted() when it wants to know, and with it false, the default, the disconnect stops the script where it next looks. A time limit still applies either way.
+	// ignore_user_abort decides whether the client closing the connection ends
+	// the script. With $enable true the script runs to its own end and reads
+	// connection_aborted() to find out; with it false, the default, the
+	// disconnect stops the script where it next looks. A time limit still
+	// applies either way.
 	rt.RegisterFunc("ignore_user_abort", func(enable ...bool) {
 		// Variadic so that the read-only spelling php has, ignore_user_abort()
 		// with no argument, leaves the setting alone. A plain bool parameter is

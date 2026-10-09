@@ -19,14 +19,20 @@ func init() {
 }
 
 func registerJSON(rt *runner.Runtime) {
-	// json_encode returns the JSON encoding of $value; $flags is accepted and ignored because the encoding is not configurable, a forward slash is written as itself rather than escaped, and an encoding failure raises an error instead of returning false.
+	// json_encode returns the JSON encoding of $value. $flags is accepted and
+	// ignored because the encoding is not configurable, a forward slash is
+	// written as itself, and an encoding failure raises an error where php
+	// returns false.
 	rt.RegisterFunc("json_encode", phpJSONEncode)
-	// json_decode parses the JSON in $text; $associative must be true or omitted because decoding into objects is not implemented, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
+	// json_decode parses the JSON in $text. $associative must be true or
+	// omitted because decoding into objects is not implemented, $depth and
+	// $flags are accepted and ignored, and invalid input raises an error where
+	// php returns null.
 	rt.RegisterFunc("json_decode", phpJSONDecode)
 
 	// The streaming pair. json_encode() and json_decode() work on a whole
 	// string, which means holding the whole document; these work on a stream,
-	// which is what a request body and a response are.
+	// as a request body and a response are.
 	// `new JSON\Decoder(fopen("php://input", "r"))` reads a POST body without a
 	// string of it existing first, and an encoder over php://output writes the
 	// response as it is built. Both take the io.Reader or io.Writer they wrap,
@@ -50,8 +56,8 @@ func phpJSONEncode(value any, flags ...any) (any, error) {
 
 func phpJSONDecode(text string, opts ...any) (any, error) {
 	// $associative selects the shape objects decode into. The decoder only
-	// builds arrays, so false is refused rather than answered with the shape it
-	// did not ask for; $depth and $flags are accepted and ignored. stdClass
+	// builds arrays, so false is refused and never answered with the shape it
+	// did not name; $depth and $flags are accepted and ignored. stdClass
 	// exists and `(object)` builds one, so what is missing is the decode path,
 	// not the class; see docs/design.md, "JSON".
 	if len(opts) > 0 && opts[0] != nil && !phpval.Truthy(opts[0]) {
@@ -68,8 +74,8 @@ func phpJSONDecode(text string, opts ...any) (any, error) {
 
 // jsonDecodeStream reads one value from the token stream.
 //
-// It reads tokens rather than decoding into a map because a Go map has no
-// order and the decoder would hand back the document's keys in a different
+// It reads tokens and decodes into no map, because a Go map has no
+// order and the decoder would return the document's keys in a different
 // order on every run. PHP preserves the order the object was written in, so a
 // decoded object encoded again reads the way it arrived.
 func jsonDecodeStream(dec *json.Decoder) (any, error) {
@@ -188,7 +194,7 @@ func jsonEncodeValue(v any) any {
 // encoding/json sorts the keys of a Go map and PHP does not: json_encode writes
 // an array in the order it was built, so a row encoded for a client reads back
 // in the order the script assembled it. A map cannot carry that order, which is
-// why this type exists rather than a map[string]any.
+// why this type exists in place of a map[string]any.
 type jsonObject struct {
 	keys   []string
 	values []any
@@ -309,7 +315,7 @@ type JSONDecoder struct {
 //
 // UseNumber is on, as it is in json_decode(): without it Go reads every number
 // as a float, and the 7 in a document would come back as 7.0. With it a whole
-// number is an int and only a fractional one is a float, which is what php
+// number is an int and only a fractional one is a float, as php
 // answers and what a row written back out has to preserve.
 func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
 	if stream == nil {
@@ -322,9 +328,9 @@ func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
 
 // Decode reads the next value from the stream and returns it, or throws at the
 // end of the stream - a null is a value JSON carries, so `while ($d->more())`
-// is the loop rather than a test against what this returned.
+// is the loop and no test against what this returned.
 //
-// It decodes through json_decode()'s own walk rather than json.Decoder.Decode,
+// It decodes through json_decode()'s own walk and not json.Decoder.Decode,
 // which would build a map and lose the key order the two spellings agree on.
 func (d *JSONDecoder) Decode() (any, error) {
 	return jsonDecodeStream(d.dec)

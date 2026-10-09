@@ -35,7 +35,7 @@ func runPHP(t *testing.T, src string) string {
 // exists to turn it off. Go's encoder does not escape it, so there is nothing
 // to turn off and the flag has no work to do here.
 //
-// The rest are presentation. A consumer that wants indented JSON runs it
+// The rest are presentation. A consumer needing indented JSON runs it
 // through jq or its own pretty printer; a producer that indents its output is
 // deciding for a reader it cannot see.
 func TestNoJSONFlagConstants(t *testing.T) {
@@ -66,7 +66,7 @@ func TestJSONEncodeIgnoresFlags(t *testing.T) {
 }
 
 // A JSON_* name is not defined, so it raises before json_encode is called.
-// phpscript lint reports it first, which is the point of the warning: the
+// phpscript lint reports it first, and that is what the warning is for: the
 // argument was never going to do anything.
 func TestJSONFlagConstantThrows(t *testing.T) {
 	got := runPHP(t, `<?php try { echo json_encode(array(1), JSON_PRETTY_PRINT); } catch (Exception $e) { echo $e->getMessage(); }`)

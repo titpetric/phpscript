@@ -37,7 +37,9 @@ func registerOutput(rt *runner.Runtime) {
 		_, err := io.WriteString(rt.Output(), w.b.String())
 		return err
 	})
-	// print_r renders $value for reading rather than for parsing; with $return true the text is returned, otherwise it is written to the output and true is returned.
+	// print_r renders $value for a reader, in a shape nothing parses. With
+	// $return true the text is returned; otherwise it is written to the output
+	// and true is returned.
 	rt.RegisterFunc("print_r", func(value any, ret ...any) (any, error) {
 		w := newValueWriter()
 		w.printR(value, 0)
@@ -63,7 +65,7 @@ type valueWriter struct {
 	// count on.
 	ids map[uintptr]int
 	// active holds the objects on the path from the root, so a graph that
-	// refers back to itself prints *RECURSION* rather than looping forever.
+	// refers back to itself prints *RECURSION* and never loops forever.
 	active map[uintptr]bool
 }
 
@@ -176,7 +178,7 @@ func (w *valueWriter) dump(value any, indent int) {
 		return
 	case string:
 		// PHP counts the bytes, not the characters: a two-byte é makes
-		// string(2), which is what tells a script its encoding went wrong.
+		// string(2), and that is how a script sees a broken encoding.
 		w.b.WriteString("string(" + strconv.Itoa(len(x)) + ") \"" + x + "\"\n")
 		return
 	}
@@ -279,9 +281,9 @@ func isComposite(value any) bool {
 }
 
 // isObjectLike reports whether a value prints as an object. It repeats the
-// test is_object() makes rather than sharing it, so this file stands alone; a
+// test is_object() makes and shares nothing with it, so this file stands alone; a
 // callable is included because PHP's Closure is an object too, and a script
-// that dumps one expects to be told so.
+// that dumps one reads it as one.
 func isObjectLike(value any) bool {
 	if value == nil {
 		return false
@@ -474,7 +476,7 @@ func exportFloat(f float64) string {
 }
 
 // printString renders a scalar the way print_r and echo do: true is 1, false
-// and null are nothing, and a float carries precision=14 digits rather than
+// and null are nothing, and a float carries precision=14 digits and not
 // var_dump's round-tripping ones.
 func printString(value any) string {
 	switch x := value.(type) {
@@ -498,8 +500,8 @@ func printString(value any) string {
 }
 
 // phpFormatFloat renders a float the way PHP's php_gcvt does, with precision
-// significant digits; a negative precision asks for the fewest digits that
-// read back as the same double, which is what serialize_precision=-1 means for
+// significant digits; a negative precision names the fewest digits that
+// read back as the same double, which is the meaning serialize_precision=-1 has for
 // var_dump and var_export. echo and print_r pass 14 instead, so 0.1+0.2 is 0.3
 // for one and 0.30000000000000004 for the other.
 //
@@ -507,7 +509,7 @@ func printString(value any) string {
 // Go's 'g' thresholds: PHP switches when the point sits before the third
 // leading zero or past the last significant digit, so 1e16 stays written out
 // and 1e17 does not. Its mantissa always carries a fraction and its exponent
-// no leading zero, giving 1.0E+100 where Go writes 1e+100.
+// no leading zero, so it writes 1.0E+100 where Go writes 1e+100.
 func phpFormatFloat(f float64, precision int) string {
 	switch {
 	case math.IsInf(f, 1):
@@ -525,7 +527,7 @@ func phpFormatFloat(f float64, precision int) string {
 		ndigit, digits = 17, -1
 	}
 	// 'e' puts the significant digits and the decimal exponent in a fixed
-	// place, which is what the two decisions below need; 'g' would already
+	// place, which the two decisions below read; 'g' would already
 	// have made them, differently.
 	s := strconv.FormatFloat(f, 'e', digits, 64)
 	sign := ""

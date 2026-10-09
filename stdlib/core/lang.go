@@ -27,7 +27,7 @@ func init() {
 // the same way, and get_class, method_exists and spl_object_id all reflect
 // over it to answer.
 //
-// A collection is an array rather than an object, so the check comes
+// A collection is an array and no object, so the check comes
 // before the struct test: *model.Array is itself a pointer to a struct.
 func isObject(value any) bool {
 	if value == nil {
@@ -51,8 +51,8 @@ func isObject(value any) bool {
 }
 
 // phpGetType backs gettype. The names it returns are PHP's original ones, and
-// that is the whole of the function: "integer" and "double" where the value
-// model and get_debug_type say int and float, "boolean" rather than bool, and
+// and that is the function: "integer" and "double" where the value
+// model and get_debug_type say int and float, "boolean" where they say bool, and
 // NULL alone in capitals. Answering with the modern spellings would pass every
 // eyeball and fail every `gettype($x) === "integer"`.
 func phpGetType(value any) string {
@@ -74,7 +74,7 @@ func phpGetType(value any) string {
 	if isObject(value) {
 		return "object"
 	}
-	// A closure reaches a binding as a Go func rather than an instance, but
+	// A closure reaches a binding as a Go func and no instance, but
 	// PHP has it an instance of Closure, so it reports as an object.
 	if reflect.ValueOf(value).Kind() == reflect.Func {
 		return "object"
@@ -85,12 +85,12 @@ func phpGetType(value any) string {
 func registerLang(rt *runner.Runtime) {
 	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
 	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
-	// STDIN holds the runtime, not the reader of the moment. The constant is
+	// STDIN holds the runtime, and no reader of the moment. The constant is
 	// frozen once and a runtime can serve more than one program - a --count
 	// loop, a worker reusing its runtime - and each of those brings its own
 	// stdin. Reading through the runtime means STDIN is whatever the current
-	// session's is, the way php://output writes wherever output currently
-	// goes rather than where it went when the handle was made.
+	// session's is, the way php://output writes wherever output goes at the
+	// time, and not where it went when the handle was made.
 	rt.SetConst("STDIN", stdinStream{rt: rt})
 	// spl_autoload_register registers $callback as an autoloader, or the default spl_autoload when $callback is null or omitted; $prepend puts it first and $throw is ignored.
 	rt.RegisterFunc("spl_autoload_register", func(args ...any) (bool, error) {
@@ -180,7 +180,7 @@ func registerLang(rt *runner.Runtime) {
 	// empty reports whether $value is empty: null, false, "", "0", 0, 0.0 or an empty array.
 	rt.RegisterFunc("empty", func(value any) bool { return !phpval.Truthy(value) })
 	// A binding's []string is as much a PHP array as an *model.Array is, so
-	// is_array() answers for the whole value model, not one Go type.
+	// is_array() answers for the whole value model, and never one Go type.
 	rt.RegisterFunc("is_array", model.IsCollection)
 	// is_int reports whether $value is an integer.
 	rt.RegisterFunc("is_int", func(value any) bool {
@@ -219,7 +219,9 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return false
 	})
-	// intval returns the integer value of $value; $base applies only to a string $value, read like C strtol with the 0x and 0b prefixes, and a $base outside 0 and 2-36 yields 0.
+	// intval returns the integer value of $value. $base applies only to a
+	// string $value, read like C strtol with the 0x and 0b prefixes; a $base
+	// outside 0 and 2-36 returns 0.
 	rt.RegisterFunc("intval", phpIntval)
 	// intdiv returns the integer quotient of $num divided by $divisor; division by zero and PHP_INT_MIN by -1 are errors.
 	rt.RegisterFunc("intdiv", func(num, divisor int64) (int64, error) {
@@ -231,8 +233,8 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return num / divisor, nil
 	})
-	// fdiv is IEEE-754 division: dividing by zero yields INF/-INF/NAN
-	// instead of an error.
+	// fdiv is IEEE-754 division: dividing by zero returns INF/-INF/NAN
+	// and raises nothing.
 	rt.RegisterFunc("fdiv", func(num, divisor float64) float64 {
 		return num / divisor
 	})
@@ -309,7 +311,7 @@ func phpIntval(num any, base ...any) int64 {
 	return phpval.Int(num)
 }
 
-// strtolInt reads s the way intval hands a non-10 base to C strtol: leading
+// strtolInt reads s the way intval passes a non-10 base to C strtol: leading
 // whitespace, one optional sign, then digits of the base until the first
 // character that is not one, saturating at the int64 bounds the way strtol
 // does. Base 0 detects the base from a 0x, 0b or 0 prefix and is 10 without

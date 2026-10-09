@@ -116,7 +116,7 @@ func optionalOffset(rest []any) []int64 {
 }
 
 // optionalLength is optionalOffset for the $length of a substring call, where
-// an explicit null means "to the end" and is dropped rather than read as 0.
+// an explicit null means "to the end" and is dropped, never read as 0.
 func optionalLength(rest []any) []int64 {
 	if len(rest) > 0 && rest[0] != nil {
 		if l, ok := toOptionalInt(rest[0]); ok {

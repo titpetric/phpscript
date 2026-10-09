@@ -20,8 +20,8 @@ func init() {
 	runner.RegisterBinding(registerPlatform)
 }
 
-// This file provides the platform surface a PHP program written for stock PHP
-// expects to find before it does anything interesting: the PHP_* constants, the
+// This file carries the platform surface a PHP program written for stock PHP
+// reads before it does anything else: the PHP_* constants, the
 // reflection-ish helpers (get_class, method_exists), the ini/filter stubs, and
 // the SPL exception hierarchy.
 //
@@ -104,7 +104,7 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("UPLOAD_ERR_EXTENSION", int64(8))
 
 	// E_ALL is not every bit set: PHP 8 dropped E_STRICT (2048) from it, so the
-	// value is 30719 rather than 32767. The difference is only visible once a
+	// value is 30719 where stock PHP reports 32767. The difference is only visible once a
 	// script can write E_ALL & ~E_NOTICE, which needs the bitwise operators.
 	rt.SetConst("E_ALL", int64(30719))
 	rt.SetConst("E_ERROR", int64(1))
@@ -178,7 +178,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 	rt.RegisterFunc("headers_sent", func(_ ...any) bool { return false })
 
 	// phpscript has no php.ini. Reporting every directive as unset is what PHP
-	// itself does for an unknown one, and it is the answer library code treats
+	// itself does for an unknown one, and library code treats it as
 	// as "this extension is not configured".
 	rt.RegisterFunc("ini_get", func(_ string) any { return false })
 	// ini_set accepts and ignores $option and $value and returns false; phpscript has no php.ini to change.
@@ -250,7 +250,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 }
 
 // phpFilterVar implements the filter_var validators phpscript supports. An
-// unknown filter passes the value through, which is what FILTER_DEFAULT does.
+// unknown filter passes the value through, as FILTER_DEFAULT does.
 func phpFilterVar(value any, args ...any) any {
 	filter := int64(516)
 	if len(args) > 0 {

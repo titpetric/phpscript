@@ -165,9 +165,9 @@ func mulInt64(x, y int64) (int64, bool) {
 }
 
 // phpLog backs log with an explicit base. Bases 2 and 10 read through
-// math.Log2 and math.Log10, which is what PHP does: the division of two
+// math.Log2 and math.Log10, as PHP does: the division of two
 // logarithms is a digit out on some exact powers, and log(1024, 2) has to be
-// float(10) rather than 10.000000000000002.
+// float(10) where the division produces 10.000000000000002.
 func phpLog(num, base float64) float64 {
 	switch base {
 	case 2:
@@ -181,7 +181,7 @@ func phpLog(num, base float64) float64 {
 
 // phpMinMax backs min and max. Either one collection or a list of values is
 // accepted, every candidate is ordered with phpval.Compare, and the winning
-// element is returned as it was given, so max(1, "2", 3) is int(3) rather than
+// element is returned as it was given, so max(1, "2", 3) is int(3) and not
 // a number the comparison produced. want is 1 for max and -1 for min.
 //
 // Equal values are broken the way PHP breaks them, which is not the same way
@@ -274,9 +274,9 @@ func phpNumberFormat(num any, opts ...any) string {
 		thousandsSeparator = phpval.String(opts[2])
 	}
 
-	// An integer is grouped from its own digits rather than through a float.
+	// An integer is grouped from its own digits and never through a float.
 	// float64 carries 53 bits of mantissa, so routing PHP_INT_MAX through one
-	// would print 9,223,372,036,854,776,000 instead of the number given.
+	// would print 9,223,372,036,854,776,000 in place of the number given.
 	neg, integer, fraction, exact := integerDigits(num, decimals)
 	if !exact {
 		value := phpval.Float(num)
@@ -317,11 +317,11 @@ func phpNumberFormat(num any, opts ...any) string {
 
 // phpRound rounds v to precision decimal places, half away from zero.
 //
-// The rounding is done on the decimal text rather than on the binary value.
+// The rounding is done on the decimal text and not on the binary value.
 // PHP rounds what the number prints as, and the two disagree wherever a decimal
 // literal has no exact float: 1.005 is stored as 1.00499999999999989..., so
 // math.Round(1.005*100)/100 is 1.0 where PHP's round(1.005, 2) is 1.01.
-// Formatting with 'f' and -1 first yields the shortest decimal that reads back
+// Formatting with 'f' and -1 first produces the shortest decimal that reads back
 // as the same float ("1.005"), which is the number the script wrote, and
 // rounding that text reproduces PHP for every case. Rounding through
 // FormatFloat with a precision instead would round half to even, making
@@ -358,8 +358,8 @@ func phpRound(v float64, precision int) float64 {
 // position of its point. Dropping everything from index cut = len(integer) +
 // precision and incrementing the digit before it when the first dropped digit
 // is 5 or more is decimal half-away-from-zero rounding, and it needs no
-// arithmetic on the float, which is the point: the float cannot represent the
-// value the script wrote.
+// arithmetic on the float, because the float cannot represent the value a
+// script wrote.
 func roundDecimal(v float64, precision int) (neg bool, integer, fraction string) {
 	text := strconv.FormatFloat(v, 'f', -1, 64)
 	if strings.HasPrefix(text, "-") {
