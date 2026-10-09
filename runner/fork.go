@@ -13,7 +13,7 @@ import (
 //
 // A Runtime is one execution: its frames, its compiled-expression memo, its Go
 // method cache, its output and its statics are all unguarded, because a script
-// is one program on one goroutine. Sharing one across goroutines is not a race
+// is one program on one goroutine. Sharing one across goroutines is no race
 // to reason about, it is a concurrent map write.
 //
 // A fork is a second Runtime with the same symbols and the same caches and none
@@ -32,9 +32,9 @@ import (
 
 // Fork returns a runtime that can run the same symbols as this one, writing to
 // w, and shares its parse and bytecode caches. It carries no part of an
-// execution, which is what makes it safe on a goroutine of its own, and it
+// execution, so it is safe on a goroutine of its own, and it
 // installs the whole standard library, so a Pool forks per worker
-// rather than per request. The file comment above is the arrangement.
+// and not per request. The file comment above is the arrangement.
 func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	child := New(w, rt.opts)
 	child.flat = rt.flat
@@ -47,7 +47,7 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	child.Env = rt.Env
 	child.SetContext(rt.host)
 
-	// The bindings, installed rather than copied.
+	// The bindings, installed and never copied.
 	//
 	// A binding is almost always a closure over the runtime it was registered
 	// on - header() reaches for that runtime's request, ignore_user_abort sets
@@ -73,9 +73,9 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	for name, decl := range rt.interfaces {
 		child.interfaces[name] = decl
 	}
-	// The constants a host froze, not the ones a script defined. FreezeStdlib
+	// The constants a host froze, which excludes the ones a script defined. FreezeStdlib
 	// is where a host says which is which; without it the whole table is
-	// treated as the host's, which is what a fork taken before any script ran
+	// treated as the host's, which is the table a fork taken before any script ran
 	// has anyway.
 	source := rt.frozenConsts
 	if source == nil {
@@ -102,7 +102,7 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	// worker includes it once.
 	child.autoloaders = append(child.autoloaders, rt.autoloaders...)
 
-	// The declarations the tree contributed, replayed rather than copied, so
+	// The declarations the tree contributed, replayed and never copied, so
 	// the fork's own tables record where each one came from.
 	for program, filename := range rt.hoisted {
 		_ = child.hoistOnce(program, filename)
@@ -112,7 +112,7 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	}
 
 	// A fork is where a host function that captured the parent would be wrong,
-	// so userFns is rebuilt by the hoist above rather than copied.
+	// so userFns is rebuilt by the hoist above and never copied.
 	return child
 }
 
@@ -126,12 +126,12 @@ func copyEntries(dst, src map[string]*funcEntry) {
 // DefaultQueue is how many runs a pool holds waiting for a worker. It is deep
 // enough that a burst does not block the caller that produced it and shallow
 // enough that a queue this long means the workers are not keeping up, which is
-// a thing to find out rather than to absorb.
+// a thing to find out and not to absorb.
 const DefaultQueue = 1024
 
 // Pool runs PHP on a fixed set of forks, fed from one queue: the workers are
 // the parallelism and the queue is the backpressure, so a run that finds every
-// worker busy waits its turn rather than starting a runtime of its own.
+// worker busy waits its turn and starts no runtime of its own.
 //
 // Nothing here is a sync.Pool. The worker count is the contract, and sync.Pool
 // drops entries on a collection.
@@ -186,9 +186,9 @@ func NewPool(rt *Runtime, workers, queue int, output func() io.Writer) *Pool {
 			defer pool.done.Done()
 			for run := range pool.runs {
 				run.run(worker)
-				// Reset after rather than before, so the next run starts on a
-				// runtime holding nothing and the values this one built are
-				// released now instead of at the next request.
+				// Reset after the run and not before, so the next run starts on
+				// a runtime holding nothing and the values this one built are
+				// released now and not at the next request.
 				worker.resetExecution(output(), nil)
 				close(run.done)
 			}
@@ -206,7 +206,7 @@ func (p *Pool) Queue() int { return p.queue }
 // Submit runs fn on a worker and waits for it, and reports whether it ran.
 //
 // It answers false when ctx ends first, which for a served request is the
-// client leaving: a run still queued is dropped rather than started for nobody,
+// client leaving: a run still queued is dropped and never started for nobody,
 // and a run already started is left to notice the disconnect itself, because
 // stopping one halfway is the handler's decision and connection_aborted is how
 // it makes it.
@@ -219,9 +219,9 @@ func (p *Pool) Queue() int { return p.queue }
 // running, is exactly the one that cannot prove the entry is free. A channel
 // recycled there would be handed to a second request while the first still waits
 // on it, and one request's completion signal satisfying another's wait is a wrong
-// answer under concurrency rather than a slow one, which no test here would
-// catch. Getting the allocation back means removing the handshake rather than
-// recycling it, and that is a change to how a run reports completion.
+// answer under concurrency and not a slow one, which no test here would
+// catch. Getting the allocation back means removing the handshake, with no
+// recycling to fall back on, and that is a change to how a run reports completion.
 func (p *Pool) Submit(ctx context.Context, fn func(*Runtime)) bool {
 	var done <-chan struct{}
 	if ctx != nil {
@@ -262,9 +262,9 @@ func (p *Pool) Close() {
 //
 // It is the re-entry a host callback needs: a name is a program counter, and
 // everything else about the call comes in through args. A closure is not
-// callable this way - it carries the scope it was written in, which belongs to
-// the runtime that built it - which is why a host that wants a callback on
-// another goroutine asks for one by name.
+// callable this way: it carries the scope it was written in, which belongs to
+// the runtime that built it, so a host needing a callback on another goroutine
+// names one.
 func (rt *Runtime) InvokeNamed(name string, args ...any) (any, error) {
 	entry, ok := rt.lookupEntry(name)
 	if !ok {
