@@ -58,7 +58,7 @@ type fixtureArea struct {
 
 // isFixturePath reports whether a file is a fixture: the .phpt document, or a
 // _test.php body with its expected output beside it. A _test.php with no .txt
-// is a php file someone put in the tree, not a fixture.
+// is a php file someone put in the tree, and no fixture.
 func isFixturePath(name string) bool {
 	if strings.HasSuffix(name, ".phpt") {
 		return true
@@ -76,8 +76,8 @@ func isFixturePath(name string) bool {
 // include to the same file.
 //
 // An area holding a phpscript.yml is read as a suite, so the Go tests run under
-// the connections and the prelude the same folder gives the command. Discovery
-// is per area rather than per ancestor: the embedded tree is rooted at
+// the connections and the prelude the same folder passes to the command. Discovery
+// is per area and not per ancestor: the embedded tree is rooted at
 // tests/fixtures and has no invocation root above it to walk up to.
 func embeddedFixtures() ([]fixtureArea, error) {
 	index := map[string]int{}
@@ -104,7 +104,7 @@ func embeddedFixtures() ([]fixtureArea, error) {
 			expected, err := fixturesFS.ReadFile(goldenOutput(p))
 			if err != nil {
 				// A body with no expected output beside it is a php file in
-				// the tree, not a fixture.
+				// the tree, and no fixture.
 				return nil
 			}
 			fx = ParseGolden(data, expected, p)
@@ -256,14 +256,14 @@ func (f *Fixture) SetRootFS(root fs.FS) {
 
 // sourceName is the file a fixture's PHP section is read from.
 //
-// A fixture is a document rather than a file the runtime can open, so its body
+// A fixture is a document and no file the runtime can open, so its body
 // is served as one. The name carries the .phpt through, which no real file in
 // the tree ends in, so nothing it includes can be shadowed by it.
 //
-// It keeps the fixture's whole path rather than its base, because the parser
+// It keeps the fixture's whole path and not its base, because the parser
 // compiles __DIR__ from the name a file is read under: served at the area root
 // the name has no directory, and a fixture reading __DIR__ would see "/"
-// instead of the folder it was written in.
+// where the folder it was written in belongs.
 func (f *Fixture) sourceName() string {
 	name := fsName(filepath.ToSlash(f.Path))
 	// A .php fixture is already a file the runtime can open, under a name it
@@ -279,8 +279,8 @@ func (f *Fixture) sourceName() string {
 //
 // A fixture is named from the working directory, so it arrives absolute or
 // with leading ".." segments, and fs.ValidPath rejects both. Dropping the
-// leading segments keeps the folder the fixture sits in, which is what __DIR__
-// is compiled from.
+// leading segments keeps the folder the fixture sits in, and __DIR__ is
+// compiled from that.
 func fsName(p string) string {
 	p = path.Clean(p)
 	p = strings.TrimPrefix(p, "/")
@@ -294,7 +294,7 @@ func fsName(p string) string {
 }
 
 // sourceFS lays the fixture bodies over the tree they belong to, as the second
-// layer rather than the first: unionFS resolves a name to the first layer that
+// layer and not the first: unionFS resolves a name to the first layer that
 // opens it and does not merge directory listings, so a leading layer holding
 // only the bodies would answer "." with a directory holding only those, and
 // scandir would stop seeing the tree.
@@ -306,7 +306,7 @@ func (f *Fixture) sourceFS(root fs.FS) fs.FS {
 	return unionFS{root, sources}
 }
 
-// ShareSources gives the fixtures of one directory a filesystem holding every
+// ShareSources lays over the fixtures of one directory a filesystem holding every
 // body in it, so precompiling that tree compiles all of them at once rather
 // than one per fixture.
 func ShareSources(fixtures []*Fixture) {
@@ -333,9 +333,9 @@ const (
 // SetCacheScope says how far this fixture's parse caches reach.
 //
 // The caches are what a suite trades memory for speed with. Worker, the
-// default, gives each worker loop one set, reused by the fixtures that worker
-// runs serially, so what is held scales with --parallel rather than with the
-// number of fixtures. Off gives a run its own and drops them - and its runtime
+// default, keeps one set per worker loop, reused by the fixtures that worker
+// runs serially, so what is held scales with --parallel and not with the
+// number of fixtures. Off builds a set per run and drops them, and its runtime
 // - when it ends, so a run is charged its own parsing and holds nothing
 // afterwards.
 func (f *Fixture) SetCacheScope(scope string) {
@@ -355,7 +355,7 @@ func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.Exp
 		return runner.NewIncludeCache(), runner.NewExprCache()
 	}
 	w := currentWorker(ctx)
-	// The fixture is passed rather than its trees, because this runs per
+	// The fixture is passed and not its trees, because this runs per
 	// execution: building them means building the fixture's whole options
 	// struct, and a method value handed over as a thunk allocates a closure
 	// every time for a cache that was filled on the first run.
@@ -365,7 +365,7 @@ func (f *Fixture) caches(ctx context.Context) (*runner.IncludeCache, *runner.Exp
 // precompileFS is the tree the precompiler walks: the fixture's own root, and
 // the bodies of the directory as a second filesystem.
 //
-// They are two rather than one because a walk cannot see through the overlay.
+// They are two and not one because a walk cannot see through the overlay.
 // unionFS answers Open from the first layer that has the name and implements
 // no ReadDir, so fs.WalkDir over it lists the real tree alone and every body
 // would be skipped. Merging the listings instead is not open: scandir(".") is
@@ -392,11 +392,11 @@ func (f *Fixture) flatCaches(ctx context.Context) (*flatstack.IncludeCache, *fla
 // acquireRuntime answers the runtime this run executes on, and whether it was
 // just built and still needs its bindings.
 //
-// Worker scope hands back the worker's own runtime, Reset for this run rather
-// than rebuilt: a reset runtime keeps the maps and buckets it grew, so the next
+// Worker scope returns the worker's own runtime, Reset for this run and never
+// rebuilt: a reset runtime keeps the maps and buckets it grew, so the next
 // fixture allocates nothing to start, and what a run holds is bounded by
-// --parallel instead of by the number of fixtures. It is rebuilt only when the
-// fixture answers a different runtimeKey, which is once per folder rather than
+// --parallel and not by the number of fixtures. It is rebuilt only when the
+// fixture answers a different runtimeKey, which is once per folder and not
 // once per fixture.
 //
 // Off scope builds one per run and lets it go when the run ends, which is the
@@ -446,7 +446,7 @@ func (f *Fixture) acquireRuntime(ctx context.Context, out io.Writer) (*runner.Ru
 // when the next fixture answers the same key and builds another when it does
 // not: RootFS is fixed at construction and stdlib.RegisterFS binds the file
 // bindings to a directory, so neither survives a move. Fixtures arrive grouped
-// by folder, so the key changes once per group rather than once per fixture.
+// by folder, so the key changes once per group and not once per fixture.
 func (f *Fixture) runtimeKey() string {
 	if f.runtimeKeyS == "" {
 		f.runtimeKeyS = fmt.Sprintf("%s\x00%v", f.cacheRoot(), f.Options)
@@ -469,8 +469,8 @@ type worker struct {
 	flatExpr    *flatstack.ExprCache
 
 	// The runtime this worker reuses, and the key it was built for. One
-	// runtime per worker rather than one per fixture is what bounds what a
-	// run holds by --parallel instead of by the number of fixtures.
+	// runtime per worker, and not one per fixture, is what bounds what a
+	// run holds by --parallel and not by the number of fixtures.
 	interp    *runner.Runtime
 	interpKey string
 	flatRT    *flatstack.Runtime
@@ -487,13 +487,12 @@ func newWorker() *worker {
 }
 
 // includeFor answers this worker's cache for one include root, precompiling the
-// tree the first time a fixture of that root asks for it. A worker runs its
+// tree the first time a fixture of that root reaches it. A worker runs its
 // fixtures serially, so no lock is needed here.
 //
 // The pass puts the fixtures in the cache before one of them runs: every .php
 // below the root, the bodies among them, is parsed and compiled once, so a
-// fixture and a repeat of it read the program back rather than building it
-// again.
+// fixture and a repeat of it read the program back and build nothing again.
 func (w *worker) includeFor(root string, f *Fixture, expr *runner.ExprCache) *runner.IncludeCache {
 	if c, ok := w.include[root]; ok {
 		return c
@@ -595,7 +594,7 @@ func (f *Fixture) cleanState() bool { return f.cacheScope == CacheOff }
 // directory first.
 //
 // An include that is not there is not an error; the setting says what to load
-// when the application provides it, and a tree without an autoload.php simply
+// when the application carries it, and a tree without an autoload.php simply
 // runs without one.
 func (f *Fixture) SetAppRoot(root string, includes ...string) {
 	f.appRoot = root
@@ -604,11 +603,11 @@ func (f *Fixture) SetAppRoot(root string, includes ...string) {
 
 // SetDatabase names the connections this fixture's Database and
 // Database\Migrate bindings resolve through. Nil leaves the binding on the
-// process environment, which is what a fixture whose suite declared no env of
+// process environment, as a fixture whose suite declared no env of
 // its own has always had.
 //
 // A suite passes the provider its setup hook applied the schema through, so the
-// fixtures below it query the database the hook prepared rather than a second
+// fixtures below it query the database the hook prepared, with no second
 // pool opened over the same DSN.
 func (f *Fixture) SetDatabase(provider model.DatabaseProvider) {
 	f.database = provider
@@ -647,7 +646,7 @@ func (f *Fixture) RootDir() string {
 	return filepath.Join(dir, f.Root)
 }
 
-// realRoot reports whether the fixture asked for a directory on disk rather
+// realRoot reports whether the fixture named a directory on disk rather
 // than the embedded tree. Such a fixture gets its own include caches: those are
 // keyed by the path as the script wrote it, so a fixture reaching a different
 // tree must not be served a program cached for the embedded one.
@@ -682,7 +681,7 @@ func (u unionFS) Open(name string) (fs.File, error) {
 // includePrelude includes the files the test command named with --include
 // before the fixture body runs. It runs every session, because ResetSession
 // clears user declarations. A file that is not there is skipped: the flag
-// names what to load when the application provides it.
+// names what to load when the application carries it.
 func (f *Fixture) includePrelude(rt *runner.Runtime) error {
 	for _, name := range f.includes {
 		clean := strings.TrimPrefix(path.Clean(filepath.ToSlash(name)), "/")
@@ -709,7 +708,7 @@ func (f *Fixture) runnerOptions() runner.Options {
 	options.Mail = f.mail
 	options.Precompile = true
 	if f.realRoot() {
-		// A fixture that names a root wants the real filesystem: it is reaching
+		// A fixture that names a root needs the real filesystem: it is reaching
 		// for a tree phpscript does not embed, a vendor directory being the
 		// motivating case.
 		options.RootFS = os.DirFS(f.RootDir())
@@ -733,10 +732,10 @@ func (f *Fixture) runnerOptions() runner.Options {
 // GoldenSuffix and GoldenOutputSuffix name the second fixture form: a php file
 // the runtimes execute, and the output they are held to beside it.
 //
-// The body is an ordinary file rather than a section of a document, so php
-// runs it where it lies and __FILE__ and __DIR__ read back the path it was
-// written at. It also means the body can be run by hand, which a .phpt cannot.
-// What it gives up is the frontmatter: a fixture needing one declares a .phpt.
+// The body is an ordinary file and no section of a document, so php runs it
+// where it lies and __FILE__ and __DIR__ read back the path it was written at.
+// It also means the body can be run by hand, which a .phpt cannot. The form
+// carries no frontmatter: a fixture needing one declares a .phpt.
 const (
 	GoldenSuffix       = "_test.php"
 	GoldenOutputSuffix = "_test.txt"
@@ -1045,8 +1044,8 @@ func executeFixturePHP(ctx context.Context, f *Fixture) (string, runner.Context,
 		rt.FreezeStdlib()
 	}
 	// The fixture names itself before the load, because the first name a
-	// runtime is given wins: a fixture reading __DIR__ expects the directory it
-	// was written in, not the file its body is served from. An empty __DIR__
+	// runtime is given wins: a fixture reading __DIR__ reads the directory it
+	// was written in, and not the file its body is served from. An empty __DIR__
 	// silently turns __DIR__ . "/x" into "/x", which is then rejected as
 	// escaping the root: a confusing two-step failure a long way from its cause.
 	rt.UpdateFilename(f.Path)
@@ -1106,7 +1105,7 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 	f.flatExpr = expr
 
 	// The gate benchmarks are held to: a program the compiler rejects is
-	// skipped rather than delegated. The compile goes through the run's own
+	// skipped and never delegated. The compile resolves through the run's own
 	// expression cache, so the one the gate pays is the one the run reads
 	// back; the verdict is cached on the fixture so it is paid once. A
 	// violated interface contract is not a coverage gap: the flat path raises
@@ -1140,8 +1139,8 @@ func executeFlatstack(ctx context.Context, f *Fixture) (string, runner.Context, 
 }
 
 // acquireFlatRuntime is acquireRuntime for the bytecode runtime: worker scope
-// hands back the worker's flat runtime, Reset for this run and rebuilt once
-// per folder rather than once per fixture. Building a runtime is a full
+// returns the worker's flat runtime, Reset for this run and rebuilt once
+// per folder and not once per fixture. Building a runtime is a full
 // stdlib registration, which single-shot runs were paying per fixture on
 // this engine while the interpreter amortised it per folder.
 func (f *Fixture) acquireFlatRuntime(ctx context.Context, out io.Writer) (*flatstack.Runtime, *flatstack.ExprCache, bool) {
