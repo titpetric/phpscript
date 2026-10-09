@@ -2,15 +2,15 @@
 
 phpscript has no marshalling layer. A registered Go function is invoked by reflection and whatever it returns is boxed into `any` and handed to the VM, which dispatches on the dynamic type. `foreach`, `$x[0]`, `$m["key"]`, `$obj->field` and `$obj->method()` all work against native Go values through reflection fallbacks.
 
-That freedom is the whole point, and it has one consequence worth writing down: **a binding pays for the value it builds, not for the type it declares.** Returning `any` costs nothing. Building a `*model.Array` costs a lot.
+That freedom has one consequence: **a binding pays for the value it builds, not for the type it declares.** Returning `any` costs nothing. Building a `*model.Array` costs a lot.
 
 This document is the guideline, the reasoning behind it, and a checklist of every binding in the tree.
 
 ## The measured baseline
 
-All numbers from `tests/bindings_test.go` on an Intel N150, Go 1.27. The "call" benchmarks drive the real reflection return path (`runner.invokeAny` -> `runner.firstReturn`), so the floor of 2 allocs is `reflect.Value.Call` itself. That floor applies only to signatures outside the `invokeFast` type switch (`runner/helpers.go`), which was widened to the shapes a runtime survey found the stdlib registers most - `func(string) any`, `func(string) bool`, `func(string) int64` and the trim/sprintf variadic families among them; a covered shape dispatches directly and pays no reflect allocations at all.
+All numbers from `tests/bindings_test.go` on an Intel N150, Go 1.27. The "call" benchmarks drive the real reflection return path (`runner.invokeAny` -> `runner.firstReturn`), so the floor the table reports is `reflect.Value.Call` itself. That floor applies only to signatures outside the `invokeFast` type switch (`runner/helpers.go`), which was widened to the shapes a runtime survey found the stdlib registers most - `func(string) any`, `func(string) bool`, `func(string) int64` and the trim/sprintf variadic families among them; a covered shape dispatches directly and pays no reflect allocations at all.
 
-The switch matches a whole signature, so **giving a binding an error to return moves it off the fast path** unless the error-returning spelling is listed too. That is not a visible change at the call site and no test fails for it: `sprintf` went from `func(string, ...any) string` to `func(string, ...any) (string, error)` when it stopped handing its arguments to `fmt`, and dispatched through `reflect.Value.Call` from then until the shape was added. A change to a registered function's arity is a change to its dispatch path; `BenchmarkDispatchSprintf` against `BenchmarkDispatchBaseline` is what prices it.
+The switch matches a whole signature, so **adding an error return moves a binding off the fast path** unless the error-returning spelling is listed too. That is not a visible change at the call site and no test fails for it: `sprintf` went from `func(string, ...any) string` to `func(string, ...any) (string, error)` when it stopped handing its arguments to `fmt`, and dispatched through `reflect.Value.Call` from then until the shape was added. A change to a registered function's arity is a change to its dispatch path; `BenchmarkDispatchSprintf` against `BenchmarkDispatchBaseline` is what prices it.
 
 Same five-element list, five representations:
 
@@ -37,7 +37,7 @@ Five rows of two columns, the database shape:
 | `[]string` (now)     |  128 |         3 |   412 |
 | `*model.Array` (was) |  488 |        12 |   765 |
 
-The `*model.Array` rows are cheaper than they used to be (728 B/13 allocs and 2888 B/38 in an earlier revision of this document) because `model.Array` now has a list mode (see the audit at the bottom). The ordering of the table is unchanged: a slice still beats it, and the gap on the nested database shape is still an order of magnitude in time.
+The `*model.Array` rows carry `model.Array`'s list mode (see the audit at the bottom). The ordering of the table is unchanged: a slice still beats it, and the gap on the nested database shape is still an order of magnitude in time.
 
 ## The rules
 
@@ -69,7 +69,7 @@ rt.RegisterFunc("explode", func(delim, s string) *model.Array {
 | `[]any`                        | 1 allocation + a box per element                               | mixed lists    |
 | `*model.Array`                 | struct + `map[any]any` + key slice + a box per key *and* value | see rule 4     |
 
-**3. `any` versus a concrete return type does not matter.** `firstReturn` calls `reflect.Value.Interface()` either way. Measured difference for a slice is one 16-byte allocation; for scalars it is nil (`bind_int` 32 B/2 allocs, `bind_int_any` 40 B/2 allocs). Declare whichever reads better. Use `any` when the value is genuinely polymorphic; PHP's `strpos` returning `false|int` is the honest case.
+**3. `any` versus a concrete return type does not matter.** `firstReturn` calls `reflect.Value.Interface()` either way. The `bind_int` and `bind_int_any` rows in the table differ by one word and no allocation; for a slice the difference is one 16-byte allocation. Declare whichever reads better. Use `any` when the value is genuinely polymorphic; PHP's `strpos` returning `false|int` is the honest case.
 
 **4. Return `*model.Array` for exactly three reasons.**
 
@@ -95,19 +95,19 @@ Everything else (projections, listings, query results, regex captures) is a read
 
 **Escape analysis will keep things on the stack if you let it.** A value whose lifetime the compiler can bound stays on the stack and costs nothing. Returning it through an interface defeats that, which is unavoidable at the binding boundary, but everything *inside* the binding is still eligible. Check with `go build -gcflags=-m ./stdlib` and look for `escapes to heap` / `moved to heap`. Narrow lifetimes, avoid returning pointers to locals you did not need to allocate, and prefer generics over `any` in internal helpers where the type is known.
 
-**Where the guidance stops.** Reflection at the boundary is the design; the project trades some throughput for "any Go function is a PHP function with no glue". The rules above recover the part of that cost which buys nothing.
+**Where the guidance stops.** Reflection in `runner.invokeAny` is the design; the project trades some throughput for "any Go function is a PHP function with no glue". The rules above recover the part of that cost which buys nothing.
 
 Sources: [Stack Allocations and Escape Analysis](https://goperf.dev/01-common-patterns/stack-alloc/), [Avoiding Interface Boxing](https://goperf.dev/01-common-patterns/interface-boxing/), [runtime: prevent allocation when converting small ints to interfaces](https://github.com/golang/go/commit/9828c43288a53d3df75b1f73edad0d037a91dff8), [runtime/iface.go](https://github.com/golang/go/blob/master/src/runtime/iface.go), [reflect: Call is slow (golang/go#7818)](https://github.com/golang/go/issues/7818), [Faster Go maps with Swiss Tables](https://go.dev/blog/swisstable), [Memory Preallocation](https://goperf.dev/01-common-patterns/mem-prealloc/), [Escape Analysis in Go](https://blog.jetbrains.com/go/2026/07/20/escape-analysis/).
 
 ## The bigger lever (fixed)
 
-This section used to say that the size of the function table was the dominant cost: `runner.baseEnv` rebuilt the expression environment on **every** `Eval`, allocating one closure per registered function, and roughly 78% of a script's allocations were that rebuild. The same script against a runtime with the full stdlib versus one with a single binding registered measured 649 vs 145 allocs/op.
+The size of the function table is not the dominant cost. `runner.baseEnv` once rebuilt the expression environment on every `Eval`, allocating one closure per registered function; that symbol is gone.
 
-It no longer does. `runner` now:
+`runner` does three things that keep the table off the per-`Eval` path:
 
-- pools evaluation environments per `Runtime` (`acquireEnv` / `releaseEnv`) and reaches the registered function's scope through a `scopeRef` indirection instead of capturing it, so an environment is built once rather than per `Eval`;
-- populates an environment with the functions an expression actually calls, on demand (`Runtime.installFunc`, fed by `Transpiler.Calls`), instead of the whole table;
-- caches the expr compile configuration per function-table generation (`Runtime.exprConfig`) and builds its type-env nature directly (`typeEnvNature`) rather than letting expr walk the table reflectively.
+- pools evaluation environments per `Runtime` (`acquireEnv` / `releaseEnv`) and reaches the registered function's scope through a `scopeRef` indirection, so one environment serves every `Eval`;
+- populates an environment with the functions an expression calls, on demand (`Runtime.installFunc`, fed by `Transpiler.Calls`), leaving the rest of the table out;
+- caches the expr compile configuration per function-table generation (`Runtime.exprConfig`) and builds its type-env nature directly (`typeEnvNature`), with no reflective walk of the table.
 
 | Runtime           | B/op  | allocs/op | ns/op |
 |-------------------|------:|----------:|------:|
@@ -122,9 +122,9 @@ The two are now identical: a script pays for the functions it calls, not for the
 
 The third bullet was the single largest item in the tree once the runtime env was fixed: `expr.Compile(src, expr.Env(typeEnv), ...)` makes expr walk the whole ~95-entry type-env map through `reflect.Value.MapKeys` + `MapIndex` + `copyVal` on **every compile**. That was 64% of all allocations.
 
-The obvious fix, dropping `expr.Env` entirely because PHP is dynamically typed and the comment above `Runtime.compile` claimed we compiled without type information anyway, is **wrong, and silently so**. `expr/parser.parseCall` checks its own `predicates` table *before* the disabled-builtins list, and the only thing that stops a name being parsed as expr's predicate syntax is `conf.Config.IsOverridden(name)`, which consults `Config.Env`. PHP's `count`, `map`, `filter`, `find`, `sum`, `reduce` and `sortBy` all collide. `expr.DisableAllBuiltins()` does not cover this. With no env, `count($x)` compiles to expr's `count` predicate instead of the registered PHP function.
+The obvious fix, dropping `expr.Env` entirely because PHP is dynamically typed and the comment above `Runtime.compile` claimed we compiled without type information anyway, is **wrong, and silently so**. `expr/parser.parseCall` checks its own `predicates` table *before* the disabled-builtins list, and the only thing that stops a name being parsed as expr's predicate syntax is `conf.Config.IsOverridden(name)`, which consults `Config.Env`. PHP's `count`, `map`, `filter`, `find`, `sum`, `reduce` and `sortBy` all collide. `expr.DisableAllBuiltins()` does not cover this. With no env, `count($x)` compiles to expr's `count` predicate and never reaches the registered PHP function.
 
-So the env stayed while expr-lang was the compiler; what was removed was the per-compile cost of deriving it, one shared nature for all keys instead of a reflective walk per key. `TestCompileMatchesExprEnv` guarded the emitted bytecode until the engine below made the whole question moot: with no expr-lang compile there is no type env, no predicate collision and no bytecode to guard.
+So the env stayed while expr-lang was the compiler; what was removed was the per-compile cost of deriving it, one shared nature for all keys, with no reflective walk per key. `TestCompileMatchesExprEnv` guarded the emitted bytecode until the engine below made the whole question moot: with no expr-lang compile there is no type env, no predicate collision and no bytecode to guard.
 
 ### The closure engine
 
@@ -134,9 +134,9 @@ With the env fixed, the remaining eval cost was the VM's dispatch itself: every 
 - the pure `__*` helpers with constant op strings
 - `&&`, `||`, `!` and the ternary
 
-The engine compiles the tree into a chain of typed Go closures that call `phpArith`, `phpCompare` and friends directly, with one panic guard per evaluation instead of one per call. The technique is expr-cls's (guamoko995/expr-cls compiles expressions to typed closure chains); its API wants a struct-typed env fixed at compile time, which PHP's per-expression variable map rules out, so the technique was rebuilt over the model AST. It landed as a fast path in front of the expr-lang pipeline and replaced it outright once its coverage was total. Calls that re-enter the interpreter (`__call`, `__get`, registered functions) stay env lookups; the `[]any` slice their variadic signature requires is the allocation that remains.
+The engine compiles the tree into a chain of typed Go closures that call `phpArith`, `phpCompare` and friends directly, with a single panic guard per evaluation covering every call inside it. The technique is expr-cls's (guamoko995/expr-cls compiles expressions to typed closure chains); its API takes a struct-typed env fixed at compile time, which PHP's per-expression variable map rules out, so the technique was rebuilt over the model AST. It landed as a fast path in front of the expr-lang pipeline and replaced it outright once its coverage was total. Calls that re-enter the interpreter (`__call`, `__get`, registered functions) stay env lookups; the `[]any` slice their variadic signature requires is the allocation that remains.
 
-Variables are bound by slot, not by map: the closure compiler assigns each per-evaluation identifier an index, and Eval fills a pooled `[]any` instead of layering the env map and deleting on release; after the engine landed, map writes, deletes and hashing were half of what remained in the profile. Functions and helpers still resolve through the persistent base map.
+Variables are bound by slot, not by map: the closure compiler assigns each per-evaluation identifier an index, and Eval fills a pooled `[]any`, with no env map to layer and delete on release; after the engine landed, map writes, deletes and hashing were half of what remained in the profile. Functions and helpers still resolve through the persistent base map.
 
 Measured pinned in one sweep while both engines existed, closure against the same program's bytecode path:
 
@@ -151,9 +151,23 @@ Measured pinned in one sweep while both engines existed, closure against the sam
 
 The binding call's one remaining allocation is the variadic argument slice. The same profile showed two boxing allocations, fixed on both engines: `nameCallError` allocated its `errors.As` targets on every successful call (fixed with a nil guard), and `phpval.Key` reboxed the string and int64 keys it returns unchanged.
 
-End to end, `BenchmarkScriptExprHeavy` (an expression-dense loop) went from 332KiB per iteration to 5.4KiB, 10.7x faster; the fixture suite's median per-op latency dropped 1.4x with IO-bound fixtures unchanged. Compilation pays for the closure build once per source: +20 allocs, +0.8KiB, amortised by the same caches as the bytecode.
+End to end, with IO-bound fixtures unchanged. The closure build is paid once per source and amortised by the same caches as the bytecode.
 
-The compile path took the same exit: `runner/expr/direct.go::CompileExpr` walks the model AST and builds the closure chain with no source text. A compound expression compiles in 1.6µs and 37 allocs against the transpile pipeline's 28µs and 187. `ExprCache.byExpr` shares compiles across runtimes by node identity. Once the direct compiler covered the whole expression vocabulary, a full fixture-suite profile contained zero expr-lang frames, and the pipeline - transpiler, type env, bytecode VM and the expr-lang dependency - was removed. The `.phpt` fixtures, whose expected output is php's own and whose matrix runs every fixture on the interpreter, flatstack and php, are the semantic oracle.
+| Measure                                     | Before  | After    |
+|---------------------------------------------|--------:|---------:|
+| `BenchmarkScriptExprHeavy` B/op             | 332 KiB |  5.4 KiB |
+| `BenchmarkScriptExprHeavy` sec/op, relative |   10.7x |     1.0x |
+| Fixture suite median per-op, relative       |    1.4x |     1.0x |
+| Closure build per source, allocs            |       0 |      +20 |
+| Closure build per source, B                 |       0 | +0.8 KiB |
+
+The compile path took the same exit: `runner/expr/direct.go::CompileExpr` walks the model AST and builds the closure chain with no source text. One compound expression compiles at:
+
+| Compiler                                                                                                                                                                                                                                                                                                                                                                                                                                                           | sec/op | allocs/op |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------:|----------:|
+| `CompileExpr` over the model AST                                                                                                                                                                                                                                                                                                                                                                                                                                   | 1.6 us |        37 |
+| the transpile pipeline                                                                                                                                                                                                                                                                                                                                                                                                                                             |  28 us |       187 |
+| `ExprCache.byExpr` shares compiles across runtimes by node identity. Once the direct compiler covered the whole expression vocabulary, a full fixture-suite profile contained zero expr-lang frames, and the pipeline - transpiler, type env, bytecode VM and the expr-lang dependency - was removed. The `.phpt` fixtures, whose expected output is php's own and whose matrix runs every fixture on the interpreter, flatstack and php, are the semantic oracle. |        |           |
 
 ## How to measure
 
@@ -166,7 +180,7 @@ go test ./tests/ -run XXX -bench 'BenchmarkCall'      -benchtime 200000x  # + re
 go test ./tests/ -run XXX -bench 'BenchmarkScript'    -benchtime 20000x   # + the VM
 ```
 
-When changing a shape, keep the old implementation as a second binding (`bind_explode_legacy` next to `bind_explode_native`) so the benchmark measures the change instead of asserting it.
+When changing a shape, keep the old implementation as a second binding (`bind_explode_legacy` next to `bind_explode_native`) so the benchmark measures the change.
 
 ## TODO: binding audit
 
@@ -202,7 +216,7 @@ Legend: **OK**: optimal, nothing to do. **OK (by design)**: allocates, but the a
 
 The key-preserving half of the sort family. `sort`, `rsort` and `usort` only permute values, so `sortValues` can sort a Go slice in place through its backing array. These six move the key with the value, which means rebuilding the array: `arrayEntries` snapshots the pairs, the snapshot is sorted, then `Clear` plus `arrayReplay` in restore mode writes every pair back with `Set`. `Append` would hand out fresh integer keys and quietly turn the call into `sort()`.
 
-Cost is one `[]arrayEntry` of `n` pairs per call, plus the map and key slice if the sorted key order pushes the array out of list mode. Sorting the snapshot rather than the live storage is deliberate: the rewrite never iterates what it is overwriting, the same reason `array_shift` snapshots.
+Cost is one `[]arrayEntry` of `n` pairs per call, plus the map and key slice if the sorted key order pushes the array out of list mode. The snapshot is sorted and the live storage is not, so the rewrite never iterates what it is overwriting; `array_shift` snapshots for the same reason.
 
 All six require a `*model.Array` and error on a native Go slice, following `arrayTarget` (`array_splice`, `array_shift`). A Go slice has no keys to preserve, so sorting one would be `sort()` under another name.
 
@@ -239,7 +253,7 @@ All six require a `*model.Array` and error on a native Go slice, following `arra
 
 ### Math
 
-PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max` hand back an `any` because the type they return is the type they were given.
+PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max` return an `any` because the type they return is the type they were given.
 
 | Binding                 | Returns                           | Status                                                                                                                                                                                 |
 |-------------------------|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -248,7 +262,7 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 | `round`                 | `float64`                         | OK (by design): rounds the decimal text of `strconv.FormatFloat(v, 'f', -1, 64)`, one string per call. Rounding the binary value would make `round(1.005, 2)` 1.0 and `round(2.5)` 2.0 |
 | `pow`                   | `any` (`int64` or `float64`)      | OK: a squaring loop over `int64`, the same rule the `**` operator follows; only the boxed result allocates                                                                             |
 | `log`                   | `float64`                         | OK: base 2 and 10 read through `math.Log2` and `math.Log10`, as PHP does                                                                                                               |
-| `min`, `max`            | `any`, the winning element itself | OK: a variadic call compares the `[]any` the VM already built; a single collection argument goes through `phpval.Values`                                                               |
+| `min`, `max`            | `any`, the winning element itself | OK: a variadic call compares the `[]any` the VM already built; a single collection argument is read through `phpval.Values`                                                            |
 | `number_format`         | `string`                          | OK: one `strings.Builder` grown to the grouped length, over the digit string the rounding helper returns                                                                               |
 
 ### Encoding
@@ -276,7 +290,7 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 | `preg_match_all` | `int64`; `$matches` is `[]any` of `[]string`                    | OK                  |
 | `preg_replace`   | `string`, compiled patterns cached                              | OK                  |
 
-`Regexp\Compile` and `Regexp\CompilePOSIX` are `regexp.Compile` and `regexp.CompilePOSIX` registered as they are, so the binding layer adds nothing to measure: the constructor allocates the compiled expression, and each method returns the `string`, `[]string`, `[]byte` or `[][]byte` the Go method built. The byte shapes cost nothing extra now that a `[]byte` reads as a PHP string rather than through a conversion.
+`Regexp\Compile` and `Regexp\CompilePOSIX` are `regexp.Compile` and `regexp.CompilePOSIX` registered as they are, so the binding layer adds nothing to measure: the constructor allocates the compiled expression, and each method returns the `string`, `[]string`, `[]byte` or `[][]byte` the Go method built. A `[]byte` reads as a PHP string with no conversion, so the byte shapes cost nothing extra.
 
 ### Filesystem
 
@@ -358,9 +372,9 @@ PHP's numeric return types are the constraint here: `abs`, `pow`, `min` and `max
 
 | Item                    | Status                                                                                                                                                                                                                                                                                                                                                                   |
 |-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `runner.baseEnv`        | **Done.** Replaced by pooled environments with on-demand function installation and a cached compile config; see "The bigger lever (fixed)" above                                                                                                                                                                                                                         |
+| `runner.baseEnv`        | **Done.** Replaced by pooled environments with on-demand function installation and a cached compile configuration; see "The bigger lever (fixed)" above                                                                                                                                                                                                                  |
 | `parser.TokenGetAll`    | **Done.** See `token_get_all` above                                                                                                                                                                                                                                                                                                                                      |
 | `model.Array` internals | **Done.** `Array` has a list mode: while every key is the dense sequence `0..n-1` the values live in a `[]any` and neither the `map[any]any` nor the key slice is allocated. The first key that breaks the invariant promotes it, permanently. A 5-element build went 11 -> 9 allocs, 50 elements 66 -> 57, and `Range` over a list is ~17x faster with zero allocations |
 | `parser` lexer / AST    | **Done.** Operator tokens come from a package-level table of substrings instead of `string(c)` per token, the token slice is presized, and AST nodes are carved out of chunked backing arrays. Parsing a 10.8 KB file went 3197 -> 564 allocs                                                                                                                            |
 | expr compile pipeline   | **Removed.** This was expr's own parser and compiler turning transpiled source into a `vm.Program`, ~48% cumulative at the time of this audit. `runner/expr` compiles the model AST to closures directly; the round-trip and the dependency are gone                                                                                                                     |
-| `reflect.Value.Call`    | **Remaining, by design.** ~43% cumulative. This is the reflection boundary the project trades throughput for; see "Where the guidance stops"                                                                                                                                                                                                                             |
+| `reflect.Value.Call`    | **Remaining.** ~43% cumulative. The reflection in `runner.invokeAny` is what buys "any Go function is a PHP function with no glue"; see "Where the guidance stops"                                                                                                                                                                                                       |

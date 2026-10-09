@@ -22,11 +22,11 @@ Each one is read and executed on its own. None of them repeats what is here.
 
 A sprint is a worktree, a measurement and a commit per finding. An agent reads one document and runs it to a reviewable branch without further instruction.
 
-Each sprint runs in its own git worktree. That is what makes `$PWD/bin/phpscript` private, and it is what keeps two sprints off one branch.
+Each sprint runs in its own git worktree. A worktree makes `$PWD/bin/phpscript` private and keeps two sprints off one branch.
 
 One finding is one commit. A sprint that produces four findings writes four, each reading on its own, and they all land on the one draft the "Where work lands" section defines. An agent opens no pull request.
 
-Out of scope in every sprint: anything in the "Non-negotiable" list in [../../AGENTS.md](../../AGENTS.md), and anything in the "Won't implement" table in [../design.md](../design.md). A finding that needs one of those is an issue from the feature-gap template, not a half fix.
+Out of scope in every sprint: anything in the "Non-negotiable" list in [../../AGENTS.md](../../AGENTS.md), and anything in the "Won't implement" table in [../design.md](../design.md). A finding that needs one of those is an issue from the feature-gap template.
 
 ## The measurement protocol
 
@@ -38,7 +38,7 @@ Build and measure are one unit, not two. An exclusive lock wraps both:
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '...'
 ```
 
-The box is shared with other agents. A concurrent `go install` overwrites the binary mid-run, and a concurrent `go test ./...` takes the cores a sample is being timed on. `-w 3600` so a stuck holder surfaces as a failure rather than as a hang.
+The box is shared with other agents. A concurrent `go install` overwrites the binary mid-run, and a concurrent `go test ./...` takes the cores a sample is being timed on. `-w 3600` fails the command after an hour of waiting, so a stuck holder surfaces as a failure.
 
 Anything that compiles the tree or runs the test tree takes the lock, including a correctness `go test ./...`: a full suite run wrecks somebody else's sample. Reading code, grepping and editing do not.
 
@@ -52,7 +52,7 @@ PATH="$PWD/bin:$PATH"
 command -v phpscript | grep -q "^$PWD/bin/" || exit 1
 ```
 
-`bin/` is already gitignored. The third line is not optional and is the first line of every measurement log, because `phpscript test` runs the binary on `PATH` and not the tree: without it a sprint silently measures whatever was installed last.
+`bin/` is already gitignored. The third line is the first line of every measurement log. `phpscript test` runs the binary on `PATH` and not the tree, so without it a sprint silently measures whatever was installed last.
 
 The whole thing as one locked session:
 
@@ -67,7 +67,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 
 ### CGO and the toolchain
 
-`CGO_ENABLED=0` always, for every build and every `go test`, which is what `.atkins/skills/go.yml` builds with. The only exception is `-race`, which needs cgo; a race run produces no number and is never a baseline.
+`CGO_ENABLED=0` always, for every build and every `go test`; `.atkins/skills/go.yml` builds with it. The only exception is `-race`, which needs cgo; a race run produces no number and is never a baseline.
 
 A before/after pair is two binaries built the same way by the same toolchain. A profile taken against a cgo binary and one taken without are two measurements of two programs, so a binary of unknown provenance is not a baseline.
 
@@ -75,7 +75,7 @@ A before/after pair is two binaries built the same way by the same toolchain. A 
 
 ### Pinning
 
-Two benchmark jobs, not one.
+Two benchmark jobs.
 
 `taskset -c 3` narrows the affinity mask to one CPU. Go reads that mask for `GOMAXPROCS`, so a `b.RunParallel` benchmark runs a single goroutine and a contention fix measures as zero. Three benchmarks are parallel and run unpinned:
 
@@ -85,17 +85,17 @@ Two benchmark jobs, not one.
 | `BenchmarkLookupHandler`               | `tests/runner/lookup_bench_test.go` | go, pooled, pooled_reset, fresh          |
 | `BenchmarkFlatstackParallelHostBridge` | `tests/flatstack/benchmark_test.go` | none                                     |
 
-`BenchmarkLookupTreeSize` is serial and stays in the pinned job, which is why the selector anchors the first name:
+`BenchmarkLookupTreeSize` is serial and stays in the pinned job, so the selector anchors the first name:
 
 ```sh
 PARALLEL='BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
 ```
 
-The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and takes `-count 10` where the pinned job takes 6. A parallel benchmark on a shared box is the noisiest number in the set, and benchstat's interval decides whether it moved, not the delta.
+The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and takes `-count 10` where the pinned job takes 6. A parallel benchmark on a shared box is the noisiest number in the set, and benchstat's interval decides whether it moved; a bare delta does not.
 
 ### The sprint gate
 
-`atkins default` is not the gate for a sprint. Its `build` task runs `go install .`, which is the one thing the private-binary rule exists to prevent, and it builds a docker image a sprint has no use for. Running it hands the binary on `PATH` to whoever measures next.
+`atkins default` is not the gate for a sprint. Its `build` task runs `go install .`, which is the one thing the private-binary rule exists to prevent, and it builds a docker image a sprint has no use for. Running it replaces the binary on `PATH` that whoever measures next will time against.
 
 The gate is the subset that compiles nothing into a shared location, with the private binary first on `PATH`:
 
@@ -134,9 +134,9 @@ The window has two edges, and a percentile is only a percentile between them.
 
 **A fixture whose single run costs more than the window** gets one run per sample, so `p50`, `p95` and `p99` come back equal and describe one execution each. They are reported as the single-run cost they are, never as a distribution.
 
-**A fixture whose single run costs far less than the window** fits tens of thousands of runs into it, so its `p99` is the hundredth-slowest of those and collects scheduler preemption and collector assists rather than interpreter work. The tell is a wide `p99`/`p50` ratio on a cheap fixture while `gc_runs` is zero: there is no such work in it to find. Those tails are a property of the host and the window. Report them, do not attribute them to the fixture, and look for real variance where the allocation counts are high enough for a collection inside the window to be plausible.
+**A fixture whose single run costs far less than the window** fits tens of thousands of runs into it, so its `p99` is the hundredth-slowest of those and measures scheduler preemption and collector assists. The tell is a wide `p99`/`p50` ratio on a cheap fixture while `gc_runs` is zero: there is no such work in it to find. Those tails are a property of the host and the window. Report them, do not attribute them to the fixture, and look for real variance where the allocation counts are high enough for a collection inside the window to be plausible.
 
-**A percentile run uses `--cache=off`.** Under `--cache=worker` a runtime is retained per fixture, so a late sample window carries the collector load of every fixture the worker ran before it, and the set drifts upward across the run. That is the same retention the memory section is about, showing up as timing instead of as resident bytes, and it fails the drift guard below for a structural reason that re-measuring cannot clear. `off` prices the parser rather than execution, which is the trade a publishable percentile costs; one process per fixture is the alternative and is slower still.
+**A percentile run uses `--cache=off`.** Under `--cache=worker` a runtime is retained per fixture, so a late sample window carries the collector load of every fixture the worker ran before it, and the set drifts upward across the run. That is the same retention the memory section is about, showing up in the timing column and not in resident bytes, and it fails the drift guard below for a structural reason that re-measuring cannot clear. `off` prices the parser and not execution; one process per fixture is the alternative and is slower still.
 
 ### Memory
 
@@ -144,13 +144,13 @@ A measurement run has to be stopped from taking the box down. It is not a theore
 
 Three guards, all three required.
 
-**`GOMEMLIMIT` on every measured process.** A ceiling well under what the box has free, 2 GiB by default:
+**`GOMEMLIMIT` on every measured process.** A ceiling well under what the box has free:
 
 ```sh
 GOMEMLIMIT=2GiB GOGC=100 ...
 ```
 
-It is a soft limit, so the collector works harder as the heap approaches it instead of the kernel choosing a victim. That changes GC behaviour, and therefore timing, which is why both sides of a before/after pair carry the same `GOMEMLIMIT` and the manifest records it. A pair measured at two different limits is two measurements of two programs, the same way a CGO mismatch is.
+It is a soft limit: the collector works harder as the heap approaches it, and the kernel chooses no victim. That changes GC behaviour and therefore timing, so both sides of a before/after pair carry the same `GOMEMLIMIT` and the manifest records it. A pair measured at two different limits is two measurements of two programs, the same way a CGO mismatch is.
 
 **Scope a sampling run per area, not over the whole suite.** A runtime is retained for as long as its parse cache is, so a process that samples 264 fixtures holds 264 fixtures' worth of runtimes. One process per area releases it between areas:
 
@@ -161,7 +161,7 @@ for area in tests/fixtures/*/; do
 done
 ```
 
-**Know what `--cache` costs in memory, not only in what it measures.** `worker` keeps one set of caches per worker loop, which is the production shape and the larger heap. `off` drops the runtime with the fixture, which is far less resident and prices the parser instead of execution. A whole-suite run that has to stay in one process uses `off`.
+**`--cache` costs memory as well as deciding what is measured.** `worker` keeps one set of caches per worker loop, which is the production shape and the larger heap. `off` drops the runtime with the fixture, holds far less resident, and prices the parser and not execution. A whole-suite run that has to stay in one process uses `off`.
 
 `atkins bench` and `atkins default` are not exempt. Both compile and run the tree, and the OOM above was raised by atkins.
 
@@ -169,8 +169,8 @@ done
 
 Four rules. They were enforced by a script that has been deleted; they are protocol now.
 
-- **Medians and percentiles, never means.** `--json` gives `p50_ns`, `p95_ns` and `p99_ns`; `benchstat` gives medians; `wrk --latency` gives a distribution. All three percentiles go in the artifact. p50 and p99 go in the table. Check the generator's resolution before believing its percentiles: `hey` reports latency to four decimal places of a second, so every percentile of a sub-millisecond handler comes back as the same number, which is why `performance.md` uses wrk.
-- **A static control that never reaches the interpreter.** For the HTTP target the control is `testdata/testserver.go`, the route-for-route Go twin. It is the floor the PHP numbers are read against, not a target to reach.
+- **Medians and percentiles, never means.** `--json` reports `p50_ns`, `p95_ns` and `p99_ns`; `benchstat` reports medians; `wrk --latency` reports a distribution. All three percentiles go in the artifact. p50 and p99 go in the table. Check the generator's resolution before believing its percentiles: `hey` reports latency to four decimal places of a second, so every percentile of a sub-millisecond handler comes back as the same number, and `performance.md` uses wrk.
+- **A static control that never reaches the interpreter.** For the HTTP target the control is `testdata/testserver.go`, the route-for-route Go twin. It is the floor the PHP numbers are read against.
 - **A drift guard across a segment.** Compare the first quartile of a segment's samples against the last and publish the percentage. A segment that drifted is re-measured, not published.
 - **Drop a sample whose window overlapped a collection.** `--json` reports `gc_runs` per row. A row whose GC share differs between before and after is not comparable. Where a single request is the unit, the sample is dropped outright.
 
@@ -190,7 +190,7 @@ It is not a small effect and it is not hypothetical. A main-against-main pair - 
 
 So alternate. Order the blocks `A B B A`, repeated, with one sample per block, which cancels a linear drift exactly: whatever the slope is, each side sits on it the same number of times and at the same average position.
 
-Compile once and interleave rather than rebuilding per side. `go test -c -o /tmp/x-A.test ./pkg` gives a test binary that runs as many times as you like, so a pair costs two builds rather than two per block, and no build time lands between the blocks to drift across:
+Compile once and interleave. `go test -c -o /tmp/x-A.test ./pkg` writes a test binary that runs as many times as you like, so a pair costs two builds for the whole run and no build time lands between the blocks to drift across:
 
 ```sh
 go test -c -o /tmp/x-A.test ./tests/flatstack/     # at the baseline
@@ -209,7 +209,7 @@ Report the drift guard alongside the result: the baseline's early blocks against
 
 ### Rows that cannot carry a latency claim
 
-Some benchmarks do not resolve a small effect on this hardware, and saying so is the result rather than a failure to get one. Known so far, each with the spread that disqualifies it:
+Some benchmarks do not resolve a small effect on this hardware, and saying so is the result. Known so far, each with the spread that disqualifies it:
 
 | Benchmark                                   | Why                                                                                                                                                                                                                                                                      |
 |---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -218,11 +218,11 @@ Some benchmarks do not resolve a small effect on this hardware, and saying so is
 | `BenchmarkGoBindingHTTP/go_handler`         | The widest row in the sweep, and it is the native control the PHP arms are read against, so the floor is the least stable term in its own comparison                                                                                                                     |
 | The sub-microsecond `BenchmarkCall*` family | 10-24% at `-benchtime 1s`. `../allocation-performance.md` publishes these to the nanosecond at a fixed `200000x`; measure them that way or not at all. Three of them have changed **sign** between runs of the same binaries                                             |
 
-An allocation column is usually trustworthy where the latency column is not: `allocs/op` and `B/op` come back bit-identical across samples for most of these, which is why an allocation delta is the stronger claim to lead with.
+An allocation column is usually trustworthy where the latency column is not: `allocs/op` and `B/op` come back bit-identical across samples for most of these, so an allocation delta is the stronger claim to lead with.
 
 ### Flag-parsing traps
 
-- `-t` before a command name is `--testconfig` and runs instead of a command. After `test` it is `--time`. The same two letters, two meanings, decided by position.
+- `-t` before a command name is `--testconfig`, which runs no command. After `test` it is `--time`. The same two letters, two meanings, decided by position.
 - Global flags may be written before or after the command name.
 - A directory path is not recursive. `phpscript test ./...` walks a tree; `phpscript test .` matches only the fixtures sitting directly in that directory and can pass over nothing. Every pipeline line spells the `./...`.
 
@@ -245,7 +245,7 @@ HTTP, which no document carries yet:
 | Route | p50 ms | p99 ms | req/s |
 |-------|-------:|-------:|------:|
 
-`--json` reports nanoseconds; the table reports microseconds, which is what `phpscript test` prints, to one decimal. p95 is collected and not published.
+`--json` reports nanoseconds; the table reports microseconds to one decimal, as `phpscript test` prints them. p95 is collected and not published.
 
 In a document, before and after are `(was)` and `(now)` row labels, never extra columns, because a document's table is a reference to the current shape with the previous one beside it. A pull request body is the other way round: its subject is the delta, so the columns are Before, After and the signed change. [The measurement table](#the-measurement-table) is that shape.
 
@@ -255,7 +255,7 @@ No document in this directory carries a measurement. A number in a prompt goes s
 
 ## Tests are not edited
 
-Existing tests and fixtures pass unchanged. A passing test that starts failing is a regression in the change, not a stale test.
+Existing tests and fixtures pass unchanged. A passing test that starts failing reports a regression in the change.
 
 No test, no fixture, no expected-output section and no allocation budget is edited to accommodate new behaviour. Deleting one is the same act as editing it: a test is never dead code.
 
@@ -267,7 +267,7 @@ A new fixture's expected section is produced by running the source through real 
 
 ### The guards
 
-Three tests fail the build rather than skipping when they regress.
+Three tests fail the build when they regress; none of them skips.
 
 | Guard                                      | Where                          | What it holds                                                                         |
 |--------------------------------------------|--------------------------------|---------------------------------------------------------------------------------------|
@@ -277,7 +277,7 @@ Three tests fail the build rather than skipping when they regress.
 
 A budget is lowered in the same commit as the improvement that lowers it, the way `scripts/splint-baseline.json` is lowered. A budget is never raised. A change that needs one raised goes to the operator. `TestNoInheritanceAtRuntime` is a design guard and is not negotiable at all.
 
-## The config model is frozen
+## The configuration model is frozen
 
 No change adds, renames, retypes or removes a yaml-tagged field under `config/`.
 
@@ -285,17 +285,17 @@ No change adds, renames, retypes or removes a yaml-tagged field under `config/`.
 
 Defaults are part of the model. `config/config.yml` and the `Resolved` and `Validate` paths decide what an existing file means, so changing a default changes behaviour for files nobody edited.
 
-Reading an existing field from a new place is allowed. Where a diagnosis needs a config change, the change is not made: the pull request carries the extended reasoning below and the operator decides.
+Reading an existing field from a new place is allowed. Where a diagnosis needs a configuration change, the change is not made: the pull request carries the extended reasoning below and the operator decides.
 
 ## Techniques
 
 Three tiers, and one rule that applies to all of them.
 
-**Tier 1, measurement is the whole justification.** Removing an allocation nothing reads. Presizing. Reusing a backing array instead of dropping and regrowing it. Hoisting per-process work out of the per-request path. Building lazily what most requests never read. Pooling a value whose lifetime ends at the request boundary.
+**Tier 1, measurement is the whole justification.** Removing an allocation nothing reads. Presizing. Keeping a backing array across uses, where the code drops and regrows one. Hoisting per-process work out of the per-request path. Building lazily what most requests never read. Pooling a value whose lifetime ends at the request boundary.
 
-**Tier 2, allowed with an argued reason in the pull request and a fixture.** Immutability: sharing a value instead of copying it. The argument names what guarantees nobody writes to it; the fixture is the case where two requests hold it at once. The repo already leans this way - a handler's captures are shared across requests, and flatstack's bytecode is immutable and shared by program identity.
+**Tier 2, allowed with an argued reason in the pull request and a fixture.** Immutability: sharing one value where the code copies it per use. The argument names what guarantees nobody writes to it; the fixture is the case where two requests hold it at once. The repository already leans this way - a handler's captures are shared across requests, and flatstack's bytecode is immutable and shared by program identity.
 
-**Tier 3, needs the operator before it is written, not after.** `unsafe` in any form. `unsafe.String` or `unsafe.Slice` over a buffer a caller may still write. Pointer rewriting of model values. A free list whose entries outlive a request. Any change to value semantics. These are the changes whose failure mode is a wrong answer under concurrency rather than a slow one, and the suite is not a proof of their absence. Each needs what aliases what, which test holds it, and a `-race` run over the affected packages.
+**Tier 3, needs the operator before it is written, not after.** `unsafe` in any form. `unsafe.String` or `unsafe.Slice` over a buffer a caller may still write. Pointer rewriting of model values. A free list whose entries outlive a request. Any change to value semantics. These are the changes whose failure mode is a wrong answer under concurrency, and the suite is no proof of their absence. Each needs what aliases what, which test holds it, and a `-race` run over the affected packages.
 
 **All three tiers.** A technique is explored by measuring it. A technique that was measured and lost is recorded, with its number and why it lost. Rejected is a result: `../flatstack.md` records the typed-slot verdict and `../allocation-performance.md` records two reverted shapes, and both issue templates carry a considered-and-rejected field.
 
@@ -307,7 +307,7 @@ Three destinations, decided by what changed.
 
 **A change under `docs/agents/`** is committed and pushed straight to `main`, by the coordinator. These documents are the protocol agents read, not a product anybody reviews, and holding a protocol correction behind a review queue means every sprint in flight keeps following the version that was wrong.
 
-**Everything else** goes on `area/<subject>`, one branch per subject rather than per finding. One finding is still one commit, with the body shape below as its commit message, so the branch reads as the sequence of findings it is - the collapse is in the review unit, not in the history. Code, its tests, its fixtures and the documentation that describes it travel together: a reviewer cannot judge a behaviour change whose documentation is in another queue.
+**Everything else** goes on `area/<subject>`, one branch per subject, carrying every finding in that subject. One finding is still one commit, with the body shape below as its commit message, so the branch reads as the sequence of findings it is: the history keeps them separate and the review unit collapses them. Code, its tests, its fixtures and the documentation that describes it travel together: a reviewer cannot judge a behaviour change whose documentation is in another queue.
 
 **Documentation outside `docs/agents/`** goes on the area branch it belongs to, never a branch of its own.
 
@@ -317,29 +317,33 @@ A sprint that produced nothing to commit reports and pushes nothing.
 
 One pull request per area, and it stays a **draft** while any agent is still adding to that area - a draft is what stops it being merged half-built. Several agents may share an area; their branches are assembled onto it in an order the body states, because within an area they tend to touch the same files.
 
-The reason is review load rather than taste. A pull request per finding produces more review than the findings are worth, and the operator ends up merging a queue rather than reading a change. If an agent believes a finding has to ship on its own - a live security defect is the plausible case - it says so in its report and leaves it on the area branch regardless. Splitting one out is the operator's call.
+The reason is review load. A pull request per finding produces more review than the findings are worth, and turns the operator's job into merging a queue. If a finding has to ship on its own - a live security defect is the plausible case - it says so in its report and leaves it on the area branch regardless. Splitting one out is the operator's call.
 
 ## The pull request
 
-A reader opens it to learn what was broken and what the change does about it. Four parts, in this order, and nothing else.
+A reader opens it to learn what was broken and what the change does about it. Four parts, in this order.
 
 1. **`## Problem`.** What is broken, and the number or the symptom that shows it.
 2. **`## Change`.** What the pull request does, named in the terms of the code: the function, the type, the flag, the file. A paragraph, or a short list where there are several.
 3. **The measurements**, where anything was measured: a markdown table with a signed delta column. Never pasted `benchstat` output.
-4. **`worktree verdict --from=main`**, that exact command, its output raw and last. It is already markdown, so it renders rather than needing a fence.
+4. **`worktree verdict --from=main`**, that exact command, its output raw and last. It is already markdown, so it renders without a fence.
 
 The title is `type(scope): subject`. A finding's commit message is the same Problem and Change in prose, without the table or the verdict.
 
 What is left out, because every one of these has gone in and made a body worse:
 
+<!-- vale llm-slop.ReviewerAddress = NO -->
+
 | Not in a body                        | Why                                                                                    |
 |--------------------------------------|----------------------------------------------------------------------------------------|
 | Anything that did not change         | A call site that still works and a package that behaves the same are not the change    |
-| A section nobody asked for           | No audit, no reachability survey, no inventory, no "also on this branch"               |
+| An invented section                  | No audit, no reachability survey, no inventory, no "also on this branch"               |
 | How the work was done                | No agent, no sprint, no wave, no measure lock, no "verified on a private binary"       |
 | Anything addressed to a reviewer     | No "worth reviewing", no open questions, no checklist of what to look at               |
 | A proposal in place of a change      | Either the change is in the branch or it is in an issue. A body is not a design review |
 | An adjective where the number exists | "much faster" when the benchmark printed 214.7ms to 4.17ns                             |
+
+<!-- vale llm-slop.ReviewerAddress = YES -->
 
 A rejected approach goes in the document that owns the subject, with its number and why it lost, not in the body. A body is read once; the document is read by whoever tries it next.
 
@@ -354,22 +358,26 @@ One row per thing measured, one column per unit that moved, and a signed delta. 
 
 Six slots, one or two lines each.
 
-| Slot                 | What it says                                                                                                                        |
-|----------------------|-------------------------------------------------------------------------------------------------------------------------------------|
-| Cost                 | The call, the measured number, and how it was measured                                                                              |
-| What the field buys  | The behaviour that would be lost                                                                                                    |
-| Consumer and trigger | Who it serves, what triggers it, and why those two do not match                                                                     |
-| Intent               | The stated purpose the current trigger is wrong against                                                                             |
-| Proposal             | Where the setting lives, its name, its default, and what an existing file does with the key absent                                  |
-| What breaks for whom | The config keys, demo, fixture or venom suite whose behaviour changes, and what a user who upgrades without editing their file sees |
+| Slot                 | What it says                                                                                                                               |
+|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Cost                 | The call, the measured number, and how it was measured                                                                                     |
+| What the field buys  | The behaviour that would be lost                                                                                                           |
+| Consumer and trigger | Who it serves, what triggers it, and why those two do not match                                                                            |
+| Intent               | The stated purpose the current trigger is wrong against                                                                                    |
+| Proposal             | Where the setting lives, its name, its default, and what an existing file does with the key absent                                         |
+| What breaks for whom | The configuration keys, demo, fixture or venom suite whose behaviour changes, and what a user who upgrades without editing their file sees |
 
 The shape, as the operator writes it:
 
+<!-- vale off -->
+
 > Calling runtime.ReadMem is a 400ns performance hit; the field is used to provide \_\_\_\_, and it does so for the service level runtime, however is triggered by a http request. As the command is intended for server monitoring, the behaviour changes to be configured in the config package, adds a monitoring interval to trigger it in the background.
+
+<!-- vale on -->
 
 ## Artifacts
 
-The naming rule is the gitignore rule. Every name below is already covered by a line in `.gitignore`, which is why collecting a measurement needs no change to it.
+The naming rule is the gitignore rule. Every name below is already covered by a line in `.gitignore`, so collecting a measurement needs no change to it.
 
 | Artifact         | Name                                     | Already ignored by  |
 |------------------|------------------------------------------|---------------------|
@@ -383,9 +391,9 @@ The naming rule is the gitignore rule. Every name below is already covered by a 
 
 Raw output lives at the worktree root, or under `cover/` for coverage profiles, never under `docs/`. Any other extension is forbidden, so that those lines keep covering it.
 
-The repo root already holds `bench-after.txt`, `bench-after2.txt`, `bench-after3.txt`, `bench-before.txt`, `bench-e2e-*.json` and `bench-profile-*.json` from earlier sprints, with no manifest and unknown build provenance. They are not baselines. The `flatstack.test`, `runner.test` and `tests.test` binaries beside them are ignored leftovers, not a build of this tree.
+The repository root already holds `bench-after.txt`, `bench-after2.txt`, `bench-after3.txt`, `bench-before.txt`, `bench-e2e-*.json` and `bench-profile-*.json` from earlier sprints, with no manifest and unknown build provenance. They are not baselines. The `flatstack.test`, `runner.test` and `tests.test` binaries beside them are ignored leftovers of an earlier build.
 
-Curated output goes in the pull request body and, where the number is durable, in the document that owns the subject: binding shapes to [../allocation-performance.md](../allocation-performance.md), engine comparison to [../flatstack.md](../flatstack.md). Nothing timing-dependent is committed. `atkins.yml` already records why, on `test:phpscript:matrix`: the fixture report is generated deliberately without `--profile`, because a timing that differs by a millisecond per run would be a diff in every commit.
+Curated output goes in the pull request body and, where the number is durable, in the document that owns the subject: binding shapes to [../allocation-performance.md](../allocation-performance.md), engine comparison to [../flatstack.md](../flatstack.md). Nothing timing-dependent is committed. `atkins.yml` already records why, on `test:phpscript:matrix`: the fixture report is generated without `--profile`, because a timing that differs by a millisecond per run would be a diff in every commit.
 
 ## Decisions that do not come back
 
