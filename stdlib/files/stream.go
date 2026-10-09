@@ -106,7 +106,7 @@ type inputStream struct {
 // request answers with the buffered body, rewindable on every open as PHP
 // 5.6+ made it, while the CLI maps it onto stdin, a live stream a script
 // drains once. A staged body wins over the SAPI because the test harness
-// speaks as cli — the way the php column does — while still carrying the
+// speaks as cli, the way the php column does, while still carrying the
 // request a fixture states; a cli run without one keeps its stdin.
 func inputSource(rt *runner.Runtime) io.Reader {
 	if c, ok := runner.RequestContext(rt.Context()); ok && len(c.RawBody()) > 0 {

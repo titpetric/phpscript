@@ -290,7 +290,7 @@ func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
 // the (int) cast, which phpval.Int already is for every scalar; a collection is
 // its truthiness (intval([]) is 0, intval([1, 2]) is 1), which the cast owns
 // here because phpval.Int reads a collection as 0. Any other base applies to a
-// string argument only — intval(12.9, 16) is 12 — and reads it through
+// string argument only (intval(12.9, 16) is 12) and reads it through
 // strtolInt.
 func phpIntval(num any, base ...any) int64 {
 	radix := int64(10)
@@ -315,7 +315,7 @@ func phpIntval(num any, base ...any) int64 {
 // does. Base 0 detects the base from a 0x, 0b or 0 prefix and is 10 without
 // one; 0b is PHP's own addition for bases 0 and 2, stripped before strtol ever
 // sees the string. A base outside 0 and 2-36 is strtol's EINVAL, which intval
-// surfaces as 0 rather than an error — php 8.5 raises no ValueError. The 0o
+// surfaces as 0 and raises nothing; php 8.5 raises no ValueError either. The 0o
 // octal prefix is not recognised, exactly because strtol does not know it:
 // intval("0o12", 8) is 0.
 func strtolInt(s string, base int64) int64 {

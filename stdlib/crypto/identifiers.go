@@ -16,8 +16,8 @@ import (
 // package already owns. Both are implemented here rather than through a Go
 // dependency, because each is a format over crypto/rand and nothing more.
 //
-// The two share one layout — a 48-bit millisecond timestamp followed by
-// randomness — so both sort by creation time. ulid() renders it in Crockford
+// The two share one layout (a 48-bit millisecond timestamp followed by
+// randomness), so both sort by creation time. ulid() renders it in Crockford
 // base32; uuid() renders it as a version 7 UUID, the hexadecimal spelling of
 // the same idea.
 func RegisterIdentifiers(rt *runner.Runtime) {

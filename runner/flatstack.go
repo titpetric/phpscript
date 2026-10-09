@@ -536,7 +536,7 @@ func (h *flatHost) SetStaticProp(class, name string, value any, op string) error
 }
 
 // StaticVarBag returns the persistent storage of one `static $x` statement,
-// the same per-node table the interpreter's named functions use — so the
+// the same per-node table the interpreter's named functions use, so the
 // counts agree even when the two backends run the same program in turn.
 func (h flatHost) StaticVarBag(node *model.StaticVar) (map[string]any, bool) {
 	bag, seeded := h.runtime.funcStatics[node]

@@ -36,7 +36,7 @@ func registerExec(rt *runner.Runtime, r root) {
 // it starts, and it says the same thing getcwd() does.
 //
 // A host that bound no directory leaves Dir empty, which is the process working
-// directory — the behaviour every command had before this.
+// directory, which is where every command starts without one.
 func (r root) command(ctx context.Context, cmdline string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "sh", "-c", cmdline)
 	if dir := r.hostWorkDir(); dir != "" {

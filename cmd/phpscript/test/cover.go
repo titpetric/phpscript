@@ -107,8 +107,8 @@ type profileKey struct {
 
 // coverFilePath resolves a collected filename to the path the runtime read it
 // from, as seen from the invocation directory. Includes resolve through a
-// union: the fixture's directory answers first, the application root — the
-// invocation directory itself — after it. The profile must name the file the
+// union: the fixture's directory answers first, then the application root,
+// which is the invocation directory itself. The profile must name the file the
 // union served, so the same order decides here: the fixture-joined path when
 // it exists, the bare path otherwise.
 func coverFilePath(fx *tests.Fixture, file string) string {
@@ -268,7 +268,7 @@ func coverFiles(fixtures []*tests.Fixture) []string {
 }
 
 // reportBlocks filters the merged profile down to what a report charges:
-// application sources. A .phpt entrypoint is the test itself — its top-level
+// application sources. A .phpt entrypoint is the test itself: its top-level
 // code runs by definition and would only inflate every summary built on the
 // report.
 func reportBlocks(blocks []profileBlock) []profileBlock {

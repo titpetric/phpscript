@@ -265,7 +265,7 @@ type StaticVarDecl struct {
 }
 
 // Global is `global $x[, $y];`. The statement parses into a node so the
-// formatter can print it back; at runtime it is a documented no-op — the
+// formatter can print it back; at runtime it is a documented no-op, and the
 // variable stays unset (docs/design.md), and `phpscript lint` reports it.
 type Global struct {
 	Names []string

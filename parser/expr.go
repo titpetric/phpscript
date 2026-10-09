@@ -267,7 +267,7 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 		case p.isOp("->"):
 			// Member/method access. The README floats `.` notation for fields,
 			// but `.` is also PHP string concatenation (used throughout the
-			// minitpl T1 target). Those are irreconcilable without type info, so
+			// minitpl T1 target). Those are irreconcilable without type information, so
 			// v0 uses `->` for members and keeps `.` as concat.
 			p.next()
 			// `$obj->$m(...)` calls the method named by `$m`. Without the

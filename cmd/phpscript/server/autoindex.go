@@ -134,7 +134,7 @@ func renderAutoindex(urlPath string, entries []fs.DirEntry) []byte {
 	return out.Bytes()
 }
 
-// writeAutoindexRow writes one entry as a table row. An entry whose info cannot
+// writeAutoindexRow writes one entry as a table row. An entry whose metadata cannot
 // be read is still listed: it is there, and a size is not why anyone came.
 func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 	name, href := escapeEntry(entry)

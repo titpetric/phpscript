@@ -359,8 +359,8 @@ $sorter = function ($rows) {
 	}
 }
 
-// A class reference nothing declares — a `new`, a static call, property or
-// constant — is reported with the message the runtime would raise. Classes
+// A class reference nothing declares (a `new`, a static call, property or
+// constant) is reported with the message the runtime would raise. Classes
 // declared in the file, registered host classes, anonymous classes and the
 // contextual self/static names lint clean.
 func TestFileReportsUndefinedClasses(t *testing.T) {

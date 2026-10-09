@@ -70,8 +70,9 @@ func (h *handler) serveErrorPage(w http.ResponseWriter, r *http.Request, status 
 // nothing, and reports whether it did.
 //
 // It differs from serveErrorPage in one way: the page is handed the request
-// whole, body included. Nothing has read that body — the request matched no
-// file and ran no script — so a page answering here is the last thing that can,
+// whole, body included. Nothing has read that body, because the request
+// matched no file and ran no script, so a page answering here is the last
+// thing that can,
 // and a site whose 404.php dispatches its own routes needs it to. A form
 // posting to a URL no file backs arrives with $_POST, $_FILES and php://input
 // filled the way the endpoint it was meant for would have seen them, and the

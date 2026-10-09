@@ -260,7 +260,7 @@ func (st *execState) handle(runErr error) bool {
 
 // enterUserFrame pushes a call frame for def and binds the arguments: the
 // receiver into paramSlots[0] when the def carries one, the positionals in
-// order, and the leftovers into a trailing variadic collector as an array —
+// order, and the leftovers into a trailing variadic collector as an array:
 // an empty one when the caller stops short of it, which is bindParams'
 // answer too. An argument the caller did not pass leaves its slot cold, so
 // the entry prologue can bind the parameter's default.
@@ -662,7 +662,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				identifiable.SetID(inst.extra)
 			}
 			if host.SetGlobal(program.localNames[inst.a], value) {
-				// The host claimed the name — a superglobal — so the store is
+				// The host claimed the name (a superglobal), so the store is
 				// request state, not frame state.
 				st.initialized[inst.a] = false
 			} else {

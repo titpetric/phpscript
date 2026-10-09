@@ -15,8 +15,8 @@ import (
 // The undefined-name check compares every call and class reference in a file
 // against two universes: the names the file declares itself, and the names a
 // runtime would answer for after stdlib registration. A miss is a warning, not
-// a failure — a name can arrive through an include or an autoloader the lint
-// pass does not chase — but each finding is a line that would raise
+// a failure, because a name can arrive through an include or an autoloader the
+// lint pass does not chase, but each finding is a line that would raise
 // "call to undefined function" or "undefined class" the moment it runs, so it
 // is worth reading before the runtime says it.
 

@@ -25,7 +25,7 @@ import (
 
 // setVar routes a whole-variable assignment. A superglobal is one binding per
 // request, visible in every scope, so writing the variable itself rebinds the
-// global — the way PHP lets a script replace $_POST wholesale — and clears any
+// global, the way PHP lets a script replace $_POST wholesale, and clears any
 // scope-local shadow so reads keep resolving through the global. Every other
 // name belongs to the scope. The superglobal set lives in phpval.AutoGlobals,
 // whose claim check is a byte compare rather than a map probe: this runs on
@@ -189,7 +189,7 @@ type Runtime struct {
 	// declarations, one bag per StaticVar statement. The statement node's
 	// address is the function identity: the AST is parsed once, and each
 	// `static` statement sits in exactly one function body. Closures do not
-	// use this table — each closure value carries its own bag on closureEnv,
+	// use this table: each closure value carries its own bag on closureEnv,
 	// which is PHP's per-instance static semantics.
 	funcStatics map[*model.StaticVar]map[string]any
 
@@ -872,7 +872,7 @@ func (rt *Runtime) LookupConstructor(name string) (any, bool) {
 // off. Coverage is an interpreter feature: while a collector is installed, a
 // runtime created with NewFlatStack stops delegating to the bytecode backend,
 // because flatstack carries no coverage support (docs/flatstack.md) and the
-// fallback is atomic — a program partly counted would be a program partly run.
+// fallback is atomic: a program partly counted would be a program partly run.
 func (rt *Runtime) SetCoverage(c *coverage.Collector) { rt.coverage = c }
 
 // SetIncludeCache installs a shared include cache. A cache must only be shared
