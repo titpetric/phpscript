@@ -98,7 +98,7 @@ func build(rt *runner.Runtime, src *sources) ([]Func, []Class) {
 }
 
 // buildFunc merges the scanned source entry for name with the reflected
-// signature of the registered Go function. Source provides parameter names and
+// signature of the registered Go function. Source carries parameter names and
 // comments; reflection remains authoritative for returns because it can map a
 // concrete Go type back to the PHP class registered for it.
 func buildFunc(name string, fn any, src *sources, classTypes map[reflect.Type]string) Func {
@@ -211,7 +211,7 @@ func primaryClassName(names []string, src *sources) string {
 //
 // Two constructors may build the same type, as Regexp\Compile and
 // Regexp\CompilePOSIX both build a *regexp.Regexp. The first name wins, so a
-// method returning that type is documented under one class rather than under
+// method returning that type is documented under one class and not under
 // whichever registration was read last.
 func registeredClassTypes(rt *runner.Runtime, src *sources) map[reflect.Type]string {
 	classTypes := map[reflect.Type]string{}

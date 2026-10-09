@@ -1,4 +1,4 @@
-// Package flatstack provides the runner embedding API with an opt-in flat
+// Package flatstack is the runner embedding API with an opt-in flat
 // bytecode backend. Unsupported programs are rejected before execution and run
 // by the full interpreter, preserving runner behavior while the bytecode subset
 // grows.
@@ -14,10 +14,10 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// The embedding API is runner's, aliased rather than wrapped: a host that swaps
+// The embedding API is runner's, aliased and never wrapped: a host that swaps
 // runner for flatstack changes its import and nothing else, and a value built
 // here is the same value either package would hand back. Only New differs, and
-// it is the whole of what this package decides.
+// and this package decides nothing else.
 
 // Runtime is runner.Runtime.
 type Runtime = runner.Runtime
@@ -75,7 +75,7 @@ func ScopeFromContext(ctx context.Context) (*Scope, bool) {
 // IsExit reports whether err is the error exit() and die() raise, and answers it.
 func IsExit(err error) (*ExitError, bool) { return runner.IsExit(err) }
 
-// Supports reports whether p will execute through flat bytecode rather than
+// Supports reports whether p will execute through flat bytecode and not
 // the compatibility interpreter. Call this in benchmarks to prevent measuring
 // an accidental fallback.
 func Supports(p *model.Program) error {

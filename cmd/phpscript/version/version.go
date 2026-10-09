@@ -26,10 +26,10 @@ const Name = "Show version/build information"
 // Build is what the linker wrote into the binary, set by main before any
 // command is built.
 //
-// It is a package variable rather than a constructor argument because every
+// It is a package variable and no constructor argument because every
 // command constructor takes the same two arguments, and build information is
-// neither configuration nor a flag: it describes the binary rather than the
-// tree it is pointed at or the run an operator asked for.
+// neither configuration nor a flag: it describes the binary, and not the
+// tree it is pointed at or the run an operator started.
 var Build Info
 
 // NewCommand creates a new version command.

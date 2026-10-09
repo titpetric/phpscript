@@ -13,7 +13,7 @@ import (
 var flatMailKeys = []string{"host", "port", "username", "password", "from", "insecure"}
 
 // Mail configures the mail servers mail() and `new Mail($name)` deliver
-// through, keyed by the name a script asks for; "default" is what a script
+// through, keyed by the name a script names; "default" is what a script
 // naming none gets.
 //
 // The credentials stay here: nothing a script can call spells a host or a
@@ -22,7 +22,7 @@ var flatMailKeys = []string{"host", "port", "username", "password", "from", "ins
 type Mail map[string]mail.Config
 
 // Validate checks that every configured server can be delivered through, so a
-// credential the operator got wrong fails the command rather than the first
+// credential the operator got wrong fails the command and not the first
 // delivery. A @schedule job discovering it at three in the morning is the
 // failure mode worth avoiding.
 //

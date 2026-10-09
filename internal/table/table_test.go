@@ -47,7 +47,7 @@ func TestTableRendersAnsi(t *testing.T) {
 		}
 	}
 
-	// Every row is padded to one width, which is what keeps the box square.
+	// Every row is padded to one width, which keeps the box square.
 	lines := strings.Split(strings.TrimSpace(ansi.Strip(got)), "\n")
 	for i, line := range lines[:5] {
 		if ansi.StringWidth(line) != ansi.StringWidth(lines[0]) {

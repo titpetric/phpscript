@@ -137,7 +137,7 @@ func TestRunReportsAnsiTableOnATerminal(t *testing.T) {
 }
 
 // collapse squeezes the runs of padding a table adds, so an assertion names
-// the cells of a row rather than their column widths.
+// the cells of a row and not their column widths.
 func collapse(value string) string {
 	return strings.Join(strings.Fields(value), " ")
 }

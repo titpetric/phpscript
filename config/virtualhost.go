@@ -17,7 +17,7 @@ const VirtualHostConfigFile = "phpscript.yml"
 var tenantKeys = []string{"server", "virtualhost"}
 
 // tenantKeysOwner completes the sentence a rejected tenant key is reported
-// with. It is a whole clause rather than a word because the message is
+// with. It is a whole clause and no word because the message is
 // documented verbatim in docs/configuration.md.
 const tenantKeysOwner = "is set by the operator, not by the site"
 
@@ -26,7 +26,7 @@ const tenantKeysOwner = "is set by the operator, not by the site"
 // Root, which the site's own author writes.
 type VirtualHost struct {
 	// Domain is the Host headers this entry answers for, separated by
-	// spaces. Every name reaches the same site, not a copy of it: one
+	// spaces. Every name reaches the same site, with no copy of it: one
 	// application root, one configuration, one set of connections and one
 	// recorder, no matter which name a request arrived under. The usual case
 	// is a bare domain and its www form, "example.com www.example.com".
@@ -40,13 +40,13 @@ type VirtualHost struct {
 
 	// DocumentRoot is the directory under Root served over HTTP. It defaults
 	// to public and rarely needs setting: it is here for a site whose tree
-	// already names that directory something else, not a field an operator is
+	// already names that directory something else, and no field an operator is
 	// expected to fill in.
 	DocumentRoot string `yaml:"document_root"`
 }
 
 // Normalize rewrites Domain as the list Domains returns, so an entry carries
-// the names a Host header is compared against rather than the spelling the
+// the names a Host header is compared against, and not the spelling the
 // operator used.
 func (v VirtualHost) Normalize() VirtualHost {
 	v.Domain = strings.Join(v.Domains(), " ")
@@ -90,12 +90,12 @@ func (v VirtualHost) Load(base Config) (Config, error) {
 }
 
 // load is Load, also returning the keys the file named. Validation needs to
-// tell a setting the site asked for from one it inherited from base.
+// tell a setting the site named from one it inherited from base.
 func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	filename := filepath.Join(v.Root, VirtualHostConfigFile)
 	name := v.Name()
 
-	// A missing file is an error rather than a fall back to the operator's
+	// A missing file is an error, with no fall back to the operator's
 	// defaults. The file is the site's contract, and a site served under
 	// settings it never wrote is the failure mode worth avoiding.
 	result, declared, err := Overlay(base, filename, tenantKeys, tenantKeysOwner)
@@ -124,7 +124,7 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 }
 
 // ValidateVirtualHosts checks the whole list before any site is built, so a
-// bad entry fails the server rather than one request. Every entry is loaded
+// bad entry fails the server and not one request. Every entry is loaded
 // here, because the document root and the telemetry block two of the checks
 // need come from the site's phpscript.yml and not from the entry.
 func (c Config) ValidateVirtualHosts() error {
@@ -167,7 +167,7 @@ func (c Config) ValidateVirtualHosts() error {
 			return fmt.Errorf("virtualhost %q: document root: %w", name, err)
 		}
 
-		// A server the site got wrong fails startup rather than the first
+		// A server the site got wrong fails startup and not the first
 		// delivery, which on a site whose only sender is a @schedule job is
 		// the middle of the night on the one path nobody is watching.
 		if err := loaded.Mail.Validate(filepath.Join(host.Root, VirtualHostConfigFile)); err != nil {
@@ -183,9 +183,9 @@ func (c Config) ValidateVirtualHosts() error {
 		}
 
 		// The platform mounts its dashboard on the root router, which shadows
-		// that path prefix on every host, so a site that asks for the same
+		// that path prefix on every host, so a site that names the same
 		// path gets a dashboard nothing can reach. A site that names no path
-		// of its own is not asking for one and is left alone.
+		// of its own gets none and is left alone.
 		if c.Telemetry.Enabled && Declares(declared, "telemetry", "path") && loaded.Telemetry.Path == c.Telemetry.Path {
 			return fmt.Errorf("virtualhost %q: telemetry path %q is the path the server mounts its own dashboard on", name, loaded.Telemetry.Path)
 		}

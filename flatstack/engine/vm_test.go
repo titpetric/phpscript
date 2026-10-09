@@ -10,7 +10,7 @@ import (
 // frame handle a real host holds, the snapshot-before-call and write-back-
 // after ordering of its slow path, plus the calls themselves. Every other
 // method is left to the embedded nil interface, so a test program that
-// reaches one fails loudly rather than silently.
+// reaches one fails loudly, and never silently.
 type refTestHost struct {
 	Host
 	frame  FrameLocals
@@ -81,7 +81,7 @@ func runRefProgram(t *testing.T, source string, calls map[string]func(*refTestHo
 
 // The locals snapshot the host was handed predates the call, so it still holds
 // the value the out parameter replaced. Writing it back would undo the write,
-// which is what made a reused $m keep the first call's matches.
+// and that is what made a reused $m keep the first call's matches.
 func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
 	echoed := runRefProgram(t, `<?php
 		preg_match_all("/a/", "aa", $m);
@@ -186,7 +186,7 @@ func TestExecStateReleaseClearsToCapacity(t *testing.T) {
 	st.iterators[0] = &iteratorState{source: "retained"}
 	st.callFrames[0] = callFrame{locals: []any{"retained"}}
 
-	// A program that used two stack slots and returned hands back a short
+	// A program that used two stack slots and returned releases a short
 	// slice; the six slots above it still hold values.
 	st.stack = st.stack[:2]
 	st.release()
@@ -221,7 +221,7 @@ func TestExecStateReleaseClearsToCapacity(t *testing.T) {
 	}
 }
 
-// An empty state is what the pool hands out for the first program with no
+// An empty state is what the pool returns for the first program with no
 // locals, and release must not panic on it.
 func TestExecStateReleaseEmpty(t *testing.T) {
 	st := &execState{}

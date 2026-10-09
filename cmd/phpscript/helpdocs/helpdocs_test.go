@@ -50,7 +50,7 @@ func TestRenderTerminal(t *testing.T) {
 	if !strings.Contains(got, "\u256d") || !strings.Contains(got, "\u2502") {
 		t.Errorf("render has no box-drawing table:\n%s", got)
 	}
-	// The separator row is consumed by the parser rather than printed as data.
+	// The separator row is consumed by the parser and never printed as data.
 	if strings.Contains(got, "|---|") {
 		t.Errorf("the markdown separator row leaked into the render:\n%s", got)
 	}
@@ -69,7 +69,7 @@ func TestRender(t *testing.T) {
 	}
 }
 
-// TestExamples covers the per-command documents, which is what
+// TestExamples covers the per-command documents, the files
 // `phpscript <command> --help` prints under its usage line.
 func TestExamples(t *testing.T) {
 	got := helpdocs.Examples("test", true)
@@ -82,7 +82,7 @@ func TestExamples(t *testing.T) {
 }
 
 // TestFS pins that every embedded document is a command's examples and holds a
-// table, since that is the whole of what the renderer reads.
+// table, since the renderer reads nothing else.
 func TestFS(t *testing.T) {
 	names, err := fs.Glob(helpdocs.FS(), "*.md")
 	if err != nil {

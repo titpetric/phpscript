@@ -6,7 +6,7 @@ import (
 
 // Server is the YAML spelling of platform.Options: everything a configuration
 // file gets to say about the platform `phpscript server` runs on. The options
-// the platform takes from the process rather than from a file, such as the
+// the platform takes from the process and not from a file, such as the
 // config filesystem a composed service embeds, are not part of it, and neither
 // is the recorder: that one is the top level telemetry block, applied by
 // Config.PlatformOptions.

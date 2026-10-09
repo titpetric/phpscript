@@ -15,7 +15,7 @@ const (
 //
 // Go's conversion of an out-of-range float to int64 is implementation defined,
 // and on amd64 it saturates: every value too large becomes math.MinInt64. PHP
-// wraps instead, modulo 2^64 into the signed range, which is what C's
+// wraps instead, modulo 2^64 into the signed range, as C's
 // (int64_t) cast does on the same hardware and what zend_dval_to_lval
 // implements. The two disagree on every value outside the range:
 //

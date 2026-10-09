@@ -53,8 +53,8 @@ func Compare(x, y any) int {
 	return strings.Compare(String(x), String(y))
 }
 
-// comparableArray reports whether v is an array for comparison purposes,
-// returning it as an *Array. A binding that hands back a native Go collection
+// comparableArray reports whether v is an array for a comparison,
+// returning it as an *Array. A binding that returns a native Go collection
 // is one too, so it sorts where a *model.Array would.
 func comparableArray(v any) (*model.Array, bool) {
 	switch x := v.(type) {
@@ -153,7 +153,7 @@ func (n phpNum) float() float64 {
 }
 
 // phpNumeric returns v as a number, reporting false for anything PHP would
-// compare as a string. A numeric string is a number here, which is the whole
+// compare as a string. A numeric string is a number here, which is
 // point: PHP compares "10" and "9" as 10 and 9.
 func phpNumeric(v any) (phpNum, bool) {
 	switch x := v.(type) {
@@ -171,7 +171,7 @@ func phpNumeric(v any) (phpNum, bool) {
 
 // numericString reads s the way PHP's is_numeric_string does: whitespace around
 // an optional sign, digits with an optional fraction and an optional exponent.
-// The syntax is checked here rather than left to strconv, which also accepts
+// The syntax is checked here and never left to strconv, which also accepts
 // hex floats, digit separators, "Inf" and "NaN", none of which PHP considers
 // numeric, so "0x1A" has to sort as a string.
 func numericString(s string) (phpNum, bool) {
@@ -187,7 +187,7 @@ func numericString(s string) (phpNum, bool) {
 		f, _ := strconv.ParseFloat(text, 64)
 		return phpNum{f: f, text: text, intText: true}, true
 	}
-	// An exponent out of float64's range yields ±Inf with ErrRange, which is
+	// An exponent out of float64's range returns ±Inf with ErrRange, which is
 	// the value PHP reads for "1e400" too.
 	f, err := strconv.ParseFloat(text, 64)
 	if err != nil && !errors.Is(err, strconv.ErrRange) {

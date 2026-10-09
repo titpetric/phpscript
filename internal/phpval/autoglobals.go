@@ -1,12 +1,12 @@
 package phpval
 
-// AutoGlobals holds PHP's superglobals in fixed fields instead of map
+// AutoGlobals holds PHP's superglobals in fixed fields and no map
 // entries. The set is closed by the language, so the per-store "is this a
 // superglobal" question - asked on every variable assignment in both
-// engines - reduces to one byte compare and a switch instead of a map
-// probe, and a request reset is eight field writes instead of a map clear.
+// engines - reduces to one byte compare and a switch in place of a map
+// probe, and a request reset is eight field writes in place of a map clear.
 //
-// The fields are any, not a concrete array type: a script may assign
+// The fields are any and no concrete array type: a script may assign
 // whatever it likes over a superglobal, and phpscript keeps PHP's answer.
 // No lock: a runtime serves one request on one goroutine, and the write
 // path is the same single-threaded store path every other variable takes.

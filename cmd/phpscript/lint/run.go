@@ -80,7 +80,7 @@ func run(args []string, opts Options, out io.Writer) error {
 	}
 
 	// The report file is created before anything is printed, so an unwritable
-	// path fails the command rather than leaving half a report behind.
+	// path fails the command and leaves no half report behind.
 	var report *os.File
 	if opts.Output != "" {
 		report, err = os.Create(opts.Output)
@@ -157,7 +157,7 @@ func run(args []string, opts Options, out io.Writer) error {
 }
 
 // sink is one output the findings go to: the terminal or a report file, each
-// holding a table per folder rather than one table for the run.
+// holding a table per folder and not one table for the run.
 type sink struct {
 	w        io.Writer
 	markdown bool
@@ -175,7 +175,7 @@ func (s sink) summary(format string, args ...any) {
 
 // collect lints every file and returns one result per finding, plus a passing
 // result for a file that had none, so the table reports what was checked
-// rather than only what went wrong.
+// and not only what went wrong.
 func collect(args []string, checkFlatstack bool) ([]result, error) {
 	files, err := list.ExpandFiles(args)
 	if err != nil {

@@ -52,7 +52,7 @@ func nameParams(params []Param) []Param {
 }
 
 // dedupeParams numbers repeated parameter names, so two ignored arguments
-// render as $unused1 and $unused2 rather than twice as $unused.
+// render as $unused1 and $unused2, and never twice as $unused.
 func dedupeParams(params []Param) []Param {
 	counts := map[string]int{}
 	for _, p := range params {
@@ -98,9 +98,9 @@ func typeParamName(p Param) string {
 // concrete types use their PHP class name; a trailing error is thrown, not
 // returned.
 //
-// Several non-error results are one array, not a union: the runtime packs them
+// Several non-error results are one array and no union: the runtime packs them
 // into a PHP list for the script to destructure, so time.Time.ISOWeek's
-// (year, week) documents as array rather than as int.
+// (year, week) documents as array and not as int.
 func reflectReturn(t reflect.Type, classTypes map[reflect.Type]string) string {
 	kept := []string{}
 	for i := 0; i < t.NumOut(); i++ {

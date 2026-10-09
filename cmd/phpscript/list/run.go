@@ -42,8 +42,8 @@ func Run(args []string, stdlib bool) error {
 }
 
 func run(out io.Writer, args []string, stdlib bool) error {
-	// --stdlib asks about the binary, not about a tree, so path arguments
-	// have nothing to select and are refused rather than ignored: a caller
+	// --stdlib reports on the binary and no tree, so path arguments
+	// have nothing to select and are refused, never ignored: a caller
 	// that passed both meant one of the two.
 	if stdlib {
 		if len(args) > 0 {

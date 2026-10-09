@@ -31,8 +31,8 @@ type compiler struct {
 	nextIter int
 	// statics maps a `static $x` name of the function being compiled to the
 	// constant-pool index of its declaring *model.StaticVar node. References
-	// after the declaration compile against the live bag instead of a frame
-	// slot, which is what lets a recursive call observe the caller's writes.
+	// after the declaration compile against the live bag and no frame
+	// slot, so a recursive call observes the caller's writes.
 	// It is nil at top level and inside closures, where the statement is
 	// unsupported.
 	statics map[string]int
@@ -267,7 +267,7 @@ func (c *compiler) stmt(stmt model.Stmt, path string) error {
 // collectClasses registers the classes a program declares, after holding every
 // one of them that declares `implements` to its contract. The check is the same
 // AST name comparison the interpreter runs in hoist, so a violated contract
-// fails on both backends rather than only on one; the caller turns the error
+// fails on both backends and not on one of them; the caller turns the error
 // into the RuntimeException a script catches.
 func (c *compiler) collectClasses(prog *model.Program) error {
 	if err := model.CheckInterfaceContracts(prog); err != nil {
@@ -433,7 +433,7 @@ func (c *compiler) include(node *model.Include, path string) error {
 // tryStmt lays out a try as: body, then one block per catch clause, then the
 // finally block. Every clause is compiled with its own declared type, variable
 // slot and body, and the VM enters the first one whose type matches; the clause
-// list, not the instruction stream, decides that.
+// list decides that, and no instruction stream.
 //
 // A clause that ran, and a body that completed, jump to the finally block. An
 // error no clause matched goes there too, after the VM parks it in a hidden
@@ -650,14 +650,14 @@ func (c *compiler) doWhileStmt(node *model.DoWhile, path string) error {
 //
 // The binding reads the caller's scope by name, which a flat frame has
 // erased into slots. The compiler still has both, so it writes the entries
-// out rather than asking at run time. Only literal names can be resolved
+// out, with no lookup at run time. Only literal names can be resolved
 // that way; anything else keeps the program with the interpreter.
 func (c *compiler) compactCall(node *model.Call, path string) error {
 	if len(node.Args) == 0 {
 		return unsupported(path, "compact() with no names")
 	}
 
-	// A function static lives in a bag rather than a slot, so a name that
+	// A function static lives in a bag and no slot, so a name that
 	// resolves to one has nothing for either form to read.
 	for _, argument := range node.Args {
 		if literal, ok := model.UnwrapParenthesized(argument).(*model.Lit); ok {
@@ -677,7 +677,7 @@ func (c *compiler) compactCall(node *model.Call, path string) error {
 				continue
 			}
 		}
-		// The name is whatever the expression answers. A cast gives the
+		// The name is whatever the expression answers. A cast writes the
 		// lookup a string to work with, the way the binding's variadic
 		// string parameter coerces one.
 		if err := c.expr(argument, fmt.Sprintf("%s.name[%d]", path, i)); err != nil {
@@ -714,7 +714,7 @@ func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 			// Removing from a native slice answers a shorter one, which has
 			// to go back where the base came from. A local is the only lvalue
 			// the stack still knows at that point, so any other base keeps
-			// the program with the interpreter rather than dropping the
+			// the program with the interpreter and drops no
 			// replacement on the floor.
 			slot := -1
 			if base, ok := model.UnwrapParenthesized(t.Base).(*model.Var); ok {
@@ -1039,7 +1039,7 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		// func_get_args() reads the arguments of the call in flight. A compiled
 		// frame seeds its declared parameters into slots and keeps no argument
 		// list, so an argument past the last parameter is not in the frame at
-		// all; the whole program goes to the interpreter rather than answering
+		// all; the whole program goes to the interpreter and answers
 		// an empty list. It is the one entry in runner.ScopeBuiltins.
 		//
 		// The first-class form above reads no frame and is not refused: it is a
@@ -1080,8 +1080,8 @@ func (c *compiler) expr(expr model.Expr, path string) error {
 		c.emit(instruction{op: opCall, a: len(node.Args), name: node.Name, extra: node.Fallback})
 	case *model.New:
 		// An anonymous class is declared where it is constructed, and the
-		// bytecode carries a class name rather than a declaration. Rejecting it
-		// here delegates the whole program to the interpreter, which is the
+		// bytecode carries a class name and no declaration. Rejecting it
+		// here delegates the whole program to the interpreter, which is
 		// fallback every unsupported node takes; see docs/flatstack.md.
 		if node.Decl != nil {
 			return unsupported(path, "anonymous class")
@@ -1223,7 +1223,7 @@ func (c *compiler) closure(node *model.Closure, path string) error {
 		if use.ByRef {
 			// `use (&$x)` binds the enclosing variable itself, and a compiled
 			// closure frame holds copies. Rejecting it sends the program to the
-			// interpreter rather than silently compiling it as by-value.
+			// interpreter, and never compiles it silently as by-value.
 			return unsupported(path, "by-reference capture use (&$%s)", use.Name)
 		}
 		def.captures = append(def.captures, c.slot(use.Name))
@@ -1298,7 +1298,7 @@ func (c *compiler) incDec(node *model.Unary, path string) error {
 // interp compiles an interpolated string literal as the concatenation it is.
 // opBinary "." applies PHP's string conversion to both operands, so an embedded
 // value becomes text the same way it does in a concatenation the source wrote
-// out. The empty leading run is what gives a literal holding one expression and
+// out. The empty leading run is what a literal holding one expression and
 // no surrounding text a string result.
 func (c *compiler) interp(node *model.Interp, path string) error {
 	if len(node.Parts) == 0 {
@@ -1343,7 +1343,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 		c.emit(instruction{op: opPushConst, a: c.constant(constant)})
 		c.program.code[end].target = len(c.program.code)
 	case "instanceof":
-		// A bare class name on the right is the class, not a constant to look
+		// A bare class name on the right names the class, and no constant to look
 		// up, so it is compiled as the string it is.
 		if err := c.expr(node.Left, path+".left"); err != nil {
 			return err
@@ -1371,7 +1371,7 @@ func (c *compiler) binary(node *model.Binary, path string) error {
 
 // staticVar lowers `static $x [= expr][, $y ...];`. The bag is the same
 // per-statement storage the interpreter uses, fetched live from the host, so
-// a recursive call sees the writes of the frame above it instead of a copy.
+// a recursive call sees the writes of the frame above it, and no copy.
 // The initializers run only when the bag is unseeded, which is once per
 // function lifetime; after the statement, every reference to the declared
 // names in this function compiles against the bag.

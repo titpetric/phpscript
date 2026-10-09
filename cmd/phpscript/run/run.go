@@ -57,7 +57,7 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 	// working directory roots the runtime at its own directory instead.
 	//
 	// A path under the working directory keeps today's behaviour, because PHP
-	// resolves an include against the working directory rather than the script
+	// resolves an include against the working directory and not the script
 	// directory, and re-rooting every run would diverge from that.
 	script, root, err := resolveEntrypoint(args[0])
 	if err != nil {
@@ -70,7 +70,7 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 		stop()
 
 		// A reload replaces the generation and its error with it: the script
-		// was ended on purpose, and what it ended with is not a failure of the
+		// was ended by the script, and what it ended with is no failure of the
 		// run. Anything else is the end of the run.
 		if ctx.Err() != nil || !reloaded() {
 			return runErr
@@ -81,7 +81,7 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 // reloadScope derives the context one generation runs under, and answers
 // whether a SIGHUP ended it.
 //
-// The signal cancels the generation rather than the run, so the script stops
+// The signal cancels the generation and not the run, so the script stops
 // the way it stops for anything else - its context ends - and the loop above
 // decides whether that was the last one.
 func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
@@ -111,7 +111,7 @@ func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
 }
 
 // runOnce is one generation: a runtime, the script read and parsed again, and
-// the run. Everything it builds is dropped when it returns, which is what makes
+// the run. Everything it builds is dropped when it returns, so
 // a reload pick up an edited file.
 func runOnce(ctx context.Context, script, root string, config config.Config, globals *flags.Options) error {
 	options := config.Runner
@@ -171,8 +171,8 @@ func runOnce(ctx context.Context, script, root string, config config.Config, glo
 }
 
 // writeCoverage writes the profile the run collected, and the per-symbol report
-// when --cover asked for one. Columns come from the source text below root, the
-// way the profile format wants them.
+// when --cover named one. Columns come from the source text below root, as
+// the profile format reads them.
 //
 // The report goes to stderr because the script owns stdout: a run pipes its own
 // echo somewhere, and a coverage table mixed into it is corruption of the

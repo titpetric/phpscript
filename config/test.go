@@ -5,7 +5,7 @@ import (
 )
 
 // runKeys are the test block keys a phpscript.yml below the invocation root may
-// not set. Each describes one run of the whole command rather than one folder of
+// not set. Each describes one run of the whole command and no folder of
 // fixtures, and two folders answering differently would leave the run with no
 // answer at all.
 var runKeys = []string{"parallel", "cache", "skip_php"}
@@ -14,7 +14,7 @@ var runKeys = []string{"parallel", "cache", "skip_php"}
 const runKeysOwner = "is set by the run, not by a suite"
 
 // Test configures `phpscript test`. It is the defaults a fixture tree carries
-// for itself, so a suite describes what it needs instead of the command line
+// for itself, so a suite describes what it needs and the command line
 // repeating it on every invocation. A flag still wins: the file describes a
 // tree, and a flag is what an operator typed about this run of it.
 //
@@ -47,9 +47,9 @@ type Test struct {
 
 // Hooks are the PHP files a test session runs around the fixtures of one suite
 // root. Both are resolved against that root, and both run once per session
-// rather than once per fixture.
+// and not once per fixture.
 //
-// They are configuration rather than an annotation because a test session is
+// They are configuration and no annotation because a test session is
 // not a server. @startup, @route and @schedule are scanned out of a source tree
 // by `phpscript server`, which runs them per virtual host or per application
 // root depending on how it is configured; there is no such scope in a fixture
@@ -80,7 +80,7 @@ type TestSuite struct {
 	Config Config
 
 	// Declared holds the keys the file itself named, so a caller can tell a
-	// setting the suite asked for from one it inherited.
+	// setting the suite named from one it inherited.
 	Declared map[string]any
 }
 
@@ -123,7 +123,7 @@ func LoadTestSuite(dir, filename string, data []byte, base Config, forbidden boo
 // Validate rejects a test block whose values name nothing the run can act on.
 //
 // Whether a hook file exists is not checked here, because the file lives in the
-// caller's filesystem rather than on disk. The run reports a missing hook when
+// caller's filesystem and not on disk. The run reports a missing hook when
 // it goes to execute it.
 func (t Test) Validate(filename string) error {
 	if t.Cache != "" && t.Cache != "worker" && t.Cache != "off" {

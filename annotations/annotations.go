@@ -1,4 +1,4 @@
-// Package annotations discovers annotated PHP files in a source tree and gives
+// Package annotations discovers annotated PHP files in a source tree and binds
 // them a lifecycle: routed endpoints are served over HTTP, startup jobs run once
 // before the server listens, and scheduled jobs run on an interval.
 //
@@ -23,7 +23,7 @@
 //
 // If method is omitted, only GET and POST are routed to the handler. This
 // ignores requests like HEAD and OPTIONS, ideally leaving these to be resolved
-// in the router, rather than invoking PHP.
+// in the router, invoking no PHP.
 //
 // Specific HTTP methods like PUT are only reachable when explicitly stated.
 //
