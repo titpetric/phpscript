@@ -136,6 +136,11 @@ type Runtime struct {
 	// on, so a copied one would read and write the parent. See SetPreparer.
 	prepare func(*Runtime)
 
+	// profile is the area mask this runtime's bindings were installed under, so
+	// that rerooting them later installs no area the mount left out. New sets
+	// every area: a runtime nobody narrowed has the whole surface.
+	profile Profile
+
 	errorHandler func(error)
 	include      IncludeFunc
 	includeHooks map[string]func() (any, error)
@@ -379,6 +384,7 @@ func New(w io.Writer, opts Options) *Runtime {
 		out:          w,
 		Env:          ScriptEnvironment(opts.Env),
 		opts:         opts,
+		profile:      ^Profile(0),
 		includeCache: NewIncludeCache(),
 		funcs:        map[string]*funcEntry{},
 		userFns:      map[string]struct{}{},

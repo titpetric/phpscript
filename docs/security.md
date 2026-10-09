@@ -14,7 +14,7 @@ The order these go in is the order a mistake in them costs the most.
 4. **Set `env: []` and `telemetry.enabled: false` in the operator's own file.** The first stops the shipped connection reaching a site that declared nothing. The second leaves the platform's dashboard unmounted, because it sits on the root router in front of the host mux and answers on every domain, including one no entry claims.
 5. **Name `writable_paths`.** An empty list, the default, allows every write inside the root. A named list also stops the server executing a `.php` file that lands in one, and stops it scanning annotations there (`cmd/phpscript/server/run.go:136`).
 6. **Mount the writable volume from outside, and keep durable state out of the tree.** A sqlite file belongs at an absolute DSN; uploads belong in a directory the operator bind-mounts. See [Writable storage](#writable-storage).
-7. **Decide the capability set.** `exec`, gd, the HTTP client and disk session storage are installed by default, and each one widens what a tenant reaches. See [What a virtual host can do](#what-a-virtual-host-can-do).
+7. **Decide the capability set, and start the server with `--stdlib=secure`.** `exec`, gd, the HTTP client and disk session storage are installed by default, and each one widens what a tenant reaches. Only `exec` can be left out today. See [What a virtual host can do](#what-a-virtual-host-can-do).
 8. **Decide who reaches the site's own dashboard.** A site that enables `telemetry` mounts an unauthenticated front end on its own domain, and its traces carry the values bound to database queries. [Access control](telemetry.md#access-control) names the three ways to answer that; there is no setting in the configuration file.
 
 [Virtual hosting](use-cases/virtual-hosting.md) works a two site server through in full, and [Configuration](configuration.md#virtual-hosts) is the reference for every key named above.
@@ -55,7 +55,7 @@ The startup checks run over the whole list before the server listens, and `phpsc
 
 ## What a virtual host can do
 
-`stdlib.Register` installs every binding package `stdlib/imports.go` imports, and nothing in the configuration selects a subset (`stdlib/stdlib.go:17`). A site therefore gets the whole standard library, including the parts that reach outside the request:
+A process started without `--stdlib` installs every binding package `stdlib/imports.go` imports (`stdlib/stdlib.go:17`), so every site gets the whole standard library, including the parts that reach outside the request:
 
 | Capability                                 | Binding          | What it reaches                                                                  |
 |--------------------------------------------|------------------|----------------------------------------------------------------------------------|
@@ -65,7 +65,15 @@ The startup checks run over the whole list before the server listens, and `phpsc
 | `new Session\Storage\Disk($path)`          | `stdlib/session` | A directory the script names, created outside the root                           |
 | `imagecreatefrompng`, `imagepng`           | `stdlib/gd`      | A host path, until [#132](https://github.com/titpetric/phpscript/pull/132) lands |
 
-A production deployment is expected to leave the first row out. Selecting a profile is what issue 139's second item describes - `stdlib.Mount` taking a bitmask, with `stdlib.Default = stdlib.Secure` so a configuration always names the insecure area it turns on - and **it is not built**: there is no key, and no way to install a subset short of a host constructing its own runtime without this package. [Configuration](configuration.md) is where that key is signposted once it exists.
+`--stdlib` leaves the first row out:
+
+```sh
+phpscript --stdlib=secure server
+```
+
+The flag names the binding areas the process installs, and `secure` is every binding confined to the runtime's sandbox. An area it omits is not registered, so its names are undefined rather than refused, through a direct call, a variable function, `call_user_func`, a callable and both engines alike: they all resolve through the one runtime function table. `stdlib.Mount(rt, profile, bindings...)` is the same selection for a host embedding the package.
+
+It is one value for the process. An operator decides what the runtime they started may reach, which is why there is no per-site key: a capability granted in the operator's file for one tenant is a capability the tenant's neighbours can read, and `virtualhost` is already refused in a site's own `phpscript.yml` so a compromised tree cannot grant itself anything.
 
 ## The filesystem boundary
 
@@ -136,11 +144,10 @@ Isolation stops at the process. One site's `exec`, one site's `HTTP\Server` and 
 
 ## Not implemented yet
 
-Each of these is a design in issue 139 with nothing behind it in the code. A document that read as a description of today would be wrong about all six.
+Each of these is a design in issue 139 with nothing behind it in the code. A document that read as a description of today would be wrong about all five.
 
 | Intended                                                           | Issue 139 item | State                                                          |
 |--------------------------------------------------------------------|----------------|----------------------------------------------------------------|
-| A `stdlib.Mount` bitmask, and a per-site capability profile        | 2              | No key, no bitmask. Every binding is installed                 |
 | A `runtime.Cache` collapsing the per-site caches behind one setter | 4              | The caches are per site already, each set on its own           |
 | A `secrets:` block, and `get_secret()` in PHP                      | 5              | No key, no binding                                             |
 | `phpscript.key` in a vhost, encrypting that block at rest          | 1, 2           | No key file is read anywhere                                   |

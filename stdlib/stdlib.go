@@ -14,18 +14,9 @@ import (
 // runner.RegisterBinding and imports.go), and any additional bindings passed by
 // the caller. The filesystem shims come in that way too, rooted at the process
 // working directory; use RegisterFS to bind them to another root.
+//
+// It mounts the process profile, every area unless --stdlib narrowed it, which is
+// what makes one flag reach every runtime the process builds.
 func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
-	registerExceptions(rt)
-
-	for _, register := range runner.Bindings() {
-		register(rt)
-	}
-	for _, register := range bindings {
-		register(rt)
-	}
-
-	// How to do this again, for a runtime forked off this one. A binding is a
-	// closure over the runtime it was registered on, so a fork has to install
-	// its own rather than inherit these.
-	rt.SetPreparer(func(child *runner.Runtime) { Register(child, bindings...) })
+	Mount(rt, profile, bindings...)
 }

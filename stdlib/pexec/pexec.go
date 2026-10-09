@@ -4,9 +4,10 @@
 //
 // Running a command leaves the fs.FS sandbox behind on purpose. A process reads
 // and writes with the permissions of the user running the server, and
-// writable_paths does not reach it; a host that runs untrusted scripts leaves
-// this package out. What the runtime does say is where a command starts, which
-// is the working directory chdir() moved, resolved onto the host.
+// writable_paths does not reach it; a host that runs untrusted scripts mounts
+// without this package, stdlib.Mount(rt, stdlib.Secure). What the runtime does
+// say is where a command starts, which is the working directory chdir() moved,
+// resolved onto the host.
 package pexec
 
 import (
@@ -15,10 +16,11 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// init contributes the process bindings to stdlib.Register, rooted at the
-// process working directory, which is where a CLI run runs anyway.
+// init contributes the process bindings under the Exec profile area, rooted at
+// the process working directory, which is where a CLI run runs anyway.
+// stdlib.Register installs them; stdlib.Mount only when its profile names Exec.
 func init() {
-	runner.RegisterBinding(Register)
+	runner.RegisterProfileBinding(runner.ProfileExec, Register)
 }
 
 // Register installs the process bindings rooted at the process working

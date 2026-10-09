@@ -33,6 +33,16 @@ Every command accepts these, and a command reads the ones it has a use for. They
 | `--memprofile`    | Write a pprof heap profile when the command ends.                                                                        |
 | `--cover`         | Measure statement coverage. `line` writes the profile, `func` and `file` also print a report.                            |
 | `--coverfile`     | Where the profile goes. Implies `--cover`; `{time}` expands to a UTC timestamp and missing directories are created.      |
+| `--stdlib`        | Install only these binding areas: `all`, `secure`, `exec`, comma separated. Default `all`.                               |
+
+`--stdlib` limits the standard library for the whole process. `secure` is every binding confined to the runtime's sandbox; `exec` is `stdlib/pexec`, which runs a command with the permissions of the user running phpscript and outside every filesystem boundary. A name the flag leaves out is undefined rather than refused, so a script calling it gets "call to undefined function" through every route: a direct call, a variable function, `call_user_func`, a callable, and both engines.
+
+```sh
+# A server for untrusted sites: no exec, system, passthru, shell_exec or the shell quoting pair.
+phpscript --stdlib=secure server
+```
+
+It is one value for the process, not one per virtual host. An operator decides what the runtime they started may reach; a grant written per site would be a capability in the file a site's neighbours share. An unknown area name is an error, because falling back to `all` would read as a narrowed runtime and serve an unnarrowed one.
 
 `--include` is what makes one setting cover every way a tree is executed: the server includes it ahead of each request's entrypoint, `run` ahead of the script, `test` ahead of each fixture and `lint` ahead of the checks, so the names a linter knows are the names a request will find. A composer autoloader is the usual file:
 
