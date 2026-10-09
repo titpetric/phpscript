@@ -99,5 +99,7 @@ sitemap:
         description: Exposing Go constructors, functions, methods, contexts, and values to PHP.
       - path: extensions/regexp.md
         description: How PCRE patterns are compiled, and what differs between PHP's PCRE and Go's RE2.
+      - path: extensions/hashing.md
+        description: Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter rather than a wider digest.
       - path: extensions/implemented-apis.md
         description: Generated inventory of functions and classes in the standard CLI runtime.

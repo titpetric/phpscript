@@ -244,6 +244,16 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Go's regexp, under its own name](extensions/regexp.md#gos-regexp-under-its-own-name)
   - [Writing portable patterns](extensions/regexp.md#writing-portable-patterns)
   - [Implementation](extensions/regexp.md#implementation)
+- [Hashing](extensions/hashing.md) - Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter rather than a wider digest.
+  - [Four jobs, one word](extensions/hashing.md#four-jobs-one-word)
+  - [What width buys](extensions/hashing.md#what-width-buys)
+  - [md5 and sha1 are broken, and crc32 was never trying](extensions/hashing.md#md5-and-sha1-are-broken-and-crc32-was-never-trying)
+  - [crc16 and crc64 do not exist here, or in php](extensions/hashing.md#crc16-and-crc64-do-not-exist-here-or-in-php)
+  - [What this build does not carry](extensions/hashing.md#what-this-build-does-not-carry)
+  - [Passwords are not digests](extensions/hashing.md#passwords-are-not-digests)
+  - [What a derivation costs](extensions/hashing.md#what-a-derivation-costs)
+  - [Choosing a password algorithm](extensions/hashing.md#choosing-a-password-algorithm)
+  - [Implementation](extensions/hashing.md#implementation)
 - [Implemented PHP APIs](extensions/implemented-apis.md) - Generated inventory of functions and classes in the standard CLI runtime.
   - [Functions](extensions/implemented-apis.md#functions)
     - [stdlib/compat](extensions/implemented-apis.md#stdlibcompat)
