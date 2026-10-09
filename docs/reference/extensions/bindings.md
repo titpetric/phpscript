@@ -22,7 +22,7 @@ if err == nil {
 
 Registration is per runtime. Class and function names become part of that runtime's PHP environment; Go APIs are not exposed automatically. Registration is not a complete method allowlist, however: PHP reflection dispatch sees the dynamic concrete value returned by a constructor. Every exported method on that concrete type is callable and every exported field is readable, even when the constructor's declared return type is an interface. Return a dedicated facade type when the underlying implementation has exports that scripts must not see.
 
-Methods need no separate registration. If a constructor or registered function returns a concrete Go value, PHP invokes its exported methods through ordinary `$value->method(...)` syntax. Method lookup is case-insensitive and accepts snake case, so a returned `time.Time` provides `$time->format(...)`, `$time->add(...)`, and `$time->unix()` directly. Package-level Go functions are not methods and still need explicit registration when they belong on the PHP surface, for example `time.Now` as `DateTime::now`. This keeps `Time` aligned with the method set of Go's `time.Time`, while `DateTime` represents the package-level API.
+Methods need no separate registration. If a constructor or registered function returns a concrete Go value, PHP invokes its exported methods through ordinary `$value->method(...)` syntax. Method lookup is case-insensitive and accepts snake case, so a returned `time.Time` answers `$time->format(...)`, `$time->add(...)` and `$time->unix()` directly. Package-level Go functions are not methods and still need explicit registration when they belong on the PHP surface, for example `time.Now` as `DateTime::now`. This keeps `Time` aligned with the method set of Go's `time.Time`, while `DateTime` represents the package-level API.
 
 The argument bridge also recognizes Go's `time.Duration` type. A PHP string is parsed with `time.ParseDuration` before invoking any registered function or automatically exposed method that declares a duration parameter. Thus a native `time.Time` accepts `$time->add("30m")` without an adapter, while callers may still pass a `Time\Duration` value or an integer nanosecond count. An invalid duration string is rejected as a type error before reflection invokes the Go method.
 
@@ -30,7 +30,7 @@ For request-oriented hosts, retain one concurrency-safe `runner.ExprCache` and i
 
 ## Calling PHP from Go
 
-The sections above run a file. `runner.Lookup` goes the other way and reaches one function inside it, with the signature the host asks for:
+The sections above run a file. `runner.Lookup` goes the other way and reaches one function inside it, under a signature the host declares:
 
 ```go
 rt := runner.New(os.Stdout, runner.Options{RootFS: os.DirFS(root)})
@@ -45,11 +45,11 @@ ok := handle(request)
 
 It is `plugin.Lookup` over a PHP source tree, with the type parameter standing in for the type assertion Go's own plugin API needs. The symbol may be declared anywhere in the tree: the name is matched against the functions already declared on the runtime and against every program in its include cache, and a runtime whose cache is empty parses its source root through a `Precompiler` on the first lookup that needs one.
 
-The parser qualifies a free function with the namespace its file declares, so `App\Handler\main` is the whole name. Resolution tries that name first, case-insensitively as PHP compares one, then falls back to matching the trailing segment, so a bare `main` finds it and `Handler\main` picks between two handlers that share the last segment. A name that matches nothing, or more than one declaration, is a `*runner.LookupError` carrying what it matched, so a host wiring its handlers hears about an ambiguity at startup rather than serving whichever one won.
+The parser qualifies a free function with the namespace its file declares, so `App\Handler\main` is the whole name. Resolution tries that name first, case-insensitively as PHP compares one, then falls back to matching the trailing segment, so a bare `main` finds it and `Handler\main` picks between two handlers that share the last segment. A name that matches nothing, or more than one declaration, is a `*runner.LookupError` carrying what it matched, so a host wiring its handlers sees an ambiguity at startup, and no handler is served on a guess.
 
 `T` must be a function type returning at most one value and an optional trailing `error`. The shape is checked at the lookup, not at the call. A signature with no error result has nowhere to report a failure, so a throw goes to the runtime's error sink, the same place the error of a script that ended badly goes; with one, it fills the slot and the value result is left at its zero.
 
-An invocation carries the arguments and nothing else. No `runner.Context` is registered, so `$_GET`, `$_POST` and `$_SERVER` are absent rather than empty, and no file body runs: the declaring program is hoisted for its declarations only. That is the point of the path. What the host passes arrives as the Go value it is, so an `*http.Request` handed in is the script's `HTTP\Request` and its headers, its query and its body read off the request itself:
+An invocation carries the arguments alone. No `runner.Context` is registered, so `$_GET`, `$_POST` and `$_SERVER` are undefined, and no file body runs: the declaring program is hoisted for its declarations only. What the host passes arrives as the Go value it is, so an `*http.Request` handed in is the script's `HTTP\Request` and its headers, its query and its body read off the request itself:
 
 ```php
 <?php
@@ -63,9 +63,9 @@ function main(\HTTP\Request $r) {
 
 Arguments are widened to the value set the interpreter operates on, which means the predeclared numeric types become `int64` and `float64`; a named scalar keeps its name, and everything else is passed through. Results take PHP's own coercions for the predeclared scalar kinds, so a function returning `1` fills a `bool` the way `if (1)` reads it, and a PHP array fills a `[]T` or a `map[K]V`.
 
-Two limits are worth knowing before building on it. A looked-up symbol executes through the interpreter even on a runtime built with `NewFlatStack`, because a flat-declared function lives in the bytecode program's own table rather than the runtime's. And `Options.Include` is not run per invocation, so a composer autoloader is not installed by a lookup; a function that needs one requires it in its own body, or the host runs the prelude on the runtime first.
+Two limits apply. A looked-up symbol executes through the interpreter even on a runtime built with `NewFlatStack`, because a flat-declared function lives in the bytecode program's own table and not the runtime's. And `Options.Include` is not run per invocation, so a composer autoloader is not installed by a lookup; a function that needs one requires it in its own body, or the host runs the prelude on the runtime first.
 
-The returned function belongs to its runtime, and a runtime serves one goroutine. A host calling one concurrently builds a runtime per goroutine and shares the include and expression caches between them, which is exactly what the HTTP server does per request.
+The returned function belongs to its runtime, and a runtime serves one goroutine. A host calling one concurrently builds a runtime per goroutine and shares the include and expression caches between them, as the HTTP server does per request.
 
 `BenchmarkLookup` in `tests/runner/lookup_bench_test.go` is that arrangement, split into what is paid per runtime (`bind`), what is paid per call (`invoke`, against `callable` for the bridge's own share), and what a whole request cycle costs (`request`, against `runtime` for the part of it that is not the script). `BenchmarkLookupTreeSize` holds resolution to constant time against the size of the source root, which matters because a concurrent host binds per runtime and therefore often per request:
 
@@ -151,7 +151,7 @@ A binding may take a callable. PHP has six spellings for one, and every one of t
 | A class's static method    | `array("Caser", "quiet")`               | As the string spelling                         |
 | An object with `__invoke`  | `$obj`                                  | That method, with that receiver                |
 
-[First-class callable syntax](../functions/README.md#first-class-callable-syntax) adds no row: `strtoupper(...)` and `$obj->method(...)` resolve to the Closure of the first row, which is what a binding then receives.
+[First-class callable syntax](../functions/README.md#first-class-callable-syntax) adds no row: `strtoupper(...)` and `$obj->method(...)` resolve to the Closure of the first row, and a binding receives that.
 
 A binding declares the parameter in one of two shapes. The uniform one is what `Runtime.Callable` answers and what the runtime invokes everywhere:
 
@@ -166,7 +166,7 @@ rt.RegisterFunc("each_word", func(s string, visit func(...any) (any, error)) err
 })
 ```
 
-The other is Go's own terms, which is what a library's method set already looks like - `regexp.Regexp.ReplaceAllStringFunc` takes a `func(string) string`. Those are wrapped with `reflect.MakeFunc` over the declared signature:
+The other is Go's own terms, the shape a library's method set already has - `regexp.Regexp.ReplaceAllStringFunc` takes a `func(string) string`. Those are wrapped with `reflect.MakeFunc` over the declared signature:
 
 ```go
 rt.RegisterFunc("map_word", func(s string, fn func(string) string) string { return fn(s) })
@@ -174,13 +174,13 @@ rt.RegisterFunc("map_word", func(s string, fn func(string) string) string { retu
 
 Two rules apply to the declared signature. It returns one value or none, because a PHP closure answers one; a second result has nothing to come from and the argument is refused as a type error. And it is not variadic, apart from the uniform shape itself. What the callable answers is fitted to the declared result through the same conversion table an argument takes, so a string result reads the value as PHP renders it in a string context and a `bool` result takes a bool and not a truthy int.
 
-Errors differ between the two shapes, and that is the reason to prefer the uniform one for anything that can fail. A signature with an `error` slot gets the error the callback reported. A signature without one leaves it nowhere to go, so it crosses the intervening Go frames as a panic, which the host boundary unwraps into the throwable the script threw: a `catch` written around the call takes the script's own exception rather than a host panic naming a Go type. A binding between the callback and the boundary therefore must not recover a panic it did not raise.
+Errors differ between the two shapes, and that is the reason to prefer the uniform one for anything that can fail. A signature with an `error` slot gets the error the callback reported. A signature without one leaves it nowhere to go, so it crosses the intervening Go frames as a panic, which the host boundary unwraps into the throwable the script threw: a `catch` written around the call takes the script's own exception, never a host panic naming a Go type. A binding between the callback and the boundary therefore must not recover a panic it did not raise.
 
-A callable is bound to the runtime making the call, not the one that built the value. That is what makes a comparator or a handler built before an HTTP server started run on the worker answering the request; see [program re-entry](../../design.md#program-re-entry).
+A callable is bound to the runtime making the call. A comparator or a handler built before an HTTP server started therefore runs on the worker answering the request; see [program re-entry](../../design.md#program-re-entry).
 
 ### Describing one to a host
 
-`Runtime.Callable` answers the call. `Runtime.AsCallable` answers the value, a `*runner.Callable`, which is what a host holds when it has to run the thing later and possibly on another runtime:
+`Runtime.Callable` answers the call. `Runtime.AsCallable` answers the value, a `*runner.Callable`, for a host that runs the thing later and possibly on another runtime:
 
 ```go
 callable, err := rt.AsCallable(handler)
@@ -190,15 +190,15 @@ if err != nil {
 result, err := callable.Invoke(worker, w, r)
 ```
 
-It is the narrower of the two, because it needs a declaration to carry. The two array spellings are refused, which is a decision rather than a gap: a handler is a function of its arguments, and wrapping one in an array to name a method is a spelling this does not want. They stay callable everywhere else. A Go func is refused for a different reason, that it is not a declaration and a host holding one already holds the call. The error names which it was and what the alternative is.
+It is the narrower of the two, because it needs a declaration to carry. The two array spellings are refused by decision: a handler is a function of its arguments, and wrapping one in an array to name a method is a spelling this API leaves out. They stay callable everywhere else. A Go func is refused for a different reason, that it is not a declaration and a host holding one already holds the call. The error names which it was and what the alternative is.
 
-`Callable.Captures` reports whether the value took anything from where it was written: a closure's `use (...)` list, the `$this` one written in a method binds, or the receiver a bound method was read off. What it captured is shared by every runtime running it and must be read rather than written to. A declared function and a static method capture nothing and run anywhere.
+`Callable.Captures` reports whether the value took anything from where it was written: a closure's `use (...)` list, the `$this` one written in a method binds, or the receiver a bound method was read off. What it captured is shared by every runtime running it, and is read-only. A declared function and a static method capture nothing and run anywhere.
 
 ## Output parameters
 
-A binding returns its result; it cannot write back into a caller's variable, because a PHP variable in this runtime is a name in a frame table rather than a cell a Go function could hold. The one exception is arranged at compile time: `byRefArgs` in `model/byref.go` names the argument positions that are outputs, per function, which is where both runtimes read it from, and an argument at such a position that is a plain variable is emitted as a setter closure instead of its value. `preg_match`'s `$matches` is the case that exists.
+A binding returns its result; it cannot write back into a caller's variable, because a PHP variable in this runtime is a name in a frame table, with no cell a Go function could hold. The one exception is arranged at compile time: `byRefArgs` in `model/byref.go` names the argument positions that are outputs, per function, and both runtimes read it from there; an argument at such a position that is a plain variable is emitted as a setter closure in place of its value. `preg_match`'s `$matches` is the case that exists.
 
-The table is a package-level variable rather than part of this API, so a host binding cannot currently declare an output parameter. Return a collection instead. See [Value semantics](../types/value-semantics.md#output-parameters) for the mechanism.
+The table is a package-level variable and not part of this API, so a host binding declares no output parameter. Return a collection instead. See [Value semantics](../types/value-semantics.md#output-parameters) for the mechanism.
 
 ## Context propagation
 
@@ -226,7 +226,7 @@ Arguments remain dynamically typed on the PHP side. At the Go boundary the refle
 
 1. converts `nil` to the zero value of the declared target type;
 2. uses a non-nil value directly when assignable to the declared Go type;
-3. renders the value as PHP renders it in a string context when the target is a string, so `strlen(65)` measures `"65"` rather than Go's conversion of the code point 65 to `"A"`;
+3. renders the value as PHP renders it in a string context when the target is a string, so `strlen(65)` measures `"65"`, where Go's conversion of the code point 65 produces `"A"`;
 4. uses Go reflection conversion when the source type is convertible; and
 5. otherwise passes the original value to reflection, which fails at runtime if its type does not match the Go signature.
 
@@ -238,9 +238,9 @@ This is not a complete PHP-to-Go coercion system. Prefer stable scalar signature
 
 Go slices and arrays can be traversed with PHP `foreach`. Exported Go struct fields can be read with `->` using case-insensitive names. Go maps and slices support PHP-style index reads. phpscript arrays are `*model.Array`; they are not automatically converted to arbitrary Go map or slice types.
 
-A `[]byte` is the exception to that, and is a PHP string rather than a list of integers: PHP's strings are byte strings, and half of Go's text API is declared over byte slices. `echo`, `strlen`, `var_dump`, `gettype`, `is_string`, `===`, an offset read and truthiness all read a returned `[]byte` as its text, `is_array` is false, and `foreach` over one iterates zero times. A `[][]byte` is still a list, of strings. `phpval.Bytes` is the test, and [Regexp bindings](../../bindings-regexp.md) lists where it is asked.
+A `[]byte` is the exception to that, and is a PHP string: PHP's strings are byte strings, and half of Go's text API is declared over byte slices. `echo`, `strlen`, `var_dump`, `gettype`, `is_string`, `===`, an offset read and truthiness all read a returned `[]byte` as its text, `is_array` is false, and `foreach` over one iterates zero times. A `[][]byte` is still a list, of strings. `phpval.Bytes` is the test, and [Regexp bindings](../../bindings-regexp.md) lists where it is asked.
 
-A binding may declare its callback in Go's own terms rather than as the uniform `func(...any) (any, error)`. `regexp.Regexp.ReplaceAllStringFunc` declares `func(string) string`, and every spelling PHP calls a callable fills it: a closure, a declared function by name, `Class::method`, `array($object, "method")`. A Go function type with no error slot leaves a callback nowhere to report one, so an error the PHP callable raises crosses the intervening Go frames as a panic and arrives at the caller as the throwable the script threw. A callback target must return one value or none, and must not be variadic.
+A binding may declare its callback in Go's own terms, in place of the uniform `func(...any) (any, error)`. `regexp.Regexp.ReplaceAllStringFunc` declares `func(string) string`, and every spelling PHP calls a callable fills it: a closure, a declared function by name, `Class::method`, `array($object, "method")`. A Go function type with no error slot leaves a callback nowhere to report one, so an error the PHP callable raises crosses the intervening Go frames as a panic and arrives at the caller as the throwable the script threw. A callback target must return one value or none, and must not be variadic.
 
 Bindings run in-process and may expose mutable Go pointers. Their lifetime, thread safety, authorization, and transaction boundaries remain the host application's responsibility.
 
