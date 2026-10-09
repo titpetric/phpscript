@@ -1,6 +1,6 @@
 ---
 extends: substitution
-message: "AI register: '%s'. Use '%s'."
+message: "AI register. Write '%s' instead of '%s'."
 level: error
 ignorecase: true
 swap:

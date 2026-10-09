@@ -1,6 +1,6 @@
 ---
 extends: substitution
-message: "Write it out: '%s' -> '%s'. A code identifier is exempt and is in backticks."
+message: "Write '%s', not '%s'. A code identifier is exempt and belongs in backticks."
 level: warning
 ignorecase: false
 swap:
@@ -16,4 +16,3 @@ swap:
   '\be\.g\.\b': for example
   '\bi\.e\.\b': that is
   '\betc\.': and the rest
-  '\bvia\b': through
