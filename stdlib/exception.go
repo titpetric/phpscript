@@ -73,7 +73,7 @@ func (e *Exception) Error() string {
 // splExceptions are the SPL and Error class names a PHP library throws. None of
 // them adds behaviour over Exception, so they all construct the same value with
 // a different Class, so `throw new \InvalidArgumentException(...)` runs
-// instead of failing on an undefined class.
+// where an undefined class would otherwise fail it.
 var splExceptions = []string{
 	"ErrorException",
 	"RuntimeException",
@@ -99,7 +99,9 @@ var splExceptions = []string{
 }
 
 func registerExceptions(rt *runner.Runtime) {
-	// Exception is PHP's base exception class; the SPL exception and Error classes are the same Go type carrying a different class name, so a catch clause filters on the name rather than on a subclass relation.
+	// Exception is PHP's base exception class; the SPL exception and Error
+	// classes are the same Go type carrying a different class name, so a
+	// catch clause filters on the name and not on a subclass relation.
 	rt.RegisterConstructor("Exception", NewException)
 	for _, class := range splExceptions {
 		rt.RegisterConstructor(class, newThrowable(class))

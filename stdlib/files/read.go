@@ -15,7 +15,10 @@ import (
 // ships, and falls back to the host filesystem for what only exists there, such
 // as a file an earlier write produced.
 func registerReads(rt *runner.Runtime, r root) {
-	// glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host; a pattern naming anything outside the root matches nothing, and a malformed one matches nothing rather than failing, as PHP's does.
+	// glob returns the paths matching $pattern, searched in the source
+	// filesystem when one is bound, otherwise on the host; a pattern naming
+	// anything outside the root matches nothing, and a malformed one matches
+	// nothing and not failing, as PHP's does.
 	rt.RegisterFunc("glob", func(pattern string) []string {
 		source := r.sourceFS()
 		if source == nil {

@@ -11,7 +11,7 @@ import (
 )
 
 // workdirTree is a two-level source filesystem with a file of the same name at
-// each level, which is what separates a working directory from a root.
+// each level, which separates a working directory from a root.
 func workdirTree() fstest.MapFS {
 	return fstest.MapFS{
 		"note.txt":         {Data: []byte("root")},
@@ -79,7 +79,7 @@ func TestChdirCannotLeaveTheRoot(t *testing.T) {
 }
 
 // TestChdirRefusesWhatIsNotADirectory pins the false return. PHP warns and
-// answers false; there is no warning channel here, so the return value is the whole
+// answers false; there is no warning channel here, so the return value carries all
 // report and the working directory has to be left where it was.
 func TestChdirRefusesWhatIsNotADirectory(t *testing.T) {
 	for _, test := range []struct {

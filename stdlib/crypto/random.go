@@ -36,7 +36,10 @@ func RegisterRandom(rt *runner.Runtime) {
 		return uniformInt64("random_int", min, max)
 	})
 
-	// rand returns a uniformly selected integer between $min and $max inclusive, or between 0 and 2147483647 when called without arguments; it reads the CSPRNG rather than a seeded generator, so there is no srand to pair it with.
+	// rand returns a uniformly selected integer between $min and $max
+	// inclusive, or between 0 and 2147483647 when called without arguments;
+	// it reads the CSPRNG and not a seeded generator, so there is no srand to
+	// pair it with.
 	rt.RegisterFunc("rand", func(bounds ...int64) (int64, error) {
 		min, max := int64(0), int64(randMax)
 		switch len(bounds) {

@@ -58,7 +58,7 @@ func registerColor(rt *runner.Runtime) {
 
 // checkRGB raises the ValueError PHP raises for a component outside 0 to 255.
 // Clamping instead would answer a colour for an argument PHP refuses, which
-// hides the mistake rather than reporting it.
+// hides the mistake and reports nothing.
 func checkRGB(fn string, red, green, blue int64) error {
 	for i, v := range []int64{red, green, blue} {
 		if v < 0 || v > 255 {

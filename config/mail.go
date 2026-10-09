@@ -12,7 +12,7 @@ import (
 // key became a map of named servers.
 var flatMailKeys = []string{"host", "port", "username", "password", "from", "insecure"}
 
-// Mail configures the mail servers mail() and `new Mail($name)` deliver
+// Mail configures the mail servers mail() and `new Mail($name)` send
 // through, keyed by the name a script names; "default" is what a script
 // naming none gets.
 //

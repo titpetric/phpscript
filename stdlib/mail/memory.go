@@ -24,8 +24,8 @@ type Message struct {
 // what scripts send: tests, local runs, dry runs.
 //
 // It is a provider rather than a sender spliced in further down, so a test
-// using it still goes through name resolution and still exercises the refusal
-// a script gets for a server nobody configured.
+// using it still resolves through name resolution and still exercises the
+// refusal a script reads for a server nobody configured.
 type Memory struct {
 	mu       sync.Mutex
 	servers  map[string]bool

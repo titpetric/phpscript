@@ -24,19 +24,19 @@ func phpEscapeshellarg(arg string) string {
 }
 
 // shellMeta are the bytes escapeshellcmd escapes. They are the ones a shell
-// reads as syntax rather than as text.
+// reads as syntax and never as text.
 const shellMeta = "#&;`|*?~<>^()[]{}$\\\x0a\xff"
 
 // phpEscapeshellcmd escapes the shell metacharacters in a whole command line.
 //
-// A quote is escaped only when it is unpaired, which is what lets a caller write
+// A quote is escaped only when it is unpaired, so a caller can write
 // escapeshellcmd("echo 'a b'") and keep the quoting they meant. That also means
 // the contents of a quoted argument stay live, so this is not the function to
 // pass user input through; escapeshellarg is.
 func phpEscapeshellcmd(command string) string {
 	var b strings.Builder
 	b.Grow(len(command))
-	// pending is where the quote currently open is expected to close, or -1
+	// pending is where the open quote closes, or -1
 	// when none is open. Opening one looks ahead for its partner and leaves
 	// both alone; a quote with no partner, and one of the other kind found
 	// while a quote is open, is a stray and gets escaped.

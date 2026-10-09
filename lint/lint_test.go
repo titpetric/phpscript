@@ -472,7 +472,7 @@ function takesRef(&$x) { return $x; }
 
 // The abstract modifier has nothing to mean without inheritance: the class
 // instantiates like any other and an abstract method's call returns null
-// where PHP refuses to load the incomplete class. Both spellings are
+// where PHP declines the incomplete class. Both spellings are
 // reported; a plain class with bodies lints clean.
 func TestFileReportsAbstract(t *testing.T) {
 	src := `<?php
@@ -510,7 +510,7 @@ class Circle {
 // the RedeclareError waiting for the file to be hoisted; the linter reports it
 // first. A single declaration, a class method, and a name the source guards
 // with function_exists all lint clean, the last being the polyfill idiom where
-// declaring over an absent built-in is the whole point.
+// declaring over an absent built-in is what the case covers.
 func TestFileReportsRedeclaredFunctions(t *testing.T) {
 	src := `<?php
 function once_only() { return 1; }

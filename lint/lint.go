@@ -282,7 +282,7 @@ func (w *stmtWalker) lintGlobal(n *model.Global) {
 // lintAbstract reports the abstract modifier, which has nothing to mean
 // without inheritance (docs/design.md): an abstract class can be instantiated
 // like any other, and an abstract method has no body, so calling it returns
-// null where PHP would refuse to load the class uncompleted. Both parse and
+// null where PHP declines the class uncompleted. Both parse and
 // are kept by the formatter; the linter is where the author hears that no
 // contract is being enforced. An interface is the contract that is checked.
 func (w *stmtWalker) lintAbstract(n *model.ClassDecl) {
@@ -408,7 +408,7 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 // or more names in a single statement.
 //
 // PHP copies an array on assignment, so there the two names end up holding
-// independent arrays. phpscript's arrays are references, so both names see one
+// independent arrays. phpscript's arrays are references, so both names read one
 // array and a later write through either is visible through the other, a bug
 // the shape hides and never announces.
 //

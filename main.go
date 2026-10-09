@@ -40,7 +40,7 @@ func main() {
 	case err == nil:
 	case errors.Is(err, server.ErrReported):
 		// Already reported. A configuration that fails its own test is an
-		// outcome the caller asked for, and no unexpected error.
+		// outcome the caller named, and no unexpected error.
 		os.Exit(1)
 	default:
 		log.Fatalf("Unexpected error: %v", err)
@@ -166,7 +166,7 @@ func decorate(appConfig *config.Config, globals *flags.Options, command registra
 	}
 }
 
-// wantsHelp reports whether the arguments ask for the whole document rather
+// wantsHelp reports whether the arguments name the whole document and not
 // than for a command. A help flag after a command name is that command's, and
 // the library answers it.
 func wantsHelp(args []string) bool {

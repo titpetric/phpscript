@@ -86,7 +86,7 @@ func registerStreams(rt *runner.Runtime, r root) {
 
 // outputStream is the handle fopen("php://output") returns. It holds the
 // runtime and not the writer of the moment, so every write lands wherever
-// script output currently goes: a handle opened before ob_start() writes into
+// script output goes at the time: a handle opened before ob_start() writes into
 // the buffer while one is active, exactly as echo would.
 type outputStream struct {
 	rt *runner.Runtime

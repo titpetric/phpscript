@@ -19,7 +19,7 @@ import (
 // RegisterHash installs PHP's message digests: md5() and sha1(), and the
 // algorithm-agnostic hash() family over the table below. Like the CSPRNG, a
 // digest is something a script cannot write for itself at any usable speed,
-// and that is what qualifies it for this package.
+// and that qualifies it for this package.
 //
 // Both return string, not []byte: a PHP string is a Go string in this
 // runtime, and a []byte would reach scripts as a foreign Go value that
@@ -72,7 +72,9 @@ func RegisterHash(rt *runner.Runtime) {
 		return subtle.ConstantTimeCompare([]byte(known_string), []byte(user_string)) == 1
 	})
 
-	// hash_algos returns the algorithm names hash() and hash_hmac() accept here, sorted; the list is shorter than PHP's, so a script that offers a choice should read it rather than assume one.
+	// hash_algos returns the algorithm names hash() and hash_hmac() accept
+	// here, sorted; the list is shorter than PHP's, so a script that offers a
+	// choice should read it and not assume one.
 	rt.RegisterFunc("hash_algos", func() []any {
 		names := make([]string, 0, len(digests))
 		for name := range digests {

@@ -25,7 +25,9 @@ func registerStreamReads(rt *runner.Runtime) {
 	rt.SetConst("SEEK_CUR", int64(io.SeekCurrent))
 	rt.SetConst("SEEK_END", int64(io.SeekEnd))
 
-	// fread reads at most $length bytes from $stream and returns them, or false when the handle cannot be read; a read at the end of the handle returns the empty string, so a loop knows to stop.
+	// fread reads at most $length bytes from $stream and returns them, or
+	// false when the handle cannot be read; a read at the end of the handle
+	// returns the empty string, so a loop knows to stop.
 	rt.RegisterFunc("fread", func(stream io.Reader, length int64) any {
 		if stream == nil || length <= 0 {
 			return false
@@ -48,7 +50,7 @@ func registerStreamReads(rt *runner.Runtime) {
 		}
 		limit := int64(-1)
 		if len(length) > 0 && length[0] > 0 {
-			// PHP's $length counts the terminating NUL it does not give a
+			// PHP's $length counts the terminating NUL it never writes to a
 			// script, so the line it reads is one shorter.
 			limit = length[0] - 1
 		}

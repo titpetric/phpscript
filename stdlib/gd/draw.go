@@ -49,7 +49,7 @@ func registerDraw(rt *runner.Runtime) {
 			return false
 		}
 		// A starting point outside the image fills nothing and still answers
-		// true, which is what GD does: there is no region to walk, and the
+		// true, as GD does: there is no region to walk, and the
 		// call is not an error.
 		if !image_ptIn(im, x, y) {
 			return true

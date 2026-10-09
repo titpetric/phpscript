@@ -14,8 +14,8 @@ const DefaultPort = 25
 // Config contains the connection and sender settings for one mail server.
 //
 // It is host configuration and never reaches a script: a provider holds it,
-// reads it inside a delivery, and hands back nothing but the outcome. Config
-// is not a binding return type anywhere, which is what keeps a password out of
+// reads it inside a delivery, and returns the outcome alone. Config
+// is no binding return type anywhere, which keeps a password out of
 // the runtime scope.
 type Config struct {
 	Host     string `yaml:"host" json:"host"`
@@ -72,7 +72,7 @@ func (c Config) address() string {
 // tlsConfig returns the STARTTLS settings for the configured host. Insecure
 // turns off verification entirely: the certificate is still used to encrypt the
 // session, but neither its chain nor its names are checked, so the connection
-// is no longer protected against a man in the middle.
+// is open to a man in the middle.
 func (c Config) tlsConfig() *tls.Config {
 	return &tls.Config{
 		ServerName:         c.Host,
@@ -107,7 +107,7 @@ func envelopeAddress(from string) (string, error) {
 	return address.Address, nil
 }
 
-// headerReplacer is built once rather than per header per message.
+// headerReplacer is built once, and not per header per message.
 var headerReplacer = strings.NewReplacer("\r", "", "\n", "")
 
 // header strips CR/LF so script-supplied values cannot inject headers.

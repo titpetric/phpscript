@@ -10,7 +10,7 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// discard is a logger writing its lines nowhere, which is what a test that is
+// discard is a logger writing its lines nowhere, for a test that is
 // looking at the trace wants of the log.
 func discard(l *Logger) *Logger {
 	return l.WithLogger(slog.New(slog.NewTextHandler(&strings.Builder{}, nil)))
@@ -49,7 +49,7 @@ func TestLoggerFailsSpanOnError(t *testing.T) {
 		t.Fatalf("span = %+v", spans[0])
 	}
 
-	// A migration that did not apply is red on the front end rather than a line
+	// A migration that did not apply is red on the front end and no line
 	// to read, and the error it failed with is the one mig reported.
 	if spans[0].Err() == nil || !strings.Contains(spans[0].ErrorText, "failed: syntax error") {
 		t.Fatalf("span error = %q", spans[0].ErrorText)
@@ -119,7 +119,7 @@ func TestLoggerDefaultsToSlogDefault(t *testing.T) {
 }
 
 // TestLoggerWithoutTrace covers a CLI run: no trace in the context, and no
-// logger at all, which is what a library that was handed nothing calls.
+// logger at all, the state a library passed nothing calls in.
 func TestLoggerWithoutTrace(t *testing.T) {
 	log := discard(New(context.Background(), "migrate"))
 	log.Info("migration", "file", "schema.up.sql")

@@ -8,7 +8,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Registrar binds a handler to an HTTP method and path. It is the seam between
+// Registrar binds a handler to an HTTP method and path. It is the one type shared by
 // discovered routes and whichever router the application runs.
 type Registrar interface {
 	Handle(method string, path string, handler http.Handler)

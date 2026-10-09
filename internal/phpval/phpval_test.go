@@ -287,7 +287,7 @@ func TestNumber(t *testing.T) {
 			if got != test.want {
 				t.Errorf("Number(%#v) = %#v, want %#v", test.in, got, test.want)
 			}
-			// The type is the whole point: int64(1) and float64(1) are not
+			// The type is what this pins: int64(1) and float64(1) are not
 			// interchangeable to abs() or array_sum().
 			if _, ok := got.(int64); !ok {
 				if _, ok := got.(float64); !ok {

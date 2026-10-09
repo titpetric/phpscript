@@ -441,7 +441,7 @@ func astParam(name string, t ast.Expr) Param {
 	return p
 }
 
-// paramName converts a Go parameter name to the PHP spelling, giving the
+// paramName converts a Go parameter name to the PHP spelling, writing the
 // blank identifier a name that says the value is accepted and ignored.
 func paramName(name string) string {
 	if name == "" || name == "_" {

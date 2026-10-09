@@ -35,7 +35,7 @@ func New(ctx context.Context, name string) *Logger {
 	}
 }
 
-// WithLogger returns a copy of the logger writing to log rather than to the
+// WithLogger returns a copy of the logger writing to log and not to the
 // default slog logger. A nil log restores the default.
 func (l *Logger) WithLogger(log *slog.Logger) *Logger {
 	if l == nil {
@@ -71,7 +71,7 @@ func (l *Logger) Error(msg string, args ...any) {
 }
 
 // slog is where the message is written. A logger that was given none writes to
-// the default logger, and reads it per call rather than at construction, so a
+// the default logger, and reads it per call and not at construction, so a
 // process that configures logging after the fact still gets the output.
 func (l *Logger) slog() *slog.Logger {
 	if l.log != nil {

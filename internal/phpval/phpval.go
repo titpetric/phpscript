@@ -301,7 +301,7 @@ func parseInt(prefix string) int64 {
 	return math.MaxInt64
 }
 
-// parseFloat reads a float prefix. Digits past float64's range yield +Inf or
+// parseFloat reads a float prefix. Digits past float64's range return +Inf or
 // -Inf with ErrRange, the value PHP reads for them too, so the error
 // is not consulted.
 func parseFloat(prefix string) float64 {
@@ -311,7 +311,7 @@ func parseFloat(prefix string) float64 {
 
 // Number returns v in PHP's numeric domain: an int64 for what PHP treats as an
 // integer, a float64 for what it treats as a float. It is what lets abs(),
-// min(), max() and array_sum() hand back the type they were given, so that
+// min(), max() and array_sum() return the type they were given, so that
 // abs(-1) is int(1) and abs(-1.5) is float(1.5). A string is read through the
 // same numeric prefix Int and Float read, so the three never disagree: "12abc"
 // is int64(12), "-3.5" is float64(-3.5) and "abc" is int64(0).

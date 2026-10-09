@@ -39,7 +39,10 @@ func registerStat(rt *runner.Runtime, r root) {
 		return ok
 	})
 
-	// is_writable reports whether $filename could be written, which asks writable_paths rather than the file mode; a path the allowlist refuses is not writable however the host's permissions read, and a path it allows is, whether or not the file exists yet.
+	// is_writable reports whether $filename could be written, which reads
+	// writable_paths and not the file mode; a path the allowlist refuses is
+	// not writable however the host's permissions read, and a path it allows
+	// is, whether or not the file exists yet.
 	rt.RegisterFunc("is_writable", func(filename string) bool {
 		_, err := r.resolveWrite("is_writable", filename)
 		return err == nil
@@ -103,7 +106,10 @@ func registerStat(rt *runner.Runtime, r root) {
 		return out
 	})
 
-	// pathinfo returns the parts of $path as an array of dirname, basename, extension and filename; a path with no dot carries no extension key, which is what php leaves out rather than answering empty. It never touches the filesystem, so it answers about a path that does not exist.
+	// pathinfo returns the parts of $path as an array of dirname, basename,
+	// extension and filename; a path with no dot carries no extension key,
+	// which is what php leaves out and not answering empty. It never touches
+	// the filesystem, so it answers about a path that does not exist.
 	rt.RegisterFunc("pathinfo", func(path string) *model.Array {
 		out := model.NewArraySize(4)
 		out.Set("dirname", stdpath.Dir(strings.TrimRight(path, "/")))

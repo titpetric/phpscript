@@ -33,7 +33,8 @@ func Register(rt *runner.Runtime) {
 	rt.RegisterConstructor("Regexp\\Compile", func(expr string) (*stdregexp.Regexp, error) {
 		return stdregexp.Compile(expr)
 	})
-	// Regexp\CompilePOSIX compiles $expr as POSIX ERE, where a match is the leftmost-longest one rather than the leftmost one Perl syntax finds.
+	// Regexp\CompilePOSIX compiles $expr as POSIX ERE, where a match is the
+	// leftmost-longest one and not the leftmost one Perl syntax finds.
 	rt.RegisterConstructor("Regexp\\CompilePOSIX", func(expr string) (*stdregexp.Regexp, error) {
 		return stdregexp.CompilePOSIX(expr)
 	})

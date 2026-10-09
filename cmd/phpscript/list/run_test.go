@@ -43,7 +43,7 @@ func TestRunListsStdlib(t *testing.T) {
 }
 
 // TestRunRejectsStdlibWithPaths pins the refusal. The two modes answer about
-// different things, so a caller that named both meant one of them and should be
+// different things, so a caller that named both named one of them by mistake and is
 // told which one was dropped, and never left to guess.
 func TestRunRejectsStdlibWithPaths(t *testing.T) {
 	var out bytes.Buffer

@@ -14,7 +14,7 @@ import (
 //
 // A name the source guards with function_exists is skipped: that is the
 // polyfill idiom, where declaring over an absent built-in is the whole point,
-// and the author has already said they handle both cases.
+// and the author has already written both cases.
 //
 // Declarations at any nesting count. The runtime only honours the ones written
 // at the top level of a file, so a nested duplicate is a divergence and no

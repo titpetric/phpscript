@@ -10,7 +10,7 @@ import (
 
 // TestRenameAndCopy covers the two ways a script relocates a file it owns. Both
 // resolve their arguments against the root, so a script names them the way it
-// names everything else, and both answer with a bool rather than an error.
+// names everything else, and both answer with a bool and no error.
 func TestRenameAndCopy(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("content"), 0o644); err != nil {
@@ -55,8 +55,8 @@ echo "|" . file_get_contents("a.txt") . "|" . file_get_contents("b.txt");`)
 }
 
 // TestFilePutContents covers the convenience writer: a fresh write reports its
-// length, FILE_APPEND adds instead of truncating, LOCK_EX is accepted, and a
-// target the operating system refuses answers false rather than failing the
+// length, FILE_APPEND adds and truncates nothing, LOCK_EX is accepted, and a
+// target the operating system refuses answers false and never fails the
 // script.
 func TestFilePutContents(t *testing.T) {
 	root := t.TempDir()

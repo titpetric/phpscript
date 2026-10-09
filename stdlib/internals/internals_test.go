@@ -111,8 +111,8 @@ echo "unreachable";
 	}
 }
 
-// TestFrameRelease: a returned function's locals are no longer roots, so
-// usage falls back to its pre-call level instead of leaking per call.
+// TestFrameRelease: a returned function's locals stop being roots, so
+// usage falls back to its pre-call level and leaks nothing per call.
 func TestFrameRelease(t *testing.T) {
 	src := `<?php
 function eat() {
