@@ -14,7 +14,6 @@ tokens:
   - '\b(?:is|are|was|were) by design\b'
   - '\bwhich is by design\b'
   - '\bthis is the (?:tradeoff|trade-off|compromise)\b'
-  - '\band nothing else\b'
   - '\bdeliberate(?:ly)?\b'
   - '\bon purpose\b'
   - '\bthe only (?:genuine|real|honest|true) (?:answer|way|option)\b'

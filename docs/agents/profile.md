@@ -20,7 +20,7 @@ This sprint changes no code. That is what separates it from [performance.md](per
 
 The shape to expect: 53 packages, 43 of them with tests. `tests/runner` is the largest single package and `tests` is next, because `tests` runs the whole fixture corpus twice, once per engine. Those are proportions, not durations - the contract keeps measurements out of these documents.
 
-`tests/runner`'s share is real wall clock, not work. It holds the execution-limit and client-abort tests, which drive `set_time_limit`, `usleep` and `connection_aborted` against the clock. Those seconds are sleeps. They are excluded from any reading of what is slow, stated explicitly in the report, because the alternative is a sprint that tries to optimise a sleep.
+`tests/runner`'s share is wall clock spent waiting. It holds the execution-limit and client-abort tests, which drive `set_time_limit`, `usleep` and `connection_aborted` against the clock. Those seconds are sleeps. They are excluded from any reading of what is slow, stated explicitly in the report, because the alternative is a sprint that tries to optimise a sleep.
 
 A duration here is one sample and carries no interval. It ranks packages; it does not compare two commits.
 
@@ -34,7 +34,7 @@ Before and after is `-diff_base`, not two `-top` listings read side by side:
 go tool pprof -top -nodecount=40 -diff_base=cpu-before.pprof cpu-after.pprof
 ```
 
-One subtlety decides whether a per-function reading means anything. A profile of `phpscript test` contains the harness: fixture discovery, table rendering, the `php` subprocess, the JSON writer. Those frames sit on top of the interpreter and crowd out what is being looked for. A per-function reading uses `phpscript run` over one file instead, which is what [collect-phpscript-run.md](collect-phpscript-run.md) is for.
+One subtlety decides whether a per-function reading means anything. A profile of `phpscript test` contains the harness: fixture discovery, table rendering, the `php` subprocess, the JSON writer. Those frames sit on top of the interpreter and crowd out what is being looked for. A per-function reading uses `phpscript run` over one file instead, and [collect-phpscript-run.md](collect-phpscript-run.md) is for.
 
 The same applies in the other direction: `phpscript run` over one file includes process start, the parse, and the whole of `stdlib.Register`, which a benchmark loop amortises away. Neither is wrong; they answer different questions, and a profile says which one it is.
 
@@ -42,7 +42,7 @@ The same applies in the other direction: `phpscript run` over one file includes 
 
 `--count N --time 100ms --json` is the only source of percentiles in this project. The commands and the field list are in [collect-phpscript-test.md](collect-phpscript-test.md).
 
-Both Go runners, through `--matrix --skip-php`. `php` is excluded on purpose: it is another process with another engine, and its latency is not this project's to optimise. It stays in the correctness matrix and out of the timing one.
+Both Go runners, through `--matrix --skip-php`. `php` is excluded: it is another process with another engine, and its latency is not this project's to optimise. It stays in the correctness matrix and out of the timing one.
 
 `--cache` decides what is being timed. `worker` amortises the parse across the fixtures a worker runs, which is the production shape. `off` re-parses per fixture, which measures the parser. Picking the wrong one is the common error, and the report names which was used.
 
@@ -50,18 +50,18 @@ It also decides what the run costs in resident memory, so layer 3 runs one proce
 
 ## The two memory numbers
 
-They measure different things and the point is to put them side by side.
+They measure different things, and the report puts them side by side.
 
 | Number                                     | What it is                                                                                                                        |
 |--------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `runtime.MemStats.TotalAlloc` delta        | Everything the Go process allocated while the work ran, freed or not. Includes allocator overhead and every interpreter structure |
 | `rt.MemoryPeak()` over `runner.MemoryWalk` | The high-water mark of live PHP values only. No allocator overhead, no interpreter structures                                     |
 
-Neither is ever labelled "memory" alone. A report that gives one number without saying which it is cannot be acted on: the first says what the collector will have to do, the second says what the script thinks it is holding, and a large ratio between them is itself the finding.
+Neither is ever labelled "memory" alone. A report carrying one number without saying which it is cannot be acted on: the first says what the collector will have to do, the second says what the script thinks it is holding, and a large ratio between them is itself the finding.
 
 ## Combinations that are refused
 
-The command errors rather than producing something misleading, so these are separate runs by construction.
+The command errors instead of producing something misleading, so these are separate runs by construction.
 
 | Combination                                    | Why                                                                                          |
 |------------------------------------------------|----------------------------------------------------------------------------------------------|
@@ -73,7 +73,7 @@ The command errors rather than producing something misleading, so these are sepa
 
 Two commits in the same worktree, both rebuilt from scratch, under the lock. The contract owns the rest: the drift guard, the dropped GC samples, and the manifest that catches a stale binary before a number is published.
 
-Nothing produced here is committed. `atkins.yml` already records the reasoning on `test:phpscript:matrix`: the fixture report is generated deliberately without `--profile`, because a timing that differs by a millisecond per run would be a diff in every commit.
+Nothing produced here is committed. `atkins.yml` already records the reasoning on `test:phpscript:matrix`: the fixture report is generated without `--profile`, because a timing that differs by a millisecond per run would be a diff in every commit.
 
 ## Reporting
 

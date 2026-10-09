@@ -6,7 +6,7 @@ Read this when the artifact needed comes from the fixture suite. It runs under t
 
 ## What this collects
 
-Two modes, and the command refuses to mix them:
+Two modes. The command refuses a run that mixes them:
 
 - Coverage: which PHP statements the fixtures executed.
 - Benchmark sampling: per-fixture latency percentiles, allocations and bytes.
@@ -17,7 +17,7 @@ This is the only source of percentiles in the project.
 
 The contract's lock and private binary. The private-binary rule bites hardest here: `phpscript test` runs the binary on `PATH`, not the tree, so a sprint that skips the `command -v` check measures whatever was installed last and will not notice.
 
-`./...` is load-bearing. `phpscript test ./tests/...` walks the tree; `phpscript test ./tests` matches only fixtures sitting directly in that directory and passes over nothing.
+Spell the `./...`. `phpscript test ./tests/...` walks the tree; `phpscript test ./tests` matches only fixtures sitting directly in that directory and passes over nothing.
 
 The database fixtures need `.env.testing`:
 
@@ -42,7 +42,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 
 `--cover` takes `line`, `func` or `file`. `line` writes the profile only; `func` and `file` also print a report in the format `go tool cover -func` prints. `--coverfile` implies `--cover`, defaults to `phpscript.cov`, expands `{time}` to a UTC timestamp, and creates the directory. `--split` additionally writes each fixture's own profile beside it.
 
-Benchmark sampling, which is the percentile mode. One process per area, under `GOMEMLIMIT`, for the reason the contract's memory section gives: a runtime is retained as long as its parse cache, so one process over the whole suite holds every runtime it built and the kernel ends the run.
+Benchmark sampling, which is the percentile mode. One process per area, under `GOMEMLIMIT`, for the reason the contract's memory section states: a runtime is retained as long as its parse cache, so one process over the whole suite holds every runtime it built and the kernel ends the run.
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
@@ -99,13 +99,13 @@ Which fields appear depends on which flags were given:
 
 ## Reading it
 
-`--json` is nanoseconds. The printed table is microseconds, which is what the contract's latency shape reports, to one decimal. Converting one into the other by hand is where a factor of a thousand gets published.
+`--json` is nanoseconds. The printed table is microseconds to one decimal, as the contract's latency shape reports them. Converting one into the other by hand is where a factor of a thousand gets published.
 
-`duration_ns` is the sample window, not a per-run duration. It is roughly whatever `--time` asked for. The per-run numbers are the percentiles, so `--time` reports them at all.
+`duration_ns` is the sample window and no per-run duration. It is roughly the `--time` value. The per-run numbers are the percentiles.
 
 `gc_runs` prints as `N (M%)` in the table, where M is the collector's share of that row's fixture execution count. A row whose GC share differs between before and after is not comparable and is re-measured, per the contract.
 
-`--cache` decides what was measured, what it costs in resident memory, and whether the set drifts. `off` re-parses every run and prices the parser, and drops the runtime with the fixture. `worker` amortises the parse and prices execution, and keeps every runtime its worker built - so a late sample window carries the collector load of every fixture before it and the run drifts upward. A before/after pair that disagrees on `--cache` compares two different things; a percentile run uses `off`, for the reason the contract's stress-run section gives.
+`--cache` decides what was measured, what it costs in resident memory, and whether the set drifts. `off` re-parses every run and prices the parser, and drops the runtime with the fixture. `worker` amortises the parse, prices execution, and keeps every runtime its worker built, so a late sample window carries the collector load of every fixture before it and the run drifts upward. A before/after pair that disagrees on `--cache` compares two different things; a percentile run uses `off`, for the reason the contract's stress-run section gives.
 
 Coverage is the interpreter's alone. The bytecode engine does not collect, and `php` is another process. A coverage number from a `--matrix` run describes one runtime.
 
