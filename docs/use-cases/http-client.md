@@ -1,12 +1,12 @@
 # HTTP client bindings
 
-The standard runtime provides the Go-backed `HTTP\Client` and `HTTP\Request` classes. They are what a script calls instead of PHP's `curl_*` family, which phpscript does not implement.
+The standard runtime registers the Go-backed `HTTP\Client` and `HTTP\Request` classes. They are what a script calls where PHP has the `curl_*` family, which phpscript does not implement.
 
 A request is a `net/http` request handed straight over, so a script reads and writes it the way Go names it. A response is a facade, because its body is read in full before the script sees it.
 
 ## Create a client
 
-`new HTTP\Client` gives a client with a 30 second timeout that follows redirects:
+`new HTTP\Client` builds a client with a 30 second timeout that follows redirects:
 
 ```php
 $client = new HTTP\Client();
@@ -34,9 +34,9 @@ $client = new HTTP\Client(array(
 | `headers`          | Sent with every request the client makes                                                     |
 | `insecure`         | Disables certificate verification, for a test server and not for a service                   |
 
-A client always has a timeout. There is no way to ask for none, because a request with no deadline is the one failure a script cannot recover from.
+A client always has a timeout. No spelling turns it off, because a request with no deadline is the one failure a script cannot recover from.
 
-An unrecognised key throws, so a typo is reported where it is written rather than at the far end of a request that did not carry what it was meant to:
+An unrecognised key throws, so a typo is reported where it is written, ahead of a request going out without it:
 
 ```php
 new HTTP\Client(array("timeuot" => 5));   // throws: unknown option "timeuot"
@@ -90,7 +90,7 @@ $request->header->add("X-Trace", $trace_id);
 echo $request->header->get("accept");
 ```
 
-Everything `net/http` exports on a request is reachable, so there is one vocabulary for a request rather than a PHP-side name for each part of it.
+Everything `net/http` exports on a request is reachable, so there is one vocabulary for a request, with no PHP-side name per part of it.
 
 ## Read a response
 
@@ -104,11 +104,11 @@ Everything `net/http` exports on a request is reachable, so there is one vocabul
 | `headers()`     | Every response header as an array                                    |
 | `json()`        | The body decoded into arrays and scalars; throws when it is not JSON |
 
-The body is read in full when the response is constructed, and bounded at 32 MiB. A script has no way to close a stream, so an unread body would leak its connection when the request ended.
+The body is read in full when the response is constructed, under a fixed ceiling. A script has no way to close a stream, so an unread body would leak its connection when the request ended.
 
 ## Send several requests at once
 
-`parallel()` takes an array of requests keyed by a name the script chooses, and returns the responses under those names. A page making three calls waits for the slowest rather than the sum:
+`parallel()` takes an array of requests keyed by a name the script chooses, and returns the responses under those names. A page making three calls waits for the slowest of them:
 
 ```php
 $results = $client->parallel(array(
@@ -126,7 +126,7 @@ foreach ($results as $name => $response) {
 }
 ```
 
-One request failing does not fail the others and does not throw. That response reports `ok()` as false and `err()` as the reason, so a page renders what it has instead of losing every result to one unreachable host:
+One request failing does not fail the others and does not throw. That response reports `ok()` as false and `err()` as the reason, so a page renders what it has, and one unreachable host loses one result:
 
 ```php
 $results = $client->parallel(array(
