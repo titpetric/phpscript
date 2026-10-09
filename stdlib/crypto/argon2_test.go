@@ -7,7 +7,7 @@ import (
 
 // TestArgon2VerifyPHPVectors is the interop check the whole encoding exists
 // for: every hash below was written by php 8.5's password_hash(), pasted, and
-// has to verify here. The awkward parameter sets are deliberate - m=1025 with
+// has to verify here. The awkward parameter sets are chosen: m=1025 with
 // p=3 is not a multiple of 4p, which argon2 rounds down for the lanes while
 // keeping the original value in the initial hash, and m=8 is the smallest php
 // accepts.
@@ -48,9 +48,9 @@ func TestArgon2VerifyPHPVectors(t *testing.T) {
 	}
 }
 
-// TestArgon2VariantsDiffer pins that argon2i and argon2id are not the same
-// derivation under the same parameters, which is what makes reading the variant
-// out of the stored hash load-bearing rather than cosmetic.
+// TestArgon2VariantsDiffer pins that argon2i and argon2id derive different tags
+// from the same parameters. password_verify reads the variant out of the stored
+// hash; reading the wrong one answers false for the right password.
 func TestArgon2VariantsDiffer(t *testing.T) {
 	const i = "$argon2i$v=19$m=256,t=1,p=1$cS9QSzJUc0FEdG9GMHA2Wg$DqXqGB6ym/9L5u2JTWBA/tIjewj0KUPJOnJgpw5WdK4"
 	id := strings.Replace(i, "$argon2i$", "$argon2id$", 1)
@@ -99,9 +99,9 @@ func TestArgon2SaltIsFresh(t *testing.T) {
 }
 
 // TestArgon2DecodeRejects covers every way a stored string can fail to be a
-// hash this build will act on. Each one has to be an error rather than a
-// best-effort read, because a wrong parameter set derives a wrong tag and
-// password_verify would then answer false for the right password.
+// hash this build will act on. Each one is an error: a best-effort read would
+// take a wrong parameter set, derive a wrong tag, and answer false for the
+// right password.
 func TestArgon2DecodeRejects(t *testing.T) {
 	const good = "$argon2id$v=19$m=256,t=1,p=1$cS9QSzJUc0FEdG9GMHA2Wg$DqXqGB6ym/9L5u2JTWBA/tIjewj0KUPJOnJgpw5WdK4"
 

@@ -162,11 +162,10 @@ func BenchmarkPasswordHash(b *testing.B) {
 	}
 }
 
-// BenchmarkPasswordVerify prices password_verify() against a stored hash. It
-// is the same derivation as hashing, reading the work factors out of the hash
-// instead of taking them as options, which is why a login costs what a
-// registration costs and why lowering the cost does not speed up the hashes
-// already stored.
+// BenchmarkPasswordVerify prices password_verify() against a stored hash. The
+// derivation is the one password_hash runs, at the work factors the hash
+// records, so a login costs what the registration cost. Lowering the cost
+// leaves every hash already stored at the cost it was written at.
 func BenchmarkPasswordVerify(b *testing.B) {
 	stored := []params{
 		{algo: algoBcrypt, cost: 10},
@@ -203,9 +202,9 @@ func BenchmarkPasswordVerify(b *testing.B) {
 }
 
 // refusedHashes are the spellings password_verify answers by shape. No
-// derivation can turn any of them into a match: the first three cannot carry a
-// salt and a tag at all, and the fourth is argon2 1.0, which derives a different
-// tag from the same parameters and is therefore unreadable rather than wrong.
+// derivation can turn any of them into a match: the first three carry no salt
+// and no tag, and the fourth is argon2 1.0, which derives a different tag from
+// the same parameters and is refused as unreadable.
 var refusedHashes = []struct{ name, hash string }{
 	{"empty", ""},
 	{"not-a-hash", "not-a-hash"},
@@ -213,15 +212,14 @@ var refusedHashes = []struct{ name, hash string }{
 	{"argon2id/version=16", "$argon2id$v=16$m=65536,t=4,p=1$c29tZXNhbHRzb21lc2FsdA$RdescudvJCsgt3ub+b+dWRWJTmaaJObG"},
 }
 
-// TestPasswordVerifyRefusesWithoutDeriving asserts the cost of the answer
-// rather than the answer, because the answer was already false.
+// TestPasswordVerifyRefusesWithoutDeriving bounds the time a refusal takes.
+// Every return value below was already false.
 //
-// password_verify("x", "") spent a bcrypt cost-12 derivation before returning
-// it: 214 ms of one core, for a question php closes in 31 ns. The bound is what
-// a return value cannot state. 4000 refusals measure 804 us, and one
-// derivation at cost 4, the cheapest bcrypt accepts, is 898 us, so a ceiling of
-// 200 ms catches a decoy at any cost with two orders of magnitude of headroom
-// over the measurement.
+// password_verify("x", "") ran a bcrypt cost-12 derivation first: 214 ms of one
+// core, where php returns in 31 ns. 4000 refusals measure 804 us. One
+// derivation at cost 4, the cheapest bcrypt accepts, is 898 us, so a 200 ms
+// ceiling fails on a decoy at any cost and leaves two orders of magnitude of
+// headroom over the measurement.
 //
 // It runs through the registered function, not passwordVerify, because the decoy
 // lived in the registration.
@@ -271,11 +269,11 @@ func BenchmarkPasswordVerifyRefuse(b *testing.B) {
 // which is not one derivation divided into the core count.
 //
 // A bcrypt derivation holds a core and 5 KiB, so two of them run at twice the
-// rate of one. An argon2id derivation holds 19 MiB and streams it, so two of
-// them contend for memory bandwidth rather than for arithmetic and the rate
-// falls short of twice. Dividing BenchmarkPasswordVerify's sec/op into the core
-// count would report the bcrypt case correctly and overstate the argon2 one, so
-// the rate is measured: under RunParallel, sec/op is wall clock per completed
+// rate of one. An argon2id derivation holds its whole memory_cost and streams
+// it, so two of them contend for memory bandwidth and the rate falls short of
+// twice. Dividing BenchmarkPasswordVerify's sec/op into the core count reports
+// the bcrypt case correctly and overstates the argon2 one, so the rate is
+// measured: under RunParallel, sec/op is wall clock per completed
 // derivation across the cores in play, and logins per second is its reciprocal.
 //
 // `-cpu 1,2,4` is how the scaling is read, because RunParallel spawns GOMAXPROCS

@@ -5,8 +5,8 @@
 // implementation in the language: it needs a key derivation function and a
 // CSPRNG, and phpscript exposes neither. Everything else the family does
 // (parsing options, choosing an algorithm) is arithmetic a script could do, so
-// the binding is deliberately narrow: the password functions here, and the
-// CSPRNG pair in random.go that hands the same entropy to scripts directly.
+// the binding is narrow: the password functions here, and the CSPRNG pair in
+// random.go, which returns the same entropy to scripts directly.
 package crypto
 
 import (
@@ -44,10 +44,9 @@ const (
 //
 // The two are the same algorithm. The `y` revision was PHP's marker for the
 // 2011 fix to the sign-extension bug, which Go's implementation never had, and
-// x/crypto rejects any minor version it does not know. Rewriting the prefix on
-// the way in and out is what makes a hash written here verify there and the
-// other way around, which is the whole point of implementing the PHP function
-// rather than exposing bcrypt under its own name.
+// x/crypto rejects any minor version outside the set it reads. Rewriting the
+// prefix on the way in and out makes a hash written here verify under php, and
+// a hash written by php verify here.
 const (
 	phpPrefix = "$2y$"
 	goPrefix  = "$2a$"
@@ -127,7 +126,10 @@ func Register(rt *runner.Runtime) {
 	rt.SetConst("PASSWORD_ARGON2_DEFAULT_THREADS", int64(argon2DefaultLanes))
 	rt.SetConst("PASSWORD_ARGON2_PROVIDER", "standard")
 
-	// password_hash returns a salted hash of $password under $algo, which is PASSWORD_BCRYPT, PASSWORD_ARGON2ID or PASSWORD_ARGON2I; $options takes "cost" for bcrypt and "memory_cost", "time_cost" and "threads" for argon2, and the salt comes from the system CSPRNG either way.
+	// password_hash returns a salted hash of $password under $algo, which is
+	// PASSWORD_BCRYPT, PASSWORD_ARGON2ID or PASSWORD_ARGON2I. $options takes
+	// "cost" for bcrypt and "memory_cost", "time_cost" and "threads" for
+	// argon2. The salt comes from the system CSPRNG.
 	rt.RegisterFunc("password_hash", func(password string, opts ...any) (string, error) {
 		p, err := paramsFrom(opts)
 		if err != nil {
@@ -140,10 +142,14 @@ func Register(rt *runner.Runtime) {
 		return hash, nil
 	})
 
-	// password_verify reports whether $password produced $hash, reading the algorithm and the work factors out of $hash rather than taking them again; a hash that is empty or malformed is false rather than an error, because a login form asks a question and "no" is an answer.
+	// password_verify reports whether $password produced $hash. The algorithm
+	// and the work factors are read out of $hash. An empty or malformed $hash
+	// returns false; it raises no error.
 	rt.RegisterFunc("password_verify", passwordVerify)
 
-	// password_needs_rehash reports whether $hash was made with a different algorithm or different work factors than $algo and $options ask for, which is how a login upgrades a stored hash without asking for the password twice.
+	// password_needs_rehash reports whether $hash records a different algorithm
+	// or different work factors than $algo and $options name. A login that
+	// already holds the plaintext uses it to re-store the hash.
 	rt.RegisterFunc("password_needs_rehash", func(hash string, opts ...any) (bool, error) {
 		want, err := paramsFrom(opts)
 		if err != nil {
@@ -157,7 +163,9 @@ func Register(rt *runner.Runtime) {
 		return got != want, nil
 	})
 
-	// password_get_info returns the algorithm and the work factors $hash records, as PHP's does: an unrecognised hash reports a null algo and the name "unknown" rather than failing.
+	// password_get_info returns the algorithm and the work factors $hash
+	// records. An unrecognised hash reports a null algo and the algoName
+	// "unknown", as PHP's does.
 	rt.RegisterFunc("password_get_info", func(hash string) *model.Array {
 		info := model.NewArray()
 
@@ -175,7 +183,8 @@ func Register(rt *runner.Runtime) {
 		return info
 	})
 
-	// password_algos returns the algorithm identifiers password_hash() accepts, in the order php lists them: bcrypt first, then the two argon2 variants.
+	// password_algos returns the algorithm identifiers password_hash() accepts,
+	// in php's order: bcrypt, then the two argon2 variants.
 	rt.RegisterFunc("password_algos", func() []any {
 		return []any{algoBcrypt, algoArgon2i, algoArgon2id}
 	})
@@ -225,8 +234,8 @@ func derive(password string, p params) (string, error) {
 	return phpPrefix + strings.TrimPrefix(string(hash), goPrefix), nil
 }
 
-// paramsOf reads back what a stored hash was written at, which is what both
-// password_get_info and password_needs_rehash answer from.
+// paramsOf reads back the parameters a stored hash was written at.
+// password_get_info and password_needs_rehash both answer from it.
 func paramsOf(hash string) (params, bool) {
 	if isArgon2(hash) {
 		p, _, _, err := argon2Decode(hash)

@@ -14,9 +14,9 @@ import (
 
 // The work factors php defaults to, reported through the three
 // PASSWORD_ARGON2_DEFAULT_* constants. They are RFC 9106's second recommended
-// parameter set and cost more wall clock than bcrypt at cost 12; a deployment
-// that wants the trade the other way lowers memory_cost and leaves time_cost
-// where it is, which is argued in docs/reference/extensions/hashing.md.
+// parameter set and cost more wall clock than bcrypt at cost 12. Lowering
+// memory_cost and leaving time_cost where it is trades the other way;
+// docs/reference/extensions/hashing.md prices both.
 const (
 	argon2DefaultMemory = 65536
 	argon2DefaultTime   = 4
@@ -33,9 +33,10 @@ const (
 	argon2Version = 19
 )
 
-// argon2MaxLanes is a limit of this implementation rather than of argon2.
-// x/crypto takes the parallelism as a uint8, and php accepts larger values, so
-// a threads option above this is refused instead of silently truncated.
+// argon2MaxLanes is a limit of this implementation; argon2 itself allows more.
+// x/crypto takes the parallelism as a uint8 and php accepts larger values, so a
+// threads option above this is an error. Truncating it would store a hash at a
+// parallelism the script did not name.
 const argon2MaxLanes = 255
 
 // argon2b64 is the PHC string format's encoding: standard base64, unpadded.
@@ -52,8 +53,7 @@ func argon2Hash(password string, p params) (string, error) {
 }
 
 // argon2Verify recomputes the tag from the parameters and salt the stored hash
-// carries. A hash it cannot read is false rather than an error, which is the
-// answer password_verify gives for every malformed input.
+// carries. An unreadable hash returns false.
 func argon2Verify(password, hash string) bool {
 	p, salt, want, err := argon2Decode(hash)
 	if err != nil {
@@ -95,8 +95,8 @@ func argon2Encode(p params, salt, sum []byte) string {
 
 // argon2Decode reads the PHC string form back into the parameters, the salt
 // and the stored tag. The version field is required: a string without it is
-// argon2 1.0, which derives a different tag, so reading one as 1.3 would
-// report a wrong answer rather than no answer.
+// argon2 1.0, which derives a different tag from the same inputs, so reading
+// one as 1.3 would report a mismatch as a match.
 func argon2Decode(hash string) (params, []byte, []byte, error) {
 	fields := strings.Split(hash, "$")
 	if len(fields) != 6 || fields[0] != "" {
