@@ -1,0 +1,26 @@
+---
+extends: existence
+message: "'%s' is vague. A function returns, writes, reports, reads, sets or refuses."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - '\bgives?(?: back)?\b'
+  - '\bgiving\b'
+  # The verb only. "left-hand end" and "first-hand" are not it.
+  - '\bhands? (?:back|off|over|it|them|the|a|an|its)\b'
+  - '\byields?\b'
+  - '\bprovides?\b'
+  - '\boffers?\b'
+  - '\bdelivers?\b'
+  - '\bgrabs?\b'
+  - '\bspits? out\b'
+  - '\bcomes? back with\b'
+  - '\bends? up\b'
+  - '\bwinds? up\b'
+  - '\bmakes? sure\b'
+  - '\btakes? care of\b'
+  - '\bdeals? with\b'
+  - '\bgoes? through\b'
+  - '\bsorts? out\b'
+  - '\bfigures? out\b'

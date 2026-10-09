@@ -1,0 +1,21 @@
+---
+extends: existence
+message: "'%s' is a verdict on the fact before it. Delete it or name both sides."
+level: error
+ignorecase: true
+nonword: true
+tokens:
+  - '\bthat is the (?:cost|price|trade|tradeoff|trade-off) of\b'
+  - '\ba small price to pay\b'
+  - '\bworth it\b'
+  - '\bby design\b'
+  - '\bthis is the (?:tradeoff|trade-off|compromise)\b'
+  - '\band nothing else\b'
+  - '\bdeliberate(?:ly)?\b'
+  - '\bon purpose\b'
+  - '\bthe only (?:genuine|real|honest|true) (?:answer|way|option)\b'
+  - '\bthe one that matters\b'
+  - '\bthe (?:part|thing|figure|row|column) (?:that|which) matters\b'
+  - '\bwhat really matters\b'
+  - '\bthe wrong (?:thing|move|call)\b'
+  - '\bis the whole (?:problem|story|of it)\b'
