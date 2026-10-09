@@ -67,8 +67,8 @@ echo "woke";
 	if elapsed := time.Since(started); elapsed > 5*time.Second {
 		t.Fatalf("slept %s, want the limit to cut it at about a second", elapsed)
 	}
-	// The sleep returns rather than throwing; the limit is reported on the next
-	// statement, which is what the per-statement check is.
+	// The sleep returns and throws nothing; the per-statement check reports the
+	// limit on the next statement.
 	var limit *runner.TimeLimitError
 	if !errors.As(err, &limit) {
 		t.Fatalf("error = %v, want *runner.TimeLimitError", err)
@@ -269,7 +269,7 @@ func TestTimeLimitEndsAnEmptyLoop(t *testing.T) {
 
 // TestTimeLimitHoldsPastAnAbortBeingIgnored is the contract SetIgnoreUserAbort
 // documents: ignoring the client is not permission to run forever. The limit
-// used to be unreachable once the host context had been cancelled, because the
+// is unreachable once the host context has been cancelled without this, because the
 // cause was read off that context.
 func TestTimeLimitHoldsPastAnAbortBeingIgnored(t *testing.T) {
 	t.Parallel()
@@ -304,7 +304,7 @@ while (true) { $n = 1; }
 }
 
 // TestTimeLimitDoesNotOutliveItsProgram covers a runtime a host reuses: the
-// timer one program armed used to end the next one, which had asked for
+// timer one program armed would end the next one, which set
 // nothing.
 func TestTimeLimitDoesNotOutliveItsProgram(t *testing.T) {
 	t.Parallel()

@@ -33,7 +33,7 @@ const SuiteFile = config.VirtualHostConfigFile
 // schema applied through the first is not in the database the second queries
 // when the DSN names no shared file.
 type Suite struct {
-	// Dir is the suite root as the caller spells it, which is what an error
+	// Dir is the suite root as the caller spells it, the spelling an error
 	// names and what stdlib.RegisterFS is rooted at.
 	Dir string
 
@@ -41,7 +41,7 @@ type Suite struct {
 	Config config.Config
 
 	// Declared holds the keys the file itself named, so a caller can tell a
-	// setting the suite asked for from one it inherited.
+	// setting the suite named from one it inherited.
 	Declared map[string]any
 
 	// root is the suite directory as a filesystem. A hook resolves its
@@ -60,9 +60,9 @@ type Suite struct {
 // the directory holds no such file. A directory without one is not a suite
 // root; it is a folder of fixtures that configures nothing.
 //
-// forbidden refuses the keys that describe a whole run rather than one folder.
-// It is false for the configuration found at or above the invocation root,
-// which is the run's own, and true for one discovered below it.
+// forbidden refuses the keys that describe a whole run and not one folder. It
+// is false for the configuration found at or above the invocation root, the
+// run's own, and true for one discovered below it.
 func LoadSuite(dir string, base config.Config, forbidden bool) (*Suite, error) {
 	return loadSuite(os.DirFS(dir), dir, filepath.Join(dir, SuiteFile), base, forbidden)
 }
@@ -97,7 +97,7 @@ func loadSuite(root fs.FS, dir, filename string, base config.Config, forbidden b
 // Provider answers the connections the fixtures below this suite root resolve.
 //
 // A suite that declared no env of its own resolves what the run does, which is
-// the process environment: a folder that named no connections is not asking for
+// the process environment: a folder that named no connections gets no set of
 // a set of its own. A suite that declared one gets only what it named, the rule
 // a virtual host is already held to, so a fixture cannot reach a database its
 // folder did not configure.
@@ -114,7 +114,7 @@ func (s *Suite) Provider() model.DatabaseProvider {
 	return s.provider
 }
 
-// Mail answers the mail servers the fixtures below this suite root deliver
+// Mail answers the mail servers the fixtures below this suite root send
 // through: what the suite declared, or nothing, which is the rule a virtual
 // host is held to. Nothing is delivered in a fixture run - construction is a
 // name lookup, and the names are what the fixtures are about.
@@ -206,7 +206,7 @@ func (s *Suite) RunHook(ctx context.Context, file string, out io.Writer) error {
 
 // RunSetup runs the setup hooks of every suite, outermost first, and stops at
 // the first failure. A suite whose state was not laid down has nothing for its
-// fixtures to assert against, so the run fails before one executes rather than
+// fixtures to assert against, so the run fails before one executes and not
 // reporting the same missing table once per fixture.
 func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 	for _, suite := range suites {
@@ -223,9 +223,9 @@ func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 
 // RunTeardown runs the teardown hooks in reverse, whatever the fixtures did.
 //
-// Every hook runs and every failure is reported, rather than the run stopping
+// Every hook runs and every failure is reported, with no stop at
 // at the first: the suites are independent, and a caller learns about all of
-// them instead of the one that happened to be innermost.
+// them, and not the one that happened to be innermost.
 func RunTeardown(ctx context.Context, suites []*Suite, out io.Writer) error {
 	var failures []error
 	for i := len(suites) - 1; i >= 0; i-- {

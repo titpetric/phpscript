@@ -227,7 +227,7 @@ define("MUX", $mux);
 
 	// Waited for and never read straight off: the handler set ignore on the
 	// disconnect, so it is still running after ServeHTTP has stopped waiting
-	// for it. That is the whole point of ignore_user_abort, and it means the
+	// for it. That is what ignore_user_abort does, and it means the
 	// report lands a moment after the request is over.
 	select {
 	case got := <-reported:

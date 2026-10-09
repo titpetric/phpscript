@@ -528,7 +528,7 @@ func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
 }
 
 // `$a = $b = array()` is split into one assignment per name so that each name
-// gets its own allocation, which is what PHP's copy-on-assignment comes to
+// gets its own allocation, as PHP's copy-on-assignment comes to
 // for a literal. The names are written right to left, as PHP evaluates them.
 func TestParseSplitsChainedArrayLiteral(t *testing.T) {
 	prog := mustParse(t, "<?php\n$a = $b = $c = array(1);\n")

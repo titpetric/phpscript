@@ -153,7 +153,7 @@ func TestClientOptions(t *testing.T) {
 		t.Fatalf("NewClient: %v", err)
 	}
 
-	// A relative URL resolves against base_url, which is what the option is for.
+	// A relative URL resolves against base_url: the option exists for that.
 	request, err := http.NewRequest(ctx, "GET", "/things")
 	if err != nil {
 		t.Fatalf("NewRequest: %v", err)

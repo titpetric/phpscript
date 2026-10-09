@@ -67,7 +67,7 @@ func (s *memStorage) Len() int64 { return int64(len(s.data)) }
 func (s *memStorage) Tenant() string { return s.tenant }
 
 // Keep is the method path's filter, declaring its callback in Go's own terms:
-// a predicate, which is what a library's own method set looks like and what
+// a predicate, the shape a library's own method set has and what
 // coerceArgOn had to wrap through reflect.MakeFunc.
 //
 // It is one of two because there are two declared shapes to cover and one
@@ -87,9 +87,8 @@ func (s *memStorage) Keep(keep func(key, value string) bool) []Record {
 // Walk is the other shape, the uniform func(...any) (any, error), whose error
 // slot is the only place a callback reports a failure without a panic.
 //
-// The signature is the shape under test rather than how a walker would be
-// written: a host writing this for its own sake would declare
-// func(key, value string) error and let the bridge wrap it.
+// The signature is the shape under test. A host writing this for its own sake
+// declares func(key, value string) error and lets the bridge wrap it.
 func (s *memStorage) Walk(visit func(...any) (any, error)) error {
 	for _, key := range s.sortedKeys() {
 		if _, err := visit(key, s.data[key]); err != nil {
@@ -108,7 +107,7 @@ func (s *memStorage) sortedKeys() []string {
 	return keys
 }
 
-// ctxKey is the context key used to thread request-scoped data into constructors.
+// ctxKey is the context key that threads request-scoped data into constructors.
 type ctxKey string
 
 const tenantKey ctxKey = "tenant"

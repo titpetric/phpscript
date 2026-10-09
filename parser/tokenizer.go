@@ -213,7 +213,7 @@ var tokenMultiOps = []struct {
 }
 
 // TokenName returns the PHP name for a token id (PHP's token_name). Unknown ids
-// yield "UNKNOWN", matching PHP.
+// answer "UNKNOWN", matching PHP.
 func TokenName(id int) string {
 	if name, ok := tokenNames[id]; ok {
 		return name

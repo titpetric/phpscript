@@ -52,7 +52,7 @@ func (m *Mux) Handle(pattern string, handler any) error {
 
 	m.mux.HandleFunc(pattern, func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		// A client that has already gone gets no handler at all. Nothing
-		// written now reaches it, and skipping the work is the whole point of
+		// written now reaches it, and skipping the work is what
 		// noticing.
 		if r.Context().Err() != nil {
 			return

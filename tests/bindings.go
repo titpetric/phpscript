@@ -1,7 +1,7 @@
 package tests
 
 // This file is the reference set of *binding return shapes*. Every function
-// here answers the same question, "how should a forwarded Go function hand a
+// here answers the same question, "how does a forwarded Go function return a
 // collection back to the PHP VM?", with a different Go type, so that
 // bindings_test.go can assert both semantics (does the VM understand it?) and
 // cost (how many allocations did it take?).
@@ -23,8 +23,8 @@ package tests
 //
 // *model.Array is the only shape with PHP array semantics (ordered, hybrid
 // int/string keys, mutable in place), so it stays the right answer for values
-// PHP will mutate or key by string in insertion order. It is the wrong answer
-// for a function that just returns a list the script will iterate.
+// PHP will mutate or key by string in insertion order. A function returning a
+// list the script iterates has no use for it.
 
 import (
 	"fmt"
@@ -319,7 +319,7 @@ func registerBindings(rt registrar) {
 	// --- error shape -------------------------------------------------------
 	//
 	// A trailing error is unwrapped by callResult and surfaces as a thrown
-	// PHP error. Returning (any, error) is only worth it when the call can
+	// PHP error. Returning (any, error) earns its keep only when the call can
 	// actually fail; a second return value costs an extra reflect.Value slot.
 
 	rt.RegisterFunc("bind_split", func(s, sep string) ([]string, error) {

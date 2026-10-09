@@ -18,7 +18,7 @@ import (
 
 // DefaultTimeout is how long a client waits for a response when the script did
 // not say. A request with no deadline at all is the one failure mode a script
-// cannot recover from, so there is no way to ask for one.
+// cannot recover from, so no spelling turns it off.
 const DefaultTimeout = 30 * time.Second
 
 // maxResponseBody is how much of a response body is read. A script reads a body

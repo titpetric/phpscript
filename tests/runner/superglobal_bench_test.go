@@ -8,7 +8,7 @@ import (
 )
 
 // browserHeaders is what an ordinary browser sends. The count is the point: a
-// request carries a dozen or so, each of which used to be copied into $_SERVER
+// request carries a dozen or so, each of which would be copied into $_SERVER
 // under its HTTP_ name whether or not the script read one.
 var browserHeaders = map[string]string{
 	"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -42,7 +42,7 @@ func BenchmarkRegisterSuperglobals(b *testing.B) {
 }
 
 // BenchmarkRegisterAndReadOne covers the same request where the script reads a
-// single name, which is what a router does with REQUEST_URI.
+// single name, as a router does with REQUEST_URI.
 func BenchmarkRegisterAndReadOne(b *testing.B) {
 	req := httptest.NewRequest("GET", "http://example.com/index.php?page=2&sort=name", nil)
 	for name, value := range browserHeaders {

@@ -13,7 +13,7 @@ import (
 // Runner names an execution backend a fixture can be checked against.
 type Runner string
 
-// The three backends, which is what a matrix column is.
+// The three backends, one per matrix column.
 const (
 	// RunnerFlatstack executes the fixture through the flat bytecode runtime,
 	// which falls back to the compatibility interpreter for unsupported syntax.
@@ -30,7 +30,7 @@ const (
 var Runners = []Runner{RunnerFlatstack, RunnerRuntime, RunnerPHP}
 
 // ErrRunnerUnavailable reports that a runner cannot execute on this machine,
-// which is a skip rather than a failure. The php runner returns it when no php
+// which is a skip and no failure. The php runner returns it when no php
 // binary is installed.
 var ErrRunnerUnavailable = errors.New("runner unavailable")
 
@@ -149,7 +149,7 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 // root, so php sees the same world the in-process runtimes assemble from
 // SetAppRoot. The includes run inside a function scope with the application
 // root as the working directory, mirroring the fresh scope and root-relative
-// resolution the Go runtimes give the prelude.
+// resolution the Go runtimes apply to the prelude.
 func phpPrepend(f *Fixture) ([]string, func(), error) {
 	if f.appRoot == "" || len(f.includes) == 0 {
 		return nil, func() {}, nil

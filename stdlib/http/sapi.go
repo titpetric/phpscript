@@ -76,7 +76,7 @@ func registerRequest(rt *runner.Runtime) {
 		return stageCookie(rt, name, opts, true)
 	})
 
-	// setrawcookie stages a Set-Cookie header the way setcookie does and writes $value as it stands, so a value carrying a semicolon or a space is the caller's problem rather than the encoder's.
+	// setrawcookie stages a Set-Cookie header the way setcookie does, writing $value as it stands, so a value carrying a semicolon or a space is the caller's to handle; the encoder does nothing with it.
 	rt.RegisterFunc("setrawcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, false)
 	})
@@ -120,7 +120,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 }
 
 // applyCookiePositional reads the long argument list: $expires, $path,
-// $domain, $secure, $httponly. There is no samesite in this form, which is why
+// $domain, $secure, $httponly. There is no samesite in this form, so
 // PHP grew the array one.
 func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 	for i, arg := range args {

@@ -139,7 +139,7 @@ func TestFlatstackCompilesConstructs(t *testing.T) {
 // TestFlatstackClassConstOutsideClass pins the message a contextual class name
 // used outside a class body produces. The compiler leaves the name alone when
 // there is nothing to resolve it to, so the host reports it exactly as the
-// interpreter does instead of inventing a class.
+// interpreter does, and invents no class.
 func TestFlatstackClassConstOutsideClass(t *testing.T) {
 	program, err := parser.Parse(`<?php class A { const X = 1; } echo self::X;`)
 	if err != nil {

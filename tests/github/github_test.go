@@ -24,7 +24,7 @@ import (
 
 // routers registers routes on both routers the runtime supports and returns
 // them by name. Each entry of routes is a file name and its @route comment;
-// every endpoint echoes $_REQUEST, which is what these tests read; the
+// every endpoint echoes $_REQUEST, and these tests read that; the
 // requests carry no query, form or cookie fields, so what comes back is the
 // path values alone.
 func routers(t *testing.T, routes map[string]string) map[string]http.Handler {

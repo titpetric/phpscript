@@ -38,7 +38,7 @@ func BenchmarkDispatchFast(b *testing.B) {
 //
 // The pair is what a new shape in fastInvoker is worth. 163 of the 314
 // registered functions take the reflect path, across 126 distinct signatures,
-// so the question is per function rather than a sweep.
+// so the question is per function and no sweep.
 func BenchmarkDispatchReflect(b *testing.B) {
 	benchCalls(b, `str_repeat("a", 3);`)
 }
@@ -54,8 +54,8 @@ func BenchmarkDispatchBaseline(b *testing.B) {
 // figure moves with nothing but which invoker the registration built.
 //
 // It exists because the shape of a binding's return is not a local decision.
-// Giving a binding an error to return is a correctness change that reads as
-// one line, and it silently decides the dispatch path for every call to that
+// Adding an error return is a correctness change that reads as one line, and
+// it decides the dispatch path for every call to that
 // name afterwards; no benchmark in the tree covered sprintf, so the move was
 // free to happen unmeasured.
 func BenchmarkDispatchSprintf(b *testing.B) {

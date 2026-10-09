@@ -151,7 +151,7 @@ func (l *lexer) run() ([]token, error) {
 			continue
 		}
 		if err := l.lexPHP(); err != nil {
-			// The caller gets no slice to hand back, so the failed lex
+			// The caller receives no slice to return, so the failed lex
 			// returns its own.
 			releaseTokens(l.tokens)
 			l.tokens = nil

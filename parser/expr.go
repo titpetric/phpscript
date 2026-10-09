@@ -191,10 +191,10 @@ func (p *parser) parseUnary() (model.Expr, error) {
 	// marker is kept as a Ref node so the formatter prints the source back
 	// as written and the linter reports it.
 	//
-	// The reference marker is only taken in front of a variable. It used to
-	// be taken in front of anything, which silently swallowed the binary `&`
-	// of `echo 6 & 3`: the operand parser took `& 3` as a fresh reference
-	// expression and the program printed 6.
+	// The reference marker is taken in front of a variable alone. Taken in
+	// front of anything, it swallows the binary `&` of `echo 6 & 3`: the
+	// operand parser reads `& 3` as a fresh reference expression and the
+	// program prints 6.
 	if p.isOp("&") && p.peek(1).kind == tVar {
 		p.next()
 		x, err := p.parseUnary()
@@ -673,7 +673,7 @@ func (p *parser) parseNew() (model.Expr, error) {
 	// so the whole reference is taken here, and not only the variable.
 	// Leaving the accessors to parsePostfix would read
 	// `new $renderers["json"]($data)` as `(new $renderers)["json"]($data)`,
-	// which constructs the wrong thing and then calls the result.
+	// which constructs the wrong value and then calls the result.
 	if p.cur().kind == tVar {
 		class, err := p.parseVarRef()
 		if err != nil {

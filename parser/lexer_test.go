@@ -219,7 +219,7 @@ func TestLexNumberLiterals(t *testing.T) {
 		{"1e3", tFloat, "1e3"},
 		{"1E-3", tFloat, "1E-3"},
 		{"1.5e+10", tFloat, "1.5e+10"},
-		// A hex literal owns its digits: the "e" in 0x1e is one of them, not
+		// A hex literal owns its digits: the "e" in 0x1e is one of them and no
 		// the start of an exponent.
 		{"0x1e", tInt, "0x1e"},
 	}

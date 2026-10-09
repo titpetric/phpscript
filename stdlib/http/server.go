@@ -12,7 +12,7 @@ import (
 )
 
 // shutdownGrace bounds how long a graceful shutdown waits for the requests in
-// flight. A script that ran out of time has no more to give them.
+// flight. A script that ran out of time writes no more to them.
 const shutdownGrace = time.Second
 
 // Server listens and answers, as net/http's Server does and as a

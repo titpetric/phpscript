@@ -24,7 +24,7 @@ func toString(value any) string {
 	}
 }
 
-// toBool follows PHP truthiness for the values a script can hand an option:
+// toBool follows PHP truthiness for the values a script can pass an option:
 // "false", "off", "no", "0" and the empty string are false, as is a zero
 // number; anything else set is true.
 func toBool(value any) bool {

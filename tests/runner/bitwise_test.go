@@ -28,7 +28,7 @@ func TestBitwiseSemantics(t *testing.T) {
 		{`null & 5`, "0"},
 		{`"3" & 1`, "1"},
 
-		// Two strings are combined byte by byte and yield a string. `&` and
+		// Two strings are combined byte by byte and return a string. `&` and
 		// `^` stop at the shorter operand, `|` keeps the longer one.
 		{`"3" & "1"`, "1"},
 		{`"a" | "b"`, "c"},
