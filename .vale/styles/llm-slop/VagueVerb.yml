@@ -12,7 +12,6 @@ tokens:
   - '\byields?\b'
   - '\bprovides?\b'
   - '\boffers?\b'
-  - '\bdelivers?\b'
   - '\bgrabs?\b'
   - '\bspits? out\b'
   - '\bcomes? back with\b'

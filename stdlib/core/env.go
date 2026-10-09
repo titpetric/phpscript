@@ -12,7 +12,8 @@ func init() {
 }
 
 func registerEnvironment(rt *runner.Runtime) {
-	// putenv sets an environment variable from a "NAME=value" string, or unsets a bare "NAME"; it always returns true.
+	// putenv sets an environment variable from a "NAME=value" string, or
+	// unsets a bare "NAME"; it always returns true.
 	rt.RegisterFunc("putenv", func(name string, values ...string) bool {
 		if len(values) > 0 {
 			rt.Env[name] = values[0]

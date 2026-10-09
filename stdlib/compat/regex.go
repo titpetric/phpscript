@@ -57,13 +57,23 @@ func registerRegex(rt *runner.Runtime) {
 	cache := newRegexpCache()
 	registerRegexConstants(rt)
 
-	// preg_match_all fills $matches with every match of $pattern in $subject and returns how many there were, in PREG_PATTERN_ORDER unless $flags selects PREG_SET_ORDER, optionally starting at byte $offset; a pattern that does not compile returns false and leaves $matches alone.
+	// preg_match_all fills $matches with every match of $pattern in $subject
+	// and returns how many there were, in PREG_PATTERN_ORDER unless $flags
+	// selects PREG_SET_ORDER, optionally starting at byte $offset; a pattern
+	// that does not compile returns false and leaves $matches alone.
 	rt.RegisterFunc("preg_match_all", cache.phpPregMatchAll)
-	// preg_match fills $matches with the first match of $pattern in $subject and returns 1, 0 when there is no match, optionally starting at byte $offset; a pattern that does not compile, or an $offset outside $subject, returns false.
+	// preg_match fills $matches with the first match of $pattern in $subject
+	// and returns 1, 0 when there is no match, optionally starting at byte
+	// $offset; a pattern that does not compile, or an $offset outside
+	// $subject, returns false.
 	rt.RegisterFunc("preg_match", cache.phpPregMatch)
-	// preg_replace replaces every match of $pattern in $subject with $replacement, in which \1 and $1 both name a capture group.
+	// preg_replace replaces every match of $pattern in $subject with
+	// $replacement, in which \1 and $1 both name a capture group.
 	rt.RegisterFunc("preg_replace", cache.phpPregReplace)
-	// preg_replace_callback replaces every match of $pattern in $subject with what $callback returns for it, calling $callback once per match in document order with the match array, at most $limit times, and reporting the number of replacements through $count.
+	// preg_replace_callback replaces every match of $pattern in $subject with
+	// what $callback returns for it, calling $callback once per match in
+	// document order with the match array, at most $limit times, and
+	// reporting the number of replacements through $count.
 	rt.RegisterFunc("preg_replace_callback", func(pattern string, callback any, subject string, limit any, count func(any), flags any) (any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -71,9 +81,13 @@ func registerRegex(rt *runner.Runtime) {
 		}
 		return cache.phpPregReplaceCallback(pattern, fn, subject, limit, count, flags)
 	})
-	// preg_split splits $subject on every match of $pattern into at most $limit pieces, the last of which holds the remainder; $flags selects PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and PREG_SPLIT_OFFSET_CAPTURE.
+	// preg_split splits $subject on every match of $pattern into at most
+	// $limit pieces, the last of which holds the remainder; $flags selects
+	// PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and
+	// PREG_SPLIT_OFFSET_CAPTURE.
 	rt.RegisterFunc("preg_split", cache.phpPregSplit)
-	// preg_quote escapes the characters that are special in a PCRE pattern, plus $delimiter, so a literal can be spliced into one.
+	// preg_quote escapes the characters that are special in a PCRE pattern,
+	// plus $delimiter, so a literal can be spliced into one.
 	rt.RegisterFunc("preg_quote", phpPregQuote)
 }
 

@@ -32,7 +32,9 @@ func registerArraySets(rt *runner.Runtime) {
 		return out
 	})
 
-	// array_fill_keys returns an array whose keys are the values of $keys and whose every value is $value; a key repeated in $keys lands once, as the later assignment overwrites the earlier.
+	// array_fill_keys returns an array whose keys are the values of $keys and
+	// whose every value is $value; a key repeated in $keys lands once, as the
+	// later assignment overwrites the earlier.
 	rt.RegisterFunc("array_fill_keys", func(keys any, value any) *model.Array {
 		n, _ := model.LenValues(keys)
 		out := model.NewArraySize(n)
@@ -43,7 +45,9 @@ func registerArraySets(rt *runner.Runtime) {
 		return out
 	})
 
-	// array_combine returns an array keyed by the values of $keys and valued by the values of $values, paired in order; the two must hold the same number of entries.
+	// array_combine returns an array keyed by the values of $keys and valued
+	// by the values of $values, paired in order; the two must hold the same
+	// number of entries.
 	rt.RegisterFunc("array_combine", func(keys, values any) (*model.Array, error) {
 		keyList := valueList(keys)
 		valList := valueList(values)
@@ -58,7 +62,9 @@ func registerArraySets(rt *runner.Runtime) {
 		return out, nil
 	})
 
-	// array_chunk splits $array into arrays of at most $length entries; the chunks are keyed from zero either way, and $preserve_keys decides whether the entries inside them keep their own keys or are renumbered.
+	// array_chunk splits $array into arrays of at most $length entries; the
+	// chunks are keyed from zero either way, and $preserve_keys decides
+	// whether the entries inside them keep their own keys or are renumbered.
 	rt.RegisterFunc("array_chunk", func(array any, length int64, preserve_keys ...bool) (*model.Array, error) {
 		if length < 1 {
 			return nil, errors.New("array_chunk(): Argument #2 ($length) must be greater than 0")
@@ -89,27 +95,34 @@ func registerArraySets(rt *runner.Runtime) {
 		return out, nil
 	})
 
-	// array_diff returns the entries of $array whose value is in none of the other arrays, keys kept; values are compared as strings, which is php's own rule and the reason 0 and "0" are the same entry here.
+	// array_diff returns the entries of $array whose value is in none of the
+	// other arrays, keys kept; values are compared as strings, which is php's
+	// own rule and the reason 0 and "0" are the same entry here.
 	rt.RegisterFunc("array_diff", func(array any, others ...any) *model.Array {
 		return filterByValue(array, others, false)
 	})
 
-	// array_intersect returns the entries of $array whose value is in every one of the other arrays, keys kept; values are compared as strings, as array_diff compares them.
+	// array_intersect returns the entries of $array whose value is in every
+	// one of the other arrays, keys kept; values are compared as strings, as
+	// array_diff compares them.
 	rt.RegisterFunc("array_intersect", func(array any, others ...any) *model.Array {
 		return filterByValue(array, others, true)
 	})
 
-	// array_diff_key returns the entries of $array whose key is in none of the other arrays, values untouched and never compared.
+	// array_diff_key returns the entries of $array whose key is in none of
+	// the other arrays, values untouched and never compared.
 	rt.RegisterFunc("array_diff_key", func(array any, others ...any) *model.Array {
 		return filterByKey(array, others, false)
 	})
 
-	// array_intersect_key returns the entries of $array whose key is in every one of the other arrays, values untouched and never compared.
+	// array_intersect_key returns the entries of $array whose key is in every
+	// one of the other arrays, values untouched and never compared.
 	rt.RegisterFunc("array_intersect_key", func(array any, others ...any) *model.Array {
 		return filterByKey(array, others, true)
 	})
 
-	// array_key_first returns the first key of $array without moving anything, or null when it is empty.
+	// array_key_first returns the first key of $array without moving
+	// anything, or null when it is empty.
 	rt.RegisterFunc("array_key_first", func(array any) any {
 		return edgeKey(array, true)
 	})

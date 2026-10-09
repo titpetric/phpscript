@@ -19,15 +19,20 @@ func init() {
 // lives in arrays.go and throws the keys away, so they can share
 // sortValues and these cannot.
 func registerArraySort(rt *runner.Runtime) {
-	// ksort sorts $array in place by key ascending with PHP's default comparison, keeping each key attached to its value.
+	// ksort sorts $array in place by key ascending with PHP's default
+	// comparison, keeping each key attached to its value.
 	rt.RegisterFunc("ksort", phpKsort)
-	// krsort sorts $array in place by key descending with PHP's default comparison, keeping each key attached to its value.
+	// krsort sorts $array in place by key descending with PHP's default
+	// comparison, keeping each key attached to its value.
 	rt.RegisterFunc("krsort", phpKrsort)
-	// asort sorts $array in place by value ascending with PHP's default comparison, keeping each value attached to its key.
+	// asort sorts $array in place by value ascending with PHP's default
+	// comparison, keeping each value attached to its key.
 	rt.RegisterFunc("asort", phpAsort)
-	// arsort sorts $array in place by value descending with PHP's default comparison, keeping each value attached to its key.
+	// arsort sorts $array in place by value descending with PHP's default
+	// comparison, keeping each value attached to its key.
 	rt.RegisterFunc("arsort", phpArsort)
-	// uasort sorts $array in place by value using the $callback comparator, keeping each value attached to its key.
+	// uasort sorts $array in place by value using the $callback comparator,
+	// keeping each value attached to its key.
 	rt.RegisterFunc("uasort", func(array any, callback any) (bool, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -37,7 +42,8 @@ func registerArraySort(rt *runner.Runtime) {
 			return callbackLess(fn, x.val, y.val)
 		})
 	})
-	// uksort sorts $array in place by key using the $callback comparator, keeping each key attached to its value.
+	// uksort sorts $array in place by key using the $callback comparator,
+	// keeping each key attached to its value.
 	rt.RegisterFunc("uksort", func(array any, callback any) (bool, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {

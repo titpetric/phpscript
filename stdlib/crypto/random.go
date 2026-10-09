@@ -16,7 +16,8 @@ import (
 // PHP written against it is everywhere, but it takes no seed, so the seeded
 // reproducibility of srand/mt_srand stays absent and those two with it.
 func RegisterRandom(rt *runner.Runtime) {
-	// random_bytes returns $length cryptographically secure random bytes, throwing when $length is less than 1.
+	// random_bytes returns $length cryptographically secure random bytes,
+	// throwing when $length is less than 1.
 	rt.RegisterFunc("random_bytes", func(length int64) (string, error) {
 		if length < 1 {
 			return "", errors.New("random_bytes(): Argument #1 ($length) must be greater than 0")
@@ -28,7 +29,9 @@ func RegisterRandom(rt *runner.Runtime) {
 		return string(buf), nil
 	})
 
-	// random_int returns a cryptographically secure, uniformly selected integer between $min and $max inclusive, throwing when $min is greater than $max.
+	// random_int returns a cryptographically secure, uniformly selected
+	// integer between $min and $max inclusive, throwing when $min is greater
+	// than $max.
 	rt.RegisterFunc("random_int", func(min, max int64) (int64, error) {
 		if min > max {
 			return 0, errors.New("random_int(): Argument #1 ($min) must be less than or equal to Argument #2 ($max)")

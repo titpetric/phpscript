@@ -350,7 +350,7 @@ type invokeHost interface {
 
 // globalHost holds variables of its own, which a host seeded before the run. Run
 // writes them into the top-level frame, where the language puts a
-// global: answering them from Lookup instead would hand them to every function
+// global: answering them from Lookup would expose them to every function
 // and every closure, which no frame below the first one was given them in.
 type globalHost interface {
 	Globals() map[string]any

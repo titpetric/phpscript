@@ -26,7 +26,8 @@ func runSource(t *testing.T, source string) string {
 
 // A value a host binding produced is an object already. The `(object)` cast has
 // to return it as it is, with no fold into a stdClass carrying a `scalar`
-// property, as the collection test and the scalar branch both did. Exception is the binding every runtime has.
+// property, as the collection test and the scalar branch both did. Exception
+// is the binding every runtime has.
 func TestObjectCastKeepsHostObjects(t *testing.T) {
 	got := runSource(t, `<?php
 $e = new Exception("boom");

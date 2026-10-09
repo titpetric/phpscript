@@ -17,26 +17,33 @@ import (
 // in what they do with the output: exec collects it, system and passthru write
 // it out as it arrives, and shell_exec returns all of it.
 func registerExec(rt *runner.Runtime, r root) {
-	// exec runs $command through the shell and returns the last line of its stdout, appending each output line to $output when an array is passed and writing the exit status to $result_code.
+	// exec runs $command through the shell and returns the last line of its
+	// stdout, appending each output line to $output when an array is passed
+	// and writing the exit status to $result_code.
 	rt.RegisterFunc("exec", r.phpExec)
-	// system runs $command through the shell, writing its output as it arrives, and returns the last line; the exit status is written to $result_code.
+	// system runs $command through the shell, writing its output as it
+	// arrives, and returns the last line; the exit status is written to
+	// $result_code.
 	rt.RegisterFunc("system", r.phpSystem)
-	// passthru runs $command through the shell and writes its output through untouched, for a command whose output is binary; it returns null, and the exit status is written to $result_code.
+	// passthru runs $command through the shell and writes its output through
+	// untouched, for a command whose output is binary; it returns null, and
+	// the exit status is written to $result_code.
 	rt.RegisterFunc("passthru", r.phpPassthru)
-	// shell_exec runs $command through the shell and returns all of its stdout, or null when the command produced none.
+	// shell_exec runs $command through the shell and returns all of its
+	// stdout, or null when the command produced none.
 	rt.RegisterFunc("shell_exec", r.phpShellExec)
 }
 
 // command builds the process for one of these calls.
 //
 // Dir is the working directory the script is in, resolved onto the host. This
-// is the one place the fs.FS sandbox is left behind on purpose: a command is a
+// is the one place the fs.FS sandbox is left behind: a command is a
 // process, it reads and writes with the permissions of the user running the
 // server, and writable_paths cannot reach it. What the runtime can say is where
 // it starts, and it says the same thing getcwd() does.
 //
-// A host that bound no directory leaves Dir empty, which is the process working
-// directory, which is where every command starts without one.
+// A host that bound no directory leaves Dir empty, so every command starts in
+// the process working directory.
 func (r root) command(ctx context.Context, cmdline string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "sh", "-c", cmdline)
 	if dir := r.hostWorkDir(); dir != "" {
@@ -79,8 +86,8 @@ func writeRef(set func(any), v any) {
 }
 
 // outputLines splits captured stdout the way PHP's exec does: trailing
-// whitespace comes off each line, and a command that printed nothing yields no
-// lines rather than one empty one.
+// whitespace comes off each line, and a command that printed nothing returns no
+// lines and never one empty one.
 func outputLines(stdout []byte) []string {
 	trimmed := strings.TrimRight(string(stdout), "\n")
 	if trimmed == "" {
@@ -93,7 +100,7 @@ func outputLines(stdout []byte) []string {
 	return lines
 }
 
-// phpExec captures stdout and hands back its last line.
+// phpExec captures stdout and returns its last line.
 //
 // $output is filled by appending into the array the caller passed, because
 // arrays are shared: PHP reaches the same observable result by reference, and
@@ -131,7 +138,7 @@ func (r root) phpExec(ctx context.Context, command string, output any, resultCod
 }
 
 // phpSystem writes the output as it arrives and returns the last line. The
-// stream is teed rather than buffered and echoed afterwards, because a command
+// stream is teed and never buffered to echo afterwards, because a command
 // that takes a while is one whose output a page wants while it runs.
 func (r root) phpSystem(ctx context.Context, command string, resultCode func(any)) any {
 	if command == "" {
@@ -171,7 +178,7 @@ func (r root) phpPassthru(ctx context.Context, command string, resultCode func(a
 
 // phpShellExec returns everything the command wrote to stdout, and null when it
 // wrote nothing. The null is PHP's, and it is why a caller checking for failure
-// has to check the string rather than the return.
+// has to check the string and not the return.
 func (r root) phpShellExec(ctx context.Context, command string) any {
 	if command == "" {
 		return nil

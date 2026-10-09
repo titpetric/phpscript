@@ -9,8 +9,8 @@
 //	$span->set_attribute("user_id", 42);
 //	$span->end();
 //
-// Without a trace in the context, which is what a CLI run without telemetry
-// looks like, start_span returns a span whose methods do nothing.
+// Without a trace in the context, as a CLI run without telemetry has it,
+// start_span returns a span whose methods do nothing.
 package span
 
 import (

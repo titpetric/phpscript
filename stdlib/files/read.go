@@ -39,7 +39,10 @@ func registerReads(rt *runner.Runtime, r root) {
 		return r.globSpelling(pattern, matches)
 	})
 
-	// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body (stdin under the cli SAPI), and a relative path is tried in the source filesystem first, then on the host.
+	// file_get_contents returns the contents of $filename as a string, or
+	// false on failure; php://input is the raw request body (stdin under the
+	// cli SAPI), and a relative path is tried in the source filesystem first,
+	// then on the host.
 	rt.RegisterFunc("file_get_contents", func(filename string) any {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			if scheme == "input" {
@@ -83,7 +86,8 @@ func registerReads(rt *runner.Runtime, r root) {
 		_, err := os.Stat(r.resolve(filename))
 		return err == nil
 	})
-	// filemtime returns the modification time of $filename as a Unix timestamp, or 0 when the file cannot be found; PHP returns false there.
+	// filemtime returns the modification time of $filename as a Unix
+	// timestamp, or 0 when the file cannot be found; PHP returns false there.
 	rt.RegisterFunc("filemtime", func(filename string) int64 {
 		if name, ok := r.uploadPath(filename); ok {
 			if st, err := os.Stat(name); err == nil {

@@ -13,7 +13,7 @@ import (
 // run executes src on both engines and returns what the interpreter printed,
 // failing when the two disagree. The binding is reached through reflection in
 // either case, so a divergence would be the bytecode engine taking a different
-// path to the same registration rather than a different regexp.
+// path to the same registration and no different regexp.
 func run(t *testing.T, src string) string {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -63,7 +63,7 @@ func TestRegexpCompile(t *testing.T) {
 			want: "a1b2",
 		},
 		{
-			// A []byte return is the text it carries, not a list of integers.
+			// A []byte return is the text it carries, and no list of integers.
 			name: "find returns bytes as a string",
 			src: `$b = (new Regexp\Compile('\d+'))->find("abc 42 def");
 				echo $b, ":", strlen($b), ":", gettype($b);`,

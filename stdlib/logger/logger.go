@@ -26,8 +26,8 @@ type Logger struct {
 // New returns a logger writing to the default slog logger, failing the span in
 // ctx on Error.
 //
-// The name prefixes the message, which is what tells two libraries logging the
-// same word apart. An empty name logs the message alone.
+// The name prefixes the message, which separates two libraries logging the
+// same word. An empty name logs the message by itself.
 func New(ctx context.Context, name string) *Logger {
 	return &Logger{
 		ctx:  ctx,

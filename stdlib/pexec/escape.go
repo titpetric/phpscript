@@ -12,7 +12,10 @@ import (
 func registerEscape(rt *runner.Runtime) {
 	// escapeshellarg returns $arg single-quoted for the shell, with embedded single quotes escaped.
 	rt.RegisterFunc("escapeshellarg", phpEscapeshellarg)
-	// escapeshellcmd returns $command with the shell metacharacters in it backslash-escaped, leaving quotes that come in pairs alone; escapeshellarg is the one to reach for, since this leaves a quoted argument's own contents live.
+	// escapeshellcmd returns $command with the shell metacharacters in it
+	// backslash-escaped, leaving quotes that come in pairs alone;
+	// escapeshellarg is the one to reach for, since this leaves a quoted
+	// argument's own contents live.
 	rt.RegisterFunc("escapeshellcmd", phpEscapeshellcmd)
 }
 

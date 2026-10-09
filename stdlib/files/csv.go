@@ -19,7 +19,9 @@ import (
 // right: it is fixed at '"', and naming another is refused and never
 // silently misquoted.
 func registerCSV(rt *runner.Runtime) {
-	// fputcsv writes $fields to $stream as one RFC 4180 record ending in \n and returns the number of bytes written, or false on failure; $escape is accepted and ignored, and an $enclosure other than '"' is refused.
+	// fputcsv writes $fields to $stream as one RFC 4180 record ending in \n
+	// and returns the number of bytes written, or false on failure; $escape
+	// is accepted and ignored, and an $enclosure other than '"' is refused.
 	rt.RegisterFunc("fputcsv", func(stream io.Writer, fields any, opts ...any) (any, error) {
 		sep, err := csvControls("fputcsv", opts)
 		if err != nil {
@@ -44,7 +46,10 @@ func registerCSV(rt *runner.Runtime) {
 		return counter.n, nil
 	})
 
-	// fgetcsv reads one CSV record from $stream and returns its fields as strings, or false at end of file; $length is accepted and ignored, $escape is accepted and ignored, and an $enclosure other than '"' is refused.
+	// fgetcsv reads one CSV record from $stream and returns its fields as
+	// strings, or false at end of file; $length is accepted and ignored,
+	// $escape is accepted and ignored, and an $enclosure other than '"' is
+	// refused.
 	rt.RegisterFunc("fgetcsv", func(stream io.Reader, opts ...any) (any, error) {
 		// The first optional argument is $length, a line-length hint PHP
 		// itself stopped needing; the separator and its companions follow.

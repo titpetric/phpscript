@@ -29,7 +29,11 @@ func init() {
 // the host gave it and a context derived from it, and these move the derivation.
 // See runner/deadline.go.
 func registerLimits(rt *runner.Runtime) {
-	// set_time_limit bounds the rest of this script to $seconds and answers true; the clock restarts from the call, as a second call in PHP does, and 0 removes the limit. The limit is a deadline on the context the interpreter checks and every binding is handed, so it ends a Go call that is waiting as well as a PHP loop that is spinning.
+	// set_time_limit bounds the rest of this script to $seconds and answers
+	// true; the clock restarts from the call, as a second call in PHP does,
+	// and 0 removes the limit. The limit is a deadline on the context the
+	// interpreter checks and every binding is handed, so it ends a Go call
+	// that is waiting as well as a PHP loop that is spinning.
 	rt.RegisterFunc("set_time_limit", func(seconds int64) bool {
 		rt.SetTimeLimit(limitFor(seconds))
 		return true
@@ -52,7 +56,12 @@ func registerLimits(rt *runner.Runtime) {
 		rt.SetIgnoreUserAbort(enable[0])
 	})
 
-	// connection_aborted returns true once the client has closed the connection, so a script can stop doing work nobody is waiting for: commit the transaction, skip rendering the page. It keeps answering after ignore_user_abort(true) detached the run from the disconnect, which is the only arrangement in which a script is still running to ask.
+	// connection_aborted returns true once the client has closed the
+	// connection, so a script can stop doing work nobody is waiting for:
+	// commit the transaction, skip rendering the page. It keeps answering
+	// after ignore_user_abort(true) detached the run from the disconnect,
+	// which is the only arrangement in which a script is still running to
+	// ask.
 	rt.RegisterFunc("connection_aborted", func() bool {
 		return rt.ConnectionAborted()
 	})

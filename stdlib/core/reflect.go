@@ -23,7 +23,8 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		return classNameOf(object[0])
 	})
-	// get_parent_class always returns false; phpscript has no inheritance, so no class has a parent to report.
+	// get_parent_class always returns false; phpscript has no inheritance, so
+	// no class has a parent to report.
 	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
 	// is_subclass_of always returns false; phpscript has no inheritance, so no
 	// object is an instance of a subclass. A guard written as
@@ -65,7 +66,9 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		return false
 	})
-	// property_exists reports whether object $object_or_class has property $property, set or declared; a class name is not accepted and returns false.
+	// property_exists reports whether object $object_or_class has property
+	// $property, set or declared; a class name is not accepted and returns
+	// false.
 	rt.RegisterFunc("property_exists", func(objectOrClass any, property string) bool {
 		object, ok := objectOrClass.(*model.Object)
 		if !ok {

@@ -26,7 +26,9 @@ func registerMath(rt *runner.Runtime) {
 	rt.RegisterFunc("floor", func(num any) float64 { return math.Floor(phpval.Float(num)) })
 	// ceil returns the next highest integer value of $num as a float, so ceil(4.3) is float(5).
 	rt.RegisterFunc("ceil", func(num any) float64 { return math.Ceil(phpval.Float(num)) })
-	// round returns $num rounded to $precision decimal places as a float, always half away from zero; a $mode argument is accepted and ignored, so only PHP_ROUND_HALF_UP is honoured.
+	// round returns $num rounded to $precision decimal places as a float,
+	// always half away from zero; a $mode argument is accepted and ignored,
+	// so only PHP_ROUND_HALF_UP is honoured.
 	rt.RegisterFunc("round", func(num any, opts ...any) float64 {
 		precision := 0
 		if len(opts) > 0 {
@@ -36,7 +38,8 @@ func registerMath(rt *runner.Runtime) {
 	})
 	// sqrt returns the square root of $num as a float, or NAN when $num is negative.
 	rt.RegisterFunc("sqrt", func(num any) float64 { return math.Sqrt(phpval.Float(num)) })
-	// pow returns $num raised to the power $exponent, an int when both are int and the result fits, a float otherwise.
+	// pow returns $num raised to the power $exponent, an int when both are
+	// int and the result fits, a float otherwise.
 	rt.RegisterFunc("pow", phpPow)
 	// log returns the logarithm of $num in base $base, natural (base M_E) when $base is omitted.
 	rt.RegisterFunc("log", func(num any, base ...any) float64 {
@@ -45,13 +48,21 @@ func registerMath(rt *runner.Runtime) {
 		}
 		return phpLog(phpval.Float(num), phpval.Float(base[0]))
 	})
-	// min returns the lowest value of $value and $values, or of the single array argument; values compare as PHP 8 compares them and the value itself is returned, so min(1, "2", 3) is int(1).
+	// min returns the lowest value of $value and $values, or of the single
+	// array argument; values compare as PHP 8 compares them and the value
+	// itself is returned, so min(1, "2", 3) is int(1).
 	rt.RegisterFunc("min", func(args ...any) (any, error) { return phpMinMax("min", args, -1) })
-	// max returns the highest value of $value and $values, or of the single array argument; values compare as PHP 8 compares them and the value itself is returned, so max(1, "2", 3) is int(3).
+	// max returns the highest value of $value and $values, or of the single
+	// array argument; values compare as PHP 8 compares them and the value
+	// itself is returned, so max(1, "2", 3) is int(3).
 	rt.RegisterFunc("max", func(args ...any) (any, error) { return phpMinMax("max", args, 1) })
-	// number_format formats $num with $decimals decimals, $decimal_separator between the parts and $thousands_separator every three digits of the integer part, rounding half away from zero.
+	// number_format formats $num with $decimals decimals, $decimal_separator
+	// between the parts and $thousands_separator every three digits of the
+	// integer part, rounding half away from zero.
 	rt.RegisterFunc("number_format", phpNumberFormat)
-	// hexdec returns the number $hex_string names in hexadecimal, ignoring any character outside 0-9 a-f A-F, as PHP does; a value past PHP_INT_MAX keeps accumulating as a float.
+	// hexdec returns the number $hex_string names in hexadecimal, ignoring
+	// any character outside 0-9 a-f A-F, as PHP does; a value past
+	// PHP_INT_MAX keeps accumulating as a float.
 	rt.RegisterFunc("hexdec", phpHexdec)
 }
 

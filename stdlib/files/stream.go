@@ -12,7 +12,10 @@ import (
 // registerStreams installs the file-handle functions. A handle is the *os.File
 // fopen() returns; PHP calls it a resource.
 func registerStreams(rt *runner.Runtime, r root) {
-	// fopen opens $filename in $mode and returns a handle, or false on failure; php://output is the script's own output stream, php://input is the raw request body (stdin under the cli SAPI), and a mode that can write is refused outside writable_paths.
+	// fopen opens $filename in $mode and returns a handle, or false on
+	// failure; php://output is the script's own output stream, php://input is
+	// the raw request body (stdin under the cli SAPI), and a mode that can
+	// write is refused outside writable_paths.
 	rt.RegisterFunc("fopen", func(filename, mode string) (any, error) {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			switch scheme {

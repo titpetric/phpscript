@@ -16,8 +16,8 @@ import (
 // it would pass file_get_contents. stdlib/pexec is rerooted for a different
 // reason: a command is a process and no path, and the root only decides
 // where it starts, so that it matches what getcwd() says. It is rerooted only
-// when the mount included it, because rerooting installs the area's bindings and
-// would hand back what a narrowed profile left out.
+// when the mount included it, because rerooting installs the area's bindings
+// and would restore what a narrowed profile left out.
 func RegisterFS(rt *runner.Runtime, dir string) {
 	files.RegisterRoot(rt, dir)
 	gd.RegisterRoot(rt, dir)

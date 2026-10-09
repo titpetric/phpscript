@@ -28,7 +28,8 @@ func init() {
 // request, finds the functions present and inert, as PHP's own cli
 // SAPI does with header().
 func registerRequest(rt *runner.Runtime) {
-	// getallheaders returns the request headers as an associative array keyed by canonical header name, and an empty array when there is no request.
+	// getallheaders returns the request headers as an associative array keyed
+	// by canonical header name, and an empty array when there is no request.
 	rt.RegisterFunc("getallheaders", func() *model.Array {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -53,7 +54,11 @@ func registerRequest(rt *runner.Runtime) {
 		return request.GetAllHeaders()
 	})
 
-	// header stages the "Name: value" response header in $header, written to the response after the script finishes; $replace (default true) overwrites an existing header of the same name, $code stages the response status, and a status line such as "HTTP/1.0 404 Not Found" stages the status it names.
+	// header stages the "Name: value" response header in $header, written to
+	// the response after the script finishes; $replace (default true)
+	// overwrites an existing header of the same name, $code stages the
+	// response status, and a status line such as "HTTP/1.0 404 Not Found"
+	// stages the status it names.
 	rt.RegisterFunc("header", func(header string, opts ...any) {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -62,7 +67,10 @@ func registerRequest(rt *runner.Runtime) {
 		request.Header(header, opts...)
 	})
 
-	// http_response_code stages the response status in $response_code and returns the one it replaced; called without one it returns the status the response will be sent with, or false when there is no request to answer for.
+	// http_response_code stages the response status in $response_code and
+	// returns the one it replaced; called without one it returns the status
+	// the response will be sent with, or false when there is no request to
+	// answer for.
 	rt.RegisterFunc("http_response_code", func(opts ...any) any {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -71,12 +79,17 @@ func registerRequest(rt *runner.Runtime) {
 		return request.HTTPResponseCode(rt.SAPI(), opts...)
 	})
 
-	// setcookie stages a Set-Cookie header naming $name with $value url-encoded, and answers whether it could; $expires_or_options is a unix timestamp, 0 for a cookie that dies with the browser session, or an array of expires, path, domain, secure, httponly and samesite.
+	// setcookie stages a Set-Cookie header naming $name with $value
+	// url-encoded, and answers whether it could; $expires_or_options is a
+	// unix timestamp, 0 for a cookie that dies with the browser session, or
+	// an array of expires, path, domain, secure, httponly and samesite.
 	rt.RegisterFunc("setcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, true)
 	})
 
-	// setrawcookie stages a Set-Cookie header the way setcookie does, writing $value as it stands, so a value carrying a semicolon or a space is the caller's to handle; the encoder does nothing with it.
+	// setrawcookie stages a Set-Cookie header the way setcookie does, writing
+	// $value as it stands, so a value carrying a semicolon or a space is the
+	// caller's to handle; the encoder does nothing with it.
 	rt.RegisterFunc("setrawcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, false)
 	})

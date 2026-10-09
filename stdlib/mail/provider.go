@@ -12,30 +12,30 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// DefaultName is the server a script that names none asks for. `new Mail` and
+// DefaultName is the server a script that names none resolves to. `new Mail` and
 // mail() both resolve it.
 const DefaultName = "default"
 
 // Default is the provider used when a runtime's options name none. It holds no
 // servers, so mail() and `new Mail` refuse catchably naming what is missing,
-// which is what a CLI run with no mail block has.
+// as a CLI run with no mail block has.
 var Default model.MailProvider = NewProvider(nil)
 
 var _ model.MailProvider = (*Provider)(nil)
 
-// Deliver hands one message to a transport, with the credential of the server
-// it resolved to. It is the seam a host swaps to send by something other than
-// SMTP, and it is a function rather than another MailProvider because the name
+// Deliver passes one message to a transport, with the credential of the server
+// it resolved to. It is the one function a host swaps to send by something other than
+// SMTP, and it is a function and no second MailProvider because the name
 // resolution and the tenant isolation sit above it and are not to be
-// reimplemented. A Deliver is host code and is handed the host's settings.
+// reimplemented. A Deliver is host code and reads the host's settings.
 type Deliver func(config Config, recipient, subject, body string) error
 
 // Provider holds the credentials of a set of named mail servers.
 //
-// The map is fixed once the provider is built. There is deliberately no
+// The map is fixed once the provider is built. There is no
 // registration call and no listing call: a script names a server and learns
 // only whether the delivery worked. That is also what lets the constructor
-// check a name without the answer being able to disagree with the one Send
+// check a name and get the same verdict Send
 // makes for itself.
 type Provider struct {
 	servers map[string]Config
@@ -43,7 +43,7 @@ type Provider struct {
 }
 
 // NewProvider returns a provider holding the given servers, keyed by the name
-// a script asks for, delivering over SMTP.
+// a script names, sending over SMTP.
 func NewProvider(servers map[string]Config) *Provider {
 	return NewProviderFunc(servers, deliverSMTP)
 }
@@ -51,8 +51,9 @@ func NewProvider(servers map[string]Config) *Provider {
 // NewProviderFunc is NewProvider with the transport replaced, the way
 // database.NewDatabaseProvider takes its connector. A nil deliver is SMTP.
 //
-// The map is copied rather than retained, because config layering hands one map
-// to every site that declared no mail block and a normalisation written into it
+// The map is copied and never retained, because configuration layering passes
+// one map to every site that declared no mail block, and a normalisation
+// written into it
 // would be written into all of them. Names are lowercased and a missing port is
 // filled in here, so a delivery reads a complete credential.
 func NewProviderFunc(servers map[string]Config, deliver Deliver) *Provider {
@@ -78,11 +79,11 @@ func (p *Provider) Configured(name string) error {
 	return err
 }
 
-// Send delivers one message through the named server.
+// Send sends one message through the named server.
 //
 // The credential is read here, into a local, and is gone when the call
 // returns. Nothing that outlives the delivery holds it: not the PHP object the
-// script called, not the span, not the error.
+// script called, and no part of the span or the error.
 func (p *Provider) Send(_ context.Context, name, recipient, subject, body string) error {
 	config, err := p.resolve(name)
 	if err != nil {
@@ -93,7 +94,7 @@ func (p *Provider) Send(_ context.Context, name, recipient, subject, body string
 
 // resolve returns the credential for name, defaulting an empty name. A name
 // nobody configured is reported the way an unconfigured database connection
-// is: the name asked for, and nothing about what was configured instead.
+// is: the name named, and nothing about what was configured.
 func (p *Provider) resolve(name string) (Config, error) {
 	if name == "" {
 		name = DefaultName
@@ -130,7 +131,7 @@ func deliverSMTP(config Config, recipient, subject, body string) error {
 }
 
 // converse is the SMTP exchange itself, split out so deliver reads as the
-// decisions and this reads as the protocol.
+// decisions and this one reads as the protocol.
 func converse(config Config, auth smtp.Auth, sender, recipient, message string) error {
 	client, err := smtp.Dial(config.address())
 	if err != nil {

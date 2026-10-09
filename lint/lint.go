@@ -407,9 +407,10 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 // lintChainedAssign reports `$a = $b = value`, where one value is bound to two
 // or more names in a single statement.
 //
-// PHP copies an array on assignment, so there the two names end up holding
-// independent arrays. phpscript's arrays are references, so both names read one
-// array and a later write through either is visible through the other, a bug
+// PHP copies an array on assignment, so there each name holds its own
+// array. phpscript's arrays are references, so one array sits
+// under both names and a later write through either is visible through the
+// other, a bug
 // the shape hides and never announces.
 //
 // The rule only sees the chains that are left after the parser has fixed the

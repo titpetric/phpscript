@@ -20,7 +20,9 @@ import (
 // forgets to close leaks nothing: the handle is an ordinary Go value the
 // collector takes once the script drops it.
 func registerDirs(rt *runner.Runtime, r root) {
-	// opendir returns a handle for reading the names in $directory, or false when it is not a directory; php's $context argument is not taken, because there are no stream contexts to pass it.
+	// opendir returns a handle for reading the names in $directory, or false
+	// when it is not a directory; php's $context argument is not taken,
+	// because there are no stream contexts to pass it.
 	rt.RegisterFunc("opendir", func(directory string) any {
 		names, ok := r.readDir(directory)
 		if !ok {
@@ -34,7 +36,10 @@ func registerDirs(rt *runner.Runtime, r root) {
 		return &openDir{names: entries}
 	})
 
-	// readdir returns the next name in $dir_handle, or false once the listing is exhausted; "." and ".." are listed, as php lists them, and the handle is required, because there is no last-opened directory to fall back on.
+	// readdir returns the next name in $dir_handle, or false once the listing
+	// is exhausted; "." and ".." are listed, as php lists them, and the
+	// handle is required, because there is no last-opened directory to fall
+	// back on.
 	rt.RegisterFunc("readdir", func(dirHandle any) any {
 		h, ok := dirHandle.(*openDir)
 		if !ok || h.pos >= len(h.names) {
@@ -47,7 +52,7 @@ func registerDirs(rt *runner.Runtime, r root) {
 
 	// closedir drops the listing $dir_handle was holding and answers nothing,
 	// as php's does; a handle it closed reads as exhausted and not raising,
-	// which is where php throws.
+	// where php throws.
 	rt.RegisterFunc("closedir", func(dirHandle any) {
 		if h, ok := dirHandle.(*openDir); ok {
 			h.names = nil

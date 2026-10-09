@@ -20,23 +20,35 @@ func init() {
 func registerEncoding(rt *runner.Runtime) {
 	// base64_encode returns $string encoded with the standard base64 alphabet and '=' padding.
 	rt.RegisterFunc("base64_encode", phpBase64Encode)
-	// base64_decode decodes the base64 in $string, skipping unknown characters unless $strict is true, in which case it returns false for them and for misplaced padding.
+	// base64_decode decodes the base64 in $string, skipping unknown
+	// characters unless $strict is true, in which case it returns false for
+	// them and for misplaced padding.
 	rt.RegisterFunc("base64_decode", phpBase64Decode)
-	// urlencode encodes $string for application/x-www-form-urlencoded, so a space becomes '+' and '~' becomes '%7E'.
+	// urlencode encodes $string for application/x-www-form-urlencoded, so a
+	// space becomes '+' and '~' becomes '%7E'.
 	rt.RegisterFunc("urlencode", phpURLEncode)
-	// urldecode decodes the application/x-www-form-urlencoded $string, turning '+' into a space and leaving an incomplete '%' sequence literal.
+	// urldecode decodes the application/x-www-form-urlencoded $string,
+	// turning '+' into a space and leaving an incomplete '%' sequence
+	// literal.
 	rt.RegisterFunc("urldecode", phpURLDecode)
 	// rawurlencode encodes $string per RFC 3986, so a space becomes '%20' and '~' stays literal.
 	rt.RegisterFunc("rawurlencode", phpRawURLEncode)
-	// rawurldecode decodes the RFC 3986 $string, leaving '+' alone and leaving an incomplete '%' sequence literal.
+	// rawurldecode decodes the RFC 3986 $string, leaving '+' alone and
+	// leaving an incomplete '%' sequence literal.
 	rt.RegisterFunc("rawurldecode", phpRawURLDecode)
-	// http_build_query joins $data into a query string, urlencoding both halves of every pair and spelling a nested array as key[sub]=value; the $numeric_prefix, $arg_separator and $encoding_type parameters are not supported.
+	// http_build_query joins $data into a query string, urlencoding both
+	// halves of every pair and spelling a nested array as key[sub]=value; the
+	// $numeric_prefix, $arg_separator and $encoding_type parameters are not
+	// supported.
 	rt.RegisterFunc("http_build_query", phpHTTPBuildQuery)
-	// parse_str decodes the query string $string into $result, reading PHP's bracket syntax so a[b]=1 arrives as a nested array; it is the inverse of http_build_query and the decoder behind $_GET and $_POST.
+	// parse_str decodes the query string $string into $result, reading PHP's
+	// bracket syntax so a[b]=1 arrives as a nested array; it is the inverse
+	// of http_build_query and the decoder behind $_GET and $_POST.
 	rt.RegisterFunc("parse_str", phpParseStr)
 	// bin2hex returns $string spelled as lowercase hexadecimal, two digits per byte.
 	rt.RegisterFunc("bin2hex", phpBin2hex)
-	// hex2bin decodes the hexadecimal $string back into bytes, returning false for an odd-length string or a non-hex character.
+	// hex2bin decodes the hexadecimal $string back into bytes, returning
+	// false for an odd-length string or a non-hex character.
 	rt.RegisterFunc("hex2bin", phpHex2bin)
 }
 

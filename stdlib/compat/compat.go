@@ -93,7 +93,8 @@ func registerBuffers(rt *runner.Runtime) {
 		_, ok := buffers.pop(true)
 		return ok
 	})
-	// ob_get_flush closes the active buffer, writes its contents to the output below it, and returns them.
+	// ob_get_flush closes the active buffer, writes its contents to the
+	// output below it, and returns them.
 	rt.RegisterFunc("ob_get_flush", func() any {
 		contents, ok := buffers.pop(true)
 		if !ok {

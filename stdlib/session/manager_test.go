@@ -115,13 +115,13 @@ func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
 }
 
 // TestSessionManagerReadsAServedRequestsCookie is the manager against the
-// context a server builds, rather than one a host filled in.
+// context a server builds, and not one a host filled in.
 //
 // A request decodes its cookies on the first read through Context.CookieMap, so
 // the Cookie field is empty until something asks. Reading the field instead made
 // every served request anonymous - valid() answered false for a cookie the same
 // manager had issued one request earlier - while $_COOKIE held it, because the
-// superglobal goes through the accessor. Issue #118.
+// superglobal resolves through the accessor. Issue #118.
 func TestSessionManagerReadsAServedRequestsCookie(t *testing.T) {
 	storage := session.NewStorageMemory()
 	manager, err := session.NewManager(storage)

@@ -6,7 +6,7 @@ import (
 
 // PHP has no lexical scope a Go caller can read, so the interpreter publishes
 // the file and line it is executing into the context it hands to bindings.
-// Spans started from such a context record that location, which is what makes
+// Spans started from such a context record that location, so
 // a span in the front end point back at the line of PHP that caused it.
 
 type spanFilenameKey struct{}

@@ -188,8 +188,8 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 		// autoloader declares no class until a name reaches it, so
 		// including it and then refusing to autoload would leave every PSR-4
 		// class unknown, which is the finding the flag exists to
-		// remove. With no include there is no autoloader to run, and asking
-		// for one would only cost a lookup that cannot succeed.
+		// remove. With no include there is no autoloader to run, and the
+		// lookup would only cost a miss.
 		known, _ := rt.ClassExists(class, includeFile != "")
 		return known
 	}

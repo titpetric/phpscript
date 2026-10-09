@@ -32,11 +32,17 @@ func registerArrays(rt *runner.Runtime) {
 		n, _ := model.LenValues(array)
 		return int64(n)
 	})
-	// in_array reports whether $needle occurs in $haystack, comparing loosely with PHP 8 rules unless $strict is true, which compares types as well as values.
+	// in_array reports whether $needle occurs in $haystack, comparing loosely
+	// with PHP 8 rules unless $strict is true, which compares types as well
+	// as values.
 	rt.RegisterFunc("in_array", phpInArray)
-	// array_search returns the key of the first $haystack element equal to $needle, or false when there is none; comparison is loose unless $strict is true.
+	// array_search returns the key of the first $haystack element equal to
+	// $needle, or false when there is none; comparison is loose unless
+	// $strict is true.
 	rt.RegisterFunc("array_search", phpArraySearch)
-	// array_unique returns $array with duplicate values removed, comparing values as strings and keeping the first occurrence and its key; the $flags argument is accepted and ignored.
+	// array_unique returns $array with duplicate values removed, comparing
+	// values as strings and keeping the first occurrence and its key; the
+	// $flags argument is accepted and ignored.
 	rt.RegisterFunc("array_unique", func(array any, flags ...any) *model.Array {
 		n, _ := model.LenValues(array)
 		out := model.NewArraySize(n)
@@ -51,11 +57,15 @@ func registerArrays(rt *runner.Runtime) {
 		})
 		return out
 	})
-	// array_merge merges the given arrays into one; integer keys are renumbered and later string keys overwrite earlier ones.
+	// array_merge merges the given arrays into one; integer keys are
+	// renumbered and later string keys overwrite earlier ones.
 	rt.RegisterFunc("array_merge", phpArrayMerge)
-	// reset returns the first value of $array, or false when it is empty; there is no internal pointer here, so this is the value without the rewind.
+	// reset returns the first value of $array, or false when it is empty;
+	// there is no internal pointer here, so this is the value without the
+	// rewind.
 	rt.RegisterFunc("reset", func(array any) any { return edgeValue(array, true) })
-	// end returns the last value of $array, or false when it is empty; there is no internal pointer here, so this is the value without the seek.
+	// end returns the last value of $array, or false when it is empty; there
+	// is no internal pointer here, so this is the value without the seek.
 	rt.RegisterFunc("end", func(array any) any { return edgeValue(array, false) })
 	// array_keys returns the keys of $array as a list; there is no $filter_value parameter.
 	rt.RegisterFunc("array_keys", func(array any) []any {
@@ -71,19 +81,35 @@ func registerArrays(rt *runner.Runtime) {
 		model.RangeValues(array, func(_, v any) bool { out = append(out, v); return true })
 		return out
 	})
-	// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end and a negative $length stopping that many short of it; integer keys are reindexed from zero unless $preserve_keys is true, and string keys are kept either way.
+	// array_slice returns up to $length elements of $array starting at
+	// $offset, a negative $offset counting from the end and a negative
+	// $length stopping that many short of it; integer keys are reindexed from
+	// zero unless $preserve_keys is true, and string keys are kept either
+	// way.
 	rt.RegisterFunc("array_slice", phpArraySlice)
-	// array_splice removes $length elements of $array at $offset, inserts $replacement in their place, and returns the removed elements; a value that is not a script array is an error.
+	// array_splice removes $length elements of $array at $offset, inserts
+	// $replacement in their place, and returns the removed elements; a value
+	// that is not a script array is an error.
 	rt.RegisterFunc("array_splice", phpArraySplice)
-	// array_shift removes the first element of $array and returns it, renumbering the integer keys from zero and leaving string keys alone; an empty array returns null and a value that is not a script array is an error.
+	// array_shift removes the first element of $array and returns it,
+	// renumbering the integer keys from zero and leaving string keys alone;
+	// an empty array returns null and a value that is not a script array is
+	// an error.
 	rt.RegisterFunc("array_shift", phpArrayShift)
-	// array_unshift prepends the given values to $array and returns the new element count, renumbering the integer keys from zero and leaving string keys alone; a value that is not a script array is an error.
+	// array_unshift prepends the given values to $array and returns the new
+	// element count, renumbering the integer keys from zero and leaving
+	// string keys alone; a value that is not a script array is an error.
 	rt.RegisterFunc("array_unshift", phpArrayUnshift)
-	// array_pop removes the last element of $array and returns it, leaving the remaining keys as they were; an empty array returns null and a value that is not a script array is an error.
+	// array_pop removes the last element of $array and returns it, leaving
+	// the remaining keys as they were; an empty array returns null and a
+	// value that is not a script array is an error.
 	rt.RegisterFunc("array_pop", phpArrayPop)
-	// array_push appends the given values to $array at the next integer keys and returns the new element count; a value that is not a script array is an error.
+	// array_push appends the given values to $array at the next integer keys
+	// and returns the new element count; a value that is not a script array
+	// is an error.
 	rt.RegisterFunc("array_push", phpArrayPush)
-	// array_map returns a list of $callback applied to each value of $array; a single array is accepted and keys are not preserved.
+	// array_map returns a list of $callback applied to each value of $array;
+	// a single array is accepted and keys are not preserved.
 	rt.RegisterFunc("array_map", func(callback any, array any) ([]any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -99,17 +125,24 @@ func registerArrays(rt *runner.Runtime) {
 		}
 		return phpUsort(array, fn), nil
 	})
-	// sort sorts $array in place ascending with PHP's default comparison, discarding the keys and reindexing from zero.
+	// sort sorts $array in place ascending with PHP's default comparison,
+	// discarding the keys and reindexing from zero.
 	rt.RegisterFunc("sort", phpSort)
-	// rsort sorts $array in place descending with PHP's default comparison, discarding the keys and reindexing from zero.
+	// rsort sorts $array in place descending with PHP's default comparison,
+	// discarding the keys and reindexing from zero.
 	rt.RegisterFunc("rsort", phpRsort)
 
 	rt.SetConst("ARRAY_FILTER_USE_KEY", arrayFilterUseKey)
 	rt.SetConst("ARRAY_FILTER_USE_BOTH", arrayFilterUseBoth)
 
-	// array_key_exists reports whether $key is present in $array, which is true even when the value stored there is null.
+	// array_key_exists reports whether $key is present in $array, which is
+	// true even when the value stored there is null.
 	rt.RegisterFunc("array_key_exists", phpArrayKeyExists)
-	// array_filter returns the elements of $array for which $callback is truthy, preserving the keys; without a $callback the values are filtered on their own truthiness, and $mode selects what the callback receives (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value and the key).
+	// array_filter returns the elements of $array for which $callback is
+	// truthy, preserving the keys; without a $callback the values are
+	// filtered on their own truthiness, and $mode selects what the callback
+	// receives (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value
+	// and the key).
 	rt.RegisterFunc("array_filter", func(array any, options ...any) (*model.Array, error) {
 		var fn func(...any) (any, error)
 		if len(options) > 0 && options[0] != nil {
@@ -125,7 +158,9 @@ func registerArrays(rt *runner.Runtime) {
 		}
 		return phpArrayFilter(array, fn, mode)
 	})
-	// array_reduce folds $array with $callback, which is called with the carry and the value, starting from $initial and returning null for an empty array.
+	// array_reduce folds $array with $callback, which is called with the
+	// carry and the value, starting from $initial and returning null for an
+	// empty array.
 	rt.RegisterFunc("array_reduce", func(array any, callback any, initial ...any) (any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -137,15 +172,25 @@ func registerArrays(rt *runner.Runtime) {
 		}
 		return phpArrayReduce(array, fn, carry)
 	})
-	// array_column returns the $column_key value of every row of $array, keyed by each row's $index_key when that is given; a null $column_key selects the whole row and rows missing the column are skipped.
+	// array_column returns the $column_key value of every row of $array,
+	// keyed by each row's $index_key when that is given; a null $column_key
+	// selects the whole row and rows missing the column are skipped.
 	rt.RegisterFunc("array_column", phpArrayColumn)
-	// array_flip returns $array with its keys and values exchanged; a value that is neither an integer nor a string is skipped, as in PHP, but without the warning.
+	// array_flip returns $array with its keys and values exchanged; a value
+	// that is neither an integer nor a string is skipped, as in PHP, but
+	// without the warning.
 	rt.RegisterFunc("array_flip", phpArrayFlip)
-	// array_reverse returns $array in reverse order, renumbering the integer keys from zero unless $preserve_keys is true; string keys are kept either way.
+	// array_reverse returns $array in reverse order, renumbering the integer
+	// keys from zero unless $preserve_keys is true; string keys are kept
+	// either way.
 	rt.RegisterFunc("array_reverse", phpArrayReverse)
-	// array_sum returns the sum of the values of $array as an int when every value is an integer and as a float once one of them is a float or the total overflows.
+	// array_sum returns the sum of the values of $array as an int when every
+	// value is an integer and as a float once one of them is a float or the
+	// total overflows.
 	rt.RegisterFunc("array_sum", phpArraySum)
-	// range returns the list of values from $start to $end inclusive, stepping by $step; two single-character strings produce a character range, and any float endpoint or fractional step produces floats.
+	// range returns the list of values from $start to $end inclusive,
+	// stepping by $step; two single-character strings produce a character
+	// range, and any float endpoint or fractional step produces floats.
 	rt.RegisterFunc("range", phpRange)
 }
 

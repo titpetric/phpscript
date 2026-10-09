@@ -50,7 +50,7 @@ echo "none";`
 // profile: no pexec name is defined, and no call route reaches one - a direct
 // call, call_user_func and a variable function all resolve through the one
 // function table, on either engine. strlen answers beside each refusal, so the
-// failure is the absence of the name rather than a broken runtime.
+// failure is the absence of the name and no broken runtime.
 func TestMountSecureExcludesExec(t *testing.T) {
 	calls := []struct {
 		name string
@@ -151,7 +151,7 @@ func TestRegisterFSKeepsTheProfile(t *testing.T) {
 }
 
 // TestParseProfile covers the --stdlib values. An unknown name is an error
-// rather than a fallback, because falling back to every area would narrow
+// and no fallback, because falling back to every area would narrow
 // nothing while reading as a narrowed runtime.
 func TestParseProfile(t *testing.T) {
 	for _, tc := range []struct {

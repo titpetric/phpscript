@@ -1,11 +1,11 @@
 // Package mail registers the mail bindings: the mail() function and the Mail
 // class, both of which send through a server the host configured and named.
 //
-// A script names a server. It does not spell one: there is no way to hand a
-// host, a username or a password to a binding, and no way to read one back
+// A script names a server. It does not spell one: no binding accepts a host, a
+// username or a password, and none returns one back
 // out of the object a binding returns. The credentials live in a
 // model.MailProvider the host builds from its configuration, which reads them
-// at the moment of a delivery and hands back nothing but the outcome.
+// at the moment of a delivery and returns the outcome alone.
 //
 // SMTP is the protocol the package speaks, not the subject it models, so it
 // names the conversation in provider.go and nothing a script types.
@@ -43,7 +43,10 @@ func Register(rt *runner.Runtime) {
 		return &Mail{name: name, provider: servers}, nil
 	})
 
-	// mail sends a plain-text message to $recipient with $subject and $body through the host's "default" mail server, throwing when none is configured; PHP's $additional_headers and $additional_params are not accepted.
+	// mail sends a plain-text message to $recipient with $subject and $body
+	// through the host's "default" mail server, throwing when none is
+	// configured; PHP's $additional_headers and $additional_params are not
+	// accepted.
 	rt.RegisterFunc("mail", func(ctx context.Context, recipient, subject, body string) error {
 		return send(ctx, provider(rt), DefaultName, recipient, subject, body)
 	})
@@ -82,14 +85,14 @@ func serverName(names []any) (string, error) {
 // recorded exactly once however the script spelled it.
 //
 // Mail leaves the process and is the slowest thing most scripts do, so it is
-// external work rather than internal. The recipient and the subject are
-// recorded; the body is left out and only its size kept. A message body is the one part of
+// external work and no internal step. The recipient and the subject are
+// recorded; the body is left out and only its size kept. A body is the one part of
 // a delivery that is certain to be private, and a size answers the question a
 // trace is opened to answer.
 //
-// The server is recorded by the name it was configured under rather than by
+// The server is recorded by the name it was configured under and never by
 // its hostname. The name is what an operator reads the trace against, and it
-// is all this side of the provider holds: the interface exposes
+// is all this side of the provider holds, because the interface exposes
 // no part of a credential, hostname included.
 func send(ctx context.Context, servers model.MailProvider, name, recipient, subject, body string) (err error) {
 	span := telemetry.StartSpan(ctx, "mail", telemetry.KindExternal)

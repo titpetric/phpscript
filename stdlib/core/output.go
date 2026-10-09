@@ -18,7 +18,9 @@ func init() {
 }
 
 func registerOutput(rt *runner.Runtime) {
-	// var_export renders $value as parsable PHP source; with $return true the source is returned, otherwise it is written to the output and null is returned.
+	// var_export renders $value as parsable PHP source; with $return true the
+	// source is returned, otherwise it is written to the output and null is
+	// returned.
 	rt.RegisterFunc("var_export", func(value any, ret ...any) (any, error) {
 		w := newValueWriter()
 		w.export(value, 0)
@@ -28,7 +30,8 @@ func registerOutput(rt *runner.Runtime) {
 		_, err := io.WriteString(rt.Output(), w.b.String())
 		return nil, err
 	})
-	// var_dump writes each argument to the output annotated with its type, its element count and, for a string, its length in bytes.
+	// var_dump writes each argument to the output annotated with its type,
+	// its element count and, for a string, its length in bytes.
 	rt.RegisterFunc("var_dump", func(values ...any) error {
 		w := newValueWriter()
 		for _, value := range values {

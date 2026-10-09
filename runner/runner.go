@@ -709,7 +709,8 @@ func (rt *Runtime) execDoWhile(n *model.DoWhile, scope *Scope) (any, flow, error
 // bound to its variable (so `echo $e` prints the message). A finally block, if
 // present, always runs.
 //
-// exit() and die() are not errors and are not catchable, as in PHP: `try { exit(); } catch (Throwable $e) {}` ends the script there. They
+// exit() and die() are not errors and are not catchable, as in PHP: `try {
+// exit(); } catch (Throwable $e) {}` ends the script there. They
 // travel as an error here only because that is how the interpreter unwinds, so
 // the try has to recognise the sentinel and get out of the way. A catch that
 // could swallow an exit would turn `header("Location: ...") ; exit();` inside a

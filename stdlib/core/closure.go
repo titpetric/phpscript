@@ -25,7 +25,8 @@ func registerClosure(rt *runner.Runtime) {
 		}
 		return closure, nil
 	})
-	// Closure::fromCallable returns the closure for $callback; a value that is not callable is an error.
+	// Closure::fromCallable returns the closure for $callback; a value that
+	// is not callable is an error.
 	rt.RegisterFunc("Closure::fromCallable", func(callback any) (any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {

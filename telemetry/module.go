@@ -35,7 +35,7 @@ func (m *Module) Snapshot() Snapshot {
 
 // TrackLifecycle records work that did not arrive over the network, such as a
 // @startup file, as a trace of its own. There is no request to record onto, so
-// this is the one place the observer starts a trace rather than writing to one.
+// this is the one place the observer starts a trace and never writes to one.
 func (m *Module) TrackLifecycle(ctx context.Context, name, filename string, run func(context.Context) error) error {
 	return m.tracer.Observe(ctx, name, func(ctx context.Context) error {
 		trace := TraceFromContext(ctx)

@@ -92,7 +92,9 @@ func registerLang(rt *runner.Runtime) {
 	// session's is, the way php://output writes wherever output goes at the
 	// time, and not where it went when the handle was made.
 	rt.SetConst("STDIN", stdinStream{rt: rt})
-	// spl_autoload_register registers $callback as an autoloader, or the default spl_autoload when $callback is null or omitted; $prepend puts it first and $throw is ignored.
+	// spl_autoload_register registers $callback as an autoloader, or the
+	// default spl_autoload when $callback is null or omitted; $prepend puts
+	// it first and $throw is ignored.
 	rt.RegisterFunc("spl_autoload_register", func(args ...any) (bool, error) {
 		var callback any = rt.SPLAutoload
 		if len(args) > 0 && args[0] != nil {
@@ -102,11 +104,14 @@ func registerLang(rt *runner.Runtime) {
 		rt.RegisterAutoloader(callback, prepend)
 		return true, nil
 	})
-	// spl_autoload loads $class by including the lowercased class name plus ".php" from the include path; the $file_extensions argument is accepted and ignored.
+	// spl_autoload loads $class by including the lowercased class name plus
+	// ".php" from the include path; the $file_extensions argument is accepted
+	// and ignored.
 	rt.RegisterFunc("spl_autoload", func(class string, fileExtensions ...any) error {
 		return rt.SPLAutoload(class)
 	})
-	// class_exists reports whether class $class is defined, running the autoloader first unless $autoload is false.
+	// class_exists reports whether class $class is defined, running the
+	// autoloader first unless $autoload is false.
 	rt.RegisterFunc("class_exists", func(class string, autoload ...bool) (bool, error) {
 		load := true
 		if len(autoload) > 0 {
@@ -116,7 +121,9 @@ func registerLang(rt *runner.Runtime) {
 	})
 	rt.RegisterFunc("set_include_path", rt.SetIncludePath)
 	rt.RegisterFunc("get_include_path", rt.IncludePath)
-	// get_defined_constants returns the defined constants as a name-sorted array; with $categorize true they are grouped under a single "Core" key.
+	// get_defined_constants returns the defined constants as a name-sorted
+	// array; with $categorize true they are grouped under a single "Core"
+	// key.
 	rt.RegisterFunc("get_defined_constants", func(categorize ...bool) *model.Array {
 		// The introspection shims keep returning *model.Array: their whole value
 		// is a stable, name-sorted listing, which a Go map cannot express.
@@ -137,12 +144,15 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return constants
 	})
-	// get_defined_functions returns an array with "internal" and "user" lists of function names; the $exclude_disabled argument is accepted and ignored.
+	// get_defined_functions returns an array with "internal" and "user" lists
+	// of function names; the $exclude_disabled argument is accepted and
+	// ignored.
 	rt.RegisterFunc("get_defined_functions", func(excludeDisabled ...bool) map[string][]string {
 		internal, user := rt.DefinedFunctions()
 		return map[string][]string{"internal": internal, "user": user}
 	})
-	// get_defined_vars returns the variables defined in the calling scope as an array sorted by name, not in definition order.
+	// get_defined_vars returns the variables defined in the calling scope as
+	// an array sorted by name, not in definition order.
 	rt.RegisterFunc("get_defined_vars", func(ctx context.Context) *model.Array {
 		scope, ok := runner.ScopeFromContext(ctx)
 		if !ok {
@@ -190,7 +200,8 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return false
 	})
-	// gettype returns the type of $value under PHP's legacy names: "integer", "double", "boolean", "string", "array", "object" or "NULL".
+	// gettype returns the type of $value under PHP's legacy names: "integer",
+	// "double", "boolean", "string", "array", "object" or "NULL".
 	rt.RegisterFunc("gettype", phpGetType)
 	// is_string reports whether $value is a string. A binding's []byte is one,
 	// PHP's strings being byte strings; see phpval.Bytes.
@@ -211,7 +222,8 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("is_object", isObject)
 	// get_included_files returns the names of the files included or required so far.
 	rt.RegisterFunc("get_included_files", func() []string { return rt.IncludedFiles() })
-	// is_numeric reports whether $value is an int or a float; unlike PHP, numeric strings return false.
+	// is_numeric reports whether $value is an int or a float; unlike PHP,
+	// numeric strings return false.
 	rt.RegisterFunc("is_numeric", func(value any) bool {
 		switch value.(type) {
 		case int64, int, float64:
@@ -223,7 +235,8 @@ func registerLang(rt *runner.Runtime) {
 	// string $value, read like C strtol with the 0x and 0b prefixes; a $base
 	// outside 0 and 2-36 returns 0.
 	rt.RegisterFunc("intval", phpIntval)
-	// intdiv returns the integer quotient of $num divided by $divisor; division by zero and PHP_INT_MIN by -1 are errors.
+	// intdiv returns the integer quotient of $num divided by $divisor;
+	// division by zero and PHP_INT_MIN by -1 are errors.
 	rt.RegisterFunc("intdiv", func(num, divisor int64) (int64, error) {
 		if divisor == 0 {
 			return 0, &runner.DivisionByZeroError{Message: "Division by zero"}
@@ -246,7 +259,8 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return fn(args...)
 	})
-	// call_user_func_array calls $callback with the values of $args as its arguments and returns its result.
+	// call_user_func_array calls $callback with the values of $args as its
+	// arguments and returns its result.
 	rt.RegisterFunc("call_user_func_array", func(callback any, args any) (any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -256,7 +270,8 @@ func registerLang(rt *runner.Runtime) {
 	})
 	// function_exists reports whether a function named $function is defined.
 	rt.RegisterFunc("function_exists", func(name string) bool { return rt.FunctionExists(name) })
-	// is_callable reports whether $value can be called as a function; there are no $syntax_only or $callable_name parameters.
+	// is_callable reports whether $value can be called as a function; there
+	// are no $syntax_only or $callable_name parameters.
 	rt.RegisterFunc("is_callable", func(value any) bool { _, ok := rt.Callable(value); return ok })
 	// PHP's exit/die takes either a status or a message: a string argument is
 	// printed and the script exits with status 0, an integer sets the status.
@@ -273,9 +288,12 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return nil, rt.Exit(status)
 	}
-	// exit terminates the script; a string $status is printed before exiting with code 0, an int $status becomes the exit code.
+	// exit terminates the script; a string $status is printed before exiting
+	// with code 0, an int $status becomes the exit code.
 	rt.RegisterFunc("exit", terminate)
-	// die terminates the script exactly like exit; a string $status is printed before exiting with code 0, an int $status becomes the exit code.
+	// die terminates the script exactly like exit; a string $status is
+	// printed before exiting with code 0, an int $status becomes the exit
+	// code.
 	rt.RegisterFunc("die", terminate)
 }
 

@@ -21,7 +21,9 @@ import (
 // second answer to "which file is that", the one thing a sandbox
 // cannot have two of.
 func registerStat(rt *runner.Runtime, r root) {
-	// is_file reports whether $filename names an ordinary file, in the source filesystem or on the host; a directory is not one, and neither is a path that does not exist.
+	// is_file reports whether $filename names an ordinary file, in the source
+	// filesystem or on the host; a directory is not one, and neither is a
+	// path that does not exist.
 	rt.RegisterFunc("is_file", func(filename string) bool {
 		info, ok := r.stat(filename)
 		return ok && info.Mode().IsRegular()
@@ -33,7 +35,10 @@ func registerStat(rt *runner.Runtime, r root) {
 		return ok && info.IsDir()
 	})
 
-	// is_readable reports whether $filename can be opened for reading, which here is whether it exists: a path inside the root is readable by the process that is asking, and the source filesystem carries no permissions of its own.
+	// is_readable reports whether $filename can be opened for reading, which
+	// here is whether it exists: a path inside the root is readable by the
+	// process that is asking, and the source filesystem carries no
+	// permissions of its own.
 	rt.RegisterFunc("is_readable", func(filename string) bool {
 		_, ok := r.stat(filename)
 		return ok
@@ -48,7 +53,9 @@ func registerStat(rt *runner.Runtime, r root) {
 		return err == nil
 	})
 
-	// is_executable reports whether $filename has an execute bit set on the host; a file that exists only in the source filesystem is not executable, because there is nothing there to run.
+	// is_executable reports whether $filename has an execute bit set on the
+	// host; a file that exists only in the source filesystem is not
+	// executable, because there is nothing there to run.
 	rt.RegisterFunc("is_executable", func(filename string) bool {
 		info, err := os.Stat(r.resolve(filename))
 		return err == nil && info.Mode().Perm()&0o111 != 0
@@ -63,7 +70,10 @@ func registerStat(rt *runner.Runtime, r root) {
 		return info.Size()
 	})
 
-	// filetype returns "file", "dir" or "link" for what $filename names, or false when it cannot be found; the exotic types php can answer with - fifo, block, char, socket - are reported as "file", because nothing inside a source filesystem can be one.
+	// filetype returns "file", "dir" or "link" for what $filename names, or
+	// false when it cannot be found; the exotic types php can answer with -
+	// fifo, block, char, socket - are reported as "file", because nothing
+	// inside a source filesystem can be one.
 	rt.RegisterFunc("filetype", func(filename string) any {
 		info, ok := r.stat(filename)
 		if !ok {
@@ -78,7 +88,10 @@ func registerStat(rt *runner.Runtime, r root) {
 		return "file"
 	})
 
-	// realpath returns $path written from the root, with . and .. resolved, or false when nothing is there; php answers a host path, and a runtime whose scripts may be served out of an embedded tree has none to answer with, so this answers the spelling getcwd() and __DIR__ use.
+	// realpath returns $path written from the root, with . and .. resolved,
+	// or false when nothing is there; php answers a host path, and a runtime
+	// whose scripts may be served out of an embedded tree has none to answer
+	// with, so this answers the spelling getcwd() and __DIR__ use.
 	rt.RegisterFunc("realpath", func(path string) any {
 		if _, ok := r.stat(path); !ok {
 			return false
@@ -90,7 +103,9 @@ func registerStat(rt *runner.Runtime, r root) {
 		return "/" + strings.TrimPrefix(name, "/")
 	})
 
-	// scandir returns the names in the directory $directory, sorted, with "." and ".." first as php lists them; false when $directory is not a directory.
+	// scandir returns the names in the directory $directory, sorted, with "."
+	// and ".." first as php lists them; false when $directory is not a
+	// directory.
 	rt.RegisterFunc("scandir", func(directory string) any {
 		names, ok := r.readDir(directory)
 		if !ok {
@@ -108,7 +123,7 @@ func registerStat(rt *runner.Runtime, r root) {
 
 	// pathinfo returns the parts of $path as an array of dirname, basename,
 	// extension and filename; a path with no dot carries no extension key,
-	// which is what php leaves out and not answering empty. It never touches
+	// which php leaves out and never empties. It never touches
 	// the filesystem, so it answers about a path that does not exist.
 	rt.RegisterFunc("pathinfo", func(path string) *model.Array {
 		out := model.NewArraySize(4)

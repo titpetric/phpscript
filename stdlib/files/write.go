@@ -57,7 +57,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 		return int64(n), nil
 	})
 
-	// mkdir creates $directory and any missing parents; $permissions and $recursive are ignored, and a path outside writable_paths is refused.
+	// mkdir creates $directory and any missing parents; $permissions and
+	// $recursive are ignored, and a path outside writable_paths is refused.
 	rt.RegisterFunc("mkdir", func(directory string, permissions ...any) (bool, error) {
 		name, err := r.resolveWrite("mkdir", directory)
 		if err != nil {
@@ -73,7 +74,9 @@ func registerWrites(rt *runner.Runtime, r root) {
 		}
 		return os.Remove(name) == nil, nil
 	})
-	// touch creates $filename if it is missing and sets its access and modification times to $mtime, or to now; a path outside writable_paths is refused.
+	// touch creates $filename if it is missing and sets its access and
+	// modification times to $mtime, or to now; a path outside writable_paths
+	// is refused.
 	rt.RegisterFunc("touch", func(filename string, mtime ...int64) (bool, error) {
 		name, err := r.resolveWrite("touch", filename)
 		if err != nil {

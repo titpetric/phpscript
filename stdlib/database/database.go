@@ -295,8 +295,8 @@ func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 // is not a read, classifying it by the keyword it starts with.
 //
 // A refused statement never reaches the query log, so what it was is recorded
-// here: a boundary nobody can see being enforced is a boundary nobody can debug
-// when it refuses the wrong thing.
+// here: a boundary nobody can see being enforced is a boundary nobody can
+// debug when it refuses the wrong statement.
 func (b *Database) refuseQuery(ctx context.Context, query string) error {
 	if !b.IsReadonly {
 		return nil

@@ -10,19 +10,28 @@ func init() {
 }
 
 func registerStringCompare(rt *runner.Runtime) {
-	// strcmp compares $string1 and $string2 byte by byte, answering a negative number when $string1 sorts first, a positive one when it sorts last, and 0 when they are equal.
+	// strcmp compares $string1 and $string2 byte by byte, answering a
+	// negative number when $string1 sorts first, a positive one when it sorts
+	// last, and 0 when they are equal.
 	rt.RegisterFunc("strcmp", func(string1, string2 string) int64 {
 		return compareBytes(string1, string2, wholeString, false)
 	})
-	// strcasecmp compares $string1 and $string2 byte by byte with the ASCII letters folded to lower case, answering a negative number, a positive one, or 0 as strcmp does; a byte above 127 is compared as it is, so the folding does not reach an accented letter.
+	// strcasecmp compares $string1 and $string2 byte by byte with the ASCII
+	// letters folded to lower case, answering a negative number, a positive
+	// one, or 0 as strcmp does; a byte above 127 is compared as it is, so the
+	// folding does not reach an accented letter.
 	rt.RegisterFunc("strcasecmp", func(string1, string2 string) int64 {
 		return compareBytes(string1, string2, wholeString, true)
 	})
-	// strncmp compares at most $length leading bytes of $string1 and $string2 the way strcmp does; a $length past the end of both compares what is there, and a negative one compares nothing and answers 0.
+	// strncmp compares at most $length leading bytes of $string1 and $string2
+	// the way strcmp does; a $length past the end of both compares what is
+	// there, and a negative one compares nothing and answers 0.
 	rt.RegisterFunc("strncmp", func(string1, string2 string, length int64) int64 {
 		return compareBytes(string1, string2, clampLength(length), false)
 	})
-	// strncasecmp compares at most $length leading bytes of $string1 and $string2 the way strcasecmp does, with the same reading of a $length past the end or below zero.
+	// strncasecmp compares at most $length leading bytes of $string1 and
+	// $string2 the way strcasecmp does, with the same reading of a $length
+	// past the end or below zero.
 	rt.RegisterFunc("strncasecmp", func(string1, string2 string, length int64) int64 {
 		return compareBytes(string1, string2, clampLength(length), true)
 	})
