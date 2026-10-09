@@ -25,7 +25,7 @@ const (
 	BoxCross       = "┼"
 )
 
-// Colors of the ansi table. They are 256-color codes rather than the basic
+// Colors of the ansi table. They are 256-color codes and not the basic
 // eight, so a row keeps the same shade whatever palette the terminal ships.
 const (
 	ColorReset     = "\033[0m"
@@ -38,7 +38,7 @@ const (
 	ColorDim       = "\033[38;5;244m"
 )
 
-// IsTerminal reports whether w is a tty, which is what decides between the
+// IsTerminal reports whether w is a tty, which decides between the
 // box-drawing table and markdown when the caller has not said which it wants.
 func IsTerminal(w io.Writer) bool {
 	file, ok := w.(*os.File)

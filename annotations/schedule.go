@@ -24,7 +24,7 @@ type Scheduler struct {
 	now    func() time.Time
 
 	// cancel ends the jobs Start launched. The context a module is started
-	// with belongs to the caller rather than to the platform being retired,
+	// with belongs to the caller and not to the platform being retired,
 	// so without this a reload leaves the previous tree's jobs running.
 	mu     sync.Mutex
 	cancel context.CancelFunc

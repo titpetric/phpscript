@@ -45,7 +45,7 @@ func coveredServer(t *testing.T, count int, coverFile string) *coverageModule {
 
 // TestCoverageModuleCountsAcrossRequests pins the aggregation: each request
 // gets its own collector, and what the process holds is the sum. The prelude
-// counts too, which is what makes an --include file part of the measurement.
+// counts too, so an --include file is part of the measurement.
 func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
 	module := coveredServer(t, 3, "")
 
@@ -61,7 +61,7 @@ func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
 		t.Errorf("boot.php counted %d, want the called function per request", counts["boot.php"])
 	}
 	// The columns come from the source text, so a profile spans the statement
-	// rather than the indentation around it.
+	// and not the indentation around it.
 	for _, block := range blocks {
 		if block.StartCol < 1 || block.EndCol <= block.StartCol {
 			t.Errorf("block %+v has no resolved columns", block)
@@ -69,7 +69,7 @@ func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
 	}
 }
 
-// TestCoverageModuleServe covers the endpoint, which is how a test flow reads
+// TestCoverageModuleServe covers the endpoint, so a test flow reads
 // coverage off a server it is not going to shut down.
 func TestCoverageModuleServe(t *testing.T) {
 	module := coveredServer(t, 1, "")
@@ -138,7 +138,7 @@ func TestCoverageModuleStopWithoutRequests(t *testing.T) {
 }
 
 // TestCoverageModuleSource pins that a file no site root answers for is left in
-// the profile at column 1 rather than dropped out of it.
+// the profile at column 1, and dropped out of none of it.
 func TestCoverageModuleSource(t *testing.T) {
 	module := newCoverageModule(&flags.Options{}, coverFS)
 	if got := module.source("boot.php"); len(got) < 2 || !strings.Contains(got[1], "function greet") {

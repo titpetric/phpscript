@@ -1,6 +1,6 @@
 // Package helpdocs renders `phpscript --help`.
 //
-// The long help is a document rather than a flag dump: what the tool is, the
+// The long help is a document and no flag dump: what the tool is, the
 // commands, the flags every command shares, and per command its own flags and
 // a table of worked examples. An agent reading it should not have to run nine
 // commands to find out what the tenth accepts.
@@ -192,7 +192,7 @@ func cells(line string) []string {
 	return out
 }
 
-// writeTable renders parsed rows, the first of which is the header.
+// writeTable renders parsed rows. The first row is the header.
 func writeTable(w io.Writer, rows [][]string) {
 	header := rows[0]
 	columns := make([]table.Column, len(header))

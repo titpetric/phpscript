@@ -8,7 +8,7 @@ import (
 )
 
 // exception stands in for stdlib.Exception, which runner cannot import: stdlib
-// imports runner, which is why StatusFor asks for the code structurally.
+// imports runner, so StatusFor reads the code structurally.
 type exception struct {
 	message string
 	code    int
@@ -56,7 +56,7 @@ func TestAcceptsHTML(t *testing.T) {
 
 // TestWantsErrorPage pins that Sec-Fetch-Dest decides when a browser sends it.
 // It is the one signal that separates a navigation from a fetch() the page made
-// on its own behalf, which Accept cannot do: both can ask for HTML.
+// on its own behalf, which Accept cannot do: both can name HTML.
 func TestWantsErrorPage(t *testing.T) {
 	const navigation = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 

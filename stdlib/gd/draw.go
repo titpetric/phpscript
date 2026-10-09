@@ -10,7 +10,9 @@ import (
 )
 
 func registerDraw(rt *runner.Runtime) {
-	// imagecopyresampled copies a $src_w by $src_h region of $src at $src_x, $src_y into $dst at $dst_x, $dst_y, scaled to $dst_w by $dst_h, interpolating as it goes.
+	// imagecopyresampled copies a $src_w by $src_h region of $src at $src_x,
+	// $src_y into $dst at $dst_x, $dst_y, scaled to $dst_w by $dst_h,
+	// interpolating as it goes.
 	rt.RegisterFunc("imagecopyresampled", func(dst, src *Image, dstX, dstY, srcX, srcY, dstW, dstH, srcW, srcH int64) bool {
 		return copyResampled(dst, src, dstX, dstY, srcX, srcY, dstW, dstH, srcW, srcH, draw.CatmullRom)
 	})
@@ -43,13 +45,14 @@ func registerDraw(rt *runner.Runtime) {
 		return true
 	})
 
-	// imagefill flood fills from $x, $y in $color, replacing the connected region that shares the starting pixel's colour.
+	// imagefill flood fills from $x, $y in $color, replacing the connected
+	// region that shares the starting pixel's colour.
 	rt.RegisterFunc("imagefill", func(im *Image, x, y, packed int64) bool {
 		if im == nil || im.m == nil {
 			return false
 		}
 		// A starting point outside the image fills nothing and still answers
-		// true, which is what GD does: there is no region to walk, and the
+		// true, as GD does: there is no region to walk, and the
 		// call is not an error.
 		if !image_ptIn(im, x, y) {
 			return true

@@ -13,7 +13,7 @@ import (
 )
 
 // contextType is the reflect type of context.Context, used to detect callables
-// that want the runtime context auto-injected as their first argument.
+// that declare the runtime context as their first argument for auto-injection.
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 
 var errorType = reflect.TypeOf((*error)(nil)).Elem()
@@ -36,7 +36,7 @@ func (e *HostPanicError) Error() string {
 // callbackPanic carries the error a PHP callback reported out of the Go frames
 // between it and the host boundary. A binding declaring func(string) string
 // leaves nowhere to return one, so the only way across is a panic; the boundary
-// unwraps this one instead of reporting a host panic, so a script that throws
+// unwraps this one in place of reporting a host panic, so a script that throws
 // inside a callback catches its own exception.
 type callbackPanic struct{ err error }
 
@@ -109,7 +109,7 @@ func helperArray(items ...model.ArrayItemValue) *model.Array {
 }
 
 // helperIndex implements `base[idx]` for *Array, Go maps and Go slices/arrays.
-// Missing keys yield nil (PHP's forgiving access), not an error.
+// A missing key answers nil, which is PHP's forgiving access, and raises nothing.
 func helperIndex(base, idx any) any {
 	switch b := base.(type) {
 	case *model.Array:
@@ -141,8 +141,8 @@ func helperIndex(base, idx any) any {
 	switch rv.Kind() {
 	case reflect.Map:
 		// The key is coerced to the map's own type first. A script index is
-		// an int64 or a string, so reading a map[int]T with the value handed
-		// straight to MapIndex panics rather than answering.
+		// an int64 or a string, so reading a map[int]T with the value passed
+		// straight to MapIndex panics and answers nothing.
 		mapKey, ok := coerceArg(normalizeKey(idx), rv.Type().Key())
 		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
 			return nil
@@ -171,7 +171,7 @@ func helperIndex(base, idx any) any {
 func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 	return func(base any, name string) any {
 		// A bound callable produced here can outlive the expression that read it,
-		// so the scope is captured by value rather than through the reference.
+		// so the scope is captured by value and not through the reference.
 		scope := ref.scope
 		switch b := base.(type) {
 		case *model.Object:
@@ -238,7 +238,7 @@ func adaptOn(rt *Runtime, fn any) func(...any) (any, error) {
 	return func(args ...any) (any, error) { return inv.call(rt, args) }
 }
 
-// exprHelpers hands the engine the typed helper implementations.
+// exprHelpers returns the typed helper implementations the engine installs.
 // Package-level because the helpers are stateless: a compiled closure chain
 // is shareable across runtimes. PanicError mirrors invokeAny's recover, so
 // a host panic surfaces as the same catchable error either way.
@@ -338,7 +338,7 @@ func (e *TypeError) Error() string {
 // invokeAny works from the Go signature alone and has no name to report; the
 // name a script typed is known only at the dispatch site.
 func nameCallError(err error, name string) error {
-	// The nil check is load-bearing for allocation: the errors.As targets
+	// The nil check keeps the allocation count down: the errors.As targets
 	// below take their address and escape, which costs a heap allocation on
 	// every call, including the ones that succeeded.
 	if err == nil {
@@ -358,7 +358,7 @@ func nameCallError(err error, name string) error {
 
 // phpParamTypeName spells a declared Go parameter type the way PHP names the
 // type in a TypeError ("must be of type int"). It describes a *parameter*, so
-// it is deliberately separate from phpDebugType, which describes a value, and
+// it is separate from phpDebugType, which describes a value, and
 // from gettype's legacy names (integer/double/boolean) in stdlib: neither table
 // may be folded into the other.
 func phpParamTypeName(t reflect.Type) string {
@@ -389,7 +389,7 @@ func phpParamTypeName(t reflect.Type) string {
 }
 
 // phpDebugType names a value the way PHP's get_debug_type() does ("array
-// given"). It describes a *value*, so it is deliberately separate from
+// given"). It describes a *value*, so it is separate from
 // phpParamTypeName, which describes a declared parameter type, and from
 // gettype's legacy names (integer/double/boolean) in stdlib: neither table may
 // be folded into the other.
@@ -485,17 +485,17 @@ func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
 	}
 	// Everything registered dispatches through a cached entry invoker; a
 	// callable that never had a registration point builds its invoker here,
-	// per call, which is what invokeAny always cost.
+	// per call, which is the cost invokeAny paid on every call.
 	return newInvoker(fn).call(rt, args)
 }
 
 // coerceArgOn converts an argument of a call on rt.
 //
 // The runtime matters for one kind of value: a callable. A binding declaring the
-// uniform callable shape gets one bound to rt rather than to the runtime that
-// built the value, so a comparator handed to usort or a callback handed to
-// array_map inside a handler runs on the worker answering the request rather than
-// reaching back into the runtime the script built the value on.
+// uniform callable shape gets one bound to rt and not to the runtime that
+// built the value, so a comparator passed to usort or a callback passed to
+// array_map inside a handler runs on the worker answering the request and never
+// reaches back into the runtime the script built the value on.
 func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 	if want == nil || want.Kind() != reflect.Func {
 		return coerceArg(v, want)
@@ -508,15 +508,15 @@ func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 			return uniform, true
 		}
 	}
-	// A binding may declare its callback in its own terms rather than in the
+	// A binding may declare its callback in its own terms in place of the
 	// uniform shape, as regexp.Regexp.ReplaceAllStringFunc declares
 	// func(string) string. Every spelling PHP calls a callable reaches it,
-	// which is what rt.Callable answers: a closure on either engine, a declared
-	// function by name, Class::method, array($obj, "method").
+	// because rt.Callable answers them all: a closure on either engine, a
+	// declared function by name, Class::method, array($obj, "method").
 	if call, ok := rt.Callable(v); ok {
 		// The uniform shape is variadic, which adaptCallable refuses, and needs
-		// no wrapper anyway: it is what Callable already answers. Reaching it
-		// through the resolution rather than through the *Callable case above is
+		// no wrapper anyway: Callable already answers that shape. Reaching it
+		// through the resolution, and not through the *Callable case above, is
 		// what lets a name, a Class::method and the two array spellings fill a
 		// binding that declares one.
 		if uniform := reflect.ValueOf(call); uniform.Type().AssignableTo(want) {
@@ -564,10 +564,10 @@ func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.V
 // coerceArg converts a value to the target parameter type where a cheap
 // conversion makes it assignable. The final return reports whether it did: a
 // false means the value cannot be passed, and the caller turns that into a PHP
-// TypeError rather than letting reflect.Value.Call panic on it.
+// TypeError, with no reflect.Value.Call left to panic on it.
 //
 // It converts everything except a callable, which needs the runtime the call is
-// on and goes through coerceArgOn: this one is reached by a map key, a slice
+// on and resolves through coerceArgOn: this one is reached by a map key, a slice
 // element and a struct field, none of which a callable arrives as, and keeping it
 // callable-free is also what keeps the expression helpers out of an
 // initialisation cycle with the interpreter.
@@ -597,7 +597,7 @@ func coerceArg(v any, want reflect.Type) (reflect.Value, bool) {
 	}
 	// A string parameter renders the value the way PHP renders it in a string
 	// context. Go's own conversion is defined for every integer type and means
-	// something else: reflect would turn int64(65) into "A" rather than "65".
+	// something else: reflect turns int64(65) into "A" where PHP writes "65".
 	if want.Kind() == reflect.String {
 		return reflect.ValueOf(phpString(v)).Convert(want), true
 	}
@@ -874,7 +874,7 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor fu
 }
 
 // methodCallError names the method on the errors bindGoMethod reports
-// nameless, the way buildArgs used to carry the name into them.
+// nameless.
 func methodCallError(err error, method string) error {
 	var arity *ArgumentCountError
 	if errors.As(err, &arity) && arity.Name == "" {
@@ -895,7 +895,7 @@ func methodCallError(err error, method string) error {
 // whatever error reached it: an Exception a script threw, an error a binding
 // returned, or a panic converted at the host boundary. All of them answer the
 // method set a script expects on a caught value. A method the concrete Go type
-// defines wins, which is how *stdlib.Exception reports its own code.
+// defines wins, so *stdlib.Exception reports its own code.
 func throwableMethod(base any, method string) (any, bool) {
 	err, ok := base.(error)
 	if !ok {
@@ -1002,7 +1002,7 @@ func callResult(out []reflect.Value) (any, error) {
 // no superglobal defines.
 //
 // PHP 8 raises Error for the same expression. This raises RuntimeException, a
-// deliberate break: an Error in PHP is a fault in the program that a caller is
+// break from it: an Error in PHP is a fault in the program that a caller is
 // not expected to handle, and a name this runtime does not define is an
 // ordinary condition a script can catch and answer for, the same way exceeding
 // memory_limit is. It also puts the condition where `catch (Exception $e)`

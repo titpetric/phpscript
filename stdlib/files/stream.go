@@ -12,7 +12,10 @@ import (
 // registerStreams installs the file-handle functions. A handle is the *os.File
 // fopen() returns; PHP calls it a resource.
 func registerStreams(rt *runner.Runtime, r root) {
-	// fopen opens $filename in $mode and returns a handle, or false on failure; php://output is the script's own output stream, php://input is the raw request body (stdin under the cli SAPI), and a mode that can write is refused outside writable_paths.
+	// fopen opens $filename in $mode and returns a handle, or false on
+	// failure; php://output is the script's own output stream, php://input is
+	// the raw request body (stdin under the cli SAPI), and a mode that can
+	// write is refused outside writable_paths.
 	rt.RegisterFunc("fopen", func(filename, mode string) (any, error) {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			switch scheme {
@@ -85,8 +88,8 @@ func registerStreams(rt *runner.Runtime, r root) {
 }
 
 // outputStream is the handle fopen("php://output") returns. It holds the
-// runtime rather than the writer of the moment, so every write lands wherever
-// script output currently goes: a handle opened before ob_start() writes into
+// runtime and not the writer of the moment, so every write lands wherever
+// script output goes at the time: a handle opened before ob_start() writes into
 // the buffer while one is active, exactly as echo would.
 type outputStream struct {
 	rt *runner.Runtime
@@ -106,7 +109,7 @@ type inputStream struct {
 // request answers with the buffered body, rewindable on every open as PHP
 // 5.6+ made it, while the CLI maps it onto stdin, a live stream a script
 // drains once. A staged body wins over the SAPI because the test harness
-// speaks as cli — the way the php column does — while still carrying the
+// speaks as cli, the way the php column does, while still carrying the
 // request a fixture states; a cli run without one keeps its stdin.
 func inputSource(rt *runner.Runtime) io.Reader {
 	if c, ok := runner.RequestContext(rt.Context()); ok && len(c.RawBody()) > 0 {

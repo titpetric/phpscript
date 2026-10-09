@@ -11,7 +11,7 @@ import (
 )
 
 // workdirTree is a two-level source filesystem with a file of the same name at
-// each level, which is what tells a working directory apart from a root.
+// each level, which separates a working directory from a root.
 func workdirTree() fstest.MapFS {
 	return fstest.MapFS{
 		"note.txt":         {Data: []byte("root")},
@@ -63,8 +63,8 @@ func TestGetcwdIsWrittenFromTheSourceRoot(t *testing.T) {
 }
 
 // TestChdirCannotLeaveTheRoot pins the jail. A path that would climb above the
-// source filesystem stops at it rather than being refused, which is the rule
-// every path a script hands this package follows.
+// source filesystem stops at it and is never refused, which is the rule
+// every path a script passes this package follows.
 func TestChdirCannotLeaveTheRoot(t *testing.T) {
 	for _, src := range []string{
 		`<?php chdir(".."); echo getcwd();`,
@@ -79,7 +79,7 @@ func TestChdirCannotLeaveTheRoot(t *testing.T) {
 }
 
 // TestChdirRefusesWhatIsNotADirectory pins the false return. PHP warns and
-// answers false; there is no warning channel here, so the answer is the whole
+// answers false; there is no warning channel here, so the return value carries all
 // report and the working directory has to be left where it was.
 func TestChdirRefusesWhatIsNotADirectory(t *testing.T) {
 	for _, test := range []struct {
@@ -108,7 +108,7 @@ include "boot.php";
 echo $loaded, "|", file_get_contents("note.txt"), "|", implode(",", glob("*.txt")), "|";
 chdir("lib");
 echo file_get_contents("note.txt"), "|";
-// A path written from the root ignores the working directory, which is what
+// A path written from the root ignores the working directory, as
 // makes __DIR__ . "/x" name one file wherever chdir has been.
 echo file_get_contents("/note.txt");`)
 	if want := "root|app/boot.php|app|note.txt|lib|root"; got != want {

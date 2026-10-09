@@ -8,7 +8,7 @@ import (
 // phpArith and the flat VM's specialised integer opcodes so the overflow and
 // division rules have one home.
 
-// The Overflow* trio performs int64 arithmetic and reports false rather than
+// The Overflow* trio performs int64 arithmetic and reports false, and never
 // wrapping, so a caller can fall back to float the way PHP does.
 
 // OverflowAddInt adds x and y.
@@ -67,7 +67,7 @@ func MulInt(x, y int64) any {
 	return float64(x) * float64(y)
 }
 
-// DivInt divides the way PHP's / does on two ints: division by zero yields
+// DivInt divides the way PHP's / does on two ints: division by zero returns
 // int 0 (the interpreter reports the warning elsewhere), a division that does
 // not come out even is float, and an even one stays int.
 func DivInt(x, y int64) any {
@@ -80,7 +80,7 @@ func DivInt(x, y int64) any {
 	return x / y
 }
 
-// ModInt is PHP's %, already int-cast by the caller; modulo by zero yields
+// ModInt is PHP's %, already int-cast by the caller; modulo by zero returns
 // int 0 to match the interpreter's phpArith.
 func ModInt(x, y int64) any {
 	if y == 0 {

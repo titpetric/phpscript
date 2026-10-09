@@ -23,14 +23,16 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		return classNameOf(object[0])
 	})
-	// get_parent_class always returns false; phpscript has no inheritance, so no class has a parent to report.
+	// get_parent_class always returns false; phpscript has no inheritance, so
+	// no class has a parent to report.
 	rt.RegisterFunc("get_parent_class", func(_ ...any) any { return false })
 	// is_subclass_of always returns false; phpscript has no inheritance, so no
 	// object is an instance of a subclass. A guard written as
 	// `is_subclass_of($o, "Exception") || get_class($o) === "Exception"` falls
 	// through to the name comparison, which is the check that answers here.
 	rt.RegisterFunc("is_subclass_of", func(_ ...any) bool { return false })
-	// get_object_vars returns the properties of $object as an array, in the order the object reads them back; a non-object yields an empty array.
+	// get_object_vars returns the properties of $object as an array, in the
+	// order the object reads them back. A non-object returns an empty array.
 	rt.RegisterFunc("get_object_vars", func(object any) *model.Array {
 		obj, ok := object.(*model.Object)
 		if !ok {
@@ -64,7 +66,9 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		return false
 	})
-	// property_exists reports whether object $object_or_class has property $property, set or declared; a class name is not accepted and returns false.
+	// property_exists reports whether object $object_or_class has property
+	// $property, set or declared; a class name is not accepted and returns
+	// false.
 	rt.RegisterFunc("property_exists", func(objectOrClass any, property string) bool {
 		object, ok := objectOrClass.(*model.Object)
 		if !ok {
@@ -83,7 +87,7 @@ func registerReflection(rt *runner.Runtime) {
 		}
 		return false
 	})
-	// PHP hands out an opaque, per-object identity. A pointer is exactly that,
+	// PHP exposes an opaque, per-object identity. A pointer is exactly that,
 	// and it is stable for as long as the object is alive, which is the only
 	// guarantee PHP makes either.
 	rt.RegisterFunc("spl_object_hash", func(value any) string {

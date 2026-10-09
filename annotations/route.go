@@ -46,7 +46,7 @@ func (r *Route) RegisterMux(mux *http.ServeMux) error {
 	return r.Register(serveMuxRegistrar{ServeMux: mux})
 }
 
-// Register walks the source tree and hands every @route annotation it finds to
+// Register walks the source tree and passes every @route annotation it finds to
 // registrar, backed by a handler that executes the file it was declared in.
 func (r *Route) Register(registrar Registrar) error {
 	if registrar == nil {
@@ -57,7 +57,7 @@ func (r *Route) Register(registrar Registrar) error {
 	var warnings []string
 	err := scanner{root: r.root, excluded: r.config.excludedDirs}.walk(func(file string, src []byte) error {
 		for _, route := range ParseRoutes(src) {
-			// A path the grammar refuses is skipped rather than registered.
+			// A path the grammar refuses is skipped and never registered.
 			// chi accepts {module=users} as a parameter of that literal name,
 			// matches every request to the segment and exports nothing, which
 			// is a live route that answers wrongly. `phpscript lint` reports

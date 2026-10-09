@@ -17,7 +17,7 @@ import (
 // CoveragePath is where a running server publishes what it has counted so far.
 //
 // A profile on disk needs a writable filesystem and a shutdown; a test flow
-// wants the numbers while the server is still up, right after the suite that
+// reads the numbers while the server is still up, right after the suite that
 // produced them. The endpoint answers that without either.
 const CoveragePath = "/debug/phpscript/coverage"
 
@@ -62,7 +62,7 @@ func (m *coverageModule) Mount(_ context.Context, r platform.Router) error {
 }
 
 // Stop writes the profile the process collected. It runs on the graceful
-// shutdown path, which is the only moment a server knows it is finished.
+// shutdown path, the one moment a server has finished.
 func (m *coverageModule) Stop(_ context.Context) error {
 	if m.aggregator.Empty() {
 		return nil
@@ -105,7 +105,7 @@ func (m *coverageModule) blocks() []coverage.ProfileBlock {
 }
 
 // source reads one counted file out of the site roots. A file no root answers
-// for keeps column 1 on both ends rather than dropping out of the profile.
+// for keeps column 1 on both ends and drops out of no profile.
 func (m *coverageModule) source(file string) []string {
 	name := strings.TrimPrefix(path.Clean(file), "/")
 	for _, root := range m.roots {

@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/stdlib"
 )
 
-// TestFlatstackCompilesConstructs pins the constructs that used to drop a whole
+// TestFlatstackCompilesConstructs pins the constructs that would otherwise drop a whole
 // program back to the compatibility interpreter. A fixture cannot tell a
 // bytecode run from a fallback that happened to agree, so every case asserts
 // Supports before it checks the output.
@@ -32,7 +32,7 @@ func TestFlatstackCompilesConstructs(t *testing.T) {
 		{
 			// php rejects parent with no parent class; the interpreter's
 			// resolveClassName collapses it to the current class, so this pins
-			// the two backends to each other rather than to php.
+			// the two backends to each other and not to php.
 			name:   "parent class constant resolves to the enclosing class",
 			source: `<?php class A { const X = "x"; function get() { return parent::X; } } $a = new A(); echo $a->get();`,
 			want:   "x",
@@ -139,7 +139,7 @@ func TestFlatstackCompilesConstructs(t *testing.T) {
 // TestFlatstackClassConstOutsideClass pins the message a contextual class name
 // used outside a class body produces. The compiler leaves the name alone when
 // there is nothing to resolve it to, so the host reports it exactly as the
-// interpreter does instead of inventing a class.
+// interpreter does, and invents no class.
 func TestFlatstackClassConstOutsideClass(t *testing.T) {
 	program, err := parser.Parse(`<?php class A { const X = 1; } echo self::X;`)
 	if err != nil {

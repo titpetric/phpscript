@@ -6,15 +6,15 @@ Read this when optimising the HTTP path. It runs under the contract in [README.m
 
 ## The target
 
-`testdata/testserver.php` is a PHP program that is the HTTP server rather than something a server runs. `testdata/testserver.go` is the same routes on `net/http.ServeMux`, with the same encoder and the same bodies, and no VM. The two were written to be put through one load generator so the difference could be read off.
+`testdata/testserver.php` is a PHP program that is itself the HTTP server. `testdata/testserver.go` is the same routes on `net/http.ServeMux`, with the same encoder and the same bodies, and no VM. The two were written to be put through one load generator so the difference could be read off.
 
-Two things drive them, and both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through one load generator and reports a latency distribution and a request rate per route; `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds, which is where `allocs/op` comes from. There is still no fixture and no venom suite over either.
+Two things drive them, and both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through one load generator and reports a latency distribution and a request rate per route; `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds, and reports `allocs/op`. There is still no fixture and no venom suite over either.
 
-The sequencing those two arrived under holds for everything after them: the baseline is published before the first change, and every later number is read against that rather than against whatever is in the tree.
+The sequencing those two arrived under holds for everything after them: the baseline is published before the first change, and every later number is read against that baseline, never against whatever is in the tree.
 
 ## Path B, not Path A
 
-There are two unrelated HTTP paths in this repo and `testserver.php` uses the second. Measuring one and attributing the number to the other is the likeliest mistake in this sprint.
+There are two unrelated HTTP paths in this repository and `testserver.php` uses the second. Measuring one and attributing the number to the other is the likeliest mistake in this sprint.
 
 |                    | Path A, `phpscript server`                                                           | Path B, `HTTP\Mux` plus `HTTP\Server`              |
 |--------------------|--------------------------------------------------------------------------------------|----------------------------------------------------|
@@ -31,11 +31,11 @@ Path B is already structurally right - nothing re-parses, nothing re-registers -
 
 ## The harness
 
-`scripts/bench-http.sh` is the sweep and `wrk --latency` is the generator inside it. `hey` was named here first and lost the job on its own output: it prints every latency as four decimal places of a second, so its finest column is 0.1 ms and a handler here answers in well under that. Every percentile it reported came back as the same number. What wrk does not print is a 95th percentile - it gives 50, 75, 90 and 99 - so the 90th is collected in its place.
+`scripts/bench-http.sh` is the sweep and `wrk --latency` is the generator inside it. `hey` was named here first and lost the job on its own output: it prints every latency as four decimal places of a second, which is coarser than any handler here answers in, so every percentile it reported came back as the same number. wrk prints no 95th percentile, reporting 50, 75, 90 and 99, so the 90th is collected in its place.
 
 A latency column end to end is never finer than the generator, and a per-request allocation cannot be read off one at all. `BenchmarkTestServerRoute` is the other half of the harness for that reason: it drives the same router through `httptest` with the socket left out, so `ns/op`, `B/op` and `allocs/op` come off the same request path at a resolution the sweep does not have. The sweep is what says the socket and the wire did not undo it.
 
-Concurrency 1 for the delta, which is what the contract's single-threaded rule requires. A second table at concurrency 4 for queueing behaviour, never as the headline.
+Concurrency 1 for the delta, as the contract's single-threaded rule requires. A second table at concurrency 4 for queueing behaviour, never as the headline.
 
 A segment is one wrk run and a route gets several of them, because the contract's drift guard needs two ends to compare: one long run reports one distribution with no way to tell when inside it the box was busy.
 
@@ -52,12 +52,12 @@ Routes in, and why:
 
 Routes out, and why:
 
-- `GET /slow` is twenty `usleep(100000)` calls by construction. It prices the deadline machinery, not the request path. It gets a correctness check that `connection_aborted` still fires after a change, and no latency row.
+- `GET /slow` is twenty `usleep(100000)` calls by construction. It prices the deadline machinery. It gets a correctness check that `connection_aborted` still fires after a change, and no latency row.
 - `GET /info` is `phpinfo()`. Nobody serves that shape.
 
 Two asymmetries the harness has to respect. The PHP side answers four requests at once behind a queue of 64, and the queue depth is hardcoded in `config()` where the worker count is not, so no environment variable reaches it. The Go side has no queue at all; its semaphore blocks instead. The comparison is therefore only honest up to `TESTSERVER_WORKERS` concurrent requests.
 
-`TESTSERVER_ADDR` defaults to `127.0.0.1:8099` and takes `127.0.0.1:0` to let the kernel pick. `TESTSERVER_WORKERS` defaults to 4. `TESTSERVER_LIMIT` defaults to 10 seconds.
+`TESTSERVER_ADDR` defaults to `127.0.0.1:8099` and takes `127.0.0.1:0` to let the kernel pick. `TESTSERVER_WORKERS` defaults to 4. `TESTSERVER_LIMIT` is a duration and defaults to ten seconds.
 
 The first thing that will go wrong is that limit. Running out of time is a fatal: the shutdown callback fires, the server stops listening, and the process disappears part-way through a run that was still measuring. Set `TESTSERVER_LIMIT` past the length of the whole sweep before starting it.
 
@@ -67,7 +67,7 @@ The verified worklist. Each row is a per-request allocation on Path B, with what
 
 | Site                 | What allocates                                                                                                                                                    | What it is for                                                                                                                                                                                                                         |
 |----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `stdlib/http/mux.go` | An `answerTracker` wrapper per request                                                                                                                            | Recording whether the handler wrote, so a failure after a partial write is not answered with a 500 on top of it. It forwards rather than buffers, deliberately                                                                         |
+| `stdlib/http/mux.go` | An `answerTracker` wrapper per request                                                                                                                            | Recording whether the handler wrote, so a failure after a partial write is not answered with a 500 on top of it. It forwards and does not buffer                                                                                       |
 | `runner/fork.go`     | A `poolRun` and a `make(chan struct{})` per request                                                                                                               | The handshake that lets the submitting goroutine wait for the worker                                                                                                                                                                   |
 | `runner/deadline.go` | `EnterRequest` saves three fields, starts `watchEnd(ctx)` and re-arms the deadline                                                                                | Per-request client tracking and the execution limit                                                                                                                                                                                    |
 | `runner/runtime.go`  | `resetExecution` sets `outStack` to nil, so `runner/output.go` regrows the backing array next request; plus a `strings.NewReader("")` and several `clear()` calls | Releasing the last request's values now rather than at the next request                                                                                                                                                                |
@@ -96,15 +96,15 @@ An engine comparison means nothing unless the program is gated on `flatstack.Sup
 
 `atkins bench` used to run every benchmark pinned to one core with `-count 3`. That is the pinned half only, with no exclusion, so its numbers for `BenchmarkLookup`, `BenchmarkLookupHandler` and `BenchmarkFlatstackParallelHostBridge` described a single goroutine.
 
-It is now `atkins bench:pinned` and `atkins bench:parallel`, the two jobs the contract defines, at `-count 6` and `-count 10`, both writing `bench-go-$SIDE.txt` and both taking the measure lock; `atkins bench` runs the pair and summarises the file with benchstat. Neither is in the default pipeline, for the reason the comment above them gives: a sweep costs minutes of pinned CPU and answers a performance question, not a correctness one. The load sweep has no atkins job: `scripts/bench-http.sh <side>` is the whole interface and a job wrapping it would only hide the side.
+It is now `atkins bench:pinned` and `atkins bench:parallel`, the two jobs the contract defines, at `-count 6` and `-count 10`, both writing `bench-go-$SIDE.txt` and both taking the measure lock; `atkins bench` runs the pair and summarises the file with benchstat. Neither is in the default pipeline, for the reason the comment above them states: a sweep costs minutes of pinned CPU and answers a performance question. The load sweep has no atkins job: `scripts/bench-http.sh <side>` is the whole interface and a job wrapping it would only hide the side.
 
 ## Techniques
 
 The three tiers are in the contract. What this target invites, by name:
 
-- Reuse the output stack's backing array instead of nil-ing it between requests.
+- Keep the output stack's backing array between requests, in place of nil-ing it.
 - Arm the deadline lazily, so a request that sets no limit pays nothing for one.
-- Pool the answer tracker, whose lifetime ends at the request boundary.
+- Pool the `answerTracker`, whose lifetime ends at the request boundary.
 - Hold the resolved-handler table immutable and shared, which it almost is.
 - Build the statics map on first static, not on every invoke.
 
@@ -118,9 +118,9 @@ The contract owns the body order. Two things are specific to this sprint.
 
 The summary statement names the path and the route, because a reader cannot otherwise tell what moved:
 
-> Optimized the per-request output path by reusing the output stack's backing array instead of clearing it to nil between requests. This nets a positive change of -X% in latency on `GET /hello` and a delta from X allocs/op to Y allocs/op (-Z%).
+> Optimized the per-request output path by keeping the output stack's backing array between requests, in place of clearing it to nil. This nets a positive change of -X% in latency on `GET /hello` and a delta from X allocs/op to Y allocs/op (-Z%).
 
-The table states the path in its caption and carries the Go floor as a row, so the remaining gap is visible rather than implied. Microseconds, not the contract's milliseconds: every route here answers in a fraction of one, and a millisecond column to one decimal is a column of zeroes.
+The table states the path in its caption and carries the Go floor as a row, so the remaining gap is a subtraction the reader can do. Microseconds, not the contract's milliseconds: every route here answers in a fraction of one, and a millisecond column to one decimal is a column of zeroes.
 
 | Route          | p50 us | p99 us | req/s |
 |----------------|-------:|-------:|------:|

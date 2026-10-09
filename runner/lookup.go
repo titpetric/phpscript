@@ -13,8 +13,8 @@ import (
 // Lookup resolves symName to a PHP function and returns it as T, a Go function
 // type. It is plugin.Lookup over a source tree.
 //
-// T returns at most one value and an optional trailing error, checked here
-// rather than at the call. A name matching nothing, or more than one
+// T returns at most one value and an optional trailing error, checked here and
+// not at the call. A name matching nothing, or more than one
 // declaration, is a *LookupError naming what it matched. The returned function
 // belongs to rt, which serves one goroutine.
 //
@@ -31,11 +31,11 @@ func Lookup[T any](rt *Runtime, symName string) (T, error) {
 // LookupError reports a symbol that resolved to nothing, to more than one
 // declaration, or to a signature the requested Go type cannot express.
 type LookupError struct {
-	// Symbol is the name the host asked for, as it spelled it.
+	// Symbol is the name the host passed, as it spelled it.
 	Symbol string
 
 	// Candidates holds what the name matched when it matched too much. It is
-	// empty for every other reason, which is what separates "there is no such
+	// empty for every other reason, which separates "there is no such
 	// function" from "say which one".
 	Candidates []string
 
@@ -54,7 +54,7 @@ func (e *LookupError) Error() string {
 
 // lookup is the type-erased half of Lookup. The generic wrapper is one line so
 // that a program looking up a dozen signatures instantiates a dozen one-line
-// functions over one body rather than a dozen copies of this.
+// functions over one body, with no dozen copies of this.
 func (rt *Runtime) lookup(symName string, typ reflect.Type) (reflect.Value, error) {
 	if typ == nil || typ.Kind() != reflect.Func {
 		return reflect.Value{}, &LookupError{Symbol: symName, Reason: "T is not a function type"}
@@ -71,7 +71,7 @@ func (rt *Runtime) lookup(symName string, typ reflect.Type) (reflect.Value, erro
 	entry, ok := rt.lookupEntry(name)
 	if !ok {
 		// Resolution found the declaration and hoisting installed it, so a miss
-		// here is the runtime disagreeing with itself rather than a bad name.
+		// here is the runtime disagreeing with itself and no bad name.
 		return reflect.Value{}, &LookupError{Symbol: symName, Reason: "resolved to " + name + ", which is not in the function table"}
 	}
 
@@ -87,14 +87,14 @@ type symbolSource struct {
 	program *model.Program
 }
 
-// resolveSymbol turns the name a host asked for into the name the function
+// resolveSymbol turns the name a host passed into the name the function
 // table holds, installing the declaration if it is only in the tree so far.
 //
-// The three passes are ordered rather than merged, so a tree holding both
+// The three passes are ordered and never merged, so a tree holding both
 // `main` and `App\Handler\main` answers the first for "main" and needs no
 // disambiguation. Only the last one scans anything: it covers a function
 // declared by a program the source root does not hold, which is a runtime the
-// host ran a string on rather than one serving a tree.
+// host ran a string on, and no runtime serving a tree.
 func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 	name := strings.TrimPrefix(strings.TrimSpace(symName), "\\")
 	if name == "" {
@@ -154,7 +154,7 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 	//
 	// What it costs is the file's top-level code, which a later require_once
 	// now skips. A file that declares handlers and also does work at include
-	// time has to be required before the lookup rather than after.
+	// time has to be required before the lookup and never after.
 	rt.markIncluded(sources[0].path)
 	return found, nil
 }
@@ -164,7 +164,7 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 // a function name case-insensitively, and both answer with names as declared.
 type symbolTable struct {
 	// sources says where a declared name was read from. A name can be held by
-	// more than one file: the tree is the whole source root rather than one
+	// more than one file: the tree is the whole source root and not one
 	// program, so nothing has refused the second declaration yet, and reporting
 	// both is more use than picking one.
 	sources map[string][]symbolSource
@@ -272,9 +272,9 @@ func (rt *Runtime) scanTree() {
 // matchSymbols returns the declared names symName selects: the ones spelling it
 // in full, and failing that the ones ending in it after a namespace separator.
 //
-// The two passes are ordered rather than merged, so a tree holding both
+// The two passes are ordered and never merged, so a tree holding both
 // `main` and `App\Handler\main` answers the first for "main" and needs no
-// disambiguation. Both compare case-insensitively, which is how PHP compares a
+// disambiguation. Both compare case-insensitively, so PHP compares a
 // function name.
 func matchSymbols(names []string, symName string) []string {
 	var exact []string
@@ -358,8 +358,8 @@ func lookupArgs(in []reflect.Value, typ reflect.Type) []any {
 // Only the predeclared numeric types are widened. A named scalar keeps its
 // name: toInt and phpString already read time.Month and time.Duration as the
 // numbers they are, and a binding taking one back needs the type intact. Every
-// other value is passed through, which is what makes an *http.Request the
-// script's own HTTP\Request rather than a copy of one.
+// other value is passed through, so an *http.Request is the script's own
+// HTTP\Request and never a copy of one.
 func phpArg(v reflect.Value) any {
 	if !v.IsValid() {
 		return nil
@@ -388,7 +388,7 @@ func phpArg(v reflect.Value) any {
 //
 // A signature with no error result has nowhere to report a failure, so the
 // error goes to the runtime's own sink, where the error of a script that failed
-// without the host asking for one goes.
+// with no host signature to carry it goes.
 func (rt *Runtime) lookupReturn(typ reflect.Type, shape resultShape, value any, err error) []reflect.Value {
 	out := make([]reflect.Value, typ.NumOut())
 	if shape.value != nil {
@@ -407,8 +407,8 @@ func (rt *Runtime) lookupReturn(typ reflect.Type, shape resultShape, value any, 
 		rt.RecordError(err)
 		return out
 	}
-	// Addressed through the variable rather than through the value, so the slot
-	// holds the error interface MakeFunc declared instead of the concrete type
+	// Addressed through the variable and not through the value, so the slot
+	// holds the error interface MakeFunc declared in place of the concrete type
 	// behind it.
 	out[len(out)-1] = reflect.ValueOf(&err).Elem()
 	return out
@@ -419,7 +419,7 @@ func (rt *Runtime) lookupReturn(typ reflect.Type, shape resultShape, value any, 
 //
 // The predeclared scalar kinds go through PHP's own coercions, so a function
 // returning 1 fills a bool result the way `if (1)` reads it and a function
-// returning "3" fills an int result with 3. Everything else goes through
+// returning "3" fills an int result with 3. Everything else resolves through
 // coerceArg, which is the conversion every Go binding's arguments already pass.
 func convertResult(value any, want reflect.Type) (reflect.Value, error) {
 	if want.Kind() == reflect.Interface && want.NumMethod() == 0 {

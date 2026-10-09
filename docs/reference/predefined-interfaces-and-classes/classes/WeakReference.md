@@ -36,4 +36,4 @@ public function get(): ?object
 
 - phpscript does not implement this class. The name is not declared.
 - The concept does not carry over. PHP destroys an object when its reference count reaches zero, which is the event a weak reference reports; phpscript objects are Go values collected by the Go garbage collector, and nothing observes the moment one becomes unreachable.
-- For a cache whose entries should expire, hold the values in an array and remove them deliberately, or keep the cache on the host side with `SharedMemory`.
+- For a cache whose entries should expire, hold the values in an array and remove them by hand, or keep the cache on the host side with `SharedMemory`.

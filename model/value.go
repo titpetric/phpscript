@@ -72,7 +72,7 @@ func NewArraySize(n int) *Array {
 
 // Reset empties the array while keeping its storage, so a per-request
 // container (a superglobal, argv) refills into the buckets and slices the
-// previous request grew instead of reallocating them. A reset map-mode array
+// previous request grew, and reallocates none of them. A reset map-mode array
 // stays in map mode with zero entries, which is observably the same as
 // fresh; the cleared slices hold no stale references.
 func (a *Array) Reset() {
@@ -97,7 +97,7 @@ func (a *Array) isList() bool { return a.values == nil }
 // The empty case reuses the list's backing array as the key slice, so a
 // presized array whose first key is a string (json_decode of an object, the
 // sorted introspection listings) still costs exactly the map. A non-empty list
-// gets a fresh key slice on purpose: a script may promote an array from inside
+// gets a fresh key slice by decision: a script may promote an array from inside
 // its own foreach, and Range is walking the backing array we would otherwise
 // be overwriting with keys.
 func (a *Array) promote() {
@@ -150,14 +150,14 @@ func (a *Array) Set(key, val any) {
 func (a *Array) Append(val any) {
 	if a.isList() {
 		a.list = append(a.list, val)
-		// Assigned rather than incremented, because a list's next index is its
+		// Assigned and never incremented, because a list's next index is its
 		// length by definition and the counter may still hold the sentinel.
 		a.nextID = int64(len(a.list))
 		return
 	}
 	if a.nextID == noIntKey {
 		// Nothing has set the index, so this is the first integer key and PHP
-		// hands out 0.
+		// answers 0.
 		a.Set(int64(0), val)
 		return
 	}
@@ -207,7 +207,7 @@ func (a *Array) Delete(key any) {
 
 // Pop removes the last entry and returns its key and value, PHP's array_pop.
 //
-// It lives here rather than in the shim because of the append index, which is
+// It lives here and not in the shim because of the append index, which is
 // the one piece of state a caller cannot reach. PHP decrements it only when the
 // removed key was the one it was about to hand out, so popping 9 from
 // [5 => a, 9 => c] leaves the next append at 9, while popping 5 from
@@ -221,7 +221,7 @@ func (a *Array) Pop() (any, any, bool) {
 	key := keys[len(keys)-1]
 	value, _ := a.Get(key)
 	a.Delete(key)
-	// The sentinel is excluded rather than decremented: an array holding an
+	// The sentinel is excluded and never decremented: an array holding an
 	// integer key has had the index set, so the two cannot both be true, and
 	// nextID-1 on the sentinel would wrap.
 	if i, ok := key.(int64); ok && a.nextID != noIntKey && i == a.nextID-1 {
@@ -349,10 +349,10 @@ type Class struct {
 // into expr-lang exposes its Props for `$obj->field` style access.
 //
 // Props is a Go map and has no order of its own, so order records the sequence
-// the properties were added in. Every reader goes through Names or Range rather
+// the properties were added in. Every reader passes through Names or Range and
 // than ranging the map, because PHP reads properties back in a defined order
 // and a script can see it: json_encode, print_r, var_dump, get_object_vars, the
-// `(array)` cast and `foreach` all print or yield them in it.
+// `(array)` cast and `foreach` all read them back in it.
 type Object struct {
 	Class *Class
 	Props map[string]any
@@ -376,7 +376,7 @@ func (o *Object) SetID(id string) {
 
 // SetProp writes a property, recording the name the first time it is seen.
 // Assigning over a property that is already set leaves its position alone,
-// which is what PHP does.
+// as PHP does.
 func (o *Object) SetProp(name string, v any) {
 	if o.Props == nil {
 		o.Props = map[string]any{}
@@ -410,7 +410,7 @@ func (o *Object) DeleteProp(name string) {
 	}
 }
 
-// Len is the number of properties currently set.
+// Len is how many properties are set.
 func (o *Object) Len() int {
 	return len(o.Props)
 }
@@ -420,7 +420,7 @@ func (o *Object) Len() int {
 // added, in the order it added them.
 //
 // A property written straight into Props, bypassing SetProp, is still reported;
-// it sorts after the recorded ones rather than disappearing, so a missed call
+// it sorts after the recorded ones and never disappears, so a missed call
 // site degrades to the order this type had before it recorded one.
 func (o *Object) Names() []string {
 	out := make([]string, 0, len(o.Props))
@@ -447,7 +447,7 @@ func (o *Object) Names() []string {
 }
 
 // appendUnrecorded adds the properties Names did not reach, sorted, so that a
-// direct Props write is reported in a stable order instead of a random one.
+// direct Props write is reported in a stable order and never a random one.
 func (o *Object) appendUnrecorded(out []string) []string {
 	have := make(map[string]bool, len(out))
 	for _, name := range out {

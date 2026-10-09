@@ -6,7 +6,7 @@ import (
 
 // TestPhpSprintfCoercesArguments pins the part of sprintf a fixture cannot
 // reach from the other side: that an argument is converted before it is
-// rendered, rather than handed to a Go formatter that reports its type back.
+// rendered, and never passed to a Go formatter that reports its type back.
 func TestPhpSprintfCoercesArguments(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -75,7 +75,7 @@ func TestPhpSprintfErrors(t *testing.T) {
 }
 
 // TestTrimExponent pins the exponent form PHP writes, which is the digits it
-// needs rather than the two Go and C pad it to.
+// needs, and not the two Go and C pad it to.
 func TestTrimExponent(t *testing.T) {
 	tests := map[string]string{
 		"1.234500e+03":  "1.234500e+3",

@@ -10,7 +10,7 @@ import (
 )
 
 // writableOptions is a runner configured with an upload directory below the
-// document root and a private one beside it, which is how a site that accepts
+// document root and a private one beside it, so a site that accepts
 // uploads is set up.
 func writableOptions() runner.Options {
 	return runner.Options{WritablePaths: []string{"upload", "public/upload"}}
@@ -44,7 +44,7 @@ echo "written";`)
 }
 
 // TestWritablePathsThrowsOutsideTheAllowlist pins the refusal and its shape: an
-// exception rather than a false return, so a script cannot carry on believing
+// exception and no false return, so a script cannot carry on believing
 // the write happened.
 func TestWritablePathsThrowsOutsideTheAllowlist(t *testing.T) {
 	for _, test := range []struct {

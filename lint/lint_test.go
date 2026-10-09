@@ -119,7 +119,7 @@ function load() { return 1; }
 
 	// Every chained statement whose value is a handle, or a name whose type the
 	// source does not settle, is reported once, whatever scope it sits in, and
-	// a chain of three names is still one finding rather than one per link.
+	// a chain of three names is still one finding and not one per link.
 	wantLines := []int{2, 4, 5, 6, 7, 8, 9, 10, 11}
 	if len(diags) != len(wantLines) {
 		t.Fatalf("got %d diagnostics, want %d: %+v", len(diags), len(wantLines), diags)
@@ -265,7 +265,7 @@ func TestFileAcceptsInterfaceExtends(t *testing.T) {
 
 // A JSON_* constant is reported as a warning. The name is not defined, so it
 // arrives as null and json_encode ignores it: the call runs and encodes, and
-// what the author loses is the formatting they asked for.
+// what the author loses is the formatting they wrote.
 func TestLintJSONFlags(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -359,8 +359,8 @@ $sorter = function ($rows) {
 	}
 }
 
-// A class reference nothing declares — a `new`, a static call, property or
-// constant — is reported with the message the runtime would raise. Classes
+// A class reference nothing declares (a `new`, a static call, property or
+// constant) is reported with the message the runtime would raise. Classes
 // declared in the file, registered host classes, anonymous classes and the
 // contextual self/static names lint clean.
 func TestFileReportsUndefinedClasses(t *testing.T) {
@@ -403,7 +403,7 @@ $d = Missing::$prop;
 
 // A magic method other than __construct and __invoke is never called
 // implicitly (docs/design.md), so a class relying on one holds dead code that
-// looks load-bearing. The two that run lint clean.
+// reads as if something depended on it. The two that run lint clean.
 func TestFileReportsMagicMethods(t *testing.T) {
 	src := `<?php
 class Inject {
@@ -472,7 +472,7 @@ function takesRef(&$x) { return $x; }
 
 // The abstract modifier has nothing to mean without inheritance: the class
 // instantiates like any other and an abstract method's call returns null
-// where PHP refuses to load the incomplete class. Both spellings are
+// where PHP declines the incomplete class. Both spellings are
 // reported; a plain class with bodies lints clean.
 func TestFileReportsAbstract(t *testing.T) {
 	src := `<?php
@@ -510,7 +510,7 @@ class Circle {
 // the RedeclareError waiting for the file to be hoisted; the linter reports it
 // first. A single declaration, a class method, and a name the source guards
 // with function_exists all lint clean, the last being the polyfill idiom where
-// declaring over an absent built-in is the whole point.
+// declaring over an absent built-in is what the case covers.
 func TestFileReportsRedeclaredFunctions(t *testing.T) {
 	src := `<?php
 function once_only() { return 1; }

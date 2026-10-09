@@ -23,18 +23,18 @@ import (
 // table with a number from the other. docs/agents/performance.md owns the
 // comparison and scripts/bench-http.sh is the latency half of the same harness.
 //
-// It is the real testdata/testserver.php rather than a copy of it. The file's
-// class declaration is taken and its two trailing statements are not, because
+// It is the real testdata/testserver.php, and no copy of it. The file's class
+// declaration is taken and its two trailing statements are left, because
 // run() calls listen() and then parks in wait() until the script's time limit
 // ends it, which a benchmark cannot do. The driver below is what run() does up
 // to the point of binding a socket.
 //
-// What is not measured here is the socket: the writer discards instead of going
+// The socket is outside the measurement: the writer discards, with no pass
 // through net/http's connection buffers. That cost is the same on the Go twin,
-// so it is the sweep's business and not this one's.
+// so it belongs to the sweep.
 
 // benchServerDriver stands in for run(): the limit the real script sets before
-// it listens, then the router handed to Go instead of to HTTP\Server. The limit
+// it listens, then the router passed to Go in place of HTTP\Server. The limit
 // is the script's and the forks do not inherit it, there as here; what arms a
 // worker's per-statement deadline check is the request's own context, which is
 // why the request below carries a cancellable one.
@@ -51,9 +51,9 @@ var benchServerRoutes = []struct {
 	method string
 	target string
 	body   string
-	// want is a distinctive substring of the answer, checked once before the
+	// want is a distinctive substring of the response, checked once before the
 	// timed loop. It is what makes the benchmark notice testserver.php changing
-	// under it rather than quietly measuring a 404.
+	// under it, and never quietly measures a 404.
 	want string
 }{
 	{name: "hello", method: http.MethodGet, target: "/hello?name=sprint", want: "hello sprint"},
@@ -145,7 +145,7 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 		b.Fatal("mount() handed back no router")
 	}
 
-	// The pool listen() installs, sized here rather than from GOMAXPROCS: the
+	// The pool listen() installs, sized here and not from GOMAXPROCS: the
 	// pinned benchmark job runs under taskset and a default pool would be one
 	// worker there and four elsewhere. A worker count does not change what one
 	// request allocates, and holding it still is what makes two runs comparable.
@@ -158,11 +158,11 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 }
 
 // benchServerRequest builds one request and the function that puts it back the
-// way it arrived, so the loop reuses it instead of allocating one per iteration.
+// way it arrived, so the loop reuses it and allocates none per iteration.
 //
-// The context is cancellable rather than httptest's background one. A served
-// request's context can end, which is what arms the runtime's per-statement
-// deadline check and what the mux reads before handing the request to a worker;
+// The context is cancellable, where httptest's is a background one. A served
+// request's context can end, which arms the runtime's per-statement deadline
+// check and is what the mux reads before passing the request to a worker;
 // a context with no Done channel would price an interpreter that checks nothing.
 //
 // A body has to be rewound and the parsed form dropped: form_value() parses on

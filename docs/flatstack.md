@@ -95,10 +95,10 @@ For code that directly constructs and runs a runtime, **yes at the API and fallb
 
 They are **not yet independent equivalent engines**:
 
-- `flatstack.Runtime` deliberately aliases `runner.Runtime`; this preserves the complete embedding API rather than duplicating runtime, standard-library, include, request, and reflection state.
+- `flatstack.Runtime` aliases `runner.Runtime`, which preserves the complete embedding API. Duplicating it would mean a second copy of runtime, standard-library, include, request and reflection state.
 - Only the documented subset below executes as native flat bytecode.
 - Every other valid program uses the existing runner interpreter.
-- `annotations.Route` and the bundled CLI/server currently construct `runner.New` internally. Merely changing a callback type does not make those paths use flatstack.
+- `annotations.Route` and the bundled CLI/server construct `runner.New` internally. Merely changing a callback type does not make those paths use flatstack.
 - `Runtime.OnError` selects the interpreter because its per-statement recovery contract has not been added to bytecode.
 
 Use `flatstack.Supports` when native bytecode execution is required:
@@ -113,7 +113,7 @@ Applications normally do not need this check because transparent fallback is the
 
 ## Native bytecode subset
 
-Flat bytecode currently supports these statements:
+Flat bytecode supports these statements:
 
 - Variable and array-index assignment, including compound assignment and append
 - Expression statements
@@ -155,12 +155,12 @@ The current end-to-end corpus result is **262 of the 264 `.phpt` fixtures compil
 
 ### Current native barriers
 
-The complete program atomically selects fallback when it contains any currently unsupported form. The major remaining forms are:
+The complete program atomically selects fallback when it contains any unsupported form. The major remaining forms are:
 
-- `compact()` of a name declared `static $x`, which lives in a bag rather than a frame slot. Every other form compiles: a literal name becomes the slot it stands for, and one computed at run time is looked up in the name table the program carries
+- `compact()` of a name declared `static $x`, which lives in a bag and not a frame slot. Every other form compiles: a literal name becomes the slot it stands for, and one computed at run time is looked up in the name table the program carries
 - `static $x` inside a closure (its bag counts per closure value, which is interpreter state), at top level, or as a by-reference output parameter
 - By-reference closure captures `use (&$x)`, closure parameter defaults, and variadic or by-reference closure parameters
-- `func_get_args()`, refused by name wherever it is called. A compiled frame seeds its declared parameters into slots and keeps no argument list, so an argument past the last parameter is not in the frame to report; the call used to answer an empty list instead of the arguments. It is the one entry in `runner.ScopeBuiltins`, and the first-class reference `func_get_args(...)` is not refused, having no frame to read: it is a name resolved through the function table, which carries no scope builtin, so both engines report the same undefined function
+- `func_get_args()`, refused by name wherever it is called. A compiled frame seeds its declared parameters into slots and keeps no argument list, so an argument past the last parameter is not in the frame to report. It is the one entry in `runner.ScopeBuiltins`, and the first-class reference `func_get_args(...)` is not refused, having no frame to read: it is a name resolved through the function table, which carries no scope builtin, so both engines report the same undefined function
 - Anonymous classes, `new class { ... }`. The bytecode carries a class name where an anonymous class carries its declaration
 - `try` without a `catch` clause
 - Casts
@@ -176,7 +176,7 @@ These are not called "unsupported programs" at the public runtime boundary: they
 
 A closure the bytecode engine creates is a Go function value, where the interpreter's is a `runner.Callable`. A Go function value has no identity `===` can read - Go cannot compare two of them, and `reflect.DeepEqual` calls every non-nil pair unequal - so `$a = function () {}; $b = $a; $a === $b;` is false here and true on the interpreter and in php. It is the one answer the two engines are known to disagree about, and it is not the first-class callable syntax: `greet(...)` and the other three spellings answer a `Callable` on both engines, so `$fn(...) === $fn` holds on both.
 
-Fixing it means giving the engine's closure value identity, which means a value type both packages can see rather than a bare `func(...any) (any, error)`, and a case for it everywhere a callable is resolved. Comparing the function pointer instead is not the fix: two closures built from one literal share it, which would answer true where php answers false.
+Fixing it means the engine's closure value carries an identity, which means a value type both packages can see in place of a bare `func(...any) (any, error)`, and a case for it everywhere a callable is resolved. Comparing the function pointer is no fix: two closures built from one literal share it, which would answer true where php answers false.
 
 ## Host calls, errors, and panics
 
@@ -188,9 +188,9 @@ Flat bytecode uses the runner's existing host bridge, including:
 - Go constructor and method error propagation
 - Exported Go struct field access
 
-The VM binds a frame handle (`engine.FrameLocals`) to the host once per run instead of copying its locals into a map around every call. The host decides when a callee needs the scope: a function-table hit whose signature does not take a `context.Context` is invoked with no scope at all, which is the interpreter's own contract for the same binding; context bindings and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. That snapshot-before-call ordering is what the by-reference marks rely on and is pinned by the engine's `vm_test`.
+The VM binds a frame handle (`engine.FrameLocals`) to the host once per run, with no copy of its locals into a map around every call. The host decides when a callee needs the scope: a function-table hit whose signature does not take a `context.Context` is invoked with no scope at all, which is the interpreter's own contract for the same binding; context bindings and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. That snapshot-before-call ordering is what the by-reference marks rely on and is pinned by the engine's `vm_test`.
 
-`Snapshot` is the frame's named variables, which is what `compact()`, `extract()` and `get_defined_vars()` read. It is not the call's arguments, which is why `func_get_args()` is refused at compile time rather than answered from it.
+`Snapshot` is the frame's named variables, the set `compact()`, `extract()` and `get_defined_vars()` read. It holds no argument list, so `func_get_args()` is refused at compile time.
 
 A host's own variables are the other half of the same split. `Run` asks an optional `Globals() map[string]any` for them and seeds them into the top-level frame, the way `runInterpreted` seeds its global scope before executing a file, so a function and a closure reach a global exactly as far as they do in the interpreter: not at all. `Host.Lookup` answers the superglobals and the constant table, which every frame does see. Answering a global from `Lookup` instead handed `$argv` to every frame in the program.
 
@@ -222,7 +222,7 @@ runtime.Run(program)
 
 For compile-once/run-many workloads, parse the source once and reuse both the `*model.Program` and cache. Re-parsing creates a different program identity and therefore a new flat compilation.
 
-`runner.Precompiler` is that reuse as a setting. It walks the `.php` files of a source tree, parses each into an `IncludeCache` and compiles each into an `ExprCache`, and `runner.Options.Precompile` makes `Runtime.LoadFile` read an entrypoint back out of the include cache instead of parsing the file again. A server that does not is re-parsing every entrypoint per request and paying a flat compilation for each, because the bytecode is keyed by the AST the parse produced. `phpscript server` runs one pass per site before it accepts a request; see [Precompilation](configuration.md#precompilation).
+`runner.Precompiler` is that reuse as a setting. It walks the `.php` files of a source tree, parses each into an `IncludeCache` and compiles each into an `ExprCache`, and `runner.Options.Precompile` makes `Runtime.LoadFile` read an entrypoint back out of the include cache, with no second parse. A server that does not is re-parsing every entrypoint per request and paying a flat compilation for each, because the bytecode is keyed by the AST the parse produced. `phpscript server` runs one pass per site before it accepts a request; see [Precompilation](configuration.md#precompilation).
 
 ## Validation and benchmarks
 
@@ -270,13 +270,13 @@ go test ./tests -run '^$' -fuzz '^FuzzFlatstackImportSwapFallback$' -fuzztime=30
 
 The highest-value next steps are:
 
-1. Compile included files to bytecode instead of the interpreter.
+1. Compile included files to bytecode, where the interpreter runs them today.
 2. Compile PHP constructors on the native path.
 3. Nested `class` declarations at runtime (PHP semantics).
 4. Complete exception `finally` semantics on `return`/`throw` and remaining lvalue/cast forms.
 5. Add instruction, call-depth, and deadline budgets to native execution.
 6. Cache native-rejection decisions and use a structural cache key where callers need to reparse identical source frequently.
-7. Let `annotations.Route` and CLI/server entry points select a runtime factory so they can opt into flatstack instead of always constructing `runner.New`.
+7. Let `annotations.Route` and CLI/server entry points select a runtime factory so they can opt into flatstack, where they always construct `runner.New` today.
 8. Track native-versus-fallback execution in diagnostics so production users can measure bytecode coverage without calling `Supports` separately.
 
 Operand, local, iterator, handler and call-frame storage is pooled on the run's exec state, user-function frames reuse stashed slabs, call arguments are borrowed off the operand stack for the duration of the call, and the host locals copy is gone (the frame handle above): a precompiled loop runs at zero allocations per run, and a host call in a loop adds nothing beyond the callee's own work. `TestFlatstackPrecompiledAllocationBudget` fails, not skips, when any of that regresses.

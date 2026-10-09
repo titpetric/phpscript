@@ -20,11 +20,11 @@ The database fixtures read their connection strings from `.env.testing`:
 set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
 ```
 
-Exported rather than sourced. `. ./.env.testing` does not work: three of the four values carry an unquoted `&` and the fourth carries unquoted parentheses, so bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser, which is why `env: include: .env.testing` works where the shell does not. The file is left as it is.
+Exported, not sourced. `. ./.env.testing` does not work: three of the four values carry an unquoted `&` and the fourth carries unquoted parentheses, so bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser, so `env: include: .env.testing` works where the shell does not. The file is left as it is.
 
 The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression and is reported as a missing precondition.
 
-`-count 1` so the test cache answers from the run rather than from a previous one.
+`-count 1` so the test cache answers from this run and no earlier one.
 
 ## The run
 
@@ -83,11 +83,11 @@ The ranking:
 gotestsum tool slowest --jsonfile bench-gotest-after.json
 ```
 
-`tests/runner` dominates the suite and its share is sleeps, not work: the execution-limit and client-abort tests drive `set_time_limit`, `usleep` and `connection_aborted` against the real clock. Report it as excluded rather than as the slowest package, or the reading points at a sleep.
+`tests/runner` dominates the suite and its share is sleeps, not work: the execution-limit and client-abort tests drive `set_time_limit`, `usleep` and `connection_aborted` against the real clock. Report it as excluded, never as the slowest package, or the reading points at a sleep.
 
 `tests` is the next largest and runs the whole fixture corpus twice, once per engine. `annotations`, `stdlib/internals` and `stdlib/http` carry real tickers, sleeps and listeners. `cmd/phpscript/test` shells out to the `php` binary.
 
-Three tests fail rather than skip when they regress, and a failure in one is a finding and not a flake:
+Three tests fail when they regress, and none of them skips; a failure in one is a finding:
 
 | Test                                       | Where                          | What a failure means                                                                                     |
 |--------------------------------------------|--------------------------------|----------------------------------------------------------------------------------------------------------|
@@ -97,7 +97,7 @@ Three tests fail rather than skip when they regress, and a failure in one is a f
 
 The contract's test-immutability rule covers what may and may not be done about any of them.
 
-Several packages log database connection lines at init. It is noise, not a failure.
+Several packages log database connection lines at init. That output is noise.
 
 ## What this cannot answer
 

@@ -32,7 +32,7 @@ const AreaNames = "all, secure, exec"
 var areas = map[string]Profile{"all": All, "secure": Secure, "exec": Exec}
 
 // profile is what Register mounts, for the whole process: --stdlib limits the
-// runtime an operator started, not one host inside it.
+// runtime an operator started, and no single host inside it.
 var profile = All
 
 // ParseProfile reads a --stdlib value: area names separated by commas, empty
@@ -58,7 +58,7 @@ func SetProfile(p Profile) { profile = p }
 
 // Mount is Register narrowed to a profile: only the binding areas the bitmask
 // names are installed, so a name outside them is undefined in the runtime
-// rather than refused, unreachable through a call, a callable or either
+// and never refused, unreachable through a call, a callable or either
 // engine. The extra bindings are the caller's own and are installed verbatim.
 func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime)) {
 	rt.SetProfile(profile)
@@ -73,6 +73,6 @@ func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime
 
 	// How to do this again, for a runtime forked off this one. A binding is a
 	// closure over the runtime it was registered on, so a fork has to install
-	// its own rather than inherit these - under the same profile.
+	// its own and inherits none of these, under the same profile.
 	rt.SetPreparer(func(child *runner.Runtime) { Mount(child, profile, bindings...) })
 }

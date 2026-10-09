@@ -35,9 +35,13 @@ func Register(rt *runner.Runtime) {
 // create a directory anywhere the process could write, and read and write session
 // files there, while file_exists() on the same path answered false.
 func RegisterRoot(rt *runner.Runtime, dir string) {
-	// Session\Storage\Memory is session storage backed by process memory; sessions vanish when the process exits.
+	// Session\Storage\Memory is session storage backed by process memory;
+	// sessions vanish when the process exits.
 	rt.RegisterConstructor("Session\\Storage\\Memory", NewStorageMemory)
-	// Session\Storage\Disk is session storage backed by files under $storage_path, which resolves inside the application root and must be writable; with no path it uses a directory of this application's own under the operating system's temporary directory.
+	// Session\Storage\Disk is session storage backed by files under
+	// $storage_path, which resolves inside the application root and must be
+	// writable; with no path it uses a directory of this application's own
+	// under the operating system's temporary directory.
 	rt.RegisterConstructor("Session\\Storage\\Disk", func(storagePaths ...string) (*StorageDisk, error) {
 		return newRootedStorageDisk(rt, dir, storagePaths...)
 	})

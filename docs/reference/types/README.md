@@ -86,12 +86,12 @@ A string becomes an int key only when it is the canonical spelling of one, which
 | `"1.0"`, `"1e3"`        | `string`  | float syntax              |
 | `"9223372036854775808"` | `string`  | past `PHP_INT_MAX`        |
 
-So `$a["08"]` and `$a[8]` are two entries. This is exact rather than permissive on purpose: a form field or a database column named `"007"` has to survive a round trip through an array without becoming `7`.
+So `$a["08"]` and `$a[8]` are two entries. The comparison is exact: a form field or a database column named `"007"` has to survive a round trip through an array without becoming `7`.
 
 ## Type casting
 
 The casts `(bool)`, `(boolean)`, `(int)`, `(integer)`, `(float)`, `(double)`, `(real)`, `(string)`, `(array)` and `(object)` are implemented. PHP's `(unset)` cast is not implemented.
 
-`(object)` builds a [`stdClass`](../predefined-interfaces-and-classes/README.md) whose properties are the array's entries, with an integer key becoming a property named for its digits; a scalar lands under `scalar`, null gives an object with nothing in it, and an object is returned as it is. `(array)` reads the properties back out, in the order the object reads them back, and a digit-named property is an integer key again, so a cast round trip of a list is a list.
+`(object)` builds a [`stdClass`](../predefined-interfaces-and-classes/README.md) whose properties are the array's entries, with an integer key becoming a property named for its digits; a scalar lands under `scalar`, null produces an object with nothing in it, and an object is returned as it is. `(array)` reads the properties back out, in the order the object reads them back, and a digit-named property is an integer key again, so a cast round trip of a list is a list.
 
-Two divergences, both following from decisions made elsewhere. Neither direction copies: PHP copies the array because arrays are values there, and here they are handles, so a nested array is shared rather than duplicated. And `(array)` uses the plain property name where PHP prefixes a private or protected one with the class that declared it; phpscript enforces no visibility, and a key holding a NUL byte is one no script could index.
+Two divergences, both following from decisions made elsewhere. Neither direction copies: PHP copies the array because arrays are values there, and here they are handles, so a nested array is shared. And `(array)` uses the plain property name where PHP prefixes a private or protected one with the class that declared it; phpscript enforces no visibility, and a key holding a NUL byte is one no script could index.

@@ -20,23 +20,35 @@ func init() {
 func registerEncoding(rt *runner.Runtime) {
 	// base64_encode returns $string encoded with the standard base64 alphabet and '=' padding.
 	rt.RegisterFunc("base64_encode", phpBase64Encode)
-	// base64_decode decodes the base64 in $string, skipping unknown characters unless $strict is true, in which case it returns false for them and for misplaced padding.
+	// base64_decode decodes the base64 in $string, skipping unknown
+	// characters unless $strict is true, in which case it returns false for
+	// them and for misplaced padding.
 	rt.RegisterFunc("base64_decode", phpBase64Decode)
-	// urlencode encodes $string for application/x-www-form-urlencoded, so a space becomes '+' and '~' becomes '%7E'.
+	// urlencode encodes $string for application/x-www-form-urlencoded, so a
+	// space becomes '+' and '~' becomes '%7E'.
 	rt.RegisterFunc("urlencode", phpURLEncode)
-	// urldecode decodes the application/x-www-form-urlencoded $string, turning '+' into a space and leaving an incomplete '%' sequence literal.
+	// urldecode decodes the application/x-www-form-urlencoded $string,
+	// turning '+' into a space and leaving an incomplete '%' sequence
+	// literal.
 	rt.RegisterFunc("urldecode", phpURLDecode)
 	// rawurlencode encodes $string per RFC 3986, so a space becomes '%20' and '~' stays literal.
 	rt.RegisterFunc("rawurlencode", phpRawURLEncode)
-	// rawurldecode decodes the RFC 3986 $string, leaving '+' alone and leaving an incomplete '%' sequence literal.
+	// rawurldecode decodes the RFC 3986 $string, leaving '+' alone and
+	// leaving an incomplete '%' sequence literal.
 	rt.RegisterFunc("rawurldecode", phpRawURLDecode)
-	// http_build_query joins $data into a query string, urlencoding both halves of every pair and spelling a nested array as key[sub]=value; the $numeric_prefix, $arg_separator and $encoding_type parameters are not supported.
+	// http_build_query joins $data into a query string, urlencoding both
+	// halves of every pair and spelling a nested array as key[sub]=value; the
+	// $numeric_prefix, $arg_separator and $encoding_type parameters are not
+	// supported.
 	rt.RegisterFunc("http_build_query", phpHTTPBuildQuery)
-	// parse_str decodes the query string $string into $result, reading PHP's bracket syntax so a[b]=1 arrives as a nested array; it is the inverse of http_build_query and the decoder behind $_GET and $_POST.
+	// parse_str decodes the query string $string into $result, reading PHP's
+	// bracket syntax so a[b]=1 arrives as a nested array; it is the inverse
+	// of http_build_query and the decoder behind $_GET and $_POST.
 	rt.RegisterFunc("parse_str", phpParseStr)
 	// bin2hex returns $string spelled as lowercase hexadecimal, two digits per byte.
 	rt.RegisterFunc("bin2hex", phpBin2hex)
-	// hex2bin decodes the hexadecimal $string back into bytes, returning false for an odd-length string or a non-hex character.
+	// hex2bin decodes the hexadecimal $string back into bytes, returning
+	// false for an odd-length string or a non-hex character.
 	rt.RegisterFunc("hex2bin", phpHex2bin)
 }
 
@@ -84,7 +96,7 @@ func newBase64Values() [256]int8 {
 // phpBase64Decode returns any because PHP's contract is string|false: strict
 // mode reports a bad character by returning false, not by raising.
 //
-// The decode is written out rather than handed to encoding/base64 because
+// The decode is written out and never passed to encoding/base64 because
 // PHP's lenient mode drops every character outside the alphabet, padding
 // included, and decodes whatever is left over even when its length is not a
 // multiple of four. Neither StdEncoding nor RawStdEncoding does that.
@@ -176,8 +188,8 @@ func phpRawURLEncode(str string) string { return urlEncode(str, false) }
 
 // urlEncode percent-escapes str. In form mode a space becomes '+', matching
 // urlencode(); otherwise every escaped byte becomes '%XX', matching
-// rawurlencode(). Note that Go's url.QueryEscape leaves '~' literal where PHP
-// escapes it, which is why the tables above are spelled out here.
+// rawurlencode(). Go's url.QueryEscape leaves '~' literal where PHP
+// escapes it, so the tables above are spelled out here.
 func urlEncode(str string, form bool) string {
 	safe := &urlRawSafe
 	if form {
@@ -225,7 +237,7 @@ func phpRawURLDecode(str string) string { return shared.RawURLDecode(str) }
 //
 // The setter is nil when a script omitted the argument. PHP raises an
 // ArgumentCountError for that call, and this runtime pads a short call instead,
-// so the decode is skipped rather than written nowhere.
+// so the decode is skipped, and nothing is written nowhere.
 func phpParseStr(str string, result func(any)) {
 	if result == nil {
 		return
@@ -257,7 +269,7 @@ func buildQuery(b *strings.Builder, prefix string, data any) {
 		}
 		switch {
 		case val == nil:
-			// PHP drops a null entry rather than emitting an empty value.
+			// PHP drops a null entry and emits no empty value.
 		case model.IsCollection(val):
 			buildQuery(b, name, val)
 		default:

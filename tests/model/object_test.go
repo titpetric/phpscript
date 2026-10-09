@@ -11,7 +11,7 @@ func names(o *model.Object) string {
 	return strings.Join(o.Names(), ",")
 }
 
-// A property reads back where it was added, which is what PHP does and what
+// A property reads back where it was added, as PHP does and as
 // json_encode, print_r, var_dump, get_object_vars, the (array) cast and foreach
 // all show a script.
 func TestObjectKeepsInsertionOrder(t *testing.T) {
@@ -68,8 +68,8 @@ func TestObjectOrdersDeclaredFieldsFirst(t *testing.T) {
 }
 
 // A property written straight into the map, bypassing SetProp, is still
-// reported rather than lost, so a call site that misses the accessor degrades
-// to a stable order instead of dropping data.
+// reported and never lost, so a call site that misses the accessor degrades
+// to a stable order and drops no data.
 func TestObjectReportsUnrecordedProperties(t *testing.T) {
 	o := model.NewStdClass()
 	o.SetProp("first", 1)

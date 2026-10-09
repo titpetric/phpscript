@@ -8,7 +8,7 @@ import (
 
 // Response is the PHP-visible result of sending a request.
 //
-// This one is a facade rather than a net/http response, for two reasons. The
+// This one is a facade and no net/http response, for two reasons. The
 // body is read in full when the response is constructed, because a script has
 // no stream to close and an unread net/http body leaks its connection. And
 // ok() and json() are the two things a script does with a response that
@@ -30,7 +30,7 @@ func (r *Response) OK() bool { return r.err == "" && r.status >= 200 && r.status
 
 // Err returns why the request failed, or an empty string when it did not. Only
 // parallel() produces a failed response: send() throws instead, because there
-// is one outcome to report rather than several.
+// is one outcome to report and never several.
 func (r *Response) Err() string { return r.err }
 
 // Body returns the response body as a string.

@@ -192,7 +192,7 @@ func TestOptions_Bind(t *testing.T) {
 			t.Errorf("--%s has no usage text", name)
 		}
 	}
-	// A bare --cover is --cover=line, which is what makes it legal to write
+	// A bare --cover is --cover=line, so it is legal to write
 	// without a value in front of a command name.
 	if got := fs.Lookup("cover").NoOptDefVal; got != coverage.ModeLine {
 		t.Errorf("--cover NoOptDefVal = %q, want %q", got, coverage.ModeLine)
@@ -259,7 +259,7 @@ func TestOptions_FromConfig(t *testing.T) {
 }
 
 // TestOptions_ResolveCoverFile covers the {time} placeholder and the directory it
-// writes into, which is what makes cover/phpscript.{time}.cov work against a
+// writes into, so cover/phpscript.{time}.cov works against a
 // tree that has no cover directory.
 func TestOptions_ResolveCoverFile(t *testing.T) {
 	dir := t.TempDir()
@@ -353,7 +353,7 @@ func TestOptions_RunWith(t *testing.T) {
 }
 
 // TestOptions_Chdir covers -w, which moves the process before the configuration is read
-// so a tree is named once rather than in every path a configuration holds.
+// so a tree is named once, and not in every path a configuration holds.
 func TestOptions_Chdir(t *testing.T) {
 	dir := t.TempDir()
 	before, err := os.Getwd()
@@ -370,8 +370,8 @@ func TestOptions_Chdir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// macOS hands out a symlinked temporary directory, so the comparison is on
-	// the resolved path rather than the one handed in.
+	// macOS returns a symlinked temporary directory, so the comparison is on
+	// the resolved path and not the one passed in.
 	want, err := filepath.EvalSymlinks(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -388,7 +388,7 @@ func TestOptions_Chdir(t *testing.T) {
 	}
 }
 
-// TestPreControlFlags covers -t and -s, which replace a command rather than
+// TestPreControlFlags covers -t and -s, which replace a command and never
 // modify one, and the rule that keeps them from eating a command's own flags.
 func TestPreControlFlags(t *testing.T) {
 	tests := map[string]struct {

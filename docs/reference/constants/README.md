@@ -46,7 +46,7 @@ echo MISSING;         // RuntimeException: Undefined constant "MISSING"
 echo $missing;        // null, and the script continues
 ```
 
-The two are separate lookups, which is why an unset variable is still the null PHP reads it as.
+The two are separate lookups, so an unset variable is still the null PHP reads it as.
 
 PHP 8 raises `Error` for the same expression. This raises `RuntimeException`, so `catch (Exception $e)`, `catch (RuntimeException $e)` and `catch (Throwable $e)` take it and `catch (Error $e)` does not. An `Error` in PHP is a fault a caller is not expected to handle, and a name this runtime does not define is a condition a script can answer for. Use `defined()` to ask without throwing.
 
@@ -54,7 +54,7 @@ PHP 8 raises `Error` for the same expression. This raises `RuntimeException`, so
 
 Each is resolved when a file is compiled, the way php resolves them, and becomes a literal in the parsed program. Nothing looks one up while the script runs.
 
-The table is php's own list, in the order the [language reference](https://www.php.net/manual/en/language.constants.magic.php) gives it.
+The table is php's own list, in the order the [language reference](https://www.php.net/manual/en/language.constants.magic.php) lists them.
 
 | Name            | Status          | Answers                                                                                                                         |
 |-----------------|-----------------|---------------------------------------------------------------------------------------------------------------------------------|
@@ -73,7 +73,7 @@ A name in the last three rows is an ordinary undefined constant: reading `__TRAI
 
 ### What defined() sees
 
-Nothing. None of these is in the constant table, which is what php reports too:
+Nothing. None of these is in the constant table, and php reports the same:
 
 ```php
 echo __LINE__;                  // the line this is written on
@@ -84,9 +84,9 @@ The name and the string are separate. `define("__FILE__", "x")` declares an ordi
 
 ### Where the path constants differ
 
-`__FILE__` and `__DIR__` name the path the file was read under, which is the source filesystem's spelling rather than the host's: `/public/index.php` where php says `/srv/site/public/index.php`. See [Known divergences](../../README.md).
+`__FILE__` and `__DIR__` name the path the file was read under, which is the source filesystem's spelling and not the host's: `/public/index.php` where php says `/srv/site/public/index.php`. See [Known divergences](../../README.md).
 
-Source handed to the runtime as a string, rather than read from a file, has no path to compile. There `__FILE__` and `__DIR__` fall back to the entrypoint the runtime was given. The other magic constants never fall back, because a line, a function and a class are known either way.
+Source passed to the runtime as a string, with no file behind it, has no path to compile. There `__FILE__` and `__DIR__` fall back to the entrypoint the runtime was given. The other magic constants never fall back, because a line, a function and a class are known either way.
 
 ### Scope
 
@@ -110,7 +110,7 @@ At the top level all three are empty strings. The fixture that holds every one o
 
 ## Predefined constants
 
-Registering the standard library installs the platform constants a PHP library expects to branch on: `PHP_VERSION` and `PHP_VERSION_ID`, `PHP_MAJOR_VERSION` and its siblings, `PHP_SAPI`, `PHP_EOL`, `PHP_OS` and `PHP_OS_FAMILY`, `PHP_INT_MAX` / `PHP_INT_MIN` / `PHP_INT_SIZE`, the `PHP_FLOAT_*` set, `DIRECTORY_SEPARATOR` and `PATH_SEPARATOR`, `STDIN` / `STDOUT` / `STDERR`, the `ENT_*` escaping flags, the `FILTER_VALIDATE_*` filters, the `E_*` error levels, and the `T_*` tokenizer ids.
+Registering the standard library installs the platform constants a PHP library branches on: `PHP_VERSION` and `PHP_VERSION_ID`, `PHP_MAJOR_VERSION` and its siblings, `PHP_SAPI`, `PHP_EOL`, `PHP_OS` and `PHP_OS_FAMILY`, `PHP_INT_MAX` / `PHP_INT_MIN` / `PHP_INT_SIZE`, the `PHP_FLOAT_*` set, `DIRECTORY_SEPARATOR` and `PATH_SEPARATOR`, `STDIN` / `STDOUT` / `STDERR`, the `ENT_*` escaping flags, the `FILTER_VALIDATE_*` filters, the `E_*` error levels, and the `T_*` tokenizer ids.
 
 `PHP_VERSION` reports the PHP language version whose semantics phpscript is tested against. It is not a claim of full compatibility with that release; it is the number library code reads when it decides which language features it may use.
 

@@ -2,7 +2,7 @@
 // that run a command through the shell, the two that quote for it, and
 // posix_getpid and getmypid, which name the running process.
 //
-// Running a command leaves the fs.FS sandbox behind on purpose. A process reads
+// Running a command leaves the fs.FS sandbox behind. A process reads
 // and writes with the permissions of the user running the server, and
 // writable_paths does not reach it; a host that runs untrusted scripts mounts
 // without this package, stdlib.Mount(rt, stdlib.Secure). What the runtime does
@@ -17,7 +17,7 @@ import (
 )
 
 // init contributes the process bindings under the Exec profile area, rooted at
-// the process working directory, which is where a CLI run runs anyway.
+// the process working directory, where a CLI run runs.
 // stdlib.Register installs them; stdlib.Mount only when its profile names Exec.
 func init() {
 	runner.RegisterProfileBinding(runner.ProfileExec, Register)
@@ -35,8 +35,8 @@ func Register(rt *runner.Runtime) {
 // installed before it, so a host calls it after stdlib.Register, the way
 // stdlib.RegisterFS does for the filesystem.
 //
-// An empty dir leaves a command in the process working directory, which is what
-// a host that bound no directory of its own has to fall back to.
+// An empty dir leaves a command in the process working directory, where a host
+// that bound no directory of its own starts it.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	r := root{rt: rt, dir: dir}
 
@@ -46,14 +46,14 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 }
 
 // root is the directory a command starts in, and the runtime it reads the
-// working directory off. It is read per call rather than resolved once, because
+// working directory off. It is read per call and never resolved once, because
 // chdir moves it while the script runs.
 type root struct {
 	rt  *runner.Runtime
 	dir string
 }
 
-// registerProcess installs what names the running process rather than a
+// registerProcess installs what names the running process and not a
 // command it starts.
 func registerProcess(rt *runner.Runtime) {
 	pid := func() int64 { return int64(os.Getpid()) }

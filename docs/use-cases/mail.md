@@ -2,7 +2,7 @@
 
 `mail()` and `Mail` send through a mail server the host configured. A script names a server; it never spells one, and it cannot read one back.
 
-That split is the whole design. Connection settings are operator configuration, the same way database credentials are, so they live in the [`mail` block](../configuration.md#mail-servers) and reach a script only as a name it may ask for.
+That split is the whole design. Connection settings are operator configuration, the same way database credentials are, so they live in the [`mail` block](../configuration.md#mail-servers) and reach a script only as a name it may construct against.
 
 Both bindings are part of the standard library. No PHP include is needed.
 
@@ -32,7 +32,7 @@ Use `mail()` when one server is all the application has, and `Mail` when it send
 
 ## Configuring the servers
 
-Servers are a map in the application's `phpscript.yml`, keyed by the name a script asks for:
+Servers are a map in the application's `phpscript.yml`, keyed by the name a script names:
 
 ```yaml
 mail:
@@ -49,7 +49,7 @@ mail:
     from: Marketing <marketing@example.com>
 ```
 
-`port` defaults to 25, and a submission host usually wants 587. Authentication is PLAIN and is used when both `username` and `password` are set; neither set means no authentication, which is what a local mailhog wants. `from` may carry a display name, in which case the bare address is used as the envelope sender.
+`port` defaults to 25; a submission host usually listens on 587. Authentication is PLAIN and is used when both `username` and `password` are set; neither set means no authentication, which a local mailhog accepts. `from` may carry a display name, in which case the bare address is used as the envelope sender.
 
 The full key reference, including `insecure` and the STARTTLS rules, is in [Mail servers](../configuration.md#mail-servers).
 
@@ -66,7 +66,7 @@ try {
 }
 ```
 
-Failing there rather than at the first delivery means a typo surfaces on the request that introduced it, not weeks later in a job nobody watches.
+Failing at startup means a typo surfaces on the request that introduced it, ahead of the first delivery and of a job nobody watches.
 
 Delivery throws too, so wrap `send()` when the request should survive an unreachable mail server:
 
@@ -95,9 +95,9 @@ var_dump($mail->password);       // NULL
 var_dump($mail->host);           // NULL
 ```
 
-The object carries no properties, so a property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. There is no call that lists the configured servers either, because naming what exists is itself a disclosure. And because the settings are a configuration key rather than an `env` entry, `getenv()` was never in reach of them.
+The object carries no properties, so a property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. There is no call that lists the configured servers either, because naming what exists is itself a disclosure. And because the settings are a configuration key and no `env` entry, `getenv()` never reaches them.
 
-Passing the settings instead of a name is refused rather than quietly accepted:
+Passing the settings in place of a name is refused, with nothing quietly accepted:
 
 ```php
 new Mail(array("host" => "mail.example.com", "password" => "secret"));
@@ -118,13 +118,13 @@ mail:
     from: orders@shop.example
 ```
 
-A site that declares no `mail` block inherits the operator's servers, and `mail:` with nothing under it means no servers at all, which is how a site says it sends none.
+A site that declares no `mail` block inherits the operator's servers, and `mail:` with nothing under it means no servers at all, so a site says it sends none.
 
-The map replaces rather than merges, which matters more than it looks: when this was a single unnamed block, a site setting only `host` and `from` kept the operator's `username` and `password` and authenticated as the operator.
+The map replaces wholesale. When this was a single unnamed block, a site setting only `host` and `from` kept the operator's `username` and `password` and authenticated as the operator.
 
 ## Sending by something other than SMTP
 
-SMTP is the default transport, not the model. An embedding host swaps it without touching name resolution or the rules above:
+SMTP is the default transport. The model is separate from it: An embedding host swaps it without touching name resolution or the rules above:
 
 ```go
 provider := mail.NewProviderFunc(servers, func(config mail.Config, recipient, subject, body string) error {
@@ -133,6 +133,6 @@ provider := mail.NewProviderFunc(servers, func(config mail.Config, recipient, su
 options.Mail = provider
 ```
 
-`mail.NewMemory(names...)` is a provider that queues messages instead of delivering them, which is how tests and dry runs capture mail without a mail server. Naming no servers configures every name.
+`mail.NewMemory(names...)` is a provider that queues messages and sends nothing, so tests and dry runs capture mail without a mail server. Naming no servers configures every name.
 
 See [Go bindings](bindings.md) for how a host installs these.

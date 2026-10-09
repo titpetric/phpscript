@@ -18,7 +18,7 @@ const defaultCookieName = "session"
 // Manager associates an HTTP-only cookie with data in Storage.
 // The cookie contains only an opaque, randomly generated session ID.
 type Manager struct {
-	// SessionCookieName is the mutable name used to read and write the session
+	// SessionCookieName is the mutable name this package reads and writes the session
 	// cookie. PHP may change it with `$session->SessionCookieName = "sid"`.
 	SessionCookieName string
 

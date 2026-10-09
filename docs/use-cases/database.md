@@ -1,6 +1,6 @@
 # Database bindings
 
-The standard runtime provides the Go-backed `Database` class and imports these drivers:
+The standard runtime registers the Go-backed `Database` class and imports these drivers:
 
 - sqlite - `modernc.org/sqlite`
 - mysql - `github.com/go-sql-driver/mysql`
@@ -45,7 +45,7 @@ Database::register("reports", "postgres://user:pass@host/reports?sslmode=disable
 $db = new Database("reports");
 ```
 
-The name is lowercased, as it is when it comes from `PLATFORM_DB_REPORTS`. Registering a name that already means the same thing does nothing; registering it with a different DSN closes the pool that was opened for the old one, so an edited connection takes effect on the next request rather than the next restart.
+The name is lowercased, as it is when it comes from `PLATFORM_DB_REPORTS`. Registering a name that already means the same thing does nothing; registering it with a different DSN closes the pool that was opened for the old one, so an edited connection takes effect on the next request, with no restart.
 
 A virtual host registers into its own provider, so one site cannot reach another's databases by naming them.
 
@@ -57,7 +57,7 @@ foreach (Database::connections() as $name) {
 }
 ```
 
-The [dbadmin demo](../../demos/dbadmin) is built on this: its `connection` table holds a name and a DSN per row, and `connection_dao::open()` registers the DSN before asking for a client.
+The [dbadmin demo](../../demos/dbadmin) is built on this: its `connection` table holds a name and a DSN per row, and `connection_dao::open()` registers the DSN before it constructs a client.
 
 ## Read-only clients
 
@@ -101,9 +101,9 @@ try {
 
 `begin`, `commit`, `rollback`, `connect` and `close` stay available, since a read-only transaction is a read.
 
-Classification reads the start of the statement and nothing else. A statement has to begin with its keyword, so `(SELECT 1) UNION (SELECT 2)` is refused, and nothing stops a second statement smuggled in behind a semicolon on a driver that allows more than one per call.
+Classification reads the start of the statement alone. A statement has to begin with its keyword, so `(SELECT 1) UNION (SELECT 2)` is refused, and nothing stops a second statement smuggled in behind a semicolon on a driver that allows more than one per call.
 
-That is the shape of the whole feature: a boundary for the code holding the client, not a sandbox around the script. The script that set the property can clear it, the same way it set it. A connection that must not write belongs to a database user without the grant to; this is what keeps an application's own code on the right side of that grant, and what makes a page that only displays rows say so.
+That is the shape of the whole feature: a boundary for the code holding the client, with no sandbox around the script. The script that set the property can clear it, the same way it set it. A connection that must not write belongs to a database user without the grant to; this is what keeps an application's own code on the right side of that grant, and what makes a page that only displays rows say so.
 
 ## Run migrations
 
@@ -190,9 +190,9 @@ $db->query("create table if not exists users (id integer primary key, name text)
 $db->query("delete from users where id = ?", 10);
 ```
 
-A `?` is the placeholder whatever the driver is. A statement that is given arguments is rebound to the style the driver reads, so the same PHP runs on sqlite, mysql and postgres, which numbers its placeholders `$1`, `$2`. A statement with no arguments is passed through as it was written: rebinding scans rather than parses, and a `?` inside a string literal is not a placeholder.
+A `?` is the placeholder whatever the driver is. A statement that is given arguments is rebound to the style the driver reads, so the same PHP runs on sqlite, mysql and postgres, which numbers its placeholders `$1`, `$2`. A statement with no arguments is passed through as it was written: rebinding scans and does not parse, so a `?` inside a string literal is not a placeholder.
 
-**One value that is an array is bound by name, not by position.** A single argument that is an array or a map is taken as a set of named parameters for a `:name` query, which is what makes `insert()` and friends work. A statement that binds exactly one value, and that value is an array, therefore becomes a named query and fails somewhere else:
+**One value that is an array is bound by name, not by position.** A single argument that is an array or a map is taken as a set of named parameters for a `:name` query. `insert()` and friends are built on that. A statement that binds exactly one value, and that value is an array, therefore becomes a named query and fails somewhere else:
 
 ```php
 // Refused: one argument, and it is an array.
@@ -202,7 +202,7 @@ $db->get("select * from users where id = ?", $ids);
 $db->get("select * from users where id = ?", $ids[0]);
 ```
 
-Code that builds its argument list at runtime should check for it, as dbadmin's `driver_dao::bind()` does, rather than let sqlx report it.
+Code that builds its argument list at runtime checks for it, as dbadmin's `driver_dao::bind()` does, ahead of sqlx reporting it.
 
 A value the driver binds on its own is exempt, so a lone `Time` from a date column is bound by position like any scalar. See [Dates and times](#dates-and-times).
 
@@ -257,7 +257,7 @@ $db->close();
 
 ## Dates and times
 
-A date column is the one place a Go value crosses into PHP without a conversion being written for it: the driver scans it into a `time.Time`, and that is the same value [stdlib/time](../design.md#dates-and-times) hands a script. That is worth designing for rather than working around, and the design is one rule:
+A date column is the one place a Go value crosses into PHP without a conversion being written for it: the driver scans it into a `time.Time`, and that is the same value [stdlib/time](../design.md#dates-and-times) returns to a script. One rule follows from it:
 
 **store the offset.** Prefer the column type that carries one, and write RFC 3339 (`2026-08-26T14:48:00+02:00`) wherever the column is text. It is what `json_encode` already emits for a `Time`, so one spelling covers a database column, a JSON payload and a Go binding, and the layout has a name: `$t->format(TIME_RFC3339)`.
 
@@ -317,7 +317,7 @@ A span also carries what the statement is. `/* userGet */ select * from user` re
 
 ## API summary
 
-The binding provides these methods:
+The binding registers these methods:
 
 `Database`:
 

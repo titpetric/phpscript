@@ -53,8 +53,8 @@ func TestRunCommandJSON(t *testing.T) {
 
 // TestRunCommandEmptySelectionFails pins the exit code of a mis-scoped
 // invocation in both report modes. A path matching no fixture is a pipeline
-// pointed at the wrong directory, so it fails rather than reporting success
-// over nothing - and --json does not change that, it only adds the empty
+// pointed at the wrong directory, so it fails and reports no success
+// over nothing. --json keeps that and adds the empty
 // report on stdout for whatever is parsing it.
 func TestRunCommandEmptySelectionFails(t *testing.T) {
 	ctx := context.Background()

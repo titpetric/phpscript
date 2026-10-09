@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Interface to provide accessing objects as arrays.
+Interface for reading and writing an object with array syntax.
 
 A class implementing it can be indexed with `$obj[$key]`, and the four methods it names are what the engine calls for a read, a write, an `isset()` and an `unset()`.
 

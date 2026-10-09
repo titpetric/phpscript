@@ -23,7 +23,7 @@ type Symbol struct {
 // Stdlib returns everything the standard CLI runtime registers: the functions,
 // the classes and their methods, and the constants.
 //
-// It answers from the runtime rather than from a checked-in list, so a build
+// It answers from the runtime and not from a checked-in list, so a build
 // reports what that build actually binds. What it cannot report is the doc
 // comment written next to each registration, or the PHP spelling of a
 // parameter name: both are read out of the Go source, which a shipped binary
@@ -41,7 +41,7 @@ func Stdlib() []Symbol {
 			Signature: f.Name + "(" + paramTypes(f.Params) + "): " + f.Returns,
 		})
 	}
-	// The class rows come from DeclaredClasses rather than from the reflected
+	// The class rows come from DeclaredClasses and not from the reflected
 	// constructors, because the two do not answer the same question. A script
 	// can write new stdClass(), which has no Go constructor to reflect, and a
 	// name that shares its constructor with others is still a name a script
@@ -86,7 +86,7 @@ func Stdlib() []Symbol {
 }
 
 // StdlibMarkdown renders the registered surface as a markdown table, the same
-// shape Markdown gives a source listing.
+// shape Markdown uses for a source listing.
 func StdlibMarkdown(symbols []Symbol) string {
 	rows := make([][]string, 0, len(symbols))
 	for _, s := range symbols {
@@ -97,7 +97,7 @@ func StdlibMarkdown(symbols []Symbol) string {
 
 // stdlibRuntime builds the runtime the phpscript CLI runs, so the listing is
 // what a script sees. The request-aware functions (header, http_response_code,
-// getallheaders) are installed per request rather than by stdlib.Register, and
+// getallheaders) are installed per request and not by stdlib.Register, and
 // a server-targeted script still names them, so an empty request context
 // registers them for the listing. This is the recipe scripts/list-apis uses.
 func stdlibRuntime() *runner.Runtime {
@@ -133,11 +133,11 @@ func paramTypes(params []apidoc.Param) string {
 
 // constantValue renders a constant's value the way a script would write it.
 // Only the scalar shapes occur; anything else is reported by its Go rendering
-// rather than guessed at.
+// and never guessed at.
 func constantValue(value any) string {
 	switch v := value.(type) {
 	case string:
-		// Quoted rather than concatenated: PHP_EOL is a newline, and a
+		// Quoted and never concatenated: PHP_EOL is a newline, and a
 		// raw one would break the row it is printed in.
 		return strconv.Quote(v)
 	case bool:

@@ -43,7 +43,7 @@ func TestLiteralWithoutInterpolationStaysALit(t *testing.T) {
 
 // TestInterpolationPartShapes checks that each spelling lowers to the AST the
 // runtime expects, in particular that a bare word subscript becomes a string
-// key rather than a constant reference.
+// key and no constant reference.
 func TestInterpolationPartShapes(t *testing.T) {
 	tests := []struct {
 		src   string
@@ -106,7 +106,7 @@ func describePart(e model.Expr) string {
 }
 
 // TestInterpolationKeepsSourceSpelling is what the formatter relies on: it
-// prints the literal back from Raw rather than re-encoding it, so a rewrite
+// prints the literal back from Raw and re-encodes nothing, so a rewrite
 // cannot change which spelling of an embedded expression the author chose.
 func TestInterpolationKeepsSourceSpelling(t *testing.T) {
 	for _, src := range []string{`"a $b c"`, `"{$a['k']}"`, `"$a[k]\n"`} {
@@ -137,9 +137,9 @@ func TestDollarBraceReadsTheVariableForm(t *testing.T) {
 	}
 }
 
-// TestInterpolationErrors covers the spellings that are reported rather than
+// TestInterpolationErrors covers the spellings that are reported and never
 // guessed at. Each one would otherwise produce a literal the author did not
-// write, which is the failure worth stopping.
+// write.
 func TestInterpolationErrors(t *testing.T) {
 	tests := []struct {
 		src  string

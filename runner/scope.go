@@ -22,15 +22,15 @@ type Scope struct {
 	deferred []any
 
 	// args holds the current call's positional arguments for
-	// func_get_args(). A typed field rather than a vars entry: storing the
+	// func_get_args(). A typed field and no vars entry: storing the
 	// slice under a hidden name boxed it into an interface on every call,
 	// and the map write was a second cost on the same hot path.
 	args []any
 
 	// statics maps a name declared by a `static $x` statement in this frame to
 	// the persistent bag holding it (see Runtime.funcStatics). Reads and
-	// writes of a bound name go through the bag, which is what makes a later
-	// `$x = ...` in the function persist across calls. Nil in every frame
+	// writes of a bound name resolve through the bag, so a later
+	// `$x = ...` in the function persists across calls. Nil in every frame
 	// that declares no statics, so the common path pays one nil check.
 	statics map[string]map[string]any
 }
@@ -88,7 +88,7 @@ func (s *Scope) Defer(callback any) {
 // DefinedVars returns a snapshot of PHP-visible variables in this frame.
 // Interpreter bookkeeping slots use a double-underscore prefix and are not PHP
 // variables, so they are omitted. `this` goes with them: it is bound by the
-// call rather than declared in the body, and php leaves it out of
+// call and never declared in the body, and php leaves it out of
 // get_defined_vars() for that reason.
 func (s *Scope) DefinedVars() map[string]any {
 	vars := make(map[string]any, len(s.vars)+len(s.statics))
@@ -106,13 +106,13 @@ func (s *Scope) DefinedVars() map[string]any {
 	return vars
 }
 
-// contextWithScope hands a binding the frame it was called from, and the file
-// and line to attribute its spans to.
+// contextWithScope carries to a binding the frame it was called from, and the
+// file and line to attribute its spans to.
 //
-// The line is the runtime's, not the scope's. The parser compiles __LINE__ to a
+// The line belongs to the runtime and to no scope. The parser compiles __LINE__ to a
 // literal, so no frame carries it, and writing it into one per statement to be
 // read back here was a map write on every statement executed. It is resolved
-// here rather than recorded, for the reason currentStmt gives.
+// here and never recorded, for the reason currentStmt states.
 func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	if filename, ok := scope.Get("__FILE__"); ok {
 		if filename, ok := filename.(string); ok {

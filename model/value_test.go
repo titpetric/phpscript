@@ -12,7 +12,7 @@ import (
 // replays operation sequences against both implementations and requires
 // identical observable behaviour; the benchmarks measure what list mode saves.
 // Following docs/allocation-performance.md ("keep the old implementation as a
-// second binding so the benchmark measures the change instead of asserting it").
+// second binding so the benchmark measures the change and asserts nothing").
 type legacyArray struct {
 	keys   []any
 	values map[any]any
@@ -255,7 +255,7 @@ func TestArrayListModeOverwrite(t *testing.T) {
 	}
 }
 
-// TestArrayNegativeKey: PHP 8.3 semantics, which is what php 8.5 prints for
+// TestArrayNegativeKey: PHP 8.3 semantics, as php 8.5 prints for
 // `$a = [-3 => "x"]; $a[] = "y";` - keys -3 and -2. The first integer key sets
 // the append index to key+1 whatever its sign; PHP 7 left it at 0 and this
 // modelled that. Later keys only raise it, which is the `i >= a.nextID` guard,
@@ -627,7 +627,7 @@ func TestArrayMatchesLegacyImplementation(t *testing.T) {
 }
 
 // keysEqual compares key slices, treating nil and empty as the same (list mode
-// materialises its keys, so an empty array yields an empty non-nil slice).
+// materialises its keys, so an empty array returns an empty non-nil slice).
 func keysEqual(a, b []any) bool {
 	if len(a) != len(b) {
 		return false

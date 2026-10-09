@@ -24,7 +24,7 @@ The catch variable receives the object that was thrown, so `getMessage()` and `g
 
 ## Which clause takes it
 
-Every throwable class is one type carrying the name a script constructed, so a clause is answered from that name rather than by descending a hierarchy:
+Every throwable class is one type carrying the name a script constructed, so a clause is answered from that name, with no hierarchy to descend:
 
 | Clause names                                    | Takes                                                                        |
 |-------------------------------------------------|------------------------------------------------------------------------------|

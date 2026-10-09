@@ -12,10 +12,10 @@ import (
 // whether or not it says so, because a mode is never anything else.
 //
 // The zero value means "not configured", which is a caller's cue to use its own
-// default rather than a mode of 0000.
+// default, and no mode of 0000.
 type FileMode uint32
 
-// DefaultUploadFileMode is the mode move_uploaded_file() gives a stored upload
+// DefaultUploadFileMode is the mode move_uploaded_file() sets on a stored upload
 // when the configuration does not name one. The temporary copy an upload
 // arrives in is private to this process, so a mode has to be applied on the way
 // out or nothing else could read what the script stored.
@@ -42,7 +42,7 @@ func ParseFileMode(s string) (FileMode, error) {
 }
 
 // Mode converts to the Go representation, where the three special bits live
-// outside the permission bits rather than above them.
+// outside the permission bits and not above them.
 func (m FileMode) Mode() os.FileMode {
 	out := os.FileMode(m & 0o777)
 	if m&0o4000 != 0 {

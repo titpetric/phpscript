@@ -8,7 +8,7 @@ The reference for the mechanism is [Go bindings](reference/extensions/bindings.m
 
 ## What the binding is
 
-Two constructors, and nothing else registered:
+Two constructors, and no other registration:
 
 ```php
 $rx = new Regexp\Compile('(\w+)@(\w+)\.com');
@@ -56,14 +56,14 @@ func Register(rt *runner.Runtime) {
 }
 ```
 
-Four things in that file are the convention rather than taste:
+Four things in that file are the convention:
 
 - A namespace is a backslash in a Go string. `"Regexp\\Compile"` is the name a script types, and lookup is case-insensitive with a leading `\` stripped, so `new \Regexp\compile($e)` resolves the same registration.
 - `regexp.Compile` is registered as-is. Its signature is `func(string) (*Regexp, error)`, which is the shape the bridge wants: a return slot declared exactly `error` is omitted from what PHP sees, and a non-nil value in it is thrown.
-- The doc comment above each registration is what the generated reference publishes. It starts with the name a script types and ends with punctuation; `internal/apidoc` reads the registration site, not the Go function.
+- The doc comment above each registration is what the generated reference publishes. It starts with the name a script types and ends with punctuation; `internal/apidoc` reads the registration site and never the Go function.
 - The import is aliased. A file in `package regexp` may import `"regexp"` and the identifier resolves to the import, but `stdregexp` says which one a reader is looking at, as `stdlib/http` writes `nethttp "net/http"`.
 
-`MustCompile` and `MustCompilePOSIX` are left out: they panic instead of returning an error, and the error is what a script needs to catch. `regexp.Match`, `regexp.MatchString` and `regexp.QuoteMeta` are package functions, not methods, so they would each need their own `RegisterFunc`; they are not part of this area.
+`MustCompile` and `MustCompilePOSIX` are left out: they panic where a script needs an error to catch. `regexp.Match`, `regexp.MatchString` and `regexp.QuoteMeta` are package functions and would each need their own `RegisterFunc`; they are not part of this area.
 
 ## Step 2: wiring it in
 
@@ -84,7 +84,7 @@ $rx = new Regexp\Compile('(\w+)@(\w+)\.com');
 echo $rx->find_string("mail tit@example.com now");   // tit@example.com
 ```
 
-Four behaviours are worth stating rather than discovering:
+Four behaviours, stated here so nobody has to find them:
 
 - **The class name is the Go type name.** `get_class($rx)` is `Regexp` and `$rx instanceof Regexp` is true; `$rx instanceof Regexp\Regexp` is false. The runtime takes a host-backed value's class from the Go type behind it, with the pointer stripped, so `HTTP\Request` answers `Request` for the same reason. `Regexp\Regexp` is the name this document uses for the type; the Go type is named `Regexp` so that the name a script can test for is the right one.
 - **Method names are the Go names as PHP spells them.** Lookup tries the exact name, then case-insensitively, then with underscores removed, so `FindAllStringSubmatch` is `find_all_string_submatch` and `NumSubexp` is `num_subexp`.
@@ -95,7 +95,7 @@ Four behaviours are worth stating rather than discovering:
 
 ## Step 4: the half of the method set declared over bytes
 
-`regexp.Regexp` has 24 matching methods, and half of them are declared over `[]byte` rather than `string`: `Find`, `FindSubmatch`, `FindAllSubmatch`, `ReplaceAll`. Before this binding a `[]byte` reaching PHP was neither a string nor a usable value - `echo` printed nothing, `strlen` measured zero, and a byte slice reached the reflection fallback as a slice, so `count()` answered a byte count and `foreach` yielded integers.
+`regexp.Regexp` has 24 matching methods, and half of them are declared over `[]byte` where the others take `string`: `Find`, `FindSubmatch`, `FindAllSubmatch`, `ReplaceAll`. Before this binding a `[]byte` reaching PHP was neither a string nor a usable value - `echo` printed nothing, `strlen` measured zero, and a byte slice reached the reflection fallback as a slice, so `count()` answered a byte count and `foreach` yielded integers.
 
 The rule the runtime now applies is one sentence: **a Go `[]byte` is a PHP string.** PHP's strings are byte strings, which is the same claim the generated reference was already making by publishing a `[]byte` return as `string`. `phpval.Bytes` is the test, and it is asked at every point a byte slice would otherwise read as a list:
 
@@ -112,7 +112,7 @@ A nested result works through the same rule without a conversion of its own: `Fi
 
 ## Step 5: the fixtures
 
-A change to runtime behaviour lands with a fixture. These bindings have no PHP counterpart, so the fixture is the definition of the behaviour rather than a check against `php`, and each one says so in its `description` and opts the `php` runner out. Both Go engines still run them.
+A change to runtime behaviour lands with a fixture. These bindings have no PHP counterpart, so the fixture is the definition of the behaviour, with no `php` to check against, and each one says so in its `description` and opts the `php` runner out. Both Go engines still run them.
 
 `tests/fixtures/bindings/regexp_compile.phpt`:
 
@@ -244,7 +244,7 @@ falsey
 0
 ```
 
-`tests/fixtures/bindings/regexp_callback.phpt`. `ReplaceAllStringFunc` declares `func(string) string`, not the uniform `func(...any) (any, error)` a binding usually takes a callable as, so the argument boundary converts a PHP callable into the Go function type the binding asked for:
+`tests/fixtures/bindings/regexp_callback.phpt`. `ReplaceAllStringFunc` declares `func(string) string`, not the uniform `func(...any) (any, error)` a binding usually takes a callable as, so the argument boundary converts a PHP callable into the Go function type the binding declares:
 
 ```
 name: a closure reaches a regexp method declaring a Go callback
@@ -294,7 +294,7 @@ mail <a@b.com> and <c@d.com> now
 no replacement for a@b.com
 ```
 
-A Go function type that declares no error slot leaves a callback nowhere to report one, so an error a PHP callback raises crosses the intervening Go frames as a panic and the host boundary unwraps it back into the error a script threw. That is why the last case catches `no replacement for a@b.com` rather than a host panic.
+A Go function type that declares no error slot leaves a callback nowhere to report one, so an error a PHP callback raises crosses the intervening Go frames as a panic and the host boundary unwraps it back into the error a script threw. That is why the last case catches `no replacement for a@b.com` and never a host panic.
 
 Run them:
 
@@ -303,7 +303,7 @@ go install .
 phpscript test --matrix -v ./tests/fixtures/bindings/...
 ```
 
-`go install .` is not optional. `phpscript test` runs the binary on `PATH`, so an edited runtime that has not been installed is tested in its previous state.
+`go install .` first. `phpscript test` runs the binary on `PATH`, so an edited runtime that has not been installed is tested in the state it was installed in.
 
 ## Step 6: the Go test
 
@@ -352,7 +352,7 @@ atkins                       # the default pipeline: format, test, matrix, docs,
 
 `atkins` rewrites the two generated documents under `docs/reference/`, so a new registration shows up there and is committed. It does not write `docs/test-fixtures.md` or `docs/coverage/`: those are gitignored and come from `atkins gen`, which is not part of the default target either, so a new package leaves them and `docs/assets/*.svg` stale until it is run by hand.
 
-The generated class entry lists the method set `*regexp.Regexp` published, which is the whole of it minus the six names `apidoc` treats as host plumbing (`Error`, `String`, `GoString`, `SetID`, `MarshalJSON`, `UnmarshalJSON`). Those are hidden from the reference and still callable.
+The generated class entry lists the method set `*regexp.Regexp` published, which is every method minus the six names `apidoc` treats as host plumbing (`Error`, `String`, `GoString`, `SetID`, `MarshalJSON`, `UnmarshalJSON`). Those are hidden from the reference and still callable.
 
 ## What publishing a raw Go type costs
 

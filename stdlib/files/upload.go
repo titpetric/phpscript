@@ -18,14 +18,16 @@ func registerUploads(rt *runner.Runtime, r root) {
 
 	// is_uploaded_file reports whether $filename is a file the current request uploaded.
 	rt.RegisterFunc("is_uploaded_file", func(filename string) bool { return isUpload(filename) })
-	// move_uploaded_file moves uploaded file $from to $to; a $from this request did not upload returns false, and a $to outside writable_paths is refused.
+	// move_uploaded_file moves uploaded file $from to $to; a $from this
+	// request did not upload returns false, and a $to outside writable_paths
+	// is refused.
 	rt.RegisterFunc("move_uploaded_file", func(from, to string) (bool, error) {
 		if !isUpload(from) {
 			return false, nil
 		}
 		// The temporary copy is outside the root by design, so only the
 		// destination is held to writable_paths: storing an upload is the
-		// write, and it is the one a configuration wants to pin down.
+		// write, and the one a configuration pins down.
 		dst, err := r.resolveWrite("move_uploaded_file", to)
 		if err != nil {
 			return false, err

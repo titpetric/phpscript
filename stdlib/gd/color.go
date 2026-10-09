@@ -12,8 +12,8 @@ import (
 // is opaque and 127 is transparent.
 //
 // That scale is inverted from every other alpha in Go, and it is the one thing
-// in this package a caller gets wrong by assuming. It is kept because ported
-// code does arithmetic on the value: imagecolorallocatealpha($im,230,230,230,70)
+// in this package a caller reads backwards. It is kept because ported
+// code computes on the value: imagecolorallocatealpha($im,230,230,230,70)
 // has to mean the same 55% here as it did under GD.
 const (
 	alphaOpaque      = 0
@@ -21,7 +21,8 @@ const (
 )
 
 func registerColor(rt *runner.Runtime) {
-	// imagecolorallocate returns an opaque colour identifier for $red, $green and $blue, each 0 to 255.
+	// imagecolorallocate returns an opaque colour identifier for $red, $green
+	// and $blue, each 0 to 255.
 	rt.RegisterFunc("imagecolorallocate", func(im *Image, red, green, blue int64) (any, error) {
 		if im == nil {
 			return false, nil
@@ -44,7 +45,8 @@ func registerColor(rt *runner.Runtime) {
 		return packColor(int64(c.R), int64(c.G), int64(c.B), alphaFromByte(c.A))
 	})
 
-	// imagecolorsforindex splits the packed identifier $color into an array with red, green, blue and alpha keys.
+	// imagecolorsforindex splits the packed identifier $color into an array
+	// with red, green, blue and alpha keys.
 	rt.RegisterFunc("imagecolorsforindex", func(_ *Image, packed int64) map[string]any {
 		r, g, b, a := unpackColor(packed)
 		return map[string]any{
@@ -58,7 +60,7 @@ func registerColor(rt *runner.Runtime) {
 
 // checkRGB raises the ValueError PHP raises for a component outside 0 to 255.
 // Clamping instead would answer a colour for an argument PHP refuses, which
-// hides the mistake rather than reporting it.
+// hides the mistake and reports nothing.
 func checkRGB(fn string, red, green, blue int64) error {
 	for i, v := range []int64{red, green, blue} {
 		if v < 0 || v > 255 {
@@ -120,7 +122,7 @@ func image_ptIn(im *Image, x, y int64) bool {
 
 // blendPixel writes a packed colour over what is already there, honouring its
 // alpha. An opaque colour replaces the pixel; a partly transparent one mixes,
-// which is what imagealphablending being on means in PHP.
+// the behaviour imagealphablending being on has in PHP.
 func blendPixel(im *Image, x, y int, packed int64) {
 	c := rgba(packed)
 	if c.A == 255 {

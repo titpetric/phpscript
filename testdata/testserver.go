@@ -11,8 +11,8 @@
 // PHP server's worker count does. Go does not need it - net/http answers each
 // request on a goroutine and the scheduler sorts it out - so unset is unbounded
 // and is the Go server anyone would actually write. Set, it is a semaphore of
-// that depth, which is what makes a side by side against a bounded PHP server
-// a comparison of the same arrangement rather than of two different ones.
+// that depth, so a side by side against a bounded PHP server compares the same
+// arrangement on both sides.
 //
 //	go run testdata/testserver.go
 //	TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=5 go run testdata/testserver.go
@@ -103,7 +103,7 @@ func echoRequest(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// slow holds the connection and notices the client leaving, which is what
+// slow holds the connection and notices the client leaving, as
 // connection_aborted() is for on the PHP side. Here it is the request context.
 func slow(w http.ResponseWriter, r *http.Request) {
 	ticks := 0

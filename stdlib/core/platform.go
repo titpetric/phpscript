@@ -20,8 +20,8 @@ func init() {
 	runner.RegisterBinding(registerPlatform)
 }
 
-// This file provides the platform surface a PHP program written for stock PHP
-// expects to find before it does anything interesting: the PHP_* constants, the
+// This file carries the platform surface a PHP program written for stock PHP
+// reads before it does anything else: the PHP_* constants, the
 // reflection-ish helpers (get_class, method_exists), the ini/filter stubs, and
 // the SPL exception hierarchy.
 //
@@ -104,7 +104,7 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("UPLOAD_ERR_EXTENSION", int64(8))
 
 	// E_ALL is not every bit set: PHP 8 dropped E_STRICT (2048) from it, so the
-	// value is 30719 rather than 32767. The difference is only visible once a
+	// value is 30719 where stock PHP reports 32767. The difference is only visible once a
 	// script can write E_ALL & ~E_NOTICE, which needs the bitwise operators.
 	rt.SetConst("E_ALL", int64(30719))
 	rt.SetConst("E_ERROR", int64(1))
@@ -148,14 +148,18 @@ func osFamily() string {
 }
 
 func registerPlatformFuncs(rt *runner.Runtime) {
-	// phpversion returns "8.4.0", the PHP language version phpscript reports; an $extension argument is ignored.
+	// phpversion returns "8.4.0", the PHP language version phpscript reports;
+	// an $extension argument is ignored.
 	rt.RegisterFunc("phpversion", func(extension ...any) any { return phpVersion })
-	// php_uname returns the host operating system name, the same value as PHP_OS; a $mode argument is ignored.
+	// php_uname returns the host operating system name, the same value as
+	// PHP_OS; a $mode argument is ignored.
 	rt.RegisterFunc("php_uname", func(mode ...any) string { return osName() })
-	// zend_version returns the same version string as phpversion(); phpscript has no separate engine version.
+	// zend_version returns the same version string as phpversion(); phpscript
+	// has no separate engine version.
 	rt.RegisterFunc("zend_version", func() string { return phpVersion })
 
-	// define defines constant $constant_name with value $value and returns true; the case-insensitivity flag is ignored.
+	// define defines constant $constant_name with value $value and returns
+	// true; the case-insensitivity flag is ignored.
 	rt.RegisterFunc("define", func(constantName string, value any, _ ...any) bool {
 		rt.SetConst(constantName, value)
 		return true
@@ -178,12 +182,14 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 	rt.RegisterFunc("headers_sent", func(_ ...any) bool { return false })
 
 	// phpscript has no php.ini. Reporting every directive as unset is what PHP
-	// itself does for an unknown one, and it is the answer library code treats
+	// itself does for an unknown one, and library code treats it as
 	// as "this extension is not configured".
 	rt.RegisterFunc("ini_get", func(_ string) any { return false })
-	// ini_set accepts and ignores $option and $value and returns false; phpscript has no php.ini to change.
+	// ini_set accepts and ignores $option and $value and returns false;
+	// phpscript has no php.ini to change.
 	rt.RegisterFunc("ini_set", func(option string, value any) any { return false })
-	// error_reporting always returns 0 and ignores $error_level; the reporting level is not configurable.
+	// error_reporting always returns 0 and ignores $error_level; the
+	// reporting level is not configurable.
 	rt.RegisterFunc("error_reporting", func(errorLevel ...any) int64 { return 0 })
 	// set_error_handler accepts and ignores $callback and returns null; the handler is never invoked.
 	rt.RegisterFunc("set_error_handler", func(callback ...any) any { return nil })
@@ -193,7 +199,10 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 	rt.RegisterFunc("filter_var", phpFilterVar)
 
 	rt.RegisterFunc("strtr", phpStrtr)
-	// strrpos returns the byte position of the last occurrence of $needle in $haystack, or false if it does not occur; a positive $offset skips that many leading bytes and a negative one requires the match to start that many bytes before the end.
+	// strrpos returns the byte position of the last occurrence of $needle in
+	// $haystack, or false if it does not occur; a positive $offset skips that
+	// many leading bytes and a negative one requires the match to start that
+	// many bytes before the end.
 	rt.RegisterFunc("strrpos", func(haystack, needle string, offset ...int64) any {
 		if len(offset) == 0 || offset[0] == 0 {
 			return lastIndexOrFalse(strings.LastIndex(haystack, needle))
@@ -228,7 +237,8 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 	rt.RegisterFunc("spl_autoload_unregister", func(callback any) bool {
 		return rt.UnregisterAutoloader(callback)
 	})
-	// stream_resolve_include_path resolves $filename against the include path and returns the first path that exists, or false when none does.
+	// stream_resolve_include_path resolves $filename against the include path
+	// and returns the first path that exists, or false when none does.
 	rt.RegisterFunc("stream_resolve_include_path", func(filename string) any {
 		if filepath.IsAbs(filename) {
 			if _, err := os.Stat(filename); err == nil {
@@ -250,7 +260,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 }
 
 // phpFilterVar implements the filter_var validators phpscript supports. An
-// unknown filter passes the value through, which is what FILTER_DEFAULT does.
+// unknown filter passes the value through, as FILTER_DEFAULT does.
 func phpFilterVar(value any, args ...any) any {
 	filter := int64(516)
 	if len(args) > 0 {

@@ -18,9 +18,14 @@ import (
 // request in flight and by the host itself, and there is no point at which
 // owning it would be correct.
 func registerWorkDir(rt *runner.Runtime) {
-	// chdir changes the working directory relative paths resolve against and returns whether it could; the directory is this request's own, and a path that would climb out of the source filesystem's root stops at it.
+	// chdir changes the working directory relative paths resolve against and
+	// returns whether it could; the directory is this request's own, and a
+	// path that would climb out of the source filesystem's root stops at it.
 	rt.RegisterFunc("chdir", rt.SetWorkDir)
-	// getcwd returns the working directory, written from the source filesystem's root: "/" for the root itself, "/app" for a directory below it. PHP answers a host path; a runtime whose scripts may be served out of an embedded tree has none to answer with.
+	// getcwd returns the working directory, written from the source
+	// filesystem's root: "/" for the root itself, "/app" for a directory
+	// below it. PHP answers a host path; a runtime whose scripts may be
+	// served out of an embedded tree has none to answer with.
 	rt.RegisterFunc("getcwd", rt.WorkDirPath)
 }
 
@@ -40,7 +45,9 @@ func registerPaths(rt *runner.Runtime) {
 		}
 		return p
 	})
-	// basename returns the trailing name component of $path, less $suffix when the name ends with it. The empty and root paths answer "", as PHP's do.
+	// basename returns the trailing name component of $path, less $suffix
+	// when the name ends with it. The empty and root paths answer "", as
+	// PHP's do.
 	rt.RegisterFunc("basename", func(path string, suffix ...string) string {
 		p := strings.TrimRight(filepath.ToSlash(path), "/")
 		if p == "" {

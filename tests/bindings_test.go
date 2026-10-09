@@ -44,7 +44,7 @@ func TestBindingReturnShapes(t *testing.T) {
 		php  string
 		want string
 	}{
-		// foreach over each list shape yields the same values in the same order.
+		// foreach over each list shape visits the same values in the same order.
 		{
 			name: "foreach over model.Array",
 			php:  `<?php foreach (bind_list_array() as $k => $v) { echo $k . ":" . $v . " "; }`,
@@ -192,7 +192,7 @@ func TestBindingReturnShapes(t *testing.T) {
 			want: "[]",
 		},
 
-		// A callback is an argument shape rather than a return shape, so the
+		// A callback is an argument shape and no return shape, so the
 		// table for it is TestBindingTakesEveryCallableSpelling below: every
 		// spelling against both declared shapes, with the errors beside it.
 
@@ -461,7 +461,7 @@ func TestBindingCollectionsAreWritableInPlace(t *testing.T) {
 }
 
 // TestBindingKeyedMapReads covers reading a map whose key is not a string.
-// The index arrives as an int64 and the map wants an int, which panicked the
+// The index arrives as an int64 and the map is keyed by int, which panicked the
 // host before the key was coerced.
 func TestBindingKeyedMapReads(t *testing.T) {
 	cases := []struct {
@@ -503,7 +503,7 @@ func TestBindingKeyedMapReads(t *testing.T) {
 // TestBindingCollectionsUnset covers unset($x[$k]) over the shapes a binding
 // returns.
 //
-// Whether php's numbering survives is a property of the shape rather than of
+// Whether php's numbering survives is a property of the shape and not of
 // unset: a map holds the hole php leaves, and a dense slice cannot, so a
 // slice renumbers the way array_values() does. A list a binding keyed by
 // position is a map, and keeps the hole.
@@ -540,7 +540,7 @@ func TestBindingCollectionsUnset(t *testing.T) {
 		},
 		{
 			// The key numbering survives, which a slice cannot manage. The
-			// keys are read one at a time rather than listed, because a Go
+			// keys are read one at a time and never listed, because a Go
 			// map has no iteration order to assert.
 			name: "a keyed list keeps the hole",
 			php: `<?php $k = bind_list_keyed(); unset($k[1]);
@@ -695,7 +695,7 @@ func TestBindingCallbackResults(t *testing.T) {
 // A declared signature with no error slot leaves a callback nowhere to report
 // one, so the error crosses the intervening Go frames as a panic. The host
 // boundary unwraps it into the throwable the script threw: a `catch` written
-// around the call takes it, rather than catching a host panic naming a Go type.
+// around the call takes it, and catches no host panic naming a Go type.
 func TestBindingCallbackErrors(t *testing.T) {
 	cases := []struct {
 		name string
@@ -835,7 +835,7 @@ func BenchmarkConstructRowsMaps(b *testing.B) {
 }
 
 // The call benchmarks add the reflection return path (runner.invokeAny plus
-// callResult), which is what actually differs between a concrete return type
+// callResult), which is the difference between a concrete return type
 // and `any`.
 
 // benchmarkCall drives a binding through the same reflection sequence the
@@ -967,7 +967,7 @@ func BenchmarkScriptExplode(b *testing.B) {
 }
 
 // A template's real shape: split a line, then join part of it back. Every stdlib
-// call in the chain now passes native slices through instead of rebuilding an
+// call in the chain passes native slices through and rebuilds no
 // *model.Array at each step.
 func BenchmarkScriptExplodeImplodeChain(b *testing.B) {
 	benchmarkScript(b, `<?php echo implode("-", array_slice(explode(",", "a,b,c,d,e"), 1, 3));`)
@@ -982,15 +982,15 @@ func BenchmarkScriptPregMatch(b *testing.B) {
 // ---------------------------------------------------------------------------
 
 // These two run the same script against runtimes with different function-table
-// sizes. They used to differ by a wide margin, because the expression
+// sizes. They differed by a wide margin while the expression
 // environment was rebuilt on every Eval with one closure per registered
 // function, and that rebuild was most of a script's allocations. Pooled
 // environments with on-demand function installation removed it, and
 // docs/allocation-performance.md records the result.
 //
-// So the pair no longer measures a cost. It measures that there is not one: the
+// So the pair measures no cost. It measures the absence of one: the
 // full stdlib and a single registered binding come out byte-identical, and a
-// script pays for the functions it calls rather than for the size of the table
+// script pays for the functions it calls and not for the size of the table
 // it could call from. Keep them as the guard on that - a change that reintroduces
 // per-registration work in the environment shows up here as the two rows
 // separating, and nowhere else.

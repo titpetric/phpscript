@@ -21,7 +21,7 @@ type IncludeCache struct {
 	programs   map[string]*model.Program
 
 	// precompiled is the heap a precompile pass over this cache added, as the
-	// pass measured it. Zero until one runs, which is what a lazily filled
+	// pass measured it. Zero until one runs, as a lazily filled
 	// cache reports: the files in it were parsed for a request that asked.
 	precompiled int64
 
@@ -79,7 +79,7 @@ func (c *IncludeCache) Clear() {
 	c.version++
 }
 
-// Len returns the number of currently cached programs.
+// Len returns how many programs the cache holds.
 func (c *IncludeCache) Len() int {
 	if c == nil {
 		return 0
@@ -91,7 +91,7 @@ func (c *IncludeCache) Len() int {
 
 // snapshot copies the entries so a caller can walk the whole cache without
 // holding the lock for the walk, and reports the version it copied at. The
-// programs themselves are shared rather than copied, which is the cache's own
+// programs themselves are shared and never copied, which is the cache's own
 // contract: a parsed program is treated as immutable and hoisting reads it into
 // per-runtime maps.
 func (c *IncludeCache) snapshot() (map[string]*model.Program, uint64) {

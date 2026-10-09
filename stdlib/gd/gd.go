@@ -1,4 +1,4 @@
-// Package gd provides PHP's image functions over the standard library's image
+// Package gd implements PHP's image functions over the standard library's image
 // packages and golang.org/x/image.
 //
 // The surface is the one a ported image class actually calls: decode, create,
@@ -6,7 +6,7 @@
 // ext/gd would let you register: a binding is here because something needs it,
 // and the text family is absent because nothing did.
 //
-// imagetypes is answered rather than omitted because ported code branches on
+// imagetypes is answered and never omitted because ported code branches on
 // it, but there is one decoder set behind it and it always reports the same
 // three formats.
 //
@@ -16,10 +16,10 @@
 // it links, so the phpscript main package names all three and a host embedding
 // this one answers imagecreatefromgif() once it does the same.
 //
-// A GD image reaches a script as a *Image, the way fopen hands back a stream.
+// A GD image reaches a script as a *Image, the way fopen returns a stream.
 // A colour reaches it as an int packed the way libgd packs one,
-// 0xAARRGGBB with alpha in the top byte, so a script can hold a colour in a
-// variable and pass it to any drawing call.
+// 0xAARRGGBB with alpha in the top byte, so a script holds a colour in a
+// variable and passes it to any drawing call.
 package gd
 
 import (
@@ -137,14 +137,14 @@ type root struct {
 }
 
 // resolve anchors every path inside the root, absolute ones included. An
-// absolute path names the root rather than the host filesystem, which is the
+// absolute path names the root and never the host filesystem, which is the
 // spelling stdlib/files answers for the same input: there is no spelling for a
 // host path outside the root, because a virtual host that could read one could
 // read another tenant's.
 //
-// This used to return an absolute path unchanged, which let the image functions
-// reach any file the process could while file_get_contents on the same path was
-// refused, and let imagepng write one.
+// Returning an absolute path unchanged would let the image functions reach any
+// file the process can, where file_get_contents on the same path is refused,
+// and would let imagepng write one.
 func (r root) resolve(p string) string {
 	clean := path.Clean("/" + filepath.ToSlash(p))
 	return filepath.Join(r.dir, filepath.FromSlash(clean))
@@ -171,7 +171,8 @@ func (r root) resolveWrite(fn, p string) (string, error) {
 // ---------------------------------------------------------------------------
 
 func registerCreate(rt *runner.Runtime, r root) {
-	// imagecreatetruecolor returns a new true colour image of $width by $height, filled with opaque black.
+	// imagecreatetruecolor returns a new true colour image of $width by
+	// $height, filled with opaque black.
 	rt.RegisterFunc("imagecreatetruecolor", func(width, height int64) (any, error) {
 		if err := checkDimensions("imagecreatetruecolor", width, height); err != nil {
 			return false, err
@@ -181,13 +182,17 @@ func registerCreate(rt *runner.Runtime, r root) {
 		return &Image{m: m, truecolor: true}, nil
 	})
 
-	// imagecreatefromjpeg decodes $filename as JPEG and returns an image, or false when it cannot be read.
+	// imagecreatefromjpeg decodes $filename as JPEG and returns an image, or
+	// false when it cannot be read.
 	rt.RegisterFunc("imagecreatefromjpeg", decoder(r, "jpeg"))
-	// imagecreatefrompng decodes $filename as PNG and returns an image, or false when it cannot be read.
+	// imagecreatefrompng decodes $filename as PNG and returns an image, or
+	// false when it cannot be read.
 	rt.RegisterFunc("imagecreatefrompng", decoder(r, "png"))
-	// imagecreatefromgif decodes $filename as GIF and returns an image, or false when it cannot be read.
+	// imagecreatefromgif decodes $filename as GIF and returns an image, or
+	// false when it cannot be read.
 	rt.RegisterFunc("imagecreatefromgif", decoder(r, "gif"))
-	// imagedestroy frees $image. Memory is reclaimed automatically here, so it only drops the pixels and returns true.
+	// imagedestroy frees $image. Memory is reclaimed automatically here, so
+	// it only drops the pixels and returns true.
 	rt.RegisterFunc("imagedestroy", func(im *Image) bool {
 		if im == nil {
 			return false
@@ -217,7 +222,7 @@ func decoder(r root, want string) func(string) any {
 
 // wrap turns a decoded image into a handle, copying into RGBA when the decoder
 // produced something that cannot be drawn on. Every paletted or YCbCr image
-// takes this path, which is what makes a decoded JPEG or GIF writable.
+// takes this path, so a decoded JPEG or GIF is writable.
 func wrap(src image.Image) *Image {
 	if d, ok := src.(draw.Image); ok {
 		if _, paletted := src.(*image.Paletted); !paletted {
@@ -236,7 +241,8 @@ func wrap(src image.Image) *Image {
 // ---------------------------------------------------------------------------
 
 func registerInfo(rt *runner.Runtime, r root) {
-	// imagetypes returns a bitmask of the formats this build reads and writes: IMG_GIF, IMG_JPG and IMG_PNG.
+	// imagetypes returns a bitmask of the formats this build reads and
+	// writes: IMG_GIF, IMG_JPG and IMG_PNG.
 	rt.RegisterFunc("imagetypes", func() int64 { return imgSupported })
 
 	// imagesx returns the width of $image in pixels.
@@ -255,7 +261,8 @@ func registerInfo(rt *runner.Runtime, r root) {
 		return int64(im.m.Bounds().Dy())
 	})
 
-	// getimagesize returns array(width, height, IMAGETYPE_*, "width=.. height=..") for $filename, or false when it is not an image.
+	// getimagesize returns array(width, height, IMAGETYPE_*, "width=..
+	// height=..") for $filename, or false when it is not an image.
 	rt.RegisterFunc("getimagesize", func(filename string) any {
 		f, err := os.Open(r.resolve(filename))
 		if err != nil {
@@ -295,7 +302,8 @@ func imageTypeOf(format string) int64 {
 // ---------------------------------------------------------------------------
 
 func registerWrite(rt *runner.Runtime, r root) {
-	// imagejpeg writes $image to $filename as JPEG at $quality (default 75), or to the output when $filename is null or empty.
+	// imagejpeg writes $image to $filename as JPEG at $quality (default 75),
+	// or to the output when $filename is null or empty.
 	rt.RegisterFunc("imagejpeg", func(im *Image, args ...any) (any, error) {
 		return encodeTo(rt, r, "imagejpeg", im, args, func(w io.Writer, m image.Image, opts []any) error {
 			quality := 75
@@ -308,7 +316,8 @@ func registerWrite(rt *runner.Runtime, r root) {
 		})
 	})
 
-	// imagepng writes $image to $filename as PNG, or to the output when $filename is null or empty. $quality selects the compression level.
+	// imagepng writes $image to $filename as PNG, or to the output when
+	// $filename is null or empty. $quality selects the compression level.
 	rt.RegisterFunc("imagepng", func(im *Image, args ...any) (any, error) {
 		return encodeTo(rt, r, "imagepng", im, args, func(w io.Writer, m image.Image, opts []any) error {
 			enc := png.Encoder{CompressionLevel: png.DefaultCompression}
@@ -332,7 +341,7 @@ func registerWrite(rt *runner.Runtime, r root) {
 }
 
 // encodeTo is the shared body of the three writers: pick the destination the
-// way PHP does, then hand the writer to the format.
+// way PHP does, then pass the writer to the format.
 func encodeTo(rt *runner.Runtime, r root, fn string, im *Image, args []any, enc func(io.Writer, image.Image, []any) error) (any, error) {
 	if im == nil || im.m == nil {
 		return false, nil
@@ -379,7 +388,7 @@ func encodeTo(rt *runner.Runtime, r root, fn string, im *Image, args []any, enc 
 }
 
 // checkDimensions raises the ValueError PHP raises for a non-positive width or
-// height. PHP 8 turned what used to be a false return into a thrown error, and
+// height. PHP 8 raises for it where PHP 7 returned false, and
 // a binding that answers false instead would let a script carry on past a
 // mistake the engine it is being ported from stops at.
 func checkDimensions(fn string, width, height int64) error {

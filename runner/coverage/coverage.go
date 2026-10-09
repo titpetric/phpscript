@@ -195,8 +195,8 @@ func (c *Collector) Hit(s model.Stmt) {
 
 // Blocks renders the collected counts as profile entries, sorted by file and
 // position. Statements sharing a line range merge into one block: NumStmt adds
-// up, and Count is the largest of theirs, which is how many times the line was
-// reached — summing would charge `$a = 1; $b = 2;` twice per pass.
+// up, and Count is the largest of theirs, so many times the line was
+// reached; summing would charge `$a = 1; $b = 2;` twice per pass.
 func (c *Collector) Blocks() []Block {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -1,4 +1,4 @@
-// Package internals provides PHP internal memory and runtime introspection bindings.
+// Package internals carries PHP's internal memory and runtime introspection bindings.
 package internals
 
 import (

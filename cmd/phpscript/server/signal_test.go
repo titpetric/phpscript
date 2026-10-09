@@ -71,7 +71,7 @@ func TestSignal(t *testing.T) {
 	})
 
 	// A pid that was real and is not. /bin/true is reaped by Run, so the
-	// send reports ESRCH rather than racing a live process.
+	// send reports ESRCH and races no live process.
 	t.Run("a stale pid reports the process is gone", func(t *testing.T) {
 		cmd := exec.Command("/bin/true")
 		if err := cmd.Run(); err != nil {
@@ -94,7 +94,7 @@ func TestSignal(t *testing.T) {
 
 	// The delivery itself, to this process. A handler is armed first:
 	// SIGHUP with none takes its default disposition and kills the test
-	// binary rather than failing a case.
+	// binary and fails no case.
 	t.Run("sends SIGHUP to the recorded process", func(t *testing.T) {
 		hangup := make(chan os.Signal, 1)
 		signal.Notify(hangup, syscall.SIGHUP)

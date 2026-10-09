@@ -96,7 +96,7 @@ func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
 }
 
 // TestVirtualHostLoadRejectsServer pins that a site cannot move the listen
-// address, and that it is told so rather than having the block dropped.
+// address, and that it is told so, with no block dropped.
 func TestVirtualHostLoadRejectsServer(t *testing.T) {
 	root := writeSite(t, `
 server:
@@ -134,7 +134,7 @@ virtualhost:
 }
 
 // TestVirtualHostLoadRequiresConfigFile pins that a root without a
-// phpscript.yml fails, rather than serving the site under the operator's
+// phpscript.yml fails, and never serves the site under the operator's
 // defaults.
 func TestVirtualHostLoadRequiresConfigFile(t *testing.T) {
 	root := t.TempDir()
@@ -263,7 +263,7 @@ func TestVirtualHostDomains(t *testing.T) {
 }
 
 // TestValidateVirtualHosts covers the checks over the list as a whole. Each
-// case names the domain it is about, which is what the error has to carry.
+// case names the domain it is about, which the error has to carry.
 func TestValidateVirtualHosts(t *testing.T) {
 	site := func(t *testing.T, source string, documentRoots ...string) string {
 		return writeSite(t, source, documentRoots...)
@@ -450,7 +450,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 // a site's file can use.
 //
 // The rule is the one env is already held to: a site that names servers gets
-// only the ones it named. It is worth a table rather than two assertions
+// only the ones it named. A table covers it where two assertions
 // because the previous shape, a single unnamed block, did not hold it. A
 // struct merges field by field, so a site setting only a host kept the
 // operator's username and password and went on sending as the operator. The

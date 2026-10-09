@@ -1,6 +1,6 @@
 package http_test
 
-// Sending is tested here, against httptest, rather than in a .phpt fixture: a
+// Sending is tested here against httptest, and not in a .phpt fixture: a
 // fixture that reached the network would be a fixture that fails when the
 // network does. The fixture covers construction and introspection, which is
 // what a script can check without a server.
@@ -90,7 +90,7 @@ func TestClientSendsRequest(t *testing.T) {
 }
 
 // TestRequestIsANetHTTPRequest pins the shape a script gets back. The binding
-// hands over the net/http value rather than a facade, so a script reads and
+// exposes the net/http value and no facade, so a script reads and
 // writes it the way Go does.
 func TestRequestIsANetHTTPRequest(t *testing.T) {
 	ctx := context.Background()
@@ -153,7 +153,7 @@ func TestClientOptions(t *testing.T) {
 		t.Fatalf("NewClient: %v", err)
 	}
 
-	// A relative URL resolves against base_url, which is the point of the option.
+	// A relative URL resolves against base_url: the option exists for that.
 	request, err := http.NewRequest(ctx, "GET", "/things")
 	if err != nil {
 		t.Fatalf("NewRequest: %v", err)
@@ -179,7 +179,7 @@ func TestClientOptions(t *testing.T) {
 }
 
 // TestClientRelativeURLWithoutBaseIsReported pins that a relative URL with no
-// base_url is a named error rather than a transport failure.
+// base_url is a named error and no transport failure.
 func TestClientRelativeURLWithoutBaseIsReported(t *testing.T) {
 	ctx := context.Background()
 	client, err := http.NewClient(ctx, nil)
@@ -195,8 +195,8 @@ func TestClientRelativeURLWithoutBaseIsReported(t *testing.T) {
 	}
 }
 
-// TestClientRejectsUnknownOption pins that a typo is reported rather than
-// silently doing nothing, which is the Mail binding's rule too.
+// TestClientRejectsUnknownOption pins that a typo is reported and never
+// silently ignored, under the Mail binding's rule too.
 func TestClientRejectsUnknownOption(t *testing.T) {
 	_, err := http.NewClient(context.Background(), map[string]any{"timeuot": int64(5)})
 	if err == nil {
@@ -208,7 +208,7 @@ func TestClientRejectsUnknownOption(t *testing.T) {
 }
 
 // TestClientDoesNotFollowRedirects pins follow_redirects, which a script sets
-// when it wants to see the Location rather than the destination.
+// when the Location is what it reads, and not the destination.
 func TestClientDoesNotFollowRedirects(t *testing.T) {
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		if r.URL.Path == "/from" {
@@ -344,7 +344,7 @@ func TestClientParallelReportsFailurePerRequest(t *testing.T) {
 }
 
 // TestClientParallelRejectsBadInput pins that the argument has to be an array
-// of requests, which is the one thing Parallel throws for.
+// of requests: the one thing Parallel throws for.
 func TestClientParallelRejectsBadInput(t *testing.T) {
 	ctx := context.Background()
 	client, err := http.NewClient(ctx, nil)
@@ -370,7 +370,7 @@ func TestRequestRequiresMethodAndURL(t *testing.T) {
 	}
 }
 
-// TestResponseJSONReportsBadBody pins that a non-JSON body throws rather than
+// TestResponseJSONReportsBadBody pins that a non-JSON body throws and never
 // returning a zero value a script would then use.
 func TestResponseJSONReportsBadBody(t *testing.T) {
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
@@ -392,7 +392,7 @@ func TestResponseJSONReportsBadBody(t *testing.T) {
 	}
 }
 
-// TestClientTimesOut pins that a client always has a deadline, which is the one
+// TestClientTimesOut pins that a client always has a deadline: the one
 // failure a script cannot recover from on its own.
 func TestClientTimesOut(t *testing.T) {
 	block := make(chan struct{})

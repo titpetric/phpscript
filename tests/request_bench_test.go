@@ -17,7 +17,7 @@ import (
 // BenchmarkRequestCycle measures one request's runtime turnaround on a
 // reused runtime: session reset, superglobal registration, and a script
 // that reads them. Request parsing (FromRequest) sits outside the loop -
-// it belongs to the HTTP layer, not the runtime cycle this instruments.
+// it belongs to the HTTP layer, outside the runtime cycle this instruments.
 func BenchmarkRequestCycle(b *testing.B) {
 	prog, err := parser.Parse(`<?php echo $_GET["q"], ":", $_SERVER["REQUEST_METHOD"], ":", $_REQUEST["q"];`)
 	if err != nil {

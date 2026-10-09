@@ -13,9 +13,9 @@ type Align int
 
 // The two alignments a column takes.
 const (
-	// Left pads a cell on the right, which is what a label wants.
+	// Left pads a cell on the right, as a label reads.
 	Left Align = iota
-	// Right pads a cell on the left, which is what a number wants.
+	// Right pads a cell on the left, as a number reads.
 	Right
 )
 
@@ -26,7 +26,7 @@ type Column struct {
 }
 
 // Cell is one value and the color it is printed in. The color is dropped in
-// markdown, so a caller sets it once rather than branching per output format.
+// markdown, so a caller sets it once and branches per no output format.
 type Cell struct {
 	Text  string
 	Color string
@@ -45,7 +45,7 @@ func Colored(color, value string) Cell {
 // Table buffers rows and renders them once the widest cell of every column is
 // known. A check that collects its findings before reporting them gains
 // nothing from streaming, and a buffered table sizes its columns from the data
-// rather than guessing at them up front.
+// and never guesses at them up front.
 type Table struct {
 	w        io.Writer
 	markdown bool

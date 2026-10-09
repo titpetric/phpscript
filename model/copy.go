@@ -4,15 +4,15 @@ package model
 // `foreach` needs: what copying an array means, and whether a loop body would
 // notice the difference.
 //
-// PHP arrays are values. `foreach ($rows as $row)` hands the body a copy, so
+// PHP arrays are values. `foreach ($rows as $row)` binds a copy, so
 // `$row["x"] = 1` edits the copy and leaves `$rows` alone; `foreach ($rows as
-// &$row)` hands it the element itself. phpscript's arrays are pointers, so the
-// copy has to be made rather than deferred: there is no refcount to make it
+// &$row)` binds the element itself. phpscript's arrays are pointers, so the
+// copy is made up front and never deferred: there is no refcount to make it
 // lazy the way PHP's copy-on-write does.
 //
 // Copying every element of every loop would be a large price for a semantic
 // almost no loop uses, so the copy is made only when the body actually assigns
-// through the loop variable. AssignsTo answers that, once per loop rather than
+// through the loop variable. AssignsTo answers that, once per loop and not
 // once per iteration, and the flatstack compiler asks it once per program.
 
 // CopyValue returns a value with PHP's assignment semantics applied: arrays are
@@ -22,7 +22,7 @@ package model
 // The copy reaches nested arrays, because they are values too, and PHP's
 // `$copy["a"]["b"] = 1` cannot be observed through the original. It stops at
 // objects, which are handles in PHP as well, and at the native Go collections a
-// binding returns, which belong to the host rather than to the script.
+// binding returns, which belong to the host and not to the script.
 func CopyValue(v any) any {
 	array, ok := v.(*Array)
 	if !ok {
@@ -48,7 +48,7 @@ func CopyArray(a *Array) *Array {
 // target is rooted at: `$v = ...`, `$v["k"] = ...`, `$v->p = ...`, `$v++`, or
 // a list() destructuring naming it.
 //
-// It is deliberately a root-name test rather than an exact-shape one. A write
+// It is a root-name test and no exact-shape one. A write
 // to `$v["k"]` has to count: the element it reaches lives inside the value the
 // loop variable holds, so a by-value loop must have copied it. Over-reporting
 // costs a copy that turns out to be unobservable; under-reporting would let a
@@ -56,7 +56,7 @@ func CopyArray(a *Array) *Array {
 func AssignsTo(body []Stmt, target Expr) bool {
 	root := RootName(target)
 	if root == "" {
-		// A target with no name to root on cannot be matched against, so assume
+		// A target with no name to root on cannot be matched against, so treat it as
 		// the body writes to it.
 		return true
 	}

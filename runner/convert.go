@@ -86,7 +86,7 @@ func toInt(v any) int64 {
 	case string:
 		return stringToInt(x)
 	default:
-		// A Go binding hands back named scalar types (time.Month, time.Weekday,
+		// A Go binding returns named scalar types (time.Month, time.Weekday,
 		// time.Duration), which are integers wearing a name. Arithmetic on them
 		// is ordinary PHP arithmetic, so `$t->month() + 1` counts months rather
 		// than answering zero.
@@ -262,7 +262,7 @@ func phpIdentical(a, b any) bool {
 		return ok && x == y
 	case []byte:
 		// A []byte is the string it carries, so `===` against one compares text
-		// rather than reporting two different types. See phpval.Bytes.
+		// and never reports two different types. See phpval.Bytes.
 		if y, ok := phpval.Bytes(b); ok {
 			return string(x) == y
 		}
@@ -288,7 +288,7 @@ func phpIdentical(a, b any) bool {
 	if b == nil {
 		return false
 	}
-	// reflect.DeepEqual rather than ==: a binding's []string is not comparable
+	// reflect.DeepEqual and not ==: a binding's []string is not comparable
 	// and would panic under the operator.
 	return reflect.TypeOf(a) == reflect.TypeOf(b) && reflect.DeepEqual(a, b)
 }
@@ -325,8 +325,8 @@ func helperCast(typ string, v any) any {
 	case "int", "integer":
 		// An array casts to 1 when it holds anything and 0 when it does not.
 		// This is the only context that converts one: php refuses arithmetic on
-		// an array with a TypeError rather than coercing it, so toInt answers
-		// zero and the rule lives here rather than there.
+		// an array with a TypeError and coerces nothing, so toInt answers
+		// zero and the rule lives here and not there.
 		if model.IsCollection(v) {
 			if phpTruthy(v) {
 				return int64(1)
@@ -372,7 +372,7 @@ func helperCast(typ string, v any) any {
 
 // helperToObject implements the `(object)` cast: an array becomes a stdClass
 // whose properties are its entries, a scalar lands under `scalar`, and null
-// gives an object with nothing in it.
+// produces an object with nothing in it.
 //
 // An object is returned as it is, which is PHP's behaviour and the reason the
 // cast is not a copy: `(object) $o === $o`. Nothing is copied on the way in
@@ -404,7 +404,7 @@ func helperToObject(v any) any {
 
 // isObjectValue reports whether v is already an object: an interpreted one, or
 // a value a host binding returned, which `new Database` produces and which the
-// cast must hand back rather than fold into a `scalar` property. Call it after
+// cast must return as it is, with no fold into a `scalar` property. Call it after
 // the collection test; a Go collection would otherwise answer it.
 func isObjectValue(v any) bool {
 	if _, ok := v.(*model.Object); ok {
@@ -478,7 +478,7 @@ func phpArith(op string, a, b any) any {
 		}
 	}
 	// Integer arithmetic that overflows becomes float in PHP, so
-	// PHP_INT_MAX + 1 is 9.2233720368548E+18, not a wrapped negative. The
+	// PHP_INT_MAX + 1 is 9.2233720368548E+18, with no wrap to a negative. The
 	// rules live in phpval so the flat VM's integer opcodes share them.
 	x, y := toInt(a), toInt(b)
 	switch op {
@@ -498,14 +498,14 @@ func phpArith(op string, a, b any) any {
 // phpBitwise applies & | ^ << >>.
 //
 // Both operands are cast to int, except that & | ^ between two strings operate
-// bytewise and yield a string, as they do in PHP: "a" | "b" is "c". The operand
+// bytewise and return a string, as they do in PHP: "a" | "b" is "c". The operand
 // length follows PHP: `&` and `^` stop at the shorter operand, `|` keeps the
 // longer one and treats the missing bytes as zero.
 //
 // Shifts are int64 operations. A count of 64 or more needs no special case: Go
 // defines an over-wide shift as 0 for `<<`, and 0 or -1 by sign for `>>`, which
 // is what PHP produces. A negative count is the one input with no answer, and
-// PHP raises ArithmeticError for it rather than picking one.
+// PHP raises ArithmeticError for it and picks neither.
 func phpBitwise(op string, a, b any) (any, error) {
 	switch op {
 	case "&", "|", "^":
@@ -566,10 +566,10 @@ func bitwiseString(op string, a, b string) string {
 
 // phpNegate implements PHP's unary minus.
 //
-// A float is negated directly rather than computed as `0 - x`, which loses the
-// sign of zero: PHP echoes -0.0 as -0. Everything else goes through the
+// A float is negated directly and never computed as `0 - x`, which loses the
+// sign of zero: PHP echoes -0.0 as -0. Everything else resolves through the
 // arithmetic helper so that negating the smallest int64 overflows to a float
-// the way every other arithmetic operator does, instead of wrapping back to
+// the way every other arithmetic operator does, with no wrap back to
 // itself with Go's int64 negation.
 func phpNegate(v any) any {
 	if f, ok := v.(float64); ok {
@@ -634,7 +634,7 @@ func isFloat(v any) bool {
 
 // unionArrays implements PHP's array `+`. The left operand wins every key it
 // has; the right contributes only what is missing. Insertion order follows the
-// left array and then the surviving entries of the right, which is what PHP's
+// left array and then the surviving entries of the right, as PHP's
 // own union preserves.
 func unionArrays(left, right *model.Array) *model.Array {
 	out := model.NewArraySize(left.Len() + right.Len())

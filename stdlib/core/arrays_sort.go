@@ -16,18 +16,23 @@ func init() {
 // registerArraySort adds the half of PHP's sort family that keeps the
 // key-to-value association: ksort/krsort order by key, asort/arsort by value,
 // uasort/uksort by a script comparator. The other half (sort, rsort, usort)
-// lives in arrays.go and throws the keys away, which is why they can share
+// lives in arrays.go and throws the keys away, so they can share
 // sortValues and these cannot.
 func registerArraySort(rt *runner.Runtime) {
-	// ksort sorts $array in place by key ascending with PHP's default comparison, keeping each key attached to its value.
+	// ksort sorts $array in place by key ascending with PHP's default
+	// comparison, keeping each key attached to its value.
 	rt.RegisterFunc("ksort", phpKsort)
-	// krsort sorts $array in place by key descending with PHP's default comparison, keeping each key attached to its value.
+	// krsort sorts $array in place by key descending with PHP's default
+	// comparison, keeping each key attached to its value.
 	rt.RegisterFunc("krsort", phpKrsort)
-	// asort sorts $array in place by value ascending with PHP's default comparison, keeping each value attached to its key.
+	// asort sorts $array in place by value ascending with PHP's default
+	// comparison, keeping each value attached to its key.
 	rt.RegisterFunc("asort", phpAsort)
-	// arsort sorts $array in place by value descending with PHP's default comparison, keeping each value attached to its key.
+	// arsort sorts $array in place by value descending with PHP's default
+	// comparison, keeping each value attached to its key.
 	rt.RegisterFunc("arsort", phpArsort)
-	// uasort sorts $array in place by value using the $callback comparator, keeping each value attached to its key.
+	// uasort sorts $array in place by value using the $callback comparator,
+	// keeping each value attached to its key.
 	rt.RegisterFunc("uasort", func(array any, callback any) (bool, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -37,7 +42,8 @@ func registerArraySort(rt *runner.Runtime) {
 			return callbackLess(fn, x.val, y.val)
 		})
 	})
-	// uksort sorts $array in place by key using the $callback comparator, keeping each key attached to its value.
+	// uksort sorts $array in place by key using the $callback comparator,
+	// keeping each key attached to its value.
 	rt.RegisterFunc("uksort", func(array any, callback any) (bool, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -70,9 +76,9 @@ func phpArsort(array any) (bool, error) {
 }
 
 // callbackLess adapts a script comparator (func(...any) (any, error), as
-// rt.Callable hands it over) to the boolean sort.SliceStable wants, the same
+// rt.Callable returns it) to the boolean sort.SliceStable declares, the same
 // way phpUsort does. A comparator that raises is treated as "not less", so a
-// failing callback leaves the order it saw rather than aborting mid-sort.
+// failing callback leaves the order it saw and aborts nothing mid-sort.
 func callbackLess(fn func(...any) (any, error), x, y any) bool {
 	r, err := fn(x, y)
 	if err != nil {
@@ -85,7 +91,7 @@ func callbackLess(fn func(...any) (any, error), x, y any) bool {
 // entries with arrayEntries, sorts the snapshot, then rebuilds the array with
 // Clear followed by arrayReplay in restore mode: every key is written back with
 // Set, never Append, because Append would hand out fresh integer keys and turn
-// a key-preserving sort into sort(). Sorting the snapshot rather than the
+// a key-preserving sort into sort(). Sorting the snapshot, and not the
 // storage also means the rewrite never iterates what it is overwriting.
 //
 // Divergence from PHP, and from sort()/rsort()/usort() next door: these six

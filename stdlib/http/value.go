@@ -10,7 +10,7 @@ import (
 
 // The conversions a script's option array needs. PHP is dynamically typed and
 // an option arrives as whatever the script wrote, so each one is read the way
-// PHP would read it in that position rather than type-asserted.
+// PHP would read it in that position, and never type-asserted.
 
 // toString renders a value the way PHP renders it in a string context.
 func toString(value any) string {
@@ -24,7 +24,7 @@ func toString(value any) string {
 	}
 }
 
-// toBool follows PHP truthiness for the values a script can hand an option:
+// toBool follows PHP truthiness for the values a script can pass an option:
 // "false", "off", "no", "0" and the empty string are false, as is a zero
 // number; anything else set is true.
 func toBool(value any) bool {
@@ -67,7 +67,7 @@ func toInt(value any) int64 {
 	}
 }
 
-// toDuration reads a timeout. A bare number is seconds, which is how PHP's own
+// toDuration reads a timeout. A bare number is seconds, so PHP's own
 // timeouts are spelled; a string with a unit ("500ms", "1m30s") is parsed as
 // Go spells one, so a sub-second timeout is expressible without a fraction.
 func toDuration(value any) time.Duration {

@@ -11,8 +11,8 @@ import (
 )
 
 // sourceTree is the read-only application an embedded or in-memory host ships.
-// It is deliberately not on disk, so a read that answers from it proves the
-// fs.FS was consulted rather than the host filesystem underneath.
+// It is not on disk, so a read that answers from it proves the fs.FS was
+// consulted and not the host filesystem underneath.
 func sourceTree() fstest.MapFS {
 	return fstest.MapFS{
 		"one.txt":          {Data: []byte("one"), ModTime: sourceModTime},
@@ -51,11 +51,11 @@ func TestGlobListsTheSourceFilesystem(t *testing.T) {
 }
 
 // TestGlobIsJailedToTheSourceFilesystem pins where "/" points. It is the source
-// filesystem's root, not the host's, so an absolute pattern names something
+// filesystem's root and never the host's, so an absolute pattern names something
 // inside the tree the script was served from and there is no spelling that
 // reaches past it; php would list whatever the host holds at that path, and
 // that divergence is the point. A pattern that climbs is cleaned against the
-// root, which is the rule every path a script hands this package follows.
+// root, the rule every path a script passes this package follows.
 func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 	opts := runner.Options{RootFS: sourceTree()}
 	for _, test := range []struct {
@@ -100,7 +100,7 @@ func TestGlobOnTheHostAnswersRelativeToTheRoot(t *testing.T) {
 }
 
 // TestReadsUseTheSourceFilesystemUnderANamedRoot is the regression this jail
-// work exists for. The reads used to hand resolve's host path to the fs.FS,
+// work exists for. The reads would otherwise pass resolve's host path to the fs.FS,
 // which rejects anything absolute, so every lookup missed and fell through to
 // the host. A root that is a real directory and a source tree that is not on
 // disk is the arrangement that tells the two apart.

@@ -18,17 +18,18 @@ func init() {
 // registerRequest installs the functions that answer for the request the
 // runtime is serving.
 //
-// They resolve the request at call time through runner.RequestContext, not at
+// They resolve the request at call time through runner.RequestContext, and never at
 // registration time, because a host registers the standard library once and
 // seeds the request afterwards - stdlib.Register(rt) then reqCtx.Register(rt),
-// which is the order every host uses. That indirection is also what lets these
+// the order every host uses. That indirection is also what lets these
 // live outside package runner.
 //
 // A script running without a request - the cli SAPI, a fixture that seeds no
-// request - finds the functions present and inert, which is what PHP's own cli
+// request, finds the functions present and inert, as PHP's own cli
 // SAPI does with header().
 func registerRequest(rt *runner.Runtime) {
-	// getallheaders returns the request headers as an associative array keyed by canonical header name, and an empty array when there is no request.
+	// getallheaders returns the request headers as an associative array keyed
+	// by canonical header name, and an empty array when there is no request.
 	rt.RegisterFunc("getallheaders", func() *model.Array {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -53,7 +54,11 @@ func registerRequest(rt *runner.Runtime) {
 		return request.GetAllHeaders()
 	})
 
-	// header stages the "Name: value" response header in $header, written to the response after the script finishes; $replace (default true) overwrites an existing header of the same name, $code stages the response status, and a status line such as "HTTP/1.0 404 Not Found" stages the status it names.
+	// header stages the "Name: value" response header in $header, written to
+	// the response after the script finishes; $replace (default true)
+	// overwrites an existing header of the same name, $code stages the
+	// response status, and a status line such as "HTTP/1.0 404 Not Found"
+	// stages the status it names.
 	rt.RegisterFunc("header", func(header string, opts ...any) {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -62,7 +67,10 @@ func registerRequest(rt *runner.Runtime) {
 		request.Header(header, opts...)
 	})
 
-	// http_response_code stages the response status in $response_code and returns the one it replaced; called without one it returns the status the response will be sent with, or false when there is no request to answer for.
+	// http_response_code stages the response status in $response_code and
+	// returns the one it replaced; called without one it returns the status
+	// the response will be sent with, or false when there is no request to
+	// answer for.
 	rt.RegisterFunc("http_response_code", func(opts ...any) any {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -71,12 +79,17 @@ func registerRequest(rt *runner.Runtime) {
 		return request.HTTPResponseCode(rt.SAPI(), opts...)
 	})
 
-	// setcookie stages a Set-Cookie header naming $name with $value url-encoded, and answers whether it could; $expires_or_options is a unix timestamp, 0 for a cookie that dies with the browser session, or an array of expires, path, domain, secure, httponly and samesite.
+	// setcookie stages a Set-Cookie header naming $name with $value
+	// url-encoded, and answers whether it could; $expires_or_options is a
+	// unix timestamp, 0 for a cookie that dies with the browser session, or
+	// an array of expires, path, domain, secure, httponly and samesite.
 	rt.RegisterFunc("setcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, true)
 	})
 
-	// setrawcookie stages a Set-Cookie header the way setcookie does but writes $value as it stands, so a value carrying a semicolon or a space is the caller's problem rather than the encoder's.
+	// setrawcookie stages a Set-Cookie header the way setcookie does, writing
+	// $value as it stands, so a value carrying a semicolon or a space is the
+	// caller's to handle; the encoder does nothing with it.
 	rt.RegisterFunc("setrawcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, false)
 	})
@@ -88,7 +101,7 @@ func registerRequest(rt *runner.Runtime) {
 // where PHP writes path and HttpOnly, and the expiry is RFC 1123 where PHP
 // writes its own dashed variant. RFC 6265 makes attribute names
 // case-insensitive and both date spellings parseable, so a client cannot tell;
-// a test asserting the exact header text can, which is why this is written
+// a test asserting the exact header text can, so this is written
 // down.
 func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool {
 	request, ok := runner.RequestContext(rt.Context())
@@ -120,7 +133,7 @@ func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool 
 }
 
 // applyCookiePositional reads the long argument list: $expires, $path,
-// $domain, $secure, $httponly. There is no samesite in this form, which is why
+// $domain, $secure, $httponly. There is no samesite in this form, so
 // PHP grew the array one.
 func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 	for i, arg := range args {
@@ -140,7 +153,7 @@ func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 }
 
 // applyCookieOptions reads the array form. An option the array does not name
-// keeps its zero value, which is the same as PHP leaving it out of the header.
+// keeps its zero value, as PHP leaves it out of the header.
 func applyCookieOptions(cookie *nethttp.Cookie, options *model.Array) {
 	if value, ok := options.Get("expires"); ok {
 		setCookieExpires(cookie, phpval.Int(value))
@@ -172,7 +185,7 @@ func setCookieExpires(cookie *nethttp.Cookie, expires int64) {
 }
 
 // sameSite reads the attribute PHP spells as a string. An unrecognised value
-// stages no attribute, which is what a browser does with one it cannot read.
+// stages no attribute, as a browser drops one it cannot read.
 func sameSite(value string) nethttp.SameSite {
 	switch value {
 	case "Lax", "lax":

@@ -11,7 +11,7 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 | Prelude      | The file `runner.include` or `--include` names, included ahead of every entrypoint. It is where a composer autoloader or a bootstrap goes, so the entrypoint and everything it includes see what it declared. |
 | Superglobal  | A variable php binds in every scope without a `global` declaration: `$_GET`, `$_POST`, `$_SERVER`, `$_FILES`, `$_COOKIE`, `$_REQUEST`, `$_ENV`, `$_SESSION`. One binding per request.                         |
 | SAPI         | Server API, the php name for what is running the interpreter. `php_sapi_name()` answers `cli` for a command line run and `cgi-phpscript` for a served request.                                                |
-| Session      | php's `$_SESSION`, a per-visitor bag keyed by a cookie and stored by `Session\Manager`. It spans many requests, which is what makes it a session.                                                             |
+| Session      | php's `$_SESSION`, a per-visitor bag keyed by a cookie and stored by `Session\Manager`. It spans many requests.                                                                                               |
 | ResetSession | A Go method on `runner.Runtime`, and a different thing: it clears one runtime's declarations and globals so the runtime can execute another program. It has nothing to do with `$_SESSION`.                   |
 
 ## Where files live
@@ -27,12 +27,12 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 
 ## Loading names
 
-| Term             | What it means                                                                                                                                                                                      |
-|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Include, require | Evaluate another PHP file here, in this scope. `require` is fatal when the file is missing and `include` is not; the `_once` forms consult a per-request record of what has already run.           |
-| Autoloader       | A callback registered with `spl_autoload_register()` that is asked for a class the first time something names one that is not declared. composer's generated autoloader is one, interpreted as-is. |
-| Namespace        | The prefix a declaration carries, `Acme\Thing`. It is a name, not a directory: what maps one onto a path is an autoloader.                                                                         |
-| Binding          | A Go function, class or constant registered onto the runtime, which a script calls by the name it was registered under. `phpscript list --stdlib` prints every one this build carries.             |
+| Term             | What it means                                                                                                                                                                                     |
+|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Include, require | Evaluate another PHP file here, in this scope. `require` is fatal when the file is missing and `include` is not; the `_once` forms consult a per-request record of what has already run.          |
+| Autoloader       | A callback registered with `spl_autoload_register()` called with a class name the first time something names one that is not declared. composer's generated autoloader is one, interpreted as-is. |
+| Namespace        | The prefix a declaration carries, `Acme\Thing`. It is a name, not a directory: what maps one onto a path is an autoloader.                                                                        |
+| Binding          | A Go function, class or constant registered onto the runtime, which a script calls by the name it was registered under. `phpscript list --stdlib` prints every one this build carries.            |
 
 ## Serving
 
@@ -53,12 +53,12 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 
 **Mail is the subject; SMTP is a protocol it happens to speak.** The class a script types is `Mail`, the configuration key is `mail`, the Go package is `stdlib/mail`. SMTP appears only where the wire protocol is genuinely meant: `net/smtp`, the STARTTLS settings, the conversation `deliverSMTP` runs. Naming the subject after one of its transports would have to be undone the first time a server is reached by an API instead.
 
-| Term          | What it means                                                                                                                                                                                                    |
-|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Mail server   | One named entry in the `mail` block: a host, a port, credentials and a from address. A script names it and never spells it.                                                                                      |
-| Server name   | The key the entry sits under, and the whole of what a script says about a server. `new Mail` asks for `default`, `new Mail($name)` for the rest. Compared lowercased.                                            |
-| Mail provider | What resolves a name to a credential, `model.MailProvider`. It is per site, holds the servers that site configured, and has no method that returns one, which is what keeps a password out of the runtime scope. |
-| Deliver       | The transport a provider hands a resolved message to, `mail.Deliver`. SMTP by default; a host swaps it for an API or a queue without touching name resolution.                                                   |
+| Term          | What it means                                                                                                                                                                                               |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Mail server   | One named entry in the `mail` block: a host, a port, credentials and a from address. A script names it and never spells it.                                                                                 |
+| Server name   | The key the entry sits under, and the whole of what a script says about a server. `new Mail` names `default`, `new Mail($name)` the rest. Compared lowercased.                                              |
+| Mail provider | What resolves a name to a credential, `model.MailProvider`. It is per site, holds the servers that site configured, and declares no method that returns one, so a password never reaches the runtime scope. |
+| Delivery      | The transport a provider passes a resolved message to, `mail.Deliver`. SMTP by default; a host swaps it for an API or a queue without touching name resolution.                                             |
 
 ## Running the code
 

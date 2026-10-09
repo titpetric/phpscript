@@ -24,28 +24,35 @@ func init() {
 }
 
 func registerMultibyte(rt *runner.Runtime) {
-	// mb_strlen returns the number of characters in $string; the $encoding argument "8bit" answers in bytes, the byte-count escape hatch for binary data, and every other encoding is read as UTF-8.
+	// mb_strlen returns the number of characters in $string; the $encoding
+	// argument "8bit" answers in bytes, the byte-count escape hatch for
+	// binary data, and every other encoding is read as UTF-8.
 	rt.RegisterFunc("mb_strlen", func(s string, encoding ...any) int64 {
 		if eightBit([]any(encoding), 0) {
 			return int64(len(s))
 		}
 		return runeLen(s)
 	})
-	// mb_substr returns the part of $string selected by character offset $start and $length; the "8bit" encoding selects bytes, as substr does.
+	// mb_substr returns the part of $string selected by character offset
+	// $start and $length; the "8bit" encoding selects bytes, as substr does.
 	rt.RegisterFunc("mb_substr", func(s string, start int64, rest ...any) string {
 		if eightBit(rest, 1) {
 			return phpSubstr(s, start, optionalLength(rest)...)
 		}
 		return mbSubstr(s, start, optionalLength(rest)...)
 	})
-	// mb_strpos returns the character offset of the first $needle in $haystack, or false; the "8bit" encoding reports byte offsets, as strpos does.
+	// mb_strpos returns the character offset of the first $needle in
+	// $haystack, or false; the "8bit" encoding reports byte offsets, as
+	// strpos does.
 	rt.RegisterFunc("mb_strpos", func(haystack, needle string, rest ...any) any {
 		if eightBit(rest, 1) {
 			return phpStrpos(haystack, needle, optionalOffset(rest)...)
 		}
 		return mbStrpos(haystack, needle, optionalOffset(rest)...)
 	})
-	// mb_stripos returns the character offset of the first case-insensitive $needle in $haystack, or false; the fold is Unicode-wide, where stripos folds A-Z only.
+	// mb_stripos returns the character offset of the first case-insensitive
+	// $needle in $haystack, or false; the fold is Unicode-wide, where stripos
+	// folds A-Z only.
 	rt.RegisterFunc("mb_stripos", func(haystack, needle string, rest ...any) any {
 		return mbStrpos(runeLower(haystack), runeLower(needle), optionalOffset(rest)...)
 	})
@@ -57,7 +64,8 @@ func registerMultibyte(rt *runner.Runtime) {
 		}
 		return byteRuneOffset(haystack, i)
 	})
-	// mb_str_split returns $string cut into chunks of $length characters; the "8bit" encoding cuts bytes, as str_split does.
+	// mb_str_split returns $string cut into chunks of $length characters; the
+	// "8bit" encoding cuts bytes, as str_split does.
 	rt.RegisterFunc("mb_str_split", func(s string, rest ...any) []string {
 		n := int64(1)
 		if len(rest) > 0 {
@@ -70,20 +78,25 @@ func registerMultibyte(rt *runner.Runtime) {
 		}
 		return mbStrSplit(s, n)
 	})
-	// mb_str_pad returns $string padded to $length characters with $pad_string, the character-counting str_pad PHP 8.3 added.
+	// mb_str_pad returns $string padded to $length characters with
+	// $pad_string, the character-counting str_pad PHP 8.3 added.
 	rt.RegisterFunc("mb_str_pad", func(s string, length int64, optional ...any) string {
 		return mbStrPad(s, length, optional...)
 	})
-	// mb_substr_count returns the number of non-overlapping occurrences of $needle in $haystack, the whole string, $offset and $length not being arguments PHP's mb_ spelling takes.
+	// mb_substr_count returns the number of non-overlapping occurrences of
+	// $needle in $haystack, the whole string, $offset and $length not being
+	// arguments PHP's mb_ spelling takes.
 	rt.RegisterFunc("mb_substr_count", func(haystack, needle string, _ ...any) int64 {
 		if needle == "" {
 			return 0
 		}
 		return int64(strings.Count(haystack, needle))
 	})
-	// mb_strtoupper returns $string uppercased, non-ASCII letters included, where strtoupper folds A-Z only.
+	// mb_strtoupper returns $string uppercased, non-ASCII letters included,
+	// where strtoupper folds A-Z only.
 	rt.RegisterFunc("mb_strtoupper", func(s string, _ ...any) string { return strings.ToUpper(s) })
-	// mb_strtolower returns $string lowercased, non-ASCII letters included, where strtolower folds A-Z only.
+	// mb_strtolower returns $string lowercased, non-ASCII letters included,
+	// where strtolower folds A-Z only.
 	rt.RegisterFunc("mb_strtolower", func(s string, _ ...any) string { return strings.ToLower(s) })
 	// mb_ucfirst returns $string with its first character uppercased, non-ASCII letters included.
 	rt.RegisterFunc("mb_ucfirst", mbUcfirst)
@@ -116,7 +129,7 @@ func optionalOffset(rest []any) []int64 {
 }
 
 // optionalLength is optionalOffset for the $length of a substring call, where
-// an explicit null means "to the end" and is dropped rather than read as 0.
+// an explicit null means "to the end" and is dropped, never read as 0.
 func optionalLength(rest []any) []int64 {
 	if len(rest) > 0 && rest[0] != nil {
 		if l, ok := toOptionalInt(rest[0]); ok {

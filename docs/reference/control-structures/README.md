@@ -51,7 +51,7 @@ do {
 
 `foreach` assignment targets may be variables, indexes, or properties. `list(...)` destructuring works in ordinary assignment but not as a `foreach` target.
 
-`foreach ($a as &$v)` binds the element rather than a copy of it, so writing to `$v` edits `$a`. Only the value half may take `&`; a key cannot. See [Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element) for what the two spellings cost and where they stop matching PHP.
+`foreach ($a as &$v)` binds the element itself, so writing to `$v` edits `$a`. Only the value half may take `&`; a key cannot. See [Value semantics](../types/value-semantics.md#foreach-binds-a-copy-or-the-element) for what the two spellings cost and where they stop matching PHP.
 
 ## Switch
 

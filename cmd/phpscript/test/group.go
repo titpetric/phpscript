@@ -10,13 +10,13 @@ import (
 )
 
 // fixtureGroup is the fixtures of one folder, in discovery order. Grouping is
-// what lets the runner print a table per area instead of one long table, so
+// what lets the runner print a table per area in place of one long table, so
 // the fixtures of a folder are read as a set.
 type fixtureGroup struct {
 	Dir      string // folder holding the fixtures, "." when they sit in the run directory
 	Fixtures []*tests.Fixture
 	Paths    []string // full display path, per fixture
-	Labels   []string // basename, which is what the table shows
+	Labels   []string // basename, the name the table shows
 }
 
 // groupTotals is one folder's contribution to the run.
@@ -34,7 +34,7 @@ type groupTotals struct {
 
 // engineDuration is the time one runner spent, summed over its fixture runs.
 // Under --parallel the engines together can exceed the wall-clock Duration
-// they sit beside, which measures the run rather than the work.
+// they sit beside, which measures the run and not the work.
 type engineDuration struct {
 	Runner   tests.Runner
 	Duration time.Duration

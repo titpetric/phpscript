@@ -29,7 +29,7 @@ import (
 
 // Named counterparts of every signature the invokeFast type switch covers.
 // A value of one of these types carries the same underlying signature but a
-// different dynamic type, which is what sends it down the reflect path.
+// different dynamic type, which sends it down the reflect path.
 type (
 	dispatchPinVarAnyRetAnyErr       func(...any) (any, error)
 	dispatchPinAnyRetAny             func(any) any
@@ -70,13 +70,13 @@ type (
 	dispatchPinStrRetFunc            func(string) func(any)
 )
 
-// dispatchPinErr is the error the error-returning probe bindings hand back
+// dispatchPinErr is the error the error-returning probe bindings return
 // when asked to, so both dispatch paths can be checked for surfacing it.
 var dispatchPinErr = errors.New("dispatch pin: forced failure")
 
 // dispatchPinSink is the func value the func(string) func(any) probe returns.
 // Package-level so both dispatch paths return the identical value and the
-// comparison can be by pointer rather than by an unobservable closure.
+// comparison can be by pointer and not by an unobservable closure.
 var dispatchPinSink = func(any) {}
 
 // dispatchPinArgs spells out each argument as value and dynamic type, so a
@@ -538,8 +538,8 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 				if fastErr != nil {
 					// The value beside a non-nil error is not pinned: every
 					// dispatch site discards it, and the paths disagree on it
-					// today (the fast case hands back the binding's bool, the
-					// reflect path hands back nil).
+					// today (the fast case returns the binding's bool, the
+					// reflect path returns nil).
 					continue
 				}
 				if !dispatchPinEqual(fastV, slowV) {
@@ -637,7 +637,7 @@ func TestDispatchPinReflectCoercion(t *testing.T) {
 		t.Fatalf("duration = %#v, want 30", v)
 	}
 
-	// A string a Duration parameter cannot parse is a TypeError, not a panic.
+	// A string a Duration parameter cannot parse is a TypeError, and panics nothing.
 	_, err = invokeAny(nil, func(d time.Duration) int64 { return 0 }, []any{"not a duration"})
 	var mismatch *TypeError
 	if !errors.As(err, &mismatch) {

@@ -8,7 +8,7 @@ import (
 )
 
 // scriptArray builds a list-mode *model.Array of the given values, for the
-// cases that have to be a script array rather than a Go slice.
+// cases that have to be a script array and no Go slice.
 func scriptArray(values ...any) *model.Array {
 	out := model.NewArraySize(len(values))
 	for _, v := range values {
@@ -19,8 +19,8 @@ func scriptArray(values ...any) *model.Array {
 
 // TestString pins each value against what php prints for `(string)$v`.
 //
-// The oracle used to be a second Go implementation rendering a float and an
-// unknown type with fmt's %v, which is how the shortest round-tripping float
+// The oracle was once a second Go implementation rendering a float and an
+// unknown type with fmt's %v, so the shortest round-tripping float
 // form and Go's struct dump became the expected answers. A php name is a
 // behaviour claim settled by php, so the want column is php's output for the
 // same list, pasted.
@@ -90,7 +90,7 @@ func TestStringPrecisionMatchesEcho(t *testing.T) {
 
 // TestStringContextRefusesAnObject pins the one case a string context refuses
 // and a key or a var_dump does not. There is no __toString here, so an object
-// has no string form at all and php's Error is the whole of the case.
+// has no string form at all and php's Error covers the case.
 func TestStringContextRefusesAnObject(t *testing.T) {
 	object := model.NewObject(&model.Class{Name: "Point"})
 	_, err := StringContext(object)
@@ -112,7 +112,7 @@ func TestStringContextRefusesAnObject(t *testing.T) {
 	if got, want := bare.Error(), "Object of class stdClass could not be converted to string"; got != want {
 		t.Errorf("ConversionError.Error() = %q, want %q", got, want)
 	}
-	// Everything with a string form goes through unchanged.
+	// Everything with a string form passes through unchanged.
 	for _, v := range []any{nil, "text", int64(7), 1.5, true, []string{"a"}} {
 		got, err := StringContext(v)
 		if err != nil {
@@ -125,7 +125,7 @@ func TestStringContextRefusesAnObject(t *testing.T) {
 }
 
 // TestBytes pins the rule the value helpers ask about a []byte: it is the
-// string it carries, so a binding returning one hands back text rather than a
+// string it carries, so a binding returning one returns text and not a
 // list of integers.
 func TestBytes(t *testing.T) {
 	tests := []struct {
@@ -150,7 +150,7 @@ func TestBytes(t *testing.T) {
 		})
 	}
 
-	// String and GoString agree with it, which is what echo and var_dump read.
+	// String and GoString agree with it, and echo and var_dump read those.
 	if got := String([]byte("alpha")); got != "alpha" {
 		t.Errorf("String([]byte) = %q, want %q", got, "alpha")
 	}
@@ -160,7 +160,7 @@ func TestBytes(t *testing.T) {
 }
 
 // TestInt pins Int against PHP's own integer cast. Every expectation here was
-// read from `php -r 'var_dump((int)$s);'` rather than from what the previous
+// read from `php -r 'var_dump((int)$s);'`, and not from what the previous
 // implementation happened to return.
 func TestInt(t *testing.T) {
 	tests := []struct {
@@ -189,7 +189,7 @@ func TestInt(t *testing.T) {
 		{"9223372036854775807", math.MaxInt64},
 		{"-9223372036854775807", -math.MaxInt64},
 		{"-9223372036854775808", math.MinInt64},
-		// PHP saturates at the int64 bounds rather than wrapping or zeroing.
+		// PHP saturates at the int64 bounds, and neither wraps nor zeroes.
 		{"99999999999999999999", math.MaxInt64},
 		{"-99999999999999999999", math.MinInt64},
 	}
@@ -287,7 +287,7 @@ func TestNumber(t *testing.T) {
 			if got != test.want {
 				t.Errorf("Number(%#v) = %#v, want %#v", test.in, got, test.want)
 			}
-			// The type is the whole point: int64(1) and float64(1) are not
+			// The type is what this pins: int64(1) and float64(1) are not
 			// interchangeable to abs() or array_sum().
 			if _, ok := got.(int64); !ok {
 				if _, ok := got.(float64); !ok {

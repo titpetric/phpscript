@@ -20,7 +20,7 @@ type Row struct {
 
 // Percent is the row's statement-weighted coverage, adjusted for the empty
 // case: a symbol with no runnable statement has nothing left uncovered, so 0/0
-// reads as covered rather than as a zero dragging every average down.
+// reads as covered, and never as a zero dragging every average down.
 func (r Row) Percent() float64 {
 	if r.Total == 0 {
 		return 100
@@ -30,7 +30,7 @@ func (r Row) Percent() float64 {
 
 // FuncRows charges each profile block to the innermost declaration span
 // containing its start line. A block inside no declaration is the file's
-// top-level code, reported as {main} - the name PHP gives that scope - at the
+// top-level code, reported as {main}, the name PHP uses for that scope, at the
 // first such line. files names every registered file, so one holding nothing
 // runnable still reports a row.
 func FuncRows(blocks []ProfileBlock, funcs []FuncSpan, files []string) []Row {
@@ -76,7 +76,7 @@ func FuncRows(blocks []ProfileBlock, funcs []FuncSpan, files []string) []Row {
 	}
 	// A registered file none of whose declarations or top-level lines charged
 	// anything holds nothing runnable; it reports as one adjusted {main} row
-	// rather than disappearing.
+	// and never disappears.
 	charged := map[string]bool{}
 	for k := range rows {
 		charged[k.file] = true

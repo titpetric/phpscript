@@ -21,7 +21,7 @@ func TestDefaultConfigServerBlock(t *testing.T) {
 		t.Errorf("addr = %q, want :8080", options.ServerAddr)
 	}
 	// One recorder, the platform's, on the path the telemetry block names.
-	// phpscript observes the interpreter onto its traces rather than starting a
+	// phpscript observes the interpreter onto its traces and starts no
 	// second recorder next to it.
 	if !options.Telemetry.Enabled || options.Telemetry.Path != "/debug/oida" {
 		t.Errorf("telemetry = %+v, want enabled on /debug/oida", options.Telemetry)
@@ -64,8 +64,8 @@ telemetry:
 	if options.Telemetry.RingBufferSize != 10 {
 		t.Errorf("ring_buffer_size = %d, want 10", options.Telemetry.RingBufferSize)
 	}
-	// Keys the file left out keep what config.yml says rather than the Go zero
-	// value, which is what makes a partial block usable.
+	// Keys the file left out keep what config.yml says and not the Go zero
+	// value, so a partial block is usable.
 	if options.Telemetry.ServiceName != "phpscript" || options.Telemetry.SampleRate != 100 {
 		t.Errorf("service name = %q, sample rate = %v", options.Telemetry.ServiceName, options.Telemetry.SampleRate)
 	}
@@ -89,7 +89,7 @@ func TestPlatformOptionsCarryStorage(t *testing.T) {
 }
 
 // TestPlatformOptionsRejectAnUnknownDriver pins that a bad telemetry block
-// fails the server rather than starting it without the storage it asked for.
+// fails the server and never starts it without the storage it named.
 func TestPlatformOptionsRejectAnUnknownDriver(t *testing.T) {
 	result := config.New()
 	result.Telemetry.Driver = "s3"

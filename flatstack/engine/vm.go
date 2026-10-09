@@ -15,14 +15,14 @@ import (
 //
 // The concrete type is runner.ExitError, which this package cannot name:
 // runner imports this one. The method is the seam, and it carries the status
-// so a future caller that wants the code has it without another interface.
+// so a future caller needing the code has it without another interface.
 type scriptExit interface {
 	ScriptExit() int
 }
 
 // execState is one frame stack's worth of VM state, pooled across runs. The
 // former vmScratch buffers, the error handlers, the call frames and the pc
-// live here so the run loop's helpers are methods instead of closures: a
+// live here so the run loop's helpers are methods and not closures: a
 // closure capturing a loop variable by reference forces that variable onto
 // the heap on every Run, and there were five of them.
 type execState struct {
@@ -44,7 +44,7 @@ type execState struct {
 	pc         int
 
 	// spareLocals/spareInits hold cleared frame arrays returned by popped
-	// user-function frames, so a call loop reuses two slabs instead of
+	// user-function frames, so a call loop reuses two slabs and does not
 	// allocating them per call. Safe because nothing outlives the frame that
 	// borrowed them: an opRef setter is consumed within the host call it was
 	// pushed for, and closures copy their seeds at creation.
@@ -57,7 +57,7 @@ type execState struct {
 	walker func(yield func(any))
 }
 
-// frameSlots hands out a locals/initialized pair for a fresh user-function
+// frameSlots returns a locals/initialized pair for a fresh user-function
 // frame, reusing a stashed slab when one fits.
 func (st *execState) frameSlots(n int) ([]any, []bool) {
 	if k := len(st.spareLocals) - 1; k >= 0 {
@@ -82,7 +82,7 @@ func (st *execState) stashFrame(locals []any, init []bool) {
 
 // release returns the state to the pool with every slot zeroed.
 //
-// The clears run to capacity rather than to length. The pool holds these
+// The clears run to capacity and not to length. The pool holds these
 // buffers for the life of the process, so a value left above the high-water
 // mark of a later, smaller program stays reachable from the pool and is never
 // collected.
@@ -149,12 +149,12 @@ func (st *execState) pop() (any, error) {
 	return value, nil
 }
 
-// args hands the callee the top count operands as a borrowed slice: the
+// args passes the callee the top count operands as a borrowed slice: the
 // values stay in the stack's backing array above the truncated top, valid
 // for the duration of the call, and the next push overwrites them. A binding
 // that keeps arguments copies them - the same contract the interpreter's
 // variadic tails alias under. The cap is pinched so a callee appending to
-// its variadic pack reallocates instead of writing into the stack.
+// its variadic pack reallocates and never writes into the stack.
 func (st *execState) args(count int) ([]any, error) {
 	if count < 0 || count > len(st.stack) {
 		return nil, fmt.Errorf("argument stack underflow")
@@ -191,7 +191,7 @@ func (st *execState) handle(runErr error) bool {
 	// exit() and die() are not catchable in PHP: a script that ends
 	// inside a try ends there. They unwind as an error here only because
 	// that is how the VM gets back to the top, so a handler declines
-	// them rather than binding them to a catch variable.
+	// them and never binding them to a catch variable.
 	var exiting scriptExit
 	if errors.As(runErr, &exiting) {
 		return false
@@ -260,7 +260,7 @@ func (st *execState) handle(runErr error) bool {
 
 // enterUserFrame pushes a call frame for def and binds the arguments: the
 // receiver into paramSlots[0] when the def carries one, the positionals in
-// order, and the leftovers into a trailing variadic collector as an array —
+// order, and the leftovers into a trailing variadic collector as an array:
 // an empty one when the caller stops short of it, which is bindParams'
 // answer too. An argument the caller did not pass leaves its slot cold, so
 // the entry prologue can bind the parameter's default.
@@ -324,13 +324,13 @@ type iteratorState struct {
 	entries []Entry
 	index   int
 	// source and key are what a by-reference loop writes its target back into:
-	// the container the entries came from, and the key of the entry currently
+	// the container the entries came from, and the key of the entry now
 	// bound to the loop variable.
 	source any
 	key    any
 }
 
-// yieldIterators hands a live-value walker everything one frame's foreach state
+// yieldIterators passes a live-value walker everything one frame's foreach state
 // is holding: the container being walked and every entry taken off it.
 func yieldIterators(yield func(any), iterators []*iteratorState) {
 	for _, iterator := range iterators {
@@ -400,10 +400,10 @@ type MemoryHost interface {
 // implements it has runs interrupted when the script runs out of time, or when
 // the client it is answering goes away.
 //
-// The interval is a constant rather than something the host decides once per
+// The interval is a constant and not something the host decides once per
 // run, because a script sets its own limit with set_time_limit and may do it
 // after the run has started. CheckDeadline answers cheaply when there is no
-// limit and no client, which is what a run pays when neither exists.
+// limit and no client, which is the cost of a run with neither.
 type DeadlineHost interface {
 	// CheckDeadline reports the script having run out of time, or its client
 	// having gone away, as the error that ends the run.
@@ -423,7 +423,7 @@ type localSeed struct {
 }
 
 // FrameLocals is the engine's view of the frame in flight, bound to the host
-// once per run instead of copied around every call. Snapshot materialises the
+// once per run and never copied around every call. Snapshot materialises the
 // frame's variables only when a callee actually needs them, and WriteBack
 // applies the mutations such a call made. The snapshot-before-call ordering
 // the old map handshake had is preserved because the host decides both
@@ -439,7 +439,7 @@ type hostFrame interface {
 	TakeFrame() FrameLocals
 }
 
-// Snapshot builds the map bindHostLocals used to build per host call: every
+// Snapshot builds the map bindHostLocals builds per host call: every
 // initialised, non-hidden local, then the extras a host call introduced.
 func (st *execState) Snapshot() map[string]any {
 	vars := make(map[string]any, len(st.program.localNames)+len(st.extras))
@@ -473,7 +473,7 @@ func (st *execState) WriteBack(vars map[string]any) {
 	st.extras = applyNamedValues(st.program, st.locals, st.initialized, st.extras, vars, st.refWrites)
 }
 
-// Run executes a previously validated flat instruction stream.
+// Run executes a validated flat instruction stream.
 func Run(program *Program, host Host) error {
 	if program == nil {
 		return nil
@@ -495,7 +495,7 @@ func Run(program *Program, host Host) error {
 // top-level frame. The value the frame returns is reported through result, which
 // is nil for the top-level frame because nothing consumes it.
 //
-// A closure call re-enters here rather than pushing a call frame on the running
+// A closure call re-enters here and pushes no call frame on the running
 // loop: the call arrives from a host binding (usort() invoking its comparator),
 // not from an instruction, so there is no loop to push onto.
 func run(program *Program, host Host, entryPC int, seeds []localSeed, globals map[string]any, result *any) (err error) {
@@ -551,8 +551,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 	// The frame handle replaces the per-call locals copy: the host holds it
 	// for the whole run and snapshots only when a callee needs the scope. A
 	// nested run (a closure invoked from a binding) binds its own state here
-	// and puts the caller's back on the way out, which is what the old
-	// restoreHostLocals defer did.
+	// and puts the caller's back on the way out, as the old restoreHostLocals
+	// defer did.
 	if binder, ok := host.(hostFrame); ok {
 		prev := binder.TakeFrame()
 		binder.BindFrame(st)
@@ -599,7 +599,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			st.stack = append(st.stack, loadLocal(host, program, st.locals, st.initialized, st.extras, inst.a))
 		case opLoadConst:
 			name := program.localNames[inst.a]
-			// A scope value of the same name wins, which is how the magic
+			// A scope value of the same name wins, so the magic
 			// constants set per frame answer before the constant table.
 			if st.initialized[inst.a] {
 				st.stack = append(st.stack, st.locals[inst.a])
@@ -628,7 +628,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 					value: loadLocal(host, program, st.locals, st.initialized, st.extras, slot),
 				})
 			}
-			// An unbound `$this` is left out rather than captured as null, so
+			// An unbound `$this` is left out and never captured as null, so
 			// the closure body reads it the way any other unset local is read.
 			if def.thisSlot >= 0 && st.initialized[def.thisSlot] {
 				captured = append(captured, localSeed{slot: def.thisSlot, value: st.locals[def.thisSlot]})
@@ -662,7 +662,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				identifiable.SetID(inst.extra)
 			}
 			if host.SetGlobal(program.localNames[inst.a], value) {
-				// The host claimed the name — a superglobal — so the store is
+				// The host claimed the name (a superglobal), so the store is
 				// request state, not frame state.
 				st.initialized[inst.a] = false
 			} else {
@@ -971,7 +971,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				st.stack = append(st.stack, value)
 				break
 			}
-			// Folded plain store: the same SetGlobal offer opStore makes for
+			// Folded plain store: the same SetGlobal call opStore makes for
 			// `$x = ...`.
 			dst := inst.target - 1
 			if host.SetGlobal(program.localNames[dst], value) {
@@ -1337,7 +1337,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				return popErr
 			}
 			// A thrown throwable is already an error and propagates as
-			// itself, so a catch clause binds the object rather than a
+			// itself, so a catch clause binds the object and not a
 			// rendering of it. A bare value still renders.
 			throwErr := host.Throw(value)
 			if st.handle(throwErr) {

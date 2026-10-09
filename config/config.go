@@ -31,8 +31,8 @@ type Config struct {
 	Test      Test           `yaml:"test"`
 	Env       []string       `yaml:"env"`
 
-	// Mail configures the mail servers mail() and `new Mail($name)` deliver
-	// through, keyed by the name a script asks for.
+	// Mail configures the mail servers mail() and `new Mail($name)` send
+	// through, keyed by the name a script names.
 	Mail Mail `yaml:"mail"`
 
 	// DocumentRoot is the directory beneath the application root that is

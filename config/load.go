@@ -19,7 +19,7 @@ func Load(filename string) (Config, error) {
 	}
 
 	// Nothing is forbidden to the operator: server and virtualhost are theirs
-	// to set, which is what makes them forbidden to a site.
+	// to set, so they are forbidden to a site.
 	result, _, err := OverlayBytes(base, filename, data, nil, "")
 	if err != nil {
 		return base, err

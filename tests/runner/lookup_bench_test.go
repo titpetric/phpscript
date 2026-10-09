@@ -16,7 +16,7 @@ import (
 // benchLookupTree holds the two spellings of one handler: the function a lookup
 // calls, and the whole-file entrypoint a request runs. Both answer the same
 // string off the same request, so the two figures differ by what the host does
-// around the PHP rather than by what the PHP does.
+// around the PHP and not by what the PHP does.
 var benchLookupTree = fstest.MapFS{
 	"handler.php": {Data: []byte(`<?php
 namespace App\Handler;
@@ -43,10 +43,10 @@ var lookupBenchmarkSink int
 //   - invoke calls the closure. Paid per call, and the only figure that scales
 //     with traffic.
 //   - callable is the same call through rt.Callable, the untyped API that
-//     existed before this one, so the difference is what the signature bridge
-//     costs rather than what the call does.
-//   - runtime builds a runtime and registers the standard library onto it, and
-//     runs no PHP at all.
+//     existed before this one, so the difference prices the signature bridge
+//     and not the call.
+//   - runtime builds a runtime and registers the standard library onto it,
+//     running no PHP.
 //   - request is the shape a host reaches PHP through today: that runtime, the
 //     request decoded into superglobals over it, the entrypoint read back out
 //     of the include cache and the file run top to bottom.
@@ -81,14 +81,14 @@ func BenchmarkLookup(b *testing.B) {
 		b.RunParallel(func(pb *testing.PB) {
 			rt := newRuntime(io.Discard)
 			// Resolved once outside the loop, so the figure is what binding the
-			// second handler of a tree costs rather than what installing the
+			// second handler of a tree costs, and not what installing the
 			// first one does.
 			if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
 				b.Error(err)
 				return
 			}
 			for pb.Next() {
-				// The error is checked, which is what keeps the call from
+				// The error is checked, which keeps the call from
 				// being optimised away; the closure itself is the product and
 				// nothing here needs it.
 				if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
@@ -174,7 +174,7 @@ func BenchmarkLookup(b *testing.B) {
 		})
 	})
 
-	// The control is checked once rather than asserted per iteration, so the
+	// The control is checked once and never asserted per iteration, so the
 	// comparison is not paying for the comparison.
 	verify := func(name, got string) {
 		if got != want {

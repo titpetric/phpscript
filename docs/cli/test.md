@@ -4,9 +4,9 @@ Discover and run fixtures, both the `.phpt` document and the `_test.php` body wi
 
 It also accepts the [global flags](README.md#global-flags): `-f`, `-w`, `--include`, `-v`, `--cpuprofile`, `--memprofile`, `--cover` and `--coverfile`. The flags below are this command's own.
 
-A `phpscript.yml` in the fixture tree supplies the defaults for the run below it, so a suite that needs a bootstrap, a connection or a schema carries that rather than the command line repeating it. See [Test suites](../configuration.md#test-suites) for the block; the paragraphs below name the flag each key defaults.
+A `phpscript.yml` in the fixture tree supplies the defaults for the run below it, so a suite that needs a bootstrap, a connection or a schema carries that, off the command line. See [Test suites](../configuration.md#test-suites) for the block; the paragraphs below name the flag each key defaults.
 
-A directory path is not recursive on its own: `./...` walks a tree, and a path that matches no fixture is an error rather than a silent pass.
+A directory path is not recursive on its own: `./...` walks a tree, and a path that matches no fixture is an error, never a silent pass.
 
 ```bash
 phpscript test tests/fixtures/...
@@ -37,7 +37,7 @@ Use `--parallel N` (`-p`) to run up to N fixtures in each area concurrently. Out
 
 Use `--profile` to add per-operation allocation and byte counts. `--json` writes a machine-readable report to stdout (no table).
 
-Use `--cache` to say how far a parsed include and a compiled expression travel. `worker`, the default, gives each worker loop one set of caches and one runtime, reused by the fixtures that worker runs serially, so what a run holds scales with `--parallel` rather than with the number of fixtures. `off` gives every fixture run its own and drops them, and its runtime, when the run ends: a clean state, at the cost of re-parsing what the caches would have kept. There is no `shared` mode, because a worker loop already is one: without `--parallel` there is a single worker. `test.cache` is the configuration key.
+Use `--cache` to say how far a parsed include and a compiled expression travel. `worker`, the default, keeps one set of caches and one runtime per worker loop, reused by the fixtures that worker runs serially, so what a run holds scales with `--parallel` and not with the number of fixtures. `off` builds a set per fixture run and drops them, and its runtime, when the run ends: a clean state, at the cost of re-parsing what the caches would have kept. There is no `shared` mode, because a worker loop already is one: without `--parallel` there is a single worker. `test.cache` is the configuration key.
 
 ```bash
 phpscript test --cache=off tests/fixtures/...
@@ -56,7 +56,7 @@ With `--cover`, the folder summary carries the two counts that answer different 
 
 Files are charged to the folder whose fixtures loaded them, because a fixture's own directory is its include root: two folders including the same relative path are including their own copy of it.
 
-With `-v`, each fixture table gains a `Coverage` column, the coverage of the PHP that fixture loaded rather than of the `.phpt` itself, and every folder that loaded a file gets a per-file section below the tables, which is where an unvisited file is named rather than counted.
+With `-v`, each fixture table gains a `Coverage` column, the coverage of the PHP that fixture loaded and not of the `.phpt` itself, and every folder that loaded a file gets a per-file section below the tables, naming each unvisited file.
 
 ```text
 ## coverage: tests/fixtures/includes
@@ -79,7 +79,7 @@ Use `--output FILE` (`-o`) to write the same tables to a file as Markdown while 
 phpscript test --matrix -o docs/test-fixtures.md tests/fixtures/...
 ```
 
-Use `--skip-php` with `--matrix` to leave the `php` binary out and report the two built-in runtimes alone. The column leaves the table rather than reporting `SKIP` per row: a skipped column says the machine has no `php`, this flag says do not ask. `test.skip_php` is the configuration key.
+Use `--skip-php` with `--matrix` to leave the `php` binary out and report the two built-in runtimes alone. The column leaves the table, with no `SKIP` per row: a skipped column says the machine has no `php`, this flag says do not ask. `test.skip_php` is the configuration key.
 
 Use `--matrix` to run every fixture through all three runtimes (the flat bytecode engine, the default interpreter, and the `php` binary), reporting one row per fixture with a cell per runtime. Every other `test` flag is honored, and the benchmarking flags add their columns after the runtime columns; those numbers are the default runtime's, because a row has one cost column and three runtimes. Per-runtime cost stays available in `--json`. A fixture that opts out of a runtime, and a runtime that is not installed, are reported as `SKIP`; anything else that is not a pass fails the run, and the command exits non-zero.
 

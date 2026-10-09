@@ -68,7 +68,7 @@ func TestConfigValidate(t *testing.T) {
 }
 
 // TestConfigStringElidesTheCredential pins the redaction. Nothing formats a
-// Config today; the point is that a %v somebody adds later cannot be the way a
+// Config today; what this pins is that a %v somebody adds later cannot be the way a
 // password leaves the process.
 func TestConfigStringElidesTheCredential(t *testing.T) {
 	config := Config{

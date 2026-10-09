@@ -43,9 +43,9 @@ func (m *DatabaseMigrate) Load(pattern string) error {
 	return nil
 }
 
-// Run applies the loaded migrations. It is one span rather than one per file:
+// Run applies the loaded migrations. It is one span and not one per file:
 // migrations run at startup, where what matters is how long the schema took and
-// whether it failed, not a row per statement.
+// whether it failed, with no row per statement.
 func (m *DatabaseMigrate) Run(ctx context.Context) error {
 	ctx, span := telemetry.Start(ctx, "migrate", telemetry.KindDatabase)
 	defer span.End()
@@ -84,7 +84,7 @@ func (m *DatabaseMigrate) Run(ctx context.Context) error {
 }
 
 // observe reports the run mig returned. It stands in for the logger mig used to
-// be handed and no longer takes, and it is where a failure becomes diagnosable:
+// be passed and now refuses, and it is where a failure becomes diagnosable:
 // what Apply returns is the driver error on its own, near "THIS": syntax error,
 // which does not say which of a dozen files it came out of.
 //
@@ -95,7 +95,7 @@ func (m *DatabaseMigrate) Run(ctx context.Context) error {
 // the first failure, and one attribute per file would bury it under the files
 // that were fine.
 //
-// runErr is what decides a file failed, rather than the status on its record.
+// runErr is what decides a file failed, and not the status on its record.
 // The slice mig reports holds a row per file plus the rows of files that are no
 // longer there, and one of those can carry the error of a run that failed
 // before the file was deleted; a run that returned nil applied everything it

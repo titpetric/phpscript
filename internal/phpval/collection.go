@@ -7,7 +7,7 @@ import (
 // Strings returns a collection's values as strings in order.
 //
 // Every caller is a string context - implode and str_replace - so an element
-// with no string form is the error StringContext reports rather than a spelling
+// with no string form is the error StringContext reports, and no spelling
 // invented for it.
 func Strings(a any) ([]string, error) {
 	if parts, ok := a.([]string); ok {
@@ -17,7 +17,7 @@ func Strings(a any) ([]string, error) {
 	if n == 0 {
 		return nil, nil
 	}
-	// One captured struct rather than two captured variables: each variable a
+	// One captured struct and no two captured variables: each variable a
 	// closure captures by reference is its own heap allocation, and this runs
 	// under implode. The refused value is carried as its concrete type so the
 	// happy path stores nothing.

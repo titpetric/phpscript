@@ -7,7 +7,7 @@ import (
 )
 
 // FNM_* flags, as PHP numbers them. They are the matcher's own parameters
-// rather than extra surface: every one of them changes a decision the loop in
+// and no extra surface: every one of them changes a decision the loop in
 // fnmatchBytes already has to make.
 const (
 	fnmPathname = 1
@@ -20,7 +20,7 @@ const (
 //
 // Go's path.Match is not the primitive underneath. It disagrees with fnmatch on
 // three points: its * and ? never cross a separator, which is fnmatch's
-// FNM_PATHNAME behaviour rather than its default; it spells a negated class
+// FNM_PATHNAME behaviour and not its default; it spells a negated class
 // [^...] where fnmatch also accepts [!...]; and it reports a malformed pattern
 // as an error where fnmatch simply does not match.
 func phpFnmatch(pattern, str string, flags ...any) bool {
@@ -45,7 +45,7 @@ func phpFnmatch(pattern, str string, flags ...any) bool {
 // case. Nothing recurses.
 //
 // start tracks whether the current position in str is one where a leading
-// period is special, which is what FNM_PERIOD asks about: the beginning of the
+// period is special, which is the test FNM_PERIOD makes: the beginning of the
 // string, and under FNM_PATHNAME the byte after every separator.
 func fnmatchBytes(pattern, str string, mode int64) bool {
 	pathname := mode&fnmPathname != 0
@@ -68,7 +68,7 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 			case '*':
 				// The star matches nothing to begin with; the
 				// bytes it swallows are taken one at a time on
-				// the way back, below, which is where its two
+				// the way back, below, where its two
 				// limits are enforced.
 				star, next, starPos, starStart = p+1, s, s, start
 				p++

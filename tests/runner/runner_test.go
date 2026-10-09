@@ -423,7 +423,7 @@ echo $out;`)
 	rt.RegisterFunc("token_get_all", parser.TokenGetAll)
 	rt.RegisterFunc("token_name", parser.TokenName)
 	// Shape-agnostic, like the real stdlib is_array: TokenGetAll returns a
-	// []any of []any, not an *model.Array.
+	// []any of []any, and no *model.Array.
 	rt.RegisterFunc("is_array", model.IsCollection)
 	// minitpl-style wrapped expression with the "." -> "__1" marker.
 	rt.SetGlobal("code", `<?php if ($this->_vars) { ?>`)
@@ -646,7 +646,7 @@ echo down(40);`)
 }
 
 // TestLazyEnvUndefinedFunctionStillErrors asserts the diagnostic for a call to
-// a function that is not registered: it is a runtime error, not a silent nil.
+// a function that is not registered: it is a runtime error, and no silent nil.
 func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
 	prog, err := parser.Parse(`<?php echo no_such_function(1);`)
 	if err != nil {
@@ -711,7 +711,7 @@ echo "unreachable";`)
 // A class satisfying its contract runs on either backend, and gains no member
 // from the interface: the interface declares no body, so the class answers only
 // with what it wrote. `instanceof` does consult the list of names the class
-// declared, which is a name comparison rather than an inherited member.
+// declared, which is a name comparison and no inherited member.
 func TestInterfaceContractSatisfied(t *testing.T) {
 	prog, err := parser.Parse(`<?php
 interface Reader {

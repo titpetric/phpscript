@@ -17,7 +17,7 @@ func RegisterDefer(rt *runner.Runtime) {
 	// defer runs $callback when the enclosing function returns, or when the
 	// script ends at top level; deferred callbacks run last-in, first-out.
 	rt.RegisterFunc("defer", func(ctx context.Context, callback any) error {
-		// The runtime's own answer rather than a reflect.Kind check: a PHP
+		// The runtime's own verdict and no reflect.Kind check: a PHP
 		// closure is a value carrying its declaration, not a bare func, and
 		// every other spelling of a callable was never a func either.
 		if _, ok := rt.Callable(callback); !ok {

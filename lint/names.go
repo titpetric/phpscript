@@ -15,8 +15,8 @@ import (
 // The undefined-name check compares every call and class reference in a file
 // against two universes: the names the file declares itself, and the names a
 // runtime would answer for after stdlib registration. A miss is a warning, not
-// a failure — a name can arrive through an include or an autoloader the lint
-// pass does not chase — but each finding is a line that would raise
+// a failure, because a name can arrive through an include or an autoloader the
+// lint pass does not chase, but each finding is a line that would raise
 // "call to undefined function" or "undefined class" the moment it runs, so it
 // is worth reading before the runtime says it.
 
@@ -28,9 +28,9 @@ var (
 )
 
 // SetInclude names a file to run against the name registry before any file is
-// checked, which is what lets the linter see an application rather than one
+// checked, so the linter sees an application and not one
 // file of it: with `--include vendor/autoload.php` a name resolves against the
-// classmap rather than against the standard library alone.
+// classmap, and not against the standard library alone.
 //
 // It must be called before the first File(). The registry is built once per
 // process, because registration is deterministic.
@@ -38,7 +38,7 @@ func SetInclude(path string) {
 	includeFile = path
 }
 
-// knownRuntime is the registry the checks query for host-provided names. It is
+// knownRuntime is the registry the checks query for the names a host registers. It is
 // built once per process: registration is deterministic, and the runtime never
 // executes a script here, so the table is read-only after construction.
 func knownRuntime() *runner.Runtime {
@@ -50,7 +50,7 @@ func knownRuntime() *runner.Runtime {
 		stdlib.Register(rt)
 		stdlib.RegisterFS(rt, ".")
 		// The request-aware functions (header, http_response_code,
-		// getallheaders, ...) are installed per request rather than by
+		// getallheaders, ...) are installed per request and not by
 		// stdlib.Register; a server-targeted file still names them, so an
 		// empty request context registers them for the name check.
 		runner.NewContext().Register(rt)
@@ -59,7 +59,7 @@ func knownRuntime() *runner.Runtime {
 		// is either that same file being checked - bootstrap.php lints
 		// against itself otherwise, and every function it defines reads as a
 		// redeclaration - or a duplicate the same-file check already covers.
-		// Only a name the runtime itself provides can be redeclared over.
+		// Only a name the runtime itself registers can be redeclared over.
 		internal, _ := rt.DefinedFunctions()
 		hostFuncs = make(map[string]bool, len(internal))
 		for _, name := range internal {
@@ -67,7 +67,7 @@ func knownRuntime() *runner.Runtime {
 		}
 		// The per-scope builtins are not in the function table, so a script
 		// calling func_get_args() would read as a call to something
-		// undefined. They are host-provided all the same.
+		// undefined. The host registers them all the same.
 		for _, name := range runner.ScopeBuiltins() {
 			hostFuncs[strings.ToLower(name)] = true
 		}
@@ -81,8 +81,8 @@ func knownRuntime() *runner.Runtime {
 // loadInclude runs the --include file against the registry, and says nothing
 // when there is none or when it fails.
 //
-// A failure is deliberately quiet. The file is a convenience for resolving
-// names, not the thing under test: an application whose bootstrap cannot run
+// A failure is quiet. The file resolves names and is no part of what is under
+// test: an application whose bootstrap cannot run
 // outside a request still deserves the findings the standard library alone
 // can produce, and a linter that refused to lint because a bootstrap threw
 // would be worse than one that reports a few more unknown names.
@@ -101,7 +101,7 @@ func loadInclude(rt *runner.Runtime) {
 	_ = rt.Run(prog)
 }
 
-// hostFunc reports whether the runtime itself provides a function, as against
+// hostFunc reports whether the runtime itself registers a function, as against
 // one the --include file declared in PHP.
 func hostFunc(name string) bool {
 	knownRuntime()
@@ -109,7 +109,7 @@ func hostFunc(name string) bool {
 	return hostFuncs[strings.ToLower(strings.TrimPrefix(name, "\\"))]
 }
 
-// declaredNames is what one file provides for itself: functions, classes and
+// declaredNames is what one file declares for itself: functions, classes and
 // interfaces declared at any nesting (a conditional polyfill declaration
 // counts), plus the names the source guards with function_exists /
 // class_exists, which say the author already handles absence.
@@ -185,11 +185,11 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 			return true
 		}
 		// Autoload only when an --include registered one. Composer's
-		// autoloader does not declare a class until something asks for it, so
+		// autoloader declares no class until a name reaches it, so
 		// including it and then refusing to autoload would leave every PSR-4
-		// class unknown - which is the whole finding the flag exists to
-		// remove. With no include there is no autoloader to run, and asking
-		// for one would only cost a lookup that cannot succeed.
+		// class unknown, which is the finding the flag exists to
+		// remove. With no include there is no autoloader to run, and the
+		// lookup would only cost a miss.
 		known, _ := rt.ClassExists(class, includeFile != "")
 		return known
 	}
@@ -221,7 +221,7 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 		case *model.StaticCall:
 			// A binding may be registered under the whole spelling - the
 			// clock is a set of functions named DateTime::now, DateTime::parse
-			// and so on, not a class with methods - so a static call resolves
+			// and so on, and no class with methods, so a static call resolves
 			// when either the class or the full name is known.
 			if !classKnown(n.Class) && !rt.FunctionExists(n.Class+"::"+n.Method) {
 				report(line, fmt.Sprintf("static call %s::%s(): unknown class", n.Class, n.Method))
@@ -402,7 +402,7 @@ func (w *astWalker) one(e model.Expr) {
 		w.exprs(n.Args)
 		if n.Decl != nil {
 			// An anonymous class declares its body inside the expression;
-			// nothing else walks it. The declaration is offered to the
+			// nothing else walks it. The declaration is passed to the
 			// statement hook so class-shaped checks see it too.
 			if w.stmt != nil {
 				w.stmt(n.Decl)

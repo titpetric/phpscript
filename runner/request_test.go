@@ -259,7 +259,7 @@ func TestFilesSuperglobalRepeatedField(t *testing.T) {
 }
 
 // TestFilesSuperglobalList covers a repeated field: PHP spells it "name[]" and
-// gives the entry parallel arrays instead of scalars.
+// writes the entry as parallel arrays in place of scalars.
 func TestFilesSuperglobalList(t *testing.T) {
 	r := multipartRequest(t, nil,
 		multipartFile{field: "docs[]", filename: "a.txt", content: "aa"},
@@ -280,7 +280,7 @@ echo $f["name"][0] . "|" . $f["name"][1] . "|" . $f["size"][0] . "|" . $f["size"
 }
 
 // TestFromRequestUrlencodedUnaffected pins that the multipart branch is taken
-// on the content type alone: an urlencoded POST still goes through ParseForm
+// on the content type alone: an urlencoded POST still resolves through ParseForm
 // and reports no uploads.
 func TestFromRequestUrlencodedUnaffected(t *testing.T) {
 	r := httptest.NewRequest("POST", "/submit", strings.NewReader("name=bob"))
@@ -297,7 +297,7 @@ func TestFromRequestUrlencodedUnaffected(t *testing.T) {
 
 // TestRawBodyJSON pins the JSON API case: a body no form parser wants reaches
 // the script through php://input, readable more than once, while $_POST stays
-// empty rather than inventing entries from it.
+// empty, and invents no entries from it.
 func TestRawBodyJSON(t *testing.T) {
 	r := httptest.NewRequest("PUT", "/api/thing", strings.NewReader(`{"hours":90}`))
 	r.Header.Set("Content-Type", "application/json")
@@ -404,7 +404,7 @@ echo read_job();
 }
 
 // wantServer checks the $_SERVER keys a request produced. A want value of ""
-// asserts the key is absent, which is how PHP says "not this kind of request":
+// asserts the key is absent, so PHP says "not this kind of request":
 // no HTTPS on a plain one, no CONTENT_LENGTH on a chunked one.
 func wantServer(t *testing.T, server *mapmap.MapMap, want map[string]string) {
 	t.Helper()
@@ -461,7 +461,7 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 		{remote: "127.0.0.1:56138", addr: "127.0.0.1", port: "56138"},
 		{remote: "[::1]:37154", addr: "::1", port: "37154"},
 		// A Go host may put anything in the field; one without a port is kept
-		// whole rather than guessed at.
+		// whole, and never guessed at.
 		{remote: "unix-socket", addr: "unix-socket", port: ""},
 		{remote: "", addr: "", port: ""},
 	}
@@ -477,7 +477,7 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 }
 
 // TestServerVarsContentHeaders covers the two keys that describe a body. PHP
-// mirrors the headers rather than the body, so a GET that sent a content type
+// mirrors the headers and not the body, so a GET that sent a content type
 // has CONTENT_TYPE, and a body of zero bytes that announced its length has
 // CONTENT_LENGTH "0".
 func TestServerVarsContentHeaders(t *testing.T) {
@@ -552,7 +552,7 @@ func TestServerVarsTLS(t *testing.T) {
 
 // TestServerVarsRequestTime covers the request start time. The seconds key is
 // the whole second of the float one, and PHP types the first as an integer and
-// the second as a float rather than as the strings every other key holds.
+// the second as a float where every other key holds a string.
 func TestServerVarsRequestTime(t *testing.T) {
 	before := time.Now()
 	ctx := runner.FromRequest(httptest.NewRequest("GET", "/", nil))
@@ -584,7 +584,7 @@ echo $_SERVER["REQUEST_TIME"] === (int)$_SERVER["REQUEST_TIME_FLOAT"] ? "same-se
 }
 
 // TestServerSuperglobalStrings pins that every other key reaches a script as a
-// string, which is what $_SERVER holds.
+// string, as $_SERVER holds.
 func TestServerSuperglobalStrings(t *testing.T) {
 	r := httptest.NewRequest("POST", "/submit?a=1", strings.NewReader("name=bob"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -644,8 +644,8 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 }
 
 // TestStatusLineHeaderSetsStatus pins the other spelling header() takes.
-// "HTTP/1.0 404 Not Found" carries no name and no value, only a status, and it
-// used to be dropped on the floor for want of a name:value shape.
+// "HTTP/1.0 404 Not Found" carries a status alone, with no name and no value,
+// and is dropped for want of a name:value shape without this.
 func TestStatusLineHeaderSetsStatus(t *testing.T) {
 	tests := []struct {
 		header string
@@ -677,7 +677,7 @@ func TestStatusLineHeaderSetsStatus(t *testing.T) {
 
 // TestHTTPResponseCode pins PHP's two answers. A web request starts out
 // answering 200, so there is always a status to report and always a previous
-// one to hand back. On the command line a script starts with none, which is
+// one to return. On the command line a script starts with none, which is
 // what the false and the true are: nothing to report, and no previous status to
 // return for the first one set.
 //
@@ -888,7 +888,7 @@ func runCtxOptions(t *testing.T, ctx runner.Context, opts runner.Options, setup 
 }
 
 // Repeated rows, checkbox arrays and `line[0][hours]` naming reach a script as
-// nested arrays rather than literal keys.
+// nested arrays and not literal keys.
 func TestFromRequestBracketNames(t *testing.T) {
 	tests := []struct {
 		name  string

@@ -84,8 +84,8 @@ func TestMatchCatchTypeTakesAnyClauseForANonThrowable(t *testing.T) {
 }
 
 // TestRunnerThrowablesNameTheirClass covers the throwables the runner raises
-// itself. Each names a PHP class, which is what keeps an engine error out of
-// the clauses PHP would not offer it to.
+// itself. Each names a PHP class, which keeps an engine error out of
+// the clauses PHP would not route it to.
 func TestRunnerThrowablesNameTheirClass(t *testing.T) {
 	tests := []struct {
 		err      error
@@ -117,7 +117,7 @@ func TestRunnerThrowablesNameTheirClass(t *testing.T) {
 // phpscript has no OOP, and `extends` confers nothing. It was implemented once
 // and rejected. If this test fails, read docs/design.md before changing it.
 func TestNoInheritanceAtRuntime(t *testing.T) {
-	// model.Class may record what a declaration listed, which is why
+	// model.Class may record what a declaration listed, so
 	// Implements is allowed: it is a list of names a class was checked
 	// against, and no member arrives through it. A parent is different, and
 	// forbidden: a class that has one would start acquiring members it did not

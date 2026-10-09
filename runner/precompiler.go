@@ -35,8 +35,8 @@ type Precompiler struct {
 }
 
 // Run parses and compiles the tree, and reports how many files it cached. The
-// heap the pass added is recorded on the include cache, which is what
-// opcache_get_status() answers with.
+// heap the pass added is recorded on the include cache, where
+// opcache_get_status() reads it.
 func (p Precompiler) Run() int {
 	if p.Root == nil || p.Includes == nil {
 		return 0
@@ -47,10 +47,10 @@ func (p Precompiler) Run() int {
 		return 0
 	}
 
-	// The cost is measured rather than estimated. A parsed program is a graph
+	// The cost is measured and never estimated. A parsed program is a graph
 	// of nodes with no size of its own to add up, and the number worth
 	// reporting is what the process is holding because of the pass. Both reads
-	// follow a collection so the figure is live heap on each side rather than
+	// follow a collection so the figure is live heap on each side and not
 	// whatever has not been swept.
 	before := liveHeap()
 	defer func() { p.Includes.Account(liveHeap() - before) }()
@@ -96,7 +96,7 @@ func liveHeap() int64 {
 }
 
 // sources lists the .php files below Root. A directory that cannot be read is
-// skipped rather than ending the walk, so one unreadable folder costs its own
+// skipped and never ends the walk, so one unreadable folder costs its own
 // files and not the tree.
 func (p Precompiler) sources() []string {
 	var files []string

@@ -81,7 +81,7 @@ func TestSuiteHooksRunOncePerSession(t *testing.T) {
 
 // TestSuiteTeardownRunsAfterAFailure covers the half of the contract a passing
 // run cannot show: a suite releases what it took whether or not the fixtures
-// passed, and the run still reports the failure rather than the hook.
+// passed, and the run still reports the failure and not the hook.
 func TestSuiteTeardownRunsAfterAFailure(t *testing.T) {
 	tmp := writeTree(t, map[string]string{
 		"suite/phpscript.yml": "test:\n  hooks:\n    teardown: teardown.php\n",

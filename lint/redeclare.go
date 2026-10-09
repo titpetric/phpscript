@@ -13,11 +13,11 @@ import (
 // arrives before the program is run.
 //
 // A name the source guards with function_exists is skipped: that is the
-// polyfill idiom, where declaring over an absent built-in is the whole point,
-// and the author has already said they handle both cases.
+// polyfill idiom: declaring over an absent built-in is what it does, and the
+// author has already written both branches.
 //
 // Declarations at any nesting count. The runtime only honours the ones written
-// at the top level of a file, so a nested duplicate is a divergence rather than
+// at the top level of a file, so a nested duplicate is a divergence and no
 // a collision today, but it is still the same mistake and PHP still refuses it.
 func lintRedeclared(file string, prog *model.Program, out *[]Diagnostic) {
 	guarded := map[string]bool{}

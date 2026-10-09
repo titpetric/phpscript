@@ -45,7 +45,7 @@ echo $greet("world");                     // Hello, world
 
 A closure declared inside a method captures `$this`; `static function () {}` declares one that does not.
 
-The `use (...)` list is the whole of what comes along. An invocation gets a frame holding those values, the parameters, `__FILE__` and `__DIR__`, and the bound `$this`: a variable of the enclosing frame that the list did not name is unset inside the body, not shadowed and not inherited, and a nested closure names again whatever it needs. `get_defined_vars()` inside a closure reads that frame back, which is what [tests/fixtures/functions/closure_capture_scope.phpt](../../../tests/fixtures/functions/closure_capture_scope.phpt) states on both engines. The capture is taken where the closure value is created, so a later write to a captured variable is not visible to it. A parameter sharing a name with a capture is bound last and wins; php rejects that program outright, as "Cannot use lexical variable $x as a parameter name".
+The `use (...)` list is the whole of what comes along. An invocation gets a frame holding those values, the parameters, `__FILE__` and `__DIR__`, and the bound `$this`: a variable of the enclosing frame that the list did not name is unset inside the body, neither shadowed nor inherited, and a nested closure names again whatever it needs. `get_defined_vars()` inside a closure reads that frame back, as [tests/fixtures/functions/closure_capture_scope.phpt](../../../tests/fixtures/functions/closure_capture_scope.phpt) states on both engines. The capture is taken where the closure value is created, so a later write to a captured variable is not visible to it. A parameter sharing a name with a capture is bound last and wins; php rejects that program outright, as "Cannot use lexical variable $x as a parameter name".
 
 `static $x` in a closure body belongs to the closure value, so two closures built by one factory count independently, and a call on another runtime gets a bag of its own. The bytecode engine does not compile that form; the program runs on the interpreter.
 
@@ -59,7 +59,7 @@ $handlers["render"]($argument);
 $this->callback($argument);
 ```
 
-Every PHP callable spelling resolves: a closure, `"function_name"`, `"Class::method"`, `array($object, "method")`, `array("Class", "method")`, and an object with `__invoke`. `Closure::fromCallable()` turns any of them into a closure; `Closure::bind()` accepts a null `$newThis` and returns the closure unchanged, since phpscript enforces no property visibility for a scope change to affect. Rebinding `$this` is reported as an error rather than silently ignored.
+Every PHP callable spelling resolves: a closure, `"function_name"`, `"Class::method"`, `array($object, "method")`, `array("Class", "method")`, and an object with `__invoke`. `Closure::fromCallable()` turns any of them into a closure; `Closure::bind()` accepts a null `$newThis` and returns the closure unchanged, since phpscript enforces no property visibility that a scope change could affect. Rebinding `$this` is reported as an error, with nothing silently ignored.
 
 ## First-class callable syntax
 
@@ -72,9 +72,9 @@ $method = $obj->method(...);      // a method bound to the receiver it was read 
 $again = $closure(...);           // a value that is callable already
 ```
 
-The value is php's `Closure`: `get_class()` answers `Closure`, `is_callable()` is true, and it fills any parameter an API declares as a callable. Resolution is the same one the call would have used, so a name reaches a declared function, a registered binding or a host static registered under the whole `Class::method` spelling, and the name a variable holds is resolved when the callable is taken rather than when it is called. A name nothing answers for is reported where the callable is taken, with the message the call reports: `nosuch(...)` raises "call to undefined function nosuch()".
+The value is php's `Closure`: `get_class()` answers `Closure`, `is_callable()` is true, and it fills any parameter an API declares as a callable. Resolution is the same one the call would have used, so a name reaches a declared function, a registered binding or a host static registered under the whole `Class::method` spelling, and the name a variable holds is resolved when the callable is taken, not when it is called. A name nothing answers for is reported where the callable is taken, with the message the call reports: `nosuch(...)` raises "call to undefined function nosuch()".
 
-`(...)` over a value that is already callable answers that value rather than a wrapper, so `$fn(...) === $fn` for a Closure the syntax itself produced, as in php. A closure literal is the one value the two engines disagree about; see [Closure identity](../../flatstack.md#closure-identity).
+`(...)` over a value that is already callable answers that value itself, with no wrapper, so `$fn(...) === $fn` for a Closure the syntax itself produced, as in php. A closure literal is the one value the two engines disagree about; see [Closure identity](../../flatstack.md#closure-identity).
 
 `new C(...)` is a parse error, as it is in php: a construction names no callable to take.
 

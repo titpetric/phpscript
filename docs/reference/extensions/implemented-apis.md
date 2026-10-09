@@ -31,7 +31,10 @@ function ob_get_contents(): mixed
 ```
 
 ```php
-// ob_get_flush closes the active buffer, writes its contents to the output below it, and returns them.
+/**
+ * ob_get_flush closes the active buffer, writes its contents to the
+ * output below it, and returns them.
+ */
 function ob_get_flush(): mixed
 ```
 
@@ -79,32 +82,58 @@ function time(): int
 #### regex
 
 ```php
-// preg_match fills $matches with the first match of $pattern in $subject and returns 1, 0 when there is no match, optionally starting at byte $offset; a pattern that does not compile, or an $offset outside $subject, returns false.
+/**
+ * preg_match fills $matches with the first match of $pattern in $subject
+ * and returns 1, 0 when there is no match, optionally starting at byte
+ * $offset; a pattern that does not compile, or an $offset outside
+ * $subject, returns false.
+ */
 function preg_match(string $pattern, string $subject, &$matches, mixed $flags, mixed $offset): mixed
 ```
 
 ```php
-// preg_match_all fills $matches with every match of $pattern in $subject and returns how many there were, in PREG_PATTERN_ORDER unless $flags selects PREG_SET_ORDER, optionally starting at byte $offset; a pattern that does not compile returns false and leaves $matches alone.
+/**
+ * preg_match_all fills $matches with every match of $pattern in $subject
+ * and returns how many there were, in PREG_PATTERN_ORDER unless $flags
+ * selects PREG_SET_ORDER, optionally starting at byte $offset; a pattern
+ * that does not compile returns false and leaves $matches alone.
+ */
 function preg_match_all(string $pattern, string $subject, &$matches, mixed $flags, mixed $offset): mixed
 ```
 
 ```php
-// preg_quote escapes the characters that are special in a PCRE pattern, plus $delimiter, so a literal can be spliced into one.
+/**
+ * preg_quote escapes the characters that are special in a PCRE pattern,
+ * plus $delimiter, so a literal can be spliced into one.
+ */
 function preg_quote(string $subject, string ...$delimiter): string
 ```
 
 ```php
-// preg_replace replaces every match of $pattern in $subject with $replacement, in which \1 and $1 both name a capture group.
+/**
+ * preg_replace replaces every match of $pattern in $subject with
+ * $replacement, in which \1 and $1 both name a capture group.
+ */
 function preg_replace(string $pattern, string $replacement, string $subject): string
 ```
 
 ```php
-// preg_replace_callback replaces every match of $pattern in $subject with what $callback returns for it, calling $callback once per match in document order with the match array, at most $limit times, and reporting the number of replacements through $count.
+/**
+ * preg_replace_callback replaces every match of $pattern in $subject with
+ * what $callback returns for it, calling $callback once per match in
+ * document order with the match array, at most $limit times, and
+ * reporting the number of replacements through $count.
+ */
 function preg_replace_callback(string $pattern, callable $callback, string $subject, mixed $limit, &$count, mixed $flags): mixed
 ```
 
 ```php
-// preg_split splits $subject on every match of $pattern into at most $limit pieces, the last of which holds the remainder; $flags selects PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and PREG_SPLIT_OFFSET_CAPTURE.
+/**
+ * preg_split splits $subject on every match of $pattern into at most
+ * $limit pieces, the last of which holds the remainder; $flags selects
+ * PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and
+ * PREG_SPLIT_OFFSET_CAPTURE.
+ */
 function preg_split(string $pattern, string $subject, mixed $limit, mixed $flags): mixed
 ```
 
@@ -131,52 +160,89 @@ function register_shutdown_function(callable $callback): void
 #### array sets
 
 ```php
-// array_chunk splits $array into arrays of at most $length entries; the chunks are keyed from zero either way, and $preserve_keys decides whether the entries inside them keep their own keys or are renumbered.
+/**
+ * array_chunk splits $array into arrays of at most $length entries; the
+ * chunks are keyed from zero either way, and $preserve_keys decides
+ * whether the entries inside them keep their own keys or are renumbered.
+ */
 function array_chunk(mixed $array, int $length, bool ...$preserve_keys): array
 ```
 
 ```php
-// array_combine returns an array keyed by the values of $keys and valued by the values of $values, paired in order; the two must hold the same number of entries.
+/**
+ * array_combine returns an array keyed by the values of $keys and valued
+ * by the values of $values, paired in order; the two must hold the same
+ * number of entries.
+ */
 function array_combine(mixed $keys, mixed $values): array
 ```
 
 ```php
-// array_diff returns the entries of $array whose value is in none of the other arrays, keys kept; values are compared as strings, which is php's own rule and the reason 0 and "0" are the same entry here.
+/**
+ * array_diff returns the entries of $array whose value is in none of the
+ * other arrays, keys kept; values are compared as strings, which is php's
+ * own rule and the reason 0 and "0" are the same entry here.
+ */
 function array_diff(mixed $array, mixed ...$others): array
 ```
 
 ```php
-// array_diff_key returns the entries of $array whose key is in none of the other arrays, values untouched and never compared.
+/**
+ * array_diff_key returns the entries of $array whose key is in none of
+ * the other arrays, values untouched and never compared.
+ */
 function array_diff_key(mixed $array, mixed ...$others): array
 ```
 
 ```php
-// array_fill returns an array of $count copies of $value, keyed from $start_index upwards; php 8 raises a ValueError below zero and this clamps to the empty array, which is what a count of zero already answers.
+/**
+ * array_fill returns an array of $count copies of $value, keyed from
+ * $start_index upwards. A $count below zero clamps to the empty array, which
+ * is also what a count of zero answers; php 8 raises a ValueError.
+ */
 function array_fill(int $start_index, int $count, mixed $value): array
 ```
 
 ```php
-// array_fill_keys returns an array whose keys are the values of $keys and whose every value is $value; a key repeated in $keys lands once, as the later assignment overwrites the earlier.
+/**
+ * array_fill_keys returns an array whose keys are the values of $keys and
+ * whose every value is $value; a key repeated in $keys lands once, as the
+ * later assignment overwrites the earlier.
+ */
 function array_fill_keys(mixed $keys, mixed $value): array
 ```
 
 ```php
-// array_intersect returns the entries of $array whose value is in every one of the other arrays, keys kept; values are compared as strings, as array_diff compares them.
+/**
+ * array_intersect returns the entries of $array whose value is in every
+ * one of the other arrays, keys kept; values are compared as strings, as
+ * array_diff compares them.
+ */
 function array_intersect(mixed $array, mixed ...$others): array
 ```
 
 ```php
-// array_intersect_key returns the entries of $array whose key is in every one of the other arrays, values untouched and never compared.
+/**
+ * array_intersect_key returns the entries of $array whose key is in every
+ * one of the other arrays, values untouched and never compared.
+ */
 function array_intersect_key(mixed $array, mixed ...$others): array
 ```
 
 ```php
-// array_is_list reports whether $array is keyed by the integers 0 to count-1 in that order, which is what makes it a list rather than a map; an empty array is a list.
+/**
+ * array_is_list reports whether $array is keyed by the integers 0 to
+ * count-1 in that order, which is the shape of a list. An empty array is a
+ * list.
+ */
 function array_is_list(mixed $array): bool
 ```
 
 ```php
-// array_key_first returns the first key of $array without moving anything, or null when it is empty.
+/**
+ * array_key_first returns the first key of $array without moving
+ * anything, or null when it is empty.
+ */
 function array_key_first(mixed $array): mixed
 ```
 
@@ -188,54 +254,89 @@ function array_key_last(mixed $array): mixed
 #### array sort
 
 ```php
-// arsort sorts $array in place by value descending with PHP's default comparison, keeping each value attached to its key.
+/**
+ * arsort sorts $array in place by value descending with PHP's default
+ * comparison, keeping each value attached to its key.
+ */
 function arsort(mixed $array): bool
 ```
 
 ```php
-// asort sorts $array in place by value ascending with PHP's default comparison, keeping each value attached to its key.
+/**
+ * asort sorts $array in place by value ascending with PHP's default
+ * comparison, keeping each value attached to its key.
+ */
 function asort(mixed $array): bool
 ```
 
 ```php
-// krsort sorts $array in place by key descending with PHP's default comparison, keeping each key attached to its value.
+/**
+ * krsort sorts $array in place by key descending with PHP's default
+ * comparison, keeping each key attached to its value.
+ */
 function krsort(mixed $array): bool
 ```
 
 ```php
-// ksort sorts $array in place by key ascending with PHP's default comparison, keeping each key attached to its value.
+/**
+ * ksort sorts $array in place by key ascending with PHP's default
+ * comparison, keeping each key attached to its value.
+ */
 function ksort(mixed $array): bool
 ```
 
 ```php
-// uasort sorts $array in place by value using the $callback comparator, keeping each value attached to its key.
+/**
+ * uasort sorts $array in place by value using the $callback comparator,
+ * keeping each value attached to its key.
+ */
 function uasort(mixed $array, callable $callback): bool
 ```
 
 ```php
-// uksort sorts $array in place by key using the $callback comparator, keeping each key attached to its value.
+/**
+ * uksort sorts $array in place by key using the $callback comparator,
+ * keeping each key attached to its value.
+ */
 function uksort(mixed $array, callable $callback): bool
 ```
 
 #### arrays
 
 ```php
-// array_column returns the $column_key value of every row of $array, keyed by each row's $index_key when that is given; a null $column_key selects the whole row and rows missing the column are skipped.
+/**
+ * array_column returns the $column_key value of every row of $array,
+ * keyed by each row's $index_key when that is given; a null $column_key
+ * selects the whole row and rows missing the column are skipped.
+ */
 function array_column(mixed $array, mixed $column_key, mixed ...$index_key): mixed
 ```
 
 ```php
-// array_filter returns the elements of $array for which $callback is truthy, preserving the keys; without a $callback the values are filtered on their own truthiness, and $mode selects what the callback receives (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value and the key).
+/**
+ * array_filter returns the elements of $array for which $callback is
+ * truthy, preserving the keys; without a $callback the values are
+ * filtered on their own truthiness, and $mode selects what the callback
+ * receives (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value
+ * and the key).
+ */
 function array_filter(mixed $array, mixed ...$options): array
 ```
 
 ```php
-// array_flip returns $array with its keys and values exchanged; a value that is neither an integer nor a string is skipped, as in PHP, but without the warning.
+/**
+ * array_flip returns $array with its keys and values exchanged; a value
+ * that is neither an integer nor a string is skipped, as in PHP, but
+ * without the warning.
+ */
 function array_flip(mixed $array): array
 ```
 
 ```php
-// array_key_exists reports whether $key is present in $array, which is true even when the value stored there is null.
+/**
+ * array_key_exists reports whether $key is present in $array, which is
+ * true even when the value stored there is null.
+ */
 function array_key_exists(mixed $key, mixed $array): bool
 ```
 
@@ -245,67 +346,120 @@ function array_keys(mixed $array): array
 ```
 
 ```php
-// array_map returns a list of $callback applied to each value of $array; a single array is accepted and keys are not preserved.
+/**
+ * array_map returns a list of $callback applied to each value of $array;
+ * a single array is accepted and keys are not preserved.
+ */
 function array_map(callable $callback, mixed $array): array
 ```
 
 ```php
-// array_merge merges the given arrays into one; integer keys are renumbered and later string keys overwrite earlier ones.
+/**
+ * array_merge merges the given arrays into one; integer keys are
+ * renumbered and later string keys overwrite earlier ones.
+ */
 function array_merge(mixed ...$arrs): mixed
 ```
 
 ```php
-// array_pop removes the last element of $array and returns it, leaving the remaining keys as they were; an empty array returns null and a value that is not a script array is an error.
+/**
+ * array_pop removes the last element of $array and returns it, leaving
+ * the remaining keys as they were; an empty array returns null and a
+ * value that is not a script array is an error.
+ */
 function array_pop(mixed $array): mixed
 ```
 
 ```php
-// array_push appends the given values to $array at the next integer keys and returns the new element count; a value that is not a script array is an error.
+/**
+ * array_push appends the given values to $array at the next integer keys
+ * and returns the new element count; a value that is not a script array
+ * is an error.
+ */
 function array_push(mixed $array, mixed ...$values): int
 ```
 
 ```php
-// array_reduce folds $array with $callback, which is called with the carry and the value, starting from $initial and returning null for an empty array.
+/**
+ * array_reduce folds $array with $callback, which is called with the
+ * carry and the value, starting from $initial and returning null for an
+ * empty array.
+ */
 function array_reduce(mixed $array, callable $callback, mixed ...$initial): mixed
 ```
 
 ```php
-// array_reverse returns $array in reverse order, renumbering the integer keys from zero unless $preserve_keys is true; string keys are kept either way.
+/**
+ * array_reverse returns $array in reverse order, renumbering the integer
+ * keys from zero unless $preserve_keys is true; string keys are kept
+ * either way.
+ */
 function array_reverse(mixed $array, mixed ...$preserve_keys): mixed
 ```
 
 ```php
-// array_search returns the key of the first $haystack element equal to $needle, or false when there is none; comparison is loose unless $strict is true.
+/**
+ * array_search returns the key of the first $haystack element equal to
+ * $needle, or false when there is none; comparison is loose unless
+ * $strict is true.
+ */
 function array_search(mixed $needle, mixed $haystack, mixed ...$strict): mixed
 ```
 
 ```php
-// array_shift removes the first element of $array and returns it, renumbering the integer keys from zero and leaving string keys alone; an empty array returns null and a value that is not a script array is an error.
+/**
+ * array_shift removes the first element of $array and returns it,
+ * renumbering the integer keys from zero and leaving string keys alone;
+ * an empty array returns null and a value that is not a script array is
+ * an error.
+ */
 function array_shift(mixed $array): mixed
 ```
 
 ```php
-// array_slice returns up to $length elements of $array starting at $offset, a negative $offset counting from the end and a negative $length stopping that many short of it; integer keys are reindexed from zero unless $preserve_keys is true, and string keys are kept either way.
+/**
+ * array_slice returns up to $length elements of $array starting at
+ * $offset, a negative $offset counting from the end and a negative
+ * $length stopping that many short of it; integer keys are reindexed from
+ * zero unless $preserve_keys is true, and string keys are kept either
+ * way.
+ */
 function array_slice(mixed $array, int $offset, mixed ...$args): mixed
 ```
 
 ```php
-// array_splice removes $length elements of $array at $offset, inserts $replacement in their place, and returns the removed elements; a value that is not a script array is an error.
+/**
+ * array_splice removes $length elements of $array at $offset, inserts
+ * $replacement in their place, and returns the removed elements; a value
+ * that is not a script array is an error.
+ */
 function array_splice(mixed $array, int $offset, mixed ...$optional): array
 ```
 
 ```php
-// array_sum returns the sum of the values of $array as an int when every value is an integer and as a float once one of them is a float or the total overflows.
+/**
+ * array_sum returns the sum of the values of $array as an int when every
+ * value is an integer and as a float once one of them is a float or the
+ * total overflows.
+ */
 function array_sum(mixed $array): mixed
 ```
 
 ```php
-// array_unique returns $array with duplicate values removed, comparing values as strings and keeping the first occurrence and its key; the $flags argument is accepted and ignored.
+/**
+ * array_unique returns $array with duplicate values removed, comparing
+ * values as strings and keeping the first occurrence and its key; the
+ * $flags argument is accepted and ignored.
+ */
 function array_unique(mixed $array, mixed ...$flags): array
 ```
 
 ```php
-// array_unshift prepends the given values to $array and returns the new element count, renumbering the integer keys from zero and leaving string keys alone; a value that is not a script array is an error.
+/**
+ * array_unshift prepends the given values to $array and returns the new
+ * element count, renumbering the integer keys from zero and leaving
+ * string keys alone; a value that is not a script array is an error.
+ */
 function array_unshift(mixed $array, mixed ...$values): int
 ```
 
@@ -328,32 +482,53 @@ function count(mixed $array): int
 ```
 
 ```php
-// end returns the last value of $array, or false when it is empty; there is no internal pointer here, so this is the value without the seek.
+/**
+ * end returns the last value of $array, or false when it is empty; there
+ * is no internal pointer here, so this is the value without the seek.
+ */
 function end(mixed $array): mixed
 ```
 
 ```php
-// in_array reports whether $needle occurs in $haystack, comparing loosely with PHP 8 rules unless $strict is true, which compares types as well as values.
+/**
+ * in_array reports whether $needle occurs in $haystack, comparing loosely
+ * with PHP 8 rules unless $strict is true, which compares types as well
+ * as values.
+ */
 function in_array(mixed $needle, mixed $haystack, mixed ...$strict): bool
 ```
 
 ```php
-// range returns the list of values from $start to $end inclusive, stepping by $step; two single-character strings produce a character range, and any float endpoint or fractional step produces floats.
+/**
+ * range returns the list of values from $start to $end inclusive,
+ * stepping by $step; two single-character strings produce a character
+ * range, and any float endpoint or fractional step produces floats.
+ */
 function range(mixed $start, mixed $end, mixed ...$step): array
 ```
 
 ```php
-// reset returns the first value of $array, or false when it is empty; there is no internal pointer here, so this is the value without the rewind.
+/**
+ * reset returns the first value of $array, or false when it is empty;
+ * there is no internal pointer here, so this is the value without the
+ * rewind.
+ */
 function reset(mixed $array): mixed
 ```
 
 ```php
-// rsort sorts $array in place descending with PHP's default comparison, discarding the keys and reindexing from zero.
+/**
+ * rsort sorts $array in place descending with PHP's default comparison,
+ * discarding the keys and reindexing from zero.
+ */
 function rsort(mixed $array): bool
 ```
 
 ```php
-// sort sorts $array in place ascending with PHP's default comparison, discarding the keys and reindexing from zero.
+/**
+ * sort sorts $array in place ascending with PHP's default comparison,
+ * discarding the keys and reindexing from zero.
+ */
 function sort(mixed $array): bool
 ```
 
@@ -369,20 +544,27 @@ function usort(mixed $array, callable $callback): bool
  * Closure::bind rebinds a closure's scope. phpscript enforces no property
  * visibility, so a scope change has nothing to alter and the closure is
  * returned as it is. Rebinding `$this` would change what the body sees and
- * is therefore refused rather than silently ignored.
+ * is therefore refused, with nothing silently ignored.
  */
 Closure::bind(mixed $closure, mixed ...$args): mixed
 ```
 
 ```php
-// Closure::fromCallable returns the closure for $callback; a value that is not callable is an error.
+/**
+ * Closure::fromCallable returns the closure for $callback; a value that
+ * is not callable is an error.
+ */
 Closure::fromCallable(callable $callback): mixed
 ```
 
 #### encoding
 
 ```php
-// base64_decode decodes the base64 in $string, skipping unknown characters unless $strict is true, in which case it returns false for them and for misplaced padding.
+/**
+ * base64_decode decodes the base64 in $string, skipping unknown
+ * characters unless $strict is true, in which case it returns false for
+ * them and for misplaced padding.
+ */
 function base64_decode(string $str, mixed ...$strict): mixed
 ```
 
@@ -397,22 +579,37 @@ function bin2hex(string $str): string
 ```
 
 ```php
-// hex2bin decodes the hexadecimal $string back into bytes, returning false for an odd-length string or a non-hex character.
+/**
+ * hex2bin decodes the hexadecimal $string back into bytes, returning
+ * false for an odd-length string or a non-hex character.
+ */
 function hex2bin(string $str): mixed
 ```
 
 ```php
-// http_build_query joins $data into a query string, urlencoding both halves of every pair and spelling a nested array as key[sub]=value; the $numeric_prefix, $arg_separator and $encoding_type parameters are not supported.
+/**
+ * http_build_query joins $data into a query string, urlencoding both
+ * halves of every pair and spelling a nested array as key[sub]=value; the
+ * $numeric_prefix, $arg_separator and $encoding_type parameters are not
+ * supported.
+ */
 function http_build_query(mixed $data): string
 ```
 
 ```php
-// parse_str decodes the query string $string into $result, reading PHP's bracket syntax so a[b]=1 arrives as a nested array; it is the inverse of http_build_query and the decoder behind $_GET and $_POST.
+/**
+ * parse_str decodes the query string $string into $result, reading PHP's
+ * bracket syntax so a[b]=1 arrives as a nested array; it is the inverse
+ * of http_build_query and the decoder behind $_GET and $_POST.
+ */
 function parse_str(string $str, &$result): void
 ```
 
 ```php
-// rawurldecode decodes the RFC 3986 $string, leaving '+' alone and leaving an incomplete '%' sequence literal.
+/**
+ * rawurldecode decodes the RFC 3986 $string, leaving '+' alone and
+ * leaving an incomplete '%' sequence literal.
+ */
 function rawurldecode(string $str): string
 ```
 
@@ -422,12 +619,19 @@ function rawurlencode(string $str): string
 ```
 
 ```php
-// urldecode decodes the application/x-www-form-urlencoded $string, turning '+' into a space and leaving an incomplete '%' sequence literal.
+/**
+ * urldecode decodes the application/x-www-form-urlencoded $string,
+ * turning '+' into a space and leaving an incomplete '%' sequence
+ * literal.
+ */
 function urldecode(string $str): string
 ```
 
 ```php
-// urlencode encodes $string for application/x-www-form-urlencoded, so a space becomes '+' and '~' becomes '%7E'.
+/**
+ * urlencode encodes $string for application/x-www-form-urlencoded, so a
+ * space becomes '+' and '~' becomes '%7E'.
+ */
 function urlencode(string $str): string
 ```
 
@@ -439,19 +643,32 @@ function getenv(string $name): mixed
 ```
 
 ```php
-// putenv sets an environment variable from a "NAME=value" string, or unsets a bare "NAME"; it always returns true.
+/**
+ * putenv sets an environment variable from a "NAME=value" string, or
+ * unsets a bare "NAME"; it always returns true.
+ */
 function putenv(string $name, string ...$values): bool
 ```
 
 #### json
 
 ```php
-// json_decode parses the JSON in $text; $associative must be true or omitted because decoding into objects is not implemented, $depth and $flags are accepted and ignored, and invalid input raises an error instead of returning null.
+/**
+ * json_decode parses the JSON in $text. $associative must be true or
+ * omitted because decoding into objects is not implemented, $depth and
+ * $flags are accepted and ignored, and invalid input raises an error where
+ * php returns null.
+ */
 function json_decode(string $text, mixed ...$opts): mixed
 ```
 
 ```php
-// json_encode returns the JSON encoding of $value; $flags is accepted and ignored because the encoding is not configurable, a forward slash is written as itself rather than escaped, and an encoding failure raises an error instead of returning false.
+/**
+ * json_encode returns the JSON encoding of $value. $flags is accepted and
+ * ignored because the encoding is not configurable, a forward slash is
+ * written as itself, and an encoding failure raises an error where php
+ * returns false.
+ */
 function json_encode(mixed $value, mixed ...$flags): mixed
 ```
 
@@ -463,17 +680,27 @@ function call_user_func(callable $callback, mixed ...$args): mixed
 ```
 
 ```php
-// call_user_func_array calls $callback with the values of $args as its arguments and returns its result.
+/**
+ * call_user_func_array calls $callback with the values of $args as its
+ * arguments and returns its result.
+ */
 function call_user_func_array(callable $callback, mixed $args): mixed
 ```
 
 ```php
-// class_exists reports whether class $class is defined, running the autoloader first unless $autoload is false.
+/**
+ * class_exists reports whether class $class is defined, running the
+ * autoloader first unless $autoload is false.
+ */
 function class_exists(string $class, bool ...$autoload): bool
 ```
 
 ```php
-// die terminates the script exactly like exit; a string $status is printed before exiting with code 0, an int $status becomes the exit code.
+/**
+ * die terminates the script exactly like exit; a string $status is
+ * printed before exiting with code 0, an int $status becomes the exit
+ * code.
+ */
 function die(mixed ...$args): mixed
 ```
 
@@ -483,14 +710,17 @@ function empty(mixed $value): bool
 ```
 
 ```php
-// exit terminates the script; a string $status is printed before exiting with code 0, an int $status becomes the exit code.
+/**
+ * exit terminates the script; a string $status is printed before exiting
+ * with code 0, an int $status becomes the exit code.
+ */
 function exit(mixed ...$args): mixed
 ```
 
 ```php
 /**
- * fdiv is IEEE-754 division: dividing by zero yields INF/-INF/NAN
- * instead of an error.
+ * fdiv is IEEE-754 division: dividing by zero returns INF/-INF/NAN
+ * and raises nothing.
  */
 function fdiv(float $num, float $divisor): float
 ```
@@ -506,17 +736,28 @@ function get_declared_classes(): array
 ```
 
 ```php
-// get_defined_constants returns the defined constants as a name-sorted array; with $categorize true they are grouped under a single "Core" key.
+/**
+ * get_defined_constants returns the defined constants as a name-sorted
+ * array; with $categorize true they are grouped under a single "Core"
+ * key.
+ */
 function get_defined_constants(bool ...$categorize): array
 ```
 
 ```php
-// get_defined_functions returns an array with "internal" and "user" lists of function names; the $exclude_disabled argument is accepted and ignored.
+/**
+ * get_defined_functions returns an array with "internal" and "user" lists
+ * of function names; the $exclude_disabled argument is accepted and
+ * ignored.
+ */
 function get_defined_functions(bool ...$exclude_disabled): array
 ```
 
 ```php
-// get_defined_vars returns the variables defined in the calling scope as an array sorted by name, not in definition order.
+/**
+ * get_defined_vars returns the variables defined in the calling scope as
+ * an array sorted by name, not in definition order.
+ */
 function get_defined_vars(): array
 ```
 
@@ -531,24 +772,34 @@ function get_included_files(): array
 ```
 
 ```php
-// gettype returns the type of $value under PHP's legacy names: "integer", "double", "boolean", "string", "array", "object" or "NULL".
+/**
+ * gettype returns the type of $value under PHP's legacy names: "integer",
+ * "double", "boolean", "string", "array", "object" or "NULL".
+ */
 function gettype(mixed $value): string
 ```
 
 ```php
-// intdiv returns the integer quotient of $num divided by $divisor; division by zero and PHP_INT_MIN by -1 are errors.
+/**
+ * intdiv returns the integer quotient of $num divided by $divisor;
+ * division by zero and PHP_INT_MIN by -1 are errors.
+ */
 function intdiv(int $num, int $divisor): int
 ```
 
 ```php
-// intval returns the integer value of $value; $base applies only to a string $value, read like C strtol with the 0x and 0b prefixes, and a $base outside 0 and 2-36 yields 0.
+/**
+ * intval returns the integer value of $value. $base applies only to a
+ * string $value, read like C strtol with the 0x and 0b prefixes; a $base
+ * outside 0 and 2-36 returns 0.
+ */
 function intval(mixed $num, mixed ...$base): int
 ```
 
 ```php
 /**
  * A binding's []string is as much a PHP array as an *model.Array is, so
- * is_array() answers for the whole value model, not one Go type.
+ * is_array() answers for the whole value model, and never one Go type.
  */
 function is_array(mixed $v): bool
 ```
@@ -559,7 +810,10 @@ function is_bool(mixed $value): bool
 ```
 
 ```php
-// is_callable reports whether $value can be called as a function; there are no $syntax_only or $callable_name parameters.
+/**
+ * is_callable reports whether $value can be called as a function; there
+ * are no $syntax_only or $callable_name parameters.
+ */
 function is_callable(mixed $value): bool
 ```
 
@@ -574,7 +828,10 @@ function is_null(mixed $value): bool
 ```
 
 ```php
-// is_numeric reports whether $value is an int or a float; unlike PHP, numeric strings return false.
+/**
+ * is_numeric reports whether $value is an int or a float; unlike PHP,
+ * numeric strings return false.
+ */
 function is_numeric(mixed $value): bool
 ```
 
@@ -614,36 +871,69 @@ function set_include_path(string $value): string
 ```
 
 ```php
-// spl_autoload loads $class by including the lowercased class name plus ".php" from the include path; the $file_extensions argument is accepted and ignored.
+/**
+ * spl_autoload loads $class by including the lowercased class name plus
+ * ".php" from the include path; the $file_extensions argument is accepted
+ * and ignored.
+ */
 function spl_autoload(string $class, mixed ...$file_extensions): void
 ```
 
 ```php
-// spl_autoload_register registers $callback as an autoloader, or the default spl_autoload when $callback is null or omitted; $prepend puts it first and $throw is ignored.
+/**
+ * spl_autoload_register registers $callback as an autoloader, or the
+ * default spl_autoload when $callback is null or omitted; $prepend puts
+ * it first and $throw is ignored.
+ */
 function spl_autoload_register(mixed ...$args): bool
 ```
 
 #### limits
 
 ```php
-// connection_aborted returns true once the client has closed the connection, so a script can stop doing work nobody is waiting for: commit the transaction, skip rendering the page. It keeps answering after ignore_user_abort(true) detached the run from the disconnect, which is the only arrangement in which a script is still running to ask.
+/**
+ * connection_aborted returns true once the client has closed the
+ * connection, so a script can stop doing work nobody is waiting for:
+ * commit the transaction, skip rendering the page. It keeps answering
+ * after ignore_user_abort(true) detached the run from the disconnect,
+ * which is the only arrangement in which a script is still running to
+ * ask.
+ */
 function connection_aborted(): bool
 ```
 
 ```php
-// ignore_user_abort decides whether the client closing the connection ends the script: with $enable true the script runs to its own end and asks connection_aborted() when it wants to know, and with it false, the default, the disconnect stops the script where it next looks. A time limit still applies either way.
+/**
+ * ignore_user_abort decides whether the client closing the connection ends
+ * the script. With $enable true the script runs to its own end and reads
+ * connection_aborted() to find out; with it false, the default, the
+ * disconnect stops the script where it next looks. A time limit still
+ * applies either way.
+ */
 function ignore_user_abort(bool ...$enable): void
 ```
 
 ```php
-// set_time_limit bounds the rest of this script to $seconds and answers true; the clock restarts from the call, as a second call in PHP does, and 0 removes the limit. The limit is a deadline on the context the interpreter checks and every binding is handed, so it ends a Go call that is waiting as well as a PHP loop that is spinning.
+/**
+ * set_time_limit bounds the rest of this script to $seconds and answers
+ * true; the clock restarts from the call, as a second call in PHP does,
+ * and 0 removes the limit. The limit is a deadline on the context the
+ * interpreter checks and every binding is handed, so it ends a Go call
+ * that is waiting as well as a PHP loop that is spinning.
+ */
 function set_time_limit(int $seconds): bool
 ```
 
 #### log
 
 ```php
-// error_log records $message where the host is listening: on the trace of the request being served, through the handler a Go host installed, and on the process error stream when neither is there. It returns true. php also takes $message_type, $destination and $additional_headers to choose between destinations; those are not implemented.
+/**
+ * error_log records $message where the host is listening: on the trace of
+ * the request being served, through the handler a Go host installed, and
+ * on the process error stream when neither is there. It returns true. php
+ * also takes $message_type, $destination and $additional_headers to
+ * choose between destinations; those are not implemented.
+ */
 function error_log(string $message): bool
 ```
 
@@ -665,7 +955,11 @@ function floor(mixed $num): float
 ```
 
 ```php
-// hexdec returns the number $hex_string names in hexadecimal, ignoring any character outside 0-9 a-f A-F, as PHP does; a value past PHP_INT_MAX keeps accumulating as a float.
+/**
+ * hexdec returns the number $hex_string names in hexadecimal, ignoring
+ * any character outside 0-9 a-f A-F, as PHP does; a value past
+ * PHP_INT_MAX keeps accumulating as a float.
+ */
 function hexdec(string $hex_string): mixed
 ```
 
@@ -675,27 +969,46 @@ function log(mixed $num, mixed ...$base): float
 ```
 
 ```php
-// max returns the highest value of $value and $values, or of the single array argument; values compare as PHP 8 compares them and the value itself is returned, so max(1, "2", 3) is int(3).
+/**
+ * max returns the highest value of $value and $values, or of the single
+ * array argument; values compare as PHP 8 compares them and the value
+ * itself is returned, so max(1, "2", 3) is int(3).
+ */
 function max(mixed ...$args): mixed
 ```
 
 ```php
-// min returns the lowest value of $value and $values, or of the single array argument; values compare as PHP 8 compares them and the value itself is returned, so min(1, "2", 3) is int(1).
+/**
+ * min returns the lowest value of $value and $values, or of the single
+ * array argument; values compare as PHP 8 compares them and the value
+ * itself is returned, so min(1, "2", 3) is int(1).
+ */
 function min(mixed ...$args): mixed
 ```
 
 ```php
-// number_format formats $num with $decimals decimals, $decimal_separator between the parts and $thousands_separator every three digits of the integer part, rounding half away from zero.
+/**
+ * number_format formats $num with $decimals decimals, $decimal_separator
+ * between the parts and $thousands_separator every three digits of the
+ * integer part, rounding half away from zero.
+ */
 function number_format(mixed $num, mixed ...$opts): string
 ```
 
 ```php
-// pow returns $num raised to the power $exponent, an int when both are int and the result fits, a float otherwise.
+/**
+ * pow returns $num raised to the power $exponent, an int when both are
+ * int and the result fits, a float otherwise.
+ */
 function pow(mixed $num, mixed $exponent): mixed
 ```
 
 ```php
-// round returns $num rounded to $precision decimal places as a float, always half away from zero; a $mode argument is accepted and ignored, so only PHP_ROUND_HALF_UP is honoured.
+/**
+ * round returns $num rounded to $precision decimal places as a float,
+ * always half away from zero; a $mode argument is accepted and ignored,
+ * so only PHP_ROUND_HALF_UP is honoured.
+ */
 function round(mixed $num, mixed ...$opts): float
 ```
 
@@ -712,27 +1025,45 @@ function mb_lcfirst(string $str): string
 ```
 
 ```php
-// mb_str_pad returns $string padded to $length characters with $pad_string, the character-counting str_pad PHP 8.3 added.
+/**
+ * mb_str_pad returns $string padded to $length characters with
+ * $pad_string, the character-counting str_pad PHP 8.3 added.
+ */
 function mb_str_pad(string $s, int $length, mixed ...$optional): string
 ```
 
 ```php
-// mb_str_split returns $string cut into chunks of $length characters; the "8bit" encoding cuts bytes, as str_split does.
+/**
+ * mb_str_split returns $string cut into chunks of $length characters; the
+ * "8bit" encoding cuts bytes, as str_split does.
+ */
 function mb_str_split(string $s, mixed ...$rest): array
 ```
 
 ```php
-// mb_stripos returns the character offset of the first case-insensitive $needle in $haystack, or false; the fold is Unicode-wide, where stripos folds A-Z only.
+/**
+ * mb_stripos returns the character offset of the first case-insensitive
+ * $needle in $haystack, or false; the fold is Unicode-wide, where stripos
+ * folds A-Z only.
+ */
 function mb_stripos(string $haystack, string $needle, mixed ...$rest): mixed
 ```
 
 ```php
-// mb_strlen returns the number of characters in $string; the $encoding argument "8bit" answers in bytes, the byte-count escape hatch for binary data, and every other encoding is read as UTF-8.
+/**
+ * mb_strlen returns the number of characters in $string; the $encoding
+ * argument "8bit" answers in bytes, the byte-count escape hatch for
+ * binary data, and every other encoding is read as UTF-8.
+ */
 function mb_strlen(string $s, mixed ...$encoding): int
 ```
 
 ```php
-// mb_strpos returns the character offset of the first $needle in $haystack, or false; the "8bit" encoding reports byte offsets, as strpos does.
+/**
+ * mb_strpos returns the character offset of the first $needle in
+ * $haystack, or false; the "8bit" encoding reports byte offsets, as
+ * strpos does.
+ */
 function mb_strpos(string $haystack, string $needle, mixed ...$rest): mixed
 ```
 
@@ -742,22 +1073,35 @@ function mb_strrpos(string $haystack, string $needle, mixed ...$rest): mixed
 ```
 
 ```php
-// mb_strtolower returns $string lowercased, non-ASCII letters included, where strtolower folds A-Z only.
+/**
+ * mb_strtolower returns $string lowercased, non-ASCII letters included,
+ * where strtolower folds A-Z only.
+ */
 function mb_strtolower(string $s, mixed ...$unused): string
 ```
 
 ```php
-// mb_strtoupper returns $string uppercased, non-ASCII letters included, where strtoupper folds A-Z only.
+/**
+ * mb_strtoupper returns $string uppercased, non-ASCII letters included,
+ * where strtoupper folds A-Z only.
+ */
 function mb_strtoupper(string $s, mixed ...$unused): string
 ```
 
 ```php
-// mb_substr returns the part of $string selected by character offset $start and $length; the "8bit" encoding selects bytes, as substr does.
+/**
+ * mb_substr returns the part of $string selected by character offset
+ * $start and $length; the "8bit" encoding selects bytes, as substr does.
+ */
 function mb_substr(string $s, int $start, mixed ...$rest): string
 ```
 
 ```php
-// mb_substr_count returns the number of non-overlapping occurrences of $needle in $haystack, the whole string, $offset and $length not being arguments PHP's mb_ spelling takes.
+/**
+ * mb_substr_count returns the number of non-overlapping occurrences of
+ * $needle in $haystack, the whole string, $offset and $length not being
+ * arguments PHP's mb_ spelling takes.
+ */
 function mb_substr_count(string $haystack, string $needle, mixed ...$unused): int
 ```
 
@@ -769,17 +1113,28 @@ function mb_ucfirst(string $str): string
 #### output
 
 ```php
-// print_r renders $value for reading rather than for parsing; with $return true the text is returned, otherwise it is written to the output and true is returned.
+/**
+ * print_r renders $value for a reader, in a shape nothing parses. With
+ * $return true the text is returned; otherwise it is written to the output
+ * and true is returned.
+ */
 function print_r(mixed $value, mixed ...$ret): mixed
 ```
 
 ```php
-// var_dump writes each argument to the output annotated with its type, its element count and, for a string, its length in bytes.
+/**
+ * var_dump writes each argument to the output annotated with its type,
+ * its element count and, for a string, its length in bytes.
+ */
 function var_dump(mixed ...$values): void
 ```
 
 ```php
-// var_export renders $value as parsable PHP source; with $return true the source is returned, otherwise it is written to the output and null is returned.
+/**
+ * var_export renders $value as parsable PHP source; with $return true the
+ * source is returned, otherwise it is written to the output and null is
+ * returned.
+ */
 function var_export(mixed $value, mixed ...$ret): mixed
 ```
 
@@ -791,7 +1146,10 @@ function constant(string $name): mixed
 ```
 
 ```php
-// define defines constant $constant_name with value $value and returns true; the case-insensitivity flag is ignored.
+/**
+ * define defines constant $constant_name with value $value and returns
+ * true; the case-insensitivity flag is ignored.
+ */
 function define(string $constant_name, mixed $value, mixed ...$unused): bool
 ```
 
@@ -801,7 +1159,10 @@ function defined(string $constant_name): bool
 ```
 
 ```php
-// error_reporting always returns 0 and ignores $error_level; the reporting level is not configurable.
+/**
+ * error_reporting always returns 0 and ignores $error_level; the
+ * reporting level is not configurable.
+ */
 function error_reporting(mixed ...$error_level): int
 ```
 
@@ -813,7 +1174,7 @@ function extension_loaded(string $extension): bool
 ```php
 /**
  * filter_var implements the filter_var validators phpscript supports. An
- * unknown filter passes the value through, which is what FILTER_DEFAULT does.
+ * unknown filter passes the value through, as FILTER_DEFAULT does.
  */
 function filter_var(mixed $value, mixed ...$args): mixed
 ```
@@ -829,24 +1190,33 @@ function headers_sent(mixed ...$unused): bool
 ```php
 /**
  * phpscript has no php.ini. Reporting every directive as unset is what PHP
- * itself does for an unknown one, and it is the answer library code treats
+ * itself does for an unknown one, and library code treats it as
  * as "this extension is not configured".
  */
 function ini_get(string $unused): mixed
 ```
 
 ```php
-// ini_set accepts and ignores $option and $value and returns false; phpscript has no php.ini to change.
+/**
+ * ini_set accepts and ignores $option and $value and returns false;
+ * phpscript has no php.ini to change.
+ */
 function ini_set(string $option, mixed $value): mixed
 ```
 
 ```php
-// php_uname returns the host operating system name, the same value as PHP_OS; a $mode argument is ignored.
+/**
+ * php_uname returns the host operating system name, the same value as
+ * PHP_OS; a $mode argument is ignored.
+ */
 function php_uname(mixed ...$mode): string
 ```
 
 ```php
-// phpversion returns "8.4.0", the PHP language version phpscript reports; an $extension argument is ignored.
+/**
+ * phpversion returns "8.4.0", the PHP language version phpscript reports;
+ * an $extension argument is ignored.
+ */
 function phpversion(mixed ...$extension): mixed
 ```
 
@@ -861,12 +1231,20 @@ function spl_autoload_unregister(callable $callback): bool
 ```
 
 ```php
-// stream_resolve_include_path resolves $filename against the include path and returns the first path that exists, or false when none does.
+/**
+ * stream_resolve_include_path resolves $filename against the include path
+ * and returns the first path that exists, or false when none does.
+ */
 function stream_resolve_include_path(string $filename): mixed
 ```
 
 ```php
-// strrpos returns the byte position of the last occurrence of $needle in $haystack, or false if it does not occur; a positive $offset skips that many leading bytes and a negative one requires the match to start that many bytes before the end.
+/**
+ * strrpos returns the byte position of the last occurrence of $needle in
+ * $haystack, or false if it does not occur; a positive $offset skips that
+ * many leading bytes and a negative one requires the match to start that
+ * many bytes before the end.
+ */
 function strrpos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
@@ -880,7 +1258,10 @@ function strtr(string $subject, mixed ...$args): string
 ```
 
 ```php
-// zend_version returns the same version string as phpversion(); phpscript has no separate engine version.
+/**
+ * zend_version returns the same version string as phpversion(); phpscript
+ * has no separate engine version.
+ */
 function zend_version(): string
 ```
 
@@ -892,12 +1273,18 @@ function get_class(mixed ...$object): mixed
 ```
 
 ```php
-// get_object_vars returns the properties of $object as an array, in the order the object reads them back; a non-object yields an empty array.
+/**
+ * get_object_vars returns the properties of $object as an array, in the
+ * order the object reads them back. A non-object returns an empty array.
+ */
 function get_object_vars(mixed $object): array
 ```
 
 ```php
-// get_parent_class always returns false; phpscript has no inheritance, so no class has a parent to report.
+/**
+ * get_parent_class always returns false; phpscript has no inheritance, so
+ * no class has a parent to report.
+ */
 function get_parent_class(mixed ...$unused): mixed
 ```
 
@@ -917,13 +1304,17 @@ function method_exists(mixed $object_or_class, string $method): bool
 ```
 
 ```php
-// property_exists reports whether object $object_or_class has property $property, set or declared; a class name is not accepted and returns false.
+/**
+ * property_exists reports whether object $object_or_class has property
+ * $property, set or declared; a class name is not accepted and returns
+ * false.
+ */
 function property_exists(mixed $object_or_class, string $property): bool
 ```
 
 ```php
 /**
- * PHP hands out an opaque, per-object identity. A pointer is exactly that,
+ * PHP exposes an opaque, per-object identity. A pointer is exactly that,
  * and it is stable for as long as the object is alive, which is the only
  * guarantee PHP makes either.
  */
@@ -938,41 +1329,68 @@ function spl_object_id(mixed $object): int
 #### sleep
 
 ```php
-// sleep pauses the script for $seconds and returns 0. A negative count throws, as it does in php. The wait ends early, still returning 0, when the script runs out of time or the client it is answering goes away.
+/**
+ * sleep pauses the script for $seconds and returns 0. A negative count
+ * throws, as it does in php. The wait ends early, still returning 0, when
+ * the script runs out of time or the client it is answering goes away.
+ */
 function sleep(int $seconds): int
 ```
 
 ```php
-// usleep pauses the script for $microseconds, and ends early for the same reasons sleep does. A negative count throws, as it does in php.
+/**
+ * usleep pauses the script for $microseconds, and ends early for the same
+ * reasons sleep does. A negative count throws, as it does in php.
+ */
 function usleep(int $microseconds): void
 ```
 
 #### string compare
 
 ```php
-// strcasecmp compares $string1 and $string2 byte by byte with the ASCII letters folded to lower case, answering a negative number, a positive one, or 0 as strcmp does; a byte above 127 is compared as it is, so the folding does not reach an accented letter.
+/**
+ * strcasecmp compares $string1 and $string2 byte by byte with the ASCII
+ * letters folded to lower case, answering a negative number, a positive
+ * one, or 0 as strcmp does; a byte above 127 is compared as it is, so the
+ * folding does not reach an accented letter.
+ */
 function strcasecmp(string $string1, string $string2): int
 ```
 
 ```php
-// strcmp compares $string1 and $string2 byte by byte, answering a negative number when $string1 sorts first, a positive one when it sorts last, and 0 when they are equal.
+/**
+ * strcmp compares $string1 and $string2 byte by byte, answering a
+ * negative number when $string1 sorts first, a positive one when it sorts
+ * last, and 0 when they are equal.
+ */
 function strcmp(string $string1, string $string2): int
 ```
 
 ```php
-// strncasecmp compares at most $length leading bytes of $string1 and $string2 the way strcasecmp does, with the same reading of a $length past the end or below zero.
+/**
+ * strncasecmp compares at most $length leading bytes of $string1 and
+ * $string2 the way strcasecmp does, with the same reading of a $length
+ * past the end or below zero.
+ */
 function strncasecmp(string $string1, string $string2, int $length): int
 ```
 
 ```php
-// strncmp compares at most $length leading bytes of $string1 and $string2 the way strcmp does; a $length past the end of both compares what is there, and a negative one compares nothing and answers 0.
+/**
+ * strncmp compares at most $length leading bytes of $string1 and $string2
+ * the way strcmp does; a $length past the end of both compares what is
+ * there, and a negative one compares nothing and answers 0.
+ */
 function strncmp(string $string1, string $string2, int $length): int
 ```
 
 #### strings
 
 ```php
-// chr returns the one-byte string for $codepoint, taken modulo 256 with negative values wrapping up into that range, as PHP does.
+/**
+ * chr returns the one-byte string for $codepoint, taken modulo 256 with
+ * negative values wrapping up into that range, as PHP does.
+ */
 function chr(int $codepoint): string
 ```
 
@@ -982,22 +1400,35 @@ function crc32(string $str): int
 ```
 
 ```php
-// explode splits $str on $separator into a list; a positive $limit caps the parts, the last one holding the rest, and other limits are ignored.
+/**
+ * explode splits $str on $separator into a list; a positive $limit caps
+ * the parts, the last one holding the rest, and other limits are ignored.
+ */
 function explode(string $separator, string $str, int ...$limit): array
 ```
 
 ```php
-// fnmatch reports whether $str matches the shell wildcard $pattern, where * and ? cross a directory separator unless $flags names FNM_PATHNAME; the other flags are FNM_NOESCAPE, FNM_PERIOD and FNM_CASEFOLD.
+/**
+ * fnmatch reports whether $str matches the shell wildcard $pattern, where
+ * * and ? cross a directory separator unless $flags names FNM_PATHNAME;
+ * the other flags are FNM_NOESCAPE, FNM_PERIOD and FNM_CASEFOLD.
+ */
 function fnmatch(string $pattern, string $str, mixed ...$flags): bool
 ```
 
 ```php
-// htmlspecialchars escapes &, <, >, double and single quotes as HTML entities; the $flags and later arguments are accepted and ignored.
+/**
+ * htmlspecialchars escapes &, <, >, double and single quotes as HTML
+ * entities; the $flags and later arguments are accepted and ignored.
+ */
 function htmlspecialchars(string $s, mixed ...$flags): string
 ```
 
 ```php
-// implode returns the values of $array joined with $separator; with a single array argument the separator is "".
+/**
+ * implode returns the values of $array joined with $separator; with a
+ * single array argument the separator is "".
+ */
 function implode(mixed $separator, mixed $array): string
 ```
 
@@ -1007,12 +1438,18 @@ function join(mixed $separator, mixed $array): string
 ```
 
 ```php
-// lcfirst returns $string with its first character lowercased; non-ASCII letters are converted too.
+/**
+ * lcfirst returns $string with its first character lowercased; non-ASCII
+ * letters are converted too.
+ */
 function lcfirst(string $str): string
 ```
 
 ```php
-// ltrim strips whitespace, or the bytes listed in $characters, from the start of $string; "a..z" in the list is the range between the two.
+/**
+ * ltrim strips whitespace, or the bytes listed in $characters, from the
+ * start of $string; "a..z" in the list is the range between the two.
+ */
 function ltrim(string $string, string ...$args): string
 ```
 
@@ -1022,17 +1459,27 @@ function ord(string $character): int
 ```
 
 ```php
-// rtrim strips whitespace, or the bytes listed in $characters, from the end of $string; "a..z" in the list is the range between the two.
+/**
+ * rtrim strips whitespace, or the bytes listed in $characters, from the
+ * end of $string; "a..z" in the list is the range between the two.
+ */
 function rtrim(string $string, string ...$args): string
 ```
 
 ```php
-// sprintf returns $format with each conversion replaced by the argument it names, coerced the way PHP renders a value in a string context; width, precision and padding count bytes.
+/**
+ * sprintf returns $format with each conversion replaced by the argument
+ * it names, coerced the way PHP renders a value in a string context;
+ * width, precision and padding count bytes.
+ */
 function sprintf(string $format, mixed ...$args): string
 ```
 
 ```php
-// str_contains reports whether $needle occurs in $haystack; an empty needle is contained in every string.
+/**
+ * str_contains reports whether $needle occurs in $haystack; an empty
+ * needle is contained in every string.
+ */
 function str_contains(string $haystack, string $needle): bool
 ```
 
@@ -1042,7 +1489,11 @@ function str_ends_with(string $haystack, string $needle): bool
 ```
 
 ```php
-// str_pad returns $string padded with $pad_string to $length characters on the side $pad_type selects; a $length below the current one is a no-op.
+/**
+ * str_pad returns $string padded with $pad_string to $length characters
+ * on the side $pad_type selects; a $length below the current one is a
+ * no-op.
+ */
 function str_pad(string $str, int $length, mixed ...$optional): string
 ```
 
@@ -1060,7 +1511,11 @@ function str_replace(mixed $search, mixed $replace, mixed $subject): string
 ```
 
 ```php
-// str_split returns $string cut into chunks of $length characters, the last one shorter when the string does not divide evenly; an empty string yields an empty array.
+/**
+ * str_split returns $string cut into chunks of $length characters, the last
+ * one shorter when the string does not divide evenly. An empty string
+ * returns an empty array.
+ */
 function str_split(string $str, int ...$length): array
 ```
 
@@ -1070,7 +1525,11 @@ function str_starts_with(string $haystack, string $needle): bool
 ```
 
 ```php
-// stripos returns the byte offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+/**
+ * stripos returns the byte offset of the first case-insensitive $needle
+ * in $haystack, or false when it does not occur; a negative $offset
+ * counts from the end of $haystack.
+ */
 function stripos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
@@ -1080,62 +1539,106 @@ function strlen(string $str): int
 ```
 
 ```php
-// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+/**
+ * strpos returns the byte offset of the first $needle in $haystack, or
+ * false when it does not occur; a negative $offset counts from the end of
+ * $haystack.
+ */
 function strpos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
 ```php
-// strrev returns $string with its characters in reverse order; multi-byte characters are preserved.
+/**
+ * strrev returns $string with its characters in reverse order; multi-byte
+ * characters are preserved.
+ */
 function strrev(string $str): string
 ```
 
 ```php
-// strripos returns the byte offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many bytes before the end.
+/**
+ * strripos returns the byte offset of the last case-insensitive $needle
+ * in $haystack, or false when it does not occur; a negative $offset
+ * requires the match to start that many bytes before the end.
+ */
 function strripos(string $haystack, string $needle, int ...$offset): mixed
 ```
 
 ```php
-// strstr returns $haystack from the first occurrence of $needle to the end, or false when it does not occur; there is no $before_needle parameter.
+/**
+ * strstr returns $haystack from the first occurrence of $needle to the
+ * end, or false when it does not occur; there is no $before_needle
+ * parameter.
+ */
 function strstr(string $haystack, string $needle): mixed
 ```
 
 ```php
-// strtolower returns $string with A-Z mapped down and every other byte left alone; mb_strtolower converts non-ASCII letters too.
+/**
+ * strtolower returns $string with A-Z mapped down and every other byte
+ * left alone; mb_strtolower converts non-ASCII letters too.
+ */
 function strtolower(string $s): string
 ```
 
 ```php
-// strtoupper returns $string with A-Z mapped up and every other byte left alone; mb_strtoupper converts non-ASCII letters too.
+/**
+ * strtoupper returns $string with A-Z mapped up and every other byte left
+ * alone; mb_strtoupper converts non-ASCII letters too.
+ */
 function strtoupper(string $s): string
 ```
 
 ```php
-// substr returns the part of $string from byte $offset for $length bytes; a negative $offset counts from the end and a negative $length stops that many bytes before it. mb_substr counts characters.
+/**
+ * substr returns the part of $string from byte $offset for $length bytes;
+ * a negative $offset counts from the end and a negative $length stops
+ * that many bytes before it. mb_substr counts characters.
+ */
 function substr(string $s, int $start, int ...$length): string
 ```
 
 ```php
-// substr_count returns the number of non-overlapping occurrences of $needle in $haystack, restricted to the byte window $offset and $length describe.
+/**
+ * substr_count returns the number of non-overlapping occurrences of
+ * $needle in $haystack, restricted to the byte window $offset and $length
+ * describe.
+ */
 function substr_count(string $haystack, string $needle, mixed ...$optional): int
 ```
 
 ```php
-// substr_replace returns $string with the bytes from $offset for $length replaced by $replace; a negative $offset counts from the end and a negative $length is a distance from it. Array arguments are not supported.
+/**
+ * substr_replace returns $string with the bytes from $offset for $length
+ * replaced by $replace; a negative $offset counts from the end and a
+ * negative $length is a distance from it. Array arguments are not
+ * supported.
+ */
 function substr_replace(string $str, string $replace, int $offset, int ...$length): string
 ```
 
 ```php
-// trim strips whitespace, or the bytes listed in $characters, from both ends of $string; "a..z" in the list is the range between the two.
+/**
+ * trim strips whitespace, or the bytes listed in $characters, from both
+ * ends of $string; "a..z" in the list is the range between the two.
+ */
 function trim(string $string, string ...$args): string
 ```
 
 ```php
-// ucfirst returns $string with its first character uppercased; non-ASCII letters are converted too.
+/**
+ * ucfirst returns $string with its first character uppercased; non-ASCII
+ * letters are converted too.
+ */
 function ucfirst(string $str): string
 ```
 
 ```php
-// ucwords returns $string with the first ASCII letter of every word uppercased, words being separated by $separators, which defaults to " \t\r\n\f\v".
+/**
+ * ucwords returns $string with the first ASCII letter of every word
+ * uppercased, words being separated by $separators, which defaults to "
+ * \t\r\n\f\v".
+ */
 function ucwords(string $str, string ...$separators): string
 ```
 
@@ -1157,94 +1660,167 @@ function token_name(int $id): string
 #### yaml
 
 ```php
-// yaml_decode parses the YAML in $text into arrays, with a mapping arriving as an array keyed by its field names and a sequence as a list; the keys come back sorted, and invalid input raises an error rather than answering null.
+/**
+ * yaml_decode parses the YAML in $text into arrays: a mapping arrives as an
+ * array keyed by its field names and a sequence as a list. The keys come
+ * back sorted, and invalid input raises an error where php answers null.
+ */
 function yaml_decode(string $text): mixed
 ```
 
 ```php
-// yaml_encode returns $value as YAML, writing an array that is a list as a sequence and any other array as a mapping in the order its keys were set.
+/**
+ * yaml_encode returns $value as YAML, writing an array that is a list as
+ * a sequence and any other array as a mapping in the order its keys were
+ * set.
+ */
 function yaml_encode(mixed $value): mixed
 ```
 
 ### stdlib/crypto
 
 ```php
-// hash returns the $algo digest of $data as lowercase hex characters, or as raw bytes when $binary is true; $algo is one of the names hash_algos() answers, which is a subset of PHP's.
+/**
+ * hash returns the $algo digest of $data as lowercase hex characters, or
+ * as raw bytes when $binary is true; $algo is one of the names
+ * hash_algos() answers, which is a subset of PHP's.
+ */
 function hash(string $algo, string $data, bool ...$binary): string
 ```
 
 ```php
-// hash_algos returns the algorithm names hash() and hash_hmac() accept here, sorted; the list is shorter than PHP's, so a script that offers a choice should read it rather than assume one.
+/**
+ * hash_algos returns the algorithm names hash() and hash_hmac() accept
+ * here, sorted. The list is a seventh of PHP's, so a script that lets a user
+ * pick an algorithm reads the list.
+ */
 function hash_algos(): array
 ```
 
 ```php
-// hash_equals reports whether $known_string and $user_string are the same, in time that does not depend on how far along they first differ; strings of different lengths are never equal, and the comparison of a wrong-length guess is the one case that does leak, because the lengths are compared first.
+/**
+ * hash_equals reports whether $known_string and $user_string are the
+ * same, in time that does not depend on how far along they first differ;
+ * strings of different lengths are never equal, and the comparison of a
+ * wrong-length guess is the one case that does leak, because the lengths
+ * are compared first.
+ */
 function hash_equals(string $known_string, string $user_string): bool
 ```
 
 ```php
-// hash_hmac returns the $algo keyed digest of $data under $key as lowercase hex characters, or as raw bytes when $binary is true; a key longer than the algorithm's block size is itself digested first, which is HMAC's own rule and not a choice made here.
+/**
+ * hash_hmac returns the $algo keyed digest of $data under $key as
+ * lowercase hex characters, or as raw bytes when $binary is true; a key
+ * longer than the algorithm's block size is itself digested first, which
+ * is HMAC's own rule and not a choice made here.
+ */
 function hash_hmac(string $algo, string $data, string $key, bool ...$binary): string
 ```
 
 ```php
-// md5 returns the MD5 hash of $string as 32 lowercase hex characters, or as 16 raw bytes when $binary is true.
+/**
+ * md5 returns the MD5 hash of $string as 32 lowercase hex characters, or
+ * as 16 raw bytes when $binary is true.
+ */
 function md5(string $str, bool ...$binary): string
 ```
 
 ```php
-// password_algos returns the algorithm identifiers password_hash() accepts, in the order php lists them: bcrypt first, then the two argon2 variants.
+/**
+ * password_algos returns the algorithm identifiers password_hash() accepts,
+ * in php's order: bcrypt, then the two argon2 variants.
+ */
 function password_algos(): array
 ```
 
 ```php
-// password_get_info returns the algorithm and the work factors $hash records, as PHP's does: an unrecognised hash reports a null algo and the name "unknown" rather than failing.
+/**
+ * password_get_info returns the algorithm and the work factors $hash
+ * records. An unrecognised hash reports a null algo and the algoName
+ * "unknown", as PHP's does.
+ */
 function password_get_info(string $hash): array
 ```
 
 ```php
-// password_hash returns a salted hash of $password under $algo, which is PASSWORD_BCRYPT, PASSWORD_ARGON2ID or PASSWORD_ARGON2I; $options takes "cost" for bcrypt and "memory_cost", "time_cost" and "threads" for argon2, and the salt comes from the system CSPRNG either way.
+/**
+ * password_hash returns a salted hash of $password under $algo, which is
+ * PASSWORD_BCRYPT, PASSWORD_ARGON2ID or PASSWORD_ARGON2I. $options takes
+ * "cost" for bcrypt and "memory_cost", "time_cost" and "threads" for
+ * argon2. The salt comes from the system CSPRNG.
+ */
 function password_hash(string $password, mixed ...$opts): string
 ```
 
 ```php
-// password_needs_rehash reports whether $hash was made with a different algorithm or different work factors than $algo and $options ask for, which is how a login upgrades a stored hash without asking for the password twice.
+/**
+ * password_needs_rehash reports whether $hash records a different algorithm
+ * or different work factors than $algo and $options name. A login that
+ * already holds the plaintext uses it to re-store the hash.
+ */
 function password_needs_rehash(string $hash, mixed ...$opts): bool
 ```
 
 ```php
-// password_verify reports whether $password produced $hash, reading the algorithm and the work factors out of $hash rather than taking them again; a hash that is empty or malformed is false rather than an error, because a login form asks a question and "no" is an answer.
+/**
+ * password_verify reports whether $password produced $hash. The algorithm
+ * and the work factors are read out of $hash. An empty or malformed $hash
+ * returns false; it raises no error.
+ */
 function password_verify(string $password, string $hash): bool
 ```
 
 ```php
-// rand returns a uniformly selected integer between $min and $max inclusive, or between 0 and 2147483647 when called without arguments; it reads the CSPRNG rather than a seeded generator, so there is no srand to pair it with.
+/**
+ * rand returns a uniformly selected integer between $min and $max
+ * inclusive, or between 0 and 2147483647 when called without arguments;
+ * it reads the CSPRNG and not a seeded generator, so there is no srand to
+ * pair it with.
+ */
 function rand(int ...$bounds): int
 ```
 
 ```php
-// random_bytes returns $length cryptographically secure random bytes, throwing when $length is less than 1.
+/**
+ * random_bytes returns $length cryptographically secure random bytes,
+ * throwing when $length is less than 1.
+ */
 function random_bytes(int $length): string
 ```
 
 ```php
-// random_int returns a cryptographically secure, uniformly selected integer between $min and $max inclusive, throwing when $min is greater than $max.
+/**
+ * random_int returns a cryptographically secure, uniformly selected
+ * integer between $min and $max inclusive, throwing when $min is greater
+ * than $max.
+ */
 function random_int(int $min, int $max): int
 ```
 
 ```php
-// sha1 returns the SHA-1 hash of $string as 40 lowercase hex characters, or as 20 raw bytes when $binary is true.
+/**
+ * sha1 returns the SHA-1 hash of $string as 40 lowercase hex characters,
+ * or as 20 raw bytes when $binary is true.
+ */
 function sha1(string $str, bool ...$binary): string
 ```
 
 ```php
-// ulid returns a 26-character ULID: a millisecond timestamp and 80 random bits in Crockford base32, so ids sort by creation time. Ids from the same millisecond sort in no particular order.
+/**
+ * ulid returns a 26-character ULID: a millisecond timestamp and 80 random
+ * bits in Crockford base32, so ids sort by creation time. Ids from the
+ * same millisecond sort in no particular order.
+ */
 function ulid(): string
 ```
 
 ```php
-// uuid returns a UUIDv7 as 36 lowercase characters in the 8-4-4-4-12 form: a millisecond timestamp and random bits, so ids sort by creation time like a ulid.
+/**
+ * uuid returns a UUIDv7 as 36 lowercase characters in the 8-4-4-4-12
+ * form: a millisecond timestamp and random bits, so ids sort by creation
+ * time like a ulid.
+ */
 function uuid(): string
 ```
 
@@ -1270,36 +1846,62 @@ Database::register(string $name, string $dsn): bool
 #### csv
 
 ```php
-// fgetcsv reads one CSV record from $stream and returns its fields as strings, or false at end of file; $length is accepted and ignored, $escape is accepted and ignored, and an $enclosure other than '"' is refused.
+/**
+ * fgetcsv reads one CSV record from $stream and returns its fields as
+ * strings, or false at end of file; $length is accepted and ignored,
+ * $escape is accepted and ignored, and an $enclosure other than '"' is
+ * refused.
+ */
 function fgetcsv(resource $stream, mixed ...$opts): mixed
 ```
 
 ```php
-// fputcsv writes $fields to $stream as one RFC 4180 record ending in \n and returns the number of bytes written, or false on failure; $escape is accepted and ignored, and an $enclosure other than '"' is refused.
+/**
+ * fputcsv writes $fields to $stream as one RFC 4180 record ending in \n
+ * and returns the number of bytes written, or false on failure; $escape
+ * is accepted and ignored, and an $enclosure other than '"' is refused.
+ */
 function fputcsv(resource $stream, mixed $fields, mixed ...$opts): mixed
 ```
 
 #### dirs
 
 ```php
-// closedir drops the listing $dir_handle was holding and answers nothing, as php's does; a handle it closed reads as exhausted rather than raising, which is where php throws.
+/**
+ * closedir drops the listing $dir_handle was holding and answers nothing,
+ * as php's does; a handle it closed reads as exhausted and not raising,
+ * where php throws.
+ */
 function closedir(mixed $dir_handle): void
 ```
 
 ```php
-// opendir returns a handle for reading the names in $directory, or false when it is not a directory; php's $context argument is not taken, because there are no stream contexts to pass it.
+/**
+ * opendir returns a handle for reading the names in $directory, or false
+ * when it is not a directory; php's $context argument is not taken,
+ * because there are no stream contexts to pass it.
+ */
 function opendir(string $directory): mixed
 ```
 
 ```php
-// readdir returns the next name in $dir_handle, or false once the listing is exhausted; "." and ".." are listed, as php lists them, and the handle is required, because there is no last-opened directory to fall back on.
+/**
+ * readdir returns the next name in $dir_handle, or false once the listing
+ * is exhausted; "." and ".." are listed, as php lists them, and the
+ * handle is required, because there is no last-opened directory to fall
+ * back on.
+ */
 function readdir(mixed $dir_handle): mixed
 ```
 
 #### paths
 
 ```php
-// basename returns the trailing name component of $path, less $suffix when the name ends with it. The empty and root paths answer "", as PHP's do.
+/**
+ * basename returns the trailing name component of $path, less $suffix
+ * when the name ends with it. The empty and root paths answer "", as
+ * PHP's do.
+ */
 function basename(string $path, string ...$suffix): string
 ```
 
@@ -1316,17 +1918,30 @@ function file_exists(string $filename): bool
 ```
 
 ```php
-// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body (stdin under the cli SAPI), and a relative path is tried in the source filesystem first, then on the host.
+/**
+ * file_get_contents returns the contents of $filename as a string, or
+ * false on failure; php://input is the raw request body (stdin under the
+ * cli SAPI), and a relative path is tried in the source filesystem first,
+ * then on the host.
+ */
 function file_get_contents(string $filename): mixed
 ```
 
 ```php
-// filemtime returns the modification time of $filename as a Unix timestamp, or 0 when the file cannot be found; PHP returns false there.
+/**
+ * filemtime returns the modification time of $filename as a Unix
+ * timestamp, or 0 when the file cannot be found; PHP returns false there.
+ */
 function filemtime(string $filename): int
 ```
 
 ```php
-// glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host; a pattern naming anything outside the root matches nothing, and a malformed one matches nothing rather than failing, as PHP's does.
+/**
+ * glob returns the paths matching $pattern, searched in the source
+ * filesystem when one is bound, otherwise on the host; a pattern naming
+ * anything outside the root matches nothing, and a malformed one matches
+ * nothing and not failing, as PHP's does.
+ */
 function glob(string $pattern): array
 ```
 
@@ -1338,7 +1953,12 @@ function filesize(string $filename): mixed
 ```
 
 ```php
-// filetype returns "file", "dir" or "link" for what $filename names, or false when it cannot be found; the exotic types php can answer with - fifo, block, char, socket - are reported as "file", because nothing inside a source filesystem can be one.
+/**
+ * filetype returns "file", "dir" or "link" for what $filename names, or
+ * false when it cannot be found; the exotic types php can answer with -
+ * fifo, block, char, socket - are reported as "file", because nothing
+ * inside a source filesystem can be one.
+ */
 function filetype(string $filename): mixed
 ```
 
@@ -1348,64 +1968,119 @@ function is_dir(string $filename): bool
 ```
 
 ```php
-// is_executable reports whether $filename has an execute bit set on the host; a file that exists only in the source filesystem is not executable, because there is nothing there to run.
+/**
+ * is_executable reports whether $filename has an execute bit set on the
+ * host; a file that exists only in the source filesystem is not
+ * executable, because there is nothing there to run.
+ */
 function is_executable(string $filename): bool
 ```
 
 ```php
-// is_file reports whether $filename names an ordinary file, in the source filesystem or on the host; a directory is not one, and neither is a path that does not exist.
+/**
+ * is_file reports whether $filename names an ordinary file, in the source
+ * filesystem or on the host; a directory is not one, and neither is a
+ * path that does not exist.
+ */
 function is_file(string $filename): bool
 ```
 
 ```php
-// is_readable reports whether $filename can be opened for reading, which here is whether it exists: a path inside the root is readable by the process that is asking, and the source filesystem carries no permissions of its own.
+/**
+ * is_readable reports whether $filename can be opened for reading, which
+ * here is whether it exists: a path inside the root is readable by the
+ * process that is asking, and the source filesystem carries no
+ * permissions of its own.
+ */
 function is_readable(string $filename): bool
 ```
 
 ```php
-// is_writable reports whether $filename could be written, which asks writable_paths rather than the file mode; a path the allowlist refuses is not writable however the host's permissions read, and a path it allows is, whether or not the file exists yet.
+/**
+ * is_writable reports whether $filename could be written, which reads
+ * writable_paths and not the file mode; a path the allowlist refuses is
+ * not writable however the host's permissions read, and a path it allows
+ * is, whether or not the file exists yet.
+ */
 function is_writable(string $filename): bool
 ```
 
 ```php
-// pathinfo returns the parts of $path as an array of dirname, basename, extension and filename; a path with no dot carries no extension key, which is what php leaves out rather than answering empty. It never touches the filesystem, so it answers about a path that does not exist.
+/**
+ * pathinfo returns the parts of $path as an array of dirname, basename,
+ * extension and filename; a path with no dot carries no extension key,
+ * which php leaves out and never empties. It never touches
+ * the filesystem, so it answers about a path that does not exist.
+ */
 function pathinfo(string $path): array
 ```
 
 ```php
-// realpath returns $path written from the root, with . and .. resolved, or false when nothing is there; php answers a host path, and a runtime whose scripts may be served out of an embedded tree has none to answer with, so this answers the spelling getcwd() and __DIR__ use.
+/**
+ * realpath returns $path written from the root, with . and .. resolved,
+ * or false when nothing is there; php answers a host path, and a runtime
+ * whose scripts may be served out of an embedded tree has none to answer
+ * with, so this answers the spelling getcwd() and __DIR__ use.
+ */
 function realpath(string $path): mixed
 ```
 
 ```php
-// scandir returns the names in the directory $directory, sorted, with "." and ".." first as php lists them; false when $directory is not a directory.
+/**
+ * scandir returns the names in the directory $directory, sorted, with "."
+ * and ".." first as php lists them; false when $directory is not a
+ * directory.
+ */
 function scandir(string $directory): mixed
 ```
 
 #### stream reads
 
 ```php
-// feof reports whether $stream is at its end. It answers for a handle fopen() gave out, by comparing where the handle sits against how long the file is; php://input and php://output are not seekable and answer false, so a script draining the request body should read it with stream_get_contents.
+/**
+ * feof reports whether $stream is at its end. It answers for a handle
+ * fopen() gave out, by comparing where the handle sits against how long
+ * the file is; php://input and php://output are not seekable and answer
+ * false, so a script draining the request body should read it with
+ * stream_get_contents.
+ */
 function feof(mixed $stream): bool
 ```
 
 ```php
-// fgets reads one line from $stream, keeping the newline that ends it, and returns false at the end of the handle; $length bounds the line, so a line longer than it comes back in pieces.
+/**
+ * fgets reads one line from $stream, keeping the newline that ends it,
+ * and returns false at the end of the handle; $length bounds the line, so
+ * a line longer than it comes back in pieces.
+ */
 function fgets(resource $stream, int ...$length): mixed
 ```
 
 ```php
-// fread reads at most $length bytes from $stream and returns them, or false when the handle cannot be read; a read at the end of the handle returns the empty string, which is how a loop knows to stop.
+/**
+ * fread reads at most $length bytes from $stream and returns them, or
+ * false when the handle cannot be read; a read at the end of the handle
+ * returns the empty string, which ends a loop reading to the end.
+ */
 function fread(resource $stream, int $length): mixed
 ```
 
 ```php
-// fseek moves $stream to $offset, counted from the start of the handle, from where it sits when $whence is SEEK_CUR, or from the end when it is SEEK_END; it answers 0 on success and -1 on failure, which is the opposite way round from every other function here and is php's own choice.
+/**
+ * fseek moves $stream to $offset, counted from the start of the handle,
+ * from where it sits when $whence is SEEK_CUR, or from the end when it is
+ * SEEK_END; it answers 0 on success and -1 on failure, which is the
+ * opposite way round from every other function here and is php's own
+ * choice.
+ */
 function fseek(resource $stream, int $offset, int ...$whence): int
 ```
 
 ```php
-// ftell returns where $stream sits, counted in bytes from the start, or false when the handle cannot say.
+/**
+ * ftell returns where $stream sits, counted in bytes from the start, or
+ * false when the handle cannot say.
+ */
 function ftell(resource $stream): mixed
 ```
 
@@ -1422,7 +2097,12 @@ function fclose(mixed $f): bool
 ```
 
 ```php
-// fopen opens $filename in $mode and returns a handle, or false on failure; php://output is the script's own output stream, php://input is the raw request body (stdin under the cli SAPI), and a mode that can write is refused outside writable_paths.
+/**
+ * fopen opens $filename in $mode and returns a handle, or false on
+ * failure; php://output is the script's own output stream, php://input is
+ * the raw request body (stdin under the cli SAPI), and a mode that can
+ * write is refused outside writable_paths.
+ */
 function fopen(string $filename, string $mode): mixed
 ```
 
@@ -1452,19 +2132,32 @@ function is_uploaded_file(string $filename): bool
 ```
 
 ```php
-// move_uploaded_file moves uploaded file $from to $to; a $from this request did not upload returns false, and a $to outside writable_paths is refused.
+/**
+ * move_uploaded_file moves uploaded file $from to $to; a $from this
+ * request did not upload returns false, and a $to outside writable_paths
+ * is refused.
+ */
 function move_uploaded_file(string $from, string $to): bool
 ```
 
 #### work dir
 
 ```php
-// chdir changes the working directory relative paths resolve against and returns whether it could; the directory is this request's own, and a path that would climb out of the source filesystem's root stops at it.
+/**
+ * chdir changes the working directory relative paths resolve against and
+ * returns whether it could; the directory is this request's own, and a
+ * path that would climb out of the source filesystem's root stops at it.
+ */
 function chdir(string $dir): bool
 ```
 
 ```php
-// getcwd returns the working directory, written from the source filesystem's root: "/" for the root itself, "/app" for a directory below it. PHP answers a host path; a runtime whose scripts may be served out of an embedded tree has none to answer with.
+/**
+ * getcwd returns the working directory, written from the source
+ * filesystem's root: "/" for the root itself, "/app" for a directory
+ * below it. PHP answers a host path; a runtime whose scripts may be
+ * served out of an embedded tree has none to answer with.
+ */
 function getcwd(): string
 ```
 
@@ -1487,7 +2180,7 @@ function chmod(string $filename, int $mode): bool
 ```php
 /**
  * PHP takes either a name or a numeric id for both of these, and leaves the
- * other half of the ownership alone, which is what -1 means to Chown.
+ * other half of the ownership alone, the meaning -1 has to Chown.
  */
 function chown(string $filename, mixed $owner): bool
 ```
@@ -1498,12 +2191,20 @@ function copy(string $from, string $to): bool
 ```
 
 ```php
-// file_put_contents writes $data to $filename and returns the number of bytes written, or false on failure; FILE_APPEND appends instead of truncating, LOCK_EX is accepted as a no-op, and a path outside writable_paths is refused.
+/**
+ * file_put_contents writes $data to $filename and returns the number of
+ * bytes written, or false on failure; FILE_APPEND appends in place of
+ * truncating, LOCK_EX is accepted as a no-op, and a path outside
+ * writable_paths is refused.
+ */
 function file_put_contents(string $filename, string $data, int ...$flags): mixed
 ```
 
 ```php
-// mkdir creates $directory and any missing parents; $permissions and $recursive are ignored, and a path outside writable_paths is refused.
+/**
+ * mkdir creates $directory and any missing parents; $permissions and
+ * $recursive are ignored, and a path outside writable_paths is refused.
+ */
 function mkdir(string $directory, mixed ...$permissions): bool
 ```
 
@@ -1516,7 +2217,11 @@ function rename(string $from, string $to): bool
 ```
 
 ```php
-// touch creates $filename if it is missing and sets its access and modification times to $mtime, or to now; a path outside writable_paths is refused.
+/**
+ * touch creates $filename if it is missing and sets its access and
+ * modification times to $mtime, or to now; a path outside writable_paths
+ * is refused.
+ */
 function touch(string $filename, int ...$mtime): bool
 ```
 
@@ -1530,7 +2235,10 @@ function unlink(string $filename): bool
 #### color
 
 ```php
-// imagecolorallocate returns an opaque colour identifier for $red, $green and $blue, each 0 to 255.
+/**
+ * imagecolorallocate returns an opaque colour identifier for $red, $green
+ * and $blue, each 0 to 255.
+ */
 function imagecolorallocate(mixed $im, int $red, int $green, int $blue): mixed
 ```
 
@@ -1540,46 +2248,71 @@ function imagecolorat(mixed $im, int $x, int $y): mixed
 ```
 
 ```php
-// imagecolorsforindex splits the packed identifier $color into an array with red, green, blue and alpha keys.
+/**
+ * imagecolorsforindex splits the packed identifier $color into an array
+ * with red, green, blue and alpha keys.
+ */
 function imagecolorsforindex(mixed $unused, int $packed): array
 ```
 
 #### create
 
 ```php
-// imagecreatefromgif decodes $filename as GIF and returns an image, or false when it cannot be read.
+/**
+ * imagecreatefromgif decodes $filename as GIF and returns an image, or
+ * false when it cannot be read.
+ */
 function imagecreatefromgif(string $string): mixed
 ```
 
 ```php
-// imagecreatefromjpeg decodes $filename as JPEG and returns an image, or false when it cannot be read.
+/**
+ * imagecreatefromjpeg decodes $filename as JPEG and returns an image, or
+ * false when it cannot be read.
+ */
 function imagecreatefromjpeg(string $string): mixed
 ```
 
 ```php
-// imagecreatefrompng decodes $filename as PNG and returns an image, or false when it cannot be read.
+/**
+ * imagecreatefrompng decodes $filename as PNG and returns an image, or
+ * false when it cannot be read.
+ */
 function imagecreatefrompng(string $string): mixed
 ```
 
 ```php
-// imagecreatetruecolor returns a new true colour image of $width by $height, filled with opaque black.
+/**
+ * imagecreatetruecolor returns a new true colour image of $width by
+ * $height, filled with opaque black.
+ */
 function imagecreatetruecolor(int $width, int $height): mixed
 ```
 
 ```php
-// imagedestroy frees $image. Memory is reclaimed automatically here, so it only drops the pixels and returns true.
+/**
+ * imagedestroy frees $image. Memory is reclaimed automatically here, so
+ * it only drops the pixels and returns true.
+ */
 function imagedestroy(mixed $im): bool
 ```
 
 #### draw
 
 ```php
-// imagecopyresampled copies a $src_w by $src_h region of $src at $src_x, $src_y into $dst at $dst_x, $dst_y, scaled to $dst_w by $dst_h, interpolating as it goes.
+/**
+ * imagecopyresampled copies a $src_w by $src_h region of $src at $src_x,
+ * $src_y into $dst at $dst_x, $dst_y, scaled to $dst_w by $dst_h,
+ * interpolating as it goes.
+ */
 function imagecopyresampled(mixed $dst, mixed $src, int $dst_x, int $dst_y, int $src_x, int $src_y, int $dst_w, int $dst_h, int $src_w, int $src_h): bool
 ```
 
 ```php
-// imagefill flood fills from $x, $y in $color, replacing the connected region that shares the starting pixel's colour.
+/**
+ * imagefill flood fills from $x, $y in $color, replacing the connected
+ * region that shares the starting pixel's colour.
+ */
 function imagefill(mixed $im, int $x, int $y, int $packed): bool
 ```
 
@@ -1596,7 +2329,10 @@ function imageline(mixed $im, int $x1, int $y1, int $x2, int $y2, int $packed): 
 #### info
 
 ```php
-// getimagesize returns array(width, height, IMAGETYPE_*, "width=.. height=..") for $filename, or false when it is not an image.
+/**
+ * getimagesize returns array(width, height, IMAGETYPE_*, "width=..
+ * height=..") for $filename, or false when it is not an image.
+ */
 function getimagesize(string $filename): mixed
 ```
 
@@ -1611,19 +2347,28 @@ function imagesy(mixed $im): mixed
 ```
 
 ```php
-// imagetypes returns a bitmask of the formats this build reads and writes: IMG_GIF, IMG_JPG and IMG_PNG.
+/**
+ * imagetypes returns a bitmask of the formats this build reads and
+ * writes: IMG_GIF, IMG_JPG and IMG_PNG.
+ */
 function imagetypes(): int
 ```
 
 #### write
 
 ```php
-// imagejpeg writes $image to $filename as JPEG at $quality (default 75), or to the output when $filename is null or empty.
+/**
+ * imagejpeg writes $image to $filename as JPEG at $quality (default 75),
+ * or to the output when $filename is null or empty.
+ */
 function imagejpeg(mixed $im, mixed ...$args): mixed
 ```
 
 ```php
-// imagepng writes $image to $filename as PNG, or to the output when $filename is null or empty. $quality selects the compression level.
+/**
+ * imagepng writes $image to $filename as PNG, or to the output when
+ * $filename is null or empty. $quality selects the compression level.
+ */
 function imagepng(mixed $im, mixed ...$args): mixed
 ```
 
@@ -1640,27 +2385,50 @@ function get_all_headers(): array
 ```
 
 ```php
-// getallheaders returns the request headers as an associative array keyed by canonical header name, and an empty array when there is no request.
+/**
+ * getallheaders returns the request headers as an associative array keyed
+ * by canonical header name, and an empty array when there is no request.
+ */
 function getallheaders(): array
 ```
 
 ```php
-// header stages the "Name: value" response header in $header, written to the response after the script finishes; $replace (default true) overwrites an existing header of the same name, $code stages the response status, and a status line such as "HTTP/1.0 404 Not Found" stages the status it names.
+/**
+ * header stages the "Name: value" response header in $header, written to
+ * the response after the script finishes; $replace (default true)
+ * overwrites an existing header of the same name, $code stages the
+ * response status, and a status line such as "HTTP/1.0 404 Not Found"
+ * stages the status it names.
+ */
 function header(string $header, mixed ...$opts): void
 ```
 
 ```php
-// http_response_code stages the response status in $response_code and returns the one it replaced; called without one it returns the status the response will be sent with, or false when there is no request to answer for.
+/**
+ * http_response_code stages the response status in $response_code and
+ * returns the one it replaced; called without one it returns the status
+ * the response will be sent with, or false when there is no request to
+ * answer for.
+ */
 function http_response_code(mixed ...$opts): mixed
 ```
 
 ```php
-// setcookie stages a Set-Cookie header naming $name with $value url-encoded, and answers whether it could; $expires_or_options is a unix timestamp, 0 for a cookie that dies with the browser session, or an array of expires, path, domain, secure, httponly and samesite.
+/**
+ * setcookie stages a Set-Cookie header naming $name with $value
+ * url-encoded, and answers whether it could; $expires_or_options is a
+ * unix timestamp, 0 for a cookie that dies with the browser session, or
+ * an array of expires, path, domain, secure, httponly and samesite.
+ */
 function setcookie(string $name, mixed ...$opts): bool
 ```
 
 ```php
-// setrawcookie stages a Set-Cookie header the way setcookie does but writes $value as it stands, so a value carrying a semicolon or a space is the caller's problem rather than the encoder's.
+/**
+ * setrawcookie stages a Set-Cookie header the way setcookie does, writing
+ * $value as it stands, so a value carrying a semicolon or a space is the
+ * caller's to handle; the encoder does nothing with it.
+ */
 function setrawcookie(string $name, mixed ...$opts): bool
 ```
 
@@ -1693,7 +2461,12 @@ function memory_get_usage(bool ...$real_usage): int
 ### stdlib/mail
 
 ```php
-// mail sends a plain-text message to $recipient with $subject and $body through the host's "default" mail server, throwing when none is configured; PHP's $additional_headers and $additional_params are not accepted.
+/**
+ * mail sends a plain-text message to $recipient with $subject and $body
+ * through the host's "default" mail server, throwing when none is
+ * configured; PHP's $additional_headers and $additional_params are not
+ * accepted.
+ */
 function mail(string $recipient, string $subject, string $body): void
 ```
 
@@ -1707,29 +2480,49 @@ function escapeshellarg(string $arg): string
 ```
 
 ```php
-// escapeshellcmd returns $command with the shell metacharacters in it backslash-escaped, leaving quotes that come in pairs alone; escapeshellarg is the one to reach for, since this leaves a quoted argument's own contents live.
+/**
+ * escapeshellcmd returns $command with the shell metacharacters in it
+ * backslash-escaped, leaving quotes that come in pairs alone;
+ * escapeshellarg is the one to reach for, since this leaves a quoted
+ * argument's own contents live.
+ */
 function escapeshellcmd(string $command): string
 ```
 
 #### exec
 
 ```php
-// exec runs $command through the shell and returns the last line of its stdout, appending each output line to $output when an array is passed and writing the exit status to $result_code.
+/**
+ * exec runs $command through the shell and returns the last line of its
+ * stdout, appending each output line to $output when an array is passed
+ * and writing the exit status to $result_code.
+ */
 function exec(string $command, mixed $output, &$result_code): mixed
 ```
 
 ```php
-// passthru runs $command through the shell and writes its output through untouched, for a command whose output is binary; it returns null, and the exit status is written to $result_code.
+/**
+ * passthru runs $command through the shell and writes its output through
+ * untouched, for a command whose output is binary; it returns null, and
+ * the exit status is written to $result_code.
+ */
 function passthru(string $command, &$result_code): mixed
 ```
 
 ```php
-// shell_exec runs $command through the shell and returns all of its stdout, or null when the command produced none.
+/**
+ * shell_exec runs $command through the shell and returns all of its
+ * stdout, or null when the command produced none.
+ */
 function shell_exec(string $command): mixed
 ```
 
 ```php
-// system runs $command through the shell, writing its output as it arrives, and returns the last line; the exit status is written to $result_code.
+/**
+ * system runs $command through the shell, writing its output as it
+ * arrives, and returns the last line; the exit status is written to
+ * $result_code.
+ */
 function system(string $command, &$result_code): mixed
 ```
 
@@ -1856,7 +2649,7 @@ class Database
     /**
      * begin starts a transaction and opens the span measuring it. The span stays
      * open until Commit or Rollback, so a transaction is one region in the trace
-     * rather than an open marker and a close marker to pair up.
+     * and no open marker and close marker to pair up.
      */
     public function begin(): mixed {}
 
@@ -1919,7 +2712,7 @@ Registered from `stdlib/database`.
  * The first name is also the project name mig records under, so two
  * schemas sharing one database keep separate records by being opened
  * under separate names. A script that names no connection migrates
- * "default", which is the connection an unnamed one resolves to anyway.
+ * "default": the connection an unnamed one resolves to anyway.
  * 
  * Each name is tried as "<name>:migrate" before "<name>", so a deployment
  * can point migrations at a user allowed to alter tables while the script
@@ -1928,7 +2721,7 @@ Registered from `stdlib/database`.
  * connects with is not what it is recorded under. A "<name>:migrate"
  * credential cannot come from the PLATFORM_DB_<NAME>=<dsn> environment
  * form, because an environment variable name holds no colon; it is
- * registered through Database::register, which is how a virtual host
+ * registered through Database::register, so a virtual host
  * owning its own connections already supplies them.
  * 
  * A name longer than 16 characters fails the run with mig's ErrNoProject,
@@ -1951,9 +2744,9 @@ class Database\Migrate
     public function load(string $pattern): void {}
 
     /**
-     * run applies the loaded migrations. It is one span rather than one per file:
+     * run applies the loaded migrations. It is one span and not one per file:
      * migrations run at startup, where what matters is how long the schema took and
-     * whether it failed, not a row per statement.
+     * whether it failed, with no row per statement.
      */
     public function run(): void {}
 }
@@ -1987,7 +2780,11 @@ Also registered with this constructor: `ArgumentCountError`, `ArithmeticError`, 
 Registered from `stdlib`.
 
 ```php
-// Exception is PHP's base exception class; the SPL exception and Error classes are the same Go type carrying a different class name, so a catch clause filters on the name rather than on a subclass relation.
+/**
+ * Exception is PHP's base exception class; the SPL exception and Error
+ * classes are the same Go type carrying a different class name, so a
+ * catch clause filters on the name and not on a subclass relation.
+ */
 class Exception
 {
     public function __construct(string $message, int $code) {}
@@ -2014,7 +2811,7 @@ Registered from `stdlib/http`.
 /**
  * HTTP\Client sends requests, one at a time with send() or all at once with
  * parallel(). It takes its settings as an associative array, and with no
- * argument gives a client with a 30 second timeout that follows redirects.
+ * argument builds a client with a 30 second timeout that follows redirects.
  */
 class HTTP\Client
 {
@@ -2170,7 +2967,7 @@ class HTTP\Server
 
     /**
      * close stops the server at once, dropping whatever was in flight. shutdown()
-     * is the one to reach for; this is for a script that has decided the answers no
+     * is the one to reach for; this is for a script that answers no
      * longer matter.
      */
     public function close(): void {}
@@ -2215,7 +3012,7 @@ Registered from `stdlib/core`.
  * 
  * UseNumber is on, as it is in json_decode(): without it Go reads every number
  * as a float, and the 7 in a document would come back as 7.0. With it a whole
- * number is an int and only a fractional one is a float, which is what php
+ * number is an int and only a fractional one is a float, as php
  * answers and what a row written back out has to preserve.
  */
 class JSON\Decoder
@@ -2225,9 +3022,9 @@ class JSON\Decoder
     /**
      * decode reads the next value from the stream and returns it, or throws at the
      * end of the stream - a null is a value JSON carries, so `while ($d->more())`
-     * is the loop rather than a test against what this returned.
+     * is the loop and no test against what this returned.
      * 
-     * It decodes through json_decode()'s own walk rather than json.Decoder.Decode,
+     * It decodes through json_decode()'s own walk and not json.Decoder.Decode,
      * which would build a map and lose the key order the two spellings agree on.
      */
     public function decode(): mixed {}
@@ -2248,7 +3045,7 @@ Registered from `stdlib/core`.
 /**
  * The streaming pair. json_encode() and json_decode() work on a whole
  * string, which means holding the whole document; these work on a stream,
- * which is what a request body and a response are.
+ * as a request body and a response are.
  * `new JSON\Decoder(fopen("php://input", "r"))` reads a POST body without a
  * string of it existing first, and an encoder over php://output writes the
  * response as it is built. Both take the io.Reader or io.Writer they wrap,
@@ -2282,7 +3079,7 @@ Registered from `stdlib/mail`.
 
 ```php
 /**
- * Mail delivers through one of the mail servers the host configured,
+ * Mail sends through one of the mail servers the host configured,
  * selected by $name; `new Mail` selects "default". The credentials stay
  * with the host: a script names a server and never spells, or reads back,
  * a host, a username or a password. The constructor throws when $name is
@@ -2298,7 +3095,7 @@ class Mail
 
     /**
      * send sends an email through the server this client names. It takes a context
-     * so the delivery is recorded on the trace of the request that asked for it;
+     * so the delivery is recorded on the trace of the request that sent it;
      * the runtime injects it, so a script still calls
      * `$mail->send($to, $subject, $body)`.
      */
@@ -2311,7 +3108,11 @@ class Mail
 Registered from `stdlib/regexp`.
 
 ```php
-// Regexp\Compile compiles $expr as an RE2 expression and throws when it does not parse; the value it builds carries every method Go's regexp.Regexp has.
+/**
+ * Regexp\Compile compiles $expr as an RE2 expression and throws when it
+ * does not parse; the value it builds carries every method Go's
+ * regexp.Regexp has.
+ */
 class Regexp\Compile
 {
     public function __construct(string $expr) {}
@@ -2401,7 +3202,10 @@ class Regexp\Compile
 Registered from `stdlib/regexp`.
 
 ```php
-// Regexp\CompilePOSIX compiles $expr as POSIX ERE, where a match is the leftmost-longest one rather than the leftmost one Perl syntax finds.
+/**
+ * Regexp\CompilePOSIX compiles $expr as POSIX ERE, where a match is the
+ * leftmost-longest one and not the leftmost one Perl syntax finds.
+ */
 class Regexp\CompilePOSIX
 {
     public function __construct(string $expr) {}
@@ -2515,7 +3319,12 @@ class Session\Manager
 Registered from `stdlib/session`.
 
 ```php
-// Session\Storage\Disk is session storage backed by files under $storage_path, which resolves inside the application root and must be writable; with no path it uses a directory of this application's own under the operating system's temporary directory.
+/**
+ * Session\Storage\Disk is session storage backed by files under
+ * $storage_path, which resolves inside the application root and must be
+ * writable; with no path it uses a directory of this application's own
+ * under the operating system's temporary directory.
+ */
 class Session\Storage\Disk
 {
     public function __construct(string ...$storage_paths) {}
@@ -2539,7 +3348,10 @@ class Session\Storage\Disk
 Registered from `stdlib/session`.
 
 ```php
-// Session\Storage\Memory is session storage backed by process memory; sessions vanish when the process exits.
+/**
+ * Session\Storage\Memory is session storage backed by process memory;
+ * sessions vanish when the process exits.
+ */
 class Session\Storage\Memory
 {
     public function __construct() {}

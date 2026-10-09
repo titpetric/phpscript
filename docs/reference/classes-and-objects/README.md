@@ -5,7 +5,7 @@
 | Classes, properties, methods   | Partial compatibility | Basic declarations, construction, `$this`, fields, and method calls are supported.                                                                                               |
 | Constructors                   | Compatibility         | `__construct` is called when present.                                                                                                                                            |
 | Class constants                | Compatibility         | Declaration and `Class::NAME` access are supported.                                                                                                                              |
-| Visibility, final, abstract    | Not enforced          | Modifiers are accepted but do not provide PHP semantics.                                                                                                                         |
+| Visibility, final, abstract    | Not enforced          | Modifiers are accepted and carry no PHP semantics.                                                                                                                               |
 | Inheritance                    | Partial compatibility | `extends` names a parent that a catch clause and `instanceof` filter on; no member is inherited through it.                                                                      |
 | Interfaces and traits          | Partial compatibility | `interface` declarations and `implements` are a contract: a class must declare every method its interfaces name, and inherits nothing from them. Traits are unavailable.         |
 | Static methods                 | Compatibility         | `Class::method()`, `self::method()` and `static::method()` are supported.                                                                                                        |
@@ -41,7 +41,7 @@ Properties can be declared with `var` or with a visibility modifier, and may car
 
 ## Static members
 
-A `static` property is storage on the class rather than on an instance. Every instance, and every static call, reads and writes the same value, and it outlives the object that first set it.
+A `static` property is storage on the class, not on an instance. Every instance, and every static call, reads and writes the same value, and it outlives the object that first set it.
 
 ```php
 class Registry
@@ -70,7 +70,7 @@ echo Registry::class;                 // Registry
 
 ## Interfaces
 
-An interface names method signatures, and a class that declares `implements` must declare every one of them itself. That is the whole of it: the check runs before the program does, and a class that passes it has exactly the members it wrote.
+An interface names method signatures, and a class that declares `implements` must declare every one of them itself. The check runs before the program does, and a class that passes it has exactly the members it wrote.
 
 ```php
 interface Reader
@@ -94,7 +94,7 @@ class Store implements Listing
 
 `interface A extends B, C` widens the contract: the names a class is checked against are the union of what every listed interface declares. Nothing is inherited, because an interface declares no body and holds no storage.
 
-A missing method is reported by `phpscript lint` and raises a `RuntimeException` at run time, naming the class, the interface and the method. A name no `interface` declaration in the same file defines is not a contract and is not checked, which is what makes `implements Countable` load: phpscript does not declare PHP's built-in interfaces.
+A missing method is reported by `phpscript lint` and raises a `RuntimeException` at run time, naming the class, the interface and the method. A name no `interface` declaration in the same file defines is not a contract and is not checked, so `implements Countable` loads: phpscript does not declare PHP's built-in interfaces.
 
 `instanceof` does not consult an interface. It is class-name equality, so `$store instanceof Reader` is false and `$store instanceof Store` is true. Constants declared on an interface are parsed and printed back, and reading one through `Interface::NAME` is not implemented.
 

@@ -17,63 +17,97 @@ func init() {
 func registerStrings(rt *runner.Runtime) {
 	// strlen returns the length of $str in bytes; mb_strlen counts characters.
 	rt.RegisterFunc("strlen", func(str string) int64 { return int64(len(str)) })
-	// strtoupper returns $string with A-Z mapped up and every other byte left alone; mb_strtoupper converts non-ASCII letters too.
+	// strtoupper returns $string with A-Z mapped up and every other byte left
+	// alone; mb_strtoupper converts non-ASCII letters too.
 	rt.RegisterFunc("strtoupper", asciiUpper)
-	// strtolower returns $string with A-Z mapped down and every other byte left alone; mb_strtolower converts non-ASCII letters too.
+	// strtolower returns $string with A-Z mapped down and every other byte
+	// left alone; mb_strtolower converts non-ASCII letters too.
 	rt.RegisterFunc("strtolower", asciiLower)
-	// trim strips whitespace, or the bytes listed in $characters, from both ends of $string; "a..z" in the list is the range between the two.
+	// trim strips whitespace, or the bytes listed in $characters, from both
+	// ends of $string; "a..z" in the list is the range between the two.
 	rt.RegisterFunc("trim", phpTrim(trimBoth, defaultTrimChars))
-	// rtrim strips whitespace, or the bytes listed in $characters, from the end of $string; "a..z" in the list is the range between the two.
+	// rtrim strips whitespace, or the bytes listed in $characters, from the
+	// end of $string; "a..z" in the list is the range between the two.
 	rt.RegisterFunc("rtrim", phpTrim(trimRight, defaultTrimChars))
-	// ltrim strips whitespace, or the bytes listed in $characters, from the start of $string; "a..z" in the list is the range between the two.
+	// ltrim strips whitespace, or the bytes listed in $characters, from the
+	// start of $string; "a..z" in the list is the range between the two.
 	rt.RegisterFunc("ltrim", phpTrim(trimLeft, defaultTrimChars))
 
-	// substr returns the part of $string from byte $offset for $length bytes; a negative $offset counts from the end and a negative $length stops that many bytes before it. mb_substr counts characters.
+	// substr returns the part of $string from byte $offset for $length bytes;
+	// a negative $offset counts from the end and a negative $length stops
+	// that many bytes before it. mb_substr counts characters.
 	rt.RegisterFunc("substr", phpSubstr)
-	// strpos returns the byte offset of the first $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+	// strpos returns the byte offset of the first $needle in $haystack, or
+	// false when it does not occur; a negative $offset counts from the end of
+	// $haystack.
 	rt.RegisterFunc("strpos", phpStrpos)
-	// stripos returns the byte offset of the first case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset counts from the end of $haystack.
+	// stripos returns the byte offset of the first case-insensitive $needle
+	// in $haystack, or false when it does not occur; a negative $offset
+	// counts from the end of $haystack.
 	rt.RegisterFunc("stripos", phpStripos)
-	// strrpos returns the byte offset of the last $needle in $haystack, or false when it does not occur.
+	// strrpos returns the byte offset of the last $needle in $haystack, or
+	// false when it does not occur.
 	rt.RegisterFunc("strrpos", phpStrrpos)
-	// strripos returns the byte offset of the last case-insensitive $needle in $haystack, or false when it does not occur; a negative $offset requires the match to start that many bytes before the end.
+	// strripos returns the byte offset of the last case-insensitive $needle
+	// in $haystack, or false when it does not occur; a negative $offset
+	// requires the match to start that many bytes before the end.
 	rt.RegisterFunc("strripos", phpStrripos)
-	// substr_count returns the number of non-overlapping occurrences of $needle in $haystack, restricted to the byte window $offset and $length describe.
+	// substr_count returns the number of non-overlapping occurrences of
+	// $needle in $haystack, restricted to the byte window $offset and $length
+	// describe.
 	rt.RegisterFunc("substr_count", phpSubstrCount)
-	// substr_replace returns $string with the bytes from $offset for $length replaced by $replace; a negative $offset counts from the end and a negative $length is a distance from it. Array arguments are not supported.
+	// substr_replace returns $string with the bytes from $offset for $length
+	// replaced by $replace; a negative $offset counts from the end and a
+	// negative $length is a distance from it. Array arguments are not
+	// supported.
 	rt.RegisterFunc("substr_replace", phpSubstrReplace)
-	// ucfirst returns $string with its first character uppercased; non-ASCII letters are converted too.
+	// ucfirst returns $string with its first character uppercased; non-ASCII
+	// letters are converted too.
 	rt.RegisterFunc("ucfirst", phpUcfirst)
-	// lcfirst returns $string with its first character lowercased; non-ASCII letters are converted too.
+	// lcfirst returns $string with its first character lowercased; non-ASCII
+	// letters are converted too.
 	rt.RegisterFunc("lcfirst", phpLcfirst)
-	// ucwords returns $string with the first ASCII letter of every word uppercased, words being separated by $separators, which defaults to " \t\r\n\f\v".
+	// ucwords returns $string with the first ASCII letter of every word
+	// uppercased, words being separated by $separators, which defaults to "
+	// \t\r\n\f\v".
 	rt.RegisterFunc("ucwords", phpUcwords)
-	// chr returns the one-byte string for $codepoint, taken modulo 256 with negative values wrapping up into that range, as PHP does.
+	// chr returns the one-byte string for $codepoint, taken modulo 256 with
+	// negative values wrapping up into that range, as PHP does.
 	rt.RegisterFunc("chr", phpChr)
 	// ord returns the first byte of $character as an integer, or 0 when $character is empty.
 	rt.RegisterFunc("ord", phpOrd)
-	// str_contains reports whether $needle occurs in $haystack; an empty needle is contained in every string.
+	// str_contains reports whether $needle occurs in $haystack; an empty
+	// needle is contained in every string.
 	rt.RegisterFunc("str_contains", phpStrContains)
 	// str_starts_with reports whether $haystack begins with $needle.
 	rt.RegisterFunc("str_starts_with", phpStrStartsWith)
 	// str_ends_with reports whether $haystack ends with $needle.
 	rt.RegisterFunc("str_ends_with", phpStrEndsWith)
-	// strrev returns $string with its characters in reverse order; multi-byte characters are preserved.
+	// strrev returns $string with its characters in reverse order; multi-byte
+	// characters are preserved.
 	rt.RegisterFunc("strrev", phpStrrev)
-	// str_split returns $string cut into chunks of $length characters, the last one shorter when the string does not divide evenly; an empty string yields an empty array.
+	// str_split returns $string cut into chunks of $length characters, the last
+	// one shorter when the string does not divide evenly. An empty string
+	// returns an empty array.
 	rt.RegisterFunc("str_split", phpStrSplit)
 	rt.SetConst("FNM_PATHNAME", int64(fnmPathname))
 	rt.SetConst("FNM_NOESCAPE", int64(fnmNoescape))
 	rt.SetConst("FNM_PERIOD", int64(fnmPeriod))
 	rt.SetConst("FNM_CASEFOLD", int64(fnmCasefold))
-	// fnmatch reports whether $str matches the shell wildcard $pattern, where * and ? cross a directory separator unless $flags names FNM_PATHNAME; the other flags are FNM_NOESCAPE, FNM_PERIOD and FNM_CASEFOLD.
+	// fnmatch reports whether $str matches the shell wildcard $pattern, where
+	// * and ? cross a directory separator unless $flags names FNM_PATHNAME;
+	// the other flags are FNM_NOESCAPE, FNM_PERIOD and FNM_CASEFOLD.
 	rt.RegisterFunc("fnmatch", phpFnmatch)
 	rt.SetConst("STR_PAD_RIGHT", int64(strPadRight))
 	rt.SetConst("STR_PAD_LEFT", int64(strPadLeft))
 	rt.SetConst("STR_PAD_BOTH", int64(strPadBoth))
-	// str_pad returns $string padded with $pad_string to $length characters on the side $pad_type selects; a $length below the current one is a no-op.
+	// str_pad returns $string padded with $pad_string to $length characters
+	// on the side $pad_type selects; a $length below the current one is a
+	// no-op.
 	rt.RegisterFunc("str_pad", phpStrPad)
-	// strstr returns $haystack from the first occurrence of $needle to the end, or false when it does not occur; there is no $before_needle parameter.
+	// strstr returns $haystack from the first occurrence of $needle to the
+	// end, or false when it does not occur; there is no $before_needle
+	// parameter.
 	rt.RegisterFunc("strstr", func(haystack, needle string) any {
 		i := strings.Index(haystack, needle)
 		if i < 0 {
@@ -84,17 +118,22 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("str_replace", phpStrReplace)
 	// str_repeat returns $str repeated $times times.
 	rt.RegisterFunc("str_repeat", func(str string, times int64) string { return strings.Repeat(str, int(times)) })
-	// implode returns the values of $array joined with $separator; with a single array argument the separator is "".
+	// implode returns the values of $array joined with $separator; with a
+	// single array argument the separator is "".
 	rt.RegisterFunc("implode", phpImplode)
 	// join returns the values of $array joined with $separator, PHP's alias of implode.
 	rt.RegisterFunc("join", phpImplode)
-	// explode splits $str on $separator into a list; a positive $limit caps the parts, the last one holding the rest, and other limits are ignored.
+	// explode splits $str on $separator into a list; a positive $limit caps
+	// the parts, the last one holding the rest, and other limits are ignored.
 	rt.RegisterFunc("explode", phpExplode)
-	// htmlspecialchars escapes &, <, >, double and single quotes as HTML entities; the $flags and later arguments are accepted and ignored.
+	// htmlspecialchars escapes &, <, >, double and single quotes as HTML
+	// entities; the $flags and later arguments are accepted and ignored.
 	rt.RegisterFunc("htmlspecialchars", func(s string, flags ...any) string {
 		return htmlSpecialCharsReplacer.Replace(s)
 	})
-	// sprintf returns $format with each conversion replaced by the argument it names, coerced the way PHP renders a value in a string context; width, precision and padding count bytes.
+	// sprintf returns $format with each conversion replaced by the argument
+	// it names, coerced the way PHP renders a value in a string context;
+	// width, precision and padding count bytes.
 	rt.RegisterFunc("sprintf", phpSprintf)
 	// crc32 returns the CRC-32 checksum of $str as an integer.
 	rt.RegisterFunc("crc32", phpCRC32)
@@ -154,7 +193,7 @@ const defaultTrimChars = " \t\n\r\x00\x0B"
 
 // phpTrim implements the trim family over PHP's optional charlist.
 //
-// The list is a set of bytes rather than of characters, which is the unit the
+// The list is a set of bytes and not of characters, which is the unit the
 // rest of the str* functions count in, so a charlist holding one byte of a
 // multi-byte character strips that byte. strings.Trim reads its cutset as runes
 // and cannot express either that or the "a..z" range.
@@ -243,7 +282,7 @@ const (
 )
 
 // phpStrpos implements strpos($haystack, $needle[, $offset]); the offset taken
-// and the position returned count bytes, which is what PREG_OFFSET_CAPTURE
+// and the position returned count bytes, as PREG_OFFSET_CAPTURE
 // reports and what substr consumes. mbStrpos counts characters.
 func phpStrpos(haystack, needle string, offset ...int64) any {
 	start, ok := searchStart(haystack, offset)
@@ -337,7 +376,7 @@ func searchLast(haystack, needle string, offset []int64) int {
 	return strings.LastIndex(haystack[:end], needle)
 }
 
-// asciiLower folds A-Z only, which is what PHP's strtolower does and all its
+// asciiLower folds A-Z only, as PHP's strtolower does and all its
 // case-insensitive search functions fold by. strings.ToLower is Unicode-aware
 // and can change a string's byte length, which would shift the offsets those
 // searches report.
@@ -454,7 +493,7 @@ func phpOrd(character string) int64 {
 }
 
 // The three PHP 8 substring predicates are one-line wrappers so the published
-// signature names $haystack and $needle rather than the standard library's
+// signature names $haystack and $needle, not the standard library's
 // positional parameters.
 func phpStrContains(haystack, needle string) bool { return strings.Contains(haystack, needle) }
 
@@ -463,7 +502,7 @@ func phpStrStartsWith(haystack, needle string) bool { return strings.HasPrefix(h
 func phpStrEndsWith(haystack, needle string) bool { return strings.HasSuffix(haystack, needle) }
 
 // phpStrrev reverses bytes, as PHP's strrev does, so a multi-byte character
-// comes out as its bytes in reverse and is no longer valid UTF-8. mbStrrev
+// comes out as its bytes in reverse, which is not valid UTF-8. mbStrrev
 // reverses characters.
 func phpStrrev(str string) string {
 	b := []byte(str)
@@ -527,7 +566,7 @@ func padTo(pad string, n int) string {
 }
 
 // phpSubstrCount implements substr_count($haystack, $needle[, $offset[, $length]]).
-// strings.Count is non-overlapping, which is what PHP counts.
+// strings.Count is non-overlapping, as PHP counts.
 func phpSubstrCount(haystack, needle string, optional ...any) int64 {
 	// PHP 8 raises a ValueError on an empty needle.
 	if needle == "" {
@@ -574,7 +613,7 @@ func substrWindow(haystack string, optional []any) string {
 }
 
 // phpSubstrReplace implements substr_replace($string, $replace, $offset[, $length]).
-// PHP clamps an out-of-range offset here rather than raising, so this does too.
+// PHP clamps an out-of-range offset here and raises nothing, so this does too.
 func phpSubstrReplace(str, replace string, offset int64, length ...int64) string {
 	n := int64(len(str))
 	start := offset
@@ -589,7 +628,7 @@ func phpSubstrReplace(str, replace string, offset int64, length ...int64) string
 	}
 	end := n
 	if len(length) > 0 {
-		// A negative length is a distance from the end of the string, not
+		// A negative length is a distance from the end of the string, with no
 		// a count of characters to drop.
 		if l := length[0]; l < 0 {
 			end = n + l

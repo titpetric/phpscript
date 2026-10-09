@@ -421,9 +421,9 @@ func pairItem(key, val closure, pair func(key, val any) model.ArrayItemValue) cl
 // embedded expression costs what the same expression costs anywhere else and
 // the literal pays no dispatch of its own per execution.
 //
-// The builder is what a fold over Concat would not give: a chain of pairwise
+// The builder is what a fold over Concat cannot do: a chain of pairwise
 // concatenations allocates an intermediate string per part, where this
-// allocates the result. A lone literal part is itself, and the empty literal
+// allocates the result once. A lone literal part is itself, and the empty literal
 // is the result for a literal with no parts at all.
 func (dc *directCompiler) compileInterp(n *model.Interp) (closure, error) {
 	if len(n.Parts) == 0 {
@@ -510,7 +510,7 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, error) {
 }
 
 func (dc *directCompiler) compileBinary(n *model.Binary) (closure, error) {
-	// `instanceof` with a bare name on the right is the class, not a
+	// `instanceof` with a bare name on the right names the class, and no
 	// constant to resolve.
 	if n.Op == "instanceof" {
 		if v, ok := model.UnwrapParenthesized(n.Right).(*model.Var); ok && v.Const {
@@ -599,7 +599,7 @@ func binary2(l, r closure, apply func(a, b any) (any, error)) closure {
 // call resolves its name in the base env, installed by Eval.
 func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	if n.FirstClass {
-		// `greet(...)` takes the callable rather than calling it, so the name
+		// `greet(...)` takes the callable and never calls it, so the name
 		// goes in as a value and the fallback with it: resolution is the
 		// runtime's, as it is for a call, and the result is a Closure.
 		return baseCall("__callable", []closure{constClosure(n.Name), constClosure(n.Fallback)}), nil

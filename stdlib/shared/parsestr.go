@@ -11,14 +11,14 @@ import (
 // default; negative means no limit.
 type Limits struct {
 	// MaxNesting is php.ini's max_input_nesting_level. A variable past it is
-	// dropped whole rather than truncated.
+	// dropped whole and never truncated.
 	MaxNesting int
 
 	// MaxVars is php.ini's max_input_vars.
 	MaxVars int
 }
 
-// php.ini's defaults for the two limits, which is what a runtime uses when a
+// php.ini's defaults for the two limits, the values a runtime uses when a
 // host names neither.
 const (
 	DefaultMaxNesting = 64
@@ -124,7 +124,7 @@ func parseKey(name string, maxNesting int) (string, []string, bool) {
 
 // mangle substitutes in a top-level name. The set is exactly space, `.` and
 // `[`; `a-b`, `a:b` and `a$b` survive as written. A `+` is already a space by
-// now, which is why `a+b=1` is `a_b`.
+// now, so `a+b=1` is `a_b`.
 func mangle(name string) string {
 	if !strings.ContainsAny(name, " .[") {
 		return name
@@ -167,7 +167,7 @@ func assign(root *model.Array, key string, path []string, value string) {
 	}
 }
 
-// child returns the array at key, replacing a scalar in the way rather than
+// child returns the array at key, replacing a scalar in the way and never
 // merging into it: `x[a]=2&x[a][c]=3` leaves `x[a]` holding only `c`.
 func child(parent *model.Array, key any) *model.Array {
 	if existing, ok := parent.Get(key); ok {

@@ -11,7 +11,7 @@ import (
 
 // tracedStorage records a span per session store operation. It decorates
 // whichever backend a script constructed, so memory and disk are instrumented
-// once here rather than in each implementation, and the trace shows which one a
+// once here and not in each implementation, and the trace shows which one a
 // request paid for.
 //
 // The session ID is never recorded. It is the credential in the cookie, and the
@@ -23,8 +23,8 @@ type tracedStorage struct {
 var _ Storage = (*tracedStorage)(nil)
 
 // traceStorage wraps storage for recording. A storage that is already
-// traced, which is what a manager built from another manager's storage would
-// hand over, is returned as it is.
+// traced, as a manager built from another manager's storage passes in, is
+// returned as it is.
 func traceStorage(storage Storage) Storage {
 	if _, ok := storage.(*tracedStorage); ok {
 		return storage
@@ -71,7 +71,7 @@ func (s *tracedStorage) Delete(ctx context.Context, id string) error {
 
 // missing reports whether an error means the session was not there. An expired
 // or never-created session is what a logged out visitor looks like, so it is a
-// miss on the span rather than a failure on the trace.
+// miss on the span and no failure on the trace.
 func missing(err error) bool {
 	return errors.Is(err, fs.ErrNotExist)
 }

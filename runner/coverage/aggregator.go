@@ -121,7 +121,7 @@ func (a *Aggregator) Functions() []FuncSpan {
 }
 
 // Empty reports whether anything has been folded in yet. A server that served
-// no PHP writes no profile rather than an empty one.
+// no PHP writes no profile at all, not even an empty one.
 func (a *Aggregator) Empty() bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()

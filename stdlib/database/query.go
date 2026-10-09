@@ -35,12 +35,12 @@ var readOnlyStatements = map[string]bool{
 }
 
 // parseQuery classifies a statement by its leading text. Comments preceding the
-// statement are skipped rather than treated as the statement, so a query tagged
+// statement are skipped and never treated as the statement, so a query tagged
 // for `show processlist`, as in `/* userGet */ select ...` and the reason to
 // tag one, still reads as a select.
 //
-// This is prefix classification, not a SQL parser: it sees what the statement
-// begins with and nothing else. A statement is expected to be one statement.
+// This is prefix classification and no SQL parser: it reads what the statement
+// begins with, and nothing more. A statement has to be one statement.
 func parseQuery(query string) queryInfo {
 	var info queryInfo
 	rest := query

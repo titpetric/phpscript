@@ -12,7 +12,7 @@ import (
 )
 
 // newTestModule stands in for the host: it builds the recorder the platform
-// would build and hands the module its tracer.
+// would build and passes the module its tracer.
 func newTestModule(t *testing.T) *Module {
 	t.Helper()
 
@@ -64,7 +64,7 @@ func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
 	}
 
 	// A routed request groups by its pattern, so /users/1 and /users/2 are one
-	// row in the statistics rather than two.
+	// row in the statistics and never two.
 	trace := traces[0]
 	if trace.Name != "GET /users/{id}" || trace.HTTP.Route != "/users/{id}" {
 		t.Fatalf("trace = %+v", trace)
@@ -133,7 +133,7 @@ func TestModuleTracksLifecycleWork(t *testing.T) {
 	}
 
 	// Startup work did not arrive over the network, so it is a background
-	// trace rather than a request without a method.
+	// trace, and no request without a method.
 	trace := traces[0]
 	if trace.Name != "@startup boot.php" || trace.HTTP != nil || TraceHost(trace) != BackgroundHost {
 		t.Fatalf("trace = %+v", trace)
@@ -154,7 +154,7 @@ func TestInstrumentationWithoutATraceDoesNothing(t *testing.T) {
 		t.Fatalf("span = %+v, want nil without a trace", span)
 	}
 
-	// Every method tolerates it, which is what lets a binding instrument
+	// Every method tolerates it, so a binding can instrument
 	// unconditionally.
 	span.SetAttribute("key", "value")
 	span.RecordError(errors.New("ignored"))

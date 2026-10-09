@@ -17,7 +17,7 @@ For scalars this is indistinguishable from PHP: you cannot mutate an `int` in ei
 
 ## Arrays are handles, not values
 
-A PHP array is a value with copy-on-write: assigning one, or passing it to a function, gives the other side an array it owns. phpscript's arrays are `*model.Array` pointers, so both sides hold the same array.
+A PHP array is a value with copy-on-write: assigning one, or passing it to a function, leaves the other side holding an array it owns. phpscript's arrays are `*model.Array` pointers, so both sides hold the same array.
 
 ```php
 $a = array(1);
@@ -30,7 +30,7 @@ grow($a);
 echo count($a);                 // phpscript: 3   PHP: unchanged
 ```
 
-Code that reads a shared array is unaffected, which is why this survives in practice: most array arguments are read. Code that writes to an array it believes it owns is not, and it fails silently, because nothing in the shape of `$b = $a` says two names are now one array.
+Code that reads a shared array is unaffected, so this survives in practice: most array arguments are read. Code that writes to an array it holds as its own is not, and it fails silently, because nothing in the shape of `$b = $a` says two names are now one array.
 
 Copy explicitly where independence matters:
 
@@ -46,7 +46,7 @@ A chain that ends in an array literal is split by the parser into one assignment
 $inlines = $blocks = array();   // parsed as: $blocks = array(); $inlines = array();
 ```
 
-The literal says what to allocate rather than naming something already allocated, so allocating once per name is what PHP's copy amounts to here, and `$inlines[$k] = ...` no longer writes into `$blocks`. `phpscript fmt` prints the split form, which is the statement's meaning written out. The order is PHP's, right to left, which is observable when the targets overlap:
+The literal says what to allocate, and names nothing already allocated, so allocating once per name is what PHP's copy amounts to here and `$inlines[$k] = ...` leaves `$blocks` alone. `phpscript fmt` prints the split form, which is the statement's meaning written out. The order is PHP's, right to left, which is observable when the targets overlap:
 
 ```php
 $r['k'] = $r = array();         // clears $r, then puts an array under "k"
@@ -60,7 +60,7 @@ $dba = $dbb = new Database();   // chained assignment binds one value to several
 $m = $n = $rows;                // chained assignment binds one value to several names
 ```
 
-Splitting the first would advance the array pointer twice. The second and third are handles the two names really do share -- PHP shares the object too, and `$rows` is the same array under a second name -- so the finding is a question about the code rather than a divergence to repair.
+Splitting the first would advance the array pointer twice. The second and third are handles the two names really do share -- PHP shares the object too, and `$rows` is the same array under a second name -- so the finding is a question about the code, and no divergence to repair.
 
 A chain that ends in a scalar literal is neither split nor reported: a string or a number has no interior for two names to share.
 
@@ -72,7 +72,7 @@ A `for` clause holds one statement for its init and one for its post, so a chain
 
 ## foreach binds a copy, or the element
 
-`foreach ($a as $v)` gives the body a copy of each element and `foreach ($a as &$v)` gives it the element itself, as in PHP:
+`foreach ($a as $v)` binds a copy of each element and `foreach ($a as &$v)` binds the element itself, as in PHP:
 
 ```php
 $rows = array(array("n" => 1));
@@ -86,7 +86,7 @@ Neither is done with a reference, because there are none to use. A by-reference 
 
 Only a script-owned array is written back to. A native Go collection returned by a binding belongs to the host, so a by-reference loop over one reads it without writing to it.
 
-One PHP behaviour is deliberately not reproduced. In PHP the loop variable of a by-reference loop is still a reference to the last element after the loop ends, so a second loop reusing the name overwrites it:
+One PHP behaviour is not reproduced. In PHP the loop variable of a by-reference loop is still a reference to the last element after the loop ends, so a second loop reusing the name overwrites it:
 
 ```php
 $a = array(1, 2, 3);
@@ -120,7 +120,7 @@ echo $c;                          // phpscript: 0    PHP: 99
 
 Reference returns (`function &f()`) are unavailable.
 
-To hand a value back, return it:
+To send a value back, return it:
 
 ```php
 function bump($n) { return $n + 1; }
@@ -136,12 +136,12 @@ preg_match_all("/(\d)/", "a1b2", $matches);
 echo implode(",", $matches[1]);      // 1,2
 ```
 
-It works because it is arranged at compile time rather than in the value model. `byRefArgs` in [model/byref.go](../../../model/byref.go) lists the argument positions that are outputs, per function name, which is where both engines read it from. When a call to one of them is emitted and the argument at that position is a plain variable, a setter goes in place of the variable's value:
+It works because it is arranged at compile time and not in the value model. `byRefArgs` in [model/byref.go](../../../model/byref.go) lists the argument positions that are outputs, per function name, and both engines read it from there. When a call to one of them is emitted and the argument at that position is a plain variable, a setter goes in place of the variable's value:
 
 ```text
 preg_match_all($p, $s, $matches)   ->   preg_match_all($p, $s, __ref("matches"))
 ```
 
-`__ref` is `Runtime.helperRef`, which returns a `func(any)` closed over the calling scope. The Go shim receives that closure as its trailing argument and calls it with whatever the variable should hold; the closure writes the name back into the frame. It captures the scope by value rather than through the evaluation's scope reference, so a shim may call the setter after the expression that produced it has finished.
+`__ref` is `Runtime.helperRef`, which returns a `func(any)` closed over the calling scope. The Go shim receives that closure as its trailing argument and calls it with whatever the variable should hold; the closure writes the name back into the frame. It captures the scope by value, not through the evaluation's scope reference, so a shim may call the setter after the expression that produced it has finished.
 
-Two things follow from doing this at compile time. An argument that is not a plain variable, such as `preg_match($p, $s, $rows["m"])`, is passed by value like any other expression, because there is no name to write back to. And the table is a package-level variable in `model` rather than part of the host API, so a binding outside the standard library cannot declare an output parameter; one that needs to hand several values back should return a collection instead. See [Bindings](../extensions/bindings.md).
+Two things follow from doing this at compile time. An argument that is not a plain variable, such as `preg_match($p, $s, $rows["m"])`, is passed by value like any other expression, because there is no name to write back to. And the table is a package-level variable in `model` and not part of the host API, so a binding outside the standard library declares no output parameter; one with several values to send back returns a collection. See [Bindings](../extensions/bindings.md).

@@ -33,7 +33,7 @@ func TestCompare(t *testing.T) {
 		{1, 1.0, 0},
 		{2.0, "2", 0},
 
-		// a numeric string is a number, which is what sort(explode(...)) needs
+		// a numeric string is a number, as sort(explode(...)) needs
 		{"10", "9", 1},
 		{"10", 9, 1},
 		{10, "9", 1},

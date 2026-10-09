@@ -122,7 +122,7 @@ func TestDirectoryWithoutASlashRedirects(t *testing.T) {
 
 // TestIndexPageInAWritableDirectoryIsNotRun pins that an index page is held to
 // the same rule as any other .php below the document root: what a visitor put
-// in a writable directory is content, and it is served as bytes rather than
+// in a writable directory is content, and it is served as bytes and never
 // executed.
 func TestIndexPageInAWritableDirectoryIsNotRun(t *testing.T) {
 	h, err := newHandler(

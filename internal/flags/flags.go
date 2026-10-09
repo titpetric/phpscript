@@ -1,7 +1,7 @@
 // Package flags holds the command line options every phpscript subcommand
 // accepts, and the work they imply.
 //
-// The set exists because the same idea used to be spelled once per command:
+// The set exists because the same idea was spelled once per command:
 // --include in test and in lint with two help texts and two implementations
 // and not in server at all, --cpuprofile only in test, -v defined twice, -f
 // hand-parsed out of argv and printed by no help output. One Options is bound
@@ -105,7 +105,7 @@ func (o *Options) BindWith(bind func(*cli.FlagSet)) func(*cli.FlagSet) {
 // RunWith wraps a command's Run with the shared work: the flags are validated,
 // the CPU profile runs for the length of the command, and the heap profile is
 // written after it. A failure to start profiling is the command's failure; the
-// operator asked for a measurement and did not get one.
+// operator named a measurement and did not get one.
 func (o *Options) RunWith(run func(context.Context, []string) error) func(context.Context, []string) error {
 	return func(ctx context.Context, args []string) error {
 		if err := o.Validate(); err != nil {
@@ -128,7 +128,7 @@ func (o *Options) RunWith(run func(context.Context, []string) error) func(contex
 // Both are read before the command is constructed: -f decides the
 // configuration a command is handed, and -w decides what every relative path
 // after it means, the configuration file included. pflag runs later and never
-// sees them, which is why Bind's defaults are the values found here.
+// sees them, so Bind's defaults are the values found here.
 func Pre(args []string) (*Options, []string, error) {
 	o := &Options{}
 	remaining := make([]string, 0, len(args))
@@ -194,7 +194,7 @@ func Pre(args []string) (*Options, []string, error) {
 }
 
 // valued names the shared flags that take a value, so a walk over the
-// arguments knows which of them consume the word after them. --verbose is the
+// arguments can tell which of them consume the word after them. --verbose is the
 // only one that does not.
 var valued = map[string]bool{
 	"--include": true, "--cpuprofile": true, "--memprofile": true,
@@ -207,7 +207,7 @@ var valued = map[string]bool{
 //
 // Only the flags this package declares are walked over: a command's own flags
 // belong after its name. A bare --cover does not consume the word after it,
-// which is what its NoOptDefVal makes legal.
+// which its NoOptDefVal makes legal.
 func Hoist(args []string, isCommand func(string) bool) []string {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -235,7 +235,7 @@ func Hoist(args []string, isCommand func(string) bool) []string {
 }
 
 // Chdir applies -w. It runs before the configuration is read, so a tree is
-// served by naming it once rather than by repeating it in every path the
+// served by naming it once, and never by repeating it in every path the
 // configuration holds.
 func (o *Options) Chdir() error {
 	if o.WorkDir == "" {
@@ -277,7 +277,7 @@ func (o *Options) Validate() error {
 	return nil
 }
 
-// Covering reports whether coverage was asked for.
+// Covering reports whether coverage was named.
 func (o *Options) Covering() bool { return o.Cover != "" }
 
 // Report reports whether the coverage mode prints a per-symbol report on top
@@ -341,7 +341,7 @@ func (o *Options) startCPUProfile() (func(), error) {
 }
 
 // writeMemProfile writes the heap profile --memprofile named. The collection
-// runs first, so the profile describes what is still reachable rather than
+// runs first, so the profile describes what is still reachable and not
 // what has not been swept yet.
 func (o *Options) writeMemProfile() error {
 	if o.MemProfile == "" {

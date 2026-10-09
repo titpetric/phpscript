@@ -18,7 +18,7 @@ type InterfaceViolation struct {
 }
 
 // String names the class, the method it does not declare and the interface that
-// required it, which is the whole of what a reader needs to fix one.
+// required it, which together are what a reader needs to fix one.
 func (v InterfaceViolation) String() string {
 	return fmt.Sprintf("class %s does not declare method %s() required by interface %s",
 		v.Class, v.Method, v.Interface)
@@ -32,7 +32,7 @@ type InterfaceContractError struct {
 }
 
 // Error lists every violation, one per line, so a class missing three methods
-// is reported once rather than three times.
+// is reported once and not three times.
 func (e *InterfaceContractError) Error() string {
 	parts := make([]string, 0, len(e.Violations))
 	for _, v := range e.Violations {
@@ -116,8 +116,8 @@ func interfaceIndex(stmts []Stmt) map[string]*InterfaceDecl {
 	return index
 }
 
-// requirement is one method name a contract asks for, and the interface that
-// named it, which is what a violation reports.
+// requirement is one method name a contract declares, and the interface that
+// named it. A violation reports both.
 type requirement struct {
 	Interface string
 	Method    string
@@ -125,8 +125,8 @@ type requirement struct {
 
 // contractOf returns the methods named by an interface and, transitively, by
 // every interface it extends. The result is a union of names computed here
-// rather than a set of members held anywhere: an extended interface contributes
-// what it declares to what the class must declare, and nothing else.
+// and no set of members held anywhere: an extended interface contributes
+// what it declares to what the class must declare, and contributes no more.
 func contractOf(name string, index map[string]*InterfaceDecl) []requirement {
 	var (
 		out  []requirement
@@ -139,7 +139,7 @@ func contractOf(name string, index map[string]*InterfaceDecl) []requirement {
 func collectContract(name string, index map[string]*InterfaceDecl, visited, seen map[string]bool, out *[]requirement) {
 	key := strings.ToLower(name)
 	if visited[key] {
-		// `interface A extends B` and `interface B extends A` is not a PHP
+		// `interface A extends B` and `interface B extends A` is no PHP
 		// program, but a parser accepts what it is given and this walk must
 		// still terminate.
 		return
@@ -186,7 +186,7 @@ func declaredMethods(cd *ClassDecl, stmts []Stmt) map[string]bool {
 // InterfaceNames returns every interface name a class declares, plus the names
 // those interfaces extend, lower-cased and deduplicated.
 //
-// It is the same union contractOf walks, taken as names rather than as methods,
+// It is the same union contractOf walks, taken as names and not as methods,
 // and it is what `instanceof` answers an interface name from. Nothing is
 // inherited through it: the class holds the list it declared, and the list says
 // which contracts it was checked against.

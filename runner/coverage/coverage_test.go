@@ -98,7 +98,7 @@ func TestCollector_Functions(t *testing.T) {
 
 // TestCollector_Register pins that re-registering a cached program keeps the
 // counts it already has: a server includes the same file every request, and a
-// reset baseline would report the last one instead of the run.
+// reset baseline would report the last one in place of the run.
 func TestCollector_Register(t *testing.T) {
 	program, err := parser.Parse(collectorSource)
 	if err != nil {

@@ -19,7 +19,7 @@ var autoindexFS = fstest.MapFS{
 	"public/files/archive/old.txt": {Data: []byte(`old`)},
 }
 
-// newAutoindexHandler builds a handler with listings turned on, which is what
+// newAutoindexHandler builds a handler with listings turned on, as
 // `autoindex: true` in the configuration reaches.
 func newAutoindexHandler(t *testing.T, files fstest.MapFS) *handler {
 	t.Helper()
@@ -77,7 +77,7 @@ func TestAutoindexListsTheDirectory(t *testing.T) {
 	}
 }
 
-// TestAutoindexEscapesNames pins both escapings a name goes through. A file
+// TestAutoindexEscapesNames pins both escapings a name passes through. A file
 // named with an "&" has to stay addressable as a link and must not end the
 // attribute it sits in.
 func TestAutoindexEscapesNames(t *testing.T) {
@@ -88,7 +88,7 @@ func TestAutoindexEscapesNames(t *testing.T) {
 }
 
 // TestAutoindexAnswersHeadWithHeadersAlone pins that a HEAD gets the size of
-// the listing without the listing, which is what a HEAD is for.
+// the listing without the listing, which is the question a HEAD puts.
 func TestAutoindexAnswersHeadWithHeadersAlone(t *testing.T) {
 	h := newAutoindexHandler(t, autoindexFS)
 	get := fetch(h, http.MethodGet, "/files/", nil)
@@ -113,7 +113,7 @@ func TestAutoindexDoesNotReplaceAnIndexPage(t *testing.T) {
 	}
 }
 
-// TestAutoindexOfTheDocumentRoot pins that the root listing offers no way above
+// TestAutoindexOfTheDocumentRoot pins that the root listing links nowhere above
 // itself. The parent of the document root is not the site's to link to.
 func TestAutoindexOfTheDocumentRoot(t *testing.T) {
 	h := newAutoindexHandler(t, fstest.MapFS{

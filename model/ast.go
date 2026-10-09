@@ -1,7 +1,7 @@
 // Package model holds the shared data structures (AST, runtime values, class
 // metadata) used by both the parser and the runner packages.
 //
-// The split is deliberate: parser/ produces these structures from PHP source,
+// The split is drawn here: parser/ produces these structures from PHP source,
 // runner/ consumes them. Neither package depends on the other; they only share
 // model/.
 package model
@@ -41,7 +41,7 @@ type Program struct {
 	SourceSpans map[Stmt]SourceSpan
 	// AnonClasses holds the declaration of every anonymous class written in the
 	// file, in source order. An anonymous class is declared inside an
-	// expression rather than by a statement, so a consumer that walks Stmts
+	// expression and not by a statement, so a consumer that walks Stmts
 	// looking for a ClassDecl does not see one; whatever registers or checks
 	// the file's classes reads this alongside Stmts.
 	AnonClasses []*ClassDecl
@@ -192,7 +192,7 @@ type ClassDecl struct {
 
 // InterfaceDecl is `interface Name extends A, B { ... }`.
 //
-// An interface is a declaration contract and nothing else. It names method
+// An interface is a declaration contract alone. It names method
 // signatures and constants, and a class that says `implements` must declare
 // every one of those methods itself. No member is ever acquired from it, no
 // method body comes from it, and `instanceof` does not consult it, so
@@ -265,7 +265,7 @@ type StaticVarDecl struct {
 }
 
 // Global is `global $x[, $y];`. The statement parses into a node so the
-// formatter can print it back; at runtime it is a documented no-op — the
+// formatter can print it back; at runtime it is a documented no-op, and the
 // variable stays unset (docs/design.md), and `phpscript lint` reports it.
 type Global struct {
 	Names []string
@@ -290,7 +290,7 @@ type Throw struct {
 // clause whose declared type matches the error raised in Body (a throw or a
 // runtime error from a forwarded Go call) handles it; an error no clause
 // matches keeps propagating. Finally always runs either way. Matching is
-// by Go error type rather than a PHP class hierarchy, so two throwable names
+// by Go error type and no PHP class hierarchy, so two throwable names
 // backed by the same type cannot be told apart.
 type Try struct {
 	Body        []Stmt
@@ -328,7 +328,7 @@ type SwitchCase struct {
 }
 
 // Break exits the nearest loop or switch. Line is the source line it was
-// written on, which also gives the node an address of its own: Go hands every
+// written on, which also makes the node an address of its own: Go assigns every
 // zero-sized allocation the same one, and the formatter keys source spans by
 // node.
 type Break struct {
@@ -474,7 +474,7 @@ func (*Declare) stmt() {}
 // came from a parsed file. Decoding a string is lossy (`'$a'` and `"\$a"`
 // decode to the same value, and only one of them can be re-encoded from it),
 // so the formatter prints from Raw and falls back to encoding Value for nodes
-// that were built rather than parsed.
+// that were built and never parsed.
 type Lit struct {
 	Value any
 	Raw   string
@@ -495,7 +495,7 @@ type Interp struct {
 //
 // A bare identifier, a constant such as `PHP_EOL` or a magic constant such as
 // `__DIR__`, is also a Var, because both resolve the same way at runtime: the
-// current scope first (which is where the magic constants live), then the
+// current scope first, where the magic constants live, then the
 // constant table. Const records which spelling the source used, so that
 // printing the node back out does not turn `PHP_EOL` into `$PHP_EOL`.
 type Var struct {
@@ -540,7 +540,7 @@ type Call struct {
 	Fallback   string
 	Args       []Expr
 	Bare       bool // exit/die used without parentheses
-	FirstClass bool // `name(...)`, the callable rather than the call
+	FirstClass bool // `name(...)`, the callable and not the call
 }
 
 // MethodCall is `Base->method(args...)` or `Base.method(args...)`.
@@ -552,7 +552,7 @@ type MethodCall struct {
 	Method     string
 	MethodExpr Expr // set for `Base->$m(...)`; Method is "" then
 	Args       []Expr
-	FirstClass bool // `Base->method(...)`, the callable rather than the call
+	FirstClass bool // `Base->method(...)`, the callable and not the call
 }
 
 // New is `new ClassName` / `new ClassName(args...)`.
@@ -591,7 +591,7 @@ type Parenthesized struct {
 }
 
 // UnwrapParenthesized returns the expression inside any explicit grouping.
-// Consumers that inspect expression shape rather than evaluate it should use
+// A consumer that inspects expression shape without evaluating it uses
 // this so parentheses remain semantically transparent.
 func UnwrapParenthesized(e Expr) Expr {
 	for {
@@ -639,7 +639,7 @@ type StaticCall struct {
 	Method     string
 	MethodExpr Expr // set for `Class::$m(...)`; Method is "" then
 	Args       []Expr
-	FirstClass bool // `Class::method(...)`, the callable rather than the call
+	FirstClass bool // `Class::method(...)`, the callable and not the call
 }
 
 // StaticProp is `Class::$name` / `self::$name` static-property access. Unlike a
@@ -650,14 +650,14 @@ type StaticProp struct {
 	Name  string
 }
 
-// Invoke calls a callable held in a value rather than named at the call site:
+// Invoke calls a callable held in a value, with no name at the call site:
 // `$fn($x)`, `$this->handlers[0]($x)`, `(self::$includeFile)($file)`. The
 // callee is resolved through Runtime.Callable, so every PHP callable spelling
 // (closure, "func", array($obj, "method")) works.
 type Invoke struct {
 	Callee     Expr
 	Args       []Expr
-	FirstClass bool // `$fn(...)`, the callable rather than the call
+	FirstClass bool // `$fn(...)`, the callable and not the call
 }
 
 // Cast is a type cast like `(bool)$x`, `(int)$x`, `(string)$x`, `(array)$x`.

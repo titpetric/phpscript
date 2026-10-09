@@ -41,7 +41,7 @@ env:
   - "PLATFORM_DB_BOOKMARKS=sqlite://bookmarks.db"
 ```
 
-The part after `PLATFORM_DB_` is the connection name PHP asks for, lowercased: this one is `"bookmarks"`. Pass the file with `-f`; without it, phpscript uses its embedded defaults. See [Configuration](../configuration.md).
+The part after `PLATFORM_DB_` is the connection name PHP names, lowercased: this one is `"bookmarks"`. Pass the file with `-f`; without it, phpscript uses its embedded defaults. See [Configuration](../configuration.md).
 
 ## 3. Create the schema
 
@@ -97,7 +97,7 @@ function redirect_to($url) {
 
 ## 5. Write the endpoints
 
-An endpoint reads its input, talks to the database, and renders or redirects. The `@route` annotation gives it a method and a path:
+An endpoint reads its input, talks to the database, and renders or redirects. The `@route` annotation declares its method and path:
 
 ```php
 <?php
@@ -169,7 +169,7 @@ $tpl->assign(array("title" => "Bookmarks", "bookmarks" => $bookmarks));
 $tpl->render();
 ```
 
-Assigned values are addressed by name in braces and array elements with a dot. A printed value goes through `htmlspecialchars` on the way out, so a bookmark titled `<script>alert(1)</script>` renders as text:
+Assigned values are addressed by name in braces and array elements with a dot. A printed value is passed through `htmlspecialchars` on the way out, so a bookmark titled `<script>alert(1)</script>` renders as text:
 
 ```html
 <h1>{title}</h1>
@@ -243,7 +243,7 @@ testcases:
 
 venom follows the redirect, so a `POST` that succeeds is asserted through the page it lands on.
 
-Write the suite so it can run twice. Rather than assume which row ids exist, each case that adds a bookmark reads back the id the application gave it and deletes it again:
+Write the suite so it can run twice. No case depends on which row ids exist: each one that adds a bookmark reads back the id the application returned and deletes it again:
 
 ```yaml
         extracts:
@@ -253,7 +253,7 @@ Write the suite so it can run twice. Rather than assume which row ids exist, eac
         url: "{{.host}}/bookmarks/{{.added}}/delete"
 ```
 
-A named capture group in `extracts` becomes a variable for the steps that follow, which is how the suite cleans up after itself and stays independent of what a previous run left behind.
+A named capture group in `extracts` becomes a variable for the steps that follow, so the suite cleans up after itself and stays independent of what a previous run left behind.
 
 Unit-level behaviour that does not need a server belongs in a `.phpt` fixture instead; see [Testing](../testing.md).
 

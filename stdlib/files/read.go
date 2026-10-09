@@ -11,11 +11,14 @@ import (
 )
 
 // registerReads installs the read side. Each of these looks in the runtime's
-// source filesystem first, which is what an embedded or in-memory application
+// source filesystem first, the tree an embedded or in-memory application
 // ships, and falls back to the host filesystem for what only exists there, such
 // as a file an earlier write produced.
 func registerReads(rt *runner.Runtime, r root) {
-	// glob returns the paths matching $pattern, searched in the source filesystem when one is bound, otherwise on the host; a pattern naming anything outside the root matches nothing, and a malformed one matches nothing rather than failing, as PHP's does.
+	// glob returns the paths matching $pattern, searched in the source
+	// filesystem when one is bound, otherwise on the host; a pattern naming
+	// anything outside the root matches nothing, and a malformed one matches
+	// nothing and not failing, as PHP's does.
 	rt.RegisterFunc("glob", func(pattern string) []string {
 		source := r.sourceFS()
 		if source == nil {
@@ -36,7 +39,10 @@ func registerReads(rt *runner.Runtime, r root) {
 		return r.globSpelling(pattern, matches)
 	})
 
-	// file_get_contents returns the contents of $filename as a string, or false on failure; php://input is the raw request body (stdin under the cli SAPI), and a relative path is tried in the source filesystem first, then on the host.
+	// file_get_contents returns the contents of $filename as a string, or
+	// false on failure; php://input is the raw request body (stdin under the
+	// cli SAPI), and a relative path is tried in the source filesystem first,
+	// then on the host.
 	rt.RegisterFunc("file_get_contents", func(filename string) any {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			if scheme == "input" {
@@ -80,7 +86,8 @@ func registerReads(rt *runner.Runtime, r root) {
 		_, err := os.Stat(r.resolve(filename))
 		return err == nil
 	})
-	// filemtime returns the modification time of $filename as a Unix timestamp, or 0 when the file cannot be found; PHP returns false there.
+	// filemtime returns the modification time of $filename as a Unix
+	// timestamp, or 0 when the file cannot be found; PHP returns false there.
 	rt.RegisterFunc("filemtime", func(filename string) int64 {
 		if name, ok := r.uploadPath(filename); ok {
 			if st, err := os.Stat(name); err == nil {

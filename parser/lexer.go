@@ -64,7 +64,7 @@ var multiCharOps = []string{
 }
 
 // singleCharOps lists every one-byte operator. It is a constant, so slicing it
-// (singleOpText below) yields a string header pointing into the binary's
+// (singleOpText below) produces a string header pointing into the binary's
 // read-only data. Emitting an operator token allocates nothing, where
 // `string(c)` allocated a fresh 1-byte string per token (rule 7).
 const singleCharOps = "+-*/%.,;()[]{}=<>!&|^~?:@\\"
@@ -81,7 +81,7 @@ var singleOpText = func() [utf8.RuneSelf]string {
 
 // multiOpsByFirst buckets multiCharOps by their first byte, longest first, so
 // lexOperator compares against the two or three candidates that can match
-// rather than walking the whole table. Longest-first ordering is what keeps
+// and never walks the whole table. Longest-first ordering is what keeps
 // "===" from being split into "==" and "=".
 var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 	var out [utf8.RuneSelf][]string
@@ -107,12 +107,12 @@ const bytesPerToken = 4
 // tokenPool recycles the token slice a parse walks.
 //
 // The slice is the largest single allocation the parser makes - a token is five
-// fields and a source file yields one per four bytes - and it is garbage the
+// fields and a source file produces one per four bytes, and it is garbage the
 // moment the AST is built: model cannot hold a token, the type is unexported to
-// it, and every read through p.toks[i] copies the struct rather than aliasing
+// it, and every read through p.toks[i] copies the struct and aliases nothing
 // the array. So the same backing array serves every parse in the process.
 //
-// It holds *[]token rather than []token because putting a slice in an
+// It holds *[]token and not []token because putting a slice in an
 // interface allocates the header; a pointer to one does not.
 var tokenPool sync.Pool
 
@@ -132,7 +132,7 @@ func takeTokens(hint int) []token {
 //
 // It clears first. A token holds two strings, and those keep whole source files
 // alive: a pooled slice that kept them would trade an allocation saving for a
-// retention leak, which is the more expensive of the two.
+// retention leak: the more expensive of the two.
 func releaseTokens(toks []token) {
 	if cap(toks) == 0 {
 		return
@@ -151,7 +151,7 @@ func (l *lexer) run() ([]token, error) {
 			continue
 		}
 		if err := l.lexPHP(); err != nil {
-			// The caller gets no slice to hand back, so the failed lex
+			// The caller receives no slice to return, so the failed lex
 			// returns its own.
 			releaseTokens(l.tokens)
 			l.tokens = nil
@@ -295,7 +295,7 @@ func (l *lexer) lexNumber() {
 // on what one number token is.
 func scanNumber(src string, pos int) (end int, isFloat bool) {
 	// A base prefix takes the whole literal: an "e" inside 0x1e is a hex
-	// digit, not an exponent, so these are matched before anything else.
+	// digit and no exponent, so these are matched before anything else.
 	if src[pos] == '0' && pos+1 < len(src) {
 		var isBaseDigit func(byte) bool
 		switch src[pos+1] {
@@ -435,7 +435,7 @@ func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 //
 // The two quote styles have different rules, as they do in PHP. A single-quoted
 // literal recognises only `\\` and `\'`; every other backslash stands for
-// itself, which is what makes `'C:\path'` and a single-quoted regex work. A
+// itself, so `'C:\path'` and a single-quoted regex work. A
 // double-quoted literal recognises the C-style escapes plus the numeric forms
 // (`\x1B`, `\033`, `\u{1F600}`), and keeps the backslash for anything it does
 // not recognise.

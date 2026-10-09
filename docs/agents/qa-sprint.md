@@ -21,7 +21,7 @@ A finding the operator must decide is written up and left. It is not guessed at.
 
 In priority order, each with the command that surfaces it.
 
-**A matrix run whose three columns disagree.** The strongest signal in the repo: a fixture that passes on the interpreter and fails on flatstack is an engine divergence, and one that passes on both and fails on `php` is a compatibility defect.
+**A matrix run whose three columns disagree.** The strongest signal in the repository: a fixture that passes on the interpreter and fails on flatstack is an engine divergence, and one that passes on both and fails on `php` is a compatibility defect.
 
 ```sh
 phpscript test --matrix -v ./tests/...
@@ -29,7 +29,7 @@ phpscript test --matrix -v ./tests/...
 
 A `SKIP` is a fixture that opted a runtime out, or a missing `php` binary. Any other non-pass fails the run.
 
-**The known divergences, read as claims.** `../README.md` carries a long list of places phpscript differs from PHP, and nearly every entry names the fixture that pins it. Re-run those fixtures against `php` directly. An entry whose fixture no longer demonstrates what the prose says is either a fixed divergence nobody deleted the paragraph for, or a new one.
+**The known divergences, read as claims.** `../README.md` carries a long list of places phpscript differs from PHP, and nearly every entry names the fixture that pins it. Re-run those fixtures against `php` directly. An entry whose fixture stops demonstrating what the prose says is either a fixed divergence nobody deleted the paragraph for, or a new one.
 
 **The advisory findings.** `phpscript lint ./...` over the demo trees and the fixture corpus. Undefined names, unreachable code and unused variables. A finding over `demos/` is worth more than one over a fixture, because a demo is real code.
 
@@ -48,7 +48,7 @@ A diagnosis comes before a fix and has four parts:
 - The file and line that decides. Not the file the symptom appears in.
 - Whether it is a bug or a documented divergence.
 
-That last part is the one that gets skipped. `../README.md` carries divergences as deliberate claims. A fix that contradicts one of them is two changes: the behaviour and the paragraph that promised the old behaviour. Where the divergence is load-bearing, the fix is wrong and the finding is a documentation defect. Where it is stale, the paragraph goes in the same pull request. Either way the operator sees the claim named.
+That last part is the one that gets skipped. `../README.md` carries each divergence as a claim. A fix that contradicts one of them is two changes: the behaviour and the paragraph that promised the old behaviour. Where something depends on the divergence, the fix is wrong and the finding is a documentation defect. Where it is stale, the paragraph goes in the same pull request. Either way the operator sees the claim named.
 
 Three groups have no `php` to appeal to, and [../testing.md](../testing.md) lists them: host bindings, runtime introspection, and host request state. A diagnosis in one of those states what defines the expected output instead.
 
@@ -66,7 +66,7 @@ Where it goes:
 
 The expected section is `php`'s output, pasted. [../testing.md](../testing.md) owns the format, the metadata fields, the two fixture forms and the oracle rule; none of that is repeated here.
 
-A new area is a new folder and nothing registers it. The fixture's own folder is its include root, so a shared support file is copied rather than included from above.
+A new area is a new folder and nothing registers it. The fixture's own folder is its include root, so a shared support file is copied in, because an include that climbs out is rejected.
 
 ## Dead code
 

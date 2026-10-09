@@ -10,7 +10,7 @@ import (
 
 // TestParseSize covers the two spellings a size may be written in, and the
 // rejection of the php.ini shorthands that are not among them: a size that
-// cannot be read is an error rather than a guess.
+// cannot be read is an error, and never a guess.
 func TestParseSize(t *testing.T) {
 	valid := map[string]int64{
 		"":         0,

@@ -40,7 +40,7 @@ type config struct {
 type ErrorPageFunc func(w http.ResponseWriter, r *http.Request, status int, notes string) bool
 
 // moduleName returns the platform module name for base, suffixed when the
-// caller asked for one.
+// caller named one.
 func (c config) moduleName(base string) string {
 	if c.moduleSuffix == "" {
 		return base
@@ -118,7 +118,7 @@ func WithExprCache(cache *runner.ExprCache) Option {
 //
 // Include paths are relative to one filesystem root, so a cache belongs to one
 // source tree. A host that precompiles that tree passes the cache it filled,
-// and the endpoints read their entrypoints back out of it rather than parsing
+// and the endpoints read their entrypoints back out of it, and parse
 // them per request; a host that passes none gets a cache of its own.
 func WithIncludeCache(cache *runner.IncludeCache) Option {
 	return func(c *config) {

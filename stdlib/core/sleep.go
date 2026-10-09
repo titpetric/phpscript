@@ -16,10 +16,13 @@ func init() {
 //
 // Both end early when the script runs out of time or the client it is
 // answering goes away: a sleep that ran on past either would be the one place a
-// script could not be stopped. Neither takes a context parameter. The injected one is the script's, and the
+// script could not be stopped. Neither takes a context parameter. The
+// injected one is the script's, and the
 // connection lives beside it; the binding reads both off the runtime.
 func registerSleep(rt *runner.Runtime) {
-	// sleep pauses the script for $seconds and returns 0. A negative count throws, as it does in php. The wait ends early, still returning 0, when the script runs out of time or the client it is answering goes away.
+	// sleep pauses the script for $seconds and returns 0. A negative count
+	// throws, as it does in php. The wait ends early, still returning 0, when
+	// the script runs out of time or the client it is answering goes away.
 	rt.RegisterFunc("sleep", func(seconds int64) (int64, error) {
 		if seconds < 0 {
 			return 0, fmt.Errorf("sleep(): Argument #1 ($seconds) must be greater than or equal to 0")
@@ -28,7 +31,8 @@ func registerSleep(rt *runner.Runtime) {
 		return 0, nil
 	})
 
-	// usleep pauses the script for $microseconds, and ends early for the same reasons sleep does. A negative count throws, as it does in php.
+	// usleep pauses the script for $microseconds, and ends early for the same
+	// reasons sleep does. A negative count throws, as it does in php.
 	rt.RegisterFunc("usleep", func(microseconds int64) error {
 		if microseconds < 0 {
 			return fmt.Errorf("usleep(): Argument #1 ($microseconds) must be greater than or equal to 0")

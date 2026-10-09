@@ -17,7 +17,7 @@ import (
 
 // lookupTree is the source root the resolution tests look symbols up in. Two
 // namespaces declare a function of the same short name, which is the case the
-// trailing-segment match has to disambiguate rather than guess at.
+// trailing-segment match has to disambiguate and never guess at.
 var lookupTree = fstest.MapFS{
 	"handlers/users.php": {Data: []byte(`<?php
 namespace App\Users;
@@ -88,7 +88,7 @@ func TestLookupResolvesQualifiedName(t *testing.T) {
 }
 
 // TestLookupReportsAmbiguity holds the second half of the issue's contract: a
-// name that reaches more than one declaration is an error naming them, not a
+// name that reaches more than one declaration is an error naming them, with no
 // pick.
 func TestLookupReportsAmbiguity(t *testing.T) {
 	rt := lookupRuntime(t, nil, lookupTree)
@@ -254,7 +254,7 @@ function spread() { return implode("+", func_get_args()); }
 
 // TestLookupPassesRequest is the issue's worked example: the *http.Request the
 // Go caller was serving is the script's HTTP\Request, so the method, the
-// headers, the query and the body all read off the value itself rather than off
+// headers, the query and the body all read off the value itself and not off
 // superglobals nothing seeded.
 func TestLookupPassesRequest(t *testing.T) {
 	files := fstest.MapFS{"handler.php": {Data: []byte(`<?php
@@ -324,7 +324,7 @@ function index(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 }
 
 // TestLookupCarriesOnlyItsArguments holds the lightweight contract: no request
-// was decoded, so the superglobals are absent rather than empty.
+// was decoded, so the superglobals are undefined and not empty.
 func TestLookupCarriesOnlyItsArguments(t *testing.T) {
 	files := fstest.MapFS{"scope.php": {Data: []byte(`<?php
 function inspect($given) {
@@ -447,7 +447,7 @@ func TestLookupFindsADeclarationAlreadyRun(t *testing.T) {
 }
 
 // TestLookupConcurrent is the concurrency contract in executable form: one
-// runtime per goroutine over one shared cache pair, which is what the server
+// runtime per goroutine over one shared cache pair, as the server
 // does per request. It is the test -race has to have.
 func TestLookupConcurrent(t *testing.T) {
 	const workers, calls = 16, 50

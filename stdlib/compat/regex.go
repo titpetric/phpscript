@@ -17,20 +17,20 @@
 // RE2 stays the default: it is the faster of the two and cannot backtrack
 // catastrophically, which is also why the fallback carries a match timeout.
 //
-// A third gap is in RE2's API rather than in its syntax, and so decides the
-// engine per call rather than per pattern. PHP's $offset moves where a match
+// A third gap is in RE2's API and not in its syntax, so it decides the
+// engine per call and not per pattern. PHP's $offset moves where a match
 // starts without moving where the subject begins, so `^` and `\b` still see
 // the real start of the string.
 // Slicing subject[offset:] and adding the offset back gets both wrong, and RE2
 // has no entry point that takes a start position. regexp2's
 // FindStringMatchStartingAt does, so a non-zero $offset is routed to the
-// backtracking engine even for a pattern RE2 compiled, which is why a pattern
+// backtracking engine even for a pattern RE2 compiled, so a pattern
 // can carry both engines.
 //
 // The two engines disagree about what an index counts: RE2 reports byte
 // offsets, regexp2 matches over a []rune and reports rune indexes. PHP's
 // offsets are byte offsets even under the /u modifier, so every index out of
-// regexp2 goes through runeOffsets before a script sees it.
+// regexp2 passes through runeOffsets before a script sees it.
 //
 // See docs/reference/extensions/regexp.md for the user-facing account.
 
@@ -57,13 +57,23 @@ func registerRegex(rt *runner.Runtime) {
 	cache := newRegexpCache()
 	registerRegexConstants(rt)
 
-	// preg_match_all fills $matches with every match of $pattern in $subject and returns how many there were, in PREG_PATTERN_ORDER unless $flags selects PREG_SET_ORDER, optionally starting at byte $offset; a pattern that does not compile returns false and leaves $matches alone.
+	// preg_match_all fills $matches with every match of $pattern in $subject
+	// and returns how many there were, in PREG_PATTERN_ORDER unless $flags
+	// selects PREG_SET_ORDER, optionally starting at byte $offset; a pattern
+	// that does not compile returns false and leaves $matches alone.
 	rt.RegisterFunc("preg_match_all", cache.phpPregMatchAll)
-	// preg_match fills $matches with the first match of $pattern in $subject and returns 1, 0 when there is no match, optionally starting at byte $offset; a pattern that does not compile, or an $offset outside $subject, returns false.
+	// preg_match fills $matches with the first match of $pattern in $subject
+	// and returns 1, 0 when there is no match, optionally starting at byte
+	// $offset; a pattern that does not compile, or an $offset outside
+	// $subject, returns false.
 	rt.RegisterFunc("preg_match", cache.phpPregMatch)
-	// preg_replace replaces every match of $pattern in $subject with $replacement, in which \1 and $1 both name a capture group.
+	// preg_replace replaces every match of $pattern in $subject with
+	// $replacement, in which \1 and $1 both name a capture group.
 	rt.RegisterFunc("preg_replace", cache.phpPregReplace)
-	// preg_replace_callback replaces every match of $pattern in $subject with what $callback returns for it, calling $callback once per match in document order with the match array, at most $limit times, and reporting the number of replacements through $count.
+	// preg_replace_callback replaces every match of $pattern in $subject with
+	// what $callback returns for it, calling $callback once per match in
+	// document order with the match array, at most $limit times, and
+	// reporting the number of replacements through $count.
 	rt.RegisterFunc("preg_replace_callback", func(pattern string, callback any, subject string, limit any, count func(any), flags any) (any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -71,15 +81,19 @@ func registerRegex(rt *runner.Runtime) {
 		}
 		return cache.phpPregReplaceCallback(pattern, fn, subject, limit, count, flags)
 	})
-	// preg_split splits $subject on every match of $pattern into at most $limit pieces, the last of which holds the remainder; $flags selects PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and PREG_SPLIT_OFFSET_CAPTURE.
+	// preg_split splits $subject on every match of $pattern into at most
+	// $limit pieces, the last of which holds the remainder; $flags selects
+	// PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and
+	// PREG_SPLIT_OFFSET_CAPTURE.
 	rt.RegisterFunc("preg_split", cache.phpPregSplit)
-	// preg_quote escapes the characters that are special in a PCRE pattern, plus $delimiter, so a literal can be spliced into one.
+	// preg_quote escapes the characters that are special in a PCRE pattern,
+	// plus $delimiter, so a literal can be spliced into one.
 	rt.RegisterFunc("preg_quote", phpPregQuote)
 }
 
 // The PREG_* flag bits, with the values PHP defines. A script passes them as
 // ordinary integers and combines them by adding, so the values are part of the
-// interface rather than an implementation detail: a $flags of 258 has to mean
+// interface and no implementation detail: a $flags of 258 has to mean
 // set order with offset capture.
 const (
 	pregPatternOrder    = 1
@@ -147,7 +161,7 @@ func (c *regexpCache) phpPregMatchAll(pattern, subject string, matches func(any)
 // Without a flag that changes the entries, the columns are []string. Both
 // levels are indexed and iterated by the VM exactly like nested PHP arrays,
 // and the columns are plain string slices, so a match set of g groups over n
-// matches costs g+1 allocations instead of the 2(g+1) plus 2n interface boxes
+// matches costs g+1 allocations where a *model.Array costs 2(g+1) plus 2n interface boxes
 // an *model.Array pair would. PREG_OFFSET_CAPTURE boxes every entry anyway and
 // takes the []any branch.
 func patternOrder(subject string, all [][]int, groups int, flags int64) []any {
@@ -206,8 +220,8 @@ func (c *regexpCache) phpPregMatch(pattern, subject string, matches func(any), f
 
 // matchOffset resolves preg_match's $offset argument to a byte offset into
 // subject. A negative offset counts from the end. An offset outside the
-// subject is not a failed match but a failed call: PHP returns false, so the
-// second result reports whether the offset was usable at all.
+// subject is a failed call: PHP returns false, so the second result reports
+// whether the offset was usable at all.
 func matchOffset(subject string, offset any) (int, bool) {
 	if offset == nil {
 		return 0, true
@@ -247,7 +261,7 @@ func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...an
 	}
 	bits := phpval.Int(flags)
 	// An omitted $limit is PHP's -1 (replace everything). A passed 0 is not:
-	// it asks for no replacements at all, so nil and 0 have to differ here.
+	// it names no replacements at all, so nil and 0 have to differ here.
 	max := int64(-1)
 	if limit != nil {
 		max = phpval.Int(limit)
@@ -348,8 +362,7 @@ func (s *splitPieces) add(subject string, start, end int) bool {
 }
 
 // result returns the pieces in the shape the script sees. An empty result is
-// an empty array rather than null, which is what PHP returns when every piece
-// was dropped.
+// an empty array and never null, as PHP returns when every piece was dropped.
 func (s *splitPieces) result() any {
 	if s.flags&pregSplitOffsetCapture != 0 {
 		if s.pairs == nil {
@@ -369,7 +382,7 @@ func (s *splitPieces) result() any {
 // PHP drops the trailing groups that did not participate, so count($m) is
 // smaller for a match that ended before the last optional group;
 // PREG_UNMATCHED_AS_NULL turns those into nulls instead and then they all
-// stay. The flagless case is a []string for the reason patternOrder gives.
+// stay. The flagless case is a []string for the reason patternOrder states.
 func matchGroups(subject string, idx []int, groups int, flags int64) any {
 	n := participatingGroups(idx, groups, flags)
 	if flags&(pregOffsetCapture|pregUnmatchedAsNull) == 0 {
@@ -389,7 +402,7 @@ func matchGroups(subject string, idx []int, groups int, flags int64) any {
 // participatingGroups reports how many entries of a match row PHP keeps: every
 // group up to the last one that participated, and always at least the whole
 // match. PREG_UNMATCHED_AS_NULL keeps them all, since a null records the group
-// that did not participate rather than hiding it.
+// that did not participate, and hides nothing.
 func participatingGroups(idx []int, groups int, flags int64) int {
 	if flags&pregUnmatchedAsNull != 0 {
 		return groups + 1
@@ -423,7 +436,7 @@ func groupText(subject string, idx []int, g int) string {
 // matchValue renders group g the way $matches holds it under flags:
 // PREG_OFFSET_CAPTURE makes it a pair of the text and its byte offset, -1 for
 // a group that did not participate, and PREG_UNMATCHED_AS_NULL makes that
-// group's text null instead of empty.
+// group's text null where PHP writes empty.
 func matchValue(subject string, idx []int, g int, flags int64) any {
 	start := groupStart(idx, g)
 	var text any = ""
@@ -580,7 +593,7 @@ func (p *pattern) replaceAll(subject, repl string) string {
 }
 
 // backtrackIndex flattens a regexp2 match into the byte index pairs RE2
-// returns. regexp2 counts in runes, so every index goes through offsets; a
+// returns. regexp2 counts in runes, so every index passes through offsets; a
 // group with no captures did not participate and is reported as -1, -1.
 func backtrackIndex(match *regexp2.Match, groups int, offsets runeOffsets) []int {
 	idx := make([]int, 2*(groups+1))
@@ -771,7 +784,7 @@ func backtrackOptions(flags string) regexp2.RegexOptions {
 
 // needsBacktracking reports whether the pattern uses a construct RE2 cannot
 // express: a \1..\9 backreference, or a lookahead/lookbehind group. Both are
-// deliberate RE2 omissions rather than gaps, so detecting them up front avoids
+// RE2 omissions by decision and no gaps, so detecting them up front avoids
 // a compile attempt that is certain to fail.
 func needsBacktracking(body string) bool {
 	for i := 0; i < len(body); i++ {

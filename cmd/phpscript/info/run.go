@@ -49,7 +49,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, ".")
 	// The request-aware functions (header, http_response_code, getallheaders)
-	// are installed per request rather than by stdlib.Register. Without this
+	// are installed per request and not by stdlib.Register. Without this
 	// the counts here are short of what `phpscript list --stdlib` and the
 	// generated reference report, and the three disagree about the same
 	// runtime.

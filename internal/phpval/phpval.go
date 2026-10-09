@@ -22,10 +22,10 @@ import (
 // binding returned or a database row scanned. The final return reports whether
 // it knew how.
 //
-// A time.Time takes time.DateTime rather than Go's String or RFC3339. PHP has
+// A time.Time takes time.DateTime, and neither Go's String nor RFC3339. PHP has
 // no string form for a date to copy: `echo $dateTime` is a fatal Error. The
 // rule comes from where PHP writes one itself. The `date` field of var_dump,
-// print_r and json_encode is Y-m-d H:i:s, and PDO hands back a DATETIME column
+// print_r and json_encode is Y-m-d H:i:s, and PDO returns a DATETIME column
 // as the text it was stored as. Anything else that can spell itself does, so a
 // Duration is "1h30m0s" and a Month is "August".
 func GoString(v any) (string, bool) {
@@ -97,8 +97,8 @@ func String(v any) string {
 //
 // PHP distinguishes two situations and so does this: an array key and var_dump
 // never refuse a value, and a string context does. There is no __toString in
-// this runtime, so an object has no string form and php's Error is the whole of
-// the case. The renderer is String's, not a second one.
+// this runtime, so an object has no string form and php's Error covers the
+// case. The renderer is String's, with no second one.
 func StringContext(v any) (string, error) {
 	if _, ok := v.(*model.Object); ok {
 		return "", &ConversionError{Class: classNameOf(v)}
@@ -136,7 +136,7 @@ func classNameOf(v any) string {
 }
 
 // FloatString renders a float the way PHP's echo does: precision=14 significant
-// digits, so 0.1*0.2 echoes as 0.02, not the round-tripping
+// digits, so 0.1*0.2 echoes as 0.02 and never the round-tripping
 // 0.020000000000000004. PHP's exponent form differs from Go's: the mantissa
 // always carries a decimal point and the exponent has no leading zero, so 1e20
 // echoes as 1.0E+20, not 1E+20 or 1e+20.
@@ -192,8 +192,8 @@ func Int(v any) int64 {
 		}
 		return ToInt64(parseFloat(prefix))
 	default:
-		// A collection answers zero here, which is what the numeric context
-		// wants: php refuses arithmetic on an array with a TypeError rather than
+		// A collection answers zero here, as the numeric context reads it:
+		// php refuses arithmetic on an array with a TypeError and never
 		// coercing it, so this value never reaches an operator as a number. The
 		// explicit (int) cast is the one context that converts one, and it does
 		// so in runner.helperCast.
@@ -231,12 +231,12 @@ func Float(v any) float64 {
 // is 0.5, "1e3" is 1000, "abc" is 0).
 //
 // Int, Float and Number all read the string through here, so no two of them can
-// take a different number out of it, which is what this package exists to
+// take a different number out of it, and this package exists to
 // prevent. The prefix is the one runner.numericPrefix reads for a cast, so
 // (int)"1e3" and phpval.Int("1e3") agree as well.
 //
 // isInt reports that the prefix was written without a fraction or an exponent,
-// which is the case Number hands back an int64 for.
+// the case Number returns an int64 for.
 func leadingFloat(s string) (prefix string, isInt bool) {
 	i := 0
 	for i < len(s) {
@@ -289,7 +289,7 @@ func leadingFloat(s string) (prefix string, isInt bool) {
 }
 
 // parseInt reads an integer prefix, saturating at the int64 bounds the way PHP
-// does: (int)"99999999999999999999" is PHP_INT_MAX rather than 0.
+// does: (int)"99999999999999999999" is PHP_INT_MAX and never 0.
 func parseInt(prefix string) int64 {
 	n, err := strconv.ParseInt(prefix, 10, 64)
 	if err == nil {
@@ -301,8 +301,8 @@ func parseInt(prefix string) int64 {
 	return math.MaxInt64
 }
 
-// parseFloat reads a float prefix. Digits past float64's range yield +Inf or
-// -Inf with ErrRange, which is the value PHP reads for them too, so the error
+// parseFloat reads a float prefix. Digits past float64's range return +Inf or
+// -Inf with ErrRange, the value PHP reads for them too, so the error
 // is not consulted.
 func parseFloat(prefix string) float64 {
 	f, _ := strconv.ParseFloat(prefix, 64)
@@ -311,7 +311,7 @@ func parseFloat(prefix string) float64 {
 
 // Number returns v in PHP's numeric domain: an int64 for what PHP treats as an
 // integer, a float64 for what it treats as a float. It is what lets abs(),
-// min(), max() and array_sum() hand back the type they were given, so that
+// min(), max() and array_sum() return the type they were given, so that
 // abs(-1) is int(1) and abs(-1.5) is float(1.5). A string is read through the
 // same numeric prefix Int and Float read, so the three never disagree: "12abc"
 // is int64(12), "-3.5" is float64(-3.5) and "abc" is int64(0).
@@ -375,7 +375,7 @@ func Key(v any) any {
 }
 
 // floatKey truncates toward zero. Go leaves an out-of-range float-to-int
-// conversion undefined, so the ends are named rather than left to the compiler.
+// conversion undefined, so the ends are named and never left to the compiler.
 func floatKey(f float64) int64 {
 	switch {
 	case math.IsNaN(f):
@@ -416,7 +416,7 @@ func NumericKey(s string) (int64, bool) {
 	}
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		// Out of int64 range. PHP keeps it as a string rather than saturating.
+		// Out of int64 range. PHP keeps it as a string and saturates nothing.
 		return 0, false
 	}
 	return n, true

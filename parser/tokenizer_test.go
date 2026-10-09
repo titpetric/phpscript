@@ -156,7 +156,7 @@ func TestTokenVariableWithDotMarker(t *testing.T) {
 }
 
 // benchTemplate is a minitpl-shaped template: inline HTML interleaved with
-// short PHP expressions, which is what the compiler tokenizes on every include.
+// short PHP expressions, as the compiler tokenizes on every include.
 const benchTemplate = `<html>
 <head><title><?php echo $this->_vars['title']; ?></title></head>
 <body>

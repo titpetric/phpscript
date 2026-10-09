@@ -45,11 +45,11 @@ type (
 	Snapshot = oida.Snapshot
 
 	// Router is the subset of a router needed to mount the debug front end,
-	// satisfied by chi.Router, which is what platform.Router is.
+	// satisfied by chi.Router, the interface platform.Router names.
 	Router = oida.Router
 )
 
-// Span kinds. The set is open: an unrecognized value is valid, which is what
+// Span kinds. The set is open: an unrecognized value is valid, as
 // lets PHP pass a plain string.
 const (
 	KindInternal = oida.KindInternal
@@ -88,7 +88,7 @@ const (
 	// BackgroundHost is the host label of traces that did not arrive over the
 	// network: startup steps, cron ticks, queue consumers. oida stopped
 	// re-exporting it from its root package; the constant itself is still the
-	// recorded data's, so this reads it from model rather than inventing a
+	// recorded data's, so this reads it from model and invents no
 	// second label for the same group.
 	BackgroundHost = model.BackgroundHost
 )
@@ -113,8 +113,8 @@ func NewOptions(serviceName string) Options {
 }
 
 // New returns a tracer configured with opts. It is the only constructor: oida
-// no longer keeps a process wide tracer, so a caller holds the one it built and
-// hands it to whatever records into it.
+// keeps no process wide tracer, so a caller holds the one it built and
+// passes it to whatever records into it.
 func New(opts Options) (*Tracer, error) {
 	return oida.New(opts)
 }
@@ -166,7 +166,7 @@ func TraceID(ctx context.Context) string {
 // arrive over the network and have no host, so they group under
 // BackgroundHost. oida dropped the function along with the rest of its view
 // model; the grouping is still what the server's own reporting reads by, so it
-// is stated here rather than at each caller.
+// is stated here and not at each caller.
 func TraceHost(trace Trace) string {
 	if trace.HTTP == nil || trace.HTTP.Host == "" {
 		return BackgroundHost
@@ -180,8 +180,8 @@ func TraceHost(trace Trace) string {
 // This is the one place phpscript names an oida sub-package. oida selects a
 // driver from OIDA_STORAGE_DRIVER and the OIDA_STORAGE_* variables, and the
 // telemetry block in a site's configuration is what phpscript configures a
-// site by; reaching the constructor directly is what keeps `driver: disk`
-// meaning what it says instead of moving that choice into the environment.
+// site by; reaching the constructor directly keeps `driver: disk` meaning what
+// it says, with that choice out of the environment.
 func NewStorageDisk(limit int, paths ...string) (Storage, error) {
 	return storage.NewDiskStorage(limit, paths...)
 }

@@ -10,8 +10,8 @@ import (
 // type and whose later literal assignment spells a different one. The first
 // literal is read as the declaration of the variable's type, the convention
 // the flat VM's typed operator selection leans on; a reassignment at another
-// type is legal PHP and runs unchanged here too, which is why the finding is
-// advisory rather than fatal.
+// type is legal PHP and runs unchanged here too, so the finding is
+// advisory and never fatal.
 //
 // Tracking is per function body (methods included), and the whole body is one
 // scope: an if arm assigning a string where the else arm assigns an int is
@@ -170,7 +170,7 @@ func (w *reassignWalker) assign(n *model.Assign, types map[string]string) {
 		Message: fmt.Sprintf("no reassignment: $%s previously declared as %s", target.Name, previous),
 		// Advisory: the runtime follows PHP and retypes the variable, so the
 		// program runs. The finding flags the drift without failing the lint
-		// run; keeping one type per name is the convention, not a contract.
+		// run; keeping one type per name is the convention, which nothing enforces.
 	})
 }
 

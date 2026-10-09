@@ -3,7 +3,7 @@
 // than the PCRE surface preg_* presents uses these; docs/bindings-regexp.md
 // walks the binding from here to its fixtures.
 //
-// The constructors return *regexp.Regexp itself rather than a facade. Every
+// The constructors return *regexp.Regexp itself and no facade. Every
 // exported method of that type is a regexp operation, so publishing the whole
 // method set is the binding: $rx->find_string($s), $rx->split($s, -1),
 // $rx->replace_all_string($s, $repl). The type is named Regexp, which is the
@@ -29,11 +29,14 @@ func init() {
 // is what the generated reference publishes as the PHP signature; registering
 // the bare function would publish Go's own unnamed parameter.
 func Register(rt *runner.Runtime) {
-	// Regexp\Compile compiles $expr as an RE2 expression and throws when it does not parse; the value it builds carries every method Go's regexp.Regexp has.
+	// Regexp\Compile compiles $expr as an RE2 expression and throws when it
+	// does not parse; the value it builds carries every method Go's
+	// regexp.Regexp has.
 	rt.RegisterConstructor("Regexp\\Compile", func(expr string) (*stdregexp.Regexp, error) {
 		return stdregexp.Compile(expr)
 	})
-	// Regexp\CompilePOSIX compiles $expr as POSIX ERE, where a match is the leftmost-longest one rather than the leftmost one Perl syntax finds.
+	// Regexp\CompilePOSIX compiles $expr as POSIX ERE, where a match is the
+	// leftmost-longest one and not the leftmost one Perl syntax finds.
 	rt.RegisterConstructor("Regexp\\CompilePOSIX", func(expr string) (*stdregexp.Regexp, error) {
 		return stdregexp.CompilePOSIX(expr)
 	})

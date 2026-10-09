@@ -9,7 +9,7 @@
 | Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.            |
 | `{...}` arrays              | PHP-incompatible    | Braces can delimit an array literal.                               |
 
-These features have no equivalent in the PHP language reference or deliberately use syntax differently. Avoid them when source must also run on PHP.
+These features have no equivalent in the PHP language reference, or use syntax differently. Avoid them when source must also run on PHP.
 
 ## Deferred callbacks
 
@@ -56,7 +56,7 @@ $expires = $start->add($retention);
 
 ### `Database`
 
-`new Database("name")` connects through the named platform database configured by `PLATFORM_DB_<NAME>` in the process environment or configuration file. It provides `query()`, `get()`, `get_all()`, `insert()`, `replace()`, `update()`, `begin()`, `commit()`, `rollback()`, `insert_id()`, and `rows_affected()`. Database operations automatically add timed database spans to the trace of the request that ran them.
+`new Database("name")` connects through the named platform database configured by `PLATFORM_DB_<NAME>` in the process environment or configuration file. It declares `query()`, `get()`, `get_all()`, `insert()`, `replace()`, `update()`, `begin()`, `commit()`, `rollback()`, `insert_id()`, and `rows_affected()`. Database operations automatically add timed database spans to the trace of the request that ran them.
 
 `$db->is_readonly` is a writable property restricting the client to `SELECT`, `SHOW`, `DESCRIBE` and `DESC`: it refuses the write helpers outright and any other statement on the keyword it starts with. It belongs to the client, not the connection, and lives as long as the request does. See the [read-only clients guide](../../use-cases/database.md#read-only-clients).
 
@@ -70,7 +70,7 @@ $expires = $start->add($retention);
 
 ### `Mail`
 
-`new Mail($name)` selects one of the mail servers the host configured and delivers with `send($recipient, $subject, $body)`. `new Mail` selects `default`.
+`new Mail($name)` selects one of the mail servers the host configured and sends with `send($recipient, $subject, $body)`. `new Mail` selects `default`.
 
 ```php
 $mail = new Mail;
@@ -82,7 +82,7 @@ $campaigns->send("list@example.com", "Newsletter", "Issue 1");
 
 The name is the whole of what a script says about a server. Where the servers come from, what keys they take, and why a script can neither supply nor read a credential are in [Mail servers](../../configuration.md#mail-servers).
 
-Constructing throws when the name is not a configured server, so a typo is caught before a message is composed rather than at the first delivery. A failed delivery throws too, so wrap `send()` in `try`/`catch` when the request should survive an unreachable mail server.
+Constructing throws when the name is not a configured server, so a typo is caught before a message is composed, ahead of the first delivery. A failed delivery throws too, so wrap `send()` in `try`/`catch` when the request should survive an unreachable mail server.
 
 ### `mail()`
 
@@ -118,7 +118,7 @@ Standard PHP requires the parentheses. Parenthesized forms remain supported and 
 
 ## Implemented APIs
 
-See the generated [implemented API inventory](implemented-apis.md) for the functions and classes in the standard CLI runtime. Regular-expression shims use Go's RE2 engine rather than PCRE, and filesystem shims are rooted in the host-provided filesystem.
+See the generated [implemented API inventory](implemented-apis.md) for the functions and classes in the standard CLI runtime. Regular-expression shims use Go's RE2 engine where PHP uses PCRE, and filesystem shims are rooted in the host-provided filesystem.
 
 Use `get_defined_functions()`, `get_declared_classes()`, and `get_defined_constants()` to inspect the exact APIs registered by a host.
 
@@ -132,7 +132,7 @@ Embedding hosts opt into runtime services separately:
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
 - `runner.Options.Mail` names the `model.MailProvider` `Mail` and `mail()` resolve through, the way `Options.Database` names the connections. `mail.NewProvider(servers)` builds one from a configuration block; nil leaves both bindings on a provider holding no servers, which refuses catchably.
 - `mail.NewProviderFunc(servers, deliver)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector its pools are opened with. Name resolution and the rule that a script cannot read a credential sit above the seam and are unaffected.
-- `mail.NewMemory(names...)` is a provider that queues messages in memory instead of delivering them, which is how tests and dry runs capture mail without a mail server. Naming no servers configures every name.
+- `mail.NewMemory(names...)` is a provider that queues messages in memory and sends nothing, so tests and dry runs capture mail without a mail server. Naming no servers configures every name.
 - `runner.Context.Register(rt)` adds the request-aware header functions and seeds `$_GET`, `$_POST`, `$_COOKIE`, `$_SERVER`, `$_ENV`, `$_REQUEST`, `$_FILES`, `$argv` and `$argc`. See [Predefined variables](../predefined-variables/README.md).
 
-Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterBinding(Register)`, and `stdlib/imports.go` blank-imports them. A host that wants a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.
+Binding packages under `stdlib/` invert the dependency: each has an `init.go` that calls `runner.RegisterBinding(Register)`, and `stdlib/imports.go` blank-imports them. A host needing a different set builds its runtime without `stdlib`, or imports the packages it needs and passes extra bindings to `stdlib.Register(rt, bindings...)`.

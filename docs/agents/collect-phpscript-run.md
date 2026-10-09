@@ -8,7 +8,7 @@ Read this when the question is which function the cost is in. It runs under the 
 
 One script, one profile, and nothing else in the frames.
 
-That is what makes this the per-function tool. A profile of `phpscript test` carries fixture discovery, table rendering, the `php` subprocess and the JSON writer on top of the interpreter; a profile of `phpscript run` carries the script.
+That is why this is the per-function tool. A profile of `phpscript test` carries fixture discovery, table rendering, the `php` subprocess and the JSON writer on top of the interpreter; a profile of `phpscript run` carries the script.
 
 ## Preconditions
 
@@ -18,7 +18,7 @@ The profile is written when the command ends. A script killed with `SIGKILL` los
 
 Two parsing traps:
 
-- `-t` before a command name is `--testconfig` and runs that instead of the command. Write global flags where their meaning is unambiguous.
+- `-t` before a command name is `--testconfig`, which runs no command. Write global flags where their meaning is unambiguous.
 - `run` is the default command, so `phpscript app.php` and `phpscript run app.php` are the same thing. Both accept the global flags.
 
 `run` has no flags of its own. It reads the global set: `--cover`, `--coverfile`, `--cpuprofile`, `--memprofile`, `-f`, `--include`, `-v`, `-w`.
@@ -85,13 +85,13 @@ The top frames:
 go tool pprof -top -nodecount=40 cpu-after.pprof
 ```
 
-Before against after, which is the form that produces a finding rather than two lists to squint at:
+Before against after, which is the form that produces a finding:
 
 ```sh
 go tool pprof -top -nodecount=40 -diff_base=cpu-before.pprof cpu-after.pprof
 ```
 
-For allocation counts rather than bytes:
+For allocation counts, in place of bytes:
 
 ```sh
 go tool pprof -sample_index=alloc_objects -top -nodecount=40 mem-after.pprof

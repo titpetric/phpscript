@@ -278,7 +278,7 @@ $storage->get("missing");
 }
 
 // TestFlatstackRejectsWholeProgramBeforeSideEffects checks that a rejected
-// program runs once, on the interpreter, rather than partly on each backend.
+// program runs once, on the interpreter, and never partly on each backend.
 // The constructor counts its calls, so a compile that gave up after the `new`
 // had already run would report two.
 //
@@ -305,7 +305,7 @@ echo 42;
 	var output strings.Builder
 	runtime := flatstack.New(&output, flatstack.Options{})
 	// compact() is a stdlib registration; without it the interpreter reports an
-	// undefined function instead of running the fallback.
+	// undefined function, and runs no fallback.
 	stdlib.Register(runtime)
 	runtime.RegisterConstructor("Storage", constructor)
 	if err := runtime.Run(program); err != nil {

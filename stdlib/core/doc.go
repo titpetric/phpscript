@@ -1,6 +1,6 @@
 // Package core holds the part of PHP's standard library that computes:
 // strings, arrays, json, the language constructs exposed as functions, the
-// tokenizer, the environment and the platform surface a program expects to
+// tokenizer, the environment and the platform surface a program reads before
 // find before it does anything interesting. It also holds the phpscript
 // extensions that are each too small to be worth a package: SharedMemory,
 // defer and register_shutdown_function.

@@ -113,7 +113,7 @@ func TestInvokeTooFewArgumentsPads(t *testing.T) {
 }
 
 // A Go method reached through PHP follows the same argument rules as a
-// registered function: the surplus is refused rather than panicking inside
+// registered function: the surplus is refused and panics nowhere inside
 // reflect.Value.Call, and the message names the method a script typed.
 type counter struct{}
 
@@ -192,7 +192,7 @@ func runInstant(t *testing.T, src string) string {
 }
 
 // instant is what runInstant's prelude constructs, as a Go value, so a test can
-// state its expectation as time.Time's own rendering rather than by copying a
+// state its expectation as time.Time's own rendering, and never by copying a
 // string out of a previous run.
 var instant = time.Date(2026, time.August, 26, 14, 48, 0, 0, time.UTC)
 
@@ -260,7 +260,7 @@ func TestInvokeSeveralResultsBecomeAList(t *testing.T) {
 	}
 }
 
-// A Go value that spells itself echoes that way rather than as the empty
+// A Go value that spells itself echoes that way and never as the empty
 // string, and a named Go integer counts as an integer in arithmetic. Both
 // reach PHP through automatic method dispatch, where no hand-written shim is
 // there to convert them.
@@ -361,9 +361,9 @@ type probeError string
 
 func (e probeError) Error() string { return string(e) }
 
-// A thrown Exception reports the code it was constructed with, rather than the
+// A thrown Exception reports the code it was constructed with, and never the
 // zero the Throwable fallback supplies for a bare Go error. This needs the
-// standard library, which is where the Exception class is registered.
+// standard library, where the Exception class is registered.
 func TestThrownExceptionKeepsItsCode(t *testing.T) {
 	program, err := parser.Parse(`<?php try { throw new Exception("m", 7); } catch (Throwable $e) { echo $e->getMessage() . ":" . $e->getCode(); }`)
 	if err != nil {
@@ -382,7 +382,7 @@ func TestThrownExceptionKeepsItsCode(t *testing.T) {
 
 // An argument that converts to no declared parameter type is refused before
 // reflect.Value.Call sees it, as a PHP TypeError naming the function, the
-// position and the types involved, rather than a host panic a script cannot
+// position and the types involved, and no host panic a script cannot
 // distinguish from a bug in the binding.
 func TestInvokeUnconvertibleArgument(t *testing.T) {
 	tests := []struct {
@@ -426,7 +426,7 @@ func TestInvokeUnconvertibleArgument(t *testing.T) {
 }
 
 // Calling a function no table knows reports the condition the way the flatstack
-// engine reports it, rather than the VM's "cannot call nil".
+// engine reports it, where the VM would say "cannot call nil".
 func TestUndefinedFunctionMessage(t *testing.T) {
 	program, err := parser.Parse(`<?php nope();`)
 	if err != nil {
@@ -444,7 +444,7 @@ func TestUndefinedFunctionMessage(t *testing.T) {
 
 // The stub installed for an unknown name must not outlive the declaration of a
 // function by that name. Registering one moves the function-table generation,
-// which is what makes the evaluation environment (and the stub in it) rebuild.
+// and that rebuilds the evaluation environment, and the stub in it.
 func TestUndefinedFunctionStubIsNotSticky(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})

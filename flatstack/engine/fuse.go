@@ -15,9 +15,9 @@ package engine
 //
 // followed by an optional store fold: any of the above, or a plain
 // opBinary, directly followed by a plain `=` store into a slot writes the
-// result there instead of pushing it (instruction.target = slot+1; 0 keeps
+// result there in place of pushing it (instruction.target = slot+1; 0 keeps
 // the push). The VM's fused case reproduces opLoad's extras/host fallback
-// and opStore's SetGlobal offer exactly.
+// and opStore's SetGlobal call exactly.
 //
 // An instruction that is a jump target, a try boundary, a catch target or a
 // function entry stays addressable: a run containing one anywhere but its

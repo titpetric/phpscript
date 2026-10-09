@@ -13,9 +13,9 @@ import (
 // and the simplistic strtotime/date shims. The clock pair answers "how long
 // did that take" in the epoch integers PHP spells them in; the shims cover the
 // epoch-and-layout corner of PHP's date family, and no more of it: strtotime
-// matches a fixed list of layouts rather than reading English, and date knows
+// matches a fixed list of layouts and reads no English, and date covers
 // only the numeric format characters. Anything richer is stdlib/time, where
-// the value is a Go time.Time rather than an int; the boundary is recorded in
+// the value is a Go time.Time and no int; the boundary is recorded in
 // docs/design.md under "Dates and times".
 func registerDatetime(rt *runner.Runtime) {
 	// time returns the current Unix timestamp in seconds.

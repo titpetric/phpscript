@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// sourceEntry is what the scan knows about one registration site: where it
+// sourceEntry is what the scan records for one registration site: where it
 // is, the doc comment beside it, and the signature when the second argument
 // resolved to a function literal or declaration. A nil params or results
 // slice means the scan could not see the signature and reflection decides.
@@ -273,7 +273,7 @@ func (src *sources) method(typeName, goName string) *sourceEntry {
 }
 
 // lookupDecl finds a declaration by name, preferring the calling package.
-// samePkg restricts the match to it, which is how a bare identifier binds.
+// samePkg restricts the match to it, so a bare identifier binds.
 func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 	var fallback *declInfo
 	for _, info := range src.decls[name] {
@@ -441,7 +441,7 @@ func astParam(name string, t ast.Expr) Param {
 	return p
 }
 
-// paramName converts a Go parameter name to the PHP spelling, giving the
+// paramName converts a Go parameter name to the PHP spelling, writing the
 // blank identifier a name that says the value is accepted and ignored.
 func paramName(name string) string {
 	if name == "" || name == "_" {

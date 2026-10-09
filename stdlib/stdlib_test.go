@@ -28,7 +28,7 @@ func runScript(t *testing.T, src string) string {
 	return out.String()
 }
 
-// TestExceptionSemantics covers what returning *Exception instead of a struct
+// TestExceptionSemantics covers what returning *Exception in place of a struct
 // value buys: the instance the script holds is addressable, so its fields are
 // writable and a write is visible through the accessors.
 func TestExceptionSemantics(t *testing.T) {

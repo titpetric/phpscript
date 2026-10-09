@@ -30,7 +30,10 @@ func registerWrites(rt *runner.Runtime, r root) {
 	rt.SetConst("FILE_APPEND", int64(fileAppend))
 	rt.SetConst("LOCK_EX", int64(lockEx))
 
-	// file_put_contents writes $data to $filename and returns the number of bytes written, or false on failure; FILE_APPEND appends instead of truncating, LOCK_EX is accepted as a no-op, and a path outside writable_paths is refused.
+	// file_put_contents writes $data to $filename and returns the number of
+	// bytes written, or false on failure; FILE_APPEND appends in place of
+	// truncating, LOCK_EX is accepted as a no-op, and a path outside
+	// writable_paths is refused.
 	rt.RegisterFunc("file_put_contents", func(filename, data string, flags ...int64) (any, error) {
 		name, err := r.resolveWrite("file_put_contents", filename)
 		if err != nil {
@@ -54,7 +57,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 		return int64(n), nil
 	})
 
-	// mkdir creates $directory and any missing parents; $permissions and $recursive are ignored, and a path outside writable_paths is refused.
+	// mkdir creates $directory and any missing parents; $permissions and
+	// $recursive are ignored, and a path outside writable_paths is refused.
 	rt.RegisterFunc("mkdir", func(directory string, permissions ...any) (bool, error) {
 		name, err := r.resolveWrite("mkdir", directory)
 		if err != nil {
@@ -70,7 +74,9 @@ func registerWrites(rt *runner.Runtime, r root) {
 		}
 		return os.Remove(name) == nil, nil
 	})
-	// touch creates $filename if it is missing and sets its access and modification times to $mtime, or to now; a path outside writable_paths is refused.
+	// touch creates $filename if it is missing and sets its access and
+	// modification times to $mtime, or to now; a path outside writable_paths
+	// is refused.
 	rt.RegisterFunc("touch", func(filename string, mtime ...int64) (bool, error) {
 		name, err := r.resolveWrite("touch", filename)
 		if err != nil {
@@ -124,7 +130,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 		return os.Chmod(name, runner.FileMode(mode).Mode()) == nil, nil
 	})
 	// PHP takes either a name or a numeric id for both of these, and leaves the
-	// other half of the ownership alone, which is what -1 means to Chown.
+	// other half of the ownership alone, the meaning -1 has to Chown.
 	rt.RegisterFunc("chown", func(filename string, owner any) (bool, error) {
 		name, err := r.resolveWrite("chown", filename)
 		if err != nil {
@@ -151,7 +157,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 }
 
 // moveFile renames src to dst, copying instead when the two are on different
-// filesystems, which is where rename stops working. PHP's rename() crosses that
+// filesystems, where rename stops working. PHP's rename() crosses that
 // boundary, so this one has to as well.
 func moveFile(src, dst string) error {
 	if err := os.Rename(src, dst); err == nil {

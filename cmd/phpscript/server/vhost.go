@@ -25,7 +25,7 @@ import (
 // built from its own application root and its own configuration, and the Host
 // header is the only thing that selects between them.
 //
-// Matching is exact. A Host nobody claims gets 404 rather than falling through
+// Matching is exact. A Host nobody claims gets 404 and falls through to
 // to some default site, because in a shared execution environment the wrong
 // answer is a request landing in another tenant's code.
 type hostMux struct {
@@ -83,7 +83,7 @@ func registerVirtualHosts(ctx context.Context, svc *platform.Platform, appConfig
 // buildVirtualHosts returns the host mux serving every configured site and the
 // lifecycle modules the platform starts on their behalf. Every site is built
 // here, before the server starts, so a broken configuration fails startup
-// rather than one request.
+// and not one request.
 func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []platform.Module, error) {
 	if err := appConfig.ValidateVirtualHosts(); err != nil {
 		return nil, nil, err
@@ -130,7 +130,7 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	name := host.Name()
 
 	// The site owns its telemetry block, so it owns the tracer and the debug
-	// front end that block describes. chi wants every middleware before the
+	// front end that block describes. chi takes every middleware before the
 	// first route, so this comes first.
 	var observers []runner.Observer
 	telemetryOptions, err := siteConfig.Telemetry.Resolved()
@@ -163,13 +163,13 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	runnerOptions.Mail = mail.NewProvider(siteConfig.Mail)
 
 	// So does the environment its scripts read. A site is handed the env it
-	// declared rather than the process environment, so getenv() cannot be
-	// used to read what the operator, or another site, was started with.
+	// declared and not the process environment, so getenv() reports nothing
+	// about what the operator, or another site, was started with.
 	runnerOptions.Env = siteConfig.Env
 
 	// A site names its own prelude in the runner block of its phpscript.yml,
 	// because each one has its own vendor directory. --include is what the
-	// operator sets for a tenant that named none, which is the only way to set
+	// operator sets for a tenant that named none, and the one way to set
 	// it in a shared environment: a site's own file is not the operator's to
 	// edit.
 	if runnerOptions.Include == "" {

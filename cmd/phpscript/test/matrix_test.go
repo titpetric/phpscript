@@ -181,7 +181,7 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 	if tbl.detailWidth() != before {
 		t.Errorf("detail width = %d, want it unchanged at %d", tbl.detailWidth(), before)
 	}
-	// A second folder re-fits from the header widths rather than compounding:
+	// A second folder re-fits from the header widths and never compounds:
 	// fit adds to the last column, so a writeGroup that forgot to reset the
 	// widths would grow the table past the terminal on every folder.
 	buf.Reset()
@@ -220,7 +220,7 @@ func TestMatrixDurationsSplitPerEngine(t *testing.T) {
 
 // TestFolderTableSplitsEngineDurations covers the folder summary of a matrix
 // run with cost columns: one duration column per runner after the wall-clock
-// one. Without engines the single column stays, which is what a plain run and
+// one. Without engines the single column stays, as a plain run and
 // the checked-in report print.
 func TestFolderTableSplitsEngineDurations(t *testing.T) {
 	rows := []folderSummary{{groupTotals: groupTotals{

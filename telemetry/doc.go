@@ -7,9 +7,9 @@
 // provider. The bindings are type aliases and thin wrappers, so a
 // *telemetry.Span is a *oida.Span: nothing is copied or adapted at runtime.
 //
-// That covers the call sites, not the whole dependency. The recorder and the
+// That covers the call sites, and no more of the dependency. The recorder and the
 // front end belong to the host platform, which names oida itself, so replacing
-// the provider means replacing it there as well. A host hands over the tracer
+// the provider means replacing it there as well. A host passes the tracer
 // that platform built:
 //
 //	var recorder *platform.TelemetryModule

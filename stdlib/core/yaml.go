@@ -19,15 +19,19 @@ func init() {
 // registerYAML installs yaml_decode and yaml_encode.
 //
 // They answer the question json_decode and json_encode answer for the other
-// spelling, and they keep their own conversions rather than borrowing the
+// spelling, and they keep their own conversions, borrowing none of the
 // JSON ones: json_encode builds an ordered object that only the JSON
 // marshaller knows how to write, and handing it to the YAML marshaller
 // produced an empty document. The fixture beside this file is what caught
 // that.
 func registerYAML(rt *runner.Runtime) {
-	// yaml_decode parses the YAML in $text into arrays, with a mapping arriving as an array keyed by its field names and a sequence as a list; the keys come back sorted, and invalid input raises an error rather than answering null.
+	// yaml_decode parses the YAML in $text into arrays: a mapping arrives as an
+	// array keyed by its field names and a sequence as a list. The keys come
+	// back sorted, and invalid input raises an error where php answers null.
 	rt.RegisterFunc("yaml_decode", phpYAMLDecode)
-	// yaml_encode returns $value as YAML, writing an array that is a list as a sequence and any other array as a mapping in the order its keys were set.
+	// yaml_encode returns $value as YAML, writing an array that is a list as
+	// a sequence and any other array as a mapping in the order its keys were
+	// set.
 	rt.RegisterFunc("yaml_encode", phpYAMLEncode)
 }
 
@@ -55,11 +59,11 @@ func phpYAMLEncode(value any) (any, error) {
 
 // yamlDecodeValue turns what the decoder answers into PHP values.
 //
-// The keys of a mapping are sorted, which is a decision rather than an
-// accident: the decoder hands back a Go map, a Go map has no order, and
+// The keys of a mapping are sorted by decision: the decoder returns a Go map,
+// a Go map has no order, and
 // reading the same document twice would otherwise build two differently
 // ordered arrays. A settings file is read by name, so sorting costs nothing
-// and makes the answer the same every time.
+// and the same input decodes the same way every time.
 //
 // A whole number arrives as an int. `max_pages: 400` compared against a
 // count has to be one, and a float that happens to be whole would print as
@@ -111,7 +115,7 @@ func yamlMapping(in map[string]any) *model.Array {
 
 // yamlEncodeValue turns PHP values into what the YAML marshaller writes.
 //
-// A mapping becomes a yaml.MapSlice rather than a map, so the keys are
+// A mapping becomes a yaml.MapSlice and not a map, so the keys are
 // written in the order the array set them: a settings file a script wrote
 // should read the way the script built it, and a Go map would shuffle it on
 // every run.

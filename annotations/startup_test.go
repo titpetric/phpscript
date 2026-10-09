@@ -71,7 +71,7 @@ func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
 
 // The scanner walks in path order, so a failure in the first file must not stop
 // the second from running: the jobs of one tree are independent, and every
-// failure is joined into the returned error rather than only the first.
+// failure is joined into the returned error, and not the first alone.
 func TestStartupRunsEveryJobAndJoinsFailures(t *testing.T) {
 	root := fstest.MapFS{
 		"10-broken.php": {Data: []byte("<?php\n// @startup\nmissing_function();")},

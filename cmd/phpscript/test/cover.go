@@ -63,7 +63,7 @@ func writeCoverage(fixtures []*tests.Fixture, opts Options) error {
 
 // mergeCoverBlocks folds every fixture's collected blocks into one profile.
 // The same statement reached by several fixtures is one block whose counts add
-// up, which is what makes a folder's total independent of how its fixtures are
+// up, so a folder's total is independent of how its fixtures are
 // split up.
 func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	merged := map[profileKey]*profileBlock{}
@@ -107,8 +107,8 @@ type profileKey struct {
 
 // coverFilePath resolves a collected filename to the path the runtime read it
 // from, as seen from the invocation directory. Includes resolve through a
-// union: the fixture's directory answers first, the application root — the
-// invocation directory itself — after it. The profile must name the file the
+// union: the fixture's directory answers first, then the application root,
+// which is the invocation directory itself. The profile must name the file the
 // union served, so the same order decides here: the fixture-joined path when
 // it exists, the bare path otherwise.
 func coverFilePath(fx *tests.Fixture, file string) string {
@@ -135,7 +135,7 @@ func fixtureCoverBlocks(fx *tests.Fixture) []profileBlock {
 		var src []string
 		if file == fx.Path {
 			// The entrypoint is the .phpt itself, but its lines count from the
-			// start of the PHP section, which is what the parser saw.
+			// start of the PHP section, the offset the parser saw.
 			src = strings.Split(fx.PHP, "\n")
 		} else if data, err := os.ReadFile(filepath.FromSlash(coverFilePath(fx, file))); err == nil {
 			src = strings.Split(string(data), "\n")
@@ -268,7 +268,7 @@ func coverFiles(fixtures []*tests.Fixture) []string {
 }
 
 // reportBlocks filters the merged profile down to what a report charges:
-// application sources. A .phpt entrypoint is the test itself — its top-level
+// application sources. A .phpt entrypoint is the test itself: its top-level
 // code runs by definition and would only inflate every summary built on the
 // report.
 func reportBlocks(blocks []profileBlock) []profileBlock {

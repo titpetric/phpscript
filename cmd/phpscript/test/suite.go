@@ -46,7 +46,7 @@ func (s suites) all() []*tests.Suite {
 //
 // Nearest wins because a suite is what a folder says about itself. A tree that
 // configures a bootstrap at its root and a database in one folder below it
-// gives that folder the database, not both, which is the same replacement rule
+// names the database for that folder alone, under the same replacement rule
 // a virtual host reads its own file under.
 func (s suites) resolve(path string) *tests.Suite {
 	dir := filepath.Dir(path)
@@ -190,8 +190,8 @@ func walkRoot(p string) (string, bool, error) {
 // applySuites points every fixture at the suite governing it: the connections
 // its folder configured, and the prelude and application root it named.
 //
-// --include still wins over what a suite asked for, and speaks from the
-// invocation root rather than from a suite: it is what an operator typed about
+// --include still wins over what a suite named, and speaks from the
+// invocation root and not from a suite: it is what an operator typed about
 // this run, and the file it names sits where the command was invoked.
 func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 	for _, fx := range fixtures {

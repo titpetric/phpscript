@@ -17,7 +17,7 @@ import (
 // Source parses src and pretty-prints the AST.
 func Source(src string) (string, error) {
 	// An executable script starts with an interpreter line, which the lexer
-	// skips. It is put back on the formatted output rather than costing the
+	// skips. It is put back on the formatted output, so it costs the
 	// script its formatting.
 	if shebang, rest, ok := splitShebang(src); ok {
 		out, err := Source(rest)
@@ -95,7 +95,7 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 		p.blank()
 	}
 	// `declare` has to come before the namespace declaration, which is printed
-	// from Program.Namespace rather than from the statement list.
+	// from Program.Namespace and not from the statement list.
 	directives, stmts := splitDeclarePreamble(stmts)
 	if len(directives) > 0 {
 		p.stmts(directives)
@@ -146,10 +146,10 @@ func splitDeclarePreamble(stmts []model.Stmt) (preamble, rest []model.Stmt) {
 }
 
 // collectImports maps every name a file imports to the alias it gave it, so
-// the printer can write a reference the way the author did rather than the way
+// the printer can write a reference the way the author did and not the way
 // the parser resolved it.
 //
-// The alias of an unaliased import is its last segment, which is what the
+// The alias of an unaliased import is its last segment, the name the
 // short name in the body already means.
 func collectImports(stmts []model.Stmt) map[string]string {
 	out := map[string]string{}
@@ -176,7 +176,7 @@ func collectImports(stmts []model.Stmt) map[string]string {
 // A `use` is a compile-time alias: it binds a short name to a long one and
 // loads nothing, so it can sit anywhere and is legal before the include that
 // will eventually define what it names. That is exactly why the order is
-// worth fixing here rather than leaving to whoever types it - a reader
+// worth fixing here, and not left to whoever types it: a reader
 // scanning the top of a file learns what the file pulls in before what it
 // renames, and one order for every file is one less thing to decide.
 //
@@ -224,7 +224,7 @@ type printer struct {
 	unsupported []string
 	// comments is the source comment stream, consumed in order: nextComment is
 	// the first one not yet written out. lastLine is the source line of the
-	// last thing written, which is what tells a blank line the author left
+	// last thing written, so a blank line the author left
 	// from one the printer would be inventing.
 	// imports maps a fully-qualified name to the alias the file's use
 	// statements gave it, so a reference prints the way it was written.
@@ -297,7 +297,7 @@ func (p *printer) body(stmts []model.Stmt, end int) {
 	p.depth--
 }
 
-// stmtEnd is the line a statement closes on, used to place the comments
+// stmtEnd is the line a statement closes on, read to place the comments
 // written inside it.
 func (p *printer) stmtEnd(s model.Stmt) int {
 	return p.spans[s].End
@@ -430,7 +430,7 @@ func (p *printer) printStmt(s model.Stmt) {
 
 // use renders an import statement. The parser resolves imports while parsing,
 // so the statement is inert, but dropping it would rewrite a file into one
-// that no longer states its dependencies.
+// that states none of its dependencies.
 func (p *printer) use(n *model.Use) string {
 	out := "use "
 	if n.Kind != "" {
@@ -614,7 +614,7 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 // order PHP style guides settle on.
 // groupSignature is the interface counterpart of groupMethod: a body-less
 // declaration is one line, so consecutive ones are kept together the way
-// properties are, rather than separated by a blank line each.
+// properties are, with no blank line between each.
 const (
 	groupConst = iota
 	groupProp
@@ -697,7 +697,7 @@ func (p *printer) printClass(n *model.ClassDecl) {
 
 // printMembers writes the members of a class or an interface body, separating
 // the groups with a blank line and keeping the ones the author left between
-// members of the same group. end is the line the body closes on, which is where
+// members of the same group. end is the line the body closes on, and is where
 // the comments written after the last member belong.
 func (p *printer) printMembers(members []classMember, end int) {
 	prev := classMember{group: -1}
@@ -769,7 +769,7 @@ func (p *printer) printInterface(n *model.InterfaceDecl) {
 	p.line("}")
 }
 
-// signature renders a method declaration with no body, which is what an
+// signature renders a method declaration with no body, the shape an
 // interface member is.
 func (p *printer) signature(n *model.FuncDecl) string {
 	var b strings.Builder
@@ -934,7 +934,7 @@ func (p *printer) expr(e model.Expr) string {
 		return ""
 	case *model.Lit:
 		// A parsed string literal keeps its source spelling: single quotes do
-		// not interpolate and do not escape a double quote, which is what
+		// not interpolate and do not escape a double quote, as
 		// makes them the readable choice for HTML and for regular expressions.
 		// A literal holding a carriage return is the exception, because the
 		// output has its line endings normalised, which would edit the value.
@@ -982,7 +982,7 @@ func (p *printer) expr(e model.Expr) string {
 		// The name an anonymous class carries was synthesized by the parser and
 		// is not the source spelling; printing it would rewrite a working file
 		// into one that does not parse. Refusing the file leaves it untouched,
-		// which is what the unsupported list is for.
+		// and the unsupported list is for that.
 		if n.Decl != nil {
 			return p.unsupportedNode("anonymous class", n)
 		}
@@ -1126,12 +1126,12 @@ const (
 	arrayLitInlineItems = 2
 
 	// arrayLitWidth is how wide an array literal may be, counted from its own
-	// indent rather than from the start of the line: the statement that holds
+	// indent and not from the start of the line: the statement that holds
 	// the literal is printed around it, so its width is not known here.
 	arrayLitWidth = 100
 
-	// tabWidth is the column width a hard tab is assumed to occupy when
-	// measuring a line against arrayLitWidth.
+	// tabWidth is the column width a hard tab counts as when measuring a line
+	// against arrayLitWidth.
 	tabWidth = 4
 )
 
@@ -1139,7 +1139,7 @@ func (p *printer) arrayLit(n *model.ArrayLit) string {
 	if len(n.Items) == 0 {
 		return "array()"
 	}
-	// Entries are rendered one level in, which is where they are printed when
+	// Entries are rendered one level in, the position they are printed at when
 	// the literal is expanded. A nested literal that expands therefore carries
 	// the right indent already.
 	p.depth++
@@ -1197,7 +1197,7 @@ func (p *printer) lit(v any) string {
 }
 
 // phpQuote spells s as a PHP string literal. It is the fallback for literals
-// that were built rather than parsed, so it has no source spelling to follow:
+// that were built and never parsed, so it has no source spelling to follow:
 // single quotes are used when they avoid escaping, because a double-quoted
 // literal would also have to escape `$` to keep PHP from interpolating it.
 func phpQuote(s string) string {

@@ -13,19 +13,21 @@ import (
 // of it at once.
 //
 // None of them buffers. A buffered reader would read further than the script
-// asked for, which fseek() and ftell() would then disagree with, so fgets()
+// named, which fseek() and ftell() would then disagree with, so fgets()
 // walks the handle a byte at a time instead. That is one syscall per byte on a
 // host file: reading a whole file and splitting it is cheaper here, and a
 // script that can should.
 func registerStreamReads(rt *runner.Runtime) {
 	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, and so does
-	// Go's io package, which is why the argument is passed through as it
-	// arrives rather than translated.
+	// Go's io package, so the argument is passed through as it
+	// arrives, and never translated.
 	rt.SetConst("SEEK_SET", int64(io.SeekStart))
 	rt.SetConst("SEEK_CUR", int64(io.SeekCurrent))
 	rt.SetConst("SEEK_END", int64(io.SeekEnd))
 
-	// fread reads at most $length bytes from $stream and returns them, or false when the handle cannot be read; a read at the end of the handle returns the empty string, which is how a loop knows to stop.
+	// fread reads at most $length bytes from $stream and returns them, or
+	// false when the handle cannot be read; a read at the end of the handle
+	// returns the empty string, which ends a loop reading to the end.
 	rt.RegisterFunc("fread", func(stream io.Reader, length int64) any {
 		if stream == nil || length <= 0 {
 			return false
@@ -41,14 +43,16 @@ func registerStreamReads(rt *runner.Runtime) {
 		return string(buf[:n])
 	})
 
-	// fgets reads one line from $stream, keeping the newline that ends it, and returns false at the end of the handle; $length bounds the line, so a line longer than it comes back in pieces.
+	// fgets reads one line from $stream, keeping the newline that ends it,
+	// and returns false at the end of the handle; $length bounds the line, so
+	// a line longer than it comes back in pieces.
 	rt.RegisterFunc("fgets", func(stream io.Reader, length ...int64) any {
 		if stream == nil {
 			return false
 		}
 		limit := int64(-1)
 		if len(length) > 0 && length[0] > 0 {
-			// PHP's $length counts the terminating NUL it does not give a
+			// PHP's $length counts the terminating NUL it never writes to a
 			// script, so the line it reads is one shorter.
 			limit = length[0] - 1
 		}
@@ -77,7 +81,11 @@ func registerStreamReads(rt *runner.Runtime) {
 		return string(line)
 	})
 
-	// feof reports whether $stream is at its end. It answers for a handle fopen() gave out, by comparing where the handle sits against how long the file is; php://input and php://output are not seekable and answer false, so a script draining the request body should read it with stream_get_contents.
+	// feof reports whether $stream is at its end. It answers for a handle
+	// fopen() gave out, by comparing where the handle sits against how long
+	// the file is; php://input and php://output are not seekable and answer
+	// false, so a script draining the request body should read it with
+	// stream_get_contents.
 	rt.RegisterFunc("feof", func(stream any) bool {
 		f, ok := stream.(*os.File)
 		if !ok || f == nil {
@@ -94,7 +102,11 @@ func registerStreamReads(rt *runner.Runtime) {
 		return pos >= info.Size()
 	})
 
-	// fseek moves $stream to $offset, counted from the start of the handle, from where it sits when $whence is SEEK_CUR, or from the end when it is SEEK_END; it answers 0 on success and -1 on failure, which is the opposite way round from every other function here and is php's own choice.
+	// fseek moves $stream to $offset, counted from the start of the handle,
+	// from where it sits when $whence is SEEK_CUR, or from the end when it is
+	// SEEK_END; it answers 0 on success and -1 on failure, which is the
+	// opposite way round from every other function here and is php's own
+	// choice.
 	rt.RegisterFunc("fseek", func(stream io.Seeker, offset int64, whence ...int64) int64 {
 		if stream == nil {
 			return -1
@@ -109,7 +121,8 @@ func registerStreamReads(rt *runner.Runtime) {
 		return 0
 	})
 
-	// ftell returns where $stream sits, counted in bytes from the start, or false when the handle cannot say.
+	// ftell returns where $stream sits, counted in bytes from the start, or
+	// false when the handle cannot say.
 	rt.RegisterFunc("ftell", func(stream io.Seeker) any {
 		if stream == nil {
 			return false

@@ -8,10 +8,10 @@ import (
 
 // resolveSQLiteDSN anchors a relative sqlite file path to root, so a DSN
 // written in a site's own configuration names a file under that site's tree
-// rather than under whatever directory the server process was started in.
+// and not under whatever directory the server process was started in.
 // Memory databases, absolute paths and file: URIs carry no such intent and
 // pass through unchanged, as does everything when there is no root to anchor
-// to, which is what a CLI run has.
+// to, as a CLI run has.
 func resolveSQLiteDSN(root, dsn string) string {
 	if root == "" || isSQLiteMemoryDSN(dsn) {
 		return dsn
@@ -69,7 +69,7 @@ func isSQLiteMemoryDSN(dsn string) bool {
 // scriptSQLitePath reports the sqlite file path a DSN names, and whether it
 // names one that would resolve outside the application root.
 //
-// resolveSQLiteDSN deliberately passes an absolute path and a file: URI through
+// resolveSQLiteDSN passes an absolute path and a file: URI through
 // untouched, because an operator writing config.yml may point a connection at a
 // real path on the host. A script is not the operator: Database::register takes
 // its DSN from PHP, so the same spelling there is a tenant naming a host path,

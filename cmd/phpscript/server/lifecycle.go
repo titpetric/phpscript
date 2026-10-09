@@ -16,7 +16,7 @@ type lifecycleTracker interface {
 	TrackLifecycle(ctx context.Context, name, filename string, run func(context.Context) error) error
 }
 
-// nonFatal returns module with its startup failure recorded rather than
+// nonFatal returns module with its startup failure recorded and never
 // returned.
 //
 // The platform aborts the process when a module's Start returns an error, which
@@ -36,7 +36,7 @@ type nonFatalModule struct {
 
 // Start runs the wrapped module and records a failure on a trace of its own.
 // There is no request to record onto, so the error reaches the debug front end
-// as lifecycle work, which is where an operator looks for it.
+// as lifecycle work, where an operator looks for it.
 func (m *nonFatalModule) Start(ctx context.Context) error {
 	run := func(ctx context.Context) error {
 		return m.Module.Start(ctx)

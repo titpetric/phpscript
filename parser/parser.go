@@ -39,7 +39,7 @@ func Parse(src string) (*model.Program, error) {
 // does the same: each becomes a literal in the AST. A program then carries no
 // lookup for them, so neither engine writes them into a scope per call frame or
 // per statement, and neither reads them back. name is the path a script sees,
-// which is the runtime's own spelling rather than the host's.
+// which is the runtime's own spelling and not the host's.
 func ParseFile(name, src string) (*model.Program, error) {
 	return parse(src, name)
 }
@@ -84,7 +84,7 @@ type parser struct {
 	dir  string
 
 	// function and class are what __FUNCTION__ and __CLASS__ compile to in
-	// the body being parsed. Both are empty at the top level, which is what
+	// the body being parsed. Both are empty at the top level, as
 	// php answers there.
 	function string
 	class    string
@@ -100,7 +100,7 @@ type parser struct {
 	// anonSeq numbers the anonymous classes declared in this file, and
 	// anonClasses collects their declarations for the Program. The counter is
 	// per file so that a name depends only on the source it came from: the
-	// include cache hands the same parsed program to every include of a file,
+	// include cache returns the same parsed program to every include of a file,
 	// and a counter shared across files would make the name depend on which
 	// files had been parsed first.
 	anonSeq     int
@@ -189,10 +189,10 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 				p.topSeen = true
 			}
 			// An included namespaced file is scanned for the symbols it
-			// declares rather than executed, which is what makes resolving a
-			// name cheap. The restriction is a policy, not an omission; it is
+			// declares and never executed, so resolving a name stays
+			// cheap. The restriction is a policy and no omission; it is
 			// recorded under "Known divergences from PHP" in docs/README.md,
-			// so the message says why rather than only what.
+			// so the message says why and not only what.
 			if top && p.namespace != "" && !isPreambleStmt(s) {
 				switch s.(type) {
 				case *model.ClassDecl, *model.InterfaceDecl, *model.FuncDecl:
@@ -210,7 +210,7 @@ func (p *parser) parseStmts(top bool) ([]model.Stmt, error) {
 }
 
 // pushStmt appends s to the statement being collected, as the one or more
-// statements it lowers to. Every statement list goes through it so that a
+// statements it lowers to. Every statement list passes through it so that a
 // lowering applies wherever the statement was written.
 func (p *parser) pushStmt(s model.Stmt) {
 	if split := p.lowerChainedAlloc(s); split != nil {
@@ -223,7 +223,7 @@ func (p *parser) pushStmt(s model.Stmt) {
 }
 
 // isPreambleStmt reports whether s is a file-preamble statement: an import or
-// a directive rather than code. Both are retained in the AST so the formatter
+// a directive and not code. Both are retained in the AST so the formatter
 // can print them back, and neither counts as the "first statement" that closes
 // the window for a `namespace` declaration, nor as code in a namespaced file.
 func isPreambleStmt(s model.Stmt) bool {
@@ -300,8 +300,8 @@ func (p *parser) parseStmtNode() (model.Stmt, error) {
 				return &model.ExprStmt{X: &model.Call{Name: t.val, Bare: true}}, nil
 			}
 		case "fn", "func", "function":
-			// A bare `function(` is an anonymous closure expression statement,
-			// not a declaration.
+			// A bare `function(` is an anonymous closure expression statement
+			// and declares nothing.
 			if p.peek(1).kind == tOp && p.peek(1).val == "(" {
 				break
 			}
@@ -382,7 +382,7 @@ func (p *parser) parseNamespace() (model.Stmt, error) {
 // compile-time alias table, where the short name (or the alias) resolves to
 // the fully-qualified one, so the statement itself produces no AST node.
 //
-// `use function f;` and `use const C;` name symbols rather than classes; both
+// `use function f;` and `use const C;` name symbols and not classes; both
 // alias the same way, so the leading keyword is simply consumed.
 func (p *parser) parseUse() (model.Stmt, error) {
 	p.next() // use
@@ -743,7 +743,7 @@ func (p *parser) parseForeach() (model.Stmt, error) {
 }
 
 // parseForeachTarget parses one `as` target and reports whether it was written
-// `&$v`, which binds the element itself rather than a copy of it.
+// `&$v`, which binds the element itself and never a copy of it.
 func (p *parser) parseForeachTarget() (model.Expr, bool, error) {
 	byRef := false
 	if p.isOp("&") {
@@ -1016,8 +1016,8 @@ func (p *parser) parseFunction() (model.Stmt, error) {
 		return nil, fmt.Errorf("line %d: expected function name", p.cur().line)
 	}
 	name := p.next().val
-	// The file is recorded here rather than left to the runtime, because a
-	// parsed program is shared: the include cache hands one *FuncDecl to every
+	// The file is recorded here and never left to the runtime, because a
+	// parsed program is shared: the include cache returns one *FuncDecl to every
 	// runtime that reaches the file, and a hoist filling the field in would be
 	// two runtimes writing the same AST node at once.
 	fd := &model.FuncDecl{Name: name, ByRef: byRef, Filename: p.file}
@@ -1164,7 +1164,7 @@ func (p *parser) parseReturnType() string {
 
 // classModifiers are the keywords that may precede a `class` declaration. PHP
 // accepts them in any order, so they are collected before the class keyword is
-// reached rather than matched as a fixed prefix.
+// reached, and never matched as a fixed prefix.
 type classModifiers struct {
 	abstract bool
 	final    bool
@@ -1403,7 +1403,7 @@ func (p *parser) parseInterface() (model.Stmt, error) {
 		visibility := ""
 		isStatic := false
 		// PHP accepts only `public` on an interface member, and rejects
-		// `abstract` outright, but the modifiers are recorded rather than
+		// `abstract` outright, but the modifiers are recorded and not
 		// enforced: what is written is what has to print back.
 		for p.isKw("public", "private", "protected", "static", "final") {
 			switch {
@@ -1600,17 +1600,17 @@ func (p *parser) parseSimpleStmt() (model.Stmt, error) {
 // PHP arrays are values, so that statement leaves each name holding an array of
 // its own; phpscript arrays are handles, so binding the one array the chain
 // allocates to both names would let a later write through either be seen
-// through the other. The literal says what to allocate rather than naming
+// through the other. The literal says what to allocate and names nothing
 // something already allocated, so the fix is to allocate once per name, which
 // is what PHP's copy amounts to here. The literal node is shared by the
-// statements rather than duplicated: evaluating an ArrayLit builds a new array
-// every time, so one node still yields one array per assignment.
+// statements and never duplicated: evaluating an ArrayLit builds a new array
+// every time, so one node still produces one array per assignment.
 //
 // A chain is left alone unless it ends in a literal that can be evaluated more
 // than once without the program noticing. `$a = $b = array(next($rows))` must
 // keep sharing, because splitting it would advance the pointer twice; so must
 // `$a = $b = new Database`, where PHP shares the object as well and the two
-// names are meant to be the same connection. Those are what `phpscript lint`
+// names stand for one connection. Those are what `phpscript lint`
 // reports; see docs/reference/types/value-semantics.md.
 //
 // A `for` clause is not lowered either: model.For holds one statement for its
@@ -1656,7 +1656,7 @@ func (p *parser) lowerChainedAlloc(s model.Stmt) []model.Stmt {
 }
 
 // repeatableExpr reports whether evaluating e a second time is guaranteed to
-// produce the same value and no side effect, which is what lets one literal
+// produce the same value and no side effect, so one literal
 // stand in for the several allocations a chained assignment should have made.
 //
 // It is a whitelist: a call, a `new`, a closure, an assignment or an increment
@@ -1747,7 +1747,7 @@ func numLit(t token) (any, error) {
 	i, err := strconv.ParseInt(val, 0, 64)
 	if errors.Is(err, strconv.ErrRange) {
 		// PHP widens an integer literal too large for an int to a float
-		// instead of rejecting the program.
+		// in place of rejecting the program.
 		if f, ferr := strconv.ParseFloat(val, 64); ferr == nil {
 			return f, nil
 		}

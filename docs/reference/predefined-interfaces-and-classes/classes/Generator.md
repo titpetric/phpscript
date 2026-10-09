@@ -6,7 +6,7 @@
 
 Objects returned from generators, implementing [Iterator](Iterator.md).
 
-A generator is a function containing `yield`. Calling it returns a Generator rather than running the body; the body advances as the sequence is read. Generators cannot be constructed with `new`.
+A generator is a function containing `yield`. Calling it returns a Generator and runs no part of the body; the body advances as the sequence is read. Generators cannot be constructed with `new`.
 
 ## Class synopsis
 
@@ -52,6 +52,6 @@ public function __wakeup(): void
 
 ## Status
 
-- phpscript will not implement this class. `yield`, generators and Fibers are a decision rather than a gap: there is no coroutine model, and none is planned. See [Design decisions](../../../design.md).
+- phpscript will not implement this class. `yield`, generators and Fibers are a decision: there is no coroutine model, and none is planned. See [Design decisions](../../../design.md).
 - The name is not declared and `yield` is not a keyword here.
 - Build the sequence into an array and return it. Where the point was to avoid holding the whole sequence, read it in batches with an explicit offset.

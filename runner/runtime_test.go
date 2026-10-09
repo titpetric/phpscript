@@ -295,7 +295,7 @@ func findSpan(trace *telemetry.Trace, name string) *telemetry.Span {
 }
 
 // coverageBlock finds the block starting at line in file, so a test asserts on
-// position rather than on ordering.
+// position and not on ordering.
 func coverageBlock(t *testing.T, blocks []coverage.Block, file string, line int) coverage.Block {
 	t.Helper()
 	for _, b := range blocks {

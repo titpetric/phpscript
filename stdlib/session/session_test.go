@@ -33,7 +33,7 @@ func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 	}
 
 	// A relative root is resolved before it is digested, so the same tree named
-	// two ways is one site rather than two.
+	// two ways is one site and never two.
 	if session.DefaultStoragePath(".") != session.DefaultStoragePath(mustAbs(t, ".")) {
 		t.Fatal("a relative and an absolute spelling of one root resolve to two directories")
 	}
@@ -55,7 +55,7 @@ func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 // and no path had to be named.
 //
 // The unrooted host is in the table because it writes into the parent of the
-// scoped directories, so Prune has to skip them rather than walk in.
+// scoped directories, so Prune has to skip them and never walk in.
 func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 	t.Setenv("TMPDIR", t.TempDir())
 	ctx := context.Background()
@@ -76,7 +76,7 @@ func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 		}
 	}
 
-	// Every site writes the same ID deliberately: a collision in one directory
+	// Every site writes the same ID: a collision in one directory
 	// is what turns shared storage into one site reading another's session.
 	if err := two.Prune(ctx, 0); err != nil {
 		t.Fatalf("two Prune: %v", err)
@@ -104,8 +104,8 @@ func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 // no-argument spelling, through the constructor RegisterRoot installs, on two
 // application roots.
 //
-// It asserts on the directories that appear rather than on what PHP prints,
-// because the path is the one thing about this class a script cannot observe and
+// It asserts on the directories that appear and not on what PHP prints,
+// because the path is the one thing about this class a script cannot observe, and
 // the whole claim is about where the files land.
 func TestRegisteredDiskStorageIsPerRoot(t *testing.T) {
 	temp := t.TempDir()

@@ -12,7 +12,7 @@ echo $a;
 function helper() { return 2; }
 `
 
-// TestAggregator_Add covers the fold every request goes through: a statement
+// TestAggregator_Add covers the fold every request passes through: a statement
 // two runs reached is one entry whose counts add.
 func TestAggregator_Add(t *testing.T) {
 	a := coverage.NewAggregator()
@@ -88,7 +88,7 @@ func TestAggregator_Empty(t *testing.T) {
 // TestAggregator is the reason the aggregator exists: a collector
 // keys statements by AST node, so a second parse of the same source produces a
 // second set of keys. The aggregator keys them by what the profile will say, so
-// re-parsing adds counts rather than entries.
+// re-parsing adds counts and never entries.
 func TestAggregator(t *testing.T) {
 	a := coverage.NewAggregator()
 	for range 10 {

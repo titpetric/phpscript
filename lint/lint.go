@@ -61,10 +61,10 @@ func File(name, src string) ([]Diagnostic, error) {
 //
 // No JSON_* constant is defined here, so the name evaluates to null and
 // json_encode ignores the argument. The call runs and encodes correctly, which
-// is why this is a warning: nothing is broken, and the author has asked for a
+// is why this is a warning: nothing is broken, and the author named a
 // formatting the encoder does not vary. See docs/design.md.
 //
-// The scan is over tokens rather than the AST: a constant can appear in any
+// The scan is over tokens and not the AST: a constant can appear in any
 // expression, and T_STRING already tells a bare name apart from the same text
 // inside a string literal, so defined("JSON_PRETTY_PRINT") is not a use.
 func lintJSONFlags(file, src string, out *[]Diagnostic) {
@@ -157,7 +157,7 @@ func FlatstackPaths(paths []string) ([]Diagnostic, error) {
 	return out, nil
 }
 
-// Paths lints each file selected by the provided Go-style path patterns.
+// Paths lints each file the Go-style path patterns select.
 func Paths(paths []string) ([]Diagnostic, error) {
 	files, err := list.ExpandFiles(paths)
 	if err != nil {
@@ -189,7 +189,7 @@ func lintSource(name, src string) (string, error) {
 	}
 
 	// Keep the PHP section at its physical position in the fixture so lint
-	// diagnostics point to lines in the .phpt file rather than section-relative
+	// diagnostics point to lines in the .phpt file and not section-relative
 	// lines.
 	normalized := strings.ReplaceAll(src, "\r\n", "\n")
 	phpStart := strings.Index(normalized, "\n---\n") + len("\n---\n")
@@ -282,7 +282,7 @@ func (w *stmtWalker) lintGlobal(n *model.Global) {
 // lintAbstract reports the abstract modifier, which has nothing to mean
 // without inheritance (docs/design.md): an abstract class can be instantiated
 // like any other, and an abstract method has no body, so calling it returns
-// null where PHP would refuse to load the class uncompleted. Both parse and
+// null where PHP declines the class uncompleted. Both parse and
 // are kept by the formatter; the linter is where the author hears that no
 // contract is being enforced. An interface is the contract that is checked.
 func (w *stmtWalker) lintAbstract(n *model.ClassDecl) {
@@ -312,7 +312,7 @@ func (w *stmtWalker) lintAbstract(n *model.ClassDecl) {
 // lintMagicMethods reports a magic method the runtime never calls. Only
 // __construct and __invoke run (docs/design.md, "Won't implement"); a class
 // that declares __call, __get or any other implicit hook is dead code that
-// looks load-bearing, which is worse than absent.
+// reads as if something depended on it, which is worse than absent.
 func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
 	for _, m := range n.Methods {
 		if !strings.HasPrefix(m.Name, "__") {
@@ -407,10 +407,11 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 // lintChainedAssign reports `$a = $b = value`, where one value is bound to two
 // or more names in a single statement.
 //
-// PHP copies an array on assignment, so there the two names end up holding
-// independent arrays. phpscript's arrays are references, so both names see one
-// array and a later write through either is visible through the other, a bug
-// the shape hides rather than announces.
+// PHP copies an array on assignment, so there each name holds its own
+// array. phpscript's arrays are references, so one array sits
+// under both names and a later write through either is visible through the
+// other, a bug
+// the shape hides and never announces.
 //
 // The rule only sees the chains that are left after the parser has fixed the
 // ones it can. A chain ending in an array literal is split into one allocation
@@ -418,9 +419,9 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 // a scalar literal is left alone and skipped here, because a string or a number
 // has no interior for the names to share. What remains is a chain ending in a
 // name, a call or a `new`, where either the value is a handle the names really
-// do share -- `$dba = $dbb = new Database` gives one connection two names in
+// do share -- `$dba = $dbb = new Database` leaves one connection under two names in
 // PHP as well -- or its type is not known until the statement runs. Both are
-// worth a second look, which is what the finding asks for.
+// worth reading again, and the finding says so.
 func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 	chained, ok := model.UnwrapParenthesized(n.Value).(*model.AssignExpr)
 	if !ok {
@@ -437,7 +438,7 @@ func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 }
 
 // chainedValue walks to the end of an assignment chain, so that
-// `$a = $b = $c = '00'` is judged by the `'00'` rather than by the assignment
+// `$a = $b = $c = '00'` is judged by the `'00'` and not by the assignment
 // that binds `$c`.
 func chainedValue(n *model.AssignExpr) model.Expr {
 	v := model.UnwrapParenthesized(n.Value)
@@ -453,9 +454,9 @@ func chainedValue(n *model.AssignExpr) model.Expr {
 // isScalarLiteral reports whether the source spells out a value that no name
 // can share: a string, int, float, bool or null literal, an interpolated
 // string, which always evaluates to a string, or a prefix operator over one of
-// those, which is how a negative number is written. A *model.Lit holding a
+// those, so a negative number is written. A *model.Lit holding a
 // *model.Array is not one of these; the parser does not build them, but the
-// check reads the value rather than assuming it.
+// check reads the value and never guesses it.
 func isScalarLiteral(e model.Expr) bool {
 	switch v := e.(type) {
 	case *model.Interp:

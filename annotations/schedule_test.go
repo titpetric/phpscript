@@ -67,7 +67,7 @@ func TestSchedulerRunsWithArgv(t *testing.T) {
 	}
 	// Guarded, because a job writes from the scheduler's goroutine while this
 	// one reads: a bytes.Buffer shared that way is a data race, and the writer
-	// a host hands a scheduler has to be safe for the same reason.
+	// a host passes a scheduler has to be safe for the same reason.
 	var out syncBuffer
 	s := annotations.NewScheduler(root, annotations.WithOutput(&out))
 	if err := s.Start(context.Background()); err != nil {
@@ -122,7 +122,7 @@ func TestSchedulerStartScansFS(t *testing.T) {
 }
 
 // TestSchedulerStopEndsItsJobs pins what a reload depends on. The context
-// the platform hands Start belongs to the caller rather than to the
+// the platform passes Start belongs to the caller and not to the
 // generation being retired, so a scheduler that ignored Stop would leave the
 // previous tree's jobs running beside every generation that followed.
 func TestSchedulerStopEndsItsJobs(t *testing.T) {

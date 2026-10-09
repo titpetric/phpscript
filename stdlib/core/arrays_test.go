@@ -144,10 +144,10 @@ func TestPHPArrayMergeResultIsAppendable(t *testing.T) {
 
 // TestArrayMutatorsRejectNonArrays covers the one case a .phpt fixture cannot:
 // the four mutators resize their argument, so they require a *model.Array and
-// must say so rather than silently mutating a copy the script never sees. PHP
-// has no way to hand them a Go slice, so only a Go test can reach this path.
+// must say so, with no silent mutation of a copy the script never sees. PHP
+// has no spelling that passes them a Go slice, so only a Go test reaches this path.
 func TestArrayMutatorsRejectNonArrays(t *testing.T) {
-	// The shapes a binding hands back in place of a *model.Array.
+	// The shapes a binding returns in place of a *model.Array.
 	inputs := []any{nil, (*model.Array)(nil), []any{"a"}, []string{"a"}, "str"}
 
 	mutators := []struct {
@@ -245,7 +245,7 @@ func BenchmarkArrayMerge(b *testing.B) {
 }
 
 // legacyArrayMerge is the pre-fast-path implementation, kept so the benchmark
-// measures the change rather than asserting it (see docs/allocation-performance.md).
+// measures the change, and asserts nothing (see docs/allocation-performance.md).
 func legacyArrayMerge(arrs ...any) *model.Array {
 	size := 0
 	for _, a := range arrs {

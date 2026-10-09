@@ -1,6 +1,6 @@
 # HTTP server bindings
 
-The standard runtime provides the Go-backed `HTTP\Mux` and `HTTP\Server` classes. They are `net/http`'s `ServeMux` and `Server`, so a PHP program can be the server rather than something a server runs: it builds the router, listens, and owns the process until it stops.
+The standard runtime registers the Go-backed `HTTP\Mux` and `HTTP\Server` classes. They are `net/http`'s `ServeMux` and `Server`, so a PHP program can itself be the server: it builds the router, listens, and owns the process until it stops.
 
 That is one of two ways to serve. The other is `phpscript server`, which scans a source tree for `// @route` comments and runs a file per request; see [routing.md](routing.md). Use that one for an application laid out as pages and endpoints. Use this one when the program is the server: a service with a handful of routes, a test server, something that has to start and stop on its own terms.
 
@@ -30,7 +30,7 @@ echo "serving on http://" . $http->addr() . "\n";
 $http->wait();
 ```
 
-`listen()` binds and returns the address, and does not block. `wait()` blocks until the script runs out of time. `shutdown()` stops accepting and lets what is in flight finish; `close()` drops it. An `$addr` of `127.0.0.1:0` binds a port the system picks, which `listen()` and `addr()` answer with, and is how a test takes a free one rather than hoping.
+`listen()` binds and returns the address, and does not block. `wait()` blocks until the script runs out of time. `shutdown()` stops accepting and lets what is in flight finish; `close()` drops it. An `$addr` of `127.0.0.1:0` binds a port the system picks, which `listen()` and `addr()` answer with, and is how a test takes a free one without guessing.
 
 ## What a handler is
 
@@ -62,7 +62,7 @@ class Server {
 
 An `__invoke` is that same binding under the name php reserves for one, and a static method names no receiver at all: an empty instance is built per call, so `self::` resolves and nothing is shared between two requests.
 
-`array($object, "method")` and `array("Class", "method")` are not accepted here. They stay callable everywhere else - `call_user_func`, `usort`, a Go binding's callback and the rest take them - and they are not going to be added: a handler is a function of its arguments, wrapping one in an array to name a method is a spelling this does not want, and `(...)` now writes the same thing. The refusal names the spelling and what to write instead, so a route registered with one fails where it is written rather than on the first request.
+`array($object, "method")` and `array("Class", "method")` are not accepted here. They stay callable everywhere else - `call_user_func`, `usort`, a Go binding's callback and the rest take them - and they are not going to be added: a handler is a function of its arguments, wrapping one in an array to name a method is a spelling this router leaves out, and `(...)` now writes the same thing. The refusal names the spelling and what to write instead, so a route registered with one fails where it is written, ahead of the first request.
 
 ## Patterns
 
@@ -92,7 +92,7 @@ echo "this reaches the response too\n";
 
 A handler that throws is one request's problem: it is reported to the runtime's error sink and answered with a 500 if nothing has gone out yet, and the server goes on.
 
-## Workers and the queue
+## The worker pool
 
 `HTTP\Server`'s third argument is how many requests are answered at once and its fourth is how deep the queue behind them is. Omitted, they are the number of cores and 1024.
 
@@ -100,7 +100,7 @@ A handler that throws is one request's problem: it is reported to the runtime's 
 $http = new HTTP\Server($addr, $mux, 4, 64);
 ```
 
-Each worker holds a runtime of its own, forked from the one running the script. Workers are the parallelism, the queue is the backpressure: a request that finds every worker busy waits its turn rather than starting a runtime of its own, and a queue that fills means the caller waits, which is the signal that it should. A handler doing no IO can use about as many workers as there are cores; one that waits on a database wants more.
+Each worker holds a runtime of its own, forked from the one running the script. Workers are the parallelism, the queue is the backpressure: a request that finds every worker busy waits its turn, and starts no runtime of its own, and a queue that fills means the caller waits, which is the signal that it should. A handler doing no IO can use about as many workers as there are cores; one that waits on a database wants more.
 
 ## What a handler can reach
 
@@ -127,7 +127,7 @@ $mux->handle("GET /users/{id}", with_log($this->showUser));
 
 `$next` is a callable value built on the runtime that ran the script, and the request is answered on a worker. The value crosses; the execution does not follow it. Calling it runs the declaration on the worker, so what it echoes reaches this request's response, `connection_aborted()` inside it reports this client, and two requests through one wrapper never meet. The same holds for a callable read out of a shared object or an array, and for one handed to a binding that calls back - `usort`, `array_map`, `preg_replace_callback`, `call_user_func`.
 
-This is what makes a runtime per worker sound. A `runner.Runtime` is one goroutine's execution - its frames, its output stack, its statics, its request - and reaching into another one is not a slow path but a concurrent map write. A whole runtime per worker, indexed by the handle the worker holds, is the arrangement; [../design.md](../design.md) records it under program re-entry, and `runner/fork.go` is the code.
+This is what makes a runtime per worker sound. A `runner.Runtime` is one goroutine's execution - its frames, its output stack, its statics, its request - and reaching into another one is a concurrent map write. A whole runtime per worker, indexed by the handle the worker holds, is the arrangement; [../design.md](../design.md) records it under program re-entry, and `runner/fork.go` is the code.
 
 ## The client leaving
 
@@ -151,7 +151,7 @@ $mux->handle("GET /slow", function ($w, $r) {
 });
 ```
 
-`sleep()` and `usleep()` end early when the client goes away or the script runs out of time, because the wait is on the runtime context rather than on the clock alone.
+`sleep()` and `usleep()` end early when the client goes away or the script runs out of time, because the wait is on the runtime context and not on the clock alone.
 
 ## Stopping
 

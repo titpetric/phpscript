@@ -15,7 +15,7 @@
 
 These arrays are installed only when a Go host creates and registers a request context. Their values are ordinary phpscript arrays, while their reserved names remain visible in function scopes like PHP superglobals.
 
-A context built from an HTTP request fills what that request carries. A context built without one, which is what the `phpscript` CLI and a startup job use, installs the same arrays empty, so a script reads them rather than failing on an undefined name.
+A context built from an HTTP request fills what that request carries. A context built without one, as the `phpscript` CLI and a startup job build it, installs the same arrays empty, so a script reads them and fails on no undefined name.
 
 ## `$_GET`
 
@@ -27,13 +27,13 @@ $page = $_GET["page"];
 
 Bracket syntax in a field name is decoded into nested arrays, so the query `a[b]=1&ids[]=7&ids[]=9` arrives as `$_GET["a"]["b"]` and a two-element `$_GET["ids"]`, not as the literal keys `a[b]` and `ids[]`. `parse_str()` is the same decoder applied to a string, and [Arrays](../types/README.md#keys) covers which field names become integer keys.
 
-The order is the request's own, and two limits bound what a hostile query can build: `max_input_vars` (1000) and `max_input_nesting_level` (64). A field nested past the limit is dropped whole rather than truncated. Both are [configurable](../../configuration.md).
+The order is the request's own, and two limits bound what a hostile query can build: `max_input_vars` (1000) and `max_input_nesting_level` (64). A field nested past the limit is dropped whole. Both are [configurable](../../configuration.md).
 
 ## `$_POST`
 
 Contains parsed form-body values, last one wins. Both body encodings a browser form produces are decoded: `application/x-www-form-urlencoded` and `multipart/form-data`. The value parts of a multipart body land here; its file parts land in `$_FILES`.
 
-Field names are decoded the same way `$_GET` decodes them, so a repeating form row named `line[0][hours]` arrives as `$_POST["line"][0]["hours"]`. `$_FILES` is the exception: it is still keyed by the literal field name, so a file input named `docs[]` is one entry `docs[]` rather than a nested one.
+Field names are decoded the same way `$_GET` decodes them, so a repeating form row named `line[0][hours]` arrives as `$_POST["line"][0]["hours"]`. `$_FILES` is the exception: it is still keyed by the literal field name, so a file input named `docs[]` is one entry `docs[]`, with no nesting.
 
 ## `$_FILES`
 
@@ -55,7 +55,7 @@ if ($file["error"] === 0) {
 | `error`     | `UPLOAD_ERR_OK` (0), or 1, 4, 6, 7 when the part was not stored. |
 | `size`      | Bytes written to `tmp_name`.                                     |
 
-A field named `files[]` collects every file sent under it, and its entry holds one array per key rather than one value: `$_FILES["files"]["name"][0]`. Any other field takes the last file sent under it, the way a repeated form value assigns over the one before it.
+A field named `files[]` collects every file sent under it, and its entry holds one array per key, not one value: `$_FILES["files"]["name"][0]`. Any other field takes the last file sent under it, the way a repeated form value assigns over the one before it.
 
 The temporary copy lives for the duration of one request; a host handler removes it after the response is written. `move_uploaded_file()` puts an upload somewhere permanent, and refuses any path the request did not produce, as does `is_uploaded_file()`. Both are installed with the rest of the filesystem shims, so the destination is resolved against the same root.
 
@@ -99,7 +99,7 @@ Contains the part of PHP's server array that an HTTP request answers for on its 
 | `SERVER_NAME`, `SERVER_PORT` | The name the request arrived under, and its port when it had one. |
 | `SERVER_SOFTWARE`            | `phpscript`.                                                      |
 
-`SERVER_NAME` is the requested host rather than the listening socket PHP reads it from, because this server routes by `Host`: the name a request arrived under is the site it reached. `X-Forwarded-Proto` is not consulted for `REQUEST_SCHEME`, since a client can send it; a host behind a proxy it trusts sets the two scheme keys itself.
+`SERVER_NAME` is the requested host, where PHP reads it from the listening socket, because this server routes by `Host`: the name a request arrived under is the site it reached. `X-Forwarded-Proto` is not consulted for `REQUEST_SCHEME`, since a client can send it; a host behind a proxy it trusts sets the two scheme keys itself.
 
 `GATEWAY_INTERFACE` and `PATH_INFO` are absent.
 
@@ -120,11 +120,11 @@ Contains the query, form and cookie fields merged the way PHP's default `request
 $id = $_REQUEST["id"];
 ```
 
-The path values are the deliberate divergence from PHP, whose `$_REQUEST` carries no route parameters: a path parameter is request input here, and it arrives under PHP's name rather than under one PHP does not have. A request field spelled like a path parameter is overwritten by it, so `/users/42?id=abc` answers `"42"`.
+The path values are the one divergence from PHP, whose `$_REQUEST` carries no route parameters: a path parameter is request input here, and it arrives under PHP's own name. A request field spelled like a path parameter is overwritten by it, so `/users/42?id=abc` answers `"42"`.
 
 `$_REQUEST` is its own array, as it is in PHP: writing to it changes none of the arrays it was merged from, and their writes do not appear in it.
 
-`$_PATH`, the phpscript-only name that used to carry the path values, is gone; `$_REQUEST` is where they arrive.
+The path values arrive in `$_REQUEST`. There is no `$_PATH`.
 
 ## Request headers
 

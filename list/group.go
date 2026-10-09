@@ -15,7 +15,7 @@ type PathGroup struct {
 
 // GroupByDir buckets paths by the folder holding them, preserving the order
 // the input established both between folders and inside one. Bucketing is
-// explicit rather than relying on the sort, because sorted paths do not keep
+// explicit, and never read off the sort, because sorted paths do not keep
 // a folder contiguous: a/b.php, a/m/x.php and a/z.php interleave.
 func GroupByDir(paths []string) []PathGroup {
 	index := map[string]int{}

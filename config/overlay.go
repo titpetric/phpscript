@@ -8,14 +8,14 @@ import (
 )
 
 // Overlay reads filename over base and returns the configuration it describes,
-// together with the keys the file itself named, which is what tells a key it
+// together with the keys the file itself named, so a key it
 // set from one it inherited.
 //
 // It is the layering every phpscript.yml gets: a file names what it changes and
-// inherits the rest. A missing one is an error rather than a fall back to base,
+// inherits the rest. A missing one is an error, with no fall back to base,
 // because a tree served under settings nobody wrote is the failure worth
 // avoiding. forbidden names the keys the file may not set and owned says who
-// sets them instead; both are rejected rather than dropped.
+// sets them instead; both are rejected and never dropped.
 func Overlay(base Config, filename string, forbidden []string, owned string) (Config, map[string]any, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
@@ -57,7 +57,7 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 	// handed the operator's. Naming the key with nothing under it means no
 	// servers.
 	//
-	// This is here rather than beside the virtual host checks because a test
+	// This is here and not beside the virtual host checks because a test
 	// suite's phpscript.yml overlays through this same function and needs the
 	// same guarantee.
 	if servers, ok := declared["mail"]; ok && servers == nil {
@@ -68,7 +68,7 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 }
 
 // Declares reports whether a parsed file named the given key path. Validation
-// needs it to tell a setting a file asked for from one it inherited through
+// needs it to tell a setting a file named from one it inherited through
 // Overlay.
 func Declares(declared map[string]any, keys ...string) bool {
 	for i, key := range keys {

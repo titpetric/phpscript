@@ -177,7 +177,7 @@ func newTracedHandler(root fstest.MapFS) (http.Handler, error) {
 }
 
 // newTracedServer stands in for the platform: it builds the recorder, wires the
-// middleware and the front end the platform would wire, and hands the observer
+// middleware and the front end the platform would wire, and passes the observer
 // the tracer that recorder owns.
 func newTracedServer(root fstest.MapFS) (http.Handler, *telemetry.Module, error) {
 	options := telemetry.NewOptions("phpscript")
@@ -216,7 +216,7 @@ func TestHandlerDoesNotExposeProjectFilesOrPublicAnnotations(t *testing.T) {
 }
 
 // TestPlatformOptionsComeFromTheServerBlock pins where the server takes the
-// options it hands the platform from.
+// options it passes the platform from.
 func TestPlatformOptionsComeFromTheServerBlock(t *testing.T) {
 	options, err := config.NewTestConfig().PlatformOptions()
 	if err != nil {
@@ -349,7 +349,7 @@ func TestReload(t *testing.T) {
 	})
 
 	// The reason Check exists. A reload that cannot be applied leaves the
-	// generation that is serving alone, rather than stopping it first and
+	// generation that is serving alone, and never stops it first to
 	// then discovering the new configuration is unusable.
 	t.Run("a broken configuration is refused and keeps serving", func(t *testing.T) {
 		filename := operatorConfig(t, oneSite)

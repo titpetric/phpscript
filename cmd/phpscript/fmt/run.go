@@ -44,7 +44,7 @@ func Run(args []string, list bool) error {
 
 func run(args []string, list bool, out, errOut io.Writer) error {
 	// Listing runs the same formatting, and reports what it would rewrite
-	// instead of rewriting it, which is the check to run in a pipeline.
+	// and rewrites nothing, which is the check to run in a pipeline.
 	format := formatter.Paths
 	if list {
 		format = formatter.NeedFormatting

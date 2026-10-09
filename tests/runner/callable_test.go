@@ -12,7 +12,7 @@ import (
 // runScript runs src on an interpreter runtime with the standard library
 // registered and returns what the script printed with the run error. entry names
 // a declared function to call after the file has run, for a source that declares
-// rather than executes.
+// and executes nothing.
 func runScript(t *testing.T, src, entry string) (string, error) {
 	t.Helper()
 	program, err := parser.Parse(src)
@@ -81,7 +81,7 @@ func TestFirstClassCallableResolution(t *testing.T) {
 }
 
 // A first-class callable that names nothing reports it where the value is taken
-// rather than where it would have been called, with the message the equivalent
+// and not where it would have been called, with the message the equivalent
 // call reports.
 func TestFirstClassCallableErrors(t *testing.T) {
 	tests := []struct {

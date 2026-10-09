@@ -27,14 +27,14 @@ type Database struct {
 	// pinning and the result accessors stay available, since a read-only
 	// transaction is a read.
 	//
-	// The restriction is a boundary for the code holding this client, not a
+	// The restriction is a boundary for the code holding this client, and no
 	// sandbox around the script: the script that set it can unset it. A
 	// connection that must not write belongs to a database user without the
 	// grant to, and this marks the code that must not write.
 	IsReadonly bool
 
 	// transaction is the span opened by Begin and ended by Commit or Rollback,
-	// so a transaction reads as one region rather than three markers.
+	// so a transaction reads as one region and not three markers.
 	transaction *telemetry.Span
 }
 
@@ -48,7 +48,7 @@ var ErrReadOnly = errors.New("database is read-only")
 // readOnlyError is a refusal by a read-only client. It names the statement it
 // refused, and matches ErrReadOnly without wrapping it: the flat backend
 // unwraps a caught error to its root cause, and the caught message has to say
-// which statement was lost rather than only that the client cannot write.
+// which statement was lost, and not only that the client cannot write.
 type readOnlyError struct {
 	refusal string
 }
@@ -122,7 +122,7 @@ func (b *Database) Query(ctx context.Context, query string, args ...any) (any, e
 // indexes them.
 func (b *Database) Get(ctx context.Context, query string, args ...any) (any, error) {
 	// Rows reach PHP as the bridge produced them, a map[string]any per row and
-	// a []map[string]any per result set, rather than being copied into a
+	// a []map[string]any per result set, with no copy into a
 	// *model.Array; the copy cost two allocations plus an interface box per
 	// column on every row of every query, and the bridge's map had already
 	// lost the column order the copy would have fixed.
@@ -174,7 +174,7 @@ func (b *Database) Close(ctx context.Context) (any, error) {
 
 // Begin starts a transaction and opens the span measuring it. The span stays
 // open until Commit or Rollback, so a transaction is one region in the trace
-// rather than an open marker and a close marker to pair up.
+// and no open marker and close marker to pair up.
 func (b *Database) Begin(ctx context.Context) (any, error) {
 	if b.transaction == nil {
 		b.transaction = b.span(ctx, "Begin")
@@ -243,12 +243,12 @@ func (b *Database) observe(ctx context.Context, entry client.QueryLogEntry) {
 	}
 }
 
-// queryArgs renders the values bound to a statement. The bridge hands over
+// queryArgs renders the values bound to a statement. The bridge passes
 // positional arguments as a slice and named ones as the map or struct they came
 // from, so both shapes are kept as they are: the front end renders a slice and
 // a map perfectly well, and flattening them would lose which name held what.
 // An empty set is not recorded, so a query without placeholders has no
-// attribute rather than an empty one.
+// attribute and never an empty one.
 func queryArgs(args any) (any, bool) {
 	if args == nil {
 		return nil, false
@@ -295,8 +295,8 @@ func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 // is not a read, classifying it by the keyword it starts with.
 //
 // A refused statement never reaches the query log, so what it was is recorded
-// here: a boundary nobody can see being enforced is a boundary nobody can debug
-// when it refuses the wrong thing.
+// here: a boundary nobody can see being enforced is a boundary nobody can
+// debug when it refuses the wrong statement.
 func (b *Database) refuseQuery(ctx context.Context, query string) error {
 	if !b.IsReadonly {
 		return nil
