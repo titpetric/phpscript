@@ -14,7 +14,7 @@ func Register(rt *runner.Runtime) {
 
 	// HTTP\Client sends requests, one at a time with send() or all at once with
 	// parallel(). It takes its settings as an associative array, and with no
-	// argument gives a client with a 30 second timeout that follows redirects.
+	// argument builds a client with a 30 second timeout that follows redirects.
 	rt.RegisterConstructor("HTTP\\Client", NewClient)
 
 	// HTTP\Mux routes requests to the PHP functions that answer them. It is

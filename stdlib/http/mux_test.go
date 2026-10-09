@@ -28,7 +28,7 @@ func serveScript(t *testing.T, src string) (*runner.Runtime, http.Handler) {
 }
 
 // serveScriptOutput is serveScript for a test that reads what a handler echoed,
-// which is where a handler answering nobody puts what it found out.
+// the place a handler answering nobody puts what it found out.
 func serveScriptOutput(t *testing.T, src string) (*strings.Builder, http.Handler) {
 	t.Helper()
 	out, _, handler := serveScriptAll(t, src)
@@ -121,7 +121,7 @@ define("MUX", $mux);
 }
 
 // TestMuxUnroutedIsNotFound leaves the router's own answers to the router: a
-// pattern nothing matched is net/http's 404, not a PHP error.
+// pattern nothing matched is net/http's 404 and no PHP error.
 func TestMuxUnroutedIsNotFound(t *testing.T) {
 	_, handler := serveScript(t, `<?php
 $mux = new HTTP\Mux();
@@ -146,7 +146,7 @@ $mux->handle("GET /fine", function ($w, $r) { $w->write("still here"); });
 define("MUX", $mux);
 `)
 
-	// No Runtime.OnError here on purpose. Installing one means "report the
+	// No Runtime.OnError here. Installing one means "report the
 	// error and carry on from the next statement" for every PHP error, so the
 	// throw would never reach the handler wrapper and the request would be
 	// answered 200 with an empty body. That is the runtime's contract rather
@@ -168,7 +168,7 @@ define("MUX", $mux);
 // that leaves mid-request is the one the handler asks about, and the handler
 // gets to decide what to do about it.
 //
-// What it found out comes back through a binding rather than through echo: a
+// What it found out comes back through a binding and not through echo: a
 // handler's output goes to the response, and the point of this one is that
 // there is no response left.
 func TestMuxHandlerSeesItsOwnConnection(t *testing.T) {
@@ -225,7 +225,7 @@ define("MUX", $mux);
 		t.Fatal("the handler did not notice the client leaving")
 	}
 
-	// Waited for rather than read straight off: the handler asked to ignore the
+	// Waited for and never read straight off: the handler set ignore on the
 	// disconnect, so it is still running after ServeHTTP has stopped waiting
 	// for it. That is the whole point of ignore_user_abort, and it means the
 	// report lands a moment after the request is over.
@@ -339,7 +339,7 @@ define("SERVER", $server);
 	t.Error("the server was still answering after its shutdown callback ran")
 }
 
-// formRequest builds a urlencoded POST, which is the shape form_value reads.
+// formRequest builds a urlencoded POST: the shape form_value reads.
 func formRequest(target, body string) *http.Request {
 	request := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -425,7 +425,7 @@ func TestScriptDoesNotRaceItsOwnHandlers(t *testing.T) {
 	stdlib.Register(rt)
 	rt.SetContext(context.Background())
 
-	// The address comes out through a binding rather than a constant the test
+	// The address comes out through a binding and no constant the test
 	// reads back: rt.Const is runtime state, and reading it from another
 	// goroutine while Run is writing is the very thing this test is about.
 	addr := make(chan string, 1)
@@ -443,8 +443,8 @@ $server = new HTTP\Server("127.0.0.1:0", $mux);
 $bound = $server->listen();
 publish_addr($bound);
 
-// Work between listen() and wait(), which is the window the script's own
-// goroutine used to interpret in while handlers were answering.
+// Work between listen() and wait(), the window the script's own goroutine
+// interprets in while handlers are answering.
 $noise = 0;
 for ($i = 0; $i < 4000; $i++) { $noise += strlen("abcdef") + $i; }
 
@@ -583,7 +583,7 @@ define("MUX", $mux);
 // TestMuxTakesAStaticMethodAndAnInvokable is the rest of what AsCallable takes:
 // "Class::method", which has no receiver to share, and an object declaring
 // __invoke, which is a bound method under the name php reserves for one. Each
-// also goes in through the first-class spelling `callable(...)`, which hands the
+// also goes in through the first-class spelling `callable(...)`, which passes the
 // router a Closure and is the form php itself writes.
 func TestMuxTakesAStaticMethodAndAnInvokable(t *testing.T) {
 	_, handler := serveScript(t, `<?php
@@ -638,7 +638,7 @@ define("MUX", $mux);
 // not take, and the words it is refused in. It is a callable everywhere else; a
 // handler is a closure or a method read off its receiver, and
 // array($object, "method") is neither. A refusal that named neither the
-// spelling nor the alternative was the whole of what a script used to be told.
+// spelling nor the alternative is all a script needs to be told.
 func TestMuxRefusesAnArrayCallable(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -852,7 +852,7 @@ func TestReentryAnswersOnTheWorker(t *testing.T) {
 
 // TestReentryIsNotARace drives each spelling concurrently. A call that reached
 // the parent runtime is two goroutines inside one unguarded execution, which the
-// race detector reports rather than the test asserting it.
+// race detector reports, and no assertion in the test.
 func TestReentryIsNotARace(t *testing.T) {
 	for _, spelling := range reentrySpellings {
 		t.Run(spelling.name, func(t *testing.T) {

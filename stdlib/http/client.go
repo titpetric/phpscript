@@ -27,8 +27,8 @@ const DefaultTimeout = 30 * time.Second
 const maxResponseBody = 32 << 20 // 32 MiB
 
 // Client is the PHP-visible HTTP\Client. The net/http client is a named
-// unexported field rather than an embedded one, so a script reaches the methods
-// below and nothing else net/http exports.
+// unexported field and no embedded one, so a script reaches the methods
+// below alone, and nothing else net/http exports.
 type Client struct {
 	client  *nethttp.Client
 	base    string
@@ -37,7 +37,7 @@ type Client struct {
 
 // NewClient is an HTTP client configured by an associative array of $timeout,
 // $base_url, $follow_redirects, $user_agent, $headers and $insecure. Every key
-// is optional, and `new HTTP\Client` gives a client with a 30 second timeout
+// is optional, and `new HTTP\Client` builds a client with a 30 second timeout
 // that follows redirects.
 //
 // $timeout is in seconds and covers the whole request. $headers are sent with
@@ -64,10 +64,9 @@ func NewClient(ctx context.Context, options any) (*Client, error) {
 			case "headers":
 				config.Headers, err = toHeaders(value)
 			default:
-				// An unknown key is an error rather than a value quietly
+				// An unknown key is an error and no value quietly
 				// ignored, so a typo in a script is reported where it is
-				// written instead of at the far end of a request that did not
-				// carry what it was meant to.
+				// written, ahead of a request going out without it.
 				err = fmt.Errorf("HTTP\\Client: unknown option %q", toString(key))
 			}
 			return err == nil
@@ -176,7 +175,7 @@ func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Respon
 			defer wg.Done()
 			response, err := c.send(ctx, request)
 			if err != nil {
-				// A failure is reported on the response rather than returned,
+				// A failure is reported on the response and never returned,
 				// so one unreachable host does not hide the results of every
 				// other request in the batch.
 				response = &Response{err: err.Error()}
@@ -212,7 +211,7 @@ func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response,
 	}
 	defer response.Body.Close()
 
-	// The body is read here rather than handed over as a stream, because a
+	// The body is read here and never exposed as a stream, because a
 	// script has no way to close one: PHP's request ends and whatever it did
 	// not read would leak the connection.
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBody))
@@ -231,7 +230,7 @@ func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response,
 }
 
 // prepare resolves a request against the client's base URL and default
-// headers. It clones rather than mutating, so the same request value can be
+// headers. It clones and mutates nothing, so the same request value can be
 // sent by two clients, and so Parallel does not write to a request another
 // goroutine is reading.
 func (c *Client) prepare(ctx context.Context, request *nethttp.Request) (*nethttp.Request, error) {

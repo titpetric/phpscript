@@ -6,7 +6,7 @@ import (
 	"unicode/utf8"
 )
 
-// This file provides a PHP-compatible tokenizer: TokenGetAll / TokenName plus
+// This file carries a PHP-compatible tokenizer: TokenGetAll / TokenName plus
 // the T_* constants. It mirrors PHP's token_get_all closely enough to drive
 // minitpl's compiler (class.minitpl_compiler.php::_split_exp), which relies on
 // T_VARIABLE, T_OBJECT_OPERATOR, is_array() on the elements, the token text at
@@ -222,7 +222,7 @@ func TokenName(id int) string {
 }
 
 // TokenIDs returns every token name with the id token_get_all reports for it,
-// which is what a host registers as PHP constants. A script comparing a token
+// the ids a host registers as PHP constants. A script comparing a token
 // against a name it did not get from here would be comparing against nothing,
 // so the table that names the ids is the table that publishes them.
 func TokenIDs() map[string]int {
@@ -516,7 +516,7 @@ func (t *phpTokenizer) scanString(quote byte) {
 // emitInterp writes the token sequence PHP produces for an interpolated
 // literal and advances past it. Simple syntax reports its pieces as the bare
 // tokens they are; complex syntax opens with T_CURLY_OPEN and then reports the
-// expression inside the braces as ordinary PHP, which is what it is.
+// expression inside the braces as the ordinary PHP it is.
 func (t *phpTokenizer) emitInterp(parts []interpPart) {
 	t.emitChar('"')
 	t.advance() // opening quote
@@ -554,8 +554,8 @@ func (t *phpTokenizer) emitInterp(parts []interpPart) {
 
 // emitSubscript writes the one token (two for a negative number) that a
 // simple-syntax `$a[sub]` subscript is. A bare word there is a string key
-// rather than a constant, and PHP reports it as T_STRING; a number is
-// T_NUM_STRING, which is the id that says "digits read as an array key".
+// and no constant, and PHP reports it as T_STRING; a number is
+// T_NUM_STRING, the id for "digits read as an array key".
 func (t *phpTokenizer) emitSubscript(sub string, line int) {
 	switch {
 	case sub == "":
@@ -573,7 +573,7 @@ func (t *phpTokenizer) emitSubscript(sub string, line int) {
 
 // tokenizeFrom tokenizes PHP source that came from between the braces of a
 // {$...}, numbering its lines from line so a multi-line literal reports the
-// lines the file has rather than the ones the fragment has.
+// lines the file has, and not the ones the fragment has.
 func tokenizeFrom(src string, line int) []any {
 	tk := &phpTokenizer{src: src, line: line, inPHP: true}
 	return tk.run()

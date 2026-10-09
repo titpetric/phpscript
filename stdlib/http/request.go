@@ -14,7 +14,7 @@ import (
 // The value is a net/http request, so a script reads and writes it the way Go
 // does: $request->method, $request->host, and $request->header->set($name,
 // $value) for headers. Methods are written uppercase, "GET" and "POST"; a
-// lowercase one is upper-cased rather than sent as written, because a server
+// lowercase one is upper-cased and never sent as written, because a server
 // treats the method as case-sensitive and would reject it.
 func NewRequest(ctx context.Context, method, url string, body ...string) (*nethttp.Request, error) {
 	if method == "" {
@@ -31,7 +31,7 @@ func NewRequest(ctx context.Context, method, url string, body ...string) (*netht
 
 	// A nil *strings.Reader held in an io.Reader is not a nil io.Reader, and
 	// net/http would then read from it, so the two cases are passed separately
-	// rather than through one variable.
+	// and not through one variable.
 	var (
 		request *nethttp.Request
 		err     error

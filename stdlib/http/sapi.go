@@ -18,14 +18,14 @@ func init() {
 // registerRequest installs the functions that answer for the request the
 // runtime is serving.
 //
-// They resolve the request at call time through runner.RequestContext, not at
+// They resolve the request at call time through runner.RequestContext, and never at
 // registration time, because a host registers the standard library once and
 // seeds the request afterwards - stdlib.Register(rt) then reqCtx.Register(rt),
-// which is the order every host uses. That indirection is also what lets these
+// the order every host uses. That indirection is also what lets these
 // live outside package runner.
 //
 // A script running without a request - the cli SAPI, a fixture that seeds no
-// request - finds the functions present and inert, which is what PHP's own cli
+// request, finds the functions present and inert, as PHP's own cli
 // SAPI does with header().
 func registerRequest(rt *runner.Runtime) {
 	// getallheaders returns the request headers as an associative array keyed by canonical header name, and an empty array when there is no request.
@@ -76,7 +76,7 @@ func registerRequest(rt *runner.Runtime) {
 		return stageCookie(rt, name, opts, true)
 	})
 
-	// setrawcookie stages a Set-Cookie header the way setcookie does but writes $value as it stands, so a value carrying a semicolon or a space is the caller's problem rather than the encoder's.
+	// setrawcookie stages a Set-Cookie header the way setcookie does and writes $value as it stands, so a value carrying a semicolon or a space is the caller's problem rather than the encoder's.
 	rt.RegisterFunc("setrawcookie", func(name string, opts ...any) bool {
 		return stageCookie(rt, name, opts, false)
 	})
@@ -140,7 +140,7 @@ func applyCookiePositional(cookie *nethttp.Cookie, args []any) {
 }
 
 // applyCookieOptions reads the array form. An option the array does not name
-// keeps its zero value, which is the same as PHP leaving it out of the header.
+// keeps its zero value, as PHP leaves it out of the header.
 func applyCookieOptions(cookie *nethttp.Cookie, options *model.Array) {
 	if value, ok := options.Get("expires"); ok {
 		setCookieExpires(cookie, phpval.Int(value))
@@ -172,7 +172,7 @@ func setCookieExpires(cookie *nethttp.Cookie, expires int64) {
 }
 
 // sameSite reads the attribute PHP spells as a string. An unrecognised value
-// stages no attribute, which is what a browser does with one it cannot read.
+// stages no attribute, as a browser drops one it cannot read.
 func sameSite(value string) nethttp.SameSite {
 	switch value {
 	case "Lax", "lax":

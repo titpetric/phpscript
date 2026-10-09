@@ -44,7 +44,7 @@ func toString(v any) string {
 }
 
 // BindingRecord is a plain Go struct handed to PHP as an object. Property
-// access goes through runner.helperGet, which reads exported fields by
+// access resolves through runner.helperGet, which reads exported fields by
 // reflection (case-insensitively), so `$r->name` and `$r->Name` both resolve.
 type BindingRecord struct {
 	ID   int64
@@ -58,7 +58,7 @@ func (r BindingRecord) Label() string {
 }
 
 // bindingWords is the fixed input used by every list-returning binding, so the
-// benchmarks compare representations rather than workloads.
+// benchmarks compare representations and not workloads.
 var bindingWords = []string{"alpha", "beta", "gamma", "delta", "epsilon"}
 
 // RegisterBindings installs the example bindings. It is passed to
@@ -132,10 +132,10 @@ func registerBindings(rt registrar) {
 
 	// --- the `any` question ------------------------------------------------
 	//
-	// Declaring the return type as `any` rather than a concrete type costs
+	// Declaring the return type as `any` in place of a concrete type costs
 	// nothing: callResult calls reflect.Value.Interface() either way, and a
 	// slice header already lives behind an interface once returned. These two
-	// exist so the benchmark can prove that rather than assert it.
+	// exist so the benchmark can prove that, and assert nothing.
 
 	rt.RegisterFunc("bind_any_strings", func() any {
 		out := make([]string, len(bindingWords))
@@ -176,7 +176,7 @@ func registerBindings(rt registrar) {
 	rt.RegisterFunc("bind_map", func() map[string]any {
 		return map[string]any{"id": int64(1), "name": "alpha"}
 	})
-	// A list a binding keyed by position rather than packed into a slice. It
+	// A list a binding keyed by position and never packed into a slice. It
 	// is the shape that keeps PHP's numbering through an unset, because a map
 	// holds the hole a slice cannot.
 	rt.RegisterFunc("bind_list_keyed", func() map[int]string {
@@ -232,7 +232,7 @@ func registerBindings(rt registrar) {
 	rt.RegisterFunc("bind_small_int", func() int64 { return 7 })
 	rt.RegisterFunc("bind_string", func() string { return "alpha" })
 	rt.RegisterFunc("bind_bool", func() bool { return true })
-	// A []byte is a string, not the one slice shape that reads as a list of
+	// A []byte is a string, and no slice shape reading as a list of
 	// integers: PHP's strings are byte strings, and Go's own text APIs are
 	// declared over []byte half the time. regexp.Regexp.Find is the case that
 	// brought it in.
@@ -262,7 +262,7 @@ func registerBindings(rt registrar) {
 	// --- callback shapes ---------------------------------------------------
 	//
 	// One per shape a binding declares its callback in. The uniform one is what
-	// Runtime.Callable answers; the rest are Go's own terms, which is what a
+	// Runtime.Callable answers; the rest are Go's own terms, the shape a
 	// library's method set already looks like, and are filled through
 	// reflect.MakeFunc over the declared signature.
 
@@ -287,7 +287,7 @@ func registerBindings(rt registrar) {
 		return "dropped"
 	})
 	// bind_callback_void declares no result at all, so the value the callable
-	// returns is dropped rather than coerced.
+	// returns is dropped and never coerced.
 	rt.RegisterFunc("bind_callback_void", func(s string, fn func(string)) string {
 		fn(s)
 		return "done"
@@ -302,7 +302,7 @@ func registerBindings(rt registrar) {
 	// --- stdlib before/after ----------------------------------------------
 	//
 	// bind_explode_legacy is the *model.Array implementation stdlib's explode()
-	// used to have, kept so the benchmarks measure the change rather than
+	// had before, kept so the benchmarks measure the change and not
 	// asserting it. bind_explode_native is what it does now.
 
 	rt.RegisterFunc("bind_explode_legacy", func(delim, s string) *model.Array {

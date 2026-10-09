@@ -15,7 +15,7 @@ import (
 // flight. A script that ran out of time has no more to give them.
 const shutdownGrace = time.Second
 
-// Server listens and answers, which is what net/http's Server does and what a
+// Server listens and answers, as net/http's Server does and as a
 // ServeMux does not. The vocabulary is Go's: listen(), then shutdown() to let
 // the requests in flight finish, or close() to drop them.
 type Server struct {
@@ -73,7 +73,7 @@ func (s *Server) Listen() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("HTTP\\Server::listen: %w", err)
 	}
-	// The forks handlers run on, built now rather than when the mux was: a mux
+	// The forks handlers run on, built now and not when the mux was: a mux
 	// a Go host drives directly should not pay for a pool it never serves from.
 	// Each writes nowhere by default; a request pushes its response writer on
 	// for the length of the call.
@@ -131,7 +131,7 @@ func (s *Server) Shutdown() {
 }
 
 // close stops the server at once, dropping whatever was in flight. shutdown()
-// is the one to reach for; this is for a script that has decided the answers no
+// is the one to reach for; this is for a script that answers no
 // longer matter.
 func (s *Server) Close() error {
 	server, stopped := s.take()

@@ -10,7 +10,7 @@ import (
 
 // The conversions a script's option array needs. PHP is dynamically typed and
 // an option arrives as whatever the script wrote, so each one is read the way
-// PHP would read it in that position rather than type-asserted.
+// PHP would read it in that position, and never type-asserted.
 
 // toString renders a value the way PHP renders it in a string context.
 func toString(value any) string {

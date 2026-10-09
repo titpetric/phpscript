@@ -15,7 +15,7 @@ import (
 //
 // The bitwise levels sit where PHP 8 puts them: `| ^ &` are looser than any
 // comparison but tighter than `&&`, and `<< >>` are tighter than `.` but looser
-// than `+ -`. That is what makes `1 | 2 == 2` fold the comparison first (1) and
+// than `+ -`, so `1 | 2 == 2` folds the comparison first (1) and
 // `1 << 2 + 3` shift by five (32).
 var binPrec = map[string]int{
 	"||": 1, "&&": 2,
@@ -207,7 +207,7 @@ func (p *parser) parseUnary() (model.Expr, error) {
 }
 
 // parseInstanceOf parses `expr instanceof Class`. PHP binds it tighter than
-// `!`, so `!$e instanceof Foo` negates the test rather than testing the
+// `!`, so `!$e instanceof Foo` negates the test and never tests the
 // negation, so it sits below parseUnary. A bare class name on the
 // right is qualified, the same resolution `new` and a static call get, so a
 // `use` alias and an unqualified name inside a namespace reach the runtime
@@ -238,7 +238,7 @@ func (p *parser) parseInstanceOf() (model.Expr, error) {
 // parsePow parses `base ** exponent`. PHP's `**` binds tighter than unary
 // minus (`-2 ** 2` is -4) and is right-associative with a unary-capable
 // exponent (`2 ** -1`, `2 ** 3 ** 2`), so it sits between
-// parseUnary and parsePostfix rather than in the binPrec table.
+// parseUnary and parsePostfix, and not in the binPrec table.
 func (p *parser) parsePow() (model.Expr, error) {
 	base, err := p.parsePostfix()
 	if err != nil {
@@ -340,7 +340,7 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			}
 			e = p.newIndex(e, idx)
 		case p.isOp("("):
-			// Calling a value rather than a name: `$fn($x)`, `$handlers[0]($x)`,
+			// Calling a value and no name: `$fn($x)`, `$handlers[0]($x)`,
 			// `(self::$includeFile)($file)`. Named calls never reach here;
 			// they are consumed by parsePrimary.
 			args, firstClass, err := p.parseCallArgs()
@@ -518,7 +518,7 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 		return p.newLit(p.namespace), nil
 	}
 	// The magic constants are compiled, not looked up, the way php compiles
-	// them. __LINE__ needs the token just consumed, which is the name itself.
+	// them. __LINE__ needs the token just consumed: the name itself.
 	// The other two need a file, and stay names when the caller gave none.
 	switch name {
 	case "__LINE__":
@@ -670,7 +670,7 @@ func (p *parser) parseNew() (model.Expr, error) {
 	}
 	// `new $className(...)`: the class is named by a runtime value. The name
 	// can be held in an index or a property as well as in the variable itself,
-	// so the whole reference is taken here rather than only the variable.
+	// so the whole reference is taken here, and not only the variable.
 	// Leaving the accessors to parsePostfix would read
 	// `new $renderers["json"]($data)` as `(new $renderers)["json"]($data)`,
 	// which constructs the wrong thing and then calls the result.
@@ -707,7 +707,7 @@ func (p *parser) parseNew() (model.Expr, error) {
 // parseAnonClass consumes `class [(args)] [extends X] [implements A, B] { ... }`
 // after `new`, the declaration of a class with no name.
 //
-// The parser gives it one anyway. A name is what `new` resolves, what a method
+// The parser assigns it one anyway. A name is what `new` resolves, what a method
 // call looks a class up by, and what `instanceof` compares, so a class without
 // one would need a second path through every one of those; naming it here means
 // the declaration is registered and reached exactly like a written class, and

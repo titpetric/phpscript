@@ -9,7 +9,7 @@ import (
 )
 
 // Mux is net/http's ServeMux with PHP callables as its handlers, answered on a
-// worker runtime each. It is a facade rather than the ServeMux itself because
+// worker runtime each. It is a facade and no ServeMux itself because
 // nothing turns a PHP callable into the func(ResponseWriter, *Request) that
 // HandleFunc declares. docs/use-cases/http-server.md is the surface.
 type Mux struct {
@@ -20,7 +20,7 @@ type Mux struct {
 	//
 	// HTTP\Server::listen installs one sized from its $workers and $queue; a mux
 	// a Go host mounts and drives through ServeHTTP itself builds a default one
-	// on its first request. Either way it is built once, which is what the Once
+	// on its first request. Either way it is built once, which the Once
 	// is for: the two paths can both reach it, and every request reads it.
 	once sync.Once
 	pool *runner.Pool
@@ -43,7 +43,7 @@ func (m *Mux) Handle(pattern string, handler any) error {
 		return fmt.Errorf("HTTP\\Mux::handle: pattern is required")
 	}
 	// Described here, so a handler that cannot run on another runtime is an
-	// error where the route is written rather than a 500 on the first request
+	// error where the route is written, ahead of a 500 on the first request
 	// that reaches it.
 	callable, err := m.rt.AsCallable(handler)
 	if err != nil {
@@ -64,7 +64,7 @@ func (m *Mux) Handle(pattern string, handler any) error {
 
 // trackers is the free list the per-request answer trackers come from.
 //
-// A tracker's lifetime ends at the request boundary, which is what makes this a
+// A tracker's lifetime ends when the request does, so this is a
 // free list and not a cache: a request takes one, the worker answers through it,
 // and answer puts it back having dropped the writer it wrapped. Nothing outside
 // one request ever holds a reference, and the one path where that is not certain
@@ -78,7 +78,7 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 
 	ran := m.workers().Submit(r.Context(), func(rt *runner.Runtime) {
 		// The response for the length of the call, so a handler that echoes
-		// reaches the client rather than the process's own output.
+		// reaches the client and not the process's own output.
 		rt.PushOutput(w)
 		defer rt.PopOutput()
 
@@ -97,7 +97,7 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 		// The client left while the run was queued or in flight. Nothing written
 		// now would reach it.
 		//
-		// The tracker is deliberately not put back. A run already started is left
+		// The tracker is not put back. A run already started is left
 		// to notice the disconnect itself, so the worker may still be inside the
 		// handler and still holding this value; returning it here is the one way a
 		// free-list entry could outlive its request and be handed to a second one.
@@ -154,13 +154,13 @@ func (m *Mux) ServeHTTP(w nethttp.ResponseWriter, r *nethttp.Request) {
 // afterwards does not try to replace a status that is already on the wire, and
 // carries the throw itself back out of the worker.
 //
-// It forwards rather than buffers: a handler streaming a large body should not
+// It forwards and buffers nothing: a handler streaming a large body does not
 // have it held in memory for the sake of an error that may never come.
 //
-// failure is here rather than beside the call because answer's closure captures
+// failure is here and not beside the call because answer's closure captures
 // this value already: a local error written from inside the closure is a second
-// heap cell for the same request, and the thing that wants to read it is the same
-// thing that wants to read wrote.
+// heap cell for the same request, and the code that reads it is the code that
+// wrote it.
 type answerTracker struct {
 	nethttp.ResponseWriter
 	wrote   bool
@@ -177,6 +177,6 @@ func (a *answerTracker) Write(p []byte) (int, error) {
 	return a.ResponseWriter.Write(p)
 }
 
-// Unwrap hands the real writer to net/http's ResponseController, so a handler
+// Unwrap exposes the real writer to net/http's ResponseController, so a handler
 // reaching for Flush or a deadline still finds it.
 func (a *answerTracker) Unwrap() nethttp.ResponseWriter { return a.ResponseWriter }

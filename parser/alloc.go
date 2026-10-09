@@ -19,10 +19,10 @@ import (
 //     does. That costs nothing here because the AST is retained as a whole
 //     (a *model.Program), and a failed parse drops all of it at once.
 //
-//   - scratch is a per-type stack used to collect the children of a node
+//   - scratch is a per-type stack collecting the children of a node
 //     whose count is only known once parsed (call arguments, statement
 //     bodies, parameters, array items). Pushing onto the shared stack and
-//     copying out once yields one exactly-sized allocation per list instead
+//     copying out once produces one exactly-sized allocation per list, in place
 //     of the 1->2->4->8 growth of appending to a nil slice. It is re-entrant:
 //     nested lists push and pop above the outer mark, so the outer elements
 //     stay contiguous.
@@ -32,7 +32,7 @@ const (
 	nodeChunkMax = 128
 )
 
-// nodeChunk hands out individually addressable *T values from chunked backing
+// nodeChunk returns individually addressable *T values from chunked backing
 // arrays. Chunks start small and double so a two-line script does not pay for
 // a large block and a whole file amortises the per-node allocation away.
 type nodeChunk[T any] struct {

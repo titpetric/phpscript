@@ -23,7 +23,7 @@ func mustFlatProgram(tb testing.TB, source string) *model.Program {
 }
 
 // Benchmarks are modeled after the flat-stack repository's compile-once/run-
-// many and parallel-load matrix. They deliberately gate on Supports.
+// many and parallel-load matrix. They gate on Supports.
 func BenchmarkFlatstackPrecompiledConcat(b *testing.B) {
 	program := mustFlatProgram(b, `<?php $a = "hello"; $b = "-world"; echo $a . $b; ?>`)
 	runtime := flatstack.New(io.Discard, flatstack.Options{})

@@ -7,7 +7,7 @@ import (
 // BenchmarkScriptExprHeavy is the end-to-end companion to the runner expr
 // benchmarks: a loop body that is almost entirely expression evaluation
 // (arithmetic, comparison, ternary, concat, a binding call), so the number
-// moves with the expression engine rather than with any single binding.
+// moves with the expression engine and not with any single binding.
 func BenchmarkScriptExprHeavy(b *testing.B) {
 	benchmarkScript(b, `<?php
 $total = 0;
@@ -25,7 +25,7 @@ echo $total, " ", $tag;
 
 // BenchmarkScriptInterp is the same loop shape over interpolated literals: the
 // per-iteration work is a double-quoted string that embeds a variable, an
-// array subscript and a property, which is what a template render is made of.
+// array subscript and a property: what a template render is made of.
 // The parse happens once, so the number is the per-execution cost of the
 // literal.
 func BenchmarkScriptInterp(b *testing.B) {

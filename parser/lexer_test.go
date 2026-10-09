@@ -16,7 +16,7 @@ func lexAll(t *testing.T, src string) []token {
 }
 
 // singleCharOperators lists every one-byte operator lexOperator accepts. It is
-// spelled out here (rather than referencing the implementation constant) so the
+// spelled out here, and not read from the implementation constant, so the
 // test fails if the set silently changes.
 const singleCharOperators = "+-*/%.,;()[]{}=<>!&|?:@\\"
 
@@ -259,8 +259,8 @@ func TestLexNumberBoundaries(t *testing.T) {
 	}
 }
 
-// TestNumLitBases checks the values the parser hands the runtime, including the
-// literal too large for an int, which PHP widens to a float rather than
+// TestNumLitBases checks the values the parser passes the runtime, including the
+// literal too large for an int, which PHP widens to a float and never
 // rejecting.
 func TestNumLitBases(t *testing.T) {
 	cases := []struct {

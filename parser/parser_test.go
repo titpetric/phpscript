@@ -254,7 +254,7 @@ func TestParseClassModifiers(t *testing.T) {
 }
 
 // A namespaced file may only declare symbols, so a modifier the parser does not
-// recognise surfaces there as a rejected file rather than a dropped keyword.
+// recognise surfaces there as a rejected file and never a dropped keyword.
 func TestParseClassModifiersInNamespace(t *testing.T) {
 	prog := mustParse(t, "<?php\nnamespace App;\nfinal readonly class Thing {}\n")
 	cd, ok := prog.Stmts[len(prog.Stmts)-1].(*model.ClassDecl)
@@ -394,9 +394,9 @@ func TestParseInterfaceRejected(t *testing.T) {
 	}
 }
 
-// The restriction on a namespaced file is deliberate, so the message has to
+// The restriction on a namespaced file is a decision, so the message has to
 // carry the reason and the way out, and point at the offending statement
-// rather than at whatever follows it.
+// and not at whatever follows it.
 func TestParseNamespacedStatementRejected(t *testing.T) {
 	_, err := Parse("<?php\nnamespace App;\n\nclass Thing {}\n\necho \"hi\";\n")
 	if err == nil {
@@ -414,7 +414,7 @@ func TestParseNamespacedStatementRejected(t *testing.T) {
 	}
 }
 
-// `use` and `declare` are preamble rather than code, so a namespaced file may
+// `use` and `declare` are preamble and no code, so a namespaced file may
 // still carry them.
 func TestParseNamespacedPreambleAllowed(t *testing.T) {
 	src := "<?php\ndeclare(strict_types=1);\n\nnamespace App;\n\nuse Vendor\\Thing;\n\nfunction f() {\n\techo \"hi\";\n}\n"
@@ -424,7 +424,7 @@ func TestParseNamespacedPreambleAllowed(t *testing.T) {
 }
 
 // exprShape renders an expression fully parenthesised, so a precedence test
-// reads as the tree the parser built rather than as a chain of type
+// reads as the tree the parser built and not as a chain of type
 // assertions.
 func exprShape(e model.Expr) string {
 	switch n := e.(type) {
@@ -488,7 +488,7 @@ func TestParseBitwisePrecedence(t *testing.T) {
 	}
 }
 
-// The by-reference marker used to be skipped in front of any operand, which
+// The by-reference marker is skipped in front of a variable alone, and nothing
 // swallowed the binary `&` of `echo 6 & 3` and printed 6. It is a marker only
 // in front of a variable now, and nothing else may consume an operator
 // silently.
@@ -513,7 +513,7 @@ func TestParseAmpersandIsNotSwallowed(t *testing.T) {
 }
 
 // A reference marker still parses where PHP allows one: in front of a
-// variable, which is where every by-reference construct puts it.
+// variable, the position every by-reference construct puts it in.
 func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
 	for _, src := range []string{
 		`<?php $a = &$b;`,
@@ -528,7 +528,7 @@ func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
 }
 
 // `$a = $b = array()` is split into one assignment per name so that each name
-// gets its own allocation, which is what PHP's copy-on-assignment amounts to
+// gets its own allocation, which is what PHP's copy-on-assignment comes to
 // for a literal. The names are written right to left, as PHP evaluates them.
 func TestParseSplitsChainedArrayLiteral(t *testing.T) {
 	prog := mustParse(t, "<?php\n$a = $b = $c = array(1);\n")
@@ -825,7 +825,7 @@ func TestParseEllipsisIsStillConcatenation(t *testing.T) {
 
 // benchSource is a file of the shape the parser meets in an application: a
 // class with methods, a function, control flow and interpolation, repeated
-// until it is the size of a real source file rather than a snippet.
+// until it is the size of a real source file and no snippet.
 var benchSource = func() string {
 	const unit = `
 class Row%[1]d {
@@ -864,7 +864,7 @@ function collect%[1]d(array $rows) {
 	return b.String()
 }()
 
-// BenchmarkParse measures the whole parse, which is where the token slice is
+// BenchmarkParse measures the whole parse, the stage the token slice is
 // allocated and discarded. B/op is the number the token pool moves.
 func BenchmarkParse(b *testing.B) {
 	b.SetBytes(int64(len(benchSource)))
