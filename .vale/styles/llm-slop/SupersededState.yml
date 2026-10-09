@@ -6,7 +6,9 @@ ignorecase: true
 nonword: true
 tokens:
   - '\bpreviously\b'
-  - '\bused to\b'
+  # The past-habitual only. "cannot be used to find out" is passive voice.
+  - '\b(?:it|this|that|they|we|which|there|section|document|field|key)\s+used to\b'
+  - '\bused to (?:say|be|have|do|work|live|read|carry|return|call|report|mean)\b'
   - '\bno longer\b'
   - '\ban earlier (?:revision|version)\b'
   - '\bhistorically\b'

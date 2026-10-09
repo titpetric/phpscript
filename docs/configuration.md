@@ -10,7 +10,7 @@ phpscript server -f config.yml ./my-app
 
 Without `-f`, phpscript uses the [`config/config.yml`](../config/config.yml) compiled into the binary. It does not search the working directory for a configuration file. A path passed with `-f` must exist and contain valid YAML; otherwise the command exits with an error.
 
-Two commands read a second file called `phpscript.yml`, found rather than named. A [virtual host](#virtual-hosts) reads the one in the application root its entry points at, and [`phpscript test`](#test-suites) reads the ones it finds in the fixture tree. Both are read over whatever `-f` produced, in the same way that file is read over the embedded defaults.
+Two commands read a second file called `phpscript.yml`, discovered by its position in the tree. A [virtual host](#virtual-hosts) reads the one in the application root its entry points at, and [`phpscript test`](#test-suites) reads the ones it finds in the fixture tree. Both are read over whatever `-f` produced, in the same way that file is read over the embedded defaults.
 
 ## Complete example
 
@@ -85,7 +85,7 @@ Apart from the `env` entry, this is the embedded [`config/config.yml`](../config
 | `include`                 |    `""` | File included ahead of every entrypoint, once per request, when it exists. `--include` overrides it.                                           |
 | `upload_max_filesize`     |    `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.                                                    |
 | `post_max_size`           |    `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.                                                |
-| `upload_file_mode`        |  `0644` | Mode `move_uploaded_file()` gives a stored upload. Octal, as `chmod()` takes it.                                                               |
+| `upload_file_mode`        |  `0644` | Mode `move_uploaded_file()` sets on a stored upload. Octal, as `chmod()` takes it.                                                             |
 | `max_input_vars`          |  `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The rest are dropped. Negative is no limit.                                              |
 | `max_input_nesting_level` |    `64` | Deepest bracket chain a field name may have. A field past it is dropped whole. Negative is no limit.                                           |
 | `memory_limit`            |     `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                                                                   |
@@ -96,14 +96,14 @@ Apart from the `env` entry, this is the embedded [`config/config.yml`](../config
 
 `precompile` decides when a `.php` file is parsed and compiled. With it on, `phpscript server` walks the application root before it accepts a request, parses every `.php` file below it and compiles each program, and a request reads both back out of the caches the site shares. With it off, a file is parsed the first time a request reaches it and an entrypoint is parsed again on every request after that, because the caches only answer for `include` and `require`.
 
-The parse is not all of it. Flat bytecode is keyed by the parsed program and so are the interpreter's compiled expressions, so a re-parsed entrypoint discards both and rebuilds them for the request that re-parsed it. Precompilation gives each file one AST for the life of the process, and both caches then keep their entries across requests.
+The parse is not all of it. Flat bytecode is keyed by the parsed program and so are the interpreter's compiled expressions, so a re-parsed entrypoint discards both and rebuilds them for the request that re-parsed it. Precompilation keeps one AST per file for the life of the process, and both caches then keep their entries across requests.
 
 ```yaml
 runner:
   precompile: false
 ```
 
-Nothing is invalidated and no modification time is read. An edited file is picked up by [a reload or a restart](cli/server.md#reloading). The memory a tree parses to is resident from startup instead of growing as requests reach files, so a process serving a few megabytes of PHP starts at what all of it parses to.
+Nothing is invalidated and no modification time is read. An edited file is picked up by [a reload or a restart](cli/server.md#reloading). The memory a tree parses to is resident from startup, with no growth as requests reach files, so a process serving a few megabytes of PHP starts at what all of it parses to.
 
 Files are parsed in parallel, `GOMAXPROCS` at a time. A file that does not parse, and a program the bytecode compiler does not accept, are left out of the caches: startup is not where a source error is reported, and a request that names such a file gets the same answer it gets with precompilation off. One broken file below the root therefore cannot stop the server coming up.
 
@@ -113,18 +113,18 @@ Only `phpscript server` walks a tree. The include cache it walks into holds 10,0
 
 ### Include
 
-`include` names a file pulled in ahead of every entrypoint, once per request, for the functions and classes an application expects to be there whatever it is running. The entrypoint and everything it includes see what it declared. A composer autoloader is the usual one:
+`include` names a file pulled in ahead of every entrypoint, once per request, for the functions and classes every entrypoint in an application needs. The entrypoint and everything it includes see what it declared. A composer autoloader is the usual one:
 
 ```yaml
 runner:
   include: vendor/autoload.php
 ```
 
-The name resolves against the application root, and a file that is not there is skipped rather than reported: the setting says what to load when the tree provides it, so the same configuration covers a checkout with no `vendor/` yet.
+The name resolves against the application root, and a file that is not there is skipped and nothing is reported: the setting says what to load when the tree carries it, so the same configuration covers a checkout with no `vendor/` yet.
 
 One setting covers every way the tree is executed. The server includes it before each request, `phpscript run` before the script, `phpscript test` before each fixture and `phpscript lint` before the checks, so the classes a linter knows are the classes a request will find. `--include` on any command overrides it, and a virtual host sets its own in the `runner` block of its `phpscript.yml`.
 
-Classes still resolve through `spl_autoload_register()`, which is what a composer autoloader registers. See [Autoloading](reference/namespaces/README.md#autoloading) in the language reference.
+Classes still resolve through `spl_autoload_register()`, the function a composer autoloader registers with. See [Autoloading](reference/namespaces/README.md#autoloading) in the language reference.
 
 ### Writable paths
 
@@ -141,7 +141,7 @@ There is no entry that grants a write outside the application root. An absolute 
 
 An empty list, the default, allows every write. A non-empty one is a tree: the directory and everything below it, and nothing that merely shares its name, so `upload-old` is not inside `upload`.
 
-Writes refused by the allowlist **throw**, rather than returning `false` like a write the operating system refused. A script carrying on as though a write happened is the failure worth stopping, and the exception is catchable:
+Writes refused by the allowlist **throw**. A write the operating system refused returns `false`, as PHP's does. A script carrying on as though a write happened is the failure worth stopping, and the exception is catchable:
 
 ```php
 try {
@@ -153,7 +153,7 @@ try {
 
 The functions held to it are the ones that modify the filesystem: `fopen()` in any mode but `r`, `mkdir()`, `unlink()`, `touch()`, `rename()` at both ends, `copy()` at the destination, `chmod()`, `chown()`, `chgrp()` and `move_uploaded_file()`. Reads are untouched: an allowlist says what a script may change, not what it may look at.
 
-Configuring it also changes what the server does with those directories, which is the point of naming them:
+Configuring it also changes what the server does with those directories:
 
 - **No PHP in a writable directory is executed.** A `.php` file there is served as bytes like any other file. A directory a visitor can get content into is not a directory to run code from.
 - **No `@route` or `@startup` annotation in one is scanned.** Otherwise an uploaded file could publish a route the next time the server started.
@@ -162,7 +162,7 @@ Configuring it also changes what the server does with those directories, which i
 
 `memory_limit` is enforced. Usage is measured by walking the live variables of every execution frame, so it reflects what the script still holds, not what it allocated over its lifetime. The walk runs when the script calls `memory_get_usage()` and at periodic checkpoints while a limit is set; exceeding the limit raises a `RuntimeException` the script may catch. The number is an estimate of PHP value payloads, not Go allocator truth, and it is far below what PHP reports for the same script (no zval overhead).
 
-What outlives a request is outside that number and outside the limit: the parsed and compiled source tree, and a `SharedMemory` store a host bound. Both are shared by every request the process serves, so charging either to whichever script asked would report one process-lifetime cost once per request. PHP draws the same line, keeping a compiled script under `opcache.memory_consumption` rather than `memory_limit`.
+What outlives a request is outside that number and outside the limit: the parsed and compiled source tree, and a `SharedMemory` store a host bound. Both are shared by every request the process serves, so charging either to whichever script asked would report one process-lifetime cost once per request. PHP draws the same line, charging a compiled script to `opcache.memory_consumption` and not to `memory_limit`.
 
 `phpinfo()` is where that side is visible. It prints the runtime block first, then a section per subsystem holding memory across requests:
 
@@ -181,9 +181,9 @@ Counters => 3
 Size => 0.06 MiB
 ```
 
-`Cached Size` is the heap a precompile pass measured itself adding, and is absent when no pass ran: a cache filled request by request was never measured, and printing zero over it would read as a measurement rather than the absence of one. A section with nothing to report is left out rather than printed as a heading over nothing, so a run with no store bound shows no `SharedMemory` block. The `opcache_*` functions are not implemented and will not be; see [Won't implement](design.md#wont-implement).
+`Cached Size` is the heap a precompile pass measured itself adding, and is absent when no pass ran: a cache filled request by request was never measured, and printing zero over it would read as a measurement. A section with nothing to report is left out, not printed as a heading over nothing, so a run with no store bound shows no `SharedMemory` block. The `opcache_*` functions are not implemented and will not be; see [Won't implement](design.md#wont-implement).
 
-`time_limit` and `concurrency_limit` are **accepted but not enforced**. The keys parse and are carried through to the runtime so a configuration written today keeps working when enforcement lands, rather than failing to load.
+`time_limit` and `concurrency_limit` are **accepted but not enforced**. The keys parse and are carried through to the runtime so a configuration written today keeps working when enforcement lands.
 
 `memory_limit` is a size written the way the upload limits are. `time_limit` is php.ini's `max_execution_time`, in seconds. `concurrency_limit` has no php.ini equivalent, because there the SAPI owns it; here one process serves several sites and each gets its own share.
 
@@ -191,7 +191,7 @@ Size => 0.06 MiB
 
 `max_input_vars` and `max_input_nesting_level` are php.ini's, and bound what the form decoder builds out of an attacker-controlled body: `a[x][x][x]...` costs one array per level. See [`$_GET`](reference/predefined-variables/README.md#_get).
 
-`upload_max_filesize` and `post_max_size` are php.ini's, with php.ini's defaults. A size is written as a bare number of bytes or as a number with an `M` suffix for megabytes; php.ini's `K` and `G` shorthands are rejected rather than guessed at, and a value that does not parse fails the configuration file. `0` means no limit.
+`upload_max_filesize` and `post_max_size` are php.ini's, with php.ini's defaults. A size is written as a bare number of bytes or as a number with an `M` suffix for megabytes; php.ini's `K` and `G` shorthands are rejected, and a value that does not parse fails the configuration file. `0` means no limit.
 
 ```yaml
 runner:
@@ -208,7 +208,7 @@ runner:
   upload_file_mode: "0640"  # owner writes, group reads, nobody else
 ```
 
-The default, `0644`, is what a umask of 022 produces and what a web server in front of the application expects to be able to read. A service that serves uploads itself, or hands them to a worker in the same group, has no reason to make them world readable: `0640`, or `0600` for files only this process should open.
+The default, `0644`, is what a umask of 022 produces and what a web server in front of the application can read. A service that serves uploads itself, or passes them to a worker in the same group, has no reason to make them world readable: `0640`, or `0600` for files only this process should open.
 
 A request over either size limit is not something a script can catch: it happened before the script started, and all a script sees is an empty superglobal or an `UPLOAD_ERR_INI_SIZE` entry in `$_FILES`. The reason is reported to the Go host through `Runtime.RecordError`, which puts it on the request trace and passes it to a handler installed with `Runtime.OnError`. See [Errors](reference/errors/README.md#errors-a-script-cannot-catch) and [`$_FILES`](reference/predefined-variables/README.md#_files).
 
@@ -245,9 +245,9 @@ This section, together with `telemetry` below, is the only source of the platfor
 document_root: web
 ```
 
-A `.php` file found there is executed, anything else is served as a static file, and a request that names a directory gets that directory's `index.php`, or its `index.html` when there is no `index.php`. The entrypoint is named relative to the application root rather than the document root, so an `include` reaching above the served directory still resolves inside the project. The directory is also excluded from route scanning, so an annotation in a file that is already served directly does not publish a second, unguarded route.
+A `.php` file found there is executed, anything else is served as a static file, and a request that names a directory gets that directory's `index.php`, or its `index.html` when there is no `index.php`. The entrypoint is named relative to the application root and not the document root, so an `include` reaching above the served directory still resolves inside the project. The directory is also excluded from route scanning, so an annotation in a file that is already served directly does not publish a second, unguarded route.
 
-It is also where a site's error pages live. A file named after a status, `404.php`, `503.html`, or `error.php` for the ones a site does not name, is what answers for it, and writing the file is the whole of turning it on. That is a convention rather than a setting, and there is no key here for it; see [Error pages](use-cases/error-handling.md#error-pages) for what a page is given and which requests get one.
+It is also where a site's error pages live. A file named after a status, `404.php`, `503.html`, or `error.php` for the ones a site does not name, is what answers for it, and writing the file is the whole of turning it on. That is a convention, and there is no key here for it; see [Error pages](use-cases/error-handling.md#error-pages) for what a page is given and which requests get one.
 
 ## Autoindex
 
@@ -259,7 +259,7 @@ autoindex: true
 
 With it off, a directory with no `index.php` and no `index.html` is a 404, and a site's own [error page](use-cases/error-handling.md#error-pages) answers it like any other dead link. Publishing every file below the document root is a decision a site makes, not one it should arrive at by leaving an `index.html` out.
 
-The listing is generated by the server, so there is nothing to write and nothing to keep in step with the directory. It names each entry, its size and when it last changed, shows images rather than naming them, and links to the directory above. Names beginning with a dot are left out. The page carries its own styling and fetches nothing from anywhere else, so a listing does not tell a third party what is being browsed.
+The listing is generated by the server, so there is nothing to write and nothing to keep in step with the directory. It names each entry, its size and when it last changed, renders images inline, and links to the directory above. Names beginning with a dot are left out. The page carries its own styling and fetches nothing from anywhere else, so a listing does not tell a third party what is being browsed.
 
 Virtual hosts each answer for their own: the key is read from the site's `phpscript.yml`, so one domain can publish a file drop while another does not. See [Serving static files](use-cases/static-files.md).
 
@@ -292,7 +292,7 @@ A server running [virtual hosts](#virtual-hosts) is the exception to the one rec
 
 ## Database connections
 
-Each `env` item with a `PLATFORM_DB_<NAME>=<driver>://<dsn>` key registers a named connection for `Database`. Names are lowercased, so this config:
+Each `env` item with a `PLATFORM_DB_<NAME>=<driver>://<dsn>` key registers a named connection for `Database`. Names are lowercased, so this configuration:
 
 ```yaml
 env:
@@ -340,14 +340,14 @@ $campaigns->send("hello@example.com", "Subject", "Body");
 mail("hello@example.com", "Subject", "Body");  // also the "default" server
 ```
 
-| Key        | Default  | Purpose                                                                                                         |
-|------------|---------:|-----------------------------------------------------------------------------------------------------------------|
-| `host`     | required | The mail server to reach.                                                                                       |
-| `port`     |     `25` | The port to reach it on. A submission host usually wants 587.                                                   |
-| `username` |       "" | Sent with `password` as PLAIN authentication. Neither set means no authentication, which is what mailhog wants. |
-| `password` |       "" | See `username`.                                                                                                 |
-| `from`     | required | The `From` header. It may carry a display name, in which case the bare address is used as the envelope sender.  |
-| `insecure` |  `false` | Accept the STARTTLS certificate without verifying its chain or names. See below.                                |
+| Key        | Default  | Purpose                                                                                                        |
+|------------|---------:|----------------------------------------------------------------------------------------------------------------|
+| `host`     | required | The mail server to reach.                                                                                      |
+| `port`     |     `25` | The port to reach it on. A submission host usually wants 587.                                                  |
+| `username` |       "" | Sent with `password` as PLAIN authentication. Neither set means no authentication, which mailhog accepts.      |
+| `password` |       "" | See `username`.                                                                                                |
+| `from`     | required | The `From` header. It may carry a display name, in which case the bare address is used as the envelope sender. |
+| `insecure` |  `false` | Accept the STARTTLS certificate without verifying its chain or names. See below.                               |
 
 Names are compared lowercased. A server the configuration did not name is refused when the object is constructed, before a script has composed a message:
 
@@ -357,18 +357,18 @@ no configuration found for mail server: transactional
 
 With no server configured at all, `mail()` and `new Mail` still exist and fail the same catchable way naming `default`, so calling code keeps one spelling and its own fallback.
 
-The connection is upgraded with STARTTLS whenever the server offers it. `insecure: true` accepts the certificate without verifying its chain or names, which is what a host with a self-signed certificate requires, or one carrying no `subjectAltName`. The session stays encrypted but is no longer protected against a man in the middle, so prefer a certificate the host can verify.
+The connection is upgraded with STARTTLS whenever the server advertises it. `insecure: true` accepts the certificate without verifying its chain or names, which a host with a self-signed certificate requires, or one carrying no `subjectAltName`. The session stays encrypted and is open to a man in the middle, so prefer a certificate the host can verify.
 
 ### Credentials stay with the host
 
 A script names a server. It cannot spell one, and it cannot read one back:
 
-- The constructor takes a name. There is no way to hand a host or a password to a binding.
+- The constructor takes a name. No binding accepts a host or a password.
 - The object it returns carries no properties. `$mail->password`, `get_object_vars($mail)`, `var_dump`, `print_r` and `json_encode` all find nothing.
 - There is no listing call. `Mail` has no counterpart to [`Database::connections()`](#database-connections), because naming what exists is itself a disclosure.
 - The block is configuration, not `env`, so `getenv()` was never in reach of it.
 
-This is why the settings are not accepted as a constructor argument. A script that passes them is refused rather than coerced:
+This is why the settings are not accepted as a constructor argument. A script that passes them is refused:
 
 ```text
 Mail(): argument #1 ($name) must be the name of a configured server, not the settings of one: connection settings are the host's, and belong in the mail block of its configuration
@@ -380,7 +380,7 @@ A flat block, the single unnamed server phpscript carried before the key became 
 config.yml: mail.host is not a server name: mail is a map of named servers, so a flat block moves under a name such as "default"
 ```
 
-A server naming no `host`, no `from`, or a `from` that is not an address fails the command too, rather than failing the first delivery. On a site whose only sender is a `@schedule` job, that is the middle of the night on the one path nobody is watching.
+A server naming no `host`, no `from`, or a `from` that is not an address fails the command too, at startup and not on the first delivery. On a site whose only sender is a `@schedule` job, that is the middle of the night on the one path nobody is watching.
 
 ## Virtual hosts
 
@@ -421,9 +421,9 @@ The entry says which domain reaches a site and where it lives; everything else a
 
 ### The site's configuration file
 
-Each `root` must hold a `phpscript.yml`. It is read on top of the configuration passed with `-f` the same way that file is read on top of the embedded defaults, so it only names what it changes and inherits the rest. A `root` without one fails startup rather than serving the site under settings its author never wrote.
+Each `root` must hold a `phpscript.yml`. It is read on top of the configuration passed with `-f` the same way that file is read on top of the embedded defaults, so it only names what it changes and inherits the rest. A `root` without one fails startup, so no site is served under settings its author never wrote.
 
-A site may not set `server` or `virtualhost`: the listen address belongs to the operator, and a site holds no sites. Either key is a startup error rather than a silently dropped block, so a site author is never left believing they moved the listen address:
+A site may not set `server` or `virtualhost`: the listen address belongs to the operator, and a site holds no sites. Either key is a startup error and not a silently dropped block, so a site author is never left believing they moved the listen address:
 
 ```text
 virtualhost "shop.example.com": /srv/shop/phpscript.yml: "server" is set by the operator, not by the site
@@ -445,7 +445,7 @@ Turn the operator's own `telemetry` off when running virtual hosts. The platform
 virtualhost "shop.example.com": telemetry path "/debug/oida" is the path the server mounts its own dashboard on
 ```
 
-The check only fires for a path the site's file names itself. A site that names none is not asking for one and is left alone, so turning the operator's block off is what makes the site dashboards reachable.
+The check only fires for a path the site's file names itself. A site that names none is left alone, so turning the operator's block off is what makes the site dashboards reachable.
 
 Two sites running `driver: disk` may not share a `storage_path`, or their traces would land in one store.
 
@@ -453,13 +453,13 @@ Two sites running `driver: disk` may not share a `storage_path`, or their traces
 
 A site's connections are built from its own `env`, and the provider holding them sees nothing else, so a site can open the connections its own file names and no others. `new Database("shop")` on a site that did not configure `shop` fails with `no configuration found for database: [shop]`.
 
-`env` is a list, and the overlay replaces a list wholesale rather than appending to it. A site that declares an `env` of its own therefore gets only its own connections, while a site that declares none inherits every connection the operator configured. The shipped `config/config.yml` carries one `PLATFORM_DB_*` entry, so setting `env: []` in the operator's file is the way to run virtual hosts with no shared connections.
+`env` is a list, and the overlay replaces a list wholesale. A site that declares an `env` of its own therefore gets only its own connections, while a site that declares none inherits every connection the operator configured. The shipped `config/config.yml` carries one `PLATFORM_DB_*` entry, so setting `env: []` in the operator's file is the way to run virtual hosts with no shared connections.
 
 ### Mail servers per site
 
 A site's mail servers are the ones its own `mail` block names, and a provider holds only those, so a site can name the servers its file configured and no others. `new Mail("marketing")` on a site that did not configure `marketing` fails with `no configuration found for mail server: marketing`.
 
-The map replaces rather than merges. A site that declares any server therefore gets only its own, while a site that declares none inherits the operator's:
+The map replaces wholesale. A site that declares any server therefore gets only its own, while a site that declares none inherits the operator's:
 
 ```yaml
 mail:
@@ -470,13 +470,13 @@ mail:
 
 A site writing that has `marketing` and no `default`, even though the operator configured one.
 
-`mail:` with nothing under it means no servers, not the inherited ones. It is the way a site says it sends no mail.
+`mail:` with nothing under it means no servers at all, the inherited ones included. It is the way a site says it sends no mail.
 
 This replacing is why the block is a map. It was a single unnamed server, and a struct merges field by field: a site setting only `host` and `from` kept the operator's `username` and `password` and went on authenticating as the operator.
 
 ### The environment per site
 
-`env` is also what the site's scripts read with `getenv()`, and it is all they read: a site is handed the environment it declared rather than the process environment, so `getenv()` cannot be used to find out what the operator, or another site, was started with.
+`env` is also what the site's scripts read with `getenv()`, and it is all they read: a site reads the environment it declared and not the process environment, so `getenv()` cannot report what the operator, or another site, was started with.
 
 Variables named `PLATFORM_*` are the exception in the other direction. They configure phpscript and the platform it runs on, connection strings included, so they are never visible to a script even when the site declared them itself. A site that lists `PLATFORM_DB_SHOP` gets the connection and reads nothing from `getenv("PLATFORM_DB_SHOP")`.
 
@@ -484,7 +484,7 @@ A single application server, one with no `virtualhost` entries, keeps the proces
 
 ### Startup checks
 
-The whole list is loaded and checked before the server listens, so a broken entry fails startup rather than one request:
+The whole list is loaded and checked before the server listens, so a broken entry fails startup and not one request:
 
 | Check                                                      | Failure |
 |------------------------------------------------------------|---------|
@@ -502,13 +502,13 @@ The whole list is loaded and checked before the server listens, so a broken entr
 
 ### Startup jobs per site
 
-A site's `@startup` jobs are its own. A job that fails is recorded on that site's recorder as a background trace and the server carries on, because the alternative is one site's broken job stopping every other site in the process. The remaining jobs of that site still run: they are independent, and every failure is reported rather than only the first.
+A site's `@startup` jobs are its own. A job that fails is recorded on that site's recorder as a background trace and the server carries on, because the alternative is one site's broken job stopping every other site in the process. The remaining jobs of that site still run: they are independent, and every failure is reported, the first included.
 
 A single application server, one with no `virtualhost` entries, keeps a failing `@startup` fatal. There is no other tenant to protect, and a process that came up with its schema unapplied is worse than one that did not come up.
 
 ## Test suites
 
-`test` configures [`phpscript test`](cli/test.md). It is what a folder of fixtures says about itself, so a suite that needs a bootstrap or a database carries that in a file rather than on every command line that reaches it.
+`test` configures [`phpscript test`](cli/test.md). It is what a folder of fixtures says about itself, so a suite that needs a bootstrap or a database carries that in a file, off every command line that reaches it.
 
 A `phpscript.yml` found in the fixture tree marks a **suite root**: the directory whose fixtures run under it. A fixture resolves the nearest such file at or above its own directory, and the run resolves the nearest one at or above the working directory. A tree holding none behaves as it always did.
 
@@ -521,17 +521,17 @@ A `phpscript.yml` found in the fixture tree marks a **suite root**: the director
 | `cache`          | `worker` | run        | How far a parsed include travels, `--cache`.               |
 | `skip_php`       |  `false` | run        | Leave the `php` binary out of a matrix run, `--skip-php`.  |
 
-The flag wins over the file. A configuration describes a tree and a flag is what an operator typed about this run of it, so `-p 1` over a file asking for four runs one at a time.
+The flag wins over the file. A configuration describes a tree and a flag is what an operator typed about this run of it, so `-p 1` over a file naming four runs one at a time.
 
 ### The suite root
 
 `include` and the hook files resolve against the directory holding the file, which is also the application root the fixtures below it run under. Their own folder still answers first, so a fixture's relative includes keep meaning what they always meant and the suite root answers for what the folder does not hold.
 
-`--include` is the operator's, and speaks from the directory the command was invoked in rather than from a suite. It replaces what any suite named.
+`--include` is the operator's, and speaks from the directory the command was invoked in, not from a suite. It replaces what any suite named.
 
 ### Run keys
 
-`parallel`, `cache` and `skip_php` describe one run of the whole command, so a `phpscript.yml` discovered below the invocation root may not set them. Either is a startup error naming the key rather than a value silently dropped:
+`parallel`, `cache` and `skip_php` describe one run of the whole command, so a `phpscript.yml` discovered below the invocation root may not set them. Either is a startup error naming the key, with no value silently dropped:
 
 ```text
 tests/integration/phpscript.yml: "test.parallel" is set by the run, not by a suite
@@ -569,18 +569,18 @@ A failing `setup` fails the run before a fixture executes. The fixtures below it
 
 Hook output reaches the terminal only under `-v`. Without it a run answers with a folder table, and a schema's log lines in the middle of it are noise.
 
-These are configuration rather than the `@startup` annotation. Annotations are server surface: `@route`, `@startup` and `@schedule` are scanned out of a source tree by `phpscript server` and run per virtual host or per application root depending on how it is configured. A fixture run is neither of those scopes, and a comment in a file that a walk happened to reach is not something a suite can be held to. The two also do different work: a server's `@startup` applies the schema an application boots with, where a suite's `setup` also seeds the rows its fixtures assert against.
+These are configuration keys, separate from the `@startup` annotation. Annotations are server surface: `@route`, `@startup` and `@schedule` are scanned out of a source tree by `phpscript server` and run per virtual host or per application root depending on how it is configured. A fixture run is neither of those scopes, and a comment in a file that a walk happened to reach is not something a suite can be held to. The two also do different work: a server's `@startup` applies the schema an application boots with, where a suite's `setup` also seeds the rows its fixtures assert against.
 
 ### Databases per suite
 
-A suite's `env` builds the connections its fixtures resolve, the same way a virtual host's does. The list replaces rather than extends, so a folder that names its connections gets those and no others:
+A suite's `env` builds the connections its fixtures resolve, the same way a virtual host's does. The list replaces wholesale, so a folder that names its connections gets those and no others:
 
 ```php
 $db = new Database("scaffold");     // the folder configured it
 new Database("sqlite_test");        // no configuration found for database: [sqlite_test]
 ```
 
-A suite that names no `env` of its own resolves what the run does, which for a CLI run is the process environment. A folder that configured no connections is not asking for a set of its own.
+A suite that names no `env` of its own resolves what the run does, which for a CLI run is the process environment. A folder that configured no connections gets no set of its own.
 
 The setup hook and the fixtures below it share one connection pool. Two pools over one DSN are two databases whenever the DSN names no shared file, and a schema applied through the first would not be in the one the fixtures query.
 
@@ -588,4 +588,4 @@ The setup hook and the fixtures below it share one connection pool. Two pools ov
 
 A suite's `mail` block names the servers its fixtures may open, under the same replacing rule, so a fixture cannot name a server its folder did not configure. `tests/fixtures/mail` is the worked example.
 
-Nothing is delivered in a fixture run. Constructing a `Mail` is a name lookup and dials nothing; only `send()` reaches a server, and a fixture run has none. What the block buys a suite is the names, which is what a fixture about resolution needs.
+Nothing is delivered in a fixture run. Constructing a `Mail` is a name lookup and dials nothing; only `send()` reaches a server, and a fixture run has none. What the block buys a suite is the names, which is all a fixture about resolution reads.

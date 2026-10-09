@@ -2,14 +2,14 @@
 
 The posture a phpscript deployment is held to: what a script may reach, what it may not, and which of the two is enforced by code today. Every claim names the file that decides it, so a claim that stops being true is findable. Where a section describes something nothing implements, it says so in the sentence that describes it.
 
-The governing decision, from [issue 139](https://github.com/titpetric/phpscript/issues/139), is that phpscript never manages a raw connection string on a script's behalf. A script names a database connection or a mail server; the credential stays in the host's configuration, no binding reads one back, and no binding reaches another virtual host or another document root. The applications phpscript runs are semi-trusted: a compromised script is the case the boundaries are drawn for, not one that is assumed away. Nothing here is a claim about a compromised host.
+The governing decision, from [issue 139](https://github.com/titpetric/phpscript/issues/139), is that phpscript never manages a raw connection string on a script's behalf. A script names a database connection or a mail server; the credential stays in the host's configuration, no binding reads one back, and no binding reaches another virtual host or another document root. The applications phpscript runs are semi-trusted: the boundaries are drawn for a compromised script. Nothing here is a claim about a compromised host.
 
 ## Creating a virtual host
 
 The order these go in is the order a mistake in them costs the most.
 
-1. **Give the site its own `root`, and nothing above it.** Every filesystem binding, every `include` and the document root are anchored there (`cmd/phpscript/server/vhost.go:180`, `cmd/phpscript/server/run.go:299`). A root that is a parent of another site's root is two sites in one tree.
-2. **Declare `env` in the site's `phpscript.yml`, even when it is empty.** The list replaces rather than appends, so a site that declares none inherits every connection the operator configured, including the one the embedded `config/config.yml` ships. `env: []` is how a site says it has no database.
+1. **Point the site's `root` at its own tree, and no directory above it.** Every filesystem binding, every `include` and the document root are anchored there (`cmd/phpscript/server/vhost.go:180`, `cmd/phpscript/server/run.go:299`). A root that is a parent of another site's root is two sites in one tree.
+2. **Declare `env` in the site's `phpscript.yml`, even when it is empty.** The list replaces wholesale, so a site that declares none inherits every connection the operator configured, including the one the embedded `config/config.yml` ships. `env: []` is how a site says it has no database.
 3. **Declare `mail`, even when it is empty.** Same rule, same reason. `mail: {}` is how a site says it sends nothing.
 4. **Set `env: []` and `telemetry.enabled: false` in the operator's own file.** The first stops the shipped connection reaching a site that declared nothing. The second leaves the platform's dashboard unmounted, because it sits on the root router in front of the host mux and answers on every domain, including one no entry claims.
 5. **Name `writable_paths`.** An empty list, the default, allows every write inside the root. A named list also stops the server executing a `.php` file that lands in one, and stops it scanning annotations there (`cmd/phpscript/server/run.go:136`).
@@ -21,7 +21,7 @@ The order these go in is the order a mistake in them costs the most.
 
 ## Credentials a script cannot spell
 
-A connection and a mail server are both named, never described. Both providers are built per site from that site's own configuration and hold nothing else (`cmd/phpscript/server/vhost.go:158`, `:163`), so a name another site configured does not resolve at all rather than being refused by a check.
+A connection and a mail server are both named, never described. Both providers are built per site from that site's own configuration and hold nothing else (`cmd/phpscript/server/vhost.go:158`, `:163`), so a name another site configured does not resolve at all, with no check to refuse it.
 
 | Surface                           | What a script gets                             | What it cannot get                                                                          |
 |-----------------------------------|------------------------------------------------|---------------------------------------------------------------------------------------------|
@@ -31,15 +31,15 @@ A connection and a mail server are both named, never described. Both providers a
 | `new Mail($name)`, `mail()`       | A delivery, or a failure naming `$name`        | A host, a username or a password. There is no listing call and the object has no properties |
 | `getenv()`                        | The variables the site's `env` declared        | Anything named `PLATFORM_*`, and anything the operator's process carries                    |
 
-`Database::register` is the one place a connection string enters from PHP, and it is a script supplying one it already holds rather than reading one back; the credential goes into the provider that site already resolves through (`stdlib/database/register.go:59`). `Mail` has no counterpart, deliberately: naming what exists is itself a disclosure, and the constructor refuses settings rather than coercing them. [Credentials stay with the host](configuration.md#credentials-stay-with-the-host) is the full account.
+`Database::register` is the one place a connection string enters from PHP, and it is a script supplying one it already holds, with nothing read back; the credential goes into the provider that site already resolves through (`stdlib/database/register.go:59`). `Mail` has no counterpart: naming what exists is itself a disclosure, and the constructor refuses settings, with no coercion. [Credentials stay with the host](configuration.md#credentials-stay-with-the-host) is the full account.
 
 `runner.InfrastructurePrefix` is what keeps connection strings out of `getenv()` (`runner/runtime.go:407`), and it applies to a variable the site declared itself: a site listing `PLATFORM_DB_SHOP` gets the connection and reads nothing back for the name.
 
 ## Service-managed and vhost-managed configuration
 
-Two keys belong to the operator, and a site setting either fails startup rather than having it dropped quietly (`config/virtualhost.go:17`): `server`, because the listen address is the operator's, and `virtualhost`, because a site holds no sites. Everything else in the model is the site's, read from `root/phpscript.yml` over whatever `-f` produced.
+Two keys belong to the operator, and a site setting either fails startup, with nothing dropped quietly (`config/virtualhost.go:17`): `server`, because the listen address is the operator's, and `virtualhost`, because a site holds no sites. Everything else in the model is the site's, read from `root/phpscript.yml` over whatever `-f` produced.
 
-How a key combines decides what a site inherits, and the difference is the part worth knowing:
+How a key combines decides what a site inherits:
 
 | Key                                          | Combining             | A site that declares nothing                      |
 |----------------------------------------------|-----------------------|---------------------------------------------------|
@@ -49,7 +49,7 @@ How a key combines decides what a site inherits, and the difference is the part 
 
 `env` and `mail` replace because a merge was worse. The mail block was once a single unnamed server, and a site setting only `host` and `from` kept the operator's `username` and `password` and went on authenticating as the operator. That is why both are collections keyed by name.
 
-A merged block has the mirror-image property, and it is load-bearing: a site's `runner.writable_paths` replaces the operator's list for that site, so the operator cannot confine a site that declares one. Confining a tenant's writes is the filesystem's job and not the configuration's.
+A merged block has the mirror-image property: a site's `runner.writable_paths` replaces the operator's list for that site, so the operator cannot confine a site that declares one. Confining a tenant's writes is the filesystem's job and not the configuration's.
 
 The startup checks run over the whole list before the server listens, and `phpscript -t` runs them without starting anything. [Startup checks](configuration.md#startup-checks) lists them.
 
@@ -71,13 +71,13 @@ A process started without `--stdlib` installs every binding package `stdlib/impo
 phpscript --stdlib=secure server
 ```
 
-The flag names the binding areas the process installs, and `secure` is every binding confined to the runtime's sandbox. An area it omits is not registered, so its names are undefined rather than refused, through a direct call, a variable function, `call_user_func`, a callable and both engines alike: they all resolve through the one runtime function table. `stdlib.Mount(rt, profile, bindings...)` is the same selection for a host embedding the package.
+The flag names the binding areas the process installs, and `secure` is every binding confined to the runtime's sandbox. An area it omits is not registered, so its names are undefined and nothing refuses them, through a direct call, a variable function, `call_user_func`, a callable and both engines alike: they all resolve through the one runtime function table. `stdlib.Mount(rt, profile, bindings...)` is the same selection for a host embedding the package.
 
 It is one value for the process. An operator decides what the runtime they started may reach, so there is no per-site key: a capability granted in the operator's file for one tenant is a capability the tenant's neighbours can read, and `virtualhost` is already refused in a site's own `phpscript.yml` so a compromised tree cannot grant itself anything.
 
 ## The filesystem boundary
 
-Every path a script names resolves against the root the bindings were bound to, and no spelling escapes it. A path written from `/` names the root itself, which is what `getcwd()`, `realpath()`, `__DIR__` and `__FILE__` all answer with, and a `..` is collapsed against the root rather than climbing out of it (`stdlib/files/files.go:80`, `runner/runner.go:1139`). There is no spelling for a host path:
+Every path a script names resolves against the root the bindings were bound to, and no spelling escapes it. A path written from `/` names the root itself, the spelling `getcwd()`, `realpath()`, `__DIR__` and `__FILE__` all answer with, and a `..` is collapsed against the root with no way out of it (`stdlib/files/files.go:80`, `runner/runner.go:1139`). There is no spelling for a host path:
 
 ```php
 file_get_contents("/etc/hostname");   // false
@@ -85,7 +85,7 @@ file_exists("/etc/hostname");         // false
 scandir("/");                         // the site's own root
 ```
 
-Writes are additionally held to `writable_paths`, and a refused write throws rather than returning `false`. Two properties of that list are not what its name suggests:
+Writes are additionally held to `writable_paths`, and a refused write throws where an operating system refusal returns `false`. Two properties of that list are not what its name suggests:
 
 - **An empty list allows every write inside the root.** It is not deny-by-default. A site that names no `writable_paths` may write anywhere in its own tree.
 - **An absolute entry is accepted and then matches nothing.** `WritableRoots` keeps it verbatim, but the path it is compared against has already been joined onto the root, so the entry can never match and the write throws exactly as it would with no entry at all. There is no way to grant a write outside the root.
@@ -94,7 +94,7 @@ Writes are additionally held to `writable_paths`, and a refused write throws rat
 
 ### Where the root is left behind
 
-Four places reach the host filesystem directly. Two are deliberate and two are defects.
+Four places reach the host filesystem directly. Two are decisions and two are defects.
 
 | Place                                    | Where                               | Status                                                                                                                    |
 |------------------------------------------|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
@@ -105,13 +105,13 @@ Four places reach the host filesystem directly. Two are deliberate and two are d
 
 The two defects have one shape: a binding resolving an absolute path to itself while every other binding resolves it to the root. Both are visible from PHP as a disagreement between bindings, where `file_exists()` answers `false` for a path the host can see a file at.
 
-A deployment that cannot wait for either fix confines the process rather than the script: a read-only bind mount over the tree, and a user whose write permission is the volume and nothing else.
+A deployment that cannot wait for either fix confines the process: a read-only bind mount over the tree, and a user whose only write permission is the volume.
 
 ### Writable storage
 
-A site's writable filesystem is intended to be presented as `/data`, with phpscript mapping that onto a volume the operator mounted. **That mapping does not exist.** There is no `/data`, no key naming one, and no indirection between the path a script writes and the host path it lands on: `root.resolve` joins onto the real root directory, and a site's own `writable_paths` is the only thing between a script and its tree.
+Issue 139 names `/data` as a site's writable filesystem, mapped onto a volume the operator mounted. **That mapping does not exist.** There is no `/data`, no key naming one, and no indirection between the path a script writes and the host path it lands on: `root.resolve` joins onto the real root directory, and a site's own `writable_paths` is the only thing between a script and its tree.
 
-What works today, and what a site should be written against until the mapping exists:
+What works today, and what a site is written against until the mapping exists:
 
 - A sqlite database at an absolute DSN, `sqlite:///srv/data/shop/shop.db`. `resolveSQLiteDSN` leaves an absolute path and a `file:` URI alone and joins only a relative one onto the root (`stdlib/database/dsn.go:15`), so the file sits outside the tree and survives a redeploy.
 - Uploads in a directory the operator bind-mounts over a path inside the root, named in `writable_paths`. The site's PHP writes a relative path and never learns it is a mount.
@@ -124,7 +124,7 @@ The root is also not hidden from the script. `$_SERVER["DOCUMENT_ROOT"]` and `$_
 
 A site is a router of its own, built once before the server listens, and the `Host` header is the only thing that selects between sites. Matching is exact and there is no default site: a `Host` no entry claims gets 404 and reaches no site's code (`cmd/phpscript/server/vhost.go:45`). [What one domain cannot reach on the other](use-cases/virtual-hosting.md#6-what-one-domain-cannot-reach-on-the-other) demonstrates the boundaries a request meets.
 
-What is per site rather than per process:
+What is per site, and not per process:
 
 | Thing                                           | Built at                            |
 |-------------------------------------------------|-------------------------------------|
@@ -138,9 +138,9 @@ What is per site rather than per process:
 
 The two caches are one pair per site, created with the site's file handler and shared between its routed endpoints and its document root so that one precompile pass covers both (`cmd/phpscript/server/precompile.go:13`). No cache is shared across sites.
 
-`SharedMemory` is the exception, and not in the direction its name suggests. No host in this tree binds a store into a runtime context, so `new SharedMemory` hands every caller a fresh empty store that lives as long as the object (`stdlib/core/shared_memory.go:38`). Nothing is shared between sites because nothing is shared at all, which is also why the `SharedMemory` section of `phpinfo()` never prints under `phpscript server`. Collapsing the caches behind a `runtime.Cache` and deciding what a per-site store should be are issue 139's third and fourth items.
+`SharedMemory` is the exception, and not in the direction its name suggests. No host in this tree binds a store into a runtime context, so `new SharedMemory` hands every caller a fresh empty store that lives as long as the object (`stdlib/core/shared_memory.go:38`). Nothing is shared between sites because nothing is shared at all, which is also why the `SharedMemory` section of `phpinfo()` never prints under `phpscript server`. Collapsing the caches behind a `runtime.Cache` and defining a per-site store are issue 139's third and fourth items.
 
-Isolation stops at the process. One site's `exec`, one site's `HTTP\Server` and one site's unbounded memory are the same operating system process as every other site's, and a reload rebuilds every site rather than one, so updating one tenant re-runs every other tenant's `@startup` jobs. Two tenants that must not share a fault domain are two processes.
+Isolation stops at the process. One site's `exec`, one site's `HTTP\Server` and one site's unbounded memory are the same operating system process as every other site's, and a reload rebuilds every site, so updating one tenant re-runs every other tenant's `@startup` jobs. Two tenants that must not share a fault domain are two processes.
 
 ## Not implemented yet
 
@@ -158,7 +158,7 @@ Two shapes the secrets work has to keep when it lands, because the rest of this 
 
 ## The class name on a refused write
 
-A write refused by `writable_paths` throws, and `get_class($e)` on it reports `errorString` - a Go internal type name reaching a script. It is catchable and the message is correct, so a script catching `Exception` is unaffected, but one that discriminates on the class name is matching against a Go identifier. Every error a binding raises rather than constructing as a PHP class answers the same way. It follows from [one type for all throwables](design.md#exceptions-without-a-hierarchy) and is not specific to this path.
+A write refused by `writable_paths` throws, and `get_class($e)` on it reports `errorString` - a Go internal type name reaching a script. It is catchable and the message is correct, so a script catching `Exception` is unaffected, but one that discriminates on the class name is matching against a Go identifier. Every error a binding raises as a Go value, without constructing a PHP class, answers the same way. It follows from [one type for all throwables](design.md#exceptions-without-a-hierarchy) and is not specific to this path.
 
 ## Where to go next
 
