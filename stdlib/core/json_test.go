@@ -66,8 +66,8 @@ func TestJSONEncodeIgnoresFlags(t *testing.T) {
 }
 
 // A JSON_* name is not defined, so it raises before json_encode is called.
-// phpscript lint reports it first, and that is what the warning is for: the
-// argument was never going to do anything.
+// phpscript lint reports it first: the argument was never going to do
+// anything.
 func TestJSONFlagConstantThrows(t *testing.T) {
 	got := runPHP(t, `<?php try { echo json_encode(array(1), JSON_PRETTY_PRINT); } catch (Exception $e) { echo $e->getMessage(); }`)
 	if want := `Undefined constant "JSON_PRETTY_PRINT"`; got != want {

@@ -25,7 +25,7 @@ import (
 // a hand written 404.html starts serving the new one by writing it.
 //
 // The names are not nested. A directory of its own for /api could only add a
-// page, never remove one, so it cannot say "no page here", which is the thing
+// page, never remove one, so it cannot say "no page here", which is the state
 // an API actually wants. That is decided per request instead; see serveErrorPage.
 func errorPageNames(status int) [4]string {
 	code := strconv.Itoa(status)
@@ -51,15 +51,15 @@ func (h *handler) errorPage(status int) (string, bool) {
 // It answers false for anything but a browser navigation. The catch-all this
 // server mounts means an unrouted /api/... request is indistinguishable from an
 // unrouted /article/... one by its path, so the path is not what decides:
-// runner.WantsErrorPage asks the request whether a person or a program is at
-// the other end. A fetch(), an XHR, curl, an <img> and a stylesheet all get the
+// runner.WantsErrorPage reads the request to tell a person from a program at
+// the other end. A fetch(), an XHR, curl, an <img> and a stylesheet all read the
 // plain status they got before this existed, and an API needs no configuration,
 // no prefix and no opt-out to keep them.
 //
 // The page runs once. Its own failure is logged and answered false, so a broken
-// 500.php cannot ask for a 500 page of its own.
+// 500.php cannot dispatch a 500 page of its own.
 //
-// The request body is dropped, because every caller of this reached it through
+// The request body is dropped, because every call site reaches this through
 // a script that had already read the body. serveUnrouted is the entry point for
 // the other case.
 func (h *handler) serveErrorPage(w http.ResponseWriter, r *http.Request, status int, notes string) bool {
@@ -82,7 +82,7 @@ func (h *handler) serveUnrouted(w http.ResponseWriter, r *http.Request, status i
 }
 
 // errorPageFor is the body of both. keepBody says whether the request still has
-// one to give.
+// one to send.
 func (h *handler) errorPageFor(w http.ResponseWriter, r *http.Request, status int, notes string, keepBody bool) bool {
 	if !runner.WantsErrorPage(r) {
 		return false
@@ -133,7 +133,7 @@ func (h *handler) errorPageFor(w http.ResponseWriter, r *http.Request, status in
 }
 
 // serveErrorFile answers with a static error page. http.FileServer is no use
-// for one: it owns the status it writes, and the status is the whole point.
+// for one: it owns the status it writes.
 func (h *handler) serveErrorFile(w http.ResponseWriter, name string, status int) bool {
 	body, err := fs.ReadFile(h.public, name)
 	if err != nil {
@@ -146,12 +146,12 @@ func (h *handler) serveErrorFile(w http.ResponseWriter, name string, status int)
 }
 
 // redirectVars names the error the page is answering for, in the $_SERVER keys
-// Apache fills in for an ErrorDocument. They are Apache's names rather than
+// Apache fills in for an ErrorDocument. They are Apache's names and not
 // names of phpscript's own because a page written against one server should
 // work on the other.
 //
 // r is the original request, not the one the page runs under, so REDIRECT_URL
-// is the path that failed rather than the path of the page.
+// is the path that failed and not the path of the page.
 func redirectVars(request runner.Context, r *http.Request, status int, notes string) {
 	request.Server["REDIRECT_STATUS"] = strconv.Itoa(status)
 	request.Server["REDIRECT_URL"] = r.URL.Path

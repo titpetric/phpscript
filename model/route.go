@@ -57,7 +57,7 @@ func ParseRoutePath(path string) ([]RouteParam, error) {
 		body := path[i+1 : end]
 		i = end
 
-		// {$} is ServeMux's end-of-path terminator, not a parameter. The
+		// {$} is ServeMux's end-of-path terminator and no parameter. The
 		// registrar writes it; an author can too.
 		if body == "$" {
 			continue

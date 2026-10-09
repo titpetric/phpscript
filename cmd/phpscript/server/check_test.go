@@ -48,7 +48,7 @@ func TestCheck(t *testing.T) {
 	})
 
 	// The gap this closes: fs.Sub does not stat, so a single-root server
-	// used to come up and answer 404 on the first request instead.
+	// comes up and answers 404 on the first request without it.
 	t.Run("a missing document root fails", func(t *testing.T) {
 		_, errOut, ok := checkResult(t, "", t.TempDir())
 		if ok {
@@ -123,7 +123,7 @@ func TestCheck(t *testing.T) {
 	})
 
 	// A test block the server never reads still fails -t, because -t is a
-	// question about the file rather than about one command.
+	// question about the file and not about one command.
 	t.Run("a test block the run could not use fails", func(t *testing.T) {
 		filename := writeConfig(t, "test:\n  cache: sometimes\n")
 
@@ -138,7 +138,7 @@ func TestCheck(t *testing.T) {
 
 	// Resolved builds the trace store on disk; Validate must not. A test of
 	// a configuration that created a directory, owned by whoever ran the
-	// test rather than by the service, is a side effect nobody asked for.
+	// test and not by the service, is a side effect with no owner.
 	t.Run("disk telemetry creates no storage", func(t *testing.T) {
 		storage := filepath.Join(t.TempDir(), "traces")
 		root := t.TempDir()

@@ -33,7 +33,7 @@ func precompileSite(t testing.TB) string {
 }
 
 // newPrecompileHandler builds the file handler of that root under an options
-// block that either asked for precompilation or did not.
+// block that either named precompilation or did not.
 func newPrecompileHandler(t testing.TB, root string, on bool) *handler {
 	t.Helper()
 
@@ -168,7 +168,7 @@ func BenchmarkServeEntrypoint(b *testing.B) {
 	// The two flatstack rows are only flatstack numbers if the page compiles to
 	// bytecode. Fallback is per-program and silent, so without this the rows
 	// would report the interpreter's cost under the flatstack name and read as
-	// the two engines performing alike. Fail rather than skip: a page that
+	// the two engines performing alike. Fail and never skip: a page that
 	// stopped compiling is the finding.
 	prog, err := parser.Parse(benchPage)
 	if err != nil {

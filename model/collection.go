@@ -9,10 +9,10 @@ import (
 // just as likely to be a []string, a []map[string]any or a map[string]any:
 // the runtime invokes bindings by reflection and boxes whatever they return.
 //
-// These helpers give every consumer (the runner's foreach and index access, the
-// stdlib's array functions) a single way to walk a collection whatever its
-// concrete type. That is what lets a binding return the cheapest representation
-// of its data rather than paying to build an *Array nobody asked for: an
+// These helpers are one way for every consumer (the runner's foreach and index
+// access, the stdlib's array functions) to walk a collection whatever its
+// concrete type, so a binding returns the cheapest representation of its data
+// and pays nothing to build an *Array with no reader: an
 // *Array costs a struct, a map[any]any and a key slice, plus an interface box
 // per key and per value, where the equivalent []string costs one allocation.
 //
@@ -24,14 +24,14 @@ import (
 //
 // *Array satisfies it, and so does any view a caller builds over data it would
 // rather not copy into one. Everything here that reads a collection accepts it,
-// which is what lets such a view reach count(), foreach and the array bindings.
+// so such a view reaches count(), foreach and the array bindings.
 type Collection interface {
 	Len() int
 	Range(fn func(key, val any) bool)
 }
 
 // Keyed is a Collection whose entries are read, written and removed by name,
-// which is what indexing, isset() and unset() need of one.
+// the operations indexing, isset() and unset() need.
 type Keyed interface {
 	Collection
 
@@ -57,7 +57,7 @@ type Keyed interface {
 //	map             key order is Go's (unordered), keys as declared
 //
 // Anything else, nil included, iterates zero times. PHP's foreach over a
-// non-array warns and continues rather than failing.
+// non-array warns and continues, and fails nothing.
 func RangeValues(v any, fn func(key, val any) bool) {
 	switch x := v.(type) {
 	case nil:
@@ -132,7 +132,7 @@ func LenValues(v any) (int, bool) {
 	case nil:
 		return 0, false
 	case []byte:
-		// Not a collection, so count() applies its scalar rule rather than
+		// Not a collection, so count() applies its scalar rule and not
 		// answering a byte count. See phpval.Bytes.
 		return 0, false
 	case *Array:
@@ -192,13 +192,13 @@ func ToArray(v any) *Array {
 	if arr, ok := v.(*Array); ok && arr != nil {
 		return arr
 	}
-	// A Go slice is already a list: hand its elements straight to a list-mode
-	// Array (one allocation for the copy) instead of paying a Set per element.
+	// A Go slice is already a list: its elements go straight into a list-mode
+	// Array (one allocation for the copy) and pays no Set per element.
 	if items, ok := v.([]any); ok {
 		out := NewArraySize(len(items))
 		out.list = append(out.list, items...)
 		// An empty slice held no integer key, so it keeps the sentinel
-		// NewArraySize gave it rather than claiming a next index of 0.
+		// NewArraySize set, and claims no next index of 0.
 		if len(items) > 0 {
 			out.nextID = int64(len(items))
 		}

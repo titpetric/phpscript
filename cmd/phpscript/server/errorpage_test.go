@@ -14,7 +14,7 @@ import (
 
 // browserAccept is what Chrome sends when someone follows a link. It is the one
 // request shape a site's error page exists for, and the tests below use it
-// verbatim rather than a tidied up "text/html" so the parser is held to a real
+// verbatim and not a tidied up "text/html", so the parser is held to a real
 // header and not to an easy one.
 const browserAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 
@@ -96,7 +96,7 @@ func TestErrorPageAnswersBrowserNavigationOnly(t *testing.T) {
 			body:    "404 page not found\n",
 		},
 		{
-			// The case Accept alone gets wrong: an XHR that asks for HTML
+			// The case Accept alone gets wrong: an XHR that names HTML
 			// because it means to put it in the page itself.
 			name:    "xhr asking for html",
 			headers: map[string]string{"Accept": browserAccept, "Sec-Fetch-Dest": "empty"},
@@ -143,7 +143,7 @@ func TestErrorPageAnswersBrowserNavigationOnly(t *testing.T) {
 }
 
 // TestErrorPageLeavesAnAnsweredResponseAlone pins the opt-out an API needs and
-// the reason it needs no prefix: an endpoint that said what its answer is keeps
+// so it needs no prefix: an endpoint that declared what it answers with keeps
 // it. A payload is one way of saying so and a Content-Type is the other, and
 // either works for a file under the document root or a routed endpoint, on any
 // path, without the server being told which paths are the API.
@@ -191,7 +191,7 @@ func TestErrorPageLeavesAnAnsweredResponseAlone(t *testing.T) {
 	}
 }
 
-// TestUncaughtExceptionCodeBecomesTheStatus pins the mapping issue #49 asked
+// TestUncaughtExceptionCodeBecomesTheStatus pins the mapping issue #49 named
 // for, and its limit. A code in the 4xx and 5xx range is an HTTP status and
 // picks the page named after it; any other code is the script's own numbering
 // and the request simply failed.
@@ -212,8 +212,8 @@ func TestUncaughtExceptionCodeBecomesTheStatus(t *testing.T) {
 
 // TestErrorResponseDoesNotCarryTheFailure pins that what went wrong stays in
 // the log and on the trace. A message written into the body is a description of
-// the site's internals handed to whoever asked for it, and a client that gets
-// no page gets the status and nothing else.
+// the site's internals sent to whoever requested it, and a client that gets
+// no page gets the status alone.
 func TestErrorResponseDoesNotCarryTheFailure(t *testing.T) {
 	h := newErrorPageHandler(t, errorPageFS)
 
@@ -226,9 +226,9 @@ func TestErrorResponseDoesNotCarryTheFailure(t *testing.T) {
 	}
 }
 
-// TestErrorPageRunsOnce pins that a broken error page cannot ask for one of its
+// TestErrorPageRunsOnce pins that a broken error page cannot dispatch one of its
 // own. A 500.php that throws is logged and the request falls back to the plain
-// status, rather than dispatching a second 500.php behind it.
+// status, and dispatches no second 500.php behind it.
 func TestErrorPageRunsOnce(t *testing.T) {
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/broken.php": {Data: []byte(`<?php throw new Exception("connection refused", 0);`)},
@@ -309,7 +309,7 @@ func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
 
 // TestErrorPageSeesTheRequestItAnswersFor pins the $_SERVER keys a page is
 // given. They are Apache's ErrorDocument names, so a page written against
-// Apache works here, and they describe the request that failed rather than the
+// Apache works here, and they describe the request that failed and not the
 // page that is answering for it.
 func TestErrorPageSeesTheRequestItAnswersFor(t *testing.T) {
 	h := newErrorPageHandler(t, fstest.MapFS{
@@ -350,7 +350,7 @@ func TestErrorPageMayChooseItsOwnStatus(t *testing.T) {
 // TestErrorPageInAWritableDirectoryIsNotRun pins that an error page is held to
 // the same rule as any other .php below the document root: a directory a
 // visitor can put files in is not a directory to run code from, and a 404.php
-// that arrived by upload is served as bytes rather than executed. Here the
+// that arrived by upload is served as bytes and never executed. Here the
 // whole document root is writable, so the page never runs at all.
 func TestErrorPageInAWritableDirectoryIsNotRun(t *testing.T) {
 	h, err := newHandler(
@@ -407,7 +407,7 @@ echo $_SERVER["REQUEST_METHOD"], "|",
 
 // TestUnroutedPageMayAnswerOK covers the dispatcher shape end to end: the page
 // reads the failed path, includes the file it routes to, and answers 200. A
-// site whose 404.php is its router never wants the status it was called for.
+// site whose 404.php is its router never keeps the status it was called for.
 func TestUnroutedPageMayAnswerOK(t *testing.T) {
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"routes/article.php": {Data: []byte(`<?php echo "article ", $_POST["id"];`)},
@@ -430,8 +430,8 @@ echo "no route";`)},
 }
 
 // TestFailedScriptErrorPageHasNoBody pins the other half of the split. By the
-// time a failing script asks for an error page it has read the body itself, so
-// there is nothing left to hand on and the page is told so rather than being
+// time a failing script reaches an error page it has read the body itself, so
+// there is nothing left to pass on, and the page is told so and never left
 // given a payload it cannot read.
 func TestFailedScriptErrorPageHasNoBody(t *testing.T) {
 	h := newErrorPageHandler(t, fstest.MapFS{

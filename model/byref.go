@@ -2,7 +2,7 @@ package model
 
 // byRefArgs lists, per builtin, the argument positions PHP passes by reference.
 // They are output parameters: the binding receives a setter that writes the
-// caller's variable instead of a value. The positions are PHP's, counted from
+// caller's variable in place of a value. The positions are PHP's, counted from
 // zero: preg_match_all($pattern, $subject, &$matches) and
 // preg_replace_callback($pattern, $callback, $subject, $limit, &$count).
 var byRefArgs = map[string]map[int]bool{

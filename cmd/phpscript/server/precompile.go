@@ -9,7 +9,7 @@ import (
 
 // sharedCaches puts a site's annotated files on the caches its file handler
 // serves from. The routed endpoints and the document root read one source
-// tree, so one precompile pass covers both instead of each parsing it again.
+// tree, so one precompile pass covers both and neither parses it again.
 func sharedCaches(files *handler, options []annotations.Option) []annotations.Option {
 	return append(options[:len(options):len(options)],
 		annotations.WithIncludeCache(files.includeCache),
@@ -18,7 +18,7 @@ func sharedCaches(files *handler, options []annotations.Option) []annotations.Op
 }
 
 // precompile parses a site's tree into its caches before the site serves a
-// request, when runner.precompile asked for it. A site that did not is left
+// request, when runner.precompile named it. A site that did not is left
 // lazy: it parses a file the first time a request reaches it.
 //
 // Startup is not where a source error is reported. A file that does not parse

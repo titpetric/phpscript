@@ -18,7 +18,7 @@ import (
 // titpetric/exp/cmd/indexer, whose layout this borrows, loads bootstrap from a
 // CDN for the same page. A directory listing that fetches a third party asset
 // tells that third party what is being browsed, and renders unstyled on a
-// machine with no route out, so this one asks for nothing. There is nowhere to
+// machine with no route out, so this one fetches nothing. There is nowhere to
 // serve a separate asset from either: the document root belongs to the site.
 const autoindexStyle = `
 body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; color: #222; }
@@ -34,7 +34,7 @@ a:hover { text-decoration: underline; }
 .thumbs img { width: 100%; height: 9rem; object-fit: contain; background: #f4f4f4; border-radius: 3px; }
 `
 
-// imageExtensions are the files a listing shows instead of naming. The set is
+// imageExtensions are the files a listing renders in place of naming. The set is
 // what a browser renders on its own; anything else is a download.
 var imageExtensions = map[string]bool{
 	".avif": true,
@@ -48,8 +48,8 @@ var imageExtensions = map[string]bool{
 
 // serveAutoindex answers a directory with a listing of what is in it, and
 // reports whether it did. A site that did not turn autoindex on gets a false
-// answer and its 404, which is what a directory without an index page means
-// when nobody asked for listings.
+// answer and its 404, the state of a directory without an index page
+// when listings are off.
 //
 // dir names the directory relative to the document root, "." for the root
 // itself. The request's own path is what the entries are linked relative to, so
@@ -77,7 +77,7 @@ func (h *handler) serveAutoindex(w http.ResponseWriter, r *http.Request, dir str
 // path the directory was requested under, which every link is relative to, and
 // entries are what fs.ReadDir returned: already sorted by name.
 //
-// The page is built here rather than with html/template. A listing is a fixed
+// The page is built here and not with html/template. A listing is a fixed
 // shape with no user supplied markup in it, so a template buys nothing but a
 // parse and a reflect walk per request; the escaping it would do is done by
 // escapeEntry, at the only two places a name reaches the page.
@@ -88,7 +88,7 @@ func renderAutoindex(urlPath string, entries []fs.DirEntry) []byte {
 	var images, dirs, files []fs.DirEntry
 	for _, entry := range entries {
 		switch {
-		// A listing is what a site publishes on purpose, and a dotfile below
+		// A listing is what a site chose to publish, and a dotfile below
 		// the document root is at best noise and at worst an .htaccess or an
 		// editor's backup of a script. It is left out of the page; a request
 		// that names one is still answered.
@@ -157,7 +157,7 @@ func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 // escapeEntry returns the entry's name as text in the page and as the target of
 // a link to it, both escaped for where they go. A directory is named and linked
 // with a trailing slash, so following it lands on that directory's own listing
-// rather than on the redirect to it.
+// and not on the redirect to it.
 //
 // The two escapings are different and both are needed: URL escaping keeps a
 // name holding a space or a "?" addressable, and HTML escaping keeps one

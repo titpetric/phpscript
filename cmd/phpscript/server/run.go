@@ -91,7 +91,7 @@ type handler struct {
 
 	// coverage counts the statements every request runs, folded in per request
 	// so nothing keyed by an AST node outlives the program it was parsed from.
-	// Nil is off, which is what a server started without --cover carries.
+	// Nil is off, as a server started without --cover carries.
 	coverage *coverage.Aggregator
 
 	// autoindex answers a directory with no index page with a listing of
@@ -167,8 +167,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// A directory is answered by its index page. One with no index page is a
-	// 404 rather than a listing of the files below it, unless the site turned
-	// autoindex on and asked for exactly that.
+	// 404 and no listing of the files below it, unless the site turned
+	// autoindex on and named exactly that.
 	if info.IsDir() {
 		// A directory named without its trailing slash is redirected first, so
 		// the relative links in the page that answers resolve below it and not
@@ -200,7 +200,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// A .php file in a writable directory is served, never run.
 	}
 
-	// The name is served rather than the URL path, because a directory's index
+	// The name is served and not the URL path, because a directory's index
 	// page is a file the request did not name.
 	http.ServeFileFS(w, r, h.public, filename)
 }
@@ -231,21 +231,21 @@ func redirectToDirectory(w http.ResponseWriter, r *http.Request) {
 
 // serverVars adds the $_SERVER entries only the server knows: where the site
 // lives on disk and which script the request resolved to. runner.Context fills
-// everything derivable from the request itself and deliberately leaves these
+// everything derivable from the request itself and leaves these
 // out, because it has no document root and no resolved script.
 //
 // SERVER_NAME and SERVER_PORT come from the address the listener is bound to in
 // real PHP, not from the Host header, which is client supplied. This server
 // routes by Host, so the name a request arrived under is the site it reached,
-// and that is what SERVER_NAME reports; the port is the one the URL carried,
-// left unset when it carried none rather than guessed at.
+// which SERVER_NAME reports; the port is the one the URL carried,
+// left unset when it carried none.
 //
 // filename is relative to the application root, as LoadFile takes it.
 func (h *handler) serverVars(request runner.Context, r *http.Request, filename string) {
 	request.Server["DOCUMENT_ROOT"] = path.Join(h.rootDir, h.documentRoot)
 	request.Server["SERVER_SOFTWARE"] = "phpscript"
 
-	// The script path as a URL, which is the entrypoint with the document
+	// The script path as a URL: the entrypoint with the document
 	// root taken off the front: public/index.php is /index.php to a script.
 	script := "/" + strings.TrimPrefix(filename, h.documentRoot+"/")
 	request.Server["SCRIPT_NAME"] = script
@@ -266,8 +266,8 @@ func (h *handler) serverVars(request runner.Context, r *http.Request, filename s
 // produced: the request context holding the headers and status the script
 // staged, the body it buffered, and whatever it ended with.
 //
-// Nothing reaches w. The caller is what decides the response, which is what
-// lets an error be answered with the site's own page rather than with the
+// Nothing reaches w. The caller decides the response, so an error can be
+// answered with the site's own page and not with the
 // error's own words. vars, when set, adds $_SERVER entries the entrypoint needs
 // beyond the ones the request and the site answer for.
 func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, vars func(runner.Context)) (runner.Context, []byte, error) {
@@ -357,9 +357,9 @@ func (h *handler) servePHP(w http.ResponseWriter, r *http.Request, filename stri
 // serveStatus answers with the status and its standard text, and no more.
 //
 // What actually went wrong is in the log line and on the request trace, both
-// addressed by the same request id. It used to be in the response body as well,
+// addressed by the same request id. The response body carries none of it,
 // where it is a description of the site's own internals handed to whoever
-// asked for it.
+// named it.
 func serveStatus(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
 }
@@ -391,7 +391,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 
 	manager := platform.NewManager(options)
 
-	// One aggregator for the process: a reload replaces the sites, not the
+	// One aggregator for the process: a reload replaces the sites and leaves the
 	// measurement of what this process ran.
 	var cover *coverageModule
 	if globals.Covering() {
@@ -411,7 +411,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 	}
 
 	// A reload discards the platform value registration was made against,
-	// so all of it belongs here rather than in Run.
+	// so all of it belongs here and not in Run.
 	manager.Setup = func(svc *platform.Platform) error {
 		appConfig, err := reloadConfig(started, globals)
 		if err != nil {
@@ -499,8 +499,8 @@ func warnFrozen(log platform.Logger, started, reloaded config.Config) {
 
 // registerSite wires the single tenant server: one application root, its
 // modules mounted straight onto the platform router. The route modules stay on
-// that router rather than a nested one so the platform keeps seeing the pattern
-// a request matched, which is what its traces are labelled with.
+// that router and not a nested one, so the platform keeps seeing the pattern
+// a request matched, the label its traces carry.
 func registerSite(svc *platform.Platform, appConfig config.Config, observers []runner.Observer, root string, globals *flags.Options, cover *coverageModule) error {
 	documentRoot := documentRoot(appConfig)
 
@@ -541,7 +541,7 @@ func registerSite(svc *platform.Platform, appConfig config.Config, observers []r
 	svc.Register(annotations.NewScheduler(os.DirFS(root), annotationOptions...))
 
 	// The routed endpoints are handed the file handler's error pages: they live
-	// under the site's document root, which is the file handler's to look in.
+	// under the site's document root, the directory the file handler looks in.
 	if appConfig.Routes.Enabled {
 		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
 		options = append(options, annotations.WithErrorPages(files.serveErrorPage))
