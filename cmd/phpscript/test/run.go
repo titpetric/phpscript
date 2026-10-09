@@ -73,14 +73,14 @@ func (o Options) given(name string) bool {
 }
 
 // coverReport reports whether the cover mode owns stdout with a per-symbol
-// report, which is what suppresses the fixture tables.
+// report, and that is what suppresses the fixture tables.
 func (o Options) coverReport() bool {
 	return o.Cover == CoverFunc || o.Cover == CoverFile
 }
 
 // runners answers the matrix columns this invocation covers: every backend,
 // minus php when --skip-php dropped the external binary from the run. The
-// column leaves the table entirely rather than reporting SKIP per row - a
+// column leaves the table entirely, with no SKIP per row: a
 // skipped column says the machine has no php, this flag says do not ask.
 func (o Options) runners() []tests.Runner {
 	if !o.SkipPHP {
@@ -171,8 +171,8 @@ type fixtureMetrics struct {
 }
 
 // fixtureRun aggregates the outcome of one fixture over one or more runs.
-// DisplayPath is the full path, which is what a failure line and the JSON
-// report name; Label is the basename, which is what a per-folder table shows.
+// DisplayPath is the full path, which a failure line and the JSON report name;
+// Label is the basename, which a per-folder table shows.
 type fixtureRun struct {
 	Result      *tests.TestResult
 	DisplayPath string
@@ -202,7 +202,7 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts
 
 	// MemStats only when something reports it. ReadMemStats stops the world,
 	// and this runs once per fixture per runner - 1368 pauses over a 342-file
-	// matrix - for two numbers nothing prints unless --profile asked for them.
+	// matrix: for two numbers nothing prints unless --profile was passed.
 	// The GC count comes from runtime/metrics either way, which does not stop
 	// anything, so the column stays.
 	var before, after runtime.MemStats
@@ -236,7 +236,7 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts
 		runtime.ReadMemStats(&after)
 		// Per op, not per fixture: --count and --time run the fixture N times
 		// inside the one pair of readings, so the totals are divided by the
-		// runs rather than sampled per iteration.
+		// runs and never sampled per iteration.
 		n := uint64(out.Runs)
 		out.AllocsPerOp = (after.Mallocs - before.Mallocs) / n
 		out.BytesPerOp = (after.TotalAlloc - before.TotalAlloc) / n
@@ -281,7 +281,7 @@ func runFixtureSamples(ctx context.Context, fx *tests.Fixture, r tests.Runner, o
 	return runs
 }
 
-// Run executes .phpt test fixtures matching the provided paths or patterns.
+// Run executes .phpt test fixtures matching the paths or patterns given.
 func Run(ctx context.Context, args []string, opts Options) error {
 	paths := args
 	if len(paths) == 0 {
@@ -351,7 +351,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 
 	// An empty selection is a mis-scoped invocation, not a passing run: a
 	// pipeline that points the runner at the wrong directory should fail
-	// rather than report success over nothing.
+	// and never reports success over nothing.
 	if len(fixtures) == 0 {
 		// The empty report still goes out, the way a failing run's does at the
 		// end of this function: a consumer reading stdout gets well-formed JSON
@@ -494,7 +494,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	}
 
 	// Coverage is measured once every fixture has run, so the per-folder
-	// reading is assembled here rather than as each folder closed.
+	// reading is assembled here and not as each folder closed.
 	var covers []folderCover
 	if opts.Cover != "" && !opts.JSON && !opts.coverReport() {
 		covers = folderCoverage(groups)
@@ -502,7 +502,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 
 	// The folder summary is what a run answers with when the fixture tables are
 	// not being printed: one row per folder resolved from the arguments,
-	// instead of one table per fixture.
+	// in place of one table per fixture.
 	if !opts.JSON && !opts.coverReport() && !opts.Verbose {
 		for i := range covers {
 			folders[i].cover = &covers[i]
@@ -565,7 +565,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 
 // gcCycles returns the number of completed GC cycles.
 //
-// runtime/metrics rather than runtime.MemStats: NumGC is only reachable through
+// runtime/metrics and not runtime.MemStats: NumGC is only reachable through
 // ReadMemStats, which stops the world, and this is read twice per fixture per
 // runner. The metrics reader takes a lock and copies a counter.
 func gcCycles() uint64 {
@@ -585,13 +585,13 @@ func gcCycles() uint64 {
 // whole run. Sharing them across workers on top of that only adds contention
 // for a hit the worker's own cache already has.
 const (
-	// CacheOff gives every fixture run its own caches and drops the runtime
+	// CacheOff builds caches per fixture run and drops the runtime
 	// after it. Nothing one run parsed is visible to the next, so a run is
 	// charged the parsing its own includes cost - and what it held is returned
-	// when it ends rather than kept for the length of the suite.
+	// when it ends, with nothing kept for the length of the suite.
 	CacheOff = "off"
-	// CacheWorker gives each worker one set, reused by the fixtures that
-	// worker runs serially. What is held scales with --parallel rather than
+	// CacheWorker keeps one set per worker, reused by the fixtures that
+	// worker runs serially. What is held scales with --parallel and not
 	// with the number of fixtures.
 	CacheWorker = "worker"
 )
