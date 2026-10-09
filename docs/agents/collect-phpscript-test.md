@@ -101,7 +101,7 @@ Which fields appear depends on which flags were given:
 
 `--json` is nanoseconds. The printed table is microseconds, which is what the contract's latency shape reports, to one decimal. Converting one into the other by hand is where a factor of a thousand gets published.
 
-`duration_ns` is the sample window, not a per-run duration. It is roughly whatever `--time` asked for. The per-run numbers are the percentiles, which is why `--time` reports them at all.
+`duration_ns` is the sample window, not a per-run duration. It is roughly whatever `--time` asked for. The per-run numbers are the percentiles, so `--time` reports them at all.
 
 `gc_runs` prints as `N (M%)` in the table, where M is the collector's share of that row's fixture execution count. A row whose GC share differs between before and after is not comparable and is re-measured, per the contract.
 

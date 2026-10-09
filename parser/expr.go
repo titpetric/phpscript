@@ -208,7 +208,7 @@ func (p *parser) parseUnary() (model.Expr, error) {
 
 // parseInstanceOf parses `expr instanceof Class`. PHP binds it tighter than
 // `!`, so `!$e instanceof Foo` negates the test rather than testing the
-// negation, which is why it sits below parseUnary. A bare class name on the
+// negation, so it sits below parseUnary. A bare class name on the
 // right is qualified, the same resolution `new` and a static call get, so a
 // `use` alias and an unqualified name inside a namespace reach the runtime
 // fully qualified. Any other operand - a variable, a parenthesized
@@ -237,7 +237,7 @@ func (p *parser) parseInstanceOf() (model.Expr, error) {
 
 // parsePow parses `base ** exponent`. PHP's `**` binds tighter than unary
 // minus (`-2 ** 2` is -4) and is right-associative with a unary-capable
-// exponent (`2 ** -1`, `2 ** 3 ** 2`), which is why it sits between
+// exponent (`2 ** -1`, `2 ** 3 ** 2`), so it sits between
 // parseUnary and parsePostfix rather than in the binPrec table.
 func (p *parser) parsePow() (model.Expr, error) {
 	base, err := p.parsePostfix()

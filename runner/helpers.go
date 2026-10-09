@@ -895,7 +895,7 @@ func methodCallError(err error, method string) error {
 // whatever error reached it: an Exception a script threw, an error a binding
 // returned, or a panic converted at the host boundary. All of them answer the
 // method set a script expects on a caught value. A method the concrete Go type
-// defines wins, which is how *stdlib.Exception reports its own code.
+// defines wins, so *stdlib.Exception reports its own code.
 func throwableMethod(base any, method string) (any, bool) {
 	err, ok := base.(error)
 	if !ok {

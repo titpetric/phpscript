@@ -19,13 +19,13 @@ import (
 // script that can should.
 func registerStreamReads(rt *runner.Runtime) {
 	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, and so does
-	// Go's io package, which is why the argument is passed through as it
+	// Go's io package, so the argument is passed through as it
 	// arrives rather than translated.
 	rt.SetConst("SEEK_SET", int64(io.SeekStart))
 	rt.SetConst("SEEK_CUR", int64(io.SeekCurrent))
 	rt.SetConst("SEEK_END", int64(io.SeekEnd))
 
-	// fread reads at most $length bytes from $stream and returns them, or false when the handle cannot be read; a read at the end of the handle returns the empty string, which is how a loop knows to stop.
+	// fread reads at most $length bytes from $stream and returns them, or false when the handle cannot be read; a read at the end of the handle returns the empty string, so a loop knows to stop.
 	rt.RegisterFunc("fread", func(stream io.Reader, length int64) any {
 		if stream == nil || length <= 0 {
 			return false

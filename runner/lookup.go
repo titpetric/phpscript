@@ -274,7 +274,7 @@ func (rt *Runtime) scanTree() {
 //
 // The two passes are ordered rather than merged, so a tree holding both
 // `main` and `App\Handler\main` answers the first for "main" and needs no
-// disambiguation. Both compare case-insensitively, which is how PHP compares a
+// disambiguation. Both compare case-insensitively, so PHP compares a
 // function name.
 func matchSymbols(names []string, symName string) []string {
 	var exact []string

@@ -78,7 +78,7 @@ const (
 	opCompactInit
 	// opCompactEntry writes one name into the map on top of the stack, which
 	// it leaves there: a is the local's slot and name is the key. A slot
-	// holding nothing is skipped, which is how compact() omits a name that is
+	// holding nothing is skipped, so compact() omits a name that is
 	// not set; a slot holding null is not, because null is a value.
 	opCompactEntry
 	// opCompactDynamic is opCompactEntry for a name the compiler could not

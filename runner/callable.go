@@ -250,7 +250,7 @@ func (rt *Runtime) asStaticCallable(spelled, className, method string) (*Callabl
 //
 // It is the re-entry a host callback needs. The declaration is AST, so it runs
 // on whichever runtime the caller has; what it does not get is the scope the
-// closure was written in, which is why Captures has to be false for the result
+// closure was written in, so Captures has to be false for the result
 // to mean anything. A fresh statics bag per call is the other half of that: two
 // goroutines running the same declaration are two calls, not one function
 // accumulating.

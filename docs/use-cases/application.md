@@ -253,7 +253,7 @@ Write the suite so it can run twice. Rather than assume which row ids exist, eac
         url: "{{.host}}/bookmarks/{{.added}}/delete"
 ```
 
-A named capture group in `extracts` becomes a variable for the steps that follow, which is how the suite cleans up after itself and stays independent of what a previous run left behind.
+A named capture group in `extracts` becomes a variable for the steps that follow, so the suite cleans up after itself and stays independent of what a previous run left behind.
 
 Unit-level behaviour that does not need a server belongs in a `.phpt` fixture instead; see [Testing](../testing.md).
 

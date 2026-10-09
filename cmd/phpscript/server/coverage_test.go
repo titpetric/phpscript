@@ -69,7 +69,7 @@ func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
 	}
 }
 
-// TestCoverageModuleServe covers the endpoint, which is how a test flow reads
+// TestCoverageModuleServe covers the endpoint, so a test flow reads
 // coverage off a server it is not going to shut down.
 func TestCoverageModuleServe(t *testing.T) {
 	module := coveredServer(t, 1, "")

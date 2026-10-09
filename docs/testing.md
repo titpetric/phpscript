@@ -8,7 +8,7 @@ go test ./...
 
 A change to language or runtime behavior lands with a `.phpt` fixture. Use a Go test in the package that owns the behavior when the assertion needs direct access to Go APIs, parser models, runtime state, concurrency, or error types, and add the fixture as well: a Go test proves the Go code does what its author meant, a fixture proves a script sees it.
 
-A Go test file is named after the file it covers: `dispatch_test.go` beside `dispatch.go`, which is what `splint`'s `pairing` linter reads, and two test files covering one source are one test file. A suite that reaches the package only through its public API and names no file of it - a behaviour table over the engine, a benchmark arrangement, a regression per issue - goes under [`tests/`](../tests) in a folder of its own: `tests/runner`, `tests/flatstack`, `tests/model`, `tests/github`. Nothing there is named after a source file, which is why the linter excuses the directory.
+A Go test file is named after the file it covers: `dispatch_test.go` beside `dispatch.go`, which is what `splint`'s `pairing` linter reads, and two test files covering one source are one test file. A suite that reaches the package only through its public API and names no file of it - a behaviour table over the engine, a benchmark arrangement, a regression per issue - goes under [`tests/`](../tests) in a folder of its own: `tests/runner`, `tests/flatstack`, `tests/model`, `tests/github`. Nothing there is named after a source file, so the linter excuses the directory.
 
 A fixture does two jobs, and both are required of it:
 
@@ -242,7 +242,7 @@ The body is an ordinary php file, and two things follow from that.
 
 Every runtime reads it from where it lies, the php column included, so `__FILE__` and `__DIR__` compile to a path all three agree on. A `.phpt` body is a section of a document, and the php column runs a throwaway copy under a name nothing else sees, so a fixture reading either constant cannot assert the file name.
 
-It also runs by hand. `php tests/fixtures/paths/api/magic_scope_test.php` executes the body, which is how the `.txt` is written:
+It also runs by hand. `php tests/fixtures/paths/api/magic_scope_test.php` executes the body, so the `.txt` is written:
 
 ```sh
 cd tests/fixtures/paths/api && php magic_scope_test.php > magic_scope_test.txt

@@ -48,7 +48,7 @@ It is one value for the process, not one per virtual host. An operator decides w
 
 ## Instead of a command
 
-These two run on their own and exit. They are not flags a command accepts, so they are read before a command name; after one they belong to that command, which is why `phpscript test -t 10s` is still the test command's `--time`.
+These two run on their own and exit. They are not flags a command accepts, so they are read before a command name; after one they belong to that command, so `phpscript test -t 10s` is still the test command's `--time`.
 
 | Flag                 | What it does                                                                                                     |
 |----------------------|------------------------------------------------------------------------------------------------------------------|

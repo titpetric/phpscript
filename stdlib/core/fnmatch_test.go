@@ -51,7 +51,7 @@ func TestFnmatch(t *testing.T) {
 		{"[a-c-e]", "-", 0, true},
 		{"[a-c-e]", "d", 0, false},
 
-		// An unterminated '[' is a literal, which is why the first of
+		// An unterminated '[' is a literal, so the first of
 		// these fails: the pattern then wants the four bytes "[abc".
 		{"[abc", "[", 0, false},
 		{"[abc", "a", 0, false},
@@ -93,7 +93,7 @@ func TestFnmatch(t *testing.T) {
 	}
 }
 
-// TestFnmatchDefaultFlags checks the two-argument form, which is how every
+// TestFnmatchDefaultFlags checks the two-argument form, so every
 // script calls it: the variadic slot is empty and the mode is zero.
 func TestFnmatchDefaultFlags(t *testing.T) {
 	if !phpFnmatch("post_*", "post_id") {

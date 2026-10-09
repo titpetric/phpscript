@@ -190,7 +190,7 @@ Flat bytecode uses the runner's existing host bridge, including:
 
 The VM binds a frame handle (`engine.FrameLocals`) to the host once per run instead of copying its locals into a map around every call. The host decides when a callee needs the scope: a function-table hit whose signature does not take a `context.Context` is invoked with no scope at all, which is the interpreter's own contract for the same binding; context bindings and the undefined-function path materialise a scope from `Snapshot` before the callee body runs and write it back after. That snapshot-before-call ordering is what the by-reference marks rely on and is pinned by the engine's `vm_test`.
 
-`Snapshot` is the frame's named variables, which is what `compact()`, `extract()` and `get_defined_vars()` read. It is not the call's arguments, which is why `func_get_args()` is refused at compile time rather than answered from it.
+`Snapshot` is the frame's named variables, which is what `compact()`, `extract()` and `get_defined_vars()` read. It is not the call's arguments, so `func_get_args()` is refused at compile time rather than answered from it.
 
 A host's own variables are the other half of the same split. `Run` asks an optional `Globals() map[string]any` for them and seeds them into the top-level frame, the way `runInterpreted` seeds its global scope before executing a file, so a function and a closure reach a global exactly as far as they do in the interpreter: not at all. `Host.Lookup` answers the superglobals and the constant table, which every frame does see. Answering a global from `Lookup` instead handed `$argv` to every frame in the program.
 

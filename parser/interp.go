@@ -128,7 +128,7 @@ func scanInterp(src string, start int, line int) (parts []interpPart, end int, i
 }
 
 // scanSimple reads the simple-syntax expression starting at the `$` under
-// src[i]. It reports ok=false when the `$` does not begin one, which is how a
+// src[i]. It reports ok=false when the `$` does not begin one, so a
 // lone dollar such as `"$ 5"` stays literal text, as it does in PHP.
 func scanSimple(src string, i int, line int) (part interpPart, end int, ok bool, err error) {
 	if i+1 >= len(src) {

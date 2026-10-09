@@ -177,7 +177,7 @@ func phpRawURLEncode(str string) string { return urlEncode(str, false) }
 // urlEncode percent-escapes str. In form mode a space becomes '+', matching
 // urlencode(); otherwise every escaped byte becomes '%XX', matching
 // rawurlencode(). Note that Go's url.QueryEscape leaves '~' literal where PHP
-// escapes it, which is why the tables above are spelled out here.
+// escapes it, so the tables above are spelled out here.
 func urlEncode(str string, form bool) string {
 	safe := &urlRawSafe
 	if form {

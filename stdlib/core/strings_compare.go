@@ -98,7 +98,7 @@ func compareBytes(string1, string2 string, limit int, fold bool) int64 {
 
 // lowerASCII folds one byte the way PHP's case-insensitive comparisons do:
 // A-Z only. unicode.ToLower would fold a rune, and these functions never decode
-// one - they walk bytes, which is why strcasecmp cannot see that "\xc3\x84" and
+// one - they walk bytes, so strcasecmp cannot see that "\xc3\x84" and
 // "\xc3\xa4" are the same letter.
 func lowerASCII(c byte) byte {
 	if c >= 'A' && c <= 'Z' {

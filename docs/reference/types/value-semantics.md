@@ -30,7 +30,7 @@ grow($a);
 echo count($a);                 // phpscript: 3   PHP: unchanged
 ```
 
-Code that reads a shared array is unaffected, which is why this survives in practice: most array arguments are read. Code that writes to an array it believes it owns is not, and it fails silently, because nothing in the shape of `$b = $a` says two names are now one array.
+Code that reads a shared array is unaffected, so this survives in practice: most array arguments are read. Code that writes to an array it believes it owns is not, and it fails silently, because nothing in the shape of `$b = $a` says two names are now one array.
 
 Copy explicitly where independence matters:
 

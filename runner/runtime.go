@@ -108,7 +108,7 @@ type Runtime struct {
 
 	// host is the context the host set, which ctx is derived from. client is
 	// the connection being answered right now: host, until a handler enters a
-	// request. connection_aborted() reads client, which is why it survives
+	// request. connection_aborted() reads client, so it survives
 	// ignore_user_abort detaching ctx from the disconnect. See deadline.go.
 	host   context.Context
 	client context.Context
@@ -1332,7 +1332,7 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 // table (PHP constants are visible in every scope, whereas plain variables
 // are confined to their frame), then the superglobals. A bare name nothing
 // defines is an error - PHP 8 raises Error there, while an unset variable of
-// the same spelling stays null, which is why the two carry different
+// the same spelling stays null, so the two carry different
 // identifiers.
 // helperVar reads a variable or bare name from the live scope at evaluation
 // time. The closure engine uses it instead of the slot snapshot inside

@@ -27,7 +27,7 @@ func init() {
 // the same way, and get_class, method_exists and spl_object_id all reflect
 // over it to answer.
 //
-// A collection is an array rather than an object, which is why the check comes
+// A collection is an array rather than an object, so the check comes
 // before the struct test: *model.Array is itself a pointer to a struct.
 func isObject(value any) bool {
 	if value == nil {

@@ -137,7 +137,7 @@ A kilobyte of every row is the `httptest` recorder, which the native handler all
 
 Pooling is 37x a fresh runtime per request, and it is 59x less garbage, which is the part that decides whether more cores help. What it costs is PHP's request isolation: script globals, `static $x` in a function or a class, constants the script defined and anything `register_shutdown_function` collected all survive into the next request on that runtime. A handler that is a pure function of its arguments does not care. One that is not will read the last request's state.
 
-`pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops all of it. That also drops the declarations, so the symbol is bound again per request - at a few hundred nanoseconds, which is why the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
+`pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops all of it. That also drops the declarations, so the symbol is bound again per request - at a few hundred nanoseconds, so the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
 
 One thing a pool does not carry: the writer is fixed when the runtime is built. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering is built on.
 

@@ -154,7 +154,7 @@ $body  = "<p>" . htmlspecialchars($path) . " is not here.</p>";
 include "templates/layout.php";
 ```
 
-An `include` resolves against the application root rather than the document root, so a page shares the layout the rest of the site uses. The keys are absent when the file is requested directly, at `/404.php`, which is why the example reads `REDIRECT_URL` through `isset`.
+An `include` resolves against the application root rather than the document root, so a page shares the layout the rest of the site uses. The keys are absent when the file is requested directly, at `/404.php`, so the example reads `REDIRECT_URL` through `isset`.
 
 | Key                     | Holds                                                |
 |-------------------------|------------------------------------------------------|

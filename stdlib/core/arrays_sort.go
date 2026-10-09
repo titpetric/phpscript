@@ -16,7 +16,7 @@ func init() {
 // registerArraySort adds the half of PHP's sort family that keeps the
 // key-to-value association: ksort/krsort order by key, asort/arsort by value,
 // uasort/uksort by a script comparator. The other half (sort, rsort, usort)
-// lives in arrays.go and throws the keys away, which is why they can share
+// lives in arrays.go and throws the keys away, so they can share
 // sortValues and these cannot.
 func registerArraySort(rt *runner.Runtime) {
 	// ksort sorts $array in place by key ascending with PHP's default comparison, keeping each key attached to its value.

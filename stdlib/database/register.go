@@ -102,7 +102,7 @@ func RegisterMigrate(rt *runner.Runtime) {
 	// connects with is not what it is recorded under. A "<name>:migrate"
 	// credential cannot come from the PLATFORM_DB_<NAME>=<dsn> environment
 	// form, because an environment variable name holds no colon; it is
-	// registered through Database::register, which is how a virtual host
+	// registered through Database::register, so a virtual host
 	// owning its own connections already supplies them.
 	//
 	// A name longer than 16 characters fails the run with mig's ErrNoProject,

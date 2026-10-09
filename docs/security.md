@@ -73,7 +73,7 @@ phpscript --stdlib=secure server
 
 The flag names the binding areas the process installs, and `secure` is every binding confined to the runtime's sandbox. An area it omits is not registered, so its names are undefined rather than refused, through a direct call, a variable function, `call_user_func`, a callable and both engines alike: they all resolve through the one runtime function table. `stdlib.Mount(rt, profile, bindings...)` is the same selection for a host embedding the package.
 
-It is one value for the process. An operator decides what the runtime they started may reach, which is why there is no per-site key: a capability granted in the operator's file for one tenant is a capability the tenant's neighbours can read, and `virtualhost` is already refused in a site's own `phpscript.yml` so a compromised tree cannot grant itself anything.
+It is one value for the process. An operator decides what the runtime they started may reach, so there is no per-site key: a capability granted in the operator's file for one tenant is a capability the tenant's neighbours can read, and `virtualhost` is already refused in a site's own `phpscript.yml` so a compromised tree cannot grant itself anything.
 
 ## The filesystem boundary
 

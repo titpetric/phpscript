@@ -181,7 +181,7 @@ func filterByValue(array any, others []any, keep bool) *model.Array {
 //
 // The two are not each other's negation: intersect wants a value present in
 // every other array, diff wants it in NONE of them. With one other array those
-// coincide, which is why the difference only shows once a third is passed -
+// coincide, so the difference only shows once a third is passed -
 // array_diff($a, $b, $c) drops a value $b holds even though $c does not.
 func wanted(count, others int, keep bool) bool {
 	if keep {

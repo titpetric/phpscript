@@ -118,7 +118,7 @@ mail:
     from: orders@shop.example
 ```
 
-A site that declares no `mail` block inherits the operator's servers, and `mail:` with nothing under it means no servers at all, which is how a site says it sends none.
+A site that declares no `mail` block inherits the operator's servers, and `mail:` with nothing under it means no servers at all, so a site says it sends none.
 
 The map replaces rather than merges, which matters more than it looks: when this was a single unnamed block, a site setting only `host` and `from` kept the operator's `username` and `password` and authenticated as the operator.
 
@@ -133,6 +133,6 @@ provider := mail.NewProviderFunc(servers, func(config mail.Config, recipient, su
 options.Mail = provider
 ```
 
-`mail.NewMemory(names...)` is a provider that queues messages instead of delivering them, which is how tests and dry runs capture mail without a mail server. Naming no servers configures every name.
+`mail.NewMemory(names...)` is a provider that queues messages instead of delivering them, so tests and dry runs capture mail without a mail server. Naming no servers configures every name.
 
 See [Go bindings](bindings.md) for how a host installs these.

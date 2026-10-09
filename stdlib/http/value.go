@@ -67,7 +67,7 @@ func toInt(value any) int64 {
 	}
 }
 
-// toDuration reads a timeout. A bare number is seconds, which is how PHP's own
+// toDuration reads a timeout. A bare number is seconds, so PHP's own
 // timeouts are spelled; a string with a unit ("500ms", "1m30s") is parsed as
 // Go spells one, so a sub-second timeout is expressible without a fraction.
 func toDuration(value any) time.Duration {

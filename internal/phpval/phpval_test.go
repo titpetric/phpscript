@@ -20,7 +20,7 @@ func scriptArray(values ...any) *model.Array {
 // TestString pins each value against what php prints for `(string)$v`.
 //
 // The oracle used to be a second Go implementation rendering a float and an
-// unknown type with fmt's %v, which is how the shortest round-tripping float
+// unknown type with fmt's %v, so the shortest round-tripping float
 // form and Go's struct dump became the expected answers. A php name is a
 // behaviour claim settled by php, so the want column is php's output for the
 // same list, pasted.

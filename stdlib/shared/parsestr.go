@@ -124,7 +124,7 @@ func parseKey(name string, maxNesting int) (string, []string, bool) {
 
 // mangle substitutes in a top-level name. The set is exactly space, `.` and
 // `[`; `a-b`, `a:b` and `a$b` survive as written. A `+` is already a space by
-// now, which is why `a+b=1` is `a_b`.
+// now, so `a+b=1` is `a_b`.
 func mangle(name string) string {
 	if !strings.ContainsAny(name, " .[") {
 		return name

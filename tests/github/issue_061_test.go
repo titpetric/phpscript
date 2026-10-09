@@ -13,7 +13,7 @@ import (
 // {name} and {name...} only, so the path value never reached $_REQUEST.
 //
 // ServeMux has no regex constraint. It is registered with the bare parameter
-// and answers a request chi refuses, which is why the two routers differ on
+// and answers a request chi refuses, so the two routers differ on
 // the last case here.
 func Test_Issue061(t *testing.T) {
 	routes := map[string]string{

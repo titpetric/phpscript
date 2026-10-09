@@ -128,7 +128,7 @@ func (o *Options) RunWith(run func(context.Context, []string) error) func(contex
 // Both are read before the command is constructed: -f decides the
 // configuration a command is handed, and -w decides what every relative path
 // after it means, the configuration file included. pflag runs later and never
-// sees them, which is why Bind's defaults are the values found here.
+// sees them, so Bind's defaults are the values found here.
 func Pre(args []string) (*Options, []string, error) {
 	o := &Options{}
 	remaining := make([]string, 0, len(args))

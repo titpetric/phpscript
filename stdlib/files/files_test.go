@@ -10,7 +10,7 @@ import (
 )
 
 // writableOptions is a runner configured with an upload directory below the
-// document root and a private one beside it, which is how a site that accepts
+// document root and a private one beside it, so a site that accepts
 // uploads is set up.
 func writableOptions() runner.Options {
 	return runner.Options{WritablePaths: []string{"upload", "public/upload"}}

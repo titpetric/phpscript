@@ -12,7 +12,7 @@ No percentiles: a Go benchmark reports a mean over its iterations. No custom met
 
 ## Preconditions
 
-The contract's lock, private binary and `CGO_ENABLED=0`. A sweep takes minutes of pinned CPU, which is why it is deliberately out of the default pipeline.
+The contract's lock, private binary and `CGO_ENABLED=0`. A sweep takes minutes of pinned CPU, so it is deliberately out of the default pipeline.
 
 Nothing else may run on the box. The lock is what enforces that against other agents; the operator enforces it against everything else.
 

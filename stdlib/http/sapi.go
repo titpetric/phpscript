@@ -88,7 +88,7 @@ func registerRequest(rt *runner.Runtime) {
 // where PHP writes path and HttpOnly, and the expiry is RFC 1123 where PHP
 // writes its own dashed variant. RFC 6265 makes attribute names
 // case-insensitive and both date spellings parseable, so a client cannot tell;
-// a test asserting the exact header text can, which is why this is written
+// a test asserting the exact header text can, so this is written
 // down.
 func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool {
 	request, ok := runner.RequestContext(rt.Context())

@@ -599,7 +599,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 			st.stack = append(st.stack, loadLocal(host, program, st.locals, st.initialized, st.extras, inst.a))
 		case opLoadConst:
 			name := program.localNames[inst.a]
-			// A scope value of the same name wins, which is how the magic
+			// A scope value of the same name wins, so the magic
 			// constants set per frame answer before the constant table.
 			if st.initialized[inst.a] {
 				st.stack = append(st.stack, st.locals[inst.a])

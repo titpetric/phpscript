@@ -40,7 +40,7 @@ The check runs on the AST before anything executes: in `runner.hoist` for the in
 
 ## Exceptions without a hierarchy
 
-Every PHP throwable class is one Go type, `stdlib.Exception`, carrying the name the script constructed. `get_class($e)` returns that name, which is how a script discriminates further and how it writes a default "unhandled exception type" branch.
+Every PHP throwable class is one Go type, `stdlib.Exception`, carrying the name the script constructed. `get_class($e)` returns that name, so a script discriminates further and how it writes a default "unhandled exception type" branch.
 
 A catch clause is answered from the name:
 

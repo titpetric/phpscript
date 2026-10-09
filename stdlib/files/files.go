@@ -73,7 +73,7 @@ type root struct {
 // resolve maps a path a script supplied onto the host filesystem.
 //
 // Both spellings are anchored inside the root and neither can climb out of it.
-// A path written from "/" names the root itself, which is how __DIR__ and
+// A path written from "/" names the root itself, so __DIR__ and
 // getcwd() answer and therefore what most concatenated paths look like;
 // anything else is relative to the working directory chdir() moved. The source
 // filesystem is what a script can address, so "/" is its root rather than the

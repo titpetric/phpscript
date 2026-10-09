@@ -273,7 +273,7 @@ func (src *sources) method(typeName, goName string) *sourceEntry {
 }
 
 // lookupDecl finds a declaration by name, preferring the calling package.
-// samePkg restricts the match to it, which is how a bare identifier binds.
+// samePkg restricts the match to it, so a bare identifier binds.
 func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 	var fallback *declInfo
 	for _, info := range src.decls[name] {

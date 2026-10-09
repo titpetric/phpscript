@@ -24,7 +24,7 @@
 // Slicing subject[offset:] and adding the offset back gets both wrong, and RE2
 // has no entry point that takes a start position. regexp2's
 // FindStringMatchStartingAt does, so a non-zero $offset is routed to the
-// backtracking engine even for a pattern RE2 compiled, which is why a pattern
+// backtracking engine even for a pattern RE2 compiled, so a pattern
 // can carry both engines.
 //
 // The two engines disagree about what an index counts: RE2 reports byte

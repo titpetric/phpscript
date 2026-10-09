@@ -453,7 +453,7 @@ func chainedValue(n *model.AssignExpr) model.Expr {
 // isScalarLiteral reports whether the source spells out a value that no name
 // can share: a string, int, float, bool or null literal, an interpolated
 // string, which always evaluates to a string, or a prefix operator over one of
-// those, which is how a negative number is written. A *model.Lit holding a
+// those, so a negative number is written. A *model.Lit holding a
 // *model.Array is not one of these; the parser does not build them, but the
 // check reads the value rather than assuming it.
 func isScalarLiteral(e model.Expr) bool {

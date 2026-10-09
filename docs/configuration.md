@@ -267,7 +267,7 @@ Virtual hosts each answer for their own: the key is read from the site's `phpscr
 
 `telemetry.enabled` controls request tracing and the debug front end mounted at `telemetry.path`. The section is [oida](https://github.com/titpetric/oida) options, so every field that library documents is accepted here, plus `driver` and `storage_path`, which phpscript adds.
 
-There is one recorder and the platform owns it: given this section it builds the tracer, wraps every module it runs in the tracing middleware and mounts the front end. That is why this is not part of the `server` block above even though the platform is what consumes it, and why it applies to `phpscript server` alone. phpscript registers no recorder of its own. It reports interpreter work, the includes, calls and templates of a request and the spans a script starts itself, onto the trace that middleware already started, which is why that work shows up on the same front end as the request that caused it.
+There is one recorder and the platform owns it: given this section it builds the tracer, wraps every module it runs in the tracing middleware and mounts the front end. That is why this is not part of the `server` block above even though the platform is what consumes it, and why it applies to `phpscript server` alone. phpscript registers no recorder of its own. It reports interpreter work, the includes, calls and templates of a request and the spans a script starts itself, onto the trace that middleware already started, so that work shows up on the same front end as the request that caused it.
 
 The fields that matter for a phpscript service are:
 
@@ -445,7 +445,7 @@ Turn the operator's own `telemetry` off when running virtual hosts. The platform
 virtualhost "shop.example.com": telemetry path "/debug/oida" is the path the server mounts its own dashboard on
 ```
 
-The check only fires for a path the site's file names itself. A site that names none is not asking for one and is left alone, which is why turning the operator's block off is what makes the site dashboards reachable.
+The check only fires for a path the site's file names itself. A site that names none is not asking for one and is left alone, so turning the operator's block off is what makes the site dashboards reachable.
 
 Two sites running `driver: disk` may not share a `storage_path`, or their traces would land in one store.
 

@@ -33,7 +33,7 @@ import (
 // Fork returns a runtime that can run the same symbols as this one, writing to
 // w, and shares its parse and bytecode caches. It carries no part of an
 // execution, which is what makes it safe on a goroutine of its own, and it
-// installs the whole standard library, which is why a Pool forks per worker
+// installs the whole standard library, so a Pool forks per worker
 // rather than per request. The file comment above is the arrangement.
 func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	child := New(w, rt.opts)

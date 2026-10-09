@@ -143,7 +143,7 @@ type decoder struct {
 	cookieVars *model.Array
 
 	// The flat forms, allocated by the decode that fills them. A request that
-	// reads no query allocates no query map, which is why they are not in
+	// reads no query allocates no query map, so they are not in
 	// NewContext with the rest.
 	get     map[string]string
 	post    map[string]string
@@ -517,7 +517,7 @@ func (c Context) serverVars(r *http.Request) {
 	// script deciding on it whether it is talking over TLS would be deciding on
 	// what the client said. A host behind a proxy that terminates TLS is the
 	// one that knows the proxy is trusted, and sets the two keys itself.
-	// HTTPS is unset on a plain request rather than "off", which is why an
+	// HTTPS is unset on a plain request rather than "off", so an
 	// isset($_SERVER["HTTPS"]) test works in PHP.
 	c.Server["REQUEST_SCHEME"] = "http"
 	if r.TLS != nil {

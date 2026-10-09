@@ -404,7 +404,7 @@ echo read_job();
 }
 
 // wantServer checks the $_SERVER keys a request produced. A want value of ""
-// asserts the key is absent, which is how PHP says "not this kind of request":
+// asserts the key is absent, so PHP says "not this kind of request":
 // no HTTPS on a plain one, no CONTENT_LENGTH on a chunked one.
 func wantServer(t *testing.T, server *mapmap.MapMap, want map[string]string) {
 	t.Helper()

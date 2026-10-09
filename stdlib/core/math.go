@@ -58,7 +58,7 @@ func registerMath(rt *runner.Runtime) {
 // phpHexdec backs hexdec. PHP reads the digits it recognises and skips the
 // rest without a word (hexdec("0x1A") is 26 because the x is skipped), and
 // switches to float arithmetic at the first digit that would overflow the
-// int, which is why hexdec("7fffffffffffffff") is PHP_INT_MAX and one more
+// int, so hexdec("7fffffffffffffff") is PHP_INT_MAX and one more
 // digit of anything is a float.
 func phpHexdec(hexString string) any {
 	var asInt int64

@@ -64,7 +64,7 @@ func registerCSV(rt *runner.Runtime) {
 		record, err := r.Read()
 		if err != nil {
 			// End of file, or a record too malformed to parse: both are
-			// false, which is how PHP's read loop terminates.
+			// false, so PHP's read loop terminates.
 			return false, nil
 		}
 

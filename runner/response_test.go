@@ -8,7 +8,7 @@ import (
 )
 
 // exception stands in for stdlib.Exception, which runner cannot import: stdlib
-// imports runner, which is why StatusFor asks for the code structurally.
+// imports runner, so StatusFor asks for the code structurally.
 type exception struct {
 	message string
 	code    int

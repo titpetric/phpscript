@@ -10,7 +10,7 @@ import (
 // type and whose later literal assignment spells a different one. The first
 // literal is read as the declaration of the variable's type, the convention
 // the flat VM's typed operator selection leans on; a reassignment at another
-// type is legal PHP and runs unchanged here too, which is why the finding is
+// type is legal PHP and runs unchanged here too, so the finding is
 // advisory rather than fatal.
 //
 // Tracking is per function body (methods included), and the whole body is one

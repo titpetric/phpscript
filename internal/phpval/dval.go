@@ -1,6 +1,8 @@
 package phpval
 
-import "math"
+import (
+	"math"
+)
 
 // Bounds of the int64 range as float64. A double at or above 2^63 does not fit,
 // and 2^63 is exactly representable, so the test is a half-open interval.

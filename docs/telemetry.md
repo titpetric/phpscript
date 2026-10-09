@@ -2,7 +2,7 @@
 
 `phpscript server` records what it does: every request becomes a trace, and the work inside it becomes spans. Includes, PHP calls, templates, database queries and anything a script measures itself land in the same timeline, served by a front end at `/debug/oida`.
 
-The recorder is [oida](https://github.com/titpetric/oida), and there is one per service: the [platform](https://github.com/titpetric/platform) builds the tracer, wraps every module it runs in the tracing middleware and mounts the front end. phpscript registers no recorder next to it. It observes the interpreter onto the traces that one starts, which is why interpreter work appears on the same page as the request that caused it.
+The recorder is [oida](https://github.com/titpetric/oida), and there is one per service: the [platform](https://github.com/titpetric/platform) builds the tracer, wraps every module it runs in the tracing middleware and mounts the front end. phpscript registers no recorder next to it. It observes the interpreter onto the traces that one starts, so interpreter work appears on the same page as the request that caused it.
 
 phpscript binds oida into `telemetry/`, the only package here that imports it: everything else instruments through `telemetry.StartSpan` and the types bound there, so no call site names the provider. That covers the call sites and not the whole dependency, since the platform names oida itself.
 
