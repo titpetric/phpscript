@@ -21,7 +21,7 @@ type Options struct {
 	Database model.DatabaseProvider `yaml:"-"`
 
 	// Mail resolves the named mail servers the Mail binding and mail()
-	// deliver through. Nil leaves the choice to the binding, which falls back
+	// send through. Nil leaves the choice to the binding, which falls back
 	// to a provider holding no servers, so mail() refuses catchably naming
 	// what is missing. A virtual host sets its own, so the servers a site can
 	// name are only the ones it configured.
@@ -31,7 +31,7 @@ type Options struct {
 	// empty stream; CLI hosts should pass os.Stdin explicitly.
 	Stdin io.Reader `yaml:"-"`
 
-	// SAPI provides output for `php_sapi_name`.
+	// SAPI is what `php_sapi_name` answers.
 	SAPI string `yaml:"-"`
 
 	// WorkDir is the directory inside RootFS used as the script working directory.
@@ -39,22 +39,22 @@ type Options struct {
 	WorkDir string `yaml:"work_dir"`
 
 	// Include names a file included ahead of every entrypoint, for the
-	// functions and classes an application expects to be there whatever it is
+	// functions and classes every entrypoint in an application needs whatever it is
 	// running: a composer autoloader, a bootstrap file. It is the `--include`
 	// flag, and a virtual host sets its own in the runner block of its
 	// phpscript.yml.
 	//
 	// It is included once per request, before the entrypoint the request
 	// resolved to, so the entrypoint and everything it includes see what it
-	// declared. A file that is not there is skipped rather than reported: the
-	// name says what to load when the application provides it, and one setting
+	// declared. A file that is not there is skipped and nothing is reported: the
+	// name says what to load when the application carries it, and one setting
 	// covers a server, a script run and a fixture run of the same tree.
 	Include string `yaml:"include"`
 
 	// Precompile moves parsing and bytecode compilation off the request and
 	// onto startup. A host walks its source tree through a Precompiler before
 	// it serves anything, and LoadFile reads an entrypoint back out of the
-	// include cache rather than parsing the file again, so every request after
+	// include cache and never parses the file again, so every request after
 	// the first runs the AST the caches are already keyed by.
 	//
 	// Nothing is invalidated. An edited file is picked up by a reload or a
@@ -87,7 +87,7 @@ type Options struct {
 	// Both bound attacker-controlled input: `a[x][x]...` costs an array a level.
 	MaxInputNestingLevel int `yaml:"max_input_nesting_level"`
 
-	// UploadFileMode is the mode move_uploaded_file() gives a stored upload.
+	// UploadFileMode is the mode move_uploaded_file() sets on a stored upload.
 	// Zero means DefaultUploadFileMode; a host that serves uploads to nobody
 	// but itself sets something tighter, 0600 or 0640.
 	UploadFileMode FileMode `yaml:"upload_file_mode"`
@@ -106,8 +106,8 @@ type Options struct {
 	// seconds, PHP's max_execution_time. Zero is no limit.
 	//
 	// NOT ENFORCED YET. The key is accepted and carried so a configuration
-	// written today keeps working when enforcement lands, rather than
-	// failing to parse.
+	// written today keeps working when enforcement lands, with no parse
+	// failure in between.
 	TimeLimit int `yaml:"time_limit"`
 
 	// ConcurrencyLimit is how many scripts may execute at once. Zero is no

@@ -58,8 +58,8 @@ func instanceOfName(class any) string {
 }
 
 // instanceOfClass returns the class name of a value, or "" when the value is
-// not an object. A scalar is never an instance of anything, which is what makes
-// `1 instanceof Foo` false rather than an error.
+// not an object. A scalar is never an instance of anything, so
+// `1 instanceof Foo` is false and raises nothing.
 func instanceOfClass(value any) string {
 	switch v := value.(type) {
 	case *model.Object:

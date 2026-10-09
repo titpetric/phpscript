@@ -45,7 +45,7 @@ func TestWriteLeavesTheSourceAlone(t *testing.T) {
 		t.Fatalf("the source was written: %v", src["REMOTE_ADDR"])
 	}
 	// A second MapMap over the same source does not see the first one's edit,
-	// which is what makes one source safe to share between requests.
+	// so one source is safe to share between requests.
 	if got := mapmap.New(src).Read("REMOTE_ADDR"); got != "10.0.0.1" {
 		t.Fatalf("a second reader saw the edit: %v", got)
 	}
@@ -119,7 +119,7 @@ func TestReleaseDropsTheEdits(t *testing.T) {
 	if m.Has("B") {
 		t.Fatal("a written key survived Release")
 	}
-	// Writing after a release starts from nothing rather than from what the
+	// Writing after a release starts from nothing, and not from what the
 	// previous request left behind.
 	m.Write("C", "4")
 	if m.Has("B") {

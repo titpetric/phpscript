@@ -10,7 +10,7 @@ import (
 
 // AcceptsHTML reports whether an Accept header explicitly names HTML.
 //
-// Explicitly is the whole point. "*/*" is what curl and fetch() send and it
+// Explicitly, and no wildcard. "*/*" is what curl and fetch() send and it
 // matches every type there is, so reading it as a request for HTML would put a
 // website's error page in front of every program that talks to the server. Only
 // text/html and application/xhtml+xml, written out and not weighted to zero,
@@ -95,19 +95,19 @@ func (c Context) StatusFor(err error) int {
 // a Content-Type, because a script that declared what it answers with has
 // declared that it is not answering in HTML, which is a one line opt-out for an
 // endpoint with nothing to put in the body. Neither has anything to do with
-// where the script sits in the URL space, which is the point.
+// where the script sits in the URL space.
 func (c Context) Answered(body []byte) bool {
 	return len(body) > 0 || c.response.Get("Content-Type") != ""
 }
 
 // WriteResponse flushes one response: the headers the script staged with
 // header(), the status, and the body it produced. Nothing reaches the
-// ResponseWriter before this, which is what lets a host look at a finished
+// ResponseWriter before this, so a host can look at a finished
 // response and answer with something else instead.
 //
 // A status of zero writes none, leaving net/http its 200. So does a status
 // net/http will not send: it panics on anything outside 100 to 999, and
-// http_response_code() takes whatever number a script hands it.
+// http_response_code() takes whatever number a script passes.
 func (c Context) WriteResponse(w http.ResponseWriter, status int, body []byte) {
 	for name, values := range c.response {
 		w.Header()[name] = values

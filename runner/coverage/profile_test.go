@@ -27,7 +27,7 @@ func testSource(file string) []string {
 }
 
 // TestColumns covers the half the collector cannot answer: it records line
-// ranges, and a profile carries columns spanning the statement text rather than
+// ranges, and a profile carries columns spanning the statement text and not
 // the indentation around it.
 func TestColumns(t *testing.T) {
 	blocks := coverage.Columns(profileBlocks, testSource)

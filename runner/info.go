@@ -13,13 +13,13 @@ type InfoField struct {
 
 // InfoSection reports the rows a subsystem contributes to phpinfo(), or none
 // when it has nothing to say. It runs at the moment phpinfo() is called, so a
-// section reports what is there then rather than what was there at
+// section reports what is there at that moment, and not what was there at
 // registration.
 type InfoSection func(rt *Runtime) []InfoField
 
 // RegisterInfo adds a named section to phpinfo(), after the runtime's own
 // block. Sections print in registration order, and one reporting no rows is
-// left out entirely rather than printed as a heading over nothing.
+// left out entirely, and never printed as a heading over nothing.
 //
 // It is how a binding answers for memory it holds across requests: a store
 // bound into the context, a cache a precompile pass filled. None of that is in
@@ -73,7 +73,7 @@ func (rt *Runtime) registerCompiledTreeInfo() {
 		}
 		// The size is what a precompile pass measured itself adding. Without
 		// one there is no figure, and printing 0.00 MiB over a cache holding
-		// files would read as a measurement rather than the absence of one.
+		// files would read as a measurement and not the absence of one.
 		if heap > 0 {
 			fields = append(fields, InfoField{Name: "Cached Size", Value: mib(heap)})
 		}

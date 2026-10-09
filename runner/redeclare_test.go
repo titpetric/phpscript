@@ -41,7 +41,7 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 		{
 			// A program parsed straight from a string has no
 			// entrypoint to name, so the site falls back to saying
-			// there was one rather than pointing at an empty path.
+			// there was one, and never points at an empty path.
 			name: "twice in one file",
 			src:  "<?php\nfunction a() { return 1; }\nfunction a() { return 2; }\n",
 			want: "Cannot redeclare function a() (previously declared in an earlier declaration)",
@@ -64,7 +64,7 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 			if !errors.As(err, &redeclared) {
 				t.Fatalf("error is %T, want *runner.RedeclareError", err)
 			}
-			// Exception rather than a name of its own, so the clause a
+			// Exception and no name of its own, so the clause a
 			// script would write for it is the clause that takes it.
 			if got := redeclared.ThrowableClass(); got != "Exception" {
 				t.Errorf("ThrowableClass() = %q, want %q", got, "Exception")
@@ -74,7 +74,7 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 }
 
 // TestRedeclaringThroughAnIncludeIsCatchable is the case that reaches a script
-// rather than the host: an include hoists inside the script's own flow, so the
+// and not the host: an include hoists inside the script's own flow, so the
 // try around it takes the error and the program carries on.
 func TestRedeclaringThroughAnIncludeIsCatchable(t *testing.T) {
 	files := fstest.MapFS{
@@ -120,7 +120,7 @@ include "a/b/c/deep.php";
 
 // TestDeclaringTheSameFunctionAfterResetSucceeds pins the session boundary. The
 // fixture harness and any host that reuses a runtime run the same program more
-// than once through it, and the second run has to be a fresh slate rather than
+// than once through it, and the second run has to be a fresh slate and not
 // a collision with the first.
 func TestDeclaringTheSameFunctionAfterResetSucceeds(t *testing.T) {
 	src := "<?php\nfunction reused() { return 7; }\necho reused();"

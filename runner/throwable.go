@@ -11,10 +11,10 @@ package runner
 // Do not add a parent table, a Parent field on model.Class, or a hierarchy
 // walk. That design was proposed and rejected. See docs/design.md.
 
-// Throwable is implemented by a value that knows which PHP class it was
+// Throwable is implemented by a value that records which PHP class it was
 // constructed as.
 //
-// The class is asked for rather than read off the Go type, because every SPL
+// The class is read from the value and not off the Go type, because every SPL
 // name is one Go type: reflection would answer "Exception" for an
 // InvalidArgumentException. It is also the predicate that separates a PHP
 // throwable from an error a Go binding returned, which a Go type name cannot
@@ -33,7 +33,7 @@ type Throwable interface {
 // An error that is not one is still catchable: a Go binding returning an error,
 // and a panic recovered at the host boundary, reach a script through the same
 // try/catch and belong to no PHP class. Reporting them as "not a throwable" is
-// what lets matchCatchType offer them to any clause, which is the contract a
+// what lets matchCatchType route them to any clause, which is the contract a
 // host binding is written against.
 func throwableClassOf(err error) (string, bool) {
 	t, ok := err.(Throwable)

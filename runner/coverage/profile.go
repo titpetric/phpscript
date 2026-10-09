@@ -23,7 +23,7 @@ const (
 // ProfileBlock is one line of a written profile: a coverage block with its
 // columns resolved from the source text. The collector reports lines only; the
 // columns exist so the profile is the format go test writes and go tool cover
-// renders, spanning the statement text rather than the indentation around it.
+// renders, spanning the statement text and not the indentation around it.
 type ProfileBlock struct {
 	File      string
 	StartLine int

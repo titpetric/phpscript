@@ -8,7 +8,7 @@ import (
 )
 
 // TestRow_Percent covers the adjusted percentage: a symbol with no runnable
-// statement has nothing left uncovered, so 0/0 reads as covered rather than as
+// statement has nothing left uncovered, so 0/0 reads as covered and not as
 // a zero dragging every average down.
 func TestRow_Percent(t *testing.T) {
 	for _, tc := range []struct {

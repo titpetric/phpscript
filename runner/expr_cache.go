@@ -15,14 +15,14 @@ type compiledExpr struct {
 	idents []string
 	// calls holds the registered-function names the expression calls, so
 	// Eval installs exactly those closures into the evaluation environment
-	// instead of the whole function table (see Runtime.installFunc).
+	// and not the whole function table (see Runtime.installFunc).
 	calls    []string
 	closures map[string]*model.Closure
 	exprs    map[string]model.Expr
 	prog     *expr.Program
 	// varSlots maps each entry of vars to the engine's slot for its
 	// identifier; closureSlots does the same for closure literals. Both are
-	// resolved once here so Eval binds by index instead of by map key.
+	// resolved once here so Eval binds by index and not by map key.
 	varSlots     []int
 	closureSlots map[string]int
 }
@@ -139,7 +139,7 @@ func (c *ExprCache) SetExpr(e model.Expr, dc *expr.Compiled) {
 	c.byExpr[e] = dc
 }
 
-// Len returns the number of currently cached compiled expressions.
+// Len returns how many compiled expressions the cache holds.
 func (c *ExprCache) Len() int {
 	if c == nil {
 		return 0
@@ -152,7 +152,7 @@ func (c *ExprCache) Len() int {
 // EnsureFlat compiles p into the flat-program table when it is not there yet
 // and reports the compile verdict. It is the write-through form of the check
 // flatstack.Supports makes: a caller gating a run on the compiler pays one
-// compile, and the run reads it back instead of repeating it.
+// compile, and the run reads it back without repeating it.
 func (c *ExprCache) EnsureFlat(p *model.Program) error {
 	if _, ok := c.getFlat(p); ok {
 		return nil

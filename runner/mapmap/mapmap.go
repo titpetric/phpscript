@@ -8,7 +8,7 @@
 // the request instead, and holds only what a script wrote.
 //
 // The edits are request-scoped, so their map comes from a pool and goes back
-// cleared rather than freed.
+// cleared and never freed.
 package mapmap
 
 import (
@@ -36,22 +36,22 @@ type Source interface {
 //
 // Read answers the layer first, so a script that assigns to a key sees what it
 // assigned; the source is left as it was and stays shared. Nothing is copied
-// out of the source until something asks for the whole thing.
+// out of the source until something reads the whole thing.
 type MapMap struct {
 	src Source
 
 	// edits holds what a script wrote, in write order, and is nil until the
 	// first write because most requests never make one.
 	//
-	// A slice rather than a map: a request writes a key or two, and a linear
+	// A slice and not a map: a request writes a key or two, and a linear
 	// scan over that beats hashing, with one allocation for the backing array
-	// instead of one for the map and its bucket. Nothing here grows to the
+	// in place of one for the map and its bucket. Nothing here grows to the
 	// size where the scan would lose.
 	edits []edit
 }
 
 // edit is one write, or one removal when gone is set. A removal is recorded
-// rather than applied, because the source it hides is read-only.
+// and never applied, because the source it hides is read-only.
 type edit struct {
 	key   string
 	value any
@@ -92,7 +92,7 @@ func (m *MapMap) Read(key string) any {
 	return nil
 }
 
-// Has reports whether anything holds key, which is what isset() asks.
+// Has reports whether anything holds key, which is the test isset() makes.
 func (m *MapMap) Has(key string) bool {
 	if m == nil {
 		return false
@@ -233,7 +233,7 @@ func (s MapSource) Range(fn func(key string, value any) bool) bool {
 	return true
 }
 
-// ValueSource reads a map whose values are already PHP values, which is what a
+// ValueSource reads a map whose values are already PHP values, the shape a
 // superglobal carrying nested data needs: a query string decodes `a[]=1&a[]=2`
 // to an array under one name, and no map of strings can hold that.
 type ValueSource map[string]any
@@ -263,7 +263,7 @@ func (s ValueSource) Range(fn func(key string, value any) bool) bool {
 // Extra carries the names the request cannot answer on its own, which are the
 // ones a caller computed: the clock for REQUEST_TIME, and whatever the host
 // decided about the scheme behind a proxy. It is a Source of its own so a
-// caller passes the map it already has rather than copying it into another.
+// caller passes the map it already has, with no copy into another.
 // It is read, never written, and wins over a derived name.
 type RequestSource struct {
 	Request *http.Request
@@ -363,7 +363,7 @@ var derived = []string{
 
 // headerName turns HTTP_ACCEPT_ENCODING back into Accept-Encoding, and reports
 // whether the key named a header at all. HTTP_HOST is not one: the host is a
-// field of the request rather than a header Go keeps.
+// field of the request and not a header Go keeps.
 func headerName(key string) (string, bool) {
 	const prefix = "HTTP_"
 	if key == "HTTP_HOST" || len(key) <= len(prefix) || key[:len(prefix)] != prefix {
@@ -403,7 +403,7 @@ func cgiName(name string) string {
 	return string(out)
 }
 
-// Lazy defers building a source until something reads it, which is what lets a
+// Lazy defers building a source until something reads it, so a
 // superglobal cost nothing until a script names it.
 //
 // build runs at most once, on the first Get, Len or Range. A request that

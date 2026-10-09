@@ -13,9 +13,9 @@ import (
 // A static member belongs to the class, not to an instance, so neither has a
 // receiver to hang off the object model in value.go. Methods are run against a
 // scope that knows only which class it is in; properties live in one bag per
-// class on the Runtime (see Runtime.classStatics), which is what makes
-// composer's `self::$registeredLoaders` observable from every instance and from
-// a later static call.
+// class on the Runtime (see Runtime.classStatics), so composer's
+// `self::$registeredLoaders` is observable from every instance and from a
+// later static call.
 
 // resolveClassName maps the contextual class names PHP allows in a static
 // reference onto a real one. `self` and `static` both name the class of the
@@ -208,7 +208,7 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValu
 			return rt.invokeStatic(decl, fn, args, scope)
 		}
 		// No PHP class of that name: the target can only be a host static, so
-		// pay for the case-insensitive lookup here rather than on every call.
+		// pay for the case-insensitive lookup here and not on every call.
 		if entry, ok := rt.lookupEntry(name + "::" + method); ok {
 			return rt.invokeEntry(entry, args, scope)
 		}

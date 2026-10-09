@@ -8,7 +8,7 @@ import (
 //
 // An object is not an error, so throwing one needs a wrapper to travel through
 // the same path a built-in throwable takes. The wrapper records the one class
-// the object was declared as, which is what a clause filters on and what
+// the object was declared as, the name a clause filters on and what
 // get_class() reports. It records nothing else: a class declaring `extends` is
 // still only its own class here, because there is no inheritance.
 type objectError struct {
@@ -44,7 +44,7 @@ func (e *objectError) ThrowableClass() string {
 }
 
 // Value returns the object a catch clause binds, so a script gets back what it
-// threw rather than the wrapper.
+// threw and never the wrapper.
 func (e *objectError) Value() any { return e.object }
 
 // catchValue returns what a catch clause binds for err: the object for a thrown

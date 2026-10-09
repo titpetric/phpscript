@@ -62,7 +62,7 @@ func RegisterProfileBinding(profile Profile, installer func(*Runtime)) {
 }
 
 // SetProfile records the area mask this runtime's bindings were installed
-// under. stdlib.Mount calls it, so that a later reroot of one area can ask
+// under. stdlib.Mount calls it, so that a later reroot of one area can test
 // whether the mount included it.
 func (rt *Runtime) SetProfile(profile Profile) { rt.profile = profile }
 

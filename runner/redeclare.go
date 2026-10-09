@@ -8,7 +8,7 @@ import (
 
 // FuncSite is where a user function was declared. It is what turns the second
 // declaration of a name into a message worth reading: PHP's fatal error names
-// the first site, and a script that ends up with two declarations of the same
+// the first site, and a script carrying two declarations of the same
 // function usually got there by including a file twice, in which case the first
 // site is the only thing that says which file.
 type FuncSite struct {
@@ -18,7 +18,7 @@ type FuncSite struct {
 
 // String renders the site the way PHP writes it in the fatal error, and the
 // file alone when the declaration came from a program with no line information,
-// which is what a host that built the AST itself hands over.
+// as a host that built the AST itself passes in.
 func (s FuncSite) String() string {
 	if s.File == "" {
 		return "an earlier declaration"
@@ -34,30 +34,30 @@ func (s FuncSite) String() string {
 // is raised as a catchable RuntimeException and reaches a Go host as an error
 // from Run.
 //
-// It is a type rather than a bare error because the two runtimes have to agree
+// It is a type and no bare error because the two runtimes have to agree
 // on it. A compile failure normally means the bytecode engine does not cover
-// some form yet and the interpreter runs the program instead; this is not that.
-// It is a verdict on the program, which the interpreter would reach too, so
-// flatstack raises it rather than falling back to a second opinion.
+// some form yet and the interpreter runs the program; this is a verdict on the
+// program, which the interpreter would reach too, so flatstack raises it and
+// falls back to no second opinion.
 type RedeclareError struct {
 	// Name is the function as a script spells it.
 	Name string
 	// At is the declaration being refused.
 	At FuncSite
 	// Previous is where it was declared first, zero when the name belongs to
-	// a registered binding rather than to a declaration in PHP source.
+	// a registered binding and not to a declaration in PHP source.
 	Previous FuncSite
 	// Builtin reports which of the two cases this is.
 	Builtin bool
 }
 
 // Error writes PHP's fatal-error text for the same condition, with one
-// deliberate difference: the paths are the ones the script named, resolved
+// difference by decision: the paths are the ones the script named, resolved
 // against the root the shims are bound to, where PHP prints host paths. A
 // runtime serving scripts out of an fs.FS has no host path to print.
 //
 // A program a host assembled itself carries no file or spans, so the clauses
-// that would name a location are left out rather than written empty.
+// that would name a location are left out, and never written empty.
 func (e *RedeclareError) Error() string {
 	message := fmt.Sprintf("Cannot redeclare function %s()", e.Name)
 	if !e.Builtin {

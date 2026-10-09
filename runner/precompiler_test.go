@@ -19,7 +19,7 @@ var precompileFS = fstest.MapFS{
 
 // TestPrecompiler covers the walk: every .php file that parses is cached under
 // the path a script would name it by, and a file that does not parse is left
-// out instead of failing the pass.
+// out, and the pass does not fail.
 func TestPrecompiler(t *testing.T) {
 	includes := runner.NewIncludeCache()
 	exprs := runner.NewExprCache()
@@ -57,7 +57,7 @@ func TestPrecompilerEmptyTree(t *testing.T) {
 }
 
 // TestPrecompilerServesLoadFile covers what the walk buys a request: an
-// entrypoint LoadFile answers with the program the walk parsed, rather than
+// entrypoint LoadFile answers with the program the walk parsed, and not
 // with a second parse of the same bytes.
 func TestPrecompilerServesLoadFile(t *testing.T) {
 	includes := runner.NewIncludeCache()
@@ -77,7 +77,7 @@ func TestPrecompilerServesLoadFile(t *testing.T) {
 }
 
 // TestPrecompilerOffReparses covers the other half of the option: with it off,
-// LoadFile reads and parses the file every time, which is what a CLI run and an
+// LoadFile reads and parses the file every time, as a CLI run and an
 // application editing its own sources expect.
 func TestPrecompilerOffReparses(t *testing.T) {
 	for _, precompile := range []bool{false, true} {
@@ -115,7 +115,7 @@ func TestPrecompilerBrokenEntrypointStillFails(t *testing.T) {
 // none of it.
 func TestPrecompilerAccountsItsHeap(t *testing.T) {
 	// A tree large enough that the pass is visible above the noise of a
-	// collection, since the figure is a live-heap delta rather than a sum.
+	// collection, since the figure is a live-heap delta and no sum.
 	sources := fstest.MapFS{}
 	for i := range 200 {
 		sources[fmt.Sprintf("lib/file%03d.php", i)] = &fstest.MapFile{

@@ -65,7 +65,7 @@ func constant(t testing.TB, rt *runner.Runtime, name string) any {
 // needs a declaration to run and refuses anything that is not one.
 //
 // The two array spellings are the documented refusal (docs/README.md): they stay
-// callable everywhere else. Class::method is not one of them and used to be
+// callable everywhere else. Class::method is not one of them and was
 // refused as "no PHP function of that name is declared", which was untrue of a
 // method the class declares.
 func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
@@ -83,7 +83,7 @@ func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 		{name: "Class::method", value: "Site::shout", want: "HELLO a", named: "Site::shout"},
 		{name: "an object with __invoke", value: constant(t, rt, "SITE"), want: "invoked a", named: "Site::__invoke"},
 		// The first-class spellings arrive as a *Callable already, so the router
-		// takes the form php itself writes rather than only the string for it.
+		// takes the form php itself writes, and not only the string for it.
 		{name: "name(...)", value: constant(t, rt, "FC_FUNC"), want: "plain a", named: "plain"},
 		{name: "$obj->method(...)", value: constant(t, rt, "FC_METHOD"), want: "hei a", named: "Site::hello"},
 		{name: "Class::method(...)", value: constant(t, rt, "FC_STATIC"), want: "HELLO a", named: "Site::shout"},
@@ -159,7 +159,7 @@ func TestAsCallableReportsWhatItCaptured(t *testing.T) {
 		{name: "a declared function has nothing", value: "plain", want: false},
 		{name: "Class::method has no receiver to share", value: "Site::shout", want: false},
 		// The first-class spellings answer the same as the strings they are the
-		// written form of, which is what routing closureMember through
+		// written form of, so routing closureMember through
 		// newStaticMethod settles: the static one shares nothing.
 		{name: "name(...) has nothing", value: constant(t, rt, "FC_FUNC"), want: false},
 		{name: "$obj->method(...) carries its receiver", value: constant(t, rt, "FC_METHOD"), want: true},

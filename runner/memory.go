@@ -24,7 +24,7 @@ type RuntimeException struct {
 	Code    int    `json:"code"`
 }
 
-// Error is the message, which is what a Go caller reads.
+// Error is the message a Go caller reads.
 func (e *RuntimeException) Error() string {
 	return e.Message
 }
@@ -132,7 +132,7 @@ func DeepSize(v any, visited visitedSet) int64 {
 // EstimateValueSize is a shallow estimate of what a value costs, in bytes: a
 // scalar or string is its own size, a collection is its header plus one level of
 // entries, and anything else is the shallow sizeof. It is cheap enough to run on
-// every binding's result, and it undercounts a deeper graph on purpose - the
+// every binding's result, and it undercounts a deeper graph by design: the
 // walk that does not is DeepSize.
 func EstimateValueSize(v any) int64 {
 	if v == nil {

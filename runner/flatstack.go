@@ -14,7 +14,7 @@ import (
 func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 	if rt.errorHandler != nil {
 		// The interpreter can recover per statement through OnError. The flat
-		// backend currently returns the first execution error.
+		// backend returns the first execution error.
 		return false, nil
 	}
 	program, ok := rt.exprCache.getFlat(ast)
@@ -26,7 +26,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 			// bytecode subset does not cover yet, and the interpreter runs it
 			// instead. A violated interface contract is not that: it is a
 			// verdict on the program, which the interpreter would reach too, so
-			// it is raised here rather than deferred to a second opinion.
+			// it is raised here and never deferred to a second opinion.
 			var contract *model.InterfaceContractError
 			if errors.As(err, &contract) {
 				return true, NewRuntimeException(err.Error(), 0)
@@ -82,7 +82,7 @@ func (h *flatHost) boundScope() *Scope {
 
 // pullScope writes a materialised scope's variables back into the frame. The
 // scope was built fresh for one call and is discarded after, so the magic
-// constants are deleted in place rather than filtered into another map.
+// constants are deleted in place, with no filter into another map.
 func (h *flatHost) pullScope(scope *Scope) {
 	if h.frame == nil {
 		return
@@ -151,14 +151,14 @@ func (h flatHost) SetProperty(receiver any, name string, value any, op string) e
 	})
 }
 
-// Echo writes through the runtime output stack rather than to the base writer,
+// Echo writes through the runtime output stack and not to the base writer,
 // so ob_start captures bytecode output the way it captures interpreted output.
 func (h flatHost) Echo(value any) error {
 	_, err := io.WriteString(h.runtime.Output(), phpString(value))
 	return err
 }
 
-// Globals hands the engine the table runInterpreted seeds its global scope from,
+// Globals returns the table runInterpreted seeds its global scope from,
 // so the bytecode engine's top-level frame starts with the same names. It is not
 // answered from Lookup, which every frame reads: a global belongs to the global
 // scope, and resolveVar does not reach one from a function either.
@@ -177,7 +177,7 @@ func (h flatHost) Lookup(name string) any {
 // Constant resolves a bare name: whatever the host knows under it, then the
 // constant table, and an Error when nothing does. PHP 8 raises the same for
 // the same expression, and an unset variable of that spelling stays null,
-// which is why this is not Lookup.
+// so this is separate from Lookup.
 func (h flatHost) Constant(name string) (any, error) {
 	if value, ok := h.runtime.auto.Lookup(name); ok {
 		return value, nil
@@ -202,7 +202,7 @@ func (h flatHost) Truthy(value any) bool { return phpTruthy(value) }
 
 // SetEntry implements the by-reference foreach write-back. Only a *model.Array
 // is script-owned storage; a native Go collection a binding returned belongs to
-// the host, so the write is dropped rather than reported. Runtime.execForeach
+// the host, so the write is dropped and nothing is reported. Runtime.execForeach
 // takes the same view.
 func (h flatHost) SetEntry(container, key, value any) error {
 	array, ok := container.(*model.Array)
@@ -257,7 +257,7 @@ func (h flatHost) SetIndex(base, key, value any, appendValue bool, op string) er
 
 // MatchCatch answers the bytecode engine's clause selection with the rules the
 // interpreter uses, so `catch (Exception $e)` declines a TypeError on both
-// backends instead of only on one.
+// backends and not on one of them.
 func (h flatHost) MatchCatch(declaredType string, err error) bool {
 	return matchCatchType(declaredType, err)
 }
@@ -360,7 +360,7 @@ func (h flatHost) Entries(value any) []flatvm.Entry {
 }
 
 // Call resolves a function the way helperFunc does, but a binding whose
-// signature does not ask for a context never sees the scope, so no snapshot,
+// signature declares no context never sees the scope, so no snapshot,
 // no Scope and no write-back are built for it. That is the interpreter's own
 // contract: installFunc calls the same bindings with no per-call scope.
 func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
@@ -381,7 +381,7 @@ func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
 }
 
 // callResolved invokes a function-table hit: lean when the entry's invoker
-// does not want a context, through a materialised scope when it does. The
+// declares no context, through a materialised scope when it does. The
 // panic boundary, the argument-count check and the memory burst guard all
 // sit in invokeEntry either way.
 func (h *flatHost) callResolved(entry *funcEntry, name string, args []any) (any, error) {
@@ -410,7 +410,7 @@ func (h flatHost) Include(path any, keyword string, once bool, vars map[string]a
 		scope.Set(name, value)
 	}
 	// The *_once dedupe lives in includeFile, so both engines answer it on the
-	// resolved path rather than each keeping its own scan over spellings.
+	// resolved path, so neither keeps its own scan over spellings.
 	result, err := h.runtime.includeFile(phpString(path), once, scope)
 	if err != nil {
 		return nil, nil, err
