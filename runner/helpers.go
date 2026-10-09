@@ -245,6 +245,7 @@ func adaptOn(rt *Runtime, fn any) func(...any) (any, error) {
 var exprHelpers = &expr.Helpers{
 	Truthy:     phpTruthy,
 	Concat:     helperConcat,
+	Str:        phpString,
 	Pair:       helperPair,
 	Array:      helperArray,
 	Index:      helperIndex,

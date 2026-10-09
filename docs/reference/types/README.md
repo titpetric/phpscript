@@ -58,7 +58,7 @@ echo "call {$user->label()}\n";
 
 The braces close on the brace that matches, so a key holding one is safe: `"{$rows['}']}"` reads the key `}`. A `$` that starts no name is literal text, `\$` is a dollar, and a single-quoted literal never interpolates. The value of each embedded expression is converted to a string the way `.` converts it, so an interpolated literal and the equivalent concatenation produce the same string.
 
-`${name}` is not accepted. PHP deprecated that spelling in 8.2 and removes it in 9; writing it is reported rather than read, so a literal never prints back a name the author meant to interpolate.
+`${name}` and `${name[$k]}` read as `$name` and `$name[$k]`. `${expression}` does not: in PHP it names the variable whose name the expression returns, which needs `$$name`, and that is not implemented. PHP deprecated both spellings in 8.2 and removes them in 9, so `{$name}` is the form that keeps working.
 
 ## Arrays
 

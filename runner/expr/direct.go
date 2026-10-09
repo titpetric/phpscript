@@ -3,6 +3,7 @@ package expr
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/titpetric/phpscript/model"
 )
@@ -415,50 +416,40 @@ func pairItem(key, val closure, pair func(key, val any) model.ArrayItemValue) cl
 	}
 }
 
-// compileInterp folds an interpolated string over Concat, matching
-// Transpiler.emitInterp: a lone literal part is itself, a lone expression
-// part concatenates with "" so the result is a string either way.
+// compileInterp compiles an interpolated string to one closure that writes
+// every part into a single builder. The parts are compiled here, once, so an
+// embedded expression costs what the same expression costs anywhere else and
+// the literal pays no dispatch of its own per execution.
+//
+// The builder is what a fold over Concat would not give: a chain of pairwise
+// concatenations allocates an intermediate string per part, where this
+// allocates the result. A lone literal part is itself, and the empty literal
+// is the result for a literal with no parts at all.
 func (dc *directCompiler) compileInterp(n *model.Interp) (closure, error) {
 	if len(n.Parts) == 0 {
 		return constClosure(""), nil
 	}
-	out, err := dc.compile(n.Parts[0])
+	if len(n.Parts) == 1 {
+		if lit, isLit := n.Parts[0].(*model.Lit); isLit {
+			return constClosure(lit.Value), nil
+		}
+	}
+	parts, err := dc.compileArgs(n.Parts)
 	if err != nil {
 		return nil, err
 	}
-	fn := dc.h.Concat
-	if len(n.Parts) == 1 {
-		if _, isLit := n.Parts[0].(*model.Lit); isLit {
-			return out, nil
-		}
-		part := out
-		return func(env *Env) (any, error) {
+	str := dc.h.Str
+	return func(env *Env) (any, error) {
+		var out strings.Builder
+		for _, part := range parts {
 			v, err := part(env)
 			if err != nil {
 				return nil, err
 			}
-			return fn("", v), nil
-		}, nil
-	}
-	for _, p := range n.Parts[1:] {
-		next, err := dc.compile(p)
-		if err != nil {
-			return nil, err
+			out.WriteString(str(v))
 		}
-		left, right := out, next
-		out = func(env *Env) (any, error) {
-			a, err := left(env)
-			if err != nil {
-				return nil, err
-			}
-			b, err := right(env)
-			if err != nil {
-				return nil, err
-			}
-			return fn(a, b), nil
-		}
-	}
-	return out, nil
+		return out.String(), nil
+	}, nil
 }
 
 func (dc *directCompiler) compileUnary(n *model.Unary) (closure, error) {

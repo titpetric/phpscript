@@ -1267,9 +1267,6 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	if b, ok := e.(*model.Binary); ok && b.Op == "." {
 		return rt.evalConcat(b, scope)
 	}
-	if s, ok := e.(*model.Interp); ok {
-		return rt.joinParts(s.Parts, scope)
-	}
 	if u, ok := e.(*model.Unary); ok && (u.Op == "++" || u.Op == "--") {
 		return rt.evalIncDec(u, scope)
 	}
@@ -1573,10 +1570,10 @@ func (rt *Runtime) evalConcat(n *model.Binary, scope *Scope) (any, error) {
 	return rt.joinParts(parts, scope)
 }
 
-// joinParts evaluates each part and joins their PHP string forms. It is what a
-// concatenation and an interpolated literal both reduce to, so the two produce
-// the same value for the same operands, and neither pays for a trip through the
-// expression VM to find that out.
+// joinParts evaluates each part and joins their PHP string forms. It serves
+// the concat fast path above; an interpolated literal compiles instead, in
+// expr.compileInterp, because a per-part Eval dispatch at every execution
+// measured 21% slower than the compiled closure (see the Interp benchmarks).
 func (rt *Runtime) joinParts(parts []model.Expr, scope *Scope) (any, error) {
 	var out strings.Builder
 	for _, part := range parts {

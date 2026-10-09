@@ -114,3 +114,16 @@ func BenchmarkEvalCallBinding(b *testing.B) {
 func BenchmarkEvalNested(b *testing.B) {
 	benchEval(b, benchNestedExpr())
 }
+
+// BenchmarkEvalInterp prices a double-quoted literal that embeds expressions.
+// The parts are what "user=$s k=$arr[k]!" parses to, so the number is the
+// per-evaluation cost of the literal and not of the parse, which happens once.
+func BenchmarkEvalInterp(b *testing.B) {
+	benchEval(b, &model.Interp{Parts: []model.Expr{
+		&model.Lit{Value: "user="},
+		&model.Var{Name: "s"},
+		&model.Lit{Value: " k="},
+		&model.Index{Base: &model.Var{Name: "arr"}, Index: &model.Lit{Value: "k"}},
+		&model.Lit{Value: "!"},
+	}})
+}
