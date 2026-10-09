@@ -1,8 +1,8 @@
-// Package files provides the filesystem shims phpscript exposes to PHP: path
+// Package files carries the filesystem shims phpscript exposes to PHP: path
 // helpers, reads, writes, streams, and the uploaded-file functions that go with
-// $_FILES. They are grouped here rather than in stdlib because they are the one
+// $_FILES. They are grouped here and not in stdlib because they are the one
 // part of the standard library bound to a directory on the host, and because a
-// host that runs untrusted scripts may want to leave them out.
+// host that runs untrusted scripts may leave them out.
 //
 // Go's fs.FS is read-only, so writes (fopen/fwrite/mkdir) use the os package
 // against the same root; the runner's include resolution still uses the fs.FS
@@ -19,7 +19,7 @@ import (
 )
 
 // init contributes the filesystem bindings to stdlib.Register, rooted at the
-// process working directory, which is where a CLI run reads and writes anyway.
+// process working directory, the same place a CLI run reads and writes.
 func init() {
 	runner.RegisterBinding(Register)
 }
@@ -33,7 +33,7 @@ func Register(rt *runner.Runtime) {
 
 // RegisterRoot installs the filesystem shims rooted at dir. Every path from PHP
 // resolves against dir and cannot climb out of it, absolute ones included: an
-// absolute path names the root rather than the host, which is the spelling
+// absolute path names the root and never the host, which is the spelling
 // getcwd() answers with, so there is no spelling for a host path outside the
 // root.
 //
@@ -59,14 +59,14 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 }
 
 // root is the directory the shims are bound to, and the runtime they resolve
-// reads through. Every binding that takes a path from PHP goes through it, so
+// reads through. Every binding that takes a path from PHP resolves through it, so
 // the mapping from script path to host path is stated once.
 type root struct {
 	rt  *runner.Runtime
 	dir string
 
 	// writable is the resolved writable_paths allowlist. An empty list means
-	// no restriction, which is what a configuration that names none asks for.
+	// no restriction, and a configuration that names none gets that.
 	writable []string
 }
 
@@ -76,7 +76,7 @@ type root struct {
 // A path written from "/" names the root itself, so __DIR__ and
 // getcwd() answer and therefore what most concatenated paths look like;
 // anything else is relative to the working directory chdir() moved. The source
-// filesystem is what a script can address, so "/" is its root rather than the
+// filesystem is what a script can address, so "/" is its root and never the
 // host's: there is no spelling for a host path outside it, and a runtime
 // serving an embedded tree could not honour one anyway.
 func (r root) resolve(p string) string {
@@ -88,14 +88,14 @@ func (r root) resolve(p string) string {
 // host roots at the same directory the shims are bound to. It names the same
 // file resolve does, in the other spelling, and the two are not
 // interchangeable: resolve answers with a host path joined onto r.dir, while an
-// fs.FS wants a slash path relative to its own root and rejects anything else,
+// fs.FS takes a slash path relative to its own root and rejects anything else,
 // r.dir included. Passing resolve's answer to an fs.FS is how a read silently
 // stopped going through it whenever r.dir was not ".".
 //
 // The runtime states the rule, in resolveFSPath, because an include is held to
 // the same one: a path written from "/" names the root, anything else is
 // relative to the working directory, and both are cleaned against the root so
-// "a/../../etc/passwd" becomes "etc/passwd" inside it rather than escaping.
+// "a/../../etc/passwd" becomes "etc/passwd" inside it and escapes nothing.
 //
 // The second return is false only for an empty path, which names nothing.
 func (r root) fsPath(p string) (string, bool) {
@@ -109,7 +109,7 @@ func (r root) fsPath(p string) (string, bool) {
 //
 // It is the one path a script names that is not resolved against the source
 // filesystem. The request runtime writes an uploaded part outside the root by
-// design and hands the script the absolute tmp_name it wrote, so reading that
+// design and returns the absolute tmp_name it wrote, so reading that
 // back is reading a file the runtime itself produced. The request's own
 // registry is what says which paths those are, and a path it did not issue is
 // not one of them, which is the same check is_uploaded_file answers with.
@@ -166,11 +166,11 @@ func (r root) globSpelling(pattern string, matches []string) []string {
 }
 
 // resolveWrite is resolve for a path a script is about to modify. A path
-// outside writable_paths is an error rather than a false return: a refused
+// outside writable_paths is an error and no false return: a refused
 // write is a mistake in the script or an attempt to escape its allowance, and
-// both are worth stopping at rather than letting the script carry on believing
+// both are worth stopping at, so the script never carries on believing
 // the write happened. The runtime promotes the error to a catchable exception,
-// so a script that expects to be refused can try/catch it.
+// so a script written for the refusal can try/catch it.
 //
 // Failures the operating system reports keep returning PHP's false, as PHP
 // does.
@@ -216,8 +216,8 @@ func Within(name, dir string) bool {
 //
 // It is what a binding in another package calls so that the file it opens is the
 // file file_get_contents would open for the same spelling. The rule lives in the
-// runtime rather than here, and every caller joining its answer onto the root is
-// what keeps one rule rather than one per package: a binding that resolves a path
+// runtime and not here, and every caller joining its answer onto the root is
+// what keeps one rule and not one per package: a binding that resolves a path
 // itself is a binding that can be told to leave the root.
 //
 // An empty path names nothing and answers empty.
