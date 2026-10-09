@@ -9,7 +9,7 @@
 | Shebang                        | phpscript extension | A leading `#!` line is ignored, allowing executable scripts.                                 |
 | `declare()`                    | Parsed, ignored     | Directives are read and dropped; the runtime has one set of semantics to select from.        |
 
-phpscript accepts files containing PHP blocks and inline text. The closing tag is optional at the end of a file. One newline immediately following a closing tag is consumed rather than emitted.
+phpscript accepts files containing PHP blocks and inline text. The closing tag is optional at the end of a file. One newline immediately following a closing tag is consumed.
 
 ## declare()
 

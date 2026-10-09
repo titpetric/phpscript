@@ -98,7 +98,7 @@ Three subtest naming conventions, each meaning something:
 
 How to read benchstat: `~` means the change is within the noise for the samples given, and the p-value beside it says how confident that is. A `~` is an instruction to take more samples, or to accept that the change did not move this number.
 
-An engine benchmark means nothing unless its program is gated on `flatstack.Supports`. A program that falls back records the interpreter's result and its cost under the flatstack name. `tests/flatstack/benchmark_test.go` fails the benchmark instead of reporting a fallback, and that is the pattern a new one copies. [../flatstack.md](../flatstack.md) argues why.
+An engine benchmark means nothing unless its program is gated on `flatstack.Supports`. A program that falls back records the interpreter's result and its cost under the flatstack name. `tests/flatstack/benchmark_test.go` fails the benchmark where a fallback would otherwise be reported, and that is the pattern a new one copies. [../flatstack.md](../flatstack.md) argues why.
 
 A pinned number for one of the three parallel benchmarks describes a single goroutine. It is not reported.
 

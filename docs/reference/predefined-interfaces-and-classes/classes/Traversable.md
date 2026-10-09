@@ -19,5 +19,5 @@ interface Traversable {
 ## Status
 
 - phpscript does not declare this interface. A class may still write `implements Traversable`, and the name is accepted unchecked, because a name no `interface` declaration in the same file defines is not a contract.
-- Nothing dispatches through it. `foreach` reads an object's properties rather than asking whether it is traversable, so implementing this interface changes nothing about how a loop treats an object.
+- Nothing dispatches through it. `foreach` reads an object's properties and tests nothing about traversability, so implementing this interface changes nothing about how a loop treats an object.
 - `instanceof Traversable` is false for every value unless the script declares the interface itself and a class lists it.

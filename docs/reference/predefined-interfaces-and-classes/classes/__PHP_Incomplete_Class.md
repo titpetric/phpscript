@@ -21,4 +21,4 @@ final class __PHP_Incomplete_Class {
 
 - phpscript does not implement this class. The name is not declared.
 - Nothing would produce one: `unserialize()` is not implemented, so there is no path that needs a placeholder for a class it could not build.
-- Decode with `json_decode()`, which raises an error on input it cannot read rather than handing back a value that stands for the failure.
+- Decode with `json_decode()`, which raises an error on input it cannot read, and returns no value standing for the failure.

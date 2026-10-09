@@ -15,4 +15,4 @@ close the issue with it: it joins the matrix and is a fixture like any other.
 If it cannot, and route registration, server flags and host bindings cannot,
 the regression test goes to [`tests/github`](../../github) as
 `issue_NNN_test.go` holding `Test_IssueNNN`. The file here stays, with its
-description rewritten to name that test. It is the evidence, not the check.
+description rewritten to name that test. The fixture is the evidence; the Go test is the check.

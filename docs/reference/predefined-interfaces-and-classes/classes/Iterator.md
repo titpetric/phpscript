@@ -6,7 +6,7 @@
 
 Interface for external iterators or objects that can be iterated themselves internally.
 
-A class implementing it declares the five methods `foreach` calls to walk it: `rewind()` to start, `valid()` to ask whether there is anything at the current position, `current()` and `key()` to read it, and `next()` to advance.
+A class implementing it declares the five methods `foreach` calls to walk it: `rewind()` to start, `valid()` to report whether there is anything at the current position, `current()` and `key()` to read it, and `next()` to advance.
 
 ## Interface synopsis
 
@@ -54,7 +54,7 @@ In PHP, `foreach` calls the interface methods in a fixed order: `rewind()`, then
 
 - phpscript does not implement this interface. The name is not declared, so `instanceof Iterator` is false and `class_exists("Iterator")` returns false.
 - The interface uses `extends`. `interface Iterator extends Traversable` parses here and the extended name is recorded, so `instanceof Traversable` follows it; but nothing arrives through it, because an interface contributes no method body, property or constant in either language. Since Traversable declares no method, flattening the two loses nothing.
-- There is no interface-based dispatch. This is the incompatibility that matters: a class can declare all five methods and satisfy the contract, and `foreach` still will not call them. `foreach` over an object reads its properties, so a loop over an iterator yields the object's internal state instead of the sequence it meant to expose.
+- There is no interface-based dispatch. This is the incompatibility that matters: a class can declare all five methods and satisfy the contract, and `foreach` still will not call them. `foreach` over an object reads its properties, so a loop over an iterator visits the object's internal state and never the sequence the five methods describe.
 - `IteratorAggregate`, `yield` and the [Generator](Generator.md) class are all unavailable, so there is no second route to a lazy sequence either.
 
 A workaround, without `extends` and without relying on dispatch:

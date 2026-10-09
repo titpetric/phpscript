@@ -1,6 +1,6 @@
 # Templating
 
-The phpscript engine is capable enough to load a fully featured template engine. [titpetric/minitpl](https://github.com/titpetric/minitpl) runs unmodified: it is pulled in with composer like in any PHP project, rather than copied into this repository and patched.
+The phpscript engine is capable enough to load a fully featured template engine. [titpetric/minitpl](https://github.com/titpetric/minitpl) runs unmodified: it is pulled in with composer like in any PHP project, with no copy in this repository and no patch.
 
 ```json
 {

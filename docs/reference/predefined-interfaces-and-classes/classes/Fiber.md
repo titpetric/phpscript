@@ -6,7 +6,7 @@
 
 Full-stack, interruptible function that may be suspended from anywhere in the call stack.
 
-Execution inside a fiber pauses until something resumes it, which is what lets one call stack wait without blocking the one that started it.
+Execution inside a fiber pauses until something resumes it, so one call stack waits without blocking the one that started it.
 
 ## Class synopsis
 
@@ -54,7 +54,7 @@ public static function getCurrent(): ?Fiber
 | `Fiber::isRunning(): bool`                   | Determines if the fiber is running               |
 | `Fiber::isTerminated(): bool`                | Determines if the fiber has terminated           |
 | `Fiber::suspend(mixed $value = null): mixed` | Suspends execution of the current fiber          |
-| `Fiber::getCurrent(): ?Fiber`                | Gets the currently executing fiber               |
+| `Fiber::getCurrent(): ?Fiber`                | Gets the executing fiber                         |
 
 ## Status
 

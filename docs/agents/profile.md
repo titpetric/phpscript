@@ -20,7 +20,7 @@ This sprint changes no code. That is what separates it from [performance.md](per
 
 The shape to expect: 53 packages, 43 of them with tests. `tests/runner` is the largest single package and `tests` is next, because `tests` runs the whole fixture corpus twice, once per engine. Those are proportions, not durations - the contract keeps measurements out of these documents.
 
-`tests/runner`'s share is wall clock spent waiting. It holds the execution-limit and client-abort tests, which drive `set_time_limit`, `usleep` and `connection_aborted` against the clock. Those seconds are sleeps. They are excluded from any reading of what is slow, stated explicitly in the report, because the alternative is a sprint that tries to optimise a sleep.
+`tests/runner`'s share is wall clock spent waiting. It holds the execution-limit and client-abort tests, which drive `set_time_limit`, `usleep` and `connection_aborted` against the clock. Those seconds are sleeps. They are excluded from any reading of what is slow, and the report says so, because the alternative is a sprint that optimises a sleep.
 
 A duration here is one sample and carries no interval. It ranks packages; it does not compare two commits.
 
@@ -61,7 +61,7 @@ Neither is ever labelled "memory" alone. A report carrying one number without sa
 
 ## Combinations that are refused
 
-The command errors instead of producing something misleading, so these are separate runs by construction.
+The command errors where it would otherwise produce something misleading, so these are separate runs by construction.
 
 | Combination                                    | Why                                                                                          |
 |------------------------------------------------|----------------------------------------------------------------------------------------------|

@@ -28,7 +28,7 @@ sites/
         └── db.php
 ```
 
-`shop` leaves the document root alone, which is the expected case: `public` is the default and nothing has to say so. `blog` already calls that directory `web`, which is the reason the setting exists.
+`shop` leaves the document root alone, which is the expected case: `public` is the default and nothing has to say so. `blog` already calls that directory `web`, and the setting exists for that case.
 
 ## 2. The operator's configuration
 
@@ -50,7 +50,7 @@ virtualhost:
     root: blog
 ```
 
-Two keys here are turned off on purpose. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would sit on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults carry, so a site that configures no database of its own inherits nothing. It is also what the sites' scripts read with `getenv()`, so leaving it empty is what keeps the operator's own environment out of them.
+Two keys here are turned off. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would sit on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults carry, so a site that configures no database of its own inherits nothing. It is also what the sites' scripts read with `getenv()`, so leaving it empty is what keeps the operator's own environment out of them.
 
 ## 3. Each site's configuration
 
@@ -133,7 +133,7 @@ header("Content-Type: application/json");
 echo json_encode(array("posts" => array()));
 ```
 
-Both sites carry the same `db.php`, `shop/public/db.php` and `blog/web/db.php`, which is what makes the database boundary visible later:
+Both sites carry the same `db.php`, `shop/public/db.php` and `blog/web/db.php`, so the database boundary is visible later:
 
 ```php
 <?php
@@ -145,7 +145,7 @@ echo "connected";
 
 ## 5. Run it
 
-No application root is passed. The entries name their own, and an argument here is rejected rather than guessed at:
+No application root is passed. The entries name their own, and an argument here is rejected:
 
 ```bash
 phpscript -f server.yml server
@@ -157,7 +157,7 @@ shop: schema ready
 Server listening on 127.0.0.1:8080 http://127.0.0.1:8080
 ```
 
-`@startup` and `@schedule` run per site, and the modules they run as carry the domain, which is what lets `server.modules` still address one site's modules. Only `shop` printed, because only `shop` has a startup job.
+`@startup` and `@schedule` run per site, and the modules they run as carry the domain, so `server.modules` still addresses one site's modules. Only `shop` printed, because only `shop` has a startup job.
 
 A startup job that fails is that site's problem. It is recorded on that site's recorder as a trace named after the module, `phpstartup:shop.example.com`, and the server carries on serving every site including the one whose job failed. The rest of that site's jobs still run.
 
@@ -236,7 +236,7 @@ curl -i -H 'Host: other.example.com' http://127.0.0.1:8080/
 
 ## 7. What the sites may not do
 
-The listen address belongs to the operator, and a site holds no sites of its own. Adding either key to `shop/phpscript.yml` fails startup rather than being dropped quietly:
+The listen address belongs to the operator, and a site holds no sites of its own. Adding either key to `shop/phpscript.yml` fails startup, with nothing dropped quietly:
 
 ```text
 virtualhost "shop.example.com": shop/phpscript.yml: "server" is set by the operator, not by the site
@@ -244,7 +244,7 @@ virtualhost "shop.example.com": shop/phpscript.yml: "server" is set by the opera
 
 The rest of the configuration is the site's. It can turn route scanning off, raise its own upload limits, choose the flat-stack runtime, or record its traces to disk, without any of it reaching the other site.
 
-Every entry is loaded and checked before the server listens, so a missing `phpscript.yml`, a root that is not a directory, a document root that does not exist, or a domain configured twice fails the server rather than one request. [Configuration](../configuration.md#startup-checks) lists the checks.
+Every entry is loaded and checked before the server listens, so a missing `phpscript.yml`, a root that is not a directory, a document root that does not exist, or a domain configured twice fails the server and not one request. [Configuration](../configuration.md#startup-checks) lists the checks.
 
 ## Where to go next
 

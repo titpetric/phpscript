@@ -70,4 +70,4 @@ Four of the interfaces above are declared with `extends`: [Iterator](classes/Ite
 
 - [Predefined interfaces and classes](README.md), the compatibility summary for this chapter
 - [Classes and objects](../classes-and-objects/README.md), for what a class declaration supports
-- [Design decisions](../../design.md), for the names that are decisions rather than gaps
+- [Design decisions](../../design.md), for the names that are decisions

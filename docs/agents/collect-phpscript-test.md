@@ -105,7 +105,7 @@ Which fields appear depends on which flags were given:
 
 `gc_runs` prints as `N (M%)` in the table, where M is the collector's share of that row's fixture execution count. A row whose GC share differs between before and after is not comparable and is re-measured, per the contract.
 
-`--cache` decides what was measured, what it costs in resident memory, and whether the set drifts. `off` re-parses every run and prices the parser, and drops the runtime with the fixture. `worker` amortises the parse, prices execution, and keeps every runtime its worker built, so a late sample window carries the collector load of every fixture before it and the run drifts upward. A before/after pair that disagrees on `--cache` compares two different things; a percentile run uses `off`, for the reason the contract's stress-run section gives.
+`--cache` decides what was measured, what it costs in resident memory, and whether the set drifts. `off` re-parses every run, prices the parser, and drops the runtime with the fixture. `worker` amortises the parse, prices execution, and keeps every runtime its worker built, so a late sample window carries the collector load of every fixture before it and the run drifts upward. A before/after pair that disagrees on `--cache` compares two different things; a percentile run uses `off`, for the reason the contract's stress-run section states.
 
 Coverage is the interpreter's alone. The bytecode engine does not collect, and `php` is another process. A coverage number from a `--matrix` run describes one runtime.
 

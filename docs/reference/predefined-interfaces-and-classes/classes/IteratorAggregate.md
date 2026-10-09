@@ -6,7 +6,7 @@
 
 Interface to create an external iterator.
 
-A class implementing it hands back a separate object to iterate, usually an `ArrayIterator` or a generator, rather than answering the five [Iterator](Iterator.md) methods itself.
+A class implementing it returns a separate object to iterate, usually an `ArrayIterator` or a generator, and declares none of the five [Iterator](Iterator.md) methods itself.
 
 ## Interface synopsis
 

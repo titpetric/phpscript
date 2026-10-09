@@ -104,7 +104,7 @@ Sharing one runtime instead is a crash. `rt.compiled`, `rt.goMethods` and `rt.fr
 
 ## Reusing a runtime
 
-A runtime cannot serve two requests at once. It can serve them one after another, which is what a pool does, and the table below is where its cost goes:
+A runtime cannot serve two requests at once. It can serve them one after another, which is a pool, and the table below splits its cost:
 
 ```go
 pool := sync.Pool{New: func() any {

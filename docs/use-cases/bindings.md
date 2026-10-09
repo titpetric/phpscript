@@ -1,6 +1,6 @@
 # Bindings
 
-What makes the PHP runtime usable are the go bindings to the language. You can create Go types like the runtime itself provides the `Exception` object that is used when `new Exception` is evaluated in the VM.
+What makes the PHP runtime usable are the go bindings to the language. You can create Go types the way the runtime itself registers the `Exception` object that is used when `new Exception` is evaluated in the VM.
 
 The definition of an `Exception` on the Go side is as follows:
 
@@ -42,7 +42,7 @@ The latter example for `ex2` will produce the `0` code (zero value for the argum
 
 ## Shared memory
 
-The PHP runtime is request driven. The `stdlib/core` package provides a concurrency-safe `SharedMemory` binding for retaining process-local state between runtimes.
+The PHP runtime is request driven. The `stdlib/core` package registers a concurrency-safe `SharedMemory` binding for retaining process-local state between runtimes.
 
 - `core.NewSharedMemory() *core.SharedMemory`
 - `func (m *SharedMemory) Set(_ context.Context, key, value string)`

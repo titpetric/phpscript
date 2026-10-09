@@ -6,7 +6,7 @@
 
 Interface for customized serializing.
 
-A class implementing it no longer supports `__sleep()` and `__wakeup()`: `serialize()` is called when an instance needs serializing, and `unserialize()` replaces the constructor when one is read back. As of PHP 8.1.0, a class that implements it without also declaring `__serialize()` and `__unserialize()` raises a deprecation notice.
+A class implementing it drops `__sleep()` and `__wakeup()`: `serialize()` is called when an instance needs serializing, and `unserialize()` replaces the constructor when one is read back. As of PHP 8.1.0, a class that implements it without also declaring `__serialize()` and `__unserialize()` raises a deprecation notice.
 
 ## Interface synopsis
 

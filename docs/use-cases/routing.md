@@ -50,7 +50,7 @@ Three spellings, each arriving in `$_REQUEST` under the name it declares:
 | `{pathname...}` | the remaining segments, joined   | `$_REQUEST["pathname"]` is `docs/2026/report.pdf`             |
 | `{id:[0-9]+}`   | one segment matching the pattern | `$_REQUEST["id"]`, and a segment that does not match is a 404 |
 
-A name is letters, digits and underscores. Anything else is refused: the route is not registered, the server logs it at boot with the file it came from, and `phpscript lint` reports it with a line number. There is no default-value syntax, so `{module=users}` is an authoring error rather than a route.
+A name is letters, digits and underscores. Anything else is refused: the route is not registered, the server logs it at boot with the file it came from, and `phpscript lint` reports it with a line number. There is no default-value syntax, so `{module=users}` is an authoring error.
 
 The regex constraint is enforced by the bundled server, which routes with [chi](https://github.com/go-chi/chi). An application registering these routes on a standard library `http.ServeMux` gets the parameter without the constraint: `ServeMux` has no equivalent, and rejecting the route there would make the same annotation valid or invalid depending on the host. Constrain in PHP as well when the check has to hold either way.
 
@@ -64,7 +64,7 @@ PHP endpoint files handle:
 
 ## Shared host state
 
-Each HTTP request gets a fresh PHP VM. Host applications can bind Go values into each VM to provide shared process state or services. The example fixture under `tests/fixtures/routing` uses `SharedMemory`, a Go struct registered as the PHP class `SharedMemory`, to provide a small key/value store and counters:
+Each HTTP request gets a fresh PHP VM. Host applications can bind Go values into each VM for shared process state or services. The example fixture under `tests/fixtures/routing` uses `SharedMemory`, a Go struct registered as the PHP class `SharedMemory`, for a small key/value store and counters:
 
 - `POST /kv/{key}` writes `$_POST["value"]` into shared memory.
 - `GET /kv/{key}` reads the value back.

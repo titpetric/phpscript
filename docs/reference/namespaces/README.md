@@ -54,6 +54,6 @@ class Bootstrap
 
 ## Autoloading
 
-Register a loader with `spl_autoload_register()`, which accepts every PHP callable spelling: a closure, a function name, `"Class::method"`, or `array($object, "method")`. `spl_autoload_unregister()` removes it again, matching by what the callable names rather than by identity. Calling `spl_autoload_register()` without a callback installs phpscript's default loader, which lowercases the class name and resolves it as a `.php` file on the include path.
+Register a loader with `spl_autoload_register()`, which accepts every PHP callable spelling: a closure, a function name, `"Class::method"`, or `array($object, "method")`. `spl_autoload_unregister()` removes it again, matching by what the callable names and not by identity. Calling `spl_autoload_register()` without a callback installs phpscript's default loader, which lowercases the class name and resolves it as a `.php` file on the include path.
 
 composer's generated autoloader is interpreted as-is: `require "vendor/autoload.php"` runs `vendor/composer/ClassLoader.php` through the same interpreter as any other PHP, registers its `loadClass` method, and resolves PSR-4 and classmap entries from `composer.json`. Nothing about composer is special-cased in the runtime; see [demos/dbadmin](../../../demos/dbadmin) for a working application.

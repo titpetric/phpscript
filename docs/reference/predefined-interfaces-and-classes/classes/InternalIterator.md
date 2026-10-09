@@ -45,4 +45,4 @@ public function valid(): bool
 
 - phpscript does not implement this class. The name is not declared.
 - It exists in PHP to serve internal classes, and a script cannot construct one there either, so nothing portable depends on it.
-- A host binding that wants to expose a sequence returns a Go slice or an array; the runtime iterates both.
+- A host binding with a sequence to expose returns a Go slice or an array; the runtime iterates both.
