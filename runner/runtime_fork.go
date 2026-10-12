@@ -280,3 +280,24 @@ func (rt *Runtime) DeclaredPrograms() map[*model.Program]string {
 // stdlib.Register calls it. A host registering its own bindings on top passes a
 // function that installs those too, or its forks will not have them.
 func (rt *Runtime) SetPreparer(prepare func(*Runtime)) { rt.prepare = prepare }
+
+// InvokeClosure runs a closure declaration on this runtime, in a scope holding
+// its arguments and nothing else.
+//
+// It is the re-entry a host callback needs. The declaration is AST, so it runs
+// on whichever runtime the caller has; what it does not get is the scope the
+// closure was written in, so Captures has to be false for the result
+// to mean anything. A fresh statics bag per call is the other half of that: two
+// goroutines running the same declaration are two calls, and neither
+// accumulates into the other.
+func (rt *Runtime) InvokeClosure(decl *model.Closure, args ...any) (any, error) {
+	if decl == nil {
+		return nil, &LookupError{Symbol: "closure", Reason: "no declaration"}
+	}
+	env := closureEnv{statics: map[*model.StaticVar]map[string]any{}}
+	if rt.entrypoint != "" {
+		env.filename = rt.entrypoint
+		env.directory = rt.fileDir(rt.entrypoint)
+	}
+	return rt.invokeClosure(decl, args, env)
+}

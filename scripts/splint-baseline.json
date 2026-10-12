@@ -3,7 +3,7 @@
     "coverage/uncovered": 405,
     "filecheck/long": 37,
     "func-args/order": 24,
-    "grouping/filename": 109,
+    "grouping/filename": 74,
     "imports/collision": 2,
     "imports/pollution": 9,
     "pairing/unpaired": 122
