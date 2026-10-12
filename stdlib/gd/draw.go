@@ -4,8 +4,6 @@ import (
 	"image"
 	"image/color"
 
-	"golang.org/x/image/draw"
-
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -14,7 +12,7 @@ func registerDraw(rt *runner.Runtime) {
 	// $src_y into $dst at $dst_x, $dst_y, scaled to $dst_w by $dst_h,
 	// interpolating as it goes.
 	rt.RegisterFunc("imagecopyresampled", func(dst, src *Image, dstX, dstY, srcX, srcY, dstW, dstH, srcW, srcH int64) bool {
-		return copyResampled(dst, src, dstX, dstY, srcX, srcY, dstW, dstH, srcW, srcH, draw.CatmullRom)
+		return copyResampled(dst, src, dstX, dstY, srcX, srcY, dstW, dstH, srcW, srcH)
 	})
 
 	// imageline draws a line from $x1, $y1 to $x2, $y2 in $color.
@@ -34,7 +32,7 @@ func registerDraw(rt *runner.Runtime) {
 		r := normalise(int(x1), int(y1), int(x2), int(y2)).Intersect(im.m.Bounds())
 		c := rgba(packed)
 		if c.A == 255 {
-			draw.Draw(im.m, r, &image.Uniform{c}, image.Point{}, draw.Src)
+			fillRect(im.m, r, c)
 			return true
 		}
 		for y := r.Min.Y; y < r.Max.Y; y++ {
@@ -62,7 +60,7 @@ func registerDraw(rt *runner.Runtime) {
 	})
 }
 
-func copyResampled(dst, src *Image, dstX, dstY, srcX, srcY, dstW, dstH, srcW, srcH int64, scaler draw.Scaler) bool {
+func copyResampled(dst, src *Image, dstX, dstY, srcX, srcY, dstW, dstH, srcW, srcH int64) bool {
 	if dst == nil || src == nil || dst.m == nil || src.m == nil {
 		return false
 	}
@@ -80,7 +78,7 @@ func copyResampled(dst, src *Image, dstX, dstY, srcX, srcY, dstW, dstH, srcW, sr
 		return true
 	}
 	dr := image.Rect(int(dstX), int(dstY), int(dstX+dstW), int(dstY+dstH))
-	scaler.Scale(dst.m, dr, src.m, sr, draw.Src, nil)
+	resample(dst.m, dr, src.m, sr)
 	return true
 }
 

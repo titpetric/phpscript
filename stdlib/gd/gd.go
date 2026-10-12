@@ -33,8 +33,6 @@ import (
 	"path"
 	"path/filepath"
 
-	"golang.org/x/image/draw"
-
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib/files"
 )
@@ -42,7 +40,7 @@ import (
 // Image is a GD image handle. A script never looks inside it; it holds one and
 // passes it back to the drawing and writing functions.
 type Image struct {
-	m draw.Image
+	m Drawable
 	// truecolor records which constructor made it. imagecreate produced a
 	// palette image in PHP and imagecreatetruecolor did not, and code that
 	// branches on the difference reads it back through imageistruecolor.
@@ -54,7 +52,7 @@ type Image struct {
 func (im *Image) Bounds() image.Rectangle { return im.m.Bounds() }
 
 // Underlying returns the drawable the handle wraps.
-func (im *Image) Underlying() draw.Image { return im.m }
+func (im *Image) Underlying() Drawable { return im.m }
 
 // PHP's IMG_* format bitmask, as libgd numbers them.
 const (
@@ -178,7 +176,7 @@ func registerCreate(rt *runner.Runtime, r root) {
 			return false, err
 		}
 		m := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
-		draw.Draw(m, m.Bounds(), &image.Uniform{color.RGBA{A: 255}}, image.Point{}, draw.Src)
+		fillRect(m, m.Bounds(), color.RGBA{A: 255})
 		return &Image{m: m, truecolor: true}, nil
 	})
 
@@ -224,14 +222,14 @@ func decoder(r root, want string) func(string) any {
 // produced something that cannot be drawn on. Every paletted or YCbCr image
 // takes this path, so a decoded JPEG or GIF is writable.
 func wrap(src image.Image) *Image {
-	if d, ok := src.(draw.Image); ok {
+	if d, ok := src.(Drawable); ok {
 		if _, paletted := src.(*image.Paletted); !paletted {
 			return &Image{m: d, truecolor: true}
 		}
 	}
 	b := src.Bounds()
 	m := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
-	draw.Draw(m, m.Bounds(), src, b.Min, draw.Src)
+	copyPixels(m, src, b.Min)
 	_, paletted := src.(*image.Paletted)
 	return &Image{m: m, truecolor: !paletted}
 }
