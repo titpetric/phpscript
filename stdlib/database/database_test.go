@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/titpetric/pdo/client"
-
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/telemetry"
 )
@@ -30,7 +28,7 @@ func TestDatabaseObserverRecordsQuerySpan(t *testing.T) {
 
 	database := &Database{ID: "db"}
 	ctx, end := database.withSpan(ctx, "Get")
-	database.observe(ctx, client.QueryLogEntry{
+	database.observe(ctx, QueryLogEntry{
 		Query:   "select * from users where id = ?",
 		Args:    []any{int64(42)},
 		TxDepth: 1,
@@ -62,7 +60,7 @@ func TestDatabaseObserverRecordsQuerySpan(t *testing.T) {
 
 func TestDatabaseObserverRecordsNamedArguments(t *testing.T) {
 	span, observe := newObservedSpan(t)
-	observe(client.QueryLogEntry{
+	observe(QueryLogEntry{
 		Query: "select * from users where id = :id",
 		Args:  map[string]any{"id": int64(42)},
 	})
@@ -76,7 +74,7 @@ func TestDatabaseObserverRecordsNamedArguments(t *testing.T) {
 func TestDatabaseObserverOmitsEmptyArguments(t *testing.T) {
 	for _, args := range []any{nil, []any{}, map[string]any{}} {
 		span, observe := newObservedSpan(t)
-		observe(client.QueryLogEntry{Query: "select 1", Args: args})
+		observe(QueryLogEntry{Query: "select 1", Args: args})
 
 		if value, ok := span.Attributes["args"]; ok {
 			t.Fatalf("args = %#v for %#v, want no attribute", value, args)
@@ -98,7 +96,7 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			span, observe := newObservedSpan(t)
-			observe(client.QueryLogEntry{Query: "select 1", Err: test.err})
+			observe(QueryLogEntry{Query: "select 1", Err: test.err})
 
 			if got := span.Err() != nil; got != test.wantError {
 				t.Fatalf("failed = %t, error = %q", got, span.ErrorText)
@@ -112,7 +110,7 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 // the statement text alone does not answer.
 func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 	span, observe := newObservedSpan(t)
-	observe(client.QueryLogEntry{Query: "/* userGet */ SELECT * FROM user WHERE id = ?"})
+	observe(QueryLogEntry{Query: "/* userGet */ SELECT * FROM user WHERE id = ?"})
 
 	if span.Attributes["query_type"] != "select" || span.Attributes["query_comment"] != "userGet" {
 		t.Fatalf("attributes = %+v", span.Attributes)
@@ -124,7 +122,7 @@ func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 
 	// An untagged statement has no attribute, and never an empty one.
 	span, observe = newObservedSpan(t)
-	observe(client.QueryLogEntry{Query: "select 1"})
+	observe(QueryLogEntry{Query: "select 1"})
 	if _, ok := span.Attributes["query_comment"]; ok || span.Attributes["query_type"] != "select" {
 		t.Fatalf("attributes = %+v", span.Attributes)
 	}
@@ -233,7 +231,7 @@ func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
 
 // newObservedSpan returns a recorded database span and the observer callback
 // reporting a query onto it.
-func newObservedSpan(t *testing.T) (*telemetry.Span, func(client.QueryLogEntry)) {
+func newObservedSpan(t *testing.T) (*telemetry.Span, func(QueryLogEntry)) {
 	t.Helper()
 
 	traceOptions := telemetry.NewOptions("phpscript")
@@ -261,7 +259,7 @@ func newObservedSpan(t *testing.T) (*telemetry.Span, func(client.QueryLogEntry))
 	for _, recorded := range trace.Spans {
 		span = recorded
 	}
-	return span, func(entry client.QueryLogEntry) {
+	return span, func(entry QueryLogEntry) {
 		database.observe(ctx, entry)
 	}
 }

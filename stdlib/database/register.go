@@ -6,8 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/titpetric/pdo/client"
-
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
@@ -23,7 +21,7 @@ func Register(rt *runner.Runtime) {
 			return nil, err
 		}
 
-		database := &Database{Bridge: client.NewBridge(handle)}
+		database := &Database{Bridge: newBridge(handle)}
 		database.Bridge.WithObserver(database.observe)
 		return database, nil
 	})

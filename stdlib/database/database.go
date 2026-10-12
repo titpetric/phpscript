@@ -5,15 +5,13 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/titpetric/pdo/client"
-
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
 // Database adds request tracing to the database binding.
 type Database struct {
-	Bridge *client.Bridge
+	Bridge *Bridge
 	ID     string
 
 	// IsReadonly restricts the client to statements that only read. It is a
@@ -230,7 +228,7 @@ func (b *Database) RowsAffected(ctx context.Context) (any, error) {
 // says nothing about which row was read, and reading that back is the reason
 // to open the trace at all. They are as sensitive as the columns they filter
 // on, so the front end belongs behind something that authenticates.
-func (b *Database) observe(ctx context.Context, entry client.QueryLogEntry) {
+func (b *Database) observe(ctx context.Context, entry QueryLogEntry) {
 	span := databaseSpan(ctx)
 	span.SetAttribute("query", entry.Query)
 	parseQuery(entry.Query).record(span)
