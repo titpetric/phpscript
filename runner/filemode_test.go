@@ -4,8 +4,7 @@ import (
 	"os"
 	"testing"
 
-	yaml "github.com/goccy/go-yaml"
-
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -58,7 +57,7 @@ func TestFileModeMode(t *testing.T) {
 // writing it as a bare number must not make it decimal.
 func TestFileModeYAML(t *testing.T) {
 	var opts runner.Options
-	if err := yaml.Unmarshal([]byte(`upload_file_mode: "0600"`+"\n"), &opts); err != nil {
+	if err := config.Unmarshal([]byte(`upload_file_mode: "0600"`+"\n"), &opts); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if opts.UploadFileMode != 0o600 {
@@ -68,14 +67,14 @@ func TestFileModeYAML(t *testing.T) {
 		t.Errorf("String() = %q, want %q", got, "0600")
 	}
 
-	if err := yaml.Unmarshal([]byte("upload_file_mode: 0640\n"), &opts); err != nil {
+	if err := config.Unmarshal([]byte("upload_file_mode: 0640\n"), &opts); err != nil {
 		t.Fatalf("unquoted: %v", err)
 	}
 	if opts.UploadFileMode != 0o640 {
 		t.Errorf("unquoted upload_file_mode = %o, want %o", uint32(opts.UploadFileMode), 0o640)
 	}
 
-	if err := yaml.Unmarshal([]byte("upload_file_mode: 0688\n"), &opts); err == nil {
+	if err := config.Unmarshal([]byte("upload_file_mode: 0688\n"), &opts); err == nil {
 		t.Error("a non-octal mode parsed, want an error")
 	}
 }

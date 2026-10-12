@@ -3,8 +3,7 @@ package runner_test
 import (
 	"testing"
 
-	yaml "github.com/goccy/go-yaml"
-
+	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -68,7 +67,7 @@ func TestSizeExceeds(t *testing.T) {
 // written the way php.ini writes it, and writing it back.
 func TestSizeYAML(t *testing.T) {
 	var opts runner.Options
-	if err := yaml.Unmarshal([]byte("upload_max_filesize: 2M\npost_max_size: 8388608\n"), &opts); err != nil {
+	if err := config.Unmarshal([]byte("upload_max_filesize: 2M\npost_max_size: 8388608\n"), &opts); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if got := opts.UploadMaxFilesize.Bytes(); got != 2<<20 {
@@ -81,7 +80,7 @@ func TestSizeYAML(t *testing.T) {
 		t.Errorf("String() = %q, want %q", got, "2M")
 	}
 
-	if err := yaml.Unmarshal([]byte("post_max_size: 8K\n"), &opts); err == nil {
+	if err := config.Unmarshal([]byte("post_max_size: 8K\n"), &opts); err == nil {
 		t.Error("a K suffix parsed, want an error")
 	}
 }

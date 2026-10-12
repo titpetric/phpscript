@@ -735,6 +735,14 @@ func goldenOutput(path string) string {
 	return strings.TrimSuffix(path, GoldenSuffix) + GoldenOutputSuffix
 }
 
+// unmarshalHeader reads the yaml header of a .phpt document into target.
+//
+// It is the one door this package reads a header through, so a fixture and a
+// test of the parser agree on what a key means and on which library decided.
+func unmarshalHeader(data []byte, target any) error {
+	return yaml.Unmarshal(data, target)
+}
+
 // ParseFixture reads a .phpt document: the yaml header, the php body and the
 // expected output, separated by the two --- lines. The optional path is what the
 // fixture reports itself as, since the bytes carry no name.
@@ -746,7 +754,7 @@ func ParseFixture(data []byte, path ...string) (*Fixture, error) {
 	}
 
 	var f Fixture
-	if err := yaml.Unmarshal([]byte(parts[0]), &f); err != nil {
+	if err := unmarshalHeader([]byte(parts[0]), &f); err != nil {
 		return nil, fmt.Errorf("yaml metadata unmarshal error: %w", err)
 	}
 

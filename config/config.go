@@ -7,7 +7,6 @@ import (
 
 	_ "embed"
 
-	yaml "github.com/goccy/go-yaml"
 	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/runner"
@@ -135,7 +134,7 @@ type Routes struct {
 // changes.
 func New() Config {
 	var result Config
-	if err := yaml.Unmarshal(DefaultRuntimeConfig, &result); err != nil {
+	if err := Unmarshal(DefaultRuntimeConfig, &result); err != nil {
 		panic(fmt.Errorf("config: embedded config.yml: %w", err))
 	}
 	return result

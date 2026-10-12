@@ -3,8 +3,6 @@ package config_test
 import (
 	"testing"
 
-	yaml "github.com/goccy/go-yaml"
-
 	"github.com/titpetric/phpscript/config"
 )
 
@@ -44,7 +42,7 @@ telemetry:
   path: "/debug/service"
   ring_buffer_size: 10
 `)
-	if err := yaml.Unmarshal(source, &result); err != nil {
+	if err := config.Unmarshal(source, &result); err != nil {
 		t.Fatal(err)
 	}
 

@@ -24,8 +24,6 @@ import (
 	"strings"
 	"testing"
 
-	yaml "github.com/goccy/go-yaml"
-
 	"github.com/titpetric/phpscript/flatstack"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
@@ -55,7 +53,7 @@ func parseFixture(data []byte) (fixture, error) {
 		return fixture{}, errors.New("malformed .phpt: want <yaml>---<php>---<output>")
 	}
 	var f fixture
-	if err := yaml.Unmarshal([]byte(parts[0]), &f); err != nil {
+	if err := unmarshalHeader([]byte(parts[0]), &f); err != nil {
 		return fixture{}, err
 	}
 	if f.Name == "" {

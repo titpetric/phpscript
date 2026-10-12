@@ -3,8 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-
-	yaml "github.com/goccy/go-yaml"
 )
 
 // Overlay reads filename over base and returns the configuration it describes,
@@ -30,7 +28,7 @@ func Overlay(base Config, filename string, forbidden []string, owned string) (Co
 // fs.FS spells. filename is only what errors name.
 func OverlayBytes(base Config, filename string, data []byte, forbidden []string, owned string) (Config, map[string]any, error) {
 	var declared map[string]any
-	if err := yaml.Unmarshal(data, &declared); err != nil {
+	if err := Unmarshal(data, &declared); err != nil {
 		return base, nil, fmt.Errorf("%s: %w", filename, err)
 	}
 
@@ -45,7 +43,7 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 	}
 
 	result := base
-	if err := yaml.Unmarshal(data, &result); err != nil {
+	if err := Unmarshal(data, &result); err != nil {
 		return base, declared, fmt.Errorf("%s: %w", filename, err)
 	}
 
