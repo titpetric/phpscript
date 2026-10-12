@@ -59,14 +59,6 @@ func splitShebang(src string) (shebang, rest string, ok bool) {
 	return strings.TrimRight(line, "\r"), rest, true
 }
 
-// Options controls AST pretty-printing.
-type Options struct {
-	// Comments is every comment of the source file, in source order. The AST
-	// holds none of them, so the printer places them by line: a comment is
-	// written out before the first statement that starts below it.
-	Comments []Comment
-}
-
 // Print renders prog as formatted PHP source. Any node the printer has no
 // spelling for is rendered as a placeholder comment; use Source, which refuses
 // to rewrite a file in that case.

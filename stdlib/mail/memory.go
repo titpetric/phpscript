@@ -11,14 +11,6 @@ import (
 
 var _ model.MailProvider = (*Memory)(nil)
 
-// Message is a queued email, with the name of the server it was addressed to.
-type Message struct {
-	Server    string
-	Recipient string
-	Subject   string
-	Body      string
-}
-
 // Memory is a Provider that appends messages to an in-memory queue instead
 // of delivering them. A host binds one through runner.Options.Mail to capture
 // what scripts send: tests, local runs, dry runs.

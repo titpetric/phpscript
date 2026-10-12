@@ -8,22 +8,6 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// BoundVar is one variable the compiled expression reads: the PHP name, the
-// bare-name flag Eval's resolution needs, and the slot the value lands in.
-type BoundVar struct {
-	Name  string
-	Const bool
-	Slot  int
-}
-
-// BoundClosure is one compiled closure literal: the synthetic identifier,
-// the declaration Eval binds a callable for, and its slot.
-type BoundClosure struct {
-	ID   string
-	Slot int
-	Decl *model.Closure
-}
-
 // Compiled is a model.Expr compiled straight to a closure chain, with the
 // bindings Eval fills before running: variables by slot, closure literals by
 // slot, and the registered-function names to install into the base env. It

@@ -231,21 +231,6 @@ type Fixture struct {
 	flatErr     error
 }
 
-// TestResult carries execution outcome for a single fixture.
-type TestResult struct {
-	Name          string `json:"name"`
-	Description   string `json:"description"`
-	Path          string `json:"path"`
-	Passed        bool   `json:"passed"`
-	DurationMs    int64  `json:"duration_ms"`
-	FailureReason string `json:"failure_reason,omitempty"`
-	GotOutput     string `json:"got_output,omitempty"`
-	WantOutput    string `json:"want_output,omitempty"`
-	Error         string `json:"error,omitempty"`
-	Runner        Runner `json:"runner,omitempty"`
-	Skipped       bool   `json:"skipped,omitempty"`
-}
-
 // SetRootFS binds the filesystem a fixture's includes resolve against. The
 // directory holding the .phpt is the right answer for every caller: it is what
 // the php runner uses as its working directory, so all three runners resolve a
@@ -524,13 +509,6 @@ var (
 	workers   = map[int]*worker{}
 	workerKey = new(int)
 )
-
-// WithWorker marks ctx as belonging to worker id, so a fixture run under it
-// takes that worker's caches. The command's worker loop calls this once per
-// goroutine; everything else inherits worker zero.
-func WithWorker(ctx context.Context, id int) context.Context {
-	return context.WithValue(ctx, workerKey, id)
-}
 
 // currentWorker answers the caches for the worker ctx names. Go has no
 // goroutine-local storage, so the id rides the context the run was started

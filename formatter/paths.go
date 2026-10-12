@@ -9,34 +9,6 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// Result is what the formatter did with one file. Formatting rewrites files
-// in place, so a file is only rewritten when the formatter could read all of
-// it and its output held up to the checks in File; every other file is
-// reported as skipped and left as it is.
-type Result struct {
-	Path    string
-	Changed bool
-	// Skipped is the reason the file was left as it is, and nil when the file
-	// was formatted.
-	Skipped error
-}
-
-// SkipError reports a file the formatter left alone: source it cannot parse,
-// a node it has no spelling for, or output that did not hold up to the checks
-// in File. Formatting rewrites a file in place, so anything the formatter does
-// not fully understand is safer left as it is than rewritten from a partial
-// reading of it.
-type SkipError struct {
-	Path   string
-	Reason error
-}
-
-// Error names the file and what was wrong with it.
-func (e *SkipError) Error() string { return e.Path + ": " + e.Reason.Error() }
-
-// Unwrap answers the reason, so a caller matches on the parse error itself.
-func (e *SkipError) Unwrap() error { return e.Reason }
-
 // Paths formats each path argument in place and reports what happened to every
 // file it looked at. A file it cannot format is skipped and never fails the
 // run: a directory of PHP holds valid code phpscript does not support yet, and
