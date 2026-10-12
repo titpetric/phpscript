@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
+	nethttp "net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -21,7 +21,7 @@ import (
 //
 // Nothing listens: a mux answers a request, so the routing half is testable
 // without a port, and only the listening tests take one.
-func serveScript(t *testing.T, src string) (*runner.Runtime, http.Handler) {
+func serveScript(t *testing.T, src string) (*runner.Runtime, nethttp.Handler) {
 	t.Helper()
 	_, rt, handler := serveScriptAll(t, src)
 	return rt, handler
@@ -29,13 +29,13 @@ func serveScript(t *testing.T, src string) (*runner.Runtime, http.Handler) {
 
 // serveScriptOutput is serveScript for a test that reads what a handler echoed,
 // the place a handler answering nobody puts what it found out.
-func serveScriptOutput(t *testing.T, src string) (*strings.Builder, http.Handler) {
+func serveScriptOutput(t *testing.T, src string) (*strings.Builder, nethttp.Handler) {
 	t.Helper()
 	out, _, handler := serveScriptAll(t, src)
 	return out, handler
 }
 
-func serveScriptAll(t *testing.T, src string) (*strings.Builder, *runner.Runtime, http.Handler) {
+func serveScriptAll(t *testing.T, src string) (*strings.Builder, *runner.Runtime, nethttp.Handler) {
 	t.Helper()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
@@ -54,9 +54,9 @@ func serveScriptAll(t *testing.T, src string) (*strings.Builder, *runner.Runtime
 	if !ok {
 		t.Fatal("the script defined no MUX constant")
 	}
-	handler, ok := value.(http.Handler)
+	handler, ok := value.(nethttp.Handler)
 	if !ok {
-		t.Fatalf("MUX is %T, want an http.Handler", value)
+		t.Fatalf("MUX is %T, want an nethttp.Handler", value)
 	}
 	return &out, rt, handler
 }
@@ -86,17 +86,17 @@ define("MUX", $mux);
 
 	tests := []struct {
 		name    string
-		request *http.Request
+		request *nethttp.Request
 		want    string
 	}{
 		{
 			name:    "query",
-			request: httptest.NewRequest(http.MethodGet, "/hello?name=tit", nil),
+			request: httptest.NewRequest(nethttp.MethodGet, "/hello?name=tit", nil),
 			want:    "hello tit",
 		},
 		{
 			name:    "path value",
-			request: httptest.NewRequest(http.MethodGet, "/users/42", nil),
+			request: httptest.NewRequest(nethttp.MethodGet, "/users/42", nil),
 			want:    "{\"id\":\"42\"}\n",
 		},
 		{
@@ -110,8 +110,8 @@ define("MUX", $mux);
 		t.Run(test.name, func(t *testing.T) {
 			response := httptest.NewRecorder()
 			handler.ServeHTTP(response, test.request)
-			if response.Code != http.StatusOK {
-				t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+			if response.Code != nethttp.StatusOK {
+				t.Fatalf("status = %d, want %d", response.Code, nethttp.StatusOK)
 			}
 			if got := response.Body.String(); got != test.want {
 				t.Errorf("body = %q, want %q", got, test.want)
@@ -130,9 +130,9 @@ define("MUX", $mux);
 `)
 
 	response := httptest.NewRecorder()
-	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/nothing", nil))
-	if response.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want %d", response.Code, http.StatusNotFound)
+	handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/nothing", nil))
+	if response.Code != nethttp.StatusNotFound {
+		t.Errorf("status = %d, want %d", response.Code, nethttp.StatusNotFound)
 	}
 }
 
@@ -152,13 +152,13 @@ define("MUX", $mux);
 	// answered 200 with an empty body. That is the runtime's contract rather
 	// than this binding's, and the doc on Handle says so.
 	boom := httptest.NewRecorder()
-	handler.ServeHTTP(boom, httptest.NewRequest(http.MethodGet, "/boom", nil))
-	if boom.Code != http.StatusInternalServerError {
-		t.Errorf("status = %d, want %d", boom.Code, http.StatusInternalServerError)
+	handler.ServeHTTP(boom, httptest.NewRequest(nethttp.MethodGet, "/boom", nil))
+	if boom.Code != nethttp.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", boom.Code, nethttp.StatusInternalServerError)
 	}
 
 	fine := httptest.NewRecorder()
-	handler.ServeHTTP(fine, httptest.NewRequest(http.MethodGet, "/fine", nil))
+	handler.ServeHTTP(fine, httptest.NewRequest(nethttp.MethodGet, "/fine", nil))
 	if got := fine.Body.String(); got != "still here" {
 		t.Errorf("the next request answered %q, want %q", got, "still here")
 	}
@@ -205,10 +205,10 @@ define("MUX", $mux);
 		t.Fatal(err)
 	}
 	value, _ := rt.Const("MUX")
-	handler := value.(http.Handler)
+	handler := value.(nethttp.Handler)
 
 	leaving, disconnect := context.WithCancel(context.Background())
-	request := httptest.NewRequest(http.MethodGet, "/slow", nil).WithContext(leaving)
+	request := httptest.NewRequest(nethttp.MethodGet, "/slow", nil).WithContext(leaving)
 
 	done := make(chan struct{})
 	go func() {
@@ -262,13 +262,13 @@ define("MUX", $mux);
 		t.Fatal(err)
 	}
 	value, _ := rt.Const("MUX")
-	handler := value.(http.Handler)
+	handler := value.(nethttp.Handler)
 
 	gone, disconnect := context.WithCancel(context.Background())
 	disconnect()
 
 	response := httptest.NewRecorder()
-	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/work", nil).WithContext(gone))
+	handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/work", nil).WithContext(gone))
 
 	if ran.Load() {
 		t.Error("the handler ran for a client that had already gone")
@@ -309,7 +309,7 @@ define("SERVER", $server);
 		t.Fatal("listen answered no address")
 	}
 
-	response, err := http.Get("http://" + bound + "/ping")
+	response, err := nethttp.Get("http://" + bound + "/ping")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
@@ -331,7 +331,7 @@ define("SERVER", $server);
 
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		if _, err := http.Get("http://" + bound + "/ping"); err != nil {
+		if _, err := nethttp.Get("http://" + bound + "/ping"); err != nil {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -340,8 +340,8 @@ define("SERVER", $server);
 }
 
 // formRequest builds a urlencoded POST: the shape form_value reads.
-func formRequest(target, body string) *http.Request {
-	request := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
+func formRequest(target, body string) *nethttp.Request {
+	request := httptest.NewRequest(nethttp.MethodPost, target, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return request
 }
@@ -383,12 +383,12 @@ define("B", $b);
 	first, _ := rt.Const("A")
 	second, _ := rt.Const("B")
 	muxes := []struct {
-		handler http.Handler
+		handler nethttp.Handler
 		path    string
 		want    string
 	}{
-		{first.(http.Handler), "/a", "a:5310"},
-		{second.(http.Handler), "/b", "b:60"},
+		{first.(nethttp.Handler), "/a", "a:5310"},
+		{second.(nethttp.Handler), "/b", "b:60"},
 	}
 
 	var wg sync.WaitGroup
@@ -400,7 +400,7 @@ define("B", $b);
 				defer wg.Done()
 				for range 25 {
 					response := httptest.NewRecorder()
-					mux.handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, mux.path, nil))
+					mux.handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, mux.path, nil))
 					if response.Body.String() != mux.want {
 						bad.Add(1)
 					}
@@ -471,7 +471,7 @@ define("SERVER", $server);
 			go func() {
 				defer inner.Done()
 				for range 10 {
-					response, err := http.Get("http://" + bound + "/ping")
+					response, err := nethttp.Get("http://" + bound + "/ping")
 					if err != nil {
 						continue
 					}
@@ -529,8 +529,8 @@ define("MUX", $mux);
 `)
 
 	response := httptest.NewRecorder()
-	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/hello?name=tit", nil))
-	if response.Code != http.StatusOK {
+	handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/hello?name=tit", nil))
+	if response.Code != nethttp.StatusOK {
 		t.Fatalf("status = %d, body = %q", response.Code, response.Body.String())
 	}
 	if got := response.Body.String(); got != "hei tit" {
@@ -570,8 +570,8 @@ define("MUX", $mux);
 		{"/users/42", "user 42"},
 	} {
 		response := httptest.NewRecorder()
-		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, want.path, nil))
-		if response.Code != http.StatusOK {
+		handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, want.path, nil))
+		if response.Code != nethttp.StatusOK {
 			t.Fatalf("GET %s: status = %d, body = %q", want.path, response.Code, response.Body.String())
 		}
 		if got := response.Body.String(); got != want.body {
@@ -624,8 +624,8 @@ define("MUX", $mux);
 		{"/named?name=tit", "root tit"},
 	} {
 		response := httptest.NewRecorder()
-		handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, want.path, nil))
-		if response.Code != http.StatusOK {
+		handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, want.path, nil))
+		if response.Code != nethttp.StatusOK {
 			t.Fatalf("GET %s: status = %d, body = %q", want.path, response.Code, response.Body.String())
 		}
 		if got := response.Body.String(); got != want.body {
@@ -727,7 +727,7 @@ define("MUX", $mux);
 		t.Fatal(err)
 	}
 	value, _ := rt.Const("MUX")
-	handler := value.(http.Handler)
+	handler := value.(nethttp.Handler)
 
 	// Two workers, so six requests of 150ms are three rounds: over 300ms and
 	// well under the 900ms they would take one at a time.
@@ -745,7 +745,7 @@ define("MUX", $mux);
 		go func() {
 			defer wg.Done()
 			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/slow", nil))
+			handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/slow", nil))
 			if response.Body.String() != "done" {
 				bad.Add(1)
 			}
@@ -838,7 +838,7 @@ func TestReentryAnswersOnTheWorker(t *testing.T) {
 		t.Run(spelling.name, func(t *testing.T) {
 			out, handler := serveScriptOutput(t, reentryScript(spelling.route))
 			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/x", nil))
+			handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/x", nil))
 
 			if got := response.Body.String(); !strings.Contains(got, "inner") {
 				t.Errorf("response = %q, want the echo of the callable the handler called", got)
@@ -863,7 +863,7 @@ func TestReentryIsNotARace(t *testing.T) {
 				go func() {
 					defer wg.Done()
 					response := httptest.NewRecorder()
-					handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet,
+					handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet,
 						fmt.Sprintf("/x?n=%d", i), nil))
 				}()
 			}
