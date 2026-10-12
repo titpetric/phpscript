@@ -59,7 +59,7 @@ func ParseStr(raw string, limits Limits) *model.Array {
 		name, value, _ := strings.Cut(field, "=")
 		pairs = append(pairs, Pair{Name: URLDecode(name), Value: URLDecode(value)})
 	}
-	return ParsePairs(pairs, limits)
+	return ParsePairs(limits, pairs)
 }
 
 // Pair is one form field, name and value already decoded.
@@ -71,7 +71,7 @@ type Pair struct {
 // ParsePairs is ParseStr for input that arrived as pairs: multipart values and
 // the cookie header. Order is the order they are applied in, which decides the
 // result when two name the same variable.
-func ParsePairs(pairs []Pair, limits Limits) *model.Array {
+func ParsePairs(limits Limits, pairs []Pair) *model.Array {
 	out := model.NewArray()
 	maxVars, maxNesting := limits.maxVars(), limits.maxNesting()
 	for i, pair := range pairs {

@@ -44,16 +44,16 @@ func CopyArray(a *Array) *Array {
 	return out
 }
 
-// AssignsTo reports whether any statement in body writes through the name that
-// target is rooted at: `$v = ...`, `$v["k"] = ...`, `$v->p = ...`, `$v++`, or
-// a list() destructuring naming it.
+// AssignsTo reports whether target's root name is written through by any
+// statement in body: `$v = ...`, `$v["k"] = ...`, `$v->p = ...`, `$v++`, or a
+// list() destructuring naming it.
 //
 // It is a root-name test and no exact-shape one. A write
 // to `$v["k"]` has to count: the element it reaches lives inside the value the
 // loop variable holds, so a by-value loop must have copied it. Over-reporting
 // costs a copy that turns out to be unobservable; under-reporting would let a
 // by-value loop edit its source.
-func AssignsTo(body []Stmt, target Expr) bool {
+func AssignsTo(target Expr, body []Stmt) bool {
 	root := RootName(target)
 	if root == "" {
 		// A target with no name to root on cannot be matched against, so treat it as

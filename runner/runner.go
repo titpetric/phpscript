@@ -558,7 +558,7 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	if n.ByRef {
 		writable, _ = src.(*model.Array)
 	}
-	copyValue := !n.ByRef && model.AssignsTo(n.Body, valTarget)
+	copyValue := !n.ByRef && model.AssignsTo(valTarget, n.Body)
 
 	// iter runs the loop body for one (key, value) pair, returning whether to
 	// continue iterating. It records any error / non-normal flow in the

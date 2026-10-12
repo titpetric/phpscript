@@ -421,7 +421,7 @@ func (c Context) decodeCookies() {
 				Value: shared.URLDecode(ck.Value),
 			})
 		}
-		c.decode.cookieVars = shared.ParsePairs(pairs, c.decode.options.inputLimits())
+		c.decode.cookieVars = shared.ParsePairs(c.decode.options.inputLimits(), pairs)
 	})
 }
 
@@ -657,7 +657,7 @@ func (c Context) decodeBody(r *http.Request, opts Options) *model.Array {
 			pairs = append(pairs, shared.Pair{Name: name, Value: value})
 		}
 	}
-	return shared.ParsePairs(pairs, limits)
+	return shared.ParsePairs(limits, pairs)
 }
 
 // capBody limits how much of a body of unannounced length is read, so a

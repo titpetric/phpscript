@@ -17,7 +17,7 @@ func TestRunPrintsMarkdownResultsAndSummary(t *testing.T) {
 	writeLintFile(t, dir, "warn.php", `<?php if ($value = true) {}`)
 
 	var out bytes.Buffer
-	err := run([]string{dir}, Options{}, &out)
+	err := run(Options{}, []string{dir}, &out)
 	if err == nil {
 		t.Fatal("run returned nil error with a failing file")
 	}
@@ -47,7 +47,7 @@ func TestRunGroupsResultsByFolder(t *testing.T) {
 	writeLintFile(t, filepath.Join(dir, "sub"), "warn.php", `<?php if ($value = true) {}`)
 
 	var out bytes.Buffer
-	if err := run([]string{dir, filepath.Join(dir, "sub")}, Options{}, &out); err != nil {
+	if err := run(Options{}, []string{dir, filepath.Join(dir, "sub")}, &out); err != nil {
 		t.Fatalf("run returned an error: %v", err)
 	}
 
@@ -75,7 +75,7 @@ func TestRunFlatstackUsesOneResultPerFile(t *testing.T) {
 	writeLintFile(t, dir, "warn.php", `<?php if ($value = true) {}`)
 
 	var out bytes.Buffer
-	if err := run([]string{dir}, Options{Flatstack: true}, &out); err != nil {
+	if err := run(Options{Flatstack: true}, []string{dir}, &out); err != nil {
 		t.Fatalf("run returned an error: %v", err)
 	}
 
@@ -100,7 +100,7 @@ func TestRunWritesMarkdownReport(t *testing.T) {
 	output := filepath.Join(dir, "report.md")
 
 	var out bytes.Buffer
-	if err := run([]string{dir}, Options{Output: output}, &out); err != nil {
+	if err := run(Options{Output: output}, []string{dir}, &out); err != nil {
 		t.Fatalf("run returned an error: %v", err)
 	}
 

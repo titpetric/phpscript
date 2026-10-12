@@ -345,7 +345,7 @@ type Host interface {
 // invokeHost calls a callable held in a value, `$fn(...)`, resolving every
 // PHP callable spelling.
 type invokeHost interface {
-	InvokeValue(callee any, args []any) (any, error)
+	InvokeValue(args []any, callee any) (any, error)
 }
 
 // globalHost holds variables of its own, which a host seeded before the run. Run

@@ -52,7 +52,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		// frame handle, which the VM binds and restores itself.
 		rt.hostFlat = &flatHost{runtime: rt}
 	}
-	return true, flatvm.Run(program, rt.hostFlat)
+	return true, flatvm.Run(rt.hostFlat, program)
 }
 
 type flatHost struct {
@@ -458,7 +458,7 @@ func (h flatHost) CheckMemory() error {
 
 // InvokeValue calls a callable held in a value, `$fn(...)`, through the same
 // resolution call_user_func uses, so every callable spelling works.
-func (h *flatHost) InvokeValue(callee any, args []any) (any, error) {
+func (h *flatHost) InvokeValue(args []any, callee any) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperInvoke(&scopeRef{scope: scope})(callee, args...)
 	h.pullScope(scope)

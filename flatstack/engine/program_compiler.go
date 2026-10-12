@@ -775,7 +775,7 @@ func (c *compiler) foreachStmt(node *model.Foreach, path string) error {
 	// through the target, since that is the only way the difference can be
 	// observed, and copying every element of every loop would charge the common
 	// read-only loop for a semantic it does not use.
-	if !node.ByRef && model.AssignsTo(node.Body, valueTarget) {
+	if !node.ByRef && model.AssignsTo(valueTarget, node.Body) {
 		c.emit(instruction{op: opCopyValue})
 	}
 	if err := c.storeTop(valueTarget, "foreach", path+".value"); err != nil {

@@ -46,14 +46,14 @@ func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 		},
 		Run: func(ctx context.Context, args []string) error {
 			opts.Include = globals.Include
-			return Run(args, opts)
+			return Run(opts, args)
 		},
 	}
 }
 
 // Run lints files or directories and reports diagnostics.
-func Run(args []string, opts Options) error {
-	return run(args, opts, os.Stdout)
+func Run(opts Options, args []string) error {
+	return run(opts, args, os.Stdout)
 }
 
 type result struct {
@@ -69,7 +69,7 @@ const (
 	statusFail = "FAIL"
 )
 
-func run(args []string, opts Options, out io.Writer) error {
+func run(opts Options, args []string, out io.Writer) error {
 	// Before the first file is checked: the name registry is built once per
 	// process, and this is what puts the application's own names in it.
 	phplint.SetInclude(opts.Include)

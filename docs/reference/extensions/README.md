@@ -131,7 +131,7 @@ Embedding hosts opt into runtime services separately:
 - `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterBinding`: `Time`, `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `Mail`, and `start_span`.
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
 - `runner.Options.Mail` names the `model.MailProvider` `Mail` and `mail()` resolve through, the way `Options.Database` names the connections. `mail.NewProvider(servers)` builds one from a configuration block; nil leaves both bindings on a provider holding no servers, which refuses catchably.
-- `mail.NewProviderFunc(servers, deliver)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector its pools are opened with. Name resolution and the rule that a script cannot read a credential sit above the seam and are unaffected.
+- `mail.NewProviderFunc(deliver, servers)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector its pools are opened with. Name resolution and the rule that a script cannot read a credential sit above the seam and are unaffected.
 - `mail.NewMemory(names...)` is a provider that queues messages in memory and sends nothing, so tests and dry runs capture mail without a mail server. Naming no servers configures every name.
 - `runner.Context.Register(rt)` adds the request-aware header functions and seeds `$_GET`, `$_POST`, `$_COOKIE`, `$_SERVER`, `$_ENV`, `$_REQUEST`, `$_FILES`, `$argv` and `$argc`. See [Predefined variables](../predefined-variables/README.md).
 

@@ -127,9 +127,9 @@ The map replaces wholesale. When this was a single unnamed block, a site setting
 SMTP is the default transport. The model is separate from it: An embedding host swaps it without touching name resolution or the rules above:
 
 ```go
-provider := mail.NewProviderFunc(servers, func(config mail.Config, recipient, subject, body string) error {
+provider := mail.NewProviderFunc(func(config mail.Config, recipient, subject, body string) error {
 	return ses.Send(config.From, recipient, subject, body)
-})
+}, servers)
 options.Mail = provider
 ```
 

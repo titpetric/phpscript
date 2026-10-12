@@ -136,7 +136,7 @@ func TestFusedBinaryReadsUninitialisedThroughHost(t *testing.T) {
 		t.Fatal("expected $seed + $seed to fuse")
 	}
 	host := &fusedRunHost{globals: map[string]any{"seed": int64(21)}}
-	if err := Run(program, host); err != nil {
+	if err := Run(host, program); err != nil {
 		t.Fatal(err)
 	}
 	if got := host.out.String(); got != "42" {
@@ -158,7 +158,7 @@ func TestFusedStoreOffersSetGlobal(t *testing.T) {
 		t.Fatal("expected a folded store for $claimed")
 	}
 	host := &fusedRunHost{globals: map[string]any{"claimed": int64(0), "a": int64(2), "b": int64(3)}}
-	if err := Run(program, host); err != nil {
+	if err := Run(host, program); err != nil {
 		t.Fatal(err)
 	}
 	if host.globals["claimed"] != int64(5) {
@@ -174,7 +174,7 @@ func TestFusedStoreOffersSetGlobal(t *testing.T) {
 func TestFusedStoreRetypes(t *testing.T) {
 	program := compileSource(t, `<?php $s = "text"; $s = $a + $b; echo $s;`)
 	host := &fusedRunHost{globals: map[string]any{"a": int64(1), "b": int64(2)}}
-	if err := Run(program, host); err != nil {
+	if err := Run(host, program); err != nil {
 		t.Fatal(err)
 	}
 	if got := host.out.String(); got != "3" {

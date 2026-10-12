@@ -73,7 +73,7 @@ func runRefProgram(t *testing.T, source string, calls map[string]func(*refTestHo
 		t.Fatal(err)
 	}
 	host := &refTestHost{calls: calls}
-	if err := Run(program, host); err != nil {
+	if err := Run(host, program); err != nil {
 		t.Fatal(err)
 	}
 	return host.echoed

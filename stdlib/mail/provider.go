@@ -45,7 +45,7 @@ type Provider struct {
 // NewProvider returns a provider holding the given servers, keyed by the name
 // a script names, sending over SMTP.
 func NewProvider(servers map[string]Config) *Provider {
-	return NewProviderFunc(servers, deliverSMTP)
+	return NewProviderFunc(deliverSMTP, servers)
 }
 
 // NewProviderFunc is NewProvider with the transport replaced, the way
@@ -56,7 +56,7 @@ func NewProvider(servers map[string]Config) *Provider {
 // written into it
 // would be written into all of them. Names are lowercased and a missing port is
 // filled in here, so a delivery reads a complete credential.
-func NewProviderFunc(servers map[string]Config, deliver Deliver) *Provider {
+func NewProviderFunc(deliver Deliver, servers map[string]Config) *Provider {
 	if deliver == nil {
 		deliver = deliverSMTP
 	}
