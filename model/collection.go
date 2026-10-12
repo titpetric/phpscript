@@ -183,36 +183,3 @@ func IsCollection(v any) bool {
 	}
 	return false
 }
-
-// ToArray returns v as an *Array, converting a native collection if needed and
-// passing an existing *Array through untouched. Use it at the point where PHP
-// semantics genuinely require an array (mutation, `$a[] = v`), not to normalise
-// arguments, since RangeValues reads every shape without allocating.
-func ToArray(v any) *Array {
-	if arr, ok := v.(*Array); ok && arr != nil {
-		return arr
-	}
-	// A Go slice is already a list: its elements go straight into a list-mode
-	// Array (one allocation for the copy) and pays no Set per element.
-	if items, ok := v.([]any); ok {
-		out := NewArraySize(len(items))
-		out.list = append(out.list, items...)
-		// An empty slice held no integer key, so it keeps the sentinel
-		// NewArraySize set, and claims no next index of 0.
-		if len(items) > 0 {
-			out.nextID = int64(len(items))
-		}
-		return out
-	}
-	n, _ := LenValues(v)
-	out := NewArraySize(n)
-	RangeValues(v, func(key, val any) bool {
-		if i, ok := key.(int64); ok && i == out.nextID {
-			out.Append(val)
-		} else {
-			out.Set(key, val)
-		}
-		return true
-	})
-	return out
-}

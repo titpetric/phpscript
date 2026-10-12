@@ -845,3 +845,147 @@ func TestArrayResetKeepsStorage(t *testing.T) {
 		t.Fatalf("list Len = %d, want 1", list.Len())
 	}
 }
+
+// TestArray_Delete covers unset: the entries either side keep their order and
+// nothing is renumbered, as PHP does. A list-mode array promotes first, because
+// dropping an element from the middle leaves the remaining keys sparse and list
+// mode cannot express that; dropping the last one stays in list mode.
+func TestArray_Delete(t *testing.T) {
+	arr := NewArray()
+	arr.Append("a")
+	arr.Append("b")
+	arr.Append("c")
+
+	arr.Delete(int64(2))
+	if !arr.isList() {
+		t.Error("deleting the last element of a list promoted it")
+	}
+	if arr.Len() != 2 {
+		t.Errorf("Len() = %d after deleting the tail, want 2", arr.Len())
+	}
+
+	arr.Delete(int64(0))
+	if arr.isList() {
+		t.Error("deleting from the middle of a list left it in list mode")
+	}
+	if got, want := arr.Keys(), []any{int64(1)}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Keys() = %v, want %v", got, want)
+	}
+
+	// The append index is not rewound: unset never renumbers, so the next
+	// append lands past the key that was removed.
+	arr.Append("d")
+	if got, want := arr.Keys(), []any{int64(1), int64(3)}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Keys() = %v after appending over a deleted tail, want %v", got, want)
+	}
+
+	before := arr.Len()
+	arr.Delete("absent")
+	arr.Delete(int64(99))
+	if arr.Len() != before {
+		t.Errorf("deleting an absent key changed Len() from %d to %d", before, arr.Len())
+	}
+}
+
+// TestArray_Pop covers array_pop, which is here and not in the shim because of
+// the append index. PHP decrements it only when the removed key was the one it
+// was about to hand out: popping 9 from [5 => a, 9 => c] leaves the next append
+// at 9, and popping 5 from the same array leaves it at 10. Rebuilding the array
+// from its entries loses that counter.
+func TestArray_Pop(t *testing.T) {
+	arr := NewArray()
+	arr.Set(int64(5), "a")
+	arr.Set(int64(9), "c")
+
+	key, value, ok := arr.Pop()
+	if !ok {
+		t.Fatal("Pop() = false on a two-entry array")
+	}
+	if key != int64(9) || value != "c" {
+		t.Errorf("Pop() = (%v, %v), want (9, c)", key, value)
+	}
+	arr.Append("next")
+	if _, ok := arr.Get(int64(9)); !ok {
+		t.Error("after popping the key the index was about to hand out, the next append did not land on it")
+	}
+
+	empty := NewArray()
+	key, value, ok = empty.Pop()
+	if ok || key != nil || value != nil {
+		t.Errorf("Pop() on an empty array = (%v, %v, %v), want (nil, nil, false)", key, value, ok)
+	}
+}
+
+// TestArray_Int64List covers the fast path a sort or a numeric shim takes: a
+// dense int64 list is answered as a []int64 copy, and anything else refuses.
+// The copy is why a caller can sort it without writing through the array.
+func TestArray_Int64List(t *testing.T) {
+	arr := NewArray()
+	arr.Append(int64(3))
+	arr.Append(int64(1))
+	arr.Append(int64(2))
+
+	values, ok := arr.Int64List()
+	if !ok {
+		t.Fatal("Int64List() = false on a dense int64 list")
+	}
+	if got, want := values, []int64{3, 1, 2}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Int64List() = %v, want %v", got, want)
+	}
+	values[0] = 99
+	if v, _ := arr.Get(int64(0)); v != int64(3) {
+		t.Errorf("writing to the answer changed the array: [0] = %v, want 3", v)
+	}
+
+	mixed := NewArray()
+	mixed.Append(int64(1))
+	mixed.Append("two")
+	if _, ok := mixed.Int64List(); ok {
+		t.Error("Int64List() = true on a list holding a string")
+	}
+
+	keyed := NewArray()
+	keyed.Set("a", int64(1))
+	if _, ok := keyed.Int64List(); ok {
+		t.Error("Int64List() = true on a map-mode array")
+	}
+
+	var nilArray *Array
+	if _, ok := nilArray.Int64List(); ok {
+		t.Error("Int64List() = true on a nil array")
+	}
+}
+
+// TestArray_ReplaceInt64List covers the other half of that path: a sorted
+// []int64 goes back as a dense list, replacing whatever the array held and
+// whichever mode it was in. An empty replacement appends at 0, because an array
+// that holds no integer key has not had the index set.
+func TestArray_ReplaceInt64List(t *testing.T) {
+	arr := NewArray()
+	arr.Set("stale", "value")
+
+	arr.ReplaceInt64List([]int64{1, 2, 3})
+	if !arr.isList() {
+		t.Error("ReplaceInt64List left the array in map mode")
+	}
+	if got, want := arr.Keys(), []any{int64(0), int64(1), int64(2)}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Keys() = %v, want %v", got, want)
+	}
+	if _, ok := arr.Get("stale"); ok {
+		t.Error("the entry the array held before the replacement is still readable")
+	}
+	arr.Append(int64(4))
+	if v, _ := arr.Get(int64(3)); v != int64(4) {
+		t.Errorf("the next append landed off the end of the replaced list: [3] = %v", v)
+	}
+
+	empty := NewArray()
+	empty.ReplaceInt64List(nil)
+	if empty.Len() != 0 {
+		t.Errorf("Len() = %d after replacing with nothing, want 0", empty.Len())
+	}
+	empty.Append("first")
+	if got, want := empty.Keys(), []any{int64(0)}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Keys() = %v after appending to an emptied array, want %v", got, want)
+	}
+}
