@@ -9,12 +9,10 @@ import (
 	"testing"
 
 	_ "modernc.org/sqlite"
-
-	"github.com/jmoiron/sqlx"
 )
 
 func TestDatabaseProviderConnect(t *testing.T) {
-	provider := NewDatabaseProvider(sqlx.Open)
+	provider := NewDatabaseProvider(Open)
 	provider.Register("test", "sqlite://:memory:")
 
 	db, err := provider.Connect(t.Context(), "test")
@@ -35,7 +33,7 @@ func TestDatabaseProviderConnect(t *testing.T) {
 }
 
 func TestDatabaseProviderOpenError(t *testing.T) {
-	provider := NewDatabaseProvider(func(string, string) (*sqlx.DB, error) {
+	provider := NewDatabaseProvider(func(string, string) (*DB, error) {
 		return nil, errors.New("test")
 	})
 	provider.Register("test", "sqlite://:memory:")
@@ -70,7 +68,7 @@ func TestDatabaseProviderNewAt(t *testing.T) {
 }
 
 func TestDatabaseProviderFileSQLiteDefaults(t *testing.T) {
-	provider := NewDatabaseProvider(sqlx.Open)
+	provider := NewDatabaseProvider(Open)
 	provider.Register("test", "sqlite://"+filepath.Join(t.TempDir(), "test.db"))
 
 	db, err := provider.Connect(t.Context(), "test")
@@ -94,7 +92,7 @@ func TestDatabaseProviderFileSQLiteDefaults(t *testing.T) {
 	}
 	defer second.Close()
 
-	for _, connection := range []*sqlx.Conn{first, second} {
+	for _, connection := range []*Conn{first, second} {
 		var journalMode string
 		if err := connection.GetContext(t.Context(), &journalMode, "PRAGMA journal_mode"); err != nil {
 			t.Fatalf("PRAGMA journal_mode: %v", err)
@@ -135,7 +133,7 @@ func TestNewReadsPlatformDBEnvironment(t *testing.T) {
 // as an in-memory sqlite is a second database, and the schema it applied would
 // not be in the one the script queries.
 func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
-	provider := NewDatabaseProvider(sqlx.Open)
+	provider := NewDatabaseProvider(Open)
 	provider.Register("shop", "sqlite://:memory:")
 
 	migrations, err := provider.Open(t.Context(), "shop:migrate", "shop")

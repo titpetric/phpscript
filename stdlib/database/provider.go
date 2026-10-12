@@ -12,8 +12,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jmoiron/sqlx"
-
 	"github.com/titpetric/phpscript/model"
 )
 
@@ -33,7 +31,7 @@ var (
 
 // DatabaseProvider holds a list of named sql connection credentials.
 type DatabaseProvider struct {
-	open func(string, string) (*sqlx.DB, error)
+	open Connector
 
 	// root is the directory a relative sqlite path resolves against. Empty
 	// leaves the path alone, which resolves against the process working
@@ -41,15 +39,15 @@ type DatabaseProvider struct {
 	root string
 
 	mu          sync.Mutex
-	cache       map[string]*sqlx.DB
+	cache       map[string]*DB
 	credentials map[string]string
 }
 
 // NewDatabaseProvider will allocate a valid `*DatabaseProvider` and return it.
-func NewDatabaseProvider(open func(string, string) (*sqlx.DB, error)) *DatabaseProvider {
+func NewDatabaseProvider(open Connector) *DatabaseProvider {
 	return &DatabaseProvider{
 		open:        open,
-		cache:       make(map[string]*sqlx.DB),
+		cache:       make(map[string]*DB),
 		credentials: make(map[string]string, 1),
 	}
 }
@@ -139,7 +137,7 @@ func (r *DatabaseProvider) credential(name string) (string, bool) {
 
 // Connect issues a PingContext to verify a live connection before returning.
 // The context propagates tracing detail, so ping is grouped correctly.
-func (r *DatabaseProvider) Connect(ctx context.Context, names ...string) (*sqlx.DB, error) {
+func (r *DatabaseProvider) Connect(ctx context.Context, names ...string) (*DB, error) {
 	db, err := r.Open(ctx, names...)
 	if err != nil {
 		return nil, err
@@ -151,12 +149,12 @@ func (r *DatabaseProvider) Connect(ctx context.Context, names ...string) (*sqlx.
 }
 
 // Open is the same as sql.Open. It creates a client from a named connection.
-func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*sqlx.DB, error) {
+func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*DB, error) {
 	db, err := r.cached(r.open, names...)
 	return db, err
 }
 
-// cached will return a singleton *sqlx.DB from a named connection.
+// cached will return a singleton *DB from a named connection.
 //
 // The credential decides which name the pool belongs to, and the cache is read
 // and written under that one, and not under the first name the caller passed.
@@ -170,7 +168,7 @@ func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*sqlx.DB, e
 // Reading the cache before the credential has the mirror image of that problem:
 // "app:migrate" registered after "app" was opened would answer with the pool of
 // "app" and run the migrations under the credential it was registered to avoid.
-func (r *DatabaseProvider) cached(connector func(string, string) (*sqlx.DB, error), names ...string) (*sqlx.DB, error) {
+func (r *DatabaseProvider) cached(connector Connector, names ...string) (*DB, error) {
 	name, value, ok := r.resolve(names)
 	if !ok {
 		return nil, fmt.Errorf("no configuration found for database: %v", names)
@@ -210,9 +208,8 @@ func (r *DatabaseProvider) resolve(names []string) (string, string, bool) {
 	return "", "", false
 }
 
-// with will create a *sqlx.DB from one credential, given the connector
-// (sqlx.Connect/Open).
-func (r *DatabaseProvider) with(connector func(string, string) (*sqlx.DB, error), value string) (*sqlx.DB, error) {
+// with will create a *DB from one credential, given the connector.
+func (r *DatabaseProvider) with(connector Connector, value string) (*DB, error) {
 	driver, dsn := r.parseCredential(value)
 	client, err := connector(driver, dsn)
 	if err != nil {

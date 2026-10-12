@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/go-bridget/mig/migrate"
-	"github.com/jmoiron/sqlx"
 
 	"github.com/titpetric/phpscript/stdlib/logger"
 	"github.com/titpetric/phpscript/telemetry"
@@ -18,7 +17,7 @@ import (
 // The project is the connection name the binding was constructed with, and is
 // what mig records applied files under.
 type DatabaseMigrate struct {
-	database *sqlx.DB
+	database *DB
 	root     fs.FS
 	workDir  string
 	project  string

@@ -1,9 +1,5 @@
 package database
 
-import (
-	"github.com/jmoiron/sqlx"
-)
-
 // DatabaseOption configures database connection pooling settings.
 type DatabaseOption struct {
 	MaxOpenConns int
@@ -11,7 +7,7 @@ type DatabaseOption struct {
 }
 
 // Apply applies the database option settings to a database connection.
-func (o *DatabaseOption) Apply(client *sqlx.DB) {
+func (o *DatabaseOption) Apply(client *DB) {
 	if o == nil {
 		return
 	}
