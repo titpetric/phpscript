@@ -8,16 +8,19 @@
 # the repository is working towards, so a job that fails on them fails always and
 # gates nothing.
 #
-# What gates is the error class. splint reports one severity as ERROR - a test
-# file with no source of that name beside it - and this script fails when that
-# count grows, or when a rule that was not an error before becomes one. The
-# warnings are printed with their movement so a change that adds twenty is
-# visible in the job output, and they do not fail the run.
+# Every rule gates, at every severity. splint calls one class an error - a test
+# file with no source of that name beside it - and the rest warnings, but a
+# warning is a convention the tree is working towards and a count that grows is
+# work moving the wrong way. The target for every rule is zero.
 #
-# scripts/splint-baseline.json holds the counts a run is compared against. A
-# count that went down is reported, not failed: lower the baseline in the same
-# commit that lowered the finding, and when an error rule reaches zero take it
-# out of the baseline, which is what makes it blocking from then on.
+# scripts/splint-baseline.json holds the counts a run is compared against, and
+# it only ever goes down. A rule over its baseline fails the run: fix the
+# finding. A rule under it is reported, and the baseline is lowered in the same
+# commit that lowered the finding. A rule that reaches zero comes out of the
+# file, which makes it blocking from then on.
+#
+# Raising a number here hides the growth it records, so a commit that raises one
+# says in its message which finding it is accepting and why.
 set -u -o pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -61,9 +64,8 @@ printf '%s\n' "${report}" | while IFS=$'\t' read -r sev count base delta rule; d
 	printf '%-6s %7s %8s %+6s  %s\n' "${sev}" "${count}" "${base}" "${delta}" "${rule}"
 done
 
-# A rule splint calls an error may not grow, and a rule that is an error and is
-# not in the baseline at all may not appear.
-broke="$(printf '%s\n' "${report}" | awk -F'\t' '$1 == "ERROR" && $4 > 0 { print $5 " grew by " $4 " to " $2 }')"
+# No rule may grow, and a rule not in the baseline at all may not appear.
+broke="$(printf '%s\n' "${report}" | awk -F'\t' '$4 > 0 { print $5 " grew by " $4 " to " $2 }')"
 if [ -n "${broke}" ]; then
 	printf '\nsplint-gate: %s\n' "${broke}" >&2
 	echo "splint-gate: fix the finding, or say why in the commit and raise the baseline" >&2
@@ -74,4 +76,4 @@ improved="$(printf '%s\n' "${report}" | awk -F'\t' '$4 < 0 { print $5 }' | tr '\
 if [ -n "${improved}" ]; then
 	printf '\nsplint-gate: below baseline, lower scripts/splint-baseline.json: %s\n' "${improved}"
 fi
-echo "splint-gate: no error class grew"
+echo "splint-gate: no rule grew"

@@ -123,7 +123,7 @@ func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 	client, clientDone, ignoreAbort := rt.client, rt.clientDone, rt.ignoreAbort
 
 	rt.client = ctx
-	_, rt.clientDone = watchEnd(ctx)
+	rt.clientDone = watchEnd(ctx)
 	// Off for every request, so a handler that ignored a disconnect does not
 	// decide it for the next one. The limit is not saved: it is
 	// the runtime's and a handler moving it means to move it.
@@ -136,20 +136,19 @@ func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 	}
 }
 
-// watchEnd answers the channel that closes when ctx ends, and whether ctx can
-// end at all.
+// watchEnd answers the channel that closes when ctx ends, nil for a context
+// that cannot end.
 //
 // The channel is read once and kept, so the per-statement check is a
 // non-blocking select on a field and not a call through a context. A
 // channel and not a flag an AfterFunc sets, because an AfterFunc runs on
 // its own goroutine: a sleep that returned the instant its context ended would
 // reach the next statement before the flag was written.
-func watchEnd(ctx context.Context) (bool, <-chan struct{}) {
+func watchEnd(ctx context.Context) <-chan struct{} {
 	if ctx == nil {
-		return false, nil
+		return nil
 	}
-	done := ctx.Done()
-	return done != nil, done
+	return ctx.Done()
 }
 
 // ended reports a watched channel having closed, without blocking on one that
@@ -286,7 +285,7 @@ func (rt *Runtime) resetLimits() {
 	rt.ignoreAbort = false
 	rt.timedOut.Store(false)
 	rt.client = rt.host
-	_, rt.clientDone = watchEnd(rt.client)
+	rt.clientDone = watchEnd(rt.client)
 	rt.refreshDeadlineArmed()
 }
 

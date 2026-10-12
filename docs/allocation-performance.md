@@ -126,6 +126,12 @@ The obvious fix, dropping `expr.Env` entirely because PHP is dynamically typed a
 
 So the env stayed while expr-lang was the compiler; what was removed was the per-compile cost of deriving it, one shared nature for all keys, with no reflective walk per key. `TestCompileMatchesExprEnv` guarded the emitted bytecode until the engine below made the whole question moot: with no expr-lang compile there is no type env, no predicate collision and no bytecode to guard.
 
+### The per-submit done channel
+
+`Pool.Submit` allocates a `chan struct{}` per run and does not take one from a free list. Recycling was proposed as a way to remove the allocation and rejected without being written: `Submit` returns false when the context ends first, and that path cannot prove the entry is free, because the worker goes on running with the channel it was handed. A channel recycled there reaches a second request while the first still waits on it, and one request's completion signal satisfying another's wait is a wrong answer under concurrency, not a slow one, which no test here would catch.
+
+Removing the allocation means removing the handshake, with no recycling behind it, and that changes how a run reports completion.
+
 ### The closure engine
 
 With the env fixed, the remaining eval cost was the VM's dispatch itself: every helper call pays an OpCall argument slice, the adapt() indirection and a defer/recover, even though the transpiler only ever emits a fixed vocabulary:

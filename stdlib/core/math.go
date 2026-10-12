@@ -226,7 +226,7 @@ func phpMinMax(name string, args []any, want int) (any, error) {
 // A negative $decimals rounds the integer, so it is not a pure digit copy: the
 // digits past the cut are dropped and the kept ones carry, the same rule
 // roundDecimal applies to a decimal string.
-func integerDigits(num any, decimals int) (neg bool, integer, fraction string, exact bool) {
+func integerDigits(num any, decimals int) (integer, fraction string, neg, exact bool) {
 	var n int64
 	switch v := num.(type) {
 	case int64:
@@ -234,7 +234,7 @@ func integerDigits(num any, decimals int) (neg bool, integer, fraction string, e
 	case int:
 		n = int64(v)
 	default:
-		return false, "", "", false
+		return "", "", false, false
 	}
 
 	neg = n < 0
@@ -268,7 +268,7 @@ func integerDigits(num any, decimals int) (neg bool, integer, fraction string, e
 	if allZeroDigits(digits) {
 		neg = false
 	}
-	return neg, digits, fraction, true
+	return digits, fraction, neg, true
 }
 
 // phpNumberFormat backs number_format.
@@ -288,7 +288,7 @@ func phpNumberFormat(num any, opts ...any) string {
 	// An integer is grouped from its own digits and never through a float.
 	// float64 carries 53 bits of mantissa, so routing PHP_INT_MAX through one
 	// would print 9,223,372,036,854,776,000 in place of the number given.
-	neg, integer, fraction, exact := integerDigits(num, decimals)
+	integer, fraction, neg, exact := integerDigits(num, decimals)
 	if !exact {
 		value := phpval.Float(num)
 		if math.IsNaN(value) {
@@ -300,7 +300,7 @@ func phpNumberFormat(num any, opts ...any) string {
 			}
 			return "inf"
 		}
-		neg, integer, fraction = roundDecimal(value, decimals)
+		integer, fraction, neg = roundDecimal(value, decimals)
 	}
 	// A value that rounds to zero has no sign in PHP: number_format(-0.4) is
 	// "0", not "-0".
@@ -341,7 +341,7 @@ func phpRound(v float64, precision int) float64 {
 	if math.IsNaN(v) || math.IsInf(v, 0) {
 		return v
 	}
-	neg, integer, fraction := roundDecimal(v, precision)
+	integer, fraction, neg := roundDecimal(v, precision)
 	var text strings.Builder
 	text.Grow(len(integer) + len(fraction) + 2)
 	if neg {
@@ -371,7 +371,7 @@ func phpRound(v float64, precision int) float64 {
 // is 5 or more is decimal half-away-from-zero rounding, and it needs no
 // arithmetic on the float, because the float cannot represent the value a
 // script wrote.
-func roundDecimal(v float64, precision int) (neg bool, integer, fraction string) {
+func roundDecimal(v float64, precision int) (integer, fraction string, neg bool) {
 	text := strconv.FormatFloat(v, 'f', -1, 64)
 	if strings.HasPrefix(text, "-") {
 		neg, text = true, text[1:]
@@ -411,12 +411,12 @@ func roundDecimal(v float64, precision int) (neg bool, integer, fraction string)
 			kept = append([]byte{'0'}, kept...)
 		}
 		split := len(kept) - precision
-		return neg, string(kept[:split]), string(kept[split:])
+		return string(kept[:split]), string(kept[split:]), neg
 	}
 	if allZeroDigits(string(kept)) {
-		return neg, "0", ""
+		return "0", "", neg
 	}
-	return neg, string(kept) + strings.Repeat("0", -precision), ""
+	return string(kept) + strings.Repeat("0", -precision), "", neg
 }
 
 // incrementDigits adds one to a decimal digit string, growing it by a leading

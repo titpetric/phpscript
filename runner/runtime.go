@@ -569,7 +569,7 @@ func (rt *Runtime) SetContext(ctx context.Context) {
 	// Recorded as the client, then derived: a limit already set survives a host
 	// swapping the context, and the derived one is what everything else reads.
 	rt.host, rt.client = ctx, ctx
-	_, rt.clientDone = watchEnd(ctx)
+	rt.clientDone = watchEnd(ctx)
 	rt.bindContext()
 	for _, observer := range rt.observers {
 		observer.UpdateStatus(rt.ctx, rt.status)

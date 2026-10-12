@@ -58,17 +58,12 @@ func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string
 // DefaultStoragePath answers the directory a Session\Storage\Disk named no path
 // writes to, for an application rooted at dir.
 //
-// One directory per root, and no single one for the process. prune() takes an age and not
-// an ID, so with every root sharing a directory, `new Session\Storage\Disk`
-// followed by prune() on any site of a virtual-host server deleted every other
-// site's sessions. Nothing had to be guessed and no path had to be named, which
-// is why rooting the path a script writes does not reach this. The leaf is a
-// digest of the absolute root: two roots cannot collide, the same root answers
-// the same directory across restarts, and the name tells a reader nothing about
-// its neighbours.
+// The leaf is a digest of the absolute root, so two roots cannot collide and
+// the same root answers the same directory across restarts. An empty dir keeps
+// the bare directory, and prune() skips subdirectories.
 //
-// An empty dir has nothing to key on and keeps the bare directory. Prune skips
-// subdirectories, so a host that bound no root cannot reach a scoped one either.
+// What a shared directory did to a virtual-host server is docs/security.md,
+// "Isolation between sites".
 func DefaultStoragePath(dir string) string {
 	base := filepath.Join(os.TempDir(), "phpscript-sessions")
 	if dir == "" {

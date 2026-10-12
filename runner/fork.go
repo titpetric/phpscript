@@ -205,23 +205,13 @@ func (p *Pool) Queue() int { return p.queue }
 
 // Submit runs fn on a worker and waits for it, and reports whether it ran.
 //
-// It answers false when ctx ends first, which for a served request is the
-// client leaving: a run still queued is dropped and never started for nobody,
-// and a run already started is left to notice the disconnect itself, because
-// stopping one halfway is the handler's decision and connection_aborted is how
-// it makes it.
+// It answers false when ctx ends first, and once the pool is closed. For a
+// served request the first is the client leaving: a queued run is dropped, and
+// a started one is left to notice the disconnect through connection_aborted,
+// because stopping it halfway is the handler's decision.
 //
-// It also answers false once the pool is closed.
-//
-// The done channel is allocated per submit and is not taken from a free list.
-// That was proposed as a way to remove the allocation and rejected without being
-// written: the path above, where this returns false and the worker goes on
-// running, is exactly the one that cannot prove the entry is free. A channel
-// recycled there would be handed to a second request while the first still waits
-// on it, and one request's completion signal satisfying another's wait is a wrong
-// answer under concurrency and not a slow one, which no test here would
-// catch. Getting the allocation back means removing the handshake, with no
-// recycling to fall back on, and that is a change to how a run reports completion.
+// Why the per-submit done channel is not recycled is
+// docs/allocation-performance.md, "The per-submit done channel".
 func (p *Pool) Submit(ctx context.Context, fn func(*Runtime)) bool {
 	var done <-chan struct{}
 	if ctx != nil {

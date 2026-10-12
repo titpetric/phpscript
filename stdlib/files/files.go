@@ -31,17 +31,12 @@ func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, ".")
 }
 
-// RegisterRoot installs the filesystem shims rooted at dir. Every path from PHP
-// resolves against dir and cannot climb out of it, absolute ones included: an
-// absolute path names the root and never the host, which is the spelling
-// getcwd() answers with, so there is no spelling for a host path outside the
-// root.
+// RegisterRoot installs the filesystem shims rooted at dir, replacing whatever
+// root was installed before it, so a host calls it after stdlib.Register
+// (stdlib.RegisterFS does exactly that).
 //
-// Writes are additionally held to the runtime's writable_paths when it
-// configures any.
-//
-// It replaces whatever root was installed before it, so a host calls it after
-// stdlib.Register (stdlib.RegisterFS does exactly that).
+// The boundary every path resolves against, and what writable_paths adds to it,
+// is docs/security.md, "The filesystem boundary".
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	r := root{rt: rt, dir: dir}
 	r.writable = WritableRoots(dir, rt.WritablePaths())

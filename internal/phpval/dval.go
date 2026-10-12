@@ -13,21 +13,13 @@ const (
 
 // ToInt64 converts a float to the integer PHP converts it to.
 //
-// Go's conversion of an out-of-range float to int64 is implementation defined,
-// and on amd64 it saturates: every value too large becomes math.MinInt64. PHP
-// wraps instead, modulo 2^64 into the signed range, as C's
-// (int64_t) cast does on the same hardware and what zend_dval_to_lval
-// implements. The two disagree on every value outside the range:
-//
-//	(int)1.0e20   php 7766279631452241920    Go -9223372036854775808
-//	(int)1.0e19   php -8446744073709551616   Go -9223372036854775808
-//	(int)2.0**64  php 0                      Go -9223372036854775808
-//
+// Go saturates an out-of-range float to math.MinInt64 on amd64 and leaves the
+// result implementation defined. PHP wraps, modulo 2^64 into the signed range,
+// as zend_dval_to_lval does: (int)1.0e20 is 7766279631452241920 in php.
 // NaN and both infinities are zero, as PHP 8 answers them.
 //
-// A value already inside the range takes a plain conversion, so the arithmetic
-// below is only reached by a float that does not fit. That matters: this is on
-// the path every modulo, bitwise operator and integer cast takes.
+// A value inside the range takes a plain conversion, so the arithmetic below is
+// reached only by a float that does not fit.
 func ToInt64(f float64) int64 {
 	if f >= -twoPow63 && f < twoPow63 {
 		return int64(f)

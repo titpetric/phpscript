@@ -138,6 +138,8 @@ What is per site, and not per process:
 
 The two caches are one pair per site, created with the site's file handler and shared between its routed endpoints and its document root so that one precompile pass covers both (`cmd/phpscript/server/precompile.go:13`). No cache is shared across sites.
 
+Session storage on disk is one directory per application root, keyed by a digest of the absolute root (`stdlib/session/storage_disk.go:72`). `Session\Storage\Disk::prune` takes an age and not an ID, so while every root shared one directory, `new Session\Storage\Disk` followed by `prune()` on any site deleted every other site's sessions. Rooting the path a script names does not reach this, because a script that names no path never writes one down.
+
 `SharedMemory` is the exception, and not in the direction its name suggests. No host in this tree binds a store into a runtime context, so `new SharedMemory` hands every caller a fresh empty store that lives as long as the object (`stdlib/core/shared_memory.go:38`). Nothing is shared between sites because nothing is shared at all, which is also why the `SharedMemory` section of `phpinfo()` never prints under `phpscript server`. Collapsing the caches behind a `runtime.Cache` and defining a per-site store are issue 139's third and fourth items.
 
 Isolation stops at the process. One site's `exec`, one site's `HTTP\Server` and one site's unbounded memory are the same operating system process as every other site's, and a reload rebuilds every site, so updating one tenant re-runs every other tenant's `@startup` jobs. Two tenants that must not share a fault domain are two processes.

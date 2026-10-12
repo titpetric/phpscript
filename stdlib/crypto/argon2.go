@@ -49,7 +49,7 @@ func argon2Hash(password string, p params) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
-	return argon2Encode(p, salt, argon2Key(p, []byte(password), salt, argon2KeyLen)), nil
+	return argon2Encode(salt, argon2Key(p, []byte(password), salt, argon2KeyLen), p), nil
 }
 
 // argon2Verify recomputes the tag from the parameters and salt the stored hash
@@ -74,7 +74,7 @@ func argon2Key(p params, password, salt []byte, keyLen uint32) []byte {
 }
 
 // argon2Encode writes the PHC string form.
-func argon2Encode(p params, salt, sum []byte) string {
+func argon2Encode(salt, sum []byte, p params) string {
 	var b strings.Builder
 	b.WriteString("$")
 	b.WriteString(p.algo)
