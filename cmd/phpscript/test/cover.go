@@ -27,7 +27,7 @@ type profileBlock = coverage.ProfileBlock
 // per fixture next to it when --split is set, and the merged profile at
 // opts.CoverFile either way. It runs after the fixtures did, whichever mode ran
 // them; a fixture whose runtime runner never executed simply has empty counts.
-func writeCoverage(fixtures []*tests.Fixture, opts Options) error {
+func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 	if opts.Split {
 		for _, fx := range fixtures {
 			if fx.Coverage() == nil {

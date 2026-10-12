@@ -1027,7 +1027,7 @@ func (rt *Runtime) autoload(class string, scope *Scope) error {
 		// array($this, "loadClass"), its bootstrap registers the
 		// "Class::method" string form, and a plain function name or closure is
 		// just as valid.
-		callable, ok := rt.callableWithScope(loader, scope)
+		callable, ok := rt.callableWithScope(scope, loader)
 		if !ok {
 			return fmt.Errorf("autoload callback %v is not callable", loader)
 		}
@@ -1534,7 +1534,7 @@ func unsetGoIndex(base, key any) (replacement any, changed bool) {
 		if rv.IsNil() {
 			return nil, false
 		}
-		mapKey, ok := coerceArg(normalizeKey(key), rv.Type().Key())
+		mapKey, ok := coerceArg(rv.Type().Key(), normalizeKey(key))
 		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
 			return nil, false
 		}
@@ -1573,7 +1573,7 @@ func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 		if rv.IsNil() {
 			return fmt.Errorf("assign: cannot write to a nil %T", base)
 		}
-		mapKey, ok := coerceArg(normalizeKey(key), rv.Type().Key())
+		mapKey, ok := coerceArg(rv.Type().Key(), normalizeKey(key))
 		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
 			return fmt.Errorf("assign: cannot use %T as a key of %T", key, base)
 		}
@@ -1585,7 +1585,7 @@ func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 		if err != nil {
 			return err
 		}
-		next, ok := coerceArg(updated, rv.Type().Elem())
+		next, ok := coerceArg(rv.Type().Elem(), updated)
 		if !ok || !next.Type().AssignableTo(rv.Type().Elem()) {
 			return fmt.Errorf("assign: cannot assign to an element of %T", base)
 		}
@@ -1601,7 +1601,7 @@ func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 		if err != nil {
 			return err
 		}
-		next, ok := coerceArg(updated, element.Type())
+		next, ok := coerceArg(element.Type(), updated)
 		if !element.CanSet() || !ok || !next.Type().AssignableTo(element.Type()) {
 			return fmt.Errorf("assign: cannot assign to an element of %T", base)
 		}
@@ -1628,7 +1628,7 @@ func assignGoField(base any, name string, value func(any) (any, error)) error {
 	if err != nil {
 		return err
 	}
-	next, ok := coerceArg(raw, field.Type())
+	next, ok := coerceArg(field.Type(), raw)
 	if !ok || !next.Type().AssignableTo(field.Type()) {
 		return fmt.Errorf("assign: cannot assign %T to property %q", raw, name)
 	}

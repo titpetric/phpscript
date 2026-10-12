@@ -71,7 +71,7 @@ func (s suites) resolve(path string) *tests.Suite {
 // narrower path argument does not silently skip a suite's setup. The walk is
 // the fixture walk: a bare directory is not recursive, and `./...` is what
 // reaches a tree.
-func discoverSuites(paths []string, base config.Config) (suites, error) {
+func discoverSuites(base config.Config, paths []string) (suites, error) {
 	var result suites
 
 	run, err := runSuite(base)

@@ -256,10 +256,10 @@ func (rt *Runtime) asStaticCallable(spelled, className, method string) (*Callabl
 // The second return reports whether v was callable at all; callers turn that
 // into PHP's "not a valid callback" error with their own function name.
 func (rt *Runtime) Callable(v any) (func(...any) (any, error), bool) {
-	return rt.callableWithScope(v, rt.newScope())
+	return rt.callableWithScope(rt.newScope(), v)
 }
 
-func (rt *Runtime) callableWithScope(v any, scope *Scope) (func(...any) (any, error), bool) {
+func (rt *Runtime) callableWithScope(scope *Scope, v any) (func(...any) (any, error), bool) {
 	switch value := v.(type) {
 	case nil:
 		return nil, false
@@ -405,7 +405,7 @@ func (rt *Runtime) closureValue(target any, fallback string, scope *Scope) (any,
 		// that method and not the object itself.
 		return rt.closureMember(value, "__invoke", scope)
 	}
-	if _, ok := rt.callableWithScope(target, scope); ok {
+	if _, ok := rt.callableWithScope(scope, target); ok {
 		return target, nil
 	}
 	return nil, fmt.Errorf("value of type %s is not callable", phpDebugType(target))

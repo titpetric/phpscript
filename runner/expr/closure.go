@@ -57,7 +57,7 @@ func constClosure(v any) closure {
 // wrapRoot adds the per-evaluation panic guard: one recover per program
 // and not one per helper call. A host panic surfaces as an error;
 // PanicError keeps the error type the runner's call boundary produces.
-func wrapRoot(body closure, h *Helpers) closure {
+func wrapRoot(h *Helpers, body closure) closure {
 	return func(env *Env) (out any, err error) {
 		defer func() {
 			if recovered := recover(); recovered != nil {

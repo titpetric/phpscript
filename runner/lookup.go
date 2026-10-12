@@ -76,7 +76,7 @@ func (rt *Runtime) lookup(symName string, typ reflect.Type) (reflect.Value, erro
 	}
 
 	return reflect.MakeFunc(typ, func(in []reflect.Value) []reflect.Value {
-		value, callErr := rt.invokeEntry(entry, lookupArgs(in, typ), nil)
+		value, callErr := rt.invokeEntry(entry, lookupArgs(typ, in), nil)
 		return rt.lookupReturn(typ, shape, value, callErr)
 	}), nil
 }
@@ -330,7 +330,7 @@ func signatureResults(typ reflect.Type) (resultShape, error) {
 // lookupArgs renders the call's arguments as the values a PHP scope holds. A
 // variadic tail is spread, because PHP counts the arguments it was passed and a
 // slice in the last slot is one of them.
-func lookupArgs(in []reflect.Value, typ reflect.Type) []any {
+func lookupArgs(typ reflect.Type, in []reflect.Value) []any {
 	fixed := len(in)
 	total := fixed
 	if typ.IsVariadic() && fixed > 0 {
@@ -394,7 +394,7 @@ func (rt *Runtime) lookupReturn(typ reflect.Type, shape resultShape, value any, 
 	if shape.value != nil {
 		result := reflect.Zero(shape.value)
 		if err == nil {
-			converted, convErr := convertResult(value, shape.value)
+			converted, convErr := convertResult(shape.value, value)
 			if convErr != nil {
 				err = convErr
 			} else {
@@ -421,7 +421,7 @@ func (rt *Runtime) lookupReturn(typ reflect.Type, shape resultShape, value any, 
 // returning 1 fills a bool result the way `if (1)` reads it and a function
 // returning "3" fills an int result with 3. Everything else resolves through
 // coerceArg, which is the conversion every Go binding's arguments already pass.
-func convertResult(value any, want reflect.Type) (reflect.Value, error) {
+func convertResult(want reflect.Type, value any) (reflect.Value, error) {
 	if want.Kind() == reflect.Interface && want.NumMethod() == 0 {
 		if value == nil {
 			return reflect.Zero(want), nil
@@ -443,15 +443,15 @@ func convertResult(value any, want reflect.Type) (reflect.Value, error) {
 			// A string filling a []byte is a conversion, not a walk, and
 			// coerceArg below already performs it.
 			if model.IsCollection(value) {
-				return convertSlice(value, want)
+				return convertSlice(want, value)
 			}
 		case reflect.Map:
 			if model.IsCollection(value) {
-				return convertMap(value, want)
+				return convertMap(want, value)
 			}
 		}
 	}
-	if converted, ok := coerceArg(value, want); ok {
+	if converted, ok := coerceArg(want, value); ok {
 		return converted, nil
 	}
 	return reflect.Value{}, fmt.Errorf("cannot use %T as %s", value, want)
@@ -460,7 +460,7 @@ func convertResult(value any, want reflect.Type) (reflect.Value, error) {
 // convertSlice walks a PHP array into a typed slice, keys discarded. A binding
 // returning the cheap shape for its data (a []string, a []map[string]any) is
 // assignable and is handed over as it is.
-func convertSlice(value any, want reflect.Type) (reflect.Value, error) {
+func convertSlice(want reflect.Type, value any) (reflect.Value, error) {
 	if rv := reflect.ValueOf(value); rv.IsValid() && rv.Type().AssignableTo(want) {
 		return rv, nil
 	}
@@ -470,7 +470,7 @@ func convertSlice(value any, want reflect.Type) (reflect.Value, error) {
 
 	var err error
 	model.RangeValues(value, func(_, item any) bool {
-		converted, convErr := convertResult(item, elem)
+		converted, convErr := convertResult(elem, item)
 		if convErr != nil {
 			err = convErr
 			return false
@@ -487,7 +487,7 @@ func convertSlice(value any, want reflect.Type) (reflect.Value, error) {
 // convertMap walks a PHP array into a typed map. The key is rendered the way
 // PHP renders an array key in the target's kind, so a string-keyed map reads
 // the names and an integer-keyed one reads the offsets.
-func convertMap(value any, want reflect.Type) (reflect.Value, error) {
+func convertMap(want reflect.Type, value any) (reflect.Value, error) {
 	if rv := reflect.ValueOf(value); rv.IsValid() && rv.Type().AssignableTo(want) {
 		return rv, nil
 	}
@@ -497,12 +497,12 @@ func convertMap(value any, want reflect.Type) (reflect.Value, error) {
 
 	var err error
 	model.RangeValues(value, func(key, item any) bool {
-		convertedKey, keyErr := convertResult(key, keyType)
+		convertedKey, keyErr := convertResult(keyType, key)
 		if keyErr != nil {
 			err = keyErr
 			return false
 		}
-		converted, convErr := convertResult(item, elem)
+		converted, convErr := convertResult(elem, item)
 		if convErr != nil {
 			err = convErr
 			return false

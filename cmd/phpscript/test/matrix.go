@@ -191,7 +191,7 @@ func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report 
 		}
 		writeFolderTable(os.Stdout, folders, !table.IsTerminal(os.Stdout), opts.Time > 0 || opts.Count > 0 || opts.Profile)
 		fmt.Printf("Matrix summary: %d passed, %d failed out of %d fixtures (%s)\n",
-			passedCount, failedCount, total, formatEngineSplit(time.Since(startAll), engines))
+			passedCount, failedCount, total, formatEngineSplit(engines, time.Since(startAll)))
 	}
 
 	sinks.writeSummary(passedCount, failedCount, total, time.Since(startAll), engines)

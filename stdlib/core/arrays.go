@@ -123,7 +123,7 @@ func registerArrays(rt *runner.Runtime) {
 		if !ok {
 			return false, errors.New("usort(): argument #2 ($callback) must be a valid callback")
 		}
-		return phpUsort(array, fn), nil
+		return phpUsort(fn, array), nil
 	})
 	// sort sorts $array in place ascending with PHP's default comparison,
 	// discarding the keys and reindexing from zero.
@@ -170,7 +170,7 @@ func registerArrays(rt *runner.Runtime) {
 		if len(initial) > 0 {
 			carry = initial[0]
 		}
-		return phpArrayReduce(array, fn, carry)
+		return phpArrayReduce(fn, array, carry)
 	})
 	// array_column returns the $column_key value of every row of $array,
 	// keyed by each row's $index_key when that is given; a null $column_key
@@ -284,7 +284,7 @@ func phpArrayFilter(array any, fn func(...any) (any, error), mode int64) (*model
 
 // phpArrayReduce folds the values left to right. The keys are not passed to the
 // callback, matching PHP.
-func phpArrayReduce(array any, fn func(...any) (any, error), carry any) (any, error) {
+func phpArrayReduce(fn func(...any) (any, error), array any, carry any) (any, error) {
 	var reduceErr error
 	model.RangeValues(array, func(_, v any) bool {
 		next, err := fn(carry, v)
@@ -962,7 +962,7 @@ func phpArrayMap(fn func(...any) (any, error), a any) ([]any, error) {
 
 // phpUsort sorts values in place using cmp, reindexing with integer keys (PHP
 // semantics). cmp is the env-adapted comparator: func(...any)(any,error).
-func phpUsort(a any, cmp func(...any) (any, error)) bool {
+func phpUsort(cmp func(...any) (any, error), a any) bool {
 	return sortValues(a, func(x, y any) bool {
 		r, err := cmp(x, y)
 		if err != nil {

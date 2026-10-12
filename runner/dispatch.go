@@ -46,8 +46,8 @@ func newInvoker(fn any) invoker {
 			return nil, fmt.Errorf("not callable: %T", fn)
 		}}
 	}
-	call := reflectInvoker(fn, ft)
-	if fast := fastInvoker(fn, ft); fast != nil {
+	call := reflectInvoker(ft, fn)
+	if fast := fastInvoker(ft, fn); fast != nil {
 		call = func(_ *Runtime, args []any) (any, error) { return fast(args) }
 	}
 	return invoker{
@@ -82,7 +82,7 @@ func guardInvoker(call func(*Runtime, []any) (any, error), ft reflect.Type, type
 // parameter plan - types, variadic element, context flag - computed here
 // and not per argument per call. Coercion itself stays coerceArg, the
 // one table.
-func reflectInvoker(fn any, ft reflect.Type) func(*Runtime, []any) (any, error) {
+func reflectInvoker(ft reflect.Type, fn any) func(*Runtime, []any) (any, error) {
 	rv := reflect.ValueOf(fn)
 	numIn, variadic := ft.NumIn(), ft.IsVariadic()
 	wantsCtx := wantsContext(ft)
@@ -136,7 +136,7 @@ func reflectInvoker(fn any, ft reflect.Type) func(*Runtime, []any) (any, error) 
 // reflect path coerces (string parameters through phpString, absent
 // arguments as zero values, variadic tails aliased under the borrowed-
 // arguments contract). nil sends the constructor to reflectInvoker.
-func fastInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
+func fastInvoker(ft reflect.Type, fn any) func([]any) (any, error) {
 	switch f := fn.(type) {
 	case func(...any) (any, error):
 		return func(args []any) (any, error) { return f(args...) }
@@ -240,7 +240,7 @@ func fastInvoker(fn any, ft reflect.Type) func([]any) (any, error) {
 	case func(string, bool) (any, error):
 		// The bool argument's shape is only known per call; a mismatch takes
 		// the reflect plan so the TypeError path stays identical.
-		slow := reflectInvoker(fn, ft)
+		slow := reflectInvoker(ft, fn)
 		return func(args []any) (any, error) {
 			if flag, ok := argAt(args, 1).(bool); ok {
 				return f(phpString(argAt(args, 0)), flag)

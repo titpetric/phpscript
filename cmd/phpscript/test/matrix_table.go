@@ -194,12 +194,12 @@ func (t *terminalMatrix) closeGroup(totals groupTotals) {
 	t.writeBorder(table.BoxBottomLeft, table.BoxTeeUp, table.BoxBottomRight)
 	fmt.Fprintf(t.w, "%s%s: %d passed, %d failed out of %d fixtures (%s)%s\n\n",
 		table.ColorHeader, totals.Dir, totals.Passed, totals.Failed, totals.Total,
-		formatEngineSplit(totals.Duration, totals.Engines), table.ColorReset)
+		formatEngineSplit(totals.Engines, totals.Duration), table.ColorReset)
 }
 
 func (t *terminalMatrix) writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration) {
 	fmt.Fprintf(t.w, "%sMatrix summary: %d passed, %d failed out of %d fixtures (%s)%s\n",
-		table.ColorHeader, passed, failed, total, formatEngineSplit(duration, engines), table.ColorReset)
+		table.ColorHeader, passed, failed, total, formatEngineSplit(engines, duration), table.ColorReset)
 }
 
 // detailWidth is the width of the runner columns merged into one cell, which

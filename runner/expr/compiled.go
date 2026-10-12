@@ -45,7 +45,7 @@ func CompileExpr(e model.Expr, h *Helpers) (*Compiled, error) {
 		}
 	}
 	prog := &Program{slots: dc.slots}
-	prog.run = wrapRoot(body, h)
+	prog.run = wrapRoot(h, body)
 	return &Compiled{
 		Program:  prog,
 		Vars:     dc.vars,
@@ -229,7 +229,7 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 			if err != nil {
 				return nil, err
 			}
-			items[i] = pairItem(key, val, dc.h.Pair)
+			items[i] = pairItem(dc.h.Pair, key, val)
 		}
 		fn := dc.h.Array
 		return func(env *Env) (any, error) {
@@ -383,7 +383,7 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 }
 
 // pairItem builds one __pair value; a nil key is a list-style append.
-func pairItem(key, val closure, pair func(key, val any) model.ArrayItemValue) closure {
+func pairItem(pair func(key, val any) model.ArrayItemValue, key, val closure) closure {
 	return func(env *Env) (any, error) {
 		var k any
 		if key != nil {

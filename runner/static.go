@@ -248,7 +248,7 @@ func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args [
 func (rt *Runtime) helperInvoke(ref *scopeRef) func(callee any, args ...any) (any, error) {
 	return func(callee any, args ...any) (any, error) {
 		scope := ref.scope
-		fn, ok := rt.callableWithScope(callee, scope)
+		fn, ok := rt.callableWithScope(scope, callee)
 		if !ok {
 			return nil, fmt.Errorf("value of type %T is not callable", callee)
 		}

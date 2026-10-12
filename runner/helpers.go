@@ -130,7 +130,7 @@ func helperIndex(base, idx any) any {
 		// The key is coerced to the map's own type first. A script index is
 		// an int64 or a string, so reading a map[int]T with the value passed
 		// straight to MapIndex panics and answers nothing.
-		mapKey, ok := coerceArg(normalizeKey(idx), rv.Type().Key())
+		mapKey, ok := coerceArg(rv.Type().Key(), normalizeKey(idx))
 		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
 			return nil
 		}
@@ -436,7 +436,7 @@ func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
 // reaches back into the runtime the script built the value on.
 func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 	if want == nil || want.Kind() != reflect.Func {
-		return coerceArg(v, want)
+		return coerceArg(want, v)
 	}
 	if rv := reflect.ValueOf(v); rv.IsValid() && rv.Type().AssignableTo(want) {
 		return rv, true
@@ -464,7 +464,7 @@ func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 			return fn, true
 		}
 	}
-	return coerceArg(v, want)
+	return coerceArg(want, v)
 }
 
 // adaptCallable wraps a PHP callable in want, the Go function type a binding
@@ -490,7 +490,7 @@ func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.V
 		if want.NumOut() == 0 {
 			return nil
 		}
-		out, ok := coerceArg(result, want.Out(0))
+		out, ok := coerceArg(want.Out(0), result)
 		if !ok {
 			panic(callbackPanic{err: fmt.Errorf("callback returned %s, want %s", phpDebugType(result), want.Out(0))})
 		}
@@ -509,7 +509,7 @@ func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.V
 // element and a struct field, none of which a callable arrives as, and keeping it
 // callable-free is also what keeps the expression helpers out of an
 // initialisation cycle with the interpreter.
-func coerceArg(v any, want reflect.Type) (reflect.Value, bool) {
+func coerceArg(want reflect.Type, v any) (reflect.Value, bool) {
 	if want == nil {
 		return reflect.ValueOf(v), true
 	}

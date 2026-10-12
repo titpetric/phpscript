@@ -293,7 +293,7 @@ func Run(ctx context.Context, args []string, opts Options) error {
 
 	// The suites are read before the flags are checked, because the run-wide
 	// ones a phpscript.yml carries are among what is being checked.
-	found, err := discoverSuites(paths, opts.Config)
+	found, err := discoverSuites(opts.Config, paths)
 	if err != nil {
 		return err
 	}
@@ -403,7 +403,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 		// Only the runtime column collects: flatstack carries no coverage
 		// support and the php column is another process.
 		if opts.Cover != "" {
-			if err := writeCoverage(fixtures, opts); err != nil {
+			if err := writeCoverage(opts, fixtures); err != nil {
 				return err
 			}
 		}
@@ -551,7 +551,7 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	}
 
 	if opts.Cover != "" {
-		if err := writeCoverage(fixtures, opts); err != nil {
+		if err := writeCoverage(opts, fixtures); err != nil {
 			return err
 		}
 	}

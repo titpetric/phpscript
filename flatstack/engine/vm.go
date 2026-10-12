@@ -130,9 +130,9 @@ var statePool = sync.Pool{
 				// A suspended frame's foreach still holds its listing, so
 				// the walk has to reach it or a recursive walk under-reports
 				// everything but the innermost loop.
-				yieldIterators(yield, frame.iterators)
+				yieldIterators(frame.iterators, yield)
 			}
-			yieldIterators(yield, st.iterators)
+			yieldIterators(st.iterators, yield)
 		}
 		return st
 	},
@@ -332,7 +332,7 @@ type iteratorState struct {
 
 // yieldIterators passes a live-value walker everything one frame's foreach state
 // is holding: the container being walked and every entry taken off it.
-func yieldIterators(yield func(any), iterators []*iteratorState) {
+func yieldIterators(iterators []*iteratorState, yield func(any)) {
 	for _, iterator := range iterators {
 		if iterator == nil {
 			continue

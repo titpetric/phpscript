@@ -133,7 +133,7 @@ func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool)
 		if timings {
 			cells = append(cells, formatDuration(row.Duration))
 			for _, engine := range engines {
-				cells = append(cells, formatDuration(engineTime(row.Engines, engine.Runner)))
+				cells = append(cells, formatDuration(engineTime(engine.Runner, row.Engines)))
 			}
 		}
 		if covered && row.cover != nil {

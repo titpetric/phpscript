@@ -2,7 +2,7 @@
   "rules": {
     "coverage/uncovered": 368,
     "filecheck/long": 37,
-    "func-args/order": 24,
+    "func-args/order": 7,
     "imports/collision": 2,
     "imports/pollution": 9,
     "pairing/unpaired": 119

@@ -270,7 +270,7 @@ func writeMarkdownSummary(w io.Writer, totals []groupTotals, passed, failed, tot
 		if timings {
 			values = append(values, formatDuration(group.Duration))
 			for _, engine := range engines {
-				values = append(values, formatDuration(engineTime(group.Engines, engine.Runner)))
+				values = append(values, formatDuration(engineTime(engine.Runner, group.Engines)))
 			}
 		}
 		row(values)
@@ -292,7 +292,7 @@ func writeMarkdownSummary(w io.Writer, totals []groupTotals, passed, failed, tot
 }
 
 // engineTime picks one runner's share out of a totals row.
-func engineTime(engines []engineDuration, runner tests.Runner) time.Duration {
+func engineTime(runner tests.Runner, engines []engineDuration) time.Duration {
 	for _, engine := range engines {
 		if engine.Runner == runner {
 			return engine.Duration
@@ -323,7 +323,7 @@ func formatDuration(duration time.Duration) string {
 // formatEngineSplit renders the duration a summary line closes with. A matrix
 // run names each engine's share after the wall-clock figure; a plain run has
 // no split and keeps the single figure.
-func formatEngineSplit(duration time.Duration, engines []engineDuration) string {
+func formatEngineSplit(engines []engineDuration, duration time.Duration) string {
 	if len(engines) == 0 {
 		return fmt.Sprintf("%dms", duration.Milliseconds())
 	}
