@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/spf13/pflag"
-
 	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
 )
 
@@ -112,16 +110,16 @@ func TestFS(t *testing.T) {
 // TestWrite covers the whole document: the commands, the shared flags once, and
 // a section per command carrying its own flags and its examples.
 func TestWrite(t *testing.T) {
-	shared := pflag.NewFlagSet("phpscript", pflag.ContinueOnError)
+	shared := helpdocs.NewFlagSet("phpscript")
 	shared.String("cover", "", "Measure statement coverage")
 
-	own := pflag.NewFlagSet("test", pflag.ContinueOnError)
+	own := helpdocs.NewFlagSet("test")
 	own.BoolP("matrix", "m", false, "Run every runtime")
 
 	var out bytes.Buffer
 	err := helpdocs.Write(&out, "phpscript", shared, []helpdocs.Command{
 		{Name: "test", Title: "Run .phpt test fixtures", Flags: own},
-		{Name: "version", Title: "Show version/build information", Flags: pflag.NewFlagSet("version", pflag.ContinueOnError)},
+		{Name: "version", Title: "Show version/build information", Flags: helpdocs.NewFlagSet("version")},
 	}, true)
 	if err != nil {
 		t.Fatalf("Write: %v", err)

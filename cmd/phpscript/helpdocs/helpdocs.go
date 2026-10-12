@@ -19,9 +19,6 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/spf13/pflag"
-	"github.com/titpetric/cli"
-
 	"github.com/titpetric/phpscript/internal/table"
 )
 
@@ -36,7 +33,7 @@ func FS() fs.FS { return docs }
 type Command struct {
 	Name  string
 	Title string
-	Flags *cli.FlagSet
+	Flags *FlagSet
 }
 
 // Examples returns the rendered example document for one command, or the empty
@@ -56,7 +53,7 @@ func Examples(name string, markdown bool) string {
 
 // Write renders the whole help document: the usage line, the commands, the
 // shared flags, then one section per command.
-func Write(w io.Writer, name string, shared *cli.FlagSet, commands []Command, markdown bool) error {
+func Write(w io.Writer, name string, shared *FlagSet, commands []Command, markdown bool) error {
 	fmt.Fprintf(w, "# %s\n\n", name)
 	fmt.Fprintf(w, "Usage: %s [flags] <command> [flags] [arguments]\n\n", name)
 	fmt.Fprintf(w, "A command is required; with none, %s runs the php file named on the command line.\n\n", name)
@@ -99,13 +96,13 @@ func commandTable(w io.Writer, commands []Command, markdown bool) {
 
 // flagTable writes one flag set as a table. pflag prints its own defaults in a
 // shape of its own; this is the shape the rest of the tool prints in.
-func flagTable(w io.Writer, fs *cli.FlagSet, markdown bool) {
+func flagTable(w io.Writer, fs *FlagSet, markdown bool) {
 	t := table.New(w, markdown,
 		table.Column{Title: "Flag"},
 		table.Column{Title: "Default"},
 		table.Column{Title: "What it does"},
 	)
-	fs.VisitAll(func(f *pflag.Flag) {
+	fs.VisitAll(func(f *Flag) {
 		name := "--" + f.Name
 		if f.Shorthand != "" {
 			name = "-" + f.Shorthand + ", " + name

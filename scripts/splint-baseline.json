@@ -3,8 +3,7 @@
     "coverage/uncovered": 364,
     "filecheck/long": 37,
     "func-args/order": 24,
-    "imports/collision": 1,
-    "imports/pollution": 3,
+    "imports/pollution": 2,
     "pairing/unpaired": 118
   }
 }

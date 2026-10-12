@@ -14,11 +14,10 @@ import (
 	_ "image/png"
 	_ "modernc.org/sqlite"
 
-	"github.com/spf13/pflag"
 	"github.com/titpetric/cli"
 
 	"github.com/titpetric/phpscript/cmd/phpscript/ast"
-	"github.com/titpetric/phpscript/cmd/phpscript/fmt"
+	fmtcmd "github.com/titpetric/phpscript/cmd/phpscript/fmt"
 	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
 	"github.com/titpetric/phpscript/cmd/phpscript/info"
 	"github.com/titpetric/phpscript/cmd/phpscript/lint"
@@ -103,7 +102,7 @@ func start() error {
 	// over what it happens to need.
 	commands := []registration{
 		{"ast", ast.Name, ast.NewCommand},
-		{"fmt", fmt.Name, fmt.NewCommand},
+		{"fmt", fmtcmd.Name, fmtcmd.NewCommand},
 		{"info", info.Name, info.NewCommand},
 		{"lint", lint.Name, lint.NewCommand},
 		{"list", list.Name, list.NewCommand},
@@ -190,7 +189,7 @@ func wantsHelp(args []string) bool {
 func writeHelp(f *os.File, commands []registration) error {
 	markdown := !table.IsTerminal(f)
 
-	shared := pflag.NewFlagSet("phpscript", pflag.ContinueOnError)
+	shared := helpdocs.NewFlagSet("phpscript")
 	(&flags.Options{}).Bind(shared)
 
 	entries := make([]helpdocs.Command, 0, len(commands))
@@ -200,12 +199,12 @@ func writeHelp(f *os.File, commands []registration) error {
 		// adds, the one part worth repeating per section.
 		// No configuration and no typed flags: the help lists what a command
 		// takes, the same set whatever this run was pointed at.
-		both := pflag.NewFlagSet(command.name, pflag.ContinueOnError)
+		both := helpdocs.NewFlagSet(command.name)
 		if bind := command.new(nil, &flags.Options{}).Bind; bind != nil {
 			bind(both)
 		}
-		own := pflag.NewFlagSet(command.name, pflag.ContinueOnError)
-		both.VisitAll(func(flag *pflag.Flag) {
+		own := helpdocs.NewFlagSet(command.name)
+		both.VisitAll(func(flag *helpdocs.Flag) {
 			if shared.Lookup(flag.Name) == nil {
 				own.AddFlag(flag)
 			}
