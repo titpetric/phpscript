@@ -22,8 +22,8 @@ func TestWidth(t *testing.T) {
 	}
 }
 
-// TestStrip covers the plain reading of a coloured cell, which is what a
-// redirected table and a test comparing one against literal text see.
+// TestStrip covers the plain reading of a coloured cell. A redirected table
+// and a test comparing one against literal text both read it.
 func TestStrip(t *testing.T) {
 	coloured := ColorAmber + "SKIP" + ColorReset
 	if got, want := Strip(coloured), "SKIP"; got != want {

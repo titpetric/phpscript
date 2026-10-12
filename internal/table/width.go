@@ -15,8 +15,8 @@ func Width(value string) int {
 	return ansi.StringWidth(value)
 }
 
-// Strip removes the escape sequences, which is what a plain text reader of a
-// rendered table sees and what a test asserting on one compares.
+// Strip removes the escape sequences. A plain text reader of a rendered table
+// reads what it returns, and a test asserting on one compares against it.
 func Strip(value string) string {
 	return ansi.Strip(value)
 }

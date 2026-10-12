@@ -33,8 +33,8 @@ func TestNewDB(t *testing.T) {
 }
 
 // TestConnector covers the open function a provider is built with. Open
-// satisfies it, which is what makes the default provider and an instrumented
-// one interchangeable.
+// satisfies it, so the default provider and an instrumented one are built the
+// same way.
 func TestConnector(t *testing.T) {
 	var connector Connector = Open
 
