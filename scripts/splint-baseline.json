@@ -4,7 +4,7 @@
     "filecheck/long": 37,
     "func-args/order": 24,
     "imports/collision": 1,
-    "imports/pollution": 8,
+    "imports/pollution": 7,
     "pairing/unpaired": 119
   }
 }

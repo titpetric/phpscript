@@ -15,8 +15,6 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
@@ -82,8 +80,8 @@ func defaultParams(algo string) params {
 // lane minimum, one pass minimum, and at least eight KiB per lane.
 func (p params) validate() error {
 	if p.algo == algoBcrypt {
-		if p.cost < bcrypt.MinCost || p.cost > bcrypt.MaxCost {
-			return fmt.Errorf("cost must be between %d and %d, got %d", bcrypt.MinCost, bcrypt.MaxCost, p.cost)
+		if p.cost < bcryptMinCost || p.cost > bcryptMaxCost {
+			return fmt.Errorf("cost must be between %d and %d, got %d", bcryptMinCost, bcryptMaxCost, p.cost)
 		}
 		return nil
 	}
@@ -205,7 +203,7 @@ func passwordVerify(password, hash string) bool {
 	case isArgon2(hash):
 		return argon2Verify(password, hash)
 	case isBcrypt(hash):
-		return bcrypt.CompareHashAndPassword([]byte(goForm(hash)), []byte(password)) == nil
+		return bcryptVerify(password, hash)
 	default:
 		return false
 	}
@@ -220,20 +218,6 @@ func algoName(algo string) string {
 	return algo
 }
 
-// derive runs the algorithm p names. The bcrypt branch rewrites the revision
-// marker on the way out; the argon2 branch writes the PHC string form, which
-// both implementations already agree on.
-func derive(password string, p params) (string, error) {
-	if p.algo != algoBcrypt {
-		return argon2Hash(password, p)
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), p.cost)
-	if err != nil {
-		return "", err
-	}
-	return phpPrefix + strings.TrimPrefix(string(hash), goPrefix), nil
-}
-
 // paramsOf reads back the parameters a stored hash was written at.
 // password_get_info and password_needs_rehash both answer from it.
 func paramsOf(hash string) (params, bool) {
@@ -244,7 +228,7 @@ func paramsOf(hash string) (params, bool) {
 	if !isBcrypt(hash) {
 		return params{}, false
 	}
-	cost, err := bcrypt.Cost([]byte(goForm(hash)))
+	cost, err := bcryptCost(hash)
 	if err != nil {
 		return params{}, false
 	}

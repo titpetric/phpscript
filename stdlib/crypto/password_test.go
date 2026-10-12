@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
@@ -135,7 +133,7 @@ func BenchmarkPasswordHash(b *testing.B) {
 		b.Run("bcrypt/cost="+strconv.Itoa(cost), func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				if _, err := bcrypt.GenerateFromPassword([]byte(benchPassword), cost); err != nil {
+				if _, err := derive(benchPassword, params{algo: algoBcrypt, cost: cost}); err != nil {
 					b.Fatal(err)
 				}
 			}
@@ -193,8 +191,8 @@ func BenchmarkPasswordVerify(b *testing.B) {
 					}
 					continue
 				}
-				if err := bcrypt.CompareHashAndPassword([]byte(goForm(hash)), []byte(benchPassword)); err != nil {
-					b.Fatal(err)
+				if !bcryptVerify(benchPassword, hash) {
+					b.Fatal("verify failed")
 				}
 			}
 		})

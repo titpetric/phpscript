@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"golang.org/x/crypto/argon2"
 )
 
 // The work factors php defaults to, reported through the three
@@ -61,16 +59,6 @@ func argon2Verify(password, hash string) bool {
 	}
 	got := argon2Key(p, []byte(password), salt, uint32(len(want)))
 	return subtle.ConstantTimeCompare(got, want) == 1
-}
-
-// argon2Key runs the variant p names. argon2i is data-independent and argon2id
-// runs one data-independent pass before the data-dependent ones; both are
-// reachable because php registers both, and argon2id is the one to choose.
-func argon2Key(p params, password, salt []byte, keyLen uint32) []byte {
-	if p.algo == algoArgon2i {
-		return argon2.Key(password, salt, p.time, p.memory, p.lanes, keyLen)
-	}
-	return argon2.IDKey(password, salt, p.time, p.memory, p.lanes, keyLen)
 }
 
 // argon2Encode writes the PHC string form.
