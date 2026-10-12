@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	chi "github.com/go-chi/chi/v5"
 	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/annotations"
@@ -123,7 +122,7 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *fl
 // and its databases. Nothing it registers is visible on another domain, and the
 // connections its scripts can name are only the ones its own env configured.
 func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []platform.Module, error) {
-	router := chi.NewRouter()
+	router := newRouter()
 
 	// A site answering to several names is still one site, reported and named
 	// after the first of them.

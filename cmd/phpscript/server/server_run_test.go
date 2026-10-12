@@ -10,7 +10,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	chi "github.com/go-chi/chi/v5"
 	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/annotations"
@@ -73,7 +72,7 @@ func TestRouteModuleServesAnnotatedRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := chi.NewRouter()
+	router := newRouter()
 	routes := annotations.NewRoute(testFS, annotations.WithExcludedDirectory("public"))
 	if err := routes.Mount(context.Background(), router); err != nil {
 		t.Fatal(err)
@@ -192,7 +191,7 @@ func newTracedServer(root fstest.MapFS) (http.Handler, *telemetry.Module, error)
 	if err != nil {
 		return nil, nil, err
 	}
-	router := chi.NewRouter()
+	router := newRouter()
 	router.Use(tracer.Middleware)
 	if err := telemetry.Mount(router, tracer); err != nil {
 		return nil, nil, err

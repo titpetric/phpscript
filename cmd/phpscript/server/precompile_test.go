@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	chi "github.com/go-chi/chi/v5"
-
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/flatstack"
@@ -100,7 +98,7 @@ func TestSharedCaches(t *testing.T) {
 	})
 	routes := annotations.NewRoute(files.root, options...)
 
-	router := chi.NewRouter()
+	router := newRouter()
 	if err := routes.Mount(context.Background(), router); err != nil {
 		t.Fatal(err)
 	}
