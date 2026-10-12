@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/x/ansi"
 	"golang.org/x/term"
 
 	"github.com/titpetric/phpscript/internal/table"
@@ -127,10 +126,10 @@ func (t *terminalMatrix) sizeColumns(dir string, labels []string) {
 
 	t.widths = make([]int, len(t.headers))
 	for i, header := range t.headers {
-		t.widths[i] = ansi.StringWidth(header)
+		t.widths[i] = table.Width(header)
 	}
 	for _, label := range labels {
-		if width := ansi.StringWidth(label); width > t.widths[0] {
+		if width := table.Width(label); width > t.widths[0] {
 			t.widths[0] = width
 		}
 	}
@@ -215,7 +214,7 @@ func (t *terminalMatrix) detailWidth() int {
 func (t *terminalMatrix) writeDetail(line string) {
 	separator := table.ColorSeparator + table.BoxVertical + table.ColorReset
 	fixture := strings.Repeat(" ", t.widths[0])
-	padding := strings.Repeat(" ", max(0, t.detailWidth()-ansi.StringWidth(line)))
+	padding := strings.Repeat(" ", max(0, t.detailWidth()-table.Width(line)))
 	fmt.Fprintln(t.w, separator+" "+fixture+" "+separator+" "+table.ColorWhite+line+table.ColorReset+padding+" "+separator)
 }
 
@@ -234,7 +233,7 @@ func (t *terminalMatrix) writeRowValues(values []string, color string) {
 		reset = table.ColorReset
 	}
 	for i, value := range values {
-		padding := strings.Repeat(" ", max(0, t.widths[i]-ansi.StringWidth(value)))
+		padding := strings.Repeat(" ", max(0, t.widths[i]-table.Width(value)))
 		cells[i] = " " + color + value + padding + reset + " "
 	}
 	separator := table.ColorSeparator + table.BoxVertical + table.ColorReset
@@ -304,7 +303,7 @@ func (t *markdownMatrix) writeSummary(passed, failed, total int, duration time.D
 func (t *markdownMatrix) writeMarkdownRow(values []string) {
 	cells := make([]string, len(values))
 	for i, value := range values {
-		cells[i] = value + strings.Repeat(" ", max(0, t.widths[i]-ansi.StringWidth(value)))
+		cells[i] = value + strings.Repeat(" ", max(0, t.widths[i]-table.Width(value)))
 	}
 	fmt.Fprintln(t.w, "| "+strings.Join(cells, " | ")+" |")
 }
@@ -337,9 +336,9 @@ func wrapDetail(reason string, width int) []string {
 	var lines []string
 	for _, line := range strings.Split(reason, "\n") {
 		line = strings.TrimRight(line, " ")
-		for ansi.StringWidth(line) > width && width > 0 {
-			lines = append(lines, ansi.Truncate(line, width, ""))
-			line = strings.TrimPrefix(line, ansi.Truncate(line, width, ""))
+		for table.Width(line) > width && width > 0 {
+			lines = append(lines, table.Truncate(line, width))
+			line = strings.TrimPrefix(line, table.Truncate(line, width))
 		}
 		lines = append(lines, line)
 	}

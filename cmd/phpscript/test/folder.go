@@ -7,8 +7,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/charmbracelet/x/ansi"
-
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/tests"
@@ -144,11 +142,11 @@ func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool)
 
 	widths := make([]int, len(headers))
 	for i, header := range headers {
-		widths[i] = ansi.StringWidth(header)
+		widths[i] = table.Width(header)
 	}
 	for _, row := range values {
 		for i, cell := range row {
-			widths[i] = max(widths[i], ansi.StringWidth(cell))
+			widths[i] = max(widths[i], table.Width(cell))
 		}
 	}
 
@@ -184,7 +182,7 @@ func writeMarkdownGrid(w io.Writer, headers []string, values [][]string, widths 
 	row := func(cells []string) {
 		padded := make([]string, len(cells))
 		for i, cell := range cells {
-			padded[i] = cell + strings.Repeat(" ", max(0, widths[i]-ansi.StringWidth(cell)))
+			padded[i] = cell + strings.Repeat(" ", max(0, widths[i]-table.Width(cell)))
 		}
 		fmt.Fprintln(w, "| "+strings.Join(padded, " | ")+" |")
 	}
@@ -215,7 +213,7 @@ func writeTerminalGrid(w io.Writer, headers []string, values [][]string, widths 
 		}
 		padded := make([]string, len(cells))
 		for i, cell := range cells {
-			padding := strings.Repeat(" ", max(0, widths[i]-ansi.StringWidth(cell)))
+			padding := strings.Repeat(" ", max(0, widths[i]-table.Width(cell)))
 			padded[i] = " " + color + cell + padding + reset + " "
 		}
 		separator := table.ColorSeparator + table.BoxVertical + table.ColorReset

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/charmbracelet/x/ansi"
 )
 
 // Align is how a column pads its cells.
@@ -64,7 +62,7 @@ func New(w io.Writer, markdown bool, columns ...Column) *Table {
 		widths:   make([]int, len(columns)),
 	}
 	for i, column := range columns {
-		t.widths[i] = ansi.StringWidth(column.Title)
+		t.widths[i] = Width(column.Title)
 	}
 	return t
 }
@@ -77,7 +75,7 @@ func (t *Table) Row(cells ...Cell) {
 		if i < len(cells) {
 			row[i] = Cell{Text: t.sanitize(cells[i].Text), Color: cells[i].Color}
 		}
-		if width := ansi.StringWidth(row[i].Text); width > t.widths[i] {
+		if width := Width(row[i].Text); width > t.widths[i] {
 			t.widths[i] = width
 		}
 	}
@@ -178,7 +176,7 @@ func (t *Table) flushMarkdown() {
 // pad widens value to its column. The printed value carries color escapes that
 // do not occupy a cell, so the width is measured on plain instead.
 func (t *Table) pad(column int, value, plain string) string {
-	padding := strings.Repeat(" ", max(0, t.widths[column]-ansi.StringWidth(plain)))
+	padding := strings.Repeat(" ", max(0, t.widths[column]-Width(plain)))
 	if t.columns[column].Align == Right {
 		return padding + value
 	}

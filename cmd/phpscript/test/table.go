@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/x/ansi"
-
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
@@ -75,10 +73,10 @@ func (t *terminalTable) sizeColumns(dir string, labels []string) {
 
 	t.widths = make([]int, len(t.headers))
 	for i, header := range t.headers {
-		t.widths[i] = ansi.StringWidth(header)
+		t.widths[i] = table.Width(header)
 	}
 	for _, label := range labels {
-		if width := ansi.StringWidth(label); width > t.widths[1] {
+		if width := table.Width(label); width > t.widths[1] {
 			t.widths[1] = width
 		}
 	}
@@ -155,7 +153,7 @@ func (t *terminalTable) writeRow(values []string, color string) {
 		reset = table.ColorReset
 	}
 	for i, value := range values {
-		padding := strings.Repeat(" ", max(0, t.widths[i]-ansi.StringWidth(value)))
+		padding := strings.Repeat(" ", max(0, t.widths[i]-table.Width(value)))
 		cells[i] = " " + color + value + padding + reset + " "
 	}
 	separator := table.ColorSeparator + table.BoxVertical + table.ColorReset
@@ -240,7 +238,7 @@ func writeMarkdownSummary(w io.Writer, totals []groupTotals, passed, failed, tot
 		}
 	}
 	for _, group := range totals {
-		if width := ansi.StringWidth(group.Dir); width > widths[0] {
+		if width := table.Width(group.Dir); width > widths[0] {
 			widths[0] = width
 		}
 	}
@@ -248,7 +246,7 @@ func writeMarkdownSummary(w io.Writer, totals []groupTotals, passed, failed, tot
 	row := func(values []string) {
 		cells := make([]string, len(values))
 		for i, value := range values {
-			cells[i] = value + strings.Repeat(" ", max(0, widths[i]-ansi.StringWidth(value)))
+			cells[i] = value + strings.Repeat(" ", max(0, widths[i]-table.Width(value)))
 		}
 		fmt.Fprintln(w, "| "+strings.Join(cells, " | ")+" |")
 	}
@@ -311,7 +309,7 @@ func markdownCell(value string) string {
 func (t *markdownTable) writeMarkdownRow(values []string) {
 	cells := make([]string, len(values))
 	for i, value := range values {
-		cells[i] = value + strings.Repeat(" ", max(0, t.widths[i]-ansi.StringWidth(value)))
+		cells[i] = value + strings.Repeat(" ", max(0, t.widths[i]-table.Width(value)))
 	}
 	fmt.Fprintln(t.w, "| "+strings.Join(cells, " | ")+" |")
 }

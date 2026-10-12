@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"strings"
 	"testing"
-
-	"github.com/charmbracelet/x/ansi"
 )
 
 func TestTableRendersMarkdown(t *testing.T) {
@@ -48,10 +46,10 @@ func TestTableRendersAnsi(t *testing.T) {
 	}
 
 	// Every row is padded to one width, which keeps the box square.
-	lines := strings.Split(strings.TrimSpace(ansi.Strip(got)), "\n")
+	lines := strings.Split(strings.TrimSpace(Strip(got)), "\n")
 	for i, line := range lines[:5] {
-		if ansi.StringWidth(line) != ansi.StringWidth(lines[0]) {
-			t.Errorf("line %d has width %d, want %d:\n%s", i, ansi.StringWidth(line), ansi.StringWidth(lines[0]), got)
+		if Width(line) != Width(lines[0]) {
+			t.Errorf("line %d has width %d, want %d:\n%s", i, Width(line), Width(lines[0]), got)
 		}
 	}
 }

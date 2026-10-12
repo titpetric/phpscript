@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/x/ansi"
-
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
@@ -31,7 +29,7 @@ func TestTerminalMatrixColumnsAndSpacing(t *testing.T) {
 	tbl.writeRow(matrixSample())
 	tbl.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
 
-	output := ansi.Strip(buf.String())
+	output := table.Strip(buf.String())
 	// The trailing lines are the folder subtotal and its blank line.
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	lines = lines[:len(lines)-1]
@@ -40,8 +38,8 @@ func TestTerminalMatrixColumnsAndSpacing(t *testing.T) {
 		t.Errorf("header = %q, want %q", header, want)
 	}
 	for i, line := range lines {
-		if ansi.StringWidth(line) != ansi.StringWidth(lines[0]) {
-			t.Errorf("line %d has width %d, want %d:\n%s", i, ansi.StringWidth(line), ansi.StringWidth(lines[0]), output)
+		if table.Width(line) != table.Width(lines[0]) {
+			t.Errorf("line %d has width %d, want %d:\n%s", i, table.Width(line), table.Width(lines[0]), output)
 		}
 	}
 	if !strings.Contains(buf.String(), table.ColorGreen+"PASS") ||
@@ -74,7 +72,7 @@ func TestSkipPHPDropsTheColumn(t *testing.T) {
 	tbl.writeRow(row)
 	tbl.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
 
-	output := ansi.Strip(buf.String())
+	output := table.Strip(buf.String())
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	header := strings.Join(strings.Fields(strings.ReplaceAll(lines[1], "│", "|")), " ")
 	if want := "| arrays | Flat stack | Runtime |"; header != want {
@@ -92,12 +90,12 @@ func TestTerminalMatrixVerboseContinuationRows(t *testing.T) {
 	tbl.writeRow(matrixSample())
 	tbl.closeGroup(groupTotals{Dir: "arrays", Failed: 1, Total: 1})
 
-	output := ansi.Strip(buf.String())
+	output := table.Strip(buf.String())
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	lines = lines[:len(lines)-1]
 	for i, line := range lines {
-		if ansi.StringWidth(line) != ansi.StringWidth(lines[0]) {
-			t.Errorf("line %d has width %d, want %d:\n%s", i, ansi.StringWidth(line), ansi.StringWidth(lines[0]), output)
+		if table.Width(line) != table.Width(lines[0]) {
+			t.Errorf("line %d has width %d, want %d:\n%s", i, table.Width(line), table.Width(lines[0]), output)
 		}
 	}
 
@@ -171,8 +169,8 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 		t.Errorf("detail width = %d, want more than the natural %d", tbl.detailWidth(), natural)
 	}
 	tbl.writeGroup("arrays", []string{"a.phpt"})
-	lines := strings.Split(strings.TrimSpace(ansi.Strip(buf.String())), "\n")
-	if width := ansi.StringWidth(lines[0]); width != maxTableWidth {
+	lines := strings.Split(strings.TrimSpace(table.Strip(buf.String())), "\n")
+	if width := table.Width(lines[0]); width != maxTableWidth {
 		t.Errorf("table width = %d, want %d", width, maxTableWidth)
 	}
 	// A table already wider than the terminal is left alone.
@@ -186,8 +184,8 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 	// widths would grow the table past the terminal on every folder.
 	buf.Reset()
 	tbl.writeGroup("strings", []string{"b.phpt"})
-	lines = strings.Split(strings.TrimSpace(ansi.Strip(buf.String())), "\n")
-	if width := ansi.StringWidth(lines[0]); width != maxTableWidth {
+	lines = strings.Split(strings.TrimSpace(table.Strip(buf.String())), "\n")
+	if width := table.Width(lines[0]); width != maxTableWidth {
 		t.Errorf("second folder width = %d, want %d", width, maxTableWidth)
 	}
 }
@@ -207,7 +205,7 @@ func TestMatrixDurationsSplitPerEngine(t *testing.T) {
 	tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1, Duration: 6 * time.Millisecond, Engines: engines})
 	tbl.writeSummary(1, 0, 1, 6*time.Millisecond, engines)
 
-	output := ansi.Strip(buf.String())
+	output := table.Strip(buf.String())
 	for _, want := range []string{
 		"arrays: 1 passed, 0 failed out of 1 fixtures (6ms: flatstack 1ms, runtime 2ms, php 3ms)",
 		"Matrix summary: 1 passed, 0 failed out of 1 fixtures (6ms: flatstack 1ms, runtime 2ms, php 3ms)",

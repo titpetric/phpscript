@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/x/ansi"
-
 	"github.com/titpetric/phpscript/internal/table"
 	"github.com/titpetric/phpscript/tests"
 )
@@ -136,7 +134,7 @@ func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 		tbl.writeGroup("arrays", []string{"a-much-longer-name.phpt"})
 		tbl.writeResult(fr)
 		tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 1, Total: 1})
-		output := ansi.Strip(buf.String())
+		output := table.Strip(buf.String())
 		// The trailing lines are the folder subtotal and its blank line, which
 		// are prose and not table rows.
 		lines := strings.Split(strings.TrimSpace(output), "\n")
@@ -146,8 +144,8 @@ func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 			t.Errorf("opts %+v: header = %q, want %q", c.opts, header, c.header)
 		}
 		for i, line := range lines {
-			if ansi.StringWidth(line) != ansi.StringWidth(lines[0]) {
-				t.Errorf("opts %+v: line %d has width %d, want %d:\n%s", c.opts, i, ansi.StringWidth(line), ansi.StringWidth(lines[0]), output)
+			if table.Width(line) != table.Width(lines[0]) {
+				t.Errorf("opts %+v: line %d has width %d, want %d:\n%s", c.opts, i, table.Width(line), table.Width(lines[0]), output)
 			}
 		}
 		if !strings.Contains(buf.String(), table.ColorSeparator+table.BoxTopLeft) ||
@@ -258,7 +256,7 @@ func TestTerminalGroupSubtotal(t *testing.T) {
 	tbl := newTerminalTable(&buf, Options{})
 	tbl.sizeColumns("arrays", []string{"a.phpt"})
 	tbl.closeGroup(groupTotals{Dir: "arrays", Passed: 4, Failed: 1, Total: 5, Duration: 6 * time.Millisecond})
-	if want := "arrays: 4 passed, 1 failed out of 5 fixtures (6ms)"; !strings.Contains(ansi.Strip(buf.String()), want) {
+	if want := "arrays: 4 passed, 1 failed out of 5 fixtures (6ms)"; !strings.Contains(table.Strip(buf.String()), want) {
 		t.Fatalf("group subtotal = %q, want it to contain %q", buf.String(), want)
 	}
 }
