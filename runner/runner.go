@@ -906,6 +906,7 @@ func (rt *Runtime) markIncluded(path string) {
 }
 
 func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error) {
+	path = rt.includeFallback(path, scope)
 	resolved := rt.resolveFSPath(path)
 	if once && slices.Contains(rt.included, rootPath(resolved)) {
 		return true, nil
@@ -1106,6 +1107,30 @@ func (rt *Runtime) SPLAutoload(class string) error {
 		}
 	}
 	return nil
+}
+
+// includeFallback is PHP's last stop for a relative include: a path that is
+// not found from the working directory is looked for in the directory of the
+// calling script. A path written as ./ or ../ names the working directory
+// only, and one written from the root has nothing to fall back to.
+func (rt *Runtime) includeFallback(name string, scope *Scope) string {
+	slash := filepath.ToSlash(name)
+	if rt.include != nil || rt.opts.RootFS == nil || slash == "" ||
+		strings.HasPrefix(slash, "/") || strings.HasPrefix(slash, "./") || strings.HasPrefix(slash, "../") {
+		return name
+	}
+	if _, err := fs.Stat(rt.opts.RootFS, rt.resolveFSPath(name)); err == nil {
+		return name
+	}
+	dir, ok := scope.Get("__DIR__")
+	if !ok {
+		return name
+	}
+	candidate := rootPath(path.Join(fmt.Sprint(dir), slash))
+	if _, err := fs.Stat(rt.opts.RootFS, rt.resolveFSPath(candidate)); err != nil {
+		return name
+	}
+	return candidate
 }
 
 // resolveInclude turns an include path into a parsed program, preferring an
