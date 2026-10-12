@@ -50,7 +50,11 @@ func start() error {
 	// -f and -w decide what every command is handed, so both are read before
 	// one is built: -w moves the process, and the configuration file is read
 	// from where it lands.
-	globals, args, err := flags.Pre(os.Args[1:])
+	//
+	// What follows the script is the script's own, and is set aside first so
+	// that neither -f nor a flag of run is read out of it.
+	head, scriptArgs := flags.Split(os.Args[1:], isCommand)
+	globals, args, err := flags.Pre(head)
 	if err != nil {
 		return err
 	}
@@ -112,7 +116,11 @@ func start() error {
 	if wantsHelp(args) {
 		return writeHelp(os.Stdout, commands)
 	}
-	return app.RunWithArgs(flags.Hoist(args, app.HasCommand))
+	args = flags.Hoist(args, app.HasCommand)
+	if len(scriptArgs) > 0 {
+		args = append(append(args, "--"), scriptArgs...)
+	}
+	return app.RunWithArgs(args)
 }
 
 // testConfig is phpscript -t, with args holding an application root when one
@@ -150,6 +158,16 @@ type registration struct {
 	name  string
 	title string
 	new   func(*config.Config, *flags.Options) *cli.Command
+}
+
+// isCommand reports whether name is a phpscript command.
+func isCommand(name string) bool {
+	for _, command := range commands() {
+		if command.name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // decorate binds the shared flags onto a command and wraps its Run with the

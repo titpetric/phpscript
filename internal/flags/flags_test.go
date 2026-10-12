@@ -123,6 +123,62 @@ func TestHoist(t *testing.T) {
 	}
 }
 
+// TestSplit covers the cut between phpscript's arguments and the script's, so
+// a shebang script reads its own flags as $argv.
+func TestSplit(t *testing.T) {
+	isCommand := func(name string) bool { return name == "run" || name == "test" }
+	for _, tc := range []struct {
+		name   string
+		args   []string
+		head   []string
+		script []string
+	}{
+		{
+			name:   "default command",
+			args:   []string{"app.php", "one", "-v", "--two"},
+			head:   []string{"app.php"},
+			script: []string{"one", "-v", "--two"},
+		},
+		{
+			name:   "explicit run with flags",
+			args:   []string{"-w", "dir", "run", "--stdlib", "secure", "app.php", "-f", "x"},
+			head:   []string{"-w", "dir", "run", "--stdlib", "secure", "app.php"},
+			script: []string{"-f", "x"},
+		},
+		{
+			name:   "bare cover keeps the next word",
+			args:   []string{"--cover", "app.php", "src"},
+			head:   []string{"--cover", "app.php"},
+			script: []string{"src"},
+		},
+		{
+			name: "no script arguments",
+			args: []string{"run", "app.php"},
+			head: []string{"run", "app.php"},
+		},
+		{
+			name: "another command",
+			args: []string{"test", "./...", "-v"},
+			head: []string{"test", "./...", "-v"},
+		},
+		{
+			name: "explicit end of flags",
+			args: []string{"--", "app.php", "x"},
+			head: []string{"--", "app.php", "x"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			head, script := flags.Split(tc.args, isCommand)
+			if strings.Join(head, " ") != strings.Join(tc.head, " ") {
+				t.Errorf("head = %v, want %v", head, tc.head)
+			}
+			if strings.Join(script, " ") != strings.Join(tc.script, " ") {
+				t.Errorf("script = %v, want %v", script, tc.script)
+			}
+		})
+	}
+}
+
 // TestOptions_Covering pins which modes turn measurement on. Every command
 // asks this before it installs a collector.
 func TestOptions_Covering(t *testing.T) {

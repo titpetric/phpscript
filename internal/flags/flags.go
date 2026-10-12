@@ -199,7 +199,35 @@ func Pre(args []string) (*Options, []string, error) {
 var valued = map[string]bool{
 	"--include": true, "--cpuprofile": true, "--memprofile": true,
 	"--cover": true, "--coverfile": true, "--file": true, "--workdir": true,
-	"-f": true, "-w": true,
+	"--stdlib": true, "-f": true, "-w": true,
+}
+
+// Split cuts the argument list after the script `run` is given, so what
+// follows it is the script's to read as $argv and not flags for phpscript.
+//
+// The script is the first word that is not a flag, a flag's value or the run
+// command. Any other command keeps its arguments whole, with nothing cut.
+func Split(args []string, isCommand func(string) bool) (head, script []string) {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if strings.HasPrefix(arg, "-") {
+			if arg == "--" {
+				return args, nil
+			}
+			if (valued[arg] && arg != "--cover") || arg == "-s" || arg == "--signal" {
+				i++
+			}
+			continue
+		}
+		if arg == "run" {
+			continue
+		}
+		if isCommand(arg) {
+			return args, nil
+		}
+		return args[:i+1], args[i+1:]
+	}
+	return args, nil
 }
 
 // Hoist moves the command name to the front of the argument list, so a global

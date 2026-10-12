@@ -66,7 +66,7 @@ func Run(ctx context.Context, args []string, config config.Config, globals *flag
 
 	for {
 		generation, reloaded, stop := reloadScope(ctx)
-		runErr := runOnce(generation, script, root, config, globals)
+		runErr := runOnce(generation, script, root, args, config, globals)
 		stop()
 
 		// A reload replaces the generation and its error with it: the script
@@ -113,7 +113,7 @@ func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
 // runOnce is one generation: a runtime, the script read and parsed again, and
 // the run. Everything it builds is dropped when it returns, so
 // a reload pick up an edited file.
-func runOnce(ctx context.Context, script, root string, config config.Config, globals *flags.Options) error {
+func runOnce(ctx context.Context, script, root string, argv []string, config config.Config, globals *flags.Options) error {
 	options := config.Runner
 	options.SAPI = "cli"
 	options.RootFS = os.DirFS(root)
@@ -152,7 +152,10 @@ func runOnce(ctx context.Context, script, root string, config config.Config, glo
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, root)
 
+	// $argv is the script as named on the command line and what followed it,
+	// the way the php CLI fills it.
 	reqCtx := runner.NewContext()
+	reqCtx.Argv = argv
 	reqCtx.Register(rt)
 
 	runErr := rt.Run(prog)

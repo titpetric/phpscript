@@ -8,7 +8,7 @@
 | `$_COOKIE`                               | Compatibility         | Cookies sent with the request, decoded the same way.               |
 | `$_SERVER`                               | Partial compatibility | The request line, peer, scheme, timing, `HTTP_*`, and the script.  |
 | `$_ENV`                                  | Partial compatibility | Seeded empty. Only a Go host fills it; `getenv()` is unrelated.    |
-| `$argc`, `$argv`                         | Partial compatibility | Seeded for scheduled jobs. CLI arguments are not passed to either. |
+| `$argc`, `$argv`                         | Compatibility         | Filled by `phpscript run` and for scheduled jobs.                  |
 | `$_REQUEST`                              | Partial compatibility | Query, form and cookie fields, with route path values merged over. |
 | `$GLOBALS`, `$_SESSION`                  | Not implemented       | Reserved names, never seeded, so they read as null.                |
 | `$php_errormsg`, `$http_response_header` | Not implemented       | PHP error and stream globals are unavailable.                      |
@@ -109,7 +109,7 @@ Installed, and empty unless a Go host puts something in the request context it r
 
 ## `$argc` and `$argv`
 
-Installed, and filled for a scheduled job: `$argv[0]` is the file, and what follows is whatever its `// @schedule` annotation put after `--`. Everywhere else they are `0` and an empty array; the arguments passed to the `phpscript` CLI are not among them.
+Filled by `phpscript run` the way the php CLI fills them: `$argv[0]` is the script as named on the command line, and what follows it is passed verbatim, flags included, so `phpscript app.php -v` and a shebang script both read `-v` as their own. A scheduled job gets the file and whatever its `// @schedule` annotation put after `--`. Everywhere else they are `0` and an empty array.
 
 ## `$_REQUEST`
 

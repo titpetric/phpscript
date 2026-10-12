@@ -16,3 +16,5 @@ Use this command for normal script execution and shebang scripts:
 <?php
 echo "Hello world\n";
 ```
+
+Everything after the script is the script's own, and arrives in `$argv` and `$argc` the way the php CLI passes it. Flags for phpscript go before the script: in `phpscript --stdlib secure app.php -v src`, `$argv` is `["app.php", "-v", "src"]`.
