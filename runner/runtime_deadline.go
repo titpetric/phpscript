@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"fmt"
 	"time"
 )
 
@@ -24,38 +23,6 @@ import (
 // one script, and set_time_limit inside a handler moves that script's deadline,
 // as php does where the request is the script. What a request does
 // own is its connection, scoped by EnterRequest.
-
-// TimeLimitError ends a script that ran past set_time_limit, or whose client
-// went away while it was not ignoring that.
-//
-// A host distinguishes the two causes through Aborted, because they call for
-// different answers: a timeout is the site's problem and a disconnect is not.
-type TimeLimitError struct {
-	// Limit is the limit that was set, zero when the client went away first.
-	Limit time.Duration
-
-	// Aborted reports that the client closed the connection.
-	Aborted bool
-}
-
-// Error says which of the two deadlines ended the script, because the client
-// leaving and the clock running out read the same to everything downstream.
-func (e *TimeLimitError) Error() string {
-	if e.Aborted {
-		return "Script ended: the client closed the connection"
-	}
-	// php's wording, down to the singular, for a whole number of seconds, which
-	// is every limit set_time_limit can express. A handler's limit is the only
-	// one that can be finer, and that one says the duration.
-	if e.Limit%time.Second == 0 {
-		seconds := int64(e.Limit / time.Second)
-		if seconds == 1 {
-			return "Maximum execution time of 1 second exceeded"
-		}
-		return fmt.Sprintf("Maximum execution time of %d seconds exceeded", seconds)
-	}
-	return fmt.Sprintf("Maximum execution time of %s exceeded", e.Limit)
-}
 
 // maxTimeLimit is the longest limit a script can set. It is past any real
 // one and keeps the seconds-to-Duration multiply from wrapping a large argument

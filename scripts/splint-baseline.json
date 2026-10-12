@@ -1,11 +1,11 @@
 {
   "rules": {
-    "coverage/uncovered": 405,
+    "coverage/uncovered": 379,
     "filecheck/long": 37,
     "func-args/order": 24,
-    "grouping/filename": 74,
+    "grouping/filename": 42,
     "imports/collision": 2,
     "imports/pollution": 9,
-    "pairing/unpaired": 122
+    "pairing/unpaired": 121
   }
 }

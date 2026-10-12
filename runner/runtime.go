@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -302,40 +301,9 @@ func (st *evalEnv) slots(n int) []any {
 	return st.vars
 }
 
-// ExitError is returned when PHP die()/exit() interrupts script execution.
-type ExitError struct {
-	Code int
-}
-
-// Error returns a formatted PHP exit status.
-func (e *ExitError) Error() string {
-	return fmt.Sprintf("exit(%d)", e.Code)
-}
-
-// ScriptExit reports the status a script ended with, and marks this error as
-// an ending and no failure.
-//
-// It exists so a package that cannot name *ExitError can still recognise one:
-// runner imports flatstack/engine, so engine cannot import runner back, and
-// the VM has to recognise an exit when it unwinds one past a catch clause. A
-// type assertion keeps runner.isExit an interface check, with no string
-// comparison on the message.
-func (e *ExitError) ScriptExit() int {
-	return e.Code
-}
-
 // SAPI returns the configured SAPI string.
 func (rt *Runtime) SAPI() string {
 	return rt.opts.SAPI
-}
-
-// IsExit reports whether err was caused by PHP die()/exit().
-func IsExit(err error) (*ExitError, bool) {
-	var exitErr *ExitError
-	if errors.As(err, &exitErr) {
-		return exitErr, true
-	}
-	return nil, false
 }
 
 // Exit interrupts execution with a PHP exit status.

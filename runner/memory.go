@@ -18,39 +18,6 @@ const (
 	memCheckInstructions = 4096
 )
 
-// RuntimeException represents a PHP RuntimeException raised by the runner.
-type RuntimeException struct {
-	Message string `json:"message"`
-	Code    int    `json:"code"`
-}
-
-// Error is the message a Go caller reads.
-func (e *RuntimeException) Error() string {
-	return e.Message
-}
-
-// GetMessage is the message under the name a script calls it by.
-func (e *RuntimeException) GetMessage() string {
-	return e.Message
-}
-
-// GetCode is the code under the name a script calls it by.
-func (e *RuntimeException) GetCode() int {
-	return e.Code
-}
-
-// ThrowableClass names the PHP class, implementing Throwable, so a catch
-// filters on it the way it filters on one a script constructed.
-func (e *RuntimeException) ThrowableClass() string { return "RuntimeException" }
-
-// NewRuntimeException creates a new RuntimeException instance.
-func NewRuntimeException(message string, code int) *RuntimeException {
-	return &RuntimeException{
-		Message: message,
-		Code:    code,
-	}
-}
-
 // visitedSet dedups containers by pointer identity during a deep walk, so an
 // array or object reachable through several variables is counted once and
 // self-referential containers terminate.
