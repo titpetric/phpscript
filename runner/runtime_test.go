@@ -2,11 +2,15 @@ package runner
 
 import (
 	"context"
+	"errors"
+	"io"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
 
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/telemetry"
@@ -427,5 +431,704 @@ echo "covered";
 	}
 	if got := coverageBlock(t, cov.Blocks(), "main.php", 2).Count; got != 1 {
 		t.Errorf("echo count = %d, want 1", got)
+	}
+}
+
+// stubDatabase and stubMail stand in for the providers a host configures. The
+// interface is embedded and no method implemented: these tests read which value
+// the runtime answers with and never call through it, and implementing Open
+// would put the sql driver in this package's test binary for nothing.
+type stubDatabase struct{ model.DatabaseProvider }
+
+type stubMail struct{ model.MailProvider }
+
+// TestRuntimeAnswersForItsOptions covers the accessors a binding reads its
+// configuration through. Each answers what the host passed and nothing it
+// inferred: a runtime with no source root answers nil and no working
+// directory, and no provider and no default, because the binding settles what
+// a missing one falls back to.
+func TestRuntimeAnswersForItsOptions(t *testing.T) {
+	bare := New(io.Discard, Options{})
+	if got := bare.SAPI(); got != "" {
+		t.Errorf("SAPI() = %q on a runtime that named none, want empty", got)
+	}
+	if got := bare.FS(); got != nil {
+		t.Errorf("FS() = %v with no source root, want nil", got)
+	}
+	if got := bare.Database(); got != nil {
+		t.Errorf("Database() = %v with none configured, want nil", got)
+	}
+	if got := bare.Mail(); got != nil {
+		t.Errorf("Mail() = %v with none configured, want nil", got)
+	}
+	if got := bare.MemoryLimit(); got != 0 {
+		t.Errorf("MemoryLimit() = %s with none configured, want no limit", got)
+	}
+	if bare.Precompiled() {
+		t.Error("Precompiled() is true on a runtime that was not configured to")
+	}
+	if got := bare.IncludePath(); got != "." {
+		t.Errorf("IncludePath() = %q, want the working directory", got)
+	}
+
+	root := fstest.MapFS{"app/index.php": &fstest.MapFile{Data: []byte(`<?php`)}}
+	stdin := strings.NewReader("piped")
+	database, mail := &stubDatabase{}, &stubMail{}
+	rt := New(io.Discard, Options{
+		SAPI:          "cgi-phpscript",
+		RootFS:        root,
+		Stdin:         stdin,
+		WorkDir:       "app",
+		MemoryLimit:   8 << 20,
+		Precompile:    true,
+		Database:      database,
+		Mail:          mail,
+		WritablePaths: []string{"var", "tmp"},
+	})
+
+	if got := rt.SAPI(); got != "cgi-phpscript" {
+		t.Errorf("SAPI() = %q, want the configured one", got)
+	}
+	if got := rt.FS(); got == nil {
+		t.Error("FS() = nil with a source root configured")
+	}
+	if got := rt.Stdin(); got != stdin {
+		t.Errorf("Stdin() = %v, want the configured reader", got)
+	}
+	if got := rt.Database(); got != model.DatabaseProvider(database) {
+		t.Errorf("Database() = %v, want the configured provider", got)
+	}
+	if got := rt.Mail(); got != model.MailProvider(mail) {
+		t.Errorf("Mail() = %v, want the configured provider", got)
+	}
+	if got := rt.MemoryLimit().Bytes(); got != 8<<20 {
+		t.Errorf("MemoryLimit() = %d, want %d", got, 8<<20)
+	}
+	if !rt.Precompiled() {
+		t.Error("Precompiled() is false on a runtime configured to precompile")
+	}
+
+	// The working directory has two spellings: the fs.FS path a binding
+	// resolves against, and the one a script reads out of getcwd().
+	if got := rt.WorkDir(); got != "app" {
+		t.Errorf("WorkDir() = %q, want the fs path", got)
+	}
+	if got := rt.WorkDirPath(); got != "/app" {
+		t.Errorf("WorkDirPath() = %q, want the path a script reads", got)
+	}
+
+	// The whitelist is answered as a copy, so a binding that sorts or filters
+	// what it was given does not edit the host's configuration.
+	paths := rt.WritablePaths()
+	if len(paths) != 2 {
+		t.Fatalf("WritablePaths() = %v, want both", paths)
+	}
+	paths[0] = "edited"
+	if again := rt.WritablePaths(); again[0] != "var" {
+		t.Errorf("WritablePaths() = %v after the caller edited its copy, want the configured list", again)
+	}
+}
+
+// TestRuntime_SetWorkDir covers chdir(): per-runtime state, so a script moving
+// it moves nothing another request sees and os.Chdir is never called. A
+// relative path resolves against the current directory, an absolute one
+// against the source root, and neither climbs out of it. A path naming no
+// directory is the false php documents.
+func TestRuntime_SetWorkDir(t *testing.T) {
+	rt := New(io.Discard, Options{RootFS: fstest.MapFS{
+		"app/lib/helper.php": &fstest.MapFile{Data: []byte(`<?php`)},
+		"app/index.php":      &fstest.MapFile{Data: []byte(`<?php`)},
+	}})
+
+	if !rt.SetWorkDir("app") {
+		t.Fatal("SetWorkDir(app) refused a directory the root holds")
+	}
+	if got := rt.WorkDir(); got != "app" {
+		t.Errorf("WorkDir() = %q, want app", got)
+	}
+	// A relative path resolves through the directory that is current now, so a
+	// script's include and its file_get_contents name the same file.
+	if got := rt.ResolvePath("index.php"); got != "app/index.php" {
+		t.Errorf("ResolvePath(index.php) = %q, want app/index.php", got)
+	}
+
+	if !rt.SetWorkDir("lib") {
+		t.Fatal("SetWorkDir(lib) refused a directory below the current one")
+	}
+	if got := rt.ResolvePath("helper.php"); got != "app/lib/helper.php" {
+		t.Errorf("ResolvePath(helper.php) = %q, want app/lib/helper.php", got)
+	}
+
+	// An absolute path is read from the source root and no host path.
+	if !rt.SetWorkDir("/app") {
+		t.Fatal("SetWorkDir(/app) refused the root-relative spelling")
+	}
+	if got := rt.WorkDirPath(); got != "/app" {
+		t.Errorf("WorkDirPath() = %q, want /app", got)
+	}
+
+	// A path naming no directory is refused, with the directory left where it
+	// was, which is the false php documents.
+	for _, dir := range []string{"nope", "index.php", "app/index.php"} {
+		if rt.SetWorkDir(dir) {
+			t.Errorf("SetWorkDir(%q) was accepted", dir)
+		}
+		if got := rt.WorkDir(); got != "app" {
+			t.Fatalf("SetWorkDir(%q) moved the directory to %q", dir, got)
+		}
+	}
+
+	// A climb is clamped and never refused: the path resolves to the source
+	// root, so a script that walked up as far as it liked is standing at the
+	// top of the tree the host gave it and never above one.
+	if !rt.SetWorkDir("../../..") {
+		t.Fatal("SetWorkDir refused to climb to the root")
+	}
+	if got := rt.WorkDir(); got != "." {
+		t.Errorf("WorkDir() = %q after climbing, want the source root", got)
+	}
+	if got := rt.ResolvePath("app/index.php"); got != "app/index.php" {
+		t.Errorf("ResolvePath = %q from the root, want app/index.php", got)
+	}
+}
+
+// TestRuntimeSymbolTables covers what the introspection functions read. Each
+// answers a sorted snapshot, because php guarantees no order and a diagnostic
+// that reads differently per run is one nothing can diff.
+func TestRuntimeSymbolTables(t *testing.T) {
+	rt := New(io.Discard, Options{})
+	rt.RegisterFunc("host_shim", func(args ...any) any { return nil })
+	rt.RegisterConstructor("Storage", func() any { return nil })
+
+	program, err := rt.Load(`<?php
+interface Greets { public function hello(); }
+class Site { public function hello() { return "hei"; } }
+function declared_in_php() { return 1; }
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	internal, user := rt.DefinedFunctions()
+	if !slices.Contains(internal, "host_shim") {
+		t.Errorf("DefinedFunctions internal = %v, want the registered shim among them", internal)
+	}
+	if !slices.Contains(user, "declared_in_php") {
+		t.Errorf("DefinedFunctions user = %v, want the php declaration among them", user)
+	}
+	if slices.Contains(internal, "declared_in_php") {
+		t.Error("a php declaration is reported as internal")
+	}
+	if !slices.IsSorted(internal) || !slices.IsSorted(user) {
+		t.Error("DefinedFunctions answered an unsorted snapshot")
+	}
+
+	classes := rt.DeclaredClasses()
+	for _, want := range []string{"Site", "Storage", "stdClass"} {
+		if !slices.Contains(classes, want) {
+			t.Errorf("DeclaredClasses = %v, want %s among them", classes, want)
+		}
+	}
+	if !slices.IsSorted(classes) {
+		t.Error("DeclaredClasses answered an unsorted snapshot")
+	}
+
+	if _, ok := rt.LookupFunc("host_shim"); !ok {
+		t.Error("LookupFunc did not find the registered shim")
+	}
+	if _, ok := rt.LookupFunc("nothing_registered_this"); ok {
+		t.Error("LookupFunc found a name nothing registered")
+	}
+	if _, ok := rt.LookupConstructor("Storage"); !ok {
+		t.Error("LookupConstructor did not find the registered constructor")
+	}
+	if _, ok := rt.LookupConstructor("Site"); ok {
+		t.Error("LookupConstructor found a php class, which has no Go constructor")
+	}
+
+	// Method lookup is php's, which is case-insensitive, and answers only for
+	// an interpreted class: a host-backed one is reflected over by its caller.
+	if !rt.MethodExists("Site", "HELLO") {
+		t.Error("MethodExists is case-sensitive, want php's case-insensitive lookup")
+	}
+	if rt.MethodExists("Site", "absent") || rt.MethodExists("Storage", "Get") {
+		t.Error("MethodExists answered for a method the class does not declare")
+	}
+
+	declared, err := rt.InterfaceExists("Greets", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !declared {
+		t.Error("InterfaceExists did not find a declared interface")
+	}
+	absent, err := rt.InterfaceExists("Absent", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if absent {
+		t.Error("InterfaceExists found an interface nothing declares")
+	}
+}
+
+// TestRuntime_IncludeFile covers the include a host performs itself, which is
+// how composer's autoloader pulls a declaration file in: the file evaluates in
+// a fresh scope the way an `include` statement would, and the runtime records
+// it among the files it included, so the count a script reads and the one an
+// observer is told agree.
+func TestRuntime_IncludeFile(t *testing.T) {
+	recorder := newTelemetryRecorder(t)
+	rt := New(io.Discard, Options{RootFS: fstest.MapFS{
+		"lib/site.php": &fstest.MapFile{Data: []byte(`<?php class Site {} return "loaded";`)},
+	}})
+	rt.Observe(recorder)
+
+	value, err := rt.IncludeFile("lib/site.php")
+	if err != nil {
+		t.Fatalf("IncludeFile: %v", err)
+	}
+	if value != "loaded" {
+		t.Errorf("IncludeFile answered %v, want the file's return value", value)
+	}
+	if declared, err := rt.ClassExists("Site", false); err != nil || !declared {
+		t.Error("the class the included file declares is not defined")
+	}
+
+	// The record is written from the source filesystem's root, the spelling
+	// every path a script reads carries.
+	included := rt.IncludedFiles()
+	if !slices.Contains(included, "/lib/site.php") {
+		t.Errorf("IncludedFiles = %v, want the file among them", included)
+	}
+	// The snapshot is a copy, so a caller walking it cannot edit the record.
+	included[0] = "edited"
+	if again := rt.IncludedFiles(); slices.Contains(again, "edited") {
+		t.Errorf("IncludedFiles = %v after the caller edited its copy", again)
+	}
+
+	// The count an observer is told is published through UpdateIncludedFiles,
+	// which a host calls for the files it included outside the interpreter.
+	rt.UpdateIncludedFiles(len(rt.IncludedFiles()))
+	if len(recorder.included) == 0 {
+		t.Fatal("no included-file count reached the observer")
+	}
+	if got := recorder.included[len(recorder.included)-1]; got != len(rt.IncludedFiles()) {
+		t.Errorf("the observer was told %d files, want %d", got, len(rt.IncludedFiles()))
+	}
+
+	if _, err := rt.IncludeFile("lib/absent.php"); err == nil {
+		t.Error("IncludeFile of a file the root does not hold reported no error")
+	}
+}
+
+// TestRuntime_CompiledTree covers what the parsed tree costs, which phpinfo()
+// reports and memory_limit does not charge for: the tree is shared by every
+// request and outlives all of them. The heap figure is zero until a precompile
+// pass measures one, because printing 0.00 MiB over a filled cache would read
+// as a measurement and not the absence of one.
+func TestRuntime_CompiledTree(t *testing.T) {
+	rt := New(io.Discard, Options{
+		Precompile: true,
+		RootFS: fstest.MapFS{
+			"lib.php": &fstest.MapFile{Data: []byte(`<?php function helper($a) { return $a * 2; }`)},
+		},
+	})
+
+	programs, expressions, heap := rt.CompiledTree()
+	if programs != 0 || expressions != 0 {
+		t.Fatalf("CompiledTree = %d programs, %d expressions on a runtime that loaded nothing", programs, expressions)
+	}
+	if heap != 0 {
+		t.Errorf("CompiledTree heap = %d with no precompile pass behind it, want 0", heap)
+	}
+
+	if _, err := rt.LoadFile("lib.php"); err != nil {
+		t.Fatal(err)
+	}
+	if programs, _, _ = rt.CompiledTree(); programs != 1 {
+		t.Errorf("CompiledTree = %d programs after one load, want 1", programs)
+	}
+}
+
+// TestRuntime_Reset covers what a pool does between two programs. It is
+// ResetSession plus the caches keyed by AST node, which hold the previous tree
+// alive: a runtime handed to the next program must not answer for the last
+// one's classes, constants or parsed files.
+func TestRuntime_Reset(t *testing.T) {
+	var first strings.Builder
+	rt := New(&first, Options{
+		Precompile: true,
+		RootFS: fstest.MapFS{
+			"lib.php": &fstest.MapFile{Data: []byte(`<?php class Site {}`)},
+		},
+	})
+	// The constants a host froze are what a reset returns to, so the bindings
+	// stay defined and whatever the program added does not. There is no
+	// define() to use here: the bindings that register one import this
+	// package.
+	rt.SetConst("STDLIB_CONST", int64(1))
+	rt.FreezeStdlib()
+	rt.SetConst("LOADED", int64(2))
+
+	program, err := rt.LoadFile("lib.php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if programs, _, _ := rt.CompiledTree(); programs == 0 {
+		t.Fatal("nothing was cached, so the clear below proves nothing")
+	}
+
+	var second strings.Builder
+	rt.Reset(&second, nil)
+
+	if programs, expressions, _ := rt.CompiledTree(); programs != 0 || expressions != 0 {
+		t.Errorf("CompiledTree = %d programs, %d expressions after Reset, want both cleared", programs, expressions)
+	}
+	if declared, err := rt.ClassExists("Site", false); err != nil || declared {
+		t.Error("a class the previous program declared survived Reset")
+	}
+	if _, defined := rt.Const("LOADED"); defined {
+		t.Error("a constant added past the freeze survived Reset")
+	}
+	if _, defined := rt.Const("STDLIB_CONST"); !defined {
+		t.Error("a frozen constant was cleared by Reset, so the bindings would be undefined")
+	}
+
+	// Output goes to the writer Reset was handed, so the next program's text
+	// does not join the previous one's.
+	echo, err := rt.Load(`<?php echo "second";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(echo); err != nil {
+		t.Fatal(err)
+	}
+	if got := second.String(); got != "second" {
+		t.Errorf("the second program wrote %q to the new writer, want %q", got, "second")
+	}
+	if strings.Contains(first.String(), "second") {
+		t.Error("the second program wrote to the first program's writer")
+	}
+}
+
+// TestRuntimeMemoryReporting covers the figures memory_get_usage() and
+// memory_get_peak_usage() answer with. Both come off a walk of the live roots,
+// so the usage is what is reachable now and the peak is the highest a walk has
+// seen: an allocation made and released between two walks does not raise it,
+// and php's allocator-level peak counts it.
+func TestRuntimeMemoryReporting(t *testing.T) {
+	rt := New(io.Discard, Options{})
+
+	base := rt.MemoryUsage()
+	if base <= 0 {
+		t.Fatalf("MemoryUsage() = %d, want the baseline a runtime starts at", base)
+	}
+	if got := rt.MemoryWalk(); got != base {
+		t.Errorf("MemoryWalk() = %d against MemoryUsage()'s %d, want one figure", got, base)
+	}
+	if got := rt.MemoryPeak(); got < base {
+		t.Errorf("MemoryPeak() = %d, below the %d in use", got, base)
+	}
+
+	// A host folds the request's own cost into the baseline, so the walk starts
+	// from what the request already weighs.
+	rt.AccountRequest(strings.Repeat("x", 4096))
+	grown := rt.MemoryWalk()
+	if grown <= base {
+		t.Errorf("MemoryWalk() = %d after accounting a 4k value, want more than the %d baseline", grown, base)
+	}
+
+	// The peak is at least what the last walk saw.
+	peak := rt.MemoryPeak()
+	if peak < grown {
+		t.Errorf("MemoryPeak() = %d, below the %d the last walk measured", peak, grown)
+	}
+
+	// A reset takes it back to the baseline, because the figure belonged to the
+	// program that ran: a pooled runtime reporting the previous script's peak
+	// would charge it to a page that never allocated any of it.
+	rt.Reset(io.Discard, nil)
+	if got := rt.MemoryPeak(); got >= peak {
+		t.Errorf("MemoryPeak() = %d after a reset, want it back below the %d the last program reached", got, peak)
+	}
+}
+
+// TestRuntime_Exit covers the value `exit` ends a script with. It is an error
+// so that it unwinds the interpreter, and an ending and no failure, which a
+// host reads through IsExit without naming the type.
+func TestRuntime_Exit(t *testing.T) {
+	rt := New(io.Discard, Options{})
+
+	err := rt.Exit(3)
+	if err == nil {
+		t.Fatal("Exit answered no error, so nothing would unwind")
+	}
+	exit, ok := IsExit(err)
+	if !ok {
+		t.Fatalf("IsExit(%v) = false, want the exit recognised", err)
+	}
+	if exit.Code != 3 {
+		t.Errorf("exit code = %d, want 3", exit.Code)
+	}
+	if got, want := err.Error(), "exit(3)"; got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+
+	// A zero is the ordinary ending and still an ExitError, so a host reading
+	// the status does not have to tell the two apart.
+	if exit, ok := IsExit(rt.Exit(0)); !ok || exit.Code != 0 {
+		t.Error("exit(0) is not recognised as an exit")
+	}
+}
+
+// TestRuntime_SetConst covers a constant registered from Go, which is visible
+// in every scope the way define() is and unlike a global, which php confines to
+// the global one.
+func TestRuntime_SetConst(t *testing.T) {
+	var out strings.Builder
+	rt := New(&out, Options{})
+	rt.SetConst("HOST_NAME", "phpscript")
+
+	if value, defined := rt.Const("HOST_NAME"); !defined || value != "phpscript" {
+		t.Fatalf("Const(HOST_NAME) = %v, %v, want the registered value", value, defined)
+	}
+
+	program, err := rt.Load(`<?php function inside() { echo HOST_NAME; } inside();`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+	if got := out.String(); got != "phpscript" {
+		t.Errorf("output = %q, want the constant read inside a function", got)
+	}
+
+	// A second registration replaces the value, the call a host swapping one
+	// between programs makes.
+	rt.SetConst("HOST_NAME", "replaced")
+	if value, _ := rt.Const("HOST_NAME"); value != "replaced" {
+		t.Errorf("Const(HOST_NAME) = %v after a second SetConst, want the new value", value)
+	}
+}
+
+// TestRuntime_RegisterShutdown covers the callbacks php runs at the end of a
+// program, in registration order, so a registered flush reaches the output of
+// a script that already finished. Each is consumed by the run, so the next
+// program on a pooled runtime does not run the previous one's.
+func TestRuntime_RegisterShutdown(t *testing.T) {
+	var out strings.Builder
+	rt := New(&out, Options{})
+
+	var ran []string
+	rt.RegisterShutdown(func() any { ran = append(ran, "first"); return nil })
+	rt.RegisterShutdown(func() any { ran = append(ran, "second"); return nil })
+
+	program, err := rt.Load(`<?php echo "ran";`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if got := strings.Join(ran, ","); got != "first,second" {
+		t.Errorf("the callbacks ran %q, want them in registration order", got)
+	}
+	if got := out.String(); got != "ran" {
+		t.Errorf("output = %q, want the program's own text", got)
+	}
+
+	ran = nil
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+	if len(ran) != 0 {
+		t.Errorf("the callbacks ran again on the next program: %v", ran)
+	}
+
+	// An error a callback reports reaches the host, because a shutdown that
+	// could not finish is a run that did not.
+	rt.RegisterShutdown(func() (any, error) { return nil, errors.New("the flush failed") })
+	if err := rt.Run(program); err == nil {
+		t.Error("a failing shutdown callback did not reach the host")
+	}
+}
+
+// TestRuntime_Trace and TestRuntime_UpdateStatus cover the two publications a
+// host observes a run through. Both are exported for the phases that happen
+// outside PHP execution, where a serving host spends its time.
+func TestRuntime_Trace(t *testing.T) {
+	recorder := newTelemetryRecorder(t)
+	rt := New(io.Discard, Options{})
+	rt.Observe(recorder)
+
+	span := rt.Trace("host work", telemetry.KindInternal)
+	if span == nil {
+		t.Fatal("Trace answered no span from an observer that creates them")
+	}
+	if !slices.Contains(recorder.traces, "host work") {
+		t.Errorf("the observer recorded %v, want the message among them", recorder.traces)
+	}
+
+	// A runtime nothing observes answers a nil span, and every method on one
+	// does nothing, so a host traces unconditionally.
+	if span := New(io.Discard, Options{}).Trace("unobserved"); span != nil {
+		t.Errorf("Trace answered %v with no observer, want nil", span)
+	}
+}
+
+func TestRuntime_UpdateStatus(t *testing.T) {
+	recorder := newTelemetryRecorder(t)
+	rt := New(io.Discard, Options{})
+	rt.Observe(recorder)
+
+	before := len(recorder.states)
+	rt.UpdateStatus(telemetry.StateWriting)
+	if len(recorder.states) != before+1 {
+		t.Fatalf("the observer received %d states, want one more than %d", len(recorder.states), before)
+	}
+	if got := recorder.states[len(recorder.states)-1]; got != telemetry.StateWriting {
+		t.Errorf("the observer was told %v, want %v", got, telemetry.StateWriting)
+	}
+
+	// The same state twice is one phase, so a host calling it per statement
+	// does not flood an observer with what it already knows.
+	rt.UpdateStatus(telemetry.StateWriting)
+	if len(recorder.states) != before+1 {
+		t.Errorf("a repeated state was published again: %v", recorder.states)
+	}
+}
+
+// TestFilenameObserver and TestIncludeObserver cover the two optional halves of
+// the observer contract. Each is a separate interface so an observer that wants
+// neither implements neither, and the runtime asks before publishing.
+func TestFilenameObserver(t *testing.T) {
+	recorder := newTelemetryRecorder(t)
+	var observer FilenameObserver = recorder
+
+	rt := New(io.Discard, Options{})
+	rt.Observe(recorder)
+	rt.UpdateFilename("app/index.php")
+
+	if !slices.Contains(recorder.filenames, "app/index.php") {
+		t.Errorf("the observer recorded %v, want the entrypoint among them", recorder.filenames)
+	}
+	observer.UpdateFilename(context.Background(), "direct")
+	if !slices.Contains(recorder.filenames, "direct") {
+		t.Error("the interface method did not reach the recorder")
+	}
+
+	// Only the first entrypoint is published: an include is not a new one, and
+	// a span named for the file the run started in has to keep that name.
+	rt.UpdateFilename("app/other.php")
+	if slices.Contains(recorder.filenames, "app/other.php") {
+		t.Errorf("a second entrypoint was published: %v", recorder.filenames)
+	}
+
+	// An observer implementing neither optional half is never called for one.
+	plain := &statusOnlyObserver{}
+	bare := New(io.Discard, Options{})
+	bare.Observe(plain)
+	bare.UpdateFilename("app/index.php")
+	bare.UpdateIncludedFiles(1)
+}
+
+func TestIncludeObserver(t *testing.T) {
+	recorder := newTelemetryRecorder(t)
+	var observer IncludeObserver = recorder
+
+	rt := New(io.Discard, Options{})
+	rt.Observe(recorder)
+	rt.UpdateIncludedFiles(3)
+
+	if !slices.Contains(recorder.included, 3) {
+		t.Errorf("the observer recorded %v, want the count among them", recorder.included)
+	}
+	observer.UpdateIncludedFiles(context.Background(), 9)
+	if !slices.Contains(recorder.included, 9) {
+		t.Error("the interface method did not reach the recorder")
+	}
+}
+
+// statusOnlyObserver implements the required half of the observer contract and
+// neither optional one, the shape the runtime has to tolerate.
+type statusOnlyObserver struct{}
+
+func (*statusOnlyObserver) UpdateStatus(context.Context, telemetry.State) {}
+
+func (*statusOnlyObserver) Trace(context.Context, string, ...telemetry.Kind) *telemetry.Span {
+	return nil
+}
+
+// TestScriptEnvironment covers what getenv() reads. A nil environment is the
+// process one, as a CLI run has it; a host that configured one passes it
+// instead, and a virtual host always does, so a site sees the variables it
+// declared and none of the operator's. The infrastructure names are held back
+// either way.
+func TestScriptEnvironment(t *testing.T) {
+	configured := ScriptEnvironment([]string{
+		"APP_ENV=production",
+		"EMPTY=",
+		InfrastructurePrefix + "SECRET=held back",
+		"=no name",
+		"HAS=an=equals",
+	})
+
+	if got := configured["APP_ENV"]; got != "production" {
+		t.Errorf("APP_ENV = %q, want production", got)
+	}
+	if value, present := configured["EMPTY"]; !present || value != "" {
+		t.Errorf("EMPTY = %q, %v, want an empty value that is present", value, present)
+	}
+	if got := configured["HAS"]; got != "an=equals" {
+		t.Errorf("HAS = %q, want everything past the first equals", got)
+	}
+	if _, present := configured[InfrastructurePrefix+"SECRET"]; present {
+		t.Error("an infrastructure variable reached the script environment")
+	}
+	if _, present := configured[""]; present {
+		t.Error("an entry with no name reached the script environment")
+	}
+
+	// A configured environment is the whole of what a script sees, so a
+	// variable the process carries and the host did not declare is absent.
+	t.Setenv("PHPSCRIPT_TEST_ONLY_IN_PROCESS", "1")
+	if _, present := configured["PHPSCRIPT_TEST_ONLY_IN_PROCESS"]; present {
+		t.Error("a process variable reached a configured environment")
+	}
+	if _, present := ScriptEnvironment(nil)["PHPSCRIPT_TEST_ONLY_IN_PROCESS"]; !present {
+		t.Error("a nil environment did not read the process one")
+	}
+}
+
+// TestScopeBuiltins covers the names installed per-environment and no entry in
+// the function table. function_exists() and the linter both read that table, so
+// a call to one of these would read as a call to something undefined if the
+// list were not published.
+func TestScopeBuiltins(t *testing.T) {
+	builtins := ScopeBuiltins()
+	if len(builtins) == 0 {
+		t.Fatal("ScopeBuiltins answered nothing")
+	}
+	if !slices.Contains(builtins, "func_get_args") {
+		t.Errorf("ScopeBuiltins = %v, want func_get_args among them", builtins)
+	}
+
+	// Each name is resolvable in a scope and absent from the function table,
+	// which is the split the list exists to bridge.
+	rt := New(io.Discard, Options{})
+	for _, name := range builtins {
+		if _, ok := scopeBuiltin(name, NewScope()); !ok {
+			t.Errorf("%s is listed and does not resolve in a scope", name)
+		}
+		if _, ok := rt.LookupFunc(name); ok {
+			t.Errorf("%s is in the function table, so it needs no listing", name)
+		}
 	}
 }
