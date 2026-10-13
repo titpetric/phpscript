@@ -89,3 +89,118 @@ func TestSharedMemoryInfo(t *testing.T) {
 		t.Fatalf("Usage() = %d, %d, %d; want 1, 1, at least 2048", entries, counters, bytes)
 	}
 }
+
+// TestSharedMemory_Get covers reading a value back, and what a key nothing set
+// reads as. The binding has one return value and no found flag, so a miss is
+// the empty string; Has is the separate question.
+func TestSharedMemory_Get(t *testing.T) {
+	ctx := context.Background()
+	store := core.NewSharedMemory()
+
+	if got := store.Get(ctx, "absent"); got != "" {
+		t.Errorf("a key nothing set reads as %q, want the empty string", got)
+	}
+
+	store.Set(ctx, "greeting", "hello")
+	if got := store.Get(ctx, "greeting"); got != "hello" {
+		t.Errorf("Get() = %q, want %q", got, "hello")
+	}
+
+	store.Set(ctx, "greeting", "second")
+	if got := store.Get(ctx, "greeting"); got != "second" {
+		t.Errorf("a second Set left %q, want %q", got, "second")
+	}
+}
+
+// TestSharedMemory_Count covers reading a counter without moving it. Count
+// answers a decimal string where Incr answers the int, so a template prints the
+// figure with no cast, and a counter nothing touched reads as "0".
+func TestSharedMemory_Count(t *testing.T) {
+	ctx := context.Background()
+	store := core.NewSharedMemory()
+
+	if got := store.Count(ctx, "hits"); got != "0" {
+		t.Errorf("an untouched counter reads as %q, want %q", got, "0")
+	}
+
+	store.Incr(ctx, "hits")
+	store.Incr(ctx, "hits")
+	if got := store.Count(ctx, "hits"); got != "2" {
+		t.Errorf("Count() = %q after two increments, want %q", got, "2")
+	}
+	if got := store.Count(ctx, "hits"); got != "2" {
+		t.Errorf("a second Count() = %q, want %q; reading moves the counter", got, "2")
+	}
+}
+
+// TestSharedMemory_Delete covers removing a name and reporting whether it was
+// there. One name holds a value or a counter, so the call clears it from the
+// values, then from the counters.
+func TestSharedMemory_Delete(t *testing.T) {
+	ctx := context.Background()
+	store := core.NewSharedMemory()
+	store.Set(ctx, "value", "x")
+	store.Incr(ctx, "counter")
+
+	for _, key := range []string{"value", "counter"} {
+		if !store.Delete(ctx, key) {
+			t.Errorf("Delete(%q) = false on a key that was set", key)
+		}
+		if store.Has(ctx, key) {
+			t.Errorf("%q is still present after Delete", key)
+		}
+	}
+
+	if store.Delete(ctx, "absent") {
+		t.Error("Delete() = true for a key nothing set")
+	}
+
+	entries, counters, _ := store.Usage()
+	if entries != 0 || counters != 0 {
+		t.Errorf("Usage() reports %d entries and %d counters, want 0 and 0", entries, counters)
+	}
+}
+
+// TestSharedMemory_Has covers the one question Get cannot answer: a key set to
+// the empty string reads the same as a key nothing set, so presence is its own
+// call. A counter counts as present.
+func TestSharedMemory_Has(t *testing.T) {
+	ctx := context.Background()
+	store := core.NewSharedMemory()
+
+	if store.Has(ctx, "blank") {
+		t.Error("Has() = true before anything was set")
+	}
+
+	store.Set(ctx, "blank", "")
+	if !store.Has(ctx, "blank") {
+		t.Error("Has() = false for a key set to the empty string")
+	}
+
+	store.Incr(ctx, "counter")
+	if !store.Has(ctx, "counter") {
+		t.Error("Has() = false for a counter")
+	}
+}
+
+// TestSharedMemory_Clear covers emptying the store through the same pointer a
+// host bound into its context, so every request holding the store sees the
+// reset.
+func TestSharedMemory_Clear(t *testing.T) {
+	ctx := context.Background()
+	store := core.NewSharedMemory()
+	store.Set(ctx, "value", "x")
+	store.Incr(ctx, "counter")
+
+	store.Clear(ctx)
+
+	entries, counters, bytes := store.Usage()
+	if entries != 0 || counters != 0 || bytes != 0 {
+		t.Errorf("Usage() = %d, %d, %d after Clear, want 0, 0, 0", entries, counters, bytes)
+	}
+
+	store.Incr(ctx, "counter")
+	if got := store.Count(ctx, "counter"); got != "1" {
+		t.Errorf("the counter resumed at %q, want %q", got, "1")
+	}
+}
