@@ -1,3 +1,26 @@
 stats:
   imports:
     fixed: 14
+
+# How long a file may run to. 400 is the linter's own number and the one the
+# tree is held to; the entries below name the files no single number can cover.
+# The first entry covering a file wins, read top to bottom, so the test files
+# are judged as test files wherever they sit.
+filecheck:
+  max-lines: 400
+  allow:
+    # A test file cannot be split freely: pairing/orphan wants foo.go beside
+    # foo_test.go, so a source file's whole contract lands in one test file.
+    # The inputs, the wants and the message on every failure run longer than
+    # the code they cover, which is why this is not the source ceiling.
+    - path: "**/*_test.go"
+      max-lines: 1000
+    # A recursive descent parser is one subject: the grammar. Splitting it by
+    # line count would put the statement that opens a block in one file and the
+    # one that closes it in another.
+    - path: parser/*.go
+      max-lines: 1500
+    # The bytecode engine is the instruction set and the loop that runs it, and
+    # a loop over a switch of every opcode is the shape that makes it quick.
+    - path: flatstack/engine/*.go
+      max-lines: 1400

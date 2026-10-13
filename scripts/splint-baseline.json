@@ -1,7 +1,7 @@
 {
   "rules": {
     "coverage/uncovered": 1,
-    "filecheck/long": 39,
+    "filecheck/long": 17,
     "func-args/order": 1,
     "imports/pollution": 1,
     "pairing/unpaired": 16
