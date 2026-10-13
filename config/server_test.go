@@ -97,6 +97,45 @@ func TestPlatformOptionsRejectAnUnknownDriver(t *testing.T) {
 	}
 }
 
+// TestServer covers the four keys a file gets to say about the platform. The
+// recorder is not among them: that one is the top level telemetry block, so a
+// site cannot move the dashboard by writing a server block.
+func TestServer(t *testing.T) {
+	block := config.New().Server
+	if block.Addr != ":8080" {
+		t.Errorf("addr = %q, want :8080", block.Addr)
+	}
+	if block.Quiet || len(block.Modules) != 0 || block.PidFile != "" {
+		t.Errorf("block = %+v, want quiet off, every module, no pid file", block)
+	}
+}
+
+// TestServer_Options covers the platform options the block describes. No
+// recorder is configured here: Config.PlatformOptions adds one, so a caller
+// reading the block alone starts a server that records nothing.
+func TestServer_Options(t *testing.T) {
+	block := config.Server{
+		Addr:    "127.0.0.1:9000",
+		Quiet:   true,
+		Modules: []string{"phpserver"},
+		PidFile: "/run/phpscript.pid",
+	}
+
+	options := block.Options()
+	if options.ServerAddr != block.Addr || !options.Quiet {
+		t.Errorf("addr = %q, quiet = %t", options.ServerAddr, options.Quiet)
+	}
+	if len(options.Modules) != 1 || options.Modules[0] != "phpserver" {
+		t.Errorf("modules = %v, want [phpserver]", options.Modules)
+	}
+	if options.PidFile != block.PidFile {
+		t.Errorf("pid file = %q, want %q", options.PidFile, block.PidFile)
+	}
+	if options.Telemetry.Enabled {
+		t.Error("the block configured a recorder")
+	}
+}
+
 // TestNewTestConfig pins what a test inherits: a port the kernel picks and no
 // recorder, so tests neither collide on a port nor record into each other.
 func TestNewTestConfig(t *testing.T) {
