@@ -32,7 +32,7 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 | Include, require | Evaluate another PHP file here, in this scope. `require` is fatal when the file is missing and `include` is not; the `_once` forms consult a per-request record of what has already run.          |
 | Autoloader       | A callback registered with `spl_autoload_register()` called with a class name the first time something names one that is not declared. composer's generated autoloader is one, interpreted as-is. |
 | Namespace        | The prefix a declaration carries, `Acme\Thing`. It is a name, not a directory: what maps one onto a path is an autoloader.                                                                        |
-| Binding          | A Go function, class or constant registered onto the runtime, which a script calls by the name it was registered under. `phpscript list --stdlib` prints every one this build carries.            |
+| Binding          | A Go function, class or constant registered onto the runtime, which a script calls by the name it was registered under. `phpscript list --bindings` prints every one this build carries.          |
 
 ## Serving
 

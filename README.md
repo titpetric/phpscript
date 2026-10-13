@@ -1,6 +1,6 @@
 # phpscript - A custom PHP-flavoured runtime written in Go
 
-This is a PHP interpreter written in Go, with a bytecode backend beside it and an HTTP server of its own. It runs a subset of the language and of the standard library - `phpscript list --stdlib` prints what this build carries, and `phpscript info` counts it - and the parts it does not run are decisions as often as gaps: see [Design decisions](./docs/design.md) for what it will not implement and [the language reference](./docs/reference/README.md) for what is not implemented yet.
+This is a PHP interpreter written in Go, with a bytecode backend beside it and an HTTP server of its own. It runs a subset of the language and of the standard library - `phpscript list --bindings` prints what this build carries, and `phpscript info` counts it - and the parts it does not run are decisions as often as gaps: see [Design decisions](./docs/design.md) for what it will not implement and [the language reference](./docs/reference/README.md) for what is not implemented yet.
 
 - [About phpscript](./docs/README.md)
 - [Design decisions](./docs/design.md)

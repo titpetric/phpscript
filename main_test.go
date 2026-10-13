@@ -5,7 +5,25 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
+	"github.com/titpetric/phpscript/internal/flags"
 )
+
+// TestCommandsBindWithGlobals binds every command the way decorate does: the
+// global flags first, then the command's own. pflag panics on a name declared
+// twice on one set, so a command that reuses a global's name fails here
+// instead of panicking in every run of that command. A command package
+// binding on a flag set of its own never meets the globals and cannot see the
+// clash.
+func TestCommandsBindWithGlobals(t *testing.T) {
+	for _, command := range commands() {
+		t.Run(command.name, func(t *testing.T) {
+			bind := (&flags.Options{}).BindWith(command.new(nil, nil).Bind)
+			bind(helpdocs.NewFlagSet(command.name))
+		})
+	}
+}
 
 func TestLoadConfig(t *testing.T) {
 	config, err := loadConfig("")

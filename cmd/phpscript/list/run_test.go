@@ -31,9 +31,9 @@ func TestRunListsPaths(t *testing.T) {
 	}
 }
 
-// TestRunListsStdlib covers --stdlib: the registered surface of this build,
-// with no tree involved.
-func TestRunListsStdlib(t *testing.T) {
+// TestRunListsBindings covers --bindings: the registered surface of this
+// build, with no tree involved.
+func TestRunListsBindings(t *testing.T) {
 	var out bytes.Buffer
 	if err := run(&out, nil, true); err != nil {
 		t.Fatalf("run: %v", err)
@@ -45,8 +45,8 @@ func TestRunListsStdlib(t *testing.T) {
 	}
 }
 
-// TestNewCommand covers the one flag this command owns. --stdlib switches the
-// subject from a tree to the binary, so it defaults off: a bare `phpscript
+// TestNewCommand covers the one flag this command owns. --bindings switches
+// the subject from a tree to the binary, so it defaults off: a bare `phpscript
 // list` scans paths. The constructor takes the configuration and the global
 // options because one signature covers all nine commands, and this command
 // reads neither, so both arguments are nil here.
@@ -60,17 +60,17 @@ func TestNewCommand(t *testing.T) {
 		t.Errorf("Title = %q, want %q", command.Title, Name)
 	}
 	if command.Bind == nil {
-		t.Fatal("Bind is nil, want the --stdlib flag")
+		t.Fatal("Bind is nil, want the --bindings flag")
 	}
 
 	set := helpdocs.NewFlagSet("list")
 	command.Bind(set)
-	flag := set.Lookup("stdlib")
+	flag := set.Lookup("bindings")
 	if flag == nil {
-		t.Fatal("--stdlib is not bound")
+		t.Fatal("--bindings is not bound")
 	}
 	if flag.DefValue != "false" {
-		t.Errorf("--stdlib default = %q, want false: a bare list scans paths", flag.DefValue)
+		t.Errorf("--bindings default = %q, want false: a bare list scans paths", flag.DefValue)
 	}
 }
 
@@ -108,16 +108,16 @@ func TestRun(t *testing.T) {
 	}
 }
 
-// TestRunRejectsStdlibWithPaths pins the refusal. The two modes answer about
+// TestRunRejectsBindingsWithPaths pins the refusal. The two modes answer about
 // different things, so a caller that named both named one of them by mistake and is
 // told which one was dropped, and never left to guess.
-func TestRunRejectsStdlibWithPaths(t *testing.T) {
+func TestRunRejectsBindingsWithPaths(t *testing.T) {
 	var out bytes.Buffer
 	err := run(&out, []string{"."}, true)
 	if err == nil {
-		t.Fatal("run returned nil error for --stdlib with a path argument")
+		t.Fatal("run returned nil error for --bindings with a path argument")
 	}
-	if want := "list --stdlib takes no path arguments"; !strings.Contains(err.Error(), want) {
+	if want := "list --bindings takes no path arguments"; !strings.Contains(err.Error(), want) {
 		t.Errorf("error = %q, want it to contain %q", err, want)
 	}
 	if out.Len() != 0 {

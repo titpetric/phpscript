@@ -21,33 +21,33 @@ const Name = "List routes, files and classes"
 // The configuration and the global options are what every command constructor
 // takes, so one signature covers all of them. This command reads neither.
 func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
-	var stdlib bool
+	var bindings bool
 
 	return &cli.Command{
 		Name:  "list",
 		Title: Name,
 		Bind: func(fs *cli.FlagSet) {
-			fs.BoolVar(&stdlib, "stdlib", false, "List the functions, classes and constants the runtime registers instead of scanning paths")
+			fs.BoolVar(&bindings, "bindings", false, "List the functions, classes and constants the runtime registers instead of scanning paths")
 		},
 		Run: func(ctx context.Context, args []string) error {
-			return Run(args, stdlib)
+			return Run(args, bindings)
 		},
 	}
 }
 
 // Run prints a markdown table for the given path arguments, or for the
-// registered runtime surface when stdlib is set.
-func Run(args []string, stdlib bool) error {
-	return run(os.Stdout, args, stdlib)
+// registered runtime surface when bindings is set.
+func Run(args []string, bindings bool) error {
+	return run(os.Stdout, args, bindings)
 }
 
-func run(out io.Writer, args []string, stdlib bool) error {
-	// --stdlib reports on the binary and no tree, so path arguments
+func run(out io.Writer, args []string, bindings bool) error {
+	// --bindings reports on the binary and no tree, so path arguments
 	// have nothing to select and are refused, never ignored: a caller
 	// that passed both meant one of the two.
-	if stdlib {
+	if bindings {
 		if len(args) > 0 {
-			return fmt.Errorf("list --stdlib takes no path arguments, %d given", len(args))
+			return fmt.Errorf("list --bindings takes no path arguments, %d given", len(args))
 		}
 		fmt.Fprint(out, phplist.StdlibMarkdown(phplist.Stdlib()))
 		return nil

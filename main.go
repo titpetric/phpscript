@@ -97,20 +97,7 @@ func start() error {
 		Branch:     Branch,
 	}
 
-	// Every constructor takes the configuration and the global options, so the
-	// table names them, with no closure per command closing
-	// over what it happens to need.
-	commands := []registration{
-		{"ast", ast.Name, ast.NewCommand},
-		{"fmt", fmtcmd.Name, fmtcmd.NewCommand},
-		{"info", info.Name, info.NewCommand},
-		{"lint", lint.Name, lint.NewCommand},
-		{"list", list.Name, list.NewCommand},
-		{"run", run.Name, run.NewCommand},
-		{"server", server.Name, server.NewCommand},
-		{"test", test.Name, test.NewCommand},
-		{"version", version.Name, version.NewCommand},
-	}
+	commands := commands()
 
 	app := cli.NewApp("phpscript")
 	for _, command := range commands {
@@ -136,6 +123,24 @@ func testConfig(globals *flags.Options, args []string) error {
 		root = args[0]
 	}
 	return server.Check(globals.ConfigFile, root, os.Stdout, os.Stderr)
+}
+
+// commands is every command this binary carries. Every constructor takes the
+// configuration and the global options, so the table names them, with no
+// closure per command closing over what it happens to need. It is a function
+// so a test can bind the same table the binary runs.
+func commands() []registration {
+	return []registration{
+		{"ast", ast.Name, ast.NewCommand},
+		{"fmt", fmtcmd.Name, fmtcmd.NewCommand},
+		{"info", info.Name, info.NewCommand},
+		{"lint", lint.Name, lint.NewCommand},
+		{"list", list.Name, list.NewCommand},
+		{"run", run.Name, run.NewCommand},
+		{"server", server.Name, server.NewCommand},
+		{"test", test.Name, test.NewCommand},
+		{"version", version.Name, version.NewCommand},
+	}
 }
 
 // registration is one command as main records it: what it is called, what it
