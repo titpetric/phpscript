@@ -1,9 +1,9 @@
 {
   "rules": {
-    "coverage/uncovered": 364,
+    "coverage/uncovered": 178,
     "filecheck/long": 37,
     "func-args/order": 1,
     "imports/pollution": 1,
-    "pairing/unpaired": 118
+    "pairing/unpaired": 56
   }
 }

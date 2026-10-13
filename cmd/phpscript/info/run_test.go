@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/titpetric/phpscript/internal/flags"
 )
 
 func TestRunPrintsRuntime(t *testing.T) {
@@ -52,6 +54,43 @@ func TestRunSourceTree(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("missing %q in:\n%s", want, out)
 		}
+	}
+}
+
+// TestNewCommand covers what the constructor carries into the command: the
+// shared -v is this command's verbosity dial, so the Run closure has to read
+// it off the global options main filled, and not off a flag of its own. A
+// command built with -v set prints the binding sections, and one built without
+// it prints the summary alone.
+func TestNewCommand(t *testing.T) {
+	command := NewCommand(nil, &flags.Options{})
+
+	if command.Name != "info" {
+		t.Errorf("Name = %q, want %q", command.Name, "info")
+	}
+	if command.Title != Name {
+		t.Errorf("Title = %q, want %q", command.Title, Name)
+	}
+	if command.Bind != nil {
+		t.Error("Bind is set, want nil: -v is the shared flag, not one of this command's")
+	}
+
+	quiet := captureStdout(t, func() {
+		if err := command.Run(context.Background(), nil); err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+	})
+	if strings.Contains(quiet, "# Classes") {
+		t.Errorf("a command built without -v printed the binding sections:\n%s", quiet)
+	}
+
+	verbose := captureStdout(t, func() {
+		if err := NewCommand(nil, &flags.Options{Verbose: true}).Run(context.Background(), nil); err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+	})
+	if !strings.Contains(verbose, "# Classes") {
+		t.Errorf("a command built with -v did not print the binding sections:\n%s", verbose)
 	}
 }
 

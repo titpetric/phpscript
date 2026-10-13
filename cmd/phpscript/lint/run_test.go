@@ -2,11 +2,14 @@ package lint
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
+	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/internal/table"
 )
 
@@ -134,6 +137,93 @@ func TestRunReportsAnsiTableOnATerminal(t *testing.T) {
 			t.Errorf("table does not contain %q:\n%q", want, got)
 		}
 	}
+}
+
+// TestNewCommand covers the two flags this command owns and the shared one it
+// reads. --flatstack and -o are its own; --include is global, and the Run
+// closure copies it into the options at call time, because main fills the
+// global options from the configuration after the command was built.
+func TestNewCommand(t *testing.T) {
+	command := NewCommand(nil, &flags.Options{})
+
+	if command.Name != "lint" {
+		t.Errorf("Name = %q, want %q", command.Name, "lint")
+	}
+	if command.Title != Name {
+		t.Errorf("Title = %q, want %q", command.Title, Name)
+	}
+	if command.Bind == nil {
+		t.Fatal("Bind is nil, want --flatstack and --output")
+	}
+
+	set := helpdocs.NewFlagSet("lint")
+	command.Bind(set)
+	for _, test := range []struct {
+		name      string
+		shorthand string
+		value     string
+	}{
+		{name: "flatstack", value: "false"},
+		{name: "output", shorthand: "o", value: ""},
+	} {
+		flag := set.Lookup(test.name)
+		if flag == nil {
+			t.Errorf("--%s is not bound", test.name)
+			continue
+		}
+		if flag.Shorthand != test.shorthand {
+			t.Errorf("--%s shorthand = %q, want %q", test.name, flag.Shorthand, test.shorthand)
+		}
+		if flag.DefValue != test.value {
+			t.Errorf("--%s default = %q, want %q", test.name, flag.DefValue, test.value)
+		}
+	}
+}
+
+// TestRun covers the exported entry point, which is run() pointed at stdout.
+// A folder holding one failing file fails the command, because a parse error
+// is a finding the run cannot report around; the table is still printed, so
+// the operator reads what failed and not only that something did.
+func TestRun(t *testing.T) {
+	dir := t.TempDir()
+	writeLintFile(t, dir, "fail.php", `<?php class Foo {`)
+
+	out := captureStdout(t, func() {
+		if err := Run(Options{}, []string{dir}); err == nil {
+			t.Error("Run = nil over a file that does not parse, want the failure count")
+		}
+	})
+
+	got := collapse(out)
+	if !strings.Contains(got, "| FAIL | fail.php | 1 | parse error:") {
+		t.Errorf("stdout does not carry the failing row:\n%s", out)
+	}
+	if !strings.Contains(got, "Passing 0, with 0 warnings, 1 failing") {
+		t.Errorf("stdout does not carry the summary:\n%s", out)
+	}
+}
+
+// captureStdout runs fn with os.Stdout on a pipe and returns what it wrote.
+// Run picks os.Stdout itself, so the file descriptor is where its output is
+// read from.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	saved := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = writer
+	fn()
+	writer.Close()
+	os.Stdout = saved
+
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, reader); err != nil {
+		t.Fatal(err)
+	}
+	return buf.String()
 }
 
 // collapse squeezes the runs of padding a table adds, so an assertion names

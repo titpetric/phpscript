@@ -12,18 +12,7 @@ import (
 )
 
 func TestDatabaseObserverRecordsQuerySpan(t *testing.T) {
-	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when it is asked to; a test that reads its
-	// traces back is asking.
-	traceOptions.Enabled = true
-	tracer, err := telemetry.New(traceOptions)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, trace, err := tracer.StartTrace(context.Background(), "request")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctx, trace := newRecordedTrace(t)
 	ctx = telemetry.WithSpanLine(telemetry.WithSpanFilename(ctx, "queries/users.php"), 23)
 
 	database := &Database{ID: "db"}
@@ -201,18 +190,7 @@ func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 // call is where it is recorded. Otherwise a boundary that refuses the wrong
 // thing leaves nothing behind to debug it with.
 func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
-	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when it is asked to; a test that reads its
-	// traces back is asking.
-	traceOptions.Enabled = true
-	tracer, err := telemetry.New(traceOptions)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, trace, err := tracer.StartTrace(context.Background(), "request")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctx, trace := newRecordedTrace(t)
 
 	database := &Database{ID: "db", IsReadonly: true}
 	if _, err := database.Query(ctx, "/* purge */ DELETE FROM user"); !errors.Is(err, ErrReadOnly) {
@@ -234,22 +212,7 @@ func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
 func newObservedSpan(t *testing.T) (*telemetry.Span, func(QueryLogEntry)) {
 	t.Helper()
 
-	traceOptions := telemetry.NewOptions("phpscript")
-
-	// oida records only when it is asked to; a test that reads its
-
-	// traces back is asking.
-
-	traceOptions.Enabled = true
-
-	tracer, err := telemetry.New(traceOptions)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, trace, err := tracer.StartTrace(context.Background(), "request")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctx, trace := newRecordedTrace(t)
 
 	database := &Database{}
 	ctx, end := database.withSpan(ctx, "Get")
@@ -305,4 +268,215 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 	if got := rows.([]map[string]any)[0]["columns"]; got != int64(6) {
 		t.Fatalf("added column = %#v", got)
 	}
+}
+
+// TestDatabase_SetID covers the name a constructed client is recorded under.
+// The runtime passes the PHP variable the value was assigned to, and every
+// span the client opens carries it, so two clients in one request are told
+// apart on the trace.
+func TestDatabase_SetID(t *testing.T) {
+	database := &Database{}
+	if got := database.name("Get"); got != "Get" {
+		t.Errorf("an unnamed client records %q, want %q", got, "Get")
+	}
+
+	database.SetID("catalogue")
+	if database.ID != "catalogue" {
+		t.Errorf("ID = %q, want %q", database.ID, "catalogue")
+	}
+	if got, want := database.name("Get"), "catalogue.Get"; got != want {
+		t.Errorf("name(Get) = %q, want %q", got, want)
+	}
+}
+
+// TestDatabase_Connect covers pinning the client to one connection out of the
+// pool. A temporary table and a session variable both live on a connection, so
+// a script that creates one reserves the connection first; the reads that
+// follow run on it.
+func TestDatabase_Connect(t *testing.T) {
+	database := newLiveDatabase(t)
+
+	if _, err := database.Connect(t.Context()); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	value, err := database.Get(t.Context(), "select name from users where id = 1")
+	if err != nil {
+		t.Fatalf("Get on the reserved connection: %v", err)
+	}
+	if row := value.(map[string]any); row["name"] != "Ada" {
+		t.Fatalf("the reserved connection read %#v", row)
+	}
+}
+
+// TestDatabase_Close covers releasing the reserved connection. The pool here
+// is one connection wide, so a read after Close is the evidence it went back:
+// a reservation left open would block until the context expired.
+func TestDatabase_Close(t *testing.T) {
+	database := newLiveDatabase(t)
+
+	if _, err := database.Connect(t.Context()); err != nil {
+		t.Fatalf("Connect: %v", err)
+	}
+	if _, err := database.Close(t.Context()); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if _, err := database.Get(t.Context(), "select name from users where id = 1"); err != nil {
+		t.Fatalf("Get after Close: %v", err)
+	}
+}
+
+// TestDatabase_Begin covers the span a transaction opens. It stays open until
+// Commit or Rollback ends it, so a transaction reads as one region on the
+// trace and no pair of markers a reader has to match up.
+func TestDatabase_Begin(t *testing.T) {
+	ctx, _ := newRecordedTrace(t)
+	database := newLiveDatabase(t)
+	database.SetID("db")
+
+	if _, err := database.Begin(ctx); err != nil {
+		t.Fatalf("Begin: %v", err)
+	}
+	if database.transaction == nil {
+		t.Fatal("Begin opened no span, want one held until the outcome")
+	}
+	if database.transaction.Ended() {
+		t.Error("the transaction span closed at Begin, want it open until the outcome")
+	}
+}
+
+// TestDatabase_Commit covers the committed outcome: the row survives the
+// transaction, and the span Begin opened is renamed for the outcome and ended,
+// so one span carries the whole transaction.
+func TestDatabase_Commit(t *testing.T) {
+	ctx, trace := newRecordedTrace(t)
+	database := newLiveDatabase(t)
+	database.SetID("db")
+
+	if _, err := database.Begin(ctx); err != nil {
+		t.Fatalf("Begin: %v", err)
+	}
+	if _, err := database.Insert(ctx, "users", map[string]any{"id": 3, "name": "Katherine"}); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+	if _, err := database.Commit(ctx); err != nil {
+		t.Fatalf("Commit: %v", err)
+	}
+	if database.transaction != nil {
+		t.Error("the transaction span is still held after Commit")
+	}
+
+	if span := spanNamed(t, trace, "db.Commit"); !span.Ended() {
+		t.Errorf("transaction span = %+v, want it ended", span)
+	}
+
+	value, err := database.Get(ctx, "select name from users where id = 3")
+	if err != nil {
+		t.Fatalf("Get after Commit: %v", err)
+	}
+	if row := value.(map[string]any); row["name"] != "Katherine" {
+		t.Fatalf("the committed row reads back as %#v", row)
+	}
+}
+
+// TestDatabase_Rollback covers the discarded outcome: the row is gone, and the
+// span Begin opened carries the rollback as its name, so a trace says which
+// way a transaction ended without a second span to pair with it.
+func TestDatabase_Rollback(t *testing.T) {
+	ctx, trace := newRecordedTrace(t)
+	database := newLiveDatabase(t)
+	database.SetID("db")
+
+	if _, err := database.Begin(ctx); err != nil {
+		t.Fatalf("Begin: %v", err)
+	}
+	if _, err := database.Insert(ctx, "users", map[string]any{"id": 4, "name": "Hedy"}); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+	if _, err := database.Rollback(ctx); err != nil {
+		t.Fatalf("Rollback: %v", err)
+	}
+
+	if span := spanNamed(t, trace, "db.Rollback"); !span.Ended() {
+		t.Errorf("transaction span = %+v, want it ended", span)
+	}
+
+	missing, err := database.Get(ctx, "select name from users where id = 4")
+	if err != nil {
+		t.Fatalf("Get after Rollback: %v", err)
+	}
+	if missing != false {
+		t.Errorf("the rolled back row reads back as %#v, want false", missing)
+	}
+}
+
+// TestDatabase_InsertID covers the key the server generated for the last
+// insert. It is the one part of an INSERT the statement does not carry, so a
+// script writing a row with an autoincrement key reads the new id here.
+func TestDatabase_InsertID(t *testing.T) {
+	database := newLiveDatabase(t)
+
+	if _, err := database.Insert(t.Context(), "users", map[string]any{"name": "Katherine"}); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+	id, err := database.InsertID(t.Context())
+	if err != nil {
+		t.Fatalf("InsertID: %v", err)
+	}
+	if id != int64(3) {
+		t.Errorf("InsertID() = %#v, want 3 after the two seeded rows", id)
+	}
+}
+
+// TestDatabase_RowsAffected covers the count of the last write. An UPDATE
+// names a condition and reports how many rows matched it, so a script learns
+// whether the write landed from this and from nothing in the statement.
+func TestDatabase_RowsAffected(t *testing.T) {
+	database := newLiveDatabase(t)
+
+	if _, err := database.Query(t.Context(), "update users set name = 'Grace Hopper' where id = 2"); err != nil {
+		t.Fatalf("Query: %v", err)
+	}
+	rows, err := database.RowsAffected(t.Context())
+	if err != nil {
+		t.Fatalf("RowsAffected: %v", err)
+	}
+	if rows != int64(1) {
+		t.Errorf("RowsAffected() = %#v, want 1", rows)
+	}
+}
+
+// newRecordedTrace returns a context carrying a recording trace, and the trace
+// itself, so a test reads back the spans a call left on it.
+func newRecordedTrace(t *testing.T) (context.Context, *telemetry.Trace) {
+	t.Helper()
+
+	options := telemetry.NewOptions("phpscript")
+	// oida records only when it is told to; a test that reads its traces
+	// back tells it to.
+	options.Enabled = true
+	tracer, err := telemetry.New(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, trace, err := tracer.StartTrace(context.Background(), "request")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ctx, trace
+}
+
+// spanNamed returns the span of one name off a trace. The spans arrive in the
+// order they opened, and a transaction span opens first and ends last, so the
+// last span recorded is seldom the one a test is reading.
+func spanNamed(t *testing.T, trace *telemetry.Trace, name string) *telemetry.Span {
+	t.Helper()
+
+	spans := trace.Clone().Spans
+	for _, span := range spans {
+		if span.Name == name {
+			return span
+		}
+	}
+	t.Fatalf("no span named %q among %+v", name, spans)
+	return nil
 }

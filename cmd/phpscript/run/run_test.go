@@ -1,10 +1,74 @@
 package run
 
 import (
+	"bytes"
+	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/titpetric/phpscript/config"
+	"github.com/titpetric/phpscript/internal/flags"
 )
+
+// TestNewCommand covers what the constructor closes over. The configuration
+// arrives as a pointer so one signature covers all nine commands, and this one
+// reads it, so a nil pointer has to resolve to the zero configuration before
+// the Run closure captures it. The command declares no flags of its own: a run
+// takes a script path and the shared flags.
+func TestNewCommand(t *testing.T) {
+	command := NewCommand(nil, &flags.Options{})
+
+	if command.Name != "run" {
+		t.Errorf("Name = %q, want %q", command.Name, "run")
+	}
+	if command.Title != Name {
+		t.Errorf("Title = %q, want %q", command.Title, Name)
+	}
+	if command.Bind != nil {
+		t.Error("Bind is set, want nil: run declares no flags of its own")
+	}
+	if err := command.Run(context.Background(), nil); err == nil {
+		t.Error("Run with no arguments = nil, want the usage error")
+	}
+}
+
+// TestRun covers one generation of the loop: the script is read, the runtime
+// is built around it and its output reaches os.Stdout. The run returns once
+// the script ends, because nothing sent SIGHUP and no reload is pending.
+func TestRun(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "hello.php"), []byte("<?php echo \"from the script\\n\";\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+
+	saved := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = writer
+	runErr := Run(context.Background(), []string{"hello.php"}, config.Value(nil), &flags.Options{})
+	writer.Close()
+	os.Stdout = saved
+	if runErr != nil {
+		t.Fatalf("Run: %v", runErr)
+	}
+
+	var out bytes.Buffer
+	if _, err := io.Copy(&out, reader); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "from the script\n" {
+		t.Errorf("script output = %q, want %q", out.String(), "from the script\n")
+	}
+
+	if err := Run(context.Background(), nil, config.Value(nil), &flags.Options{}); err == nil {
+		t.Error("Run with no arguments = nil, want the usage error")
+	}
+}
 
 // TestResolveEntrypoint pins which scripts re-root the runtime. A path the
 // working directory can name keeps it as the root, because PHP resolves an

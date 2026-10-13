@@ -40,6 +40,39 @@ func TestFlatstackLinterCompatibility(t *testing.T) {
 	}
 }
 
+// TestFlatstackPaths covers the path-expanding half of the compatibility
+// check: one diagnostic per file the patterns selected, in filename order, so
+// a caller pointing at a directory reads a verdict for every file in it and
+// never one for the directory.
+func TestFlatstackPaths(t *testing.T) {
+	dir := t.TempDir()
+	for name, src := range map[string]string{
+		"a_compatible.php":  "<?php $a = 1 + 2; echo $a;",
+		"b_unsupported.php": "<?php $a = new class { public $x = 1; };",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	diags, err := lint.FlatstackPaths([]string{dir})
+	if err != nil {
+		t.Fatalf("FlatstackPaths: %v", err)
+	}
+	if len(diags) != 2 {
+		t.Fatalf("diagnostics = %+v, want one per file", diags)
+	}
+	if !strings.Contains(diags[0].Message, "[flatstack compatible]") {
+		t.Errorf("the first file reads %q", diags[0].Message)
+	}
+	if !strings.Contains(diags[1].Message, "[flatstack unsupported]") {
+		t.Errorf("the second file reads %q", diags[1].Message)
+	}
+	if diags[0].File != filepath.Join(dir, "a_compatible.php") {
+		t.Errorf("the first diagnostic names %q", diags[0].File)
+	}
+}
+
 func TestPathsReportsParseErrorsAndContinues(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{

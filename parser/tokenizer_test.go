@@ -179,6 +179,55 @@ const benchTemplate = `<html>
 </html>
 `
 
+// TestTokenIDs covers the table that publishes the ids a host registers as PHP
+// constants. A script comparing a token against a name it did not read from
+// here would be comparing against nothing, so this table and the one
+// token_get_all emits have to be each other's inverse, and no two names may
+// share an id.
+func TestTokenIDs(t *testing.T) {
+	ids := parser.TokenIDs()
+	if len(ids) == 0 {
+		t.Fatal("TokenIDs() is empty")
+	}
+
+	// Every published name reads back as itself, so the pair is an inverse.
+	// T_PAAMAYIM_NEKUDOTAYIM is PHP's own name for the double colon, and it
+	// is the name a script has to compare against.
+	for _, name := range []string{"T_VARIABLE", "T_STRING", "T_INLINE_HTML", "T_PAAMAYIM_NEKUDOTAYIM"} {
+		id, known := ids[name]
+		if !known {
+			t.Errorf("%s is not published", name)
+			continue
+		}
+		if got := parser.TokenName(id); got != name {
+			t.Errorf("TokenName(%d) = %q, want %q", id, got, name)
+		}
+	}
+
+	seen := make(map[int]string, len(ids))
+	for name, id := range ids {
+		if other, clash := seen[id]; clash {
+			t.Errorf("%s and %s share id %d", other, name, id)
+		}
+		seen[id] = name
+		if got := parser.TokenName(id); got != name {
+			t.Errorf("TokenName(%d) = %q, want %q", id, got, name)
+		}
+	}
+
+	// An id nothing names answers PHP's own placeholder.
+	if got := parser.TokenName(-1); got != "UNKNOWN" {
+		t.Errorf("TokenName(-1) = %q, want %q", got, "UNKNOWN")
+	}
+
+	// The table is a copy per call, so a script that writes into what it read
+	// back cannot move the ids the next caller reads.
+	ids["T_VARIABLE"] = -99
+	if parser.TokenIDs()["T_VARIABLE"] == -99 {
+		t.Error("a write into the returned map reached the table behind it")
+	}
+}
+
 func BenchmarkTokenGetAllTemplate(b *testing.B) {
 	src := strings.Repeat(benchTemplate, 8)
 	b.ReportAllocs()

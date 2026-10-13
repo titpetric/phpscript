@@ -17,6 +17,42 @@ func mustParse(t *testing.T, src string) *model.Program {
 	return prog
 }
 
+// TestParseFile covers what the filename settles. php resolves __FILE__,
+// __DIR__ and __LINE__ when it compiles a file, and so does this: each becomes
+// a literal in the AST, so neither engine writes them into a scope per frame
+// or reads them back per statement. The name is the path a script sees, the
+// runtime's own spelling and never the host's.
+func TestParseFile(t *testing.T) {
+	program, err := ParseFile("app/pages/index.php", "<?php\necho __FILE__;\necho __DIR__;\necho __LINE__;")
+	if err != nil {
+		t.Fatalf("ParseFile: %v", err)
+	}
+	if len(program.Stmts) != 3 {
+		t.Fatalf("got %d statements, want 3", len(program.Stmts))
+	}
+
+	for i, want := range []any{"app/pages/index.php", "app/pages", 4} {
+		echo, ok := program.Stmts[i].(*model.Echo)
+		if !ok || len(echo.Args) != 1 {
+			t.Fatalf("statement %d = %#v, want one echo argument", i, program.Stmts[i])
+		}
+		lit, ok := echo.Args[0].(*model.Lit)
+		if !ok {
+			t.Fatalf("argument %d = %T, want the constant resolved to a literal", i, echo.Args[0])
+		}
+		if lit.Value != want {
+			t.Errorf("argument %d = %#v, want %#v", i, lit.Value, want)
+		}
+	}
+
+	// Parse is ParseFile with no name, so a source compiled without one
+	// leaves the file constants unresolved and carries them as references.
+	unnamed := mustParse(t, "<?php echo __FILE__;")
+	if _, resolved := unnamed.Stmts[0].(*model.Echo).Args[0].(*model.Lit); resolved {
+		t.Error("__FILE__ resolved to a literal for a source compiled without a name")
+	}
+}
+
 func TestParseEchoArgs(t *testing.T) {
 	prog := mustParse(t, `<?php echo "a", $b, 1 + 2;`)
 	if len(prog.Stmts) != 1 {

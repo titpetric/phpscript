@@ -3,6 +3,7 @@ package mail_test
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/titpetric/phpscript/parser"
@@ -79,6 +80,144 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestProvider covers what a host builds from its mail block: a fixed set of
+// named servers, keyed by the name a script types. Names are lowercased and a
+// missing port is filled in while the provider is built, so a delivery reads a
+// complete credential. The map is copied, because configuration layering hands
+// one map to every site that declared no mail block, and a normalisation
+// written into it would be written into all of them.
+func TestProvider(t *testing.T) {
+	servers := map[string]mailstdlib.Config{
+		"Marketing": {Host: "smtp.example.com", From: "news@example.com"},
+	}
+	provider := mailstdlib.NewProvider(servers)
+
+	if err := provider.Configured("marketing"); err != nil {
+		t.Errorf("Configured(marketing) = %v, want nil for the server that was named", err)
+	}
+	if _, held := servers["marketing"]; held {
+		t.Error("the provider wrote its lowercased name back into the caller's map")
+	}
+	if got := servers["Marketing"].Port; got != 0 {
+		t.Errorf("the provider wrote port %d back into the caller's map", got)
+	}
+
+	// A provider holding nothing is what a CLI run without a mail block has.
+	if err := mailstdlib.NewProvider(nil).Configured(""); err == nil {
+		t.Error("an empty provider accepted the default server")
+	}
+}
+
+// TestProvider_Configured covers the verdict the constructor reads, so `new
+// Mail("marketing")` fails where the delivery would. An empty name is the
+// "default" server, as `new Mail` and mail() both resolve. A name nobody
+// configured is reported by the name that was passed, and the error says
+// nothing about what was configured.
+func TestProvider_Configured(t *testing.T) {
+	provider := mailstdlib.NewProvider(map[string]mailstdlib.Config{
+		"default":   {Host: "smtp.example.com", From: "root@example.com"},
+		"marketing": {Host: "smtp.example.com", From: "news@example.com"},
+	})
+
+	for _, name := range []string{"", "default", "marketing", "MARKETING"} {
+		if err := provider.Configured(name); err != nil {
+			t.Errorf("Configured(%q) = %v, want nil", name, err)
+		}
+	}
+
+	err := provider.Configured("billing")
+	if err == nil {
+		t.Fatal("Configured(billing) = nil for a server nobody configured")
+	}
+	if want := "no configuration found for mail server: billing"; err.Error() != want {
+		t.Errorf("Configured(billing) = %q, want %q", err, want)
+	}
+	if strings.Contains(err.Error(), "smtp.example.com") {
+		t.Errorf("the refusal names a configured host: %v", err)
+	}
+}
+
+// TestProvider_Send covers the delivery path: a name resolves to a credential,
+// the credential reaches the transport, and the credential is gone when the
+// call returns. A name nobody configured never reaches the transport, so the
+// refusal costs no connection.
+func TestProvider_Send(t *testing.T) {
+	var sent []string
+	provider := mailstdlib.NewProviderFunc(func(config mailstdlib.Config, recipient, subject, body string) error {
+		sent = append(sent, config.Host+" "+recipient+" "+subject+" "+body)
+		return nil
+	}, map[string]mailstdlib.Config{
+		"default": {Host: "smtp.example.com", From: "root@example.com", Password: "secret"},
+	})
+
+	if err := provider.Send(context.Background(), "", "a@example.com", "Hello", "Body"); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	want := "smtp.example.com a@example.com Hello Body"
+	if len(sent) != 1 || sent[0] != want {
+		t.Fatalf("the transport read %q, want %q", sent, want)
+	}
+
+	if err := provider.Send(context.Background(), "billing", "a@example.com", "Hello", "Body"); err == nil {
+		t.Error("Send through an unconfigured name = nil, want the refusal")
+	}
+	if len(sent) != 1 {
+		t.Errorf("the transport ran %d times, want 1", len(sent))
+	}
+}
+
+// TestDeliver covers the one function a host replaces to send by a transport
+// that is not SMTP. It reads the credential the name resolved to, with the
+// port already filled in, and the three parts of the message; name resolution
+// and tenant isolation sit above it, so a transport does none of its own.
+func TestDeliver(t *testing.T) {
+	var (
+		got                      mailstdlib.Config
+		recipient, subject, body string
+	)
+	var deliver mailstdlib.Deliver = func(config mailstdlib.Config, to, title, text string) error {
+		got, recipient, subject, body = config, to, title, text
+		return nil
+	}
+
+	provider := mailstdlib.NewProviderFunc(deliver, map[string]mailstdlib.Config{
+		"marketing": {Host: "smtp.example.com", From: "news@example.com"},
+	})
+	if err := provider.Send(context.Background(), "marketing", "list@example.com", "Newsletter", "Issue 1"); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+
+	if got.Host != "smtp.example.com" || got.Port != mailstdlib.DefaultPort {
+		t.Errorf("the transport read %+v, want the default port filled in", got)
+	}
+	if recipient != "list@example.com" || subject != "Newsletter" || body != "Issue 1" {
+		t.Errorf("the transport read %q, %q, %q", recipient, subject, body)
+	}
+}
+
+// TestNewProviderFunc covers the transport swap, the way
+// database.NewDatabaseProvider takes its connector. A host passing nil sends
+// over SMTP, so the zero value of the option is the behaviour of a host that
+// said nothing about transport: the dial refused by a port nobody listens on
+// carries the SMTP path's own wording.
+func TestNewProviderFunc(t *testing.T) {
+	provider := mailstdlib.NewProviderFunc(nil, map[string]mailstdlib.Config{
+		"default": {Host: "127.0.0.1", Port: 1, From: "root@example.com"},
+	})
+
+	if err := provider.Configured("default"); err != nil {
+		t.Fatalf("Configured(default) = %v", err)
+	}
+
+	err := provider.Send(context.Background(), "default", "a@example.com", "Hello", "Body")
+	if err == nil {
+		t.Fatal("Send over SMTP to a closed port = nil")
+	}
+	if !strings.Contains(err.Error(), "failed to send email") {
+		t.Errorf("Send = %v, want the SMTP path's wording", err)
 	}
 }
 

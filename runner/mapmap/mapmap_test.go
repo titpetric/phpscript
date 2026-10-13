@@ -141,14 +141,17 @@ func TestNilIsEmpty(t *testing.T) {
 	})
 }
 
-func TestRequestSourceDerivesTheCGINames(t *testing.T) {
+// TestRequestSourceReadsThroughAMapMap covers the layer over a request: a
+// MapMap reads every derived name through to the source, and Len agrees with
+// what Range visited, so count() and foreach() over a superglobal report the
+// same set.
+func TestRequestSourceReadsThroughAMapMap(t *testing.T) {
 	req := httptest.NewRequest("POST", "http://example.com/a/b?q=1", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
-	src := &mapmap.RequestSource{
+	m := mapmap.New(&mapmap.RequestSource{
 		Request: req,
 		Extra:   mapmap.ValueSource{"REQUEST_TIME": "1700000000"},
-	}
-	m := mapmap.New(src)
+	})
 
 	for key, want := range map[string]any{
 		"REQUEST_METHOD":       "POST",
@@ -166,7 +169,6 @@ func TestRequestSourceDerivesTheCGINames(t *testing.T) {
 		t.Error("a header that was not sent reads as present")
 	}
 
-	// Range visits each name once, and Len agrees with it.
 	got := collect(m)
 	if len(got) != m.Len() {
 		t.Fatalf("Len = %d but Range visited %d", m.Len(), len(got))
@@ -178,28 +180,285 @@ func TestRequestSourceDerivesTheCGINames(t *testing.T) {
 	sort.Strings(keys)
 	for _, key := range keys {
 		if got[key] == "" {
-			t.Errorf("Range gave an empty value for %s", key)
+			t.Errorf("Range visited %s with an empty value", key)
 		}
 	}
 }
 
-func TestExtraOverridesTheRequest(t *testing.T) {
-	req := httptest.NewRequest("GET", "http://example.com/", nil)
-	m := mapmap.New(&mapmap.RequestSource{
-		Request: req,
-		Extra:   mapmap.ValueSource{"REQUEST_METHOD": "CLI"},
-	})
-	if got := m.Read("REQUEST_METHOD"); got != "CLI" {
-		t.Fatalf("Read = %v, want the extra value CLI", got)
+// rangeAll walks src twice: once to the end, and once cut short at the first
+// entry. It returns what the complete walk visited, and checks the bool Range
+// answers, so a MapMap over the source tells a finished walk from a
+// stopped one.
+func rangeAll(t *testing.T, src mapmap.Source) map[string]any {
+	t.Helper()
+
+	seen := map[string]any{}
+	if !src.Range(func(key string, value any) bool {
+		seen[key] = value
+		return true
+	}) {
+		t.Error("Range() = false after a complete walk, want true")
 	}
-	seen := 0
-	m.Range(func(key, _ any) bool {
+
+	visited := 0
+	stopped := src.Range(func(string, any) bool {
+		visited++
+		return false
+	})
+	if src.Len() > 0 && (stopped || visited != 1) {
+		t.Errorf("a stopped Range visited %d entries and answered %t, want 1 and false", visited, stopped)
+	}
+	return seen
+}
+
+// TestSource covers the contract the read-only half of a MapMap is held to.
+// Each of the three implementations answers Get, Len and Range, and a MapMap
+// built over any of them reads through to it, so one source type can be
+// swapped for another without the layer over it changing.
+func TestSource(t *testing.T) {
+	request := httptest.NewRequest("GET", "http://example.com/", nil)
+
+	for _, test := range []struct {
+		name string
+		src  mapmap.Source
+		key  string
+		want any
+	}{
+		{name: "MapSource", src: mapmap.MapSource{"A": "1"}, key: "A", want: "1"},
+		{name: "ValueSource", src: mapmap.ValueSource{"A": int64(1)}, key: "A", want: int64(1)},
+		{
+			name: "RequestSource",
+			src:  &mapmap.RequestSource{Request: request},
+			key:  "REQUEST_METHOD",
+			want: "GET",
+		},
+		{name: "Lazy", src: mapmap.Lazy(func() mapmap.Source { return mapmap.MapSource{"A": "1"} }), key: "A", want: "1"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got, ok := test.src.Get(test.key); !ok || got != test.want {
+				t.Errorf("Get(%q) = %v, %t, want %v, true", test.key, got, ok, test.want)
+			}
+			if test.src.Len() == 0 {
+				t.Error("Len() = 0 on a source holding an entry")
+			}
+			if got := mapmap.New(test.src).Read(test.key); got != test.want {
+				t.Errorf("a MapMap over it read %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+// TestMapSource_Get covers the read a CLI run answers through: a plain map of
+// strings, where a key the map does not hold is reported as absent and never
+// as an empty string, because isset() reads the second return.
+func TestMapSource_Get(t *testing.T) {
+	src := mapmap.MapSource{"REQUEST_METHOD": "GET", "EMPTY": ""}
+
+	if got, ok := src.Get("REQUEST_METHOD"); !ok || got != "GET" {
+		t.Errorf("Get(REQUEST_METHOD) = %v, %t, want GET, true", got, ok)
+	}
+	// An entry holding the empty string is held, so the two returns disagree.
+	if got, ok := src.Get("EMPTY"); !ok || got != "" {
+		t.Errorf("Get(EMPTY) = %v, %t, want the empty string, true", got, ok)
+	}
+	if got, ok := src.Get("MISSING"); ok {
+		t.Errorf("Get(MISSING) = %v, true, want false", got)
+	}
+}
+
+// TestMapSource_Len covers count() over a CLI source: one per entry, and zero
+// for a map nobody filled.
+func TestMapSource_Len(t *testing.T) {
+	if got := (mapmap.MapSource{"A": "1", "B": "2"}).Len(); got != 2 {
+		t.Errorf("Len() = %d, want 2", got)
+	}
+	if got := (mapmap.MapSource{}).Len(); got != 0 {
+		t.Errorf("Len() of an empty source = %d, want 0", got)
+	}
+}
+
+// TestMapSource_Range covers the walk, and the bool that cuts it short. Go
+// map order is not insertion order, so the walk is checked by what it visited
+// and not by the sequence it visited them in.
+func TestMapSource_Range(t *testing.T) {
+	src := mapmap.MapSource{"A": "1", "B": "2"}
+
+	seen := rangeAll(t, src)
+	if len(seen) != 2 || seen["A"] != "1" || seen["B"] != "2" {
+		t.Errorf("Range visited %v, want A=1 and B=2", seen)
+	}
+}
+
+// TestValueSource_Get covers the source a superglobal carrying nested data
+// reads through. The values are already PHP values, so `a[]=1&a[]=2` decoded
+// to an array under one name comes back as that array; a map of strings
+// cannot hold one.
+func TestValueSource_Get(t *testing.T) {
+	nested := []any{int64(1), int64(2)}
+	src := mapmap.ValueSource{"a": nested, "q": "1"}
+
+	got, ok := src.Get("a")
+	if !ok {
+		t.Fatal("Get(a) reported the key as absent")
+	}
+	values, isSlice := got.([]any)
+	if !isSlice || len(values) != 2 || values[0] != int64(1) {
+		t.Errorf("Get(a) = %#v, want the array it was built with", got)
+	}
+	if got, ok := src.Get("missing"); ok {
+		t.Errorf("Get(missing) = %v, true, want false", got)
+	}
+}
+
+// TestValueSource_Len covers count() over a source of PHP values: one per
+// name, however deep the value under it is.
+func TestValueSource_Len(t *testing.T) {
+	src := mapmap.ValueSource{"a": []any{int64(1), int64(2)}, "q": "1"}
+	if got := src.Len(); got != 2 {
+		t.Errorf("Len() = %d, want 2", got)
+	}
+	if got := (mapmap.ValueSource{}).Len(); got != 0 {
+		t.Errorf("Len() of an empty source = %d, want 0", got)
+	}
+}
+
+// TestValueSource_Range covers the walk over PHP values: every name once,
+// with the value handed over as it is stored and not flattened to a string.
+func TestValueSource_Range(t *testing.T) {
+	nested := []any{int64(1)}
+	src := mapmap.ValueSource{"a": nested, "q": "1"}
+
+	seen := rangeAll(t, src)
+	if len(seen) != 2 || seen["q"] != "1" {
+		t.Errorf("Range visited %v, want a and q", seen)
+	}
+	if values, ok := seen["a"].([]any); !ok || len(values) != 1 {
+		t.Errorf("Range visited a as %#v, want the array itself", seen["a"])
+	}
+}
+
+// TestRequestSource_Get covers the CGI names derived off the request, so
+// serving one builds no map. A header arrives under its HTTP_ spelling, a
+// header that was not sent reads as absent, Extra wins over a derived name,
+// and a source with no request behind it answers nothing.
+func TestRequestSource_Get(t *testing.T) {
+	request := httptest.NewRequest("POST", "http://example.com/a/b?q=1", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+	src := &mapmap.RequestSource{
+		Request: request,
+		Extra:   mapmap.ValueSource{"REQUEST_METHOD": "CLI"},
+	}
+
+	for key, want := range map[string]any{
+		"REQUEST_METHOD":       "CLI",
+		"REQUEST_URI":          "/a/b?q=1",
+		"QUERY_STRING":         "q=1",
+		"HTTP_HOST":            "example.com",
+		"SERVER_PROTOCOL":      "HTTP/1.1",
+		"HTTP_ACCEPT_ENCODING": "gzip",
+	} {
+		if got, ok := src.Get(key); !ok || got != want {
+			t.Errorf("Get(%q) = %v, %t, want %v, true", key, got, ok, want)
+		}
+	}
+	if _, ok := src.Get("HTTP_NOT_SENT"); ok {
+		t.Error("Get of a header that was not sent reported it as present")
+	}
+	if _, ok := (&mapmap.RequestSource{}).Get("REQUEST_METHOD"); ok {
+		t.Error("Get on a source with no request reported a name as present")
+	}
+}
+
+// TestRequestSource_Len covers count() over a request: the derived names plus
+// the headers plus the extras, each counted once. It is defined as the number
+// of names Range visits, so the two agree by construction and a name
+// double-counted in one shows up in both.
+func TestRequestSource_Len(t *testing.T) {
+	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+	src := &mapmap.RequestSource{
+		Request: request,
+		Extra:   mapmap.ValueSource{"REQUEST_TIME": "1700000000"},
+	}
+
+	// Five derived names, one header, one extra.
+	if got := src.Len(); got != 7 {
+		t.Errorf("Len() = %d, want 7", got)
+	}
+	if got := len(rangeAll(t, src)); got != src.Len() {
+		t.Errorf("Range visited %d names and Len() = %d", got, src.Len())
+	}
+}
+
+// TestRequestSource_Range covers the order the names arrive in and the
+// de-duplication between the halves: the derived names first, then the
+// headers, then the extras that are not among either. A name Extra holds is
+// skipped where it would have been derived, so it is visited once with the
+// value Extra holds.
+func TestRequestSource_Range(t *testing.T) {
+	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)
+	request.Header.Set("Accept-Encoding", "gzip")
+	src := &mapmap.RequestSource{
+		Request: request,
+		Extra:   mapmap.ValueSource{"REQUEST_METHOD": "CLI"},
+	}
+
+	seen := rangeAll(t, src)
+	if seen["REQUEST_METHOD"] != "CLI" {
+		t.Errorf("Range visited REQUEST_METHOD as %v, want the Extra value CLI", seen["REQUEST_METHOD"])
+	}
+	if seen["QUERY_STRING"] != "q=1" || seen["HTTP_ACCEPT_ENCODING"] != "gzip" {
+		t.Errorf("Range visited %v, want the derived names and the header", seen)
+	}
+
+	counted := 0
+	src.Range(func(key string, _ any) bool {
 		if key == "REQUEST_METHOD" {
-			seen++
+			counted++
 		}
 		return true
 	})
-	if seen != 1 {
-		t.Fatalf("REQUEST_METHOD visited %d times, want 1", seen)
+	if counted != 1 {
+		t.Errorf("REQUEST_METHOD visited %d times, want 1", counted)
+	}
+
+	// A source with no request behind it visits nothing and reports a
+	// finished walk, so a MapMap over it reads as empty.
+	if !(&mapmap.RequestSource{}).Range(func(string, any) bool { return false }) {
+		t.Error("Range on a source with no request answered false")
+	}
+}
+
+// TestLazy covers the deferral a superglobal costs nothing until a script
+// names it: build runs on the first Get, Len or Range, at most once, and
+// never at all for a request that reads none of them.
+func TestLazy(t *testing.T) {
+	built := 0
+	src := mapmap.Lazy(func() mapmap.Source {
+		built++
+		return mapmap.MapSource{"A": "1"}
+	})
+	if built != 0 {
+		t.Fatalf("Lazy built the source %d times before the first read", built)
+	}
+
+	if got, ok := src.Get("A"); !ok || got != "1" {
+		t.Errorf("Get(A) = %v, %t, want 1, true", got, ok)
+	}
+	if got := src.Len(); got != 1 {
+		t.Errorf("Len() = %d, want 1", got)
+	}
+	if got := len(rangeAll(t, src)); got != 1 {
+		t.Errorf("Range visited %d entries, want 1", got)
+	}
+	if built != 1 {
+		t.Errorf("Lazy built the source %d times across three reads, want 1", built)
+	}
+
+	// A nil build reads as an empty source, so a caller that has nothing to
+	// defer passes nothing and the reads still answer.
+	empty := mapmap.Lazy(nil)
+	if _, ok := empty.Get("A"); ok || empty.Len() != 0 {
+		t.Error("a Lazy source with no build function is not empty")
 	}
 }

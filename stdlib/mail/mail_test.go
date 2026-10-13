@@ -2,6 +2,7 @@ package mail_test
 
 import (
 	"bytes"
+	"io"
 	"strings"
 	"testing"
 
@@ -32,6 +33,49 @@ func run(t *testing.T, provider *mailstdlib.Memory, source string) string {
 		t.Fatal(err)
 	}
 	return output.String()
+}
+
+// TestRegister covers the surface the installer puts within reach: the Mail
+// class and the mail function, each under the name a script types. Both are
+// installed whether or not the host configured a server, so calling code keeps
+// one spelling and its own fallback.
+func TestRegister(t *testing.T) {
+	rt := runner.New(io.Discard, runner.Options{})
+	mailstdlib.Register(rt)
+
+	if _, ok := rt.LookupConstructor("Mail"); !ok {
+		t.Error("new Mail resolves to nothing after Register")
+	}
+	if _, ok := rt.LookupFunc("mail"); !ok {
+		t.Error("mail() resolves to nothing after Register")
+	}
+}
+
+// TestMail_Send covers the deliveries a held client makes. The object carries
+// a server name and nothing else, so each send resolves the credential afresh
+// inside the provider; one handle sends any number of messages, and every one
+// of them records the server the handle named.
+func TestMail_Send(t *testing.T) {
+	queue := mailstdlib.NewMemory("marketing")
+	got := run(t, queue, `
+		$mail = new Mail("marketing");
+		$mail->send("list@example.com", "Newsletter", "Issue 1");
+		$mail->send("list@example.com", "Newsletter", "Issue 2");
+		echo "sent";
+	`)
+	if got != "sent" {
+		t.Fatalf("output = %q, want %q", got, "sent")
+	}
+
+	messages := queue.Messages()
+	if len(messages) != 2 {
+		t.Fatalf("messages = %#v, want two", messages)
+	}
+	for i, want := range []string{"Issue 1", "Issue 2"} {
+		if messages[i].Body != want || messages[i].Server != "marketing" {
+			t.Errorf("message %d = %#v, want %q through marketing", i, messages[i], want)
+		}
+	}
 }
 
 // TestMail covers the function against the host's default server.

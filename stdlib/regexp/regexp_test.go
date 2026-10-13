@@ -8,7 +8,40 @@ import (
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
+	phpregexp "github.com/titpetric/phpscript/stdlib/regexp"
 )
+
+// TestRegister covers the two classes this package installs and the difference
+// between them. Both compile the same expression; POSIX matching is
+// leftmost-longest, so an alternation answers with its longest branch where
+// Perl syntax answers with its first.
+func TestRegister(t *testing.T) {
+	rt := runner.New(&strings.Builder{}, runner.Options{})
+	phpregexp.Register(rt)
+
+	for _, name := range []string{"Regexp\\Compile", "Regexp\\CompilePOSIX"} {
+		if known, err := rt.ClassExists(name, false); err != nil || !known {
+			t.Errorf("%s does not resolve after Register (err %v)", name, err)
+		}
+	}
+
+	program, err := parser.Parse(`<?php
+echo (new Regexp\Compile('a|ab'))->find_string("abc");
+echo "/";
+echo (new Regexp\CompilePOSIX('a|ab'))->find_string("abc");`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt = runner.New(&out, runner.Options{})
+	phpregexp.Register(rt)
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if got, want := out.String(), "a/ab"; got != want {
+		t.Errorf("output = %q, want %q", got, want)
+	}
+}
 
 // run executes src on both engines and returns what the interpreter printed,
 // failing when the two disagree. The binding is reached through reflection in

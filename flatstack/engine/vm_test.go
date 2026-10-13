@@ -227,3 +227,112 @@ func TestExecStateReleaseEmpty(t *testing.T) {
 	st := &execState{}
 	st.release()
 }
+
+// memoryTestHost is a Host that also accounts memory. The capability is found
+// by type assertion, so implementing the four methods is the whole opt-in.
+type memoryTestHost struct {
+	semanticHost
+	interval int
+	pushed   int
+	popped   int
+	checks   int
+	walk     func(yield func(any))
+	seen     []any
+}
+
+func (h *memoryTestHost) MemoryCheckInterval() int { return h.interval }
+
+func (h *memoryTestHost) PushLiveWalker(walk func(yield func(any))) {
+	h.pushed++
+	h.walk = walk
+}
+
+func (h *memoryTestHost) PopLiveWalker() { h.popped++ }
+
+// CheckMemory walks the live values while the run holds them, which is the
+// window the walker is valid in: the state goes back to the pool once Run
+// returns.
+func (h *memoryTestHost) CheckMemory() error {
+	h.checks++
+	if h.walk != nil {
+		h.walk(func(value any) { h.seen = append(h.seen, value) })
+	}
+	return nil
+}
+
+// TestMemoryHost covers the accounting hook the VM calls on a host that limits
+// memory. The interval is read once per run and decides how often CheckMemory
+// is called; the walker is registered for the length of the run and removed
+// on the way out, so the pooled state it closes over is never enumerated
+// after it was released. The walk reaches the frame's initialised locals,
+// where a script's values are.
+func TestMemoryHost(t *testing.T) {
+	host := &memoryTestHost{interval: 8}
+
+	runHost(t, host, `<?php $marker = "retained"; for ($i = 0; $i < 60; $i = $i + 1) { $marker = "retained"; }`)
+
+	if host.pushed != 1 || host.popped != 1 {
+		t.Errorf("walker pushed %d times and popped %d, want 1 and 1", host.pushed, host.popped)
+	}
+	if host.checks == 0 {
+		t.Fatal("CheckMemory was never called, want one call per interval of instructions")
+	}
+
+	found := false
+	for _, value := range host.seen {
+		if value == "retained" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("the walk visited %d values and none was the script's local", len(host.seen))
+	}
+
+	// A zero interval turns the checks off. The walker is still registered,
+	// so a host that only answers usage queries keeps seeing VM state.
+	quiet := &memoryTestHost{}
+	runHost(t, quiet, `<?php $marker = "retained"; for ($i = 0; $i < 60; $i = $i + 1) { $marker = "retained"; }`)
+	if quiet.checks != 0 {
+		t.Errorf("CheckMemory was called %d times at a zero interval, want 0", quiet.checks)
+	}
+	if quiet.pushed != 1 || quiet.popped != 1 {
+		t.Errorf("walker pushed %d times and popped %d at a zero interval, want 1 and 1", quiet.pushed, quiet.popped)
+	}
+}
+
+// deadlineTestHost is a Host that also answers for the execution deadline.
+type deadlineTestHost struct {
+	semanticHost
+	checks int
+}
+
+func (h *deadlineTestHost) CheckDeadline() error {
+	h.checks++
+	return nil
+}
+
+// TestDeadlineHost covers the deadline hook. The interval is a constant in
+// the engine and not something the host settles once per run, because a
+// script can call set_time_limit after the run started. A run that answers
+// nil carries on to the end, so the cost of a script with no limit and no
+// client is the call itself.
+func TestDeadlineHost(t *testing.T) {
+	long := &deadlineTestHost{}
+	runHost(t, long, `<?php $total = 0; for ($i = 0; $i < 200; $i = $i + 1) { $total = $total + $i; } echo $total;`)
+
+	if long.checks == 0 {
+		t.Error("CheckDeadline was never called over a loop of 200 iterations")
+	}
+	if len(long.echoed) != 1 || long.echoed[0] != int64(19900) {
+		t.Errorf("echoed = %v, want the loop to have run to the end", long.echoed)
+	}
+
+	// A program shorter than the check interval is never asked, so a small
+	// script pays nothing for the capability.
+	short := &deadlineTestHost{}
+	runHost(t, short, `<?php echo "hi";`)
+	if short.checks != 0 {
+		t.Errorf("CheckDeadline was called %d times for a two-instruction program, want 0", short.checks)
+	}
+}

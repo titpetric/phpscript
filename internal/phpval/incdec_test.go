@@ -65,3 +65,42 @@ func TestDecrement(t *testing.T) {
 		}
 	}
 }
+
+// TestStringNumber covers which strings denote a number and which type each
+// one denotes. The spelling decides the type: php 8.5 prints int(5) for +"5"
+// and float(100) for +"1e2", so an exponent or a fraction is a float even
+// when the value is whole. The bool is is_numeric, which rejects "0x1A",
+// "1_000" and the empty string, and accepts surrounding whitespace.
+func TestStringNumber(t *testing.T) {
+	cases := []struct {
+		in   string
+		want any
+		ok   bool
+	}{
+		{in: "5", want: int64(5), ok: true},
+		{in: "-7", want: int64(-7), ok: true},
+		{in: "+7", want: int64(7), ok: true},
+		{in: "5.5", want: 5.5, ok: true},
+		{in: "1e2", want: 100.0, ok: true},
+		{in: "1E+2", want: 100.0, ok: true},
+		{in: ".5", want: 0.5, ok: true},
+		{in: "5.", want: 5.0, ok: true},
+		{in: " 5", want: int64(5), ok: true},
+		{in: "5 ", want: int64(5), ok: true},
+		{in: "  12  ", want: int64(12), ok: true},
+		{in: ""},
+		{in: " "},
+		{in: "abc"},
+		{in: "0x1A"},
+		{in: "1_000"},
+		{in: "5a"},
+		{in: "."},
+		{in: "-"},
+	}
+	for _, tc := range cases {
+		got, ok := StringNumber(tc.in)
+		if !reflect.DeepEqual(got, tc.want) || ok != tc.ok {
+			t.Errorf("StringNumber(%q) = %#v, %t, want %#v, %t", tc.in, got, ok, tc.want, tc.ok)
+		}
+	}
+}

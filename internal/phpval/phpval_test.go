@@ -361,3 +361,89 @@ func TestKey(t *testing.T) {
 		})
 	}
 }
+
+// TestNumericKey covers the round trip Key rests on: a string becomes an
+// integer key only when the integer prints back to the same string. php 8.5
+// keeps $a["08"] and $a[8] as two entries, and reads "-9223372036854775809"
+// as a string because the number has no int form.
+func TestNumericKey(t *testing.T) {
+	tests := []struct {
+		in   string
+		want int64
+		ok   bool
+	}{
+		{in: "0", want: 0, ok: true},
+		{in: "8", want: 8, ok: true},
+		{in: "10", want: 10, ok: true},
+		{in: "-1", want: -1, ok: true},
+		{in: "9223372036854775807", want: math.MaxInt64, ok: true},
+		{in: "-9223372036854775808", want: math.MinInt64, ok: true},
+		{in: ""},
+		{in: "-"},
+		{in: "08"},
+		{in: "00"},
+		{in: "-0"},
+		{in: "-01"},
+		{in: "+1"},
+		{in: "1.0"},
+		{in: " 1"},
+		{in: "1 "},
+		{in: "1e2"},
+		{in: "abc"},
+		{in: "1a"},
+		{in: "9223372036854775808"},
+		{in: "-9223372036854775809"},
+	}
+	for _, test := range tests {
+		t.Run(test.in, func(t *testing.T) {
+			got, ok := NumericKey(test.in)
+			if got != test.want || ok != test.ok {
+				t.Errorf("NumericKey(%q) = %d, %t, want %d, %t", test.in, got, ok, test.want, test.ok)
+			}
+		})
+	}
+}
+
+// TestTruthy covers `if ($v)`. The string rule is the one that surprises: php
+// 8.5 reads "0" as false while "0.0" and "00" are true, because the test is on
+// the two exact spellings and no numeric conversion. An empty collection is
+// false and anything else with no length is true.
+func TestTruthy(t *testing.T) {
+	tests := []struct {
+		name string
+		in   any
+		want bool
+	}{
+		{name: "nil", in: nil},
+		{name: "false", in: false},
+		{name: "true", in: true, want: true},
+		{name: "empty string", in: ""},
+		{name: "zero string", in: "0"},
+		{name: "zero point zero string", in: "0.0", want: true},
+		{name: "padded zero string", in: "00", want: true},
+		{name: "space", in: " ", want: true},
+		{name: "word", in: "a", want: true},
+		{name: "int64 zero", in: int64(0)},
+		{name: "int64 one", in: int64(1), want: true},
+		{name: "int64 negative", in: int64(-1), want: true},
+		{name: "int zero", in: 0},
+		{name: "int one", in: 1, want: true},
+		{name: "float zero", in: 0.0},
+		{name: "float negative zero", in: math.Copysign(0, -1)},
+		{name: "float fraction", in: 0.5, want: true},
+		{name: "empty script array", in: scriptArray()},
+		{name: "script array of one zero", in: scriptArray(int64(0)), want: true},
+		{name: "empty slice", in: []any{}},
+		{name: "slice of one", in: []any{nil}, want: true},
+		{name: "empty map", in: map[string]any{}},
+		{name: "map of one", in: map[string]any{"k": nil}, want: true},
+		{name: "object", in: model.NewObject(&model.Class{Name: "C"}), want: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := Truthy(test.in); got != test.want {
+				t.Errorf("Truthy(%#v) = %t, want %t", test.in, got, test.want)
+			}
+		})
+	}
+}

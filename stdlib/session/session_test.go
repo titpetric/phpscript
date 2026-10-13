@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -137,6 +138,89 @@ func TestRegisteredDiskStorageIsPerRoot(t *testing.T) {
 	}
 	if len(dirs) != 2 {
 		t.Fatalf("two application roots produced %d directories (%v), want 2", len(dirs), dirs)
+	}
+}
+
+// TestRegister covers the three classes the stdlib wiring installs, rooted at
+// the process working directory the way the filesystem shims are. Memory
+// storage round-trips through the script, and a manager is constructible over
+// it, so a script reaches the whole surface without a host naming a root.
+func TestRegister(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	session.Register(rt)
+
+	prog, err := parser.Parse(`<?php
+$memory = new Session\Storage\Memory();
+$memory->save("abc", "stored");
+echo $memory->load("abc");
+
+$disk = new Session\Storage\Disk();
+$disk->save("abc", "on disk");
+echo " " . $disk->load("abc");
+
+$manager = new Session\Manager($memory);
+echo " " . $manager->session_cookie_name;
+`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := rt.Run(prog); err != nil {
+		t.Fatalf("run: %v (output %q)", err, out.String())
+	}
+	if got, want := out.String(), "stored on disk session"; got != want {
+		t.Errorf("echoed %q, want %q", got, want)
+	}
+}
+
+// TestRegisterRoot covers the confinement a virtual host depends on. A
+// $storage_path the script names resolves inside dir and cannot climb out of
+// it, so the directory the constructor creates is one the script could also
+// have written a file into.
+//
+// Without it the constructor made whatever the script named, and a site could
+// read and write session files anywhere the process could write while
+// file_exists() on the same path answered false.
+func TestRegisterRoot(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		path  string
+		under string
+	}{
+		{name: "relative", path: "sessions", under: "sessions"},
+		{name: "absolute names the root", path: "/sessions", under: "sessions"},
+		{name: "climbing is clamped", path: "../../sessions", under: "sessions"},
+		{name: "nested", path: "var/sessions", under: filepath.Join("var", "sessions")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+
+			var out strings.Builder
+			rt := runner.New(&out, runner.Options{})
+			session.RegisterRoot(rt, root)
+
+			prog, err := parser.Parse(`<?php
+$disk = new Session\Storage\Disk(` + strconv.Quote(test.path) + `);
+$disk->save("abc", "stored");
+echo $disk->load("abc");
+`)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			if err := rt.Run(prog); err != nil {
+				t.Fatalf("run: %v (output %q)", err, out.String())
+			}
+			if got := out.String(); got != "stored" {
+				t.Errorf("echoed %q, want stored", got)
+			}
+
+			// The file landed under the root, at the path the clamp resolves to.
+			if _, err := os.Stat(filepath.Join(root, test.under, "abc")); err != nil {
+				t.Errorf("Stat: %v, want the session under %s", err, test.under)
+			}
+		})
 	}
 }
 

@@ -86,6 +86,88 @@ func TestTableRowPadsShortRows(t *testing.T) {
 	}
 }
 
+// TestAlign covers which side a column pads on. A label reads from the left
+// and a number reads from the right, so the two alignments put the padding on
+// opposite sides of the cell. In markdown the alignment is carried by the
+// separator row, where a trailing colon is what a renderer reads as right.
+func TestAlign(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		align    Align
+		wantCell string
+		wantRule string
+	}{
+		{name: "left", align: Left, wantCell: "| x      |", wantRule: "| ------ |"},
+		{name: "right", align: Right, wantCell: "|      x |", wantRule: "| -----: |"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := New(&buf, true, Column{Title: "Header", Align: tt.align})
+			table.Row(Text("x"))
+			table.Flush()
+
+			got := buf.String()
+			if !strings.Contains(got, tt.wantCell) {
+				t.Errorf("cell =\n%s\nwant a line containing %q", got, tt.wantCell)
+			}
+			if !strings.Contains(got, tt.wantRule) {
+				t.Errorf("separator =\n%s\nwant a line containing %q", got, tt.wantRule)
+			}
+		})
+	}
+
+	// Left is the zero value, so a Column written without an Align reads as a
+	// label.
+	if Left != 0 {
+		t.Errorf("Left = %d, want the zero value so an unset Align is left", Left)
+	}
+	if Right == Left {
+		t.Error("Right and Left are the same value")
+	}
+}
+
+// TestCell covers the one value a cell carries and the color it is printed
+// in. A caller sets the color once; the terminal table wraps the text in it
+// and markdown drops it, so the same rows render in both formats with no
+// branch at the call site.
+func TestCell(t *testing.T) {
+	if got := Text("plain"); got != (Cell{Text: "plain"}) {
+		t.Errorf("Text(plain) = %+v, want an uncolored cell", got)
+	}
+	if got := Colored(ColorRed, "FAIL"); got != (Cell{Text: "FAIL", Color: ColorRed}) {
+		t.Errorf("Colored(red, FAIL) = %+v", got)
+	}
+
+	var terminal bytes.Buffer
+	ansiTable := New(&terminal, false, Column{Title: "Status"})
+	ansiTable.Row(Colored(ColorRed, "FAIL"))
+	ansiTable.Flush()
+	if !strings.Contains(terminal.String(), ColorRed+"FAIL"+ColorReset) {
+		t.Errorf("ansi row does not print the cell in its color:\n%q", terminal.String())
+	}
+
+	var markdown bytes.Buffer
+	mdTable := New(&markdown, true, Column{Title: "Status"})
+	mdTable.Row(Colored(ColorRed, "FAIL"))
+	mdTable.Flush()
+	if strings.Contains(markdown.String(), "\033") {
+		t.Errorf("markdown row carries an escape sequence:\n%q", markdown.String())
+	}
+	if !strings.Contains(markdown.String(), "| FAIL   |") {
+		t.Errorf("markdown row =\n%s\nwant the text padded to the header width", markdown.String())
+	}
+
+	// An empty cell is never colored: a color around nothing would print an
+	// escape pair into a blank column.
+	var empty bytes.Buffer
+	emptyTable := New(&empty, false, Column{Title: "Status"})
+	emptyTable.Row(Colored(ColorRed, ""))
+	emptyTable.Flush()
+	if strings.Contains(empty.String(), ColorRed) {
+		t.Errorf("an empty cell was colored:\n%q", empty.String())
+	}
+}
+
 func newSample(buf *bytes.Buffer, markdown bool) *Table {
 	table := New(buf, markdown,
 		Column{Title: "Status"},

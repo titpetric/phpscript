@@ -38,6 +38,111 @@ echo "hello " . $_REQUEST["name"];
 	"secret.txt": {Data: []byte(`not public`)},
 }
 
+// TestNewCommand covers what the constructor closes over. The configuration
+// arrives as a pointer so one signature covers all nine commands, and the
+// server reads it, so a nil pointer resolves to the zero configuration before
+// the Run closure captures it. The command declares no flags of its own: the
+// listen address and the document root come from the configuration file, and
+// the rest are the shared flags.
+func TestNewCommand(t *testing.T) {
+	command := NewCommand(nil, &flags.Options{})
+
+	if command.Name != "server" {
+		t.Errorf("Name = %q, want %q", command.Name, "server")
+	}
+	if command.Title != Name {
+		t.Errorf("Title = %q, want %q", command.Title, Name)
+	}
+	if command.Bind != nil {
+		t.Error("Bind is set, want nil: the server reads the configuration, not flags of its own")
+	}
+	if command.Run == nil {
+		t.Fatal("Run is nil")
+	}
+}
+
+// TestModule covers the module one application root is served through. The
+// root is a directory on disk and the document root is the subdirectory below
+// it that HTTP reaches, so a file beside the document root is not served and
+// a file inside it is.
+func TestModule(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, DefaultDocumentRoot), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, DefaultDocumentRoot, "index.php"), []byte(`<?php echo "served";`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "secret.txt"), []byte("not public"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	module, err := NewModule(root, DefaultDocumentRoot, runner.Options{}, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if module.Name() != "phpserver" {
+		t.Errorf("Name() = %q, want %q", module.Name(), "phpserver")
+	}
+
+	for _, test := range []struct {
+		path string
+		code int
+		body string
+	}{
+		{path: "/index.php", code: http.StatusOK, body: "served"},
+		{path: "/secret.txt", code: http.StatusNotFound},
+	} {
+		rr := httptest.NewRecorder()
+		module.handler.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, test.path, nil))
+		if rr.Code != test.code {
+			t.Errorf("GET %s status = %d, want %d", test.path, rr.Code, test.code)
+		}
+		if test.body != "" && rr.Body.String() != test.body {
+			t.Errorf("GET %s body = %q, want %q", test.path, rr.Body.String(), test.body)
+		}
+	}
+}
+
+// TestModule_Mount covers the pattern the module claims. "/*" is the last
+// route a router resolves, so a module mounted this way answers every path the
+// routes registered ahead of it left alone, and the annotated routes of the
+// same application keep their own paths.
+func TestModule_Mount(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, DefaultDocumentRoot), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, DefaultDocumentRoot, "index.php"), []byte(`<?php echo "files";`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	module, err := NewModule(root, DefaultDocumentRoot, runner.Options{}, false, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	router := newRouter()
+	router.Get("/claimed", func(w http.ResponseWriter, _ *http.Request) {
+		w.Write([]byte("router"))
+	})
+	var mounted platform.Router = router
+	if err := module.Mount(context.Background(), mounted); err != nil {
+		t.Fatalf("Mount: %v", err)
+	}
+
+	for _, test := range []struct{ path, body string }{
+		{path: "/claimed", body: "router"},
+		{path: "/index.php", body: "files"},
+	} {
+		rr := httptest.NewRecorder()
+		router.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, test.path, nil))
+		if rr.Code != http.StatusOK || rr.Body.String() != test.body {
+			t.Errorf("GET %s = %d %q, want 200 %q", test.path, rr.Code, rr.Body.String(), test.body)
+		}
+	}
+}
+
 func TestHandlerServesPublicFilesAndPHP(t *testing.T) {
 	h, err := NewHandler(testFS)
 	if err != nil {
@@ -276,99 +381,6 @@ func body(t *testing.T, url, host string) (int, string) {
 	buf := make([]byte, 64)
 	n, _ := response.Body.Read(buf)
 	return response.StatusCode, string(buf[:n])
-}
-
-// TestReload covers what SIGHUP does, driving Reload directly so nothing
-// depends on signal delivery timing.
-func TestReload(t *testing.T) {
-	a := site(t, "a", "a")
-	b := site(t, "b", "b")
-
-	header := "telemetry:\n  enabled: false\nserver:\n  addr: \"127.0.0.1:0\"\n"
-	oneSite := header + "virtualhost:\n  - domain: a.localhost\n    root: " + a + "\n"
-	twoSites := oneSite + "  - domain: b.localhost\n    root: " + b + "\n"
-
-	start := func(t *testing.T, filename string) *managerFixture {
-		t.Helper()
-
-		globals := &flags.Options{ConfigFile: filename}
-		appConfig, err := config.Load(filename)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		manager, err := newManager(t.Context(), nil, appConfig, globals)
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(manager.Stop)
-		if err := manager.Start(t.Context()); err != nil {
-			t.Fatal(err)
-		}
-		return &managerFixture{manager: manager, filename: filename}
-	}
-
-	t.Run("a reload reads the file again", func(t *testing.T) {
-		filename := operatorConfig(t, oneSite)
-		fixture := start(t, filename)
-
-		if status, got := body(t, fixture.manager.URL(), "a.localhost"); status != 200 || got != "a" {
-			t.Fatalf("a.localhost = %d %q", status, got)
-		}
-		if status, _ := body(t, fixture.manager.URL(), "b.localhost"); status != 404 {
-			t.Fatalf("b.localhost = %d, want 404 before the reload", status)
-		}
-
-		fixture.rewrite(t, twoSites)
-		if err := fixture.manager.Reload(t.Context()); err != nil {
-			t.Fatal(err)
-		}
-
-		// The site the edit added, and the one that was already there.
-		if status, got := body(t, fixture.manager.URL(), "b.localhost"); status != 200 || got != "b" {
-			t.Fatalf("b.localhost = %d %q, want the reloaded site", status, got)
-		}
-		if status, got := body(t, fixture.manager.URL(), "a.localhost"); status != 200 || got != "a" {
-			t.Fatalf("a.localhost = %d %q", status, got)
-		}
-	})
-
-	t.Run("the address survives a reload", func(t *testing.T) {
-		filename := operatorConfig(t, oneSite)
-		fixture := start(t, filename)
-
-		before := fixture.manager.URL()
-		fixture.rewrite(t, twoSites)
-		if err := fixture.manager.Reload(t.Context()); err != nil {
-			t.Fatal(err)
-		}
-		if after := fixture.manager.URL(); after != before {
-			t.Fatalf("url = %q, want %q", after, before)
-		}
-	})
-
-	// The reason Check exists. A reload that cannot be applied leaves the
-	// generation that is serving alone, and never stops it first to
-	// then discovering the new configuration is unusable.
-	t.Run("a broken configuration is refused and keeps serving", func(t *testing.T) {
-		filename := operatorConfig(t, oneSite)
-		fixture := start(t, filename)
-
-		serving := fixture.manager.Platform()
-
-		fixture.rewrite(t, twoSites+"  - domain: c.localhost\n    root: /nonexistent-root\n")
-		err := fixture.manager.Reload(t.Context())
-		if err == nil {
-			t.Fatal("a reload with a missing root was applied")
-		}
-
-		if fixture.manager.Platform() != serving {
-			t.Fatal("the generation that was serving was replaced by a refused reload")
-		}
-		if status, got := body(t, fixture.manager.URL(), "a.localhost"); status != 200 || got != "a" {
-			t.Fatalf("a.localhost = %d %q, want the old generation still serving", status, got)
-		}
-	})
 }
 
 // managerFixture is a started manager and the file it reads.

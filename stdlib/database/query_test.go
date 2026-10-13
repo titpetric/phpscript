@@ -122,3 +122,47 @@ func TestQueryInfoRefusal(t *testing.T) {
 		t.Fatalf("refusal = %q", got)
 	}
 }
+
+// TestDatabase_Get covers the two outcomes of a single-row read. A row arrives
+// as a native map, so $row["name"] indexes it. A query matching no rows is
+// false and no error, because PHP reads a missing row as a falsy value and a
+// script tests it with if.
+func TestDatabase_Get(t *testing.T) {
+	database := newLiveDatabase(t)
+
+	value, err := database.Get(t.Context(), "select name from users where id = ?", 1)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	row, ok := value.(map[string]any)
+	if !ok || row["name"] != "Ada" {
+		t.Fatalf("Get returned %#v, want a row holding Ada", value)
+	}
+
+	missing, err := database.Get(t.Context(), "select name from users where id = ?", 99)
+	if err != nil {
+		t.Fatalf("Get over no rows: %v", err)
+	}
+	if missing != false {
+		t.Errorf("Get over no rows = %#v, want false", missing)
+	}
+}
+
+// TestDatabase_GetAll covers the whole result set: one native map per row in a
+// Go slice, which the value model walks as a PHP list, so foreach visits the
+// rows in the order the server returned them.
+func TestDatabase_GetAll(t *testing.T) {
+	database := newLiveDatabase(t)
+
+	value, err := database.GetAll(t.Context(), "select name from users order by id")
+	if err != nil {
+		t.Fatalf("GetAll: %v", err)
+	}
+	rows, ok := value.([]map[string]any)
+	if !ok {
+		t.Fatalf("GetAll returned %T, want a slice of rows", value)
+	}
+	if len(rows) != 2 || rows[0]["name"] != "Ada" || rows[1]["name"] != "Grace" {
+		t.Fatalf("rows = %#v, want Ada then Grace", rows)
+	}
+}

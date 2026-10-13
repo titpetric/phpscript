@@ -11,6 +11,31 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// TestProvider covers the alias a host names in its runtime options. The
+// interface itself is declared in model, so a runtime can name a provider
+// without depending on this package, and the alias keeps one name for it on
+// both sides. A runtime whose options name none resolves through Default, the
+// process environment as a CLI run has it, so a connection resolves before a
+// host has configured anything.
+func TestProvider(t *testing.T) {
+	var provider Provider = New([]string{"PLATFORM_DB_SHOP=sqlite://:memory:"})
+
+	db, err := provider.Open(t.Context(), "shop")
+	if err != nil {
+		t.Fatalf("Open(shop) through the interface: %v", err)
+	}
+	if db == nil {
+		t.Fatal("Open returned a nil pool")
+	}
+
+	if Default == nil {
+		t.Fatal("Default holds no provider, so a CLI run resolves nothing")
+	}
+	if _, err := Default.Open(t.Context()); err != nil {
+		t.Errorf("Default.Open() = %v, want the built-in default connection", err)
+	}
+}
+
 func TestDatabaseProviderConnect(t *testing.T) {
 	provider := NewDatabaseProvider(Open)
 	provider.Register("test", "sqlite://:memory:")

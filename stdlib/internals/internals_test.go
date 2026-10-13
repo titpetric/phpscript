@@ -7,7 +7,42 @@ import (
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
+	"github.com/titpetric/phpscript/stdlib/internals"
 )
+
+// TestRegister covers the two names this package installs and the signature
+// they carry. PHP passes $real_usage to split the allocator's own footprint
+// from the script's; the estimate here is one walk of the live values and has
+// no such split, so the argument is accepted and reports the same number.
+func TestRegister(t *testing.T) {
+	rt := runner.New(&strings.Builder{}, runner.Options{})
+	for _, name := range []string{"memory_get_usage", "memory_get_peak_usage"} {
+		if rt.FunctionExists(name) {
+			t.Fatalf("a bare runtime answers for %s before anything registered it", name)
+		}
+	}
+
+	internals.Register(rt)
+	for _, name := range []string{"memory_get_usage", "memory_get_peak_usage"} {
+		if !rt.FunctionExists(name) {
+			t.Errorf("%s does not resolve after Register", name)
+		}
+	}
+
+	program, err := parser.Parse(`<?php echo memory_get_usage(true) === memory_get_usage() ? "[same]" : "[differs]";`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var out strings.Builder
+	rt = runner.New(&out, runner.Options{})
+	internals.Register(rt)
+	if err := rt.Run(program); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out.String() != "[same]" {
+		t.Errorf("output = %q, want the argument to change nothing", out.String())
+	}
+}
 
 func runScript(t *testing.T, src string, opts runner.Options) (string, error) {
 	t.Helper()

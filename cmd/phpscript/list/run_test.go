@@ -2,10 +2,13 @@ package list
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
 )
 
 // TestRunListsPaths covers the default behaviour: a markdown table of the PHP
@@ -38,6 +41,69 @@ func TestRunListsStdlib(t *testing.T) {
 	for _, want := range []string{"| Kind", "| function |", "| class    |", "| constant |", "fnmatch", "glob"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output does not contain %q", want)
+		}
+	}
+}
+
+// TestNewCommand covers the one flag this command owns. --stdlib switches the
+// subject from a tree to the binary, so it defaults off: a bare `phpscript
+// list` scans paths. The constructor takes the configuration and the global
+// options because one signature covers all nine commands, and this command
+// reads neither, so both arguments are nil here.
+func TestNewCommand(t *testing.T) {
+	command := NewCommand(nil, nil)
+
+	if command.Name != "list" {
+		t.Errorf("Name = %q, want %q", command.Name, "list")
+	}
+	if command.Title != Name {
+		t.Errorf("Title = %q, want %q", command.Title, Name)
+	}
+	if command.Bind == nil {
+		t.Fatal("Bind is nil, want the --stdlib flag")
+	}
+
+	set := helpdocs.NewFlagSet("list")
+	command.Bind(set)
+	flag := set.Lookup("stdlib")
+	if flag == nil {
+		t.Fatal("--stdlib is not bound")
+	}
+	if flag.DefValue != "false" {
+		t.Errorf("--stdlib default = %q, want false: a bare list scans paths", flag.DefValue)
+	}
+}
+
+// TestRun covers the exported entry point, which is run() pointed at stdout.
+// The markdown table is the same one a redirected run writes, so the one
+// assertion worth making here is that os.Stdout is where it lands.
+func TestRun(t *testing.T) {
+	dir := t.TempDir()
+	source := "<?php\n// @route GET /hello\nclass Greeter {}\n"
+	if err := os.WriteFile(filepath.Join(dir, "hello.php"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	saved := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = writer
+	runErr := Run([]string{dir}, false)
+	writer.Close()
+	os.Stdout = saved
+	if runErr != nil {
+		t.Fatalf("Run: %v", runErr)
+	}
+
+	var out bytes.Buffer
+	if _, err := io.Copy(&out, reader); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"GET /hello", "hello.php", "Greeter"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("stdout does not contain %q:\n%s", want, out.String())
 		}
 	}
 }

@@ -53,21 +53,6 @@ func TestCamelToSnake(t *testing.T) {
 	}
 }
 
-func TestAreaName(t *testing.T) {
-	cases := map[string]string{
-		"registerStrings": "strings",
-		"registerJSON":    "json",
-		"Register":        "",
-		"RegisterFS":      "",
-		"init":            "",
-	}
-	for in, want := range cases {
-		if got := areaName(in); got != want {
-			t.Errorf("areaName(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func TestReturnType(t *testing.T) {
 	cases := []struct {
 		in   []string
@@ -86,154 +71,70 @@ func TestReturnType(t *testing.T) {
 	}
 }
 
-func TestRenderParam(t *testing.T) {
-	cases := []struct {
-		in   Param
-		want string
+// TestReflect covers what a shipped binary can answer about itself. The Go
+// source it was built from is not on disk, so there are no doc comments and no
+// PHP-spelled parameter names; the names, types and returns are the same ones
+// the committed reference is rendered from, and the placeholder parameter
+// names come from the types.
+func TestReflect(t *testing.T) {
+	rt := runner.New(nil, runner.Options{})
+	rt.RegisterConstructor("Time", newGeneratedTime)
+	rt.RegisterConstructor(`Time\Duration`, newGeneratedDuration)
+	rt.RegisterFunc("DateTime::now", generatedNow)
+	rt.RegisterFunc("DateTime::since", generatedSince)
+
+	funcs, classes := Reflect(rt)
+
+	byName := map[string]Func{}
+	for _, f := range funcs {
+		byName[f.Name] = f
+	}
+	for _, want := range []struct {
+		name      string
+		signature string
 	}{
-		{Param{Name: "subject", Type: "string"}, "string $subject"},
-		{Param{Name: "args", Type: "mixed", Variadic: true}, "mixed ...$args"},
-		{Param{Name: "matches", ByRef: true}, "&$matches"},
-		{Param{Name: "matches", ByRef: true, Variadic: true}, "&$matches = null"},
-	}
-	for _, c := range cases {
-		if got := renderParam(c.in); got != c.want {
-			t.Errorf("renderParam(%+v) = %q, want %q", c.in, got, c.want)
-		}
-	}
-}
-
-// TestScan exercises the source scan over a synthetic registration file: the
-// registration-site comment, the godoc fallback with its leading symbol
-// rewritten, signature extraction, and the by-reference setter convention.
-func TestScan(t *testing.T) {
-	dir := t.TempDir()
-	src := `package fake
-
-// registerFake installs the fake area.
-func registerFake(rt *Runtime) {
-	// upper returns $string uppercased.
-	rt.RegisterFunc("upper", func(s string) string { return s })
-	rt.RegisterFunc("scan", func(pattern, subject string, matches ...func(any)) int64 { return 0 })
-	rt.RegisterFunc("named", namedShim)
-	rt.RegisterConstructor("Fake\\Thing", NewThing)
-}
-
-// namedShim reports nothing in particular.
-func namedShim(a any) bool { return false }
-
-// NewThing constructs the thing a script holds.
-func NewThing(name string) *Thing { return nil }
-
-// Thing is a fake bound class.
-type Thing struct{}
-`
-	if err := os.WriteFile(filepath.Join(dir, "fake.go"), []byte(src), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	scanned, err := scan(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	upper := scanned.funcs["upper"]
-	if upper == nil {
-		t.Fatal("upper: not scanned")
-	}
-	if got := strings.Join(upper.comment, "\n"); got != "upper returns $string uppercased." {
-		t.Errorf("upper comment = %q", got)
-	}
-	if upper.area != "fake" {
-		t.Errorf("upper area = %q, want fake", upper.area)
-	}
-
-	scanFn := scanned.funcs["scan"]
-	if scanFn == nil || len(scanFn.params) != 3 {
-		t.Fatalf("scan params = %+v", scanFn)
-	}
-	if p := scanFn.params[2]; !p.ByRef || !p.Variadic || p.Name != "matches" {
-		t.Errorf("scan matches param = %+v", p)
-	}
-
-	named := scanned.funcs["named"]
-	if named == nil {
-		t.Fatal("named: not scanned")
-	}
-	if got := strings.Join(named.comment, "\n"); got != "named reports nothing in particular." {
-		t.Errorf("named comment = %q, want the godoc with the symbol rewritten", got)
-	}
-
-	ctor := scanned.ctors[`Fake\Thing`]
-	if ctor == nil {
-		t.Fatal(`Fake\Thing: not scanned`)
-	}
-	if len(ctor.params) != 1 || ctor.params[0].Type != "string" {
-		t.Errorf(`Fake\Thing params = %+v`, ctor.params)
-	}
-}
-
-// TestScanQualifiedRegistration covers the three shapes a selector takes as the
-// registered expression: a package in the tree, a method on a value, and a
-// package outside the tree. The last one has no declaration to read, and
-// borrowing one that shares the name published the wrong parameters.
-func TestScanQualifiedRegistration(t *testing.T) {
-	dir := t.TempDir()
-	for name, body := range map[string]string{
-		"engine/compile.go": `package engine
-
-// Compile lowers an ast.
-func Compile(ast *Program) (*Program, error) { return nil, nil }
-`,
-		"host/host.go": `package host
-
-// SetRoot records the root.
-func (rt *Runtime) SetRoot(dir string) bool { return false }
-`,
-		"area/area.go": `package area
-
-// register installs the area.
-func register(rt *Runtime) {
-	rt.RegisterConstructor("Area\\Compile", stdregexp.Compile)
-	rt.RegisterFunc("in_tree", engine.Compile)
-	rt.RegisterFunc("chroot", rt.SetRoot)
-}
-`,
+		{name: "DateTime::now", signature: "DateTime::now(): Time"},
+		{name: "DateTime::since", signature: `DateTime::since(object $value): Time\Duration`},
 	} {
-		path := filepath.Join(dir, name)
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
+		got, ok := byName[want.name]
+		if !ok {
+			t.Errorf("%s: not reflected", want.name)
+			continue
 		}
-		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
-			t.Fatal(err)
+		if got.Signature() != want.signature {
+			t.Errorf("%s signature = %q, want %q", want.name, got.Signature(), want.signature)
+		}
+		if len(got.Comment) != 0 {
+			t.Errorf("%s carries comment %v, want none without the source", want.name, got.Comment)
 		}
 	}
 
-	scanned, err := scan(dir)
-	if err != nil {
-		t.Fatal(err)
+	byClass := map[string]Class{}
+	for _, c := range classes {
+		byClass[c.Name] = c
+	}
+	time, ok := byClass["Time"]
+	if !ok {
+		t.Fatalf("Time: not reflected, classes = %+v", byClass)
+	}
+	if got, want := time.Signature(), "public function __construct()"; got != want {
+		t.Errorf("Time constructor = %q, want %q", got, want)
 	}
 
-	// A package in the tree resolves, parameter name and all.
-	inTree := scanned.funcs["in_tree"]
-	if inTree == nil || len(inTree.params) != 1 || inTree.params[0].Name != "ast" {
-		t.Errorf("in_tree params = %+v, want one named ast", inTree)
+	methods := map[string]string{}
+	for _, m := range time.Methods {
+		methods[m.Name] = m.Signature()
 	}
-
-	// A method reached through a value resolves, the qualifier being a variable.
-	chroot := scanned.funcs["chroot"]
-	if chroot == nil || len(chroot.params) != 1 || chroot.params[0].Name != "dir" {
-		t.Errorf("chroot params = %+v, want one named dir", chroot)
-	}
-
-	// A package outside the tree has no signature here, whatever names it
-	// shares with one inside it.
-	ctor := scanned.ctors[`Area\Compile`]
-	if ctor == nil {
-		t.Fatal(`Area\Compile: not scanned`)
-	}
-	if ctor.params != nil {
-		t.Errorf(`Area\Compile params = %+v, want none so reflection decides`, ctor.params)
+	for name, want := range map[string]string{
+		"add": "public function add(int $num): Time",
+		// The receiver is reflected as the first parameter and is dropped
+		// after the names are deduped, so the one that is kept is $value2.
+		"sub":      `public function sub(object $value2): Time\Duration`,
+		"location": "public function location(): object",
+	} {
+		if methods[name] != want {
+			t.Errorf("Time::%s = %q, want %q", name, methods[name], want)
+		}
 	}
 }
 

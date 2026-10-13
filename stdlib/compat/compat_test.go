@@ -7,7 +7,32 @@ import (
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
+	"github.com/titpetric/phpscript/stdlib/compat"
 )
+
+// TestRegister covers the three families one call installs: the ob_* buffers,
+// the clock and date shims, and the preg_* functions. A host that builds its
+// own Runtime without stdlib calls this one function for all three, so a
+// family missing from it is a family no script can reach.
+func TestRegister(t *testing.T) {
+	rt := runner.New(&strings.Builder{}, runner.Options{})
+	if rt.FunctionExists("ob_start") {
+		t.Fatal("a bare runtime answers for ob_start before anything registered it")
+	}
+
+	compat.Register(rt)
+	for _, name := range []string{
+		"ob_start", "ob_get_level", "ob_get_contents", "ob_get_clean",
+		"ob_end_clean", "ob_end_flush", "ob_get_flush",
+		"time", "microtime", "strtotime", "date",
+		"preg_match", "preg_match_all", "preg_replace",
+		"preg_replace_callback", "preg_split", "preg_quote",
+	} {
+		if !rt.FunctionExists(name) {
+			t.Errorf("%s does not resolve after Register", name)
+		}
+	}
+}
 
 // runScript runs src against a runtime with the stdlib installed and returns
 // what reached the real output. The bindings are exercised through the VM
