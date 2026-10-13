@@ -1,6 +1,8 @@
 package model_test
 
 import (
+	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -113,6 +115,125 @@ func TestCheckInterfaces(t *testing.T) {
 				if !strings.Contains(err.Error(), want) {
 					t.Errorf("error %q does not report %q", err, want)
 				}
+			}
+		})
+	}
+}
+
+// TestInterfaceContractError covers the type a caller recovers the violations
+// through. Both backends raise it where they register classes, so a program
+// fails the same way whichever one ran it, and a caller holding the program's
+// source spans reads Decl to report the line the class was written on.
+func TestInterfaceContractError(t *testing.T) {
+	stmts := []model.Stmt{iface("R", nil, "get", "has"), class("S", []string{"R"}, "get")}
+
+	err := model.CheckInterfaceContracts(&model.Program{Stmts: stmts})
+	if err == nil {
+		t.Fatal("CheckInterfaceContracts answered nil for a violated contract")
+	}
+
+	var contract *model.InterfaceContractError
+	if !errors.As(err, &contract) {
+		t.Fatalf("CheckInterfaceContracts answered %T, want *model.InterfaceContractError", err)
+	}
+	if got := len(contract.Violations); got != 1 {
+		t.Fatalf("the error carries %d violations, want 1", got)
+	}
+
+	violation := contract.Violations[0]
+	if violation.Method != "has" {
+		t.Errorf("the violation names method %q, want \"has\"", violation.Method)
+	}
+	if violation.Class != "S" || violation.Interface != "R" {
+		t.Errorf("the violation names class %q and interface %q, want \"S\" and \"R\"", violation.Class, violation.Interface)
+	}
+	if violation.Decl == nil {
+		t.Fatal("the violation carries no class declaration, so a caller cannot name the line")
+	}
+	if violation.Decl.Name != "S" {
+		t.Errorf("the declaration is for class %q, want \"S\"", violation.Decl.Name)
+	}
+}
+
+// TestInterfaceContractError_Error covers the message a class missing several
+// methods is reported through. The violations are joined into one string, so
+// three missing methods are one error and no three.
+func TestInterfaceContractError_Error(t *testing.T) {
+	err := &model.InterfaceContractError{Violations: []model.InterfaceViolation{
+		{Class: "S", Interface: "R", Method: "get"},
+		{Class: "S", Interface: "R", Method: "has"},
+	}}
+	want := "class S does not declare method get() required by interface R; " +
+		"class S does not declare method has() required by interface R"
+	if got := err.Error(); got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+
+	if got := (&model.InterfaceContractError{}).Error(); got != "" {
+		t.Errorf("Error() with no violations = %q, want the empty string", got)
+	}
+}
+
+// TestInterfaceNames covers the names `instanceof` answers an interface name
+// from: what the class declared, plus what those interfaces extend, lower-cased
+// and deduplicated. PHP compares a class name without regard to case, so the
+// list is keyed that way.
+//
+// A name no interface declaration defines is listed all the same. Such a class
+// is checked against nothing, because the name is a php built-in this runtime
+// does not declare, and `$a instanceof Countable` still answers what the author
+// declared.
+func TestInterfaceNames(t *testing.T) {
+	tests := []struct {
+		name  string
+		decl  *model.ClassDecl
+		stmts []model.Stmt
+		want  []string
+	}{
+		{
+			name: "no class",
+		},
+		{
+			name: "a class declaring nothing",
+			decl: class("S", nil),
+		},
+		{
+			name:  "one interface",
+			decl:  class("S", []string{"R"}),
+			stmts: []model.Stmt{iface("R", nil, "get")},
+			want:  []string{"r"},
+		},
+		{
+			name:  "an extended interface widens the list",
+			decl:  class("S", []string{"L"}),
+			stmts: []model.Stmt{iface("R", nil, "get"), iface("L", []string{"R"}, "keys")},
+			want:  []string{"l", "r"},
+		},
+		{
+			name:  "an undeclared name is listed",
+			decl:  class("S", []string{"Countable"}),
+			stmts: []model.Stmt{iface("R", nil, "get")},
+			want:  []string{"countable"},
+		},
+		{
+			name:  "two spellings of one name collapse",
+			decl:  class("S", []string{"R", "r"}),
+			stmts: []model.Stmt{iface("R", nil, "get")},
+			want:  []string{"r"},
+		},
+		{
+			name:  "a cycle in extends terminates",
+			decl:  class("S", []string{"A"}),
+			stmts: []model.Stmt{iface("A", []string{"B"}, "a"), iface("B", []string{"A"}, "b")},
+			want:  []string{"a", "b"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := model.InterfaceNames(tc.decl, tc.stmts)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("InterfaceNames() = %v, want %v", got, tc.want)
 			}
 		})
 	}

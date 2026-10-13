@@ -103,6 +103,32 @@ func TestRenderRoutePath(t *testing.T) {
 	}
 }
 
+// TestRouteDialect covers the two router syntaxes a path is rendered into, and
+// that they are distinct values: a dialect selects the rewrite, so two dialects
+// sharing one value would render a single syntax for both routers.
+//
+// chi 404s on {tail...} and ServeMux panics on {id:[0-9]+}, so neither syntax
+// is the authored one and the zero value has to name a real router. RouteChi
+// takes it, so a caller rendering without naming a dialect writes chi's syntax.
+func TestRouteDialect(t *testing.T) {
+	if model.RouteChi == model.RouteServeMux {
+		t.Fatal("the two dialects share one value")
+	}
+
+	var zero model.RouteDialect
+	if zero != model.RouteChi {
+		t.Errorf("the zero RouteDialect is %d, want RouteChi", zero)
+	}
+
+	const path = "/c/{tail...}"
+	if got := model.RenderRoutePath(path, zero); got != "/c/*" {
+		t.Errorf("RenderRoutePath(%q, RouteChi) = %q, want \"/c/*\"", path, got)
+	}
+	if got := model.RenderRoutePath(path, model.RouteServeMux); got != path {
+		t.Errorf("RenderRoutePath(%q, RouteServeMux) = %q, want it unchanged", path, got)
+	}
+}
+
 func contains(s, sub string) bool {
 	return len(sub) == 0 || len(s) >= len(sub) && indexOf(s, sub) >= 0
 }
