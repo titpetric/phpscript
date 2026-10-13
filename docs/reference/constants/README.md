@@ -110,7 +110,9 @@ At the top level all three are empty strings. The fixture that holds every one o
 
 ## Predefined constants
 
-Registering the standard library installs the platform constants a PHP library branches on: `PHP_VERSION` and `PHP_VERSION_ID`, `PHP_MAJOR_VERSION` and its siblings, `PHP_SAPI`, `PHP_EOL`, `PHP_OS` and `PHP_OS_FAMILY`, `PHP_INT_MAX` / `PHP_INT_MIN` / `PHP_INT_SIZE`, the `PHP_FLOAT_*` set, `DIRECTORY_SEPARATOR` and `PATH_SEPARATOR`, `STDIN` / `STDOUT` / `STDERR`, the `ENT_*` escaping flags, the `FILTER_VALIDATE_*` filters, the `E_*` error levels, and the `T_*` tokenizer ids.
+Registering the standard library installs the platform constants a PHP library branches on: `PHP_VERSION` and `PHP_VERSION_ID`, `PHP_MAJOR_VERSION` and its siblings, `PHP_SAPI`, `PHP_EOL`, `PHP_OS` and `PHP_OS_FAMILY`, `PHP_INT_MAX` / `PHP_INT_MIN` / `PHP_INT_SIZE`, the `PHP_FLOAT_*` set, `INF` and `NAN`, `DIRECTORY_SEPARATOR` and `PATH_SEPARATOR`, `STDIN` / `STDOUT` / `STDERR`, the `ENT_*` escaping flags, the `FILTER_VALIDATE_*` filters, the `E_*` error levels, and the `T_*` tokenizer ids.
+
+`INF` and `NAN` are the two float values with no numeric spelling. `NAN` compares equal to nothing, itself included, so `$x !== $x` is the test for one; `tests/fixtures/arithmetic/float_inf_nan.phpt` holds both to php's output.
 
 `PHP_VERSION` reports the PHP language version whose semantics phpscript is tested against. It is not a claim of full compatibility with that release; it is the number library code reads when it decides which language features it may use.
 

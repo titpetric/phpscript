@@ -9,8 +9,10 @@ description: >
   too. An array converts to 1 when it holds anything and 0 when it does not,
   which phpscript answered as 0 either way.
 
-  NAN and INF are not registered constants here, so the NaN case arrives through
-  sqrt(-1); the infinities are covered by TestToInt64 in internal/phpval.
+  The NaN case arrives through sqrt(-1) rather than the NAN constant, so it
+  pins the conversion of a computed value; the infinities are covered by
+  TestToInt64 in internal/phpval, and the constants themselves by
+  arithmetic/float_inf_nan.phpt.
 ---
 <?php
 $vals = [1.0e20, -1.0e20, 1.0e19, 9.3e18, 1.8e19, 2.0**63, 2.0**64, 2.0**64+2.0**63, 1.9, -1.9, 0.0, 9.0e18];

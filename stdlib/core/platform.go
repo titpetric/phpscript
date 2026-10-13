@@ -67,6 +67,12 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("PHP_FLOAT_MIN", math.SmallestNonzeroFloat64)
 	rt.SetConst("PHP_FLOAT_DIG", int64(15))
 
+	// INF and NAN are the two float values with no numeric spelling. Every
+	// renderer here already writes them, so without the constants a script
+	// could read one out of an overflow and never write one.
+	rt.SetConst("INF", math.Inf(1))
+	rt.SetConst("NAN", math.NaN())
+
 	// The standard streams. STDIN is registered with the rest of the language
 	// constructs; the two output streams are the process's, not the response
 	// body, so a diagnostic written to STDERR stays out of the page.
@@ -103,9 +109,10 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("UPLOAD_ERR_CANT_WRITE", int64(runner.UploadErrCantWrite))
 	rt.SetConst("UPLOAD_ERR_EXTENSION", int64(8))
 
-	// E_ALL is not every bit set: PHP 8 dropped E_STRICT (2048) from it, so the
-	// value is 30719 where stock PHP reports 32767. The difference is only visible once a
-	// script can write E_ALL & ~E_NOTICE, which needs the bitwise operators.
+	// E_ALL is not every bit set: php 8 dropped E_STRICT (2048) from it, so it
+	// is 30719 here and in php 8, where php 7 reported 32767. The difference is
+	// only visible once a script can write E_ALL & ~E_NOTICE, which needs the
+	// bitwise operators.
 	rt.SetConst("E_ALL", int64(30719))
 	rt.SetConst("E_ERROR", int64(1))
 	rt.SetConst("E_WARNING", int64(2))

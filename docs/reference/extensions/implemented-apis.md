@@ -818,6 +818,20 @@ function is_callable(mixed $value): bool
 ```
 
 ```php
+/**
+ * is_double reports whether $value is a float, php's older spelling of
+ * is_float(). Both are registered because a script written for php uses
+ * whichever its author learned.
+ */
+function is_double(mixed $value): bool
+```
+
+```php
+// is_float reports whether $value is a float.
+function is_float(mixed $value): bool
+```
+
+```php
 // is_int reports whether $value is an integer.
 function is_int(mixed $value): bool
 ```

@@ -50,6 +50,14 @@ func isObject(value any) bool {
 	return rv.Kind() == reflect.Struct
 }
 
+// isFloat backs is_float and is_double. A float is the one scalar this runtime
+// holds in a single Go type, so the test is the type assertion: an integer is
+// not a float here any more than it is in php, and neither is a numeric string.
+func isFloat(value any) bool {
+	_, ok := value.(float64)
+	return ok
+}
+
 // phpGetType backs gettype. The names it returns are PHP's original ones, and
 // and that is the function: "integer" and "double" where the value
 // model and get_debug_type say int and float, "boolean" where they say bool, and
@@ -200,6 +208,12 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return false
 	})
+	// is_float reports whether $value is a float.
+	rt.RegisterFunc("is_float", isFloat)
+	// is_double reports whether $value is a float, php's older spelling of
+	// is_float(). Both are registered because a script written for php uses
+	// whichever its author learned.
+	rt.RegisterFunc("is_double", isFloat)
 	// gettype returns the type of $value under PHP's legacy names: "integer",
 	// "double", "boolean", "string", "array", "object" or "NULL".
 	rt.RegisterFunc("gettype", phpGetType)
