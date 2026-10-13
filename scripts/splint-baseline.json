@@ -1,7 +1,6 @@
 {
   "rules": {
     "filecheck/long": 17,
-    "func-args/order": 1,
     "imports/pollution": 1
   }
 }
