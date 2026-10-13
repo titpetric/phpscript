@@ -10,7 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
 	"github.com/titpetric/phpscript/cmd/phpscript/test"
+	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/tests"
 )
 
@@ -209,5 +211,51 @@ hello
 	}
 	if errMissing != nil {
 		t.Errorf("run with a missing include file: %v", errMissing)
+	}
+}
+
+// TestNewCommand covers the command main registers, and the flags a run is
+// configured through. Each is read off the set at Run, so a flag missing from
+// Bind is a documented option the command silently ignores, and the generated
+// cli reference is built from the same set.
+func TestNewCommand(t *testing.T) {
+	command := test.NewCommand(nil, &flags.Options{})
+	if command == nil {
+		t.Fatal("NewCommand answered nothing")
+	}
+	if command.Name != "test" {
+		t.Errorf("Name = %q, want test", command.Name)
+	}
+	if command.Title != test.Name {
+		t.Errorf("Title = %q, want the registered one", command.Title)
+	}
+	if command.Run == nil {
+		t.Fatal("the command has no Run")
+	}
+	if command.Bind == nil {
+		t.Fatal("the command binds no flags")
+	}
+
+	set := helpdocs.NewFlagSet("test")
+	command.Bind(set)
+	for _, name := range []string{
+		"json", "matrix", "skip-php", "parallel", "count",
+		"time", "profile", "output", "split", "cache",
+	} {
+		if set.Lookup(name) == nil {
+			t.Errorf("--%s is not bound, so the command ignores it", name)
+		}
+	}
+
+	// The default scope of the parse caches is one per worker loop: a fixture
+	// is run several times under --count, and a cache per run would price the
+	// parse into every one of them.
+	if flag := set.Lookup("cache"); flag != nil && flag.DefValue != test.CacheWorker {
+		t.Errorf("--cache defaults to %q, want %q", flag.DefValue, test.CacheWorker)
+	}
+	// Parallelism is one by default, because a fixture writing a file its peer
+	// reads would otherwise race on a tree nobody changed.
+	if flag := set.Lookup("parallel"); flag != nil && flag.DefValue != "1" {
+		t.Errorf("--parallel defaults to %q, want 1", flag.DefValue)
 	}
 }
