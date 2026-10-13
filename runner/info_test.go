@@ -1,12 +1,51 @@
 package runner_test
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
 
 	"github.com/titpetric/phpscript/runner"
 )
+
+// TestInfoSection covers when a registered section runs and where its rows
+// print. It runs at the call and not at registration, so a section reports a
+// count the process reached since; and sections print under their own heading
+// in registration order, so a report reads the same way twice.
+func TestInfoSection(t *testing.T) {
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+
+	calls := 0
+	counter := runner.InfoSection(func(*runner.Runtime) []runner.InfoField {
+		calls++
+		return []runner.InfoField{{Name: "Calls", Value: strconv.Itoa(calls)}}
+	})
+	rt.RegisterInfo("First", counter)
+	rt.RegisterInfo("Second", func(*runner.Runtime) []runner.InfoField {
+		return []runner.InfoField{{Name: "Rows", Value: "1"}}
+	})
+
+	if calls != 0 {
+		t.Fatalf("the section ran %d times at registration, want none", calls)
+	}
+
+	report := infoOutput(t, rt, &out)
+	if calls != 1 {
+		t.Errorf("the section ran %d times for one phpinfo(), want once", calls)
+	}
+	if !strings.Contains(report, "Calls => 1") {
+		t.Errorf("the section's row is absent:\n%s", report)
+	}
+	first, second := strings.Index(report, "First"), strings.Index(report, "Second")
+	if first < 0 || second < 0 {
+		t.Fatalf("a heading is missing:\n%s", report)
+	}
+	if second < first {
+		t.Errorf("the sections printed out of registration order:\n%s", report)
+	}
+}
 
 // infoOutput runs phpinfo() on rt and answers what it printed.
 func infoOutput(t *testing.T, rt *runner.Runtime, out *strings.Builder) string {

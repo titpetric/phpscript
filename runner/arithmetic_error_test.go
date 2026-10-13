@@ -39,6 +39,9 @@ func TestDivisionByZeroError(t *testing.T) {
 	if want := "DivisionByZeroError"; class != want {
 		t.Errorf("ThrowableClass() = %q, want %q", class, want)
 	}
+	if got := err.ThrowableClass(); got != class {
+		t.Errorf("ThrowableClass() = %q, read off the value, against %q through throwableClassOf", got, class)
+	}
 	if class == (&ArithmeticError{}).ThrowableClass() {
 		t.Error("the two arithmetic classes report the same name")
 	}

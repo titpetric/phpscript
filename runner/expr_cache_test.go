@@ -8,6 +8,81 @@ import (
 	"github.com/titpetric/phpscript/runner/expr"
 )
 
+// TestExprCache_GetExpr covers the read side of the per-node cache. The key is
+// node identity and no structural equality: the cache is filled off the AST a
+// program holds, and that AST is the one Eval walks again, so two equal nodes
+// written in two places are two entries. A nil cache answers a miss, which is
+// what lets a runtime with no cache evaluate without a check at every lookup.
+func TestExprCache_GetExpr(t *testing.T) {
+	cache := NewExprCache()
+	node := &model.Binary{Op: "+", Left: &model.Var{Name: "a"}, Right: &model.Lit{Value: int64(1)}}
+
+	if _, ok := cache.GetExpr(node); ok {
+		t.Fatal("GetExpr on an empty cache answered a hit")
+	}
+
+	compiled, err := expr.CompileExpr(node, exprHelpers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache.SetExpr(node, compiled)
+
+	got, ok := cache.GetExpr(node)
+	if !ok {
+		t.Fatal("GetExpr missed the node it was just given")
+	}
+	if got != compiled {
+		t.Error("GetExpr answered a program other than the one stored")
+	}
+
+	twin := &model.Binary{Op: "+", Left: &model.Var{Name: "a"}, Right: &model.Lit{Value: int64(1)}}
+	if _, ok := cache.GetExpr(twin); ok {
+		t.Error("GetExpr matched an equal node, want identity")
+	}
+
+	var absent *ExprCache
+	if _, ok := absent.GetExpr(node); ok {
+		t.Error("GetExpr on a nil cache answered a hit")
+	}
+}
+
+// TestExprCache_EnsureFlat covers the write-through compile a caller gates a
+// flatstack run on. A program the compiler accepts is compiled once and read
+// back, and one it refuses reports the refusal on every call, because nothing
+// is stored for it: a stored verdict would let one run decide for the next.
+func TestExprCache_EnsureFlat(t *testing.T) {
+	cache := NewExprCache()
+	accepted := &model.Program{Stmts: []model.Stmt{&model.Echo{Args: []model.Expr{&model.Lit{Value: "ok"}}}}}
+
+	if err := cache.EnsureFlat(accepted); err != nil {
+		t.Fatalf("EnsureFlat: %v", err)
+	}
+	program, ok := cache.getFlat(accepted)
+	if !ok {
+		t.Fatal("EnsureFlat reported no error and stored nothing")
+	}
+	if err := cache.EnsureFlat(accepted); err != nil {
+		t.Fatalf("second EnsureFlat: %v", err)
+	}
+	if again, _ := cache.getFlat(accepted); again != program {
+		t.Error("the second EnsureFlat recompiled, want the table read back")
+	}
+
+	// A break outside a loop is a form the compiler refuses, which is the
+	// verdict flatstack.Supports reports as "run this on the interpreter".
+	refused := &model.Program{Stmts: []model.Stmt{&model.Break{Line: 1}}}
+	first := cache.EnsureFlat(refused)
+	if first == nil {
+		t.Fatal("EnsureFlat accepted a break outside a loop")
+	}
+	if second := cache.EnsureFlat(refused); second == nil {
+		t.Error("a refused program was accepted on the second call")
+	}
+	if _, ok := cache.getFlat(refused); ok {
+		t.Error("a refused program was stored")
+	}
+}
+
 // The benchmarks below pin the cost of the expression engine: compilation
 // and Eval per node shape. They are the before/after evidence for any engine
 // change; docs/allocation-performance.md describes how a run is taken and

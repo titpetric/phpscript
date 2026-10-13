@@ -46,6 +46,59 @@ func TestRequestScopesOnlyItsConnection(t *testing.T) {
 	}
 }
 
+// TestRuntime_ClientContext covers which of the two contexts a binding waits
+// on. Inside a handler it is the request, so a call that should end when the
+// caller hangs up does; outside one there is no request and it is the script's
+// own, so the same binding still has something to wait on. Leaving the handler
+// puts the previous one back, so one request's disconnect stays off the next.
+func TestRuntime_ClientContext(t *testing.T) {
+	rt := New(io.Discard, Options{})
+	host, hangUp := context.WithCancel(context.Background())
+	rt.SetContext(host)
+
+	if got := rt.ClientContext(); got != host {
+		t.Error("outside a handler the client context is not the one the host gave")
+	}
+
+	gone, disconnect := context.WithCancel(context.Background())
+	leave := rt.EnterRequest(gone)
+	if got := rt.ClientContext(); got != gone {
+		t.Error("inside a handler the client context is not the request's")
+	}
+
+	disconnect()
+	if err := rt.ClientContext().Err(); err == nil {
+		t.Error("the client context did not end with the connection")
+	}
+	// The script's own context is untouched, so a serving script answers the
+	// next request after one caller hangs up.
+	if err := rt.Context().Err(); err != nil {
+		t.Errorf("the disconnect ended the script's context: %v", err)
+	}
+
+	leave()
+	if got := rt.ClientContext(); got != host {
+		t.Error("the request's context was left behind as the client context")
+	}
+	if err := rt.ClientContext().Err(); err != nil {
+		t.Errorf("the request's disconnect was left on the client context: %v", err)
+	}
+
+	// The host ending is the connection ending for a script outside a handler,
+	// there being nothing else that was serving it.
+	hangUp()
+	if err := rt.ClientContext().Err(); err == nil {
+		t.Error("the host ending did not reach the client context")
+	}
+
+	// With no connection recorded at all the script's own context is the
+	// answer, so a binding always has something to wait on.
+	rt.client = nil
+	if got := rt.ClientContext(); got != rt.Context() {
+		t.Error("with no connection the client context is not the script's")
+	}
+}
+
 // TestScriptLimitCancelsTheBindingContext is the other side: the script's own
 // limit does end what is parked, because that is how a serving script stops.
 func TestScriptLimitCancelsTheBindingContext(t *testing.T) {

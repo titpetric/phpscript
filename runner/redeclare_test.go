@@ -152,3 +152,66 @@ func TestDeclaringTheSameFunctionAfterResetSucceeds(t *testing.T) {
 		t.Error("FunctionExists(reused) is true after a reset that did not declare it")
 	}
 }
+
+// TestRedeclareError_Error covers the four messages the one error renders,
+// which are PHP's own text for the same condition minus the clauses there is
+// nothing to fill. A declaration refused against a registered binding names no
+// earlier site, because there is no PHP declaration to point at, and a program
+// a host assembled carries no file, so the location clauses are left out and
+// never written empty.
+func TestRedeclareError_Error(t *testing.T) {
+	at := runner.FuncSite{File: "app/index.php", Line: 12}
+	previous := runner.FuncSite{File: "lib/helpers.php", Line: 3}
+
+	cases := map[string]struct {
+		err  *runner.RedeclareError
+		want string
+	}{
+		"both sites": {
+			err:  &runner.RedeclareError{Name: "greet", At: at, Previous: previous},
+			want: "Cannot redeclare function greet() (previously declared in lib/helpers.php:3) in app/index.php on line 12",
+		},
+		"a registered binding": {
+			err:  &runner.RedeclareError{Name: "strlen", At: at, Builtin: true},
+			want: "Cannot redeclare function strlen() in app/index.php on line 12",
+		},
+		"no line": {
+			err:  &runner.RedeclareError{Name: "greet", At: runner.FuncSite{File: "app/index.php"}, Builtin: true},
+			want: "Cannot redeclare function greet() in app/index.php",
+		},
+		"no file": {
+			err:  &runner.RedeclareError{Name: "greet", Builtin: true},
+			want: "Cannot redeclare function greet()",
+		},
+	}
+	for name, test := range cases {
+		if got := test.err.Error(); got != test.want {
+			t.Errorf("%s: Error() = %q, want %q", name, got, test.want)
+		}
+	}
+}
+
+// TestRedeclareError_GetMessage and TestRedeclareError_GetCode cover what a
+// script reads off the caught value. The message is the error's own text, so a
+// `catch` printing getMessage() prints what a Go host received from Run, and
+// the code is PHP's zero because there is no error number for this.
+func TestRedeclareError_GetMessage(t *testing.T) {
+	err := &runner.RedeclareError{
+		Name:     "greet",
+		At:       runner.FuncSite{File: "app/index.php", Line: 12},
+		Previous: runner.FuncSite{File: "lib/helpers.php", Line: 3},
+	}
+	if got := err.GetMessage(); got != err.Error() {
+		t.Errorf("GetMessage() = %q, want the error text %q", got, err.Error())
+	}
+	if want := "Exception"; err.ThrowableClass() != want {
+		t.Errorf("ThrowableClass() = %q, want %q", err.ThrowableClass(), want)
+	}
+}
+
+func TestRedeclareError_GetCode(t *testing.T) {
+	err := &runner.RedeclareError{Name: "greet"}
+	if got := err.GetCode(); got != 0 {
+		t.Errorf("GetCode() = %d, want 0", got)
+	}
+}

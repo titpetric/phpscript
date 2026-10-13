@@ -34,6 +34,25 @@ func TestRegisterProfileBinding(t *testing.T) {
 	}
 }
 
+// TestRegisterBinding covers the area a binding lands in when it does not name
+// one, which is ProfileSecure: a binding package's init() calls this, so the
+// default decides what a host mounting the sandboxed surface gets. The
+// installer is a no-op, because the registry is append-only and whatever is
+// registered here runs on every Runtime the test binary sets up.
+func TestRegisterBinding(t *testing.T) {
+	secure, outside := len(BindingsFor(ProfileSecure)), len(BindingsFor(^ProfileSecure))
+
+	RegisterBinding(func(*Runtime) {})
+	if got := len(BindingsFor(ProfileSecure)); got != secure+1 {
+		t.Fatalf("BindingsFor(ProfileSecure) returned %d installers, want %d", got, secure+1)
+	}
+	// Secure is one area and no mask of all of them, so the installer is
+	// withheld from every profile that does not name it.
+	if got := len(BindingsFor(^ProfileSecure)); got != outside {
+		t.Errorf("the installer reached a profile without ProfileSecure: %d installers, want %d", got, outside)
+	}
+}
+
 // TestBindingsFor covers the two masks a host reaches the registry through.
 // Bindings is every area, the surface stdlib.Register mounts, so it is never
 // shorter than any single area's share of it.

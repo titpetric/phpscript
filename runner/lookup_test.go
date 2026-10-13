@@ -548,3 +548,33 @@ echo $g->say("bob");
 		t.Errorf("output = %q, want %q", got, "hi bob")
 	}
 }
+
+// TestLookupError_Error covers the two renderings of the one error. A name
+// that matched too much lists what it matched, because the host's next move is
+// to spell one of them; every other reason has nothing to list, so the clause
+// is left off and never printed empty.
+func TestLookupError_Error(t *testing.T) {
+	ambiguous := &runner.LookupError{
+		Symbol:     "handle",
+		Candidates: []string{`App\Orders\handle`, `App\Users\handle`},
+		Reason:     "the name matches more than one function",
+	}
+	want := `lookup handle: the name matches more than one function: App\Orders\handle, App\Users\handle`
+	if got := ambiguous.Error(); got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+
+	missing := &runner.LookupError{Symbol: "absent", Reason: "no PHP function of that name is declared"}
+	if got, want := missing.Error(), "lookup absent: no PHP function of that name is declared"; got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+
+	// The text a host actually sees comes through Lookup, so the rendering is
+	// checked against one the resolver raised and not only a built value.
+	rt := lookupRuntime(t, nil, lookupTree)
+	if _, err := runner.Lookup[func(int) string](rt, "handle"); err == nil {
+		t.Fatal("Lookup(handle) resolved, want an ambiguity")
+	} else if !strings.Contains(err.Error(), "lookup handle: ") {
+		t.Errorf("Lookup error = %q, want it to name the symbol", err)
+	}
+}

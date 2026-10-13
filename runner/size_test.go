@@ -84,3 +84,65 @@ func TestSizeYAML(t *testing.T) {
 		t.Error("a K suffix parsed, want an error")
 	}
 }
+
+// TestSize_UnmarshalYAML covers the decoder hook on its own. Quoted or bare is
+// the same size, because a document naming 8M means the bytes either way, and a
+// refused spelling leaves the field at the value it already held and never
+// zeroes it, so a bad document cannot read as "no limit".
+func TestSize_UnmarshalYAML(t *testing.T) {
+	for _, text := range []string{`"8M"`, "8M", " 8M ", `'8M'`, "8388608"} {
+		var size runner.Size
+		if err := size.UnmarshalYAML([]byte(text)); err != nil {
+			t.Errorf("UnmarshalYAML(%q): %v", text, err)
+			continue
+		}
+		if got := size.Bytes(); got != 8<<20 {
+			t.Errorf("UnmarshalYAML(%q) = %d, want %d", text, got, 8<<20)
+		}
+	}
+
+	size := runner.Size(512)
+	if err := size.UnmarshalYAML([]byte("8K")); err == nil {
+		t.Error("UnmarshalYAML(8K) = nil, want an error")
+	}
+	if got := size.Bytes(); got != 512 {
+		t.Errorf("a refused document left %d behind, want the 512 the field held", got)
+	}
+}
+
+// TestSize_MarshalYAML covers the spelling a size is written back in, which is
+// the one it reads best in: a whole number of megabytes keeps the suffix, so a
+// configuration file a process rewrites still says 8M and not 8388608. Every
+// spelling round trips to the same byte count.
+func TestSize_MarshalYAML(t *testing.T) {
+	written := map[string]string{
+		"8M":      "8M",
+		"8388608": "8M",
+		"512":     "512",
+		"0":       "0",
+		"1048577": "1048577",
+	}
+	for text, want := range written {
+		size, err := runner.ParseSize(text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := size.MarshalYAML()
+		if err != nil {
+			t.Errorf("MarshalYAML(%q): %v", text, err)
+			continue
+		}
+		if got := string(data); got != want {
+			t.Errorf("MarshalYAML(%q) = %q, want %q", text, got, want)
+		}
+
+		var back runner.Size
+		if err := back.UnmarshalYAML(data); err != nil {
+			t.Errorf("round trip of %q: %v", text, err)
+			continue
+		}
+		if back != size {
+			t.Errorf("round trip of %q = %d, want %d", text, back.Bytes(), size.Bytes())
+		}
+	}
+}

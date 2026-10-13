@@ -142,6 +142,80 @@ func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 	}
 }
 
+// TestCallable_Invoke covers the cross-runtime call a request answered on a
+// worker of its own makes: the value crosses and the execution does not, so
+// each spelling runs on the runtime passed in.
+//
+// A closure, a bound method and Class::method carry their declaration and run
+// on a runtime that never loaded the source. A name crosses as a name, so the
+// runtime running it resolves it against its own function table, and one
+// declaring nothing cannot answer for it. That is the half that lets a host
+// register a binding under the name a script named.
+func TestCallable_Invoke(t *testing.T) {
+	origin := callableRuntime(t)
+	bare := runner.New(io.Discard, runner.Options{})
+	stdlib.Register(bare)
+
+	carried := []struct {
+		name  string
+		value any
+		want  string
+	}{
+		{name: "closure", value: constant(t, origin, "CLOSURE"), want: "closure b"},
+		{name: "bound method", value: constant(t, origin, "BOUND"), want: "hei b"},
+		{name: "Class::method", value: "Site::shout", want: "HELLO b"},
+		{name: "an object with __invoke", value: constant(t, origin, "SITE"), want: "invoked b"},
+	}
+	for _, test := range carried {
+		t.Run(test.name, func(t *testing.T) {
+			callable, err := origin.AsCallable(test.value)
+			if err != nil {
+				t.Fatalf("AsCallable: %v", err)
+			}
+			result, err := callable.Invoke(bare, "b")
+			if err != nil {
+				t.Fatalf("Invoke: %v", err)
+			}
+			if got, _ := result.(string); got != test.want {
+				t.Errorf("Invoke() = %v, want %q", result, test.want)
+			}
+		})
+	}
+
+	named, err := origin.AsCallable("plain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result, err := named.Invoke(bare, "b"); err == nil {
+		t.Errorf("a name resolved to %v on a runtime that declares nothing", result)
+	}
+	result, err := named.Invoke(callableRuntime(t), "b")
+	if err != nil {
+		t.Fatalf("Invoke on a runtime declaring plain(): %v", err)
+	}
+	if got, _ := result.(string); got != "plain b" {
+		t.Errorf("Invoke() = %v, want %q", result, "plain b")
+	}
+
+	// Call is the same execution on the runtime that built the value, so the
+	// two answers agree where the runtime is the same one.
+	closure, err := origin.AsCallable(constant(t, origin, "CLOSURE"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	direct, err := closure.Call("b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	crossed, err := closure.Invoke(origin, "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if direct != crossed {
+		t.Errorf("Call() = %v and Invoke(origin) = %v, want the same", direct, crossed)
+	}
+}
+
 // TestAsCallableReportsWhatItCaptured covers Captures, which is the question a
 // host asks before running a callable somewhere else: what came along is shared
 // by every runtime running it.
