@@ -2,7 +2,9 @@ package runner_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -1019,6 +1021,194 @@ func TestBodyDecodeIsFormOnly(t *testing.T) {
 				t.Fatalf("got %q, want %q", out, test.want)
 			}
 		})
+	}
+}
+
+// TestWithRoutePattern covers which pattern the path values are built from: the
+// one the route's author declared, and not the one the router matched. chi
+// registers /c/{tail...} as /c/* and reports that back, so a value exported
+// under a name would have no name at all if r.Pattern were the only source.
+func TestWithRoutePattern(t *testing.T) {
+	r := httptest.NewRequest("GET", "/c/deep/path", nil)
+	r.Pattern = "/c/*"
+	r.SetPathValue("*", "deep/path")
+	r = r.WithContext(runner.WithRoutePattern(r.Context(), "/c/{tail...}"))
+
+	if got := runner.FromRequest(r).Path["tail"]; got != "deep/path" {
+		t.Errorf("Path[tail] = %q, want %q", got, "deep/path")
+	}
+
+	// Without the declared pattern the router's own spelling is all there is,
+	// and * is not a name, so there is nothing to export the value under.
+	bare := httptest.NewRequest("GET", "/c/deep/path", nil)
+	bare.Pattern = "/c/*"
+	bare.SetPathValue("*", "deep/path")
+	if got := runner.FromRequest(bare).Path; len(got) != 0 {
+		t.Errorf("Path = %v with no declared pattern, want nothing", got)
+	}
+
+	// A declared pattern wins over a matched one that names the same parameter
+	// differently, so one route reads the same under either router.
+	mux := httptest.NewRequest("GET", "/users/42", nil)
+	mux.Pattern = "GET /users/{id}"
+	mux.SetPathValue("id", "42")
+	mux = mux.WithContext(runner.WithRoutePattern(mux.Context(), "/users/{id}"))
+	if got := runner.FromRequest(mux).Path["id"]; got != "42" {
+		t.Errorf("Path[id] = %q, want 42", got)
+	}
+}
+
+// TestRequestContext covers how a request-aware Go binding reaches the request:
+// Register puts the Context on the runtime's context, and the binding reads it
+// back off the context it was handed. A context with no request answers false,
+// the answer a session binding gets on a CLI run, so it can say so instead of
+// reading a zero Context as an empty request.
+func TestRequestContext(t *testing.T) {
+	r := httptest.NewRequest("GET", "/?page=2", nil)
+	ctx := runner.FromRequest(r)
+	rt := runner.New(io.Discard, runner.Options{})
+	ctx.Register(rt)
+
+	registered, ok := runner.RequestContext(rt.Context())
+	if !ok {
+		t.Fatal("RequestContext answered false on a runtime a request was registered on")
+	}
+	if got := registered.GetMap()["page"]; got != "2" {
+		t.Errorf("the registered context reads page = %q, want 2", got)
+	}
+
+	if _, ok := runner.RequestContext(context.Background()); ok {
+		t.Error("RequestContext answered true for a context carrying no request")
+	}
+}
+
+// TestContext_AddResponseHeader covers the append, which is the half header()
+// does not do by default. Set-Cookie is the reason it exists: a response
+// setting two cookies carries the header twice, and a replace would send one.
+func TestContext_AddResponseHeader(t *testing.T) {
+	ctx := runner.NewContext()
+	ctx.AddResponseHeader("Set-Cookie", "a=1")
+	ctx.AddResponseHeader("Set-Cookie", "b=2")
+
+	if got := ctx.ResponseHeaders()["Set-Cookie"]; len(got) != 2 {
+		t.Fatalf("Set-Cookie = %v, want both values", got)
+	}
+	// header() replaces unless told not to, so the two are not one call under
+	// two names: what a script writes through header() drops what was added.
+	ctx.Header("Set-Cookie: c=3")
+	if got := ctx.ResponseHeaders()["Set-Cookie"]; len(got) != 1 || got[0] != "c=3" {
+		t.Errorf("Set-Cookie = %v after header(), want the one value it set", got)
+	}
+}
+
+// TestContext_GetAllHeaders covers the array getallheaders() answers with. A
+// host-built context carries no request and answers an empty array and never
+// nothing, so a script indexing the result on a CLI run reads a missing key and
+// no error.
+func TestContext_GetAllHeaders(t *testing.T) {
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("X-Custom", "yes")
+	r.Header.Set("Content-Type", "application/json")
+
+	headers := runner.FromRequest(r).GetAllHeaders()
+	if headers == nil {
+		t.Fatal("GetAllHeaders answered nothing for a request carrying headers")
+	}
+	for name, want := range map[string]string{"X-Custom": "yes", "Content-Type": "application/json"} {
+		value, ok := headers.Get(name)
+		if !ok {
+			t.Errorf("GetAllHeaders holds no %s", name)
+			continue
+		}
+		if value != want {
+			t.Errorf("GetAllHeaders[%s] = %v, want %q", name, value, want)
+		}
+	}
+	if _, ok := headers.Get("X-Not-Sent"); ok {
+		t.Error("GetAllHeaders holds a header the request did not carry")
+	}
+
+	empty := runner.NewContext().GetAllHeaders()
+	if empty == nil {
+		t.Fatal("GetAllHeaders answered nothing for a host-built context")
+	}
+	if got := empty.Len(); got != 0 {
+		t.Errorf("GetAllHeaders holds %d entries with no request behind it, want none", got)
+	}
+}
+
+// TestContext_HTTPResponseCode covers the Go-facing call behind
+// http_response_code(), where the SAPI is passed in. A web SAPI starts out
+// answering 200; the command line starts with no status at all, so php answers
+// false while none is chosen and true for the first one set, having no previous
+// number to report.
+func TestContext_HTTPResponseCode(t *testing.T) {
+	web := runner.NewContext()
+	if got := web.HTTPResponseCode("http"); got != int64(http.StatusOK) {
+		t.Errorf("the reporting call on a web SAPI = %v, want 200", got)
+	}
+	if got := web.HTTPResponseCode("http", int64(404)); got != int64(http.StatusOK) {
+		t.Errorf("the first setting call on a web SAPI = %v, want the 200 it replaced", got)
+	}
+	if got := web.ResponseStatus(); got != http.StatusNotFound {
+		t.Errorf("staged status = %d, want 404", got)
+	}
+
+	cli := runner.NewContext()
+	if got := cli.HTTPResponseCode("cli"); got != false {
+		t.Errorf("the reporting call with no status chosen = %v, want false", got)
+	}
+	if got := cli.HTTPResponseCode("cli", int64(404)); got != true {
+		t.Errorf("the first setting call = %v, want true", got)
+	}
+	if got := cli.HTTPResponseCode("cli"); got != int64(404) {
+		t.Errorf("the reporting call after one was set = %v, want 404", got)
+	}
+
+	// The parameter is an int, so php coerces what it is given, and $_SERVER
+	// holds every value as a string: a page handing REDIRECT_STATUS straight
+	// back is handing over "503" and means 503.
+	if got := cli.HTTPResponseCode("cli", "503"); got != int64(404) {
+		t.Errorf("a status given as a string answered %v, want the 404 it replaced", got)
+	}
+	if got := cli.ResponseStatus(); got != http.StatusServiceUnavailable {
+		t.Errorf("staged status = %d, want 503", got)
+	}
+
+	// A zero, a null and a false name no status, so each is the reporting call
+	// and stages nothing.
+	for _, arg := range []any{int64(0), nil, false} {
+		if got := cli.HTTPResponseCode("cli", arg); got != int64(503) {
+			t.Errorf("HTTPResponseCode(%v) = %v, want the staged 503 reported", arg, got)
+		}
+		if got := cli.ResponseStatus(); got != http.StatusServiceUnavailable {
+			t.Errorf("HTTPResponseCode(%v) staged %d, want 503 left alone", arg, got)
+		}
+	}
+}
+
+// TestContext_SetRawBody covers what php://input answers for a host that built
+// its Context by hand, with no *http.Request behind it. The bytes are the body
+// and no form to decode, so the request fields stay as the host wrote them.
+func TestContext_SetRawBody(t *testing.T) {
+	ctx := runner.NewContext()
+	ctx.Post["written"] = "by the host"
+	ctx.SetRawBody([]byte(`{"a":1}`))
+
+	if got := string(ctx.RawBody()); got != `{"a":1}` {
+		t.Errorf("RawBody() = %q, want the bytes that were set", got)
+	}
+	if got := ctx.PostMap()["written"]; got != "by the host" {
+		t.Errorf("PostMap()[written] = %q, want the host's value", got)
+	}
+	if got := len(ctx.PostMap()); got != 1 {
+		t.Errorf("PostMap() holds %d entries, want the one the host wrote", got)
+	}
+
+	// A second call replaces the body and never appends to it.
+	ctx.SetRawBody([]byte("plain"))
+	if got := string(ctx.RawBody()); got != "plain" {
+		t.Errorf("RawBody() = %q after a second SetRawBody, want %q", got, "plain")
 	}
 }
 
