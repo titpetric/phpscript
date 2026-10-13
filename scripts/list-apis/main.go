@@ -19,15 +19,26 @@ import (
 )
 
 func main() {
-	rt := runner.New(io.Discard, runner.Options{SAPI: "cli", RootFS: os.DirFS(".")})
-	stdlib.Register(rt)
-	stdlib.RegisterFS(rt, ".")
-	runner.NewContext().Register(rt)
-
-	doc, err := apidoc.Generate(rt, ".")
-	if err != nil {
+	if err := generate(os.Stdout, "."); err != nil {
 		fmt.Fprintln(os.Stderr, "list-apis:", err)
 		os.Exit(1)
 	}
-	os.Stdout.WriteString(doc)
+}
+
+// generate writes the listing for the tree at root. It is the whole of the
+// command, kept apart from main so the wiring is asserted rather than trusted:
+// the listing is what a script sees, so a runtime built with one installer
+// missing publishes a reference that omits a whole area.
+func generate(out io.Writer, root string) error {
+	rt := runner.New(io.Discard, runner.Options{SAPI: "cli", RootFS: os.DirFS(root)})
+	stdlib.Register(rt)
+	stdlib.RegisterFS(rt, root)
+	runner.NewContext().Register(rt)
+
+	doc, err := apidoc.Generate(rt, root)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(out, doc)
+	return err
 }
