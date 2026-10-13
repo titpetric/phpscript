@@ -2,11 +2,12 @@ package main
 
 import (
 	"os"
-	"path/filepath"
-	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/titpetric/phpscript/cmd/phpscript/ast"
 	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
+	"github.com/titpetric/phpscript/cmd/phpscript/run"
 	"github.com/titpetric/phpscript/internal/flags"
 )
 
@@ -25,98 +26,98 @@ func TestCommandsBindWithGlobals(t *testing.T) {
 	}
 }
 
-func TestLoadConfig(t *testing.T) {
-	config, err := loadConfig("")
-	if err != nil {
-		t.Fatal(err)
+// TestWantsHelp covers which spellings main answers itself. The whole document
+// is main's to print; a help flag written after a command name belongs to that
+// command, and the library prints its usage instead. The split is positional,
+// so the first argument that is not a flag ends main's claim on the line.
+func TestWantsHelp(t *testing.T) {
+	document := [][]string{
+		{"-h"},
+		{"--help"},
+		{"help"},
+		{"-v", "--help"},
+		{"--config=x", "help"},
 	}
-	if config.Runner.WorkDir != "." {
-		t.Fatalf("runner work directory = %q", config.Runner.WorkDir)
+	for _, args := range document {
+		if !wantsHelp(args) {
+			t.Errorf("wantsHelp(%v) = false, want the whole document", args)
+		}
 	}
-	if config.Flatstack.Enabled {
-		t.Fatal("flatstack is enabled by default")
+
+	command := [][]string{
+		{},
+		{"run"},
+		{"run", "--help"},
+		{"test", "-h"},
+		{"server", "help"},
+		{"-v", "run", "--help"},
 	}
-	if !config.Routes.Enabled {
-		t.Fatal("annotated routes are disabled by default")
-	}
-	if !config.Telemetry.Enabled {
-		t.Fatal("telemetry is disabled by default")
-	}
-	if config.Server.Addr != ":8080" {
-		t.Fatalf("server options = %+v", config.Server)
-	}
-	if config.Telemetry.Path != "/debug/oida" ||
-		config.Telemetry.ServiceName != "phpscript" ||
-		config.Telemetry.RingBufferSize != 200 ||
-		config.Telemetry.TopRequests != 20 ||
-		config.Telemetry.SampleRate != 100 ||
-		!config.Telemetry.TrackMemoryUse {
-		t.Fatalf("telemetry options = %+v", config.Telemetry)
+	for _, args := range command {
+		if wantsHelp(args) {
+			t.Errorf("wantsHelp(%v) = true, want the command to answer it", args)
+		}
 	}
 }
 
-func TestLoadConfigFile(t *testing.T) {
-	filename := filepath.Join(t.TempDir(), "config.yml")
-	if err := os.WriteFile(filename, []byte(`
-runner:
-  work_dir: "app"
-flatstack:
-  enabled: true
-routes:
-  enabled: false
-telemetry:
-  enabled: false
-env:
-  - "PLATFORM_DB_APP=sqlite://app.db"
-`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-
-	config, err := loadConfig(filename)
+// TestWriteHelp covers the long help: the shared flags printed once, then every
+// registered command with the flags it adds of its own. A command's section
+// repeats no shared flag, because the whole point of the shared set is that it
+// is stated once.
+func TestWriteHelp(t *testing.T) {
+	file, err := os.CreateTemp(t.TempDir(), "help")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if config.Runner.WorkDir != "app" || !config.Flatstack.Enabled || config.Routes.Enabled || config.Telemetry.Enabled {
-		t.Fatalf("config = %+v", config)
+	defer file.Close()
+
+	commands := []registration{
+		{"run", run.Name, run.NewCommand},
+		{"ast", ast.Name, ast.NewCommand},
 	}
-	if !reflect.DeepEqual(config.Env, []string{"PLATFORM_DB_APP=sqlite://app.db"}) {
-		t.Fatalf("env = %q", config.Env)
+	if err := writeHelp(file, commands); err != nil {
+		t.Fatalf("writeHelp: %v", err)
+	}
+
+	written, err := os.ReadFile(file.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	document := string(written)
+
+	for _, want := range []string{"run", "ast", run.Name, ast.Name} {
+		if !strings.Contains(document, want) {
+			t.Errorf("the help does not name %q:\n%s", want, document)
+		}
+	}
+
+	// A shared flag is printed in the shared section and in no command's own.
+	shared := "--file"
+	if !strings.Contains(document, shared) {
+		t.Fatalf("the help does not name the shared flag %q:\n%s", shared, document)
+	}
+	if got := strings.Count(document, shared); got != 1 {
+		t.Errorf("the shared flag %q is printed %d times, want once", shared, got)
 	}
 }
 
-func TestLoadConfigTelemetryDisk(t *testing.T) {
-	dir := t.TempDir()
-	filename := filepath.Join(t.TempDir(), "config.yml")
-	if err := os.WriteFile(filename, []byte(`
-telemetry:
-  enabled: true
-  driver: disk
-  storage_path: `+dir+`
-`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	cfg, err := loadConfig(filename)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Telemetry.Driver != "disk" || cfg.Telemetry.StoragePath != dir {
-		t.Fatalf("telemetry storage = %+v", cfg.Telemetry)
-	}
-	opts, err := cfg.Telemetry.Resolved()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if opts.Storage == nil {
-		t.Fatal("disk storage not applied")
-	}
-}
+// TestDecorate covers what a command gets for free. The shared flags are bound
+// onto it and the work they imply wraps its Run, so no command package repeats
+// either, and a command naming no usage of its own is given the examples
+// registered under its name.
+func TestDecorate(t *testing.T) {
+	globals := &flags.Options{}
+	command := decorate(nil, globals, registration{"run", run.Name, run.NewCommand})()
 
-func TestParseConfigFile(t *testing.T) {
-	filename, args, err := parseConfigFile([]string{"server", "-f", "config.yml", "app"})
-	if err != nil {
-		t.Fatal(err)
+	if command.Bind == nil {
+		t.Error("the decorated command binds nothing, so the shared flags are unreachable")
 	}
-	if filename != "config.yml" || !reflect.DeepEqual(args, []string{"server", "app"}) {
-		t.Fatalf("filename = %q, args = %q", filename, args)
+	if command.Run == nil {
+		t.Error("the decorated command has no Run")
+	}
+	if command.Usage == nil {
+		t.Fatal("the decorated command states no usage")
+	}
+	if usage := command.Usage(); usage == "" {
+		t.Error("the usage is empty, so `phpscript run --help` prints no examples")
 	}
 }
