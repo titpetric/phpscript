@@ -838,6 +838,70 @@ func BenchmarkConstructRowsMaps(b *testing.B) {
 // callResult), which is the difference between a concrete return type
 // and `any`.
 
+// TestBindingRecord covers the plain Go struct a binding hands to PHP as an
+// object. Property access resolves through runner.helperGet, which reads the
+// exported fields by reflection and matches a name without regard to case, so
+// a script spells a field the way PHP spells one and the Go declaration keeps
+// Go's capitals.
+func TestBindingRecord(t *testing.T) {
+	record := tests.BindingRecord{ID: 7, Name: "alpha"}
+	if record.ID != 7 || record.Name != "alpha" {
+		t.Errorf("BindingRecord = %+v, want {7 alpha}", record)
+	}
+
+	out := runBinding(t, `<?php
+$r = bind_record();
+echo $r->name, ":", $r->Name, ":", $r->id;
+`)
+	if want := "alpha:alpha:1"; out != want {
+		t.Errorf("field reads = %q, want %q", out, want)
+	}
+}
+
+// TestBindingRecord_Label covers method dispatch on a forwarded Go value. The
+// receiver is a value and no pointer, so a method set declared without one is
+// still reachable from `$r->label()`.
+func TestBindingRecord_Label(t *testing.T) {
+	if got := (tests.BindingRecord{Name: "alpha"}).Label(); got != "alpha" {
+		t.Errorf("Label() = %q, want \"alpha\"", got)
+	}
+
+	out := runBinding(t, `<?php
+echo bind_record()->label(), ":", bind_record_value()->label();
+`)
+	if want := "alpha:alpha"; out != want {
+		t.Errorf("method dispatch = %q, want %q", out, want)
+	}
+}
+
+// TestBindingFuncs covers the definitions the VM tests and the raw-call
+// benchmarks share. One set of registrations answers both, so a binding
+// measured by a benchmark is the same function a fixture ran.
+func TestBindingFuncs(t *testing.T) {
+	funcs := tests.BindingFuncs()
+	if len(funcs) == 0 {
+		t.Fatal("BindingFuncs() answered no bindings")
+	}
+
+	for _, name := range []string{"bind_list_strings", "bind_record", "bind_map"} {
+		fn, ok := funcs[name]
+		if !ok {
+			t.Errorf("BindingFuncs() holds no %q", name)
+			continue
+		}
+		if fn == nil {
+			t.Errorf("%q is registered as nil", name)
+		}
+		if got := tests.BindingFunc(name); reflect.ValueOf(got).Pointer() != reflect.ValueOf(fn).Pointer() {
+			t.Errorf("BindingFunc(%q) is not the function BindingFuncs() holds", name)
+		}
+	}
+
+	if got := tests.BindingFunc("bind_nothing"); got != nil {
+		t.Errorf("BindingFunc on an unregistered name = %v, want nil", got)
+	}
+}
+
 // benchmarkCall drives a binding through the same reflection sequence the
 // runtime uses (reflect.Value.Call followed by Interface() on each result, see
 // runner.invokeAny and runner.callResult), isolating the return path from the

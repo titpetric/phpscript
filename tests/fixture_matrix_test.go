@@ -6,6 +6,30 @@ import (
 	"testing"
 )
 
+// TestFixtureRunners covers the three states a runner opt-out carries. The
+// fields are pointers so an absent one is distinguishable from a false one: a
+// fixture declaring nothing about a runner is checked against it. The default
+// runtime has no field at all, because it defines the expected output the
+// other two columns are compared with.
+func TestFixtureRunners(t *testing.T) {
+	var absent FixtureRunners
+	if absent.Flatstack != nil || absent.PHP != nil {
+		t.Errorf("a zero FixtureRunners = %+v, want neither field set", absent)
+	}
+
+	off := false
+	fx := &Fixture{Runner: FixtureRunners{Flatstack: &off}}
+	if fx.Runs(RunnerFlatstack) {
+		t.Error("Runs(flatstack) = true for a fixture that opted out")
+	}
+	if !fx.Runs(RunnerPHP) {
+		t.Error("Runs(php) = false for a fixture declaring nothing about php")
+	}
+	if !fx.Runs(RunnerRuntime) {
+		t.Error("Runs(runtime) = false; the runtime defines the expected output")
+	}
+}
+
 func TestFixtureRunsMetadata(t *testing.T) {
 	cases := []struct {
 		name      string

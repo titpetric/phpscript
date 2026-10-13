@@ -21,13 +21,22 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/titpetric/phpscript/flatstack"
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/runner/coverage"
 	"github.com/titpetric/phpscript/stdlib"
+	"github.com/titpetric/phpscript/stdlib/database"
+	"github.com/titpetric/phpscript/stdlib/mail"
 )
 
 // ---------------------------------------------------------------------------
@@ -252,4 +261,268 @@ echo $storage->tenant() . ":" . $record->value;
 // single line for the summary table.
 func oneLine(s string) string {
 	return strings.Join(strings.Fields(s), " ")
+}
+
+// TestFixtureRequest covers the frontmatter block a fixture describes its
+// superglobals with. Every map is keyed by the name PHP reads it under, so a
+// fixture writes $_GET and $_POST as yaml and the harness copies them across
+// without a translation table.
+func TestFixtureRequest(t *testing.T) {
+	fx, err := ParseFixture([]byte("name: request\ndescription: request block\nrequest:\n  get:\n    page: \"2\"\n  post:\n    name: alice\n  cookie:\n    sid: abc\n  env:\n    APP: test\n  headers:\n    X-Trace: t1\n  stdin: \"in\"\n  body: \"raw\"\n  args: [\"one\"]\n---\n<?php\n---\n"), "request.phpt")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := FixtureRequest{
+		Args:    []any{"one"},
+		Get:     map[string]string{"page": "2"},
+		Post:    map[string]string{"name": "alice"},
+		Cookie:  map[string]string{"sid": "abc"},
+		Env:     map[string]string{"APP": "test"},
+		Headers: map[string]string{"X-Trace": "t1"},
+		Stdin:   "in",
+		Body:    "raw",
+	}
+	if !reflect.DeepEqual(fx.Request, want) {
+		t.Errorf("Request = %+v, want %+v", fx.Request, want)
+	}
+}
+
+// TestFixtureResponse covers the headers a fixture holds the response to. The
+// block is assertions and no input, so it carries only what a run compares
+// against.
+func TestFixtureResponse(t *testing.T) {
+	fx, err := ParseFixture([]byte("name: response\ndescription: response block\nresponse:\n  headers:\n    Content-Type: text/plain\n---\n<?php\n---\n"), "response.phpt")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := FixtureResponse{Headers: map[string]string{"Content-Type": "text/plain"}}
+	if !reflect.DeepEqual(fx.Response, want) {
+		t.Errorf("Response = %+v, want %+v", fx.Response, want)
+	}
+}
+
+// TestFixture_SetRootFS covers the filesystem a fixture's includes resolve
+// against. The directory holding the .phpt is what every caller binds, so a
+// relative require reaches the same file under all three runners.
+func TestFixture_SetRootFS(t *testing.T) {
+	fx, err := ParseFixture([]byte("name: rootfs\ndescription: include root\n---\n<?php\nrequire \"helper.php\";\necho helper();\n---\nhelped"), "rootfs.phpt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fx.SetRootFS(fstest.MapFS{
+		"helper.php": &fstest.MapFile{Data: []byte("<?php\nfunction helper() { return \"helped\"; }\n")},
+	})
+
+	res := RunFixture(t.Context(), fx)
+	if !res.Passed {
+		t.Fatalf("fixture failed: %s", res.FailureReason)
+	}
+}
+
+// TestShareSources covers the layer precompiling one directory compiles from.
+// Every body in the directory sits in one filesystem, so the tree is compiled
+// once for the whole area and not once per fixture in it.
+func TestShareSources(t *testing.T) {
+	first := &Fixture{Name: "first", Path: "area/first.phpt", PHP: "<?php echo 1;"}
+	second := &Fixture{Name: "second", Path: "area/second.phpt", PHP: "<?php echo 2;"}
+
+	ShareSources([]*Fixture{first, second})
+
+	for _, fx := range []*Fixture{first, second} {
+		if got := len(fx.sources); got != 2 {
+			t.Errorf("%s carries %d bodies, want 2", fx.Name, got)
+		}
+		if _, ok := fx.sources[first.sourceName()]; !ok {
+			t.Errorf("%s does not carry %s", fx.Name, first.sourceName())
+		}
+		if _, ok := fx.sources[second.sourceName()]; !ok {
+			t.Errorf("%s does not carry %s", fx.Name, second.sourceName())
+		}
+	}
+
+	// A fixture naming its own root keys a cache of its own, so the bodies of
+	// one directory do not reach the tree a second directory compiled.
+	apart := &Fixture{Name: "apart", Path: "other/apart.phpt", PHP: "<?php echo 3;"}
+	ShareSources([]*Fixture{first, apart})
+	if len(apart.sources) != 1 {
+		t.Errorf("apart carries %d bodies, want 1", len(apart.sources))
+	}
+}
+
+// TestFixture_SetAppRoot covers the second filesystem a fixture runs over: the
+// application root holding the prelude. The fixture directory answers first,
+// so a fixture's own relative include keeps meaning what it meant, and the
+// prelude is read off the root beneath it.
+func TestFixture_SetAppRoot(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "prelude.php"), []byte("<?php\nfunction prelude_tag() { return \"tagged\"; }\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	fx, err := ParseFixture([]byte("name: approot\ndescription: application root prelude\n---\n<?php\necho prelude_tag();\n---\ntagged"), filepath.Join(dir, "approot.phpt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fx.SetAppRoot(dir, "prelude.php")
+
+	res := RunFixture(t.Context(), fx)
+	if !res.Passed {
+		t.Fatalf("fixture failed: %s", res.FailureReason)
+	}
+
+	// An include the application does not carry is skipped: the setting says
+	// what to load when the tree holds it.
+	fx.SetAppRoot(dir, "prelude.php", "absent.php")
+	if res := RunFixture(t.Context(), fx); !res.Passed {
+		t.Fatalf("fixture failed with a prelude file that is not there: %s", res.FailureReason)
+	}
+}
+
+// TestFixture_SetDatabase covers the connections a fixture's Database bindings
+// resolve through. The suite passes the provider its setup hook applied the
+// schema with, so runnerOptions carries that one into the run and opens no
+// second pool over the same DSN.
+func TestFixture_SetDatabase(t *testing.T) {
+	provider := database.New(nil)
+
+	fx := &Fixture{Name: "db", Path: "db.phpt"}
+	if got := fx.runnerOptions().Database; got != nil {
+		t.Errorf("Database = %v before SetDatabase, want nothing", got)
+	}
+
+	fx.SetDatabase(provider)
+	if got := fx.runnerOptions().Database; got != model.DatabaseProvider(provider) {
+		t.Errorf("Database = %v, want the provider the suite built", got)
+	}
+}
+
+// TestFixture_SetMail covers the mail servers a fixture may name. Nothing
+// leaves a run of the fixtures: construction is a name lookup, and the names
+// are what the fixtures assert on.
+func TestFixture_SetMail(t *testing.T) {
+	provider := mail.NewProvider(nil)
+
+	fx := &Fixture{Name: "mail", Path: "mail.phpt"}
+	if got := fx.runnerOptions().Mail; got != nil {
+		t.Errorf("Mail = %v before SetMail, want nothing", got)
+	}
+
+	fx.SetMail(provider)
+	if got := fx.runnerOptions().Mail; got != model.MailProvider(provider) {
+		t.Errorf("Mail = %v, want the provider the suite built", got)
+	}
+}
+
+// TestFixture_SetCoverage covers the collector the runtime runner reports
+// statements to. Only that runner carries one: flatstack has no coverage
+// support, and the php runner is a second process.
+func TestFixture_SetCoverage(t *testing.T) {
+	fx := &Fixture{Name: "cover", Path: "cover.phpt"}
+	if got := fx.Coverage(); got != nil {
+		t.Errorf("Coverage() = %v before SetCoverage, want nothing", got)
+	}
+
+	collector := coverage.New()
+	fx.SetCoverage(collector)
+	if got := fx.Coverage(); got != collector {
+		t.Errorf("Coverage() = %v, want the collector that was installed", got)
+	}
+}
+
+// TestFixture_RootDir covers the directory a fixture's includes resolve
+// against, which is also where the php runner executes. A fixture naming
+// `root:` moves it, relative to its own directory, for a tree phpscript does
+// not embed.
+func TestFixture_RootDir(t *testing.T) {
+	for _, tc := range []struct {
+		path string
+		root string
+		want string
+	}{
+		{"fixtures/area/one.phpt", "", filepath.FromSlash("fixtures/area")},
+		{"fixtures/area/one.phpt", "vendor", filepath.FromSlash("fixtures/area/vendor")},
+		{"one.phpt", "", "."},
+	} {
+		fx := &Fixture{Path: filepath.FromSlash(tc.path), Root: tc.root}
+		if got := fx.RootDir(); got != tc.want {
+			t.Errorf("RootDir() for path %q root %q = %q, want %q", tc.path, tc.root, got, tc.want)
+		}
+	}
+}
+
+// TestParseGolden covers the second fixture form: a _test.php body php can run
+// where it lies, and the _test.txt beside it. Both are taken as they are, with
+// CRLF normalised so a file checked out on Windows compares equal, and the
+// trailing newlines of the expected output dropped.
+func TestParseGolden(t *testing.T) {
+	fx := ParseGolden(
+		[]byte("<?php\r\necho \"ok\";\r\n"),
+		[]byte("ok\r\n\n"),
+		filepath.FromSlash("fixtures/area/echo_test.php"),
+	)
+
+	if fx.Name != "echo" {
+		t.Errorf("Name = %q, want \"echo\"", fx.Name)
+	}
+	if want := "<?php\necho \"ok\";\n"; fx.PHP != want {
+		t.Errorf("PHP = %q, want %q", fx.PHP, want)
+	}
+	if fx.Expected != "ok" {
+		t.Errorf("Expected = %q, want \"ok\"", fx.Expected)
+	}
+	if want := filepath.FromSlash("fixtures/area/echo_test.php"); fx.Path != want {
+		t.Errorf("Path = %q, want %q", fx.Path, want)
+	}
+}
+
+// TestFindFixtures covers discovery over a real tree: both fixture forms, in
+// path order, and a _test.php with no expected output beside it left out. A
+// path ending in /... walks the subdirectories, and one without it reads only
+// the directory named.
+func TestFindFixtures(t *testing.T) {
+	dir := writeTree(t,
+		"doc.phpt", "name: doc\ndescription: a document\n---\n<?php echo \"ok\";\n---\nok",
+		"body_test.php", "<?php echo \"ok\";\n",
+		"body_test.txt", "ok\n",
+		// A body with no expected output beside it is a php file in the tree,
+		// and no fixture.
+		"loose_test.php", "<?php echo \"loose\";\n",
+		"nested/deep.phpt", "name: deep\ndescription: a nested document\n---\n<?php echo \"ok\";\n---\nok",
+	)
+
+	flat, err := FindFixtures([]string{dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := fixtureNames(flat), []string{"body", "doc"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("FindFixtures(dir) = %v, want %v", got, want)
+	}
+
+	deep, err := FindFixtures([]string{filepath.Join(dir, "...")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := fixtureNames(deep), []string{"body", "deep", "doc"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("FindFixtures(dir/...) = %v, want %v", got, want)
+	}
+
+	one, err := FindFixtures([]string{filepath.Join(dir, "doc.phpt")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := fixtureNames(one), []string{"doc"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("FindFixtures(file) = %v, want %v", got, want)
+	}
+}
+
+// fixtureNames lists the fixture names in discovery order.
+func fixtureNames(fixtures []*Fixture) []string {
+	names := make([]string, 0, len(fixtures))
+	for _, fx := range fixtures {
+		names = append(names, fx.Name)
+	}
+	sort.Strings(names)
+	return names
 }
