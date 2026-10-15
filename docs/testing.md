@@ -89,6 +89,23 @@ stdlib.Register(rt)
 
 PHP accesses this constructor as `SharedMemory`. The binding exposes `set` and `get` for string values, `incr` and `count` for named counters, and `delete`, `has`, and `clear` for cleanup and assertions. Reuse the same `shm` across runtimes to assert cross-request state; create a new one per test to avoid state leaking between tests.
 
+### `t.Parallel()`
+
+A top-level test declares `t.Parallel()` as its first statement unless something below disqualifies it. The suite runs this way; a new test follows it so one serial straggler does not stall its package.
+
+A test stays serial when it:
+
+- calls `t.Setenv` (Go panics on it in a parallel test), `t.Chdir`, `os.Chdir`, or swaps `os.Stdout`, `os.Stderr` or `os.Stdin`;
+- writes process-global state, directly or through what it calls: `stdlib.SetProfile` (reached through `flags.Options.Validate`), `lint.SetInclude` (reached through the lint command's `run`), `slog.SetDefault`, the binding registry, a package-level variable;
+- asserts on a process-wide counter: `testing.AllocsPerRun`, `runtime.ReadMemStats`, a live-heap delta such as the one `Precompiler.Run` records, a goroutine count;
+- runs fixtures through the `tests` package: `RunFixture` outside a worker loop lands on worker zero, one set of caches and one runtime shared by every such caller, and the suite's scaffold connections point at one shared in-memory sqlite;
+- bounds elapsed time from above, because four saturated cores stretch every sleep and every scheduling gap;
+- inspects a value after handing it to a `sync.Pool`, which a concurrent draw is free to mutate.
+
+The call that disqualifies is often two frames down, so the check follows helpers, not just the test body. The proof for a parallelised package is `go test -count 2` and a separate `-race` run: the first catches shared fixtures, the second catches the globals the read of the code missed. A package that resists stays serial with its reason beside it; the `cmd/phpscript/server` vhost tests are one, because a recycled tracer span context reaching sqlite's interrupt watcher segfaults under reordering.
+
+A parent that calls `t.Parallel()` returns before its parallel children run, so cleanup written after a `t.Run` loop of parallel subtests runs too early; register it with `t.Cleanup` instead.
+
 ## `.phpt` fixtures
 
 Fixtures live in a per-area folder below [`tests/fixtures`](../tests/fixtures): `arithmetic`, `arrays`, `autoloading`, `bindings`, `comparison`, `errors`, `exceptions`, `flatstack`, `functions`, `gd`, `includes`, `mail`, `namespaces`, `oop`, `output`, `paths`, `pexec`, `regex`, `routing`, `runtime`, `scaffold`, `stdlib`, `strings`, `syntax` and `types`. The test harness discovers every file with a `.phpt` extension below that tree and runs it through the default `runner` runtime, and through the other runtimes the fixture has not opted out of. A new area is a new folder; nothing registers it. [`github`](../tests/fixtures/github) is the exception: it holds issue reproductions under a `.yml` extension and nothing there runs.
