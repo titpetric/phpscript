@@ -23,6 +23,7 @@ func write(t *testing.T, name, src string) string {
 // formatted is reported unchanged and left alone. A caller running this over a
 // tree counts the second result to decide whether anything moved.
 func TestFile(t *testing.T) {
+	t.Parallel()
 	path := write(t, "index.php", "<?php\nif($a){echo 1;}\n")
 
 	changed, err := File(path)
@@ -61,6 +62,7 @@ func TestFile(t *testing.T) {
 // and reported as a *SkipError naming it. A directory of PHP holds valid code
 // this parser does not support, and one such file does not stop the rest.
 func TestFileSkipsWhatItCannotParse(t *testing.T) {
+	t.Parallel()
 	source := "<?php\nfunction broken( {\n"
 	path := write(t, "broken.php", source)
 
@@ -90,6 +92,7 @@ func TestFileSkipsWhatItCannotParse(t *testing.T) {
 // is returned as it came, with no *SkipError wrapper, because a caller walking
 // a tree has to stop on a read failure and carry on past a refusal.
 func TestFileReportsAMissingPath(t *testing.T) {
+	t.Parallel()
 	changed, err := File(filepath.Join(t.TempDir(), "absent.php"))
 	if changed {
 		t.Error("File reported a change for a path that is not there")

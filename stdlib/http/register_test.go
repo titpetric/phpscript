@@ -19,6 +19,7 @@ import (
 // the runtime the constructor closed over, so a refusal from Go reaches the
 // script as a throw.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -58,6 +59,7 @@ try {
 // call with the argument left off, and an HTTP error status does not throw: the
 // script reads $response->status().
 func TestClient_Post(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		body, _ := io.ReadAll(r.Body)
 		if r.URL.Path == "/gone" {
@@ -125,6 +127,7 @@ func newMux(t *testing.T, declarations string) (*http.Mux, *strings.Builder) {
 // routes, so a request before any handle() reaches net/http's own 404 and never
 // a nil dereference.
 func TestNewMux(t *testing.T) {
+	t.Parallel()
 	mux, _ := newMux(t, `<?php`)
 	if mux == nil {
 		t.Fatal("NewMux returned nil")
@@ -142,6 +145,7 @@ func TestNewMux(t *testing.T) {
 // a 500 on the first request that arrives, and an empty pattern is refused
 // outright.
 func TestMux_Handle(t *testing.T) {
+	t.Parallel()
 	mux, _ := newMux(t, `<?php function ping($w, $r) { $w->write("pong"); }`)
 
 	if err := mux.Handle("GET /ping", "ping"); err != nil {
@@ -171,6 +175,7 @@ func TestMux_Handle(t *testing.T) {
 // net/http values reach the handler, what it echoes becomes the response, and a
 // throw is answered with a 500.
 func TestMux_ServeHTTP(t *testing.T) {
+	t.Parallel()
 	mux, _ := newMux(t, `<?php
 function hello($w, $r) {
 	$w->header()->set("X-Answered-By", "php");

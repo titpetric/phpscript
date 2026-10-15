@@ -15,6 +15,7 @@ import (
 // both arguments are nil here and the command still builds. It declares no
 // flags of its own, so Bind stays nil and the shared flags are all it binds.
 func TestNewCommand(t *testing.T) {
+	t.Parallel()
 	command := NewCommand(nil, nil)
 
 	if command.Name != "ast" {

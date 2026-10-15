@@ -16,6 +16,7 @@ import (
 // the same client: a caller that needs the storage reachable before it holds a
 // client swaps one call for the other.
 func TestDatabaseProvider(t *testing.T) {
+	t.Parallel()
 	typ := reflect.TypeOf((*DatabaseProvider)(nil)).Elem()
 
 	want := map[string]string{
@@ -45,6 +46,7 @@ func TestDatabaseProvider(t *testing.T) {
 // DatabaseProvider alone, so the two interfaces have to stay independent: a
 // caller reaching for List type-asserts for this one and carries on without it.
 func TestExtendedDatabaseProvider(t *testing.T) {
+	t.Parallel()
 	base := reflect.TypeOf((*DatabaseProvider)(nil)).Elem()
 	extended := reflect.TypeOf((*ExtendedDatabaseProvider)(nil)).Elem()
 

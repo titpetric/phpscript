@@ -32,6 +32,7 @@ func runScript(t *testing.T, src string) string {
 // value buys: the instance the script holds is addressable, so its fields are
 // writable and a write is visible through the accessors.
 func TestExceptionSemantics(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		php  string
@@ -88,6 +89,7 @@ echo $e->getMessage();`,
 // fast path must be indistinguishable from the *model.Array it replaced for
 // everything except appending.
 func TestArrayMergeScript(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		php  string
@@ -156,6 +158,7 @@ echo call_user_func_array($join3, array_merge(array("x"), array("y", "z")));`,
 }
 
 func TestStringShimsScript(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		php  string
@@ -195,6 +198,7 @@ func TestStringShimsScript(t *testing.T) {
 // contract (a bad bound or length surfaces as a catchable throw) and the
 // hex2bin false returns, which under the php binary arrive with a warning.
 func TestRandomBindingsScript(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		php  string

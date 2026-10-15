@@ -12,6 +12,7 @@ import (
 // reports its declared class, and a missing or null argument is
 // false, which is php's answer for the call that names nothing.
 func TestGetClass(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 class Site {}
 $s = new Site;
@@ -29,6 +30,7 @@ var_dump(get_class($s), get_class(null));`)
 // host registers "Storage" for a Go type called storage they are not, and a
 // script comparing get_class($x) === "Storage" reads false.
 func TestGetClassOfAHostValue(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -52,6 +54,7 @@ func TestGetClassOfAHostValue(t *testing.T) {
 // || get_class($o) === "Exception"` falls through to the name comparison, which
 // is the check that answers here. If this fails, read docs/design.md.
 func TestNoParentClass(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 class Site {}
 $s = new Site;
@@ -68,6 +71,7 @@ var_dump(get_parent_class($s), is_subclass_of($s, "Site"), get_class($s) === "Si
 // array entry, so `(object) array("a", "b")` reads back as a list and a
 // foreach over the result counts from zero.
 func TestGetObjectVars(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 class Site { public $greeting = "hei"; }
 $s = new Site;
@@ -98,6 +102,7 @@ var_dump(get_object_vars("Site"), get_object_vars(42));`)
 // TestMethodExists covers php's case-insensitive method lookup, reached through
 // an object or through a class name, both of which php accepts.
 func TestMethodExists(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 class Site { public function hello() { return "hi"; } }
 $s = new Site;
@@ -117,6 +122,7 @@ var_dump(method_exists("Site", "hello"), method_exists("Nope", "hello"));`)
 // "greeting") is true. The declaration is reachable only through an instance
 // here, so the call that names a class has nothing to read.
 func TestPropertyExists(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 class Site { public $greeting = "hei"; }
 $s = new Site;
@@ -135,6 +141,7 @@ var_dump(property_exists("Site", "greeting"));`)
 // makes either. Two objects differ, one object reads the same twice, and the
 // hash is the id in the 32 hex digits php writes it in.
 func TestSPLObjectIdentity(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 class Site {}
 $a = new Site;

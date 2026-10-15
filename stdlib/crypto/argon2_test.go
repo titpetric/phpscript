@@ -12,6 +12,7 @@ import (
 // keeping the original value in the initial hash, and m=8 is the smallest php
 // accepts.
 func TestArgon2VerifyPHPVectors(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		password string
 		hash     string
@@ -52,6 +53,7 @@ func TestArgon2VerifyPHPVectors(t *testing.T) {
 // from the same parameters. password_verify reads the variant out of the stored
 // hash; reading the wrong one answers false for the right password.
 func TestArgon2VariantsDiffer(t *testing.T) {
+	t.Parallel()
 	const i = "$argon2i$v=19$m=256,t=1,p=1$cS9QSzJUc0FEdG9GMHA2Wg$DqXqGB6ym/9L5u2JTWBA/tIjewj0KUPJOnJgpw5WdK4"
 	id := strings.Replace(i, "$argon2i$", "$argon2id$", 1)
 	if argon2Verify("pw", id) {
@@ -62,6 +64,7 @@ func TestArgon2VariantsDiffer(t *testing.T) {
 // TestArgon2RoundTrip checks that what password_hash writes is what
 // password_get_info reads, for both variants.
 func TestArgon2RoundTrip(t *testing.T) {
+	t.Parallel()
 	for _, algo := range []string{algoArgon2i, algoArgon2id} {
 		want := params{algo: algo, memory: 256, time: 1, lanes: 1}
 		hash, err := argon2Hash("pw", want)
@@ -84,6 +87,7 @@ func TestArgon2RoundTrip(t *testing.T) {
 // TestArgon2SaltIsFresh pins that two hashes of one password differ, which is
 // the salt doing its job and is the property a digest does not have.
 func TestArgon2SaltIsFresh(t *testing.T) {
+	t.Parallel()
 	p := params{algo: algoArgon2id, memory: 256, time: 1, lanes: 1}
 	first, err := argon2Hash("pw", p)
 	if err != nil {
@@ -103,6 +107,7 @@ func TestArgon2SaltIsFresh(t *testing.T) {
 // take a wrong parameter set, derive a wrong tag, and answer false for the
 // right password.
 func TestArgon2DecodeRejects(t *testing.T) {
+	t.Parallel()
 	const good = "$argon2id$v=19$m=256,t=1,p=1$cS9QSzJUc0FEdG9GMHA2Wg$DqXqGB6ym/9L5u2JTWBA/tIjewj0KUPJOnJgpw5WdK4"
 
 	cases := map[string]string{

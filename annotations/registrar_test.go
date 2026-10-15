@@ -67,6 +67,7 @@ echo "last";
 // this interface renders the parameters its own way. A repeated tag registers
 // once per line, so one file answers two methods.
 func TestRegistrar(t *testing.T) {
+	t.Parallel()
 	registrar := &recordingRegistrar{}
 	if err := annotations.NewRoute(testRegistrarFileSystem).Register(registrar); err != nil {
 		t.Fatal(err)
@@ -96,6 +97,7 @@ func TestRegistrar(t *testing.T) {
 // answering wrongly. Two files declaring one pattern both reach the registrar
 // in path order, so the later file is the handler a router keeps.
 func TestRoute_Register(t *testing.T) {
+	t.Parallel()
 	registrar := &recordingRegistrar{}
 	if err := annotations.NewRoute(testRegistrarFileSystem).Register(registrar); err != nil {
 		t.Fatal(err)

@@ -29,6 +29,7 @@ func runSource(t *testing.T, source string) string {
 // property, as the collection test and the scalar branch both did. Exception
 // is the binding every runtime has.
 func TestObjectCastKeepsHostObjects(t *testing.T) {
+	t.Parallel()
 	got := runSource(t, `<?php
 $e = new Exception("boom");
 $o = (object) $e;
@@ -43,6 +44,7 @@ echo get_class($o), "|", $o->getMessage(), "|", ($o === $e ? "same" : "different
 // object" test, so the collection branch has to be tried first or `(object)` on
 // an array becomes a no-op.
 func TestObjectCastConvertsCollections(t *testing.T) {
+	t.Parallel()
 	got := runSource(t, `<?php
 $o = (object) array("host" => "localhost", "port" => 8080);
 echo get_class($o), "|", $o->host, "|", $o->port, "|";
@@ -56,6 +58,7 @@ echo json_encode($fromList);
 
 // The scalar forms, and the round trip back through (array).
 func TestObjectCastScalarsAndRoundTrip(t *testing.T) {
+	t.Parallel()
 	got := runSource(t, `<?php
 echo ((object) "text")->scalar, "|";
 echo ((object) 5)->scalar, "|";

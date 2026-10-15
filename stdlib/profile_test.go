@@ -11,6 +11,7 @@ import (
 // and no fallback, because falling back to every area would narrow
 // nothing while reading as a narrowed runtime.
 func TestParseProfile(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value string
 		want  stdlib.Profile
@@ -62,6 +63,7 @@ func TestSetProfileNarrowsRegister(t *testing.T) {
 // TestDefaultProfileIsSecure pins the constant the configuration story rests
 // on: the default profile for an untrusted host names no insecure area.
 func TestDefaultProfileIsSecure(t *testing.T) {
+	t.Parallel()
 	if stdlib.Default != stdlib.Secure {
 		t.Fatalf("stdlib.Default = %b, want stdlib.Secure (%b)", stdlib.Default, stdlib.Secure)
 	}

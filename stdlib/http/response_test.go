@@ -14,6 +14,7 @@ import (
 // form. This returns the map as the response carries it, so the keys are the
 // canonical spellings and a script indexes them the way a browser prints them.
 func TestResponse_Headers(t *testing.T) {
+	t.Parallel()
 	header := nethttp.Header{}
 	header.Add("Content-Type", "application/json")
 	header.Add("Set-Cookie", "a=1")
@@ -51,6 +52,7 @@ func TestResponse_Headers(t *testing.T) {
 // true only for a 2xx that arrived, so a 404 and a transport failure are both
 // false, and Status() reports 0 for a request that got no response at all.
 func TestResponseStatusAndOK(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name     string
 		response *Response
@@ -81,6 +83,7 @@ func TestResponseStatusAndOK(t *testing.T) {
 // everything send() returns, and the body is a string the script can print
 // whatever the status.
 func TestResponseBodyAndErr(t *testing.T) {
+	t.Parallel()
 	arrived := &Response{status: 404, header: nethttp.Header{}, body: "not found"}
 	if got := arrived.Body(); got != "not found" {
 		t.Errorf("Body() = %q, want %q", got, "not found")
@@ -102,6 +105,7 @@ func TestResponseBodyAndErr(t *testing.T) {
 // that is not JSON throws, so a script never reads a zero value it would then
 // treat as data.
 func TestResponseJSON(t *testing.T) {
+	t.Parallel()
 	decoded, err := (&Response{body: `{"id":1,"tags":["a","b"]}`}).JSON()
 	if err != nil {
 		t.Fatalf("JSON: %v", err)

@@ -99,6 +99,7 @@ func legacyEntries(a *legacyArray) [][2]any {
 }
 
 func TestArrayListModeAppend(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	if !a.isList() {
 		t.Fatal("a fresh array should start in list mode")
@@ -137,6 +138,7 @@ func TestArrayListModeAppend(t *testing.T) {
 }
 
 func TestArrayNewArraySizePresizesListOnly(t *testing.T) {
+	t.Parallel()
 	a := NewArraySize(8)
 	if !a.isList() {
 		t.Fatal("NewArraySize should return a list-mode array")
@@ -160,6 +162,7 @@ func TestArrayNewArraySizePresizesListOnly(t *testing.T) {
 // index. A list-mode implementation that dropped insertion order or restarted
 // the index at the string key would fail here.
 func TestArrayMixedLiteral(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Append("a")
 	a.Append("b")
@@ -190,6 +193,7 @@ func TestArrayMixedLiteral(t *testing.T) {
 // TestArraySparseIntKeys covers PHP's array(5 => "a", "b"): the next append
 // lands at 6, and a later low key does not move.
 func TestArraySparseIntKeys(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Set(int64(5), "a")
 	if a.isList() {
@@ -211,6 +215,7 @@ func TestArraySparseIntKeys(t *testing.T) {
 // Its iteration order is 1 then 0, which a naive "append into the slice"
 // implementation would silently reorder.
 func TestArrayOutOfOrderSetPromotes(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Set(int64(1), "b")
 	if a.isList() {
@@ -230,6 +235,7 @@ func TestArrayOutOfOrderSetPromotes(t *testing.T) {
 // TestArrayListModeOverwrite: an in-range int64 key overwrites in place, keeps
 // the array in list mode, and does not change Len or the append index.
 func TestArrayListModeOverwrite(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Append("a")
 	a.Append("b")
@@ -261,6 +267,7 @@ func TestArrayListModeOverwrite(t *testing.T) {
 // modelled that. Later keys only raise it, which is the `i >= a.nextID` guard,
 // and an array that never held an integer key appends at 0.
 func TestArrayNegativeKey(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Set(int64(-3), "x")
 	if a.isList() {
@@ -290,6 +297,7 @@ func TestArrayNegativeKey(t *testing.T) {
 // keys: "0", int(0) and int64(0) are three distinct keys. Normalisation is the
 // runner's job (runner.normalizeKey), so list mode must only recognise int64.
 func TestArrayKeysAreOpaque(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Set(int(0), "int")
 	if a.isList() {
@@ -325,6 +333,7 @@ func TestArrayKeysAreOpaque(t *testing.T) {
 }
 
 func TestArrayFloatKeyPromotes(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Set(float64(0), "f")
 	if a.isList() {
@@ -340,6 +349,7 @@ func TestArrayFloatKeyPromotes(t *testing.T) {
 // TestArrayClearReturnsToListMode covers array_splice/usort, which Clear an
 // array and rebuild it with Append.
 func TestArrayClearReturnsToListMode(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Set("k", "v")
 	a.Append("x")
@@ -369,6 +379,7 @@ func TestArrayClearReturnsToListMode(t *testing.T) {
 }
 
 func TestArrayRangeStopsEarly(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"list", "map"} {
 		a := NewArray()
 		if mode == "map" {
@@ -392,6 +403,7 @@ func TestArrayRangeStopsEarly(t *testing.T) {
 // add a string key from inside its own foreach. Promotion must not scramble the
 // slice the in-flight Range is walking.
 func TestArrayPromoteDuringRange(t *testing.T) {
+	t.Parallel()
 	a := NewArray()
 	a.Append("a")
 	a.Append("b")
@@ -418,6 +430,7 @@ func TestArrayPromoteDuringRange(t *testing.T) {
 }
 
 func TestArrayMapStringKeys(t *testing.T) {
+	t.Parallel()
 	list := NewArray()
 	list.Append("a")
 	list.Append("b")
@@ -434,6 +447,7 @@ func TestArrayMapStringKeys(t *testing.T) {
 }
 
 func TestArrayZeroValueIsUsable(t *testing.T) {
+	t.Parallel()
 	var a Array
 	a.Append("x")
 	a.Set("k", "v")
@@ -446,6 +460,7 @@ func TestArrayZeroValueIsUsable(t *testing.T) {
 }
 
 func TestToArrayListFastPath(t *testing.T) {
+	t.Parallel()
 	src := []any{"a", "b", "c"}
 	a := ToArray(src)
 	if !a.isList() {
@@ -477,6 +492,7 @@ func TestToArrayListFastPath(t *testing.T) {
 }
 
 func TestRangeValuesAndLenValuesOnBothModes(t *testing.T) {
+	t.Parallel()
 	list := NewArray()
 	list.Append("a")
 	list.Append("b")
@@ -513,6 +529,7 @@ type op struct {
 // requires identical keys, values, iteration order, Len and append index. Any
 // list-mode shortcut that gets PHP's key rules wrong shows up here.
 func TestArrayMatchesLegacyImplementation(t *testing.T) {
+	t.Parallel()
 	sequences := map[string][]op{
 		"pure list": {
 			{kind: "append", val: "a"}, {kind: "append", val: "b"}, {kind: "append", val: "c"},
@@ -813,6 +830,7 @@ func BenchmarkArrayRange50Legacy(b *testing.B) {
 // (a per-request superglobal) refills without reallocating, and holds no
 // stale reference above its new length.
 func TestArrayResetKeepsStorage(t *testing.T) {
+	t.Parallel()
 	arr := NewArray()
 	arr.Set("host", "a")
 	arr.Set("path", "b")
@@ -851,6 +869,7 @@ func TestArrayResetKeepsStorage(t *testing.T) {
 // dropping an element from the middle leaves the remaining keys sparse and list
 // mode cannot express that; dropping the last one stays in list mode.
 func TestArray_Delete(t *testing.T) {
+	t.Parallel()
 	arr := NewArray()
 	arr.Append("a")
 	arr.Append("b")
@@ -893,6 +912,7 @@ func TestArray_Delete(t *testing.T) {
 // at 9, and popping 5 from the same array leaves it at 10. Rebuilding the array
 // from its entries loses that counter.
 func TestArray_Pop(t *testing.T) {
+	t.Parallel()
 	arr := NewArray()
 	arr.Set(int64(5), "a")
 	arr.Set(int64(9), "c")
@@ -920,6 +940,7 @@ func TestArray_Pop(t *testing.T) {
 // dense int64 list is answered as a []int64 copy, and anything else refuses.
 // The copy is why a caller can sort it without writing through the array.
 func TestArray_Int64List(t *testing.T) {
+	t.Parallel()
 	arr := NewArray()
 	arr.Append(int64(3))
 	arr.Append(int64(1))
@@ -961,6 +982,7 @@ func TestArray_Int64List(t *testing.T) {
 // whichever mode it holds. An empty replacement appends at 0, because an array
 // that holds no integer key has not had the index set.
 func TestArray_ReplaceInt64List(t *testing.T) {
+	t.Parallel()
 	arr := NewArray()
 	arr.Set("stale", "value")
 

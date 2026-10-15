@@ -12,6 +12,7 @@ import (
 // A name the class does not declare answers the zero Field and false, which is
 // what separates an undeclared property from one declared with no visibility.
 func TestClass_Field(t *testing.T) {
+	t.Parallel()
 	class := &Class{
 		Name: "Invoice",
 		Fields: []Field{
@@ -57,6 +58,7 @@ func TestClass_Field(t *testing.T) {
 // answers the declaration and not the value, so a class whose property is unset
 // still declares it.
 func TestClass_declares(t *testing.T) {
+	t.Parallel()
 	class := &Class{Fields: []Field{{Name: "total"}}}
 	if !class.declares("total") {
 		t.Error(`declares("total") = false on a class declaring it`)

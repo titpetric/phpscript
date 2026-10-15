@@ -12,6 +12,7 @@ import (
 // make two expressions share an address, and the compiled-expression cache in
 // runner would answer one with the other's code.
 func TestNodeChunkKeepsPointerIdentity(t *testing.T) {
+	t.Parallel()
 	var chunk nodeChunk[model.Lit]
 
 	// Past nodeChunkMax, so several backing arrays are carved and the
@@ -43,6 +44,7 @@ func TestNodeChunkKeepsPointerIdentity(t *testing.T) {
 // nodeChunkMax, and stops there so one long file does not reserve an array
 // the rest of the parse cannot use.
 func TestNodeChunkGrows(t *testing.T) {
+	t.Parallel()
 	var chunk nodeChunk[model.Var]
 
 	chunk.new()
@@ -71,6 +73,7 @@ func TestNodeChunkGrows(t *testing.T) {
 // equal to len and never the slack appending would leave. An empty list
 // answers nil, matching what appending to a nil slice produced.
 func TestScratchTakesExactlySized(t *testing.T) {
+	t.Parallel()
 	var stack scratch[model.Expr]
 
 	mark := stack.mark()
@@ -100,6 +103,7 @@ func TestScratchTakesExactlySized(t *testing.T) {
 // array literal parses in: the inner list pushes and pops above the outer
 // mark, so the outer elements stay contiguous and come back in push order.
 func TestScratchIsReentrant(t *testing.T) {
+	t.Parallel()
 	var stack scratch[model.Expr]
 
 	outer := stack.mark()
@@ -129,6 +133,7 @@ func TestScratchIsReentrant(t *testing.T) {
 // abandons what it pushed, so the next list starts from the mark the caller
 // above it holds and never inherits the elements of the one that failed.
 func TestScratchDropsOnFailure(t *testing.T) {
+	t.Parallel()
 	var stack scratch[model.Expr]
 
 	outer := stack.mark()
@@ -151,6 +156,7 @@ func TestScratchDropsOnFailure(t *testing.T) {
 // parses of the same source build separate nodes, so an AST cached by pointer
 // cannot be answered with another program's.
 func TestNodeChunkBacksTheParser(t *testing.T) {
+	t.Parallel()
 	const src = `<?php echo 1 + 2;`
 	first := mustParse(t, src)
 	second := mustParse(t, src)

@@ -8,6 +8,7 @@ import (
 )
 
 func TestSessionStorageRecordsSpans(t *testing.T) {
+	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
 	// oida records only when it is asked to; a test that reads its
 	// traces back is asking.

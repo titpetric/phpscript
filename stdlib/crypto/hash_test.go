@@ -22,6 +22,7 @@ func hashRuntime(t *testing.T) *runner.Runtime {
 // []byte: a PHP string is a Go string in this runtime, and a []byte would reach
 // a script as a foreign value that strlen and concatenation do not recognise.
 func TestRegisterHash(t *testing.T) {
+	t.Parallel()
 	rt := hashRuntime(t)
 
 	for _, test := range []struct {
@@ -63,6 +64,7 @@ func TestRegisterHash(t *testing.T) {
 // output answers the sum itself, so its length is the algorithm's digest size
 // and the hex form is twice that.
 func TestRegisterHash_binary(t *testing.T) {
+	t.Parallel()
 	rt := hashRuntime(t)
 
 	for _, test := range []struct {
@@ -95,6 +97,7 @@ func TestRegisterHash_binary(t *testing.T) {
 // There is nothing to clamp to, so the call fails with PHP 8's ValueError
 // wording and a script that catches it reads a familiar message.
 func TestRegisterHash_unknownAlgorithm(t *testing.T) {
+	t.Parallel()
 	rt := hashRuntime(t)
 
 	for _, name := range []string{"hash", "hash_hmac"} {
@@ -117,6 +120,7 @@ func TestRegisterHash_unknownAlgorithm(t *testing.T) {
 // pick an algorithm. It answers this build's table and not PHP's, so every
 // name it reports is one hash() accepts, and the list is sorted.
 func TestRegisterHash_algos(t *testing.T) {
+	t.Parallel()
 	rt := hashRuntime(t)
 
 	got, err := rt.InvokeNamed("hash_algos")
@@ -153,6 +157,7 @@ func TestRegisterHash_algos(t *testing.T) {
 // that does not depend on how far along they first differ, so a token check
 // leaks nothing but the length of the guess.
 func TestRegisterHash_equals(t *testing.T) {
+	t.Parallel()
 	rt := hashRuntime(t)
 
 	for _, test := range []struct {

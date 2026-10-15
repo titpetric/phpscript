@@ -14,6 +14,7 @@ import (
 // The root is the module root, two directories up, because the generator reads
 // doc comments and parameter names out of the Go source tree it is pointed at.
 func TestGenerate(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	if err := generate(&out, "../.."); err != nil {
 		t.Fatalf("generate: %v", err)

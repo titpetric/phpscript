@@ -32,6 +32,7 @@ func run(t *testing.T, src string) string {
 // Time\ prefix the classes carry is spelled TIME_ for the constants, and the
 // value under each name is Go's own layout string.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	phptime.Register(rt)
 
@@ -83,6 +84,7 @@ func TestRegister(t *testing.T) {
 // calls is Go's own method under the name PHP spells it with. A wrapper would
 // have to be written per method and would be the place a method went missing.
 func TestRegisterDispatchesToGoMethods(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		src  string
@@ -127,6 +129,7 @@ func TestRegisterDispatchesToGoMethods(t *testing.T) {
 // against for one runtime, and two runtimes serving two requests keep separate
 // choices. Writing time.Local would leak one request's timezone into the other.
 func TestRegisterTimezoneIsPerRuntime(t *testing.T) {
+	t.Parallel()
 	moved := run(t, `<?php
 set_timezone("UTC");
 echo DateTime::date(2026, 10, 13, 8, 0, 0, 0)->format(TIME_RFC3339);`)

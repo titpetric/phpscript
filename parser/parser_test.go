@@ -23,6 +23,7 @@ func mustParse(t *testing.T, src string) *model.Program {
 // or reads them back per statement. The name is the path a script sees, the
 // runtime's own spelling and never the host's.
 func TestParseFile(t *testing.T) {
+	t.Parallel()
 	program, err := ParseFile("app/pages/index.php", "<?php\necho __FILE__;\necho __DIR__;\necho __LINE__;")
 	if err != nil {
 		t.Fatalf("ParseFile: %v", err)
@@ -54,6 +55,7 @@ func TestParseFile(t *testing.T) {
 }
 
 func TestParseEchoArgs(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php echo "a", $b, 1 + 2;`)
 	if len(prog.Stmts) != 1 {
 		t.Fatalf("got %d statements, want 1", len(prog.Stmts))
@@ -80,6 +82,7 @@ func TestParseEchoArgs(t *testing.T) {
 }
 
 func TestParseBinaryPrecedence(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php $r = 1 + 2 * 3 . "x" == $y;`)
 	as, ok := prog.Stmts[0].(*model.Assign)
 	if !ok {
@@ -104,6 +107,7 @@ func TestParseBinaryPrecedence(t *testing.T) {
 }
 
 func TestParsePostfixChain(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php $a = $this->b[0]->c($d)[1];`)
 	as := prog.Stmts[0].(*model.Assign)
 	idx, ok := as.Value.(*model.Index)
@@ -127,6 +131,7 @@ func TestParsePostfixChain(t *testing.T) {
 // must keep its own address, because runner.compileExpr caches compiled
 // expressions in a map keyed by model.Expr pointer identity.
 func TestParseNodesAreDistinct(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php
 	$a = $x + $x + $x;
 	$b = 1 + 1 + 1;
@@ -182,6 +187,7 @@ func TestParseNodesAreDistinct(t *testing.T) {
 }
 
 func TestParseSourceSpansPerStatement(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, "<?php\n$a = 1;\n\n$b =\n  2;\n")
 	if len(prog.Stmts) != 2 {
 		t.Fatalf("got %d statements, want 2", len(prog.Stmts))
@@ -195,6 +201,7 @@ func TestParseSourceSpansPerStatement(t *testing.T) {
 }
 
 func TestParseStructuralSlicesAreExact(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php
 	function f($a, $b, $c) {
 		$x = array(1, 2, 3);
@@ -241,6 +248,7 @@ func TestParseStructuralSlicesAreExact(t *testing.T) {
 }
 
 func TestParseNestedArgumentLists(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php f(g(1, 2), h(3, i(4, 5), 6), 7);`)
 	outer := prog.Stmts[0].(*model.ExprStmt).X.(*model.Call)
 	if outer.Name != "f" || len(outer.Args) != 3 {
@@ -264,6 +272,7 @@ func TestParseNestedArgumentLists(t *testing.T) {
 }
 
 func TestParseClassModifiers(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		src                         string
 		abstract, final, isReadonly bool
@@ -292,6 +301,7 @@ func TestParseClassModifiers(t *testing.T) {
 // A namespaced file may only declare symbols, so a modifier the parser does not
 // recognise surfaces there as a rejected file and never a dropped keyword.
 func TestParseClassModifiersInNamespace(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, "<?php\nnamespace App;\nfinal readonly class Thing {}\n")
 	cd, ok := prog.Stmts[len(prog.Stmts)-1].(*model.ClassDecl)
 	if !ok {
@@ -303,6 +313,7 @@ func TestParseClassModifiersInNamespace(t *testing.T) {
 }
 
 func TestParseClassModifiersRejected(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"abstract final class A {}": "final modifier on an abstract class",
 		"final abstract class A {}": "final modifier on an abstract class",
@@ -319,6 +330,7 @@ func TestParseClassModifiersRejected(t *testing.T) {
 // `readonly` is not a reserved word in PHP; it is a modifier only when a class
 // declaration follows it.
 func TestParseReadonlyAsCallable(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php readonly(3);`)
 	call, ok := prog.Stmts[0].(*model.ExprStmt).X.(*model.Call)
 	if !ok || call.Name != "readonly" {
@@ -329,6 +341,7 @@ func TestParseReadonlyAsCallable(t *testing.T) {
 // `extends` and `implements` are recorded on the AST but confer no
 // inheritance; the parser's only job is to keep the names.
 func TestParseClassHeritage(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, "<?php\nnamespace App;\n\nuse Vendor\\Framework\\TestCase;\n\nfinal class Suite extends TestCase implements \\Countable, Local {}\n")
 	cd, ok := prog.Stmts[len(prog.Stmts)-1].(*model.ClassDecl)
 	if !ok {
@@ -349,6 +362,7 @@ func TestParseClassHeritage(t *testing.T) {
 }
 
 func TestParseClassHeritageOmitted(t *testing.T) {
+	t.Parallel()
 	cd := mustParse(t, `<?php class Plain {}`).Stmts[0].(*model.ClassDecl)
 	if cd.Parent != "" || cd.Implements != nil {
 		t.Errorf("parent/implements = %q/%v, want empty", cd.Parent, cd.Implements)
@@ -356,6 +370,7 @@ func TestParseClassHeritageOmitted(t *testing.T) {
 }
 
 func TestParseClassHeritageRejected(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"class A extends {}":      "expected class name after extends",
 		"class A implements {}":   "expected interface name after implements",
@@ -372,6 +387,7 @@ func TestParseClassHeritageRejected(t *testing.T) {
 // the `static` spelling of a signature. The names it carries are resolved the
 // way class names are, so a namespace and a `use` alias both apply.
 func TestParseInterface(t *testing.T) {
+	t.Parallel()
 	src := "<?php\nnamespace App;\n\nuse Vendor\\Reader;\n\n" +
 		"interface Bucket extends Reader, \\Countable, Local {\n" +
 		"\tconst MODE = \"read\";\n\n" +
@@ -418,6 +434,7 @@ func TestParseInterface(t *testing.T) {
 // parser, because printing back what it read is only possible for what it can
 // hold.
 func TestParseInterfaceRejected(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"interface A extends {}":        "expected interface name after extends",
 		"interface A { abstract f(); }": "unexpected token in interface body",
@@ -434,6 +451,7 @@ func TestParseInterfaceRejected(t *testing.T) {
 // carry the reason and the way out, and point at the offending statement
 // and not at whatever follows it.
 func TestParseNamespacedStatementRejected(t *testing.T) {
+	t.Parallel()
 	_, err := Parse("<?php\nnamespace App;\n\nclass Thing {}\n\necho \"hi\";\n")
 	if err == nil {
 		t.Fatal("a top-level statement in a namespaced file must be rejected")
@@ -453,6 +471,7 @@ func TestParseNamespacedStatementRejected(t *testing.T) {
 // `use` and `declare` are preamble and no code, so a namespaced file may
 // still carry them.
 func TestParseNamespacedPreambleAllowed(t *testing.T) {
+	t.Parallel()
 	src := "<?php\ndeclare(strict_types=1);\n\nnamespace App;\n\nuse Vendor\\Thing;\n\nfunction f() {\n\techo \"hi\";\n}\n"
 	if _, err := Parse(src); err != nil {
 		t.Fatalf("parse: %v", err)
@@ -487,6 +506,7 @@ func exprShape(e model.Expr) string {
 // `&&`, and `<< >>` are tighter than `.` and looser than `+ -`. Every
 // expectation is what the php binary evaluates the same source to.
 func TestParseBitwisePrecedence(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		src  string
 		want string
@@ -529,6 +549,7 @@ func TestParseBitwisePrecedence(t *testing.T) {
 // in front of a variable now, and nothing else may consume an operator
 // silently.
 func TestParseAmpersandIsNotSwallowed(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php echo 6 & 3;`)
 	echo, ok := prog.Stmts[0].(*model.Echo)
 	if !ok {
@@ -551,6 +572,7 @@ func TestParseAmpersandIsNotSwallowed(t *testing.T) {
 // A reference marker still parses where PHP allows one: in front of a
 // variable, the position every by-reference construct puts it in.
 func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		`<?php $a = &$b;`,
 		`<?php f(&$b);`,
@@ -567,6 +589,7 @@ func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
 // gets its own allocation, as PHP's copy-on-assignment comes to
 // for a literal. The names are written right to left, as PHP evaluates them.
 func TestParseSplitsChainedArrayLiteral(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, "<?php\n$a = $b = $c = array(1);\n")
 	if len(prog.Stmts) != 3 {
 		t.Fatalf("got %d statements, want 3: %#v", len(prog.Stmts), prog.Stmts)
@@ -591,6 +614,7 @@ func TestParseSplitsChainedArrayLiteral(t *testing.T) {
 // The split reaches every statement list, including a brace-less body, which
 // would otherwise keep the chain and its sharing.
 func TestParseSplitsChainedArrayLiteralInBodies(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		"<?php if (true) $a = $b = array();",
 		"<?php if (true) { $a = $b = array(); }",
@@ -610,6 +634,7 @@ func TestParseSplitsChainedArrayLiteralInBodies(t *testing.T) {
 // shares between the names as well; both keep the chain and are what
 // `phpscript lint` reports instead.
 func TestParseKeepsChainWithSideEffects(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		"<?php $a = $b = array(next($rows));",
 		"<?php $a = $b = new Database();",
@@ -649,6 +674,7 @@ func countAssigns(stmts []model.Stmt) int {
 // place of the name, under a name the parser synthesized so that everything
 // downstream resolves it the way it resolves a written class.
 func TestParseAnonymousClass(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php
 $obj = new class implements Reader {
 	public $label = "anon";
@@ -687,6 +713,7 @@ $obj = new class implements Reader {
 // Constructor arguments come before the heritage, as in PHP, and each
 // declaration in a file gets a name of its own.
 func TestParseAnonymousClassArgsAndNaming(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php
 $a = new class ("dsn") { public function __construct($dsn) { $this->dsn = $dsn; } };
 $b = new class { };
@@ -706,6 +733,7 @@ $b = new class { };
 
 // A named class still parses the same way through the extracted body parser.
 func TestParseNamedClassUnchangedByAnonymousSupport(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php
 class Store implements Reader {
 	const LIMIT = 10;
@@ -728,6 +756,7 @@ class Store implements Reader {
 }
 
 func TestParseInstanceOfQualified(t *testing.T) {
+	t.Parallel()
 	// The right operand of instanceof gets the same name resolution as `new`:
 	// a use alias and the current namespace qualify a bare name, an absolute
 	// spelling and a runtime operand stay as written.
@@ -794,6 +823,7 @@ function check($b)
 }
 
 func TestParseFirstClassCallable(t *testing.T) {
+	t.Parallel()
 	prog := mustParse(t, `<?php
 $fn = greet(...);
 $shout = Greeter::shout(...);
@@ -838,6 +868,7 @@ $value = $closure(...);
 }
 
 func TestParseFirstClassCallableRejectedForNew(t *testing.T) {
+	t.Parallel()
 	// php refuses it too: there is no callable in a construction to take.
 	if _, err := Parse(`<?php $a = new Greeter(...);`); err == nil {
 		t.Fatal("new Greeter(...) parsed, want an error")
@@ -847,6 +878,7 @@ func TestParseFirstClassCallableRejectedForNew(t *testing.T) {
 }
 
 func TestParseEllipsisIsStillConcatenation(t *testing.T) {
+	t.Parallel()
 	// Three `.` operators are only the callable marker when they fill the whole
 	// argument list; a concatenation of three terms still parses as one.
 	prog := mustParse(t, `<?php $s = f($a . $b . $c);`)

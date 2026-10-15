@@ -9,6 +9,7 @@ import (
 // TestDefaultConfigServerBlock pins what config/config.yml starts the platform
 // with, including the service name every trace is recorded under.
 func TestDefaultConfigServerBlock(t *testing.T) {
+	t.Parallel()
 	result := config.New()
 
 	options, err := result.PlatformOptions()
@@ -32,6 +33,7 @@ func TestDefaultConfigServerBlock(t *testing.T) {
 // TestServerBlockConfiguresPlatformOptions covers the fields of the block a
 // file can set, on top of the defaults it is read over.
 func TestServerBlockConfiguresPlatformOptions(t *testing.T) {
+	t.Parallel()
 	result := config.New()
 	source := []byte(`
 server:
@@ -73,6 +75,7 @@ telemetry:
 // reaches the platform: the recorder it builds is the one that has to retain
 // traces on disk.
 func TestPlatformOptionsCarryStorage(t *testing.T) {
+	t.Parallel()
 	result := config.New()
 	result.Telemetry.Driver = "disk"
 	result.Telemetry.StoragePath = t.TempDir()
@@ -89,6 +92,7 @@ func TestPlatformOptionsCarryStorage(t *testing.T) {
 // TestPlatformOptionsRejectAnUnknownDriver pins that a bad telemetry block
 // fails the server and never starts it without the storage it named.
 func TestPlatformOptionsRejectAnUnknownDriver(t *testing.T) {
+	t.Parallel()
 	result := config.New()
 	result.Telemetry.Driver = "s3"
 
@@ -101,6 +105,7 @@ func TestPlatformOptionsRejectAnUnknownDriver(t *testing.T) {
 // recorder is not among them: that one is the top level telemetry block, so a
 // site cannot move the dashboard by writing a server block.
 func TestServer(t *testing.T) {
+	t.Parallel()
 	block := config.New().Server
 	if block.Addr != ":8080" {
 		t.Errorf("addr = %q, want :8080", block.Addr)
@@ -114,6 +119,7 @@ func TestServer(t *testing.T) {
 // recorder is configured here: Config.PlatformOptions adds one, so a caller
 // reading the block alone starts a server that records nothing.
 func TestServer_Options(t *testing.T) {
+	t.Parallel()
 	block := config.Server{
 		Addr:    "127.0.0.1:9000",
 		Quiet:   true,
@@ -139,6 +145,7 @@ func TestServer_Options(t *testing.T) {
 // TestNewTestConfig pins what a test inherits: a port the kernel picks and no
 // recorder, so tests neither collide on a port nor record into each other.
 func TestNewTestConfig(t *testing.T) {
+	t.Parallel()
 	result := config.NewTestConfig()
 	if result.Server.Addr != "127.0.0.1:0" || !result.Server.Quiet {
 		t.Errorf("server = %+v", result.Server)

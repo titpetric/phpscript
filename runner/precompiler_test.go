@@ -21,6 +21,7 @@ var precompileFS = fstest.MapFS{
 // the path a script would name it by, and a file that does not parse is left
 // out, and the pass does not fail.
 func TestPrecompiler(t *testing.T) {
+	t.Parallel()
 	includes := runner.NewIncludeCache()
 	exprs := runner.NewExprCache()
 
@@ -44,6 +45,7 @@ func TestPrecompiler(t *testing.T) {
 // TestPrecompilerEmptyTree covers the inputs that have nothing to walk: a
 // Precompiler is constructed by a host that may not have configured one.
 func TestPrecompilerEmptyTree(t *testing.T) {
+	t.Parallel()
 	includes := runner.NewIncludeCache()
 	for name, p := range map[string]runner.Precompiler{
 		"no root":    {Includes: includes},
@@ -60,6 +62,7 @@ func TestPrecompilerEmptyTree(t *testing.T) {
 // entrypoint LoadFile answers with the program the walk parsed, and not
 // with a second parse of the same bytes.
 func TestPrecompilerServesLoadFile(t *testing.T) {
+	t.Parallel()
 	includes := runner.NewIncludeCache()
 	runner.Precompiler{Root: precompileFS, Includes: includes, Workers: 1}.Run()
 
@@ -80,6 +83,7 @@ func TestPrecompilerServesLoadFile(t *testing.T) {
 // LoadFile reads and parses the file every time, as a CLI run and an
 // application editing its own sources expect.
 func TestPrecompilerOffReparses(t *testing.T) {
+	t.Parallel()
 	for _, precompile := range []bool{false, true} {
 		rt := runner.New(io.Discard, runner.Options{RootFS: precompileFS, Precompile: precompile})
 		first, err := rt.LoadFile("public/index.php")
@@ -100,6 +104,7 @@ func TestPrecompilerOffReparses(t *testing.T) {
 // must keep reporting: the cache holds no entry for it, so the request that
 // reaches it parses it and fails the way it does without precompilation.
 func TestPrecompilerBrokenEntrypointStillFails(t *testing.T) {
+	t.Parallel()
 	includes := runner.NewIncludeCache()
 	runner.Precompiler{Root: precompileFS, Includes: includes}.Run()
 

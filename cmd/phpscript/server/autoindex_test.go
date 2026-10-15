@@ -34,6 +34,7 @@ func newAutoindexHandler(t *testing.T, files fstest.MapFS) *handler {
 // file below the document root is a decision, so a directory with no index page
 // is a 404 until the configuration says otherwise.
 func TestAutoindexIsOffUnlessTheSiteAsksForIt(t *testing.T) {
+	t.Parallel()
 	rr := fetch(newErrorPageHandler(t, autoindexFS), http.MethodGet, "/files/", nil)
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404", rr.Code)
@@ -52,6 +53,7 @@ func TestAutoindexIsOffUnlessTheSiteAsksForIt(t *testing.T) {
 // relative to the directory's request path, images shown as well as
 // named, sizes for files, a way back up, and nothing beginning with a dot.
 func TestAutoindexListsTheDirectory(t *testing.T) {
+	t.Parallel()
 	rr := fetch(newAutoindexHandler(t, autoindexFS), http.MethodGet, "/files/", nil)
 	body := rr.Body.String()
 
@@ -81,6 +83,7 @@ func TestAutoindexListsTheDirectory(t *testing.T) {
 // named with an "&" has to stay addressable as a link and must not end the
 // attribute it sits in.
 func TestAutoindexEscapesNames(t *testing.T) {
+	t.Parallel()
 	body := fetch(newAutoindexHandler(t, autoindexFS), http.MethodGet, "/files/", nil).Body.String()
 	if !strings.Contains(body, `<a href="report%20&amp;%20q.pdf">report &amp; q.pdf</a>`) {
 		t.Fatalf("name is not escaped for both places it goes:\n%s", body)
@@ -90,6 +93,7 @@ func TestAutoindexEscapesNames(t *testing.T) {
 // TestAutoindexAnswersHeadWithHeadersAlone pins that a HEAD gets the size of
 // the listing without the listing, which is the question a HEAD puts.
 func TestAutoindexAnswersHeadWithHeadersAlone(t *testing.T) {
+	t.Parallel()
 	h := newAutoindexHandler(t, autoindexFS)
 	get := fetch(h, http.MethodGet, "/files/", nil)
 	head := fetch(h, http.MethodHead, "/files/", nil)
@@ -106,6 +110,7 @@ func TestAutoindexAnswersHeadWithHeadersAlone(t *testing.T) {
 // index page is answered by it, and the listing is only for directories that
 // have none.
 func TestAutoindexDoesNotReplaceAnIndexPage(t *testing.T) {
+	t.Parallel()
 	h := newAutoindexHandler(t, autoindexFS)
 	rr := fetch(h, http.MethodGet, "/", nil)
 	if rr.Code != http.StatusOK || rr.Body.String() != "home" {
@@ -116,6 +121,7 @@ func TestAutoindexDoesNotReplaceAnIndexPage(t *testing.T) {
 // TestAutoindexOfTheDocumentRoot pins that the root listing links nowhere above
 // itself. The parent of the document root is not the site's to link to.
 func TestAutoindexOfTheDocumentRoot(t *testing.T) {
+	t.Parallel()
 	h := newAutoindexHandler(t, fstest.MapFS{
 		"public/notes.txt": {Data: []byte(`notes`)},
 	})
@@ -129,6 +135,7 @@ func TestAutoindexOfTheDocumentRoot(t *testing.T) {
 }
 
 func TestFormatSize(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		size int64
 		want string

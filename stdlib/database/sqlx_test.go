@@ -9,6 +9,7 @@ import (
 // it carries the driver name the bind variable form is picked from, it keeps
 // its pool, and a query runs on it.
 func TestNewDB(t *testing.T) {
+	t.Parallel()
 	pool, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
@@ -36,6 +37,7 @@ func TestNewDB(t *testing.T) {
 // satisfies it, so the default provider and an instrumented one are built the
 // same way.
 func TestConnector(t *testing.T) {
+	t.Parallel()
 	var connector Connector = Open
 
 	db, err := connector("sqlite", ":memory:")

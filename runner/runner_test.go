@@ -18,6 +18,7 @@ import (
 // the path itself. An error it reports is the include failing, and nothing
 // falls back to reading a file.
 func TestIncludeFunc(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := New(&out, Options{})
 
@@ -69,6 +70,7 @@ func TestIncludeFunc(t *testing.T) {
 // beside it is never parsed. Nothing is installed until the script includes it,
 // so the PHP semantics hold.
 func TestRuntime_RegisterInclude(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := New(&out, Options{RootFS: fstest.MapFS{
 		"vendor/autoload.php": &fstest.MapFile{Data: []byte(`<?php echo "the file ran";`)},
@@ -127,6 +129,7 @@ func TestRuntime_RegisterInclude(t *testing.T) {
 // refused for its size being the case it covers. It records and
 // returns, so the host sees it and PHP execution is not unwound.
 func TestRuntime_RecordError(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 
 	var seen []error
@@ -171,6 +174,7 @@ func TestRuntime_RecordError(t *testing.T) {
 // an error in PHP: the next loader in the queue gets its turn, and the missing
 // class is reported by the call that needed it.
 func TestRuntime_SPLAutoload(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{RootFS: fstest.MapFS{
 		"lib/app/orders.php": &fstest.MapFile{Data: []byte(`<?php class Orders { public $name = "orders"; }`)},
 		"other/widget.php":   &fstest.MapFile{Data: []byte(`<?php class Widget {}`)},
@@ -215,6 +219,7 @@ func TestRuntime_SPLAutoload(t *testing.T) {
 // and not by identity, because each `array($this, "loadClass")` a script writes
 // is a fresh array and comparing those would never remove anything.
 func TestRuntime_UnregisterAutoloader(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 
 	object := model.NewObject(&model.Class{Name: "Loader"})
@@ -260,6 +265,7 @@ func (e *phpThrowable) Error() string { return e.msg }
 func (e *phpThrowable) ThrowableClass() string { return e.class }
 
 func TestMatchCatchTypeUsesTheClassName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		thrown   string
 		declared string
@@ -309,6 +315,7 @@ func TestMatchCatchTypeUsesTheClassName(t *testing.T) {
 // recovered at the call boundary, belong to no PHP class, so the catch a script
 // already wrote has to reach them whichever throwable class it names.
 func TestMatchCatchTypeTakesAnyClauseForANonThrowable(t *testing.T) {
+	t.Parallel()
 	for _, err := range []error{
 		errors.New("plain go error"),
 		fmt.Errorf("wrapped: %w", errors.New("inner")),
@@ -326,6 +333,7 @@ func TestMatchCatchTypeTakesAnyClauseForANonThrowable(t *testing.T) {
 // itself. Each names a PHP class, which keeps an engine error out of
 // the clauses PHP would not route it to.
 func TestRunnerThrowablesNameTheirClass(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		err      error
 		declared string
@@ -356,6 +364,7 @@ func TestRunnerThrowablesNameTheirClass(t *testing.T) {
 // phpscript has no OOP, and `extends` confers nothing. docs/design.md refuses
 // it; read that before changing this test.
 func TestNoInheritanceAtRuntime(t *testing.T) {
+	t.Parallel()
 	// model.Class may record what a declaration listed, so
 	// Implements is allowed: it is a list of names a class checks
 	// against, and no member arrives through it. A parent is different, and

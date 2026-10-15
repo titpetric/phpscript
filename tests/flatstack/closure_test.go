@@ -14,6 +14,7 @@ import (
 // fallback to the interpreter would produce the same output and hide a compiler
 // that quietly stopped handling the form.
 func TestFlatstackCompilesClosures(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string
@@ -125,6 +126,7 @@ func TestFlatstackCompilesClosures(t *testing.T) {
 // reference cell for the enclosing variable, an expression evaluated on the
 // missing-argument path, or the caller's scope itself.
 func TestFlatstackRejectsClosureForms(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string
@@ -170,6 +172,7 @@ func TestFlatstackRejectsClosureForms(t *testing.T) {
 }
 
 func TestFlatstackSupportsDefer(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php defer(function () { echo "late"; });`)
 	if err != nil {
 		t.Fatal(err)

@@ -14,6 +14,7 @@ import (
 )
 
 func TestStartupRunsAnnotatedPHPFilesInPathOrder(t *testing.T) {
+	t.Parallel()
 	root := fstest.MapFS{
 		"20-second.php": {Data: []byte("<?php\n# @startup:\necho \"second\";")},
 		"10-first.php":  {Data: []byte("<?php\n// @startup\necho \"first,\";")},
@@ -32,6 +33,7 @@ func TestStartupRunsAnnotatedPHPFilesInPathOrder(t *testing.T) {
 }
 
 func TestStartupProvidesProjectFilesystem(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	if err := os.WriteFile(dir+"/startup.php", []byte(`<?php
 /* @startup */
@@ -58,6 +60,7 @@ fclose($file);
 // Start reports what failed and names the file it failed in. Whether that is
 // fatal is the caller's decision, not this module's.
 func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
+	t.Parallel()
 	root := fstest.MapFS{
 		"broken.php": {Data: []byte("<?php\n// @startup\nmissing_function();")},
 	}
@@ -73,6 +76,7 @@ func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
 // the second from running: the jobs of one tree are independent, and every
 // failure is joined into the returned error, and not the first alone.
 func TestStartupRunsEveryJobAndJoinsFailures(t *testing.T) {
+	t.Parallel()
 	root := fstest.MapFS{
 		"10-broken.php": {Data: []byte("<?php\n// @startup\nmissing_function();")},
 		"20-after.php":  {Data: []byte("<?php\n// @startup\necho \"after\";")},
@@ -96,6 +100,7 @@ func TestStartupRunsEveryJobAndJoinsFailures(t *testing.T) {
 }
 
 func TestStartupRecordsSuccessAndFailure(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name        string
 		source      string
@@ -150,6 +155,7 @@ func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 }
 
 func TestStartupRunsWithRunnerOptions(t *testing.T) {
+	t.Parallel()
 	root := fstest.MapFS{"startup.php": {Data: []byte("<?php\n// @startup\necho \"ready\";")}}
 	var out bytes.Buffer
 	startup := annotations.NewStartup(root,
@@ -167,6 +173,7 @@ func TestStartupRunsWithRunnerOptions(t *testing.T) {
 }
 
 func TestStartupRejectsMissingRootFilesystem(t *testing.T) {
+	t.Parallel()
 	if err := annotations.NewStartup(nil).Start(context.Background()); err == nil {
 		t.Fatal("nil root filesystem was accepted")
 	}

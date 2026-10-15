@@ -30,6 +30,7 @@ var sourceModTime = time.Unix(1756600000, 0)
 // TestGlobListsTheSourceFilesystem pins the ordinary case: patterns resolve
 // inside the bound fs.FS and answer in the pattern's own spelling.
 func TestGlobListsTheSourceFilesystem(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
 	for _, test := range []struct {
 		pattern string
@@ -57,6 +58,7 @@ func TestGlobListsTheSourceFilesystem(t *testing.T) {
 // that divergence is the point. A pattern that climbs is cleaned against the
 // root, the rule every path a script passes this package follows.
 func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
 	for _, test := range []struct {
 		name    string
@@ -83,6 +85,7 @@ func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 // the root directory, and PHP echoes the pattern's own shape back, so the root
 // has to come off again before the script sees them.
 func TestGlobOnTheHostAnswersRelativeToTheRoot(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "drafts"), 0o755); err != nil {
 		t.Fatal(err)
@@ -105,6 +108,7 @@ func TestGlobOnTheHostAnswersRelativeToTheRoot(t *testing.T) {
 // the host. A root that is a real directory and a source tree that is not on
 // disk is the arrangement that tells the two apart.
 func TestReadsUseTheSourceFilesystemUnderANamedRoot(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
 	got := runFSOptions(t, t.TempDir(), nil, opts, `<?php
 echo file_get_contents("one.txt"), ";";

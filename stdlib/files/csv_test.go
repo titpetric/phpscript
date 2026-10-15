@@ -10,6 +10,7 @@ import (
 // runtime's output seam, so a buffer ob_start() pushes captures it even when
 // the handle opens first, and fclose() leaves the stream usable.
 func TestFPutCSVOutputStream(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, t.TempDir(), nil, `<?php
 $h = fopen("php://output", "w");
 ob_start();
@@ -30,6 +31,7 @@ echo "after-close";`)
 // read consumes exactly the record, so the rest of the file is still there for
 // whatever reads next.
 func TestFGetCSVKeepsThePosition(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	content := "first,\"multi\nline\"\nsecond,row\ntail"
 	if err := os.WriteFile(filepath.Join(root, "data.csv"), []byte(content), 0o644); err != nil {
@@ -52,6 +54,7 @@ fclose($h);`)
 // TestFGetCSVLoopEndsFalse covers the read loop every import script writes:
 // each call returns one record, and end of file answers false.
 func TestFGetCSVLoopEndsFalse(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "data.csv"), []byte("a;b\nc;d\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -74,6 +77,7 @@ echo "done";`)
 // enclosure encoding/csv cannot vary is refused with a throw and never
 // producing misquoted output.
 func TestCSVRefusesAForeignEnclosure(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "data.csv"), []byte("a,b\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -105,6 +109,7 @@ fclose($r);`)
 // never a file: no php:/memory appears on disk. php://input opens outside a
 // request too, answering empty when there is no body and no cli stdin.
 func TestFOpenUnimplementedWrapper(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	out := runFS(t, root, nil, `<?php
 var_dump(fopen("php://memory", "r"));

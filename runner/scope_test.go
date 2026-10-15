@@ -11,6 +11,7 @@ import (
 // scoping, so a variable introduced inside an if or a foreach body lives in the
 // enclosing function scope, and one frame is one map.
 func TestScope(t *testing.T) {
+	t.Parallel()
 	scope := NewScope()
 	if _, ok := scope.Get("rows"); ok {
 		t.Error(`Get("rows") = true on a fresh scope`)
@@ -35,6 +36,7 @@ func TestScope(t *testing.T) {
 // Unsetting a static-bound name breaks the local link and leaves the stored
 // value for the next call, as PHP leaves it.
 func TestScope_Unset(t *testing.T) {
+	t.Parallel()
 	scope := NewScope()
 	scope.Set("rows", int64(3))
 	scope.Unset("rows")
@@ -63,6 +65,7 @@ func TestScope_Unset(t *testing.T) {
 // `this`: the call binds it and no body declares it, so php leaves it out. A
 // static-bound name reports the value in its persistent bag.
 func TestScope_DefinedVars(t *testing.T) {
+	t.Parallel()
 	scope := NewScope()
 	scope.Set("rows", int64(3))
 	scope.Set("this", "receiver")
@@ -79,6 +82,7 @@ func TestScope_DefinedVars(t *testing.T) {
 // defer; this runtime does, and the order is last in, first out, so a release
 // registered after an acquire runs before it.
 func TestScope_Defer(t *testing.T) {
+	t.Parallel()
 	scope := NewScope()
 	if len(scope.deferred) != 0 {
 		t.Fatalf("a fresh scope carries %d deferred callbacks", len(scope.deferred))
@@ -100,6 +104,7 @@ func TestScope_Defer(t *testing.T) {
 // its injected context. compact() and get_defined_vars() reach caller-local
 // variables from a binding through it.
 func TestScopeFromContext(t *testing.T) {
+	t.Parallel()
 	if _, ok := ScopeFromContext(context.Background()); ok {
 		t.Error("ScopeFromContext() = true on a context carrying no frame")
 	}
@@ -123,6 +128,7 @@ func TestScopeFromContext(t *testing.T) {
 // variables, so getenv() inside a site reads that map and never the operator's
 // process environment.
 func TestEnvFromContext(t *testing.T) {
+	t.Parallel()
 	if _, ok := EnvFromContext(context.Background()); ok {
 		t.Error("EnvFromContext() = true on a context carrying no environment")
 	}

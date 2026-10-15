@@ -16,6 +16,7 @@ import (
 // leftmost-longest, so an alternation answers with its longest branch where
 // Perl syntax answers with its first.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	phpregexp.Register(rt)
 
@@ -74,6 +75,7 @@ func run(t *testing.T, src string) string {
 }
 
 func TestRegexpCompile(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		src  string

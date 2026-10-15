@@ -12,6 +12,7 @@ import (
 // sends; naming some lets a test read back the refusal a script reads for the
 // rest. An empty name is the "default" server, as it is everywhere else.
 func TestMemory_Configured(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name      string
 		names     []string
@@ -40,6 +41,7 @@ func TestMemory_Configured(t *testing.T) {
 // refused the way a real delivery refuses it, so a test still exercises the
 // error a script reads.
 func TestMemory_Send(t *testing.T) {
+	t.Parallel()
 	queue := mailstdlib.NewMemory("default", "marketing")
 	ctx := context.Background()
 
@@ -73,6 +75,7 @@ func TestMemory_Send(t *testing.T) {
 // not index into a slice. The second return reports an empty queue, because a
 // zero Message reads the same as one a script sent with empty strings.
 func TestMemory_Next(t *testing.T) {
+	t.Parallel()
 	queue := mailstdlib.NewMemory()
 	ctx := context.Background()
 	for _, subject := range []string{"first", "second"} {
@@ -100,6 +103,7 @@ func TestMemory_Next(t *testing.T) {
 // provider across cases does between them. The configured names survive it, so
 // the provider still refuses what it refused before.
 func TestMemory_Reset(t *testing.T) {
+	t.Parallel()
 	queue := mailstdlib.NewMemory("default")
 	if err := queue.Send(context.Background(), "default", "a@example.com", "Hello", "Body"); err != nil {
 		t.Fatalf("Send: %v", err)

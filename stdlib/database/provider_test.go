@@ -18,6 +18,7 @@ import (
 // process environment as a CLI run has it, so a connection resolves before a
 // host has configured anything.
 func TestProvider(t *testing.T) {
+	t.Parallel()
 	var provider Provider = New([]string{"PLATFORM_DB_SHOP=sqlite://:memory:"})
 
 	db, err := provider.Open(t.Context(), "shop")
@@ -37,6 +38,7 @@ func TestProvider(t *testing.T) {
 }
 
 func TestDatabaseProviderConnect(t *testing.T) {
+	t.Parallel()
 	provider := NewDatabaseProvider(Open)
 	provider.Register("test", "sqlite://:memory:")
 
@@ -58,6 +60,7 @@ func TestDatabaseProviderConnect(t *testing.T) {
 }
 
 func TestDatabaseProviderOpenError(t *testing.T) {
+	t.Parallel()
 	provider := NewDatabaseProvider(func(string, string) (*DB, error) {
 		return nil, errors.New("test")
 	})
@@ -73,6 +76,7 @@ func TestDatabaseProviderOpenError(t *testing.T) {
 }
 
 func TestDatabaseProviderNewAt(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	provider := NewAt(root, []string{"PLATFORM_DB_APP=sqlite://app.db"})
 
@@ -93,6 +97,7 @@ func TestDatabaseProviderNewAt(t *testing.T) {
 }
 
 func TestDatabaseProviderFileSQLiteDefaults(t *testing.T) {
+	t.Parallel()
 	provider := NewDatabaseProvider(Open)
 	provider.Register("test", "sqlite://"+filepath.Join(t.TempDir(), "test.db"))
 
@@ -140,6 +145,7 @@ func TestDatabaseProviderFileSQLiteDefaults(t *testing.T) {
 // configures connections in: a PLATFORM_DB_<NAME> entry becomes a lowercase
 // connection name, alongside the built-in default.
 func TestNewReadsPlatformDBEnvironment(t *testing.T) {
+	t.Parallel()
 	provider := New([]string{"PLATFORM_DB_SHOP=sqlite://:memory:"})
 
 	got := provider.List()
@@ -158,6 +164,7 @@ func TestNewReadsPlatformDBEnvironment(t *testing.T) {
 // as an in-memory sqlite is a second database, and the schema it applied would
 // not be in the one the script queries.
 func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
+	t.Parallel()
 	provider := NewDatabaseProvider(Open)
 	provider.Register("shop", "sqlite://:memory:")
 
@@ -190,6 +197,7 @@ func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
 // provider only resolves its own connections, and two
 // providers do not share the databases they open.
 func TestNewIsolatesProviders(t *testing.T) {
+	t.Parallel()
 	shop := New([]string{"PLATFORM_DB_SHOP=sqlite://:memory:"})
 	blog := New([]string{"PLATFORM_DB_BLOG=sqlite://:memory:"})
 

@@ -60,6 +60,7 @@ func lookupRuntime(t testing.TB, out io.Writer, files fstest.MapFS) *runner.Runt
 // full wins, a bare one is matched by its trailing segment, and a partial
 // namespace picks between two that share the segment.
 func TestLookupResolvesQualifiedName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		symbol string
 		want   string
@@ -91,6 +92,7 @@ func TestLookupResolvesQualifiedName(t *testing.T) {
 // name that reaches more than one declaration is an error naming them, with no
 // pick.
 func TestLookupReportsAmbiguity(t *testing.T) {
+	t.Parallel()
 	rt := lookupRuntime(t, nil, lookupTree)
 	_, err := runner.Lookup[func(int) string](rt, "handle")
 
@@ -107,6 +109,7 @@ func TestLookupReportsAmbiguity(t *testing.T) {
 // TestLookupReportsMissingSymbol keeps "no such function" distinguishable from
 // "say which one": the candidate list is what separates them.
 func TestLookupReportsMissingSymbol(t *testing.T) {
+	t.Parallel()
 	rt := lookupRuntime(t, nil, lookupTree)
 	_, err := runner.Lookup[func()](rt, "nothing_declares_this")
 
@@ -122,6 +125,7 @@ func TestLookupReportsMissingSymbol(t *testing.T) {
 // TestLookupRejectsSignature checks the shape at the bind, not at the call, so
 // a host wiring a handler wrong hears about it at startup.
 func TestLookupRejectsSignature(t *testing.T) {
+	t.Parallel()
 	t.Run("not a function", func(t *testing.T) {
 		rt := lookupRuntime(t, nil, lookupTree)
 		if _, err := runner.Lookup[string](rt, "double"); err == nil {
@@ -147,6 +151,7 @@ func TestLookupRejectsSignature(t *testing.T) {
 // TestLookupConvertsValues pins both edges of the bridge: what a Go argument
 // becomes in the scope, and what a PHP return becomes in the result slot.
 func TestLookupConvertsValues(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{"convert.php": {Data: []byte(`<?php
 function add($a, $b) { return $a + $b; }
 function describe($v) { return gettype($v); }
@@ -257,6 +262,7 @@ function spread() { return implode("+", func_get_args()); }
 // headers, the query and the body all read off the value itself and not off
 // superglobals nothing seeded.
 func TestLookupPassesRequest(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{"handler.php": {Data: []byte(`<?php
 namespace App\Handler;
 
@@ -294,6 +300,7 @@ function main(\HTTP\Request $r) {
 // mounted on a Go mux as an http.HandlerFunc, with both halves of the exchange
 // passed in as the net/http values they are.
 func TestLookupBindsAnHTTPHandler(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{"handler.php": {Data: []byte(`<?php
 namespace App\Handler;
 
@@ -326,6 +333,7 @@ function index(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 // TestLookupCarriesOnlyItsArguments holds the lightweight contract: nothing
 // decodes a request, so the superglobals are undefined and not empty.
 func TestLookupCarriesOnlyItsArguments(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{"scope.php": {Data: []byte(`<?php
 function inspect($given) {
 	return implode(",", array(
@@ -352,6 +360,7 @@ function inspect($given) {
 // TestLookupEchoesToTheRuntimeWriter keeps output where the runtime's output
 // goes. A lookup changes how a function is reached, not where it prints.
 func TestLookupEchoesToTheRuntimeWriter(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{"out.php": {Data: []byte(`<?php
 function greet($name) { echo "hello ", $name; }
 `)}}
@@ -372,6 +381,7 @@ function greet($name) { echo "hello ", $name; }
 // TestLookupReportsCallErrors routes a throw to the signature's error slot, and
 // to the runtime's error sink when the signature has no slot to put it in.
 func TestLookupReportsCallErrors(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{"fail.php": {Data: []byte(`<?php
 function boom() {
 	throw new \Exception("detonated");
@@ -412,6 +422,7 @@ function boom() {
 // TestLookupResolvesWithoutPrecompiling covers the runtime a host built and did
 // nothing else with: the tree is walked on the first lookup that needs it.
 func TestLookupResolvesWithoutPrecompiling(t *testing.T) {
+	t.Parallel()
 	rt := lookupRuntime(t, nil, lookupTree)
 	double, err := runner.Lookup[func(int) int](rt, "double")
 	if err != nil {
@@ -426,6 +437,7 @@ func TestLookupResolvesWithoutPrecompiling(t *testing.T) {
 // its entrypoint has the declaration on the runtime already, and the lookup
 // resolves against the function table without going near the tree.
 func TestLookupFindsADeclarationAlreadyRun(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 
@@ -450,6 +462,7 @@ func TestLookupFindsADeclarationAlreadyRun(t *testing.T) {
 // runtime per goroutine over one shared cache pair, as the server
 // does per request. It is the test -race has to have.
 func TestLookupConcurrent(t *testing.T) {
+	t.Parallel()
 	const workers, calls = 16, 50
 
 	includes := runner.NewIncludeCache()
@@ -506,6 +519,7 @@ func TestLookupConcurrent(t *testing.T) {
 // as loaded, the application's own require_once declared everything a second
 // time and the tree became unloadable.
 func TestLookupLeavesTheTreeLoadable(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{
 		"lib/greet.php": {Data: []byte(`<?php
 function greet($name) {
@@ -554,6 +568,7 @@ echo $g->say("bob");
 // to spell one of them; every other reason has nothing to list, so the clause
 // is left off and never printed empty.
 func TestLookupError_Error(t *testing.T) {
+	t.Parallel()
 	ambiguous := &runner.LookupError{
 		Symbol:     "handle",
 		Candidates: []string{`App\Orders\handle`, `App\Users\handle`},

@@ -12,6 +12,7 @@ import (
 // where net/url refuses the input and drops the whole pair, losing a field the
 // browser did send.
 func TestURLDecode(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		in   string
 		want string
@@ -43,6 +44,7 @@ func TestURLDecode(t *testing.T) {
 // only `%20` is a space. It is the one difference from urldecode(), so a path
 // segment holding a plus sign survives being decoded.
 func TestRawURLDecode(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		in   string
 		want string

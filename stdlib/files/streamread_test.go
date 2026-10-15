@@ -22,6 +22,7 @@ func streamRoot(t *testing.T) string {
 // returned, and a read at the end answers with the empty string, so a loop
 // reading to the end terminates.
 func TestFreadAdvancesTheHandle(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
 $f = fopen("log.txt", "r");
 echo "[", fread($f, 5), "][", ftell($f), "]";
@@ -38,6 +39,7 @@ fclose($f);`)
 // with `while (($line = fgets($f)) !== false)` leans on the false, so an empty
 // string at the end would loop forever.
 func TestFgetsKeepsTheNewline(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
 $f = fopen("log.txt", "r");
 while (($line = fgets($f)) !== false) {
@@ -55,6 +57,7 @@ fclose($f);`)
 // argument is passed through as it arrives; a translation table here would be a
 // second numbering to keep in step.
 func TestFseekMovesByWhence(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
 echo "[", SEEK_SET, ",", SEEK_CUR, ",", SEEK_END, "]";
 $f = fopen("log.txt", "r");
@@ -70,6 +73,7 @@ fclose($f);`)
 // TestRewindReturnsToTheStart covers rewind against ftell: the handle is back
 // at offset zero and the next read is the first bytes of the file again.
 func TestRewindReturnsToTheStart(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
 $f = fopen("log.txt", "r");
 fread($f, 11);
@@ -88,6 +92,7 @@ fclose($f);`)
 // the divergence is in this direction alone and never reports open at a
 // position past the end.
 func TestFeofComparesPositionAgainstLength(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
 $f = fopen("log.txt", "r");
 echo "[", feof($f) ? "eof" : "open", "]";
@@ -106,6 +111,7 @@ fclose($f);`)
 // request body with a feof loop would spin, and stream_get_contents is the
 // call for that.
 func TestFeofOnAnUnseekableHandle(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
 echo "[", feof(fopen("php://output", "w")) ? "eof" : "open", "]";`)
 	if want := "[open]"; out != want {

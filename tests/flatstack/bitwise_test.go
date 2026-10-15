@@ -13,6 +13,7 @@ import (
 // bytecode and never reaches the interpreter fallback. A fixture cannot tell
 // the two apart when they agree, so every case asserts Supports first.
 func TestFlatstackBitwiseOperators(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string

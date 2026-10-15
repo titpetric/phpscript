@@ -13,6 +13,7 @@ import (
 // The copy stops at objects, which PHP holds by handle, and at the native Go
 // collections a binding returns, which belong to the host.
 func TestCopyValue(t *testing.T) {
+	t.Parallel()
 	nested := NewArray()
 	nested.Set("b", int64(1))
 	source := NewArray()
@@ -66,6 +67,7 @@ func TestCopyValue(t *testing.T) {
 // same order, because insertion order is part of a PHP array's value. A nil
 // array answers nil, so a caller holding one needs no guard of its own.
 func TestCopyArray(t *testing.T) {
+	t.Parallel()
 	if got := CopyArray(nil); got != nil {
 		t.Errorf("CopyArray(nil) = %v, want nil", got)
 	}
@@ -104,6 +106,7 @@ func TestCopyArray(t *testing.T) {
 // at nothing: a constant is not assignable, and treating `PHP_EOL` as the name
 // "PHP_EOL" would match a loop variable spelled the same.
 func TestRootName(t *testing.T) {
+	t.Parallel()
 	v := &Var{Name: "v"}
 
 	for _, tc := range []struct {
@@ -142,6 +145,7 @@ func TestRootName(t *testing.T) {
 // target with no name to root on, and an include, which shares this scope and
 // is not visible from here.
 func TestAssignsTo(t *testing.T) {
+	t.Parallel()
 	v := &Var{Name: "v"}
 	other := &Var{Name: "other"}
 	one := &Lit{Value: int64(1)}

@@ -10,6 +10,7 @@ import (
 // appending into the array the caller passed. Every expectation here came from
 // running the same call through php.
 func TestExecReturnsTheLastLine(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php
 $lines = [];
 $code = -1;
@@ -24,6 +25,7 @@ echo "[", $last, "][", count($lines), "][", $lines[0], ",", $lines[1], "][", $co
 // array that already holds something, so a second call into the same variable
 // adds to it and never replaces it.
 func TestExecAppendsToTheArray(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php
 $lines = ["kept"];
 exec('printf "a\n"', $lines);
@@ -39,6 +41,7 @@ echo implode(",", $lines);`)
 // output because a caller reading the return alone cannot tell a failure from
 // a command that printed nothing.
 func TestExecReportsTheExitStatus(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php
 $code = -1;
 $last = exec('exit 3', $lines, $code);
@@ -52,6 +55,7 @@ echo "[", $last, "][", $code, "]";`)
 // off every line, and a command that printed nothing reports no lines at all
 // and never one empty one, so count($output) is 0 and not 1.
 func TestExecTrimsEachLine(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php
 $padded = [];
 exec('printf "a  \t\nb\n"', $padded);
@@ -68,6 +72,7 @@ echo "[", implode("|", $padded), "][", count($empty), "]";`)
 // last line. A command that takes a while is one whose output a page wants
 // before it finishes.
 func TestSystemWritesAsItArrives(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php
 $code = -1;
 $last = system('printf "a\nb\n"', $code);
@@ -82,6 +87,7 @@ echo "[", $last, "][", $code, "]";`)
 // and the return is null, so the status is the only thing to read. The same
 // bytes through exec() lose the trailing space exec() strips per line.
 func TestPassthruWritesBytesThrough(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php
 $code = -1;
 $value = passthru('printf "a \n"', $code);
@@ -98,6 +104,7 @@ echo "[", $lines[0], "]";`)
 // and the null a silent command answers with. The null is PHP's, so a caller
 // checking for failure has to read the string and never the return.
 func TestShellExecReturnsEverything(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php
 $text = shell_exec('printf "x\ny\n"');
 $quiet = shell_exec('true');
@@ -113,6 +120,7 @@ echo "[", $text, "][", ($quiet === null ? "null" : "value"), "]";`)
 // for the three and null for shell_exec. php 8 raises ValueError here, so a
 // script written against php sees a return where it would see a throw.
 func TestCommandsRefuseAnEmptyCommandLine(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php
 echo "[", (exec("") === false ? "false" : "other"), "]";
 echo "[", (system("") === false ? "false" : "other"), "]";
@@ -127,6 +135,7 @@ echo "[", (shell_exec("") === null ? "null" : "other"), "]";`)
 // each command line reaches `sh -c`, so a pipeline, a redirect and a glob are
 // the shell's to read and never parsed here.
 func TestCommandsRunThroughTheShell(t *testing.T) {
+	t.Parallel()
 	out := run(t, "", `<?php echo shell_exec('printf "b\na\n" | sort | tr -d "\n"');`)
 	if want := "ab"; strings.TrimSpace(out) != want {
 		t.Errorf("output = %q, want %q", out, want)

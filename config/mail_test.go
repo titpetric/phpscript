@@ -16,6 +16,7 @@ import (
 // Names are walked in sorted order, so a file with two bad servers reports the
 // same one on every run.
 func TestMail_Validate(t *testing.T) {
+	t.Parallel()
 	good := mail.Config{Host: "mail.example.com", From: "noreply@example.com"}
 
 	t.Run("every server is deliverable", func(t *testing.T) {
@@ -72,6 +73,7 @@ func TestMail_Validate(t *testing.T) {
 // Keys are checked in the order flatMailKeys lists them and names in sorted
 // order, so one file fails on one line every time.
 func TestValidateMailDeclaration(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name     string
 		declared map[string]any
@@ -134,6 +136,7 @@ func TestValidateMailDeclaration(t *testing.T) {
 // when a flat block sets several. flatMailKeys fixes the order, so host is
 // reported ahead of password whatever order the decoder walked the map in.
 func TestValidateMailDeclaration_flatKeyOrder(t *testing.T) {
+	t.Parallel()
 	declared := map[string]any{"mail": map[string]any{
 		"password": "secret",
 		"host":     "mail.example.com",

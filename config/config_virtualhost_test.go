@@ -34,6 +34,7 @@ func writeSite(t *testing.T, source string, documentRoots ...string) string {
 // hosting: no sites, and public as the document root every site gets without
 // naming one.
 func TestDefaultConfigVirtualHosts(t *testing.T) {
+	t.Parallel()
 	result := config.New()
 	if result.DocumentRoot != "public" {
 		t.Errorf("document root = %q, want public", result.DocumentRoot)
@@ -46,6 +47,7 @@ func TestDefaultConfigVirtualHosts(t *testing.T) {
 // TestVirtualHostLoadLayersOverBase pins the overlay a site gets: a key the
 // site file does not name keeps the operator's value, one it names wins.
 func TestVirtualHostLoadLayersOverBase(t *testing.T) {
+	t.Parallel()
 	root := writeSite(t, `
 routes:
   enabled: false
@@ -78,6 +80,7 @@ telemetry:
 // decided. They describe what one site publishes, not how the process listens,
 // so the key is the site's to set and it is off for a site that says nothing.
 func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
+	t.Parallel()
 	base := config.New()
 	if base.Autoindex {
 		t.Error("autoindex = true, want off unless a site asks for it")
@@ -98,6 +101,7 @@ func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
 // TestVirtualHostLoadRejectsServer pins that a site cannot move the listen
 // address, and that it is told so, with no block dropped.
 func TestVirtualHostLoadRejectsServer(t *testing.T) {
+	t.Parallel()
 	root := writeSite(t, `
 server:
   addr: "127.0.0.1:9999"
@@ -117,6 +121,7 @@ server:
 // TestVirtualHostLoadRejectsNestedVirtualHosts pins that a site cannot declare
 // sites of its own.
 func TestVirtualHostLoadRejectsNestedVirtualHosts(t *testing.T) {
+	t.Parallel()
 	root := writeSite(t, `
 virtualhost:
   - domain: "nested.test"
@@ -137,6 +142,7 @@ virtualhost:
 // phpscript.yml fails, and never serves the site under the operator's
 // defaults.
 func TestVirtualHostLoadRequiresConfigFile(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	host := config.VirtualHost{Domain: "site.test", Root: root}
 
@@ -153,6 +159,7 @@ func TestVirtualHostLoadRequiresConfigFile(t *testing.T) {
 // the loaded configuration carries the operator's server block and no nested
 // sites whatever the file said.
 func TestVirtualHostServerBlockIsHeldToBase(t *testing.T) {
+	t.Parallel()
 	root := writeSite(t, "routes:\n  enabled: false\n")
 	base := config.New()
 	base.Server.Addr = "127.0.0.1:8081"
@@ -173,6 +180,7 @@ func TestVirtualHostServerBlockIsHeldToBase(t *testing.T) {
 // TestVirtualHostDocumentRootPrecedence pins the chain: the operator's entry,
 // then the site file, then public.
 func TestVirtualHostDocumentRootPrecedence(t *testing.T) {
+	t.Parallel()
 	base := config.New()
 
 	t.Run("operator entry wins", func(t *testing.T) {
@@ -227,6 +235,7 @@ func TestVirtualHostDocumentRootPrecedence(t *testing.T) {
 // TestVirtualHostNormalize pins the comparison a Host header gets: lowercase,
 // no trailing dot, and every name the entry lists.
 func TestVirtualHostNormalize(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		domain string
 		want   string
@@ -248,6 +257,7 @@ func TestVirtualHostNormalize(t *testing.T) {
 // TestVirtualHostDomains pins the split: every name the entry answers for, in
 // the order it listed them, with the first as the site's own name.
 func TestVirtualHostDomains(t *testing.T) {
+	t.Parallel()
 	host := config.VirtualHost{Domain: "Site.TEST. www.site.test"}
 
 	want := []string{"site.test", "www.site.test"}
@@ -265,6 +275,7 @@ func TestVirtualHostDomains(t *testing.T) {
 // TestValidateVirtualHosts covers the checks over the list as a whole. Each
 // case names the domain it is about, which the error has to carry.
 func TestValidateVirtualHosts(t *testing.T) {
+	t.Parallel()
 	site := func(t *testing.T, source string, documentRoots ...string) string {
 		return writeSite(t, source, documentRoots...)
 	}
@@ -457,6 +468,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 // test that covered it checked the host and the from address, which are
 // exactly the two fields the site did set, and passed throughout.
 func TestVirtualHostMailIsTheSitesOwn(t *testing.T) {
+	t.Parallel()
 	operator := config.Mail{"default": mail.Config{
 		Host:     "mail.operator.example",
 		From:     "operator@example.com",

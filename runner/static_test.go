@@ -13,6 +13,7 @@ import (
 // class; `parent` has nothing to resolve to. A leading separator comes off a
 // written name.
 func TestResolveClassName(t *testing.T) {
+	t.Parallel()
 	inMethod := NewScope()
 	inMethod.Set("__class__", "Store")
 
@@ -42,6 +43,7 @@ func TestResolveClassName(t *testing.T) {
 // about it. __FILE__ and __DIR__ cross from the caller, so a default naming
 // either reads its declaring file.
 func TestClassDefaultScope(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	caller := NewScope()
 	caller.Set("__FILE__", "/app/store.php")
@@ -73,6 +75,7 @@ func TestClassDefaultScope(t *testing.T) {
 // so composer's `self::$registeredLoaders` is the same storage every instance
 // and every later static call reads.
 func TestStaticBag(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	class := &model.Class{
 		Name: "Loader",
@@ -108,6 +111,7 @@ func TestStaticBag(t *testing.T) {
 // property and index access, and a write through the class name is visible to
 // the next read.
 func TestStaticProp(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	class := &model.Class{
 		Name:    "Loader",
@@ -151,6 +155,7 @@ func TestStaticProp(t *testing.T) {
 // The second return reports whether the bag already held values, and keeps an
 // initializer from running twice.
 func TestStaticVarBag(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	node := &model.StaticVar{Vars: []model.StaticVarDecl{{Name: "count"}}}
 
@@ -184,6 +189,7 @@ func TestStaticVarBag(t *testing.T) {
 // that rebinds the name to the value the last call left behind, so a counter
 // keeps counting.
 func TestExecStaticVar(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	node := &model.StaticVar{Vars: []model.StaticVarDecl{{Name: "count", Default: &model.Lit{Value: int64(0)}}}}
 

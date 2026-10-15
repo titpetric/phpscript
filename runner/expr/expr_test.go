@@ -22,6 +22,7 @@ func concatHelpers() *Helpers {
 // variable list against. An expression reading no variable compiles to an
 // empty table, so evaluating it reads no Vars slice.
 func TestProgram(t *testing.T) {
+	t.Parallel()
 	compiled, err := CompileExpr(&model.Lit{Value: int64(7)}, concatHelpers())
 	if err != nil {
 		t.Fatalf("CompileExpr: %v", err)
@@ -48,6 +49,7 @@ func TestProgram(t *testing.T) {
 // PanicError built, and a host panic stays catchable as one PHP exception on
 // both engines.
 func TestRun(t *testing.T) {
+	t.Parallel()
 	expression := &model.Binary{
 		Op:    ".",
 		Left:  &model.Var{Name: "greeting"},
@@ -97,6 +99,7 @@ func TestRun(t *testing.T) {
 // identifier read twice shares the slot it got the first time, so the runner
 // resolves a name once per expression.
 func TestProgram_Slots(t *testing.T) {
+	t.Parallel()
 	expression := &model.Binary{
 		Op: ".",
 		Left: &model.Binary{
@@ -128,6 +131,7 @@ func TestProgram_Slots(t *testing.T) {
 // per distinct identifier, so every slot read lands inside the slice. It
 // matches the length of Vars, which is the list the runner fills.
 func TestProgram_NumSlots(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		expr model.Expr

@@ -11,6 +11,7 @@ import (
 // with. ScriptExit is the interface flatstack/engine recognises an exit
 // through, because runner imports engine and engine cannot import runner back.
 func TestExitError(t *testing.T) {
+	t.Parallel()
 	err := &ExitError{Code: 3}
 	if got, want := err.Error(), "exit(3)"; got != want {
 		t.Errorf("Error() = %q, want %q", got, want)
@@ -28,6 +29,7 @@ func TestExitError(t *testing.T) {
 // TestIsExit covers recognising an exit through a wrapper. It is how a host
 // tells a script that ended from one that failed.
 func TestIsExit(t *testing.T) {
+	t.Parallel()
 	exit, ok := IsExit(fmt.Errorf("while running: %w", &ExitError{Code: 7}))
 	if !ok {
 		t.Fatal("IsExit() = false on a wrapped ExitError")
@@ -49,6 +51,7 @@ func TestIsExit(t *testing.T) {
 // A host reads Aborted to tell them apart: a timeout is the site's problem and
 // a disconnect is not.
 func TestTimeLimitError(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		err  TimeLimitError
 		want string
@@ -68,6 +71,7 @@ func TestTimeLimitError(t *testing.T) {
 // arguments. It says "at most" because a binding spells PHP's optional
 // parameters as extra ones, so too few arguments is legal and zero-padded.
 func TestArgumentCountError(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		err  ArgumentCountError
 		want string
@@ -90,6 +94,7 @@ func TestArgumentCountError(t *testing.T) {
 // named by position and not by name, because a Go binding's parameter names are
 // not recoverable through reflect.
 func TestTypeError(t *testing.T) {
+	t.Parallel()
 	err := &TypeError{Name: "str_repeat", Position: 2, Want: "int", Got: "string"}
 	want := "str_repeat(): Argument #2 must be of type int, string given"
 	if got := err.Error(); got != want {
@@ -108,6 +113,7 @@ func TestTypeError(t *testing.T) {
 // runtime does not define is a condition a script can answer for, where PHP 8
 // raises Error and expects nobody to handle it.
 func TestUndefinedConstantError(t *testing.T) {
+	t.Parallel()
 	err := &UndefinedConstantError{Name: "MY_FLAG"}
 	if got, want := err.Error(), `Undefined constant "MY_FLAG"`; got != want {
 		t.Errorf("Error() = %q, want %q", got, want)
@@ -121,6 +127,7 @@ func TestUndefinedConstantError(t *testing.T) {
 // reaches a script as, so a PHP try/catch handles it the way it handles an
 // error the same callable returned.
 func TestHostPanicError(t *testing.T) {
+	t.Parallel()
 	err := &HostPanicError{Callable: "Storage::open", Value: "nil map"}
 	if got, want := err.Error(), "host panic in Storage::open: nil map"; got != want {
 		t.Errorf("Error() = %q, want %q", got, want)

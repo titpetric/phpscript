@@ -24,6 +24,7 @@ function grid($im, $w, $h) {
 // the far corner where Go's exclude it, so a fill from 0,0 to 1,1 paints four
 // pixels and a ported script keeps the area it drew under GD.
 func TestDrawFilledRectangle(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, gridHelper+`
 $im = imagecreatetruecolor(3, 3);
 $red = imagecolorallocate($im, 255, 0, 0);
@@ -43,6 +44,7 @@ echo grid($im, 3, 3);
 // far corner back. GD accepts either order, so a script computing coordinates
 // does not have to sort them.
 func TestDrawFilledRectangleNormalisesCorners(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, gridHelper+`
 $im = imagecreatetruecolor(2, 2);
 $red = imagecolorallocate($im, 255, 0, 0);
@@ -60,6 +62,7 @@ echo grid($im, 2, 2);
 // arbitrary endpoints, so both an axis-aligned and a diagonal line are read
 // back.
 func TestDrawLine(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		call string
@@ -104,6 +107,7 @@ echo grid($im, 3, 3);
 // that lands and reports success, so a script computing coordinates from input
 // does not have to clip them itself.
 func TestDrawLineClipsToTheImage(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, gridHelper+`
 $im = imagecreatetruecolor(2, 2);
 $red = imagecolorallocate($im, 255, 0, 0);
@@ -120,6 +124,7 @@ echo grid($im, 2, 2);
 // sharing the starting pixel's colour, so filling a blank image from a corner
 // paints all of it and a region walled off by another colour is left.
 func TestDrawFill(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, gridHelper+`
 $im = imagecreatetruecolor(3, 3);
 $red = imagecolorallocate($im, 255, 0, 0);
@@ -143,6 +148,7 @@ echo grid($im, 3, 3);
 // There is no region to walk, and GD treats the call as done and never
 // failed, so the return stays true and nothing is painted.
 func TestDrawFillOutsideTheImage(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, gridHelper+`
 $im = imagecreatetruecolor(2, 2);
 $red = imagecolorallocate($im, 255, 0, 0);
@@ -160,6 +166,7 @@ echo grid($im, 2, 2);
 // copies nothing and still reports success: the handles are valid and there is
 // no area.
 func TestDrawCopyResampled(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, gridHelper+`
 $src = imagecreatetruecolor(2, 2);
 $red = imagecolorallocate($src, 255, 0, 0);

@@ -17,6 +17,7 @@ import (
 // command. The flags come out in one order, so a regenerated report differs
 // only where a result differs.
 func TestReportArgs(t *testing.T) {
+	t.Parallel()
 	if got := strings.Join(reportArgs(Options{}, nil), " "); got != "test" {
 		t.Errorf("a bare run reconstructs as %q, want \"test\"", got)
 	}
@@ -46,6 +47,7 @@ func TestReportArgs(t *testing.T) {
 // the command that produced it, and the sentence saying a table below is a
 // compatibility report and no record of what phpscript last printed.
 func TestWriteReportHeader(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	writeReportHeader(&buf, reportArgs(Options{Matrix: true}, []string{"./..."}))
 
@@ -70,6 +72,7 @@ func TestWriteReportHeader(t *testing.T) {
 // the whole suite executed. A run naming no output opens nothing, so the
 // terminal table is the only sink.
 func TestOpenReport(t *testing.T) {
+	t.Parallel()
 	if file, err := openReport(Options{}, nil); err != nil || file != nil {
 		t.Errorf("openReport with no --output = %v, %v, want no file and no error", file, err)
 	}
@@ -103,6 +106,7 @@ func TestOpenReport(t *testing.T) {
 // table and write a markdown report at the same time. Every call reaches every
 // sink, so the two documents report the same run.
 func TestTeeResultTable(t *testing.T) {
+	t.Parallel()
 	var terminal, markdown bytes.Buffer
 	sinks := teeResultTable{newMarkdownTable(&terminal, Options{}), newMarkdownTable(&markdown, Options{})}
 
@@ -129,6 +133,7 @@ func TestTeeResultTable(t *testing.T) {
 
 // TestTeeMatrixTable is the same fan-out for the cross-runner matrix.
 func TestTeeMatrixTable(t *testing.T) {
+	t.Parallel()
 	var first, second bytes.Buffer
 	sinks := teeMatrixTable{newMarkdownMatrix(&first, Options{}), newMarkdownMatrix(&second, Options{})}
 

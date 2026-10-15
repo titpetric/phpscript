@@ -42,6 +42,7 @@ func runWorkdir(t *testing.T, src string) string {
 // against: the source filesystem is mounted at "/", so that is where a script
 // starts and what every path it reads is written from.
 func TestGetcwdIsWrittenFromTheSourceRoot(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		src  string
@@ -66,6 +67,7 @@ func TestGetcwdIsWrittenFromTheSourceRoot(t *testing.T) {
 // source filesystem stops at it and is never refused, which is the rule
 // every path a script passes this package follows.
 func TestChdirCannotLeaveTheRoot(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		`<?php chdir(".."); echo getcwd();`,
 		`<?php chdir("../../.."); echo getcwd();`,
@@ -82,6 +84,7 @@ func TestChdirCannotLeaveTheRoot(t *testing.T) {
 // answers false; there is no warning channel here, so the return value carries all
 // report and the working directory has to stay put.
 func TestChdirRefusesWhatIsNotADirectory(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		src  string
@@ -101,6 +104,7 @@ func TestChdirRefusesWhatIsNotADirectory(t *testing.T) {
 // include and the read have to name the same file, or a script that moves the
 // working directory gets two different answers to the same question.
 func TestWorkDirMovesEveryRelativePath(t *testing.T) {
+	t.Parallel()
 	got := runWorkdir(t, `<?php
 echo file_get_contents("note.txt"), "|";
 chdir("app");
@@ -121,6 +125,7 @@ echo file_get_contents("/note.txt");`)
 // the server and the fixture harness, so a key holding the spelling in place
 // of the file would hand one request the file another request loaded.
 func TestIncludeCacheIsKeyedByTheResolvedFile(t *testing.T) {
+	t.Parallel()
 	got := runWorkdir(t, `<?php
 chdir("app");
 include "boot.php";
@@ -136,6 +141,7 @@ echo $loaded;`)
 // TestIncludeOnceDedupesOnTheResolvedFile is the same question for the *_once
 // forms: two directories can spell one name, and only one of them has run.
 func TestIncludeOnceDedupesOnTheResolvedFile(t *testing.T) {
+	t.Parallel()
 	got := runWorkdir(t, `<?php
 chdir("app");
 include_once "boot.php";
@@ -154,6 +160,7 @@ echo $loaded;`)
 // state. A host that reuses a runtime starts each session where it configured
 // the runtime, not wherever the last script wandered to.
 func TestWorkDirDoesNotOutliveASession(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php echo getcwd(), "|"; chdir("app"); echo getcwd();`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)

@@ -7,6 +7,7 @@ import (
 )
 
 func TestParseRoutePath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		path string
@@ -44,6 +45,7 @@ func TestParseRoutePath(t *testing.T) {
 // wrongly. chi registers {module=users} as a parameter of that literal name,
 // matches every request to the segment and exports nothing.
 func TestParseRoutePathRejects(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		path string
@@ -77,6 +79,7 @@ func TestParseRoutePathRejects(t *testing.T) {
 // from chi v5.3.2 and net/http.ServeMux: chi 404s on {tail...} and
 // ServeMux panics on {id:[0-9]+}, so neither dialect is the authored one.
 func TestRenderRoutePath(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		path  string
@@ -111,6 +114,7 @@ func TestRenderRoutePath(t *testing.T) {
 // is the authored one and the zero value has to name a real router. RouteChi
 // takes it, so a caller rendering without naming a dialect writes chi's syntax.
 func TestRouteDialect(t *testing.T) {
+	t.Parallel()
 	if model.RouteChi == model.RouteServeMux {
 		t.Fatal("the two dialects share one value")
 	}

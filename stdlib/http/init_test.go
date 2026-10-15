@@ -15,6 +15,7 @@ import (
 // direct call is the point: a dropped init() leaves `new HTTP\Client` as a
 // class nothing declares, and every test calling Register itself would pass.
 func TestInit(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 

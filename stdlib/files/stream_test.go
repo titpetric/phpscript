@@ -13,6 +13,7 @@ import (
 // registered because that is what the CLI runner does, and it must not shadow
 // stdin.
 func TestPHPInputCLIReadsStdin(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{SAPI: "cli", Stdin: strings.NewReader("piped body")}
 	reqCtx := runner.NewContext()
 
@@ -28,6 +29,7 @@ echo file_get_contents("php://input") === "" ? "drained" : "rewound";`)
 // TestPHPInputCLIStream is the same split through a handle: fopen returns the
 // live stdin stream under the cli SAPI.
 func TestPHPInputCLIStream(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{SAPI: "cli", Stdin: strings.NewReader("line in")}
 
 	out := runFSOptions(t, t.TempDir(), nil, opts, `<?php

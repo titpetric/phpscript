@@ -12,6 +12,7 @@ import (
 // pairs appear in and a replacement never rewrites its own output:
 // ["a" => "b", "b" => "c"] over "abc" is "bcc" and never "ccc".
 func TestStrtr(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 echo strtr("hello", "el", "ip"), "\n";
 echo strtr("hi all", ["hi" => "hello", "all" => "world"]), "\n";
@@ -34,6 +35,7 @@ echo strtr("hello", "abc", "x"), "\n";`)
 // A needle that does not occur is false and never -1, because a caller
 // compares the miss with === false.
 func TestStrrpos(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(strrpos("hello world", "o"), strrpos("hello world", "o", 5), strrpos("hello world", "o", -5), strrpos("hello", "z"));`)
 
@@ -51,6 +53,7 @@ var_dump(strrpos("hello world", "o"), strrpos("hello world", "o", 5), strrpos("h
 //
 // An unknown filter passes the value through, as FILTER_DEFAULT does.
 func TestFilterVar(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(filter_var("42", FILTER_VALIDATE_INT));
 var_dump(filter_var("4.2", FILTER_VALIDATE_INT));
@@ -74,6 +77,7 @@ var_dump(filter_var("passed through"));`)
 // defines, and constant reads one back by name, so a script reaches a constant
 // whose name it computed.
 func TestDefineDefinedConstant(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(define("GREETING", "hello"));
 var_dump(defined("GREETING"), defined("NOPE"));
@@ -90,6 +94,7 @@ var_dump(constant("GREETING"));`)
 // that is the only width this runtime has, and E_ALL is 30719, which leaves
 // E_STRICT out as php 8 does.
 func TestPlatformIntegerConstants(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(PHP_INT_MAX, PHP_INT_MIN, PHP_INT_SIZE, PHP_FLOAT_DIG, PHP_EOL);
 var_dump(E_ALL, E_ERROR, E_WARNING, E_NOTICE, E_DEPRECATED);`)
@@ -110,6 +115,7 @@ var_dump(E_ALL, E_ERROR, E_WARNING, E_NOTICE, E_DEPRECATED);`)
 // The php binary the fixture matrix runs beside carries its own version, so
 // this test states the value and settles nothing by running php.
 func TestPlatformVersion(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(PHP_VERSION, PHP_MAJOR_VERSION, PHP_MINOR_VERSION, PHP_RELEASE_VERSION, PHP_EXTRA_VERSION, PHP_VERSION_ID);
 var_dump(phpversion(), zend_version());`)
@@ -126,6 +132,7 @@ var_dump(phpversion(), zend_version());`)
 // "Linux". The family is the coarser grouping a script branches on, and the
 // two agree on every platform this runs on except the BSDs and Solaris.
 func TestPlatformOS(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "linux" {
 		t.Skipf("the expected values are linux's; this is %s", runtime.GOOS)
 	}
@@ -148,6 +155,7 @@ var_dump(PHP_OS, PHP_OS_FAMILY, php_uname());`)
 // are staged and written after it finishes, so nothing has been sent while php
 // is still running.
 func TestIniStubs(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(ini_get("precision"), ini_set("precision", "5"), error_reporting(), extension_loaded("apcu"), headers_sent());`)
 

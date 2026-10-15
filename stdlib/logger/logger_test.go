@@ -20,6 +20,7 @@ func discard(l *Logger) *Logger {
 // the extent of it: an error fails the span the work runs in, and nothing else
 // the logger writes is recorded anywhere near it.
 func TestLoggerFailsSpanOnError(t *testing.T) {
+	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
 	// oida records only when it is asked to; a test that reads its
 	// traces back is asking.
@@ -59,6 +60,7 @@ func TestLoggerFailsSpanOnError(t *testing.T) {
 // TestLoggerErrorWithoutErrorValue covers a caller that reported what happened
 // without an error to go with it: the message is what the span fails with.
 func TestLoggerErrorWithoutErrorValue(t *testing.T) {
+	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
 	// oida records only when it is asked to; a test that reads its
 	// traces back is asking.
@@ -85,6 +87,7 @@ func TestLoggerErrorWithoutErrorValue(t *testing.T) {
 // TestLoggerWritesToSlog covers the half of the logger that is a logger: the
 // message and its values reach slog whether or not a trace is running.
 func TestLoggerWritesToSlog(t *testing.T) {
+	t.Parallel()
 	var logged strings.Builder
 	log := New(context.Background(), "migrate").
 		WithLogger(slog.New(slog.NewTextHandler(&logged, nil)))
@@ -121,6 +124,7 @@ func TestLoggerDefaultsToSlogDefault(t *testing.T) {
 // TestLoggerWithoutTrace covers a CLI run: no trace in the context, and no
 // logger at all, the state a library passed nothing calls in.
 func TestLoggerWithoutTrace(t *testing.T) {
+	t.Parallel()
 	log := discard(New(context.Background(), "migrate"))
 	log.Info("migration", "file", "schema.up.sql")
 	log.Error("failed", "error", errors.New("syntax error"))
@@ -134,6 +138,7 @@ func TestLoggerWithoutTrace(t *testing.T) {
 }
 
 func TestLoggerNames(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		msg  string

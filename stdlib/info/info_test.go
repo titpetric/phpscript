@@ -13,6 +13,7 @@ import (
 // lands: phpinfo() writes through the runtime's output, so a buffered page
 // captures it the way it captures echo.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php phpinfo();`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -45,6 +46,7 @@ func TestRegister(t *testing.T) {
 // is one block, so an argument is accepted and changes nothing. A script
 // written for PHP calls phpinfo(INFO_GENERAL) and has to keep running.
 func TestRegisterIgnoresArguments(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php $ok = phpinfo(32); echo $ok ? "[true]" : "[false]";`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)

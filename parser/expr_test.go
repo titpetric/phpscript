@@ -56,6 +56,7 @@ func expression(t *testing.T, src string) model.Expr {
 // comparison, the shifts are tighter than concatenation and looser than
 // addition, and every level is left-associative.
 func TestBinaryPrecedence(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		src  string
 		want string
@@ -86,6 +87,7 @@ func TestBinaryPrecedence(t *testing.T) {
 // parenthesized group folds first whatever the levels say, and the node is
 // kept so the formatter can print the parentheses the author wrote.
 func TestParenthesesOverridePrecedence(t *testing.T) {
+	t.Parallel()
 	e := expression(t, `(1 + 2) * 3`)
 	if got, want := shape(e), `((1 + 2) * 3)`; got != want {
 		t.Errorf("parsed as %s, want %s", got, want)
@@ -104,6 +106,7 @@ func TestParenthesesOverridePrecedence(t *testing.T) {
 // whole comparison is the condition, so `$a > 1 ? "y" : "n"` reads one way
 // only.
 func TestTernaryIsLooserThanEveryBinary(t *testing.T) {
+	t.Parallel()
 	if got, want := shape(expression(t, `$a > 1 ? "y" : "n"`)), `(($a > 1) ? "y" : "n")`; got != want {
 		t.Errorf("parsed as %s, want %s", got, want)
 	}
@@ -114,6 +117,7 @@ func TestTernaryIsLooserThanEveryBinary(t *testing.T) {
 // and only when the left side can be assigned to, so `1 = $a` parses as the
 // literal and never as an assignment.
 func TestAssignmentIsRightAssociative(t *testing.T) {
+	t.Parallel()
 	if got, want := shape(expression(t, `$a = $b = 1`)), `($a = ($b = 1))`; got != want {
 		t.Errorf("parsed as %s, want %s", got, want)
 	}
@@ -131,6 +135,7 @@ func TestAssignmentIsRightAssociative(t *testing.T) {
 // and nothing computed. A call result has nowhere to store a value, so
 // accepting one would build a tree the runner cannot execute.
 func TestIsLValue(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		src  string
 		want bool

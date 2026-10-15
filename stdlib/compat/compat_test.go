@@ -15,6 +15,7 @@ import (
 // own Runtime without stdlib calls this one function for all three, so a
 // family missing from it is a family no script can reach.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	if rt.FunctionExists("ob_start") {
 		t.Fatal("a bare runtime answers for ob_start before anything registered it")
@@ -56,6 +57,7 @@ func runScript(t *testing.T, src string) string {
 // TestOutputBufferingIsWiredByImport covers the blank import: stdlib installs
 // the ob_* family without naming this package, so a script can call it.
 func TestOutputBufferingIsWiredByImport(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		php  string
@@ -126,6 +128,7 @@ func TestOutputBufferingIsWiredByImport(t *testing.T) {
 // the same time: the stack belongs to the runtime holding the bindings
 // on, not to the package.
 func TestBuffersAreScopedToOneRuntime(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php ob_start(); echo "captured"; $text = ob_get_clean(); echo "[" . $text . "]" . ob_get_level();`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)

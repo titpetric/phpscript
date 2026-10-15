@@ -9,6 +9,7 @@ import (
 // a bare constant of the same spelling are two slots: `define("x", 1); echo x;`
 // reads one, `echo $x;` reads the other.
 func TestVarIdent(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		want string
@@ -28,6 +29,7 @@ func TestVarIdent(t *testing.T) {
 // one resolveVar reads to tell an unresolved constant from a variable nothing
 // set, where the variable is null and the constant is a lookup.
 func TestConstIdent(t *testing.T) {
+	t.Parallel()
 	if got, want := constIdent("PHP_EOL"), constIdentPrefix+"PHP_EOL"; got != want {
 		t.Errorf("constIdent(%q) = %q, want %q", "PHP_EOL", got, want)
 	}
@@ -41,6 +43,7 @@ func TestConstIdent(t *testing.T) {
 // digit check keeps `__classconst`, which shares the `__cl` prefix, off the
 // slot path and on the Base path with the other helpers.
 func TestIsSlotIdent(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		want bool

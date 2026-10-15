@@ -15,6 +15,7 @@ import (
 // when it runs out of time. A duration at or below zero returns without arming
 // a timer.
 func TestWait(t *testing.T) {
+	t.Parallel()
 	const forever = 30 * time.Second
 
 	cancelled := func() context.Context {
@@ -47,6 +48,7 @@ func TestWait(t *testing.T) {
 // TestWaitRunsTheClockDown covers the other half: with neither context
 // cancelled the wait lasts its full duration.
 func TestWaitRunsTheClockDown(t *testing.T) {
+	t.Parallel()
 	const d = 20 * time.Millisecond
 
 	start := time.Now()

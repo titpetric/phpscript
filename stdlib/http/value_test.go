@@ -12,6 +12,7 @@ import (
 // where the header takes a string is rendered the way PHP renders it in a string
 // context, and null is the empty string.
 func TestToString(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		value any
@@ -37,6 +38,7 @@ func TestToString(t *testing.T) {
 // writing "false" in an option array meant the option off, and reading it
 // PHP's way would turn every such option on.
 func TestToBool(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		value any
@@ -71,6 +73,7 @@ func TestToBool(t *testing.T) {
 // float64, and a value read out of a configuration file arrives as a string, so
 // all three read as the same number.
 func TestToInt(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		value any
@@ -100,6 +103,7 @@ func TestToInt(t *testing.T) {
 // parsed as Go spells one, so a sub-second timeout is expressible without a
 // fraction.
 func TestToDuration(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		value any
@@ -128,6 +132,7 @@ func TestToDuration(t *testing.T) {
 // read the same, and a value that is no array at all is reported where the
 // client is built.
 func TestToHeaders(t *testing.T) {
+	t.Parallel()
 	array := model.NewArray()
 	array.Set("Authorization", "Bearer token")
 	array.Set("X-Count", int64(2))

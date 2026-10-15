@@ -25,6 +25,7 @@ func newRecordingTracer(t *testing.T) *Tracer {
 // debug front end renders: a root span opened under the name of the trace,
 // with one span per instrumented call below it.
 func TestTrace(t *testing.T) {
+	t.Parallel()
 	tracer := newRecordingTracer(t)
 	ctx, trace, err := tracer.StartTrace(context.Background(), "GET /index.php")
 	if err != nil {
@@ -60,6 +61,7 @@ func TestTrace(t *testing.T) {
 // an instrumented caller reads the same as an uninstrumented one. The
 // context fn runs under carries the span, so work below it nests.
 func TestDo(t *testing.T) {
+	t.Parallel()
 	tracer := newRecordingTracer(t)
 	ctx, trace, err := tracer.StartTrace(context.Background(), "job")
 	if err != nil {
@@ -105,6 +107,7 @@ func TestDo(t *testing.T) {
 // context the tracer did not derive carries one once WithTrace put it there,
 // the spelling a host uses to pass an existing trace to the interpreter.
 func TestTraceFromContext(t *testing.T) {
+	t.Parallel()
 	if got := TraceFromContext(context.Background()); got != nil {
 		t.Errorf("TraceFromContext() = %+v on a bare context, want nil", got)
 	}
@@ -130,6 +133,7 @@ func TestTraceFromContext(t *testing.T) {
 // leaves the context naming its parent and nothing nests under a span that
 // has already been ended.
 func TestSpanFromContext(t *testing.T) {
+	t.Parallel()
 	if got := SpanFromContext(context.Background()); got != nil {
 		t.Errorf("SpanFromContext() = %+v on a bare context, want nil", got)
 	}
@@ -162,6 +166,7 @@ func TestSpanFromContext(t *testing.T) {
 // the Request-Id header on an HTTP trace, so one string matches a log line with
 // its own trace, and it is empty where nothing is traced.
 func TestTraceID(t *testing.T) {
+	t.Parallel()
 	if got := TraceID(context.Background()); got != "" {
 		t.Errorf("TraceID() = %q on a bare context, want an empty string", got)
 	}
@@ -182,6 +187,7 @@ func TestTraceID(t *testing.T) {
 // them. Restore is what fills the read path of a fresh process, so a restart
 // keeps what the last one recorded.
 func TestNewStorageDisk(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	store, err := NewStorageDisk(2, root)
 	if err != nil {

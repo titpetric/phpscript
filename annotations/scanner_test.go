@@ -32,6 +32,7 @@ echo "public";
 // vendored file. A file with no annotation and a file with another extension
 // register nothing.
 func TestScannerReadsOnlyWhatAnApplicationPublishes(t *testing.T) {
+	t.Parallel()
 	registrar := &recordingRegistrar{}
 	if err := annotations.NewRoute(testScannerFileSystem).Register(registrar); err != nil {
 		t.Fatal(err)
@@ -50,6 +51,7 @@ func TestScannerReadsOnlyWhatAnApplicationPublishes(t *testing.T) {
 // server already answers for, and registering them a second time as endpoints
 // would publish two ways to reach one file.
 func TestScannerSkipsAnExcludedDirectory(t *testing.T) {
+	t.Parallel()
 	registrar := &recordingRegistrar{}
 	route := annotations.NewRoute(testScannerFileSystem, annotations.WithExcludedDirectory("public"))
 	if err := route.Register(registrar); err != nil {
@@ -65,6 +67,7 @@ func TestScannerSkipsAnExcludedDirectory(t *testing.T) {
 // Discovery walks one filesystem, so there is nothing to scan and nothing to
 // serve, and the failure arrives at registration where a deployment sees it.
 func TestScannerRefusesANilRoot(t *testing.T) {
+	t.Parallel()
 	err := annotations.NewRoute(nil).Register(&recordingRegistrar{})
 	if err == nil {
 		t.Fatal("a nil root filesystem was accepted")

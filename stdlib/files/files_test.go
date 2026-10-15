@@ -16,6 +16,7 @@ import (
 // script may have written into it. The separator is what keeps a sibling out,
 // so a directory whose name starts with a root's name is outside it.
 func TestWithin(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		dir  string
@@ -40,6 +41,7 @@ func TestWithin(t *testing.T) {
 // spelling. The rule is the runtime's, and every caller joining its answer
 // onto the bound root is what keeps one rule for the whole tree.
 func TestHostPath(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	root := filepath.Join("/srv", "site")
 
@@ -65,6 +67,7 @@ func TestHostPath(t *testing.T) {
 // because the path it is compared against has already been clamped into the
 // root. There is no spelling that grants a write outside the tree.
 func TestWritableRoots(t *testing.T) {
+	t.Parallel()
 	root := filepath.Join("/srv", "site")
 
 	for _, test := range []struct {
@@ -113,6 +116,7 @@ func TestWritableRoots(t *testing.T) {
 // TestRegister covers the root Register binds and the names it installs. The
 // root is the process working directory, the one a CLI run reads and writes.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	if rt.FunctionExists("file_get_contents") {
 		t.Fatal("a bare runtime answers for file_get_contents before anything registered it")
@@ -136,6 +140,7 @@ func TestRegister(t *testing.T) {
 // replaces whatever root stands before it, so a path a script writes
 // resolves under the directory named last and never under the first.
 func TestRegisterRoot(t *testing.T) {
+	t.Parallel()
 	first, second := t.TempDir(), t.TempDir()
 
 	program, err := parser.Parse(`<?php file_put_contents("written.txt", "data"); echo "ok";`)
@@ -172,6 +177,7 @@ func writableOptions() runner.Options {
 // TestWritablePathsAllowsConfiguredDirectories pins that the allowlist is a
 // tree: the directory itself and anything below it.
 func TestWritablePathsAllowsConfiguredDirectories(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	for _, dir := range []string{"upload", "public/upload", "private"} {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
@@ -200,6 +206,7 @@ echo "written";`)
 // exception and no false return, so a script cannot carry on believing
 // the write happened.
 func TestWritablePathsThrowsOutsideTheAllowlist(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		call string
@@ -242,6 +249,7 @@ try {
 // Reads are not writes. An allowlist restricts what a script may change, not
 // what it may look at, so the file it cannot overwrite it can still read.
 func TestWritablePathsLeavesReadsAlone(t *testing.T) {
+	t.Parallel()
 	root := writableTree(t)
 
 	out := runFSOptions(t, root, nil, writableOptions(), `<?php
@@ -258,6 +266,7 @@ echo "|" . (file_exists("private/keep.txt") ? "yes" : "no");`)
 // An unconfigured allowlist is what every project that never set the key has,
 // and it must keep writing wherever the user running the process may.
 func TestWritablePathsUnsetAllowsEverything(t *testing.T) {
+	t.Parallel()
 	root := writableTree(t)
 
 	out := runFSOptions(t, root, nil, runner.Options{}, `<?php
@@ -270,6 +279,7 @@ echo "written";`)
 
 // A prefix is not a parent: uploads-old sits beside upload, not inside it.
 func TestWritablePathsRejectsASiblingSharingAPrefix(t *testing.T) {
+	t.Parallel()
 	root := writableTree(t)
 	if err := os.MkdirAll(filepath.Join(root, "upload-old"), 0o755); err != nil {
 		t.Fatal(err)

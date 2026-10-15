@@ -13,6 +13,7 @@ import (
 // A fixture cannot tell a bytecode run from an interpreter fallback that
 // happened to agree, so every case asserts Supports first.
 func TestFlatstackCatchClauseSelection(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		source  string
@@ -105,6 +106,7 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 // is scoped to the frame that armed the handler. Before that scoping, the
 // first branch in a called function silently disarmed the caller's catch.
 func TestFlatstackCatchSurvivesCalleeJumps(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string

@@ -8,6 +8,7 @@ import (
 // reach from the other side: that an argument is converted before it is
 // rendered, and never passed to a Go formatter that reports its type back.
 func TestPhpSprintfCoercesArguments(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		format string
@@ -45,6 +46,7 @@ func TestPhpSprintfCoercesArguments(t *testing.T) {
 // TestPhpSprintfErrors pins the class each malformed format raises, which is
 // what decides the catch clause a script writes around it.
 func TestPhpSprintfErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		format string
@@ -77,6 +79,7 @@ func TestPhpSprintfErrors(t *testing.T) {
 // TestTrimExponent pins the exponent form PHP writes, which is the digits it
 // needs, and not the two Go and C pad it to.
 func TestTrimExponent(t *testing.T) {
+	t.Parallel()
 	tests := map[string]string{
 		"1.234500e+03":  "1.234500e+3",
 		"1.200000E-04":  "1.200000E-4",

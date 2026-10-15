@@ -40,6 +40,7 @@ func run(t *testing.T, provider *mailstdlib.Memory, source string) string {
 // installed whether or not the host configured a server, so calling code keeps
 // one spelling and its own fallback.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	mailstdlib.Register(rt)
 
@@ -56,6 +57,7 @@ func TestRegister(t *testing.T) {
 // inside the provider; one handle sends any number of messages, and every one
 // of them records the server the handle named.
 func TestMail_Send(t *testing.T) {
+	t.Parallel()
 	queue := mailstdlib.NewMemory("marketing")
 	got := run(t, queue, `
 		$mail = new Mail("marketing");
@@ -80,6 +82,7 @@ func TestMail_Send(t *testing.T) {
 
 // TestMail covers the function against the host's default server.
 func TestMail(t *testing.T) {
+	t.Parallel()
 	queue := mailstdlib.NewMemory()
 	got := run(t, queue, `
 		mail("recipient@example.com", "Subject", "Body");
@@ -104,6 +107,7 @@ func TestMail(t *testing.T) {
 // `new Mail($name)` is the one the host configured under that name. Neither
 // spelling carries a credential.
 func TestMailClass(t *testing.T) {
+	t.Parallel()
 	queue := mailstdlib.NewMemory("default", "marketing")
 	got := run(t, queue, `
 		$mail = new Mail;
@@ -135,6 +139,7 @@ func TestMailClass(t *testing.T) {
 // reported at construction, before a script has written a message, and the
 // error names the server the script selects, and no other.
 func TestMailUnknownServer(t *testing.T) {
+	t.Parallel()
 	queue := mailstdlib.NewMemory("default")
 	got := run(t, queue, `
 		try {
@@ -153,6 +158,7 @@ func TestMailUnknownServer(t *testing.T) {
 // would be the single way to put a password into the runtime scope, so its
 // absence is a stated behaviour and no omission.
 func TestMailTakesAName(t *testing.T) {
+	t.Parallel()
 	got := run(t, mailstdlib.NewMemory(), `
 		try {
 			$mail = new Mail(array("host" => "mail.example.com", "password" => "secret"));
@@ -170,6 +176,7 @@ func TestMailTakesAName(t *testing.T) {
 // exist on every runtime and refuse catchably, so calling code keeps one
 // spelling and its own fallback.
 func TestMailUnconfigured(t *testing.T) {
+	t.Parallel()
 	got := run(t, nil, `
 		echo function_exists("mail") ? "exists" : "missing";
 		try {
@@ -188,6 +195,7 @@ func TestMailUnconfigured(t *testing.T) {
 // exists to hold: a script that holds a configured server, password and all,
 // has no spelling that gets the password back out.
 func TestMailExposesNoCredentialToScripts(t *testing.T) {
+	t.Parallel()
 	queue := mailstdlib.NewMemory("marketing")
 	got := run(t, queue, `
 		$mail = new Mail("marketing");

@@ -16,6 +16,7 @@ import (
 // writes to it; the nil error is what keeps `new Exception` from throwing at
 // the point it is constructed.
 func TestException(t *testing.T) {
+	t.Parallel()
 	exception, err := stdlib.NewException("boom", 7)
 	if err != nil {
 		t.Fatalf("NewException() = %v, want no error from constructing one", err)
@@ -38,6 +39,7 @@ func TestException(t *testing.T) {
 // zero struct is still catchable; the SPL and Error class names are the same
 // Go type with a different name recorded, so each answers its own.
 func TestException_ThrowableClass(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		class string
@@ -61,6 +63,7 @@ func TestException_ThrowableClass(t *testing.T) {
 // code is 0, so an exception constructed with no code answers zero and a
 // script comparing against it needs no null check.
 func TestException_GetCode(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		code int
@@ -86,6 +89,7 @@ func TestException_GetCode(t *testing.T) {
 // the field, so a message a script replaced is the one that comes back, and an
 // exception constructed with no message answers an empty string.
 func TestException_GetMessage(t *testing.T) {
+	t.Parallel()
 	exception, err := stdlib.NewException("", 0)
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +109,7 @@ func TestException_GetMessage(t *testing.T) {
 // with %w and errors.As finds it again: the class the script named is on the
 // value and never in the text.
 func TestException_Error(t *testing.T) {
+	t.Parallel()
 	exception := &stdlib.Exception{Message: "connection refused", Code: 7, Class: "RuntimeException"}
 
 	var err error = exception

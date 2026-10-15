@@ -33,6 +33,7 @@ throw new Exception("connection refused", 0);
 // program it ran is the one the include cache already held. A tree reparsed
 // per request keys every entry on fresh nodes and the cache grows.
 func TestWithExprCache(t *testing.T) {
+	t.Parallel()
 	cache := runner.NewExprCache()
 	if got := cache.Len(); got != 0 {
 		t.Fatalf("Len() = %d on a fresh cache", got)
@@ -76,6 +77,7 @@ func TestWithExprCache(t *testing.T) {
 // render. The page reports whether it rendered, so a false answer leaves the
 // response to the endpoint.
 func TestErrorPageFunc(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		path   string
 		status int

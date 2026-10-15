@@ -37,6 +37,7 @@ func has(found []string, want string) bool {
 // its type, and a later literal of another type is the drift. It stays
 // advisory, so the finding is never fatal and the program still runs.
 func TestReassignReportsADriftingType(t *testing.T) {
+	t.Parallel()
 	found, err := lint.File("index.php", `<?php
 function render() {
 	$total = 1;
@@ -61,6 +62,7 @@ function render() {
 // the else arm assigns an int is the drift the rule names, and the same name
 // in a second function is a second variable and no conflict.
 func TestReassignIsOneScopePerBody(t *testing.T) {
+	t.Parallel()
 	branches := messages(t, `<?php
 function render($flag) {
 	if ($flag) {
@@ -90,6 +92,7 @@ function second() {
 // what a name holds, and null is how PHP initialises a variable before the
 // real value arrives.
 func TestReassignIgnoresComputedValues(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		`<?php
 function render($in) {
@@ -123,6 +126,7 @@ function render() {
 // multi-byte character reads as one of its bytes. It is silent for an array
 // under the same syntax, where indexing is what arrays are for.
 func TestReassignReportsAStringOffset(t *testing.T) {
+	t.Parallel()
 	onAString := messages(t, `<?php
 function first_byte($i) {
 	$text = "hello";

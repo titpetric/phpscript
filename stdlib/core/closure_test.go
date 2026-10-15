@@ -10,6 +10,7 @@ import (
 // rt.Callable, so a function name, a closure literal and a method pair all
 // resolve; a value nothing can call is an error, where php raises a TypeError.
 func TestClosureFromCallable(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 		function double($x) { return $x * 2; }
 		$c = Closure::fromCallable("double");
@@ -42,6 +43,7 @@ func TestClosureFromCallable(t *testing.T) {
 // nothing to alter and the closure comes back unchanged. Rebinding $this would
 // change what the body reads, so it is refused and never ignored in silence.
 func TestClosureBind(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 		$fn = function () { return 7; };
 		$bound = Closure::bind($fn, null);

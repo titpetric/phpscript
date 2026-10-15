@@ -35,6 +35,7 @@ walk(".");`
 // takes. There is nothing on disk to open a descriptor on, so a walk that
 // answers at all proves the handle carries the listing and no file.
 func TestOpendirWalksTheSourceFilesystem(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
 	got := runFSOptions(t, t.TempDir(), nil, opts, walkSrc)
 	if want := "drafts/;three.txt;notes.md;one.txt;two.txt;"; got != want {
@@ -45,6 +46,7 @@ func TestOpendirWalksTheSourceFilesystem(t *testing.T) {
 // TestOpendirWalksTheHost covers the branch a CLI run takes, where no fs.FS is
 // bound and the same names come off the host under the bound root.
 func TestOpendirWalksTheHost(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "drafts"), 0o755); err != nil {
 		t.Fatal(err)
@@ -65,6 +67,7 @@ func TestOpendirWalksTheHost(t *testing.T) {
 // returns: php lists the two directory entries, and a script that does not
 // skip them recurses forever.
 func TestReaddirListsDotAndDotDot(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
 	got := runFSOptions(t, t.TempDir(), nil, opts, `<?php
 $handle = opendir("/");
@@ -80,6 +83,7 @@ echo implode(",", $names);`)
 // TestOpendirRefusesWhatIsNotADirectory pins the false return. A file and a
 // name that is not there answer the same way, as php's opendir does.
 func TestOpendirRefusesWhatIsNotADirectory(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
 	got := runFSOptions(t, t.TempDir(), nil, opts, `<?php
 var_dump(opendir("one.txt"));
@@ -95,6 +99,7 @@ var_dump(opendir("missing"));`)
 // issued answers the same way, which keeps a foreign one from walking
 // anything.
 func TestClosedirExhaustsTheHandle(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
 	got := runFSOptions(t, t.TempDir(), nil, opts, `<?php
 $handle = opendir("/");
@@ -110,6 +115,7 @@ var_dump(readdir("not a handle"));`)
 // path in this package follows: "/" is the source filesystem's root, and a path
 // that climbs is cleaned against it and escapes nothing.
 func TestOpendirIsJailedToTheRoot(t *testing.T) {
+	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
 	got := runFSOptions(t, t.TempDir(), nil, opts, `<?php
 var_dump(opendir("/etc") === false);

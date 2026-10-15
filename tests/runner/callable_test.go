@@ -36,6 +36,7 @@ func runScript(t *testing.T, src, entry string) (string, error) {
 // static registered under its whole spelling answers, `self::` resolves against
 // its enclosing method, and a bound method keeps its receiver.
 func TestFirstClassCallableResolution(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		src   string
@@ -84,6 +85,7 @@ func TestFirstClassCallableResolution(t *testing.T) {
 // and not where it would have been called, with the message the equivalent
 // call reports.
 func TestFirstClassCallableErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		src  string

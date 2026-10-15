@@ -12,6 +12,7 @@ import (
 // resolve their arguments against the root, so a script names them the way it
 // names everything else, and both answer with a bool and no error.
 func TestRenameAndCopy(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("content"), 0o644); err != nil {
 		t.Fatal(err)
@@ -40,6 +41,7 @@ if (rename("missing.txt", "d.txt")) { echo "|moved-nothing"; } else { echo "|no-
 // TestCopyKeepsSource pins the difference between copy() and rename(): a copy
 // leaves the original in place.
 func TestCopyKeepsSource(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("content"), 0o644); err != nil {
 		t.Fatal(err)
@@ -59,6 +61,7 @@ echo "|" . file_get_contents("a.txt") . "|" . file_get_contents("b.txt");`)
 // target the operating system refuses answers false and never fails the
 // script.
 func TestFilePutContents(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 
 	out := runFS(t, root, nil, `<?php
@@ -85,6 +88,7 @@ echo file_get_contents("a.txt");`)
 // TestChmod checks that a mode written the way PHP writes it, as an octal
 // literal, reaches the file unchanged.
 func TestChmod(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	name := filepath.Join(root, "a.txt")
 	if err := os.WriteFile(name, []byte("content"), 0o600); err != nil {
@@ -111,6 +115,7 @@ if (chmod("missing.txt", 0640)) { echo "|missing-ok"; } else { echo "|missing-fa
 // owner it already has is the one chown any user is allowed to make, so this
 // runs the same whether or not the tests are root.
 func TestChownSelf(t *testing.T) {
+	t.Parallel()
 	me, err := user.Current()
 	if err != nil {
 		t.Skipf("current user: %v", err)
@@ -140,6 +145,7 @@ if (chown("missing.txt", `+strconv.Itoa(uid)+`)) { echo "|missing-ok"; } else { 
 
 // TestChgrpSelf is TestChownSelf for the group half of the ownership.
 func TestChgrpSelf(t *testing.T) {
+	t.Parallel()
 	me, err := user.Current()
 	if err != nil {
 		t.Skipf("current user: %v", err)
@@ -167,6 +173,7 @@ if (chgrp("a.txt", "no-such-group-here")) { echo "|unknown-ok"; } else { echo "|
 // the root is cleaned back into it, so a script cannot write above the
 // directory the host bound.
 func TestWritesStayInRoot(t *testing.T) {
+	t.Parallel()
 	outside := t.TempDir()
 	root := filepath.Join(outside, "root")
 	if err := os.Mkdir(root, 0o755); err != nil {

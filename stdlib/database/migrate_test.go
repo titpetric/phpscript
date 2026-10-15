@@ -12,6 +12,7 @@ import (
 // each file once, because mig reads its own record to decide, so a deployment
 // that migrates on every process start does not replay the schema.
 func TestDatabaseMigrate(t *testing.T) {
+	t.Parallel()
 	migrations := newLiveMigrate(t, fstest.MapFS{
 		"schema/0001-users.up.sql": &fstest.MapFile{
 			Data: []byte("CREATE TABLE users (id INTEGER PRIMARY KEY);"),
@@ -41,6 +42,7 @@ func TestDatabaseMigrate(t *testing.T) {
 // directory is joined in and the leading "./" comes off; what the pattern
 // matched is what mig records, so the spelling has to settle to one form.
 func TestDatabaseMigrate_Load(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name    string
 		workDir string
@@ -71,6 +73,7 @@ func TestDatabaseMigrate_Load(t *testing.T) {
 // can hold a schema directory it has not filled yet, and the binding has
 // always let such a script start.
 func TestDatabaseMigrate_Run(t *testing.T) {
+	t.Parallel()
 	root := fstest.MapFS{
 		"schema/0001-users.up.sql": &fstest.MapFile{
 			Data: []byte("CREATE TABLE users (id INTEGER PRIMARY KEY);\nCREATE TABLE sessions (id TEXT);"),

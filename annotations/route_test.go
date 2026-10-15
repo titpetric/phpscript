@@ -68,6 +68,7 @@ func newTestMux(t *testing.T, options ...annotations.Option) *http.ServeMux {
 }
 
 func TestRouteRegistersAnnotatedPHPFiles(t *testing.T) {
+	t.Parallel()
 	mux := newTestMux(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/users/42", nil)
@@ -82,6 +83,7 @@ func TestRouteRegistersAnnotatedPHPFiles(t *testing.T) {
 }
 
 func TestRootRouteDoesNotMatchSubpaths(t *testing.T) {
+	t.Parallel()
 	mux := newTestMux(t)
 
 	rr := httptest.NewRecorder()
@@ -92,6 +94,7 @@ func TestRootRouteDoesNotMatchSubpaths(t *testing.T) {
 }
 
 func TestRouteRegistersDefaultGetAndPost(t *testing.T) {
+	t.Parallel()
 	mux := newTestMux(t)
 
 	body := "name=bob"
@@ -109,6 +112,7 @@ func TestRouteRegistersDefaultGetAndPost(t *testing.T) {
 }
 
 func TestRouteAppliesRedirectStatus(t *testing.T) {
+	t.Parallel()
 	mux := newTestMux(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/redirect", nil)
@@ -123,6 +127,7 @@ func TestRouteAppliesRedirectStatus(t *testing.T) {
 }
 
 func TestRouteSkipsExcludedDirectory(t *testing.T) {
+	t.Parallel()
 	mux := newTestMux(t, annotations.WithExcludedDirectory("public"))
 
 	rr := httptest.NewRecorder()
@@ -135,6 +140,7 @@ func TestRouteSkipsExcludedDirectory(t *testing.T) {
 // TestRouteMountsOnPlatformRouter pins the second registrar: the same
 // annotations reach a platform router as a lifecycle module.
 func TestRouteMountsOnPlatformRouter(t *testing.T) {
+	t.Parallel()
 	router := chi.NewRouter()
 	if err := annotations.NewRoute(testRouteFileSystem).Mount(context.Background(), router); err != nil {
 		t.Fatal(err)
@@ -154,6 +160,7 @@ func TestRouteMountsOnPlatformRouter(t *testing.T) {
 // fill. None of it depends on the endpoint sitting under /api, which is the
 // point: the routes here do, and it is not what decides.
 func TestRouteErrorPagesAreOfferedOnlyAnUnansweredError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		path    string
 		offered bool
@@ -201,6 +208,7 @@ func TestRouteErrorPagesAreOfferedOnlyAnUnansweredError(t *testing.T) {
 // What went wrong is in the log and on the trace, not in a body the client
 // reads back.
 func TestRouteWithoutErrorPagesReportsOnlyTheStatus(t *testing.T) {
+	t.Parallel()
 	mux := newTestMux(t)
 
 	rr := httptest.NewRecorder()
@@ -217,6 +225,7 @@ func TestRouteWithoutErrorPagesReportsOnlyTheStatus(t *testing.T) {
 // not render, the ordinary case of a request no page is meant for, leaves the
 // endpoint's own response unchanged.
 func TestRouteErrorPageDeclinesLeavesTheStatus(t *testing.T) {
+	t.Parallel()
 	mux := newTestMux(t, annotations.WithErrorPages(
 		func(http.ResponseWriter, *http.Request, int, string) bool { return false },
 	))
@@ -229,6 +238,7 @@ func TestRouteErrorPageDeclinesLeavesTheStatus(t *testing.T) {
 }
 
 func TestRouteRejectsMissingDestinations(t *testing.T) {
+	t.Parallel()
 	route := annotations.NewRoute(testRouteFileSystem)
 	if err := route.RegisterMux(nil); err == nil {
 		t.Fatal("nil mux was accepted")

@@ -14,6 +14,7 @@ import (
 // index.php to name, and before the fallback existed its front page answered
 // 404 with the file sitting there unread.
 func TestIndexPageFallsBackThroughTheNameList(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		files fstest.MapFS
@@ -82,6 +83,7 @@ func TestIndexPageFallsBackThroughTheNameList(t *testing.T) {
 // something a site asked to publish, and a site with a 404 page answers a
 // missing index the same way it answers any other dead link.
 func TestDirectoryWithoutAnIndexIsNotFound(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/index.php":        {Data: []byte(`<?php echo "home";`)},
 		"public/404.html":         {Data: []byte(`<h1>gone</h1>`)},
@@ -107,6 +109,7 @@ func TestDirectoryWithoutAnIndexIsNotFound(t *testing.T) {
 // its serving URL, so /docs must become /docs/ or every link in it
 // points a directory too high.
 func TestDirectoryWithoutASlashRedirects(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/docs/index.html": {Data: []byte(`<h1>docs</h1>`)},
 	})
@@ -125,6 +128,7 @@ func TestDirectoryWithoutASlashRedirects(t *testing.T) {
 // in a writable directory is content, and it is served as bytes and never
 // executed.
 func TestIndexPageInAWritableDirectoryIsNotRun(t *testing.T) {
+	t.Parallel()
 	h, err := newHandler(
 		fstest.MapFS{"public/uploads/index.php": {Data: []byte(`<?php echo "uploaded";`)}},
 		"/srv/site", DefaultDocumentRoot,

@@ -37,6 +37,7 @@ interface Shape {}
 // executable statement seeded, declarations skipped, and the file recorded
 // whether or not anything in it ran.
 func TestNew(t *testing.T) {
+	t.Parallel()
 	c := collect(t, "app.php", collectorSource, 0)
 
 	if files := c.Files(); len(files) != 1 || files[0] != "app.php" {
@@ -58,6 +59,7 @@ func TestNew(t *testing.T) {
 // and one nothing reached stays at zero, which is the row a report exists to
 // show.
 func TestCollector(t *testing.T) {
+	t.Parallel()
 	c := collect(t, "app.php", collectorSource, 2)
 	for _, block := range c.Blocks() {
 		if block.Count != 2 {
@@ -75,6 +77,7 @@ func TestCollector(t *testing.T) {
 // charged against: free functions under their name, methods under Class::name.
 // An interface declares only signatures and spans nothing.
 func TestCollector_Functions(t *testing.T) {
+	t.Parallel()
 	funcs := collect(t, "app.php", collectorSource, 1).Functions()
 
 	names := map[string]coverage.FuncSpan{}
@@ -100,6 +103,7 @@ func TestCollector_Functions(t *testing.T) {
 // counts it already has: a server includes the same file every request, and a
 // reset baseline would report the last one in place of the run.
 func TestCollector_Register(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(collectorSource)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -122,6 +126,7 @@ func TestCollector_Register(t *testing.T) {
 // interpreter anchors an entrypoint at the source root for __FILE__, and names
 // an include as it resolved it.
 func TestName(t *testing.T) {
+	t.Parallel()
 	for _, tc := range [][2]string{
 		{"/app.php", "app.php"},
 		{"app.php", "app.php"},

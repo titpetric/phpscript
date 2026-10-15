@@ -8,6 +8,7 @@ import (
 // counts characters where strlen counts bytes, so "héllo" is five to one and
 // six to the other.
 func TestMultibyteLength(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(mb_strlen("héllo"), strlen("héllo"), mb_strlen(""), mb_strlen("abc"));`)
 
@@ -21,6 +22,7 @@ var_dump(mb_strlen("héllo"), strlen("héllo"), mb_strlen(""), mb_strlen("abc"))
 // start counts back from the end, a missing length runs to it, and a start past
 // the end is the empty string and no error.
 func TestMultibyteSubstr(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(mb_substr("héllo", 1, 3), mb_substr("héllo", -2), mb_substr("héllo", 1), mb_substr("héllo", 10));
 var_dump(mb_substr("héllo", 0, 0), mb_substr("héllo", 1, -1), mb_substr("héllo", -10));`)
@@ -36,6 +38,7 @@ var_dump(mb_substr("héllo", 0, 0), mb_substr("héllo", 1, -1), mb_substr("héll
 // a byte one, and the false a needle nothing holds answers with. The offset
 // argument is where the search starts, also counted in characters.
 func TestMultibyteStrpos(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(mb_strpos("héllo", "l"), mb_strpos("héllo", "z"), mb_strpos("héllo", "l", 3));
 var_dump(mb_strpos("héllo", "h"), mb_strpos("héllo", "é"), mb_strrpos("héllo", "l"));`)
@@ -50,6 +53,7 @@ var_dump(mb_strpos("héllo", "h"), mb_strpos("héllo", "é"), mb_strrpos("héllo
 // multibyte character is never cut in half, so the last chunk is short rather
 // than the first being wrong.
 func TestMultibyteStrSplit(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(mb_str_split("héllo", 2));
 var_dump(mb_str_split("abc", 1));`)
@@ -66,6 +70,7 @@ var_dump(mb_str_split("abc", 1));`)
 // and a pad string longer than the gap is cut to fit, so the result is exactly
 // the width the call names.
 func TestMultibyteStrPad(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(mb_str_pad("hé", 5, "-"), mb_str_pad("hé", 5, "-", STR_PAD_LEFT), mb_str_pad("hé", 5, "ab", STR_PAD_BOTH));
 var_dump(mb_strlen(mb_str_pad("hé", 5, "-")), mb_str_pad("héllo", 2, "-"), mb_str_pad("hé", 4, "abc"));`)
@@ -81,6 +86,7 @@ var_dump(mb_strlen(mb_str_pad("hé", 5, "-")), mb_str_pad("héllo", 2, "-"), mb_
 // change one character and leave the rest: the character is multibyte, so a
 // byte-wise ucfirst would write a broken sequence where this writes É.
 func TestMultibyteCaseOfTheFirstCharacter(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(mb_ucfirst("école"), mb_lcfirst("École"), mb_ucfirst(""), mb_lcfirst(""));
 var_dump(mb_ucfirst("abc"), mb_lcfirst("ABC"));`)
@@ -95,6 +101,7 @@ var_dump(mb_ucfirst("abc"), mb_lcfirst("ABC"));`)
 // TestMultibyteCase covers the whole-string folds, which are the Unicode ones:
 // É folds to é and back, where a byte-wise fold leaves it untouched.
 func TestMultibyteCase(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(mb_strtoupper("héllo"), mb_strtolower("HÉLLO"));`)
 

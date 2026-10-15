@@ -27,6 +27,7 @@ type reflectedCloser interface {
 // array and map is an array; a pointer reads through to what it points at; and
 // an empty interface is mixed where one with a method is an object.
 func TestPHPTypeReflect(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		value any
 		want  string
@@ -71,6 +72,7 @@ func TestPHPTypeReflect(t *testing.T) {
 // $matches arrives that way, so the signature is written with an ampersand and
 // no type.
 func TestIsRefSetterType(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name  string
 		value any
@@ -97,6 +99,7 @@ func TestIsRefSetterType(t *testing.T) {
 // dropped; the remaining names come from the PHP type, and a repeated name is
 // numbered so two ignored arguments do not both print as $value.
 func TestReflectParams(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name  string
 		value any
@@ -153,6 +156,7 @@ func TestReflectParams(t *testing.T) {
 // error is void. Several non-error results are one array: the runtime packs
 // them into a list for the script to destructure.
 func TestReflectReturn(t *testing.T) {
+	t.Parallel()
 	classTypes := map[reflect.Type]string{
 		reflect.TypeOf(reflectedStruct{}): "Thing",
 		reflect.TypeOf(reflectedInt(0)):   `Thing\Span`,
@@ -196,6 +200,7 @@ func TestReflectReturn(t *testing.T) {
 // result is a class a script can hold. A registered type is one; the error
 // beside it is not, and neither is a plain string.
 func TestHasRegisteredReturn(t *testing.T) {
+	t.Parallel()
 	classTypes := map[reflect.Type]string{reflect.TypeOf(reflectedStruct{}): "Thing"}
 
 	for _, tt := range []struct {

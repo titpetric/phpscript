@@ -5,6 +5,7 @@ import (
 )
 
 func TestCleanDSN(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		dsn  string
@@ -52,6 +53,7 @@ func TestCleanDSN(t *testing.T) {
 }
 
 func TestCleanDSNDriverSpecific(t *testing.T) {
+	t.Parallel()
 	dsn := "user=postgres password=secret host=127.0.0.1 port=15432 dbname=postgres sslmode=verify-ca"
 
 	for _, driver := range []string{"postgres", "pgx"} {
@@ -64,6 +66,7 @@ func TestCleanDSNDriverSpecific(t *testing.T) {
 }
 
 func TestCleanSQLiteDSN(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		dsn  string
@@ -116,6 +119,7 @@ func TestCleanSQLiteDSN(t *testing.T) {
 }
 
 func TestResolveSQLiteDSN(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		root string

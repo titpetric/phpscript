@@ -10,6 +10,7 @@ import (
 
 // cases assert it came back list-shaped, i.e. dense int64 keys in order.
 func TestPHPArrayMergeShapes(t *testing.T) {
+	t.Parallel()
 	assoc := model.NewArray()
 	assoc.Set("a", 1)
 	assoc.Set("b", 2)
@@ -113,6 +114,7 @@ func TestPHPArrayMergeShapes(t *testing.T) {
 // TestPHPArrayMergeCopiesInputs asserts array_merge produces a new array, as
 // PHP does: writing to the result must not reach back into an argument.
 func TestPHPArrayMergeCopiesInputs(t *testing.T) {
+	t.Parallel()
 	src := []any{"a", "b"}
 	out, ok := phpArrayMerge(src).(*model.Array)
 	if !ok {
@@ -129,6 +131,7 @@ func TestPHPArrayMergeCopiesInputs(t *testing.T) {
 // interface value holding it, so `$x = array_merge($a, $b); $x[] = "z"` would
 // be an error. Rule 4 of docs/allocation-performance.md.
 func TestPHPArrayMergeResultIsAppendable(t *testing.T) {
+	t.Parallel()
 	out, ok := phpArrayMerge([]string{"a"}, []string{"b"}).(*model.Array)
 	if !ok {
 		t.Fatalf("array_merge returned a non-appendable shape")
@@ -147,6 +150,7 @@ func TestPHPArrayMergeResultIsAppendable(t *testing.T) {
 // must say so, with no silent mutation of a copy the script never sees. PHP
 // has no spelling that passes them a Go slice, so only a Go test reaches this path.
 func TestArrayMutatorsRejectNonArrays(t *testing.T) {
+	t.Parallel()
 	// The shapes a binding returns in place of a *model.Array.
 	inputs := []any{nil, (*model.Array)(nil), []any{"a"}, []string{"a"}, "str"}
 
@@ -186,6 +190,7 @@ func TestArrayMutatorsRejectNonArrays(t *testing.T) {
 // loose path is phpval.Compare, so PHP 8's "a non-numeric string does not equal
 // 0" holds, and the strict path compares the Go type first.
 func TestArrayFindStrict(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name    string
 		needle  any

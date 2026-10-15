@@ -20,6 +20,7 @@ import (
 // These cases mirror the flat-stack repository's table-driven VM and load
 // tests, adapted to phpscript's public parser and runner-compatible API.
 func TestFlatstackTableDrivenExecution(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string
@@ -69,6 +70,7 @@ func TestFlatstackTableDrivenExecution(t *testing.T) {
 }
 
 func TestFlatstackNativeLanguageCoverage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string
@@ -115,6 +117,7 @@ func TestFlatstackNativeLanguageCoverage(t *testing.T) {
 }
 
 func TestFlatstackNativeInclude(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php $message = include("plugin.php"); echo $message;`)
 	if err != nil {
 		t.Fatal(err)
@@ -139,6 +142,7 @@ func TestFlatstackNativeInclude(t *testing.T) {
 }
 
 func TestFlatstackIncludeDefinesCallerVar(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php include("defs.php"); echo $x;`)
 	if err != nil {
 		t.Fatal(err)
@@ -160,6 +164,7 @@ func TestFlatstackIncludeDefinesCallerVar(t *testing.T) {
 }
 
 func TestFlatstackIncludeOnce(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php include_once("once.php"); include_once("once.php");`)
 	if err != nil {
 		t.Fatal(err)
@@ -186,6 +191,7 @@ func TestFlatstackIncludeOnce(t *testing.T) {
 }
 
 func TestFlatstackIncludeChainSeesPriorIncludeVars(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php include("a.php"); include("b.php");`)
 	if err != nil {
 		t.Fatal(err)
@@ -210,6 +216,7 @@ func TestFlatstackIncludeChainSeesPriorIncludeVars(t *testing.T) {
 }
 
 func TestFlatstackIncludeDoesNotLeakAcrossRuns(t *testing.T) {
+	t.Parallel()
 	first, err := parser.Parse(`<?php include("leak.php");`)
 	if err != nil {
 		t.Fatal(err)
@@ -235,6 +242,7 @@ func TestFlatstackIncludeDoesNotLeakAcrossRuns(t *testing.T) {
 }
 
 func TestFlatstackIncludeInFunctionDoesNotLeakToCaller(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php function load() { include("in.php"); } load(); echo $x;`)
 	if err != nil {
 		t.Fatal(err)
@@ -256,6 +264,7 @@ func TestFlatstackIncludeInFunctionDoesNotLeakToCaller(t *testing.T) {
 }
 
 func TestFlatstackLoopControlUnwindsTryHandler(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php
 for ($i = 0; $i < 1; $i += 1) {
     try { break; } catch (Exception $e) { echo "wrong catch"; }
@@ -285,6 +294,7 @@ $storage->get("missing");
 // An anonymous class is the unsupported construct: the bytecode carries a
 // class name where one carries its declaration.
 func TestFlatstackRejectsWholeProgramBeforeSideEffects(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php
 $storage = new Storage;
 $keep = new class { public $x = 1; };
@@ -328,6 +338,7 @@ echo 42;
 // bytecode engine. One usort() comparator costs the whole file, because Compile
 // rejects a program on any unsupported node.
 func TestFlatstackSupportsArrayCallbackClosures(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php
 $n = array(3, 1, 2);
 usort($n, function ($a, $b) {
@@ -344,6 +355,7 @@ echo implode(",", $n);
 }
 
 func TestFlatstackSharedCacheParallel(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php $a = "shared"; $b = "-cache"; echo $a . $b; ?>`)
 	if err != nil {
 		t.Fatal(err)
@@ -378,6 +390,7 @@ func TestFlatstackSharedCacheParallel(t *testing.T) {
 }
 
 func TestFlatstackHostErrorPropagates(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php $storage = new Storage; $storage->get("missing"); ?>`)
 	if err != nil {
 		t.Fatal(err)
@@ -401,6 +414,7 @@ func (failingWriter) Write([]byte) (int, error) {
 }
 
 func TestFlatstackOutputErrorPropagates(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php echo "value"; ?>`)
 	if err != nil {
 		t.Fatal(err)
@@ -413,6 +427,7 @@ func TestFlatstackOutputErrorPropagates(t *testing.T) {
 }
 
 func TestFlatstackRuntimeGlobalUsesFlatBytecode(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php echo "tenant=" . $tenant; ?>`)
 	if err != nil {
 		t.Fatal(err)
@@ -439,6 +454,7 @@ func (panicHost) Crash() {
 }
 
 func TestFlatstackHostPanicBecomesError(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php $host = new PanicHost; $host->crash(); ?>`)
 	if err != nil {
 		t.Fatal(err)
@@ -456,6 +472,7 @@ func TestFlatstackHostPanicBecomesError(t *testing.T) {
 }
 
 func TestFlatstackHostPanicCanBeCaught(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string
@@ -589,6 +606,7 @@ echo $sum;
 }
 
 func TestFlatstackDeepConcat(t *testing.T) {
+	t.Parallel()
 	const depth = 100
 	source := `<?php $value = "x"; echo $value` + strings.Repeat(` . "x"`, depth) + `; ?>`
 	program, err := parser.Parse(source)

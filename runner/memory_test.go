@@ -11,6 +11,7 @@ import (
 // self-referential one terminates, because the visited set keys on pointer
 // identity.
 func TestDeepSize(t *testing.T) {
+	t.Parallel()
 	inner := model.NewArray()
 	inner.Append("abcdefgh")
 
@@ -44,6 +45,7 @@ func TestDeepSize(t *testing.T) {
 // as its values, and a host-owned Go value takes the shallow size, the
 // ownership rule flatHost.SetEntry applies.
 func TestDeepSizeContainers(t *testing.T) {
+	t.Parallel()
 	var nilArray *model.Array
 	var nilObject *model.Object
 	for _, tc := range []struct {
@@ -77,6 +79,7 @@ func TestDeepSizeContainers(t *testing.T) {
 // and the walk that reads a deeper graph is DeepSize: this one undercounts
 // nesting and is cheap enough to run per call.
 func TestEstimateValueSize(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value any
@@ -111,6 +114,7 @@ func TestEstimateValueSize(t *testing.T) {
 // the shallow estimate walks it. A nested container is charged its header and
 // nothing below it, so the estimate stays one level deep whatever it holds.
 func TestShallowElementSize(t *testing.T) {
+	t.Parallel()
 	filled := model.NewArray()
 	filled.Append("abcdefgh")
 

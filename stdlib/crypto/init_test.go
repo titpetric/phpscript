@@ -18,6 +18,7 @@ import (
 // named here. This test binary imports only this package, so the contributed
 // set is this package's alone.
 func TestInitContributesEveryInstaller(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	for _, install := range runner.BindingsFor(runner.ProfileSecure) {
 		install(rt)
@@ -46,6 +47,7 @@ func TestInitContributesEveryInstaller(t *testing.T) {
 // Crockford base32 characters for a ULID, and 36 characters in the 8-4-4-4-12
 // form for a UUIDv7, with the version and variant bits set.
 func TestRegisterIdentifiers(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	RegisterIdentifiers(rt)
 

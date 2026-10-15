@@ -23,6 +23,7 @@ func randomRuntime(t *testing.T) *runner.Runtime {
 // cover most of the type, and rand.Int does the rejection sampling that keeps
 // the pick unbiased.
 func TestRegisterRandom(t *testing.T) {
+	t.Parallel()
 	rt := randomRuntime(t)
 
 	for _, test := range []struct {
@@ -58,6 +59,7 @@ func TestRegisterRandom(t *testing.T) {
 // exactly, and a length below one is refused: PHP throws there, and returning
 // an empty string would read as key material a caller never got.
 func TestRegisterRandom_bytes(t *testing.T) {
+	t.Parallel()
 	rt := randomRuntime(t)
 
 	for _, length := range []int64{1, 16, 64} {
@@ -104,6 +106,7 @@ func TestRegisterRandom_bytes(t *testing.T) {
 // PHP's getrandmax(); a reversed range is refused and never silently
 // swapped, so a script computing its bounds wrongly fails where it did so.
 func TestRegisterRandom_bounds(t *testing.T) {
+	t.Parallel()
 	rt := randomRuntime(t)
 
 	if _, err := rt.InvokeNamed("random_int", int64(2), int64(1)); err == nil {

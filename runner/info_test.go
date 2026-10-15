@@ -14,6 +14,7 @@ import (
 // count the process reached since; and sections print under their own heading
 // in registration order, so a report reads the same way twice.
 func TestInfoSection(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 
@@ -57,6 +58,7 @@ func infoOutput(t *testing.T, rt *runner.Runtime, out *strings.Builder) string {
 }
 
 func TestPHPInfoLeavesOutASectionWithNothingToSay(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	rt.RegisterInfo("Quiet", func(*runner.Runtime) []runner.InfoField { return nil })
@@ -73,6 +75,7 @@ func TestPHPInfoLeavesOutASectionWithNothingToSay(t *testing.T) {
 }
 
 func TestPHPInfoReportsTheCompiledTree(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{
 		Precompile: true,

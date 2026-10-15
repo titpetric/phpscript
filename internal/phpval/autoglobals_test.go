@@ -13,6 +13,7 @@ var superglobals = []string{"_COOKIE", "_ENV", "_FILES", "_GET", "_POST", "_REQU
 // closed by the language, so a name outside it reports false and the caller
 // stores the variable the way it stores every other one.
 func TestAutoGlobals_Set(t *testing.T) {
+	t.Parallel()
 	for _, name := range superglobals {
 		var globals AutoGlobals
 		if !globals.Set(name, "value") {
@@ -34,6 +35,7 @@ func TestAutoGlobals_Set(t *testing.T) {
 // outside the set is not a superglobal, and one inside it that nothing bound
 // is unset; both let the caller fall through to globals and constants.
 func TestAutoGlobals_Lookup(t *testing.T) {
+	t.Parallel()
 	var globals AutoGlobals
 
 	for _, name := range superglobals {
@@ -66,6 +68,7 @@ func TestAutoGlobals_Lookup(t *testing.T) {
 // one is passed over, so a request that bound three superglobals registers
 // three.
 func TestAutoGlobals_Range(t *testing.T) {
+	t.Parallel()
 	var globals AutoGlobals
 
 	var visited []string
@@ -104,6 +107,7 @@ func TestAutoGlobals_Range(t *testing.T) {
 // bound all eight visits all eight, in the declared field order. That order is
 // alphabetical, so the expected list is the sorted one.
 func TestAutoGlobals_RangeVisitsEveryField(t *testing.T) {
+	t.Parallel()
 	var globals AutoGlobals
 	for _, name := range superglobals {
 		globals.Set(name, name)
@@ -133,6 +137,7 @@ func TestAutoGlobals_RangeVisitsEveryField(t *testing.T) {
 // nil, so the next request's Register rebinds from nothing and a value from
 // the last request cannot be read.
 func TestAutoGlobals_Reset(t *testing.T) {
+	t.Parallel()
 	var globals AutoGlobals
 	for _, name := range superglobals {
 		globals.Set(name, name)

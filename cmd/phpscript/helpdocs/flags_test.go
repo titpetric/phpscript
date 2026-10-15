@@ -10,6 +10,7 @@ import (
 // what it holds, it starts empty, and a flag added to it is readable through
 // the four fields the flag table prints.
 func TestNewFlagSet(t *testing.T) {
+	t.Parallel()
 	var fs *helpdocs.FlagSet = helpdocs.NewFlagSet("test")
 
 	if got := fs.Name(); got != "test" {
@@ -39,6 +40,7 @@ func TestNewFlagSet(t *testing.T) {
 // TestNewFlagSetContinuesOnError covers the error handling a set built for the
 // help carries: an unknown flag is an error returned, and not an exit.
 func TestNewFlagSetContinuesOnError(t *testing.T) {
+	t.Parallel()
 	fs := helpdocs.NewFlagSet("test")
 
 	if err := fs.Parse([]string{"--nothing"}); err == nil {

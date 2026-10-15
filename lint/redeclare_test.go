@@ -12,6 +12,7 @@ import (
 // message names the first declaration's line, which is the half a
 // reader needs to find the pair.
 func TestRedeclareIsFatal(t *testing.T) {
+	t.Parallel()
 	found, err := lint.File("index.php", `<?php
 function helper() { return 1; }
 
@@ -37,6 +38,7 @@ function helper() { return 2; }`)
 // registers: strlen is installed by the standard library, so a file declaring
 // it is refused the same way, with no earlier line to name.
 func TestRedeclareOverAHostName(t *testing.T) {
+	t.Parallel()
 	found, err := lint.File("index.php", `<?php
 function strlen($s) { return 0; }`)
 	if err != nil {
@@ -56,6 +58,7 @@ function strlen($s) { return 0; }`)
 // absent built-in is what function_exists guards, and the author has written
 // both branches, so neither the duplicate nor the host name is reported.
 func TestRedeclareSkipsAGuardedName(t *testing.T) {
+	t.Parallel()
 	found := messagesOf(mustLint(t, `<?php
 if (!function_exists("str_contains")) {
 	function str_contains($haystack, $needle) { return false; }
@@ -69,6 +72,7 @@ if (!function_exists("str_contains")) {
 // name: a method belongs to its class, so two classes declaring render() are
 // two methods and no collision.
 func TestRedeclareCountsAMethodApart(t *testing.T) {
+	t.Parallel()
 	found := messagesOf(mustLint(t, `<?php
 class Page { function render() { return 1; } }
 class Post { function render() { return 2; } }`))

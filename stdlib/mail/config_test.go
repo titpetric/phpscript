@@ -10,6 +10,7 @@ import (
 // certificate is matched against, which is the configured host, and whether it
 // is checked at all.
 func TestConfigTLS(t *testing.T) {
+	t.Parallel()
 	config := Config{Host: "mail.titpetric.com", Port: 587}
 	if got := config.tlsConfig().ServerName; got != "mail.titpetric.com" {
 		t.Fatalf("ServerName = %q, want %q", got, "mail.titpetric.com")
@@ -27,6 +28,7 @@ func TestConfigTLS(t *testing.T) {
 // TestConfigValidate covers the checks that fail a command at startup rather
 // than a delivery hours later.
 func TestConfigValidate(t *testing.T) {
+	t.Parallel()
 	tests := map[string]struct {
 		config Config
 		want   string
@@ -71,6 +73,7 @@ func TestConfigValidate(t *testing.T) {
 // Config today; what this pins is that a %v somebody adds later cannot be the way a
 // password leaves the process.
 func TestConfigStringElidesTheCredential(t *testing.T) {
+	t.Parallel()
 	config := Config{
 		Host:     "mail.example.com",
 		Port:     587,

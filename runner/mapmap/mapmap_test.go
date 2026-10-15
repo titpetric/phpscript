@@ -18,6 +18,7 @@ func collect(m *mapmap.MapMap) map[string]any {
 }
 
 func TestReadsThroughToTheSource(t *testing.T) {
+	t.Parallel()
 	m := mapmap.New(mapmap.MapSource{"REQUEST_METHOD": "GET"})
 	if got := m.Read("REQUEST_METHOD"); got != "GET" {
 		t.Fatalf("Read = %v, want GET", got)
@@ -34,6 +35,7 @@ func TestReadsThroughToTheSource(t *testing.T) {
 }
 
 func TestWriteLeavesTheSourceAlone(t *testing.T) {
+	t.Parallel()
 	src := mapmap.MapSource{"REMOTE_ADDR": "10.0.0.1"}
 	m := mapmap.New(src)
 	m.Write("REMOTE_ADDR", "127.0.0.1")
@@ -52,6 +54,7 @@ func TestWriteLeavesTheSourceAlone(t *testing.T) {
 }
 
 func TestOverwriteDoesNotGrowTheLength(t *testing.T) {
+	t.Parallel()
 	m := mapmap.New(mapmap.MapSource{"A": "1", "B": "2"})
 	m.Write("A", "9")
 	if got := m.Len(); got != 2 {
@@ -74,6 +77,7 @@ func TestOverwriteDoesNotGrowTheLength(t *testing.T) {
 }
 
 func TestDeleteHidesASourceKey(t *testing.T) {
+	t.Parallel()
 	m := mapmap.New(mapmap.MapSource{"A": "1", "B": "2"})
 	m.Delete("A")
 	if m.Has("A") || m.Read("A") != nil {
@@ -96,6 +100,7 @@ func TestDeleteHidesASourceKey(t *testing.T) {
 }
 
 func TestRangeStopsWhenAskedTo(t *testing.T) {
+	t.Parallel()
 	m := mapmap.New(mapmap.MapSource{"A": "1", "B": "2", "C": "3"})
 	m.Write("D", "4")
 	seen := 0
@@ -109,6 +114,7 @@ func TestRangeStopsWhenAskedTo(t *testing.T) {
 }
 
 func TestReleaseDropsTheEdits(t *testing.T) {
+	t.Parallel()
 	m := mapmap.New(mapmap.MapSource{"A": "1"})
 	m.Write("A", "2")
 	m.Write("B", "3")
@@ -131,6 +137,7 @@ func TestReleaseDropsTheEdits(t *testing.T) {
 }
 
 func TestNilIsEmpty(t *testing.T) {
+	t.Parallel()
 	var m *mapmap.MapMap
 	if m.Read("A") != nil || m.Has("A") || m.Len() != 0 {
 		t.Fatal("a nil MapMap is not empty")
@@ -146,6 +153,7 @@ func TestNilIsEmpty(t *testing.T) {
 // what Range visited, so count() and foreach() over a superglobal report the
 // same set.
 func TestRequestSourceReadsThroughAMapMap(t *testing.T) {
+	t.Parallel()
 	req := httptest.NewRequest("POST", "http://example.com/a/b?q=1", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
 	m := mapmap.New(&mapmap.RequestSource{
@@ -216,6 +224,7 @@ func rangeAll(t *testing.T, src mapmap.Source) map[string]any {
 // built over any of them reads through to it, so one source type can be
 // swapped for another without the layer over it changing.
 func TestSource(t *testing.T) {
+	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/", nil)
 
 	for _, test := range []struct {
@@ -252,6 +261,7 @@ func TestSource(t *testing.T) {
 // strings, where a key the map does not hold is reported as absent and never
 // as an empty string, because isset() reads the second return.
 func TestMapSource_Get(t *testing.T) {
+	t.Parallel()
 	src := mapmap.MapSource{"REQUEST_METHOD": "GET", "EMPTY": ""}
 
 	if got, ok := src.Get("REQUEST_METHOD"); !ok || got != "GET" {
@@ -269,6 +279,7 @@ func TestMapSource_Get(t *testing.T) {
 // TestMapSource_Len covers count() over a CLI source: one per entry, and zero
 // for a map nobody filled.
 func TestMapSource_Len(t *testing.T) {
+	t.Parallel()
 	if got := (mapmap.MapSource{"A": "1", "B": "2"}).Len(); got != 2 {
 		t.Errorf("Len() = %d, want 2", got)
 	}
@@ -281,6 +292,7 @@ func TestMapSource_Len(t *testing.T) {
 // map order is not insertion order, so the walk is checked by what it visited
 // and not by the sequence it visited them in.
 func TestMapSource_Range(t *testing.T) {
+	t.Parallel()
 	src := mapmap.MapSource{"A": "1", "B": "2"}
 
 	seen := rangeAll(t, src)
@@ -294,6 +306,7 @@ func TestMapSource_Range(t *testing.T) {
 // to an array under one name comes back as that array; a map of strings
 // cannot hold one.
 func TestValueSource_Get(t *testing.T) {
+	t.Parallel()
 	nested := []any{int64(1), int64(2)}
 	src := mapmap.ValueSource{"a": nested, "q": "1"}
 
@@ -313,6 +326,7 @@ func TestValueSource_Get(t *testing.T) {
 // TestValueSource_Len covers count() over a source of PHP values: one per
 // name, however deep the value under it is.
 func TestValueSource_Len(t *testing.T) {
+	t.Parallel()
 	src := mapmap.ValueSource{"a": []any{int64(1), int64(2)}, "q": "1"}
 	if got := src.Len(); got != 2 {
 		t.Errorf("Len() = %d, want 2", got)
@@ -325,6 +339,7 @@ func TestValueSource_Len(t *testing.T) {
 // TestValueSource_Range covers the walk over PHP values: every name once,
 // with the value handed over as it is stored and not flattened to a string.
 func TestValueSource_Range(t *testing.T) {
+	t.Parallel()
 	nested := []any{int64(1)}
 	src := mapmap.ValueSource{"a": nested, "q": "1"}
 
@@ -342,6 +357,7 @@ func TestValueSource_Range(t *testing.T) {
 // header the client omits reads as absent, Extra wins over a derived name,
 // and a source with no request behind it answers nothing.
 func TestRequestSource_Get(t *testing.T) {
+	t.Parallel()
 	request := httptest.NewRequest("POST", "http://example.com/a/b?q=1", nil)
 	request.Header.Set("Accept-Encoding", "gzip")
 	src := &mapmap.RequestSource{
@@ -374,6 +390,7 @@ func TestRequestSource_Get(t *testing.T) {
 // of names Range visits, so the two agree by construction and a name
 // double-counted in one shows up in both.
 func TestRequestSource_Len(t *testing.T) {
+	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)
 	request.Header.Set("Accept-Encoding", "gzip")
 	src := &mapmap.RequestSource{
@@ -396,6 +413,7 @@ func TestRequestSource_Len(t *testing.T) {
 // skipped where it would have been derived, so it is visited once with the
 // value Extra holds.
 func TestRequestSource_Range(t *testing.T) {
+	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)
 	request.Header.Set("Accept-Encoding", "gzip")
 	src := &mapmap.RequestSource{
@@ -433,6 +451,7 @@ func TestRequestSource_Range(t *testing.T) {
 // names it: build runs on the first Get, Len or Range, at most once, and
 // never at all for a request that reads none of them.
 func TestLazy(t *testing.T) {
+	t.Parallel()
 	built := 0
 	src := mapmap.Lazy(func() mapmap.Source {
 		built++

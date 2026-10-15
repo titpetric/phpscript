@@ -10,6 +10,7 @@ import (
 // a pattern registered on it answers, a path under a mounted subtree reaches
 // the handler that claimed it, and a path nobody claimed is a 404.
 func TestNewRouter(t *testing.T) {
+	t.Parallel()
 	router := newRouter()
 	router.Get("/hello", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("hello"))
@@ -42,6 +43,7 @@ func TestNewRouter(t *testing.T) {
 // router: the tracing middleware is registered on it, and it has to wrap every
 // handler mounted after it.
 func TestNewRouterRunsMiddleware(t *testing.T) {
+	t.Parallel()
 	router := newRouter()
 	router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

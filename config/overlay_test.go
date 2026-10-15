@@ -15,6 +15,7 @@ import (
 // back to base, because a tree served under settings nobody wrote is the
 // failure mode worth avoiding.
 func TestOverlay(t *testing.T) {
+	t.Parallel()
 	base := config.New()
 
 	t.Run("a file names what it changes", func(t *testing.T) {
@@ -62,6 +63,7 @@ func TestOverlay(t *testing.T) {
 // tree is compiled into the test binary, so the bytes arrive from an fs.FS with
 // no path on disk; filename is only what errors name.
 func TestOverlayBytes(t *testing.T) {
+	t.Parallel()
 	base := config.New()
 
 	t.Run("a forbidden key is refused and named", func(t *testing.T) {
@@ -140,6 +142,7 @@ func TestOverlayBytes(t *testing.T) {
 // and whose declared value is not: a site may carry the operator's telemetry
 // path, and may not name it.
 func TestDeclares(t *testing.T) {
+	t.Parallel()
 	declared := map[string]any{
 		"autoindex": true,
 		"telemetry": map[string]any{"path": "/debug/site"},

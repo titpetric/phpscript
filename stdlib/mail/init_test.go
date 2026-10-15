@@ -16,6 +16,7 @@ import (
 // the package default when a host configured none, so a runtime set up with no
 // mail block still answers function_exists("mail").
 func TestMailBindingsAreContributed(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 

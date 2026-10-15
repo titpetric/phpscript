@@ -23,6 +23,7 @@ func (e *exception) GetCode() int { return e.code }
 // reading it as a request for HTML would put a website's error page in front of
 // every program that talks to the server.
 func TestAcceptsHTML(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		accept string
@@ -58,6 +59,7 @@ func TestAcceptsHTML(t *testing.T) {
 // It is the one signal that separates a navigation from a fetch() the page made
 // on its own behalf, which Accept cannot do: both can name HTML.
 func TestWantsErrorPage(t *testing.T) {
+	t.Parallel()
 	const navigation = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 
 	tests := []struct {
@@ -100,6 +102,7 @@ func TestWantsErrorPage(t *testing.T) {
 // the 4xx and 5xx range is one; every other code is the script's own numbering,
 // and a request that ended on one simply failed.
 func TestStatusFor(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		staged int
@@ -141,6 +144,7 @@ func TestStatusFor(t *testing.T) {
 // Content-Type is the script saying what its answer is, and neither has
 // anything to do with where the script sits in the URL space.
 func TestAnswered(t *testing.T) {
+	t.Parallel()
 	c := NewContext()
 	if c.Answered(nil) {
 		t.Fatal("a script that said nothing has not answered")
@@ -160,6 +164,7 @@ func TestAnswered(t *testing.T) {
 // the script staged, then the status, then the body. A status of zero writes
 // none and leaves net/http its 200.
 func TestWriteResponse(t *testing.T) {
+	t.Parallel()
 	c := NewContext()
 	c.Header("X-Powered-By: phpscript")
 
@@ -188,6 +193,7 @@ func TestWriteResponse(t *testing.T) {
 // integer and net/http panics on one outside 100 to 999, so a status that
 // cannot be sent is treated as no status at all.
 func TestWriteResponseRefusesAStatusThatCannotBeSent(t *testing.T) {
+	t.Parallel()
 	for _, status := range []int{-1, 1, 99, 1000, 1 << 20} {
 		rr := httptest.NewRecorder()
 		NewContext().WriteResponse(rr, status, []byte("ok"))
@@ -202,6 +208,7 @@ func TestWriteResponseRefusesAStatusThatCannotBeSent(t *testing.T) {
 
 // TestSetDefaultHeader pins that a default never overrides what the script said.
 func TestSetDefaultHeader(t *testing.T) {
+	t.Parallel()
 	c := NewContext()
 	c.SetDefaultHeader("Content-Type", "text/html; charset=utf-8")
 	if got := c.ResponseHeaders().Get("Content-Type"); got != "text/html; charset=utf-8" {

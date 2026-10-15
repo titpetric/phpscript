@@ -12,6 +12,7 @@ import (
 // held `%5B` before decoding nests, and a name that holds a literal bracket
 // after decoding nests too.
 func TestPair(t *testing.T) {
+	t.Parallel()
 	pairs := []shared.Pair{
 		{Name: "a[b]", Value: "1"},
 		{Name: "plain", Value: "x y"},
@@ -32,6 +33,7 @@ func TestPair(t *testing.T) {
 // shape: a scalar written over an array replaces it. The limits are php.ini's,
 // and a name past the nesting limit is dropped whole.
 func TestParsePairs(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name   string
 		pairs  []shared.Pair
@@ -97,6 +99,7 @@ func TestParsePairs(t *testing.T) {
 // brackets are read, so `k%5Ba%20b%5D=1` nests under the key `a b`, and a plus
 // in a top-level name is a space by then and mangles to an underscore.
 func TestFormDecodingIsOneImplementation(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		raw  string
 		want string

@@ -7,6 +7,7 @@ import (
 )
 
 func TestTableRendersMarkdown(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	table := newSample(&buf, true)
 	table.Flush()
@@ -27,6 +28,7 @@ func TestTableRendersMarkdown(t *testing.T) {
 }
 
 func TestTableRendersAnsi(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	table := newSample(&buf, false)
 	table.Flush()
@@ -57,6 +59,7 @@ func TestTableRendersAnsi(t *testing.T) {
 // TestTableRowKeepsCellsIntact covers the two ways a value escapes its cell: a
 // newline would end the row, and in markdown a pipe would end the cell.
 func TestTableRowKeepsCellsIntact(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	table := New(&buf, true, Column{Title: "Message"})
 	table.Row(Text("got: a|b\nwant: c"))
@@ -71,6 +74,7 @@ func TestTableRowKeepsCellsIntact(t *testing.T) {
 // TestTableRowPadsShortRows keeps a caller from having to count columns when a
 // row has nothing to say in the last one.
 func TestTableRowPadsShortRows(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	table := New(&buf, true, Column{Title: "A"}, Column{Title: "B"})
 	table.Row(Text("one"))
@@ -91,6 +95,7 @@ func TestTableRowPadsShortRows(t *testing.T) {
 // opposite sides of the cell. In markdown the alignment is carried by the
 // separator row, where a trailing colon is what a renderer reads as right.
 func TestAlign(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name     string
 		align    Align
@@ -131,6 +136,7 @@ func TestAlign(t *testing.T) {
 // and markdown drops it, so the same rows render in both formats with no
 // branch at the call site.
 func TestCell(t *testing.T) {
+	t.Parallel()
 	if got := Text("plain"); got != (Cell{Text: "plain"}) {
 		t.Errorf("Text(plain) = %+v, want an uncolored cell", got)
 	}

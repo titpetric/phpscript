@@ -11,6 +11,7 @@ import (
 // TestParseFileMode covers the spellings a mode may be written in, all of them
 // octal, and the rejection of anything that is not one.
 func TestParseFileMode(t *testing.T) {
+	t.Parallel()
 	valid := map[string]uint32{
 		"":      0,
 		"0644":  0o644,
@@ -41,6 +42,7 @@ func TestParseFileMode(t *testing.T) {
 // TestFileModeMode pins the conversion to Go's representation, where the three
 // special bits move out of the number and into their own flags.
 func TestFileModeMode(t *testing.T) {
+	t.Parallel()
 	if got := runner.FileMode(0o640).Mode(); got != os.FileMode(0o640) {
 		t.Errorf("0640 = %v, want %v", got, os.FileMode(0o640))
 	}
@@ -56,6 +58,7 @@ func TestFileModeMode(t *testing.T) {
 // TestFileModeYAML covers reading the mode out of a configuration file, where
 // writing it as a bare number must not make it decimal.
 func TestFileModeYAML(t *testing.T) {
+	t.Parallel()
 	var opts runner.Options
 	if err := config.Unmarshal([]byte(`upload_file_mode: "0600"`+"\n"), &opts); err != nil {
 		t.Fatalf("unmarshal: %v", err)
@@ -83,6 +86,7 @@ func TestFileModeYAML(t *testing.T) {
 // document may carry are not part of the mode, and a mode that cannot be read
 // leaves the field alone, so a bad document cannot make a stored upload 0000.
 func TestFileMode_UnmarshalYAML(t *testing.T) {
+	t.Parallel()
 	for _, text := range []string{`"0640"`, "0640", " 0640 ", `'0640'`, "640", "0o640"} {
 		var mode runner.FileMode
 		if err := mode.UnmarshalYAML([]byte(text)); err != nil {
@@ -108,6 +112,7 @@ func TestFileMode_UnmarshalYAML(t *testing.T) {
 // unquoted 0644 would come back as 1204 somewhere; the quotes are what keeps a
 // round trip octal.
 func TestFileMode_MarshalYAML(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []runner.FileMode{0, 0o600, 0o644, 0o1777, 0o4755} {
 		data, err := mode.MarshalYAML()
 		if err != nil {
@@ -132,6 +137,7 @@ func TestFileMode_MarshalYAML(t *testing.T) {
 // TestRuntimeUploadFileMode pins the default: an unset mode is 0644, not a
 // mode of 0000 that would make a stored upload unreadable.
 func TestRuntimeUploadFileMode(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(nil, runner.Options{})
 	if got := rt.UploadFileMode(); got != runner.DefaultUploadFileMode {
 		t.Errorf("default = %v, want %v", got, runner.DefaultUploadFileMode)

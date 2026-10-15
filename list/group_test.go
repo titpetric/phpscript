@@ -12,6 +12,7 @@ import (
 // join it even when another folder came between, and a bare filename lands
 // under ".".
 func TestGroupByDirKeepsDiscoveryOrder(t *testing.T) {
+	t.Parallel()
 	groups := list.GroupByDir([]string{
 		"a/b.php",
 		"a/m/x.php",

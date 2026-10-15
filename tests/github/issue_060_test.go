@@ -15,6 +15,7 @@ import (
 // default-value syntax, so the path is an authoring error and is not
 // registered at all.
 func Test_Issue060(t *testing.T) {
+	t.Parallel()
 	routes := map[string]string{
 		"bad.php": "// @route GET /a/{module=users}",
 	}
@@ -31,6 +32,7 @@ func Test_Issue060(t *testing.T) {
 // The same path is reported by the linter, where an author sees it
 // before a request ever reaches the route.
 func Test_Issue060Lint(t *testing.T) {
+	t.Parallel()
 	diags := lintRoutes(t, "<?php\n// @route GET /a/{module=users}\n")
 	if len(diags) != 1 {
 		t.Fatalf("diagnostics = %v, want one", diags)

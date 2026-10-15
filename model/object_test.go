@@ -9,6 +9,7 @@ import (
 // NewObject takes the class and leaves Props unallocated, so the first SetProp
 // is what builds the map.
 func TestObject(t *testing.T) {
+	t.Parallel()
 	class := &Class{Name: "Invoice", Fields: []Field{{Name: "total"}}}
 	obj := NewObject(class)
 
@@ -39,6 +40,7 @@ func TestObject(t *testing.T) {
 // writes the receiving variable there, so a value printed back names its
 // assignment site.
 func TestObject_SetID(t *testing.T) {
+	t.Parallel()
 	obj := NewObject(nil)
 	if obj.ID != "" {
 		t.Errorf("a fresh object carries the ID %q", obj.ID)
@@ -63,6 +65,7 @@ func TestObject_SetID(t *testing.T) {
 // the rest, so a missed SetProp degrades to a stable order and never a random
 // one.
 func TestObject_Names(t *testing.T) {
+	t.Parallel()
 	class := &Class{Fields: []Field{{Name: "total"}, {Name: "currency"}}}
 	obj := NewObject(class)
 
@@ -84,6 +87,7 @@ func TestObject_Names(t *testing.T) {
 // again lands back in its declared position, and a dynamic one is appended, so
 // the order survives the round trip the way PHP's does.
 func TestObject_DeleteProp(t *testing.T) {
+	t.Parallel()
 	class := &Class{Fields: []Field{{Name: "total"}}}
 	obj := NewObject(class)
 	obj.SetProp("total", int64(1))
@@ -112,6 +116,7 @@ func TestObject_DeleteProp(t *testing.T) {
 // TestObject_Range covers walking the properties in Names order, and stopping
 // where fn answers false.
 func TestObject_Range(t *testing.T) {
+	t.Parallel()
 	obj := NewObject(&Class{Fields: []Field{{Name: "a"}, {Name: "b"}, {Name: "c"}}})
 	obj.SetProp("a", 1)
 	obj.SetProp("b", 2)

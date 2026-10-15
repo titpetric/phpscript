@@ -67,6 +67,7 @@ func runHost(t *testing.T, host Host, source string) {
 // Entries renders it to a key and a value per step, and the loop binds them
 // in the order the slice holds.
 func TestEntry(t *testing.T) {
+	t.Parallel()
 	host := &semanticHost{entries: []Entry{
 		{Key: "a", Value: int64(1)},
 		{Key: "b", Value: int64(2)},
@@ -101,6 +102,7 @@ func TestEntry(t *testing.T) {
 // sees. Both backends share one host, so a script reads the same semantics
 // either way.
 func TestHost(t *testing.T) {
+	t.Parallel()
 	host := &semanticHost{}
 
 	runHost(t, host, `<?php $n = 1.5; echo $n + 2;`)

@@ -13,6 +13,7 @@ import (
 // about a rendering goes to phpval, so echo, implode and var_dump cannot
 // differ about a float's precision.
 func TestPHPString(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value any
@@ -36,6 +37,7 @@ func TestPHPString(t *testing.T) {
 // collection is falsey whatever its type, so a binding returning a []string
 // behaves in `if ($rows)` the way one returning an array does.
 func TestPHPTruthy(t *testing.T) {
+	t.Parallel()
 	filled := model.NewArray()
 	filled.Append(int64(1))
 
@@ -72,6 +74,7 @@ func TestPHPTruthy(t *testing.T) {
 // is 12 and (float)"2.5kg" is 2.5. The float flag separates "5.5" + 1, a float,
 // from "5" + 1, an int.
 func TestNumericPrefix(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		in      string
 		prefix  string
@@ -99,6 +102,7 @@ func TestNumericPrefix(t *testing.T) {
 // integer saturates the way C's strtol saturates, and a named Go scalar reads
 // as the integer it carries, so `$t->month() + 1` counts months.
 func TestToInt(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value any
@@ -127,6 +131,7 @@ func TestToInt(t *testing.T) {
 // string reads its numeric prefix, so (float)"2.5kg" is 2.5 and a string with
 // no leading number is zero.
 func TestToFloat(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value any
@@ -152,6 +157,7 @@ func TestToFloat(t *testing.T) {
 // ordering, and a bool or null on the other side pulls both operands through
 // the bool domain where (bool)NAN is true.
 func TestPHPCompare(t *testing.T) {
+	t.Parallel()
 	nan := math.NaN()
 	for _, tc := range []struct {
 		op   string
@@ -186,6 +192,7 @@ func TestPHPCompare(t *testing.T) {
 // host read. It resolves to the same table the comparison operators read, so a
 // `switch` arm cannot match on a rule `==` disagrees with.
 func TestPHPLooseEqual(t *testing.T) {
+	t.Parallel()
 	if !phpLooseEqual("1", int64(1)) {
 		t.Error(`phpLooseEqual("1", 1) = false`)
 	}
@@ -203,6 +210,7 @@ func TestPHPLooseEqual(t *testing.T) {
 // instance. A binding's []string falls back to reflect equality, because `==`
 // on a slice would panic.
 func TestPHPIdentical(t *testing.T) {
+	t.Parallel()
 	first := model.NewArray()
 	first.Append(int64(1))
 	second := model.NewArray()
@@ -248,6 +256,7 @@ func TestPHPIdentical(t *testing.T) {
 // is the only context converting one: php refuses arithmetic on an array with a
 // TypeError, so the rule lives in the cast.
 func TestHelperCast(t *testing.T) {
+	t.Parallel()
 	filled := model.NewArray()
 	filled.Append(int64(9))
 
@@ -277,6 +286,7 @@ func TestHelperCast(t *testing.T) {
 // is wrapped, an object reads its properties out in the order the object reads
 // them back, and a Go collection converts with its keys kept.
 func TestHelperCastArray(t *testing.T) {
+	t.Parallel()
 	if got := helperCast("array", nil).(*model.Array); got.Len() != 0 {
 		t.Errorf("(array) null has %d entries, want 0", got.Len())
 	}
@@ -305,6 +315,7 @@ func TestHelperCastArray(t *testing.T) {
 // object with nothing in it, and an object is returned as it is, so
 // `(object) $o === $o`.
 func TestHelperToObject(t *testing.T) {
+	t.Parallel()
 	empty := helperToObject(nil).(*model.Object)
 	if empty.Len() != 0 {
 		t.Errorf("(object) null has %d properties, want 0", empty.Len())
@@ -333,6 +344,7 @@ func TestHelperToObject(t *testing.T) {
 // int/float distinction by its own spelling; integer arithmetic that overflows
 // becomes float, so PHP_INT_MAX + 1 has no wrap to a negative.
 func TestPHPArith(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		op   string
@@ -360,6 +372,7 @@ func TestPHPArith(t *testing.T) {
 // array and then the surviving entries of the right, which is the order PHP's
 // own union preserves; composer's ClassLoader prepends a loader with it.
 func TestUnionArrays(t *testing.T) {
+	t.Parallel()
 	left := model.NewArray()
 	left.Append(int64(1))
 	left.Append(int64(2))
@@ -384,6 +397,7 @@ func TestUnionArrays(t *testing.T) {
 // longer one with the missing bytes read as zero. A negative shift count has no
 // answer, so PHP raises ArithmeticError for it.
 func TestPHPBitwise(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		op   string
 		a, b any
@@ -424,6 +438,7 @@ func TestPHPBitwise(t *testing.T) {
 // bool or array operand and phpscript casts those, so `~null` is -1. See
 // docs/README.md.
 func TestPHPBitNot(t *testing.T) {
+	t.Parallel()
 	if got, want := phpBitNot("A"), "\xbe"; got != want {
 		t.Errorf("phpBitNot(%q) = %q, want %q", "A", got, want)
 	}
@@ -440,6 +455,7 @@ func TestPHPBitNot(t *testing.T) {
 // The smallest int64 overflows to a float the way every other arithmetic
 // operator overflows, with no wrap back to itself.
 func TestPHPNegate(t *testing.T) {
+	t.Parallel()
 	if got, want := phpNegate(int64(5)), int64(-5); got != want {
 		t.Errorf("phpNegate(5) = %v, want %v", got, want)
 	}
@@ -461,6 +477,7 @@ func TestPHPNegate(t *testing.T) {
 // index to an int or a string and a Keyed is named by string, so an int index
 // reads as its decimal spelling.
 func TestKeyString(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		key  any
 		want string
@@ -481,6 +498,7 @@ func TestKeyString(t *testing.T) {
 // and a bool becomes 0 or 1. There is one definition of the rule, shared with
 // array_key_exists() and array_flip().
 func TestNormalizeKey(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		key  any
 		want any

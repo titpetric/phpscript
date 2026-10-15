@@ -9,6 +9,7 @@ import (
 // TestPHPBase64Encode covers the standard alphabet with '=' padding, the only
 // base64 php's encoder writes.
 func TestPHPBase64Encode(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct{ in, want string }{
 		{in: "", want: ""},
 		{in: "Hello", want: "SGVsbG8="},
@@ -29,6 +30,7 @@ func TestPHPBase64Encode(t *testing.T) {
 // Strict mode reports a character outside the alphabet by answering false, so
 // the return type is any: php's contract is string|false.
 func TestPHPBase64Decode(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		in     string
@@ -56,6 +58,7 @@ func TestPHPBase64Decode(t *testing.T) {
 // phpHex2bin reading it back. An odd length or a character outside the hex
 // alphabet answers false, php's string|false contract again.
 func TestPHPBin2hex(t *testing.T) {
+	t.Parallel()
 	if got, want := phpBin2hex("AB"), "4142"; got != want {
 		t.Errorf("bin2hex(%q) = %q, want %q", "AB", got, want)
 	}
@@ -79,6 +82,7 @@ func TestPHPBin2hex(t *testing.T) {
 // encoder passes through the standard library: urlencode writes a space as '+'
 // and '~' as '%7E', rawurlencode writes '%20' and leaves '~' alone.
 func TestURLEncode(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		in   string
 		form string
@@ -103,6 +107,7 @@ func TestURLEncode(t *testing.T) {
 // let a form arrive one way through the superglobals and another through
 // parse_str. urldecode reads '+' as a space; rawurldecode leaves it alone.
 func TestURLDecode(t *testing.T) {
+	t.Parallel()
 	if got, want := phpURLDecode("a+b%7E"), "a b~"; got != want {
 		t.Errorf("urldecode(%q) = %q, want %q", "a+b%7E", got, want)
 	}
@@ -119,6 +124,7 @@ func TestURLDecode(t *testing.T) {
 // insertion order of the array is the order of the pairs. A null entry is
 // dropped, with no empty value written for it.
 func TestPHPHTTPBuildQuery(t *testing.T) {
+	t.Parallel()
 	data := model.NewArray()
 	data.Set("a", int64(1))
 	nested := model.NewArray()
@@ -146,6 +152,7 @@ func TestPHPHTTPBuildQuery(t *testing.T) {
 // an ArgumentCountError for that call; this runtime pads a short call, so the
 // decode is skipped and nothing is written nowhere.
 func TestPHPParseStr(t *testing.T) {
+	t.Parallel()
 	var got any
 	phpParseStr("a[b]=1&c=2", func(value any) { got = value })
 

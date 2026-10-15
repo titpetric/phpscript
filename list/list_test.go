@@ -58,6 +58,7 @@ echo $_REQUEST["id"];
 }
 
 func TestFileMarksStartupEntryPoints(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "migrate.php")
 	mustWrite(t, path, `<?php
@@ -88,6 +89,7 @@ $migrate->run();
 }
 
 func TestMarkdownPrintsFullTable(t *testing.T) {
+	t.Parallel()
 	rows := []list.Row{{
 		Route:    "GET /users/{id}/with/a/very/long/path",
 		Filename: "include/a/very/long/Database.php",
@@ -107,6 +109,7 @@ func TestMarkdownPrintsFullTable(t *testing.T) {
 }
 
 func TestUnsupportedExtendsStillListsClass(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "Child.php")
 	mustWrite(t, path, `<?php

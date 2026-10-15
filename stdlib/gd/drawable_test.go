@@ -10,6 +10,7 @@ import (
 // imagecreatetruecolor both go through: the named rectangle takes the colour
 // and the pixel outside it is left alone.
 func TestFillRect(t *testing.T) {
+	t.Parallel()
 	m := image.NewRGBA(image.Rect(0, 0, 3, 3))
 	red := color.RGBA{R: 255, A: 255}
 	fillRect(m, image.Rect(0, 0, 2, 2), red)
@@ -26,6 +27,7 @@ func TestFillRect(t *testing.T) {
 // on, including the offset: src is read from at, so a source whose bounds do
 // not start at the origin lands at the destination's origin.
 func TestCopyPixels(t *testing.T) {
+	t.Parallel()
 	src := image.NewRGBA(image.Rect(4, 4, 6, 6))
 	blue := color.RGBA{B: 255, A: 255}
 	src.SetRGBA(4, 4, blue)
@@ -42,6 +44,7 @@ func TestCopyPixels(t *testing.T) {
 // scaled up stays that colour whatever the interpolation does between
 // neighbours, so the assertion holds without pinning CatmullRom's weights.
 func TestResample(t *testing.T) {
+	t.Parallel()
 	green := color.RGBA{G: 255, A: 255}
 	src := image.NewRGBA(image.Rect(0, 0, 2, 2))
 	fillRect(src, src.Bounds(), green)
@@ -59,6 +62,7 @@ func TestResample(t *testing.T) {
 // TestDrawable covers the alias the handle is declared through, so the type a
 // host reads off Underlying is the one this package writes into.
 func TestDrawable(t *testing.T) {
+	t.Parallel()
 	var d Drawable = image.NewRGBA(image.Rect(0, 0, 1, 1))
 	im := &Image{m: d}
 

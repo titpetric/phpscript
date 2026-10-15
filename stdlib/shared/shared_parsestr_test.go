@@ -13,6 +13,7 @@ import (
 // TestParseStr pins the decoder against php's own output: every want comes off
 // `parse_str($in, $o); var_export($o);` under php 8, then flattened.
 func TestParseStr(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   string
@@ -141,6 +142,7 @@ func TestParseStr(t *testing.T) {
 // A variable nested past the limit is dropped whole, not truncated. php warns
 // and drops it too.
 func TestParseStrNestingLimit(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		depth int
 		want  string
@@ -166,6 +168,7 @@ func TestParseStrNestingLimit(t *testing.T) {
 
 // Pairs past the limit are dropped and earlier ones kept, as php does.
 func TestParseStrVarLimit(t *testing.T) {
+	t.Parallel()
 	var b strings.Builder
 	for i := 0; i < 1500; i++ {
 		fmt.Fprintf(&b, "k%d=1&", i)

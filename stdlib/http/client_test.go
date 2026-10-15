@@ -19,6 +19,7 @@ import (
 )
 
 func TestClientSendsRequest(t *testing.T) {
+	t.Parallel()
 	var (
 		gotMethod string
 		gotPath   string
@@ -93,6 +94,7 @@ func TestClientSendsRequest(t *testing.T) {
 // exposes the net/http value and no facade, so a script reads and
 // writes it the way Go does.
 func TestRequestIsANetHTTPRequest(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	request, err := http.NewRequest(ctx, "GET", "https://example.invalid/users?page=1")
 	if err != nil {
@@ -124,6 +126,7 @@ func TestRequestIsANetHTTPRequest(t *testing.T) {
 // than sent as written: a server treats the method as case-sensitive and would
 // reject it.
 func TestRequestMethodIsUpperCased(t *testing.T) {
+	t.Parallel()
 	request, err := http.NewRequest(context.Background(), "post", "https://example.invalid")
 	if err != nil {
 		t.Fatalf("NewRequest: %v", err)
@@ -134,6 +137,7 @@ func TestRequestMethodIsUpperCased(t *testing.T) {
 }
 
 func TestClientOptions(t *testing.T) {
+	t.Parallel()
 	var gotAgent, gotAuth string
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		gotAgent = r.Header.Get("User-Agent")
@@ -181,6 +185,7 @@ func TestClientOptions(t *testing.T) {
 // TestClientRelativeURLWithoutBaseIsReported pins that a relative URL with no
 // base_url is a named error and no transport failure.
 func TestClientRelativeURLWithoutBaseIsReported(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	client, err := http.NewClient(ctx, nil)
 	if err != nil {
@@ -198,6 +203,7 @@ func TestClientRelativeURLWithoutBaseIsReported(t *testing.T) {
 // TestClientRejectsUnknownOption pins that a typo is reported and never
 // silently ignored, under the Mail binding's rule too.
 func TestClientRejectsUnknownOption(t *testing.T) {
+	t.Parallel()
 	_, err := http.NewClient(context.Background(), map[string]any{"timeuot": int64(5)})
 	if err == nil {
 		t.Fatal("NewClient accepted an unknown option")
@@ -210,6 +216,7 @@ func TestClientRejectsUnknownOption(t *testing.T) {
 // TestClientDoesNotFollowRedirects pins follow_redirects, which a script sets
 // when the Location is what it reads, and not the destination.
 func TestClientDoesNotFollowRedirects(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		if r.URL.Path == "/from" {
 			nethttp.Redirect(w, r, "/to", nethttp.StatusFound)
@@ -301,6 +308,7 @@ func TestClientParallel(t *testing.T) {
 // TestClientParallelReportsFailurePerRequest pins that one unreachable host
 // does not hide the results of the rest of the batch.
 func TestClientParallelReportsFailurePerRequest(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		w.Write([]byte("fine"))
 	}))
@@ -346,6 +354,7 @@ func TestClientParallelReportsFailurePerRequest(t *testing.T) {
 // TestClientParallelRejectsBadInput pins that the argument has to be an array
 // of requests: the one thing Parallel throws for.
 func TestClientParallelRejectsBadInput(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	client, err := http.NewClient(ctx, nil)
 	if err != nil {
@@ -361,6 +370,7 @@ func TestClientParallelRejectsBadInput(t *testing.T) {
 // TestRequestRequiresMethodAndURL pins the two arguments that have no useful
 // default.
 func TestRequestRequiresMethodAndURL(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	if _, err := http.NewRequest(ctx, "", "https://example.invalid"); err == nil {
 		t.Error("NewRequest accepted an empty method")
@@ -373,6 +383,7 @@ func TestRequestRequiresMethodAndURL(t *testing.T) {
 // TestResponseJSONReportsBadBody pins that a non-JSON body throws and never
 // returning a zero value a script would then use.
 func TestResponseJSONReportsBadBody(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		w.Write([]byte("not json"))
 	}))
@@ -395,6 +406,7 @@ func TestResponseJSONReportsBadBody(t *testing.T) {
 // TestClientTimesOut pins that a client always has a deadline: the one
 // failure a script cannot recover from on its own.
 func TestClientTimesOut(t *testing.T) {
+	t.Parallel()
 	block := make(chan struct{})
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		<-block
@@ -414,6 +426,7 @@ func TestClientTimesOut(t *testing.T) {
 // TestResponseJSONMatchesEncodingJSON checks the decoded shape against what
 // encoding/json produces for the same body.
 func TestResponseJSONMatchesEncodingJSON(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {
 		w.Write([]byte(`{"a":[1,2],"b":"c"}`))
 	}))

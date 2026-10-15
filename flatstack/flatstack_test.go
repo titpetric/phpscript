@@ -35,6 +35,7 @@ func parse(t *testing.T, source string) *model.Program {
 // the flatstack name is accepted everywhere runner's own type is, and the
 // wording and status are runner's.
 func TestExitError(t *testing.T) {
+	t.Parallel()
 	err := &flatstack.ExitError{Code: 3}
 
 	if got, want := err.Error(), "exit(3)"; got != want {
@@ -56,6 +57,7 @@ func TestExitError(t *testing.T) {
 // failed. A program calling exit() returns the error through Run, and the
 // output written before the call stays written.
 func TestIsExit(t *testing.T) {
+	t.Parallel()
 	var output strings.Builder
 	runtime := flatstack.New(&output, flatstack.Options{})
 	stdlib.Register(runtime)
@@ -88,6 +90,7 @@ func TestIsExit(t *testing.T) {
 // expressions are keyed by AST node identity. Len counts the expression half,
 // so it stays zero while only bytecode has been stored.
 func TestExprCache(t *testing.T) {
+	t.Parallel()
 	cache := flatstack.NewExprCache()
 	program := parse(t, `<?php $n = 2; echo $n * 3;`)
 
@@ -143,6 +146,7 @@ func TestExprCache(t *testing.T) {
 // because the runner treats a parsed program as immutable and shares it
 // between the callers that only read the AST.
 func TestIncludeCache(t *testing.T) {
+	t.Parallel()
 	cache := flatstack.NewIncludeCache()
 	program := parse(t, `<?php echo "included";`)
 
@@ -179,6 +183,7 @@ func TestIncludeCache(t *testing.T) {
 // filesystem and no parser, so an include is resolved by the function the
 // host set, and whatever it returns is executed in place of reading a file.
 func TestIncludeFunc(t *testing.T) {
+	t.Parallel()
 	asked := ""
 	var resolve flatstack.IncludeFunc = func(path string) (*model.Program, error) {
 		asked = path
@@ -205,6 +210,7 @@ func TestIncludeFunc(t *testing.T) {
 // is readable, an unset name is gone, and DefinedVars reports the table as
 // get_defined_vars() does.
 func TestScope(t *testing.T) {
+	t.Parallel()
 	scope := flatstack.NewScope()
 
 	if _, ok := scope.Get("total"); ok {
@@ -233,6 +239,7 @@ func TestScope(t *testing.T) {
 // field reads it back through the accessor a superglobal is rendered from,
 // with no request behind it.
 func TestContext(t *testing.T) {
+	t.Parallel()
 	ctx := flatstack.NewContext()
 
 	ctx.Get["q"] = "phpscript"
@@ -261,6 +268,7 @@ func TestContext(t *testing.T) {
 // reads it: the query by name, the cookies by name, and the CGI names derived
 // off the request without a map being built for them.
 func TestFromRequest(t *testing.T) {
+	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/page?q=phpscript&n=2", nil)
 	request.AddCookie(&http.Cookie{Name: "sid", Value: "abc"})
 	request.Header.Set("Accept-Encoding", "gzip")
@@ -289,6 +297,7 @@ func TestFromRequest(t *testing.T) {
 // it per call, so a binding reaches the caller's variables without the script
 // passing them.
 func TestScopeFromContext(t *testing.T) {
+	t.Parallel()
 	var (
 		found bool
 		total any

@@ -25,6 +25,7 @@ func statRoot(t *testing.T) string {
 // is_dir is false for a file, filesize is the byte count, and filetype names
 // the kind. A path that is not there reports false from both of the last two.
 func TestStatAnswersForBothKinds(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php
 echo "[", is_file("pages/index.php") ? "y" : "n", is_file("pages") ? "y" : "n", "]";
 echo "[", is_dir("pages") ? "y" : "n", is_dir("pages/index.php") ? "y" : "n", "]";
@@ -42,6 +43,7 @@ echo "[", filesize("missing.php") === false ? "false" : "other", ",", filetype("
 // directory. A second resolver written here would name a second file for one
 // spelling, the one thing a sandbox cannot have two of.
 func TestStatResolvesThroughTheBoundRoot(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php
 echo "[", is_file("/pages/index.php") ? "y" : "n", "]";
 echo "[", is_dir("/") ? "y" : "n", "]";
@@ -58,6 +60,7 @@ echo "[", is_file("../../../../etc/passwd") ? "y" : "n", "]";`)
 // names sorted, with "." and ".." among them, because PHP reports the
 // directory the operating system reports and never a filtered view of it.
 func TestScandirListsTheDotEntries(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php echo implode(",", scandir("pages"));`)
 	if want := ".,..,index.php"; out != want {
 		t.Errorf("output = %q, want %q", out, want)
@@ -68,6 +71,7 @@ func TestScandirListsTheDotEntries(t *testing.T) {
 // without an extension carries no extension key at all, so isset() on it
 // answers false the way it does in php.
 func TestPathinfoSplitsAPath(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php
 $info = pathinfo("a/b/c.txt");
 echo "[", $info["dirname"], ",", $info["basename"], ",", $info["extension"], ",", $info["filename"], "]";
@@ -82,6 +86,7 @@ echo "[", isset($bare["extension"]) ? "set" : "unset", ",", $bare["filename"], "
 // a script can only address the bound tree, so the path it reports is named
 // from that root and carries no host prefix a script could write back out.
 func TestRealpathAnswersInsideTheRoot(t *testing.T) {
+	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php
 echo "[", realpath("pages/../pages/index.php"), "]";
 echo "[", realpath("missing.php") === false ? "false" : "other", "]";`)

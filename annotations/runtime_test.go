@@ -32,6 +32,7 @@ echo $total;
 // registered. One runtime is built per request, so the hook runs once per
 // request and nothing a script did leaks into the next one.
 func TestRuntimeFunc(t *testing.T) {
+	t.Parallel()
 	var calls int
 	var sawStandardLibrary bool
 
@@ -73,6 +74,7 @@ func TestRuntimeFunc(t *testing.T) {
 // AST node the parser produced, and the aggregator keys them by profile line,
 // so counts of two requests add on one entry per statement range.
 func TestWithCoverage(t *testing.T) {
+	t.Parallel()
 	aggregator := coverage.NewAggregator()
 	mux := http.NewServeMux()
 	route := annotations.NewRoute(testRuntimeFileSystem, annotations.WithCoverage(aggregator))

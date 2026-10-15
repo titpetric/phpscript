@@ -10,6 +10,7 @@ import (
 // reading the pixel back answers the same integer, and a script can compare two
 // colours with ==.
 func TestColorAllocateRoundTrip(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, `<?php
 $im = imagecreatetruecolor(2, 2);
 $red = imagecolorallocate($im, 255, 0, 0);
@@ -29,6 +30,7 @@ echo $red . " " . $grey . " " . imagecolorat($im, 0, 0) . " " . imagecolorat($im
 // is opaque and 127 is transparent, so ported code that computes on the number
 // keeps the same meaning it had under GD.
 func TestColorsForIndexSplitsThePackedValue(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name   string
 		packed string
@@ -56,6 +58,7 @@ echo $c["red"] . " " . $c["green"] . " " . $c["blue"] . " " . $c["alpha"];
 // opaque colour replaces the pixel and a fully transparent one leaves it, which
 // is the behaviour a PHP script sees with imagealphablending on.
 func TestColorAlphaBlends(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, `<?php
 $im = imagecreatetruecolor(1, 1);
 $red = imagecolorallocate($im, 255, 0, 0);
@@ -75,6 +78,7 @@ echo " " . imagecolorat($im, 0, 0);
 // GD answers false, so a script that walks past an edge sees a value it can
 // test and never a colour the image does not hold.
 func TestColorAtOutsideTheImage(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, `<?php
 $im = imagecreatetruecolor(2, 2);
 var_export(imagecolorat($im, 2, 0));
@@ -91,6 +95,7 @@ var_export(imagecolorat($im, 1, 1));
 // an argument the engine refuses, and the script would carry on past the
 // mistake.
 func TestColorAllocateRejectsAComponentOutOfRange(t *testing.T) {
+	t.Parallel()
 	_, out := runScript(t, `<?php
 $im = imagecreatetruecolor(1, 1);
 try {

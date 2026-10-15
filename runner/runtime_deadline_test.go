@@ -12,6 +12,7 @@ import (
 // leaves; the time limit is the runtime's and a handler moving it means to move
 // it, which is php's rule where the request is the script.
 func TestRequestScopesOnlyItsConnection(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	rt.SetContext(context.Background())
 	rt.SetTimeLimit(time.Hour)
@@ -52,6 +53,7 @@ func TestRequestScopesOnlyItsConnection(t *testing.T) {
 // own, so the same binding still has something to wait on. Leaving the handler
 // puts the previous one back, so one request's disconnect stays off the next.
 func TestRuntime_ClientContext(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	host, hangUp := context.WithCancel(context.Background())
 	rt.SetContext(host)
@@ -102,6 +104,7 @@ func TestRuntime_ClientContext(t *testing.T) {
 // TestScriptLimitCancelsTheBindingContext is the other side: the script's own
 // limit does end what is parked, because that is how a serving script stops.
 func TestScriptLimitCancelsTheBindingContext(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	rt.SetContext(context.Background())
 
@@ -122,6 +125,7 @@ func TestScriptLimitCancelsTheBindingContext(t *testing.T) {
 // that set it: an armed timer on a reused runtime is a program's deadline
 // applied to the next one.
 func TestReleaseDeadlineStopsTheTimers(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	rt.SetContext(context.Background())
 	rt.SetTimeLimit(time.Hour)

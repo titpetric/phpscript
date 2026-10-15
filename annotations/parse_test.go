@@ -9,6 +9,7 @@ import (
 )
 
 func TestParseRoutesReadsCommentAnnotations(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name   string
 		source string
@@ -56,6 +57,7 @@ func TestParseRoutesReadsCommentAnnotations(t *testing.T) {
 }
 
 func TestHasStartupRequiresCommentAnnotation(t *testing.T) {
+	t.Parallel()
 	if annotations.HasStartup([]byte(`<?php echo "// @startup";`)) {
 		t.Fatal("annotation inside PHP string was detected")
 	}

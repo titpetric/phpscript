@@ -69,6 +69,7 @@ func constant(t testing.TB, rt *runner.Runtime, name string) any {
 // "no PHP function of that name is declared" describes no method a class
 // declares.
 func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
+	t.Parallel()
 	rt := callableRuntime(t)
 
 	accepted := []struct {
@@ -152,6 +153,7 @@ func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 // declaring nothing cannot answer for it. That is the half that lets a host
 // register a binding under the name a script named.
 func TestCallable_Invoke(t *testing.T) {
+	t.Parallel()
 	origin := callableRuntime(t)
 	bare := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(bare)
@@ -220,6 +222,7 @@ func TestCallable_Invoke(t *testing.T) {
 // host asks before running a callable somewhere else: what came along is shared
 // by every runtime running it.
 func TestAsCallableReportsWhatItCaptured(t *testing.T) {
+	t.Parallel()
 	rt := callableRuntime(t)
 
 	tests := []struct {

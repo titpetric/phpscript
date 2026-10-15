@@ -45,6 +45,7 @@ func run(t *testing.T, dir, src string) string {
 // in. Register is RegisterRoot with no directory, so a command runs where the
 // process runs, the directory a CLI invocation reads and writes in.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	if rt.FunctionExists("shell_exec") {
 		t.Fatal("a bare runtime answers for shell_exec before anything registered it")
@@ -71,6 +72,7 @@ func TestRegister(t *testing.T) {
 // `pwd` inside a script answers the same thing getcwd() does. It replaces
 // whatever root stands before it, so a host calls it after Register.
 func TestRegisterRoot(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	resolved, err := filepath.EvalSymlinks(dir)
 	if err != nil {
@@ -103,6 +105,7 @@ func TestRegisterRoot(t *testing.T) {
 // name the interpreter and never a command it starts, so the two report the
 // same number and it is the test binary's own.
 func TestRegisterNamesTheRunningProcess(t *testing.T) {
+	t.Parallel()
 	want := strconv.Itoa(os.Getpid())
 	if got := run(t, "", `<?php echo posix_getpid();`); got != want {
 		t.Errorf("posix_getpid() = %q, want %q", got, want)

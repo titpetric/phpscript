@@ -15,6 +15,7 @@ import (
 // this asserts the rejection and not the output, because a fixture cannot
 // tell a fallback from a compiled run that agreed with it.
 func TestFlatstackRejectsAnonymousClass(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php $o = new class { public function f() { return 1; } }; echo $o->f();`)
 	if err != nil {
 		t.Fatal(err)
@@ -31,6 +32,7 @@ func TestFlatstackRejectsAnonymousClass(t *testing.T) {
 // The rejection is a fallback and no failure: the program still runs, and it
 // produces what the interpreter produces.
 func TestFlatstackFallsBackForAnonymousClass(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php
 interface Reader { public function get(); }
 $o = new class implements Reader {

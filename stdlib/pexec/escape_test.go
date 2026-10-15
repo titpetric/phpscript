@@ -9,6 +9,7 @@ import (
 // one, and one of the other kind found while a quote is open, is escaped. Every
 // expectation here came from running the same string through php.
 func TestEscapeshellcmd(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		in   string
 		want string
@@ -36,6 +37,7 @@ func TestEscapeshellcmd(t *testing.T) {
 // everything is inside single quotes, where only the quote itself is special,
 // and the quote is spliced out and back in escaped.
 func TestEscapeshellarg(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		in   string
 		want string
@@ -56,6 +58,7 @@ func TestEscapeshellarg(t *testing.T) {
 // than recovered from a buffer, and a stream that did not end with a newline
 // still has one.
 func TestLastLine(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name   string
 		writes []string

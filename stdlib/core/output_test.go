@@ -12,6 +12,7 @@ import (
 // A nested array breaks after the arrow and indents two, so the inner "array ("
 // sits on its own line under the key.
 func TestVarExport(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_export([1, 2, 3]);
 echo "\n";
@@ -38,6 +39,7 @@ echo "\n";`)
 // is answered and nothing is written, so a caller nests one export
 // inside another string.
 func TestVarExportReturn(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 $source = var_export([1], true);
 echo "[", $source, "]";`)
@@ -53,6 +55,7 @@ echo "[", $source, "]";`)
 // makes string(6) out of five characters, so a script sees the encoding it
 // actually holds.
 func TestVarDump(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump("héllo");
 var_dump(0.1 + 0.2);
@@ -71,6 +74,7 @@ var_dump([1 => "a", "k" => [true]]);`)
 // the declaring class, a protected one does not, and a public one carries
 // nothing.
 func TestVarDumpObject(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 class Point { public $x = 1; private $y = 2; protected $z = 3; }
 var_dump(new Point());`)
@@ -92,6 +96,7 @@ var_dump(new Point());`)
 // digits where var_dump passes the round-tripping ones, so 0.1+0.2 prints 0.3
 // here and 0.30000000000000004 there.
 func TestPrintR(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 print_r([1, 2]);
 print_r(['a' => ['b' => 1]]);
@@ -111,6 +116,7 @@ echo print_r(0.1 + 0.2, true), "\n";`)
 // text: true is "1", and false and null are both the empty string, so a
 // template printing one of them writes nothing, and never "false".
 func TestPrintRScalars(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(print_r(true, true), print_r(false, true), print_r(null, true));`)
 
@@ -129,6 +135,7 @@ var_dump(print_r(true, true), print_r(false, true), print_r(null, true));`)
 // echo passes precision=14 where var_dump passes the round-tripping form, so
 // one float has two spellings: 1/3 is 0.33333333333333 to echo.
 func TestFloatFormatting(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(1e15, 1e16, 1e17, 1e-4, 1e-5, 1.0E+100, -0.0);
 echo 1e16, " ", 0.1 + 0.2, " ", 1/3, "\n";`)
@@ -144,6 +151,7 @@ echo 1e16, " ", 0.1 + 0.2, " ", 1/3, "\n";`)
 // TestFloatNonFinite covers the three values that are not numbers, which print
 // as names in every renderer and carry no sign in var_export.
 func TestFloatNonFinite(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_export(INF);
 echo "\n";

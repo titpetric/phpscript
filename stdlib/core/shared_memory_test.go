@@ -14,6 +14,7 @@ import (
 )
 
 func TestSharedMemoryBindingAcrossRequests(t *testing.T) {
+	t.Parallel()
 	shm := core.NewSharedMemory()
 	runRequest := func(src string) string {
 		t.Helper()
@@ -57,6 +58,7 @@ func TestSharedMemoryBindingAcrossRequests(t *testing.T) {
 // bound into the runtime. A run with none bound has nothing to report, because
 // `new SharedMemory` answers a fresh store per call there.
 func TestSharedMemoryInfo(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	core.RegisterSharedMemory(rt)
@@ -94,6 +96,7 @@ func TestSharedMemoryInfo(t *testing.T) {
 // reads as. The binding has one return value and no found flag, so a miss is
 // the empty string; Has is the separate question.
 func TestSharedMemory_Get(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	store := core.NewSharedMemory()
 
@@ -116,6 +119,7 @@ func TestSharedMemory_Get(t *testing.T) {
 // answers a decimal string where Incr answers the int, so a template prints the
 // figure with no cast, and a counter nothing touched reads as "0".
 func TestSharedMemory_Count(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	store := core.NewSharedMemory()
 
@@ -137,6 +141,7 @@ func TestSharedMemory_Count(t *testing.T) {
 // present. One name holds a value or a counter, so the call clears it from the
 // values, then from the counters.
 func TestSharedMemory_Delete(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	store := core.NewSharedMemory()
 	store.Set(ctx, "value", "x")
@@ -165,6 +170,7 @@ func TestSharedMemory_Delete(t *testing.T) {
 // the empty string reads the same as a key nothing set, so presence is its own
 // call. A counter counts as present.
 func TestSharedMemory_Has(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	store := core.NewSharedMemory()
 
@@ -187,6 +193,7 @@ func TestSharedMemory_Has(t *testing.T) {
 // host bound into its context, so every request holding the store sees the
 // reset.
 func TestSharedMemory_Clear(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	store := core.NewSharedMemory()
 	store.Set(ctx, "value", "x")

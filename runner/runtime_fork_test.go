@@ -30,6 +30,7 @@ func forkParent(t *testing.T, src string) (*runner.Runtime, *strings.Builder) {
 // and none of the execution: a fork is safe on a goroutine of its own, which is
 // the whole reason it exists.
 func TestRuntime_Fork(t *testing.T) {
+	t.Parallel()
 	parent, _ := forkParent(t, `<?php function twice($n) { return $n * 2; } $x = 7;`)
 
 	var childOut strings.Builder
@@ -58,6 +59,7 @@ func TestRuntime_Fork(t *testing.T) {
 // It answers a copy, so a caller walking it while the runtime includes another
 // file is not reading the map being written.
 func TestRuntime_DeclaredPrograms(t *testing.T) {
+	t.Parallel()
 	parent, _ := forkParent(t, `<?php function once() { return 1; }`)
 
 	programs := parent.DeclaredPrograms()
@@ -80,6 +82,7 @@ func TestRuntime_DeclaredPrograms(t *testing.T) {
 // entry would read and write the parent from inside the child; the preparer is
 // the host saying how to install them again.
 func TestRuntime_SetPreparer(t *testing.T) {
+	t.Parallel()
 	parent, _ := forkParent(t, `<?php $noop = 1;`)
 
 	installed := 0
@@ -111,6 +114,7 @@ func TestRuntime_SetPreparer(t *testing.T) {
 // a *model.Closure is what the method takes, and that is the form a host
 // holding one has.
 func TestRuntime_InvokeClosure(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php $f = function ($n) { return $n + 1; };`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)

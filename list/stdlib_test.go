@@ -13,6 +13,7 @@ import (
 // this listing and `phpscript info` answer the same question about the same
 // build.
 func TestStdlibReportsWhatTheRuntimeRegisters(t *testing.T) {
+	t.Parallel()
 	symbols := list.Stdlib()
 	if len(symbols) == 0 {
 		t.Fatal("Stdlib() returned nothing")
@@ -53,6 +54,7 @@ func TestStdlibReportsWhatTheRuntimeRegisters(t *testing.T) {
 // TestStdlibSignatures pins the shape of the rendered signature: reflected
 // types, no invented parameter names, and the by-reference slot preserved.
 func TestStdlibSignatures(t *testing.T) {
+	t.Parallel()
 	index := map[string]string{}
 	for _, s := range list.Stdlib() {
 		index[s.Kind+" "+s.Name] = s.Signature
@@ -79,6 +81,7 @@ func TestStdlibSignatures(t *testing.T) {
 // TestStdlibMarkdownIsATable checks the rendering has a heading row, a
 // separator, and one row per symbol.
 func TestStdlibMarkdownIsATable(t *testing.T) {
+	t.Parallel()
 	symbols := list.Stdlib()
 	lines := strings.Split(strings.TrimRight(list.StdlibMarkdown(symbols), "\n"), "\n")
 	if want := len(symbols) + 2; len(lines) != want {

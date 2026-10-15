@@ -13,6 +13,7 @@ import (
 )
 
 func TestSourceOTBSTabsAndFunction(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 
 class Test
@@ -59,6 +60,7 @@ class Test
 }
 
 func TestASTRoundTripParses(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 namespace App;
 
@@ -99,6 +101,7 @@ class Database {
 }
 
 func TestFunctionsAndStatementsKeepOpeningBraceOnSameLine(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 function check($values)
 {
@@ -127,6 +130,7 @@ function check($values)
 }
 
 func TestQuoteStyleOfStringLiteralsIsKept(t *testing.T) {
+	t.Parallel()
 	in := "<?php\n$html = '<span class=\"ok\">OK</span>';\n$row = \"row $index\";\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -146,6 +150,7 @@ func TestQuoteStyleOfStringLiteralsIsKept(t *testing.T) {
 // so the printer picks the quoting: single quotes when they avoid escaping a
 // dollar sign, which a double-quoted literal would interpolate.
 func TestSyntheticStringLiteralAvoidsInterpolation(t *testing.T) {
+	t.Parallel()
 	prog := &model.Program{Stmts: []model.Stmt{
 		&model.Echo{Args: []model.Expr{&model.Lit{Value: `$var "quoted"`}}},
 	}}
@@ -156,6 +161,7 @@ func TestSyntheticStringLiteralAvoidsInterpolation(t *testing.T) {
 }
 
 func TestBareExitRemainsBare(t *testing.T) {
+	t.Parallel()
 	out, err := formatter.Source("<?php\nexit;\ndie;\nexit();\n")
 	if err != nil {
 		t.Fatal(err)
@@ -166,6 +172,7 @@ func TestBareExitRemainsBare(t *testing.T) {
 }
 
 func TestLeadingRouteCommentsPreserved(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 // @route GET /kv/{key}
 $shm = new SharedMemory;
@@ -181,6 +188,7 @@ echo $shm->get($_REQUEST["key"]);
 }
 
 func TestCommentsImmediatelyPrecedeClassAndFunctionDeclarations(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 
 /** Class docs. */
@@ -227,6 +235,7 @@ function helper() {
 }
 
 func TestExplicitExpressionParenthesesRetained(t *testing.T) {
+	t.Parallel()
 	in := "<?php\n$offset = ($page - 1) * $limit;\n$value = (($a + $b));\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -247,6 +256,7 @@ func TestExplicitExpressionParenthesesRetained(t *testing.T) {
 }
 
 func TestTrailingCommentStaysOnItsStatement(t *testing.T) {
+	t.Parallel()
 	in := "<?php\n$value = 1; // value docs\nfunction helper() {}\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -258,6 +268,7 @@ func TestTrailingCommentStaysOnItsStatement(t *testing.T) {
 }
 
 func TestDeclarationCommentIsNotDuplicatedOnSameLine(t *testing.T) {
+	t.Parallel()
 	in := "<?php\n// first only\nfunction first() {} function second() {}\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -269,6 +280,7 @@ func TestDeclarationCommentIsNotDuplicatedOnSameLine(t *testing.T) {
 }
 
 func TestDropCloseTagForClassOnlyFile(t *testing.T) {
+	t.Parallel()
 	in := "<?php\nclass Foo\n{\n}\n?>\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -280,6 +292,7 @@ func TestDropCloseTagForClassOnlyFile(t *testing.T) {
 }
 
 func TestClosingTagPreservedAroundInlineHTML(t *testing.T) {
+	t.Parallel()
 	in := "<?php\nif ($ok) { ?>\n<p>ok</p>\n<?php echo \"done\";\n}\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -294,6 +307,7 @@ func TestClosingTagPreservedAroundInlineHTML(t *testing.T) {
 }
 
 func TestPHPReopensForClosingBraceAfterInlineHTML(t *testing.T) {
+	t.Parallel()
 	in := "<?php\nif ($ok) { ?>inline<?php }\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -312,6 +326,7 @@ func TestPHPReopensForClosingBraceAfterInlineHTML(t *testing.T) {
 }
 
 func TestTemplateStartingWithInlineHTMLIsUnchanged(t *testing.T) {
+	t.Parallel()
 	in := "<h1>Title</h1>\n<?php echo \"body\";\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -323,6 +338,7 @@ func TestTemplateStartingWithInlineHTMLIsUnchanged(t *testing.T) {
 }
 
 func TestPathsReturnsChangedFilesAndSkipsTemplates(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	script := filepath.Join(dir, "script.php")
 	template := filepath.Join(dir, "template.php")
@@ -355,6 +371,7 @@ func TestPathsReturnsChangedFilesAndSkipsTemplates(t *testing.T) {
 // rest of it is more useful than stopping at the first file that does not
 // parse, so an unreadable file is reported and left alone.
 func TestPathsSkipsFilesItCannotFormat(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	broken := filepath.Join(dir, "broken.php")
 	script := filepath.Join(dir, "script.php")
@@ -393,6 +410,7 @@ func TestPathsSkipsFilesItCannotFormat(t *testing.T) {
 }
 
 func TestNeedFormattingLeavesFilesAlone(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	script := filepath.Join(dir, "script.php")
 	source := "<?php\necho  \"body\";\n"
@@ -417,6 +435,7 @@ func TestNeedFormattingLeavesFilesAlone(t *testing.T) {
 }
 
 func TestShebangScriptIsFormattedAndKeepsItsInterpreterLine(t *testing.T) {
+	t.Parallel()
 	in := "#!/usr/bin/env phpscript\n<?php\necho  \"hello\";\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -429,6 +448,7 @@ func TestShebangScriptIsFormattedAndKeepsItsInterpreterLine(t *testing.T) {
 }
 
 func TestSourceNormalizesLineEndings(t *testing.T) {
+	t.Parallel()
 	in := "<?php\r\necho \"a\r\nb\";\r\n?>\r\n<p>done</p>\r\n"
 	out, err := formatter.Source(in)
 	if err != nil {
@@ -446,6 +466,7 @@ func TestSourceNormalizesLineEndings(t *testing.T) {
 }
 
 func TestIncludeAndRequireSyntaxPreserved(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 include "a.php";
 include_once("b.php");
@@ -473,6 +494,7 @@ $other = include "f.php";
 }
 
 func TestFirstClassCallableSyntaxPreserved(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 $fn = greet(...);
 $len = strlen(...);
@@ -506,6 +528,7 @@ $indexed = $handlers[0](...);
 }
 
 func TestFirstClassCallableIsNotACall(t *testing.T) {
+	t.Parallel()
 	// A zero-argument call and the callable that names it print differently,
 	// and the spelling is recorded on the node for that.
 	out, err := formatter.Source("<?php\n$a = greet();\n$b = greet(...);\n")
@@ -518,6 +541,7 @@ func TestFirstClassCallableIsNotACall(t *testing.T) {
 }
 
 func TestIdempotent(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 class Test {
 	fn isValid() {
@@ -539,6 +563,7 @@ class Test {
 }
 
 func TestPrintUsesProgramNamespace(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php
 namespace Fixture;
 class Loaded {
@@ -561,6 +586,7 @@ class Loaded {
 }
 
 func TestWhitespaceBetweenStatements(t *testing.T) {
+	t.Parallel()
 	in := "<?php\nfunction run() {\n\n\n\t$a = 1;   \n\t$b = 2;\n\n\n\t$c = 3;\n\twork();\n\tif ($a) {\n\t\techo $a;\n\t}\n\tafter();\n\tif ($b) {\n\t\techo $b;\n\t}\n\n\n}\n"
 	want := "<?php\n\nfunction run() {\n\t$a = 1;\n\t$b = 2;\n\n\t$c = 3;\n\n\twork();\n\tif ($a) {\n\t\techo $a;\n\t}\n\n\tafter();\n\tif ($b) {\n\t\techo $b;\n\t}\n}\n"
 	out, err := formatter.Source(in)
@@ -577,6 +603,7 @@ func TestWhitespaceBetweenStatements(t *testing.T) {
 }
 
 func TestClassMethodAndClosingTagWhitespace(t *testing.T) {
+	t.Parallel()
 	in := "<?php\nclass Example\n{\n\n\tfunction first() {\n\n\t\techo \"first\";\n\n\t}\n\n\n\tfunction second() {\n\t\techo \"second\";\n\t}\n}\nafter_class();\n?>\n<p>html</p>\n"
 	want := "<?php\n\nclass Example {\n\tfunction first() {\n\t\techo \"first\";\n\t}\n\n\tfunction second() {\n\t\techo \"second\";\n\t}\n}\nafter_class();\n\n?>\n<p>html</p>\n"
 	out, err := formatter.Source(in)
@@ -589,6 +616,7 @@ func TestClassMethodAndClosingTagWhitespace(t *testing.T) {
 }
 
 func TestNoForcedBlankAfterClass(t *testing.T) {
+	t.Parallel()
 	in := "<?php\nclass First {}\nfunction next() {}\nclass Second {}\nclass Third {}\n"
 	want := "<?php\n\nclass First {\n}\nfunction next() {\n}\n\nclass Second {\n}\nclass Third {\n}\n"
 	out, err := formatter.Source(in)
@@ -601,6 +629,7 @@ func TestNoForcedBlankAfterClass(t *testing.T) {
 }
 
 func TestTerminalClosingTagAndWhitespaceTrimmedIdempotently(t *testing.T) {
+	t.Parallel()
 	in := "<?php\r\necho \"x\";\r\n?>\r\n \t\r\n"
 	want := "<?php\n\necho \"x\";\n"
 	out, err := formatter.Source(in)
@@ -617,6 +646,7 @@ func TestTerminalClosingTagAndWhitespaceTrimmedIdempotently(t *testing.T) {
 }
 
 func TestTrailingWhitespaceTrimmedFromMixedHTML(t *testing.T) {
+	t.Parallel()
 	in := "<?php\r\necho \"x\";\r\n?>\r\n<p>x</p>  \r\n"
 	want := "<?php\n\necho \"x\";\n\n?>\n<p>x</p>\n"
 	out, err := formatter.Source(in)
@@ -629,6 +659,7 @@ func TestTrailingWhitespaceTrimmedFromMixedHTML(t *testing.T) {
 }
 
 func TestClassModifiersRoundTrip(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 namespace App;
 
@@ -672,6 +703,7 @@ readonly final class Both {
 }
 
 func TestClassHeritageRoundTrip(t *testing.T) {
+	t.Parallel()
 	in := `<?php
 namespace App;
 
@@ -735,6 +767,7 @@ var update = flag.Bool("update", false, "rewrite testdata golden files")
 // formatter has to hold when it rewrites a file in place: the output parses,
 // and formatting it again does not change it.
 func TestGolden(t *testing.T) {
+	t.Parallel()
 	inputs, err := filepath.Glob(filepath.Join("testdata", "*.php"))
 	if err != nil {
 		t.Fatal(err)

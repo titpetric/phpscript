@@ -54,6 +54,7 @@ func runSAPI(t *testing.T, ctx runner.Context, sapi, src string) string {
 }
 
 func TestFromRequestGetAndPath(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	var got *http.Request
 	mux.HandleFunc("GET /users/{id}", func(_ http.ResponseWriter, r *http.Request) { got = r })
@@ -76,6 +77,7 @@ func TestFromRequestGetAndPath(t *testing.T) {
 // is built: query, form and cookie fields as PHP merges them, and the route's
 // path values written over all three, which is the documented deviation.
 func TestRequestSuperglobalMerge(t *testing.T) {
+	t.Parallel()
 	// The context is built inside the handler, while the body is still
 	// readable; after the handler returns the server has closed it.
 	mux := http.NewServeMux()
@@ -99,6 +101,7 @@ func TestRequestSuperglobalMerge(t *testing.T) {
 // TestRequestSuperglobalIsACopy pins that $_REQUEST is its own array, as it is
 // in PHP: writing through it must not reach $_GET, and the other way around.
 func TestRequestSuperglobalIsACopy(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("GET", "/?a=1", nil)
 	src := `<?php
 $_REQUEST["a"] = "changed";
@@ -112,6 +115,7 @@ echo $_GET["a"], "|", isset($_REQUEST["b"]) ? "leaked" : "own";
 }
 
 func TestFromRequestPost(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit", strings.NewReader("name=bob"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -125,6 +129,7 @@ func TestFromRequestPost(t *testing.T) {
 // than once. PHP's parser assigns each repetition over the one before it, so
 // the last value is the one a script sees.
 func TestFromRequestRepeatedValues(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit?tag=a&tag=b", strings.NewReader("name=bob&name=alice"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -174,6 +179,7 @@ func multipartRequest(t *testing.T, values map[string]string, files ...multipart
 // multipart POST has to reach $_POST as well as an urlencoded one does, and its
 // file parts have to arrive in $_FILES.
 func TestFromRequestMultipart(t *testing.T) {
+	t.Parallel()
 	r := multipartRequest(t,
 		map[string]string{"name": "bob"},
 		multipartFile{field: "avatar", filename: "photo.png", content: "binary-ish"},
@@ -222,6 +228,7 @@ func TestFromRequestMultipart(t *testing.T) {
 // kept whole in full_path and stripped to its base in name, so a client cannot
 // choose a directory for the server.
 func TestFilesSuperglobal(t *testing.T) {
+	t.Parallel()
 	r := multipartRequest(t, nil,
 		multipartFile{field: "avatar", filename: `C:\Users\bob\photo.png`, content: "abc"},
 	)
@@ -243,6 +250,7 @@ echo $f["name"] . "|" . $f["full_path"] . "|" . $f["type"] . "|" . $f["size"] . 
 // nowhere to put the first file in a scalar entry, so the last one wins, the
 // same way a repeated $_POST value does.
 func TestFilesSuperglobalRepeatedField(t *testing.T) {
+	t.Parallel()
 	r := multipartRequest(t, nil,
 		multipartFile{field: "avatar", filename: "first.png", content: "aa"},
 		multipartFile{field: "avatar", filename: "second.png", content: "bbbb"},
@@ -263,6 +271,7 @@ func TestFilesSuperglobalRepeatedField(t *testing.T) {
 // TestFilesSuperglobalList covers a repeated field: PHP spells it "name[]" and
 // writes the entry as parallel arrays in place of scalars.
 func TestFilesSuperglobalList(t *testing.T) {
+	t.Parallel()
 	r := multipartRequest(t, nil,
 		multipartFile{field: "docs[]", filename: "a.txt", content: "aa"},
 		multipartFile{field: "docs[]", filename: "b.txt", content: "bbbb"},
@@ -285,6 +294,7 @@ echo $f["name"][0] . "|" . $f["name"][1] . "|" . $f["size"][0] . "|" . $f["size"
 // on the content type alone: an urlencoded POST still resolves through ParseForm
 // and reports no uploads.
 func TestFromRequestUrlencodedUnaffected(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit", strings.NewReader("name=bob"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -301,6 +311,7 @@ func TestFromRequestUrlencodedUnaffected(t *testing.T) {
 // the script through php://input, readable more than once, while $_POST stays
 // empty, and invents no entries from it.
 func TestRawBodyJSON(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("PUT", "/api/thing", strings.NewReader(`{"hours":90}`))
 	r.Header.Set("Content-Type", "application/json")
 
@@ -324,6 +335,7 @@ echo file_get_contents("php://input");`)
 // parse: $_POST decodes as before, and php://input still answers with the raw
 // urlencoded bytes, as PHP's does.
 func TestRawBodyFormEncoded(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("POST", "/echo", strings.NewReader("hours=90"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -339,6 +351,7 @@ echo $_POST["hours"], ";", file_get_contents("php://input");`)
 // available for a multipart body, so it answers empty while the form fields
 // arrive through $_POST.
 func TestRawBodyMultipartEmpty(t *testing.T) {
+	t.Parallel()
 	r := multipartRequest(t, map[string]string{"name": "bob"})
 
 	out, _ := runReq(t, r, `<?php
@@ -353,6 +366,7 @@ echo $_POST["name"], ";", strlen(file_get_contents("php://input"));`)
 // leaves php://input empty along with the superglobals, and the reason goes to
 // the host.
 func TestRawBodyOverLimitIsDropped(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit", strings.NewReader(`{"payload":"`+strings.Repeat("x", 4096)+`"}`))
 	r.Header.Set("Content-Type", "application/json")
 	r.ContentLength = -1
@@ -367,6 +381,7 @@ func TestRawBodyOverLimitIsDropped(t *testing.T) {
 }
 
 func TestSuperglobalsVisibleInsideFunctions(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	var got *http.Request
 	mux.HandleFunc("GET /run/{jobName}", func(_ http.ResponseWriter, r *http.Request) { got = r })
@@ -392,6 +407,7 @@ echo route_job_name();
 }
 
 func TestGlobalsNotVisibleInsideFunctions(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $job = "local";
 function read_job() {
@@ -430,6 +446,7 @@ func wantServer(t *testing.T, server *mapmap.MapMap, want map[string]string) {
 // expected shape is what php 8.5's built-in server writes for the same request,
 // less the keys that need a document root and a script file.
 func TestServerVarsPlainGet(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("GET", "/index.php?a=1&b=two", nil)
 	r.RemoteAddr = "127.0.0.1:56138"
 
@@ -455,6 +472,7 @@ func TestServerVarsPlainGet(t *testing.T) {
 // keys PHP has for it. An IPv6 peer arrives bracketed and is written the way
 // PHP writes it, without brackets.
 func TestServerVarsRemoteAddr(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		remote string
 		addr   string
@@ -483,6 +501,7 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 // has CONTENT_TYPE, and a body of zero bytes that announced its length has
 // CONTENT_LENGTH "0".
 func TestServerVarsContentHeaders(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit", strings.NewReader("name=bob&x=1"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -525,6 +544,7 @@ func TestServerVarsContentHeaders(t *testing.T) {
 // HTTPS only then, and to "on"; an X-Forwarded-Proto is the client's word and
 // changes neither key.
 func TestServerVarsTLS(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	var got *http.Request
 	mux.HandleFunc("/", func(_ http.ResponseWriter, r *http.Request) { got = r })
@@ -556,6 +576,7 @@ func TestServerVarsTLS(t *testing.T) {
 // the whole second of the float one, and PHP types the first as an integer and
 // the second as a float where every other key holds a string.
 func TestServerVarsRequestTime(t *testing.T) {
+	t.Parallel()
 	before := time.Now()
 	ctx := runner.FromRequest(httptest.NewRequest("GET", "/", nil))
 	after := time.Now()
@@ -588,6 +609,7 @@ echo $_SERVER["REQUEST_TIME"] === (int)$_SERVER["REQUEST_TIME_FLOAT"] ? "same-se
 // TestServerSuperglobalStrings pins that every other key reaches a script as a
 // string, as $_SERVER holds.
 func TestServerSuperglobalStrings(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit?a=1", strings.NewReader("name=bob"))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.RemoteAddr = "127.0.0.1:56138"
@@ -607,6 +629,7 @@ echo $_SERVER["REMOTE_PORT"], "|", $_SERVER["CONTENT_LENGTH"], "|", $_SERVER["RE
 }
 
 func TestGetAllHeaders(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("X-Custom", "yes")
 
@@ -617,6 +640,7 @@ func TestGetAllHeaders(t *testing.T) {
 }
 
 func TestHeaderEmission(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
 
 	_, resp := runReq(t, r, `<?php header("Content-Type: application/json");`)
@@ -626,6 +650,7 @@ func TestHeaderEmission(t *testing.T) {
 }
 
 func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
+	t.Parallel()
 	ctx := runner.NewContext()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	// header() is a standard-library binding that finds this Context through
@@ -649,6 +674,7 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 // "HTTP/1.0 404 Not Found" carries a status alone, with no name and no value,
 // and is dropped for want of a name:value shape without this.
 func TestStatusLineHeaderSetsStatus(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		header string
 		want   int
@@ -685,6 +711,7 @@ func TestStatusLineHeaderSetsStatus(t *testing.T) {
 //
 // json_encode keeps the types visible; phpscript has no var_dump.
 func TestHTTPResponseCode(t *testing.T) {
+	t.Parallel()
 	const src = `<?php
 echo json_encode([
 	http_response_code(),
@@ -722,6 +749,7 @@ echo json_encode([
 // not a number at all, is not a status: PHP reads the call as the reporting one
 // and leaves the response alone.
 func TestHTTPResponseCodeIgnoresANonStatus(t *testing.T) {
+	t.Parallel()
 	ctx := runner.NewContext()
 	got := runSAPI(t, ctx, "cgi-phpscript", `<?php
 http_response_code(404);
@@ -744,6 +772,7 @@ echo json_encode([
 // functions take. It matters for an error page: $_SERVER holds every value as
 // a string, so a page handing REDIRECT_STATUS back is handing over "404".
 func TestStatusArgumentIsCoerced(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		src  string
@@ -770,6 +799,7 @@ func TestStatusArgumentIsCoerced(t *testing.T) {
 // one at all, so a script sees empty superglobals; the reason is reported to
 // the host, which is the only place it can be seen.
 func TestPostMaxSize(t *testing.T) {
+	t.Parallel()
 	r := multipartRequest(t,
 		map[string]string{"name": "bob"},
 		multipartFile{field: "avatar", filename: "photo.png", content: strings.Repeat("x", 4096)},
@@ -814,6 +844,7 @@ try {
 // It cannot be judged before it is read, so it is capped as it is parsed, and
 // ends the same way an announced one does.
 func TestPostMaxSizeUnknownLength(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit", strings.NewReader("name="+strings.Repeat("b", 4096)))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.ContentLength = -1
@@ -831,6 +862,7 @@ func TestPostMaxSizeUnknownLength(t *testing.T) {
 // rest of the form and marks that one entry UPLOAD_ERR_INI_SIZE, so a script
 // can tell the user which file it refuses.
 func TestUploadMaxFilesize(t *testing.T) {
+	t.Parallel()
 	r := multipartRequest(t,
 		map[string]string{"name": "bob"},
 		multipartFile{field: "small", filename: "small.txt", content: "tiny"},
@@ -892,6 +924,7 @@ func runCtxOptions(t *testing.T, ctx runner.Context, opts runner.Options, setup 
 // Repeated rows, checkbox arrays and `line[0][hours]` naming reach a script as
 // nested arrays and not literal keys.
 func TestFromRequestBracketNames(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		query string
@@ -952,6 +985,7 @@ func TestFromRequestBracketNames(t *testing.T) {
 
 // A cookie carries bracket syntax too, and Go leaves it percent-encoded.
 func TestFromRequestCookieBracketNames(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("Cookie", "prefs%5Btheme%5D=dark; plain=abc")
 
@@ -963,6 +997,7 @@ func TestFromRequestCookieBracketNames(t *testing.T) {
 
 // A multipart body's field names are read the same way.
 func TestFromRequestMultipartBracketNames(t *testing.T) {
+	t.Parallel()
 	r := multipartRequest(t, map[string]string{
 		"line[0][hours]": "8",
 		"line[1][hours]": "4",
@@ -976,6 +1011,7 @@ func TestFromRequestMultipartBracketNames(t *testing.T) {
 
 // A field nested past the limit is dropped whole; the rest still arrive.
 func TestFromRequestInputLimits(t *testing.T) {
+	t.Parallel()
 	deep := "a" + strings.Repeat("[x]", 65) + "=1&b=kept"
 	r := httptest.NewRequest("GET", "/?"+deep, nil)
 
@@ -988,6 +1024,7 @@ func TestFromRequestInputLimits(t *testing.T) {
 // A hand-assembled Context has no request to decode, so its flat maps are
 // promoted as they stand: the fixture harness, a CLI run, an embedder.
 func TestRegisterFallsBackToFlatMaps(t *testing.T) {
+	t.Parallel()
 	c := runner.NewContext()
 	c.Get["greeting"] = "hello"
 	c.Post["message"] = "form"
@@ -1002,6 +1039,7 @@ func TestRegisterFallsBackToFlatMaps(t *testing.T) {
 // Only the two form content types populate $_POST. A JSON body is
 // php://input and nothing else, as it is in PHP.
 func TestBodyDecodeIsFormOnly(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		contentType string
@@ -1029,6 +1067,7 @@ func TestBodyDecodeIsFormOnly(t *testing.T) {
 // registers /c/{tail...} as /c/* and reports that back, so a value exported
 // under a name would have no name at all with r.Pattern as the only source.
 func TestWithRoutePattern(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("GET", "/c/deep/path", nil)
 	r.Pattern = "/c/*"
 	r.SetPathValue("*", "deep/path")
@@ -1064,6 +1103,7 @@ func TestWithRoutePattern(t *testing.T) {
 // is what a session binding gets on a CLI run, so it reports the absence and
 // reads no zero Context as an empty request.
 func TestRequestContext(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("GET", "/?page=2", nil)
 	ctx := runner.FromRequest(r)
 	rt := runner.New(io.Discard, runner.Options{})
@@ -1086,6 +1126,7 @@ func TestRequestContext(t *testing.T) {
 // does not do by default. Set-Cookie is the reason it exists: a response
 // setting two cookies carries the header twice, and a replace would send one.
 func TestContext_AddResponseHeader(t *testing.T) {
+	t.Parallel()
 	ctx := runner.NewContext()
 	ctx.AddResponseHeader("Set-Cookie", "a=1")
 	ctx.AddResponseHeader("Set-Cookie", "b=2")
@@ -1106,6 +1147,7 @@ func TestContext_AddResponseHeader(t *testing.T) {
 // nothing, so a script indexing the result on a CLI run reads a missing key and
 // no error.
 func TestContext_GetAllHeaders(t *testing.T) {
+	t.Parallel()
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("X-Custom", "yes")
 	r.Header.Set("Content-Type", "application/json")
@@ -1143,6 +1185,7 @@ func TestContext_GetAllHeaders(t *testing.T) {
 // false while none is chosen and true for the first one set, having no previous
 // number to report.
 func TestContext_HTTPResponseCode(t *testing.T) {
+	t.Parallel()
 	web := runner.NewContext()
 	if got := web.HTTPResponseCode("http"); got != int64(http.StatusOK) {
 		t.Errorf("the reporting call on a web SAPI = %v, want 200", got)
@@ -1191,6 +1234,7 @@ func TestContext_HTTPResponseCode(t *testing.T) {
 // its Context by hand, with no *http.Request behind it. The bytes are the body
 // and no form to decode, so the request fields stay as the host wrote them.
 func TestContext_SetRawBody(t *testing.T) {
+	t.Parallel()
 	ctx := runner.NewContext()
 	ctx.Post["written"] = "by the host"
 	ctx.SetRawBody([]byte(`{"a":1}`))

@@ -31,6 +31,7 @@ func runBinding(t *testing.T, name string, fn any, src string) (string, error) {
 // through to reflection, where Go's own conversion would render int64(65) as
 // the code point "A".
 func TestInvokeStringArgumentCoercion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		fn   any
@@ -79,6 +80,7 @@ func TestInvokeStringArgumentCoercion(t *testing.T) {
 // dispatch paths, as PHP refuses it for an internal function. reflect.Value
 // .Call panics on the same call, so the check has to run before either path.
 func TestInvokeTooManyArguments(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		fn   any
@@ -103,6 +105,7 @@ func TestInvokeTooManyArguments(t *testing.T) {
 // Fewer arguments than the binding declares stays legal: a Go binding spells
 // PHP's optional parameters as extra ones, and they are zero-padded.
 func TestInvokeTooFewArgumentsPads(t *testing.T) {
+	t.Parallel()
 	out, err := runBinding(t, "shout", func(a, b string) string { return "[" + a + "|" + b + "]" }, `<?php echo shout("a");`)
 	if err != nil {
 		t.Fatalf("run: %v", err)
@@ -120,6 +123,7 @@ type counter struct{}
 func (counter) Add(a, b string) string { return a + b }
 
 func TestInvokeMethodArgumentRules(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		src     string
@@ -200,6 +204,7 @@ var instant = time.Date(2026, time.August, 26, 14, 48, 0, 0, time.UTC)
 // syntax. The rule lives at the shared reflection boundary, so automatically
 // exposed methods such as time.Time.Add need no PHP-specific adapter.
 func TestInvokeMethodParsesDurationString(t *testing.T) {
+	t.Parallel()
 	if got := runInstant(t, `echo $t->add("30m")->format("15:04");`); got != "15:18" {
 		t.Fatalf("got %q, want %q", got, "15:18")
 	}
@@ -210,6 +215,7 @@ func TestInvokeMethodParsesDurationString(t *testing.T) {
 // asked: time.Time.ISOWeek returns (year, week), and dropping the tail makes
 // $t->iso_week() evaluate to the year.
 func TestInvokeSeveralResultsBecomeAList(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		fn   any
@@ -265,6 +271,7 @@ func TestInvokeSeveralResultsBecomeAList(t *testing.T) {
 // reach PHP through automatic method dispatch, where no hand-written shim is
 // there to convert them.
 func TestGoValueStringAndIntConversion(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		src  string
@@ -302,6 +309,7 @@ func runBindingWithStdlib(t *testing.T, name string, fn any, src string) (string
 }
 
 func TestInvokeBindingParsesDurationString(t *testing.T) {
+	t.Parallel()
 	out, err := runBinding(t, "millis", func(duration time.Duration) int64 {
 		return duration.Milliseconds()
 	}, `<?php echo millis("250ms");`)
@@ -317,6 +325,7 @@ func TestInvokeBindingParsesDurationString(t *testing.T) {
 // whether it came from a thrown Exception, a binding that returned an error,
 // or a panic converted at the host boundary.
 func TestThrowableMethods(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		fn   any
@@ -365,6 +374,7 @@ func (e probeError) Error() string { return string(e) }
 // zero the Throwable fallback supplies for a bare Go error. This needs the
 // standard library, where the Exception class is registered.
 func TestThrownExceptionKeepsItsCode(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php try { throw new Exception("m", 7); } catch (Throwable $e) { echo $e->getMessage() . ":" . $e->getCode(); }`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -385,6 +395,7 @@ func TestThrownExceptionKeepsItsCode(t *testing.T) {
 // position and the types involved, and no host panic a script cannot
 // distinguish from a bug in the binding.
 func TestInvokeUnconvertibleArgument(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		fn   any
@@ -428,6 +439,7 @@ func TestInvokeUnconvertibleArgument(t *testing.T) {
 // Calling a function no table knows reports the condition the way the flatstack
 // engine reports it, where the VM would say "cannot call nil".
 func TestUndefinedFunctionMessage(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php nope();`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -446,6 +458,7 @@ func TestUndefinedFunctionMessage(t *testing.T) {
 // function by that name. Registering one moves the function-table generation,
 // and that rebuilds the evaluation environment, and the stub in it.
 func TestUndefinedFunctionStubIsNotSticky(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 

@@ -10,6 +10,7 @@ import (
 // SPL name is one Go type here: reflection over the Go type would report
 // "Exception" for an InvalidArgumentException.
 func TestThrowable(t *testing.T) {
+	t.Parallel()
 	var thrown Throwable = &TypeError{Name: "str_repeat", Position: 1, Want: "int", Got: "string"}
 	if got, want := thrown.ThrowableClass(), "TypeError"; got != want {
 		t.Errorf("ThrowableClass() = %q, want %q", got, want)
@@ -25,6 +26,7 @@ func TestThrowable(t *testing.T) {
 // clause take the error, which is the contract a host binding is written
 // against.
 func TestThrowableClassOf(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		err   error

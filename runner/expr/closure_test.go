@@ -14,6 +14,7 @@ import (
 // a Base entry with the variadic signature the compiled call reads it through,
 // and the compiler lists the names Eval installs there.
 func TestEnv(t *testing.T) {
+	t.Parallel()
 	expression := &model.Call{
 		Name: "upper",
 		Args: []model.Expr{&model.Var{Name: "word"}},
@@ -63,6 +64,7 @@ func TestEnv(t *testing.T) {
 // operator reaches one field, so a table filled for three operators records
 // three separate calls.
 func TestHelpers(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		op    string
 		field string

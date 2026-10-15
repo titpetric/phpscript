@@ -8,6 +8,7 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
+	t.Parallel()
 	config, err := loadConfig("")
 	if err != nil {
 		t.Fatal(err)
@@ -38,6 +39,7 @@ func TestLoadConfig(t *testing.T) {
 }
 
 func TestLoadConfigFile(t *testing.T) {
+	t.Parallel()
 	filename := filepath.Join(t.TempDir(), "config.yml")
 	if err := os.WriteFile(filename, []byte(`
 runner:
@@ -67,6 +69,7 @@ env:
 }
 
 func TestLoadConfigTelemetryDisk(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	filename := filepath.Join(t.TempDir(), "config.yml")
 	if err := os.WriteFile(filename, []byte(`
@@ -94,6 +97,7 @@ telemetry:
 }
 
 func TestParseConfigFile(t *testing.T) {
+	t.Parallel()
 	filename, args, err := parseConfigFile([]string{"server", "-f", "config.yml", "app"})
 	if err != nil {
 		t.Fatal(err)

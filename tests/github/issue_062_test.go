@@ -14,6 +14,7 @@ import (
 // under. {tail...} is the one spelling; chi is handed * and publishes the
 // value under "*", which the exporter maps back to the declared name.
 func Test_Issue062(t *testing.T) {
+	t.Parallel()
 	routes := map[string]string{
 		"files.php": "// @route GET /c/{tail...}",
 	}

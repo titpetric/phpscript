@@ -11,6 +11,7 @@ import (
 // statement has nothing left uncovered, so 0/0 reads as covered and not as
 // a zero dragging every average down.
 func TestRow_Percent(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		row  coverage.Row
 		want float64
@@ -28,6 +29,7 @@ func TestRow_Percent(t *testing.T) {
 // TestFileRows covers the per-file report, including a registered file holding
 // nothing runnable.
 func TestFileRows(t *testing.T) {
+	t.Parallel()
 	blocks := coverage.Columns(profileBlocks, testSource)
 	rows := coverage.FileRows(blocks, []string{"app.php", "lib.php", "empty.php"})
 	got := map[string]float64{}
@@ -48,6 +50,7 @@ func TestFileRows(t *testing.T) {
 // innermost declaration containing it, top-level code to {main}, and an
 // uncalled function is the zero row the report exists to show.
 func TestFuncRows(t *testing.T) {
+	t.Parallel()
 	blocks := coverage.Columns(profileBlocks, testSource)
 	funcs := []coverage.FuncSpan{
 		{File: "lib.php", Name: "f", StartLine: 2, EndLine: 2},
@@ -75,6 +78,7 @@ func TestFuncRows(t *testing.T) {
 // TestWriteReport pins the shape `summary coverfunc` parses: three
 // whitespace-separated columns and a total row it skips by name.
 func TestWriteReport(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rows := coverage.FileRows(coverage.Columns(profileBlocks, testSource), []string{"app.php", "lib.php"})
 	if err := coverage.WriteReport(&out, rows); err != nil {
@@ -99,6 +103,7 @@ func TestWriteReport(t *testing.T) {
 
 // TestSortRows pins the order a report is written in.
 func TestSortRows(t *testing.T) {
+	t.Parallel()
 	rows := []coverage.Row{
 		{File: "b.php", Line: 1, Name: "x"},
 		{File: "a.php", Line: 9, Name: "y"},
@@ -118,6 +123,7 @@ func TestSortRows(t *testing.T) {
 
 // TestSortProfile pins the order a profile is written in.
 func TestSortProfile(t *testing.T) {
+	t.Parallel()
 	blocks := []coverage.ProfileBlock{
 		{File: "b.php", StartLine: 1, EndLine: 1},
 		{File: "a.php", StartLine: 4, EndLine: 4},

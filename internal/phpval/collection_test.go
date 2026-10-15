@@ -11,6 +11,7 @@ import (
 // collection in. Each element converts the way `(string)$v` does, so php 8.5
 // prints "1,1,,2.5" for implode(",", ["1", true, null, 2.5]).
 func TestStrings(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name  string
 		value any
@@ -49,6 +50,7 @@ func TestStrings(t *testing.T) {
 // the same wording is reported here, so no spelling is invented for an object
 // inside implode.
 func TestStringsRefusesObject(t *testing.T) {
+	t.Parallel()
 	object := model.NewObject(&model.Class{Name: "C"})
 
 	got, err := Strings(scriptArray("a", object, "b"))
@@ -73,6 +75,7 @@ func TestStringsRefusesObject(t *testing.T) {
 // copies nothing: a []any is the storage the caller already holds, so it is
 // returned as it is. Callers that write to the result copy first.
 func TestValues(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name  string
 		value any

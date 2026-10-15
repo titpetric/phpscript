@@ -10,6 +10,7 @@ import (
 // AST and the identifier is synthetic: a closure literal has no name a script
 // typed, so the compiler invents one and the slot is where the callable lands.
 func TestBoundClosure(t *testing.T) {
+	t.Parallel()
 	decl := &model.Closure{Params: []model.Param{{Name: "n"}}}
 	bound := BoundClosure{ID: "__closure_0", Slot: 1, Decl: decl}
 

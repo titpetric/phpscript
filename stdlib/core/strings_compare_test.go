@@ -14,6 +14,7 @@ import (
 // "\x01" by 254. A tie broken by length normalises, php reading strcmp("a", "")
 // as 1 whatever the tail holds.
 func TestCompareBytes(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		a, b  string
@@ -46,6 +47,7 @@ func TestCompareBytes(t *testing.T) {
 // anyway. A length wider than any string this process holds bounds nothing, so
 // it saturates at the largest int.
 func TestClampLength(t *testing.T) {
+	t.Parallel()
 	maxInt := int(^uint(0) >> 1)
 
 	for _, tc := range []struct {
@@ -67,6 +69,7 @@ func TestClampLength(t *testing.T) {
 // nothing else. These functions walk bytes and decode no rune, so a byte above
 // 127 passes through as it is.
 func TestLowerASCII(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		in, want byte
 	}{

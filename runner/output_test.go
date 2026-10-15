@@ -10,6 +10,7 @@ import (
 // takes the text, so a captured region can itself capture. PHP's ob_* family in
 // stdlib/compat is built on that nesting.
 func TestRuntime_PushOutput(t *testing.T) {
+	t.Parallel()
 	var outer, inner bytes.Buffer
 	base := &bytes.Buffer{}
 	rt := New(base, Options{})
@@ -40,6 +41,7 @@ func TestRuntime_PushOutput(t *testing.T) {
 // buffer open is told so; a nil push still leaves something to pop, because
 // dropping the level would unstack the caller's writer on the next pop.
 func TestRuntime_PopOutput(t *testing.T) {
+	t.Parallel()
 	var captured bytes.Buffer
 	base := &bytes.Buffer{}
 	rt := New(base, Options{})
@@ -72,6 +74,7 @@ func TestRuntime_PopOutput(t *testing.T) {
 // ob_get_level(). releaseOutput drops every level for a runtime answering one
 // request after another, so the next request opens at zero.
 func TestRuntime_OutputDepth(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	if got := rt.OutputDepth(); got != 0 {
 		t.Errorf("OutputDepth() = %d on a fresh runtime, want 0", got)
@@ -99,6 +102,7 @@ func TestRuntime_OutputDepth(t *testing.T) {
 // answers the writer behind it, so the text joins the response body in
 // the order the script writes it.
 func TestRuntime_Output(t *testing.T) {
+	t.Parallel()
 	base := &bytes.Buffer{}
 	rt := New(base, Options{})
 	if rt.Output() != io.Writer(base) {

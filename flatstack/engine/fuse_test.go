@@ -34,6 +34,7 @@ func countOps(p *Program, op opcode) int {
 // slot-const, arithmetic over two variables is slot-slot, and a plain
 // assignment of a fused result folds the store.
 func TestFuseRewritesTheCommonShapes(t *testing.T) {
+	t.Parallel()
 	program := compileSource(t, `<?php
 $a = 1;
 $b = 2;
@@ -63,6 +64,7 @@ echo $c;
 // A jump target inside a would-be run blocks the fusion so control can still
 // land there; a ternary's join-point store is the everyday case.
 func TestFuseKeepsJumpTargetsAddressable(t *testing.T) {
+	t.Parallel()
 	program := compileSource(t, `<?php
 $x = 1;
 $y = $x > 0 ? "pos" : "neg";
@@ -131,6 +133,7 @@ func itoa(v int64) string {
 // host, the way opLoad resolves it: the global is visible without a frame
 // write.
 func TestFusedBinaryReadsUninitialisedThroughHost(t *testing.T) {
+	t.Parallel()
 	program := compileSource(t, `<?php $sum = $seed + $seed; echo $sum;`)
 	if countOps(program, opBinLL) == 0 {
 		t.Fatal("expected $seed + $seed to fuse")
@@ -147,6 +150,7 @@ func TestFusedBinaryReadsUninitialisedThroughHost(t *testing.T) {
 // A folded store still passes the value to the host first, so a superglobal
 // write stays request state exactly as opStore keeps it.
 func TestFusedStoreOffersSetGlobal(t *testing.T) {
+	t.Parallel()
 	program := compileSource(t, `<?php $claimed = $a + $b; echo $claimed;`)
 	fused := false
 	for _, inst := range program.code {
@@ -172,6 +176,7 @@ func TestFusedStoreOffersSetGlobal(t *testing.T) {
 // A folded store retypes the slot the way opStore does: variable types are
 // dynamic, as in PHP, and the fold must not change that.
 func TestFusedStoreRetypes(t *testing.T) {
+	t.Parallel()
 	program := compileSource(t, `<?php $s = "text"; $s = $a + $b; echo $s;`)
 	host := &fusedRunHost{globals: map[string]any{"a": int64(1), "b": int64(2)}}
 	if err := Run(host, program); err != nil {

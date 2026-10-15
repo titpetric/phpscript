@@ -13,6 +13,7 @@ import (
 // and a site with no line is a program carrying no line table. Both answer
 // something a message can be written around.
 func TestFuncSite(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		site FuncSite
 		want string

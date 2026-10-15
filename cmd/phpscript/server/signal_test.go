@@ -24,6 +24,7 @@ func withPidFile(path string) config.Config {
 }
 
 func TestSignal(t *testing.T) {
+	t.Parallel()
 	t.Run("an unknown verb is refused", func(t *testing.T) {
 		var errOut bytes.Buffer
 		if err := server.Signal(withPidFile("/tmp/unused.pid"), "restart", &errOut); err == nil {

@@ -69,6 +69,7 @@ func (r *telemetryRecorder) UpdateIncludedFiles(_ context.Context, count int) {
 }
 
 func TestRuntimeObserverReceivesExecutionPhases(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	recorder := newTelemetryRecorder(t)
 	rt := New(&out, Options{})
@@ -87,6 +88,7 @@ func TestRuntimeObserverReceivesExecutionPhases(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesParseError(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{})
 	rt.Observe(recorder)
@@ -99,6 +101,7 @@ func TestRuntimeObserverReceivesParseError(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesExecutionErrorSpan(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php": {Data: []byte(`<?php $value = 1; $value["key"] = 2;`)},
@@ -126,6 +129,7 @@ func TestRuntimeObserverReceivesExecutionErrorSpan(t *testing.T) {
 }
 
 func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
+	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
 	// oida records only when it is asked to; a test that reads its
 	// traces back is asking.
@@ -161,6 +165,7 @@ func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesEntrypointFilename(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"routes/hello.php": {Data: []byte(`<?php echo "hello";`)},
@@ -178,6 +183,7 @@ func TestRuntimeObserverReceivesEntrypointFilename(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php":   {Data: []byte(`<?php include "one.php"; include "two.php";`)},
@@ -238,6 +244,7 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesMeasuredConstructor(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php": {Data: []byte(`<?php class Example {} $value = new Example;`)},
@@ -259,6 +266,7 @@ func TestRuntimeObserverReceivesMeasuredConstructor(t *testing.T) {
 }
 
 func TestRuntimeObserverReceivesMeasuredPHPMethod(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(nil, Options{RootFS: fstest.MapFS{
 		"main.php": {Data: []byte("<?php\ninclude \"Database.php\";\n$db = new Database;\necho $db->get();\n")},
@@ -314,6 +322,7 @@ func coverageBlock(t *testing.T, blocks []coverage.Block, file string, line int)
 // TestCoverageCounts covers the count semantics: a loop body is charged once
 // per iteration, the loop header once, and an untaken branch stays at zero.
 func TestCoverageCounts(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $total = 0;
 for ($i = 0; $i < 3; $i++) {
@@ -360,6 +369,7 @@ echo $total;
 // registers every statement, so a function body the fixture never calls shows
 // up at zero under the include's own filename.
 func TestCoverageIncludedFiles(t *testing.T) {
+	t.Parallel()
 	root := fstest.MapFS{
 		"lib.php": &fstest.MapFile{Data: []byte(`<?php
 function used()
@@ -411,6 +421,7 @@ echo used();
 // with NewFlatStack executes interpreted while a collector is installed, so the
 // counts exist and no coverage support is needed in the bytecode backend.
 func TestCoverageForcesInterpreter(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php
 echo "covered";
 `)
@@ -448,6 +459,7 @@ type stubMail struct{ model.MailProvider }
 // directory, and no provider and no default, because the binding settles what
 // a missing one falls back to.
 func TestRuntimeAnswersForItsOptions(t *testing.T) {
+	t.Parallel()
 	bare := New(io.Discard, Options{})
 	if got := bare.SAPI(); got != "" {
 		t.Errorf("SAPI() = %q on a runtime that named none, want empty", got)
@@ -535,6 +547,7 @@ func TestRuntimeAnswersForItsOptions(t *testing.T) {
 // against the source root, and neither climbs out of it. A path naming no
 // directory is the false php documents.
 func TestRuntime_SetWorkDir(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{RootFS: fstest.MapFS{
 		"app/lib/helper.php": &fstest.MapFile{Data: []byte(`<?php`)},
 		"app/index.php":      &fstest.MapFile{Data: []byte(`<?php`)},
@@ -596,6 +609,7 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 // answers a sorted snapshot, because php guarantees no order and a diagnostic
 // that reads differently per run is one nothing can diff.
 func TestRuntimeSymbolTables(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	rt.RegisterFunc("host_shim", func(args ...any) any { return nil })
 	rt.RegisterConstructor("Storage", func() any { return nil })
@@ -680,6 +694,7 @@ function declared_in_php() { return 1; }
 // it among the files it included, so the count a script reads and the one an
 // observer is told agree.
 func TestRuntime_IncludeFile(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(io.Discard, Options{RootFS: fstest.MapFS{
 		"lib/site.php": &fstest.MapFile{Data: []byte(`<?php class Site {} return "loaded";`)},
@@ -730,6 +745,7 @@ func TestRuntime_IncludeFile(t *testing.T) {
 // pass measures one, because printing 0.00 MiB over a filled cache would read
 // as a measurement and not the absence of one.
 func TestRuntime_CompiledTree(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{
 		Precompile: true,
 		RootFS: fstest.MapFS{
@@ -758,6 +774,7 @@ func TestRuntime_CompiledTree(t *testing.T) {
 // alive: a runtime handed to the next program must not answer for the last
 // one's classes, constants or parsed files.
 func TestRuntime_Reset(t *testing.T) {
+	t.Parallel()
 	var first strings.Builder
 	rt := New(&first, Options{
 		Precompile: true,
@@ -823,6 +840,7 @@ func TestRuntime_Reset(t *testing.T) {
 // seen: an allocation made and released between two walks does not raise it,
 // and php's allocator-level peak counts it.
 func TestRuntimeMemoryReporting(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 
 	base := rt.MemoryUsage()
@@ -863,6 +881,7 @@ func TestRuntimeMemoryReporting(t *testing.T) {
 // so that it unwinds the interpreter, and an ending and no failure, which a
 // host reads through IsExit without naming the type.
 func TestRuntime_Exit(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 
 	err := rt.Exit(3)
@@ -891,6 +910,7 @@ func TestRuntime_Exit(t *testing.T) {
 // in every scope the way define() is and unlike a global, which php confines to
 // the global one.
 func TestRuntime_SetConst(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := New(&out, Options{})
 	rt.SetConst("HOST_NAME", "phpscript")
@@ -923,6 +943,7 @@ func TestRuntime_SetConst(t *testing.T) {
 // a script that already finished. Each is consumed by the run, so the next
 // program on a pooled runtime does not run the previous one's.
 func TestRuntime_RegisterShutdown(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := New(&out, Options{})
 
@@ -964,6 +985,7 @@ func TestRuntime_RegisterShutdown(t *testing.T) {
 // host observes a run through. Both are exported for the phases that happen
 // outside PHP execution, where a serving host spends its time.
 func TestRuntime_Trace(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(io.Discard, Options{})
 	rt.Observe(recorder)
@@ -984,6 +1006,7 @@ func TestRuntime_Trace(t *testing.T) {
 }
 
 func TestRuntime_UpdateStatus(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	rt := New(io.Discard, Options{})
 	rt.Observe(recorder)
@@ -1009,6 +1032,7 @@ func TestRuntime_UpdateStatus(t *testing.T) {
 // the observer contract. Each is a separate interface so an observer that wants
 // neither implements neither, and the runtime asks before publishing.
 func TestFilenameObserver(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	var observer FilenameObserver = recorder
 
@@ -1040,6 +1064,7 @@ func TestFilenameObserver(t *testing.T) {
 }
 
 func TestIncludeObserver(t *testing.T) {
+	t.Parallel()
 	recorder := newTelemetryRecorder(t)
 	var observer IncludeObserver = recorder
 
@@ -1112,6 +1137,7 @@ func TestScriptEnvironment(t *testing.T) {
 // a call to one of these would read as a call to something undefined if the
 // list stayed unpublished.
 func TestScopeBuiltins(t *testing.T) {
+	t.Parallel()
 	builtins := ScopeBuiltins()
 	if len(builtins) == 0 {
 		t.Fatal("ScopeBuiltins answered nothing")

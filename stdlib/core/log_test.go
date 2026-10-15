@@ -15,6 +15,7 @@ import (
 // the fallback for a run with nothing listening, because an error log that
 // discards is worse than none. The call answers true either way.
 func TestRegisterLog(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 
 	var recorded []string

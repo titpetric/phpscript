@@ -16,6 +16,7 @@ import (
 // variable can hold. putenv answers true for every call it accepts, and a bare
 // "NAME" with no '=' unsets.
 func TestRegisterEnvironment(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	registerEnvironment(rt)
 

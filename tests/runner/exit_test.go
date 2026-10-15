@@ -10,6 +10,7 @@ import (
 )
 
 func TestExitInterruptsExecutionWithStatus(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php echo "before"; exit(7); echo "after";`)
 	if err != nil {
 		t.Fatal(err)
@@ -36,6 +37,7 @@ func TestExitInterruptsExecutionWithStatus(t *testing.T) {
 }
 
 func TestBareDieInterruptsExecution(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php echo "before"; die; echo "after";`)
 	if err != nil {
 		t.Fatal(err)

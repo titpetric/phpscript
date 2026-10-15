@@ -21,6 +21,7 @@ func lexAll(t *testing.T, src string) []token {
 const singleCharOperators = "+-*/%.,;()[]{}=<>!&|?:@\\"
 
 func TestLexSingleCharOperators(t *testing.T) {
+	t.Parallel()
 	for i := 0; i < len(singleCharOperators); i++ {
 		op := singleCharOperators[i : i+1]
 		toks := lexAll(t, "<?php "+op)
@@ -37,6 +38,7 @@ func TestLexSingleCharOperators(t *testing.T) {
 }
 
 func TestLexMultiCharOperators(t *testing.T) {
+	t.Parallel()
 	for _, op := range multiCharOps {
 		toks := lexAll(t, "<?php "+op)
 		if len(toks) != 2 {
@@ -51,6 +53,7 @@ func TestLexMultiCharOperators(t *testing.T) {
 // TestLexOperatorGreedy pins the boundaries between operators that share a
 // prefix, so a table reordering cannot silently split "===" into "==" + "=".
 func TestLexOperatorGreedy(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		src  string
 		want []string
@@ -143,6 +146,7 @@ func TestLexOperatorNoAlloc(t *testing.T) {
 }
 
 func TestLexOperatorPositionsAndLines(t *testing.T) {
+	t.Parallel()
 	src := "<?php\n$a->b;\n$c[1] = 2;\n"
 	toks := lexAll(t, src)
 	type want struct {
@@ -176,6 +180,7 @@ func TestLexOperatorPositionsAndLines(t *testing.T) {
 }
 
 func TestLexLineNumbersAcrossConstructs(t *testing.T) {
+	t.Parallel()
 	src := "a\n<?php\n// comment\n/* two\nlines */\n$x = \"str\";\n?>\nhtml\n<?php $y = 1;"
 	toks := lexAll(t, src)
 	byVal := map[string]int{}
@@ -193,6 +198,7 @@ func TestLexLineNumbersAcrossConstructs(t *testing.T) {
 }
 
 func TestLexRejectsUnknownCharacter(t *testing.T) {
+	t.Parallel()
 	if _, err := newLexer("<?php \x01").run(); err == nil {
 		t.Fatal("expected an error for an unsupported character")
 	}
@@ -202,6 +208,7 @@ func TestLexRejectsUnknownCharacter(t *testing.T) {
 // decides where a literal ends and whether it is a float; what base a prefix
 // means is numLit's job, which TestNumLitBases covers.
 func TestLexNumberLiterals(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		src  string
 		kind tokKind
@@ -238,6 +245,7 @@ func TestLexNumberLiterals(t *testing.T) {
 // TestLexNumberBoundaries checks where a number stops, for the spellings that
 // end next to something the lexer must not swallow.
 func TestLexNumberBoundaries(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		src  string
 		want []string
@@ -263,6 +271,7 @@ func TestLexNumberBoundaries(t *testing.T) {
 // literal too large for an int, which PHP widens to a float and never
 // rejecting.
 func TestNumLitBases(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		src  string
 		want any

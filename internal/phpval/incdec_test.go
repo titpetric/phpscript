@@ -10,6 +10,7 @@ import (
 // tests/fixtures/arithmetic/increment_decrement.phpt for the end-to-end run
 // of the same table.
 func TestIncrement(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in   any
 		want any
@@ -45,6 +46,7 @@ func TestIncrement(t *testing.T) {
 }
 
 func TestDecrement(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in   any
 		want any
@@ -72,6 +74,7 @@ func TestDecrement(t *testing.T) {
 // when the value is whole. The bool is is_numeric, which rejects "0x1A",
 // "1_000" and the empty string, and accepts surrounding whitespace.
 func TestStringNumber(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in   string
 		want any

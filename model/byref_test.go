@@ -14,6 +14,7 @@ import (
 // shared, so the binding appends into the one the caller passed and reaches the
 // same observable result. Its exit status, the third, has no such route back.
 func TestByRefArg(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		fallback string

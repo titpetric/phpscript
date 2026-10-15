@@ -11,6 +11,7 @@ import (
 // embedded with `yaml:",inline"`, so path and driver sit at the same level in a
 // file: a reader of config.yml sees one telemetry block and not a nested one.
 func TestTelemetry(t *testing.T) {
+	t.Parallel()
 	var result config.Telemetry
 	source := []byte(`
 enabled: true
@@ -39,6 +40,7 @@ storage_path: "/dev/shm/site"
 // name is trimmed and lowercased before the comparison, so an operator who
 // typed Disk is not refused over the spelling. An empty driver is memory.
 func TestTelemetry_Validate(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		driver string
 		fails  bool
@@ -75,6 +77,7 @@ func TestTelemetry_Validate(t *testing.T) {
 // the driver without building anything, so a store on disk is opened here and
 // only here: a command that validates a file opens no directory.
 func TestTelemetry_Resolved(t *testing.T) {
+	t.Parallel()
 	t.Run("memory holds no store", func(t *testing.T) {
 		options, err := config.Telemetry{Driver: "memory"}.Resolved()
 		if err != nil {
@@ -125,6 +128,7 @@ func TestTelemetry_Resolved(t *testing.T) {
 // config.yml carries it off, because the runner is the path every fixture is
 // measured against; a file turns it on per application root.
 func TestFlatstack(t *testing.T) {
+	t.Parallel()
 	if config.New().Flatstack.Enabled {
 		t.Error("the compiled defaults select the flat bytecode runtime")
 	}
@@ -142,6 +146,7 @@ func TestFlatstack(t *testing.T) {
 // it on, so a server started over an application root serves the @route
 // annotations in it without a file saying so.
 func TestRoutes(t *testing.T) {
+	t.Parallel()
 	if !config.New().Routes.Enabled {
 		t.Error("the compiled defaults skip annotated routes")
 	}
@@ -159,6 +164,7 @@ func TestRoutes(t *testing.T) {
 // One signature covers the commands that read configuration beside the ones
 // that read none, so the nil check lives here once.
 func TestValue(t *testing.T) {
+	t.Parallel()
 	if got := config.Value(nil); got.DocumentRoot != "" || got.Routes.Enabled {
 		t.Errorf("Value(nil) = %+v, want the zero configuration", got)
 	}

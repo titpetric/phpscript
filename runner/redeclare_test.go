@@ -33,6 +33,7 @@ func runRedeclare(t *testing.T, src string, files fstest.MapFS) (string, error) 
 // TestRedeclaringAFunctionFails pins the two shapes of the refusal and their
 // messages, which are php's own text.
 func TestRedeclaringAFunctionFails(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		src  string
@@ -77,6 +78,7 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 // and not the host: an include hoists inside the script's own flow, so the
 // try around it takes the error and the program carries on.
 func TestRedeclaringThroughAnIncludeIsCatchable(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{
 		"dup.php": {Data: []byte("<?php\nfunction dup() { return 1; }\nfunction dup() { return 2; }\n")},
 	}
@@ -103,6 +105,7 @@ try {
 // called helpers.php in different folders is exactly the case the message
 // exists to tell apart.
 func TestRedeclareNamesTheWholePathBelowTheRoot(t *testing.T) {
+	t.Parallel()
 	files := fstest.MapFS{
 		"a/b/c/deep.php": {Data: []byte("<?php\n\nfunction deepfn() { return 1; }\n\nfunction deepfn() { return 2; }\n")},
 	}
@@ -123,6 +126,7 @@ include "a/b/c/deep.php";
 // than once through it, and the second run has to be a fresh slate and not
 // a collision with the first.
 func TestDeclaringTheSameFunctionAfterResetSucceeds(t *testing.T) {
+	t.Parallel()
 	src := "<?php\nfunction reused() { return 7; }\necho reused();"
 	prog, err := parser.Parse(src)
 	if err != nil {
@@ -160,6 +164,7 @@ func TestDeclaringTheSameFunctionAfterResetSucceeds(t *testing.T) {
 // a host assembled carries no file, so the location clauses are left out and
 // never written empty.
 func TestRedeclareError_Error(t *testing.T) {
+	t.Parallel()
 	at := runner.FuncSite{File: "app/index.php", Line: 12}
 	previous := runner.FuncSite{File: "lib/helpers.php", Line: 3}
 
@@ -196,6 +201,7 @@ func TestRedeclareError_Error(t *testing.T) {
 // `catch` printing getMessage() prints what a Go host received from Run, and
 // the code is PHP's zero because there is no error number for this.
 func TestRedeclareError_GetMessage(t *testing.T) {
+	t.Parallel()
 	err := &runner.RedeclareError{
 		Name:     "greet",
 		At:       runner.FuncSite{File: "app/index.php", Line: 12},
@@ -210,6 +216,7 @@ func TestRedeclareError_GetMessage(t *testing.T) {
 }
 
 func TestRedeclareError_GetCode(t *testing.T) {
+	t.Parallel()
 	err := &runner.RedeclareError{Name: "greet"}
 	if got := err.GetCode(); got != 0 {
 		t.Errorf("GetCode() = %d, want 0", got)

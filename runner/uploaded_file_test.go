@@ -9,6 +9,7 @@ import (
 // say where in its own tree a file sat; neither is a path on this host, and
 // TmpName is the only one that is.
 func TestUploadedFile(t *testing.T) {
+	t.Parallel()
 	file := &UploadedFile{
 		Name:     "report.pdf",
 		FullPath: "quarter/report.pdf",
@@ -34,6 +35,7 @@ func TestUploadedFile(t *testing.T) {
 // $_FILES sees a zero size and an empty tmp_name, and those say the file is not
 // there to move.
 func TestUploadedFile_refuse(t *testing.T) {
+	t.Parallel()
 	file := &UploadedFile{
 		Name:    "big.iso",
 		Type:    "application/octet-stream",

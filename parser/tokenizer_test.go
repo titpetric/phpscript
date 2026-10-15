@@ -25,6 +25,7 @@ func tokTriple(t *testing.T, v any) (int, string) {
 }
 
 func TestTokenGetAllShape(t *testing.T) {
+	t.Parallel()
 	// Mirrors how minitpl wraps an expression before tokenizing.
 	toks := parser.TokenGetAll(`<?php if ($this->_vars) { ?>`)
 
@@ -63,6 +64,7 @@ func TestTokenGetAllShape(t *testing.T) {
 // TestTokenTripleIsIsolated guards the chunked backing array: each triple must
 // report cap 3 so a PHP-side append cannot scribble over the next token.
 func TestTokenTripleIsIsolated(t *testing.T) {
+	t.Parallel()
 	toks := parser.TokenGetAll("<?php $a = 1;\n$b = 2;\n$c = 3;\n")
 	var triples int
 	for _, v := range toks {
@@ -83,6 +85,7 @@ func TestTokenTripleIsIsolated(t *testing.T) {
 // TestTokenLineNumbers checks that lines beyond the runtime's interned-int
 // range (0..255) still box correctly through boxInt.
 func TestTokenLineNumbers(t *testing.T) {
+	t.Parallel()
 	src := "<?php\n" + strings.Repeat("$a;\n", 1500) + "$last;"
 	toks := parser.TokenGetAll(src)
 	var lastLine int
@@ -101,6 +104,7 @@ func TestTokenLineNumbers(t *testing.T) {
 }
 
 func TestIfConditionSyntax(t *testing.T) {
+	t.Parallel()
 	if _, err := parser.Parse(`<?php $foo = false; if !$foo { echo "no"; }`); err != nil {
 		t.Fatalf("unwrapped if condition failed to parse: %v", err)
 	}
@@ -111,6 +115,7 @@ func TestIfConditionSyntax(t *testing.T) {
 }
 
 func TestTokenSingleCharStrings(t *testing.T) {
+	t.Parallel()
 	toks := parser.TokenGetAll(`<?php ($a);`)
 	var parens int
 	for _, v := range toks {
@@ -124,6 +129,7 @@ func TestTokenSingleCharStrings(t *testing.T) {
 }
 
 func TestTokenName(t *testing.T) {
+	t.Parallel()
 	cases := map[int]string{
 		parser.T_VARIABLE:        "T_VARIABLE",
 		parser.T_OBJECT_OPERATOR: "T_OBJECT_OPERATOR",
@@ -139,6 +145,7 @@ func TestTokenName(t *testing.T) {
 }
 
 func TestTokenVariableWithDotMarker(t *testing.T) {
+	t.Parallel()
 	// minitpl replaces "." with "__1" before tokenizing so nested accessors stay
 	// part of one T_VARIABLE; verify that holds.
 	toks := parser.TokenGetAll(`<?php $foo__1bar`)
@@ -185,6 +192,7 @@ const benchTemplate = `<html>
 // token_get_all emits have to be each other's inverse, and no two names may
 // share an id.
 func TestTokenIDs(t *testing.T) {
+	t.Parallel()
 	ids := parser.TokenIDs()
 	if len(ids) == 0 {
 		t.Fatal("TokenIDs() is empty")

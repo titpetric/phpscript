@@ -46,6 +46,7 @@ func runRequestSAPI(t *testing.T, request runner.Context, sapi, src string) stri
 // apache_request_headers depending on its target server, so
 // all three answer the same array.
 func TestGetAllHeadersReadsTheRequest(t *testing.T) {
+	t.Parallel()
 	request := runner.NewContext()
 	request.Headers = map[string]string{"X-Token": "secret", "Accept": "application/json"}
 
@@ -67,6 +68,7 @@ echo count($headers) . " " . $headers["X-Token"] . " " . $headers["Accept"];
 // with it, so a script written for the web runs on the command line without
 // being rewritten.
 func TestRequestFunctionsAreInertWithoutARequest(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -94,6 +96,7 @@ var_export(setrawcookie("session", "abc"));
 // "HTTP/1.0 404 Not Found" carries a status with no name and no value, so it
 // stages the status it names.
 func TestHeaderStagesTheResponse(t *testing.T) {
+	t.Parallel()
 	request := runner.NewContext()
 	runRequest(t, request, `<?php
 header("Content-Type: application/json");
@@ -128,6 +131,7 @@ header("HTTP/1.1 418 I am a teapot");
 // On a web SAPI a request starts out answering 200, so there is always a
 // previous number to return.
 func TestHTTPResponseCode(t *testing.T) {
+	t.Parallel()
 	request := runner.NewContext()
 	out := runRequestSAPI(t, request, "apache", `<?php
 echo http_response_code();
@@ -147,6 +151,7 @@ echo " " . http_response_code();
 // one, there being no previous number to report. The command line is where
 // that happens, and so is a Go host that named no SAPI.
 func TestHTTPResponseCodeOffTheWeb(t *testing.T) {
+	t.Parallel()
 	request := runner.NewContext()
 	out := runRequest(t, request, `<?php
 var_dump(http_response_code());
@@ -164,6 +169,7 @@ var_dump(http_response_code());
 // plus, and an expiry of 0 carries no Expires attribute: the cookie dies with
 // the browser session.
 func TestSetCookie(t *testing.T) {
+	t.Parallel()
 	expires := time.Unix(1700000000, 0).UTC().Format(nethttp.TimeFormat)
 
 	for _, test := range []struct {
@@ -224,6 +230,7 @@ func TestSetCookie(t *testing.T) {
 // encoder does nothing with it and a script holding a pre-encoded value keeps
 // it byte for byte.
 func TestSetRawCookie(t *testing.T) {
+	t.Parallel()
 	request := runner.NewContext()
 	out := runRequest(t, request, `<?php var_export(setrawcookie("session", "a%20b"));`)
 	if out != "true" {
@@ -248,6 +255,7 @@ func TestSetRawCookie(t *testing.T) {
 // preference sends two Set-Cookie headers and never one that replaced the
 // other.
 func TestSetCookieStagesSeveralCookies(t *testing.T) {
+	t.Parallel()
 	request := runner.NewContext()
 	runRequest(t, request, `<?php
 setcookie("session", "abc");

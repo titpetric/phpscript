@@ -8,6 +8,7 @@ import (
 
 // want below is the value `$x <=> $y` printed for the same pair.
 func TestCompare(t *testing.T) {
+	t.Parallel()
 	list := func(vals ...any) *model.Array {
 		a := model.NewArray()
 		for _, v := range vals {

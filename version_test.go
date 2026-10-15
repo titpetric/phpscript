@@ -10,6 +10,7 @@ import (
 // no VCS information prints the version line alone, with no three lines
 // reading unknown.
 func TestVersion(t *testing.T) {
+	t.Parallel()
 	if Version != "dev" {
 		t.Errorf("Version = %q, want the development default", Version)
 	}

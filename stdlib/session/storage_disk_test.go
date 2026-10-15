@@ -16,6 +16,7 @@ import (
 // a later Load reports fs.ErrNotExist and a second Delete does too: the
 // manager reads the same condition from either backend.
 func TestStorageDisk_Delete(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "sessions")
 	storage, err := session.NewStorageDisk(dir)
 	if err != nil {
@@ -57,6 +58,7 @@ func TestStorageDisk_Delete(t *testing.T) {
 // The temporary files Save writes are skipped, so a sweep running beside a save
 // cannot remove the file that save is about to rename into place.
 func TestStorageDiskPruneSweepsByModificationTime(t *testing.T) {
+	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "sessions")
 	storage, err := session.NewStorageDisk(dir)
 	if err != nil {

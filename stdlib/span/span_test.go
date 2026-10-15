@@ -13,6 +13,7 @@ import (
 // registered against answers for no binding, so a host that built its own
 // Runtime without stdlib has to call Register for start_span to resolve.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	if rt.FunctionExists("start_span") {
 		t.Fatal("a bare runtime answers for start_span before anything registered it")
@@ -28,6 +29,7 @@ func TestRegister(t *testing.T) {
 // span start_span returns carries no recording and its methods do nothing, so
 // a script instrumenting itself runs unchanged with telemetry switched off.
 func TestRegisterWithoutTrace(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php
 $span = start_span("getUser", "database");
 $span->set_attribute("user_id", 42);

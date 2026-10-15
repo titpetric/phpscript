@@ -41,6 +41,7 @@ func uploadRequest(t *testing.T, field, filename, content string) *http.Request 
 // $_FILES arrives: the upload is on disk outside the root, and moving it into
 // the root is the only supported way to keep it past the request.
 func TestUploadedFileShims(t *testing.T) {
+	t.Parallel()
 	ctx := runner.FromRequest(uploadRequest(t, "avatar", "photo.png", "image-bytes"))
 	defer ctx.Cleanup()
 
@@ -74,6 +75,7 @@ if ($f["error"] === UPLOAD_ERR_OK) { echo "|ok"; } else { echo "|error"; }
 // serve cannot stay that way. A host that serves uploads to nobody but itself
 // configures something tighter.
 func TestMoveUploadedFileMode(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		opts runner.Options
@@ -106,6 +108,7 @@ func TestMoveUploadedFileMode(t *testing.T) {
 // it as a false return and nothing else, and the upload has to survive it: the
 // request still lists it, and the handler still has to be able to remove it.
 func TestMoveUploadedFileUnwritable(t *testing.T) {
+	t.Parallel()
 	ctx := runner.FromRequest(uploadRequest(t, "avatar", "photo.png", "image-bytes"))
 	defer ctx.Cleanup()
 

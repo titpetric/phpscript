@@ -11,6 +11,7 @@ import (
 // line at or below zero are dropped on the way in, so a span never records a
 // location of "" or 0 as though a PHP frame had published it.
 func TestSpanSource(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name     string
 		ctx      context.Context
@@ -59,6 +60,7 @@ func TestSpanSource(t *testing.T) {
 // instruments without naming a file, so the file the interpreter published and
 // the line beside it are copied onto every span started from that context.
 func TestWithSpanFilename(t *testing.T) {
+	t.Parallel()
 	tracer := newRecordingTracer(t)
 	ctx, trace, err := tracer.StartTrace(context.Background(), "GET /users.php")
 	if err != nil {

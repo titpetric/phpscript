@@ -12,6 +12,7 @@ import (
 )
 
 func TestDatabaseObserverRecordsQuerySpan(t *testing.T) {
+	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
 	ctx = telemetry.WithSpanLine(telemetry.WithSpanFilename(ctx, "queries/users.php"), 23)
 
@@ -48,6 +49,7 @@ func TestDatabaseObserverRecordsQuerySpan(t *testing.T) {
 }
 
 func TestDatabaseObserverRecordsNamedArguments(t *testing.T) {
+	t.Parallel()
 	span, observe := newObservedSpan(t)
 	observe(QueryLogEntry{
 		Query: "select * from users where id = :id",
@@ -61,6 +63,7 @@ func TestDatabaseObserverRecordsNamedArguments(t *testing.T) {
 }
 
 func TestDatabaseObserverOmitsEmptyArguments(t *testing.T) {
+	t.Parallel()
 	for _, args := range []any{nil, []any{}, map[string]any{}} {
 		span, observe := newObservedSpan(t)
 		observe(QueryLogEntry{Query: "select 1", Args: args})
@@ -74,6 +77,7 @@ func TestDatabaseObserverOmitsEmptyArguments(t *testing.T) {
 // A query that found no rows is control flow and no failure: recording it would
 // fail the span, the trace, and the SLA computed from them.
 func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name      string
 		err       error
@@ -98,6 +102,7 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 // carries is recorded beside it: a trace groups by a query's purpose, which
 // the statement text alone does not answer.
 func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
+	t.Parallel()
 	span, observe := newObservedSpan(t)
 	observe(QueryLogEntry{Query: "/* userGet */ SELECT * FROM user WHERE id = ?"})
 
@@ -121,6 +126,7 @@ func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 // before a statement is built. The nil Bridge is the assertion that nothing
 // reached the database: running one would panic.
 func TestDatabaseReadonlyRefusesWrites(t *testing.T) {
+	t.Parallel()
 	database := &Database{IsReadonly: true}
 	ctx := context.Background()
 
@@ -154,6 +160,7 @@ func TestDatabaseReadonlyRefusesWrites(t *testing.T) {
 // Statements reach the database as text, so the boundary reads the text: what
 // the statement starts with decides, and a tag in front of it does not.
 func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		query   string
 		refused bool
@@ -190,6 +197,7 @@ func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 // call is where it is recorded. Otherwise a boundary that refuses the wrong
 // thing leaves nothing behind to debug it with.
 func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
+	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
 
 	database := &Database{ID: "db", IsReadonly: true}
@@ -232,6 +240,7 @@ func newObservedSpan(t *testing.T) (*telemetry.Span, func(QueryLogEntry)) {
 // value-model helpers must see it as an array-like value with the columns
 // reachable by key, as foreach and $row["col"] both read it.
 func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
+	t.Parallel()
 	rows := any([]map[string]any{{
 		"id":   int64(1),
 		"name": "catalogue",
@@ -275,6 +284,7 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 // span the client opens carries it, so two clients in one request are told
 // apart on the trace.
 func TestDatabase_SetID(t *testing.T) {
+	t.Parallel()
 	database := &Database{}
 	if got := database.name("Get"); got != "Get" {
 		t.Errorf("an unnamed client records %q, want %q", got, "Get")
@@ -294,6 +304,7 @@ func TestDatabase_SetID(t *testing.T) {
 // a script that creates one reserves the connection first; the reads that
 // follow run on it.
 func TestDatabase_Connect(t *testing.T) {
+	t.Parallel()
 	database := newLiveDatabase(t)
 
 	if _, err := database.Connect(t.Context()); err != nil {
@@ -312,6 +323,7 @@ func TestDatabase_Connect(t *testing.T) {
 // is one connection wide, so a read after Close is the evidence it went back:
 // a reservation left open would block until the context expired.
 func TestDatabase_Close(t *testing.T) {
+	t.Parallel()
 	database := newLiveDatabase(t)
 
 	if _, err := database.Connect(t.Context()); err != nil {
@@ -329,6 +341,7 @@ func TestDatabase_Close(t *testing.T) {
 // Commit or Rollback ends it, so a transaction reads as one region on the
 // trace and no pair of markers a reader has to match up.
 func TestDatabase_Begin(t *testing.T) {
+	t.Parallel()
 	ctx, _ := newRecordedTrace(t)
 	database := newLiveDatabase(t)
 	database.SetID("db")
@@ -348,6 +361,7 @@ func TestDatabase_Begin(t *testing.T) {
 // transaction, and the span Begin opened is renamed for the outcome and ended,
 // so one span carries the whole transaction.
 func TestDatabase_Commit(t *testing.T) {
+	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
 	database := newLiveDatabase(t)
 	database.SetID("db")
@@ -382,6 +396,7 @@ func TestDatabase_Commit(t *testing.T) {
 // span Begin opened carries the rollback as its name, so a trace says which
 // way a transaction ended without a second span to pair with it.
 func TestDatabase_Rollback(t *testing.T) {
+	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
 	database := newLiveDatabase(t)
 	database.SetID("db")
@@ -413,6 +428,7 @@ func TestDatabase_Rollback(t *testing.T) {
 // insert. It is the one part of an INSERT the statement does not carry, so a
 // script writing a row with an autoincrement key reads the new id here.
 func TestDatabase_InsertID(t *testing.T) {
+	t.Parallel()
 	database := newLiveDatabase(t)
 
 	if _, err := database.Insert(t.Context(), "users", map[string]any{"name": "Katherine"}); err != nil {
@@ -431,6 +447,7 @@ func TestDatabase_InsertID(t *testing.T) {
 // names a condition and reports how many rows matched it, so a script learns
 // whether the write landed from this and from nothing in the statement.
 func TestDatabase_RowsAffected(t *testing.T) {
+	t.Parallel()
 	database := newLiveDatabase(t)
 
 	if _, err := database.Query(t.Context(), "update users set name = 'Grace Hopper' where id = 2"); err != nil {

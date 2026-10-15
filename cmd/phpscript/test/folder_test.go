@@ -15,6 +15,7 @@ import (
 // the percent rounds to whole: 1 of 2 reads 50%, where truncation would
 // read 49%.
 func TestRatio(t *testing.T) {
+	t.Parallel()
 	for want, counts := range map[string][2]int{
 		"4/50 (8%)":       {4, 50},
 		"1532/8000 (19%)": {1532, 8000},
@@ -34,6 +35,7 @@ func TestRatio(t *testing.T) {
 // total is no percent at all. Dividing by it would panic, and answering 100%
 // for a folder with no files would read as a measurement.
 func TestPercentOf(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		covered, total, want int
 	}{
@@ -55,6 +57,7 @@ func TestPercentOf(t *testing.T) {
 // Its fixtures loaded no PHP file of their own, so both columns answer with the
 // dash: a zero percent there would drag the run's reading down for no finding.
 func TestFolderCoverColumns(t *testing.T) {
+	t.Parallel()
 	empty := folderCover{Dir: "arrays"}
 	if got := empty.files(); got != noCoverage {
 		t.Errorf("files() = %q with nothing measured, want %q", got, noCoverage)
@@ -84,6 +87,7 @@ func TestFolderCoverColumns(t *testing.T) {
 // suite including a file of class declarations would be told to cover it and
 // have nothing to cover.
 func TestFolderCoverageCountsADeclarationFileAsReached(t *testing.T) {
+	t.Parallel()
 	rows := []coverage.Row{
 		{File: "declarations.php", Covered: 0, Total: 0},
 		{File: "reached.php", Covered: 3, Total: 4},
@@ -114,6 +118,7 @@ func TestFolderCoverageCountsADeclarationFileAsReached(t *testing.T) {
 // whose fixtures loaded no file: one row per group, each reporting nothing, so
 // the table has a line for every folder the arguments resolved to.
 func TestFolderCoverageGroupsWithNothingLoaded(t *testing.T) {
+	t.Parallel()
 	groups := []fixtureGroup{
 		{Dir: "arrays", Fixtures: []*tests.Fixture{{Name: "a"}}},
 		{Dir: "strings", Fixtures: []*tests.Fixture{{Name: "s"}}},
@@ -138,6 +143,7 @@ func TestFolderCoverageGroupsWithNothingLoaded(t *testing.T) {
 // one. Without engines the single column stays, as a plain run and
 // the checked-in report print.
 func TestFolderTableSplitsEngineDurations(t *testing.T) {
+	t.Parallel()
 	rows := []folderSummary{{groupTotals: groupTotals{
 		Dir: "arrays", Passed: 1, Total: 1, Duration: 6 * time.Millisecond,
 		Engines: []engineDuration{
@@ -171,6 +177,7 @@ func TestFolderTableSplitsEngineDurations(t *testing.T) {
 // that a folder with nothing measured keeps its row: the run reports every
 // folder the arguments resolved to, measured or not.
 func TestWriteFolderTableWithCoverage(t *testing.T) {
+	t.Parallel()
 	measured := folderCover{Dir: "arrays", FilesCovered: 4, FilesTotal: 50, LinesCovered: 1532, LinesTotal: 8000}
 	rows := []folderSummary{
 		{groupTotals: groupTotals{Dir: "arrays", Passed: 1, Total: 1}, cover: &measured},

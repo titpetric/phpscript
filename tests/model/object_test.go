@@ -15,6 +15,7 @@ func names(o *model.Object) string {
 // json_encode, print_r, var_dump, get_object_vars, the (array) cast and foreach
 // all show a script.
 func TestObjectKeepsInsertionOrder(t *testing.T) {
+	t.Parallel()
 	o := model.NewStdClass()
 	o.SetProp("c", 3)
 	o.SetProp("a", 1)
@@ -40,6 +41,7 @@ func TestObjectKeepsInsertionOrder(t *testing.T) {
 // whatever order the properties arrive in, and returns to that slot
 // after an unset. A dynamic property has no slot and moves to the end.
 func TestObjectOrdersDeclaredFieldsFirst(t *testing.T) {
+	t.Parallel()
 	class := &model.Class{Name: "Row", Fields: []model.Field{{Name: "id"}, {Name: "name"}}}
 	o := model.NewObject(class)
 	o.SetProp("id", 1)
@@ -71,6 +73,7 @@ func TestObjectOrdersDeclaredFieldsFirst(t *testing.T) {
 // reported and never lost, so a call site that misses the accessor degrades
 // to a stable order and drops no data.
 func TestObjectReportsUnrecordedProperties(t *testing.T) {
+	t.Parallel()
 	o := model.NewStdClass()
 	o.SetProp("first", 1)
 	o.Props["zulu"] = 2
@@ -93,6 +96,7 @@ func TestObjectReportsUnrecordedProperties(t *testing.T) {
 // Deleting a property nothing set leaves the object alone, and Range
 // stops when its callback says to.
 func TestObjectDeleteMissingAndRangeStop(t *testing.T) {
+	t.Parallel()
 	o := model.NewStdClass()
 	o.SetProp("a", 1)
 	o.SetProp("b", 2)

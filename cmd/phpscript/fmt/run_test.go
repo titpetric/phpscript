@@ -17,6 +17,7 @@ import (
 // configuration and the global options because one signature covers all nine
 // commands, and this command reads neither, so both arguments are nil here.
 func TestNewCommand(t *testing.T) {
+	t.Parallel()
 	command := NewCommand(nil, nil)
 
 	if command.Name != "fmt" {
@@ -94,6 +95,7 @@ func TestRun(t *testing.T) {
 // using PHP that phpscript cannot parse is reported on stderr and left as it
 // is, and the rest of the run continues: a directory of PHP holds both kinds.
 func TestRunReportsSkippedFiles(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	broken := filepath.Join(dir, "broken.php")
 	if err := os.WriteFile(broken, []byte("<?php class Foo {"), 0o644); err != nil {

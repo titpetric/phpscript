@@ -9,6 +9,7 @@ import (
 // json_decode answers with: a mapping is an array keyed by its field names and
 // a sequence is a list, so a settings file reads the same in either spelling.
 func TestYAMLDecode(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(yaml_decode("a: 1\nb: two\nc:\n  - 1\n  - 2\n"));`)
 
@@ -28,6 +29,7 @@ var_dump(yaml_decode("a: 1\nb: two\nc:\n  - 1\n  - 2\n"));`)
 // read by name, so sorting costs nothing and the same input decodes the same
 // way every time.
 func TestYAMLDecodeKeysAreSorted(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 foreach (yaml_decode("z: 1\nm: 2\na: 3\n") as $key => $value) {
 	echo $key;
@@ -42,6 +44,7 @@ foreach (yaml_decode("z: 1\nm: 2\na: 3\n") as $key => $value) {
 // decoder's. `max_pages: 400` compared against a count has to be an int; a
 // float that happens to be whole would print as 400 and behave as 400.0.
 func TestYAMLDecodeWholeNumbersAreInts(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 $doc = yaml_decode("whole: 400\nfraction: 1.5\nnegative: -7\nbig: 9007199254740993\n");
 var_dump($doc["whole"], $doc["fraction"], $doc["negative"], $doc["big"]);
@@ -58,6 +61,7 @@ var_dump($doc["whole"] === 400);`)
 // A settings file that does not parse is a configuration the caller has to know
 // about, and a null would be read as an empty document.
 func TestYAMLDecodeRefusesWhatItCannotRead(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 try {
 	yaml_decode("a:\n\tb: 1\n");
@@ -75,6 +79,7 @@ try {
 // sequence, any other array a mapping in key order, and a
 // scalar its own plain spelling.
 func TestYAMLEncode(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 echo yaml_encode(["b" => 2, "a" => 1]);
 echo "---\n";
@@ -94,6 +99,7 @@ echo yaml_encode("plain");`)
 // knows how to write, and handing one to the YAML marshaller produced an empty
 // document.
 func TestYAMLRoundTrip(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 $value = ["name" => "site", "pages" => 400, "tags" => ["a", "b"]];
 $back = yaml_decode(yaml_encode($value));

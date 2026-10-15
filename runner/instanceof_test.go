@@ -12,6 +12,7 @@ import (
 // because there is no inheritance to follow; an interface name is answered from
 // the list the declaration recorded. See docs/design.md.
 func TestPHPInstanceOf(t *testing.T) {
+	t.Parallel()
 	store := model.NewObject(&model.Class{Name: "Store", Implements: []string{"Reader", "Writer"}})
 	derived := model.NewObject(&model.Class{Name: "AppException"})
 
@@ -48,6 +49,7 @@ func TestPHPInstanceOf(t *testing.T) {
 // and a host-backed value reports its Go type name, so `new Database("app")`
 // answers "Database".
 func TestInstanceOfClass(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value any
@@ -74,6 +76,7 @@ func TestInstanceOfClass(t *testing.T) {
 // an interpreted object, the Go type name for a host-backed one, and
 // get_debug_type()'s spelling for a value of no class at all.
 func TestPHPClassName(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value any
@@ -96,6 +99,7 @@ func TestPHPClassName(t *testing.T) {
 // through any depth of pointer, which is the class name a script sees for a
 // host-backed object. An unnamed type reports nothing, and so does nil.
 func TestGoTypeName(t *testing.T) {
+	t.Parallel()
 	scope := &Scope{}
 	for _, tc := range []struct {
 		name  string

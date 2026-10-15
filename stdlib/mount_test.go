@@ -52,6 +52,7 @@ echo "none";`
 // function table, on either engine. strlen answers beside each refusal, so the
 // failure is the absence of the name and no broken runtime.
 func TestMountSecureExcludesExec(t *testing.T) {
+	t.Parallel()
 	calls := []struct {
 		name string
 		php  string
@@ -94,6 +95,7 @@ func TestMountSecureExcludesExec(t *testing.T) {
 // TestMountExecEnablesExec pins the other half of the bitmask: a profile
 // naming Exec defines every pexec name and a command actually runs.
 func TestMountExecEnablesExec(t *testing.T) {
+	t.Parallel()
 	out, err := mountScript(t, stdlib.Secure|stdlib.Exec, false, listPexec())
 	if err != nil {
 		t.Fatalf("run: %v", err)
@@ -113,6 +115,7 @@ func TestMountExecEnablesExec(t *testing.T) {
 // TestRegisterKeepsFullSurface pins what the CLI, the fixture runner and the
 // demos rely on: Register is every profile area, Exec included.
 func TestRegisterKeepsFullSurface(t *testing.T) {
+	t.Parallel()
 	if got, want := runScript(t, listPexec()), strings.Join(pexecNames, " ")+" none"; got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
@@ -123,6 +126,7 @@ func TestRegisterKeepsFullSurface(t *testing.T) {
 // the secure mount had just left out - and every mount site calls Mount and
 // RegisterFS in that order, so the mask reached nothing.
 func TestRegisterFSKeepsTheProfile(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name    string
 		profile stdlib.Profile

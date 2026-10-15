@@ -15,6 +15,7 @@ function helper() { return 2; }
 // TestAggregator_Add covers the fold every request passes through: a statement
 // two runs reached is one entry whose counts add.
 func TestAggregator_Add(t *testing.T) {
+	t.Parallel()
 	a := coverage.NewAggregator()
 	a.Add(collect(t, "app.php", aggregatorSource, 1))
 	a.Add(collect(t, "app.php", aggregatorSource, 2))
@@ -32,6 +33,7 @@ func TestAggregator_Add(t *testing.T) {
 // TestAggregator_Blocks covers the entries a profile is written from: one per
 // executable statement, in the order the profile carries them.
 func TestAggregator_Blocks(t *testing.T) {
+	t.Parallel()
 	a := coverage.NewAggregator()
 	a.Add(collect(t, "two.php", aggregatorSource, 1))
 	a.Add(collect(t, "one.php", aggregatorSource, 1))
@@ -58,6 +60,7 @@ func TestAggregator_Blocks(t *testing.T) {
 // TestAggregator_Functions covers the declaration spans a per-function report
 // is charged against, recorded once however many collectors named them.
 func TestAggregator_Functions(t *testing.T) {
+	t.Parallel()
 	a := coverage.NewAggregator()
 	a.Add(collect(t, "app.php", aggregatorSource, 1))
 	a.Add(collect(t, "app.php", aggregatorSource, 1))
@@ -75,6 +78,7 @@ func TestAggregator_Functions(t *testing.T) {
 // nothing reached writes no profile, because an empty one reads as a
 // measurement that found nothing.
 func TestAggregator_Empty(t *testing.T) {
+	t.Parallel()
 	a := coverage.NewAggregator()
 	if !a.Empty() {
 		t.Fatal("a new aggregator is not empty")
@@ -90,6 +94,7 @@ func TestAggregator_Empty(t *testing.T) {
 // second set of keys. The aggregator keys them by what the profile will say, so
 // re-parsing adds counts and never entries.
 func TestAggregator(t *testing.T) {
+	t.Parallel()
 	a := coverage.NewAggregator()
 	for range 10 {
 		a.Add(collect(t, "app.php", aggregatorSource, 1))
@@ -108,6 +113,7 @@ func TestAggregator(t *testing.T) {
 // TestAggregator_Files pins that the composed key carries the filename,
 // so the same line of two files stays two entries.
 func TestAggregator_Files(t *testing.T) {
+	t.Parallel()
 	a := coverage.NewAggregator()
 	a.Add(collect(t, "one.php", aggregatorSource, 1))
 	a.Add(collect(t, "two.php", aggregatorSource, 1))
@@ -123,6 +129,7 @@ func TestAggregator_Files(t *testing.T) {
 
 // TestNewAggregator pins that a command with coverage off costs nothing.
 func TestNewAggregator(t *testing.T) {
+	t.Parallel()
 	a := coverage.NewAggregator()
 	a.Add(nil)
 	if !a.Empty() {

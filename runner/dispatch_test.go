@@ -121,6 +121,7 @@ func dispatchPinEqual(a, b any) bool {
 // This is the contract a consolidated dispatcher has to keep: which path a
 // call takes must never be observable from a script.
 func TestDispatchPinFastReflectParity(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		fast    any
@@ -555,6 +556,7 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 // the check runs before dispatch. Direct invocation carries no PHP name, so
 // Name stays empty and the message says "call()".
 func TestDispatchPinArgumentCount(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		fn   any
@@ -593,6 +595,7 @@ func TestDispatchPinArgumentCount(t *testing.T) {
 // Fewer arguments than declared zero-pads: nil for an any parameter, "" for a
 // string parameter, on both paths.
 func TestDispatchPinArgumentPadding(t *testing.T) {
+	t.Parallel()
 	// Fast shape: func(string) string with no arguments.
 	v, err := invokeAny(nil, func(s string) string { return "<" + s + ">" }, nil)
 	if err != nil {
@@ -619,6 +622,7 @@ func TestDispatchPinArgumentPadding(t *testing.T) {
 // duration syntax, and an unconvertible argument is refused as a TypeError
 // naming the position and the PHP spellings of both types.
 func TestDispatchPinReflectCoercion(t *testing.T) {
+	t.Parallel()
 	// Three string parameters keep the signature out of the fast switch.
 	v, err := invokeAny(nil, func(a, b, c string) string { return a + "|" + b + "|" + c }, []any{int64(65), 1.5, true})
 	if err != nil {
@@ -662,6 +666,7 @@ func TestDispatchPinReflectCoercion(t *testing.T) {
 // original function's dynamic type, on both paths: the recover sits in
 // invokeAny, above the split.
 func TestDispatchPinHostPanic(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		fn   any
@@ -691,6 +696,7 @@ func TestDispatchPinHostPanic(t *testing.T) {
 
 // wantsContext reads only the first parameter's type.
 func TestDispatchPinWantsContext(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		fn   any
@@ -715,6 +721,7 @@ func TestDispatchPinWantsContext(t *testing.T) {
 // call ran under; a binding without one is called with the script's arguments
 // alone, and a nil scope is fine because no context is ever built for it.
 func TestDispatchPinContextInjection(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	scope := rt.newScope()
 
@@ -779,6 +786,7 @@ func (*dispatchPinPtrOnly) Hello() string { return "ptronly-hello" }
 // script sees. Every lookup is repeated so the warm-cache answer is asserted
 // to match the cold one, per receiver type.
 func TestDispatchPinCallGoMethod(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	scopeFor := func() *Scope { return rt.newScope() }
 
@@ -838,6 +846,7 @@ func TestDispatchPinCallGoMethod(t *testing.T) {
 // A Go method that panics surfaces as a HostPanicError whose Callable spells
 // the receiver's dynamic type and the method name the script used.
 func TestDispatchPinCallGoMethodPanic(t *testing.T) {
+	t.Parallel()
 	rt := New(io.Discard, Options{})
 	recv := &dispatchPinReceiver{id: "a"}
 	v, err := rt.callGoMethod(recv, "explode", nil, func() *Scope { return rt.newScope() })
@@ -858,6 +867,7 @@ func TestDispatchPinCallGoMethodPanic(t *testing.T) {
 // invocation does, for fast-path and reflect-only signatures alike.
 // Runtime.Callable resolves a registered name to the same uniform shape.
 func TestDispatchPinUniformABI(t *testing.T) {
+	t.Parallel()
 	covered := func(s string) string { return "[" + s + "]" }
 	uncovered := func(a, b, c string) string { return a + "|" + b + "|" + c }
 
@@ -924,6 +934,7 @@ func dispatchPinRun(t *testing.T, rt *Runtime, out *strings.Builder, src string)
 // the public API. The script uses no standard library: the runner's own
 // helpers and one registered binding are the whole surface under test.
 func TestDispatchPinEnvHelperSmoke(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := New(&out, Options{})
 	rt.RegisterFunc("probe", func(s string) string { return "[" + s + "]" })

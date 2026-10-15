@@ -30,6 +30,7 @@ func testSource(file string) []string {
 // ranges, and a profile carries columns spanning the statement text and not
 // the indentation around it.
 func TestColumns(t *testing.T) {
+	t.Parallel()
 	blocks := coverage.Columns(profileBlocks, testSource)
 	if len(blocks) != 3 {
 		t.Fatalf("blocks = %d, want 3", len(blocks))
@@ -56,6 +57,7 @@ func TestColumns(t *testing.T) {
 // TestWriteProfile pins the format, which is the one go test writes and go tool
 // cover reads.
 func TestWriteProfile(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	if err := coverage.WriteProfile(&out, coverage.Columns(profileBlocks, testSource)); err != nil {
 		t.Fatalf("WriteProfile: %v", err)
@@ -71,6 +73,7 @@ func TestWriteProfile(t *testing.T) {
 
 // TestPercent covers the statement-weighted percentage go test reports.
 func TestPercent(t *testing.T) {
+	t.Parallel()
 	blocks := coverage.Columns(profileBlocks, testSource)
 	// Three of four statements ran: app.php line 2 and lib.php's pair.
 	if got := coverage.Percent(blocks); got != 75 {

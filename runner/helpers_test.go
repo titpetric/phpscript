@@ -15,6 +15,7 @@ import (
 // them in a string context, so a concatenation of an int and a bool spells
 // them as echo spells them.
 func TestHelperConcat(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		a, b any
 		want string
@@ -35,6 +36,7 @@ func TestHelperConcat(t *testing.T) {
 // integer index, a keyed one lands under its normalised key, and the two
 // interleave the way PHP interleaves them.
 func TestHelperArray(t *testing.T) {
+	t.Parallel()
 	out := helperArray(
 		helperPair(nil, "first"),
 		helperPair("name", "ada"),
@@ -67,6 +69,7 @@ func TestHelperArray(t *testing.T) {
 // offset is the byte at that position, so it agrees with strlen and with the
 // offsets strpos reports, and a negative offset counts from the end.
 func TestHelperIndex(t *testing.T) {
+	t.Parallel()
 	array := model.NewArray()
 	array.Set("name", "ada")
 	array.Set(int64(2), "third")
@@ -102,6 +105,7 @@ func TestHelperIndex(t *testing.T) {
 // TestPlural covers the count-with-noun rendering PHP's argument count error
 // spells, down to the singular: "1 argument" against "2 arguments".
 func TestPlural(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		n    int
 		want string
@@ -120,6 +124,7 @@ func TestPlural(t *testing.T) {
 // tolerates the short call, so the missing argument is nil and the reflect path
 // pads with the zero value the same way.
 func TestArgAt(t *testing.T) {
+	t.Parallel()
 	args := []any{"first", int64(2)}
 	if got := argAt(args, 0); got != "first" {
 		t.Errorf("argAt(0) = %#v, want the first argument", got)
@@ -139,6 +144,7 @@ func TestArgAt(t *testing.T) {
 // slice is aliased and never copied: args is built fresh per call, so the
 // binding sees what reflect.Value.Call would have handed it.
 func TestArgsTail(t *testing.T) {
+	t.Parallel()
 	args := []any{"a", "b", "c"}
 
 	first := argsTail(args)
@@ -168,6 +174,7 @@ func TestArgsTail(t *testing.T) {
 // separate from phpDebugType, which describes a value, and from gettype's
 // legacy names in stdlib: neither table may be folded into the other.
 func TestPHPParamTypeName(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		value any
 		want  string
@@ -202,6 +209,7 @@ func TestPHPParamTypeName(t *testing.T) {
 // callable value is Closure, the class php answers for a first-class callable,
 // and an interpreted object is its declared class.
 func TestPHPDebugType(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		value any
@@ -234,6 +242,7 @@ func TestPHPDebugType(t *testing.T) {
 // int64(65) into "A" where PHP writes "65". A duration-taking parameter accepts
 // Go's readable spelling, so time.Time.Add takes "30m".
 func TestCoerceArg(t *testing.T) {
+	t.Parallel()
 	stringType := reflect.TypeOf("")
 	if got, ok := coerceArg(stringType, int64(65)); !ok || got.String() != "65" {
 		t.Errorf("coerceArg(string, 65) = %q, want %q", got.String(), "65")
@@ -267,6 +276,7 @@ func TestCoerceArg(t *testing.T) {
 // order, so a script destructures it: keeping only the first would answer a
 // different question, since time.Time.ISOWeek returns the year and the week.
 func TestCallResult(t *testing.T) {
+	t.Parallel()
 	call := func(fn any, args ...any) (any, error) {
 		in := make([]reflect.Value, len(args))
 		for i, arg := range args {
@@ -316,6 +326,7 @@ func TestCallResult(t *testing.T) {
 // to report; the name a script typed is known only at the dispatch site, and a
 // name already filled in is left alone.
 func TestNameCallError(t *testing.T) {
+	t.Parallel()
 	if got := nameCallError(nil, "substr"); got != nil {
 		t.Errorf("nameCallError(nil) = %v, want nil", got)
 	}
@@ -348,6 +359,7 @@ func TestNameCallError(t *testing.T) {
 // reports nameless, because the cache is per receiver type and the spelled name
 // belongs to the call site.
 func TestMethodCallError(t *testing.T) {
+	t.Parallel()
 	arity := &ArgumentCountError{Want: 1, Got: 2}
 	if got := methodCallError(arity, "get"); got != error(arity) || arity.Name != "get" {
 		t.Errorf("the arity error names %q, want %q", arity.Name, "get")
@@ -369,6 +381,7 @@ func TestMethodCallError(t *testing.T) {
 // the host boundary, so a script catches its own exception; anything else is a
 // host panic, named after what panicked.
 func TestRecoveredError(t *testing.T) {
+	t.Parallel()
 	thrown := NewRuntimeException("no such invoice", 0)
 	if got := recoveredError(callbackPanic{err: thrown}, "usort"); got != error(thrown) {
 		t.Errorf("a callback's own error reached the script as %v", got)
@@ -389,6 +402,7 @@ func TestRecoveredError(t *testing.T) {
 // context.Context counts, so a binding taking a string first is called with the
 // arguments a script passed and nothing in front of them.
 func TestWantsContext(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		fn   any
@@ -411,6 +425,7 @@ func TestWantsContext(t *testing.T) {
 // binding returned, a converted panic. A method the concrete Go type defines
 // wins, so *stdlib.Exception reports its own code.
 func TestThrowableMethod(t *testing.T) {
+	t.Parallel()
 	inner := errors.New("no such table")
 	err := &HostPanicError{Callable: "Storage::open", Value: "nil map"}
 
@@ -468,6 +483,7 @@ func TestThrowableMethod(t *testing.T) {
 // the retry without underscores, so a snake_case script name finds the
 // idiomatic Go one: `$t->iso_week()` resolves ISOWeek.
 func TestMethodByNameFold(t *testing.T) {
+	t.Parallel()
 	value := reflect.ValueOf(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 	for _, name := range []string{"ISOWeek", "isoweek", "iso_week"} {
 		if method := methodByNameFold(value, name); !method.IsValid() {
@@ -483,6 +499,7 @@ func TestMethodByNameFold(t *testing.T) {
 // first, then without case, then without underscores, so `$rec->is_readonly`
 // reads the field IsReadonly.
 func TestFieldByNameFold(t *testing.T) {
+	t.Parallel()
 	type record struct {
 		Value      string
 		IsReadonly bool
@@ -514,6 +531,7 @@ func TestFieldByNameFold(t *testing.T) {
 // assert. The wrapper coerces arguments through reflection, so a shim can keep
 // a natural Go signature.
 func TestAdapt(t *testing.T) {
+	t.Parallel()
 	fn := adapt(func(n int64, text string) string { return text + ":" + phpString(n) })
 	value, err := fn(int64(7), "n")
 	if err != nil {

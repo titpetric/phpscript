@@ -18,6 +18,7 @@ import (
 // the Run closure captures it. The command declares no flags of its own: a run
 // takes a script path and the shared flags.
 func TestNewCommand(t *testing.T) {
+	t.Parallel()
 	command := NewCommand(nil, &flags.Options{})
 
 	if command.Name != "run" {

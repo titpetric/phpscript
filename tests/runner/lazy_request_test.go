@@ -13,6 +13,7 @@ import (
 // a Context reads nothing out of the request, and each input is decoded by the
 // first read that needs it.
 func TestRequestDecodesOnlyWhatIsRead(t *testing.T) {
+	t.Parallel()
 	body := "name=bob&tags[]=a&tags[]=b"
 	req := httptest.NewRequest("POST", "http://example.com/?q=search", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")

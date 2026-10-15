@@ -16,6 +16,7 @@ import (
 // provider's servers are fixed when it is built, so the verdict and the
 // resolution Send makes read one set.
 func TestMailProvider(t *testing.T) {
+	t.Parallel()
 	typ := reflect.TypeOf((*MailProvider)(nil)).Elem()
 	errType := reflect.TypeOf((*error)(nil)).Elem()
 

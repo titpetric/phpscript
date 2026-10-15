@@ -15,6 +15,7 @@ import (
 // from the script's; the estimate here is one walk of the live values and has
 // no such split, so the argument is accepted and reports the same number.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	for _, name := range []string{"memory_get_usage", "memory_get_peak_usage"} {
 		if rt.FunctionExists(name) {
@@ -58,6 +59,7 @@ func runScript(t *testing.T, src string, opts runner.Options) (string, error) {
 }
 
 func TestMemoryGetUsage(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $m0 = memory_get_usage();
 $large = "hello world this is a test string allocated in the frame";
@@ -83,6 +85,7 @@ if ($m1 > $m0 && $m2 < $m1) {
 // growth even though no variable is reassigned, and the limit error is
 // catchable as RuntimeException.
 func TestMemoryLimitExhaustion(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 try {
     $a = [];
@@ -105,6 +108,7 @@ try {
 }
 
 func TestExceptionCatchHierarchy(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 try {
     $s = "";
@@ -129,6 +133,7 @@ try {
 // TestMemoryLimitUncaught exhausts the limit outside a try block; the error
 // surfaces from Run.
 func TestMemoryLimitUncaught(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $a = [];
 for ($i = 0; $i < 100000; $i++) {
@@ -149,6 +154,7 @@ echo "unreachable";
 // TestFrameRelease: a returned function's locals stop being roots, so
 // usage falls back to its pre-call level and leaks nothing per call.
 func TestFrameRelease(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 function eat() {
     $x = str_repeat("a", 100000);
@@ -172,6 +178,7 @@ echo ($m1 - $m0 < 10000) ? "ok" : "leaked: " . ($m1 - $m0);
 
 // TestAliasCountedOnce: $b = $a shares one array; the walk dedups it.
 func TestAliasCountedOnce(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $a = [];
 for ($i = 0; $i < 100; $i++) {
@@ -193,6 +200,7 @@ echo ($u2 - $u1 < 1000) ? "ok" : "double counted: " . ($u2 - $u1);
 
 // TestMemoryPeak: the peak survives an unset that drops current usage.
 func TestMemoryPeak(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $big = str_repeat("c", 100000);
 $u = memory_get_usage();
@@ -211,6 +219,7 @@ echo ($peak >= $u && $now < $u) ? "ok" : "peak=$peak u=$u now=$now";
 }
 
 func TestCatchMultiType(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 try {
     throw new RuntimeException("custom boom", 42);

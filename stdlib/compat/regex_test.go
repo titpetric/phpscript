@@ -10,6 +10,7 @@ import (
 // index and byte offset are the same number until the subject holds a
 // multibyte character, so a missing conversion looks correct everywhere else.
 func TestRuneOffsetsByteOffset(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name    string
 		subject string
@@ -60,6 +61,7 @@ func TestRuneOffsetsByteOffset(t *testing.T) {
 // TestRuneOffsetsASCIIKeepsNoTable pins the fast path: an ASCII subject needs
 // no table, since the identity is the conversion.
 func TestRuneOffsetsASCIIKeepsNoTable(t *testing.T) {
+	t.Parallel()
 	if offsets := newRuneOffsets("plain ascii"); offsets.byteAt != nil {
 		t.Errorf("ascii subject built a %d entry table", len(offsets.byteAt))
 	}
@@ -74,6 +76,7 @@ func TestRuneOffsetsASCIIKeepsNoTable(t *testing.T) {
 // forces the pattern onto that engine; the plain one stays on RE2, and the two
 // have to agree.
 func TestFindIndexReportsByteOffsets(t *testing.T) {
+	t.Parallel()
 	const subject = "\xc3\xa4bc" // "äbc": b starts at byte 2, rune 1
 
 	for _, test := range []struct {
@@ -107,6 +110,7 @@ func TestFindIndexReportsByteOffsets(t *testing.T) {
 // byte offset, and it has to keep meaning that when the match runs on the
 // backtracking engine, which the non-zero offset itself selects.
 func TestMatchOffsetStartsAtBytes(t *testing.T) {
+	t.Parallel()
 	const subject = "\xc3\xa4b\xc3\xa4b" // "äbäb": the second b is at byte 5
 
 	re, err := compilePCRE("/b/u")

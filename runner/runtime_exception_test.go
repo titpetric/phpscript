@@ -10,6 +10,7 @@ import (
 // catch clause filters on, and naming RuntimeException is what puts it in reach
 // of `catch (Exception $e)`, where `catch (Error $e)` does not take it.
 func TestRuntimeException(t *testing.T) {
+	t.Parallel()
 	err := NewRuntimeException("out of memory", 12)
 
 	if got, want := err.Error(), "out of memory"; got != want {

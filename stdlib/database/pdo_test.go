@@ -9,6 +9,7 @@ import (
 // through it reaches the pool, and the observer set on it reads the query that
 // ran. Every span this package records is built from that reading.
 func TestNewBridge(t *testing.T) {
+	t.Parallel()
 	pool, err := Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Open: %v", err)

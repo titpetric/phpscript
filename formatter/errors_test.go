@@ -11,6 +11,7 @@ import (
 // it, and Unwrap answers the reason, so a caller matches on the parse error
 // itself and never on the wrapper.
 func TestSkipError(t *testing.T) {
+	t.Parallel()
 	reason := errors.New("unexpected token")
 	err := &SkipError{Path: "src/index.php", Reason: reason}
 

@@ -14,6 +14,7 @@ import (
 // TestRunListsPaths covers the default behaviour: a markdown table of the PHP
 // files a path selects.
 func TestRunListsPaths(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	source := "<?php\n// @route GET /hello\nclass Greeter {}\n"
 	if err := os.WriteFile(filepath.Join(dir, "hello.php"), []byte(source), 0o644); err != nil {
@@ -34,6 +35,7 @@ func TestRunListsPaths(t *testing.T) {
 // TestRunListsBindings covers --bindings: the registered surface of this
 // build, with no tree involved.
 func TestRunListsBindings(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	if err := run(&out, nil, true); err != nil {
 		t.Fatalf("run: %v", err)
@@ -51,6 +53,7 @@ func TestRunListsBindings(t *testing.T) {
 // options because one signature covers all nine commands, and this command
 // reads neither, so both arguments are nil here.
 func TestNewCommand(t *testing.T) {
+	t.Parallel()
 	command := NewCommand(nil, nil)
 
 	if command.Name != "list" {
@@ -112,6 +115,7 @@ func TestRun(t *testing.T) {
 // different things, so a caller that named both named one of them by mistake and is
 // told which one it drops, and never left to guess.
 func TestRunRejectsBindingsWithPaths(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	err := run(&out, []string{"."}, true)
 	if err == nil {

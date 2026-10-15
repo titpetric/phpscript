@@ -11,6 +11,7 @@ import (
 // tree carries its defaults in a file, so a suite says what it needs and the
 // command line is not repeating it on every invocation.
 func TestTest(t *testing.T) {
+	t.Parallel()
 	block := config.New().Test
 
 	if block.Parallel != 1 {
@@ -31,6 +32,7 @@ func TestTest(t *testing.T) {
 // exists goes unchecked here: the file lives in the caller's filesystem, so the
 // run reports a missing hook where it executes it.
 func TestTest_Validate(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		block config.Test
@@ -68,6 +70,7 @@ func TestTest_Validate(t *testing.T) {
 // under, and the keys the file itself named. A caller reads the last one to
 // tell a setting the suite named from one it inherited.
 func TestTestSuite(t *testing.T) {
+	t.Parallel()
 	suite, err := config.LoadTestSuite("suites/db", "suites/db/phpscript.yml",
 		[]byte("test:\n  include: bootstrap.php\n"), config.New(), false)
 	if err != nil {
@@ -93,6 +96,7 @@ func TestTestSuite(t *testing.T) {
 // the test binary and reached through an fs.FS, while a run of the command
 // reads the same file off disk.
 func TestLoadTestSuite(t *testing.T) {
+	t.Parallel()
 	base := config.New()
 
 	t.Run("a suite inherits what it does not name", func(t *testing.T) {

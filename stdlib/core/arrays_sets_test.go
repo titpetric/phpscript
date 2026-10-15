@@ -32,6 +32,7 @@ func entries(a *model.Array) []any {
 // pairs two arrays at the same offset, which a range over one of them cannot
 // do.
 func TestValueList(t *testing.T) {
+	t.Parallel()
 	got := valueList(setArray("b", int64(2), "a", int64(1)))
 	if want := []any{int64(2), int64(1)}; !reflect.DeepEqual(got, want) {
 		t.Errorf("valueList() = %v, want %v", got, want)
@@ -53,6 +54,7 @@ func TestValueList(t *testing.T) {
 // lets one pass answer both questions: with a third array passed, diff drops a
 // value the second holds even when the third does not.
 func TestFilterByValue(t *testing.T) {
+	t.Parallel()
 	list := setArray(int64(0), int64(1), int64(1), int64(2), int64(2), int64(3))
 
 	for _, tc := range []struct {
@@ -95,6 +97,7 @@ func TestFilterByValue(t *testing.T) {
 // through phpval.Key first, so the integer 1 of an array meets the string "1" a
 // binding's map[string]any carries as one key. No value is read or compared.
 func TestFilterByKey(t *testing.T) {
+	t.Parallel()
 	named := setArray(int64(1), "a", "b", "c")
 	others := []any{map[string]any{"1": "z"}}
 
@@ -114,6 +117,7 @@ func TestFilterByKey(t *testing.T) {
 // other array, diff wants none of them, so they only coincide while there is
 // one other array.
 func TestWanted(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		count, others int
 		keep          bool
@@ -137,6 +141,7 @@ func TestWanted(t *testing.T) {
 // which moves the pointer the read comes off; this runtime has none, so an
 // empty array answers null.
 func TestEdgeKey(t *testing.T) {
+	t.Parallel()
 	sparse := setArray(int64(7), "a", "name", "b", int64(2), "c")
 
 	if got := edgeKey(sparse, true); got != int64(7) {

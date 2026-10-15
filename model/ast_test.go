@@ -14,6 +14,7 @@ import (
 // Include carries both. PHP writes an include as a standalone statement and as
 // a value-producing expression, so one node stands in both positions.
 func TestNode(t *testing.T) {
+	t.Parallel()
 	statements := map[string]Node{
 		"Foreach":   &Foreach{},
 		"DoWhile":   &DoWhile{},
@@ -71,6 +72,7 @@ func TestNode(t *testing.T) {
 // addresses: Go assigns every zero-sized allocation the same one, and Break and
 // Continue carry their source line so neither is zero-sized.
 func TestSourceSpan(t *testing.T) {
+	t.Parallel()
 	first := &Break{Line: 4}
 	middle := &Continue{Line: 6}
 	last := &Break{Line: 9}
@@ -117,6 +119,7 @@ func TestSourceSpan(t *testing.T) {
 // prints the parentheses an author wrote, so peeling them copies nothing and
 // edits nothing.
 func TestUnwrapParenthesized(t *testing.T) {
+	t.Parallel()
 	v := &Var{Name: "v"}
 	one := &Lit{Value: int64(1)}
 
@@ -157,6 +160,7 @@ func TestUnwrapParenthesized(t *testing.T) {
 // the empty string. A consumer reading Key for nil alone would turn the second
 // spelling into the first.
 func TestArrayItem(t *testing.T) {
+	t.Parallel()
 	appended := ArrayItem{Val: &Lit{Value: "v"}}
 	keyedNull := ArrayItem{Key: &Lit{Value: nil}, Val: &Lit{Value: "v"}}
 
@@ -191,6 +195,7 @@ func TestArrayItem(t *testing.T) {
 // Alias is set for the `as` spelling alone. The short name of Path is implied
 // otherwise, so an empty Alias is the mark of an import printed as written.
 func TestUse(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		stmt  *Use
@@ -227,6 +232,7 @@ func TestUse(t *testing.T) {
 // even where that body is empty: the statement form has no body at all, so the
 // flag is the only thing separating the two.
 func TestDeclare(t *testing.T) {
+	t.Parallel()
 	strict := &Declare{Directives: []DeclareDirective{
 		{Name: "strict_types", Value: &Lit{Value: int64(1)}},
 	}}
@@ -268,6 +274,7 @@ func TestDeclare(t *testing.T) {
 // has to read apart from one initialized to null: Default is nil for `static
 // $y;` and a literal for `static $y = null;`.
 func TestStaticVar(t *testing.T) {
+	t.Parallel()
 	decl := &StaticVar{Vars: []StaticVarDecl{
 		{Name: "count", Default: &Lit{Value: int64(0)}},
 		{Name: "seen"},
@@ -305,6 +312,7 @@ func TestStaticVar(t *testing.T) {
 // and no PHP class hierarchy: the first clause whose type matches handles the
 // error, so the order the parser recorded is the order a consumer reads.
 func TestCatch(t *testing.T) {
+	t.Parallel()
 	try := &Try{
 		Body: []Stmt{&Throw{X: &New{Class: "RuntimeException"}}},
 		Catches: []Catch{
@@ -349,6 +357,7 @@ func TestCatch(t *testing.T) {
 // An arm with an empty body falls through to the next one under PHP's
 // semantics, so an empty Body is a written arm and no missing one. Default is held apart from Cases because it matches no value.
 func TestSwitchCase(t *testing.T) {
+	t.Parallel()
 	sw := &Switch{
 		Cond: &Var{Name: "code"},
 		Cases: []SwitchCase{
@@ -395,6 +404,7 @@ func TestSwitchCase(t *testing.T) {
 // invisible to the enclosing scope: AssignsTo reports nothing for a body
 // assigning to a captured name.
 func TestClosureUse(t *testing.T) {
+	t.Parallel()
 	total := &Var{Name: "total"}
 	fn := &Closure{
 		Params: []Param{{Name: "item"}},

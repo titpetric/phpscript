@@ -65,6 +65,7 @@ func run(t *testing.T, src string) string {
 }
 
 func TestEchoAndConcat(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php echo "Hello, " . "world" . "!";`)
 	if got != "Hello, world!" {
 		t.Fatalf("got %q", got)
@@ -72,6 +73,7 @@ func TestEchoAndConcat(t *testing.T) {
 }
 
 func TestInlineHTML(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<h1><?php echo "hi"; ?></h1>`)
 	if got != "<h1>hi</h1>" {
 		t.Fatalf("got %q", got)
@@ -79,6 +81,7 @@ func TestInlineHTML(t *testing.T) {
 }
 
 func TestShebangIsIgnored(t *testing.T) {
+	t.Parallel()
 	got := run(t, "#!/usr/bin/env phpscript\n<?php echo \"hi\";")
 	if got != "hi" {
 		t.Fatalf("got %q", got)
@@ -86,6 +89,7 @@ func TestShebangIsIgnored(t *testing.T) {
 }
 
 func TestArithmeticAndVars(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $a = 2; $b = 3; echo $a * $b + 1;`)
 	if got != "7" {
 		t.Fatalf("got %q", got)
@@ -93,6 +97,7 @@ func TestArithmeticAndVars(t *testing.T) {
 }
 
 func TestArithmeticWithNumericStrings(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php echo $_GET["pageNumber"] + 0;`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -111,6 +116,7 @@ func TestArithmeticWithNumericStrings(t *testing.T) {
 }
 
 func TestForwardedFunction(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php echo strtoupper("abc") . strlen("hello");`)
 	if got != "ABC5" {
 		t.Fatalf("got %q", got)
@@ -118,6 +124,7 @@ func TestForwardedFunction(t *testing.T) {
 }
 
 func TestConstructorResultReceivesVariableID(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php $db = new Host; $alias = $db; echo $alias->get_id();`)
 	if err != nil {
 		t.Fatal(err)
@@ -145,6 +152,7 @@ func TestConstructorResultReceivesVariableID(t *testing.T) {
 }
 
 func TestNativeBoundMethodUsesUniformCallable(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php $db = new Host; echo invoke_array($db->get, array("select", 7));`)
 	if err != nil {
 		t.Fatal(err)
@@ -169,6 +177,7 @@ func TestNativeBoundMethodUsesUniformCallable(t *testing.T) {
 }
 
 func TestGoMethodsMatchSnakeCasePHPNames(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php
 $host = new Host;
 echo $host->get_all();
@@ -189,6 +198,7 @@ echo ":" . $host->affected_rows();
 }
 
 func TestAssignExportedGoField(t *testing.T) {
+	t.Parallel()
 	type host struct {
 		EnableTracing bool
 	}
@@ -208,6 +218,7 @@ func TestAssignExportedGoField(t *testing.T) {
 }
 
 func TestForwardedFunctionContextIncludesScope(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php $local = "scope"; echo inspect_context("local");`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -233,6 +244,7 @@ func TestForwardedFunctionContextIncludesScope(t *testing.T) {
 }
 
 func TestSharedExprCacheKeepsNestedExpressionsRuntimeLocal(t *testing.T) {
+	t.Parallel()
 	cache := runner.NewExprCache()
 	runCached := func(src string) string {
 		t.Helper()
@@ -259,6 +271,7 @@ func TestSharedExprCacheKeepsNestedExpressionsRuntimeLocal(t *testing.T) {
 }
 
 func TestIfElse(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $x = 5; if ($x > 3) { echo "big"; } else { echo "small"; }`)
 	if got != "big" {
 		t.Fatalf("got %q", got)
@@ -266,6 +279,7 @@ func TestIfElse(t *testing.T) {
 }
 
 func TestForLoop(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php for ($i = 0; $i < 3; $i = $i + 1) { echo $i; }`)
 	if got != "012" {
 		t.Fatalf("got %q", got)
@@ -273,6 +287,7 @@ func TestForLoop(t *testing.T) {
 }
 
 func TestPostIncrement(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $i = 0; echo $i++; echo $i; for (; $i < 4; $i++) { echo $i; }`)
 	if got != "01123" {
 		t.Fatalf("got %q", got)
@@ -280,6 +295,7 @@ func TestPostIncrement(t *testing.T) {
 }
 
 func TestForeachArray(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $xs = array(10, 20, 30); foreach ($xs as $v) { echo $v . ","; }`)
 	if got != "10,20,30," {
 		t.Fatalf("got %q", got)
@@ -287,6 +303,7 @@ func TestForeachArray(t *testing.T) {
 }
 
 func TestForeachKeyValue(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $m = array("a" => 1, "b" => 2); foreach ($m as $k => $v) { echo $k . "=" . $v . ";"; }`)
 	if got != "a=1;b=2;" {
 		t.Fatalf("got %q", got)
@@ -294,6 +311,7 @@ func TestForeachKeyValue(t *testing.T) {
 }
 
 func TestForeachIndexedTargets(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $m = array("a" => 1, "b" => 2); $out = array(); foreach ($m as $out['key'] => $out['value']) { echo $out['key'] . "=" . $out['value'] . ";"; }`)
 	if got != "a=1;b=2;" {
 		t.Fatalf("got %q", got)
@@ -301,6 +319,7 @@ func TestForeachIndexedTargets(t *testing.T) {
 }
 
 func TestForeachWithoutParens(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $m = array("a" => 1, "b" => 2); foreach $m as $k => $v { echo $k . "=" . $v . ";"; }`)
 	if got != "a=1;b=2;" {
 		t.Fatalf("got %q", got)
@@ -308,6 +327,7 @@ func TestForeachWithoutParens(t *testing.T) {
 }
 
 func TestArrayIndexAndAppend(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $a = array(); $a[] = "x"; $a[] = "y"; echo $a[0] . $a[1] . count($a);`)
 	if got != "xy2" {
 		t.Fatalf("got %q", got)
@@ -315,6 +335,7 @@ func TestArrayIndexAndAppend(t *testing.T) {
 }
 
 func TestUserFunction(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php function add($a, $b) { return $a + $b; } echo add(4, 5);`)
 	if got != "9" {
 		t.Fatalf("got %q", got)
@@ -322,6 +343,7 @@ func TestUserFunction(t *testing.T) {
 }
 
 func TestFunctionDefault(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php function greet($name = "world") { return "hi " . $name; } echo greet();`)
 	if got != "hi world" {
 		t.Fatalf("got %q", got)
@@ -329,6 +351,7 @@ func TestFunctionDefault(t *testing.T) {
 }
 
 func TestClassAndMethod(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 class Counter {
 	var $n = 0;
@@ -343,6 +366,7 @@ echo $c->inc() . $c->inc();`
 }
 
 func TestExternalMethodSyntax(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 class Box { var $v = 0; }
 function Box::set($x) { $this->v = $x; }
@@ -357,6 +381,7 @@ echo $b->get();`
 }
 
 func TestConstructor(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 class Greeter {
 	var $who;
@@ -374,6 +399,7 @@ echo $g->hello();`
 // TestBuiltinOverride proves expr-lang builtins are disabled so a registered
 // PHP function may reuse a name that expr ships as a builtin (e.g. `count`).
 func TestBuiltinOverride(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php echo count(array(1, 2, 3, 4));`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -396,6 +422,7 @@ func TestBuiltinOverride(t *testing.T) {
 }
 
 func TestTernary(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php $x = 0; echo $x ? "yes" : "no";`)
 	if got != "no" {
 		t.Fatalf("got %q", got)
@@ -407,6 +434,7 @@ func TestTernary(t *testing.T) {
 // the array form, $v[0]/$v[1] access, and token_name(): exactly the shape
 // minitpl's _split_exp depends on.
 func TestTokenGetAllFromVM(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php
 $out = "";
 foreach (token_get_all($code) as $v) {
@@ -440,6 +468,7 @@ echo $out;`)
 }
 
 func TestNamespaceDeclarationPlacement(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		`<?php echo "side effect"; namespace App; class User {}`,
 		`<?php function outer() { namespace App; }`,
@@ -451,6 +480,7 @@ func TestNamespaceDeclarationPlacement(t *testing.T) {
 }
 
 func TestClassExistsPropagatesAutoloaderError(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(nil, runner.Options{})
 	want := errors.New("autoload failed")
 	rt.RegisterAutoloader(func(string) error { return want }, false)
@@ -468,6 +498,7 @@ func TestClassExistsPropagatesAutoloaderError(t *testing.T) {
 // up function-table changes: a Runtime that has already evaluated expressions
 // must see a function registered (or replaced) afterwards.
 func TestRegisterFuncBetweenRuns(t *testing.T) {
+	t.Parallel()
 	first, err := parser.Parse(`<?php echo greet("a");`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -503,6 +534,7 @@ func TestRegisterFuncBetweenRuns(t *testing.T) {
 // user function called from inside an expression must see its own frame, and
 // the caller's variables must survive the nested evaluation.
 func TestNestedEvalScopes(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php
 function inner($x) {
 	$local = $x * 2;
@@ -527,6 +559,7 @@ echo outer(2) . "|" . $local;`)
 // a closure body, a user function body, a method body, a nested/recursive call
 // and a by-reference call.
 func TestLazyEnvInstallsFunctionsOnDemand(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 function shout($s) {
 	return strtoupper($s) . strlen($s);
@@ -597,6 +630,7 @@ echo $b->render() . "|" . depth(3) . "|" . implode("-", $sizes);`
 // function registered afterwards, and picks up a replacement implementation of a
 // name it had already installed.
 func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
+	t.Parallel()
 	warm, err := parser.Parse(`<?php echo greet("a");`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -632,6 +666,7 @@ func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
 // discarded and reused while a call to a lazily installed function is live at
 // every level.
 func TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList(t *testing.T) {
+	t.Parallel()
 	got := run(t, `<?php
 function down($n) {
 	if ($n <= 0) {
@@ -648,6 +683,7 @@ echo down(40);`)
 // TestLazyEnvUndefinedFunctionStillErrors asserts the diagnostic for a call to
 // a function that is not registered: it is a runtime error, and no silent nil.
 func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php echo no_such_function(1);`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
@@ -664,6 +700,7 @@ func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
 // violated contract must be the same RuntimeException whichever engine runs it,
 // raised before any output is produced.
 func TestInterfaceContractRaisesOnBothBackends(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php
 interface Reader {
 	function get($key);
@@ -713,6 +750,7 @@ echo "unreachable";`)
 // with what it wrote. `instanceof` does consult the list of names the class
 // declared, which is a name comparison and no inherited member.
 func TestInterfaceContractSatisfied(t *testing.T) {
+	t.Parallel()
 	prog, err := parser.Parse(`<?php
 interface Reader {
 	function get($key);

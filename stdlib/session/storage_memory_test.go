@@ -15,6 +15,7 @@ import (
 // the storage owns, so handing out the stored slice would let a caller mutate
 // another request's session through it.
 func TestStorageMemory_Load(t *testing.T) {
+	t.Parallel()
 	storage := session.NewStorageMemory()
 	ctx := context.Background()
 
@@ -50,6 +51,7 @@ func TestStorageMemory_Load(t *testing.T) {
 // not there reports fs.ErrNotExist, so a caller can tell a session it removed
 // from one that had already gone.
 func TestStorageMemory_Delete(t *testing.T) {
+	t.Parallel()
 	storage := session.NewStorageMemory()
 	ctx := context.Background()
 
@@ -71,6 +73,7 @@ func TestStorageMemory_Delete(t *testing.T) {
 // Age is measured from the last Save, so a session written again survives a
 // sweep that would have taken the version before it.
 func TestStorageMemory_Prune(t *testing.T) {
+	t.Parallel()
 	storage := session.NewStorageMemory()
 	ctx := context.Background()
 
@@ -106,6 +109,7 @@ func TestStorageMemory_Prune(t *testing.T) {
 // with. A request that has gone away does not write a session, so the backend
 // reports the cancellation and leaves the map alone.
 func TestStorageMemoryHonorsACanceledContext(t *testing.T) {
+	t.Parallel()
 	storage := session.NewStorageMemory()
 	if err := storage.Save(context.Background(), "abc", []byte("stored")); err != nil {
 		t.Fatalf("Save: %v", err)

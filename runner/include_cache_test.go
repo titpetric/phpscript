@@ -11,6 +11,7 @@ import (
 // per-runtime maps and statement execution only reads the tree, so one program
 // is shared by every caller.
 func TestIncludeCache(t *testing.T) {
+	t.Parallel()
 	cache := NewIncludeCache()
 	if got := cache.Len(); got != 0 {
 		t.Errorf("Len() = %d on a fresh cache, want 0", got)
@@ -43,6 +44,7 @@ func TestIncludeCache(t *testing.T) {
 // or less reads as the default, so a host passing an unset value gets the
 // bound and never an unbounded map.
 func TestNewIncludeCacheWithCapacity(t *testing.T) {
+	t.Parallel()
 	cache := NewIncludeCacheWithCapacity(2)
 	cache.Set("/a.php", &model.Program{})
 	cache.Set("/b.php", &model.Program{})
@@ -66,6 +68,7 @@ func TestNewIncludeCacheWithCapacity(t *testing.T) {
 // names each file in it. A negative figure is dropped,
 // so a miscounted pass cannot credit the total.
 func TestIncludeCache_Account(t *testing.T) {
+	t.Parallel()
 	cache := NewIncludeCache()
 	if got := cache.Precompiled(); got != 0 {
 		t.Errorf("Precompiled() = %d before a pass, want 0", got)
@@ -94,6 +97,7 @@ func TestIncludeCache_Account(t *testing.T) {
 // replacing a re-parsed file leaves the count alone, so the derived copy
 // would read as fresh.
 func TestIncludeCacheVersion(t *testing.T) {
+	t.Parallel()
 	cache := NewIncludeCache()
 	cache.Set("/a.php", &model.Program{})
 

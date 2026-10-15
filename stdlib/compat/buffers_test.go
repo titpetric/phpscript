@@ -12,6 +12,7 @@ import (
 // and a clean drops its text. Writing a flushed level to the real output
 // instead would make an outer buffer miss everything an inner one rendered.
 func TestBuffersNest(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	b := newBuffers(rt)
@@ -52,6 +53,7 @@ func TestBuffersNest(t *testing.T) {
 // is dropped, so a template that rendered something a page did not want leaves
 // nothing behind in the output below it.
 func TestBuffersDiscardOnClean(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	b := newBuffers(rt)
@@ -73,6 +75,7 @@ func TestBuffersDiscardOnClean(t *testing.T) {
 // no level open, contents and pop report false and never an empty string, so a
 // script can tell an empty buffer from no buffer at all.
 func TestBuffersReportAbsence(t *testing.T) {
+	t.Parallel()
 	b := newBuffers(runner.New(&strings.Builder{}, runner.Options{}))
 
 	if contents, ok := b.contents(); ok || contents != "" {

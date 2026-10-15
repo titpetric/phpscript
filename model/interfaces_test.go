@@ -29,6 +29,7 @@ func class(name string, implements []string, methods ...string) *model.ClassDecl
 // declare itself. Nothing here inherits, so the only question ever asked is
 // whether a name is present.
 func TestCheckInterfaces(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		stmts []model.Stmt
@@ -125,6 +126,7 @@ func TestCheckInterfaces(t *testing.T) {
 // fails the same way whichever one ran it, and a caller holding the program's
 // source spans reads Decl to report the class's line.
 func TestInterfaceContractError(t *testing.T) {
+	t.Parallel()
 	stmts := []model.Stmt{iface("R", nil, "get", "has"), class("S", []string{"R"}, "get")}
 
 	err := model.CheckInterfaceContracts(&model.Program{Stmts: stmts})
@@ -159,6 +161,7 @@ func TestInterfaceContractError(t *testing.T) {
 // methods is reported through. The violations are joined into one string, so
 // three missing methods are one error and no three.
 func TestInterfaceContractError_Error(t *testing.T) {
+	t.Parallel()
 	err := &model.InterfaceContractError{Violations: []model.InterfaceViolation{
 		{Class: "S", Interface: "R", Method: "get"},
 		{Class: "S", Interface: "R", Method: "has"},
@@ -184,6 +187,7 @@ func TestInterfaceContractError_Error(t *testing.T) {
 // does not declare, and `$a instanceof Countable` still answers what the author
 // declared.
 func TestInterfaceNames(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		decl  *model.ClassDecl

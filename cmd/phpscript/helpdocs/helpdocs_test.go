@@ -22,6 +22,7 @@ Closing prose.
 // Round-tripping it through the table renderer would re-pad every cell
 // and rewrite the alignment markers, which is a diff in a file nobody edited.
 func TestRenderMarkdown(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	if err := helpdocs.Render(&out, document, true); err != nil {
 		t.Fatalf("Render: %v", err)
@@ -35,6 +36,7 @@ func TestRenderMarkdown(t *testing.T) {
 // table the rest of the tool prints, and everything outside one is printed
 // unchanged.
 func TestRenderTerminal(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	if err := helpdocs.Render(&out, document, false); err != nil {
 		t.Fatalf("Render: %v", err)
@@ -57,6 +59,7 @@ func TestRenderTerminal(t *testing.T) {
 // TestRender pins that a document of prose alone comes out whole, table
 // markers that lead nowhere included.
 func TestRender(t *testing.T) {
+	t.Parallel()
 	src := "one\ntwo\n| not a table because nothing follows it\n"
 	var out bytes.Buffer
 	if err := helpdocs.Render(&out, src, false); err != nil {
@@ -70,6 +73,7 @@ func TestRender(t *testing.T) {
 // TestExamples covers the per-command documents, the files
 // `phpscript <command> --help` prints under its usage line.
 func TestExamples(t *testing.T) {
+	t.Parallel()
 	got := helpdocs.Examples("test", true)
 	if !strings.Contains(got, "phpscript test ./...") {
 		t.Errorf("test examples are missing the default invocation:\n%s", got)
@@ -82,6 +86,7 @@ func TestExamples(t *testing.T) {
 // TestFS pins that every embedded document is a command's examples and holds a
 // table, since the renderer reads nothing else.
 func TestFS(t *testing.T) {
+	t.Parallel()
 	names, err := fs.Glob(helpdocs.FS(), "*.md")
 	if err != nil {
 		t.Fatalf("glob: %v", err)
@@ -110,6 +115,7 @@ func TestFS(t *testing.T) {
 // TestWrite covers the whole document: the commands, the shared flags once, and
 // a section per command carrying its own flags and its examples.
 func TestWrite(t *testing.T) {
+	t.Parallel()
 	shared := helpdocs.NewFlagSet("phpscript")
 	shared.String("cover", "", "Measure statement coverage")
 

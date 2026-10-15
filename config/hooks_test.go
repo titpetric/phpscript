@@ -8,6 +8,7 @@ import (
 // Both are paths resolved against that root, and both are optional: a suite
 // that declares neither runs its fixtures with nothing around them.
 func TestHooks(t *testing.T) {
+	t.Parallel()
 	hooks := Hooks{Setup: "setup.php", Teardown: "teardown.php"}
 	if hooks.Setup != "setup.php" || hooks.Teardown != "teardown.php" {
 		t.Errorf("Hooks lost a field: %+v", hooks)

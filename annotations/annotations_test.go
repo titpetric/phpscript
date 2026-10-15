@@ -26,6 +26,7 @@ echo "replace";
 // reaches that endpoint, so PUT is reachable where the author wrote it and
 // nowhere else.
 func TestRoutedMethodsAreExplicit(t *testing.T) {
+	t.Parallel()
 	mux := http.NewServeMux()
 	if err := annotations.NewRoute(testAnnotationsFileSystem).RegisterMux(mux); err != nil {
 		t.Fatal(err)

@@ -14,6 +14,7 @@ import (
 // elapsed is a failure: the work did not finish. The test is errors.Is, so a
 // sentinel wrapped by a caller reads the same as a bare one.
 func TestRecordable(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name string
 		err  error

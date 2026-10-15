@@ -9,6 +9,7 @@ import (
 // area, so a mask naming two areas is the two bits and overlaps each of them
 // alone. A second area sharing a bit with the first would mount with it.
 func TestProfile(t *testing.T) {
+	t.Parallel()
 	if ProfileSecure == ProfileExec {
 		t.Fatalf("ProfileSecure and ProfileExec are the same bit, %b", ProfileSecure)
 	}

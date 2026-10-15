@@ -11,6 +11,7 @@ import (
 // basename the table prints; a row built without one falls back to the display
 // path, so a cell is never blank.
 func TestMatrixRowLabel(t *testing.T) {
+	t.Parallel()
 	labelled := matrixRow{DisplayPath: "tests/fixtures/arrays/a.phpt", Label: "a.phpt"}
 	if got := labelled.label(); got != "a.phpt" {
 		t.Errorf("label() = %q, want the basename", got)
@@ -31,6 +32,7 @@ func TestMatrixRowLabel(t *testing.T) {
 // machine does not have, and counting either as a failure would fail every run
 // on a machine with no php.
 func TestMatrixRowFailed(t *testing.T) {
+	t.Parallel()
 	for name, row := range map[string]matrixRow{
 		"every runner passed": {Cells: []matrixCell{
 			{Runner: tests.RunnerFlatstack, Status: matrixPass},
@@ -65,6 +67,7 @@ func TestMatrixRowFailed(t *testing.T) {
 // map's. A runner whose fixtures all opted out reports 0ms and stays in the
 // report, so a column does not appear and vanish between folders.
 func TestEngineOrder(t *testing.T) {
+	t.Parallel()
 	runners := []tests.Runner{tests.RunnerFlatstack, tests.RunnerRuntime, tests.RunnerPHP}
 	durations := map[tests.Runner]time.Duration{
 		tests.RunnerPHP:       3 * time.Millisecond,

@@ -21,6 +21,7 @@ func sessionContext(t *testing.T, cookies map[string]string) (context.Context, r
 }
 
 func TestSessionManagerLifecycle(t *testing.T) {
+	t.Parallel()
 	storage := session.NewStorageMemory()
 	manager, err := session.NewManager(storage)
 	if err != nil {
@@ -72,6 +73,7 @@ func TestSessionManagerLifecycle(t *testing.T) {
 }
 
 func TestSessionManagerUsesAuthorizeHeader(t *testing.T) {
+	t.Parallel()
 	storage := session.NewStorageMemory()
 	id := strings.Repeat("a", 64)
 	if err := storage.Save(t.Context(), id, []byte("header-user")); err != nil {
@@ -92,6 +94,7 @@ func TestSessionManagerUsesAuthorizeHeader(t *testing.T) {
 }
 
 func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
+	t.Parallel()
 	storage := session.NewStorageMemory()
 	for name, value := range map[string]string{
 		"missing":   "",
@@ -123,6 +126,7 @@ func TestSessionManagerRejectsInvalidCookies(t *testing.T) {
 // manager had issued one request earlier - while $_COOKIE held it, because the
 // superglobal resolves through the accessor. Issue #118.
 func TestSessionManagerReadsAServedRequestsCookie(t *testing.T) {
+	t.Parallel()
 	storage := session.NewStorageMemory()
 	manager, err := session.NewManager(storage)
 	if err != nil {
@@ -173,6 +177,7 @@ func servedContext(t *testing.T, cookie string) (context.Context, runner.Context
 }
 
 func TestNewSessionManagerValidatesConfiguration(t *testing.T) {
+	t.Parallel()
 	if _, err := session.NewManager(nil); err == nil {
 		t.Fatal("nil storage was accepted")
 	}

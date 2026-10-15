@@ -21,6 +21,7 @@ const benchPassword = "correct horse battery staple"
 // take: the algorithm decides which option keys are read and what an absent
 // key falls back to, so the two cannot be parsed independently.
 func TestParamsFrom(t *testing.T) {
+	t.Parallel()
 	options := func(pairs ...any) *model.Array {
 		out := model.NewArray()
 		for i := 0; i+1 < len(pairs); i += 2 {
@@ -99,6 +100,7 @@ func TestParamsFrom(t *testing.T) {
 // TestBcryptParamsOf pins what password_get_info reads back off a bcrypt hash,
 // in both the revision php writes and the one x/crypto writes.
 func TestBcryptParamsOf(t *testing.T) {
+	t.Parallel()
 	hash, err := derive("pw", params{algo: algoBcrypt, cost: 4})
 	if err != nil {
 		t.Fatal(err)

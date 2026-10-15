@@ -14,6 +14,7 @@ import (
 // written in two places are two entries. A nil cache answers a miss, which is
 // what lets a runtime with no cache evaluate without a check at every lookup.
 func TestExprCache_GetExpr(t *testing.T) {
+	t.Parallel()
 	cache := NewExprCache()
 	node := &model.Binary{Op: "+", Left: &model.Var{Name: "a"}, Right: &model.Lit{Value: int64(1)}}
 
@@ -51,6 +52,7 @@ func TestExprCache_GetExpr(t *testing.T) {
 // back, and one it refuses reports the refusal on every call, because nothing
 // is stored for it: a stored verdict would let one run decide for the next.
 func TestExprCache_EnsureFlat(t *testing.T) {
+	t.Parallel()
 	cache := NewExprCache()
 	accepted := &model.Program{Stmts: []model.Stmt{&model.Echo{Args: []model.Expr{&model.Lit{Value: "ok"}}}}}
 

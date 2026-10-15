@@ -25,6 +25,7 @@ func scriptArray(values ...any) *model.Array {
 // behaviour claim settled by php, so the want column is php's output for the
 // same list, pasted.
 func TestString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		value any
@@ -69,6 +70,7 @@ func TestString(t *testing.T) {
 // shortest form that round-trips, so one value printed two ways depending on
 // whether it went through echo or through a binding.
 func TestStringPrecisionMatchesEcho(t *testing.T) {
+	t.Parallel()
 	tests := map[float64]string{
 		0.1 * 0.2:   "0.02",
 		1.0 / 3.0:   "0.33333333333333",
@@ -92,6 +94,7 @@ func TestStringPrecisionMatchesEcho(t *testing.T) {
 // and a key or a var_dump does not. There is no __toString here, so an object
 // has no string form at all and php's Error covers the case.
 func TestStringContextRefusesAnObject(t *testing.T) {
+	t.Parallel()
 	object := model.NewObject(&model.Class{Name: "Point"})
 	_, err := StringContext(object)
 	if err == nil {
@@ -128,6 +131,7 @@ func TestStringContextRefusesAnObject(t *testing.T) {
 // string it carries, so a binding returning one returns text and not a
 // list of integers.
 func TestBytes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		value any
@@ -163,6 +167,7 @@ func TestBytes(t *testing.T) {
 // comes off `php -r 'var_dump((int)$s);'`, and never off this package's own
 // answer.
 func TestInt(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in   string
 		want int64
@@ -201,6 +206,7 @@ func TestInt(t *testing.T) {
 }
 
 func TestFloat(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   any
@@ -244,6 +250,7 @@ func TestFloat(t *testing.T) {
 // exists for: whatever prefix one of them reads, the other reads the same
 // number, so Int and Float can never disagree about a string.
 func TestFloatAgreesWithInt(t *testing.T) {
+	t.Parallel()
 	inputs := []string{
 		"", "0", "42", " 42", "\t42", "42abc", "abc", "-7", "+7",
 		"0x1f", "3.9", "  -12  ", "007", "12 34", "- 5", "1e3",
@@ -257,6 +264,7 @@ func TestFloatAgreesWithInt(t *testing.T) {
 }
 
 func TestNumber(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   any
@@ -299,6 +307,7 @@ func TestNumber(t *testing.T) {
 }
 
 func TestNumberMatchesIntAndFloat(t *testing.T) {
+	t.Parallel()
 	inputs := []any{
 		"12abc", "1e3", "  7 ", true, false, nil, "007", "0", "-3.5",
 		5, int64(5), 2.0, "", "abc", ".5", "5.",
@@ -320,6 +329,7 @@ func TestNumberMatchesIntAndFloat(t *testing.T) {
 // TestKey pins PHP's array key rules, read off php 8's output for
 // `$a[<in>] = 1; foreach ($a as $k => $v)`.
 func TestKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   any
@@ -367,6 +377,7 @@ func TestKey(t *testing.T) {
 // keeps $a["08"] and $a[8] as two entries, and reads "-9223372036854775809"
 // as a string because the number has no int form.
 func TestNumericKey(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in   string
 		want int64
@@ -409,6 +420,7 @@ func TestNumericKey(t *testing.T) {
 // the two exact spellings and no numeric conversion. An empty collection is
 // false and anything else with no length is true.
 func TestTruthy(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   any

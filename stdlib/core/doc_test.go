@@ -17,6 +17,7 @@ import (
 // running, or whose registration moved out from under it, takes its name with
 // it and fails here.
 func TestCoreAreasRegisterThemselves(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 

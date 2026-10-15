@@ -13,6 +13,7 @@ import (
 var testModuleFileSystem = fstest.MapFS{}
 
 func TestModuleNamesDefault(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		got  string
@@ -32,6 +33,7 @@ func TestModuleNamesDefault(t *testing.T) {
 }
 
 func TestModuleNamesWithSuffix(t *testing.T) {
+	t.Parallel()
 	option := annotations.WithModuleSuffix("example.com")
 
 	cases := []struct {
@@ -53,6 +55,7 @@ func TestModuleNamesWithSuffix(t *testing.T) {
 }
 
 func TestModuleSuffixEmpty(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		suffix string
@@ -80,6 +83,7 @@ func TestModuleSuffixEmpty(t *testing.T) {
 // over: the endpoint reads its entrypoint back out of it, and parses
 // the file, so the program that ran is the one the cache holds.
 func TestWithIncludeCache(t *testing.T) {
+	t.Parallel()
 	cache := runner.NewIncludeCache()
 	mux := newTestMux(t,
 		annotations.WithIncludeCache(cache),

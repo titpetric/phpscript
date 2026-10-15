@@ -11,6 +11,7 @@ import (
 // a numeric uid, and a numeric string is an id. "0" is root in PHP and never a
 // user called zero, so the digits are read before the name table is.
 func TestLookupUser(t *testing.T) {
+	t.Parallel()
 	current, err := user.Current()
 	if err != nil {
 		t.Fatal(err)
@@ -45,6 +46,7 @@ func TestLookupUser(t *testing.T) {
 // TestLookupGroup covers the same two spellings for chgrp(), against the
 // group the running process belongs to.
 func TestLookupGroup(t *testing.T) {
+	t.Parallel()
 	gid := os.Getgid()
 	group, err := user.LookupGroupId(strconv.Itoa(gid))
 	if err != nil {
@@ -78,6 +80,7 @@ func TestLookupGroup(t *testing.T) {
 // bool is reported as the error naming the call, with the uid left at zero:
 // zero is root, and a silent zero would change the owner of the file.
 func TestLookupRefusesOtherTypes(t *testing.T) {
+	t.Parallel()
 	for _, value := range []any{nil, true, 1.5, []string{"root"}} {
 		if id, err := lookupUser(value); err == nil || id != 0 {
 			t.Errorf("lookupUser(%#v) = %d, %v, want 0 and an error", value, id, err)

@@ -38,6 +38,7 @@ func generatedLoad(string) *generatedLocation { return &generatedLocation{} }
 func generatedOpaque() generatedUnregistered { return generatedUnregistered{} }
 
 func TestCamelToSnake(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"Query":         "query",
 		"SetAttribute":  "set_attribute",
@@ -54,6 +55,7 @@ func TestCamelToSnake(t *testing.T) {
 }
 
 func TestReturnType(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in   []string
 		want string
@@ -77,6 +79,7 @@ func TestReturnType(t *testing.T) {
 // the committed reference is rendered from, and the placeholder parameter
 // names come from the types.
 func TestReflect(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(nil, runner.Options{})
 	rt.RegisterConstructor("Time", newGeneratedTime)
 	rt.RegisterConstructor(`Time\Duration`, newGeneratedDuration)
@@ -142,6 +145,7 @@ func TestReflect(t *testing.T) {
 // class names used by function and method return hints. This matters for named
 // scalar types such as time.Duration as well as structs and pointers.
 func TestGenerateResolvesRegisteredClassReturnTypes(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	source := `package fake
 

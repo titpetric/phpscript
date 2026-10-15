@@ -8,6 +8,7 @@ import (
 
 // across the threshold that switches between them.
 func TestPHPCRC32(t *testing.T) {
+	t.Parallel()
 	inputs := []string{
 		"",
 		"a",
@@ -29,6 +30,7 @@ func TestPHPCRC32(t *testing.T) {
 // TestHTMLSpecialCharsReplacer asserts the hoisted replacer still produces
 // PHP's default (ENT_QUOTES-style) escaping.
 func TestHTMLSpecialCharsReplacer(t *testing.T) {
+	t.Parallel()
 	got := htmlSpecialCharsReplacer.Replace(`<a href="x">Tom & Jerry's</a>`)
 	want := `&lt;a href=&quot;x&quot;&gt;Tom &amp; Jerry&#039;s&lt;/a&gt;`
 	if got != want {
@@ -41,6 +43,7 @@ func TestHTMLSpecialCharsReplacer(t *testing.T) {
 
 // TestToString pins the strconv formatting against the fmt formatting it
 func TestPHPStrReplace(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		search, replace, subject any
 		want                     string

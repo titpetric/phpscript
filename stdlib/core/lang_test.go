@@ -14,6 +14,7 @@ import (
 // says bool, and NULL alone in capitals. The modern spellings would pass every
 // eyeball and fail every `gettype($x) === "integer"`.
 func TestGetType(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 echo gettype(1), "|", gettype(1.5), "|", gettype("a"), "|", gettype(true), "|",
 	gettype(null), "|", gettype([]), "|", gettype(new stdClass);`)
@@ -30,6 +31,7 @@ echo gettype(1), "|", gettype(1.5), "|", gettype("a"), "|", gettype(true), "|",
 // An array is the one case the cast does not own: PHP reads it as its
 // truthiness, so an empty array is 0 and a filled one is 1 whatever it holds.
 func TestIntval(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 echo intval("42abc"), "|", intval("abc"), "|", intval("  12  "), "|", intval("1e3"), "|",
 	intval(true), "|", intval(null), "|", intval(12.9), "|", intval(12.9, 16), "|",
@@ -49,6 +51,7 @@ echo intval("42abc"), "|", intval("abc"), "|", intval("  12  "), "|", intval("1e
 // so intval("0o12", 8) is 0. A base outside 0 and 2-36 is strtol's EINVAL,
 // which intval surfaces as 0 and raises nothing, php 8.5 included.
 func TestIntvalBase(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 echo intval("0x1A", 16), "|", intval("0x1A", 0), "|", intval("  -0x10", 0), "|",
 	intval("0b101", 0), "|", intval("012", 0), "|", intval("12", 0), "|", intval("0", 0), "|",
@@ -64,6 +67,7 @@ echo intval("0x1A", 16), "|", intval("0x1A", 0), "|", intval("  -0x10", 0), "|",
 // unsigned so that -9223372036854775808 still reads exactly, and one digit past
 // the bound saturates the way strtol does.
 func TestIntvalSaturates(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 echo intval("9223372036854775807", 10), "|", intval("9223372036854775808", 10), "|",
 	intval("-9223372036854775808", 10), "|", intval("99999999999999999999", 10);`)
@@ -77,6 +81,7 @@ echo intval("9223372036854775807", 10), "|", intval("9223372036854775808", 10), 
 // arguments arrive as the list the array holds, so a callable taking three
 // parameters is called with three and not with one array.
 func TestCallUserFuncArray(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 function join3($a, $b, $c) { return $a . $b . $c; }
 echo call_user_func_array("join3", ["x", "y", "z"]);
@@ -96,6 +101,7 @@ echo call_user_func_array(function () { return "none"; }, []);`)
 // binding handed over is an object, because a script constructs it with new
 // and reads its properties the way it reads an interpreted one's.
 func TestGetTypeSeparatesAnArrayFromAStruct(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)

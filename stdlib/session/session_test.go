@@ -23,6 +23,7 @@ import (
 // directories, and one root has to answer the same directory twice, or a restart
 // would lose every session it had.
 func TestDefaultStoragePathIsPerRoot(t *testing.T) {
+	t.Parallel()
 	one := session.DefaultStoragePath("/srv/sites/one")
 	two := session.DefaultStoragePath("/srv/sites/two")
 
@@ -184,6 +185,7 @@ echo " " . $manager->session_cookie_name;
 // read and write session files anywhere the process could write while
 // file_exists() on the same path answered false.
 func TestRegisterRoot(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name  string
 		path  string

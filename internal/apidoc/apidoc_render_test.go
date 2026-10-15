@@ -10,6 +10,7 @@ import (
 // Class::method name is not, so it is written the way a script calls it, and
 // pasting the line into a .php file would be a parse error either way round.
 func TestFunc_Signature(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		fn   Func
@@ -62,6 +63,7 @@ func TestFunc_Signature(t *testing.T) {
 // no return type: PHP's __construct declares none, and the class it builds is
 // the heading the stub sits under.
 func TestClass_Signature(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name  string
 		class Class
@@ -99,6 +101,7 @@ func TestClass_Signature(t *testing.T) {
 // PHP spelling in snake_case, because method dispatch is case-insensitive with
 // underscores accepted and the stub documents the spelling a script types.
 func TestMethod_Signature(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name   string
 		method Method
@@ -132,6 +135,7 @@ func TestMethod_Signature(t *testing.T) {
 }
 
 func TestRenderParam(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		in   Param
 		want string
@@ -154,6 +158,7 @@ func TestRenderParam(t *testing.T) {
 // one as a docblock. The aliases line names the extra class names one
 // constructor's registered name.
 func TestRenderWritesOneStubPerRegistration(t *testing.T) {
+	t.Parallel()
 	funcs := []Func{
 		{Name: "strlen", Package: "stdlib/core", Area: "strings", Returns: "int",
 			Comment: []string{"strlen returns the byte length of $string."},

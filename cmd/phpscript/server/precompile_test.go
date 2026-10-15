@@ -46,6 +46,7 @@ func newPrecompileHandler(t testing.TB, root string, on bool) *handler {
 // broken file that must not stop a site coming up: it is left out of the cache
 // and the two files that parse are in it.
 func TestPrecompile(t *testing.T) {
+	t.Parallel()
 	root := precompileSite(t)
 
 	for _, test := range []struct {
@@ -70,6 +71,7 @@ func TestPrecompile(t *testing.T) {
 // has skipped one: the page still answers, and so does a request for the file
 // that did not parse, with the error it fails with lazily.
 func TestPrecompileServesAfterABrokenFile(t *testing.T) {
+	t.Parallel()
 	root := precompileSite(t)
 	files := newPrecompileHandler(t, root, true)
 	precompile(files, root)
@@ -88,6 +90,7 @@ func TestPrecompileServesAfterABrokenFile(t *testing.T) {
 // its file handler holds, so the one walk of the tree covers both. The proof is
 // an endpoint answering out of the cache after its file is gone from disk.
 func TestSharedCaches(t *testing.T) {
+	t.Parallel()
 	root := precompileSite(t)
 	write(t, filepath.Join(root, "routes", "hello.php"), "<?php\n// @route GET /hello\necho \"hello\";\n")
 
@@ -116,6 +119,7 @@ func TestSharedCaches(t *testing.T) {
 // the setting is read from each site's phpscript.yml, a site holding a file
 // that does not parse still builds, and both answer.
 func TestVirtualHostPrecompilesUnderItsOwnConfiguration(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	eager, lazy := filepath.Join(dir, "eager"), filepath.Join(dir, "lazy")
 

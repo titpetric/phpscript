@@ -42,6 +42,7 @@ func runPHP(t *testing.T, src string) string {
 // through jq or its own pretty printer; a producer that indents its output is
 // deciding for a reader it cannot see.
 func TestNoJSONFlagConstants(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 	for name := range rt.DefinedConstants() {
@@ -54,6 +55,7 @@ func TestNoJSONFlagConstants(t *testing.T) {
 // $flags is accepted and ignored, as json_decode accepts $depth and $flags, so
 // a literal one changes nothing.
 func TestJSONEncodeIgnoresFlags(t *testing.T) {
+	t.Parallel()
 	tests := []string{
 		`json_encode(array("a" => 1))`,
 		`json_encode(array("a" => 1), 128)`,
@@ -71,6 +73,7 @@ func TestJSONEncodeIgnoresFlags(t *testing.T) {
 // A JSON_* name is not defined, so it raises before json_encode is called.
 // phpscript lint reports it first: the argument changes nothing.
 func TestJSONFlagConstantThrows(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php try { echo json_encode(array(1), JSON_PRETTY_PRINT); } catch (Exception $e) { echo $e->getMessage(); }`)
 	if want := `Undefined constant "JSON_PRETTY_PRINT"`; got != want {
 		t.Fatalf("got %q, want %q", got, want)
@@ -80,6 +83,7 @@ func TestJSONFlagConstantThrows(t *testing.T) {
 // A forward slash is written as itself, which is Go's behaviour and legal
 // JSON. php escapes it unless JSON_UNESCAPED_SLASHES is passed.
 func TestJSONEncodeDoesNotEscapeSlashes(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php echo json_encode(array("path" => "a/b"));`)
 	if want := `{"path":"a\/b"}`; got == want {
 		t.Fatalf("got php's escaped form %q; this runtime writes the slash as itself", got)
@@ -94,6 +98,7 @@ func TestJSONEncodeDoesNotEscapeSlashes(t *testing.T) {
 // json_encode() converts one. A stream is required, because fopen() answers
 // false for a file it could not open and false is no stream.
 func TestJSONEncoder(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	enc, err := core.NewJSONEncoder(&out)
 	if err != nil {
@@ -120,6 +125,7 @@ func TestJSONEncoder(t *testing.T) {
 // the script set them, so a row encoded for a client reads back in assembly
 // order. Every value ends with a newline, separating one from the next.
 func TestJSONEncoder_Encode(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	enc, err := core.NewJSONEncoder(&out)
 	if err != nil {
@@ -146,6 +152,7 @@ func TestJSONEncoder_Encode(t *testing.T) {
 // each value is written across several lines, $indent per level under $prefix.
 // Two empty strings go back to one line per value.
 func TestJSONEncoder_SetIndent(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	enc, err := core.NewJSONEncoder(&out)
 	if err != nil {
@@ -177,6 +184,7 @@ func TestJSONEncoder_SetIndent(t *testing.T) {
 // number decodes to an int and a fractional one to a float, so the 7 in a
 // document does not come back as 7.0.
 func TestJSONDecoder(t *testing.T) {
+	t.Parallel()
 	dec, err := core.NewJSONDecoder(strings.NewReader(`[7, 7.5, "x", true, null]`))
 	if err != nil {
 		t.Fatalf("NewJSONDecoder: %v", err)
@@ -209,6 +217,7 @@ func TestJSONDecoder(t *testing.T) {
 // *model.Array carrying the document's own key order. json.Decoder.Decode would
 // build a Go map and lose it.
 func TestJSONDecoder_Decode(t *testing.T) {
+	t.Parallel()
 	dec, err := core.NewJSONDecoder(strings.NewReader(`{"zebra":1,"apple":{"deep":2}}`))
 	if err != nil {
 		t.Fatalf("NewJSONDecoder: %v", err)
@@ -240,6 +249,7 @@ func TestJSONDecoder_Decode(t *testing.T) {
 // carries, so a loop testing what Decode answered would stop one value early;
 // More reads the stream and not the value.
 func TestJSONDecoder_More(t *testing.T) {
+	t.Parallel()
 	dec, err := core.NewJSONDecoder(strings.NewReader("null\n{\"a\":1}\n"))
 	if err != nil {
 		t.Fatalf("NewJSONDecoder: %v", err)

@@ -12,6 +12,7 @@ import (
 // *os.File cannot be a tty, and a file on disk is not one either, so a
 // redirected stdout and a report file both render as markdown.
 func TestIsTerminal(t *testing.T) {
+	t.Parallel()
 	var buffer bytes.Buffer
 	if IsTerminal(&buffer) {
 		t.Error("IsTerminal(*bytes.Buffer) = true, want false for a writer that is no file")
@@ -41,6 +42,7 @@ func TestIsTerminal(t *testing.T) {
 // up with the cells above it, and every color is a 256-color code that ends
 // with the one reset sequence.
 func TestBoxDrawing(t *testing.T) {
+	t.Parallel()
 	for _, piece := range []string{
 		BoxTopLeft, BoxTopRight, BoxBottomLeft, BoxBottomRight,
 		BoxHorizontal, BoxVertical, BoxTeeDown, BoxTeeUp,

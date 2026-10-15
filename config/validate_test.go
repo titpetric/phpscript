@@ -13,6 +13,7 @@ import (
 // built. A command runs it ahead of the server so a bad file fails the
 // invocation and not the first request.
 func TestConfig_Validate(t *testing.T) {
+	t.Parallel()
 	t.Run("a single application root", func(t *testing.T) {
 		root := writeSite(t, "routes:\n  enabled: true\n")
 		if err := config.New().Validate("config.yml", root); err != nil {
@@ -96,6 +97,7 @@ func TestConfig_Validate(t *testing.T) {
 // when the configuration lists no sites. fs.Sub does not stat, so a document
 // root that is not there is otherwise a 404 on the first request.
 func TestConfig_ValidateRoot(t *testing.T) {
+	t.Parallel()
 	t.Run("a root holding its document root", func(t *testing.T) {
 		if err := config.New().ValidateRoot(writeSite(t, "routes:\n  enabled: true\n")); err != nil {
 			t.Fatal(err)
@@ -143,6 +145,7 @@ func TestConfig_ValidateRoot(t *testing.T) {
 // virtual host entries name their own roots, so a root typed on the command
 // line has no entry to belong to, and the message quotes it back.
 func TestErrRootWithVirtualHosts(t *testing.T) {
+	t.Parallel()
 	err := config.ErrRootWithVirtualHosts("/srv/site")
 	want := `server: the configuration lists virtual hosts, which name their own roots; "/srv/site" on the command line has no virtual host to belong to`
 	if err.Error() != want {

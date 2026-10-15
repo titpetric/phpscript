@@ -51,6 +51,7 @@ func get(t *testing.T, addr string) string {
 // arguments with no useful default are checked here and the address stays empty
 // until listen() runs: a script that built a server has not taken a port yet.
 func TestServer(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	rt.SetContext(context.Background())
 	handler := nethttp.HandlerFunc(func(nethttp.ResponseWriter, *nethttp.Request) {})
@@ -85,6 +86,7 @@ func TestServer(t *testing.T) {
 // A second listen on a running server is an error, because the first address is
 // still being served and a silent rebind would lose it.
 func TestServer_Listen(t *testing.T) {
+	t.Parallel()
 	_, server := newServer(t, context.Background())
 	t.Cleanup(server.Shutdown)
 
@@ -115,6 +117,7 @@ func TestServer_Listen(t *testing.T) {
 // listen() and empty again once the server has stopped, so the field answers
 // where requests arrive and never a stale address.
 func TestServer_Addr(t *testing.T) {
+	t.Parallel()
 	_, server := newServer(t, context.Background())
 
 	if got := server.Addr(); got != "" {
@@ -140,6 +143,7 @@ func TestServer_Addr(t *testing.T) {
 // put a failure, so shutdown answers nothing and throws nothing: calling it
 // twice, or on a server that never listened, is no error.
 func TestServer_Shutdown(t *testing.T) {
+	t.Parallel()
 	_, server := newServer(t, context.Background())
 
 	// A server that never listened has nothing to stop.
@@ -178,6 +182,7 @@ func TestServer_Shutdown(t *testing.T) {
 // answers nothing is waiting for calls it, so it reports a failure where
 // shutdown swallows one, and on a server that never listened it reports none.
 func TestServer_Close(t *testing.T) {
+	t.Parallel()
 	_, server := newServer(t, context.Background())
 
 	if err := server.Close(); err != nil {
@@ -213,6 +218,7 @@ func TestServer_Close(t *testing.T) {
 // the runtime, so wait() returns when the script runs out of time or the client
 // that started it goes away, and never on a signal of the server's own.
 func TestServer_Wait(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	_, server := newServer(t, ctx)
 	t.Cleanup(server.Shutdown)

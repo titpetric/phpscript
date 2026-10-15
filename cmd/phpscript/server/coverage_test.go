@@ -47,6 +47,7 @@ func coveredServer(t *testing.T, count int, coverFile string) *coverageModule {
 // gets its own collector, and what the process holds is the sum. The prelude
 // counts too, so an --include file is part of the measurement.
 func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
+	t.Parallel()
 	module := coveredServer(t, 3, "")
 
 	blocks := module.blocks()
@@ -72,6 +73,7 @@ func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
 // TestCoverageModuleServe covers the endpoint, so a test flow reads
 // coverage off a server it is not going to shut down.
 func TestCoverageModuleServe(t *testing.T) {
+	t.Parallel()
 	module := coveredServer(t, 1, "")
 
 	for _, tc := range []struct {
@@ -103,6 +105,7 @@ func TestCoverageModuleServe(t *testing.T) {
 // TestCoverageModuleStop covers the flush: a graceful shutdown is the only
 // moment a server knows it is finished, and {time} names one profile per run.
 func TestCoverageModuleStop(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	module := coveredServer(t, 2, filepath.Join(dir, "cover", "site.{time}.cov"))
 
@@ -125,6 +128,7 @@ func TestCoverageModuleStop(t *testing.T) {
 // TestCoverageModuleStopWithoutRequests pins that a server nothing reached
 // writes no profile. An empty one reads as a measurement that found nothing.
 func TestCoverageModuleStopWithoutRequests(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	name := filepath.Join(dir, "site.cov")
 	module := newCoverageModule(&flags.Options{Cover: coverage.ModeLine, CoverFile: name})
@@ -140,6 +144,7 @@ func TestCoverageModuleStopWithoutRequests(t *testing.T) {
 // TestCoverageModuleSource pins that a file no site root answers for is left in
 // the profile at column 1, and dropped out of none of it.
 func TestCoverageModuleSource(t *testing.T) {
+	t.Parallel()
 	module := newCoverageModule(&flags.Options{}, coverFS)
 	if got := module.source("boot.php"); len(got) < 2 || !strings.Contains(got[1], "function greet") {
 		t.Errorf("source = %v, want the file's lines", got)

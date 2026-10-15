@@ -41,6 +41,7 @@ func TestPool(t *testing.T) {
 // is handed a forked runtime and never the pool's own, which is
 // what keeps two submits off one set of frames.
 func TestPool_Submit(t *testing.T) {
+	t.Parallel()
 	parent := New(io.Discard, Options{})
 	pool := NewPool(parent, 1, 4, func() io.Writer { return io.Discard })
 	defer pool.Close()
@@ -74,6 +75,7 @@ func TestPool_Submit(t *testing.T) {
 // Close being harmless, because a host shutting down may reach it from more
 // than one place.
 func TestPool_Close(t *testing.T) {
+	t.Parallel()
 	pool := NewPool(New(io.Discard, Options{}), 1, 4, nil)
 
 	done := make(chan struct{})

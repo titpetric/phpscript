@@ -73,6 +73,7 @@ func (b *propBag) Delete(key string) {
 // A nil *Array reports no collection, so count() applies PHP's scalar rule to
 // it the way it does to a string.
 func TestCollection(t *testing.T) {
+	t.Parallel()
 	var _ Collection = NewArray()
 
 	var view Collection = stringList{"a", "b", "c"}
@@ -109,6 +110,7 @@ func TestCollection(t *testing.T) {
 // Keyed embeds Collection, so one value answers count() and foreach as well,
 // and a runtime reaching a bag declared in another package needs no *Array.
 func TestKeyed(t *testing.T) {
+	t.Parallel()
 	var bag Keyed = newPropBag()
 
 	bag.Write("host", "localhost")

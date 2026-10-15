@@ -219,6 +219,7 @@ hello
 // Bind is a documented option the command silently ignores, and the generated
 // cli reference is built from the same set.
 func TestNewCommand(t *testing.T) {
+	t.Parallel()
 	command := test.NewCommand(nil, &flags.Options{})
 	if command == nil {
 		t.Fatal("NewCommand answered nothing")

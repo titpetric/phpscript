@@ -25,6 +25,7 @@ func parseInterpExpr(t *testing.T, src string) model.Expr {
 // embeds nothing must still parse to a plain Lit, whichever quote it uses and
 // whether or not it carries an escape or a dollar the escape kept literal.
 func TestLiteralWithoutInterpolationStaysALit(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		`"plain"`,
 		`"with \n escape"`,
@@ -45,6 +46,7 @@ func TestLiteralWithoutInterpolationStaysALit(t *testing.T) {
 // runtime expects, in particular that a bare word subscript becomes a string
 // key and no constant reference.
 func TestInterpolationPartShapes(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		src   string
 		parts []string
@@ -109,6 +111,7 @@ func describePart(e model.Expr) string {
 // prints the literal back from Raw and re-encodes nothing, so a rewrite
 // cannot change which spelling of an embedded expression the author chose.
 func TestInterpolationKeepsSourceSpelling(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{`"a $b c"`, `"{$a['k']}"`, `"$a[k]\n"`} {
 		e := parseInterpExpr(t, src)
 		interp, ok := e.(*model.Interp)
@@ -124,6 +127,7 @@ func TestInterpolationKeepsSourceSpelling(t *testing.T) {
 // TestDollarBraceReadsTheVariableForm covers `${name}` and `${name[sub]}`, which
 // PHP's string grammar reads as the variable and its subscript.
 func TestDollarBraceReadsTheVariableForm(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		`"${name}"`,
 		`"${arr['k']}"`,
@@ -141,6 +145,7 @@ func TestDollarBraceReadsTheVariableForm(t *testing.T) {
 // guessed at. Each one would otherwise produce a literal the author did not
 // write.
 func TestInterpolationErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		src  string
 		want string
@@ -166,6 +171,7 @@ func TestInterpolationErrors(t *testing.T) {
 // TestInterpolationLineNumbers checks that a literal spanning lines does not
 // desynchronise the line counter for what follows it.
 func TestInterpolationLineNumbers(t *testing.T) {
+	t.Parallel()
 	toks := lexAll(t, "<?php\n$a = \"x $b\ny $c\";\n$d = 1;\n")
 	var last token
 	for _, tok := range toks {

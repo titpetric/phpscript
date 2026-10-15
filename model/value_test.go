@@ -13,6 +13,7 @@ import (
 // That is PHP's numbering for `[1, "k" => 2, 3]`: a string key takes no integer
 // position, so the third entry lands at 1.
 func TestArrayItemValue(t *testing.T) {
+	t.Parallel()
 	items := []ArrayItemValue{
 		{Val: "first"},
 		{Key: "k", Val: "v"},

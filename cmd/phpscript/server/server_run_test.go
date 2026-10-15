@@ -45,6 +45,7 @@ echo "hello " . $_REQUEST["name"];
 // listen address and the document root come from the configuration file, and
 // the rest are the shared flags.
 func TestNewCommand(t *testing.T) {
+	t.Parallel()
 	command := NewCommand(nil, &flags.Options{})
 
 	if command.Name != "server" {
@@ -66,6 +67,7 @@ func TestNewCommand(t *testing.T) {
 // it that HTTP reaches, so a file beside the document root is not served and
 // a file inside it is.
 func TestModule(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, DefaultDocumentRoot), 0o755); err != nil {
 		t.Fatal(err)
@@ -109,6 +111,7 @@ func TestModule(t *testing.T) {
 // routes registered ahead of it left alone, and the annotated routes of the
 // same application keep their own paths.
 func TestModule_Mount(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, DefaultDocumentRoot), 0o755); err != nil {
 		t.Fatal(err)
@@ -144,6 +147,7 @@ func TestModule_Mount(t *testing.T) {
 }
 
 func TestHandlerServesPublicFilesAndPHP(t *testing.T) {
+	t.Parallel()
 	h, err := NewHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
@@ -173,6 +177,7 @@ func TestHandlerServesPublicFilesAndPHP(t *testing.T) {
 }
 
 func TestRouteModuleServesAnnotatedRoutes(t *testing.T) {
+	t.Parallel()
 	handler, err := NewHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
@@ -192,6 +197,7 @@ func TestRouteModuleServesAnnotatedRoutes(t *testing.T) {
 }
 
 func TestHandlerDoesNotOwnDebugFrontEnd(t *testing.T) {
+	t.Parallel()
 	h, err := NewHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
@@ -204,6 +210,7 @@ func TestHandlerDoesNotOwnDebugFrontEnd(t *testing.T) {
 }
 
 func TestHandlerRecordsPHPSpan(t *testing.T) {
+	t.Parallel()
 	h, err := newTracedHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
@@ -245,6 +252,7 @@ func TestHandlerRecordsPHPSpan(t *testing.T) {
 // state means: a page ending with exit() ran to completion, and only a
 // non-zero code is a failure, because the state feeds the reported SLA.
 func TestHandlerRecordsExitAsFailureOnlyOnANonZeroCode(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		path      string
 		body      string
@@ -306,6 +314,7 @@ func newTracedServer(root fstest.MapFS) (http.Handler, *telemetry.Module, error)
 }
 
 func TestHandlerDoesNotExposeProjectFilesOrPublicAnnotations(t *testing.T) {
+	t.Parallel()
 	h, err := NewHandler(testFS)
 	if err != nil {
 		t.Fatal(err)
@@ -322,6 +331,7 @@ func TestHandlerDoesNotExposeProjectFilesOrPublicAnnotations(t *testing.T) {
 // TestPlatformOptionsComeFromTheServerBlock pins where the server takes the
 // options it passes the platform from.
 func TestPlatformOptionsComeFromTheServerBlock(t *testing.T) {
+	t.Parallel()
 	options, err := config.NewTestConfig().PlatformOptions()
 	if err != nil {
 		t.Fatal(err)

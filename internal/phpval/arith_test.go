@@ -9,6 +9,7 @@ import (
 // sum that leaves the int64 range reports false and a zero, so a caller never
 // has a wrapped negative to tell apart from a real one.
 func TestOverflowAddInt(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		x, y int64
@@ -36,6 +37,7 @@ func TestOverflowAddInt(t *testing.T) {
 // TestOverflowSubInt covers the borrow detection. Subtracting a negative is
 // the direction that overflows upward, so both signs of y are checked.
 func TestOverflowSubInt(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		x, y int64
@@ -64,6 +66,7 @@ func TestOverflowSubInt(t *testing.T) {
 // its own: MinInt64 * -1 divides back cleanly and still has no int64 form,
 // because the range holds no positive counterpart to MinInt64.
 func TestOverflowMulInt(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		x, y int64
@@ -94,6 +97,7 @@ func TestOverflowMulInt(t *testing.T) {
 // float(9.223372036854776E+18) for PHP_INT_MAX + 1, so a sum that leaves the
 // range changes type and the Go wrap is never visible to a script.
 func TestAddInt(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		x, y int64
@@ -116,6 +120,7 @@ func TestAddInt(t *testing.T) {
 // TestSubInt covers PHP's - on two ints. php 8.5 prints
 // float(-9.223372036854776E+18) for PHP_INT_MIN - 1.
 func TestSubInt(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		x, y int64
@@ -138,6 +143,7 @@ func TestSubInt(t *testing.T) {
 // float(1.8446744073709552E+19) for PHP_INT_MAX * 2 and
 // float(9.223372036854776E+18) for PHP_INT_MIN * -1.
 func TestMulInt(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		x, y int64
@@ -164,6 +170,7 @@ func TestMulInt(t *testing.T) {
 // warning and the throw are the interpreter's, and this function is the
 // arithmetic alone.
 func TestDivInt(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		x, y int64
@@ -191,6 +198,7 @@ func TestDivInt(t *testing.T) {
 // Modulo by zero returns int 0, matching the interpreter's phpArith. php 8.5
 // throws DivisionByZeroError from the operator itself.
 func TestModInt(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name string
 		x, y int64

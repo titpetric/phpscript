@@ -15,6 +15,7 @@ import (
 // dropped from the import list would leave its names undefined with nothing
 // else failing, so one name per area is named here.
 func TestRegisterInstallsEveryImportedArea(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 
@@ -65,6 +66,7 @@ func TestRegisterInstallsEveryImportedArea(t *testing.T) {
 // whatever the profile narrowed, because a script that cannot construct
 // InvalidArgumentException fails on the throw and never on the condition.
 func TestRegisterInstallsTheThrowableClasses(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Mount(rt, stdlib.Secure)
 

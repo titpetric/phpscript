@@ -10,6 +10,7 @@ import (
 )
 
 func TestIncludeCacheCapacityBounds(t *testing.T) {
+	t.Parallel()
 	cache := runner.NewIncludeCacheWithCapacity(5)
 
 	if cache.Len() != 0 {
@@ -32,6 +33,7 @@ func TestIncludeCacheCapacityBounds(t *testing.T) {
 }
 
 func TestExprCacheCapacityBounds(t *testing.T) {
+	t.Parallel()
 	cache := runner.NewExprCacheWithCapacity(5)
 
 	if cache.Len() != 0 {

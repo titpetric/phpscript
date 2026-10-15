@@ -86,6 +86,7 @@ func writePNG(t *testing.T, path string, width, height int) {
 // them, and imagetypes reports one fixed set: the decoders are linked into the
 // program and never discovered at runtime.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	gd.Register(rt)
@@ -127,6 +128,7 @@ func TestRegister(t *testing.T) {
 // absolute and climbing spellings included. A path reaching the host
 // filesystem would let a virtual host read a file file_get_contents refuses.
 func TestRegisterRoot(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writePNG(t, filepath.Join(root, "shot.png"), 4, 3)
 
@@ -154,6 +156,7 @@ echo $info[0] . "x" . $info[1] . " " . $info[2];
 // the pixels and keeps the handle itself valid, so the size functions report
 // false afterwards where they reported a number.
 func TestImage(t *testing.T) {
+	t.Parallel()
 	handle, out := runScript(t, `<?php
 $im = imagecreatetruecolor(4, 3);
 var_export(imagesx($im));
@@ -173,6 +176,7 @@ var_export(imagesx($im));
 // off a handle a script produced. A created image starts at the origin, so the
 // bounds are the width and height the script named.
 func TestImage_Bounds(t *testing.T) {
+	t.Parallel()
 	handle, _ := runScript(t, `<?php define("IM", imagecreatetruecolor(7, 5));`)
 	if handle == nil {
 		t.Fatal("the script defined no IM constant")
@@ -187,6 +191,7 @@ func TestImage_Bounds(t *testing.T) {
 // through it, so the value is the same drawable the script's own calls paint
 // on, and a pixel set here is the pixel the next call reads.
 func TestImage_Underlying(t *testing.T) {
+	t.Parallel()
 	handle, _ := runScript(t, `<?php define("IM", imagecreatetruecolor(2, 2));`)
 	if handle == nil {
 		t.Fatal("the script defined no IM constant")

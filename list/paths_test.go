@@ -41,6 +41,7 @@ func TestExpandDotAndRecursive(t *testing.T) {
 }
 
 func TestExpandFile(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "only.php")
 	mustWrite(t, path, "<?php\n")

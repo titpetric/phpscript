@@ -16,6 +16,7 @@ import (
 // Mail leaves the process, so it is recorded as external work on the trace of
 // the request that sent it, whether the script used mail() or `new Mail`.
 func TestMailRecordsAnExternalSpan(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name   string
 		script string
@@ -90,6 +91,7 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 // one map to every site that declared no mail block, and a normalisation
 // written into it would be written into all of them.
 func TestProvider(t *testing.T) {
+	t.Parallel()
 	servers := map[string]mailstdlib.Config{
 		"Marketing": {Host: "smtp.example.com", From: "news@example.com"},
 	}
@@ -117,6 +119,7 @@ func TestProvider(t *testing.T) {
 // configured is reported by the name the call passes, and the error says
 // nothing about the configuration.
 func TestProvider_Configured(t *testing.T) {
+	t.Parallel()
 	provider := mailstdlib.NewProvider(map[string]mailstdlib.Config{
 		"default":   {Host: "smtp.example.com", From: "root@example.com"},
 		"marketing": {Host: "smtp.example.com", From: "news@example.com"},
@@ -145,6 +148,7 @@ func TestProvider_Configured(t *testing.T) {
 // call returns. A name nobody configured never reaches the transport, so the
 // refusal costs no connection.
 func TestProvider_Send(t *testing.T) {
+	t.Parallel()
 	var sent []string
 	provider := mailstdlib.NewProviderFunc(func(config mailstdlib.Config, recipient, subject, body string) error {
 		sent = append(sent, config.Host+" "+recipient+" "+subject+" "+body)
@@ -174,6 +178,7 @@ func TestProvider_Send(t *testing.T) {
 // port already filled in, and the three parts of the message; name resolution
 // and tenant isolation sit above it, so a transport does none of its own.
 func TestDeliver(t *testing.T) {
+	t.Parallel()
 	var (
 		got                      mailstdlib.Config
 		recipient, subject, body string
@@ -204,6 +209,7 @@ func TestDeliver(t *testing.T) {
 // said nothing about transport: the dial refused by a port nobody listens on
 // carries the SMTP path's own wording.
 func TestNewProviderFunc(t *testing.T) {
+	t.Parallel()
 	provider := mailstdlib.NewProviderFunc(nil, map[string]mailstdlib.Config{
 		"default": {Host: "127.0.0.1", Port: 1, From: "root@example.com"},
 	})

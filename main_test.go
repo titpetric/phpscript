@@ -17,6 +17,7 @@ import (
 // never in a run of that command. A command package binding on a flag set of
 // its own never meets the globals and cannot see the clash.
 func TestCommandsBindWithGlobals(t *testing.T) {
+	t.Parallel()
 	for _, command := range commands() {
 		t.Run(command.name, func(t *testing.T) {
 			bind := (&flags.Options{}).BindWith(command.new(nil, nil).Bind)
@@ -31,6 +32,7 @@ func TestCommandsBindWithGlobals(t *testing.T) {
 // positional, so the first argument that is not a flag ends main's claim on
 // the line.
 func TestWantsHelp(t *testing.T) {
+	t.Parallel()
 	document := [][]string{
 		{"-h"},
 		{"--help"},
@@ -63,6 +65,7 @@ func TestWantsHelp(t *testing.T) {
 // registered command with the flags it adds of its own. A command's section
 // repeats no shared flag, because the shared set is stated once.
 func TestWriteHelp(t *testing.T) {
+	t.Parallel()
 	file, err := os.CreateTemp(t.TempDir(), "help")
 	if err != nil {
 		t.Fatal(err)
@@ -104,6 +107,7 @@ func TestWriteHelp(t *testing.T) {
 // either, and a command naming no usage of its own is given the examples
 // registered under its name.
 func TestDecorate(t *testing.T) {
+	t.Parallel()
 	globals := &flags.Options{}
 	command := decorate(nil, globals, registration{"run", run.Name, run.NewCommand})()
 

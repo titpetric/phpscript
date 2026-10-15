@@ -8,6 +8,7 @@ import (
 )
 
 func TestAreaName(t *testing.T) {
+	t.Parallel()
 	cases := map[string]string{
 		"registerStrings": "strings",
 		"registerJSON":    "json",
@@ -26,6 +27,7 @@ func TestAreaName(t *testing.T) {
 // registration-site comment, the godoc fallback with its leading symbol
 // rewritten, signature extraction, and the by-reference setter convention.
 func TestScan(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	src := `package fake
 
@@ -99,6 +101,7 @@ type Thing struct{}
 // package outside the tree. The last one has no declaration to read, and
 // borrowing one that shares the name published the wrong parameters.
 func TestScanQualifiedRegistration(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	for name, body := range map[string]string{
 		"engine/compile.go": `package engine
@@ -163,6 +166,7 @@ func register(rt *Runtime) {
 // passes when there is no source to read at all. Both leave every lookup
 // answering nil, so build falls back to reflection for each entry.
 func TestScanReadsNoRegistrations(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	src := `package quiet
 

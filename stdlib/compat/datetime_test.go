@@ -16,6 +16,7 @@ const epoch = int64(1700000000)
 // whole seconds, "now" resolved against the base the caller passed, and false
 // for the empty string. False and not zero, because zero is a valid timestamp.
 func TestStrtotime(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		value string
 		base  []int64
@@ -42,6 +43,7 @@ func TestStrtotime(t *testing.T) {
 // is the timestamp it started as. A layout list that drifted from the
 // formatter would break that round trip silently.
 func TestStrtotimeReadsWhatDateWrote(t *testing.T) {
+	t.Parallel()
 	for _, format := range []string{"Y-m-d H:i:s", "Y-m-d", "Y-m-d\\TH:i:s"} {
 		rendered := date(format, epoch)
 		got := strtotime(rendered)
@@ -66,6 +68,7 @@ func TestStrtotimeReadsWhatDateWrote(t *testing.T) {
 // the word-and-zone characters; stdlib/time is where a script reaches those,
 // and the passthrough is the recorded boundary between the two.
 func TestDate(t *testing.T) {
+	t.Parallel()
 	local := time.Unix(epoch, 0).In(time.Local)
 	hour12 := local.Hour() % 12
 	if hour12 == 0 {
@@ -104,6 +107,7 @@ func TestDate(t *testing.T) {
 // TestDateMidnightIsTwelve covers the one arithmetic in the formatter: PHP's
 // g and h count 1 to 12, so the hour 0 renders as 12 and never as 0.
 func TestDateMidnightIsTwelve(t *testing.T) {
+	t.Parallel()
 	midnight := time.Date(2023, time.November, 14, 0, 0, 0, 0, time.Local).Unix()
 	if got := date("g", midnight); got != "12" {
 		t.Errorf(`date("g") at midnight = %q, want "12"`, got)

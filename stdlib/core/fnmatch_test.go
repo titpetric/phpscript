@@ -9,6 +9,7 @@ import (
 // through this implementation; the flag columns are the reason the table is
 // this long, since each one changes a different decision in the loop.
 func TestFnmatch(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		pattern string
 		str     string
@@ -96,6 +97,7 @@ func TestFnmatch(t *testing.T) {
 // TestFnmatchDefaultFlags checks the two-argument form, so every
 // script calls it: the variadic slot is empty and the mode is zero.
 func TestFnmatchDefaultFlags(t *testing.T) {
+	t.Parallel()
 	if !phpFnmatch("post_*", "post_id") {
 		t.Error("fnmatch(post_*, post_id) = false, want true")
 	}

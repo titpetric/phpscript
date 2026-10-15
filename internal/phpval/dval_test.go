@@ -12,6 +12,7 @@ import (
 // spell as PHP literals. Every expected value is what php 8.5 prints for
 // (int) of the same double.
 func TestToInt64(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		in   float64

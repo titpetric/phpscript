@@ -9,6 +9,7 @@ import (
 // "7ZZZ..." (the leading 7 is the two-bit pad), and a single trailing one
 // lands in the last character.
 func TestEncodeCrockford(t *testing.T) {
+	t.Parallel()
 	var zero [16]byte
 	if got := encodeCrockford(zero); got != "00000000000000000000000000" {
 		t.Errorf("zero value = %q", got)

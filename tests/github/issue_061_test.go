@@ -16,6 +16,7 @@ import (
 // and answers a request chi refuses, so the two routers differ on
 // the last case here.
 func Test_Issue061(t *testing.T) {
+	t.Parallel()
 	routes := map[string]string{
 		"orders.php": "// @route GET /b/{id:[0-9]+}",
 	}

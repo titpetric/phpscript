@@ -11,6 +11,7 @@ import (
 // A driver the table does not name is the zero value, which leaves the pool
 // unbounded and keeps none of it idle.
 func TestDatabaseOption(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		driver string
 		want   DatabaseOption
@@ -32,6 +33,7 @@ func TestDatabaseOption(t *testing.T) {
 // the sql package built it, so a provider with no entry for a driver still
 // opens one.
 func TestDatabaseOption_Apply(t *testing.T) {
+	t.Parallel()
 	db, err := Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -52,6 +54,7 @@ func TestDatabaseOption_Apply(t *testing.T) {
 }
 
 func TestSQLiteDatabaseOption(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		dsn     string

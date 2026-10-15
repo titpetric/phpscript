@@ -13,6 +13,7 @@ import (
 // statics. Each one is registered under the name a script types, so the
 // runtime's own lookup is what answers for it.
 func TestRegister(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{Database: New(nil)})
 	Register(rt)
 
@@ -34,6 +35,7 @@ func TestRegister(t *testing.T) {
 // nowhere else to put them: the provider is built before the first request,
 // and putenv writes to the script environment, which no provider reads.
 func TestRegisterConnections(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{Database: New(nil)})
 	RegisterConnections(rt)
 
@@ -67,6 +69,7 @@ func TestRegisterConnections(t *testing.T) {
 // through one that is not. The project stays the first name the script passed,
 // whichever credential answered, and a script naming none migrates "default".
 func TestRegisterMigrate(t *testing.T) {
+	t.Parallel()
 	provider := New(nil)
 	provider.Register("shop", "sqlite://:memory:")
 	rt := runner.New(io.Discard, runner.Options{Database: provider})

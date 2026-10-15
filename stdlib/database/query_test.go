@@ -8,6 +8,7 @@ import (
 // tagged with must not change what it is. The tag is the reason to look: a
 // statement in `show processlist` says nothing about the code that issued it.
 func TestParseQuery(t *testing.T) {
+	t.Parallel()
 	for _, test := range []struct {
 		name    string
 		query   string
@@ -115,6 +116,7 @@ func TestParseQuery(t *testing.T) {
 // The refusal names the statement, so a script catching the exception can say
 // which call it lost, and not that the database is read-only.
 func TestQueryInfoRefusal(t *testing.T) {
+	t.Parallel()
 	if got := (queryInfo{Type: "drop"}).refusal(); got != "drop is not allowed" {
 		t.Fatalf("refusal = %q", got)
 	}
@@ -128,6 +130,7 @@ func TestQueryInfoRefusal(t *testing.T) {
 // false and no error, because PHP reads a missing row as a falsy value and a
 // script tests it with if.
 func TestDatabase_Get(t *testing.T) {
+	t.Parallel()
 	database := newLiveDatabase(t)
 
 	value, err := database.Get(t.Context(), "select name from users where id = ?", 1)
@@ -152,6 +155,7 @@ func TestDatabase_Get(t *testing.T) {
 // Go slice, which the value model walks as a PHP list, so foreach visits the
 // rows in the order the server returned them.
 func TestDatabase_GetAll(t *testing.T) {
+	t.Parallel()
 	database := newLiveDatabase(t)
 
 	value, err := database.GetAll(t.Context(), "select name from users order by id")

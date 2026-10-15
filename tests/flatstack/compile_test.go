@@ -14,6 +14,7 @@ import (
 // bytecode run from a fallback that happened to agree, so every case asserts
 // Supports before it checks the output.
 func TestFlatstackCompilesConstructs(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string
@@ -141,6 +142,7 @@ func TestFlatstackCompilesConstructs(t *testing.T) {
 // there is nothing to resolve it to, so the host reports it exactly as the
 // interpreter does, and invents no class.
 func TestFlatstackClassConstOutsideClass(t *testing.T) {
+	t.Parallel()
 	program, err := parser.Parse(`<?php class A { const X = 1; } echo self::X;`)
 	if err != nil {
 		t.Fatal(err)
@@ -165,6 +167,7 @@ func TestFlatstackClassConstOutsideClass(t *testing.T) {
 // destructuring target: storeTop serves both foreach and list(), and used to
 // report a foreach for either one.
 func TestFlatstackDestructuringTargetKind(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		source string
@@ -206,6 +209,7 @@ func TestFlatstackDestructuringTargetKind(t *testing.T) {
 // php answered the arguments. Refusing it sends the whole program to the
 // interpreter, which answers it.
 func TestFlatstackRejectsFuncGetArgs(t *testing.T) {
+	t.Parallel()
 	sources := map[string]string{
 		"in a function":  `<?php function f($a) { return func_get_args(); } f(1, 2);`,
 		"in a closure":   `<?php $f = function ($a) { return func_get_args(); }; $f(1, 2);`,

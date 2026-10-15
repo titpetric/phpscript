@@ -13,6 +13,7 @@ import (
 // expectation is what the php binary prints for the same expression, including
 // the ones PHP only reaches after a "non-numeric value" warning.
 func TestBitwiseSemantics(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		expr string
 		want string
@@ -69,6 +70,7 @@ func TestBitwiseSemantics(t *testing.T) {
 // PHP raises ArithmeticError for it; a compound assignment has to fail the same
 // way, or `$x >>= -1` would assign a value the expression form refuses.
 func TestBitwiseNegativeShiftIsCatchable(t *testing.T) {
+	t.Parallel()
 	for _, src := range []string{
 		`<?php try { echo 1 << -1; } catch (ArithmeticError $e) { echo get_class($e), ":", $e->getMessage(); }`,
 		`<?php $x = 1; try { $x >>= -1; } catch (ArithmeticError $e) { echo get_class($e), ":", $e->getMessage(); }`,

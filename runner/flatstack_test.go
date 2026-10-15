@@ -14,6 +14,7 @@ import (
 // match on a rule the interpreter disagrees with; an operator the table has no
 // entry for is an error and never a silent zero.
 func TestFlatHostBinary(t *testing.T) {
+	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
 	for _, tc := range []struct {
 		op   string
@@ -54,6 +55,7 @@ func TestFlatHostBinary(t *testing.T) {
 // Unary `+` resolves through the arithmetic helper, so a numeric string reads
 // as the number it spells, and `-` keeps the sign of negative zero.
 func TestFlatHostUnary(t *testing.T) {
+	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
 	for _, tc := range []struct {
 		op    string
@@ -86,6 +88,7 @@ func TestFlatHostUnary(t *testing.T) {
 // returned is walked too, so `foreach` over a binding's result behaves the way
 // it behaves in the interpreter.
 func TestFlatHostEntries(t *testing.T) {
+	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
 
 	array := model.NewArray()
@@ -119,6 +122,7 @@ func TestFlatHostEntries(t *testing.T) {
 // returned belongs to the host, so the write is dropped and nothing is
 // reported. Runtime.execForeach takes the same view.
 func TestFlatHostSetEntry(t *testing.T) {
+	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
 
 	array := model.NewArray()
@@ -149,6 +153,7 @@ func TestFlatHostSetEntry(t *testing.T) {
 // clause reads its class off, and anything else renders as an uncaught
 // exception.
 func TestFlatHostThrow(t *testing.T) {
+	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
 
 	thrown := errors.New("no such table")
@@ -175,6 +180,7 @@ func TestFlatHostThrow(t *testing.T) {
 // stack and never to the base writer, so ob_start captures what the engine
 // emits the way it captures interpreted output.
 func TestFlatHostEcho(t *testing.T) {
+	t.Parallel()
 	base := &bytes.Buffer{}
 	rt := New(base, Options{})
 	host := flatHost{runtime: rt}
@@ -204,6 +210,7 @@ func TestFlatHostEcho(t *testing.T) {
 // and a Go binding assigns the struct field the name resolves to, so
 // `$db->is_readonly = true` sets IsReadonly.
 func TestFlatHostSetProperty(t *testing.T) {
+	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
 
 	obj := model.NewObject(&model.Class{Name: "Counter"})
@@ -240,6 +247,7 @@ func TestFlatHostSetProperty(t *testing.T) {
 // limit. A runtime with no limit configured answers zero, so the engine runs
 // the poll out of its loop altogether.
 func TestFlatHostMemoryCheckInterval(t *testing.T) {
+	t.Parallel()
 	unbounded := flatHost{runtime: New(io.Discard, Options{})}
 	if got := unbounded.MemoryCheckInterval(); got != 0 {
 		t.Errorf("MemoryCheckInterval() = %d with no limit, want 0", got)
@@ -256,6 +264,7 @@ func TestFlatHostMemoryCheckInterval(t *testing.T) {
 // There is one definition of each, so neither engine can answer a different
 // value for the same expression.
 func TestFlatHostHelpers(t *testing.T) {
+	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
 
 	array, ok := host.Array([]model.ArrayItemValue{
@@ -291,6 +300,7 @@ func TestFlatHostHelpers(t *testing.T) {
 // bound materialises an empty scope, so a callee reading caller locals before
 // the bind sees nothing and never a nil map.
 func TestFlatHostFrame(t *testing.T) {
+	t.Parallel()
 	host := &flatHost{runtime: New(io.Discard, Options{})}
 	if host.TakeFrame() != nil {
 		t.Error("a fresh host carries a frame")

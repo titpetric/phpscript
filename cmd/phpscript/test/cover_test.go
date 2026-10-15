@@ -132,6 +132,7 @@ for ($i = 0; $i < 3; $i++) {
 // a report mode owns stdout, so --json is refused with it. The mode vocabulary
 // itself belongs to internal/flags, which every command shares.
 func TestRunCommandCoverConflicts(t *testing.T) {
+	t.Parallel()
 	if err := test.Run(context.Background(), nil, test.Options{Cover: test.CoverLine, Count: 5}); err == nil || !strings.Contains(err.Error(), "cover") {
 		t.Errorf("cover with count: err = %v, want a cover conflict", err)
 	}

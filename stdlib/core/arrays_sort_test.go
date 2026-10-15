@@ -10,6 +10,7 @@ import (
 // entries move. sort() next door throws the keys away, so the two families
 // cannot share one walk.
 func TestPHPKsort(t *testing.T) {
+	t.Parallel()
 	array := setArray("b", int64(2), "a", int64(1), "c", int64(3))
 
 	ok, err := phpKsort(array)
@@ -29,6 +30,7 @@ func TestPHPKsort(t *testing.T) {
 // TestPHPKrsort covers ksort's descending spelling, which swaps the operands of
 // one comparison and shares everything else.
 func TestPHPKrsort(t *testing.T) {
+	t.Parallel()
 	array := setArray("a", int64(1), "c", int64(3), "b", int64(2))
 
 	if _, err := phpKrsort(array); err != nil {
@@ -44,6 +46,7 @@ func TestPHPKrsort(t *testing.T) {
 // TestPHPAsort covers asort ordering by value with the keys carried along, so a
 // score table sorts without losing the name against each score.
 func TestPHPAsort(t *testing.T) {
+	t.Parallel()
 	array := setArray("x", int64(3), "y", int64(1), "z", int64(2))
 
 	if _, err := phpAsort(array); err != nil {
@@ -58,6 +61,7 @@ func TestPHPAsort(t *testing.T) {
 
 // TestPHPArsort covers asort's descending spelling.
 func TestPHPArsort(t *testing.T) {
+	t.Parallel()
 	array := setArray("x", int64(1), "y", int64(3), "z", int64(2))
 
 	if _, err := phpArsort(array); err != nil {
@@ -78,6 +82,7 @@ func TestPHPArsort(t *testing.T) {
 // slice is refused, because a slice has no keys to preserve and sorting one
 // would be sort() under another name.
 func TestSortEntries(t *testing.T) {
+	t.Parallel()
 	sparse := setArray(int64(5), "five", int64(2), "two", int64(9), "nine")
 
 	if _, err := phpKsort(sparse); err != nil {
@@ -99,6 +104,7 @@ func TestSortEntries(t *testing.T) {
 // sort.SliceStable takes. A comparator that raises reads as "not less", so a
 // failing callback leaves the order it saw and aborts no sort mid-way.
 func TestCallbackLess(t *testing.T) {
+	t.Parallel()
 	descending := func(args ...any) (any, error) {
 		return args[1].(int64) - args[0].(int64), nil
 	}

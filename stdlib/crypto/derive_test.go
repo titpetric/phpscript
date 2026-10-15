@@ -10,6 +10,7 @@ import (
 // cost it derives at, an argon2 hash carries the PHC string form, and each
 // one verifies.
 func TestDerive(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		p      params
@@ -41,6 +42,7 @@ func TestDerive(t *testing.T) {
 // marker, which x/crypto refuses until the prefix is rewritten, and the cost
 // read back off it.
 func TestBcryptVerify(t *testing.T) {
+	t.Parallel()
 	hash, err := derive("hunter2", params{algo: algoBcrypt, cost: bcryptMinCost})
 	if err != nil {
 		t.Fatalf("derive() = %v", err)
@@ -72,6 +74,7 @@ func TestBcryptVerify(t *testing.T) {
 // password, salt and work factors under argon2i and argon2id answer different
 // tags, so a hash written as one cannot verify as the other.
 func TestArgon2Key(t *testing.T) {
+	t.Parallel()
 	p := params{algo: algoArgon2id, memory: 8, time: 1, lanes: 1}
 	salt := []byte("0123456789abcdef")
 

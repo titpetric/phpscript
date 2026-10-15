@@ -83,6 +83,7 @@ func runRefProgram(t *testing.T, source string, calls map[string]func(*refTestHo
 // the value the out parameter replaces. Writing it back would undo the write
 // and leave a reused $m holding the first call's matches.
 func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
+	t.Parallel()
 	echoed := runRefProgram(t, `<?php
 		preg_match_all("/a/", "aa", $m);
 		preg_match_all("/b/", "bbb", $m);
@@ -107,6 +108,7 @@ func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
 // An uninitialised target is the case that always worked: it is not in the
 // snapshot, so nothing overwrites it. It has to keep working.
 func TestVMRefSetterWritesFreshLocal(t *testing.T) {
+	t.Parallel()
 	echoed := runRefProgram(t, `<?php
 		preg_match_all("/a/", "aa", $m);
 		echo $m;
@@ -122,6 +124,7 @@ func TestVMRefSetterWritesFreshLocal(t *testing.T) {
 // The marks cover one call. A later call that changes the same variable
 // through the scope, with no setter involved, still takes effect.
 func TestVMRefMarksDoNotOutliveTheCall(t *testing.T) {
+	t.Parallel()
 	echoed := runRefProgram(t, `<?php
 		preg_match_all("/a/", "aa", $m);
 		clobber();
@@ -140,6 +143,7 @@ func TestVMRefMarksDoNotOutliveTheCall(t *testing.T) {
 // caller's variable of the same name is a different slot in a different frame
 // and must not be shielded from its own write-back.
 func TestVMRefMarksArePerFrame(t *testing.T) {
+	t.Parallel()
 	echoed := runRefProgram(t, `<?php
 		function inner() {
 			preg_match_all("/a/", "aa", $m);
@@ -267,6 +271,7 @@ func (h *memoryTestHost) CheckMemory() error {
 // past its release. The walk reaches the frame's initialised locals,
 // where a script's values are.
 func TestMemoryHost(t *testing.T) {
+	t.Parallel()
 	host := &memoryTestHost{interval: 8}
 
 	runHost(t, host, `<?php $marker = "retained"; for ($i = 0; $i < 60; $i = $i + 1) { $marker = "retained"; }`)
@@ -318,6 +323,7 @@ func (h *deadlineTestHost) CheckDeadline() error {
 // nil carries on to the end, so the cost of a script with no limit and no
 // client is the call itself.
 func TestDeadlineHost(t *testing.T) {
+	t.Parallel()
 	long := &deadlineTestHost{}
 	runHost(t, long, `<?php $total = 0; for ($i = 0; $i < 200; $i = $i + 1) { $total = $total + $i; } echo $total;`)
 

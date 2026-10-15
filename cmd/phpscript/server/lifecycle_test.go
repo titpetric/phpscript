@@ -29,6 +29,7 @@ func (m *failingModule) Start(context.Context) error {
 // contract: the platform is told the module started, and the operator can still
 // find out that it did not.
 func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
+	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
 	// oida records only when it is asked to; a test that reads its
 	// traces back is asking.
@@ -67,6 +68,7 @@ func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 // A module that starts cleanly records as a successful trace and still returns
 // nil, so the wrapper is not something to reach for only when things break.
 func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
+	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
 	// oida records only when it is asked to; a test that reads its
 	// traces back is asking.
@@ -90,6 +92,7 @@ func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
 // With telemetry off there is no observer to record onto. The failure still
 // must not reach the platform, or one site's broken job stops every site.
 func TestNonFatalSurvivesWithoutARecorder(t *testing.T) {
+	t.Parallel()
 	module := &failingModule{
 		UnimplementedModule: *platform.NewUnimplementedModule("phpstartup:shop.example.com"),
 		err:                 errors.New("startup boot.php: missing_function"),
@@ -105,6 +108,7 @@ func TestNonFatalSurvivesWithoutARecorder(t *testing.T) {
 // The wrapper delegates everything else, so the platform still sees the module
 // it registered.
 func TestNonFatalKeepsTheModuleName(t *testing.T) {
+	t.Parallel()
 	module := &failingModule{UnimplementedModule: *platform.NewUnimplementedModule("phpstartup:shop.example.com")}
 	if got := nonFatal(module, nil).Name(); got != "phpstartup:shop.example.com" {
 		t.Fatalf("name = %q", got)
@@ -114,6 +118,7 @@ func TestNonFatalKeepsTheModuleName(t *testing.T) {
 // TestReload covers what SIGHUP does, driving Reload directly so nothing
 // depends on signal delivery timing.
 func TestReload(t *testing.T) {
+	t.Parallel()
 	a := site(t, "a", "a")
 	b := site(t, "b", "b")
 

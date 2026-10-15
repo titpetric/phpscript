@@ -10,6 +10,7 @@ import (
 )
 
 func TestFlatstackLinterCompatibility(t *testing.T) {
+	t.Parallel()
 	compatibleSrc := `<?php
 	$a = 1 + 2;
 	echo $a;
@@ -45,6 +46,7 @@ func TestFlatstackLinterCompatibility(t *testing.T) {
 // a caller pointing at a directory reads a verdict for every file in it and
 // never one for the directory.
 func TestFlatstackPaths(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	for name, src := range map[string]string{
 		"a_compatible.php":  "<?php $a = 1 + 2; echo $a;",
@@ -74,6 +76,7 @@ func TestFlatstackPaths(t *testing.T) {
 }
 
 func TestPathsReportsParseErrorsAndContinues(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	files := map[string]string{
 		"invalid.php": `<?php class Foo {`,
@@ -101,6 +104,7 @@ func TestPathsReportsParseErrorsAndContinues(t *testing.T) {
 }
 
 func TestPathsLintsPHPSectionOfPHPTFixture(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "assignment.phpt")
 	src := `name: assignment condition
@@ -131,6 +135,7 @@ done
 }
 
 func TestFileReportsChainedAssignment(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $dba = $dbb = new Database();
 $one = new Database();
@@ -172,6 +177,7 @@ function load() { return 1; }
 // into one allocation per name by the parser, so there is nothing left to
 // share. `$r['y'] = $r['m'] = '00'` is the shape this comes from.
 func TestFileAcceptsChainedLiterals(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $r = array();
 $r['y'] = $r['m'] = $r['d'] = '00';
@@ -197,6 +203,7 @@ function scoped() { $q = $s = 0; }
 }
 
 func TestFileAcceptsSingleAssignment(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $value = array();
 $sum = 1 + 2;
@@ -217,6 +224,7 @@ function compute($v) { return $v; }
 // A violated interface contract is a lint finding on the class's own line, so
 // a file is told what it is missing before it runs.
 func TestFileReportsInterfaceContract(t *testing.T) {
+	t.Parallel()
 	src := "<?php\ninterface Reader {\n\tfunction get($key);\n\tfunction has($key);\n}\n\nclass Store implements Reader {\n\tfunction get($key) {\n\t\treturn $key;\n\t}\n}\n"
 	diags, err := lint.File("store.php", src)
 	if err != nil {
@@ -235,6 +243,7 @@ func TestFileReportsInterfaceContract(t *testing.T) {
 // defines, both lint clean: the second is a built-in name such as Countable,
 // which phpscript does not declare.
 func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
+	t.Parallel()
 	src := "<?php\ninterface Reader {\n\tfunction get($key);\n}\n\nclass Store implements Reader, Countable {\n\tfunction get($key) {\n\t\treturn $key;\n\t}\n}\n"
 	diags, err := lint.File("store.php", src)
 	if err != nil {
@@ -249,6 +258,7 @@ func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
 // parse and do nothing, so the linter is where a port hears about them before
 // the behaviour goes wrong at a distance.
 func TestFileReportsGlobalAndExtends(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 class Animal {
 	function speak() { return "..."; }
@@ -286,6 +296,7 @@ function f() {
 // Interface extends widens the declaration contract, which instanceof does
 // follow, so it is not the no-op the class form is and lints clean.
 func TestFileAcceptsInterfaceExtends(t *testing.T) {
+	t.Parallel()
 	src := "<?php\ninterface Reader {\n\tfunction get($key);\n}\ninterface Store extends Reader {\n\tfunction put($key, $value);\n}\n"
 	diags, err := lint.File("iface.php", src)
 	if err != nil {
@@ -300,6 +311,7 @@ func TestFileAcceptsInterfaceExtends(t *testing.T) {
 // arrives as null and json_encode ignores it: the call runs and encodes, and
 // what the author loses is the formatting they wrote.
 func TestLintJSONFlags(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		src   string
@@ -358,6 +370,7 @@ func TestLintJSONFlags(t *testing.T) {
 // file declares (at any nesting), a registered binding, or one the source
 // guards with function_exists lints clean.
 func TestFileReportsUndefinedFunctions(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 echo strlen("known binding"), "\n";
 echo undefined_function("nothing registers this");
@@ -397,6 +410,7 @@ $sorter = function ($rows) {
 // declared in the file, registered host classes, anonymous classes and the
 // contextual self/static names lint clean.
 func TestFileReportsUndefinedClasses(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 class Declared {
 	public static function make() {
@@ -438,6 +452,7 @@ $d = Missing::$prop;
 // implicitly (docs/design.md), so a class relying on one holds dead code that
 // reads as if something depended on it. The two that run lint clean.
 func TestFileReportsMagicMethods(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 class Inject {
 	public function __construct() {}
@@ -473,6 +488,7 @@ class Inject {
 // methods and closures alike. The foreach form, parameters and closure `use`
 // captures really do carry semantics elsewhere and are not reported.
 func TestFileReportsReferences(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 $b = 2;
 $a = &$b;
@@ -508,6 +524,7 @@ function takesRef(&$x) { return $x; }
 // where PHP declines the incomplete class. Both spellings are
 // reported; a plain class with bodies lints clean.
 func TestFileReportsAbstract(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 abstract class Shape {
 	abstract public function area();
@@ -545,6 +562,7 @@ class Circle {
 // with function_exists all lint clean, the last being the polyfill idiom where
 // declaring over an absent built-in is what the case covers.
 func TestFileReportsRedeclaredFunctions(t *testing.T) {
+	t.Parallel()
 	src := `<?php
 function once_only() { return 1; }
 function twice() { return 1; }
@@ -576,6 +594,7 @@ class Holder {
 }
 
 func TestLintTypeReassign(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		src   string
@@ -659,6 +678,7 @@ func TestLintTypeReassign(t *testing.T) {
 }
 
 func TestLintStringOffset(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		src  string

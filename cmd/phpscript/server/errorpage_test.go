@@ -60,6 +60,7 @@ func fetch(h http.Handler, method, target string, headers map[string]string) *ht
 // a link gets the site's page and every program gets the plain status it got
 // before the page existed, with nothing configured either way.
 func TestErrorPageAnswersBrowserNavigationOnly(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, errorPageFS)
 
 	tests := []struct {
@@ -148,6 +149,7 @@ func TestErrorPageAnswersBrowserNavigationOnly(t *testing.T) {
 // either works for a file under the document root or a routed endpoint, on any
 // path, without the server being told which paths are the API.
 func TestErrorPageLeavesAnAnsweredResponseAlone(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, errorPageFS)
 	navigation := map[string]string{"Accept": browserAccept}
 
@@ -196,6 +198,7 @@ func TestErrorPageLeavesAnAnsweredResponseAlone(t *testing.T) {
 // picks the page named after it; any other code is the script's own numbering
 // and the request simply failed.
 func TestUncaughtExceptionCodeBecomesTheStatus(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, errorPageFS)
 	navigation := map[string]string{"Accept": browserAccept}
 
@@ -215,6 +218,7 @@ func TestUncaughtExceptionCodeBecomesTheStatus(t *testing.T) {
 // the site's internals sent to whoever requested it, and a client that gets
 // no page gets the status alone.
 func TestErrorResponseDoesNotCarryTheFailure(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, errorPageFS)
 
 	rr := fetch(h, http.MethodGet, "/broken.php", map[string]string{"Accept": "application/json"})
@@ -230,6 +234,7 @@ func TestErrorResponseDoesNotCarryTheFailure(t *testing.T) {
 // own. A 500.php that throws is logged and the request falls back to the plain
 // status, and dispatches no second 500.php behind it.
 func TestErrorPageRunsOnce(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/broken.php": {Data: []byte(`<?php throw new Exception("connection refused", 0);`)},
 		"public/500.php":    {Data: []byte(`<?php throw new Exception("the page is broken too", 0);`)},
@@ -248,6 +253,7 @@ func TestErrorPageRunsOnce(t *testing.T) {
 // PHP, then the status named in HTML, then error.php and error.html for a site
 // that keeps one page for several statuses.
 func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
+	t.Parallel()
 	navigation := map[string]string{"Accept": browserAccept}
 
 	t.Run("static html", func(t *testing.T) {
@@ -312,6 +318,7 @@ func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
 // Apache works here, and they describe the request that failed and not the
 // page that is answering for it.
 func TestErrorPageSeesTheRequestItAnswersFor(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/gone.php": {Data: []byte(`<?php throw new Exception("the article moved", 503);`)},
 		"public/503.php": {Data: []byte(`<?php
@@ -337,6 +344,7 @@ echo $_SERVER["REDIRECT_STATUS"], "|",
 // site that would rather answer a missing article with a redirect or a 410 says
 // so in the page, and the status of the call is only the default.
 func TestErrorPageMayChooseItsOwnStatus(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/404.php": {Data: []byte(`<?php http_response_code(410); echo "gone for good";`)},
 	})
@@ -353,6 +361,7 @@ func TestErrorPageMayChooseItsOwnStatus(t *testing.T) {
 // that arrived by upload is served as bytes and never executed. Here the
 // whole document root is writable, so the page never runs at all.
 func TestErrorPageInAWritableDirectoryIsNotRun(t *testing.T) {
+	t.Parallel()
 	h, err := newHandler(
 		fstest.MapFS{"public/404.php": {Data: []byte(`<?php echo "uploaded";`)}},
 		"/srv/site", DefaultDocumentRoot,
@@ -386,6 +395,7 @@ func post(h http.Handler, target, contentType, body string, headers map[string]s
 // body and the page answering for it is the last thing that can. It sees the
 // form the way its target endpoint would.
 func TestUnroutedRequestKeepsItsBody(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/404.php": {Data: []byte(`<?php
 echo $_SERVER["REQUEST_METHOD"], "|",
@@ -409,6 +419,7 @@ echo $_SERVER["REQUEST_METHOD"], "|",
 // reads the failed path, includes the file it routes to, and answers 200. A
 // site whose 404.php is its router never keeps the status of the call.
 func TestUnroutedPageMayAnswerOK(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"routes/article.php": {Data: []byte(`<?php echo "article ", $_POST["id"];`)},
 		"public/404.php": {Data: []byte(`<?php
@@ -434,6 +445,7 @@ echo "no route";`)},
 // there is nothing left to pass on, and the page is told so and never left
 // given a payload it cannot read.
 func TestFailedScriptErrorPageHasNoBody(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/gone.php": {Data: []byte(`<?php throw new Exception("boom", 503);`)},
 		"public/503.php": {Data: []byte(`<?php
@@ -455,6 +467,7 @@ echo $_SERVER["REQUEST_METHOD"], "|",
 // POST to a URL no file backs reaches the page with its parts intact, so a
 // router that handles uploads can live in 404.php.
 func TestUnroutedRequestKeepsItsUploads(t *testing.T) {
+	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
 		"public/404.php": {Data: []byte(`<?php
 echo $_POST["title"], "|",

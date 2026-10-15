@@ -65,6 +65,7 @@ func serveScriptAll(t *testing.T, src string) (*strings.Builder, *runner.Runtime
 // patterns, the two net/http values handed to the handler, and the path
 // segments read back off the request.
 func TestMuxRoutesToPHP(t *testing.T) {
+	t.Parallel()
 	_, handler := serveScript(t, `<?php
 $mux = new HTTP\Mux();
 
@@ -123,6 +124,7 @@ define("MUX", $mux);
 // TestMuxUnroutedIsNotFound leaves the router's own answers to the router: a
 // pattern nothing matched is net/http's 404 and no PHP error.
 func TestMuxUnroutedIsNotFound(t *testing.T) {
+	t.Parallel()
 	_, handler := serveScript(t, `<?php
 $mux = new HTTP\Mux();
 $mux->handle("GET /hello", function ($w, $r) { $w->write("hi"); });
@@ -139,6 +141,7 @@ define("MUX", $mux);
 // TestMuxHandlerThrowIsOneRequestsProblem keeps a failing handler from taking
 // the server with it: the request gets a status and the next one is answered.
 func TestMuxHandlerThrowIsOneRequestsProblem(t *testing.T) {
+	t.Parallel()
 	_, handler := serveScript(t, `<?php
 $mux = new HTTP\Mux();
 $mux->handle("GET /boom", function ($w, $r) { throw new Exception("detonated"); });
@@ -172,6 +175,7 @@ define("MUX", $mux);
 // handler's output goes to the response, and the point of this one is that
 // there is no response left.
 func TestMuxHandlerSeesItsOwnConnection(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -242,6 +246,7 @@ define("MUX", $mux);
 // TestMuxSkipsADeadConnection keeps the work off a request nobody is waiting
 // for: the client is already gone, so the handler never runs.
 func TestMuxSkipsADeadConnection(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -281,6 +286,7 @@ define("MUX", $mux);
 // TestServerListensAndStops drives the listening half: a port the system
 // picked, a request answered over it, and a shutdown that closes it.
 func TestServerListensAndStops(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -351,6 +357,7 @@ func formRequest(target, body string) *nethttp.Request {
 // Runtime at the same time and takes the process down with a concurrent map
 // write.
 func TestTwoMuxesShareOneRuntimeSafely(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -421,6 +428,7 @@ define("B", $b);
 // run PHP on one runtime. wait() parks the runtime; everything before it holds
 // it.
 func TestScriptDoesNotRaceItsOwnHandlers(t *testing.T) {
+	t.Parallel()
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 	stdlib.Register(rt)
@@ -508,6 +516,7 @@ define("SERVER", $server);
 // which comes along and is shared by every request, so a handler reads its
 // configuration and writes to its arguments.
 func TestMuxTakesAHandlerFromAProperty(t *testing.T) {
+	t.Parallel()
 	_, handler := serveScript(t, `<?php
 class Site {
 	public $greeting;
@@ -545,6 +554,7 @@ define("MUX", $mux);
 // closure's captured $this does, and it is the same object every request is
 // answered against.
 func TestMuxTakesABoundMethod(t *testing.T) {
+	t.Parallel()
 	_, handler := serveScript(t, `<?php
 class Site {
 	public function mount($mux) {
@@ -587,6 +597,7 @@ define("MUX", $mux);
 // also goes in through the first-class spelling `callable(...)`, which passes the
 // router a Closure and is the form php itself writes.
 func TestMuxTakesAStaticMethodAndAnInvokable(t *testing.T) {
+	t.Parallel()
 	_, handler := serveScript(t, `<?php
 class Site {
 	static function hello($w, $r) {
@@ -641,6 +652,7 @@ define("MUX", $mux);
 // array($object, "method") is neither. A refusal that named neither the
 // spelling nor the alternative is all a script needs to be told.
 func TestMuxRefusesAnArrayCallable(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		handler string
@@ -835,6 +847,7 @@ define("MUX", $mux);
 // echoed is in the response, and the process output the parent runtime writes to
 // is untouched.
 func TestReentryAnswersOnTheWorker(t *testing.T) {
+	t.Parallel()
 	for _, spelling := range reentrySpellings {
 		t.Run(spelling.name, func(t *testing.T) {
 			out, handler := serveScriptOutput(t, reentryScript(spelling.route))
@@ -855,6 +868,7 @@ func TestReentryAnswersOnTheWorker(t *testing.T) {
 // the parent runtime is two goroutines inside one unguarded execution, which the
 // race detector reports, and no assertion in the test.
 func TestReentryIsNotARace(t *testing.T) {
+	t.Parallel()
 	for _, spelling := range reentrySpellings {
 		t.Run(spelling.name, func(t *testing.T) {
 			_, handler := serveScriptOutput(t, reentryScript(spelling.route))

@@ -8,6 +8,7 @@ import (
 // no comments, so the printer writes one out before the first statement that
 // starts below its line; that makes Line the field everything depends on.
 func TestComment(t *testing.T) {
+	t.Parallel()
 	comments := CollectComments("<?php\n// first\n$a = 1;\n/* second */\n$b = 2;\n")
 	if len(comments) != 2 {
 		t.Fatalf("CollectComments found %d comments, want 2: %+v", len(comments), comments)

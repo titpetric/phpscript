@@ -10,6 +10,7 @@ import (
 // strings opens no sockets at startup. The driver name is kept on the sqlx
 // wrapper, where sqlx reads it to rebind placeholders for the dialect.
 func TestOpen(t *testing.T) {
+	t.Parallel()
 	db, err := Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("Open: %v", err)

@@ -14,6 +14,7 @@ import (
 )
 
 func TestSessionStorageImplementations(t *testing.T) {
+	t.Parallel()
 	disk, err := session.NewStorageDisk(filepath.Join(t.TempDir(), "sessions"))
 	if err != nil {
 		t.Fatalf("NewStorageDisk: %v", err)
@@ -61,6 +62,7 @@ func TestSessionStorageImplementations(t *testing.T) {
 }
 
 func TestSessionStorageHonorsCanceledContext(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -71,6 +73,7 @@ func TestSessionStorageHonorsCanceledContext(t *testing.T) {
 }
 
 func TestSessionStorageDiskRejectsInvalidPathAndID(t *testing.T) {
+	t.Parallel()
 	file := filepath.Join(t.TempDir(), "file")
 	if err := os.WriteFile(file, nil, 0o600); err != nil {
 		t.Fatal(err)

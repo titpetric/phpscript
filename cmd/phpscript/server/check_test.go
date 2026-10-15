@@ -32,6 +32,7 @@ func checkResult(t *testing.T, filename, root string) (out, errOut string, ok bo
 }
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	t.Run("a good single root passes", func(t *testing.T) {
 		root := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(root, "public"), 0o755); err != nil {

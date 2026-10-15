@@ -15,6 +15,7 @@ import (
 // other instance points at. Declared here, the script's declaration shadows it
 // in the table and this value is never reached.
 func TestStdClass(t *testing.T) {
+	t.Parallel()
 	class := StdClass()
 	if class != StdClass() {
 		t.Fatal("two calls answered two classes")
@@ -44,6 +45,7 @@ func TestStdClass(t *testing.T) {
 // the property bag is not, so a property written on one instance is invisible
 // on another.
 func TestNewStdClass(t *testing.T) {
+	t.Parallel()
 	first, second := NewStdClass(), NewStdClass()
 
 	if first == second {

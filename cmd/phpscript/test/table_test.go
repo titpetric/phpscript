@@ -11,6 +11,7 @@ import (
 )
 
 func TestTerminalTableColumnsAndSpacing(t *testing.T) {
+	t.Parallel()
 	fr := &fixtureRun{
 		Result:      &tests.TestResult{Passed: true},
 		DisplayPath: "arrays/a.phpt",
@@ -65,6 +66,7 @@ func TestTerminalTableColumnsAndSpacing(t *testing.T) {
 }
 
 func TestResultTableFallsBackToMarkdown(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	tbl := newResultTable(&buf, Options{}, true)
 	tbl.writeGroup("arrays", []string{"a.phpt"})
@@ -96,6 +98,7 @@ func TestResultTableFallsBackToMarkdown(t *testing.T) {
 // TestMarkdownTableGroupsAndSummary asserts the property that makes the
 // generated report trustworthy: the Total row is the sum of the folder rows.
 func TestMarkdownTableGroupsAndSummary(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	tbl := newMarkdownTable(&buf, Options{})
 
@@ -138,6 +141,7 @@ func TestMarkdownTableGroupsAndSummary(t *testing.T) {
 }
 
 func TestCountColumnExpandsForConfiguredCount(t *testing.T) {
+	t.Parallel()
 	tbl := newTerminalTable(&bytes.Buffer{}, Options{Count: 100000000})
 	tbl.sizeColumns("arrays", nil)
 	if got := tbl.widths[3]; got != 9 {
@@ -146,6 +150,7 @@ func TestCountColumnExpandsForConfiguredCount(t *testing.T) {
 }
 
 func TestTerminalSummaryUsesWorktreeStyle(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	tbl := newTerminalTable(&buf, Options{})
 	tbl.writeSummary(2, 1, 3, 4*time.Millisecond)
@@ -157,6 +162,7 @@ func TestTerminalSummaryUsesWorktreeStyle(t *testing.T) {
 
 // TestTerminalGroupSubtotal covers the line closeGroup adds under each folder.
 func TestTerminalGroupSubtotal(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	tbl := newTerminalTable(&buf, Options{})
 	tbl.sizeColumns("arrays", []string{"a.phpt"})
@@ -167,6 +173,7 @@ func TestTerminalGroupSubtotal(t *testing.T) {
 }
 
 func TestFormatGCRuns(t *testing.T) {
+	t.Parallel()
 	if got, want := formatGCRuns(2, 8), "2 (25.00%)"; got != want {
 		t.Fatalf("formatGCRuns(2, 8) = %q, want %q", got, want)
 	}
@@ -176,6 +183,7 @@ func TestFormatGCRuns(t *testing.T) {
 // whole milliseconds, because a table of fixture times is read by comparing
 // columns and a mixed unit would have to be read per cell.
 func TestFormatDuration(t *testing.T) {
+	t.Parallel()
 	for duration, want := range map[time.Duration]string{
 		0:                       "0",
 		999 * time.Microsecond:  "0",
@@ -194,6 +202,7 @@ func TestFormatDuration(t *testing.T) {
 // runner absent from the split has no figure, the state a matrix run leaves
 // behind where every fixture in the folder skips an engine.
 func TestEngineTime(t *testing.T) {
+	t.Parallel()
 	engines := []engineDuration{
 		{Runner: tests.RunnerFlatstack, Duration: time.Millisecond},
 		{Runner: tests.RunnerPHP, Duration: 3 * time.Millisecond},
@@ -213,6 +222,7 @@ func TestEngineTime(t *testing.T) {
 // pipe in the text would close the cell early and shift every column after it,
 // so the generated report would read as a different table.
 func TestMarkdownCell(t *testing.T) {
+	t.Parallel()
 	if got, want := markdownCell("a | b"), `a \| b`; got != want {
 		t.Errorf("markdownCell = %q, want %q", got, want)
 	}

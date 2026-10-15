@@ -23,6 +23,7 @@ func matrixSample() matrixRow {
 }
 
 func TestTerminalMatrixColumnsAndSpacing(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	tbl := newTerminalMatrix(&buf, Options{})
 	tbl.writeGroup("arrays", []string{"a-much-longer-name.phpt"})
@@ -54,6 +55,7 @@ func TestTerminalMatrixColumnsAndSpacing(t *testing.T) {
 }
 
 func TestSkipPHPDropsTheColumn(t *testing.T) {
+	t.Parallel()
 	if got, want := len(Options{SkipPHP: true}.runners()), len(tests.Runners)-1; got != want {
 		t.Fatalf("runners() length = %d, want %d", got, want)
 	}
@@ -84,6 +86,7 @@ func TestSkipPHPDropsTheColumn(t *testing.T) {
 }
 
 func TestTerminalMatrixVerboseContinuationRows(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	tbl := newTerminalMatrix(&buf, Options{Verbose: true})
 	tbl.writeGroup("arrays", []string{"a.phpt"})
@@ -124,6 +127,7 @@ func TestTerminalMatrixVerboseContinuationRows(t *testing.T) {
 }
 
 func TestMatrixTableFallsBackToMarkdown(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	tbl := newMatrixTable(&buf, Options{Verbose: true}, true)
 	tbl.writeGroup("arrays", []string{"a.phpt"})
@@ -159,6 +163,7 @@ func TestMatrixTableFallsBackToMarkdown(t *testing.T) {
 }
 
 func TestMatrixTableFitWidensLastColumn(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	tbl := newTerminalMatrix(&buf, Options{Verbose: true})
 	tbl.termWidth = maxTableWidth
@@ -193,6 +198,7 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 // TestMatrixDurationsSplitPerEngine covers the per-runner share the matrix
 // subtotal and summary lines carry after the wall-clock figure.
 func TestMatrixDurationsSplitPerEngine(t *testing.T) {
+	t.Parallel()
 	engines := []engineDuration{
 		{Runner: tests.RunnerFlatstack, Duration: time.Millisecond},
 		{Runner: tests.RunnerRuntime, Duration: 2 * time.Millisecond},
@@ -219,6 +225,7 @@ func TestMatrixDurationsSplitPerEngine(t *testing.T) {
 // TestMarkdownSummarySplitsEngineDurations covers the closing summary table of
 // a -o matrix report with cost columns.
 func TestMarkdownSummarySplitsEngineDurations(t *testing.T) {
+	t.Parallel()
 	engines := []engineDuration{
 		{Runner: tests.RunnerFlatstack, Duration: time.Millisecond},
 		{Runner: tests.RunnerPHP, Duration: 3 * time.Millisecond},
@@ -244,6 +251,7 @@ func TestMarkdownSummarySplitsEngineDurations(t *testing.T) {
 // TestMatrixMetricColumnsFollowProfileFlags pins the rule that keeps the
 // generated report stable: a plain --matrix run has no cost columns.
 func TestMatrixMetricColumnsFollowProfileFlags(t *testing.T) {
+	t.Parallel()
 	for _, c := range []struct {
 		opts Options
 		want bool

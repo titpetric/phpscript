@@ -18,6 +18,7 @@ import (
 // one caller happened to need. They are constants and no globals, so they
 // resolve inside a function or a method too.
 func TestTokenizerConstants(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 
@@ -42,6 +43,7 @@ func TestTokenizerConstants(t *testing.T) {
 // so a token_get_all() result prints as something a reader recognises. An id
 // the tokenizer never emits answers "UNKNOWN", php's own wording for one.
 func TestTokenName(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 

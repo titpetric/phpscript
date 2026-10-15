@@ -15,6 +15,7 @@ import (
 // script. A host that constructs a Runtime without stdlib has the installer
 // list and picks from it.
 func TestDatabaseBindingsAreContributed(t *testing.T) {
+	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
 	stdlib.Register(rt)
 

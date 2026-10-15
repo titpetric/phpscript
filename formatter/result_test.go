@@ -9,6 +9,7 @@ import (
 // carries the reason and is nil for a formatted file, so a caller
 // reads one field to tell a rewrite from a refusal.
 func TestResult(t *testing.T) {
+	t.Parallel()
 	formatted := Result{Path: "a.php", Changed: true}
 	if formatted.Skipped != nil {
 		t.Errorf("a formatted file carries a skip reason: %v", formatted.Skipped)

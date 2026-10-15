@@ -13,6 +13,7 @@ import (
 // get_class() reports. A class declaring `extends` is still only its own class
 // here.
 func TestObjectError(t *testing.T) {
+	t.Parallel()
 	obj := model.NewObject(&model.Class{Name: "AppException"})
 	obj.SetProp("message", "no such invoice")
 
@@ -31,6 +32,7 @@ func TestObjectError(t *testing.T) {
 // reports no name at all, so matchCatchType routes it the way it routes an
 // error a binding returned.
 func TestObjectErrorRendering(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		object *model.Object
@@ -68,6 +70,7 @@ func TestObjectErrorRendering(t *testing.T) {
 // error itself, so a Go binding's failure reaches `catch` as a value a script
 // can read a message off.
 func TestCatchValue(t *testing.T) {
+	t.Parallel()
 	obj := model.NewObject(&model.Class{Name: "AppException"})
 	if got := catchValue(newObjectError(obj)); got != any(obj) {
 		t.Errorf("catchValue() = %#v, want the thrown object", got)

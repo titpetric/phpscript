@@ -12,6 +12,7 @@ import (
 // where `$foo` is a variable, and the compiler cannot tell which the script
 // meant without recording it.
 func TestBoundVar(t *testing.T) {
+	t.Parallel()
 	variable := BoundVar{Name: "total", Slot: 2}
 	if variable.Const {
 		t.Error("a $name was recorded as a bare name")

@@ -8,6 +8,7 @@ import (
 // character that is not one, with the 0x prefix accepted and a string holding
 // no hex digit at all answering 0 and raising nothing.
 func TestHexdec(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(hexdec("1A"), hexdec("0x1A"), hexdec("ff"), hexdec("zz"), hexdec(""), hexdec("10"));`)
 
@@ -21,6 +22,7 @@ var_dump(hexdec("1A"), hexdec("0x1A"), hexdec("ff"), hexdec("zz"), hexdec(""), h
 // stays an int and a float stays a float, and a numeric string is read as the
 // number it spells, so abs("-7") is the int 7.
 func TestAbs(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(abs(-5), abs(5), abs(-5.5), abs("-7"), abs(0), abs(-0.0));`)
 
@@ -38,6 +40,7 @@ var_dump(abs(-5), abs(5), abs(-5.5), abs("-7"), abs(0), abs(-0.0));`)
 // A negative or fractional exponent is a float whatever the base, because the
 // answer is not a whole number of the base.
 func TestPow(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(pow(2, 10), pow(2, 62), pow(2, 63), pow(3, 40), pow(0, 0));
 var_dump(pow(2, -1), pow(2.0, 3), pow(2, 0.5));`)
@@ -58,6 +61,7 @@ var_dump(pow(2, -1), pow(2.0, 3), pow(2, 0.5));`)
 // that catches a naive multiply-and-round: the float nearest 1.005 is below
 // it, so a decimal reading is what answers 1.01.
 func TestRound(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(round(2.5), round(-2.5), round(3.5), round(2.4), round(-2.4));
 var_dump(round(1.2345, 2), round(1.005, 2), round(1.0, 2), round(1234.5678, -2));`)
@@ -74,6 +78,7 @@ var_dump(round(1.2345, 2), round(1.005, 2), round(1.0, 2), round(1234.5678, -2))
 // taken as given, including an empty thousands separator, and the value is
 // rounded and not truncated, so 1234.5678 with no decimals is 1,235.
 func TestNumberFormat(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(number_format(1234.5678), number_format(1234.5678, 2));
 var_dump(number_format(1234.5678, 2, ",", "."), number_format(1234.5678, 2, ",", ""));
@@ -91,6 +96,7 @@ var_dump(number_format(1000000), number_format(-0.5), number_format(0.5), number
 // array holding them. The comparison is php's, so a mixed list is compared the
 // way php compares those values, and the winner keeps its own type.
 func TestMinMax(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(min(3, 1, 2), max(3, 1, 2));
 var_dump(min([3, 1, 2]), max([3, 1, 2]));
@@ -106,6 +112,7 @@ var_dump(min("a", "b"), max(1, "2", 3.5));`)
 // with one the result is the logarithm in that base, so log(8, 2) is 3 and the
 // caller divides nothing.
 func TestLog(t *testing.T) {
+	t.Parallel()
 	got := runPHP(t, `<?php
 var_dump(log(M_E), log(8, 2), log(100, 10), log(1));`)
 

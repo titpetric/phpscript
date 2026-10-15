@@ -12,6 +12,7 @@ import (
 // on it does nothing, and Do still calls fn and returns its error unchanged.
 // A binding therefore instruments without testing whether telemetry is on.
 func TestInstrumentationUnderADisabledTracer(t *testing.T) {
+	t.Parallel()
 	tracer, err := New(NewOptions("phpscript"))
 	if err != nil {
 		t.Fatal(err)

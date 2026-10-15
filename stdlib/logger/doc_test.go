@@ -14,6 +14,7 @@ import (
 // above it still has work to report on that span, and a span ended from under
 // that caller would close the region before the work it measures finished.
 func TestLoggerLeavesTheSpanOpen(t *testing.T) {
+	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
 	// oida records only when it is asked to; a test that reads its
 	// traces back is asking.
@@ -51,6 +52,7 @@ func TestLoggerLeavesTheSpanOpen(t *testing.T) {
 // message would make the trace a second copy of the log and cost a write per
 // line on a request that logged a hundred of them.
 func TestLoggerRecordsNothingForInfo(t *testing.T) {
+	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)

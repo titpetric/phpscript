@@ -33,6 +33,7 @@ func newTestModule(t *testing.T) *Module {
 }
 
 func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
+	t.Parallel()
 	module := newTestModule(t)
 	tracer := module.Tracer()
 
@@ -86,6 +87,7 @@ func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
 }
 
 func TestModuleObservesRuntimeReports(t *testing.T) {
+	t.Parallel()
 	module := newTestModule(t)
 
 	ctx, trace, err := module.Tracer().StartTrace(context.Background(), "GET /index.php")
@@ -116,6 +118,7 @@ func TestModuleObservesRuntimeReports(t *testing.T) {
 }
 
 func TestModuleTracksLifecycleWork(t *testing.T) {
+	t.Parallel()
 	module := newTestModule(t)
 	failure := errors.New("startup failed")
 
@@ -147,6 +150,7 @@ func TestModuleTracksLifecycleWork(t *testing.T) {
 }
 
 func TestInstrumentationWithoutATraceDoesNothing(t *testing.T) {
+	t.Parallel()
 	ctx := WithSpanLine(WithSpanFilename(context.Background(), "index.php"), 12)
 
 	span := StartSpan(ctx, "orphan", KindInternal)
