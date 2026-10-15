@@ -212,3 +212,12 @@ func (w *benchServerWriter) Write(p []byte) (int, error) {
 	w.written += len(p)
 	return len(p), nil
 }
+
+// WriteString records the write the way Write does, with no clone. The writer
+// stands in for net/http's response writer, which implements io.StringWriter,
+// and a stand-in without the method sends every echo down io.WriteString's
+// []byte fallback and prices a clone the served path does not pay.
+func (w *benchServerWriter) WriteString(s string) (int, error) {
+	w.written += len(s)
+	return len(s), nil
+}
