@@ -112,30 +112,42 @@ var statePool = sync.Pool{
 			stack:    make([]any, 0, 32),
 			deferred: make([]any, 0, 8),
 		}
-		st.walker = func(yield func(any)) {
-			for _, value := range st.stack {
-				yield(value)
-			}
-			for i := range st.locals {
-				if st.initialized[i] {
-					yield(st.locals[i])
-				}
-			}
-			for _, frame := range st.callFrames {
-				for i := range frame.locals {
-					if frame.initialized[i] {
-						yield(frame.locals[i])
-					}
-				}
-				// A suspended frame's foreach still holds its listing, so
-				// the walk has to reach it or a recursive walk under-reports
-				// everything but the innermost loop.
-				yieldIterators(frame.iterators, yield)
-			}
-			yieldIterators(st.iterators, yield)
-		}
+		st.armWalker()
 		return st
 	},
+}
+
+// armWalker installs the live-value walk over this state's own slots, once
+// per state: the closure captures the state and reads its fields at call
+// time, so one closure serves every run. release leaves it in place, and a
+// state released into the pool from outside statePool.New arrives without
+// one; arming on draw keeps memory accounting alive for whoever holds it.
+func (st *execState) armWalker() {
+	if st.walker != nil {
+		return
+	}
+	st.walker = func(yield func(any)) {
+		for _, value := range st.stack {
+			yield(value)
+		}
+		for i := range st.locals {
+			if st.initialized[i] {
+				yield(st.locals[i])
+			}
+		}
+		for _, frame := range st.callFrames {
+			for i := range frame.locals {
+				if frame.initialized[i] {
+					yield(frame.locals[i])
+				}
+			}
+			// A suspended frame's foreach still holds its listing, so
+			// the walk has to reach it or a recursive walk under-reports
+			// everything but the innermost loop.
+			yieldIterators(frame.iterators, yield)
+		}
+		yieldIterators(st.iterators, yield)
+	}
 }
 
 func (st *execState) pop() (any, error) {
@@ -500,6 +512,7 @@ func Run(host Host, program *Program) error {
 // not from an instruction, so there is no loop to push onto.
 func run(program *Program, host Host, entryPC int, seeds []localSeed, globals map[string]any, result *any) (err error) {
 	st := statePool.Get().(*execState)
+	st.armWalker()
 	st.program, st.host = program, host
 	st.pc = entryPC
 	nlocal := len(program.localNames)
@@ -542,8 +555,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 	memInterval, memTick := 0, 0
 	if hasMemHost {
 		memInterval = memHost.MemoryCheckInterval()
-		// The pooled state carries its walker, created once in statePool.New,
-		// so registration allocates nothing after the state's first use.
+		// The pooled state carries its walker, armed once per state, so
+		// registration allocates nothing after the state's first use.
 		memHost.PushLiveWalker(st.walker)
 		defer memHost.PopLiveWalker()
 	}
