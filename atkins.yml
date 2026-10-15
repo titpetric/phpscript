@@ -313,15 +313,21 @@ tasks:
       - task: bench:parallel
       - benchstat "bench-go-${SIDE:-sweep}.txt"
 
+  # Both jobs nest their variables under env.vars: a flat env block reaches
+  # neither the command line nor the child process, so $PARALLEL expands to
+  # nothing. The pinned job then skips nothing and runs the three parallel
+  # benchmarks on one goroutine, the parallel job matches nothing and runs
+  # none, and GOMEMLIMIT, GOGC and CGO_ENABLED never reach go test.
   bench:pinned:
     desc: "The serial benchmarks, pinned to one core"
     timeout: 2400s
     passthru: true
     env:
-      GOMEMLIMIT: 2GiB
-      GOGC: "100"
-      CGO_ENABLED: "0"
-      PARALLEL: 'BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
+      vars:
+        GOMEMLIMIT: 2GiB
+        GOGC: "100"
+        CGO_ENABLED: "0"
+        PARALLEL: 'BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
     cmds:
       - flock -w 3600 /tmp/phpscript-measure.lock taskset -c 3 nice -n -20 go test -run XXX -bench . -skip "$PARALLEL" -benchmem -benchtime 1s -count 6 ./... | tee "bench-go-${SIDE:-sweep}.txt"
 
@@ -330,10 +336,11 @@ tasks:
     timeout: 2400s
     passthru: true
     env:
-      GOMEMLIMIT: 2GiB
-      GOGC: "100"
-      CGO_ENABLED: "0"
-      PARALLEL: 'BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
+      vars:
+        GOMEMLIMIT: 2GiB
+        GOGC: "100"
+        CGO_ENABLED: "0"
+        PARALLEL: 'BenchmarkLookup$|BenchmarkLookupHandler|BenchmarkFlatstackParallelHostBridge'
     cmds:
       - go env GOMAXPROCS
       - flock -w 3600 /tmp/phpscript-measure.lock nice -n -20 go test -run XXX -bench "$PARALLEL" -benchmem -benchtime 1s -count 10 ./tests/runner ./tests/flatstack | tee -a "bench-go-${SIDE:-sweep}.txt"
