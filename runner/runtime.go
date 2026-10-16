@@ -1531,7 +1531,12 @@ func (rt *Runtime) releaseEnv(st *evalEnv) {
 		st.vars[i] = nil
 	}
 	st.vars = st.vars[:0]
-	st.cenv = expr.Env{}
+	// The arena's backing array survives the release; its values do not. The
+	// length is zero whenever the calls balanced, so the clear covers what a
+	// panic left behind and the references parked beyond the length.
+	scratch := st.cenv.Scratch
+	clear(scratch[:cap(scratch)])
+	st.cenv = expr.Env{Scratch: scratch[:0]}
 
 	rt.envMu.Lock()
 	if len(rt.envFree) < maxFreeEnvs {

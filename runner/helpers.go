@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -558,7 +559,11 @@ func (rt *Runtime) helperCall(ref *scopeRef) func(base any, methodValue any, arg
 		method := phpString(methodValue)
 		if obj, ok := base.(*model.Object); ok && obj.Class != nil {
 			if decl, ok := lookupPHPMethod(obj.Class, method); ok {
-				return rt.invokeMethod(obj, decl, args, scope)
+				// The frame keeps its arguments for func_get_args, and the
+				// slice arriving here is the expression arena's, borrowed for
+				// the call: the frame gets its own. expr.scratchName names
+				// this clone as what makes __call safe on the arena.
+				return rt.invokeMethod(obj, decl, slices.Clone(args), scope)
 			}
 		}
 		return rt.callGoMethod(base, method, args, func() *Scope { return scope })

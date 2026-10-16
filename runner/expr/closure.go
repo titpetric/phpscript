@@ -13,6 +13,13 @@ import (
 type Env struct {
 	Vars []any
 	Base map[string]any
+
+	// Scratch is the argument arena scratchCall boxes into, growing across
+	// evaluations and reset when the environment goes back to its pool. It
+	// is stack-disciplined: a call pushes its arguments, borrows the region
+	// for the call, and pops it when the call returns, so only the helpers
+	// that never retain their argument slice may be compiled onto it.
+	Scratch []any
 }
 
 // closure evaluates one node against the runner's evaluation environment.

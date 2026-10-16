@@ -119,7 +119,14 @@ func slotRead(slot int) closure {
 // baseCall evaluates args and calls the named base-env entry: a registered
 // function installed by Eval, or one of the per-runtime helpers (__call,
 // __get, __new, ...). The []any argument slice is their variadic signature.
+// A name in the scratch set borrows the environment's arena for it; every
+// other callee gets a fresh slice, because a user function retains its
+// arguments for func_get_args and a registered binding may store its
+// variadic tail.
 func baseCall(name string, args []closure) closure {
+	if scratchName(name) {
+		return scratchCall(name, args)
+	}
 	return func(env *Env) (any, error) {
 		fn, ok := env.Base[name].(func(...any) (any, error))
 		if !ok {
@@ -134,6 +141,49 @@ func baseCall(name string, args []closure) closure {
 			in[i] = v
 		}
 		return fn(in...)
+	}
+}
+
+// scratchName lists the helper entries whose argument slice provably ends
+// with the call: each reads its arguments as elements and stores none of the
+// slice. __call is in the set because the one sink that retains a frame's
+// arguments, the PHP-method branch of runner.helperCall, clones what it
+// hands to the frame. The dispatchers that reach a user frame or a registered
+// binding with the slice itself (__func, __invoke, __static, __new, __eval
+// and every registered name) stay off the arena.
+func scratchName(name string) bool {
+	switch name {
+	case "__get", "__set", "__var", "__classconst", "__staticprop",
+		"__callablemember", "__callable", "__ref", "__call":
+		return true
+	}
+	return false
+}
+
+// scratchCall is baseCall over the environment's arena: the arguments are
+// pushed, the region is borrowed for the call, and the pop returns it, so a
+// covered call boxes no slice per invocation. The three-index expression caps
+// the borrowed region, so an append inside the callee reallocates away from
+// the arena in place of writing over it.
+func scratchCall(name string, args []closure) closure {
+	return func(env *Env) (any, error) {
+		fn, ok := env.Base[name].(func(...any) (any, error))
+		if !ok {
+			return nil, fmt.Errorf("cannot call %s: not a function", name)
+		}
+		base := len(env.Scratch)
+		for _, c := range args {
+			v, err := c(env)
+			if err != nil {
+				env.Scratch = env.Scratch[:base]
+				return nil, err
+			}
+			env.Scratch = append(env.Scratch, v)
+		}
+		in := env.Scratch[base:len(env.Scratch):len(env.Scratch)]
+		result, err := fn(in...)
+		env.Scratch = env.Scratch[:base]
+		return result, err
 	}
 }
 
