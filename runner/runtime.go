@@ -220,6 +220,13 @@ type Runtime struct {
 	// are cached too, so a probe does not rescan the method set.
 	goMethods map[goMethodKey]goMethodInfo
 
+	// goFields caches struct field resolution per (struct type, spelled
+	// name), for the same reason goMethods exists: fieldByNameFold walks the
+	// field set through two FieldByNameFunc closures on every property read
+	// otherwise, and a handler reads $r->method per request. Misses are
+	// cached too.
+	goFields map[goMethodKey]goFieldInfo
+
 	sourceSpans map[model.Stmt]model.SourceSpan
 	// currentStmt is the statement exec is running, for the two telemetry
 	// sites that attribute a span to a source line. It is the statement rather

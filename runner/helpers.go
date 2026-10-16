@@ -177,8 +177,10 @@ func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 		rv := reflect.ValueOf(base)
 		value := reflect.Indirect(rv)
 		if value.Kind() == reflect.Struct {
-			if f := fieldByNameFold(value, name); f.IsValid() && f.CanInterface() {
-				return f.Interface()
+			if index, ok := rt.structField(value.Type(), name); ok {
+				if f, err := value.FieldByIndexErr(index); err == nil {
+					return f.Interface()
+				}
 			}
 		}
 		// A method read without parentheses is a bound callable, as in
@@ -893,6 +895,41 @@ func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 		}
 	}
 	return reflect.Value{}
+}
+
+// goFieldInfo is one cached field resolution: the index chain
+// Value.FieldByIndexErr reads, and whether the name resolved to an exported
+// field at all. A miss is cached so a probe does not rescan the field set.
+type goFieldInfo struct {
+	index []int
+	found bool
+}
+
+// structField resolves a property read's field once per (struct type, spelled
+// name), climbing the ladder fieldByNameFold climbs: the exact name, then
+// case-insensitively, then without underscores. An unexported match resolves
+// as not found, which is the CanInterface check the uncached read made.
+func (rt *Runtime) structField(t reflect.Type, name string) ([]int, bool) {
+	key := goMethodKey{t: t, name: name}
+	if info, ok := rt.goFields[key]; ok {
+		return info.index, info.found
+	}
+	field, ok := t.FieldByName(name)
+	if !ok {
+		field, ok = t.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) })
+	}
+	if !ok {
+		folded := strings.ReplaceAll(name, "_", "")
+		field, ok = t.FieldByNameFunc(func(n string) bool {
+			return strings.EqualFold(strings.ReplaceAll(n, "_", ""), folded)
+		})
+	}
+	info := goFieldInfo{index: field.Index, found: ok && field.PkgPath == ""}
+	if rt.goFields == nil {
+		rt.goFields = map[goMethodKey]goFieldInfo{}
+	}
+	rt.goFields[key] = info
+	return info.index, info.found
 }
 
 // fieldByNameFold finds a struct field the way methodByNameFold finds a method:
