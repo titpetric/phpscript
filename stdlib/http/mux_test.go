@@ -167,6 +167,31 @@ define("MUX", $mux);
 	}
 }
 
+// TestMuxEchoThenThrowKeepsTheBody holds the 500 guard to its own comment: a
+// handler that has begun its response gets no second status. An echo is the
+// response beginning the way $w->write() is, so a throw after one leaves the
+// truncated body as the signal and appends no "Internal Server Error".
+func TestMuxEchoThenThrowKeepsTheBody(t *testing.T) {
+	t.Parallel()
+	_, handler := serveScript(t, `<?php
+$mux = new HTTP\Mux();
+$mux->handle("GET /half", function ($w, $r) {
+	echo "half a document";
+	throw new Exception("detonated");
+});
+define("MUX", $mux);
+`)
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(nethttp.MethodGet, "/half", nil))
+	if response.Code != nethttp.StatusOK {
+		t.Errorf("status = %d, want the 200 the echo already sent", response.Code)
+	}
+	if got := response.Body.String(); got != "half a document" {
+		t.Errorf("body = %q, want the truncated body and nothing appended", got)
+	}
+}
+
 // TestMuxHandlerSeesItsOwnConnection is what EnterRequest is for: a client
 // that leaves mid-request is the one the handler asks about, and the handler
 // gets to decide what to do about it.
