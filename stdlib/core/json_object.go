@@ -2,7 +2,11 @@ package core
 
 import (
 	"encoding/json"
+	"slices"
 	"strconv"
+
+	"github.com/titpetric/phpscript/internal/phpval"
+	"github.com/titpetric/phpscript/model"
 )
 
 // jsonObject is a JSON object that keeps the order its entries arrive in.
@@ -44,7 +48,7 @@ func (o *jsonObject) MarshalJSON() ([]byte, error) {
 			buf = append(buf, ',')
 		}
 		var err error
-		if buf, err = appendJSONValue(buf, pair.key); err != nil {
+		if buf, err = appendJSONString(buf, pair.key); err != nil {
 			return nil, err
 		}
 		buf = append(buf, ':')
@@ -55,9 +59,14 @@ func (o *jsonObject) MarshalJSON() ([]byte, error) {
 	return append(buf, '}'), nil
 }
 
-// appendJSONValue appends one value's encoding: the scalar shapes a handler's
-// response is made of directly, and json.Marshal for the rest, floats
-// included, whose spelling is encoding/json's own.
+// appendJSONValue appends one value's encoding: the scalar and collection
+// shapes a handler's response is made of directly, and json.Marshal for the
+// rest, floats included, whose spelling is encoding/json's own.
+//
+// The collections append in place, so a document reaches the stream without the
+// jsonEncodeValue tree being built first and walked by reflection after. The
+// bytes are the same ones either way: the scalar cases are the shapes
+// encoding/json writes verbatim, everything else defers to it.
 func appendJSONValue(buf []byte, v any) ([]byte, error) {
 	switch x := v.(type) {
 	case nil:
@@ -68,17 +77,114 @@ func appendJSONValue(buf []byte, v any) ([]byte, error) {
 		}
 		return append(buf, "false"...), nil
 	case string:
-		if jsonSafe(x) {
-			buf = append(buf, '"')
-			buf = append(buf, x...)
-			return append(buf, '"'), nil
-		}
+		return appendJSONString(buf, x)
 	case int64:
 		return strconv.AppendInt(buf, x, 10), nil
 	case int:
 		return strconv.AppendInt(buf, int64(x), 10), nil
+	case *model.Array:
+		if x == nil {
+			return append(buf, "null"...), nil
+		}
+		if arrayIsList(x) {
+			return appendJSONList(buf, x.Len(), x.Range)
+		}
+		return appendJSONPairs(buf, x.Len(), x.Range)
+	case *model.Object:
+		if x == nil {
+			return append(buf, "null"...), nil
+		}
+		return appendJSONPairs(buf, x.Len(), func(visit func(any, any) bool) {
+			x.Range(func(name string, value any) bool { return visit(name, value) })
+		})
+	case model.Collection:
+		// A view over request data, keyed by name, so an object. Reading it is
+		// what decodes the request behind it.
+		if x == nil {
+			return append(buf, "null"...), nil
+		}
+		return appendJSONPairs(buf, x.Len(), x.Range)
+	case []any:
+		buf = append(buf, '[')
+		for i, item := range x {
+			if i > 0 {
+				buf = append(buf, ',')
+			}
+			var err error
+			if buf, err = appendJSONValue(buf, item); err != nil {
+				return nil, err
+			}
+		}
+		return append(buf, ']'), nil
 	}
-	encoded, err := json.Marshal(v)
+	encoded, err := json.Marshal(jsonEncodeValue(v))
+	if err != nil {
+		return nil, err
+	}
+	return append(buf, encoded...), nil
+}
+
+// appendJSONList appends a PHP list as a JSON array. It takes the range and no
+// collection, as appendJSONPairs does, so the two read the same and one walk
+// serves whatever shape carries a list.
+func appendJSONList(buf []byte, size int, over func(func(any, any) bool)) ([]byte, error) {
+	buf = slices.Grow(buf, size*8+2)
+	buf = append(buf, '[')
+	first := true
+	var failure error
+	over(func(_, value any) bool {
+		if !first {
+			buf = append(buf, ',')
+		}
+		first = false
+		buf, failure = appendJSONValue(buf, value)
+		return failure == nil
+	})
+	if failure != nil {
+		return nil, failure
+	}
+	return append(buf, ']'), nil
+}
+
+// appendJSONPairs appends a keyed collection as a JSON object, in the order
+// range visits it, which is the order the script built it.
+//
+// size is the entry count, for the estimate the buffer grows to ahead of the
+// walk: a document appended into one allocation is the point of appending.
+func appendJSONPairs(buf []byte, size int, over func(func(any, any) bool)) ([]byte, error) {
+	buf = slices.Grow(buf, size*24+2)
+	buf = append(buf, '{')
+	first := true
+	var failure error
+	over(func(key, value any) bool {
+		if !first {
+			buf = append(buf, ',')
+		}
+		first = false
+		if buf, failure = appendJSONString(buf, phpval.String(key)); failure != nil {
+			return false
+		}
+		buf = append(buf, ':')
+		buf, failure = appendJSONValue(buf, value)
+		return failure == nil
+	})
+	if failure != nil {
+		return nil, failure
+	}
+	return append(buf, '}'), nil
+}
+
+// appendJSONString appends a string's encoding. It takes the string itself and
+// no any, because a key reaching an any parameter is boxed, and a string does
+// not fit an interface word: that is one allocation per key of every object a
+// response is made of.
+func appendJSONString(buf []byte, s string) ([]byte, error) {
+	if jsonSafe(s) {
+		buf = append(buf, '"')
+		buf = append(buf, s...)
+		return append(buf, '"'), nil
+	}
+	encoded, err := json.Marshal(s)
 	if err != nil {
 		return nil, err
 	}

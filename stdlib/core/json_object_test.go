@@ -3,6 +3,8 @@ package core
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/titpetric/phpscript/model"
 )
 
 // TestJSONObjectMatchesEncodingJSON holds the fast paths in MarshalJSON to
@@ -61,5 +63,73 @@ func TestJSONObjectMatchesEncodingJSON(t *testing.T) {
 	want := `{"id":42,` + string(key) + `:` + string(value) + `,"nested":["x"]}`
 	if string(got) != want {
 		t.Errorf("object = %s, want %s", got, want)
+	}
+}
+
+// phpValues answers the value shapes a script hands the encoder: the
+// collections, nested inside each other, and the keys that decide between a
+// JSON array and a JSON object.
+func phpValues() []any {
+	list := model.NewArray()
+	list.Set(int64(0), "a")
+	list.Set(int64(1), int64(2))
+
+	sparse := model.NewArray()
+	sparse.Set(int64(1), "one")
+	sparse.Set(int64(5), "five")
+
+	keyed := model.NewArray()
+	keyed.Set("id", int64(7))
+	keyed.Set("name", "html <b>&</b>")
+	keyed.Set("tags", list)
+	keyed.Set("missing", nil)
+
+	intKeyed := model.NewArray()
+	intKeyed.Set(int64(3), "three")
+	intKeyed.Set("mixed", true)
+
+	nested := model.NewArray()
+	nested.Set("outer", keyed)
+	nested.Set("list", []any{list, sparse})
+
+	object := model.NewObject(&model.Class{Name: "Point"})
+	object.SetProp("x", 1.5)
+	object.SetProp("y", int64(-2))
+
+	return []any{
+		model.NewArray(),
+		list,
+		sparse,
+		keyed,
+		intKeyed,
+		nested,
+		object,
+		(*model.Array)(nil),
+		(*model.Object)(nil),
+		[]any{keyed, list},
+	}
+}
+
+// TestAppendJSONValueMatchesTheConvertedTree holds the collection appender to
+// the bytes the jsonEncodeValue tree encodes to.
+//
+// The appender is what the encoder and json_encode() write through, and the
+// tree is what encoding/json walks on the indent path, so the two spellings of
+// one document have to agree character for character: the list-or-object
+// decision, the order of the keys, an int key's spelling and the escapes.
+func TestAppendJSONValueMatchesTheConvertedTree(t *testing.T) {
+	t.Parallel()
+	for _, value := range phpValues() {
+		got, err := appendJSONValue(nil, value)
+		if err != nil {
+			t.Fatalf("appendJSONValue(%T): %v", value, err)
+		}
+		want, err := json.Marshal(jsonEncodeValue(value))
+		if err != nil {
+			t.Fatalf("json.Marshal(jsonEncodeValue(%T)): %v", value, err)
+		}
+		if string(got) != string(want) {
+			t.Errorf("appendJSONValue(%T) = %s, want %s", value, got, want)
+		}
 	}
 }

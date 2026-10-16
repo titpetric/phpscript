@@ -46,11 +46,11 @@ func registerJSON(rt *runner.Runtime) {
 // arrives as null, and there is nothing for it to select. The encoding is not
 // configurable by design; see docs/design.md, "JSON".
 func phpJSONEncode(value any, flags ...any) (any, error) {
-	b, err := json.Marshal(jsonEncodeValue(value))
+	buf, err := appendJSONValue(make([]byte, 0, 64), value)
 	if err != nil {
 		return nil, err
 	}
-	return string(b), nil
+	return string(buf), nil
 }
 
 func phpJSONDecode(text string, opts ...any) (any, error) {
@@ -230,16 +230,28 @@ func jsonDecodeValue(v any) any {
 // one difference PHP forces: the value it is given is a PHP value, so it is
 // converted the way json_encode() converts one, and the two spellings answer
 // the same JSON for the same array.
+//
+// A plain encoder appends the document into buf and writes it in one call. The
+// json.Encoder underneath is built by SetIndent alone, because indenting is
+// encoding/json's own pass over finished bytes and this writes none it could
+// read; an encoder nothing indents never builds one.
 type JSONEncoder struct {
-	enc *json.Encoder
+	stream io.Writer
+	buf    []byte
+	enc    *json.Encoder
 }
+
+// jsonEncoderBuffer is how much of its buffer an encoder keeps between values.
+// One response's worth is kept and reused; a large document's is released, so a
+// handle held open for the length of a script does not hold that peak with it.
+const jsonEncoderBuffer = 1 << 16
 
 // NewJSONEncoder returns an encoder writing to $stream.
 func NewJSONEncoder(stream io.Writer) (*JSONEncoder, error) {
 	if stream == nil {
 		return nil, errNilStream("JSON\\Encoder", "writer")
 	}
-	return &JSONEncoder{enc: json.NewEncoder(stream)}, nil
+	return &JSONEncoder{stream: stream}, nil
 }
 
 // encode writes $value to the stream as JSON, followed by a newline.
@@ -248,13 +260,29 @@ func NewJSONEncoder(stream io.Writer) (*JSONEncoder, error) {
 // newline is what separates one from the next. A single value followed by a
 // newline is still valid JSON to any reader.
 func (e *JSONEncoder) Encode(value any) error {
-	return e.enc.Encode(jsonEncodeValue(value))
+	if e.enc != nil {
+		return e.enc.Encode(jsonEncodeValue(value))
+	}
+	buf, err := appendJSONValue(e.buf[:0], value)
+	if err != nil {
+		return err
+	}
+	e.buf = append(buf, '\n')
+	_, err = e.stream.Write(e.buf)
+	if cap(e.buf) > jsonEncoderBuffer {
+		e.buf = nil
+	}
+	return err
 }
 
 // SetIndent is json.Encoder.SetIndent: each value is written across several
 // lines, $indent per level under $prefix, and two empty strings go back to one
 // line per value.
 func (e *JSONEncoder) SetIndent(prefix, indent string) {
+	if e.enc == nil {
+		e.enc = json.NewEncoder(e.stream)
+		e.buf = nil
+	}
 	e.enc.SetIndent(prefix, indent)
 }
 
