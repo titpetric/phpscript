@@ -676,6 +676,12 @@ type goMethodInfo struct {
 	// type, not per receiver, and the runtime because a callable argument is
 	// bound to the runtime making the call.
 	bind func(rt *Runtime, m reflect.Value, args []any) (any, error)
+	// direct is the typed call for the method shapes a handler touches per
+	// request, dispatched through an interface assertion in place of
+	// reflect.Value.Call and its per-call receiver, frame and result
+	// allocations. Nil when no shape matches; a false from it sends the
+	// call down bind with its coercion and its errors intact.
+	direct func(base any, args []any) (any, bool, error)
 }
 
 // resolveGoMethod resolves the way callGoMethod always has: the exact name,
@@ -717,6 +723,7 @@ func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 		wantsCtx: wantsContext(mtype),
 		found:    true,
 		bind:     bindGoMethod(mtype),
+		direct:   directGoMethod(rv.Interface(), t.Method(index).Name),
 	}
 }
 
@@ -803,6 +810,13 @@ func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor fu
 	}
 	if info.wantsCtx {
 		args = append([]any{rt.bindingContext(scopeFor())}, args...)
+	} else if info.direct != nil {
+		if result, handled, err := info.direct(base, args); handled {
+			if err != nil {
+				return nil, methodCallError(err, method)
+			}
+			return result, nil
+		}
 	}
 	result, err = info.bind(rt, rv.Method(info.index), args)
 	if err != nil {
