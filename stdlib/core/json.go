@@ -1,11 +1,11 @@
 package core
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/titpetric/phpscript/internal/phpval"
@@ -196,44 +196,90 @@ func jsonEncodeValue(v any) any {
 // in the order the script assembled it. A map cannot carry that order, which is
 // why this type exists in place of a map[string]any.
 type jsonObject struct {
-	keys   []string
-	values []any
+	pairs []jsonPair
+}
+
+type jsonPair struct {
+	key   string
+	value any
 }
 
 func newJSONObject(size int) *jsonObject {
-	return &jsonObject{
-		keys:   make([]string, 0, size),
-		values: make([]any, 0, size),
-	}
+	return &jsonObject{pairs: make([]jsonPair, 0, size)}
 }
 
 func (o *jsonObject) add(key string, value any) {
-	o.keys = append(o.keys, key)
-	o.values = append(o.values, value)
+	o.pairs = append(o.pairs, jsonPair{key: key, value: value})
 }
 
-// MarshalJSON writes the entries in insertion order.
+// MarshalJSON writes the entries in insertion order, into one buffer grown to
+// an estimate of the document. A key or a scalar that needs no escaping is
+// appended as itself; everything else defers to json.Marshal, so the bytes
+// are the ones encoding/json writes either way.
 func (o *jsonObject) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	buf.WriteByte('{')
-	for i, key := range o.keys {
-		if i > 0 {
-			buf.WriteByte(',')
-		}
-		encoded, err := json.Marshal(key)
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(encoded)
-		buf.WriteByte(':')
-		encoded, err = json.Marshal(o.values[i])
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(encoded)
+	size := 2
+	for _, pair := range o.pairs {
+		size += len(pair.key) + 20
 	}
-	buf.WriteByte('}')
-	return buf.Bytes(), nil
+	buf := make([]byte, 0, size)
+	buf = append(buf, '{')
+	for i, pair := range o.pairs {
+		if i > 0 {
+			buf = append(buf, ',')
+		}
+		var err error
+		if buf, err = appendJSONValue(buf, pair.key); err != nil {
+			return nil, err
+		}
+		buf = append(buf, ':')
+		if buf, err = appendJSONValue(buf, pair.value); err != nil {
+			return nil, err
+		}
+	}
+	return append(buf, '}'), nil
+}
+
+// appendJSONValue appends one value's encoding: the scalar shapes a handler's
+// response is made of directly, and json.Marshal for the rest, floats
+// included, whose spelling is encoding/json's own.
+func appendJSONValue(buf []byte, v any) ([]byte, error) {
+	switch x := v.(type) {
+	case nil:
+		return append(buf, "null"...), nil
+	case bool:
+		if x {
+			return append(buf, "true"...), nil
+		}
+		return append(buf, "false"...), nil
+	case string:
+		if jsonSafe(x) {
+			buf = append(buf, '"')
+			buf = append(buf, x...)
+			return append(buf, '"'), nil
+		}
+	case int64:
+		return strconv.AppendInt(buf, x, 10), nil
+	case int:
+		return strconv.AppendInt(buf, int64(x), 10), nil
+	}
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return append(buf, encoded...), nil
+}
+
+// jsonSafe reports a string encoding/json writes byte for byte: printable
+// ASCII with the quote, the backslash and the three characters the default
+// HTML escaper rewrites left out.
+func jsonSafe(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c < 0x20 || c > 0x7e || c == '"' || c == '\\' || c == '<' || c == '>' || c == '&' {
+			return false
+		}
+	}
+	return true
 }
 
 // arrayIsList reports whether an *model.Array's keys are the dense int64
