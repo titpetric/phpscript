@@ -68,6 +68,11 @@ type Runtime struct {
 	// Implementing classes acquire nothing from it (docs/design.md).
 	interfaces map[string]*model.InterfaceDecl
 
+	// lazyGlobals binds one superglobal on its first read. Context.Register
+	// installs it per request in place of building all seven views eagerly,
+	// because a page reads one superglobal or none; see Runtime.resolveAuto.
+	lazyGlobals func(name string) any
+
 	// auto holds the request superglobals in fixed fields; see
 	// phpval.AutoGlobals for why they are not globals map entries.
 	auto phpval.AutoGlobals
@@ -489,6 +494,7 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 	rt.preludeDone = false
 	clear(rt.globals)
 	rt.auto.Reset()
+	rt.lazyGlobals = nil
 	// The scratch containers stay for the next Register, emptied now so a
 	// reset session retains nothing of the last request's values.
 	for _, arr := range rt.sgScratch {
@@ -1336,13 +1342,33 @@ func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if c, ok := rt.constants[name]; ok {
 		return c, nil
 	}
-	if v, ok := rt.auto.Lookup(name); ok {
+	if v, ok := rt.resolveAuto(name); ok {
 		return v, nil
 	}
 	if strings.HasPrefix(ident, constIdentPrefix) {
 		return nil, &UndefinedConstantError{Name: name}
 	}
 	return nil, nil
+}
+
+// resolveAuto answers a superglobal read: the bound value, or the view the
+// request's lazy binder builds on the first read of that name. What the
+// binder answers is bound, so the next read is one field read, and a write
+// through the view reaches every later reader the way an eagerly bound view
+// did.
+func (rt *Runtime) resolveAuto(name string) (any, bool) {
+	if v, ok := rt.auto.Lookup(name); ok {
+		return v, true
+	}
+	if rt.lazyGlobals == nil || !rt.auto.Claims(name) {
+		return nil, false
+	}
+	v := rt.lazyGlobals(name)
+	if v == nil {
+		return nil, false
+	}
+	rt.auto.Set(name, v)
+	return v, true
 }
 
 func (rt *Runtime) compileExpr(e model.Expr) (*compiledExpr, error) {

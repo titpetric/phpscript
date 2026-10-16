@@ -58,6 +58,12 @@ func (g *AutoGlobals) Set(name string, value any) bool {
 	return true
 }
 
+// Claims reports name naming a superglobal field, bound or not, so a lazy
+// binder answers the closed set and nothing else.
+func (g *AutoGlobals) Claims(name string) bool {
+	return g.field(name) != nil
+}
+
 // Lookup answers a read. The bool reports a bound superglobal: an unset one
 // answers false so the caller keeps its fallback order (globals, constants).
 func (g *AutoGlobals) Lookup(name string) (any, bool) {

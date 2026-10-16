@@ -168,7 +168,7 @@ func (h flatHost) Globals() map[string]any { return h.runtime.globals }
 // then the constant table. A frame's own names are the engine's slots, and a
 // global is seeded into the top-level frame by Globals.
 func (h flatHost) Lookup(name string) any {
-	if value, ok := h.runtime.auto.Lookup(name); ok {
+	if value, ok := h.runtime.resolveAuto(name); ok {
 		return value
 	}
 	return h.runtime.constants[name]
@@ -179,7 +179,7 @@ func (h flatHost) Lookup(name string) any {
 // the same expression, and an unset variable of that spelling stays null,
 // so this is separate from Lookup.
 func (h flatHost) Constant(name string) (any, error) {
-	if value, ok := h.runtime.auto.Lookup(name); ok {
+	if value, ok := h.runtime.resolveAuto(name); ok {
 		return value, nil
 	}
 	if value, ok := h.runtime.constants[name]; ok {

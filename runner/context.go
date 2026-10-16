@@ -846,28 +846,20 @@ func (c Context) Register(rt *Runtime) {
 	// whose methods receive the runtime lifecycle context.
 	rt.SetContext(context.WithValue(rt.Context(), requestContextKey{}, c))
 
-	// Superglobals as ordinary PHP arrays. $_GET, $_POST and $_COOKIE alias
-	// Every superglobal is a view over what the request holds, and each one
-	// decodes what it needs on the first read. A page that names none of them
-	// parses nothing.
+	// Superglobals bind on their first read. Every superglobal is a view over
+	// what the request holds, and a view decodes what it needs on the first
+	// read; binding them the same way means a page that names none of them
+	// builds none of the mapmap layers either, which is php's own
+	// auto_globals_jit. Runtime.resolveAuto is the read that binds.
 	//
 	// The layers of the request this one replaces go back to the pool. A
 	// runtime serves one request at a time, so the moment the next registers
 	// is the moment the last one is done with them.
 	releaseMapMaps(rt, superglobalNames...)
-
-	rt.SetGlobal("_GET", c.lazyInput(c.getVars, c.GetMap))
-	rt.SetGlobal("_POST", c.lazyInput(c.postVars, c.PostMap))
-	rt.SetGlobal("_COOKIE", c.lazyInput(c.cookieVars, c.CookieMap))
-	rt.SetGlobal("_SERVER", c.ServerMap())
-	rt.SetGlobal("_ENV", mapmap.New(mapmap.MapSource(c.Env)))
-	rt.SetGlobal("_REQUEST", c.lazyArray(func() *model.Array {
-		return c.requestArrayInto(model.NewArray())
-	}))
-	rt.SetGlobal("_FILES", c.lazyArray(func() *model.Array {
-		c.decodeForm()
-		return c.filesArrayInto(model.NewArray())
-	}))
+	for _, name := range superglobalNames {
+		rt.auto.Set(name, nil)
+	}
+	rt.lazyGlobals = c.autoGlobal
 
 	argvArr := rt.scratchArray("argv")
 	for i, arg := range c.Argv {
@@ -1126,6 +1118,34 @@ func releaseMapMaps(rt *Runtime, names ...string) {
 // superglobalNames are the request variables Register seeds, which are the
 // views whose layers go back to the pool when the next request arrives.
 var superglobalNames = []string{"_GET", "_POST", "_COOKIE", "_SERVER", "_ENV", "_REQUEST", "_FILES"}
+
+// autoGlobal builds the view for one superglobal, on the first read that
+// names it. The names are the closed set AutoGlobals claims; _SESSION is
+// Session\Manager's and no request input, so it builds nothing here.
+func (c Context) autoGlobal(name string) any {
+	switch name {
+	case "_GET":
+		return c.lazyInput(c.getVars, c.GetMap)
+	case "_POST":
+		return c.lazyInput(c.postVars, c.PostMap)
+	case "_COOKIE":
+		return c.lazyInput(c.cookieVars, c.CookieMap)
+	case "_SERVER":
+		return c.ServerMap()
+	case "_ENV":
+		return mapmap.New(mapmap.MapSource(c.Env))
+	case "_REQUEST":
+		return c.lazyArray(func() *model.Array {
+			return c.requestArrayInto(model.NewArray())
+		})
+	case "_FILES":
+		return c.lazyArray(func() *model.Array {
+			c.decodeForm()
+			return c.filesArrayInto(model.NewArray())
+		})
+	}
+	return nil
+}
 
 // lazyArray renders a superglobal that is assembled and never decoded, as
 // $_REQUEST is from the four inputs it merges and $_FILES from the body.
