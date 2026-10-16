@@ -5,6 +5,38 @@ import (
 	"testing"
 )
 
+// TestSourceValue covers what a foreign context value answers for the two
+// span-source keys: the values the WithSpan wrappers attach, and a false for
+// an empty location, so the caller falls down its parent chain the way an
+// unwrapped context does.
+func TestSourceValue(t *testing.T) {
+	t.Parallel()
+	carrier := WithSpanLine(WithSpanFilename(context.Background(), "x"), 1)
+	ctx := carrierThrough{Context: context.Background(), filename: "public/index.php", line: 23}
+	if filename, line := SpanSource(ctx); filename != "public/index.php" || line != 23 {
+		t.Errorf("SpanSource() = %q, %d, want the carried fields", filename, line)
+	}
+	empty := carrierThrough{Context: carrier}
+	if filename, line := SpanSource(empty); filename != "x" || line != 1 {
+		t.Errorf("SpanSource() = %q, %d, want the parent's values when the fields are empty", filename, line)
+	}
+}
+
+// carrierThrough is the shape runner.bindingCtx has: the location as fields,
+// answered through SourceValue, with the parent for everything else.
+type carrierThrough struct {
+	context.Context
+	filename string
+	line     int
+}
+
+func (c carrierThrough) Value(key any) any {
+	if v, ok := SourceValue(key, c.filename, c.line); ok {
+		return v
+	}
+	return c.Context.Value(key)
+}
+
 // TestSpanSource covers the source location a span records. PHP has no lexical
 // scope a Go caller can read, so the interpreter publishes the file and line it
 // is executing into the context a binding runs under. An empty filename and a

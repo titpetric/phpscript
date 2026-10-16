@@ -111,7 +111,7 @@ func (s *Scope) DefinedVars() map[string]any {
 // chose, for the trace region that must stay on the session chain.
 func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.Context {
 	c := &bindingCtx{Context: ctx, scope: scope, env: rt.Env}
-	rt.fillSource(c, scope)
+	rt.fillSource(scope, c)
 	return c
 }
 

@@ -165,3 +165,21 @@ func TestAutoGlobals_Reset(t *testing.T) {
 		t.Errorf("Lookup(_GET) after Reset and Set = %#v, %t", value, ok)
 	}
 }
+
+// TestAutoGlobals_Claims covers the question a lazy binder asks: whether a
+// name belongs to the closed superglobal set at all, bound or not, which
+// Lookup cannot answer because an unset superglobal and a plain variable both
+// read false there.
+func TestAutoGlobals_Claims(t *testing.T) {
+	var globals AutoGlobals
+	for _, name := range []string{"_GET", "_POST", "_COOKIE", "_SERVER", "_ENV", "_REQUEST", "_FILES", "_SESSION"} {
+		if !globals.Claims(name) {
+			t.Errorf("Claims(%q) = false, want the whole closed set claimed", name)
+		}
+	}
+	for _, name := range []string{"", "_", "_G", "x", "argv", "_get", "_GETX"} {
+		if globals.Claims(name) {
+			t.Errorf("Claims(%q) = true, want no claim outside the set", name)
+		}
+	}
+}

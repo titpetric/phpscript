@@ -100,7 +100,7 @@ func (rt *Runtime) bindingContext(scope *Scope) context.Context {
 		c.Context, c.session = rt.client, rt.ctx
 		c.detached = rt.ignoreAbort
 	}
-	rt.fillSource(c, scope)
+	rt.fillSource(scope, c)
 	return c
 }
 
@@ -110,7 +110,7 @@ func (rt *Runtime) bindingContext(scope *Scope) context.Context {
 // one per statement to be read back here costs a map write on every statement
 // executed. It is resolved here and never recorded, for the reason currentStmt
 // states.
-func (rt *Runtime) fillSource(c *bindingCtx, scope *Scope) {
+func (rt *Runtime) fillSource(scope *Scope, c *bindingCtx) {
 	if filename, ok := scope.Get("__FILE__"); ok {
 		c.filename, _ = filename.(string)
 	} else {

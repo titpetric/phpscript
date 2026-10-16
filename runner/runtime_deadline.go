@@ -91,44 +91,6 @@ func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 	return func() { rt.EndRequest(saved) }
 }
 
-// RequestState is what BeginRequest saves, held on the caller's frame and
-// handed back to EndRequest. A value and no closure, because the restore
-// closure EnterRequest builds is one heap allocation per request on the
-// serving path.
-type RequestState struct {
-	client      context.Context
-	clientDone  <-chan struct{}
-	ignoreAbort bool
-	inRequest   bool
-}
-
-// BeginRequest is EnterRequest with the saved state as its answer; EndRequest
-// puts it back.
-func (rt *Runtime) BeginRequest(ctx context.Context) RequestState {
-	saved := RequestState{
-		client:      rt.client,
-		clientDone:  rt.clientDone,
-		ignoreAbort: rt.ignoreAbort,
-		inRequest:   rt.inRequest,
-	}
-
-	rt.client = ctx
-	rt.clientDone = watchEnd(ctx)
-	// Off for every request, so a handler that ignored a disconnect does not
-	// decide it for the next one. The limit is not saved: it is
-	// the runtime's and a handler moving it means to move it.
-	rt.ignoreAbort = false
-	rt.inRequest = true
-	rt.refreshDeadlineArmed()
-	return saved
-}
-
-// EndRequest restores what BeginRequest saved.
-func (rt *Runtime) EndRequest(saved RequestState) {
-	rt.client, rt.clientDone, rt.ignoreAbort, rt.inRequest = saved.client, saved.clientDone, saved.ignoreAbort, saved.inRequest
-	rt.refreshDeadlineArmed()
-}
-
 // watchEnd answers the channel that closes when ctx ends, nil for a context
 // that cannot end.
 //
