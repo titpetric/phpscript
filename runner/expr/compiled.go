@@ -264,33 +264,50 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		}, nil
 
 	case *model.ArrayLit:
-		items := make([]closure, len(n.Items))
+		// The key and the value closures and no pair closure over them: a pair
+		// closure returns model.ArrayItemValue as an any, which boxes a
+		// four-word struct on the heap for the line below to unbox again. That
+		// is one allocation per entry of every array literal a script writes,
+		// and the two slices here are built once at compile time.
+		keys := make([]closure, len(n.Items))
+		vals := make([]closure, len(n.Items))
 		for i, it := range n.Items {
-			var key closure
 			if it.Key != nil {
-				k, err := dc.compile(it.Key)
+				key, err := dc.compile(it.Key)
 				if err != nil {
 					return nil, err
 				}
-				key = k
+				keys[i] = key
 			}
 			val, err := dc.compile(it.Val)
 			if err != nil {
 				return nil, err
 			}
-			items[i] = pairItem(dc.h.Pair, key, val)
+			vals[i] = val
 		}
 		fn := dc.h.Array
+		pair := dc.h.Pair
 		return func(env *Env) (any, error) {
-			vals := make([]model.ArrayItemValue, len(items))
-			for i, c := range items {
-				v, err := c(env)
+			items := make([]model.ArrayItemValue, len(vals))
+			for i, val := range vals {
+				// The key ahead of the value, entry by entry, which is the
+				// order php evaluates a literal in. A nil key is a
+				// list-style append.
+				var key any
+				if keys[i] != nil {
+					k, err := keys[i](env)
+					if err != nil {
+						return nil, err
+					}
+					key = k
+				}
+				v, err := val(env)
 				if err != nil {
 					return nil, err
 				}
-				vals[i] = v.(model.ArrayItemValue)
+				items[i] = pair(key, v)
 			}
-			return fn(vals...), nil
+			return fn(items...), nil
 		}, nil
 
 	case *model.Index:
@@ -429,24 +446,6 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		return slotRead(slot), nil
 	}
 	return nil, fmt.Errorf("transpile: unsupported expression %T", e)
-}
-
-// pairItem builds one __pair value; a nil key is a list-style append.
-func pairItem(pair func(key, val any) model.ArrayItemValue, key, val closure) closure {
-	return func(env *Env) (any, error) {
-		var k any
-		if key != nil {
-			var err error
-			if k, err = key(env); err != nil {
-				return nil, err
-			}
-		}
-		v, err := val(env)
-		if err != nil {
-			return nil, err
-		}
-		return pair(k, v), nil
-	}
 }
 
 // compileInterp compiles an interpolated string to one closure that writes
