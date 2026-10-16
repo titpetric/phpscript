@@ -80,8 +80,9 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 
 		// The connection being answered, so connection_aborted() reports the
 		// client that is waiting and a disconnect ends the handler unless it
-		// ignored that.
-		defer rt.EnterRequest(r.Context())()
+		// ignored that. The Begin and End pair in place of EnterRequest's
+		// restore closure, which is a heap allocation per request.
+		defer rt.EndRequest(rt.BeginRequest(r.Context()))
 
 		if _, err := callable.Invoke(rt, answered, r); err != nil {
 			rt.RecordError(err)

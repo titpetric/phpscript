@@ -87,7 +87,30 @@ func (rt *Runtime) ClientContext() context.Context {
 // connection_aborted() reports, whether a disconnect ends it, and the limit,
 // because php settles all three per request and there a request is a script.
 func (rt *Runtime) EnterRequest(ctx context.Context) func() {
-	client, clientDone, ignoreAbort, inRequest := rt.client, rt.clientDone, rt.ignoreAbort, rt.inRequest
+	saved := rt.BeginRequest(ctx)
+	return func() { rt.EndRequest(saved) }
+}
+
+// RequestState is what BeginRequest saves, held on the caller's frame and
+// handed back to EndRequest. A value and no closure, because the restore
+// closure EnterRequest builds is one heap allocation per request on the
+// serving path.
+type RequestState struct {
+	client      context.Context
+	clientDone  <-chan struct{}
+	ignoreAbort bool
+	inRequest   bool
+}
+
+// BeginRequest is EnterRequest with the saved state as its answer; EndRequest
+// puts it back.
+func (rt *Runtime) BeginRequest(ctx context.Context) RequestState {
+	saved := RequestState{
+		client:      rt.client,
+		clientDone:  rt.clientDone,
+		ignoreAbort: rt.ignoreAbort,
+		inRequest:   rt.inRequest,
+	}
 
 	rt.client = ctx
 	rt.clientDone = watchEnd(ctx)
@@ -97,11 +120,13 @@ func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 	rt.ignoreAbort = false
 	rt.inRequest = true
 	rt.refreshDeadlineArmed()
+	return saved
+}
 
-	return func() {
-		rt.client, rt.clientDone, rt.ignoreAbort, rt.inRequest = client, clientDone, ignoreAbort, inRequest
-		rt.refreshDeadlineArmed()
-	}
+// EndRequest restores what BeginRequest saved.
+func (rt *Runtime) EndRequest(saved RequestState) {
+	rt.client, rt.clientDone, rt.ignoreAbort, rt.inRequest = saved.client, saved.clientDone, saved.ignoreAbort, saved.inRequest
+	rt.refreshDeadlineArmed()
 }
 
 // watchEnd answers the channel that closes when ctx ends, nil for a context
