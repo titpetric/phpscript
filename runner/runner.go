@@ -973,8 +973,31 @@ func (rt *Runtime) currentSourceLine() int {
 // is new, so nothing is shadowed and nothing needs restoring; includeFile,
 // which layers onto a live scope, resolves through pushScopeFile.
 func (rt *Runtime) setScopeFile(scope *Scope, filename string) {
-	scope.Set("__FILE__", filename)
-	scope.Set("__DIR__", rt.fileDir(filename))
+	scope.Set("__FILE__", rt.boxed(filename))
+	scope.Set("__DIR__", rt.boxed(rt.fileDir(filename)))
+}
+
+// boxed answers s as an interface value, boxing each distinct string once.
+//
+// A string does not fit in an interface word, so every `any(s)` is a heap
+// cell. The strings this covers are the magic constants and the class name a
+// frame binds, which come from the declarations a program holds: the set is
+// the size of the source and every call binds the same members of it.
+//
+// The map is the runtime's, like fileDirs beside it, because a Runtime answers
+// one goroutine at a time and Fork builds a worker its own. A cache on the
+// declaration would be shared through the include cache, where two workers
+// reach one AST.
+func (rt *Runtime) boxed(s string) any {
+	if v, ok := rt.boxedStrings[s]; ok {
+		return v
+	}
+	if rt.boxedStrings == nil {
+		rt.boxedStrings = make(map[string]any, 16)
+	}
+	var v any = s
+	rt.boxedStrings[s] = v
+	return v
 }
 
 // fileDir caches path.Dir per filename: every invocation of a function binds
@@ -1710,7 +1733,7 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	scope.Set("this", obj)
 	scope.args = args
 	if obj.Class != nil {
-		scope.Set("__class__", obj.Class.Name)
+		scope.Set("__class__", rt.boxed(obj.Class.Name))
 	}
 	// The span name costs two string builds, so it is only assembled when an
 	// observer is listening.

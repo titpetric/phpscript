@@ -209,7 +209,11 @@ type Runtime struct {
 	concatParts map[*model.Binary][]model.Expr
 	// fileDirs caches path.Dir per loaded filename; see Runtime.fileDir.
 	fileDirs map[string]string
-	helpers  map[string]func(...any) (any, error)
+
+	// boxedStrings holds each magic constant and class name as an interface
+	// value, boxed once; see Runtime.boxed.
+	boxedStrings map[string]any
+	helpers      map[string]func(...any) (any, error)
 
 	// envMu guards envFree, the free list of reusable evaluation environments,
 	// and scopeFree, the free list of call scopes user-function invocations

@@ -269,7 +269,7 @@ func (h flatHost) MatchCatch(declaredType string, err error) bool {
 // here, and it may name the class again.
 func (h flatHost) ClassConst(class, name string) (any, error) {
 	scope := h.runtime.newScope()
-	scope.Set("__class__", class)
+	scope.Set("__class__", h.runtime.boxed(class))
 	return h.runtime.helperClassConst(&scopeRef{scope: scope})(class, name)
 }
 

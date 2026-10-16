@@ -44,11 +44,27 @@ func readConfig() config {
 		addr = "127.0.0.1:8099"
 	}
 	workers, _ := strconv.Atoi(os.Getenv("TESTSERVER_WORKERS"))
-	limit, _ := strconv.Atoi(os.Getenv("TESTSERVER_LIMIT"))
-	if limit < 1 {
-		limit = 10
+	return config{addr: addr, workers: workers, limit: readLimit(os.Getenv("TESTSERVER_LIMIT"))}
+}
+
+// readLimit reads TESTSERVER_LIMIT as the duration docs/agents/performance.md
+// describes, and as the bare seconds scripts/bench-http.sh passes.
+//
+// Reading it as seconds alone leaves `600s` parsing to nothing and the server
+// holding the ten-second default, so it stops listening part-way through a
+// sweep and every route after the first measures an empty column. The phpscript
+// side takes either spelling, so the two servers have to agree.
+func readLimit(value string) time.Duration {
+	if value == "" {
+		return 10 * time.Second
 	}
-	return config{addr: addr, workers: workers, limit: time.Duration(limit) * time.Second}
+	if d, err := time.ParseDuration(value); err == nil && d > 0 {
+		return d
+	}
+	if seconds, err := strconv.Atoi(value); err == nil && seconds > 0 {
+		return time.Duration(seconds) * time.Second
+	}
+	return 10 * time.Second
 }
 
 func routes() *http.ServeMux {

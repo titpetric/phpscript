@@ -64,31 +64,15 @@ func (m *Mux) Handle(pattern string, handler any) error {
 
 // answer submits one request to a worker and waits for it.
 func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *nethttp.Request) {
+	// The tracker is the work as well as the wrapper: it lives for the length
+	// of the run already, so submitting it submits no closure. Its Run method
+	// is what the worker calls, and tracker.go holds it.
 	answered := trackers.Get().(*answerTracker)
 	answered.ResponseWriter, answered.wrote, answered.failure = w, false, nil
+	answered.callable, answered.request = callable, r
+	answered.args[0], answered.args[1] = answered, r
 
-	ran := m.workers().Submit(r.Context(), func(rt *runner.Runtime) {
-		// The response for the length of the call, so a handler that echoes
-		// reaches the client and not the process's own output. The tracker and
-		// not the raw writer, so an echo counts as the response beginning: the
-		// 500 guard below reads wrote, and a handler that echoed half a
-		// document and then threw has already sent its status. The tracker
-		// forwards WriteString, so an echo still reaches the io.StringWriter
-		// net/http implements and pays no clone on the way.
-		rt.PushOutput(answered)
-		defer rt.PopOutput()
-
-		// The connection being answered, so connection_aborted() reports the
-		// client that is waiting and a disconnect ends the handler unless it
-		// ignored that. The Begin and End pair in place of EnterRequest's
-		// restore closure, which is a heap allocation per request.
-		defer rt.EndRequest(rt.BeginRequest(r.Context()))
-
-		if _, err := callable.Invoke(rt, answered, r); err != nil {
-			rt.RecordError(err)
-			answered.failure = err
-		}
-	})
+	ran := m.workers().Submit(r.Context(), answered)
 
 	if !ran {
 		// The client left with the run queued or in flight. Nothing written
@@ -108,10 +92,9 @@ func (m *Mux) answer(callable *runner.Callable, w nethttp.ResponseWriter, r *net
 	if answered.failure != nil && !answered.wrote {
 		nethttp.Error(w, nethttp.StatusText(nethttp.StatusInternalServerError), nethttp.StatusInternalServerError)
 	}
-	// The writer last, so nothing above reads a cleared field and no connection is
-	// held alive by an idle free-list entry.
-	answered.ResponseWriter, answered.failure = nil, nil
-	trackers.Put(answered)
+	// The release last, so nothing above reads a cleared field and no
+	// connection is held alive by an idle free-list entry.
+	answered.release()
 }
 
 // workers answers the pool this mux runs on, building a default one for a mux

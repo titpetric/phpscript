@@ -39,7 +39,7 @@ type Pool struct {
 
 // poolRun is one unit of work and the channel its submitter waits on.
 type poolRun struct {
-	run  func(*Runtime)
+	job  Job
 	done chan struct{}
 }
 
@@ -77,12 +77,15 @@ func NewPool(rt *Runtime, workers, queue int, output func() io.Writer) *Pool {
 		go func() {
 			defer pool.done.Done()
 			for run := range pool.runs {
-				run.run(worker)
+				run.job.Run(worker)
 				// Reset after the run and not before, so the next run starts on
 				// a runtime holding nothing and the values this one built are
 				// released now and not at the next request.
 				worker.resetExecution(output(), nil)
-				close(run.done)
+				// A send and no close, so a lent channel serves the job's
+				// next run. The slot is buffered, so a caller that stopped
+				// waiting leaves this worker free in place of parking it.
+				run.done <- struct{}{}
 			}
 		}()
 	}
@@ -104,12 +107,20 @@ func (p *Pool) Queue() int { return p.queue }
 //
 // Why the per-submit done channel is not recycled is
 // docs/allocation-performance.md, "The per-submit done channel".
-func (p *Pool) Submit(ctx context.Context, fn func(*Runtime)) bool {
+func (p *Pool) Submit(ctx context.Context, job Job) bool {
 	var done <-chan struct{}
 	if ctx != nil {
 		done = ctx.Done()
 	}
-	run := poolRun{run: fn, done: make(chan struct{})}
+	// The lender's channel in place of one per submit, and the make only
+	// where no job carries one.
+	var finished chan struct{}
+	if lender, ok := job.(DoneJob); ok {
+		finished = lender.Done()
+	} else {
+		finished = make(chan struct{}, 1)
+	}
+	run := poolRun{job: job, done: finished}
 
 	// The read lock spans the send alone. A worker is still draining while
 	// Close waits for the write lock, so a send that found the queue full

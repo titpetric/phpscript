@@ -128,9 +128,11 @@ So the env stays for as long as expr-lang compiles anything; the per-compile cos
 
 ### The per-submit done channel
 
-`Pool.Submit` allocates a `chan struct{}` per run and does not take one from a free list. Recycling is refused and unwritten: `Submit` returns false when the context ends first, and that path cannot prove the entry is free, because the worker goes on running with the channel it holds. A channel recycled there reaches a second request while the first still waits on it, and one request's completion signal satisfying another's wait is a wrong answer under concurrency, not a slow one, which no test here would catch.
+`Pool.Submit` keeps no free list of channels, and that refusal holds: `Submit` answers false when the context ends first, and that path cannot prove the entry is free, because the worker goes on running with the channel it holds. A channel the pool recycled there reaches a second request while the first still waits on it, and one request's completion signal satisfying another's wait is a wrong answer under concurrency, never a slow one, and no test here catches it.
 
-Removing the allocation means removing the handshake, with no recycling behind it, and that changes how a run reports completion.
+What the pool cannot own, a caller can. A job that implements `runner.DoneJob` lends the channel its own completion is signalled through, and a job living for the length of its run carries one channel over every run it serves. The pool sends one buffered slot in place of closing it, so a receipt empties the slot and the channel serves again. The lender takes on the rule the pool cannot keep: a job submitted and not seen to finish is dropped, never reused. `stdlib/http`'s `answerTracker` is the shape, and its free list already drops a tracker on the false path for this reason.
+
+A `Submit` whose job lends no channel builds one, as before.
 
 ### The closure engine
 

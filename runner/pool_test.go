@@ -48,10 +48,10 @@ func TestPool_Submit(t *testing.T) {
 
 	var ran atomic.Int64
 	var worker *Runtime
-	if !pool.Submit(context.Background(), func(rt *Runtime) {
+	if !pool.Submit(context.Background(), JobFunc(func(rt *Runtime) {
 		ran.Add(1)
 		worker = rt
-	}) {
+	})) {
 		t.Fatal("Submit() = false on an open pool")
 	}
 	if ran.Load() != 1 {
@@ -65,7 +65,7 @@ func TestPool_Submit(t *testing.T) {
 	ended, cancel := context.WithCancel(context.Background())
 	cancel()
 	before := ran.Load()
-	pool.Submit(ended, func(*Runtime) { ran.Add(1) })
+	pool.Submit(ended, JobFunc(func(*Runtime) { ran.Add(1) }))
 	if ran.Load() != before {
 		t.Error("a run submitted under an ended context was started")
 	}
@@ -89,8 +89,58 @@ func TestPool_Close(t *testing.T) {
 		t.Fatal("Close() did not return within 5 seconds")
 	}
 
-	if pool.Submit(context.Background(), func(*Runtime) {}) {
+	if pool.Submit(context.Background(), JobFunc(func(*Runtime) {})) {
 		t.Error("Submit() = true on a closed pool")
 	}
 	pool.Close()
+}
+
+// lendingJob is a DoneJob that counts its runs and carries one channel across
+// all of them, the shape stdlib/http's per-request tracker takes.
+type lendingJob struct {
+	runs int
+	done chan struct{}
+}
+
+func (j *lendingJob) Run(*Runtime) { j.runs++ }
+
+func (j *lendingJob) Done() chan struct{} {
+	if j.done == nil {
+		j.done = make(chan struct{}, 1)
+	}
+	return j.done
+}
+
+// TestPool_SubmitLendsTheDoneChannel covers the DoneJob path: the pool signals
+// through the channel the job lends, and the buffered slot empties on receipt,
+// so one channel serves every run the job is submitted for. The send and the
+// receive pair per run, so no run reads the signal of the one before it and
+// answers ahead of its own work.
+func TestPool_SubmitLendsTheDoneChannel(t *testing.T) {
+	t.Parallel()
+	pool := NewPool(New(io.Discard, Options{}), 1, 4, nil)
+	defer pool.Close()
+
+	job := &lendingJob{}
+	for i := range 4 {
+		if !pool.Submit(context.Background(), job) {
+			t.Fatalf("Submit() = false on run %d", i)
+		}
+		if job.runs != i+1 {
+			t.Fatalf("after run %d the job counts %d, want the run to have finished", i, job.runs)
+		}
+		if len(job.done) != 0 {
+			t.Fatalf("the lent channel holds %d signals after run %d, want it drained", len(job.done), i)
+		}
+	}
+
+	// The same channel throughout: a fresh one per submit is the allocation
+	// the lending exists to remove.
+	first := job.Done()
+	if !pool.Submit(context.Background(), job) {
+		t.Fatal("Submit() = false on the last run")
+	}
+	if job.Done() != first {
+		t.Error("the job lent a second channel, so the submit allocated one")
+	}
 }
