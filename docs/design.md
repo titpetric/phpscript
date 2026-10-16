@@ -80,6 +80,8 @@ A call inside a handler is re-entry as well, and follows the same rule. A callab
 
 Cancellation is per invocation: the mux enters the request's context for the length of the handler and leaves it when the handler returns. `connection_aborted()` reports that context, and it is what ends `sleep()` early when the client goes away. The execution limit is not per invocation. `set_time_limit` moves the runtime's own deadline, and a script that serves is one script, so a handler that moves it moves the server's. [use-cases/http-server.md](use-cases/http-server.md) is the same model from a script's side.
 
+A binding called inside a handler receives a context derived from the request, not from the session: the request is authoritative, because Go middleware ahead of the handler attaches values, deadlines and cancellation to it, and every one of those has to reach a binding blocked in I/O. `ignore_user_abort(true)` keeps the request's values and drops its cancellation, so a disconnect ends no work the handler chose to finish, and the active span still resolves through the session, so a database call inside a traced request nests where the handler is. `runner.bindingContext` is the derivation and `runner/bindingctx.go` carries the chain order.
+
 ## Won't implement
 
 Separate from the "Not implemented" rows in the [language reference](reference/README.md), which mean "not yet". Nothing here is planned, and each row names what to use instead.

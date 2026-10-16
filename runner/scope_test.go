@@ -133,8 +133,12 @@ func TestEnvFromContext(t *testing.T) {
 		t.Error("EnvFromContext() = true on a context carrying no environment")
 	}
 
-	want := map[string]string{"APP_ENV": "testing"}
-	ctx := contextWithEnv(context.Background(), want)
+	rt := New(io.Discard, Options{Env: []string{"APP_ENV=testing"}})
+	want := rt.Env
+	if want["APP_ENV"] != "testing" {
+		t.Fatalf("rt.Env = %#v, want APP_ENV=testing in it", want)
+	}
+	ctx := rt.bindingContext(NewScope())
 	got, ok := EnvFromContext(ctx)
 	if !ok {
 		t.Fatal("EnvFromContext() = false on a context built with an environment")

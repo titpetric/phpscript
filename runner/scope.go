@@ -2,8 +2,6 @@ package runner
 
 import (
 	"context"
-
-	"github.com/titpetric/phpscript/telemetry"
 )
 
 type scopeContextKey struct{}
@@ -106,29 +104,15 @@ func (s *Scope) DefinedVars() map[string]any {
 	return vars
 }
 
-// contextWithScope carries to a binding the calling frame, and the
-// file and line to attribute its spans to.
-//
-// The line belongs to the runtime and to no scope. The parser compiles __LINE__ to a
-// literal, so no frame carries it, and writing it into one per statement to be
-// read back here costs a map write on every statement executed. It is resolved
-// here and never recorded, for the reason currentStmt states.
+// contextWithScope carries to a span the calling frame, and the file and line
+// to attribute it to, as the fields of one bindingCtx in place of three
+// context.WithValue layers. Bindings take rt.bindingContext, which picks the
+// request as the base while one is live; this one keeps the base the caller
+// chose, for the trace region that must stay on the session chain.
 func (rt *Runtime) contextWithScope(ctx context.Context, scope *Scope) context.Context {
-	if filename, ok := scope.Get("__FILE__"); ok {
-		if filename, ok := filename.(string); ok {
-			ctx = telemetry.WithSpanFilename(ctx, filename)
-		}
-	} else if rt.entrypoint != "" {
-		ctx = telemetry.WithSpanFilename(ctx, rt.entrypoint)
-	}
-	if line := rt.currentSourceLine(); line > 0 {
-		ctx = telemetry.WithSpanLine(ctx, line)
-	}
-	return context.WithValue(ctx, scopeContextKey{}, scope)
-}
-
-func contextWithEnv(ctx context.Context, env map[string]string) context.Context {
-	return context.WithValue(ctx, envContextKey{}, env)
+	c := &bindingCtx{Context: ctx, scope: scope, env: rt.Env}
+	rt.fillSource(c, scope)
+	return c
 }
 
 // ScopeFromContext returns the active PHP execution frame attached to a

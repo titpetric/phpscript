@@ -108,9 +108,12 @@ type Runtime struct {
 	// host is the context the host set, which ctx is derived from. client is
 	// the connection being answered right now: host, until a handler enters a
 	// request. connection_aborted() reads client, so it survives
-	// ignore_user_abort detaching ctx from the disconnect. See deadline.go.
-	host   context.Context
-	client context.Context
+	// ignore_user_abort detaching ctx from the disconnect. inRequest reports
+	// a request being live, which is when a binding's context derives from
+	// client in place of ctx; see deadline.go and bindingContext.
+	host      context.Context
+	client    context.Context
+	inRequest bool
 
 	// stopCtx cancels ctx, which is built once per session and never rebuilt;
 	// the timers below cancel through it and derive no new context,

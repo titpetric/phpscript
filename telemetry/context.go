@@ -29,6 +29,24 @@ func WithSpanLine(ctx context.Context, line int) context.Context {
 	return context.WithValue(ctx, spanLineKey{}, line)
 }
 
+// SourceValue answers the two span-source keys from location fields a foreign
+// context value type carries, so a host folds the file and the line into one
+// allocation beside its own keys. A false sends the caller down its parent
+// chain, matching WithSpanFilename and WithSpanLine declining an empty value.
+func SourceValue(key any, filename string, line int) (any, bool) {
+	switch key.(type) {
+	case spanFilenameKey:
+		if filename != "" {
+			return filename, true
+		}
+	case spanLineKey:
+		if line > 0 {
+			return line, true
+		}
+	}
+	return nil, false
+}
+
 // SpanSource returns the source location carried by ctx. Both results are zero
 // when no PHP frame published one.
 func SpanSource(ctx context.Context) (string, int) {
