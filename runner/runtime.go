@@ -162,6 +162,19 @@ type Runtime struct {
 	frozenConsts map[string]any
 	constsShared bool
 
+	// frozenEnv snapshots Env the way frozenConsts snapshots constants: a
+	// reset restores it, so a putenv() belongs to the program that called it.
+	// envShared marks Env as being the snapshot itself, which PutEnv copies
+	// before its first write. Nil until FreezeStdlib, which leaves a CLI
+	// runtime's Env mutable in place.
+	frozenEnv map[string]string
+	envShared bool
+
+	// resets run inside resetExecution, so a binding keeping state of its own
+	// beside the runtime (the ob_* buffer stack) drops it when the runtime is
+	// reset between programs. See OnReset.
+	resets []func()
+
 	// opts holds runtime source root, working directory, and write policy.
 	// opts.WorkDir is the one field a script can move, through chdir; workDirBase
 	// is what the host configured, so a reset session starts where the first one
@@ -449,11 +462,14 @@ func NewFlatStack(w io.Writer, opts Options) *Runtime {
 	return rt
 }
 
-// FreezeStdlib snapshots constants after host bindings are registered so
-// ResetSession can drop script-defined constants without losing the stdlib.
+// FreezeStdlib snapshots constants and the environment after host bindings are
+// registered so ResetSession can drop what a script defined without losing
+// what the host configured.
 func (rt *Runtime) FreezeStdlib() {
 	rt.frozenConsts = rt.constants
 	rt.constsShared = true
+	rt.frozenEnv = rt.Env
+	rt.envShared = true
 }
 
 // ResetSession prepares the runtime to execute another program: new output and
@@ -490,12 +506,26 @@ func (rt *Runtime) resetExecution(out io.Writer, stdin io.Reader) {
 	}
 	rt.out = out
 	rt.releaseOutput()
+	// Bindings holding state beside the runtime drop it with the output they
+	// mirror: an ob_* level a program left open is its text and its level, and
+	// both would read back in the next program.
+	for _, reset := range rt.resets {
+		reset()
+	}
+	// The next program starts unobserved the way a fresh runtime does. A
+	// request that ended in StateError is not the next request's opening
+	// status, which SetContext would otherwise publish.
+	rt.status = ""
 	if stdin == nil {
 		stdin = emptyStdin{}
 	}
 	rt.opts.Stdin = stdin
 	rt.opts.WorkDir = rt.workDirBase
 	rt.preludeDone = false
+	if rt.frozenEnv != nil {
+		rt.Env = rt.frozenEnv
+		rt.envShared = true
+	}
 	clear(rt.globals)
 	rt.auto.Reset()
 	rt.lazyGlobals = nil
@@ -950,6 +980,30 @@ func (rt *Runtime) SetGlobal(name string, val any) {
 	rt.globals[name] = val
 }
 
+// PutEnv writes one variable into the script environment, backing putenv().
+// While Env is the frozen snapshot FreezeStdlib took, the write copies it
+// first, the way SetConst copies the frozen constants: the snapshot is what a
+// reset restores, so a write landing in it would outlive its program.
+func (rt *Runtime) PutEnv(name, value string) {
+	rt.ownEnv()
+	rt.Env[name] = value
+}
+
+// UnsetEnv removes one variable from the script environment, the bare-name
+// spelling of putenv(). It copies the frozen snapshot first, as PutEnv does.
+func (rt *Runtime) UnsetEnv(name string) {
+	rt.ownEnv()
+	delete(rt.Env, name)
+}
+
+// ownEnv makes Env this program's to write.
+func (rt *Runtime) ownEnv() {
+	if rt.envShared && rt.frozenEnv != nil {
+		rt.Env = maps.Clone(rt.frozenEnv)
+		rt.envShared = false
+	}
+}
+
 // SetConst registers a PHP constant (e.g. define("FOO", 1) or a built-in like
 // T_VARIABLE). Constants are visible in every scope, including inside functions
 // and methods, unlike globals, which PHP confines to the global scope.
@@ -1244,6 +1298,14 @@ func (rt *Runtime) lookupConstructor(name string) (*funcEntry, bool) {
 // evaluation errors are routed here, and no caller is aborted.
 func (rt *Runtime) OnError(fn func(error)) {
 	rt.errorHandler = fn
+}
+
+// OnReset registers fn to run whenever the runtime is reset between programs.
+// A binding that keeps state of its own beside the runtime registers one, so a
+// host reusing the runtime starts the next program without it; the ob_* buffer
+// stack in stdlib/compat is the case that required it.
+func (rt *Runtime) OnReset(fn func()) {
+	rt.resets = append(rt.resets, fn)
 }
 
 // Eval compiles e to a closure chain, binds the referenced variables from

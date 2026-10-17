@@ -1329,3 +1329,40 @@ func TestScopeBuiltins(t *testing.T) {
 		}
 	}
 }
+
+// TestRuntime_PutEnv covers the copy-on-write over the frozen environment:
+// a write never lands in the snapshot FreezeStdlib took, and a reset restores
+// the snapshot whole.
+func TestRuntime_PutEnv(t *testing.T) {
+	rt := New(io.Discard, Options{Env: []string{"KEPT=host"}})
+	rt.FreezeStdlib()
+
+	rt.PutEnv("ADDED", "x")
+	if rt.Env["ADDED"] != "x" || rt.Env["KEPT"] != "host" {
+		t.Fatalf("after PutEnv, Env = %v", rt.Env)
+	}
+	rt.UnsetEnv("KEPT")
+	if _, ok := rt.Env["KEPT"]; ok {
+		t.Fatal("UnsetEnv left the variable in place")
+	}
+
+	rt.ResetSession(io.Discard, nil)
+	if _, ok := rt.Env["ADDED"]; ok {
+		t.Fatal("a PutEnv write survived the reset")
+	}
+	if rt.Env["KEPT"] != "host" {
+		t.Fatal("the reset did not restore the frozen environment")
+	}
+}
+
+// TestRuntime_OnReset covers the reset hooks: each registered one runs once
+// per reset, which is how a binding's own state leaves with the program's.
+func TestRuntime_OnReset(t *testing.T) {
+	rt := New(io.Discard, Options{})
+	var calls int
+	rt.OnReset(func() { calls++ })
+	rt.ResetSession(io.Discard, nil)
+	if calls != 1 {
+		t.Fatalf("the reset ran the hook %d times, want 1", calls)
+	}
+}
