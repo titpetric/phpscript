@@ -1,26 +1,31 @@
 #!/usr/bin/env bash
 #
-# The load sweep for testdata/testserver.php, its Go twin, and the same API as a
-# served PHP application.
+# The load sweep for one API written five ways, one directory each under
+# testdata/, driven by one load generator so the difference reads off directly.
 #
-# BENCH_TARGETS names the sides: `go` is testdata/testserver.go, `php` is
-# testdata/testserver.php on phpscript, and `vanilla` is testdata/php-vanilla,
-# which is php 8.5 and apache with mod_php answering through Slim. The default
-# pair is the one needing no docker.
+# BENCH_TARGETS names the sides, and the default pair is the one needing no
+# docker:
 #
-#	BENCH_TARGETS="php vanilla" scripts/bench-http.sh after
+#	goserver         testdata/goserver, net/http, the floor: no VM
+#	bridge           testdata/phpscript-http-bridge, Path B
+#	service          testdata/phpscript-service, Path A
+#	vanilla-apache   testdata/php-vanilla on apache with mod_php, Slim
+#	vanilla-nginx    testdata/php-vanilla on nginx with php-fpm, Slim
 #
-# The vanilla side is brought up and torn down by this script. It shares the
-# host's network namespace, runs the same worker count, and its processes are
-# reniced to match the other two, so what is left between the sides is the
-# stack: one bootstrap per request against a runtime forked once at listen().
+#	BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 #
-# It measures Path B only: HTTP\Mux on runner.Pool, parsed once, handlers
-# resolved once at $mux->handle(), workers forked once at listen(), response
-# streamed. `phpscript server` is Path A and builds a runtime per request; a
-# number from one never belongs in a table with a number from the other. The
-# per-request allocations are priced by BenchmarkTestServerRoute, which is the
-# other half of this harness. docs/agents/performance.md is the comparison.
+# Each side is brought up and torn down by this script. Every one of them
+# shares the host's network namespace, answers on the same worker count, and
+# runs at nice -n -20, so what is left between them is the stack.
+#
+# One table per side, because two of them are different execution models.
+# `bridge` is Path B: the script is the server, parsed once, handlers resolved
+# at $mux->handle(), workers forked once at listen(). `service` is Path A:
+# annotated endpoints under `phpscript server`, a runtime built per request. A
+# number from one never belongs in a table with a number from the other, which
+# is why the table header names the model. The per-request allocations are
+# priced by BenchmarkTestServerRoute, the other half of this harness.
+# docs/agents/performance.md is the comparison.
 #
 #	scripts/bench-http.sh before
 #	BENCH_SEGMENTS=6 scripts/bench-http.sh after
@@ -79,18 +84,25 @@ warmup="${BENCH_WARMUP:-2s}"
 # that is hardcoded in the script's config(), so the comparison stops being
 # honest above the worker count.
 concurrencies="${BENCH_CONCURRENCY:-1 4}"
-# go is testdata/testserver.go, php is testdata/testserver.php on phpscript, and
-# vanilla is testdata/php-vanilla on php 8.5 and apache. The default pair is the
-# one that needs no docker; add vanilla to compare against a served PHP stack.
-targets="${BENCH_TARGETS:-go php}"
+# The five sides, one directory each under testdata/. The default pair is the
+# one that needs no docker; the rest are opt-in.
+#
+#	goserver         testdata/goserver, net/http, the floor
+#	bridge           testdata/phpscript-http-bridge, Path B
+#	service          testdata/phpscript-service, Path A
+#	vanilla-apache   testdata/php-vanilla on apache with mod_php
+#	vanilla-nginx    testdata/php-vanilla on nginx with php-fpm
+targets="${BENCH_TARGETS:-goserver bridge}"
 workers="${TESTSERVER_WORKERS:-4}"
-# The vanilla side listens here and answers this many requests at once, which
-# is TESTSERVER_WORKERS on the other two. compose.yml reads both.
+# The vanilla profiles listen here and answer this many requests at once, which
+# is TESTSERVER_WORKERS on the other three. compose.yml reads all three.
 vanilla_port="${VANILLA_PORT:-8098}"
+vanilla_nginx_port="${VANILLA_NGINX_PORT:-8099}"
 vanilla_workers="${VANILLA_WORKERS:-$workers}"
 compose_dir="$root/testdata/php-vanilla"
-# The container_name compose.yml pins, which docker top and docker stats read.
-vanilla_container="phpscript-php-vanilla"
+# Which profile is up, so the teardown and the memory probe reach the right
+# containers.
+vanilla_profile=""
 # Running out of time is a fatal on the PHP side: the shutdown callback fires,
 # the server stops listening and the process leaves mid-sweep. This has to outlast
 # the whole sweep and the waiting between its steps, not one segment.
@@ -143,18 +155,20 @@ with_lock() {
 
 build_binaries() {
 	CGO_ENABLED=0 go build -o "$root/bin/phpscript" .
-	CGO_ENABLED=0 go build -o "$root/bin/testserver-go" testdata/testserver.go
+	CGO_ENABLED=0 go build -o "$root/bin/testserver-go" testdata/goserver/main.go
 }
 
 with_lock build_binaries
 
-# The vanilla image once, ahead of the sweep. start_server is called per
+# The vanilla images once, ahead of the sweep. start_server is called per
 # concurrency and again for the abort check, and a build inside it would put
-# docker's work inside the measurement window.
+# docker's work inside the measurement window. Both profiles are built
+# whichever one is swept, because the two share public/index.php and a stale
+# image for either is a column answering for code nobody asked about.
 case " $targets " in
-*" vanilla "*)
-	VANILLA_PORT="$vanilla_port" VANILLA_WORKERS="$vanilla_workers" \
-		docker compose -f "$compose_dir/compose.yml" build >/dev/null
+*" vanilla-"*)
+	VANILLA_PORT="$vanilla_port" VANILLA_NGINX_PORT="$vanilla_nginx_port" VANILLA_WORKERS="$vanilla_workers" \
+		docker compose -f "$compose_dir/compose.yml" --profile apache --profile nginx build >/dev/null
 	;;
 esac
 PATH="$root/bin:$PATH"
@@ -176,7 +190,7 @@ command -v phpscript | grep -q "^$root/bin/" || {
 	echo "cores: $(nproc)"
 	echo "GOMAXPROCS: unset, so both servers take every core"
 	echo "binary: $(command -v phpscript)"
-	echo "go twin: $root/bin/testserver-go"
+	echo "go floor: $root/bin/testserver-go"
 	echo "load generator: $(wrk --version 2>&1 | head -1)"
 	echo "priority: nice -n -20, server and generator alike"
 	echo "date: $(date -Is)"
@@ -189,23 +203,25 @@ command -v phpscript | grep -q "^$root/bin/" || {
 	echo "TESTSERVER_LIMIT: $limit"
 	echo "targets: $targets"
 	case " $targets " in
-	*" vanilla "*)
+	*" vanilla-"*)
 		echo "VANILLA_PORT: $vanilla_port"
+		echo "VANILLA_NGINX_PORT: $vanilla_nginx_port"
 		echo "VANILLA_WORKERS: $vanilla_workers"
-		echo "vanilla php: $(docker run --rm "$(docker compose -f "$compose_dir/compose.yml" config --images | head -1)" php -r 'echo PHP_VERSION;' 2>/dev/null)"
+		echo "vanilla php: $(docker run --rm phpscript/php-vanilla-apache:local php -r 'echo PHP_VERSION;' 2>/dev/null)"
 		echo "vanilla slim: $(jq -r '.packages[] | select(.name == "slim/slim") | .version' "$compose_dir/composer.lock" 2>/dev/null)"
-		echo "vanilla server: $(docker run --rm "$(docker compose -f "$compose_dir/compose.yml" config --images | head -1)" apache2 -v 2>/dev/null | head -1)"
+		echo "vanilla opcache: on, validate_timestamps off, route cache on, autoloader classmap-authoritative"
 		echo "vanilla network: host, so no published port and no NAT hop"
 		;;
 	esac
 	echo "commands:"
 	echo "  CGO_ENABLED=0 go build -o bin/phpscript ."
-	echo "  CGO_ENABLED=0 go build -o bin/testserver-go testdata/testserver.go"
-	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit phpscript run testdata/testserver.php"
+	echo "  CGO_ENABLED=0 go build -o bin/testserver-go testdata/goserver/main.go"
+	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit phpscript run testdata/phpscript-http-bridge/server.php"
 	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit bin/testserver-go"
+	echo "  phpscript server -f <addr 127.0.0.1:0> testdata/phpscript-service"
 	case " $targets " in
-	*" vanilla "*)
-		echo "  VANILLA_PORT=$vanilla_port VANILLA_WORKERS=$vanilla_workers docker compose -f testdata/php-vanilla/compose.yml up -d --wait"
+	*" vanilla-"*)
+		echo "  VANILLA_PORT=$vanilla_port VANILLA_NGINX_PORT=$vanilla_nginx_port VANILLA_WORKERS=$vanilla_workers docker compose -f testdata/php-vanilla/compose.yml --profile <apache|nginx> up -d --wait"
 		;;
 	esac
 	echo "  nice -n -20 wrk --latency -t <threads> -c <c> -d $duration [-s scripts/bench-http-post.lua] <url>"
@@ -218,16 +234,34 @@ command -v phpscript | grep -q "^$root/bin/" || {
 # start_server brings one side up on a port the kernel picks and answers its
 # address. 127.0.0.1:0 rather than the default 8099 because several sprints
 # share the box and a fixed port is a collision.
+# target_model names the execution model a table's numbers describe, so the
+# header carries what the rows mean and a reader never has to know which
+# directory a side came from.
+target_model() {
+	case "$1" in
+	goserver) echo "testdata/goserver on net/http, the floor: no VM, one goroutine per request." ;;
+	bridge) echo "testdata/phpscript-http-bridge, Path B: the script is the server, parsed once, workers forked at listen()." ;;
+	service) echo "testdata/phpscript-service, Path A: annotated endpoints under \`phpscript server\`, a runtime per request." ;;
+	vanilla-apache) echo "testdata/php-vanilla on apache with mod_php, Slim: a bootstrap per request." ;;
+	vanilla-nginx) echo "testdata/php-vanilla on nginx with php-fpm, Slim: a bootstrap per request." ;;
+	*) echo "$1" ;;
+	esac
+}
+
 start_server() {
 	local target="$1" log="$2"
 	server_kind="$target"
 	case "$target" in
-	php) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
-		nice -n -20 phpscript run testdata/testserver.php >"$log" 2>&1 & ;;
-	go) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
+	bridge) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
+		nice -n -20 phpscript run testdata/phpscript-http-bridge/server.php >"$log" 2>&1 & ;;
+	goserver) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
 		nice -n -20 "$root/bin/testserver-go" >"$log" 2>&1 & ;;
-	vanilla)
-		start_vanilla "$log"
+	service)
+		start_service "$log"
+		return
+		;;
+	vanilla-apache | vanilla-nginx)
+		start_vanilla "$target" "$log"
 		return
 		;;
 	*)
@@ -250,6 +284,45 @@ start_server() {
 	server_addr="$addr"
 }
 
+# start_service brings up `phpscript server` over the annotated endpoints, on a
+# port the kernel picks.
+#
+# It takes its own config and not the directory's, because config.yml names a
+# fixed port for a reader bringing it up by hand and a sweep needs one the
+# kernel chose: two sweeps on one box would otherwise collide on it. The rest
+# of the file is what the directory carries, route scanning included.
+#
+# The address is read off the server's own log line, which spells it
+# `url=http://host:port` where the other two spell `serving on http://...`.
+start_service() {
+	local log="$1" config="$work/service.yml"
+	{
+		echo "runner:"
+		echo "  work_dir: \".\""
+		echo "routes:"
+		echo "  enabled: true"
+		echo "server:"
+		echo "  addr: \"127.0.0.1:0\""
+		echo "  quiet: false"
+	} >"$config"
+
+	nice -n -20 phpscript server -f "$config" "$root/testdata/phpscript-service" >"$log" 2>&1 &
+	server_pid=$!
+
+	local addr=""
+	for _ in $(seq 1 200); do
+		addr="$(sed -n 's|.*url=http://\([^ ]*\).*|\1|p' "$log" | head -1)"
+		[ -n "$addr" ] && break
+		sleep 0.05
+	done
+	if [ -z "$addr" ]; then
+		echo "the service never printed an address" >&2
+		cat "$log" >&2
+		exit 1
+	fi
+	server_addr="$addr"
+}
+
 # start_vanilla brings the compose stack up and waits for its healthcheck.
 #
 # It takes a fixed port where the other two take 0, because a container sharing
@@ -263,33 +336,60 @@ start_server() {
 # descheduled for milliseconds at a time. Apache forks its children at startup,
 # so they exist by the time this runs and each one is reniced by hand.
 start_vanilla() {
-	local log="$1"
-	VANILLA_PORT="$vanilla_port" VANILLA_WORKERS="$vanilla_workers" \
-		docker compose -f "$compose_dir/compose.yml" up -d --wait --wait-timeout 120 >"$log" 2>&1 || {
-		echo "the vanilla stack did not come up" >&2
-		docker compose -f "$compose_dir/compose.yml" logs --no-log-prefix >&2 || true
+	local target="$1" log="$2" profile port
+	profile="${target#vanilla-}"
+	case "$profile" in
+	apache) port="$vanilla_port" ;;
+	nginx) port="$vanilla_nginx_port" ;;
+	esac
+
+	vanilla_profile="$profile"
+	VANILLA_PORT="$vanilla_port" VANILLA_NGINX_PORT="$vanilla_nginx_port" VANILLA_WORKERS="$vanilla_workers" \
+		docker compose -f "$compose_dir/compose.yml" --profile "$profile" up -d --wait --wait-timeout 180 >"$log" 2>&1 || {
+		echo "the $target stack did not come up" >&2
+		docker compose -f "$compose_dir/compose.yml" --profile "$profile" logs --no-log-prefix >&2 || true
 		exit 1
 	}
-	# The log the abort check greps. error_log inside the handler reaches
-	# apache's stderr, which is the container's, which is this.
-	docker compose -f "$compose_dir/compose.yml" logs -f --no-log-prefix >"$log" 2>&1 &
+	# The log the abort check greps. error_log inside the handler reaches the
+	# web server's stderr, which is the container's, which is this.
+	VANILLA_PORT="$vanilla_port" VANILLA_NGINX_PORT="$vanilla_nginx_port" VANILLA_WORKERS="$vanilla_workers" \
+		docker compose -f "$compose_dir/compose.yml" --profile "$profile" logs -f --no-log-prefix >"$log" 2>&1 &
 	vanilla_logs_pid=$!
-	local pid
-	for pid in $(docker top "$vanilla_container" -eo pid | tail -n +2); do
-		renice -n -20 -p "$pid" >/dev/null 2>&1 || true
+
+	# Every process in every container of the profile, because the other sides
+	# run at nice -n -20 and a default-priority server on a shared box is
+	# descheduled for milliseconds at a time. The web server forks its children
+	# at startup, so they exist by now and each is reniced by hand.
+	local container pid
+	for container in $(vanilla_containers "$profile"); do
+		for pid in $(docker top "$container" -eo pid 2>/dev/null | tail -n +2); do
+			renice -n -20 -p "$pid" >/dev/null 2>&1 || true
+		done
 	done
-	server_addr="127.0.0.1:$vanilla_port"
+	server_addr="127.0.0.1:$port"
+}
+
+# vanilla_containers names the containers one profile runs: apache is one, and
+# nginx is the front and the fpm pool behind it.
+vanilla_containers() {
+	case "$1" in
+	apache) echo "phpscript-php-vanilla-apache" ;;
+	nginx) echo "phpscript-php-vanilla-nginx phpscript-php-vanilla-fpm" ;;
+	esac
 }
 
 stop_server() {
-	if [ "${server_kind:-}" = "vanilla" ]; then
+	case "${server_kind:-}" in
+	vanilla-*)
 		[ -n "${vanilla_logs_pid:-}" ] && kill "$vanilla_logs_pid" 2>/dev/null
 		vanilla_logs_pid=""
-		VANILLA_PORT="$vanilla_port" VANILLA_WORKERS="$vanilla_workers" \
-			docker compose -f "$compose_dir/compose.yml" down >/dev/null 2>&1 || true
+		VANILLA_PORT="$vanilla_port" VANILLA_NGINX_PORT="$vanilla_nginx_port" VANILLA_WORKERS="$vanilla_workers" \
+			docker compose -f "$compose_dir/compose.yml" --profile "$vanilla_profile" down >/dev/null 2>&1 || true
+		vanilla_profile=""
 		server_kind=""
 		return 0
-	fi
+		;;
+	esac
 	[ -n "${server_pid:-}" ] || return 0
 	kill "$server_pid" 2>/dev/null || true
 	wait "$server_pid" 2>/dev/null || true
@@ -308,20 +408,23 @@ stop_server() {
 record_memory() {
 	local target="$1" conc="$2" kb note
 	case "$target" in
-	vanilla)
+	vanilla-*)
 		# docker stats writes "95.2MiB / 1GiB" and picks the unit per line, so
 		# the suffix is read and not assumed, the way the wrk latencies are.
-		kb="$(docker stats --no-stream --format '{{.MemUsage}}' "$vanilla_container" 2>/dev/null |
-			awk 'NR == 1 {
+		# Every container of the profile, summed: the nginx profile is two.
+		# shellcheck disable=SC2046
+		kb="$(docker stats --no-stream --format '{{.MemUsage}}' $(vanilla_containers "$vanilla_profile") 2>/dev/null |
+			awk '{
 				value = $1 + 0
 				unit = $1
 				sub(/^[0-9.]+/, "", unit)
 				if (unit ~ /^GiB/) value *= 1024 * 1024
 				else if (unit ~ /^MiB/) value *= 1024
 				else if (unit ~ /^B/) value /= 1024
-				printf "%.0f", value
-			}')" || kb=0
-		note="container cgroup, apache and its $vanilla_workers children"
+				total += value
+			}
+			END { printf "%.0f", total }')" || kb=0
+		note="container cgroups, the web server and its $vanilla_workers workers"
 		;;
 	*)
 		# Both guarded: ps answers 1 for a process with no children, and
@@ -335,7 +438,7 @@ record_memory() {
 		note="process RSS, one process answering on $workers workers"
 		;;
 	esac
-	printf '%-8s %-8s %5s %10s  %s\n' "$side" "$target" "$conc" "${kb:-0}" "$note" >>"$memout"
+	printf '%-10s %-16s %5s %10s  %s\n' "$side" "$target" "$conc" "${kb:-0}" "$note" >>"$memout"
 }
 
 # measure_route is the exclusive step: one warmup and one segment set for one
@@ -419,22 +522,38 @@ summarise() {
 	' "$1"
 }
 
-for conc in $concurrencies; do
-	# wrk wants no more threads than connections, and one thread per connection is
-	# what keeps the generator off the cores the server is answering on.
-	threads="$conc"
-	[ "$threads" -gt 2 ] && threads=2
+# One table per runtime, and not one table per concurrency with a side column.
+#
+# Two of the sides are different execution models: phpscript-service is Path A,
+# a runtime built per request, and phpscript-http-bridge is Path B, workers
+# forked once at listen(). docs/agents/performance.md forbids a Path A number
+# and a Path B number sharing a table, because the two answer different
+# questions and a reader comparing rows across them is comparing nothing. The
+# table header names the path, so what each number describes travels with it.
+#
+# Target-major and not concurrency-major, so one server comes up once and
+# answers every concurrency before the next side starts. A side brought up
+# twice is two warmups and two opcache states.
+for target in $targets; do
+	for conc in $concurrencies; do
+		# wrk wants no more threads than connections, and one thread per
+		# connection is what keeps the generator off the cores the server is
+		# answering on.
+		threads="$conc"
+		[ "$threads" -gt 2 ] && threads=2
 
-	{
-		echo "## concurrency $conc, wrk threads $threads"
-		echo
-		printf '%-8s %-6s %9s %9s %9s %9s %5s %7s %7s %8s\n' \
-			route side "p50 us" "p90 us" "p99 us" "req/s" segs non2xx errors "drift %"
-	} >>"$out"
-
-	for target in $targets; do
 		log="$work/$target-$conc.log"
 		start_server "$target" "$log"
+
+		{
+			echo "## $target, concurrency $conc, wrk threads $threads"
+			echo
+			echo "$(target_model "$target")"
+			echo
+			printf '%-8s %9s %9s %9s %9s %5s %7s %7s %8s\n' \
+				route "p50 us" "p90 us" "p99 us" "req/s" segs non2xx errors "drift %"
+		} >>"$out"
+
 		for spec in "${routes[@]}"; do
 			IFS='|' read -r name path script <<<"$spec"
 			url="http://$server_addr$path"
@@ -446,20 +565,22 @@ for conc in $concurrencies; do
 			# One lock for the warmup and the segments of one route, which is the
 			# unit that has to be exclusive. It is released before the next route.
 			with_lock measure_route "$name" "$target" "$url" "$rows"
-			# summarise answers ten fields; the split is what fills the row.
+			# summarise answers nine fields after the route; the split is what
+			# fills the row.
 			# shellcheck disable=SC2046
-			printf '%-8s %-6s %9s %9s %9s %9s %5s %7s %7s %8s\n' \
-				"$name" "$target" $(summarise "$rows") >>"$out"
+			printf '%-8s %9s %9s %9s %9s %5s %7s %7s %8s\n' \
+				"$name" $(summarise "$rows") >>"$out"
 			awk -v route="$name" -v target="$target" -v conc="$conc" \
-				'{ printf "%-8s %-6s %5s %5d %9s %9s %9s %9s\n", route, target, conc, NR, $1, $2, $3, $4 }' \
+				'{ printf "%-14s %-16s %5s %5d %9s %9s %9s %9s\n", route, target, conc, NR, $1, $2, $3, $4 }' \
 				"$rows" >>"$segout"
 		done
+		echo >>"$out"
+
 		# Before the teardown, with the last request answered: what the side
 		# holds after a sweep is the number, not what it started with.
 		record_memory "$target" "$conc"
 		stop_server
 	done
-	echo >>"$out"
 done
 
 # The segments behind every row. A row is their median, and a row published as an
@@ -467,7 +588,7 @@ done
 {
 	echo "## segments, one wrk run each"
 	echo
-	printf '%-8s %-6s %5s %5s %9s %9s %9s %9s\n' route side conc seg "p50 us" "p90 us" "p99 us" "req/s"
+	printf '%-14s %-16s %5s %5s %9s %9s %9s %9s\n' route side conc seg "p50 us" "p90 us" "p99 us" "req/s"
 	cat "$segout"
 	echo
 } >>"$out"
@@ -479,7 +600,7 @@ done
 {
 	echo "## memory with the sweep answered"
 	echo
-	printf '%-8s %-8s %5s %10s  %s\n' side target conc "rss kb" note
+	printf '%-10s %-16s %5s %10s  %s\n' side target conc "rss kb" note
 	cat "$memout"
 	echo
 } >>"$out"

@@ -1,0 +1,89 @@
+# nginx in front of php-fpm, serving the same public/index.php apache serves
+# with mod_php, so the web server is a column in the comparison.
+#
+# A template, because nginx substitutes nothing from the environment and the
+# port is compose's to choose. The Dockerfile's command runs envsubst over it
+# with VANILLA_NGINX_PORT named explicitly, so $uri and $args reach nginx as
+# themselves.
+#
+# One worker process and no access log, matching what conf/apache gives the
+# other side: a worker per core would make this a different arrangement, and a
+# log line per request through a pipe is work the phpscript side is not doing
+# while a sweep writes millions of them.
+
+worker_processes 1;
+daemon off;
+error_log /dev/stderr warn;
+pid /tmp/nginx.pid;
+
+events {
+	worker_connections 1024;
+}
+
+http {
+	access_log off;
+	server_tokens off;
+
+	# The defaults a benchmark wants and a container needs: sendfile for the
+	# static floor, tcp_nodelay so a small reply is not held for an ack, and
+	# the temp paths under /tmp because nginx runs unprivileged here.
+	sendfile on;
+	tcp_nopush on;
+	tcp_nodelay on;
+	keepalive_timeout 65;
+	client_body_temp_path /tmp/nginx-client-body;
+	proxy_temp_path /tmp/nginx-proxy;
+	fastcgi_temp_path /tmp/nginx-fastcgi;
+
+	types {
+		text/html html htm;
+		text/plain txt;
+		text/css css;
+		application/javascript js;
+		application/json json;
+		image/png png;
+		image/svg+xml svg;
+	}
+	default_type application/octet-stream;
+
+	upstream php {
+		# fastcgi over loopback and no unix socket, because the two containers
+		# share the host's network namespace and not a filesystem.
+		server 127.0.0.1:9000;
+		keepalive 16;
+	}
+
+	server {
+		listen ${VANILLA_NGINX_PORT} default_server;
+		server_name _;
+		root /var/www/html/public;
+		index index.php;
+
+		# A file on disk is served by nginx and everything else is the front
+		# controller, which is the arrangement conf/apache/vhost.conf states
+		# with two RewriteCond lines.
+		location / {
+			try_files $uri /index.php$is_args$args;
+		}
+
+		location ~ \.php$ {
+			include fastcgi_params;
+			fastcgi_pass php;
+			fastcgi_index index.php;
+			fastcgi_param SCRIPT_FILENAME /var/www/html/public/index.php;
+			fastcgi_param SCRIPT_NAME /index.php;
+			# Required by the keepalive in the upstream block, and not
+			# optional: without it nginx closes its end after each request
+			# while fpm keeps its own open, so a reused connection fails with
+			# "upstream prematurely closed connection while reading response
+			# header". That is roughly 1.5% of requests under load, answered
+			# 502 and counted in the sweep's non2xx column.
+			fastcgi_keep_conn on;
+			# /slow writes a space per tick and flushes it, so nothing may
+			# buffer the reply on the way out or connection_aborted() never
+			# fires and the abort check fails.
+			fastcgi_buffering off;
+			fastcgi_read_timeout 120s;
+		}
+	}
+}

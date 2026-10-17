@@ -1,0 +1,20 @@
+# nginx, the front of the nginx stack. Dockerfile.fpm runs the php behind it.
+#
+# public/ is copied in because nginx serves what is on disk itself and hands
+# the rest to fpm: `try_files $uri /index.php` needs the files to be there for
+# the first half of that to mean anything, and the static floor the README
+# measures is nginx reading one.
+#
+# nginx:alpine ships envsubst, so the config is a template and the port is
+# compose's to choose. The variable list is explicit, so $uri and $args reach
+# nginx as themselves.
+
+FROM nginx:alpine
+
+ARG VANILLA_NGINX_PORT=8099
+ENV VANILLA_NGINX_PORT=${VANILLA_NGINX_PORT}
+
+COPY conf/nginx/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY public/ /var/www/html/public/
+
+CMD ["sh", "-c", "envsubst '$VANILLA_NGINX_PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && exec nginx -c /etc/nginx/nginx.conf"]

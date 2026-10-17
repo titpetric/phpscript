@@ -8,12 +8,6 @@
 		"slim/slim": "^4.14",
 		"slim/psr7": "^1.7"
 	},
-	"autoload": {
-		"psr-4": {
-			"HTTP\\": "src/HTTP/",
-			"JSON\\": "src/JSON/"
-		}
-	},
 	"config": {
 		"optimize-autoloader": true,
 		"sort-packages": true
