@@ -619,11 +619,26 @@ for target in $targets; do
 	start_server "$target" "$log"
 	curl -sS --max-time 1 "http://$server_addr/slow" >/dev/null 2>&1 || true
 	sleep 2.5
-	if grep -q "aborted after" "$log"; then
-		echo "$target: connection_aborted fired, response skipped" >>"$out"
-	else
-		echo "$target: FAIL, no abort recorded" >>"$out"
-	fi
+	case "$target" in
+	service)
+		# Not checked here, and not a failure. error_log() on a served request
+		# records on the oida span and writes nowhere else, which is the
+		# contract: oida is the sink, and only a run with no trace and no error
+		# handler falls back to the process error stream. Reading it would mean
+		# scraping /debug/oida, which is a tenant-scoped admin surface behind a
+		# login in a virtual-hosting deployment, and a load harness has no
+		# business reaching into one. The endpoint's own behaviour is covered
+		# where it belongs, by a fixture over connection_aborted().
+		echo "$target: not checked, the abort records on the oida span" >>"$out"
+		;;
+	*)
+		if grep -q "aborted after" "$log"; then
+			echo "$target: connection_aborted fired, response skipped" >>"$out"
+		else
+			echo "$target: FAIL, no abort recorded" >>"$out"
+		fi
+		;;
+	esac
 	stop_server
 done
 

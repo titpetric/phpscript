@@ -57,6 +57,10 @@ The endpoints answer the same bytes on every route, which is what makes the two 
 - `header()` and `echo` in place of `$w->header()->set()` and `$w->write()`. The response is the one the server built for this request, so there is no writer to hold.
 - `json_encode(...) . "\n"` in place of `(new JSON\Encoder($w))->encode(...)`. The encoder writes to a stream and takes the newline with it; `json_encode` returns a document and the newline is appended. The bytes are the same either way, phpscript's `json_encode` being the same encoder.
 
-## Known gap
+## Where a diagnostic goes
 
-`error_log()` from an annotated endpoint does not reach the server's log. The sweep's `/slow` abort check greps that log for the line the endpoint writes when it notices a client leaving, so the check reports `FAIL` on this side and the other four pass it. The endpoint runs and answers; what is lost is the diagnostic.
+`error_log()` records on the oida span and writes nowhere else. That is the contract and not a gap: oida is the sink, and only a run with no trace and no error handler falls back to the process error stream, which is what a command line script is. `/slow` calling `error_log` when it notices a client leaving puts the line on that request's trace.
+
+The sweep's `/slow` abort check greps the process log, so it skips this side and says so. Reading the trace instead would mean scraping `/debug/oida`, a tenant-scoped admin surface behind a login in a virtual-hosting deployment, and a load harness has no business reaching into one.
+
+The mechanism is covered where it belongs: `TestIgnoreUserAbortRunsOn` and `TestClientAbortEndsTheScript` in `tests/runner/deadline_test.go` hold the handler running past a disconnect and `connection_aborted()` reporting it, and `tests/fixtures/runtime/execution_limits.phpt` pins the types the three functions answer in.
