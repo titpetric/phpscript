@@ -10,10 +10,14 @@
 # builds it. A route that reads a database wants `docker-php-ext-install
 # pdo_sqlite` here and nothing else.
 
+# src/ is copied into this stage as well, because the autoloader is built with
+# --classmap-authoritative and the classmap is read off those files: an
+# autoloader generated without them would miss every class the handlers use.
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --no-progress --optimize-autoloader --no-scripts
+COPY src/ ./src/
+RUN composer install --no-dev --no-interaction --no-progress --classmap-authoritative --no-scripts
 
 FROM php:8.5-apache
 
@@ -38,6 +42,7 @@ ENV VANILLA_PORT=${VANILLA_PORT}
 
 WORKDIR /var/www/html
 COPY public/ ./public/
+COPY src/ ./src/
 COPY --from=vendor /app/vendor ./vendor
 
 # Where Slim writes its route cache, owned by the user apache runs as. The first
