@@ -29,6 +29,15 @@ func (b *buffers) push() {
 // level reports how many levels are active, backing ob_get_level.
 func (b *buffers) level() int { return len(b.stack) }
 
+// reset drops every level a program left open. It runs when the runtime is
+// reset between programs: the runtime drops its side of each redirection
+// there, and a level still held here would answer ob_get_level and
+// ob_get_contents with the previous program's state.
+func (b *buffers) reset() {
+	clear(b.stack)
+	b.stack = b.stack[:0]
+}
+
 // contents returns the innermost buffer without ending it, backing
 // ob_get_contents. The second result is false when no buffer is active.
 func (b *buffers) contents() (string, bool) {

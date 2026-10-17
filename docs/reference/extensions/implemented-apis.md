@@ -645,7 +645,9 @@ function getenv(string $name): mixed
 ```php
 /**
  * putenv sets an environment variable from a "NAME=value" string, or
- * unsets a bare "NAME"; it always returns true.
+ * unsets a bare "NAME"; it always returns true. The change lasts for the
+ * running script: the next request starts on the environment the host
+ * configured.
  */
 function putenv(string $name, string ...$values): bool
 ```
