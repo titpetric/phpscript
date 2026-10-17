@@ -1,113 +1,93 @@
 # php-vanilla
 
-`testdata/testserver.php` as a vanilla PHP application: php 8.5 and apache with mod_php, routed by Slim, in a container that comes up and goes down in one command. The API is the same one, route for route, and every route answers the same bytes, so the same load generator drives it and the difference reads off directly.
+`testdata/phpscript-http-bridge/server.php` on Slim, served two ways from one copy of `public/index.php`: php 8.5 and apache with mod_php, and php 8.5 and nginx with php-fpm. The API is the same one, route for route, and every route answers the same bytes, so the same load generator drives it and the difference reads off directly.
 
-What it has that the phpscript side does not is a bootstrap per request. Apache hands the request to mod_php, the autoloader runs, Slim builds its router and its middleware stack, the handler answers, and everything built is torn down again. The phpscript side parses once, resolves its handlers at `$mux->handle()`, and forks its workers at `listen()`. That difference is the whole of what the comparison measures.
+What it has that the phpscript side does not is a bootstrap per request. The autoloader runs, Slim builds its App, its router and its middleware stack, the handler answers, and everything built is torn down again. The phpscript side parses once, resolves its handlers at `$mux->handle()`, and forks its workers at `listen()`. That difference is what the column measures.
 
-## It is the same program
+## It is the same program with the signatures changed
 
-`public/index.php` holds the same `Server` class. `config()` reads the same environment, `mount()` registers the same six handlers against the same patterns, and every handler body is the one in `testserver.php`:
+The `Server` class is the same class: `config()` reads the environment, `mount()` registers the same six handlers against the same patterns, each handler is a method, `$this->showUser(...)` is the method as a bound callable, and `run()` is `main()`. What a handler is written against is what differs, and Slim and PSR-7 force four substitutions:
 
-```php
-public function showUser(\HTTP\ResponseWriter $w, \HTTP\Request $r): void
-{
-    $w->header()->set('Content-Type', 'application/json');
-    (new \JSON\Encoder($w))->encode(['id' => $r->path_value('id'), 'path' => $r->url->path]);
-}
-```
+| In the bridge                         | Here                                           |
+|---------------------------------------|------------------------------------------------|
+| `$w->header()->set($n, $v)`           | `$response = $response->withHeader($n, $v)`    |
+| `$w->write($s)` and `echo $s`         | `$response->getBody()->write($s)`              |
+| `(new JSON\Encoder($w))->encode($a)`  | `json_encode($a, JSON_FLAGS) . "\n"`           |
+| `$r->path_value("id")`                | `$args["id"]`                                  |
 
-`$this->showUser(...)` in `mount()` is php's first-class callable syntax, which is what reading `$this->showUser` without parentheses answers on the phpscript side.
-
-`src/` is what the handlers are written against, and it is the whole of what this directory adds:
-
-| File                        | What it is                                                                |
-|-----------------------------|---------------------------------------------------------------------------|
-| `src/HTTP/Mux.php`          | net/http's ServeMux as Slim's router, and the one piece that is routing    |
-| `src/HTTP/ResponseWriter.php` | net/http's ResponseWriter over a PSR-7 response                         |
-| `src/HTTP/Request.php`      | the request, with `$method`, `$url`, `path_value`, `form_value`            |
-| `src/HTTP/Url.php`          | net/url's URL, with `$path`, `$rawquery` and `query()`                     |
-| `src/HTTP/Header.php`       | net/http's Header, canonicalised names and `set`/`add`/`get`               |
-| `src/HTTP/Values.php`       | net/url's Values, which is what `query()` answers                          |
-| `src/HTTP/Writer.php`       | io.Writer, so the encoder does not know it writes to a response            |
-| `src/JSON/Encoder.php`      | JSON\Encoder: the writer it wraps, a newline per value, Go's escapes       |
-
-Three things in `Mux` are the routing, and nothing else in the program knows about them. `handle()` takes net/http's `"METHOD /path"` pattern and reads the method off it, dropping the `{$}` that anchors an exact match where Slim matches exactly anyway. The handler is adapted to what Slim calls, which reorders the two arguments and carries the path values net/http keeps on the request itself. The output buffer is open for the length of the call, so a handler's `echo` reaches the response rather than the process's own output.
-
-`run()` is the one method that could not carry over. Apache is the server, the process is already inside one request, and `run()` is what answers it: there is nothing to listen on, nothing to wait for, and the shutdown that stops it listening is apache's.
+A PSR-7 response is immutable, so a handler returns the response it built where the bridge writes to the one it was handed.
 
 ## Running it
 
 ```sh
-docker compose up -d --wait
+docker compose --profile apache up -d --wait
 curl http://127.0.0.1:8098/users/42
-docker compose down
+docker compose --profile apache down
 ```
-
-`VANILLA_PORT` is the port and `VANILLA_WORKERS` is how many requests it answers at once, which is `TESTSERVER_WORKERS` on the phpscript side. Both reach apache's config through the environment, so changing either needs no rebuild:
 
 ```sh
-VANILLA_PORT=9000 VANILLA_WORKERS=8 docker compose up -d --wait
+docker compose --profile nginx up -d --wait
+curl http://127.0.0.1:8099/users/42
+docker compose --profile nginx down
 ```
 
-The container shares the host's network namespace. A published port goes through docker-proxy or a NAT hop, and the measurement here is tens of microseconds, so sharing the namespace is what puts the generator and the server the same distance apart on both sides of the comparison.
+Profiles and not two directories, because the application is one application: a change to `public/index.php` reaches both stacks and neither can drift from the other. `VANILLA_PORT`, `VANILLA_NGINX_PORT` and `VANILLA_WORKERS` are the three settings; the worker count is `TESTSERVER_WORKERS` on the phpscript side.
+
+Every container shares the host's network namespace. A published port goes through docker-proxy or a NAT hop, and the measurement is tens of microseconds, so sharing the namespace is what puts the generator and the server the same distance apart on both sides of the comparison. It is also what lets nginx reach fpm on loopback without the two sharing a filesystem.
 
 ## Benchmarking it against phpscript
 
-`scripts/bench-http.sh` runs it as the `vanilla` target and brings the stack up and down itself:
+`scripts/bench-http.sh` runs both stacks as targets and brings them up and down itself:
 
 ```sh
-BENCH_TARGETS="php vanilla" scripts/bench-http.sh after
-BENCH_TARGETS="go php vanilla" scripts/bench-http.sh after
+BENCH_TARGETS="bridge vanilla-apache vanilla-nginx" scripts/bench-http.sh after
+BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 ```
 
-The sweep reniced the container's processes to match the other two sides, records what each side holds in memory with its last request answered, and checks `/slow` on every side. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the protocol the numbers have to satisfy.
+It reniced the containers' processes to match the other sides, records what each holds in memory with its last request answered, and checks `/slow` on every side. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the protocol the numbers have to satisfy.
 
-## What a run reports
+## Where the cost is
 
-Three segments of 2s per route, `VANILLA_WORKERS=4` against `TESTSERVER_WORKERS=4`, both at `nice -n -20`, on four cores. `go` is `testdata/testserver.go`, `php` is `testdata/testserver.php` on phpscript, `vanilla` is this directory.
+Each stage of the bootstrap, measured through the same apache container by serving a file that stops at that stage. Three segments of 3s at concurrency 1, four cores.
 
-| route | go p50 us | php p50 us | vanilla p50 us | go req/s | php req/s | vanilla req/s |
-|-------|-----------|------------|----------------|----------|-----------|---------------|
-| hello | 34.0      | 47.0       | 505.0          | 27283    | 20080     | 1862          |
-| users | 36.0      | 52.0       | 516.0          | 25304    | 18151     | 1786          |
-| echo  | 43.0      | 56.0       | 525.0          | 21619    | 16690     | 1800          |
-| index | 34.0      | 42.0       | 486.0          | 27233    | 22273     | 1942          |
+| stage                                        | p50 us | req/s |
+|----------------------------------------------|--------|-------|
+| `static.txt`, apache alone                   | 64.0   | 13870 |
+| `_bare.php`, plus mod_php                    | 101.0  | 9051  |
+| `_autoload.php`, plus the composer autoloader | 131.0  | 6902  |
+| `_slim.php`, plus Slim's App and one route   | 377.0  | 2542  |
+| `/hello`, the whole application              | 473.0  | 1954  |
 
-Apache's own floor, serving a static file out of the same container, against the two PHP columns on the same box:
+opcache is on and `validate_timestamps` is off, so none of that is compilation: a bare php file answers in 101 us. Slim's per-request App construction is the single largest stage. The worker count is not in it either, concurrency 1 using one worker by definition.
 
-| measurement                         | p50 us | req/s |
-|-------------------------------------|--------|-------|
-| apache, static file                 | 64.0   | 13659 |
-| apache, php and Slim through /hello | 486.0  | 1981  |
-| phpscript, /hello                   | 47.0   | 20080 |
+The two web servers on the same application, four segments of 2s at concurrency 1:
 
-The web server alone costs more per request than phpscript's whole answer. What the static floor leaves is the PHP bootstrap: the autoloader, Slim's app and middleware stack, and the teardown, once per request.
+| stack               | static p50 us | static req/s | /hello p50 us | /hello req/s |
+|---------------------|---------------|--------------|---------------|--------------|
+| nginx with php-fpm  | 42.0          | 23053        | 370.0         | 2503         |
+| apache with mod_php | 66.0          | 12773        | 480.0         | 1920         |
 
-Memory with the sweep answered, from the same run:
+nginx wins the static floor outright and the php routes by a fifth. Most of that margin is `fastcgi_keep_conn on`: nginx holding its connections to fpm took `/hello` from 503 us to 370 us, on top of answering every request instead of 1.5% of them with a 502.
 
-| side    | rss kb | what it counts                              |
-|---------|--------|---------------------------------------------|
-| go      | 13008  | one process, workers as threads inside it   |
-| php     | 25888  | one process, workers as threads inside it   |
-| vanilla | 24914  | container cgroup, apache and its 4 children |
+## Where it differs from the bridge
 
-The two measurements are not interchangeable. A host process reports its own RSS; the container reports a cgroup counting apache's parent and every child it forked.
-
-## Where it differs from testserver.php
-
-Four differences, and every one of them is php or apache rather than a choice:
+Four differences, and every one of them is php or the web server rather than a choice:
 
 - `/slow` writes and flushes a space per tick. `connection_aborted()` reports a write that failed, so a loop writing nothing never notices the client leaving. The phpscript side reads the request's context, needs no write, and replies with the final line alone. Both sides pass the sweep's abort check.
-- `JSON\Encoder` passes `JSON_UNESCAPED_SLASHES | JSON_HEX_AMP`, which is what php needs to write Go's bytes: php escapes a forward slash where Go does not, and Go escapes an ampersand where php does not. A raw query string carrying two parameters reaches the second one. Two differences are left and neither has a flag that closes it: php escapes non-ASCII to `\uXXXX` where Go writes UTF-8, and Go escapes `<` and `>` to lowercase `<` where php's `JSON_HEX_TAG` writes `<`. No route here produces either.
-- `run()` neither listens nor waits, apache owning both, and `config()` reads the worker count back for the manifest alone: `conf/mpm.conf` is where apache is told it.
-- The reply headers differ by a few bytes either way. `expose_php` is off so no `X-Powered-By` goes out, and apache sends a `Server` header where net/http does not.
+- `json_encode` is passed `JSON_UNESCAPED_SLASHES | JSON_HEX_AMP`, which is what php needs to write Go's bytes: php escapes a forward slash where Go does not, and Go escapes an ampersand where php does not. A raw query string carrying two parameters reaches the second one. Two differences are left and neither has a flag that closes it: php escapes non-ASCII to `\uXXXX` where Go writes UTF-8, and Go escapes `<` and `>` to lowercase `<` where php's `JSON_HEX_TAG` writes `<`. No route here produces either.
+- `run()` neither listens nor waits, the web server owning both, and `config()` reads the worker count back for the record alone: `conf/apache/mpm.conf` and `conf/nginx/fpm-pool.conf` are where each stack is told it.
+- The reply headers differ by a few bytes either way. `expose_php` is off so no `X-Powered-By` goes out, and both web servers send a `Server` header where net/http does not.
 
 The error paths match. An unrouted path answers `404 page not found` and a wrong method answers `Method Not Allowed` with an `Allow` header, both with net/http's content type and its `nosniff`, because Slim has no handler for either exception and would answer 500 to both.
 
-## The image
+## The images
 
-`php:8.5-apache`, which ships opcache compiled in, so `conf/opcache.ini` configures it and nothing builds it. No extension is installed: the API needs core and json alone. A route that reads a database wants one `docker-php-ext-install pdo_sqlite` line in the Dockerfile and nothing else.
+`conf/` is what each image replaces in its server's config, and `conf/opcache.ini` and `conf/php.ini` are shared by both. No php extension is installed: the API needs core and json alone, and php 8.5 ships opcache compiled in. A route that reads a database wants one `docker-php-ext-install pdo_sqlite` line and nothing else.
 
-`conf/` is what the image replaces in apache's config: a fixed worker count in `mpm.conf`, the front controller rewrite in `vhost.conf`, one `Listen` in `ports.conf`, and no access log, because one line per request through a pipe is work the phpscript side is not doing and a sweep writes millions of them.
+Neither stack writes an access log. One line per request through a pipe is work the phpscript side is not doing and a sweep writes millions of them.
 
-`composer.lock` is committed and the image installs from it, so a rebuild resolves nothing and two runs measure the same Slim. The autoloader is built `--classmap-authoritative`, so the eight classes in `src/` cost a map lookup each and no directory walk. `/hello` measured 483 us at the p50 with the whole program in one file and 486 us with it split across them, on the same box minutes apart.
+`composer.lock` is committed and the images install from it, so a rebuild resolves nothing and two runs measure the same Slim. The autoloader is built `--classmap-authoritative`.
+
+`fastcgi_keep_conn on` in the nginx config is not optional. The upstream block keeps connections to fpm, and without it nginx closes its end after each request while fpm holds its own open, so a reused connection fails with `upstream prematurely closed connection while reading response header`. That was roughly 1.5% of requests under load, answered 502 and counted in the sweep's `non2xx` column.
+
+php-fpm expands no environment variable in its pool config, so `VANILLA_WORKERS` is substituted into it at startup. Baking it at build time would leave a stale image answering with a worker count nobody asked for whenever the variable changed without `--build`.

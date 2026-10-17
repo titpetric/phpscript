@@ -4,7 +4,7 @@ The standard runtime registers the Go-backed `HTTP\Mux` and `HTTP\Server` classe
 
 That is one of two ways to serve. The other is `phpscript server`, which scans a source tree for `// @route` comments and runs a file per request; see [routing.md](routing.md). Use that one for an application laid out as pages and endpoints. Use this one when the program is the server: a service with a handful of routes, a test server, something that has to start and stop on its own terms.
 
-`testdata/testserver.php` is a working example of everything below, and `testdata/testserver.go` is the same routes in Go beside it.
+`testdata/phpscript-http-bridge/server.php` is a working example of everything below, and `testdata/goserver/main.go` is the same routes in Go beside it. `testdata/phpscript-service` is the same API again with no router in the script at all, as route annotations under [`phpscript server`](../cli/server.md).
 
 ## A script that serves
 

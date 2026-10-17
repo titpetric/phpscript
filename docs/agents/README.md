@@ -8,15 +8,15 @@ Read this before running any document in this directory, and before quoting a me
 
 Each one is read and executed on its own. None of them repeats what is here.
 
-| Document                                               | Read when                                                 | What it leaves behind                                                         |
-|--------------------------------------------------------|-----------------------------------------------------------|-------------------------------------------------------------------------------|
-| [qa-sprint.md](qa-sprint.md)                           | Hunting bugs, dead code or duplication                    | One commit per finding on the draft, each with the fixture that pins it       |
-| [performance.md](performance.md)                       | Cutting the per-request cost of `testdata/testserver.php` | A harness, a published baseline, and one commit per measured improvement      |
-| [profile.md](profile.md)                               | Answering where the cost is, before changing anything     | The cpu and memory map of the tree, per package, per function and per fixture |
-| [collect-go-tests.md](collect-go-tests.md)             | Collecting pass/fail and duration from `go test`          | `bench-gotest-<side>.json`                                                    |
-| [collect-go-benchmarks.md](collect-go-benchmarks.md)   | Collecting `ns/op`, `B/op` and `allocs/op`                | `bench-go-<side>.txt` and its `benchstat` comparison                          |
-| [collect-phpscript-test.md](collect-phpscript-test.md) | Collecting fixture coverage, or percentiles               | `cover/<label>.cov`, or `bench-fixtures-<side>.json`                          |
-| [collect-phpscript-run.md](collect-phpscript-run.md)   | Profiling one script with no harness in the profile       | `cpu-<label>.pprof`, `mem-<label>.pprof`                                      |
+| Document                                               | Read when                                             | What it leaves behind                                                         |
+|--------------------------------------------------------|-------------------------------------------------------|-------------------------------------------------------------------------------|
+| [qa-sprint.md](qa-sprint.md)                           | Hunting bugs, dead code or duplication                | One commit per finding on the draft, each with the fixture that pins it       |
+| [performance.md](performance.md)                       | Cutting the per-request cost of the HTTP path         | A harness, a published baseline, and one commit per measured improvement      |
+| [profile.md](profile.md)                               | Answering where the cost is, before changing anything | The cpu and memory map of the tree, per package, per function and per fixture |
+| [collect-go-tests.md](collect-go-tests.md)             | Collecting pass/fail and duration from `go test`      | `bench-gotest-<side>.json`                                                    |
+| [collect-go-benchmarks.md](collect-go-benchmarks.md)   | Collecting `ns/op`, `B/op` and `allocs/op`            | `bench-go-<side>.txt` and its `benchstat` comparison                          |
+| [collect-phpscript-test.md](collect-phpscript-test.md) | Collecting fixture coverage, or percentiles           | `cover/<label>.cov`, or `bench-fixtures-<side>.json`                          |
+| [collect-phpscript-run.md](collect-phpscript-run.md)   | Profiling one script with no harness in the profile   | `cpu-<label>.pprof`, `mem-<label>.pprof`                                      |
 
 ## What a sprint is
 
@@ -170,7 +170,7 @@ done
 Four rules. No script enforces them; they are protocol.
 
 - **Medians and percentiles, never means.** `--json` reports `p50_ns`, `p95_ns` and `p99_ns`; `benchstat` reports medians; `wrk --latency` reports a distribution. All three percentiles go in the artifact. p50 and p99 go in the table. Check the generator's resolution before believing its percentiles: `hey` reports latency to four decimal places of a second, so every percentile of a sub-millisecond handler comes back as the same number, and `performance.md` uses wrk.
-- **A static control that never reaches the interpreter.** For the HTTP target the control is `testdata/testserver.go`, the route-for-route Go twin. It is the floor the PHP numbers are read against.
+- **A static control that never reaches the interpreter.** For the HTTP target the control is `testdata/goserver`, the route-for-route Go floor. It is what the phpscript numbers are read against.
 - **A drift guard across a segment.** Compare the first quartile of a segment's samples against the last and publish the percentage. A segment that drifted is re-measured, not published.
 - **Drop a sample whose window overlapped a collection.** `--json` reports `gc_runs` per row. A row whose GC share differs between before and after is not comparable. Where a single request is the unit, the sample is dropped outright.
 
