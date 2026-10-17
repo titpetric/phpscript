@@ -64,7 +64,7 @@ PHP endpoint files handle:
 
 ## Shared host state
 
-Each HTTP request gets a fresh PHP VM. Host applications can bind Go values into each VM for shared process state or services. The example fixture under `tests/fixtures/routing` uses `SharedMemory`, a Go struct registered as the PHP class `SharedMemory`, for a small key/value store and counters:
+Each HTTP request runs on a VM from the site's `runner.SessionPool`, reset between requests: nothing a request wrote survives into the next, and the standard library is registered once per pooled VM, not once per request. Host applications can bind Go values into the VM for shared process state or services. The example fixture under `tests/fixtures/routing` uses `SharedMemory`, a Go struct registered as the PHP class `SharedMemory`, for a small key/value store and counters:
 
 - `POST /kv/{key}` writes `$_POST["value"]` into shared memory.
 - `GET /kv/{key}` reads the value back.
