@@ -358,6 +358,21 @@ type emptyStdin struct{}
 
 func (emptyStdin) Read([]byte) (int, error) { return 0, io.EOF }
 
+// The size the stdlib fills each table to, which is what New presizes them to.
+//
+// A table starting empty rehashes its way up: `phpscript server` builds a
+// runtime and registers the whole stdlib into it per request, and over half the
+// time inside mapassign on that path went to rehash. The numbers are what
+// `phpscript info` reports as Internal Functions, Declared Classes and Defined
+// Constants, rounded up to leave room for what a host and a script add. They
+// are a hint and nothing reads them back, so one that drifts low costs a rehash
+// and nothing else.
+const (
+	stdlibFuncs   = 384
+	stdlibClasses = 48
+	stdlibConsts  = 192
+)
+
 // New returns a Runtime that writes echo output to w (defaults to os.Stdout).
 func New(w io.Writer, opts Options) *Runtime {
 	if w == nil {
@@ -373,20 +388,20 @@ func New(w io.Writer, opts Options) *Runtime {
 		opts:         opts,
 		profile:      ^Profile(0),
 		includeCache: NewIncludeCache(),
-		funcs:        map[string]*funcEntry{},
+		funcs:        make(map[string]*funcEntry, stdlibFuncs),
 		userFns:      map[string]struct{}{},
 		funcSites:    map[string]FuncSite{},
 		hoisted:      map[*model.Program]string{},
 		workDirBase:  opts.WorkDir,
-		classes:      map[string]*model.Class{},
+		classes:      make(map[string]*model.Class, stdlibClasses),
 		interfaces:   map[string]*model.InterfaceDecl{},
-		constructors: map[string]*funcEntry{},
+		constructors: make(map[string]*funcEntry, stdlibClasses),
 		includePath:  ".",
 		ctx:          context.Background(),
 		host:         context.Background(),
 		client:       context.Background(),
 		globals:      map[string]any{},
-		constants:    map[string]any{},
+		constants:    make(map[string]any, stdlibConsts),
 		classConsts:  map[string]map[string]any{},
 		classStatics: map[string]map[string]any{},
 		funcStatics:  map[*model.StaticVar]map[string]any{},
