@@ -2,11 +2,13 @@ package annotations
 
 import (
 	"bytes"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
 
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/telemetry"
 )
 
@@ -16,6 +18,12 @@ type handler struct {
 	config       config
 	includeCache *runner.IncludeCache
 	exprCache    *runner.ExprCache
+
+	// pool holds this source tree's registered runtimes between requests. It
+	// belongs to the handler the way the include cache does, so a runtime
+	// registered against one tree's root and options can never answer a
+	// request routed to another's; see runner.SessionPool.
+	pool *runner.SessionPool
 }
 
 // newHandler creates the handler shared by every endpoint of one source tree.
@@ -31,12 +39,43 @@ func newHandler(root fs.FS, config config) *handler {
 	if includeCache == nil {
 		includeCache = runner.NewIncludeCache()
 	}
-	return &handler{
+	h := &handler{
 		root:         root,
 		config:       config,
 		includeCache: includeCache,
 		exprCache:    exprCache,
 	}
+	h.pool = runner.NewSessionPool(0, h.buildRuntime)
+	return h
+}
+
+// buildRuntime constructs one runtime of this tree's pool, the way newRuntime
+// does for a startup job, minus everything per-request: the standard library,
+// the tree's root, its caches and its observers, installed once and serving
+// every request the pool hands it to. FreezeStdlib marks the constants and the
+// environment as the host's, so a reset between requests keeps them and drops
+// what an endpoint defined.
+func (h *handler) buildRuntime() *runner.Runtime {
+	options := h.config.runnerOptions
+	options.RootFS = h.root
+	options.SAPI = "http"
+
+	construct := runner.New
+	if h.config.flatstack {
+		construct = runner.NewFlatStack
+	}
+	rt := construct(io.Discard, options)
+	rt.SetIncludeCache(h.includeCache)
+	rt.SetExprCache(h.exprCache)
+	for _, observer := range h.config.observers {
+		rt.Observe(observer)
+	}
+	stdlib.Register(rt)
+	if h.config.rootDir != "" {
+		stdlib.RegisterFS(rt, h.config.rootDir)
+	}
+	rt.FreezeStdlib()
+	return rt
 }
 
 // route returns the HTTP handler that serves one annotated PHP endpoint.
@@ -57,11 +96,21 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	// belong to this request and nothing outlives it.
 	defer request.Cleanup()
 
-	rt := h.config.newRuntime(r.Context(), h.root, &out, "http", func(rt *runner.Runtime) {
-		rt.SetIncludeCache(h.includeCache)
-		rt.SetExprCache(h.exprCache)
-		request.Register(rt)
-	})
+	// A pooled runtime, registered once by buildRuntime and reset between
+	// requests: nothing a request wrote survives the Put. The response is a
+	// pushed redirection, dropped with the rest of the session by the reset,
+	// and the connection enters through BeginRequest the way a Path B worker's
+	// does. The runtime hooks keep the order newRuntime gives a startup job:
+	// the request context first, then the host's own functions over it.
+	rt := h.pool.Get()
+	defer h.pool.Put(rt)
+	rt.PushOutput(&out)
+	defer rt.EndRequest(rt.BeginRequest(r.Context()))
+	rt.SetContext(r.Context())
+	request.Register(rt)
+	for _, fn := range h.config.runtimeFuncs {
+		fn(rt)
+	}
 	defer h.config.cover(rt)()
 
 	// The parsed request and the response writer live for this request too;

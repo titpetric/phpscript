@@ -13,8 +13,9 @@ import (
 // RuntimeFunc customizes a PHP runtime before an annotated PHP file executes.
 type RuntimeFunc func(*runner.Runtime)
 
-// newRuntime builds the runtime one annotated PHP file executes in. The sapi
-// name separates a routed endpoint ("http") from a startup job ("cli").
+// newRuntime builds the runtime one annotated startup or scheduled job
+// executes in, under the "cli" sapi. A routed endpoint takes a pooled runtime
+// from its handler instead; see handler.buildRuntime.
 //
 // The register hooks run after the standard library is installed and before the
 // caller's RuntimeFunc options, so an option can always wrap what came before

@@ -22,7 +22,6 @@ import (
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/runner/coverage"
-	"github.com/titpetric/phpscript/stdlib"
 	"github.com/titpetric/phpscript/stdlib/files"
 	"github.com/titpetric/phpscript/stdlib/mail"
 	"github.com/titpetric/phpscript/telemetry"
@@ -89,6 +88,17 @@ type handler struct {
 	flatstack     bool
 	observers     []runner.Observer
 
+	// phpOptions is runnerOptions as an entrypoint runs under it: the SAPI
+	// named and the source root bound. Derived once, because the pool's
+	// runtimes and every request's Context read the same value.
+	phpOptions runner.Options
+
+	// pool holds this site's registered runtimes between requests. It is a
+	// field of the handler the same way the include cache is, so a runtime
+	// registered against this site's filesystem and options can never answer
+	// for another site; see runner.SessionPool.
+	pool *runner.SessionPool
+
 	// coverage counts the statements every request runs, folded in per request
 	// so nothing keyed by an AST node outlives its own program.
 	// Nil is off, as a server started without --cover carries.
@@ -130,6 +140,10 @@ func newHandler(root fs.FS, rootDir, documentRoot string, options runner.Options
 		observers:     observers,
 		writable:      files.WritableRoots(rootDir, options.WritablePaths),
 	}
+	h.phpOptions = options
+	h.phpOptions.SAPI = "cgi-phpscript"
+	h.phpOptions.RootFS = root
+	h.pool = runner.NewSessionPool(0, h.buildRuntime)
 	return h, nil
 }
 
@@ -273,33 +287,28 @@ func (h *handler) serverVars(request runner.Context, r *http.Request, filename s
 func (h *handler) run(w http.ResponseWriter, r *http.Request, filename string, vars func(runner.Context)) (runner.Context, []byte, error) {
 	var out bytes.Buffer
 
-	options := h.runnerOptions
-	options.SAPI = "cgi-phpscript"
-	options.RootFS = h.root
-	newRuntime := runner.New
-	if h.flatstack {
-		newRuntime = runner.NewFlatStack
-	}
-	rt := newRuntime(&out, options)
-	rt.SetIncludeCache(h.includeCache)
-	rt.SetExprCache(h.exprCache)
+	// A pooled runtime, registered once by buildRuntime and reset between
+	// requests: nothing a request wrote survives the Put. The response is a
+	// pushed redirection, dropped with the rest of the session by the reset,
+	// and the connection enters through BeginRequest the way a Path B worker's
+	// does, so connection_aborted answers for this client and ignore_user_abort
+	// starts off for every request.
+	rt := h.pool.Get()
+	defer h.pool.Put(rt)
+	rt.PushOutput(&out)
+	defer rt.EndRequest(rt.BeginRequest(r.Context()))
 	rt.SetContext(r.Context())
-	for _, observer := range h.observers {
-		rt.Observe(observer)
-	}
 	if h.coverage != nil {
 		// A collector turns flatstack off for this request: coverage is an
-		// interpreter feature and the fallback is atomic.
+		// interpreter feature and the fallback is atomic. The pool drops the
+		// collector with the session, so nothing keyed by an AST node outlives
+		// its own program.
 		collector := coverage.New()
 		rt.SetCoverage(collector)
 		defer h.coverage.Add(collector)
 	}
 
-	stdlib.Register(rt)
-	if h.rootDir != "" {
-		stdlib.RegisterFS(rt, h.rootDir)
-	}
-	reqCtx := runner.FromRequestOptions(r, options)
+	reqCtx := runner.FromRequestOptions(r, h.phpOptions)
 	// Uploaded parts are copied to temporary files for the script to read; they
 	// belong to this request and nothing outlives it.
 	defer reqCtx.Cleanup()
