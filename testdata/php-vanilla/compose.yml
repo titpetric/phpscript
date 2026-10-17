@@ -1,0 +1,34 @@
+# The vanilla PHP side of the load comparison, up and down in one command.
+#
+# network_mode: host, because the measurement is tens of microseconds and a
+# published port goes through docker-proxy or a NAT hop that costs a share of
+# that. Sharing the host's namespace puts the generator and the server the same
+# distance apart on both sides of the comparison.
+#
+# VANILLA_PORT is the port it listens on and VANILLA_WORKERS is how many
+# requests it answers at once, which is TESTSERVER_WORKERS on the phpscript
+# side. Both reach apache's config through the environment, so a change to
+# either needs no rebuild.
+services:
+  php-vanilla:
+    build:
+      context: .
+      args:
+        VANILLA_PORT: ${VANILLA_PORT:-8098}
+        VANILLA_WORKERS: ${VANILLA_WORKERS:-4}
+    image: phpscript/php-vanilla:local
+    container_name: phpscript-php-vanilla
+    network_mode: host
+    environment:
+      VANILLA_PORT: ${VANILLA_PORT:-8098}
+      VANILLA_WORKERS: ${VANILLA_WORKERS:-4}
+    # The sweep reads memory off the container's own cgroup, so the limit is
+    # high enough not to be what the number reports.
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:' . getenv('VANILLA_PORT') . '/hello') === false ? 1 : 0);"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+    restart: "no"

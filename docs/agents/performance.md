@@ -41,6 +41,16 @@ A segment is one wrk run and a route gets several of them, because the contract'
 
 `testdata/testserver.go` is the floor column. It is `//go:build ignore`, so it runs as `go run testdata/testserver.go`. It is read as the floor, not as a target to reach: a VM is the whole of what the comparison measures.
 
+`testdata/php-vanilla` is the ceiling column, and `BENCH_TARGETS` is what selects the sides: `go` is the twin, `php` is `testdata/testserver.php` on phpscript, and `vanilla` is the same API as a served PHP application, php 8.5 and apache with mod_php routed by Slim. The default pair is the one needing no docker, and the sweep brings the container up and down itself.
+
+```sh
+BENCH_TARGETS="go php vanilla" scripts/bench-http.sh after
+```
+
+Three things make that column comparable rather than decorative: the container shares the host's network namespace, so no published port and no NAT hop sit in the measurement; its processes are reniced to the `nice -n -20` the other two run at; and its worker count is `VANILLA_WORKERS`, set to `TESTSERVER_WORKERS` by default, so both sides answer the same number of requests at once. What is left between them is the stack, which is one bootstrap per request against a runtime forked once at `listen()`. [../../testdata/php-vanilla/README.md](../../testdata/php-vanilla/README.md) is what that directory is and where it differs from the PHP the phpscript side runs.
+
+Memory is the last section a sweep writes, taken with the last request answered and nothing torn down. The two measurements in it are not interchangeable and the note column says which is which: a host process reports its own RSS, where phpscript and the twin each answer every request on one process whose workers are threads inside it, and the container reports a cgroup counting apache's parent and every child it forked. Neither number is a per-request figure; `B/op` from `BenchmarkTestServerRoute` is what prices a request.
+
 Routes in, and why:
 
 | Route             | What it prices                                                                      |

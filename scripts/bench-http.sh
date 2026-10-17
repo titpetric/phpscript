@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 #
-# The load sweep for testdata/testserver.php and its Go twin.
+# The load sweep for testdata/testserver.php, its Go twin, and the same API as a
+# served PHP application.
+#
+# BENCH_TARGETS names the sides: `go` is testdata/testserver.go, `php` is
+# testdata/testserver.php on phpscript, and `vanilla` is testdata/php-vanilla,
+# which is php 8.5 and apache with mod_php answering through Slim. The default
+# pair is the one needing no docker.
+#
+#	BENCH_TARGETS="php vanilla" scripts/bench-http.sh after
+#
+# The vanilla side is brought up and torn down by this script. It shares the
+# host's network namespace, runs the same worker count, and its processes are
+# reniced to match the other two, so what is left between the sides is the
+# stack: one bootstrap per request against a runtime forked once at listen().
 #
 # It measures Path B only: HTTP\Mux on runner.Pool, parsed once, handlers
 # resolved once at $mux->handle(), workers forked once at listen(), response
@@ -66,8 +79,18 @@ warmup="${BENCH_WARMUP:-2s}"
 # that is hardcoded in the script's config(), so the comparison stops being
 # honest above the worker count.
 concurrencies="${BENCH_CONCURRENCY:-1 4}"
+# go is testdata/testserver.go, php is testdata/testserver.php on phpscript, and
+# vanilla is testdata/php-vanilla on php 8.5 and apache. The default pair is the
+# one that needs no docker; add vanilla to compare against a served PHP stack.
 targets="${BENCH_TARGETS:-go php}"
 workers="${TESTSERVER_WORKERS:-4}"
+# The vanilla side listens here and answers this many requests at once, which
+# is TESTSERVER_WORKERS on the other two. compose.yml reads both.
+vanilla_port="${VANILLA_PORT:-8098}"
+vanilla_workers="${VANILLA_WORKERS:-$workers}"
+compose_dir="$root/testdata/php-vanilla"
+# The container_name compose.yml pins, which docker top and docker stats read.
+vanilla_container="phpscript-php-vanilla"
 # Running out of time is a fatal on the PHP side: the shutdown callback fires,
 # the server stops listening and the process leaves mid-sweep. This has to outlast
 # the whole sweep and the waiting between its steps, not one segment.
@@ -81,8 +104,11 @@ out="$root/bench-http-$side.txt"
 manifest="$root/bench-manifest-$side.txt"
 work="$(mktemp -d)"
 segout="$work/segments.txt"
+memout="$work/memory.txt"
 server_pid=""
 server_addr=""
+server_kind=""
+vanilla_logs_pid=""
 
 # The routes, and what each one prices. /slow is twenty usleep calls by
 # construction and prices the deadline machinery rather than the request path,
@@ -121,6 +147,16 @@ build_binaries() {
 }
 
 with_lock build_binaries
+
+# The vanilla image once, ahead of the sweep. start_server is called per
+# concurrency and again for the abort check, and a build inside it would put
+# docker's work inside the measurement window.
+case " $targets " in
+*" vanilla "*)
+	VANILLA_PORT="$vanilla_port" VANILLA_WORKERS="$vanilla_workers" \
+		docker compose -f "$compose_dir/compose.yml" build >/dev/null
+	;;
+esac
 PATH="$root/bin:$PATH"
 export PATH
 command -v phpscript | grep -q "^$root/bin/" || {
@@ -151,27 +187,49 @@ command -v phpscript | grep -q "^$root/bin/" || {
 	echo "concurrencies: $concurrencies"
 	echo "TESTSERVER_WORKERS: $workers"
 	echo "TESTSERVER_LIMIT: $limit"
+	echo "targets: $targets"
+	case " $targets " in
+	*" vanilla "*)
+		echo "VANILLA_PORT: $vanilla_port"
+		echo "VANILLA_WORKERS: $vanilla_workers"
+		echo "vanilla php: $(docker run --rm "$(docker compose -f "$compose_dir/compose.yml" config --images | head -1)" php -r 'echo PHP_VERSION;' 2>/dev/null)"
+		echo "vanilla slim: $(jq -r '.packages[] | select(.name == "slim/slim") | .version' "$compose_dir/composer.lock" 2>/dev/null)"
+		echo "vanilla server: $(docker run --rm "$(docker compose -f "$compose_dir/compose.yml" config --images | head -1)" apache2 -v 2>/dev/null | head -1)"
+		echo "vanilla network: host, so no published port and no NAT hop"
+		;;
+	esac
 	echo "commands:"
 	echo "  CGO_ENABLED=0 go build -o bin/phpscript ."
 	echo "  CGO_ENABLED=0 go build -o bin/testserver-go testdata/testserver.go"
 	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit phpscript run testdata/testserver.php"
 	echo "  TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=$workers TESTSERVER_LIMIT=$limit bin/testserver-go"
+	case " $targets " in
+	*" vanilla "*)
+		echo "  VANILLA_PORT=$vanilla_port VANILLA_WORKERS=$vanilla_workers docker compose -f testdata/php-vanilla/compose.yml up -d --wait"
+		;;
+	esac
 	echo "  nice -n -20 wrk --latency -t <threads> -c <c> -d $duration [-s scripts/bench-http-post.lua] <url>"
 } >"$manifest"
 
 : >"$out"
 : >"$segout"
+: >"$memout"
 
 # start_server brings one side up on a port the kernel picks and answers its
 # address. 127.0.0.1:0 rather than the default 8099 because several sprints
 # share the box and a fixed port is a collision.
 start_server() {
 	local target="$1" log="$2"
+	server_kind="$target"
 	case "$target" in
 	php) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
 		nice -n -20 phpscript run testdata/testserver.php >"$log" 2>&1 & ;;
 	go) TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS="$workers" TESTSERVER_LIMIT="$limit" \
 		nice -n -20 "$root/bin/testserver-go" >"$log" 2>&1 & ;;
+	vanilla)
+		start_vanilla "$log"
+		return
+		;;
 	*)
 		echo "unknown target $target" >&2
 		exit 1
@@ -192,11 +250,92 @@ start_server() {
 	server_addr="$addr"
 }
 
+# start_vanilla brings the compose stack up and waits for its healthcheck.
+#
+# It takes a fixed port where the other two take 0, because a container sharing
+# the host's network namespace has no address to report back and compose cannot
+# be told to publish a port the kernel picked. Host networking is the point: a
+# published port goes through docker-proxy or a NAT hop, and the measurement
+# here is tens of microseconds.
+#
+# The container's processes are reniced after the healthcheck, because the other
+# two sides run at nice -n -20 and a default-priority server on a shared box is
+# descheduled for milliseconds at a time. Apache forks its children at startup,
+# so they exist by the time this runs and each one is reniced by hand.
+start_vanilla() {
+	local log="$1"
+	VANILLA_PORT="$vanilla_port" VANILLA_WORKERS="$vanilla_workers" \
+		docker compose -f "$compose_dir/compose.yml" up -d --wait --wait-timeout 120 >"$log" 2>&1 || {
+		echo "the vanilla stack did not come up" >&2
+		docker compose -f "$compose_dir/compose.yml" logs --no-log-prefix >&2 || true
+		exit 1
+	}
+	# The log the abort check greps. error_log inside the handler reaches
+	# apache's stderr, which is the container's, which is this.
+	docker compose -f "$compose_dir/compose.yml" logs -f --no-log-prefix >"$log" 2>&1 &
+	vanilla_logs_pid=$!
+	local pid
+	for pid in $(docker top "$vanilla_container" -eo pid | tail -n +2); do
+		renice -n -20 -p "$pid" >/dev/null 2>&1 || true
+	done
+	server_addr="127.0.0.1:$vanilla_port"
+}
+
 stop_server() {
+	if [ "${server_kind:-}" = "vanilla" ]; then
+		[ -n "${vanilla_logs_pid:-}" ] && kill "$vanilla_logs_pid" 2>/dev/null
+		vanilla_logs_pid=""
+		VANILLA_PORT="$vanilla_port" VANILLA_WORKERS="$vanilla_workers" \
+			docker compose -f "$compose_dir/compose.yml" down >/dev/null 2>&1 || true
+		server_kind=""
+		return 0
+	fi
 	[ -n "${server_pid:-}" ] || return 0
 	kill "$server_pid" 2>/dev/null || true
 	wait "$server_pid" 2>/dev/null || true
 	server_pid=""
+	server_kind=""
+}
+
+# record_memory writes what the side holds in memory with the sweep's last
+# request answered and nothing torn down yet.
+#
+# RSS for a host process, because phpscript and the Go twin each answer every
+# request on one process and its workers are threads inside it. The container's
+# own cgroup for the vanilla side, because apache's parent and its children are
+# separate processes and the cgroup is what counts them together. The two are
+# not the same measurement and the note column says which is which.
+record_memory() {
+	local target="$1" conc="$2" kb note
+	case "$target" in
+	vanilla)
+		# docker stats writes "95.2MiB / 1GiB" and picks the unit per line, so
+		# the suffix is read and not assumed, the way the wrk latencies are.
+		kb="$(docker stats --no-stream --format '{{.MemUsage}}' "$vanilla_container" 2>/dev/null |
+			awk 'NR == 1 {
+				value = $1 + 0
+				unit = $1
+				sub(/^[0-9.]+/, "", unit)
+				if (unit ~ /^GiB/) value *= 1024 * 1024
+				else if (unit ~ /^MiB/) value *= 1024
+				else if (unit ~ /^B/) value /= 1024
+				printf "%.0f", value
+			}')" || kb=0
+		note="container cgroup, apache and its $vanilla_workers children"
+		;;
+	*)
+		# Both guarded: ps answers 1 for a process with no children, and
+		# phpscript and the Go twin each have none, their workers being threads
+		# inside the one process. Under pipefail that 1 reaches the assignment
+		# and ends the sweep.
+		kb="$({
+			ps -o rss= -p "$server_pid" 2>/dev/null || true
+			ps --ppid "$server_pid" -o rss= 2>/dev/null || true
+		} | awk '{ total += $1 } END { printf "%.0f", total }')" || kb=0
+		note="process RSS, one process answering on $workers workers"
+		;;
+	esac
+	printf '%-8s %-8s %5s %10s  %s\n' "$side" "$target" "$conc" "${kb:-0}" "$note" >>"$memout"
 }
 
 # measure_route is the exclusive step: one warmup and one segment set for one
@@ -315,6 +454,9 @@ for conc in $concurrencies; do
 				'{ printf "%-8s %-6s %5s %5d %9s %9s %9s %9s\n", route, target, conc, NR, $1, $2, $3, $4 }' \
 				"$rows" >>"$segout"
 		done
+		# Before the teardown, with the last request answered: what the side
+		# holds after a sweep is the number, not what it started with.
+		record_memory "$target" "$conc"
 		stop_server
 	done
 	echo >>"$out"
@@ -327,6 +469,18 @@ done
 	echo
 	printf '%-8s %-6s %5s %5s %9s %9s %9s %9s\n' route side conc seg "p50 us" "p90 us" "p99 us" "req/s"
 	cat "$segout"
+	echo
+} >>"$out"
+
+# What each side holds in memory with its sweep finished. The two measurements
+# are not interchangeable, which is what the note column is for: a host process
+# reports its own RSS and the container reports a cgroup counting apache's
+# parent and every child it forked.
+{
+	echo "## memory with the sweep answered"
+	echo
+	printf '%-8s %-8s %5s %10s  %s\n' side target conc "rss kb" note
+	cat "$memout"
 	echo
 } >>"$out"
 

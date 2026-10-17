@@ -1,0 +1,3 @@
+# Slim's route cache, written by the first request that finds it missing. The
+# container builds this directory; a local `php -S` run creates it here.
+var/

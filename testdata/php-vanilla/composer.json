@@ -1,0 +1,15 @@
+{
+	"name": "phpscript/php-vanilla-testserver",
+	"description": "testdata/testserver.php as a vanilla PHP application, for the load comparison",
+	"type": "project",
+	"license": "MIT",
+	"require": {
+		"php": ">=8.2",
+		"slim/slim": "^4.14",
+		"slim/psr7": "^1.7"
+	},
+	"config": {
+		"optimize-autoloader": true,
+		"sort-packages": true
+	}
+}
