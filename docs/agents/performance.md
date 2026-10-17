@@ -1,12 +1,31 @@
 # Performance sprint
 
-Cut the per-request cost of `testdata/testserver.php` and prove the cut as a measured delta.
+Cut the per-request cost of the HTTP path and prove the cut as a measured delta.
 
 Read this when optimising the HTTP path. It runs under the contract in [README.md](README.md); that document is not restated here.
 
 ## The target
 
-`testdata/testserver.php` is a PHP program that is itself the HTTP server. `testdata/testserver.go` is the same routes on `net/http.ServeMux`, with the same encoder and the same bodies, and no VM. One load generator drives both, so the difference reads off directly.
+One API, written five ways, one directory each under `testdata/`, driven by one load generator so the difference reads off directly. Every side shares the host's network namespace, answers on the same worker count, and runs at `nice -n -20`, so what is left between them is the stack.
+
+| Directory                        | What it is                                             | Model  |
+|----------------------------------|--------------------------------------------------------|--------|
+| `testdata/goserver`              | the same routes on `net/http.ServeMux`, no VM          | floor  |
+| `testdata/phpscript-http-bridge` | a PHP program that is itself the HTTP server           | Path B |
+| `testdata/phpscript-service`     | route annotations under `phpscript server`             | Path A |
+| `testdata/php-vanilla`           | Slim on apache with mod_php, and on nginx with php-fpm | php    |
+
+`testdata/phpscript-service` is the shape a phpscript application is actually written in: one file per endpoint, `// @route METHOD /path` above it as the whole routing table, `$_GET` and `$_POST` for the request, `$_REQUEST` for a path value, `echo` for the body.
+
+Where the five stand, four segments of 2s per route at concurrency 1, four workers a side, four cores. A Path A row and a Path B row are in one table here because the subject is the spread between the models; a sprint's before and after tables are per runtime, as the sweep writes them.
+
+| Runtime           | `/hello` p50 us | `/users` p50 us | `/echo` p50 us | `/hello` req/s |
+|-------------------|-----------------|-----------------|----------------|----------------|
+| `goserver`        | 34.0            | 36.0            | 43.0           | 26828          |
+| `bridge`, Path B  | 47.0            | 50.0            | 54.0           | 19624          |
+| `service`, Path A | 188.0           | 199.0           | 209.0          | 4430           |
+| `vanilla-nginx`   | 370.0           | 372.0           | 373.0          | 2503           |
+| `vanilla-apache`  | 480.0           | 487.0           | 496.0          | 1920           |
 
 Two things drive them, and both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through one load generator and reports a latency distribution and a request rate per route; `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds, and reports `allocs/op`. There is still no fixture and no venom suite over either.
 
@@ -14,7 +33,7 @@ The sequencing those two arrived under holds for everything after them: the base
 
 ## Path B, not Path A
 
-There are two unrelated HTTP paths in this repository and `testserver.php` uses the second. Measuring one and attributing the number to the other is the likeliest mistake in this sprint.
+There are two unrelated HTTP paths in this repository and one directory per path: `testdata/phpscript-service` is Path A and `testdata/phpscript-http-bridge` is Path B. Measuring one and attributing the number to the other is the likeliest mistake in this sprint.
 
 |                    | Path A, `phpscript server`                                                           | Path B, `HTTP\Mux` plus `HTTP\Server`              |
 |--------------------|--------------------------------------------------------------------------------------|----------------------------------------------------|
@@ -39,7 +58,19 @@ Concurrency 1 for the delta, as the contract's single-threaded rule requires. A 
 
 A segment is one wrk run and a route gets several of them, because the contract's drift guard needs two ends to compare: one long run reports one distribution with no way to tell when inside it the box is busy.
 
-`testdata/testserver.go` is the floor column. It is `//go:build ignore`, so it runs as `go run testdata/testserver.go`. It is read as the floor, not as a target to reach: a VM is the whole of what the comparison measures.
+`testdata/goserver` is the floor column. It is `//go:build ignore`, so it runs as `go run testdata/goserver/main.go`. It is read as the floor, not as a target to reach: a VM is the whole of what the comparison measures.
+
+`BENCH_TARGETS` selects the sides, and the default pair is the one needing no docker:
+
+```sh
+BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
+```
+
+One table per side, because two of them are different execution models and `bridge` and `service` are the pair. The table header names the model, so what each number describes travels with it. The sweep brings every side up and down itself, including the compose stacks.
+
+`testdata/php-vanilla` is the ceiling, served two ways from one copy of `public/index.php` so the web server is a column and not an assumption. Its worker count is `VANILLA_WORKERS`, set to `TESTSERVER_WORKERS` by default, so every side answers the same number of requests at once. opcache is on with `validate_timestamps` off, Slim's route cache is set, and the autoloader is `--classmap-authoritative`, because an application served without those measures the compiler. [../../testdata/php-vanilla/README.md](../../testdata/php-vanilla/README.md) prices each stage of its bootstrap and lists where it differs from the PHP the phpscript side runs.
+
+Memory is the last section a sweep writes, taken with the last request answered and nothing torn down. The two measurements in it are not interchangeable and the note column says which is which: a host process reports its own RSS, where phpscript and the twin each answer every request on one process whose workers are threads inside it, and the container reports a cgroup counting apache's parent and every child it forked. Neither number is a per-request figure; `B/op` from `BenchmarkTestServerRoute` is what prices a request.
 
 Routes in, and why:
 
@@ -144,6 +175,6 @@ The table states the path in its caption and carries the Go floor as a row, so t
 | `/hello` (before) |        |        |       |
 | `/hello` (now)    |        |        |       |
 
-The allocation table is the second one, in the shape [../allocation-performance.md](../allocation-performance.md) owns, and it carries no Go floor: `testdata/testserver.go` is `//go:build ignore` and its handlers cannot be imported, so the floor lives in the latency table only.
+The allocation table is the second one, in the shape [../allocation-performance.md](../allocation-performance.md) owns, and it carries no Go floor: `testdata/goserver/main.go` is `//go:build ignore` and its handlers cannot be imported, so the floor lives in the latency table only.
 
 The delta is the claim. The absolute number is context.

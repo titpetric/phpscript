@@ -83,7 +83,7 @@ uncover cover/qa.cov
 Four false positives, each real in this tree. A symbol reached only:
 
 - from a benchmark, which `go test` without `-bench` never runs;
-- from a `//go:build ignore` file, which `testdata/testserver.go` is;
+- from a `//go:build ignore` file, which `testdata/goserver/main.go` is;
 - from a demo or a venom suite, which no Go test reads;
 - by registered name, which every binding is. A binding is called by string from PHP and has no Go caller at all.
 

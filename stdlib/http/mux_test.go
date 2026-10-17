@@ -740,7 +740,7 @@ define("MUX", $mux);
 	}
 }
 
-// TestMuxTakesABoundMethod is the shape testdata/testserver.php uses: the
+// TestMuxTakesABoundMethod is the shape testdata/phpscript-http-bridge/server.php uses: the
 // handlers are methods and mount() registers each as $this->fnName, with no
 // property and no constructor in between. The receiver comes along the way a
 // closure's captured $this does, and it is the same object every request is

@@ -1,0 +1,36 @@
+# The annotated-service side of the load comparison, up and down in one
+# command. This is Path A: `phpscript server` builds a runtime per request.
+#
+#	docker compose up -d --wait
+#	curl http://127.0.0.1:8097/users/42
+#	docker compose down
+#
+# The binary is mounted and not baked in, which is the whole point: a benchmark
+# measures the build under test, and an image carrying its own phpscript would
+# answer for a binary nobody asked about. `go build -o bin/phpscript .` from
+# the repository root is what fills the mount, and CGO_ENABLED=0 is what makes
+# it run on alpine.
+#
+# network_mode: host, because the measurement is tens of microseconds and a
+# published port goes through docker-proxy or a NAT hop that costs a share of
+# that. scripts/bench-http.sh runs this target as a host process on a port the
+# kernel picks, for the same reason and to keep two sweeps off one port; this
+# file is the repeatable way to bring the same thing up by hand.
+services:
+  phpscript-service:
+    image: alpine:3.21
+    container_name: phpscript-service
+    network_mode: host
+    working_dir: /app
+    volumes:
+      - ../../bin/phpscript:/usr/local/bin/phpscript:ro
+      - .:/app:ro
+    command: ["phpscript", "server", "-f", "/app/config.yml", "/app"]
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8097/hello || exit 1"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+    restart: "no"

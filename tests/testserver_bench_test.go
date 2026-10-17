@@ -23,7 +23,7 @@ import (
 // table with a number from the other. docs/agents/performance.md owns the
 // comparison and scripts/bench-http.sh is the latency half of the same harness.
 //
-// It is the real testdata/testserver.php, and no copy of it. The file's class
+// It is the real testdata/phpscript-http-bridge/server.php, and no copy of it. The file's class
 // declaration is taken and its two trailing statements are left, because
 // run() calls listen() and then parks in wait() until the script's time limit
 // ends it, which a benchmark cannot do. The driver below is what run() does up
@@ -52,7 +52,7 @@ var benchServerRoutes = []struct {
 	target string
 	body   string
 	// want is a distinctive substring of the response, checked once before the
-	// timed loop. It is what makes the benchmark notice testserver.php changing
+	// timed loop. It is what makes the benchmark notice the bridge's server.php changing
 	// under it, and never quietly measures a 404.
 	want string
 }{
@@ -63,7 +63,7 @@ var benchServerRoutes = []struct {
 }
 
 // BenchmarkTestServerRoute answers one request per iteration through the router
-// testdata/testserver.php builds, on the pool HTTP\Server::listen would install.
+// testdata/phpscript-http-bridge/server.php builds, on the pool HTTP\Server::listen would install.
 func BenchmarkTestServerRoute(b *testing.B) {
 	handler := newTestServerHandler(b, 1, 64)
 
@@ -93,12 +93,12 @@ func BenchmarkTestServerRoute(b *testing.B) {
 	}
 }
 
-// newTestServerHandler declares testdata/testserver.php's class, mounts its
+// newTestServerHandler declares testdata/phpscript-http-bridge/server.php's class, mounts its
 // router the way run() does, and installs the worker pool listen() would.
 func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 	b.Helper()
 
-	source, err := os.ReadFile("../testdata/testserver.php")
+	source, err := os.ReadFile("../testdata/phpscript-http-bridge/server.php")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func newTestServerHandler(b *testing.B, workers, queue int) http.Handler {
 		}
 	}
 	if len(mounted.Stmts) == 0 {
-		b.Fatal("testdata/testserver.php declares no class")
+		b.Fatal("testdata/phpscript-http-bridge/server.php declares no class")
 	}
 	mounted.Stmts = append(mounted.Stmts, driver.Stmts...)
 

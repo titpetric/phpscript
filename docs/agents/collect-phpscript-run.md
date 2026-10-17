@@ -14,7 +14,7 @@ That is why this is the per-function tool. A profile of `phpscript test` carries
 
 The contract's lock and private binary.
 
-The profile is written when the command ends. A script killed with `SIGKILL` loses it. For a server, that means arranging for the process to end on its own: `testdata/testserver.php` ends on its `set_time_limit`, and `TESTSERVER_LIMIT` is what sets how long the profile covers.
+The profile is written when the command ends. A script killed with `SIGKILL` loses it. For a server, that means arranging for the process to end on its own: `testdata/phpscript-http-bridge/server.php` ends on its `set_time_limit`, and `TESTSERVER_LIMIT` is what sets how long the profile covers.
 
 Two parsing traps:
 
@@ -52,7 +52,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
   PATH="$PWD/bin:$PATH"
   command -v phpscript | grep -q "^$PWD/bin/" || exit 1
   TESTSERVER_ADDR=127.0.0.1:8099 TESTSERVER_LIMIT=60 \
-    phpscript --cpuprofile=cpu-testserver.pprof run testdata/testserver.php &
+    phpscript --cpuprofile=cpu-testserver.pprof run testdata/phpscript-http-bridge/server.php &
   sleep 2
   wrk -t1 -c1 -d20s --latency http://127.0.0.1:8099/hello | tee bench-http-after.txt
   wait

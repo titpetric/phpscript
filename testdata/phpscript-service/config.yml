@@ -1,0 +1,17 @@
+# The configuration `phpscript server` runs this application under.
+#
+# Route scanning is what makes this directory an application: every .php file
+# outside public/ is read for a `// @route METHOD /path` annotation and that
+# annotation is the routing table. There is no front controller and nothing
+# registers a handler.
+#
+# addr is overridden per run by the sweep, which asks the kernel for a port.
+runner:
+  work_dir: "."
+
+routes:
+  enabled: true
+
+server:
+  addr: "127.0.0.1:8097"
+  quiet: false
