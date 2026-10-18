@@ -181,7 +181,7 @@ Counters => 3
 Size => 0.06 MiB
 ```
 
-`Cached Size` is the heap a precompile pass measured itself adding, and is absent when no pass runs: nothing measures a cache filled request by request, and printing zero over it would read as a measurement. A section with nothing to report drops out, not printed as a heading over nothing, so a run with no store bound shows no `SharedMemory` block. The `opcache_*` functions are not implemented and never will be; see [`Won't implement`](design.md#wont-implement).
+`Cached Size` is the heap a precompile pass measured itself adding, and is absent when no pass runs: nothing measures a cache filled request by request, and printing zero over it would read as a measurement. A section with nothing to report drops out, not printed as a heading over nothing, so a run with no store bound shows no `SharedMemory` block. The `opcache_*` functions are not implemented and never will be; see [Won't build](design.md#wont-build).
 
 phpscript **accepts `time_limit` and `concurrency_limit` without enforcing them**. The keys parse and travel through to the runtime so a configuration written today keeps working when enforcement lands.
 

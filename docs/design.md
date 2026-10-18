@@ -82,11 +82,7 @@ Cancellation is per invocation: the mux enters the request's context for the len
 
 A binding called inside a handler receives a context derived from the request, not from the session: the request is authoritative, because Go middleware ahead of the handler attaches values, deadlines and cancellation to it, and every one of those has to reach a binding blocked in I/O. `ignore_user_abort(true)` keeps the request's values and drops its cancellation, so a disconnect ends no work the handler chose to finish, and the active span still resolves through the session, so a database call inside a traced request nests where the handler is. `runner.bindingContext` is the derivation and `runner/bindingctx.go` carries the chain order.
 
-<!-- vale llm-slop.TooWordy = NO -->
-
-## Won't implement
-
-<!-- vale llm-slop.TooWordy = YES -->
+## Won't build
 
 Separate from the "Not implemented" rows in the [language reference](reference/README.md), which mean "not yet". Nothing here will arrive later, and each row names what to use instead.
 

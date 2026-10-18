@@ -56,18 +56,18 @@ Each is resolved when a file is compiled, the way php resolves them, and becomes
 
 The table is php's own list, in the order the [language reference](https://www.php.net/manual/en/language.constants.magic.php) lists them.
 
-| Name            | Status          | Answers                                                                                                                         |
-|-----------------|-----------------|---------------------------------------------------------------------------------------------------------------------------------|
-| `__LINE__`      | Compatibility   | The line it is written on.                                                                                                      |
-| `__FILE__`      | Divergence      | The path the file reads under, which is the source filesystem's spelling.                                                       |
-| `__DIR__`       | Divergence      | The directory of that path, by the same rule.                                                                                   |
-| `__FUNCTION__`  | Compatibility   | The enclosing function, namespace-qualified; a method's bare name inside one.                                                   |
-| `__CLASS__`     | Compatibility   | The enclosing class, namespace-qualified. Empty outside one.                                                                    |
-| `__METHOD__`    | Compatibility   | `Class::method` inside a class, the function's own name outside one.                                                            |
-| `__NAMESPACE__` | Compatibility   | The namespace the file declares, empty in a file that declares none.                                                            |
-| `__TRAIT__`     | Won't implement | Nothing. There are no traits, so there is no name to answer. See [Design](../../design.md).                                     |
-| `__PROPERTY__`  | Won't implement | Nothing. There are no property hooks for it to name.                                                                            |
-| `::class`       | Partial         | The class name, namespace-qualified. `Name::class`, `self::class` and `static::class` resolve; `$object::class` does not parse. |
+| Name            | Status        | Answers                                                                                                                         |
+|-----------------|---------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `__LINE__`      | Compatibility | The line it is written on.                                                                                                      |
+| `__FILE__`      | Divergence    | The path the file reads under, which is the source filesystem's spelling.                                                       |
+| `__DIR__`       | Divergence    | The directory of that path, by the same rule.                                                                                   |
+| `__FUNCTION__`  | Compatibility | The enclosing function, namespace-qualified; a method's bare name inside one.                                                   |
+| `__CLASS__`     | Compatibility | The enclosing class, namespace-qualified. Empty outside one.                                                                    |
+| `__METHOD__`    | Compatibility | `Class::method` inside a class, the function's own name outside one.                                                            |
+| `__NAMESPACE__` | Compatibility | The namespace the file declares, empty in a file that declares none.                                                            |
+| `__TRAIT__`     | Won't build   | Nothing. There are no traits, so there is no name to answer. See [Design](../../design.md).                                     |
+| `__PROPERTY__`  | Won't build   | Nothing. There are no property hooks for it to name.                                                                            |
+| `::class`       | Partial       | The class name, namespace-qualified. `Name::class`, `self::class` and `static::class` resolve; `$object::class` does not parse. |
 
 A name in the last three rows is an ordinary undefined constant: reading `__TRAIT__` throws `Undefined constant "__TRAIT__"`, the same as any name nothing declares.
 

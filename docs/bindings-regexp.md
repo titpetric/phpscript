@@ -1,8 +1,8 @@
 # Regexp bindings
 
-This tutorial is a step by step process on how bindings are added to phpscript. The objective here is to bind "regexp" package APIs to a custom 'Regexp\' php namespace, like http.ResponseWriter is bound to HTTP\ResponseWriter and so on. Basically we bind `regexp.Compile` as `Regexp\compile` in phpscript, implicitly handle the error return as phpscript does and use `$rx = new Regexp\Compile(string $expr);` returning a `*regexp.Regexp` as a phpscript alias `Regexp\Regexp` type. Also add CompilePOSIX, omit MustCompile. All type methods are forwarded to phpscript. It is a new API specific to the phpscript/go runtime and carries no compatibility with vanilla php.
+This tutorial is a step by step walk through adding a binding to phpscript. The goal here is to bind "regexp" package APIs to a custom 'Regexp\' php namespace, the way phpscript binds http.ResponseWriter to HTTP\ResponseWriter and so on. Basically we bind `regexp.Compile` as `Regexp\compile` in phpscript, implicitly handle the error return as phpscript does and use `$rx = new Regexp\Compile(string $expr);` returning a `*regexp.Regexp` as a phpscript alias `Regexp\Regexp` type. Also add CompilePOSIX, omit MustCompile. The binding forwards all type methods to phpscript. This API is new and specific to the phpscript/go runtime and carries no compatibility with vanilla php.
 
-Everything below runs in phpscript today. The fixtures are quoted from `tests/fixtures/bindings/` verbatim, expected output included, and they are what `phpscript test --matrix ./tests/...` checks on both engines.
+Everything below runs in phpscript today. This page quotes the fixtures from `tests/fixtures/bindings/` verbatim, expected output included, and `phpscript test --matrix ./tests/...` checks them on both engines.
 
 The reference for the mechanism is [Go bindings](reference/extensions/bindings.md); this page is the walk through one area, start to finish. For what the `preg_*` family does instead, and where PCRE and RE2 part company, see [Regular expressions](reference/extensions/regexp.md).
 
@@ -59,15 +59,15 @@ func Register(rt *runner.Runtime) {
 Four things in that file are the convention:
 
 - A namespace is a backslash in a Go string. `"Regexp\\Compile"` is the name a script types, and lookup is case-insensitive with a leading `\` stripped, so `new \Regexp\compile($e)` resolves the same registration.
-- `regexp.Compile` is registered as-is. Its signature is `func(string) (*Regexp, error)`, which is the shape the bridge wants: a return slot declared exactly `error` is omitted from what PHP sees, and a non-nil value in it is thrown.
+- The registration takes `regexp.Compile` as-is. Its signature is `func(string) (*Regexp, error)`, which is the shape the bridge wants: the bridge omits a return slot declared exactly `error` from what PHP sees, and throws a non-nil value in it.
 - The doc comment above each registration is what the generated reference publishes. It starts with the name a script types and ends with punctuation; `internal/apidoc` reads the registration site and never the Go function.
-- The import is aliased. A file in `package regexp` may import `"regexp"` and the identifier resolves to the import, but `stdregexp` says which one a reader is looking at, as `stdlib/http` writes `nethttp "net/http"`.
+- The import carries an alias. A file in `package regexp` may import `"regexp"` and the identifier resolves to the import, but `stdregexp` says which one a reader is looking at, as `stdlib/http` writes `nethttp "net/http"`.
 
-`MustCompile` and `MustCompilePOSIX` are left out: they panic where a script needs an error to catch. `regexp.Match`, `regexp.MatchString` and `regexp.QuoteMeta` are package functions and would each need their own `RegisterFunc`; they are not part of this area.
+The binding omits `MustCompile` and `MustCompilePOSIX`: they panic where a script needs an error to catch. `regexp.Match`, `regexp.MatchString` and `regexp.QuoteMeta` are package functions and would each need their own `RegisterFunc`; they are not part of this area.
 
 ## Step 2: wiring it in
 
-A binding package contributes itself through `init`, so importing it is the whole of the wiring. `stdlib/imports.go` blank-imports the standard set:
+A binding package contributes itself through `init`, so the import is the whole of the wiring. `stdlib/imports.go` blank-imports the standard set:
 
 ```go
 	_ "github.com/titpetric/phpscript/stdlib/pexec"

@@ -268,7 +268,7 @@ func (w *stmtWalker) walk(stmts []model.Stmt) {
 	}
 }
 
-// lintGlobal reports the `global $x;` statement, a documented won't-implement
+// lintGlobal reports the `global $x;` statement, a documented won't-build
 // (docs/design.md): it parses and binds nothing, so the variable reads as
 // unset at a distance from the line that looks like it imports it.
 func (w *stmtWalker) lintGlobal(n *model.Global) {
@@ -310,7 +310,7 @@ func (w *stmtWalker) lintAbstract(n *model.ClassDecl) {
 }
 
 // lintMagicMethods reports a magic method the runtime never calls. Only
-// __construct and __invoke run (docs/design.md, "Won't implement"); a class
+// __construct and __invoke run (docs/design.md, "Won't build"); a class
 // that declares __call, __get or any other implicit hook is dead code that
 // reads as if something depended on it, which is worse than absent.
 func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
@@ -335,7 +335,7 @@ func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
 	}
 }
 
-// lintExtends reports `extends` on a class, a documented won't-implement
+// lintExtends reports `extends` on a class, a documented won't-build
 // (docs/design.md): the parent name is recorded and nothing arrives through
 // it, so the child answers only with the members it wrote and is not an
 // instanceof the parent. An interface's extends is not reported: there it
