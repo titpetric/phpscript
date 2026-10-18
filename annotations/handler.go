@@ -52,9 +52,9 @@ func newHandler(root fs.FS, config config) *handler {
 // buildRuntime constructs one runtime of this tree's pool, the way newRuntime
 // does for a startup job, minus everything per-request: the standard library,
 // the tree's root, its caches and its observers, installed once and serving
-// every request the pool hands it to. FreezeStdlib marks the constants and the
-// environment as the host's, so a reset between requests keeps them and drops
-// what an endpoint defined.
+// every request that takes it from the pool. FreezeStdlib marks the constants
+// and the environment as the host's, so a reset between requests keeps them and
+// drops what an endpoint defined.
 func (h *handler) buildRuntime() *runner.Runtime {
 	options := h.config.runnerOptions
 	options.RootFS = h.root
@@ -100,8 +100,8 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	// requests: nothing a request wrote survives the Put. The response is a
 	// pushed redirection, dropped with the rest of the session by the reset,
 	// and the connection enters through BeginRequest the way a Path B worker's
-	// does. The runtime hooks keep the order newRuntime gives a startup job:
-	// the request context first, then the host's own functions over it.
+	// does. The runtime hooks keep the order newRuntime installs for a startup
+	// job: the request context first, then the host's own functions over it.
 	rt := h.pool.Get()
 	defer h.pool.Put(rt)
 	rt.PushOutput(&out)

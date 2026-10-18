@@ -15,7 +15,7 @@ The `Server` class is the same class: `config()` reads the environment, `mount()
 | `(new JSON\Encoder($w))->encode($a)`  | `json_encode($a, JSON_FLAGS) . "\n"`           |
 | `$r->path_value("id")`                | `$args["id"]`                                  |
 
-A PSR-7 response is immutable, so a handler returns the response it built where the bridge writes to the one it was handed.
+A PSR-7 response is immutable, so a handler returns the response it built where the bridge writes to the one its caller passed in.
 
 ## Running it
 
@@ -31,9 +31,9 @@ curl http://127.0.0.1:8099/users/42
 docker compose --profile nginx down
 ```
 
-Profiles and not two directories, because the application is one application: a change to `public/index.php` reaches both stacks and neither can drift from the other. `VANILLA_PORT`, `VANILLA_NGINX_PORT` and `VANILLA_WORKERS` are the three settings; the worker count is `TESTSERVER_WORKERS` on the phpscript side.
+Profiles and not two directories, because the application is one application: a change to `public/index.php` reaches both stacks, so neither one answers bytes the other does not. `VANILLA_PORT`, `VANILLA_NGINX_PORT` and `VANILLA_WORKERS` are the three settings; the worker count is `TESTSERVER_WORKERS` on the phpscript side.
 
-Every container shares the host's network namespace. A published port goes through docker-proxy or a NAT hop, and the measurement is tens of microseconds, so sharing the namespace is what puts the generator and the server the same distance apart on both sides of the comparison. It is also what lets nginx reach fpm on loopback without the two sharing a filesystem.
+Every container shares the host's network namespace. A published port crosses docker-proxy or a NAT hop, and the measurement is tens of microseconds, so the shared namespace puts the generator and the server the same distance apart on both sides of the comparison. It is also what lets nginx reach fpm on loopback without the two sharing a filesystem.
 
 ## Benchmarking it against phpscript
 
@@ -44,7 +44,7 @@ BENCH_TARGETS="bridge vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
 ```
 
-It reniced the containers' processes to match the other sides, records what each holds in memory with its last request answered, and checks `/slow` on every side. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the protocol the numbers have to satisfy.
+It renices the containers' processes to match the other sides, records what each holds in memory with its last request answered, and checks `/slow` on every side. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the protocol the numbers have to satisfy.
 
 ## Where the cost is
 
@@ -58,7 +58,7 @@ Each stage of the bootstrap, measured through the same apache container by servi
 | `_slim.php`, plus Slim's App and one route   | 377.0  | 2542  |
 | `/hello`, the whole application              | 473.0  | 1954  |
 
-opcache is on and `validate_timestamps` is off, so none of that is compilation: a bare php file answers in 101 us. Slim's per-request App construction is the single largest stage. The worker count is not in it either, concurrency 1 using one worker by definition.
+opcache is on and `validate_timestamps` is off, so none of that is compilation, as the `_bare.php` row shows. Slim's per-request App construction is the single largest stage. The worker count is not in it either, concurrency 1 using one worker by definition.
 
 The two web servers on the same application, four segments of 2s at concurrency 1:
 
@@ -67,14 +67,19 @@ The two web servers on the same application, four segments of 2s at concurrency 
 | nginx with php-fpm  | 42.0          | 23053        | 370.0         | 2503         |
 | apache with mod_php | 66.0          | 12773        | 480.0         | 1920         |
 
-nginx wins the static floor outright and the php routes by a fifth. Most of that margin is `fastcgi_keep_conn on`: nginx holding its connections to fpm took `/hello` from 503 us to 370 us, on top of answering every request instead of 1.5% of them with a 502.
+nginx wins the static floor outright and the php routes by a fifth. Most of that margin is `fastcgi_keep_conn on`, which holds nginx's connections to fpm open across requests:
+
+| nginx, `POST /echo` under load | non-2xx | of    | `/hello` p50 us |
+|--------------------------------|---------|-------|-----------------|
+| without the directive          | 125     | 8540  | 503.0           |
+| with it                        | 0       | 14655 | 370.0           |
 
 ## Where it differs from the bridge
 
-Four differences, and every one of them is php or the web server rather than a choice:
+Four differences, and php or the web server forces each one:
 
 - `/slow` writes and flushes a space per tick. `connection_aborted()` reports a write that failed, so a loop writing nothing never notices the client leaving. The phpscript side reads the request's context, needs no write, and replies with the final line alone. Both sides pass the sweep's abort check.
-- `json_encode` is passed `JSON_UNESCAPED_SLASHES | JSON_HEX_AMP`, which is what php needs to write Go's bytes: php escapes a forward slash where Go does not, and Go escapes an ampersand where php does not. A raw query string carrying two parameters reaches the second one. Two differences are left and neither has a flag that closes it: php escapes non-ASCII to `\uXXXX` where Go writes UTF-8, and Go escapes `<` and `>` to lowercase `<` where php's `JSON_HEX_TAG` writes `<`. No route here produces either.
+- `json_encode` is passed `JSON_UNESCAPED_SLASHES | JSON_HEX_AMP`, the two flags php needs to write Go's bytes: php escapes a forward slash where Go does not, and Go escapes an ampersand where php does not. A raw query string carrying two parameters reaches the second one. Two differences are left and neither has a flag that closes it: php escapes non-ASCII to `\uXXXX` where Go writes UTF-8, and Go escapes `<` and `>` to lowercase `<` where php's `JSON_HEX_TAG` writes `<`. No route here produces either.
 - `run()` neither listens nor waits, the web server owning both, and `config()` reads the worker count back for the record alone: `conf/apache/mpm.conf` and `conf/nginx/fpm-pool.conf` are where each stack is told it.
 - The reply headers differ by a few bytes either way. `expose_php` is off so no `X-Powered-By` goes out, and both web servers send a `Server` header where net/http does not.
 
@@ -82,12 +87,12 @@ The error paths match. An unrouted path answers `404 page not found` and a wrong
 
 ## The images
 
-`conf/` is what each image replaces in its server's config, and `conf/opcache.ini` and `conf/php.ini` are shared by both. No php extension is installed: the API needs core and json alone, and php 8.5 ships opcache compiled in. A route that reads a database wants one `docker-php-ext-install pdo_sqlite` line and nothing else.
+`conf/` is what each image replaces in its server's configuration, and `conf/opcache.ini` and `conf/php.ini` are shared by both. No php extension is installed: the API needs core and json alone, and php 8.5 ships opcache compiled in. A route that reads a database takes one `docker-php-ext-install pdo_sqlite` line and nothing else.
 
 Neither stack writes an access log. One line per request through a pipe is work the phpscript side is not doing and a sweep writes millions of them.
 
 `composer.lock` is committed and the images install from it, so a rebuild resolves nothing and two runs measure the same Slim. The autoloader is built `--classmap-authoritative`.
 
-`fastcgi_keep_conn on` in the nginx config is not optional. The upstream block keeps connections to fpm, and without it nginx closes its end after each request while fpm holds its own open, so a reused connection fails with `upstream prematurely closed connection while reading response header`. That was roughly 1.5% of requests under load, answered 502 and counted in the sweep's `non2xx` column.
+`fastcgi_keep_conn on` in the nginx configuration keeps the upstream block's connections to fpm. Drop the directive and nginx closes its end after each request while fpm holds its own open, so a reused connection fails with `upstream prematurely closed connection while reading response header` and the 502 lands in the sweep's `non2xx` column. The table above prices both ends of it.
 
-php-fpm expands no environment variable in its pool config, so `VANILLA_WORKERS` is substituted into it at startup. Baking it at build time would leave a stale image answering with a worker count nobody asked for whenever the variable changed without `--build`.
+php-fpm expands no environment variable in its pool configuration, so `VANILLA_WORKERS` is substituted into it at startup. Baked in at build time, an image reused without `--build` answers on the worker count of its last build while the sweep's manifest records the variable, and the two disagree silently.

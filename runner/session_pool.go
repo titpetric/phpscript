@@ -66,8 +66,8 @@ func (p *SessionPool) Put(rt *Runtime) {
 	if rt == nil || len(rt.frames) != 0 {
 		return
 	}
-	// The collector was folded into its aggregator by the request that
-	// installed it; left behind it would double-count the next request.
+	// The request that installed the collector folded it into its aggregator;
+	// left behind it would double-count the next request.
 	rt.coverage = nil
 	rt.ResetSession(io.Discard, nil)
 	if !rt.opts.Precompile {

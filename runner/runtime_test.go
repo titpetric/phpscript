@@ -1356,7 +1356,7 @@ func TestRuntime_PutEnv(t *testing.T) {
 }
 
 // TestRuntime_OnReset covers the reset hooks: each registered one runs once
-// per reset, which is how a binding's own state leaves with the program's.
+// per reset, so a binding's own state leaves with the program's.
 func TestRuntime_OnReset(t *testing.T) {
 	rt := New(io.Discard, Options{})
 	var calls int

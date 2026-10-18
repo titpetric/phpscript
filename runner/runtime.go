@@ -371,7 +371,7 @@ type emptyStdin struct{}
 
 func (emptyStdin) Read([]byte) (int, error) { return 0, io.EOF }
 
-// The size the stdlib fills each table to, which is what New presizes them to.
+// New presizes each table to the size the stdlib fills it to.
 //
 // A table starting empty rehashes its way up: `phpscript server` builds a
 // runtime and registers the whole stdlib into it per request, and over half the

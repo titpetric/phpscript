@@ -1,6 +1,6 @@
 # phpscript-http-bridge
 
-A PHP program that is the HTTP server rather than something a server runs. `HTTP\Mux` is net/http's `ServeMux` with PHP callables as its handlers, `HTTP\Server::listen` forks the workers, and `server.php` is the whole application.
+A PHP program that is itself the HTTP server: it opens the socket, forks its workers and answers on them. `HTTP\Mux` is net/http's `ServeMux` with PHP callables as its handlers, `HTTP\Server::listen` forks the workers, and `server.php` is the whole application.
 
 ```php
 $mux = new HTTP\Mux;
@@ -26,9 +26,9 @@ go build -o bin/phpscript .
 TESTSERVER_ADDR=127.0.0.1:8095 TESTSERVER_LIMIT=600 bin/phpscript run testdata/phpscript-http-bridge/server.php
 ```
 
-`TESTSERVER_WORKERS` is how many requests are answered at once and `TESTSERVER_LIMIT` is how long the script runs before `set_time_limit` ends it. The limit is a deadline on the whole run and not on a request, so a server meant to outlive a sweep needs it set high.
+`TESTSERVER_WORKERS` is how many requests are answered at once and `TESTSERVER_LIMIT` is how long the script runs before `set_time_limit` ends it. The limit is a deadline on the whole run and not on a request, so a server that outlives a sweep takes a limit past the sweep's whole duration.
 
-The compose file mounts the binary instead of baking one in. A benchmark measures the build under test, and an image carrying its own phpscript would answer for a binary nobody asked about.
+The compose file mounts the binary. A benchmark measures the build under test, and an image carrying its own phpscript would report on the binary baked into that image.
 
 ## This is Path B
 
@@ -36,4 +36,4 @@ Nothing re-parses and nothing re-registers: the program is read once, each handl
 
 A number from one never belongs in a table with a number from the other. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the rule, [../../docs/use-cases/http-server.md](../../docs/use-cases/http-server.md) is the surface, and [../../docs/design.md](../../docs/design.md) is why both paths exist.
 
-`BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` reads this file by path, takes its class declaration, and mounts its router, so a change here reaches the allocation half of the harness directly. It fails rather than measuring a 404 if a route stops answering what it expects.
+`BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` reads this file by path, takes its class declaration, and mounts its router, so a change here reaches the allocation half of the harness directly. It fails when a route stops answering what it expects, so no 404 reaches the measurement.
