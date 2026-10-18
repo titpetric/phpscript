@@ -73,7 +73,7 @@ sitemap:
       - path: predefined-interfaces-and-classes/classes/stdClass.md
         description: The empty class new stdClass and the (object) cast both build.
       - path: predefined-interfaces-and-classes/classes/Generator.md
-        description: What a function containing yield returns, and why there is no coroutine model.
+        description: What a function containing `yield` returns, and why there is no coroutine model.
       - path: predefined-interfaces-and-classes/classes/Fiber.md
         description: Interruptible call stacks, left to the embedding Go application.
       - path: predefined-interfaces-and-classes/classes/WeakReference.md
@@ -100,6 +100,6 @@ sitemap:
       - path: extensions/regexp.md
         description: How PCRE patterns are compiled, and what differs between PHP's PCRE and Go's RE2.
       - path: extensions/hashing.md
-        description: Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter rather than a wider digest.
+        description: Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter and not a wider digest.
       - path: extensions/implemented-apis.md
         description: Generated inventory of functions and classes in the standard CLI runtime.

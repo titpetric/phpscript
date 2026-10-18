@@ -1,7 +1,7 @@
 ---
 extends: existence
 message: "'%s' reports a moment. Nothing here narrates history: state what is true now, drop the auxiliary ('the one already there', 'in the order pushed'), or cut the sentence."
-level: warning
+level: error
 ignorecase: true
 nonword: true
 tokens:

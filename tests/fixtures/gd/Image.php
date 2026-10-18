@@ -202,7 +202,7 @@ class Image
 	/**
 	 * Load image
 	 *
-	 * Loads image. If loading of original image fails, it tries to convert it into some other format (JPG, PNG, GIF)
+	 * Loads image. Where the original fails to load, it converts into one of the other formats (JPG, PNG, GIF)
 	 *
 	 * @param string Image filename
 	 *

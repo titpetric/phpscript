@@ -1,7 +1,7 @@
 ---
 extends: existence
 message: "'%s' dates the sentence. State the current behaviour; history belongs in a commit message."
-level: warning
+level: error
 ignorecase: true
 nonword: true
 tokens:

@@ -164,7 +164,7 @@ The supported error model and values supplied by the runtime or request host.
   - [Introduction](predefined-interfaces-and-classes/classes/stdClass.md#introduction)
   - [Class synopsis](predefined-interfaces-and-classes/classes/stdClass.md#class-synopsis)
   - [Status](predefined-interfaces-and-classes/classes/stdClass.md#status)
-- [The Generator class](predefined-interfaces-and-classes/classes/Generator.md) - What a function containing yield returns, and why there is no coroutine model.
+- [The Generator class](predefined-interfaces-and-classes/classes/Generator.md) - What a function containing `yield` returns, and why there is no coroutine model.
   - [Introduction](predefined-interfaces-and-classes/classes/Generator.md#introduction)
   - [Class synopsis](predefined-interfaces-and-classes/classes/Generator.md#class-synopsis)
   - [Methods](predefined-interfaces-and-classes/classes/Generator.md#methods)
@@ -244,7 +244,7 @@ Runtime-specific syntax and APIs that are not part of the PHP language reference
   - [Go's regexp, under its own name](extensions/regexp.md#gos-regexp-under-its-own-name)
   - [Writing portable patterns](extensions/regexp.md#writing-portable-patterns)
   - [Implementation](extensions/regexp.md#implementation)
-- [Hashing](extensions/hashing.md) - Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter rather than a wider digest.
+- [Hashing](extensions/hashing.md) - Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter and not a wider digest.
   - [Checksums, digests, keyed digests and password hashes](extensions/hashing.md#checksums-digests-keyed-digests-and-password-hashes)
   - [What width buys](extensions/hashing.md#what-width-buys)
   - [Published collisions against md5 and sha1](extensions/hashing.md#published-collisions-against-md5-and-sha1)

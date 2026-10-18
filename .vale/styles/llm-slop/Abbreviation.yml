@@ -1,17 +1,22 @@
 ---
 extends: substitution
-message: "Write '%s', not '%s'. A code identifier is exempt and belongs in backticks."
-level: warning
+message: "Write '%s', not '%s'."
+level: error
 ignorecase: false
+# config and info are not here. Both name things in this repository: the config
+# package, config/config.yml, $config, config(), the info command, the /info
+# route. Every one of the 47 sites the two reported was one of those, and the
+# escape the message used to offer does not exist, because the pattern is a
+# word boundary and vale's regexp engine has no lookbehind to put a backtick
+# exclusion in. A token whose every hit is the thing it describes reports
+# nothing a writer can act on.
 swap:
-  '\bconfig\b': configuration
   '\bconfigs\b': configurations
   '\bcum\b': cumulative
   '\brepo\b': repository
   '\brepos\b': repositories
   '\bperf\b': performance
   '\bdocs dir\b': the docs directory
-  '\binfo\b': information
   '\bimpl\b': implementation
   '\be\.g\.\b': for example
   '\bi\.e\.\b': that is
