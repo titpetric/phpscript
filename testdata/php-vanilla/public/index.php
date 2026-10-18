@@ -43,8 +43,8 @@ const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_HEX_AMP | JSON_THROW_ON_ERROR;
 
 class Server
 {
-    // config reads the environment into the one value everything else is built
-    // from, before anything is built.
+    // `config()` reads the environment into the one value everything else is
+    // built from, before anything is built.
     //
     // The worker count is the web server's here and not the script's: apache
     // forks VANILLA_WORKERS children and php-fpm starts that many, so conf/ is
@@ -248,7 +248,7 @@ class Server
     //
     // No listen() and no wait(): the web server is the server, this process is
     // already inside one request, and run() is what answers it. The address and
-    // the worker count config() reads are the web server's, set in conf/, and
+    // the worker count `config()` reads are the web server's, set in conf/, and
     // the shutdown that stops it listening is the web server's too.
     public function run(): void
     {
