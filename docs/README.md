@@ -150,7 +150,7 @@ Processes:
 
 Mail:
 
-- `mail()` takes three arguments and **throws** where PHP's answers `false`. PHP's returns a bool and takes `$additional_headers` and `$additional_params`, neither of which is accepted here: they are how a script sets its own `From`, `Cc` and envelope, and those belong to the server the host configured. A caller that needs PHP's shape wraps the call; the throw carries why, where PHP's `false` says nothing about it.
+- `mail()` takes three arguments and **throws** where PHP's answers `false`. PHP's returns a bool and takes `$additional_headers` and `$additional_params`, neither of which is accepted here: they are how a script sets its own `From`, `Cc` and envelope, and those belong to the server the host configured. The two an application does need, an HTML part and a `Reply-To`, are the optional fourth and fifth arguments of `Mail::send()`. A caller that needs PHP's shape wraps the call; the throw carries why, where PHP's `false` says nothing about it.
 - There is no `sendmail_path` and no local MTA. Every delivery goes to a server named in the [`mail` block](configuration.md#mail-servers), and `mail()` uses the one called `default`. With none configured the call still exists, and throws naming the server it looked for.
 - A script cannot supply or read a credential. `new Mail($name)` selects a configured server by name, and the object it returns carries no properties, so there is no phpscript equivalent of building a mailer out of settings a script holds. See [Credentials stay with the host](configuration.md#credentials-stay-with-the-host).
 

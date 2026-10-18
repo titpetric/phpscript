@@ -20,10 +20,12 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		script string
+		bytes  int
 	}{
 		{
 			name:   "mail",
 			script: `<?php mail("recipient@example.com", "Subject", "Body line");`,
+			bytes:  len("Body line"),
 		},
 		{
 			name: "Mail",
@@ -31,6 +33,15 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 				$mail = new Mail("marketing");
 				$mail->send("recipient@example.com", "Subject", "Body line");
 			`,
+			bytes: len("Body line"),
+		},
+		{
+			name: "Mail with HTML",
+			script: `<?php
+				$mail = new Mail("marketing");
+				$mail->send("recipient@example.com", "Subject", "Body line", "<p>Body line</p>");
+			`,
+			bytes: len("Body line") + len("<p>Body line</p>"),
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -72,11 +83,11 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 			}
 
 			// The body is private; its size is the part worth recording.
-			if span.Attributes["bytes"] != len("Body line") {
-				t.Fatalf("recorded body size = %#v", span.Attributes["bytes"])
+			if span.Attributes["bytes"] != test.bytes {
+				t.Fatalf("recorded body size = %#v, want %d", span.Attributes["bytes"], test.bytes)
 			}
 			for key, value := range span.Attributes {
-				if value == "Body line" {
+				if value == "Body line" || value == "<p>Body line</p>" {
 					t.Fatalf("the message body was recorded in %q", key)
 				}
 			}
@@ -170,6 +181,43 @@ func TestProvider_Send(t *testing.T) {
 	}
 	if len(sent) != 1 {
 		t.Errorf("the transport ran %d times, want 1", len(sent))
+	}
+}
+
+// TestProvider_SendMessage covers a whole message against a replaced
+// transport. A Deliver reads the three parts of a plain-text message, so a
+// message with an HTML part or a Reply-To is refused before the transport runs;
+// cutting it down to the text would deliver something the script did not send.
+func TestProvider_SendMessage(t *testing.T) {
+	t.Parallel()
+	var sent []string
+	provider := mailstdlib.NewProviderFunc(func(_ mailstdlib.Config, recipient, subject, body string) error {
+		sent = append(sent, recipient+" "+subject+" "+body)
+		return nil
+	}, map[string]mailstdlib.Config{
+		"default": {Host: "smtp.example.com", From: "root@example.com"},
+	})
+	ctx := context.Background()
+
+	if err := provider.SendMessage(ctx, mailstdlib.Message{Recipient: "a@example.com", Subject: "Hello", Body: "Body"}); err != nil {
+		t.Fatalf("SendMessage, plain: %v", err)
+	}
+	for _, message := range []mailstdlib.Message{
+		{Recipient: "a@example.com", Subject: "Hello", Body: "Body", HTML: "<p>Body</p>"},
+		{Recipient: "a@example.com", Subject: "Hello", Body: "Body", ReplyTo: "lead@example.com"},
+	} {
+		err := provider.SendMessage(ctx, message)
+		if err == nil || !strings.Contains(err.Error(), "plain text only") {
+			t.Errorf("SendMessage(%+v) = %v, want the plain-text refusal", message, err)
+		}
+	}
+	if want := "a@example.com Hello Body"; len(sent) != 1 || sent[0] != want {
+		t.Fatalf("the transport read %q, want %q alone", sent, want)
+	}
+
+	err := provider.SendMessage(ctx, mailstdlib.Message{Server: "billing", Recipient: "a@example.com"})
+	if err == nil || !strings.Contains(err.Error(), "no configuration found for mail server: billing") {
+		t.Errorf("SendMessage through an unconfigured name = %v, want the refusal", err)
 	}
 }
 

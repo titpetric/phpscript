@@ -3103,18 +3103,21 @@ Registered from `stdlib/mail`.
  * 	$mail = new Mail;              // the "default" server
  * 	$mail = new Mail("marketing"); // a server the host named
  * 	$mail->send("hello@example.com", "Subject", "Body");
+ * 	$mail->send("hello@example.com", "Subject", "Body", "<p>Body</p>", "support@example.com");
  */
 class Mail
 {
     public function __construct(mixed ...$names) {}
 
     /**
-     * send sends an email through the server this client names. It takes a context
-     * so the delivery is recorded on the trace of the request that sent it;
-     * the runtime injects it, so a script still calls
-     * `$mail->send($to, $subject, $body)`.
+     * send sends an email through the server this client names. $body is the plain
+     * text; a non-empty $html travels beside it as the alternative a mail client
+     * prefers, and a non-empty $reply_to, one address, is where a reply goes. It
+     * throws, sending nothing, when $reply_to is not one address. The runtime
+     * injects the context, so a script calls
+     * `$mail->send($to, $subject, $body, $html, $reply_to)`, the last two optional.
      */
-    public function send(string $recipient, string $subject, string $body): void {}
+    public function send(string $recipient, string $subject, string $body, string $html, string $reply_to): void {}
 }
 ```
 

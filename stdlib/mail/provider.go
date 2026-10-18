@@ -30,6 +30,19 @@ var _ model.MailProvider = (*Provider)(nil)
 // reimplemented. A Deliver is host code and reads the host's settings.
 type Deliver func(config Config, recipient, subject, body string) error
 
+// errPlainTransport refuses a message a plain-text transport would have to cut
+// down: dropping the HTML or the Reply-To would deliver a different message.
+var errPlainTransport = errors.New("mail: this transport sends plain text only, so a message with an HTML part or a Reply-To cannot be delivered")
+
+// plain passes a message to a transport that reads the three parts of a
+// plain-text one.
+func (deliver Deliver) plain(config Config, message Message) error {
+	if message.HTML != "" || message.ReplyTo != "" {
+		return errPlainTransport
+	}
+	return deliver(config, message.Recipient, message.Subject, message.Body)
+}
+
 // Provider holds the credentials of a set of named mail servers.
 //
 // The map is fixed once the provider is built. There is no
@@ -39,30 +52,31 @@ type Deliver func(config Config, recipient, subject, body string) error
 // makes for itself.
 type Provider struct {
 	servers map[string]Config
-	deliver Deliver
+	deliver func(Config, Message) error
 }
 
 // NewProvider returns a provider holding the given servers, keyed by the name
 // a script names, sending over SMTP.
 func NewProvider(servers map[string]Config) *Provider {
-	return NewProviderFunc(deliverSMTP, servers)
+	return NewProviderFunc(nil, servers)
 }
 
 // NewProviderFunc is NewProvider with the transport replaced, the way
-// database.NewDatabaseProvider takes its connector. A nil deliver is SMTP.
+// database.NewDatabaseProvider takes its connector. A nil deliver is SMTP. A
+// Deliver reads a plain-text message, so a message with an HTML part or a
+// Reply-To is refused: cut down to fit, it would be a different message.
 //
 // The map is copied and never retained, because configuration layering passes
 // one map to every site that declared no mail block, and a normalisation
-// written into it
-// would be written into all of them. Names are lowercased and a missing port is
-// filled in here, so a delivery reads a complete credential.
+// written into it would be written into all of them. Names are lowercased and a
+// missing port is filled in here, so a delivery reads a complete credential.
 func NewProviderFunc(deliver Deliver, servers map[string]Config) *Provider {
-	if deliver == nil {
-		deliver = deliverSMTP
-	}
 	result := &Provider{
 		servers: make(map[string]Config, len(servers)),
-		deliver: deliver,
+		deliver: deliverSMTP,
+	}
+	if deliver != nil {
+		result.deliver = deliver.plain
 	}
 	for name, config := range servers {
 		if config.Port == 0 {
@@ -79,17 +93,22 @@ func (p *Provider) Configured(name string) error {
 	return err
 }
 
-// Send sends one message through the named server.
+// Send sends one plain-text message through the named server.
+func (p *Provider) Send(ctx context.Context, name, recipient, subject, body string) error {
+	return p.SendMessage(ctx, Message{Server: name, Recipient: recipient, Subject: subject, Body: body})
+}
+
+// SendMessage sends message through the server it names.
 //
 // The credential is read here, into a local, and is gone when the call
 // returns. Nothing that outlives the delivery holds it: not the PHP object the
 // script called, and no part of the span or the error.
-func (p *Provider) Send(_ context.Context, name, recipient, subject, body string) error {
-	config, err := p.resolve(name)
+func (p *Provider) SendMessage(_ context.Context, message Message) error {
+	config, err := p.resolve(message.Server)
 	if err != nil {
 		return err
 	}
-	return p.deliver(config, recipient, subject, body)
+	return p.deliver(config, message)
 }
 
 // resolve returns the credential for name, defaulting an empty name. A name
@@ -110,12 +129,15 @@ func (p *Provider) resolve(name string) (Config, error) {
 // the host named none. It follows smtp.SendMail, which cannot be
 // used directly because it builds its own TLS config, leaving no way to reach a
 // host whose certificate does not verify (see Config.Insecure).
-func deliverSMTP(config Config, recipient, subject, body string) error {
+func deliverSMTP(config Config, message Message) error {
 	sender, err := envelopeAddress(config.From)
 	if err != nil {
 		return err
 	}
-	message := buildMessage(config.From, recipient, subject, body)
+	rendered, err := buildMessage(config.From, message)
+	if err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
 
 	// A host that wants no authentication, mailhog being the usual one,
 	// configures neither a username nor a password.
@@ -124,7 +146,7 @@ func deliverSMTP(config Config, recipient, subject, body string) error {
 		auth = smtp.PlainAuth("", config.Username, config.Password, config.Host)
 	}
 
-	if err := converse(config, auth, sender, recipient, message); err != nil {
+	if err := converse(config, auth, sender, message.Recipient, rendered); err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 	return nil

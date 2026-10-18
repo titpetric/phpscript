@@ -70,15 +70,17 @@ $expires = $start->add($retention);
 
 ### `Mail`
 
-`new Mail($name)` selects one of the mail servers the host configured and sends with `send($recipient, $subject, $body)`. `new Mail` selects `default`.
+`new Mail($name)` selects one of the mail servers the host configured and sends with `send($recipient, $subject, $body, $html, $reply_to)`, the last two optional. `new Mail` selects `default`.
 
 ```php
 $mail = new Mail;
 $mail->send("hello@example.com", "Subject", "Body");
 
 $campaigns = new Mail("marketing");
-$campaigns->send("list@example.com", "Newsletter", "Issue 1");
+$campaigns->send("list@example.com", "Newsletter", "Issue 1", "<h1>Issue 1</h1>", "editor@example.com");
 ```
+
+A non-empty `$html` sends a `multipart/alternative` message with `$body` as its text part; `$reply_to` is one address and throws when it is not. [HTML and a Reply-To](../../use-cases/mail.md#html-and-a-reply-to) has the details.
 
 The name is the whole of what a script says about a server. Where the servers come from, what keys they take, and why a script can neither supply nor read a credential are in [Mail servers](../../configuration.md#mail-servers).
 

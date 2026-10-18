@@ -81,19 +81,6 @@ func (c Config) tlsConfig() *tls.Config {
 	}
 }
 
-// buildMessage renders the RFC 5322 message. From carries the configured
-// display name ("Name <user@host>"), the envelope sender is the bare address.
-func buildMessage(from, recipient, subject, body string) string {
-	headers := []string{
-		"From: " + header(from),
-		"To: " + header(recipient),
-		"Subject: " + header(subject),
-		"MIME-Version: 1.0",
-		"Content-Type: text/plain; charset=UTF-8",
-	}
-	return strings.Join(headers, "\r\n") + "\r\n\r\n" + body
-}
-
 // envelopeAddress extracts the bare address from an address that may carry a
 // display name, as required by the SMTP MAIL FROM command.
 func envelopeAddress(from string) (string, error) {
@@ -105,12 +92,4 @@ func envelopeAddress(from string) (string, error) {
 		return "", fmt.Errorf("invalid from address %q: %w", from, err)
 	}
 	return address.Address, nil
-}
-
-// headerReplacer is built once, and not per header per message.
-var headerReplacer = strings.NewReplacer("\r", "", "\n", "")
-
-// header strips CR/LF so script-supplied values cannot inject headers.
-func header(value string) string {
-	return headerReplacer.Replace(value)
 }

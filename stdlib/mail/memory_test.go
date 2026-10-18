@@ -70,6 +70,29 @@ func TestMemory_Send(t *testing.T) {
 	}
 }
 
+// TestMemory_SendMessage covers queueing a whole message: the HTML part and the
+// Reply-To are kept as sent, an empty server is the "default" one, and a name
+// this provider does not hold is refused the way a real delivery refuses it.
+func TestMemory_SendMessage(t *testing.T) {
+	t.Parallel()
+	queue := mailstdlib.NewMemory("default")
+	ctx := context.Background()
+
+	sent := mailstdlib.Message{Recipient: "a@example.com", Subject: "Hello", Body: "Body", HTML: "<p>Body</p>", ReplyTo: "lead@example.com"}
+	if err := queue.SendMessage(ctx, sent); err != nil {
+		t.Fatalf("SendMessage: %v", err)
+	}
+	if err := queue.SendMessage(ctx, mailstdlib.Message{Server: "billing", Recipient: "a@example.com"}); err == nil {
+		t.Error("SendMessage through an unconfigured name = nil, want the refusal")
+	}
+
+	want := sent
+	want.Server = "default"
+	if got := queue.Messages(); len(got) != 1 || got[0] != want {
+		t.Fatalf("messages = %#v, want %#v", got, []mailstdlib.Message{want})
+	}
+}
+
 // TestMemory_Next covers reading the queue as a queue: the oldest message
 // first, and gone once read, so a test walking a sequence of deliveries does
 // not index into a slice. The second return reports an empty queue, because a

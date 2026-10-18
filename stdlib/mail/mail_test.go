@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/parser"
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/stdlib"
@@ -132,6 +133,118 @@ func TestMailClass(t *testing.T) {
 		if messages[i] != want[i] {
 			t.Fatalf("message %d = %#v, want %#v", i, messages[i], want[i])
 		}
+	}
+}
+
+// TestMail_SendHTML covers the two optional arguments of send(): $html travels
+// beside the text and $reply_to becomes the Reply-To, which reaches the
+// provider as one address. A bare address stays bare, and a display name comes
+// back quoted, the way it is written into the header.
+func TestMail_SendHTML(t *testing.T) {
+	t.Parallel()
+	queue := mailstdlib.NewMemory()
+	got := run(t, queue, `
+		$mail = new Mail;
+		$mail->send("a@example.com", "Week sent back", "Open it to see why.", "<p>Open it to see why.</p>", "Team Lead <lead@example.com>");
+		$mail->send("b@example.com", "Invitation", "Join us.", "", "lead@example.com");
+		$mail->send("c@example.com", "Sign-in code", "", "<p>123456</p>");
+		echo "sent";
+	`)
+	if got != "sent" {
+		t.Fatalf("output = %q, want %q", got, "sent")
+	}
+
+	want := []mailstdlib.Message{
+		{Server: "default", Recipient: "a@example.com", Subject: "Week sent back", Body: "Open it to see why.", HTML: "<p>Open it to see why.</p>", ReplyTo: `"Team Lead" <lead@example.com>`},
+		{Server: "default", Recipient: "b@example.com", Subject: "Invitation", Body: "Join us.", ReplyTo: "lead@example.com"},
+		{Server: "default", Recipient: "c@example.com", Subject: "Sign-in code", HTML: "<p>123456</p>"},
+	}
+	messages := queue.Messages()
+	if len(messages) != len(want) {
+		t.Fatalf("messages = %#v, want %#v", messages, want)
+	}
+	for i := range want {
+		if messages[i] != want[i] {
+			t.Errorf("message %d = %#v, want %#v", i, messages[i], want[i])
+		}
+	}
+}
+
+// TestMail_SendReplyToInjection pins the refusal of a Reply-To that is not one
+// address. A header smuggled in behind a line break leaves a malformed address
+// once the break is stripped, so the call throws and nothing reaches the
+// provider; a list is refused too, because the argument names one address.
+func TestMail_SendReplyToInjection(t *testing.T) {
+	t.Parallel()
+	for _, replyTo := range []string{
+		`lead@example.com\r\nBcc: everyone@example.net`,
+		`lead@example.com\nBcc: everyone@example.net`,
+		`Lead <lead@example.com>\r\nBcc: everyone@example.net`,
+		`lead@example.com, everyone@example.net`,
+		`not an address`,
+	} {
+		t.Run(replyTo, func(t *testing.T) {
+			t.Parallel()
+			queue := mailstdlib.NewMemory()
+			got := run(t, queue, `
+				$mail = new Mail;
+				try {
+					$mail->send("a@example.com", "Subject", "Text", "<p>HTML</p>", "`+replyTo+`");
+					echo "sent";
+				} catch (Exception $e) {
+					echo $e->getMessage();
+				}
+			`)
+			if !strings.HasPrefix(got, "Mail::send(): argument #5 ($reply_to) must be one email address") {
+				t.Fatalf("output = %q, want the refusal", got)
+			}
+			if messages := queue.Messages(); len(messages) != 0 {
+				t.Fatalf("messages = %#v, want none", messages)
+			}
+		})
+	}
+}
+
+// plainProvider is a model.MailProvider with Send and no SendMessage, the shape
+// a host's own provider written before HTML had.
+type plainProvider struct{ model.MailProvider }
+
+// TestMail_SendThroughAPlainProvider covers a provider that declares the
+// interface and nothing more. Its Send still delivers plain text; a message
+// with an HTML part or a Reply-To is refused, because delivering the text alone
+// would send a different message than the script wrote.
+func TestMail_SendThroughAPlainProvider(t *testing.T) {
+	t.Parallel()
+	queue := mailstdlib.NewMemory()
+	var output bytes.Buffer
+	program, err := parser.Parse(`<?php
+		$mail = new Mail;
+		$mail->send("a@example.com", "Plain", "Text");
+		foreach (array(array("<p>HTML</p>", ""), array("", "lead@example.com")) as $extra) {
+			try {
+				$mail->send("a@example.com", "Rich", "Text", $extra[0], $extra[1]);
+				echo "sent\n";
+			} catch (Exception $e) {
+				echo $e->getMessage(), "\n";
+			}
+		}
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rt := runner.New(&output, runner.Options{Mail: plainProvider{queue}})
+	stdlib.Register(rt)
+	if err := rt.Run(program); err != nil {
+		t.Fatal(err)
+	}
+
+	refusal := "mail: this transport sends plain text only, so a message with an HTML part or a Reply-To cannot be delivered\n"
+	if got := output.String(); got != refusal+refusal {
+		t.Fatalf("output = %q, want the refusal twice", got)
+	}
+	want := mailstdlib.Message{Server: "default", Recipient: "a@example.com", Subject: "Plain", Body: "Text"}
+	if messages := queue.Messages(); len(messages) != 1 || messages[0] != want {
+		t.Fatalf("messages = %#v, want %#v", messages, []mailstdlib.Message{want})
 	}
 }
 

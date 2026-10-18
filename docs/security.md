@@ -156,7 +156,7 @@ Each of these is a design in issue 139 with nothing behind it in the code. A doc
 | `config/phpscript.yml` as a second location for a site's file      | 3              | Only `root/phpscript.yml` is read (`config/virtualhost.go:12`) |
 | A writable volume presented to a site as `/data`                   | 1              | No mapping. See [Writable storage](#writable-storage)          |
 
-Two shapes the secrets work has to keep when it lands, because the rest of this page rests on them. A secret decrypted for a request is a local that is gone when the call returns, the way a mail credential already is (`stdlib/mail/provider.go:86`). And `get_secret()` names a secret the way `new Database` names a connection: a site's secrets are its own, there is no listing call, and a name another site declared does not resolve.
+Two shapes the secrets work has to keep when it lands, because the rest of this page rests on them. A secret decrypted for a request is a local that is gone when the call returns, the way a mail credential already is (`stdlib/mail/provider.go:103`). And `get_secret()` names a secret the way `new Database` names a connection: a site's secrets are its own, there is no listing call, and a name another site declared does not resolve.
 
 ## The class name on a refused write
 

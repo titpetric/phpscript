@@ -30,6 +30,47 @@ $campaigns->send("list@example.com", "Newsletter", "Issue 1");
 
 Use `mail()` when one server is all the application has, and `Mail` when it sends transactional and bulk mail through different relays, which is the usual reason to have two.
 
+## HTML and a Reply-To
+
+`send()` takes two more arguments, both optional: `$html`, sent beside `$body` as the alternative a mail client prefers, and `$reply_to`, the address a reply goes to in place of the server's `from`:
+
+```php
+<?php
+
+$mail = new Mail;
+$mail->send(
+	"ana@example.com",
+	"Your week was sent back",
+	"Dejan sent your week back: the Tuesday entry has no project.\n\nhttps://time.example.com/week/42",
+	'<p>Dejan sent your week back: the Tuesday entry has no project.</p><p><a href="https://time.example.com/week/42">Open the week</a></p>',
+	"Dejan <dejan@example.com>"
+);
+```
+
+The arguments decide the shape of the message:
+
+| `$body` | `$html` | Sent as                                                          |
+|---------|---------|------------------------------------------------------------------|
+| set     | empty   | `text/plain`, the message `mail()` sends, unchanged              |
+| set     | set     | `multipart/alternative`: the text part first, the HTML part last |
+| empty   | set     | one `text/html` part                                             |
+
+Both parts of a multipart message, and a lone HTML part, are UTF-8 and quoted-printable, so a long line or a non-ASCII character reaches the relay as 7-bit lines of 76 characters at most. Write the text part by hand. A text-only client, a screen reader set to plain text and a spam filter read it, and stripping the tags from the HTML drops every link target.
+
+`$reply_to` is one address, with or without a display name. CR and LF are stripped from it as from every header, so a header smuggled in behind a line break leaves one malformed address, and the call throws before anything is sent:
+
+```php
+try {
+	$mail->send($to, $subject, $text, $html, "lead@example.com\r\nBcc: everyone@example.net");
+} catch (Exception $e) {
+	echo $e->getMessage();
+	// Mail::send(): argument #5 ($reply_to) must be one email address: mail:
+	// expected single address, got ": everyone@example.net"
+}
+```
+
+A plain-text message with a Reply-To passes `""` for `$html`. `mail()` takes neither argument: it keeps PHP's three, and PHP's `$additional_headers` stays unsupported.
+
 ## Configuring the servers
 
 Servers are a map in the application's `phpscript.yml`, keyed by the name a script names:
@@ -133,6 +174,8 @@ provider := mail.NewProviderFunc(func(config mail.Config, recipient, subject, bo
 options.Mail = provider
 ```
 
-`mail.NewMemory(names...)` is a provider that queues messages and sends nothing, so tests and dry runs capture mail without a mail server. Naming no servers configures every name.
+A `Deliver` reads the three parts of a plain-text message, so a provider built over one refuses a message with an HTML part or a Reply-To and names why; it never delivers the text alone. The same holds for a host's own `model.MailProvider`, whose `Send` is plain text: it carries the rest once it also declares `SendMessage(ctx context.Context, message mail.Message) error`, as `mail.Provider` and `mail.Memory` do.
+
+`mail.NewMemory(names...)` is a provider that queues messages and sends nothing, so tests and dry runs capture mail without a mail server. Naming no servers configures every name. Each queued `mail.Message` carries the HTML part and the Reply-To as the script sent them.
 
 See [Go bindings](bindings.md) for how a host installs these.

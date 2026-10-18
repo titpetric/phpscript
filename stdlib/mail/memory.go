@@ -51,24 +51,24 @@ func (m *Memory) Configured(name string) error {
 	return fmt.Errorf("no configuration found for mail server: %s", name)
 }
 
-// Send queues a message, reporting the same refusal a real delivery would for a
-// server this provider does not hold.
-func (m *Memory) Send(_ context.Context, name, recipient, subject, body string) error {
-	if name == "" {
-		name = DefaultName
+// Send queues a plain-text message.
+func (m *Memory) Send(ctx context.Context, name, recipient, subject, body string) error {
+	return m.SendMessage(ctx, Message{Server: name, Recipient: recipient, Subject: subject, Body: body})
+}
+
+// SendMessage queues message, reporting the same refusal a real delivery would
+// for a server this provider does not hold.
+func (m *Memory) SendMessage(_ context.Context, message Message) error {
+	if message.Server == "" {
+		message.Server = DefaultName
 	}
-	if err := m.Configured(name); err != nil {
+	if err := m.Configured(message.Server); err != nil {
 		return err
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.messages = append(m.messages, Message{
-		Server:    name,
-		Recipient: recipient,
-		Subject:   subject,
-		Body:      body,
-	})
+	m.messages = append(m.messages, message)
 	return nil
 }
 
