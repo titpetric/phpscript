@@ -10,7 +10,7 @@ phpscript server -f config.yml ./my-app
 
 Without `-f`, phpscript uses the [`config/config.yml`](../config/config.yml) compiled into the binary. It does not search the working directory for a configuration file. A path passed with `-f` must exist and contain valid YAML; otherwise the command exits with an error.
 
-Two commands read a second file called `phpscript.yml`, discovered by its position in the tree. A [virtual host](#virtual-hosts) reads the one in the application root its entry points at, and [`phpscript test`](#test-suites) reads the ones it finds in the fixture tree. Both are read over whatever `-f` produced, in the same way that file is read over the embedded defaults.
+Two commands read a second file called `phpscript.yml`, discovered by its position in the tree. A [virtual host](#virtual-hosts) reads the one in the application root its entry points at, and [`phpscript test`](#test-suites) reads the ones it finds in the fixture tree. Both layer over whatever `-f` produced, the way that file layers over the embedded defaults.
 
 ## Complete example
 
@@ -71,7 +71,7 @@ env:
   - "PLATFORM_DB_APP=sqlite://app.db"
 ```
 
-Apart from the `env` entry, this is the embedded [`config/config.yml`](../config/config.yml) verbatim. That file holds every default phpscript has; nothing is defaulted in Go. A file passed with `-f` is read on top of it, so it only has to name the keys it changes, and a section it leaves out keeps what the embedded file says.
+Apart from the `env` entry, this is the embedded [`config/config.yml`](../config/config.yml) verbatim. That file holds every default phpscript has; Go defaults nothing. A file passed with `-f` layers on top of it, so it only has to name the keys it changes, and a section it leaves out keeps what the embedded file says.
 
 ## Runner
 
@@ -83,29 +83,29 @@ Apart from the `env` entry, this is the embedded [`config/config.yml`](../config
 | `precompile`              |  `true` | Parse and compile the source tree at startup rather than per request. See [Precompilation](#precompilation).                                   |
 | `writable_paths`          |    `[]` | Directories a script may write to, relative to the application root. An empty list allows every write.                                         |
 | `include`                 |    `""` | File included ahead of every entrypoint, once per request, when it exists. `--include` overrides it.                                           |
-| `upload_max_filesize`     |    `2M` | Largest file part a request may carry. A part over it is refused and reported in `$_FILES`.                                                    |
-| `post_max_size`           |    `8M` | Largest request body that is parsed at all. A body over it leaves `$_POST` and `$_FILES` empty.                                                |
+| `upload_max_filesize`     |    `2M` | Largest file part a request may carry. `$_FILES` reports a larger part as refused.                                                            |
+| `post_max_size`           |    `8M` | Largest request body the decoder reads. A larger body leaves `$_POST` and `$_FILES` empty.                                                    |
 | `upload_file_mode`        |  `0644` | Mode `move_uploaded_file()` sets on a stored upload. Octal, as `chmod()` takes it.                                                             |
-| `max_input_vars`          |  `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The rest are dropped. Negative is no limit.                                              |
-| `max_input_nesting_level` |    `64` | Deepest bracket chain a field name may have. A field past it is dropped whole. Negative is no limit.                                           |
+| `max_input_vars`          |  `1000` | Fields decoded into `$_GET`, `$_POST` and `$_COOKIE`. The decoder drops the rest. Negative is no limit.                                        |
+| `max_input_nesting_level` |    `64` | Deepest bracket chain a field name may have. The decoder drops a deeper field whole. Negative is no limit.                                     |
 | `memory_limit`            |     `0` | Memory one script may hold live, php.ini's. `0` is no limit.                                                                                   |
 | `time_limit`              |     `0` | Seconds one script may run, php.ini's `max_execution_time`. `0` is no limit. Not enforced yet.                                                 |
 | `concurrency_limit`       |     `0` | Scripts that may run at once. `0` is no limit. Not enforced yet.                                                                               |
 
 ### Precompilation
 
-`precompile` decides when a `.php` file is parsed and compiled. With it on, `phpscript server` walks the application root before it accepts a request, parses every `.php` file below it and compiles each program, and a request reads both back out of the caches the site shares. With it off, a file is parsed the first time a request reaches it and an entrypoint is parsed again on every request after that, because the caches only answer for `include` and `require`.
+`precompile` decides when phpscript parses and compiles a `.php` file. With it on, `phpscript server` walks the application root before it accepts a request, parses every `.php` file below it and compiles each program, and a request reads both back out of the caches the site shares. With it off, the first request to reach a file parses it, and every request after that re-parses an entrypoint, because the caches only answer for `include` and `require`.
 
-The parse is not all of it. Flat bytecode is keyed by the parsed program and so are the interpreter's compiled expressions, so a re-parsed entrypoint discards both and rebuilds them for the request that re-parsed it. Precompilation keeps one AST per file for the life of the process, and both caches then keep their entries across requests.
+The parse is one half. Flat bytecode keys on the parsed program, as do the interpreter's compiled expressions, so a re-parsed entrypoint discards both and rebuilds them for the request that re-parsed it. Precompilation keeps one AST per file for the life of the process, and both caches then keep their entries across requests.
 
 ```yaml
 runner:
   precompile: false
 ```
 
-Nothing is invalidated and no modification time is read. An edited file is picked up by [a reload or a restart](cli/server.md#reloading). The memory a tree parses to is resident from startup, with no growth as requests reach files, so a process serving a few megabytes of PHP starts at what all of it parses to.
+Nothing invalidates a cache and nothing reads a modification time. [A reload or a restart](cli/server.md#reloading) picks up an edited file. The memory a tree parses to is resident from startup, with no growth as requests reach files, so a process serving a few megabytes of PHP starts at what the whole tree parses to.
 
-Files are parsed in parallel, `GOMAXPROCS` at a time. A file that does not parse, and a program the bytecode compiler does not accept, are left out of the caches: startup is not where a source error is reported, and a request that names such a file gets the same answer it gets with precompilation off. One broken file below the root therefore cannot stop the server coming up.
+The walk parses files in parallel, `GOMAXPROCS` at a time. It leaves out a file that does not parse and a program the bytecode compiler refuses: startup reports no source error, and a request naming such a file gets the same answer it gets with precompilation off. One broken file below the root cannot stop the server coming up.
 
 A virtual host sets its own in the `runner` block of its `phpscript.yml`, and precompiles its own tree under it, so one site paying the startup cost says nothing about what another does.
 
@@ -120,9 +120,9 @@ runner:
   include: vendor/autoload.php
 ```
 
-The name resolves against the application root, and a file that is not there is skipped and nothing is reported: the setting says what to load when the tree carries it, so the same configuration covers a checkout with no `vendor/` yet.
+The name resolves against the application root, and a missing file reports nothing and loads nothing: the setting says what to load when the tree carries it, so the same configuration covers a checkout with no `vendor/` yet.
 
-One setting covers every way the tree is executed. The server includes it before each request, `phpscript run` before the script, `phpscript test` before each fixture and `phpscript lint` before the checks, so the classes a linter knows are the classes a request will find. `--include` on any command overrides it, and a virtual host sets its own in the `runner` block of its `phpscript.yml`.
+One setting covers every way the tree runs. The server includes it before each request, `phpscript run` before the script, `phpscript test` before each fixture and `phpscript lint` before the checks, so the classes a linter knows are the classes a request will find. `--include` on any command overrides it, and a virtual host sets its own in the `runner` block of its `phpscript.yml`.
 
 Classes still resolve through `spl_autoload_register()`, the function a composer autoloader registers with. See [Autoloading](reference/namespaces/README.md#autoloading) in the language reference.
 
