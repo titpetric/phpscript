@@ -42,6 +42,22 @@ func wantsContext(t reflect.Type) bool {
 	return t.Kind() == reflect.Func && t.NumIn() > 0 && t.In(0) == contextType
 }
 
+// injectedArgs is how many arguments the call paths prepend to the ones a
+// script wrote: one for a binding declaring the runtime context, none
+// otherwise. Every number a script reads subtracts it, because the context is
+// no PHP parameter. Counting it names a limit one higher than the signature
+// accepts, and a call at that limit fails with the same message.
+//
+// A binding that declares the context always arrives with it in place:
+// invokeWithScopeContext and invokeEntry prepend it, and callGoMethod prepends
+// it for a method, each ahead of the arity check that reads this.
+func injectedArgs(t reflect.Type) int {
+	if wantsContext(t) {
+		return 1
+	}
+	return 0
+}
+
 // invokeWithScopeContext derives a context containing the active PHP frame so
 // language helpers such as compact() can inspect caller-local variables and
 // observability can identify the active source file.
@@ -739,7 +755,7 @@ func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 // time, coercion through the one table per call.
 func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any, error) {
 	numIn, variadic := mtype.NumIn(), mtype.IsVariadic()
-	wantsCtx := wantsContext(mtype)
+	injected := injectedArgs(mtype)
 	params := make([]reflect.Type, numIn)
 	for i := range params {
 		params[i] = mtype.In(i)
@@ -750,13 +766,12 @@ func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any,
 	}
 	return func(rt *Runtime, m reflect.Value, args []any) (any, error) {
 		if !variadic && len(args) > numIn {
-			return nil, &ArgumentCountError{Want: numIn, Got: len(args)}
+			return nil, &ArgumentCountError{Want: numIn - injected, Got: len(args) - injected}
 		}
 		in := make([]reflect.Value, 0, len(args))
-		offset := 1
-		if wantsCtx {
-			offset = 0
-		}
+		// A PHP position is 1-based over the arguments the script wrote, so an
+		// injected context, which sits at args[0], shifts it back by one.
+		offset := 1 - injected
 		for i, a := range args {
 			var want reflect.Type
 			switch {

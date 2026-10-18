@@ -64,6 +64,7 @@ func newInvoker(fn any) invoker {
 // extra ones, and the call paths zero-pad them.
 func guardInvoker(call func(*Runtime, []any) (any, error), ft reflect.Type, typeName string) func(*Runtime, []any) (any, error) {
 	numIn, variadic := ft.NumIn(), ft.IsVariadic()
+	injected := injectedArgs(ft)
 	return func(rt *Runtime, args []any) (result any, err error) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
@@ -72,7 +73,7 @@ func guardInvoker(call func(*Runtime, []any) (any, error), ft reflect.Type, type
 			}
 		}()
 		if !variadic && len(args) > numIn {
-			return nil, &ArgumentCountError{Want: numIn, Got: len(args)}
+			return nil, &ArgumentCountError{Want: numIn - injected, Got: len(args) - injected}
 		}
 		return call(rt, args)
 	}

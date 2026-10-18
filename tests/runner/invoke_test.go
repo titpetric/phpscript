@@ -102,6 +102,51 @@ func TestInvokeTooManyArguments(t *testing.T) {
 	}
 }
 
+// The two numbers in the refusal are the ones a script can act on: the
+// parameters it may fill and the arguments it wrote. A binding declaring the
+// runtime context arrives with it prepended, and the Go signature is one longer
+// for it, so a count carrying it names a limit the signature does not accept
+// and a call at that limit fails with the same message.
+func TestInvokeTooManyArgumentsCountsPHPArguments(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		fn      any
+		src     string
+		wantErr string
+	}{
+		{
+			name:    "no context to discount",
+			fn:      func(a, b string) string { return a + b },
+			src:     `<?php echo shout("a", "b", "c");`,
+			wantErr: "shout() expects at most 2 arguments, 3 given",
+		},
+		{
+			name:    "a context the script never wrote",
+			fn:      func(_ context.Context, a, b string) string { return a + b },
+			src:     `<?php echo shout("a", "b", "c");`,
+			wantErr: "shout() expects at most 2 arguments, 3 given",
+		},
+		{
+			name:    "one parameter behind a context, so the singular",
+			fn:      func(_ context.Context, a string) string { return a },
+			src:     `<?php echo shout("a", "b");`,
+			wantErr: "shout() expects at most 1 argument, 2 given",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := runBinding(t, "shout", test.fn, test.src)
+			if err == nil {
+				t.Fatal("want an error, got nil")
+			}
+			if !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("err = %v, want %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
 // Fewer arguments than the binding declares stays legal: a Go binding spells
 // PHP's optional parameters as extra ones, and they are zero-padded.
 func TestInvokeTooFewArgumentsPads(t *testing.T) {
@@ -121,6 +166,11 @@ func TestInvokeTooFewArgumentsPads(t *testing.T) {
 type counter struct{}
 
 func (counter) Add(a, b string) string { return a + b }
+
+// Tally declares a runtime context, so the method path's argument numbers and
+// positions are read against a signature one parameter longer than the one a
+// script calls.
+func (counter) Tally(_ context.Context, a string, _ int64) string { return a }
 
 func TestInvokeMethodArgumentRules(t *testing.T) {
 	t.Parallel()
@@ -144,6 +194,16 @@ func TestInvokeMethodArgumentRules(t *testing.T) {
 			name:    "refuses a surplus argument",
 			src:     `<?php $c = new Counter; echo $c->add("a", "b", "c");`,
 			wantErr: "add() expects at most 2 arguments, 3 given",
+		},
+		{
+			name:    "counts no injected context in the surplus",
+			src:     `<?php $c = new Counter; echo $c->tally("a", 1, "c");`,
+			wantErr: "tally() expects at most 2 arguments, 3 given",
+		},
+		{
+			name: "names the position a script wrote, behind a context",
+			src:  `<?php $c = new Counter; try { $c->tally("a", array()); } catch (Throwable $e) { echo $e->getMessage(); }`,
+			want: "tally(): Argument #2 must be of type int, array given",
 		},
 	}
 	for _, test := range tests {
