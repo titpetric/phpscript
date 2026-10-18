@@ -2,6 +2,25 @@
 
 This is a PHP interpreter written in Go, with a bytecode backend beside it and an HTTP server of its own. It runs a subset of the language and of the standard library - `phpscript list --bindings` prints what this build carries, and `phpscript info` counts it - and the parts it does not run are decisions as often as gaps: see [Design decisions](./docs/design.md) for what it will not implement and [the language reference](./docs/reference/README.md) for what is not implemented yet.
 
+## One API, five runtimes
+
+One set of endpoints written five ways, each its own directory under `testdata/`, all driven by one load generator. `GET /hello` at concurrency 1, four workers a side, four cores, six segments of 3s, measured on `669f5c9` by `scripts/bench-http.sh`:
+
+| Runtime                                                                                                    | `/hello`               | p90 us | p99 us |
+|------------------------------------------------------------------------------------------------------------|------------------------|--------|--------|
+| [`goserver`](./testdata/goserver/README.md), net/http and no VM, the floor                                 | 26719 req/s, 35 us/req | 41     | 106    |
+| [`phpscript-http-bridge`](./testdata/phpscript-http-bridge/README.md), a PHP program that is the server    | 19441 req/s, 47 us/req | 56     | 161    |
+| [`phpscript-service`](./testdata/phpscript-service/README.md), `@route` endpoints under `phpscript server` | 13089 req/s, 70 us/req | 87     | 291    |
+| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on nginx with php-fpm                              | 2525 req/s, 373 us/req | 466    | 725    |
+| [`php-vanilla`](./testdata/php-vanilla/README.md), Slim on apache with mod_php                             | 2017 req/s, 472 us/req | 562    | 801    |
+
+Each directory's README states what its numbers mean and what its stack costs per request. `phpscript-http-bridge` and `phpscript-service` answer under two different execution models, Path B and Path A, and [the comparison](./docs/agents/performance.md) sets out which figures belong in a table together. This one goes stale the moment either path changes, so it carries the commit it describes, and these two commands write it again:
+
+```sh
+BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/bench-http.sh after
+scripts/benchmark.php
+```
+
 - [About phpscript](./docs/README.md)
 - [Design decisions](./docs/design.md)
 - [Language reference and PHP compatibility](./docs/reference/README.md)
