@@ -3,9 +3,7 @@
 // @route POST /echo
 
 // $_POST is the form body, parsed before the endpoint runs, and $_GET is the
-// query. The bridge reads both through $r->form_value("name"), which takes the
-// body first and falls back to the query, so the same order is written out
-// here.
+// query. The body comes first and the query is the fallback.
 
 header("Content-Type: application/json");
 

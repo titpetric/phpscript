@@ -5,7 +5,8 @@
 // environment up, drives wrk at every endpoint, and prints two tables: one row
 // per endpoint, and one row per environment with the endpoints collapsed.
 //
-// Run it from the repository root, which is where the testdata paths resolve:
+// Run it from the repository root, the directory the testdata paths resolve
+// against:
 //
 //	scripts/benchmark.php
 //	scripts/benchmark.php --targets goserver,phpscript-service --concurrency 1
@@ -18,7 +19,7 @@
 //	scripts/benchmark.php --targets php-vanilla-apache --jit tracing \
 //		--endpoints bare=/_bare.php,hello=/hello?name=sprint
 //
-// A summary row collapses the endpoints it was given, so a list mixing one
+// A summary row collapses the endpoints of its own run, so a list mixing one
 // cheap path with one expensive path leaves that row describing neither. Read
 // the per-endpoint table for those.
 //
@@ -65,9 +66,9 @@ function profile_file() {
 }
 
 // teardown takes down whatever is recorded as up. A server left behind holds
-// its port and keeps its workers on the cores the next measurement needs, so
-// this is registered as a shutdown function rather than called at the end of
-// the loop: `trap stop_server EXIT` is how the bash harness guarantees it.
+// its port and keeps its workers on the cores the next measurement needs, so a
+// shutdown function registers this and every exit path reaches it, the
+// guarantee `trap stop_server EXIT` carries in the bash harness.
 function teardown() {
 	if (is_file(pid_file())) {
 		$pid = trim(file_get_contents(pid_file()));
@@ -204,8 +205,8 @@ function flags($argv, $defaults) {
 	return $settings;
 }
 
-// micros reads one wrk latency. wrk picks the unit per line, so the suffix is
-// read rather than assumed.
+// micros reads one wrk latency. wrk picks the unit per line, so each line's
+// suffix decides the scale.
 function micros($token) {
 	if (str_ends_with($token, "us")) {
 		return substr($token, 0, strlen($token) - 2) + 0;

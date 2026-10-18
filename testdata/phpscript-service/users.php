@@ -2,12 +2,9 @@
 
 // @route GET /users/{id}
 
-// {id} arrives in $_REQUEST under the name the annotation declares, which is
-// what $r->path_value("id") answers on the bridge.
-//
-// REQUEST_URI carries the query string with it, so the path is what is left of
-// the first question mark. json_encode writes the document the bridge's
-// JSON\Encoder writes, and the newline after it is the encoder's.
+// {id} arrives in $_REQUEST under the name the annotation declares.
+// REQUEST_URI carries the query string with it, so the path is what stands left
+// of the first question mark.
 
 header("Content-Type: application/json");
 

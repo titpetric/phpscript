@@ -1,30 +1,23 @@
 <?php
 
-// testdata/phpscript-http-bridge/server.php on Slim, so the two can be put
-// through the same load generator and the difference read off directly.
+// testdata/phpscript-http-bridge/server.php on Slim, the same program with the
+// signatures changed: the same class, the same six handlers against the same
+// patterns, answering the same bytes, so one load generator drives both.
 //
-// It is the same program with the signatures changed. The Server class is the
-// same class, config() reads the environment, mount() registers the same six
-// handlers against the same patterns, each handler is a method, and run() is
-// main(). What a handler is written against is what differs: HTTP\ResponseWriter
-// and HTTP\Request over there, Slim's router and PSR-7 here, and the four
-// substitutions that forces are
+// What a handler is written against is the difference. Slim's router and PSR-7
+// force four substitutions, and a PSR-7 response is immutable, so a handler
+// returns the response it built where the bridge writes to the one its caller
+// passed in:
 //
 //	$w->header()->set($n, $v)             $response = $response->withHeader($n, $v)
 //	$w->write($s) / echo $s               $response->getBody()->write($s)
 //	new JSON\Encoder($w))->encode($a)     json_encode($a, JSON_FLAGS) . "\n"
 //	$r->path_value("id")                  $args["id"]
 //
-// A PSR-7 response is immutable, so a handler returns the response it built
-// where over there it writes to the one it was handed.
-//
-// What this has that the phpscript side does not is a bootstrap per request:
-// the autoloader runs, Slim builds its App, its router and its middleware
-// stack, the handler answers, and everything built is torn down again. The
-// README beside this file prices each of those stages.
-//
-// One copy of this file is served two ways, apache with mod_php and nginx with
-// php-fpm, so the web server is a column and not an assumption.
+// This side pays a bootstrap per request: the autoloader runs, Slim builds its
+// App, its router and its middleware stack, the handler answers, and all of it
+// is torn down again. The README beside this file prices that against the same
+// handler with nothing under it.
 
 declare(strict_types=1);
 
@@ -37,11 +30,10 @@ use Slim\Factory\AppFactory;
 
 require __DIR__ . '/../vendor/autoload.php';
 
-// The flags php needs to write Go's bytes, which is what the two sides
-// answering the same document takes. JSON_UNESCAPED_SLASHES, because php
+// The flags php needs to write Go's bytes. JSON_UNESCAPED_SLASHES, because php
 // escapes a forward slash and Go does not. JSON_HEX_AMP, because Go's encoder
-// escapes an ampersand to & and php writes it as itself, which a raw
-// query string carrying two parameters reaches.
+// escapes an ampersand and php writes it as itself, which a raw query string
+// carrying two parameters reaches.
 //
 // Two differences are left and neither has a flag that closes it: php escapes
 // non-ASCII to \uXXXX where Go writes UTF-8, and Go escapes < and > to
@@ -77,15 +69,15 @@ class Server
     }
 
     // mount builds the router and returns it. $this->index(...) is the method
-    // below as a bound callable, which is what reading it without parentheses
-    // answers on the phpscript side.
+    // below as a bound callable, the same registration the bridge writes as
+    // $this->index with no parentheses.
     public function mount(): App
     {
         $app = AppFactory::create();
 
-        // The route cache, which is what Slim is configured with in
-        // production: without it FastRoute compiles the route table on every
-        // request. The first request to find the file missing writes it.
+        // The route cache, the setting a production Slim carries: without it
+        // FastRoute compiles the route table on every request. The first
+        // request to find the file missing writes it.
         $cache = $this->config()['cache'];
         if (is_dir(dirname($cache)) && is_writable(dirname($cache))) {
             $app->getRouteCollector()->setCacheFile($cache);
@@ -116,8 +108,8 @@ class Server
             },
         );
 
-        // '/' alone, which is what '{$}' anchors over there: Slim matches a
-        // route exactly and has no subtree patterns, so nothing extra keeps
+        // '/' alone, where the bridge writes '{$}' to anchor it: Slim matches
+        // a route exactly and has no subtree patterns, so nothing extra keeps
         // this off every path nothing else claimed.
         $app->get('/', $this->index(...));
         $app->get('/hello', $this->hello(...));
@@ -174,8 +166,8 @@ class Server
 
     // getParsedBody() is the form, parsed by the time a handler runs, so
     // nothing has to be parsed first. The body takes precedence over the
-    // query, which is what net/http's FormValue answers and so what
-    // form_value() answers over there.
+    // query, the order net/http's FormValue and the bridge's form_value()
+    // both answer in.
     public function echoRequest(Request $request, Response $response): Response
     {
         $response = $response->withHeader('Content-Type', 'application/json');

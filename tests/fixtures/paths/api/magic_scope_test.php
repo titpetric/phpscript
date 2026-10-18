@@ -1,10 +1,10 @@
 <?php
 
-// __LINE__ is the line it is written on, not the line of the call it reaches.
+// __LINE__ is lexical: the line it is written on, and no call moves it.
 echo __LINE__, "\n";
 echo strlen("x"), ":", __LINE__, "\n";
 
-// The path constants name the file the body was read from.
+// The path constants name the file the body is read from.
 echo basename(__FILE__), "\n";
 echo basename(__DIR__), "\n";
 
