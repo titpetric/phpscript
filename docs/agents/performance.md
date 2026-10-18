@@ -17,15 +17,17 @@ One API, written five ways, one directory each under `testdata/`, driven by one 
 
 `testdata/phpscript-service` is the shape a phpscript application is actually written in: one file per endpoint, `// @route METHOD /path` above it as the whole routing table, `$_GET` and `$_POST` for the request, `$_REQUEST` for a path value, `echo` for the body.
 
-Where the five stand, four segments of 2s per route at concurrency 1, four workers a side, four cores. A Path A row and a Path B row are in one table here because the subject is the spread between the models; a sprint's before and after tables are per runtime, as the sweep writes them.
+Where the five stand, six segments of 3s per route at concurrency 1, four workers a side, four cores, every row from one sweep. A Path A row and a Path B row are in one table here because the subject is the spread between the models; a sprint's before and after tables are per runtime, as the sweep writes them.
 
 | Runtime           | `/hello` p50 us | `/users` p50 us | `/echo` p50 us | `/hello` req/s |
 |-------------------|-----------------|-----------------|----------------|----------------|
-| `goserver`        | 34.0            | 36.0            | 43.0           | 26828          |
-| `bridge`, Path B  | 47.0            | 50.0            | 54.0           | 19624          |
-| `service`, Path A | 188.0           | 199.0           | 209.0          | 4430           |
-| `vanilla-nginx`   | 370.0           | 372.0           | 373.0          | 2503           |
-| `vanilla-apache`  | 480.0           | 487.0           | 496.0          | 1920           |
+| `goserver`        | 35.0            | 37.0            | 44.0           | 26719          |
+| `bridge`, Path B  | 47.0            | 50.0            | 55.0           | 19441          |
+| `service`, Path A | 70.0            | 75.0            | 83.0           | 13089          |
+| `vanilla-nginx`   | 373.0           | 378.0           | 381.0          | 2525           |
+| `vanilla-apache`  | 472.0           | 474.0           | 489.0          | 2017           |
+
+Rows compare inside one table and not across two. `scripts/bench-http.sh` and `scripts/benchmark.php` answer a few percent apart on the same configuration, because a server's lifetime under one differs from its lifetime under the other in what else it served, and a figure carried from one table into another is a number from a run that did not produce the row beside it.
 
 Two things drive them, and both arrived with this sprint's first pull request. `scripts/bench-http.sh` puts both sides through one load generator and reports a latency distribution and a request rate per route; `BenchmarkTestServerRoute` in `tests/testserver_bench_test.go` answers one request per iteration through the router the file builds, and reports `allocs/op`. There is still no fixture and no venom suite over either.
 
@@ -68,7 +70,7 @@ BENCH_TARGETS="goserver bridge service vanilla-apache vanilla-nginx" scripts/ben
 
 One table per side, because two of them are different execution models and `bridge` and `service` are the pair. The table header names the model, so what each number describes travels with it. The sweep brings every side up and down itself, including the compose stacks.
 
-`testdata/php-vanilla` is the ceiling, served two ways from one copy of `public/index.php`, so the web server is a column of the table and no part of the stack held fixed across it. Its worker count is `VANILLA_WORKERS`, set to `TESTSERVER_WORKERS` by default, so every side answers the same number of requests at once. opcache is on with `validate_timestamps` off, Slim's route cache is set, and the autoloader is `--classmap-authoritative`, because an application served without those measures the compiler. [../../testdata/php-vanilla/README.md](../../testdata/php-vanilla/README.md) prices each stage of its bootstrap and lists where it differs from the PHP the phpscript side runs.
+`testdata/php-vanilla` is the ceiling, served two ways from one copy of `public/index.php`, so the web server is a column of the table and no part of the stack held fixed across it. Its worker count is `VANILLA_WORKERS`, set to `TESTSERVER_WORKERS` by default, so every side answers the same number of requests at once. opcache is on with `validate_timestamps` off, Slim's route cache is set, and the autoloader is `--classmap-authoritative`, because an application served without those measures the compiler. The JIT is off, which is php's own default and what `VANILLA_JIT` leaves it at; the README prices all three of its modes and the buffer each one fills. [../../testdata/php-vanilla/README.md](../../testdata/php-vanilla/README.md) prices each stage of its bootstrap and lists where it differs from the PHP the phpscript side runs.
 
 Memory is the last section a sweep writes, taken with the last request answered and nothing torn down. The two measurements in it are not interchangeable and the note column says which is which: a host process reports its own RSS, where phpscript and the twin each answer every request on one process whose workers are threads inside it, and the container reports a cgroup counting apache's parent and every child it forked. Neither number is a per-request figure; `B/op` from `BenchmarkTestServerRoute` is what prices a request.
 
