@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "write-good.Passive": 3356,
+    "write-good.TooWordy": 1167,
+    "write-good.Weasel": 83
+  }
+}

@@ -352,10 +352,14 @@ tasks:
   # over scripts/splint-baseline.json: the error class may not grow, the warnings
   # are printed with their movement, and a count that went down asks for the
   # baseline to come down with it. scripts/splint-gate.sh carries the reasoning.
+  # Two ratchets, one per linter. vale needs one for the same reason splint
+  # does: its exit status reads a rule's level and nothing else, so the three
+  # write-good rules at level: warning printed 4,606 findings and passed.
   lint:
     passthru: true
     cmds:
       - ./scripts/splint-gate.sh
+      - ./scripts/vale-gate.sh
 
   # Every generated document in one target, and the only place they are
   # generated. The default pipeline does not call this: five of these documents
