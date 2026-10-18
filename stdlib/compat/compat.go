@@ -58,6 +58,10 @@ func Register(rt *runner.Runtime) {
 // gets its own buffer stack, so concurrent requests capture their own output.
 func registerBuffers(rt *runner.Runtime) {
 	buffers := newBuffers(rt)
+	// A reset between programs drops the levels with the redirections they
+	// mirror, so a reused runtime answers ob_get_level with what this program
+	// opened and none of what the last one left.
+	rt.OnReset(buffers.reset)
 
 	// ob_start takes a callback and chunk size in PHP. Neither changes what a
 	// template engine sees, so they are accepted and ignored.

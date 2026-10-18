@@ -35,14 +35,14 @@ The sequencing those two arrived under holds for everything after them: the base
 
 There are two unrelated HTTP paths in this repository and one directory per path: `testdata/phpscript-service` is Path A and `testdata/phpscript-http-bridge` is Path B. Measuring one and attributing the number to the other is the likeliest mistake in this sprint.
 
-|                    | Path A, `phpscript server`                                                           | Path B, `HTTP\Mux` plus `HTTP\Server`              |
-|--------------------|--------------------------------------------------------------------------------------|----------------------------------------------------|
-| Runtime            | A new `runner.Runtime` per request                                                   | Workers forked once at `listen()`                  |
-| Registration       | The whole of `stdlib.Register` per request: 322 functions, 41 classes, 152 constants | Once, at startup                                   |
-| Handler resolution | Per request                                                                          | Once, at `$mux->handle()`, through `rt.AsCallable` |
-| Parse              | Served from the include cache; `precompile` moves it to startup                      | Once                                               |
-| Response           | Buffered whole in a `bytes.Buffer`                                                   | Streamed                                           |
-| What runs it       | `cmd/phpscript/server`                                                               | `stdlib/http` plus `runner.Pool`                   |
+|                    | Path A, `phpscript server`                                          | Path B, `HTTP\Mux` plus `HTTP\Server`              |
+|--------------------|---------------------------------------------------------------------|----------------------------------------------------|
+| Runtime            | A `runner.SessionPool` per site, reset between requests             | Workers forked once at `listen()`                  |
+| Registration       | `stdlib.Register` once per pooled runtime, kept across its requests | Once, at startup                                   |
+| Handler resolution | Per request                                                         | Once, at `$mux->handle()`, through `rt.AsCallable` |
+| Parse              | Served from the include cache; `precompile` moves it to startup     | Once                                               |
+| Response           | Buffered whole in a `bytes.Buffer`                                  | Streamed                                           |
+| What runs it       | `cmd/phpscript/server`                                              | `stdlib/http` plus `runner.Pool`                   |
 
 A Path A number and a Path B number never appear in one table, and every table says which path it is. How to tell which you measured: the command that produced it.
 

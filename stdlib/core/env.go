@@ -13,16 +13,18 @@ func init() {
 
 func registerEnvironment(rt *runner.Runtime) {
 	// putenv sets an environment variable from a "NAME=value" string, or
-	// unsets a bare "NAME"; it always returns true.
+	// unsets a bare "NAME"; it always returns true. The change lasts for the
+	// running script: the next request starts on the environment the host
+	// configured.
 	rt.RegisterFunc("putenv", func(name string, values ...string) bool {
 		if len(values) > 0 {
-			rt.Env[name] = values[0]
+			rt.PutEnv(name, values[0])
 			return true
 		}
 		if key, value, ok := strings.Cut(name, "="); ok {
-			rt.Env[key] = value
+			rt.PutEnv(key, value)
 		} else {
-			delete(rt.Env, name)
+			rt.UnsetEnv(name)
 		}
 		return true
 	})
