@@ -1,7 +1,15 @@
+# Vendored from write-good: the vale package at
+# https://github.com/errata-ai/write-good, which packages
+# https://github.com/btford/write-good by Brian Ford, MIT licensed. Everything
+# below this header is that package's TooWordy.yml unchanged, except the level.
+#
+# level: error, because every rule in this style gates and vale's exit status
+# reads nothing else. The count lives in scripts/vale-baseline.json and comes
+# down from there; vale fails on any finding, so the gate is the ratchet.
 extends: existence
 message: "'%s' is too wordy."
 ignorecase: true
-level: warning
+level: error
 tokens:
   - a number of
   - abundance

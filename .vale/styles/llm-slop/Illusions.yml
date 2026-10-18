@@ -1,0 +1,21 @@
+# Vendored from write-good: the vale package at
+# https://github.com/errata-ai/write-good, which packages
+# https://github.com/btford/write-good by Brian Ford, MIT licensed. Everything
+# below this header is that package's Illusions.yml unchanged, except the
+# level.
+#
+# level: error, because every rule in this style gates and vale's exit status
+# reads nothing else. Five of the six it reported on arrival were a word
+# duplicated across a line break in a committed doc comment, all five fixed, so
+# it holds at zero and stays out of scripts/vale-baseline.json.
+extends: repetition
+message: "'%s' is repeated!"
+level: error
+alpha: true
+action:
+  name: edit
+  params:
+    - truncate
+    - " "
+tokens:
+  - '[^\s]+'

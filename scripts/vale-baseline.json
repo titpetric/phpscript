@@ -1,7 +1,7 @@
 {
   "rules": {
-    "write-good.Passive": 3356,
-    "write-good.TooWordy": 1167,
-    "write-good.Weasel": 83
+    "llm-slop.Passive": 3356,
+    "llm-slop.TooWordy": 1167,
+    "llm-slop.Weasel": 83
   }
 }

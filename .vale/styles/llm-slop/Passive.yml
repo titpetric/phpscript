@@ -1,7 +1,15 @@
+# Vendored from write-good: the vale package at
+# https://github.com/errata-ai/write-good, which packages
+# https://github.com/btford/write-good by Brian Ford, MIT licensed. Everything
+# below this header is that package's Passive.yml unchanged, except the level.
+#
+# level: error, because every rule in this style gates and vale's exit status
+# reads nothing else. The count lives in scripts/vale-baseline.json and comes
+# down from there; vale fails on any finding, so the gate is the ratchet.
 extends: existence
 message: "'%s' may be passive voice. Use active voice if you can."
 ignorecase: true
-level: warning
+level: error
 raw:
   - \b(am|are|were|being|is|been|was|be)\b\s*
 tokens:

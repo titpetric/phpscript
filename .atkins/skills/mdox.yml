@@ -38,7 +38,15 @@ tasks:
       # vale reads .vale.ini and .vale/styles from the working directory, so it
       # runs at the repository root rather than in docs/, which also holds Go
       # doc comments to the same prose rules as a document.
-      - if: $(test -f .vale.ini)
+      #
+      # scripts/vale-gate.sh when the repository carries one. vale's exit
+      # status reads a rule's level and nothing else, so a style whose rules
+      # are all level: error fails on any finding and a bare run is a command
+      # that never passes. The gate reads the findings and compares each rule
+      # against its baseline, which is what bare splint and splint-gate.sh do.
+      - if: $(test -f scripts/vale-gate.sh)
+        cmd: ./scripts/vale-gate.sh
+      - if: $(test -f .vale.ini && ! test -f scripts/vale-gate.sh)
         cmd: docker run --rm -v $PWD:/src -w /src jdkato/vale --output=line .
 
   setup:

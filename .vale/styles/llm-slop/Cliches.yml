@@ -1,7 +1,15 @@
+# Vendored from write-good: the vale package at
+# https://github.com/errata-ai/write-good, which packages
+# https://github.com/btford/write-good by Brian Ford, MIT licensed. Everything
+# below this header is that package's Cliches.yml unchanged, except the level.
+#
+# level: error, because every rule in this style gates and vale's exit status
+# reads nothing else. It reported none over this tree, so it holds at zero and
+# stays out of scripts/vale-baseline.json.
 extends: existence
 message: "Try to avoid using clichés like '%s'."
 ignorecase: true
-level: warning
+level: error
 tokens:
   - a chip off the old block
   - a clean slate

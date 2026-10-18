@@ -1,0 +1,37 @@
+# Vendored from write-good: the vale package at
+# https://github.com/errata-ai/write-good, which packages
+# https://github.com/btford/write-good by Brian Ford, MIT licensed. Everything
+# below this header is that package's Weasel.yml unchanged, except the level.
+#
+# level: error, because every rule in this style gates and vale's exit status
+# reads nothing else. The count lives in scripts/vale-baseline.json and comes
+# down from there; vale fails on any finding, so the gate is the ratchet.
+extends: existence
+message: "'%s' is a weasel word!"
+ignorecase: true
+level: error
+tokens:
+  - clearly
+  - completely
+  - exceedingly
+  - excellent
+  - extremely
+  - fairly
+  - huge
+  - interestingly
+  - is a number
+  - largely
+  - mostly
+  - obviously
+  - quite
+  - relatively
+  - remarkably
+  - several
+  - significantly
+  - substantially
+  - surprisingly
+  - tiny
+  - usually
+  - various
+  - vast
+  - very
