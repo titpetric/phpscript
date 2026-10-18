@@ -1,0 +1,18 @@
+; The JIT, off by default, which is php's own default and the arrangement the
+; comparison tables are measured in.
+;
+; opcache.jit cannot be raised once the module has started: php refuses an
+; ini_set with "Cannot change opcache.jit setting at run-time (JIT is
+; disabled)", and a php_admin_value in a pool or a vhost is applied too late
+; for the same reason. So this is a file in conf.d, written by envsubst before
+; php starts, and VANILLA_JIT is what selects it.
+;
+;	VANILLA_JIT=tracing  the tracing JIT, which is what php documents for a
+;	                     workload with hot loops
+;	VANILLA_JIT=function the function JIT, compiling whole functions
+;	VANILLA_JIT=disable  off
+;
+; The buffer is per process and reserved at startup, so a worker count
+; multiplies it. 64M is php's own default.
+opcache.jit=${VANILLA_JIT}
+opcache.jit_buffer_size=${VANILLA_JIT_BUFFER}

@@ -31,6 +31,10 @@ http {
 	tcp_nopush on;
 	tcp_nodelay on;
 	keepalive_timeout 65;
+	# One connection for the whole segment, matching what conf/apache/vhost.conf
+	# gives the other side. The default closes a connection after 1000 requests
+	# and a segment sends more than that.
+	keepalive_requests 1000000;
 	client_body_temp_path /tmp/nginx-client-body;
 	proxy_temp_path /tmp/nginx-proxy;
 	fastcgi_temp_path /tmp/nginx-fastcgi;
@@ -51,6 +55,11 @@ http {
 		# share the host's network namespace and not a filesystem.
 		server 127.0.0.1:9000;
 		keepalive 16;
+		# The upstream connections last the sweep too, for the reason
+		# fastcgi_keep_conn exists below: a reconnect to fpm per thousand
+		# requests is a cost the mod_php side has no equivalent of.
+		keepalive_requests 1000000;
+		keepalive_timeout 60s;
 	}
 
 	server {
@@ -67,11 +76,17 @@ http {
 		}
 
 		location ~ \.php$ {
+			# The script the request names, and no pinned index.php: a file on
+			# disk is the file that runs, which is what the other stack does
+			# through mod_php and what _bare.php is reached by. try_files
+			# answers 404 here rather than passing a path with no file behind
+			# it to fpm, which would run index.php under a foreign SCRIPT_NAME.
+			try_files $fastcgi_script_name =404;
 			include fastcgi_params;
 			fastcgi_pass php;
 			fastcgi_index index.php;
-			fastcgi_param SCRIPT_FILENAME /var/www/html/public/index.php;
-			fastcgi_param SCRIPT_NAME /index.php;
+			fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+			fastcgi_param SCRIPT_NAME $fastcgi_script_name;
 			# Required by the keepalive in the upstream block, and not
 			# optional: without it nginx closes its end after each request
 			# while fpm keeps its own open, so a reused connection fails with

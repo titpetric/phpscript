@@ -17,6 +17,12 @@
 # TESTSERVER_WORKERS on the phpscript side. apache reads it from the
 # environment when it parses its config; fpm has it substituted into the pool
 # at startup, because php-fpm expands nothing itself.
+#
+# VANILLA_JIT selects the JIT, `disable` by default, which is php's own default.
+# Both stacks write conf/jit.ini.template into conf.d at startup, so a change
+# needs a restart and no rebuild:
+#
+#	VANILLA_JIT=tracing docker compose --profile apache up -d --wait
 services:
   apache:
     profiles: ["apache"]
@@ -32,6 +38,8 @@ services:
     environment:
       VANILLA_PORT: ${VANILLA_PORT:-8098}
       VANILLA_WORKERS: ${VANILLA_WORKERS:-4}
+      VANILLA_JIT: ${VANILLA_JIT:-disable}
+      VANILLA_JIT_BUFFER: ${VANILLA_JIT_BUFFER:-64M}
     mem_limit: 1g
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:' . getenv('VANILLA_PORT') . '/hello') === false ? 1 : 0);"]
@@ -55,6 +63,8 @@ services:
     environment:
       VANILLA_PORT: ${VANILLA_NGINX_PORT:-8099}
       VANILLA_WORKERS: ${VANILLA_WORKERS:-4}
+      VANILLA_JIT: ${VANILLA_JIT:-disable}
+      VANILLA_JIT_BUFFER: ${VANILLA_JIT_BUFFER:-64M}
     mem_limit: 1g
     healthcheck:
       test: ["CMD-SHELL", "php-fpm -t || exit 1"]

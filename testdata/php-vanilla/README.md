@@ -48,31 +48,54 @@ It renices the containers' processes to match the other sides, records what each
 
 ## Where the cost is
 
-Each stage of the bootstrap, measured through the same apache container by serving a file that stops at that stage. Three segments of 3s at concurrency 1, four cores.
+Three stages on both stacks, each a path in `public/` that stops where its name says. `static.txt` is the web server alone, `_bare.php` is the `/hello` handler with no autoloader and no framework under it, and `/hello` is the whole application. All three are files in this directory, so every row below is reproducible:
 
-| stage                                        | p50 us | req/s |
-|----------------------------------------------|--------|-------|
-| `static.txt`, apache alone                   | 64.0   | 13870 |
-| `_bare.php`, plus mod_php                    | 101.0  | 9051  |
-| `_autoload.php`, plus the composer autoloader | 131.0  | 6902  |
-| `_slim.php`, plus Slim's App and one route   | 377.0  | 2542  |
-| `/hello`, the whole application              | 473.0  | 1954  |
+```sh
+scripts/benchmark.php --targets php-vanilla-apache,php-vanilla-nginx --concurrency 1 \
+	--endpoints static=/static.txt,bare=/_bare.php,hello=/hello?name=sprint
+```
 
-opcache is on and `validate_timestamps` is off, so none of that is compilation, as the `_bare.php` row shows. Slim's per-request App construction is the single largest stage. The worker count is not in it either, concurrency 1 using one worker by definition.
+Six segments of 3s per row at concurrency 1, four workers a side, four cores:
 
-The two web servers on the same application, four segments of 2s at concurrency 1:
+| stage                           | apache p50 us | apache req/s | nginx p50 us | nginx req/s |
+|---------------------------------|---------------|--------------|--------------|-------------|
+| `static.txt`, the server alone  | 65.0          | 14170        | 42.0         | 22445       |
+| `_bare.php`, plus php           | 102.0         | 8947         | 115.0        | 8028        |
+| `/hello`, the whole application | 451.0         | 2132         | 376.0        | 2515        |
 
-| stack               | static p50 us | static req/s | /hello p50 us | /hello req/s |
-|---------------------|---------------|--------------|---------------|--------------|
-| nginx with php-fpm  | 42.0          | 23053        | 370.0         | 2503         |
-| apache with mod_php | 66.0          | 12773        | 480.0         | 1920         |
+opcache is on and `validate_timestamps` is off, so none of that is compilation, as the `_bare.php` row shows. Slim's per-request `App` construction is the single largest stage, and it is the whole of the distance between the second row and the third. The worker count is not in it either, concurrency 1 using one worker by definition.
 
-nginx wins the static floor outright and the php routes by a fifth. Most of that margin is `fastcgi_keep_conn on`, which holds nginx's connections to fpm open across requests:
+The two stacks cross over between the rows: nginx serves a static file in well under what apache takes and answers the application faster, while apache answers `_bare.php` faster, because mod_php runs php inside the process that accepted the connection and the fastcgi hop to fpm costs more than the whole of a trivial script. A measurement taken on one row says nothing about the other.
+
+nginx's margin on the application is mostly `fastcgi_keep_conn on`, which holds its connections to fpm open across requests:
 
 | nginx, `POST /echo` under load | non-2xx | of    | `/hello` p50 us |
 |--------------------------------|---------|-------|-----------------|
 | without the directive          | 125     | 8540  | 503.0           |
 | with it                        | 0       | 14655 | 370.0           |
+
+## The JIT costs and buys nothing here
+
+php ships `opcache.jit=disable` and this measurement is why. `VANILLA_JIT` selects the mode, two blocks per arm, counterbalanced, the same six segments of 3s at concurrency 1:
+
+| arm                        | apache `_bare.php` p50 us | apache `/hello` p50 us | nginx `_bare.php` p50 us | nginx `/hello` p50 us |
+|----------------------------|---------------------------|------------------------|--------------------------|-----------------------|
+| `disable`, php's default   | 103.0, 102.0              | 451.0, 449.0           | 115.0, 114.0             | 376.0, 372.0          |
+| `tracing`                  | 102.0, 102.0              | 459.0, 461.0           | 114.0, 115.0             | 384.0, 384.0          |
+| `function`                 | 102.0, 101.0              | 473.0, 472.0           | 114.0, 115.0             | 402.0, 405.0          |
+
+`_bare.php` does not move. `/hello` gets slower, and the mode that compiles more is the one that is worse.
+
+What the JIT buffer holds says why, read through `opcache_get_status()["jit"]` in the apache container:
+
+| mode       | enabled | buffer used, cold | buffer used, after 200 requests to `/hello` |
+|------------|---------|-------------------|---------------------------------------------|
+| `tracing`  | true    | 2293              | 2293                                        |
+| `function` | true    | 937248            | 938725                                      |
+
+In `tracing` the buffer stops moving: the JIT watches for a hot loop or a hot function, `opcache.jit_hot_loop` is 61 iterations and `opcache.jit_hot_func` is 127 calls, and a request path has no loop that runs 61 times. It is a few hundred opcodes of glue over calls into C, run once each, so there is nothing for a trace to cover. In `function` mode the compiler runs anyway and emits most of a megabyte of machine code that the measurement then pays for in instruction cache and in compilation at startup, with the same C calls doing the same work underneath.
+
+Every php web request path has that shape, and php's default is off for it. A JIT earns its buffer where php itself is the thing running hot: a numeric loop, an image filter, a parser written in php. None of those is an HTTP handler, and the application here is the extreme case, a handler that reads one superglobal and writes one line.
 
 ## Where it differs from the bridge
 
@@ -88,6 +111,10 @@ The error paths match. An unrouted path answers `404 page not found` and a wrong
 ## The images
 
 `conf/` is what each image replaces in its server's configuration, and `conf/opcache.ini` and `conf/php.ini` are shared by both. No php extension is installed: the API needs core and json alone, and php 8.5 ships opcache compiled in. A route that reads a database takes one `docker-php-ext-install pdo_sqlite` line and nothing else.
+
+`conf/jit.ini.template` is written at container startup, by the same `envsubst` that fills in the fpm pool, where every other configuration file is copied in at build time. `opcache.jit` cannot be raised once the module has started, so a `php_admin_value` in the pool or the vhost is read too late and php answers `Cannot change opcache.jit setting at run-time`. A file in `conf.d` written before php starts is the only place the setting takes, so `VANILLA_JIT` needs a restart and no rebuild.
+
+`KeepAlive` with `MaxKeepAliveRequests 0` on apache and `keepalive_requests` on both of nginx's ends, so one connection carries a whole segment. The defaults close a connection after 100 requests on apache and 1000 on nginx, and a generator holding one connection then pays a handshake the other sides never pay. `realpath_cache_size` is raised in `conf/php.ini` for the same reason `validate_timestamps` is off: the files do not change while the server is up.
 
 Neither stack writes an access log. One line per request through a pipe is work the phpscript side is not doing and a sweep writes millions of them.
 

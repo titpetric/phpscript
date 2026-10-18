@@ -24,10 +24,15 @@ ARG VANILLA_PORT=8098
 
 COPY conf/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
 COPY conf/php.ini /usr/local/etc/php/conf.d/zz-testserver.ini
+COPY conf/jit.ini.template /usr/local/etc/php/zz-jit.ini.template
 COPY conf/nginx/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-pool.conf.template
 
+ARG VANILLA_JIT=disable
+ARG VANILLA_JIT_BUFFER=64M
 ENV VANILLA_WORKERS=${VANILLA_WORKERS}
 ENV VANILLA_PORT=${VANILLA_PORT}
+ENV VANILLA_JIT=${VANILLA_JIT}
+ENV VANILLA_JIT_BUFFER=${VANILLA_JIT_BUFFER}
 
 WORKDIR /var/www/html
 COPY public/ ./public/
@@ -36,6 +41,7 @@ COPY --from=vendor /app/vendor ./vendor
 RUN mkdir -p var && chown www-data:www-data var
 
 # zz-pool.conf sorts after the image's own www.conf, so what it redefines in
-# [www] is what fpm runs with. The variable list is explicit, so nothing else
-# in the file is touched.
-CMD ["sh", "-c", "envsubst '$VANILLA_WORKERS' < /usr/local/etc/php-fpm.d/zz-pool.conf.template > /usr/local/etc/php-fpm.d/zz-pool.conf && exec php-fpm"]
+# [www] is what fpm runs with, and zz-jit.ini is written before php reads
+# conf.d. The variable list is explicit in both, so nothing else in either file
+# is touched.
+CMD ["sh", "-c", "envsubst '$VANILLA_WORKERS' < /usr/local/etc/php-fpm.d/zz-pool.conf.template > /usr/local/etc/php-fpm.d/zz-pool.conf && envsubst '$VANILLA_JIT $VANILLA_JIT_BUFFER' < /usr/local/etc/php/zz-jit.ini.template > /usr/local/etc/php/conf.d/zz-jit.ini && exec php-fpm"]

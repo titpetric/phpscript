@@ -11,6 +11,17 @@
 //	scripts/benchmark.php --targets goserver,phpscript-service --concurrency 1
 //	scripts/benchmark.php --segments 3 --duration 2s
 //
+// --endpoints replaces the API's four routes with name=path pairs, for a
+// measurement whose subject is one file, and --jit is what the php-vanilla
+// stacks set opcache.jit to, php's own `disable` by default:
+//
+//	scripts/benchmark.php --targets php-vanilla-apache --jit tracing \
+//		--endpoints bare=/_bare.php,hello=/hello?name=sprint
+//
+// A summary row collapses the endpoints it was given, so a list mixing one
+// cheap path with one expensive path leaves that row describing neither. Read
+// the per-endpoint table for those.
+//
 // A runtime is named by the directory it is, with the concurrency appended:
 // `phpscript-service-4` is testdata/phpscript-service answering four requests
 // at once. php-vanilla is one directory served two ways, so it carries the web
@@ -30,6 +41,8 @@ $FLAGS = array(
 	"warmup" => "2s",
 	"workers" => "4",
 	"limit" => "7200",
+	"endpoints" => "",
+	"jit" => "disable",
 );
 
 // fail reports a condition the run cannot continue past and stops. Whatever is
@@ -111,8 +124,27 @@ function environments() {
 }
 
 // endpoints is the API every environment answers, route for route and byte for
-// byte, so one column compares against another.
-function endpoints() {
+// byte, so one column compares against another. A --endpoints list replaces it
+// with paths of the caller's choosing, each named for its column.
+function endpoints($list) {
+	if ($list !== "") {
+		$chosen = array();
+		foreach (explode(",", $list) as $pair) {
+			$parts = explode("=", $pair, 2);
+			if (count($parts) !== 2) {
+				fail("--endpoints takes name=path pairs, read: " . $pair);
+			}
+
+			array_push($chosen, array(
+				"name" => $parts[0],
+				"path" => $parts[1],
+				"lua" => "",
+			));
+		}
+
+		return $chosen;
+	}
+
 	return array(
 		array(
 			"name" => "hello",
@@ -354,7 +386,7 @@ function start_logged($environment, $settings, $log) {
 // it. The other environments run at nice -n -20, and a default-priority server
 // on a shared box is descheduled for milliseconds at a time.
 function start_compose($environment, $settings) {
-	$prefix = "VANILLA_PORT=8098 VANILLA_NGINX_PORT=8099 VANILLA_WORKERS=" . $settings["workers"] . " ";
+	$prefix = "VANILLA_PORT=8098 VANILLA_NGINX_PORT=8099 VANILLA_WORKERS=" . $settings["workers"] . " VANILLA_JIT=" . $settings["jit"] . " ";
 	$compose = $prefix . "docker compose -f testdata/php-vanilla/compose.yml --profile " . $environment["profile"];
 
 	// Recorded before the stack comes up, so a profile that half starts is
@@ -424,7 +456,7 @@ if (trim(shell_exec("command -v wrk || true")) === "") {
 
 $settings = flags($argv, $FLAGS);
 $known = environments();
-$routes = endpoints();
+$routes = endpoints($settings["endpoints"]);
 $perEndpoint = array();
 $perRuntime = array();
 

@@ -22,13 +22,21 @@ FROM php:8.5-apache
 
 # mod_rewrite for the front controller: every path that is not a file on disk
 # reaches public/index.php, which is where Slim's router takes over.
-RUN a2enmod rewrite
+#
+# gettext-base for envsubst, which writes the JIT ini before php starts.
+# opcache.jit cannot be raised once the module has started, so a php_admin_value
+# in the vhost is read too late and the setting has to be a file in conf.d.
+RUN a2enmod rewrite \
+	&& apt-get update \
+	&& apt-get install -y --no-install-recommends gettext-base \
+	&& rm -rf /var/lib/apt/lists/*
 
 ARG VANILLA_WORKERS=4
 ARG VANILLA_PORT=8098
 
 COPY conf/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
 COPY conf/php.ini /usr/local/etc/php/conf.d/zz-testserver.ini
+COPY conf/jit.ini.template /usr/local/etc/php/zz-jit.ini.template
 COPY conf/apache/ports.conf /etc/apache2/ports.conf
 COPY conf/apache/vhost.conf /etc/apache2/sites-available/000-default.conf
 COPY conf/apache/mpm.conf /etc/apache2/mods-available/mpm_prefork.conf
@@ -46,3 +54,13 @@ COPY --from=vendor /app/vendor ./vendor
 # Where Slim writes its route cache, owned by the user apache runs as. The
 # first request to find the file missing writes it, which is the warmup.
 RUN mkdir -p var && chown www-data:www-data var
+
+ARG VANILLA_JIT=disable
+ARG VANILLA_JIT_BUFFER=64M
+ENV VANILLA_JIT=${VANILLA_JIT}
+ENV VANILLA_JIT_BUFFER=${VANILLA_JIT_BUFFER}
+
+# The JIT ini is written at startup and not baked in, so one image answers for
+# whatever compose passes. The variable list is explicit, so nothing else in
+# the file is touched.
+CMD ["sh", "-c", "envsubst '$VANILLA_JIT $VANILLA_JIT_BUFFER' < /usr/local/etc/php/zz-jit.ini.template > /usr/local/etc/php/conf.d/zz-jit.ini && exec apache2-foreground"]
