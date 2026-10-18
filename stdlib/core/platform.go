@@ -189,7 +189,7 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 	rt.RegisterFunc("headers_sent", func(_ ...any) bool { return false })
 
 	// phpscript has no php.ini. Reporting every directive as unset is what PHP
-	// itself does for an unknown one, and library code treats it as
+	// itself does for an unknown one, and library code reads it
 	// as "this extension is not configured".
 	rt.RegisterFunc("ini_get", func(_ string) any { return false })
 	// ini_set accepts and ignores $option and $value and returns false;

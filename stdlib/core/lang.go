@@ -59,7 +59,7 @@ func isFloat(value any) bool {
 }
 
 // phpGetType backs gettype. The names it returns are PHP's original ones, and
-// and that is the function: "integer" and "double" where the value
+// that is the function: "integer" and "double" where the value
 // model and get_debug_type say int and float, "boolean" where they say bool, and
 // NULL alone in capitals. Answering with the modern spellings would pass every
 // eyeball and fail every `gettype($x) === "integer"`.

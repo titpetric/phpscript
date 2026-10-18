@@ -15,7 +15,7 @@ import (
 //	arrays          the shorter is smaller, an array beats any scalar
 //	null vs string  the null becomes "" and both compare as strings
 //	bool or null    both sides are cast to bool
-//	numbers         numbers and numeric strings compare numerically
+//	numbers         a number and a numeric string compare numerically
 //	anything else   both sides are cast to string, compared bytewise.
 func Compare(x, y any) int {
 	xa, xIsArray := comparableArray(x)

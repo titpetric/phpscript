@@ -24,7 +24,7 @@ import (
 // built from its own application root and its own configuration, and the Host
 // header is the only thing that selects between them.
 //
-// Matching is exact. A Host nobody claims gets 404 and falls through to
+// Matching is exact. A Host nobody claims gets 404 and never falls through
 // to some default site, because in a shared execution environment the wrong
 // answer is a request landing in another tenant's code.
 type hostMux struct {

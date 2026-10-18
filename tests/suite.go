@@ -223,7 +223,7 @@ func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 
 // RunTeardown runs the teardown hooks in reverse, whatever the fixtures did.
 //
-// Every hook runs and every failure is reported, with no stop at
+// Every hook runs and every failure is reported, with no stop
 // at the first: the suites are independent, and a caller learns about all of
 // them, and not the one that happened to be innermost.
 func RunTeardown(ctx context.Context, suites []*Suite, out io.Writer) error {
