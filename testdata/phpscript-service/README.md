@@ -37,7 +37,7 @@ The compose file mounts the binary. A benchmark measures the build under test, a
 
 ## This is Path A
 
-`phpscript server` builds a runtime per request. `testdata/phpscript-http-bridge` is Path B: the script is the server, it is parsed once, each handler is resolved at `$mux->handle()`, and the workers are forked once at `listen()`.
+`phpscript server` takes a pooled runtime per site and resets it between requests, decoding the superglobals for each one. `testdata/phpscript-http-bridge` is Path B: the script is the server, it is parsed once, each handler is resolved at `$mux->handle()`, and the workers are forked once at `listen()`.
 
 A number from one never belongs in a table with a number from the other. `scripts/bench-http.sh` writes one table per runtime and heads each with the model its rows describe. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the rule and [../../docs/design.md](../../docs/design.md) is why the two paths exist.
 

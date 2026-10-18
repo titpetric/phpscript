@@ -21,7 +21,8 @@
 # One table per side, because two of them are different execution models.
 # `bridge` is Path B: the script is the server, parsed once, handlers resolved
 # at $mux->handle(), workers forked once at listen(). `service` is Path A:
-# annotated endpoints under `phpscript server`, a runtime built per request. A
+# annotated endpoints under `phpscript server`, a pooled runtime reset between
+# requests, with the superglobals decoded for each one. A
 # number from one never belongs in a table with a number from the other, which
 # is why the table header names the model. The per-request allocations are
 # priced by BenchmarkTestServerRoute, the other half of this harness.
@@ -241,7 +242,7 @@ target_model() {
 	case "$1" in
 	goserver) echo "testdata/goserver on net/http, the floor: no VM, one goroutine per request." ;;
 	bridge) echo "testdata/phpscript-http-bridge, Path B: the script is the server, parsed once, workers forked at listen()." ;;
-	service) echo "testdata/phpscript-service, Path A: annotated endpoints under \`phpscript server\`, a runtime per request." ;;
+	service) echo "testdata/phpscript-service, Path A: annotated endpoints under \`phpscript server\`, a pooled runtime reset between requests." ;;
 	vanilla-apache) echo "testdata/php-vanilla on apache with mod_php, Slim: a bootstrap per request." ;;
 	vanilla-nginx) echo "testdata/php-vanilla on nginx with php-fpm, Slim: a bootstrap per request." ;;
 	*) echo "$1" ;;
@@ -525,8 +526,8 @@ summarise() {
 # One table per runtime, and not one table per concurrency with a side column.
 #
 # Two of the sides are different execution models: phpscript-service is Path A,
-# a runtime built per request, and phpscript-http-bridge is Path B, workers
-# forked once at listen(). docs/agents/performance.md forbids a Path A number
+# a pooled runtime reset between requests, and phpscript-http-bridge is Path B,
+# workers forked once at listen(). docs/agents/performance.md forbids a Path A number
 # and a Path B number sharing a table, because the two answer different
 # questions and a reader comparing rows across them is comparing nothing. The
 # table header names the path, so what each number describes travels with it.
