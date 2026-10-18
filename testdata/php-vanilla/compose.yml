@@ -1,0 +1,89 @@
+# The vanilla PHP side of the load comparison, served two ways from one copy of
+# public/index.php so the web server is a column and not an assumption.
+#
+#	docker compose --profile apache up -d --wait
+#	docker compose --profile nginx up -d --wait
+#
+# Profiles and not two files, because the application is one application: a
+# change to public/index.php reaches both stacks and neither can drift from the
+# other.
+#
+# network_mode: host throughout, because the measurement is tens of
+# microseconds and a published port goes through docker-proxy or a NAT hop that
+# costs a share of that. It is also what lets nginx reach fpm on loopback
+# without the two sharing a filesystem for a unix socket.
+#
+# VANILLA_WORKERS is how many requests each stack answers at once, which is
+# TESTSERVER_WORKERS on the phpscript side. apache reads it from the
+# environment when it parses its config; fpm has it substituted into the pool
+# at startup, because php-fpm expands nothing itself.
+services:
+  apache:
+    profiles: ["apache"]
+    build:
+      context: .
+      dockerfile: Dockerfile.apache
+      args:
+        VANILLA_PORT: ${VANILLA_PORT:-8098}
+        VANILLA_WORKERS: ${VANILLA_WORKERS:-4}
+    image: phpscript/php-vanilla-apache:local
+    container_name: phpscript-php-vanilla-apache
+    network_mode: host
+    environment:
+      VANILLA_PORT: ${VANILLA_PORT:-8098}
+      VANILLA_WORKERS: ${VANILLA_WORKERS:-4}
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:' . getenv('VANILLA_PORT') . '/hello') === false ? 1 : 0);"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+    restart: "no"
+
+  fpm:
+    profiles: ["nginx"]
+    build:
+      context: .
+      dockerfile: Dockerfile.fpm
+      args:
+        VANILLA_PORT: ${VANILLA_NGINX_PORT:-8099}
+        VANILLA_WORKERS: ${VANILLA_WORKERS:-4}
+    image: phpscript/php-vanilla-fpm:local
+    container_name: phpscript-php-vanilla-fpm
+    network_mode: host
+    environment:
+      VANILLA_PORT: ${VANILLA_NGINX_PORT:-8099}
+      VANILLA_WORKERS: ${VANILLA_WORKERS:-4}
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t || exit 1"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+    restart: "no"
+
+  nginx:
+    profiles: ["nginx"]
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+      args:
+        VANILLA_NGINX_PORT: ${VANILLA_NGINX_PORT:-8099}
+    image: phpscript/php-vanilla-nginx:local
+    container_name: phpscript-php-vanilla-nginx
+    network_mode: host
+    environment:
+      VANILLA_NGINX_PORT: ${VANILLA_NGINX_PORT:-8099}
+    mem_limit: 256m
+    depends_on:
+      fpm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:${VANILLA_NGINX_PORT:-8099}/hello || exit 1"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+    restart: "no"

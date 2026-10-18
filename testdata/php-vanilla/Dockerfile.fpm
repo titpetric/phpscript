@@ -1,0 +1,41 @@
+# php-fpm, the half of the nginx stack that runs php. Dockerfile.nginx is the
+# front and Dockerfile.apache is the other web server, all three serving the
+# same public/index.php.
+#
+# gettext-base is installed for envsubst, because php-fpm expands nothing from
+# the environment in its pool config and the worker count has to be the one
+# compose passed. Baking it at build time instead would leave a stale image
+# answering with the wrong worker count whenever VANILLA_WORKERS changed
+# without --build, which is a measurement reporting a number it did not run.
+
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --no-progress --classmap-authoritative --no-scripts
+
+FROM php:8.5-fpm
+
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends gettext-base \
+	&& rm -rf /var/lib/apt/lists/*
+
+ARG VANILLA_WORKERS=4
+ARG VANILLA_PORT=8098
+
+COPY conf/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
+COPY conf/php.ini /usr/local/etc/php/conf.d/zz-testserver.ini
+COPY conf/nginx/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-pool.conf.template
+
+ENV VANILLA_WORKERS=${VANILLA_WORKERS}
+ENV VANILLA_PORT=${VANILLA_PORT}
+
+WORKDIR /var/www/html
+COPY public/ ./public/
+COPY --from=vendor /app/vendor ./vendor
+
+RUN mkdir -p var && chown www-data:www-data var
+
+# zz-pool.conf sorts after the image's own www.conf, so what it redefines in
+# [www] is what fpm runs with. The variable list is explicit, so nothing else
+# in the file is touched.
+CMD ["sh", "-c", "envsubst '$VANILLA_WORKERS' < /usr/local/etc/php-fpm.d/zz-pool.conf.template > /usr/local/etc/php-fpm.d/zz-pool.conf && exec php-fpm"]

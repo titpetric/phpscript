@@ -1,0 +1,39 @@
+# The HTTP-bridge side of the load comparison, up and down in one command. This
+# is Path B: the script is the server, HTTP\Mux holds the routes, and
+# HTTP\Server::listen forks its workers once.
+#
+#	docker compose up -d --wait
+#	curl http://127.0.0.1:8095/users/42
+#	docker compose down
+#
+# The binary is mounted and not baked in, which is the whole point: a benchmark
+# measures the build under test. `go build -o bin/phpscript .` from the
+# repository root is what fills the mount, and CGO_ENABLED=0 is what makes it
+# run on alpine.
+#
+# TESTSERVER_WORKERS is how many requests are answered at once and
+# TESTSERVER_LIMIT is how long the script runs before its time limit ends it,
+# which is why this one needs an hour: the limit is a deadline on the whole
+# run, not on a request.
+services:
+  phpscript-http-bridge:
+    image: alpine:3.21
+    container_name: phpscript-http-bridge
+    network_mode: host
+    working_dir: /app
+    volumes:
+      - ../../bin/phpscript:/usr/local/bin/phpscript:ro
+      - .:/app:ro
+    environment:
+      TESTSERVER_ADDR: ${TESTSERVER_ADDR:-127.0.0.1:8095}
+      TESTSERVER_WORKERS: ${TESTSERVER_WORKERS:-4}
+      TESTSERVER_LIMIT: ${TESTSERVER_LIMIT:-3600}
+    command: ["phpscript", "run", "/app/server.php"]
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8095/hello || exit 1"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+    restart: "no"

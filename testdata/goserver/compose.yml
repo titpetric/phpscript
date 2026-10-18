@@ -1,0 +1,38 @@
+# The Go floor of the load comparison, up and down in one command. Route for
+# route the same API on net/http's ServeMux, with the same encoder and the same
+# reply bodies, and no VM, which is the whole of what the comparison measures.
+#
+#	docker compose up -d --wait
+#	curl http://127.0.0.1:8094/users/42
+#	docker compose down
+#
+# The binary is mounted and not baked in, so the floor is the build under test
+# and no image carries a stale one. `go build -o bin/testserver-go
+# testdata/goserver/main.go` from the repository root fills the mount, and
+# CGO_ENABLED=0 is what makes it run on alpine.
+#
+# TESTSERVER_WORKERS bounds how many requests are answered at once, the way the
+# bridge's worker count does. Go does not need it, net/http answering each
+# request on a goroutine, so unset is unbounded and is the Go server anyone
+# would write; set, it is a semaphore of that depth and the comparison is of
+# the same arrangement on both sides.
+services:
+  goserver:
+    image: alpine:3.21
+    container_name: phpscript-goserver
+    network_mode: host
+    volumes:
+      - ../../bin/testserver-go:/usr/local/bin/testserver-go:ro
+    environment:
+      TESTSERVER_ADDR: ${TESTSERVER_ADDR:-127.0.0.1:8094}
+      TESTSERVER_WORKERS: ${TESTSERVER_WORKERS:-4}
+      TESTSERVER_LIMIT: ${TESTSERVER_LIMIT:-3600}
+    command: ["testserver-go"]
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8094/hello || exit 1"]
+      interval: 1s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+    restart: "no"
