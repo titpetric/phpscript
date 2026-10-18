@@ -41,14 +41,14 @@ The compose file mounts the binary. A benchmark measures the build under test, a
 
 A number from one never belongs in a table with a number from the other. `scripts/bench-http.sh` writes one table per runtime and heads each with the model its rows describe. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the rule and [../../docs/design.md](../../docs/design.md) is why the two paths exist.
 
-What the two cost, four segments of 2s per route at concurrency 1, four workers a side:
+What the two cost, six segments of 3s per route at concurrency 1, four workers a side:
 
 | runtime                     | /hello p50 us | /users p50 us | /echo p50 us | /hello req/s |
 |-----------------------------|---------------|---------------|--------------|--------------|
-| `phpscript-http-bridge` (B) | 47.0          | 50.0          | 54.0         | 19624        |
-| `phpscript-service` (A)     | 188.0         | 199.0         | 209.0        | 4430         |
+| `phpscript-http-bridge` (B) | 48.0          | 51.0          | 56.0         | 18163        |
+| `phpscript-service` (A)     | 70.0          | 77.0          | 84.0         | 12695        |
 
-The gap is the runtime a request builds and tears down. The bridge's latency comes with the bridge's shape; one file per endpoint costs the gap above. It is still well under a third of what the same API costs on Slim.
+The gap is the reset between requests and the superglobals decoded for each one. The bridge's latency comes with the bridge's shape; one file per endpoint costs the gap above. [../php-vanilla/README.md](../php-vanilla/README.md) prices the same API on Slim.
 
 ## Where it differs from the bridge
 
