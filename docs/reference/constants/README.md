@@ -4,7 +4,7 @@
 |--------------------------------|-----------------------|----------------------------------------------------------------------------|
 | Global constant declarations   | Compatibility         | `define()` and the `const` statement both declare a runtime constant.      |
 | Host-registered constants      | phpscript extension   | A Go host can register constants with `Runtime.SetConst`.                  |
-| Class constants                | Compatibility         | `const NAME = value` and `Class::NAME` are supported.                      |
+| Class constants                | Compatibility         | `const NAME = value` declares one and `Class::NAME` reads it.              |
 | Predefined constants           | Partial compatibility | Standard-library registration installs a small runtime-defined set.        |
 | Magic constants                | Partial compatibility | `__NAMESPACE__`, `__FILE__`, `__DIR__` and `__LINE__` compile to literals. |
 
@@ -19,7 +19,7 @@ class Status
 echo Status::READY;
 ```
 
-Multiple constants may be declared in one class declaration. Visibility on class constants is not enforced.
+One class declaration can hold more than one constant. Nothing enforces visibility on class constants.
 
 ## Runtime constants
 
@@ -29,7 +29,7 @@ Embedded applications can expose a value before execution:
 rt.SetConst("APP_ENV", "production")
 ```
 
-The script can then read `APP_ENV` as a bare identifier. `define()`, the top-level `const` statement, `defined()`, and `constant()` do the same from PHP, and `get_defined_constants()` inspects the whole set. `define()` and `const` write the same table; the `const` value is evaluated once at the declaration.
+The script can then read `APP_ENV` as a bare identifier. `define()`, the top-level `const` statement, `defined()`, and `constant()` do the same from PHP, and `get_defined_constants()` inspects the whole set. `define()` and `const` write the same table; `const` evaluates its value once, at the declaration.
 
 ```php
 define("APP_ENV", "production");
@@ -52,13 +52,13 @@ PHP 8 raises `Error` for the same expression. This raises `RuntimeException`, so
 
 ## Magic constants
 
-Each is resolved when a file is compiled, the way php resolves them, and becomes a literal in the parsed program. Nothing looks one up while the script runs.
+The compiler resolves each one as it reads the file, the way php resolves them, and leaves a literal in the parsed program. Nothing looks one up while the script runs.
 
 The table is php's own list, in the order the [language reference](https://www.php.net/manual/en/language.constants.magic.php) lists them.
 
 | Name            | Status        | Answers                                                                                                                         |
 |-----------------|---------------|---------------------------------------------------------------------------------------------------------------------------------|
-| `__LINE__`      | Compatibility | The line it is written on.                                                                                                      |
+| `__LINE__`      | Compatibility | The line it sits on.                                                                                                            |
 | `__FILE__`      | Divergence    | The path the file reads under, which is the source filesystem's spelling.                                                       |
 | `__DIR__`       | Divergence    | The directory of that path, by the same rule.                                                                                   |
 | `__FUNCTION__`  | Compatibility | The enclosing function, namespace-qualified; a method's bare name inside one.                                                   |
@@ -86,11 +86,11 @@ The name and the string are separate. `define("__FILE__", "x")` declares an ordi
 
 `__FILE__` and `__DIR__` name the path the file reads under, which is the source filesystem's spelling and not the host's: `/public/index.php` where php says `/srv/site/public/index.php`. See [Known divergences](../../README.md).
 
-Source passed to the runtime as a string, with no file behind it, has no path to compile. There `__FILE__` and `__DIR__` fall back to the runtime's own entrypoint. The other magic constants never fall back, because a line, a function and a class are known either way.
+Source passed to the runtime as a string, with no file behind it, has no path to compile. There `__FILE__` and `__DIR__` fall back to the runtime's own entrypoint. The other magic constants never fall back, because the compiler knows a line, a function and a class either way.
 
 ### Scope
 
-A name is resolved where it is written, not where it is called from. A method returning `__CLASS__` answers its own class whichever caller reached it.
+A name resolves where it sits, not where the call comes from. A method returning `__CLASS__` answers its own class whichever caller reached it.
 
 ```php
 function freeFunction() {
@@ -114,12 +114,12 @@ Registering the standard library installs the platform constants a PHP library b
 
 `INF` and `NAN` are the two float values with no numeric spelling. `NAN` compares equal to nothing, itself included, so `$x !== $x` is the test for one; `tests/fixtures/arithmetic/float_inf_nan.phpt` holds both to php's output.
 
-`PHP_VERSION` reports the PHP language version whose semantics phpscript is tested against. It is not a claim of full compatibility with that release; it is the number library code reads when it decides which language features it may use.
+`PHP_VERSION` reports the PHP language version whose semantics the fixtures hold phpscript to. The number claims no full compatibility with that release; library code reads it to decide which language features it may use.
 
 ### Time layouts
 
-`TIME_RFC3339`, `TIME_RFC3339_NANO`, `TIME_DATETIME`, `TIME_DATE_ONLY` and `TIME_TIME_ONLY` hold the [Go layouts](https://pkg.go.dev/time#pkg-constants) of the same names, for `$t->format()` and `DateTime::parse()`. A layout is an ordinary string and any of them can be written out; these are the ones worth naming.
+`TIME_RFC3339`, `TIME_RFC3339_NANO`, `TIME_DATETIME`, `TIME_DATE_ONLY` and `TIME_TIME_ONLY` hold the [Go layouts](https://pkg.go.dev/time#pkg-constants) of the same names, for `$t->format()` and `DateTime::parse()`. A layout is an ordinary string and a script can spell any of them out; these are the ones worth naming.
 
-`TIME_RFC3339` is the one to reach for by default. It is the only layout here that carries the UTC offset, so it is the one that survives a round trip through a database column or a JSON payload, and it is what `json_encode` already emits for a `Time`. See [Dates and times](../../use-cases/database.md#dates-and-times).
+`TIME_RFC3339` is the one to reach for by default. Alone among the layouts here it carries the UTC offset, so it survives a round trip through a database column or a JSON payload, and `json_encode` already emits it for a `Time`. See [Dates and times](../../use-cases/database.md#dates-and-times).
 
 The names are flat because a namespaced constant does not parse in this runtime: the classes are `Time\Duration` and `Time\Location`, but a constant spells that prefix `TIME_`.
