@@ -21,10 +21,15 @@ func RegisterShutdown(rt *runner.Runtime) {
 		// The runtime's own verdict and no reflect.Kind check: a PHP
 		// closure is a value carrying its declaration, not a bare func, and
 		// no other spelling of a callable is a func either.
-		if _, ok := rt.Callable(callback); !ok {
+		resolved, ok := rt.Callable(callback)
+		if !ok {
 			return fmt.Errorf("register_shutdown_function: argument must be callable")
 		}
-		rt.RegisterShutdown(callback)
+		// What the resolution answered, and not the argument it read: a
+		// function name registers as a string, and the invoker that runs the
+		// callbacks takes a func. Keeping the argument reports a finished
+		// script as a failure, after its output, naming the type.
+		rt.RegisterShutdown(resolved)
 		return nil
 	})
 }

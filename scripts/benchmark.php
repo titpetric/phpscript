@@ -412,11 +412,7 @@ function table($title, $headers, $named, $rows) {
 	}
 }
 
-// A closure and not the name "teardown": the runtime takes a function name at
-// registration and refuses it when the shutdown runs.
-register_shutdown_function(function() {
-	teardown();
-});
+register_shutdown_function("teardown");
 
 if (!is_file("go.mod")) {
 	fail("run this from the repository root, where the testdata paths resolve");
