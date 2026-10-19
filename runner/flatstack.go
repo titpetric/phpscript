@@ -68,9 +68,8 @@ func (h *flatHost) BindFrame(frame flatvm.FrameLocals) { h.frame = frame }
 func (h *flatHost) TakeFrame() flatvm.FrameLocals { return h.frame }
 
 // boundScope materialises the running frame as an interpreter scope, for the
-// callees that read or write caller locals. boundScope snapshots the frame
-// here, before the callee body runs, the ordering the by-reference marks
-// rely on.
+// callees that read or write caller locals. It snapshots the frame before the
+// callee body runs, the ordering the by-reference marks rely on.
 func (h *flatHost) boundScope() *Scope {
 	scope := h.runtime.newScope()
 	if h.frame != nil {
@@ -104,8 +103,8 @@ func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, err
 	// A method on a PHP-declared object dispatches through the interpreter
 	// and sees the frame. A Go receiver's method sees the frame only through
 	// a context parameter, so callGoMethod's scopeFor materialises the scope
-	// for the methods that ask and no others - which leaves out every common
-	// data-access shape.
+	// for the methods that ask and no others, which is no common data-access
+	// shape.
 	if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
 		scope := h.boundScope()
 		result, err := h.runtime.helperCall(&scopeRef{scope: scope})(receiver, method, args...)
