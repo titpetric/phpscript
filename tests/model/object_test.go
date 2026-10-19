@@ -24,7 +24,7 @@ func TestObjectKeepsInsertionOrder(t *testing.T) {
 	if got := names(o); got != "c,a,b" {
 		t.Errorf("Names() = %q, want the order they were set", got)
 	}
-	// Assigning over a property that is set does not move it.
+	// Assigning over a property already there does not move it.
 	o.SetProp("c", 30)
 	if got := names(o); got != "c,a,b" {
 		t.Errorf("Names() after reassigning = %q, want the order unchanged", got)

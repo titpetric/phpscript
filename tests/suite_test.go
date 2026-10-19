@@ -12,7 +12,7 @@ import (
 )
 
 // writeTree lays a temporary directory down on disk from path/contents pairs,
-// and answers where it is. A path naming a subdirectory creates it.
+// and answers its path. A path naming a subdirectory creates it.
 func writeTree(t *testing.T, files ...string) string {
 	t.Helper()
 
@@ -74,8 +74,8 @@ func TestSuite(t *testing.T) {
 
 // TestSuite_run covers the keys a run of the whole command owns. Two folders
 // answering differently for parallel would leave the run with nothing to act
-// on, so a file discovered below the invocation root is refused and names the
-// key.
+// on, so LoadSuite refuses a file discovered below the invocation root and
+// names the key.
 func TestSuite_run(t *testing.T) {
 	dir := writeSuite(t, "test:\n  parallel: 4\n")
 
@@ -95,8 +95,8 @@ func TestSuite_run(t *testing.T) {
 }
 
 // TestLoadSuiteFS covers the same read over a tree that is not on disk. The
-// fixtures compiled into the test binary are reached this way, and the
-// run-wide keys are refused for all of them: an embedded tree has no
+// test binary reaches its compiled-in fixtures this way, and LoadSuiteFS
+// refuses the run-wide keys for every one of them: an embedded tree has no
 // invocation root above it.
 func TestLoadSuiteFS(t *testing.T) {
 	root := fstest.MapFS{
@@ -235,8 +235,8 @@ func TestSuite_Setup(t *testing.T) {
 }
 
 // TestSuite_Teardown covers the hook that releases what the setup laid down.
-// It is read the same way Setup is, so a run that ended badly still has a
-// name to execute.
+// Teardown reads it the same way Setup does, so a run that ended badly still
+// has a name to execute.
 func TestSuite_Teardown(t *testing.T) {
 	dir := writeSuite(t, "test:\n  hooks:\n    teardown: hooks/down.php\n")
 	suite, err := LoadSuite(dir, config.New(), true)
@@ -255,9 +255,9 @@ func TestSuite_Teardown(t *testing.T) {
 
 // TestSuite_RunHook covers the runtime one hook executes on. The suite root is
 // its filesystem, so a hook names its files the way an application does, and
-// the suite's prelude is loaded ahead of it: a hook calling the application's
-// own helpers needs what the autoloader declared. A name that is not in the
-// tree fails before any of that.
+// RunHook loads the suite's prelude ahead of it: a hook calling the
+// application's own helpers needs what the autoloader declared. A name that is
+// not in the tree fails before any of that.
 func TestSuite_RunHook(t *testing.T) {
 	dir := writeSuite(t,
 		"test:\n  include: prelude.php\n  hooks:\n    setup: hooks/up.php\n",
@@ -315,8 +315,8 @@ func TestRunSetup(t *testing.T) {
 }
 
 // TestRunTeardown covers the reverse order, and that every hook runs. The
-// suites are independent, so a caller learns about all of the failures and not
-// the one that happened to be innermost.
+// suites are independent, so a caller learns about every failure and not the
+// innermost one alone.
 func TestRunTeardown(t *testing.T) {
 	suites := []*Suite{
 		loadHookSuite(t, "outer", "", "hooks/down.php"),

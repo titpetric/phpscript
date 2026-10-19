@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// TestWriteJSONReport covers the machine-readable report a run writes. The
-// total is counted off the results, so a reader has the count without walking
-// the list, and every TestResult field keeps its json tag name.
+// TestWriteJSONReport covers the machine-readable report a run writes.
+// WriteJSONReport counts the total off the results, so a reader has the count
+// without walking the list, and every TestResult field keeps its json tag name.
 func TestWriteJSONReport(t *testing.T) {
 	var out strings.Builder
 	results := []*TestResult{
@@ -35,9 +35,9 @@ func TestWriteJSONReport(t *testing.T) {
 	}
 }
 
-// TestWriteHTMLReport covers the human-readable report. The passed and failed
-// counts are summed over the results, so the summary line reports the same
-// numbers the table rows carry.
+// TestWriteHTMLReport covers the human-readable report. WriteHTMLReport sums
+// the passed and failed counts over the results, so the summary line reports
+// the same numbers the table rows carry.
 func TestWriteHTMLReport(t *testing.T) {
 	var out strings.Builder
 	results := []*TestResult{

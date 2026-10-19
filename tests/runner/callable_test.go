@@ -61,7 +61,7 @@ func TestFirstClassCallableResolution(t *testing.T) {
 		{
 			// An unqualified name inside a namespace resolves there first and then
 			// globally, the fallback a call takes. A namespaced file may only
-			// declare, so the callable is taken inside a function.
+			// declare, so this case takes the callable inside a function.
 			name:  "a namespaced name falls back to the global function",
 			src:   "<?php\nnamespace App;\n\nfunction pick() { $f = strtoupper(...); echo $f(\"ab\"); }\n",
 			want:  "AB",
@@ -81,9 +81,9 @@ func TestFirstClassCallableResolution(t *testing.T) {
 	}
 }
 
-// A first-class callable that names nothing reports it where the value is taken
-// and not where it would have been called, with the message the equivalent
-// call reports.
+// A first-class callable that names nothing reports it where a script takes
+// the value and not where a call would run, with the message a direct call
+// reports.
 func TestFirstClassCallableErrors(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

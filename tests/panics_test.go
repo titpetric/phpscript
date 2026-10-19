@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-// TestRegisterPanicBindings covers the two signatures the panic boundary is
-// pinned on. invokeAny calls a func(any) any from its type switch and reaches
+// TestRegisterPanicBindings covers the two signatures that pin the panic
+// boundary. invokeAny calls a func(any) any from its type switch and reaches
 // a func(any) (any, error) only through reflect.Value.Call, so a binding that
 // panics has to exist for each: one registration of the wrong shape would
 // leave the reflective path unchecked.

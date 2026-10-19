@@ -1,10 +1,10 @@
 <?php
 
-// __LINE__ is lexical: the line it is written on, and no call moves it.
+// __LINE__ is lexical: the line it sits on, and no call moves it.
 echo __LINE__, "\n";
 echo strlen("x"), ":", __LINE__, "\n";
 
-// The path constants name the file the body is read from.
+// The path constants name the file the body lives in.
 echo basename(__FILE__), "\n";
 echo basename(__DIR__), "\n";
 
@@ -32,7 +32,7 @@ echo $w->instance(), "\n";
 echo Widget::statically(), "\n";
 echo $w->line(), "\n";
 
-// A name is resolved where it is written, so a method returning __CLASS__
+// A name resolves where it sits, so a method returning __CLASS__
 // answers its own class whoever calls it.
 function ask(Widget $w) {
 	return $w->instance() . "|" . __FUNCTION__;

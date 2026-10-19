@@ -6,13 +6,13 @@ package tests
 // bindings_test.go can assert both semantics (does the VM understand it?) and
 // cost (how many allocations did it take?).
 //
-// The runtime never requires *model.Array on the way out. Registered functions
-// are invoked through reflection (runner.invokeAny), and the single return
-// value is boxed into `any` by callResult. Everything downstream, from
-// foreach to `$x[...]`, `$obj->field` and method calls, dispatches on the dynamic
-// type, with reflection fallbacks for native Go slices, maps and structs.
-// So a binding is free to return the cheapest representation of its data and
-// let the VM reflect over it.
+// The runtime never requires *model.Array on the way out. runner.invokeAny
+// calls a registered function through reflection, and callResult boxes the
+// single return value into `any`. Everything downstream, from foreach to
+// `$x[...]`, `$obj->field` and method calls, dispatches on the dynamic type,
+// with reflection fallbacks for native Go slices, maps and structs. So a
+// binding is free to return the cheapest representation of its data and let
+// the VM reflect over it.
 //
 // The shapes, cheapest first:
 //
@@ -61,9 +61,8 @@ func (r BindingRecord) Label() string {
 // benchmarks compare representations and not workloads.
 var bindingWords = []string{"alpha", "beta", "gamma", "delta", "epsilon"}
 
-// RegisterBindings installs the example bindings. It is passed to
-// stdlib.Register as an extra installer, the same way a host contributes its
-// own symbols.
+// RegisterBindings installs the example bindings. stdlib.Register takes it as
+// an extra installer, the same way a host contributes its own symbols.
 func RegisterBindings(rt *runner.Runtime) {
 	for name, fn := range BindingFuncs() {
 		rt.RegisterFunc(name, fn)
@@ -76,8 +75,8 @@ func BindingFunc(name string) any {
 	return BindingFuncs()[name]
 }
 
-// BindingFuncs returns the example bindings keyed by the PHP name they are
-// registered under.
+// BindingFuncs returns the example bindings keyed by the PHP name each one
+// registers under.
 func BindingFuncs() map[string]any {
 	funcs := map[string]any{}
 	rt := &collector{funcs: funcs}
@@ -125,9 +124,9 @@ func registerBindings(rt registrar) {
 	})
 	// bind_list_shared returns the backing slice with no copy at all: zero
 	// allocations for a read-only result. PHP arrays are value types, so this
-	// is only correct when the script does not mutate the result, which is
-	// also true of every *model.Array a binding returns today (those are
-	// handed out by pointer).
+	// is only correct when the script does not mutate the result, which also
+	// holds for every *model.Array a binding returns today, each one by
+	// pointer.
 	rt.RegisterFunc("bind_list_shared", func() []string { return bindingWords })
 
 	// --- the `any` question ------------------------------------------------
@@ -224,8 +223,8 @@ func registerBindings(rt registrar) {
 	//
 	// Scalars are where `any` actually costs something: returning a concrete
 	// int64 lets callResult box a value the compiler may have already staged,
-	// while `any` boxes at the return statement. Both allocate 8 bytes unless
-	// the value is a small int (0-255) served from the runtime's static cache.
+	// while `any` boxes at the return statement. Both cost an 8 byte allocation
+	// unless the value is a small int (0-255) from the runtime's static cache.
 
 	rt.RegisterFunc("bind_int", func() int64 { return 4096 })
 	rt.RegisterFunc("bind_int_any", func() any { return int64(4096) })
@@ -233,9 +232,8 @@ func registerBindings(rt registrar) {
 	rt.RegisterFunc("bind_string", func() string { return "alpha" })
 	rt.RegisterFunc("bind_bool", func() bool { return true })
 	// A []byte is a string, and no slice shape reading as a list of
-	// integers: PHP's strings are byte strings, and Go's own text APIs are
-	// declared over []byte half the time. regexp.Regexp.Find is the case that
-	// brought it in.
+	// integers: PHP's strings are byte strings, and Go's own text APIs declare
+	// []byte half the time. regexp.Regexp.Find is the case that brought it in.
 	rt.RegisterFunc("bind_bytes", func() []byte { return []byte("alpha") })
 	rt.RegisterFunc("bind_bytes_empty", func() []byte { return nil })
 	rt.RegisterFunc("bind_bytes_list", func() [][]byte {
@@ -263,8 +261,8 @@ func registerBindings(rt registrar) {
 	//
 	// One per shape a binding declares its callback in. The uniform one is what
 	// Runtime.Callable answers; the rest are Go's own terms, the shape a
-	// library's method set already looks like, and are filled through
-	// reflect.MakeFunc over the declared signature.
+	// library's method set already looks like, and reflect.MakeFunc fills them
+	// over the declared signature.
 
 	// bind_callback_uniform declares the shape Runtime.Callable answers, which
 	// is the one a binding gets handed without a reflect.MakeFunc wrapper, and
@@ -286,8 +284,8 @@ func registerBindings(rt registrar) {
 		}
 		return "dropped"
 	})
-	// bind_callback_void declares no result at all, so the value the callable
-	// returns is dropped and never coerced.
+	// bind_callback_void declares no result at all, so nothing reads or
+	// coerces the value the callable returns.
 	rt.RegisterFunc("bind_callback_void", func(s string, fn func(string)) string {
 		fn(s)
 		return "done"
@@ -318,8 +316,8 @@ func registerBindings(rt registrar) {
 
 	// --- error shape -------------------------------------------------------
 	//
-	// A trailing error is unwrapped by callResult and surfaces as a thrown
-	// PHP error. Returning (any, error) earns its keep only when the call can
+	// callResult unwraps a trailing error and surfaces it as a thrown PHP
+	// error. Returning (any, error) earns its keep only when the call can
 	// actually fail; a second return value costs an extra reflect.Value slot.
 
 	rt.RegisterFunc("bind_split", func(s, sep string) ([]string, error) {
@@ -330,7 +328,7 @@ func registerBindings(rt registrar) {
 	})
 }
 
-// errEmptySeparator is returned by bind_split to exercise the error path.
+// errEmptySeparator is what bind_split returns to exercise the error path.
 var errEmptySeparator = bindingError("bind_split: empty separator")
 
 type bindingError string

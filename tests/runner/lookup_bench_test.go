@@ -36,8 +36,8 @@ var lookupBenchmarkSink int
 // parallel over one shared cache pair with a runtime per goroutine, which is
 // the contract a host calling a looked-up symbol concurrently keeps.
 //
-// The parts are separate because they are paid at different times, and reading
-// one for another is the mistake the split exists to prevent:
+// The parts are separate because a host pays them at different times, and
+// reading one for another is the mistake the split exists to prevent:
 //
 //   - bind resolves the symbol and builds the closure. Paid per runtime.
 //   - invoke calls the closure. Paid per call, and the only figure that scales
@@ -54,9 +54,9 @@ var lookupBenchmarkSink int
 // request less runtime is what the script cost; the rest is the host getting
 // ready to run it, which is the part a lookup on a reused runtime skips.
 //
-// Run with -cpu 1,2,4 for the parallel scaling. Nothing an invocation
-// allocates is shared, so the only contention is the two caches' read locks,
-// while request allocates ninety kilobytes a go and stops scaling where the
+// Run with -cpu 1,2,4 for the parallel scaling. No invocation shares what it
+// allocates, so the only contention is the two caches' read locks, while
+// request allocates ninety kilobytes a go and stops scaling where the
 // collector becomes the limit.
 func BenchmarkLookup(b *testing.B) {
 	includes := runner.NewIncludeCache()
@@ -88,9 +88,9 @@ func BenchmarkLookup(b *testing.B) {
 				return
 			}
 			for pb.Next() {
-				// The error is checked, which keeps the call from
-				// being optimised away; the closure itself is the product and
-				// nothing here needs it.
+				// The loop checks the error, which keeps the compiler from
+				// optimising the call away; the closure itself is the product
+				// and nothing here needs it.
 				if _, err := runner.Lookup[func(*http.Request) string](rt, "App\\Handler\\main"); err != nil {
 					b.Error(err)
 					return
@@ -174,8 +174,8 @@ func BenchmarkLookup(b *testing.B) {
 		})
 	})
 
-	// The control is checked once and never asserted per iteration, so the
-	// comparison is not paying for the comparison.
+	// This checks the control once and never per iteration, so the comparison
+	// does not pay for the comparison.
 	verify := func(name, got string) {
 		if got != want {
 			b.Fatalf("%s produced %q, want %q", name, got, want)
@@ -201,7 +201,7 @@ func BenchmarkLookup(b *testing.B) {
 }
 
 // responseBuffer counts what an entrypoint echoed without the comparison
-// allocating a string per iteration; the text is kept for the one check.
+// allocating a string per iteration; it keeps the text for the one check.
 type responseBuffer struct {
 	n    int
 	text string
@@ -215,8 +215,8 @@ func (r *responseBuffer) Write(p []byte) (int, error) {
 
 // BenchmarkLookupTreeSize holds the symbol index to constant time. Resolving a
 // name is a walk of every statement of every program in the tree, and a host
-// serving concurrently binds per runtime and therefore per goroutine, which is
-// often per request: paying the size of the application there is the cost this
+// serving concurrently binds per runtime and so per goroutine, which is often
+// per request: paying the size of the application there is the cost this
 // guards against coming back.
 func BenchmarkLookupTreeSize(b *testing.B) {
 	for _, files := range []int{2, 50, 200, 800} {
@@ -311,9 +311,9 @@ func BenchmarkLookupHandler(b *testing.B) {
 		h(w, r)
 	})
 
-	// Same pool, but each request starts from a clean session: script globals,
-	// class and function statics, constants and declarations are dropped. The
-	// declaration goes with them, so the symbol is bound again per request.
+	// Same pool, but ResetSession clears the session per request: script
+	// globals, class and function statics, constants and declarations go, so
+	// Lookup binds the symbol again per request.
 	rtPool := sync.Pool{New: func() any { return newRuntime() }}
 	reset := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rt := rtPool.Get().(*runner.Runtime)

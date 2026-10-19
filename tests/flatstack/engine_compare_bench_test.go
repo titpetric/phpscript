@@ -12,8 +12,8 @@ import (
 
 // benchmarkEngines runs one program through the interpreter and through flat
 // bytecode as engine= sub-benchmarks, so the two columns line up under
-// `benchstat -col /engine`. The program is gated on Supports: both engines
-// must run it natively or the comparison measures fallback by accident.
+// `benchstat -col /engine`. Supports gates the program: both engines must run
+// it natively or the comparison measures fallback by accident.
 func benchmarkEngines(b *testing.B, source string, register func(*runner.Runtime)) {
 	program := mustFlatProgram(b, source)
 

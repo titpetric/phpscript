@@ -25,7 +25,7 @@ func runSource(t *testing.T, source string) string {
 }
 
 // A value a host binding produced is an object already. The `(object)` cast has
-// to return it as it is, with no fold into a stdClass carrying a `scalar`
+// to return it unchanged, with no fold into a stdClass carrying a `scalar`
 // property, as the collection test and the scalar branch both did. Exception
 // is the binding every runtime has.
 func TestObjectCastKeepsHostObjects(t *testing.T) {
@@ -41,8 +41,8 @@ echo get_class($o), "|", $o->getMessage(), "|", ($o === $e ? "same" : "different
 }
 
 // An *model.Array is a pointer to a struct and would answer a "looks like an
-// object" test, so the collection branch has to be tried first or `(object)` on
-// an array becomes a no-op.
+// object" test, so the collection branch has to run first or `(object)` on an
+// array becomes a no-op.
 func TestObjectCastConvertsCollections(t *testing.T) {
 	t.Parallel()
 	got := runSource(t, `<?php

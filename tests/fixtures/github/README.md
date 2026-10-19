@@ -6,7 +6,7 @@ what keeps a file written against *expected* behaviour out of the passing
 suite. Files stay after their issue closes, as the record of each report
 and what now guards it.
 
-While the issue is open, the file records the behaviour that is wanted.
+While the issue is open, the file records the expected behaviour.
 
 When it closes, one of two things happens. If the fixture runner can reach the
 behaviour, rename the file to `.phpt`, move it to the area it belongs to, and

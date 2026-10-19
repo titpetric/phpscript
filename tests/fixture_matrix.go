@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Runner names an execution backend a fixture can be checked against.
+// Runner names an execution backend the matrix drives a fixture through.
 type Runner string
 
 // The three backends, one per matrix column.
@@ -30,25 +30,25 @@ const (
 var Runners = []Runner{RunnerFlatstack, RunnerRuntime, RunnerPHP}
 
 // ErrRunnerUnavailable reports that a runner cannot execute on this machine,
-// which is a skip and no failure. The php runner returns it when no php
-// binary is installed.
+// which is a skip and no failure. The php runner returns it when PATH holds
+// no php binary.
 var ErrRunnerUnavailable = errors.New("runner unavailable")
 
 // ErrFlatstackUnsupported reports that the flat bytecode compiler rejected the
-// fixture's program. The fixture is skipped for the flatstack runner rather
-// than delegated: a fallback run would report the compatibility interpreter's
+// fixture's program. The flatstack runner skips the fixture and delegates
+// nothing: a fallback run would report the compatibility interpreter's
 // result and cost under the flatstack column.
 var ErrFlatstackUnsupported = errors.New("program not supported by flatstack")
 
 // FixtureRunners opts a fixture out of individual runners. An absent field
-// means the runner is used; the default runtime can not be opted out of
-// because it defines the fixture's expected output.
+// runs the runner; nothing opts out of the default runtime, because that
+// runtime defines the fixture's expected output.
 type FixtureRunners struct {
 	Flatstack *bool `yaml:"flatstack"`
 	PHP       *bool `yaml:"php"`
 }
 
-// Runs reports whether the fixture is checked against r.
+// Runs reports whether the fixture opts in to r.
 func (f *Fixture) Runs(r Runner) bool {
 	switch r {
 	case RunnerFlatstack:
@@ -67,9 +67,9 @@ type phpRun struct {
 	ExitCode int
 }
 
-// executePHP runs the fixture source through the php binary. The script is
-// written into the fixture's include root so relative includes and __DIR__
-// resolve the way they do for the two Go runtimes, which are rooted there.
+// executePHP runs the fixture source through the php binary. writePHPScript
+// puts the script in the fixture's include root, so relative includes and
+// __DIR__ resolve the way they do for the two Go runtimes rooted there.
 func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	binary, err := exec.LookPath("php")
 	if err != nil {
@@ -96,9 +96,9 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 	}
 	defer cleanupPrepend()
 
-	// The fixture output is the contract, so error display is pinned to stderr
-	// and log duplication is turned off; a php.ini differing per machine would
-	// otherwise decide whether a warning lands in the compared stdout.
+	// The fixture output is the contract, so these flags pin error display to
+	// stderr and switch log duplication off; a php.ini differing per machine
+	// would otherwise decide whether a warning lands in the compared stdout.
 	args := append(prepend,
 		"-d", "display_errors=stderr",
 		"-d", "log_errors=0",
@@ -145,11 +145,11 @@ func executePHP(ctx context.Context, f *Fixture) (phpRun, error) {
 }
 
 // phpPrepend materializes the harness prelude for the php runner as an
-// auto_prepend_file: the include files are pulled in from the application
-// root, so php sees the same world the in-process runtimes assemble from
-// SetAppRoot. The includes run inside a function scope with the application
-// root as the working directory, mirroring the fresh scope and root-relative
-// resolution the Go runtimes apply to the prelude.
+// auto_prepend_file: the generated file includes each prelude file from the
+// application root, so php sees the same world the in-process runtimes
+// assemble from SetAppRoot. The includes run inside a function scope with the
+// application root as the working directory, mirroring the fresh scope and
+// root-relative resolution the Go runtimes apply to the prelude.
 func phpPrepend(f *Fixture) ([]string, func(), error) {
 	if f.appRoot == "" || len(f.includes) == 0 {
 		return nil, func() {}, nil
@@ -192,11 +192,11 @@ func phpQuote(s string) string {
 	return "'" + shellQuoteReplacer.Replace(s) + "'"
 }
 
-// shellQuoteReplacer is built once, for the reason exportReplacer is.
+// shellQuoteReplacer holds one Replacer, for the reason exportReplacer does.
 var shellQuoteReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 
-// writePHPScript materializes the fixture source as a hidden file in dir. The
-// name is derived from the fixture path so parallel fixtures never collide.
+// writePHPScript materializes the fixture source as a hidden file in dir. It
+// derives the name from the fixture path so parallel fixtures never collide.
 func writePHPScript(dir string, f *Fixture) (string, func(), error) {
 	// A _test.php body is already a file php can run, at the path the other
 	// runtimes read it from. Copying it would move __FILE__ and __DIR__ to a

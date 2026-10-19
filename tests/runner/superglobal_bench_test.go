@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// browserHeaders is what an ordinary browser sends. The count is the point: a
-// request carries a dozen or so, each of which would be copied into $_SERVER
-// under its HTTP_ name whether or not the script read one.
+// browserHeaders is what an ordinary browser sends. The count is what matters:
+// a request carries a dozen or so, and an eager decode would copy each one
+// into $_SERVER under its HTTP_ name even when the script reads none.
 var browserHeaders = map[string]string{
 	"Accept":                    "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 	"Accept-Encoding":           "gzip, deflate, br",

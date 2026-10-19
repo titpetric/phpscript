@@ -535,7 +535,7 @@ func TestFlatstackPrecompiledAllocationBudget(t *testing.T) {
 	}{
 		{
 			// Measured 2: the result box of the concat and the echo's write
-			// path; the host and the hoist are amortised across runs.
+			// path; the host and the hoist amortise across runs.
 			name:   "concat",
 			source: `<?php $left = "flat"; $right = "stack"; echo $left . $right; ?>`,
 			budget: 3,
@@ -562,8 +562,8 @@ echo $total, " ", $tag;
 		},
 		{
 			// Measured 36 for 50 calls: the frame slab pool holds the
-			// per-call locals/initialized pair at zero and the arguments are
-			// borrowed off the operand stack.
+			// per-call locals/initialized pair at zero and the call borrows
+			// its arguments off the operand stack.
 			name: "user function loop",
 			source: `<?php
 function twice($x) {

@@ -10,8 +10,8 @@ import (
 )
 
 // TestRequestDecodesOnlyWhatIsRead covers the promise the views make: building
-// a Context reads nothing out of the request, and each input is decoded by the
-// first read that needs it.
+// a Context reads nothing out of the request, and the first read that needs an
+// input decodes it.
 func TestRequestDecodesOnlyWhatIsRead(t *testing.T) {
 	t.Parallel()
 	body := "name=bob&tags[]=a&tags[]=b"
@@ -21,7 +21,7 @@ func TestRequestDecodesOnlyWhatIsRead(t *testing.T) {
 
 	ctx := runner.FromRequest(req)
 
-	// Nothing has been read, so nothing has been decoded.
+	// Nothing read yet, so nothing decoded.
 	if len(ctx.Get) != 0 || len(ctx.Post) != 0 || len(ctx.Cookie) != 0 {
 		t.Fatalf("building the context decoded something: get=%v post=%v cookie=%v",
 			ctx.Get, ctx.Post, ctx.Cookie)

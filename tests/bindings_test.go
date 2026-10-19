@@ -155,7 +155,7 @@ func TestBindingReturnShapes(t *testing.T) {
 			want: "yes",
 		},
 
-		// A []byte is the string it carries, everywhere a string is read.
+		// A []byte is the string it carries, everywhere a script reads a string.
 		{
 			name: "[]byte return is a string",
 			php:  `<?php $b = bind_bytes(); echo $b . ":" . strlen($b) . ":" . gettype($b);`,
@@ -192,9 +192,9 @@ func TestBindingReturnShapes(t *testing.T) {
 			want: "[]",
 		},
 
-		// A callback is an argument shape and no return shape, so the
-		// table for it is TestBindingTakesEveryCallableSpelling below: every
-		// spelling against both declared shapes, with the errors beside it.
+		// A callback is an argument shape and no return shape, so its table
+		// lives in TestBindingTakesEveryCallableSpelling below: every spelling
+		// against both declared shapes, with the errors beside it.
 
 		// A trailing error surfaces to PHP as a catchable throw.
 		{
@@ -461,8 +461,8 @@ func TestBindingCollectionsAreWritableInPlace(t *testing.T) {
 }
 
 // TestBindingKeyedMapReads covers reading a map whose key is not a string.
-// The index arrives as an int64 and the map is keyed by int, so the host panics
-// without the coercion.
+// The index arrives as an int64 and the map takes an int key, so the host
+// panics without the coercion.
 func TestBindingKeyedMapReads(t *testing.T) {
 	cases := []struct {
 		name string
@@ -540,8 +540,8 @@ func TestBindingCollectionsUnset(t *testing.T) {
 		},
 		{
 			// The key numbering survives, which a slice cannot manage. The
-			// keys are read one at a time and never listed, because a Go
-			// map has no iteration order to assert.
+			// case reads the keys one at a time and never lists them, because
+			// a Go map has no iteration order to assert.
 			name: "a keyed list keeps the hole",
 			php: `<?php $k = bind_list_keyed(); unset($k[1]);
 				echo count($k) . ":";
@@ -568,9 +568,9 @@ func TestBindingListDestructuring(t *testing.T) {
 	}
 }
 
-// callableDeclarations are the declarations every callable spelling below is
-// written against: a free function, a class with a method, a static method and
-// an __invoke.
+// callableDeclarations are the declarations every callable spelling below
+// names: a free function, a class with a method, a static method and an
+// __invoke.
 const callableDeclarations = `<?php
 function shout($s) { return strtoupper($s); }
 
@@ -625,7 +625,7 @@ func TestBindingTakesEveryCallableSpelling(t *testing.T) {
 // masher is a Go value built from a callback, for the constructor path.
 type masher struct{ out string }
 
-// Out is read back from PHP as $m->out().
+// Out is the value $m->out() answers in PHP.
 func (m *masher) Out() string { return m.out }
 
 // TestBindingConstructorTakesACallable covers the third place a callback arrives:
@@ -655,8 +655,8 @@ echo (new Masher("beta", function ($s) { return $s . "!"; }))->out();
 }
 
 // TestBindingCallbackResults covers the two ends of a declared signature a PHP
-// callable has to be fitted into: no result at all, and one the callable's
-// answer has to be coerced into.
+// callable has to fit: no result at all, and one the argument bridge coerces
+// the callable's return value into.
 func TestBindingCallbackResults(t *testing.T) {
 	cases := []struct {
 		name string
@@ -688,8 +688,8 @@ func TestBindingCallbackResults(t *testing.T) {
 	}
 }
 
-// TestBindingCallbackErrors pins what a script is told when a callback fails or
-// cannot be fitted.
+// TestBindingCallbackErrors pins what a script sees when a callback fails or
+// does not fit the declared signature.
 //
 // A declared signature with no error slot leaves a callback nowhere to report
 // one, so the error crosses the intervening Go frames as a panic. The host

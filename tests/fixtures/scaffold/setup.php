@@ -5,8 +5,8 @@
 //
 // Two halves, because a fixture needs rows and not only tables. The migration
 // creates the schema and mig records it, so a second run applies nothing; the
-// seed is deleted and reinserted, so the fixtures below start from the same
-// rows whatever state the hook found.
+// hook deletes and reinserts the seed, so the fixtures below start from the
+// same rows whatever state the hook found.
 
 $migrate = new Database\Migrate("scaffold");
 $migrate->load("./schema/*.up.sql");
