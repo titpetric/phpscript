@@ -11,8 +11,8 @@ import (
 // `Class::$property` and the `self::` / `static::` spellings of both.
 //
 // A static member belongs to the class, not to an instance, so neither has a
-// receiver to hang off the object model in value.go. Methods are run against a
-// scope that knows only which class it is in; properties live in one bag per
+// receiver to hang off the object model in value.go. A method runs against a
+// scope carrying its class and nothing else; properties live in one bag per
 // class on the Runtime (see Runtime.classStatics), so composer's
 // `self::$registeredLoaders` is observable from every instance and from a
 // later static call.
@@ -35,10 +35,9 @@ func resolveClassName(class string, scope *Scope) string {
 	return strings.TrimPrefix(class, "\\")
 }
 
-// classDefaultScope is the scope a class's declared defaults are evaluated in.
-// A default is written inside the class body, so `self::X` in one has to
-// resolve to that class; the scope the `new` happened to be written in knows
-// nothing about it.
+// classDefaultScope is the scope a class's declared defaults run in. A default
+// sits inside the class body, so `self::X` in one has to resolve to that
+// class, and the scope holding the `new` carries no such name.
 func (rt *Runtime) classDefaultScope(class *model.Class, caller *Scope) *Scope {
 	scope := rt.newScope()
 	if caller != nil {
@@ -54,8 +53,8 @@ func (rt *Runtime) classDefaultScope(class *model.Class, caller *Scope) *Scope {
 }
 
 // staticBag returns the live static-property storage for a class, seeding it
-// from the declared defaults on first access. The bag is keyed by the class's
-// canonical name so a case-insensitive lookup and the declaration share it.
+// from the declared defaults on first access. The class's canonical name keys
+// the bag, so a case-insensitive lookup and the declaration share it.
 func (rt *Runtime) staticBag(class *model.Class, scope *Scope) (map[string]any, error) {
 	if bag, ok := rt.classStatics[class.Name]; ok {
 		return bag, nil
@@ -78,7 +77,7 @@ func (rt *Runtime) staticBag(class *model.Class, scope *Scope) (map[string]any, 
 }
 
 // staticStorage resolves a static reference to the bag holding it, autoloading
-// the class if it has not been declared yet.
+// the class when nothing has declared it yet.
 func (rt *Runtime) staticStorage(class string, scope *Scope) (map[string]any, error) {
 	name := resolveClassName(class, scope)
 	if !rt.hasClass(name) {
@@ -170,21 +169,21 @@ func (rt *Runtime) setStaticProp(class, name string, value any, scope *Scope) er
 //
 // Three kinds of target resolve here, in the order PHP would find them:
 //
-//   - a host static, registered under the "Class::method" name (this is how
-//     Closure::bind and friends are provided),
+//   - a host static, registered under the "Class::method" name: Closure::bind
+//     and its neighbours,
 //   - a PHP method declared on the class, with the current `$this` forwarded
 //     when an instance method calls a non-static method through `self::`,
 //     `static::` or its class name,
-//   - a Go constructor's package-level function, which has no static form and
-//     therefore reports an undefined method.
+//   - a Go constructor's package-level function, which has no static form, so
+//     the call reports an undefined method.
 func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValue any, args ...any) (any, error) {
 	return func(class string, methodValue any, args ...any) (any, error) {
 		scope := ref.scope
 		// `Class::$m(...)` arrives with the method name as a runtime value.
 		method := phpString(methodValue)
 		name := resolveClassName(class, scope)
-		// The host table is consulted by exact name only: it is one map lookup
-		// on the common path, where lookupFunc's case-insensitive fallback
+		// This reads the host table by exact name alone, one map lookup on
+		// the common path, where lookupFunc's case-insensitive fallback
 		// scans the whole function table on every miss, which every call to a
 		// PHP static method would be.
 		if entry, ok := rt.funcs[name+"::"+method]; ok {
@@ -216,9 +215,9 @@ func (rt *Runtime) helperStaticCall(ref *scopeRef) func(class string, methodValu
 	}
 }
 
-// invokeStatic runs a method with no receiver. `$this` is left unset, as it is
-// in a genuinely static method or a class call made without an instance, while
-// `__class__` is bound so that `self::` inside the body resolves back to the
+// invokeStatic runs a method with no receiver. `$this` stays unset, as in a
+// genuinely static method or a class call with no instance behind it, while
+// the scope binds `__class__` so `self::` inside the body resolves back to the
 // same class. helperStaticCall forwards instance calls before reaching here.
 func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.newScope()
@@ -243,8 +242,8 @@ func (rt *Runtime) invokeStatic(class *model.Class, decl *model.FuncDecl, args [
 	return value, combineErrors(runErr, rt.runDeferred(scope, 0))
 }
 
-// helperInvoke calls a callable held in a value: `$fn($x)`. Every PHP callable
-// spelling is accepted, since Callable is what call_user_func already uses.
+// helperInvoke calls a callable held in a value: `$fn($x)`. It takes every PHP
+// callable spelling, since Callable is what call_user_func already uses.
 func (rt *Runtime) helperInvoke(ref *scopeRef) func(callee any, args ...any) (any, error) {
 	return func(callee any, args ...any) (any, error) {
 		scope := ref.scope
@@ -266,8 +265,8 @@ func (rt *Runtime) helperCallable(ref *scopeRef) func(target any, fallback strin
 
 // helperCallableMember is helperCallable for the two spellings that name a
 // member: `$obj->method(...)` and `Class::method(...)`, where target is the
-// receiver or the class name. A contextual class name is collapsed here, which
-// is what lets `self::method(...)` resolve inside a method body.
+// receiver or the class name. This collapses a contextual class name, so
+// `self::method(...)` resolves inside a method body.
 func (rt *Runtime) helperCallableMember(ref *scopeRef) func(target, method any) (any, error) {
 	return func(target, method any) (any, error) {
 		scope := ref.scope
