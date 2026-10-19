@@ -5,9 +5,9 @@ import (
 	"path"
 )
 
-// indexNames are the files that answer for a directory, in the order they are
-// tried. A site that has both keeps index.php: the dynamic page is the one it
-// wrote to be served, and an index.html next to it is a placeholder it has not
+// indexNames are the files that answer for a directory, in lookup order. A
+// site that has both keeps index.php: the dynamic page is the one it wrote for
+// serving, and an index.html beside that is a placeholder the site has not
 // removed yet.
 //
 // index.html is here because a site is not always an application. A directory

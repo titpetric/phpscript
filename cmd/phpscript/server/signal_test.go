@@ -94,7 +94,7 @@ func TestSignal(t *testing.T) {
 		}
 	})
 
-	// The delivery itself, to this process. A handler is armed first:
+	// The delivery itself, to this process. The test arms a handler first:
 	// SIGHUP with none takes its default disposition and kills the test
 	// binary and fails no case.
 	t.Run("sends SIGHUP to the recorded process", func(t *testing.T) {

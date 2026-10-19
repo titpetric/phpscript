@@ -177,8 +177,8 @@ func TestVirtualHostTelemetryIsItsOwn(t *testing.T) {
 	}
 }
 
-// TestVirtualHostRecordsIntoItsOwnTracer pins that a request on one domain is
-// recorded by that domain's recorder, so the front ends are separate and
+// TestVirtualHostRecordsIntoItsOwnTracer pins that a request on one domain
+// lands on that domain's recorder, so the front ends are separate and
 // never two views of one buffer.
 func TestVirtualHostRecordsIntoItsOwnTracer(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
@@ -248,8 +248,8 @@ func TestVirtualHostDomainsReachTheSameSite(t *testing.T) {
 		})
 	}
 
-	// A further name registers no second site, so the module count is
-	// unchanged: two sites, one startup and one schedule module each.
+	// A further name registers no second site, so the module count holds:
+	// two sites, one startup and one schedule module each.
 	if len(modules) != 4 {
 		t.Fatalf("modules = %d, want 4; a second name must not build a second site", len(modules))
 	}
@@ -278,8 +278,8 @@ func TestVirtualHostEnvironmentIsItsOwn(t *testing.T) {
 	}
 }
 
-// TestVirtualHostStartupFailureDoesNotStopTheServer pins the reason the
-// startup module is wrapped: one tenant's broken job is that tenant's problem.
+// TestVirtualHostStartupFailureDoesNotStopTheServer pins the reason nonFatal
+// wraps the startup module: one tenant's broken job is that tenant's problem.
 func TestVirtualHostStartupFailureDoesNotStopTheServer(t *testing.T) {
 	_, modules, _ := newVirtualHostServer(t)
 
@@ -327,7 +327,7 @@ func TestVirtualHostServerVars(t *testing.T) {
 func TestWritablePathsAreNotExecuted(t *testing.T) {
 	handler, _, _ := newVirtualHostServer(t)
 
-	// The .php file is served as bytes, not run.
+	// The .php file goes out as bytes, never runs.
 	response := get(t, handler, "blog.example.com", "/upload/evil.php")
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %q", response.Code, response.Body.String())
@@ -339,7 +339,7 @@ func TestWritablePathsAreNotExecuted(t *testing.T) {
 		t.Fatalf("body = %q, want the file served verbatim", response.Body.String())
 	}
 
-	// Everything else in the directory is served as before.
+	// The handler still serves everything else in the directory.
 	if response := get(t, handler, "blog.example.com", "/upload/photo.txt"); response.Body.String() != "a photo" {
 		t.Fatalf("body = %q", response.Body.String())
 	}
@@ -380,8 +380,8 @@ func TestVirtualHostModulesAreNamedPerSite(t *testing.T) {
 }
 
 // TestVirtualHostRejectsARootOnTheCommandLine pins that the roots come from the
-// configuration once virtual hosts are configured: an argument naming one more
-// root has no site to belong to.
+// configuration once the file declares virtual hosts: an argument naming one
+// more root has no site to belong to.
 func TestVirtualHostRejectsARootOnTheCommandLine(t *testing.T) {
 	_, _, appConfig := newVirtualHostServer(t)
 
@@ -464,7 +464,7 @@ func named(name string) http.Handler {
 // store one process holds for every tenant answers with the wrong value. The
 // three tests below are what would see either.
 //
-// Both sites precompile, which is config.New's default, so the include cache
+// Both sites precompile, which is `config.New`'s default, so the include cache
 // answers for entrypoints as well as for includes and a second request reads
 // back what the first one parsed. A lazy site parses per request and would
 // prove nothing about the cache.
@@ -516,14 +516,14 @@ func confusableServer(t *testing.T, one, two string) http.Handler {
 // shared execution environment rests on: two sites holding different code at the
 // same relative path each run their own.
 //
-// The include cache is keyed by the path a script wrote, resolved against that
+// The include cache keys on the path a script wrote, resolved against that
 // site's source root, so "lib/secret.php" is the key on both sites. What keeps
 // them apart is the cache object, one per handler. Hand two sites one and the
-// first request decides what the second one executes, which is this test's
-// negative control and the reason it is worth having.
+// first request decides what the second one executes, this test's negative
+// control and the reason for having it.
 //
-// one is requested twice, before and after two, because a cache the first
-// request filled is only observable on a later one.
+// The test requests one twice, before and after two, because a cache the
+// first request filled is only observable on a later one.
 func TestVirtualHostIncludeCacheIsItsOwn(t *testing.T) {
 	one, two := confusableSites(t)
 	handler := confusableServer(t, one, two)

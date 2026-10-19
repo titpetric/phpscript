@@ -71,7 +71,7 @@ func TestCoverageModuleCountsAcrossRequests(t *testing.T) {
 }
 
 // TestCoverageModuleServe covers the endpoint, so a test flow reads
-// coverage off a server it is not going to shut down.
+// coverage off a server without shutting it down.
 func TestCoverageModuleServe(t *testing.T) {
 	t.Parallel()
 	module := coveredServer(t, 1, "")
@@ -103,7 +103,7 @@ func TestCoverageModuleServe(t *testing.T) {
 }
 
 // TestCoverageModuleStop covers the flush: a graceful shutdown is the only
-// moment a server knows it is finished, and {time} names one profile per run.
+// moment a server has finished, and {time} names one profile per run.
 func TestCoverageModuleStop(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -141,8 +141,8 @@ func TestCoverageModuleStopWithoutRequests(t *testing.T) {
 	}
 }
 
-// TestCoverageModuleSource pins that a file no site root answers for is left in
-// the profile at column 1, and dropped out of none of it.
+// TestCoverageModuleSource pins that a file no site root answers for stays in
+// the profile at column 1, and drops out of none of it.
 func TestCoverageModuleSource(t *testing.T) {
 	t.Parallel()
 	module := newCoverageModule(&flags.Options{}, coverFS)

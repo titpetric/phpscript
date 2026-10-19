@@ -26,13 +26,13 @@ func (m *failingModule) Start(context.Context) error {
 }
 
 // TestNonFatalRecordsTheFailureInsteadOfReturningIt pins both halves of the
-// contract: the platform is told the module started, and the operator can still
+// contract: the platform sees the module start, and the operator can still
 // find out that it did not.
 func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when it is asked to; a test that reads its
-	// traces back is asking.
+	// oida records only when the options enable it; a test that reads its
+	// traces back needs that.
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
@@ -70,8 +70,8 @@ func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when it is asked to; a test that reads its
-	// traces back is asking.
+	// oida records only when the options enable it; a test that reads its
+	// traces back needs that.
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
@@ -185,9 +185,9 @@ func TestReload(t *testing.T) {
 		}
 	})
 
-	// The reason Check exists. A reload that cannot be applied leaves the
-	// generation that is serving alone, and never stops it first to
-	// then discovering the new configuration is unusable.
+	// The reason Check exists. A reload the manager cannot apply leaves the
+	// generation that is serving alone, and never stops it first to then
+	// discover the new configuration is unusable.
 	t.Run("a broken configuration is refused and keeps serving", func(t *testing.T) {
 		filename := operatorConfig(t, oneSite)
 		fixture := start(t, filename)

@@ -10,9 +10,9 @@ import (
 )
 
 // TestPooledHandlerIsolatesRequests drives two requests through one handler
-// and asserts the second starts on a reset runtime: the first request's
-// declarations, constants and globals are gone, and its response still came
-// out whole. The pool is sized to one so both requests take the same runtime.
+// and asserts the second starts on a reset runtime: the reset drops the first
+// request's declarations, constants and globals, and that response still came
+// out whole. The pool holds one runtime so both requests take the same one.
 func TestPooledHandlerIsolatesRequests(t *testing.T) {
 	t.Parallel()
 

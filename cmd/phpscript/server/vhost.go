@@ -19,8 +19,8 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// hostMux dispatches a request to the site that answers its Host. It is what
-// makes one process serve several websites: each site is a router of its own,
+// hostMux dispatches a request to the site that answers its Host. One process
+// serves more than one website through it: each site is a router of its own,
 // built from its own application root and its own configuration, and the Host
 // header is the only thing that selects between them.
 //
@@ -32,7 +32,7 @@ type hostMux struct {
 }
 
 // newHostMux returns a mux serving the given sites. The keys are domains as
-// configured; they are normalized here so a lookup never has to be.
+// configured, and normalizeHost reduces each key once, here.
 func newHostMux(sites map[string]http.Handler) *hostMux {
 	hosts := make(map[string]http.Handler, len(sites))
 	for domain, handler := range sites {
@@ -80,7 +80,7 @@ func registerVirtualHosts(ctx context.Context, svc *platform.Platform, appConfig
 }
 
 // buildVirtualHosts returns the host mux serving every configured site and the
-// lifecycle modules the platform starts on their behalf. Every site is built
+// lifecycle modules the platform starts on their behalf. It builds every site
 // here, before the server starts, so a broken configuration fails startup
 // and not one request.
 func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []platform.Module, error) {
@@ -115,7 +115,7 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *fl
 	return newHostMux(sites), modules, nil
 }
 
-// newVirtualHost builds the router one site is served by and the lifecycle
+// newVirtualHost builds the router that serves one site and the lifecycle
 // modules the platform starts on its behalf.
 //
 // The site gets a router of its own because it owns its routes, its telemetry
@@ -124,8 +124,8 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *fl
 func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []platform.Module, error) {
 	router := newRouter()
 
-	// A site answering to several names is still one site, reported and named
-	// after the first of them.
+	// A site answering to more than one name is still one site, reported and
+	// named after the first of them.
 	name := host.Name()
 
 	// The site owns its telemetry block, so it owns the tracer and the debug
@@ -157,8 +157,8 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	runnerOptions.Database = database.NewAt(host.Root, siteConfig.Env)
 
 	// So do its mail servers. A provider holds its own credentials, so a site
-	// can name the servers its own file configures and no others,
-	// and a script on it never sees what any of them are reached with.
+	// can name the servers its own file configures and no others, and a script
+	// on it never sees the credentials behind them.
 	runnerOptions.Mail = mail.NewProvider(siteConfig.Mail)
 
 	// So does the environment its scripts read. A site holds its declared env
@@ -178,8 +178,8 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	documentRoot := documentRoot(siteConfig)
 	root := os.DirFS(host.Root)
 
-	// The handler is built first because it owns the site's caches, and the
-	// annotated files run off the same pair.
+	// newHandler runs first because the handler owns the site's caches, and
+	// the annotated files run off the same pair.
 	files, err := newHandler(root, host.Root, documentRoot, runnerOptions, siteConfig.Flatstack.Enabled, siteConfig.Autoindex, observers...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("virtualhost %q: %w", name, err)
@@ -192,8 +192,8 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 		files.coverage = cover.aggregator
 	}
 
-	// A site's error pages are its own: they are found under its document root
-	// and rendered by its own handler, so nothing a site puts up is reachable
+	// A site's error pages are its own: they live under its document root and
+	// its own handler renders them, so nothing a site puts up is reachable
 	// from another domain.
 	if siteConfig.Routes.Enabled {
 		options := routeOptions(annotationOptions, runnerOptions.WritablePaths, documentRoot)
@@ -210,9 +210,9 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	// site paying the startup cost says nothing about what another does.
 	precompile(files, name)
 
-	// A site's startup failure is its own. It is recorded on that site's
-	// recorder and the server carries on, because the alternative is one
-	// tenant's broken job stopping every other tenant.
+	// A site's startup failure is its own. That site's recorder records it
+	// and the server carries on, because the alternative is one tenant's
+	// broken job stopping every other tenant.
 	return router, []platform.Module{
 		nonFatal(annotations.NewStartup(root, annotationOptions...), observers),
 		annotations.NewScheduler(root, annotationOptions...),

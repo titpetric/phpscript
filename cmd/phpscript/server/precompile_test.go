@@ -42,9 +42,9 @@ func newPrecompileHandler(t testing.TB, root string, on bool) *handler {
 	return files
 }
 
-// TestPrecompile covers the setting deciding when a tree is parsed, and the
-// broken file that must not stop a site coming up: it is left out of the cache
-// and the two files that parse are in it.
+// TestPrecompile covers the setting deciding when the runner parses a tree,
+// and the broken file that must not stop a site coming up: the cache holds the
+// two files that parse and not that one.
 func TestPrecompile(t *testing.T) {
 	t.Parallel()
 	root := precompileSite(t)
@@ -88,7 +88,7 @@ func TestPrecompileServesAfterABrokenFile(t *testing.T) {
 
 // TestSharedCaches covers the pair a site's routed endpoints run off: the ones
 // its file handler holds, so the one walk of the tree covers both. The proof is
-// an endpoint answering out of the cache after its file is gone from disk.
+// an endpoint answering out of the cache after its file leaves the disk.
 func TestSharedCaches(t *testing.T) {
 	t.Parallel()
 	root := precompileSite(t)
@@ -116,8 +116,8 @@ func TestSharedCaches(t *testing.T) {
 }
 
 // TestVirtualHostPrecompilesUnderItsOwnConfiguration covers the per-site half:
-// the setting is read from each site's phpscript.yml, a site holding a file
-// that does not parse still builds, and both answer.
+// each site's phpscript.yml carries the setting, a site holding a file that
+// does not parse still builds, and both answer.
 func TestVirtualHostPrecompilesUnderItsOwnConfiguration(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -164,8 +164,8 @@ foreach ($rows as $row) {
 
 // BenchmarkServeEntrypoint measures one request against a site's document root
 // with the setting off and on, on each engine. The difference is what an
-// entrypoint pays while it is parsed per request: the parse itself, and the
-// expression closures and the bytecode that are keyed by the AST it produced.
+// entrypoint pays for a parse per request: the parse itself, and the
+// expression closures and the bytecode keyed by the AST it produced.
 func BenchmarkServeEntrypoint(b *testing.B) {
 	// The two flatstack rows are only flatstack numbers if the page compiles to
 	// bytecode. Fallback is per-program and silent, so without this the rows

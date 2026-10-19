@@ -9,8 +9,8 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestIndexPageFallsBackThroughTheNameList pins the lookup a directory is
-// answered by: index.php, then index.html. A site of static files has no
+// TestIndexPageFallsBackThroughTheNameList pins the lookup that answers a
+// directory: index.php, then index.html. A site of static files has no
 // index.php to name, and before the fallback existed its front page answered
 // 404 with the file sitting there unread.
 func TestIndexPageFallsBackThroughTheNameList(t *testing.T) {
@@ -78,10 +78,10 @@ func TestIndexPageFallsBackThroughTheNameList(t *testing.T) {
 	}
 }
 
-// TestDirectoryWithoutAnIndexIsNotFound pins that a directory is answered by
-// its index page and by nothing else. A listing of the files below it is not
-// something a site asked to publish, and a site with a 404 page answers a
-// missing index the same way it answers any other dead link.
+// TestDirectoryWithoutAnIndexIsNotFound pins that a directory's index page
+// answers it and nothing else does. A site never asked to publish a listing
+// of the files below it, and a site with a 404 page answers a missing index
+// the same way it answers any other dead link.
 func TestDirectoryWithoutAnIndexIsNotFound(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
@@ -104,9 +104,9 @@ func TestDirectoryWithoutAnIndexIsNotFound(t *testing.T) {
 	}
 }
 
-// TestDirectoryWithoutASlashRedirects pins that the trailing slash is added
-// before the index page is served. The page's relative links resolve against
-// its serving URL, so /docs must become /docs/ or every link in it
+// TestDirectoryWithoutASlashRedirects pins that the redirect adds the trailing
+// slash before the index page answers. The page's relative links resolve
+// against its serving URL, so /docs must become /docs/ or every link in it
 // points a directory too high.
 func TestDirectoryWithoutASlashRedirects(t *testing.T) {
 	t.Parallel()
@@ -123,10 +123,10 @@ func TestDirectoryWithoutASlashRedirects(t *testing.T) {
 	}
 }
 
-// TestIndexPageInAWritableDirectoryIsNotRun pins that an index page is held to
+// TestIndexPageInAWritableDirectoryIsNotRun pins that an index page follows
 // the same rule as any other .php below the document root: what a visitor put
-// in a writable directory is content, and it is served as bytes and never
-// executed.
+// in a writable directory is content, and goes out as bytes and never
+// executes.
 func TestIndexPageInAWritableDirectoryIsNotRun(t *testing.T) {
 	t.Parallel()
 	h, err := newHandler(
