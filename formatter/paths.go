@@ -10,10 +10,10 @@ import (
 )
 
 // Paths formats each path argument in place and reports what happened to every
-// file it looked at. A file it cannot format is skipped and never fails the
-// run: a directory of PHP holds valid code phpscript does not support yet, and
-// one such file should not stop the rest from being formatted. Only reading
-// and writing errors are returned.
+// file it looked at. It skips a file it cannot format and the run carries on:
+// a directory of PHP holds valid code phpscript does not support yet, and one
+// such file must not stop it formatting the rest. The error it returns covers
+// reading and writing alone.
 func Paths(paths []string) ([]Result, error) {
 	return walk(paths, true)
 }
@@ -34,9 +34,9 @@ func Changed(results []Result) []string {
 	return out
 }
 
-// walk formats every file selected by paths, writing each one back when write
-// is set. Reading and writing errors end the walk; a file the formatter cannot
-// take responsibility for is recorded as skipped and the walk continues.
+// walk formats every file paths names, writing each one back where write says
+// so. Reading and writing errors end the walk; a file the formatter cannot
+// take responsibility for comes back skipped and the walk carries on.
 func walk(paths []string, write bool) ([]Result, error) {
 	files, err := list.ExpandFiles(paths)
 	if err != nil {
@@ -59,12 +59,12 @@ func walk(paths []string, write bool) ([]Result, error) {
 }
 
 // File formats path in place. Reports whether the file contents changed, and
-// returns a *SkipError for a file left as it is.
+// returns a *SkipError for a file it left untouched.
 func File(path string) (bool, error) {
 	return format(path, true)
 }
 
-// format formats one file, writing it back when write is set, and reports
+// format formats one file, writing it back where write says so, and reports
 // whether its contents changed.
 func format(path string, write bool) (bool, error) {
 	in, err := os.ReadFile(path)
@@ -93,7 +93,7 @@ func format(path string, write bool) (bool, error) {
 // verify checks the two properties formatted output has to hold before it
 // replaces code that works: it parses, and formatting it again does not change
 // it. A printer defect that only shows up on the second pass would otherwise
-// be written to disk on the first.
+// reach the disk on the first.
 func verify(out string) error {
 	if _, err := parser.Parse(out); err != nil {
 		return fmt.Errorf("formatted output does not parse: %w", err)

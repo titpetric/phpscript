@@ -7,11 +7,11 @@ import (
 )
 
 // Comment is one comment of the source, with the lines it occupied. The AST
-// holds no comments, so they are read from the source separately and placed by
-// line: a comment is written out before the first statement that starts below
-// it. OwnLine
-// records that nothing but whitespace preceded it, which separates a
-// comment written above a statement from one written after it.
+// holds no comments, so the formatter reads them off the source separately and
+// places them by line: a comment goes out before the first statement that
+// starts below it. OwnLine records that nothing but whitespace came before it,
+// which separates a comment an author wrote above a statement from one written
+// after it.
 type Comment struct {
 	Text    string
 	Line    int
@@ -59,9 +59,9 @@ func (p *printer) appendToLine(text string) {
 	p.buf.WriteByte('\n')
 }
 
-// blankFor writes the blank line an author left above the line about to be
-// printed. Nothing is written for the first line of a block, or for a comment
-// that belongs to a statement already printed.
+// blankFor writes the blank line an author left above the line the printer is
+// about to emit. It writes nothing for the first line of a block, or for a
+// comment belonging to a statement the printer already emitted.
 func (p *printer) blankFor(line int) {
 	if p.lastLine > 0 && line > p.lastLine+1 {
 		p.blank()

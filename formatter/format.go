@@ -17,8 +17,8 @@ import (
 // Source parses src and pretty-prints the AST.
 func Source(src string) (string, error) {
 	// An executable script starts with an interpreter line, which the lexer
-	// skips. It is put back on the formatted output, so it costs the
-	// script its formatting.
+	// skips. Source puts it back on the formatted output, so it costs the
+	// script nothing of its formatting.
 	if shebang, rest, ok := splitShebang(src); ok {
 		out, err := Source(rest)
 		if err != nil {
@@ -59,8 +59,8 @@ func splitShebang(src string) (shebang, rest string, ok bool) {
 	return strings.TrimRight(line, "\r"), rest, true
 }
 
-// Print renders prog as formatted PHP source. Any node the printer has no
-// spelling for is rendered as a placeholder comment; use Source, which refuses
+// Print renders prog as formatted PHP source. A node the printer has no
+// spelling for comes out as a placeholder comment; use Source, which refuses
 // to rewrite a file in that case.
 func Print(prog *model.Program, opts Options) string {
 	out, _ := printProgram(prog, opts)
@@ -86,8 +86,8 @@ func printProgram(prog *model.Program, opts Options) (string, []string) {
 		p.line("<?php")
 		p.blank()
 	}
-	// `declare` has to come before the namespace declaration, which is printed
-	// from Program.Namespace and not from the statement list.
+	// `declare` has to come before the namespace declaration, which the
+	// printer takes from Program.Namespace and not from the statement list.
 	directives, stmts := splitDeclarePreamble(stmts)
 	if len(directives) > 0 {
 		p.stmts(directives)
@@ -172,11 +172,11 @@ func collectImports(stmts []model.Stmt) map[string]string {
 // scanning the top of a file learns what the file pulls in before what it
 // renames, and one order for every file is one less thing to decide.
 //
-// Only the leading run is reordered, and only across the include/use
+// This reorders the leading run alone, and only across the include/use
 // boundary. Includes keep their order among themselves, because an include
 // runs code and the next one may depend on it; imports keep theirs. A `use`
-// further down the file, after real work has started, is left where the
-// author put it.
+// further down the file, after real work has started, stays where the author
+// put it.
 func splitImportPreamble(stmts []model.Stmt) (includes, uses, rest []model.Stmt) {
 	from := len(stmts)
 	for i, s := range stmts {
@@ -188,9 +188,9 @@ func splitImportPreamble(stmts []model.Stmt) (includes, uses, rest []model.Stmt)
 			includes = append(includes, s)
 			continue
 		case *model.ExprStmt:
-			// An include written where a value is wanted - `$ok = include
-			// "x";` - is an expression, and the parser wraps it. It is still
-			// the file pulling something in.
+			// An include written where the code reads a value - `$ok =
+			// include "x";` - is an expression, and the parser wraps it. It
+			// remains the file pulling something in.
 			if _, ok := node.X.(*model.Include); ok {
 				includes = append(includes, s)
 				continue
@@ -296,7 +296,7 @@ func (p *printer) stmtEnd(s model.Stmt) int {
 }
 
 // blankBetween reports the blank lines the printer adds of its own accord.
-// The ones the author wrote are kept by stmt, which compares source lines.
+// stmt keeps the ones the author wrote, by comparing source lines.
 func (p *printer) blankBetween(prev, next model.Stmt) bool {
 	switch prev.(type) {
 	case *model.ClassDecl, *model.InterfaceDecl:
@@ -533,7 +533,7 @@ func (p *printer) printForeach(n *model.Foreach) {
 }
 
 func (p *printer) printFor(n *model.For) {
-	// while is represented as For with nil Init/Post.
+	// A while loop arrives as a For with nil Init/Post.
 	if n.Init == nil && n.Post == nil {
 		p.line("while (" + p.expr(n.Cond) + ") {")
 		p.body(n.Body, p.stmtEnd(n))
@@ -601,12 +601,13 @@ func (p *printer) printFunc(n *model.FuncDecl, inClass bool) {
 	p.line("}")
 }
 
-// Class members are grouped: constants, then properties, then methods. The
-// order is what a reader of an unfamiliar class needs first, and it is the
+// The printer groups class members: constants, then properties, then methods.
+// That order is what a reader of an unfamiliar class needs first, and the
 // order PHP style guides settle on.
+//
 // groupSignature is the interface counterpart of groupMethod: a body-less
-// declaration is one line, so consecutive ones are kept together the way
-// properties are, with no blank line between each.
+// declaration is one line, so the printer keeps consecutive ones together the
+// way it keeps properties, with no blank line between each.
 const (
 	groupConst = iota
 	groupProp
@@ -623,7 +624,7 @@ type classMember struct {
 }
 
 func (p *printer) printClass(n *model.ClassDecl) {
-	// Modifiers are prepended in reverse of their printed order, which puts
+	// This prepends modifiers in reverse of their printed order, which puts
 	// them back in PHP's canonical `abstract|final readonly class` spelling
 	// whatever order the source used.
 	head := "class " + shortName(n.Name)
@@ -1087,8 +1088,8 @@ func (p *printer) inlineBlock(body []model.Stmt) string {
 }
 
 // callArgs prints the argument list of a call, which for PHP 8.1's first-class
-// callable syntax is the literal ellipsis. The node carries the spelling rather
-// than a desugared equivalent so that `greet(...)` is printed back as itself.
+// callable syntax is the literal ellipsis. The node carries the spelling and
+// no desugared form, so the printer writes `greet(...)` back as itself.
 func (p *printer) callArgs(firstClass bool, args []model.Expr) string {
 	if firstClass {
 		return "..."
@@ -1110,16 +1111,16 @@ func (p *printer) args(args []model.Expr) string {
 
 const (
 	// arrayLitInlineItems is the largest number of key/value pairs an array
-	// literal keeps on one line. Beyond it the literal is expanded one entry
-	// per line, the way gofmt expands a struct literal, because a row of three
-	// or more pairs is where a single line stops being readable and stops
-	// diffing well. A list of values without keys is not a record, so it is
-	// only expanded when it does not fit.
+	// literal keeps on one line. Past that the printer expands the literal one
+	// entry per line, the way gofmt expands a struct literal, because a row of
+	// three or more pairs is where a single line stops being readable and
+	// stops diffing well. A list of values without keys is not a record, so
+	// the printer expands one only where it does not fit.
 	arrayLitInlineItems = 2
 
 	// arrayLitWidth is how wide an array literal may be, counted from its own
-	// indent and not from the start of the line: the statement that holds
-	// the literal is printed around it, so its width is not known here.
+	// indent and not from the start of the line: the printer writes the
+	// statement around the literal, so this code cannot see that width.
 	arrayLitWidth = 100
 
 	// tabWidth is the column width a hard tab counts as when measuring a line
@@ -1131,9 +1132,9 @@ func (p *printer) arrayLit(n *model.ArrayLit) string {
 	if len(n.Items) == 0 {
 		return "array()"
 	}
-	// Entries are rendered one level in, the position they are printed at when
-	// the literal is expanded. A nested literal that expands therefore carries
-	// the right indent already.
+	// This renders entries one level in, the position an expanded literal
+	// prints them at. A nested literal that expands then carries the right
+	// indent already.
 	p.depth++
 	parts := make([]string, len(n.Items))
 	keyed := false
@@ -1144,7 +1145,7 @@ func (p *printer) arrayLit(n *model.ArrayLit) string {
 			keyed = true
 			part = p.expr(it.Key) + " => " + part
 		}
-		// A nested literal that expanded cannot be folded back into one line.
+		// Nothing folds a nested literal that expanded back onto one line.
 		expand = expand || strings.Contains(part, "\n")
 		parts[i] = part
 	}
@@ -1188,9 +1189,9 @@ func (p *printer) lit(v any) string {
 	}
 }
 
-// phpQuote spells s as a PHP string literal. It is the fallback for literals
-// a caller builds without parsing, so it has no source spelling to follow:
-// single quotes are used when they avoid escaping, because a double-quoted
+// phpQuote spells s as a PHP string literal, the fallback for a literal a
+// caller built without parsing, where there is no source spelling to follow:
+// it picks single quotes where they avoid escaping, because a double-quoted
 // literal would also have to escape `$` to keep PHP from interpolating it.
 func phpQuote(s string) string {
 	if !strings.ContainsAny(s, "'\\") && strings.ContainsAny(s, "\"$") && !strings.ContainsAny(s, "\n\r\t") {
