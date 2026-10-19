@@ -61,7 +61,7 @@ echo $c;
 	}
 }
 
-// A jump target inside a would-be run blocks the fusion so control can still
+// A jump target inside a candidate run blocks the fusion so control can still
 // land there; a ternary's join-point store is the everyday case.
 func TestFuseKeepsJumpTargetsAddressable(t *testing.T) {
 	t.Parallel()

@@ -6,10 +6,9 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// semanticHost records what the engine delegated. Every method the test
-// programs reach is implemented and the rest is left to the embedded nil
-// interface, so a program reaching an unexpected one fails loudly and never
-// silently.
+// semanticHost records what the engine delegated. It carries every method the
+// test programs reach and leaves the rest to the embedded nil interface, so a
+// program reaching an unexpected one fails loudly and never silently.
 type semanticHost struct {
 	Host
 	binary  []string
@@ -31,8 +30,8 @@ func (h *semanticHost) Truthy(value any) bool {
 	return false
 }
 
-// Binary answers a tag naming itself, so a result the engine computed on its
-// own is told apart from one the host returned.
+// Binary answers a tag naming itself, so a test tells a result the engine
+// computed on its own from one the host returned.
 func (h *semanticHost) Binary(op string, left, right any) (any, error) {
 	h.binary = append(h.binary, op)
 	return "host(" + op + ")", nil
@@ -86,7 +85,7 @@ func TestEntry(t *testing.T) {
 	}
 
 	// A key the source did not name is still a step: a list has an index per
-	// entry, so the value alone is bound and the engine reads the same
+	// entry, so the loop binds the value alone and the engine reads the same
 	// pairs.
 	host.echoed = nil
 	runHost(t, host, `<?php $row = 0; foreach ($row as $value) { echo $value; }`)
@@ -114,9 +113,9 @@ func TestHost(t *testing.T) {
 		t.Fatalf("echoed = %v, want the value the host returned", host.echoed)
 	}
 
-	// Two int operands are answered inside the VM and never reach the host:
-	// the fast path covers the arithmetic a hot loop runs, and the host is
-	// left the shapes it cannot.
+	// The VM answers two int operands itself and never reaches the host: the
+	// fast path covers the arithmetic a hot loop runs, and the host takes the
+	// shapes it cannot.
 	host.binary, host.echoed = nil, nil
 	runHost(t, host, `<?php $n = 1; echo $n + 2;`)
 	if len(host.binary) != 0 {

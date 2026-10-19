@@ -8,36 +8,36 @@ import (
 // This file is the execution deadline and the client connection: two things a
 // script ends for, kept apart because they end it differently.
 //
-// The context a binding is handed is built once per session and never rebuilt.
-// A time limit is a timer that cancels it, and changing the limit resets the
-// timer and derives no new context, because a binding that blocks -
-// HTTP\Server::wait, which is a serving script's whole run - is parked on the
-// context it holds and a rebuild would end it. A handler calling
+// bindContext builds the context a binding takes once per session, and nothing
+// rebuilds it. A time limit is a timer that cancels that context, and changing
+// the limit resets the timer and derives no new context, because a binding that
+// blocks - HTTP\Server::wait, which is a serving script's whole run - parks on
+// the context it holds and a rebuild would end it. A handler calling
 // set_time_limit is the ordinary way to reach that.
 //
-// The connection is checked beside the context and never merged into it, for
-// the same reason: a request is one of many and the context belongs to the
-// script.
+// The per-statement check reads the connection beside the context and merges
+// neither into the other, for the same reason: a request is one of many and the
+// context belongs to the script.
 //
-// The limit belongs to the runtime and to no single request. A script that serves is still
-// one script, and set_time_limit inside a handler moves that script's deadline,
-// as php does where the request is the script. What a request does
-// own is its connection, scoped by EnterRequest.
+// The limit belongs to the runtime and to no single request. A script that
+// serves is still one script, and set_time_limit inside a handler moves that
+// script's deadline, as php does where the request is the script. What a
+// request does own is its connection, which EnterRequest scopes.
 
-// maxTimeLimit is the longest limit a script can set. It is past any real
-// one and keeps the seconds-to-Duration multiply from wrapping a large argument
+// maxTimeLimit is the longest limit a script can set, past any real one, and
+// it keeps the seconds-to-Duration multiply from wrapping a large argument
 // into a short limit.
 const maxTimeLimit = 100 * 365 * 24 * time.Hour
 
 // SetTimeLimit bounds how long the script may run, restarting the clock from
-// now the way a second set_time_limit call does. Zero removes the limit, and a
-// limit past maxTimeLimit is held there.
+// now the way a second set_time_limit call does. Zero removes the limit, and
+// maxTimeLimit caps a longer one.
 //
-// It is the runtime's limit wherever it is called from, including a handler of
-// the script's own HTTP server: a serving script is one script and this is its
-// deadline. The context every binding holds is cancelled with it, so a blocked
-// Go call ends too, and a handler extending the limit extends the server rather
-// than replacing the context the server is parked on.
+// The limit is the runtime's wherever the call comes from, including a handler
+// of the script's own HTTP server: a serving script is one script and this is
+// its deadline. The timer cancels the context every binding holds, so a
+// blocked Go call ends too, and a handler extending the limit extends the
+// server and leaves the context the server parks on untouched.
 func (rt *Runtime) SetTimeLimit(limit time.Duration) {
 	if limit < 0 {
 		limit = 0
@@ -59,17 +59,17 @@ func (rt *Runtime) SetIgnoreUserAbort(enable bool) {
 	rt.ignoreAbort = enable
 }
 
-// IgnoreUserAbort reports whether a disconnect is being ignored.
+// IgnoreUserAbort reports whether the run carries on through a disconnect.
 func (rt *Runtime) IgnoreUserAbort() bool { return rt.ignoreAbort }
 
 // ConnectionAborted reports that the client closed the connection: the request
-// being answered inside a handler, and whatever started the script outside one.
+// a handler answers inside one, and whatever started the script outside one.
 func (rt *Runtime) ConnectionAborted() bool {
 	return ended(rt.clientDone)
 }
 
-// ClientContext answers the connection being served, which is the request
-// inside a handler and the host's context outside one. A binding that should
+// ClientContext answers the connection this run serves: the request inside a
+// handler, and the host's context outside one. A binding that should
 // end when the client leaves waits on this; one that should end when the script
 // does waits on Runtime.Context.
 func (rt *Runtime) ClientContext() context.Context {
@@ -79,13 +79,14 @@ func (rt *Runtime) ClientContext() context.Context {
 	return rt.Context()
 }
 
-// EnterRequest records the connection of one request while it is answered, and
+// EnterRequest records the connection of one request for the length of it, and
 // returns the function that puts the previous one back.
 //
-// It is for a host answering several requests on one runtime, which HTTP\Mux
-// does. Everything a request can change is saved: the connection
-// connection_aborted() reports, whether a disconnect ends it, and the limit,
-// because php settles all three per request and there a request is a script.
+// This serves a host answering one request after another on one runtime, which
+// HTTP\Mux does. The saved state covers everything a request can change: the
+// connection connection_aborted() reports, whether a disconnect ends it, and
+// the limit, because php settles the three per request and there a request is
+// a script.
 func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 	saved := rt.BeginRequest(ctx)
 	return func() { rt.EndRequest(saved) }
@@ -94,8 +95,8 @@ func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 // watchEnd answers the channel that closes when ctx ends, nil for a context
 // that cannot end.
 //
-// The channel is read once and kept, so the per-statement check is a
-// non-blocking select on a field and not a call through a context. A
+// One read takes the channel and the runtime keeps it, so the per-statement
+// check is a non-blocking select on a field and no call through a context. A
 // channel and not a flag an AfterFunc sets, because an AfterFunc runs on
 // its own goroutine: a sleep that returned the instant its context ended would
 // reach the next statement ahead of the flag write.
@@ -120,7 +121,7 @@ func ended(done <-chan struct{}) bool {
 	}
 }
 
-// bindContext builds the context this session's bindings are handed. SetContext
+// bindContext builds the context this session's bindings take. SetContext
 // calls it and nothing else does, so a binding can block on it
 // across a script changing its own limit.
 //
@@ -128,7 +129,7 @@ func ended(done <-chan struct{}) bool {
 // already gave - runner.Context.Register does exactly that, seeding the request
 // onto rt.Context() - would otherwise have its new context cancelled through
 // the old one it derives from, and every script would end before its first
-// statement. The old one is released with the program, in resetLimits.
+// statement. resetLimits drops the old one with the program.
 func (rt *Runtime) bindContext() {
 	base := rt.host
 	if base == nil {
@@ -144,9 +145,9 @@ func (rt *Runtime) bindContext() {
 	rt.refreshDeadlineArmed()
 }
 
-// armTimer restarts the clock. The flag is set before the context is cancelled,
-// so a check that finds the context ended already knows whether the limit is
-// why.
+// armTimer restarts the clock. The timer sets the flag before it cancels the
+// context, so a check that finds the context ended can tell whether the limit
+// did it.
 func (rt *Runtime) armTimer() {
 	if rt.scriptTimer != nil {
 		rt.scriptTimer.Stop()
@@ -175,23 +176,23 @@ func (rt *Runtime) checkDeadline() error {
 	if rt.ignoreAbort {
 		return nil
 	}
-	// The connection being answered, and the context the host gave the script,
-	// which for a served request is the same thing one level up.
+	// The connection this run answers, and the context the host gave the
+	// script, which for a served request is the same thing one level up.
 	if ended(rt.clientDone) || (rt.watching && ended(rt.ctxDone)) {
 		return &TimeLimitError{Aborted: true}
 	}
 	return nil
 }
 
-// watchingDeadline reports whether anything can stop this run. It is a field
-// and no computation, refreshed by whatever changes one of its inputs,
-// because the statement loop reads it on every statement.
+// watchingDeadline reports whether anything can stop this run. A field and no
+// computation, which whatever changes one of its inputs refreshes, because the
+// statement loop reads it on every statement.
 func (rt *Runtime) watchingDeadline() bool { return rt.deadlineArmed }
 
 // refreshDeadlineArmed recomputes it. Called by everything that arms or drops a
 // timer, changes the connection, or rebuilds the context - a limit a script
-// sets halfway through its own statement list has to be noticed by the rest of
-// that list.
+// sets halfway through its own statement list has to reach the rest of that
+// list.
 func (rt *Runtime) refreshDeadlineArmed() {
 	rt.deadlineArmed = rt.watching || rt.clientDone != nil || rt.scriptTimer != nil
 }
@@ -228,8 +229,8 @@ func (rt *Runtime) resetLimits() {
 	used := rt.scriptTimer != nil || rt.timedOut.Load()
 	rt.releaseDeadline()
 	if used && rt.stopCtx != nil {
-		// The program is over, so the context it holds is released and a
-		// fresh one built from the same host: a runtime the host reuses without
+		// The program is over, so this drops the context it holds and builds
+		// a fresh one from the same host: a runtime the host reuses without
 		// setting a context again must not start the next program on a
 		// cancelled one.
 		rt.stopCtx()

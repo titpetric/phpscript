@@ -21,7 +21,8 @@ package engine
 //
 // An instruction that is a jump target, a try boundary, a catch target or a
 // function entry stays addressable: a run containing one anywhere but its
-// head is not fused, and every recorded pc is renumbered afterwards.
+// head keeps its own opcodes, and the pass renumbers every recorded pc
+// afterwards.
 
 // fusePrograms rewrites p.code in place and remaps every recorded pc.
 func fuseProgram(p *Program) {

@@ -33,7 +33,7 @@ type execState struct {
 	locals      []any
 	initialized []bool
 	// extras holds variables a host call introduced under names the compiler
-	// never saw. It starts nil and is allocated on first write, so a program
+	// never saw. It starts nil and the first write makes the map, so a program
 	// that never gains one pays nothing.
 	extras     map[string]any
 	refWrites  []bool
@@ -44,16 +44,16 @@ type execState struct {
 	pc         int
 
 	// spareLocals/spareInits hold cleared frame arrays returned by popped
-	// user-function frames, so a call loop reuses two slabs and does not
-	// allocating them per call. Safe because nothing outlives the frame that
-	// borrowed them: an opRef setter is consumed within the host call that
-	// pushed it, and closures copy their seeds at creation.
+	// user-function frames, so a call loop reuses two slabs and costs no
+	// allocation per call. Safe because nothing outlives the frame that
+	// borrowed them: the host call that pushed an opRef setter consumes it,
+	// and closures copy their seeds at creation.
 	spareLocals [][]any
 	spareInits  [][]bool
 
-	// walker is created once per pooled state and closes over the state
-	// itself, so registering it with a MemoryHost allocates nothing after the
-	// state's first use.
+	// walker closes over the state itself, built once per pooled state, so
+	// registering it with a MemoryHost allocates nothing after the state's
+	// first use.
 	walker func(yield func(any))
 }
 
@@ -165,8 +165,9 @@ func (st *execState) pop() (any, error) {
 // values stay in the stack's backing array above the truncated top, valid
 // for the duration of the call, and the next push overwrites them. A binding
 // that keeps arguments copies them - the same contract the interpreter's
-// variadic tails alias under. The cap is pinched so a callee appending to
-// its variadic pack reallocates and never writes into the stack.
+// variadic tails alias under. A three-index slice pinches the cap, so a
+// callee appending to its variadic pack reallocates and never writes into
+// the stack.
 func (st *execState) args(count int) ([]any, error) {
 	if count < 0 || count > len(st.stack) {
 		return nil, fmt.Errorf("argument stack underflow")
@@ -343,7 +344,7 @@ type iteratorState struct {
 }
 
 // yieldIterators passes a live-value walker everything one frame's foreach state
-// is holding: the container being walked and every entry taken off it.
+// is holding: the container the loop walks and every entry taken off it.
 func yieldIterators(iterators []*iteratorState, yield func(any)) {
 	for _, iterator := range iterators {
 		if iterator == nil {
@@ -381,8 +382,8 @@ type callFrame struct {
 	// iterators is the caller's live foreach state. The compiler numbers
 	// iterators per function, so a callee reuses the numbers its caller is
 	// standing in, and a recursive call reuses them exactly. Saving the slice
-	// here and handing the callee an empty one is what keeps a foreach that
-	// calls a function from being closed by the call it made.
+	// here and handing the callee an empty one stops the call from closing a
+	// foreach the caller has in flight.
 	iterators []*iteratorState
 
 	// deferMark is the caller's boundary in scratch.deferred; opReturn unwinds
@@ -392,8 +393,8 @@ type callFrame struct {
 
 // MemoryHost is an optional Host extension for memory accounting, discovered
 // by type assertion like the other optional host capabilities. A host that
-// implements it can enumerate the VM's live values while Run executes, and
-// have execution interrupted when its memory limit is exceeded.
+// implements it can walk the VM's live values while Run executes, and stop
+// the run when the program passes its memory limit.
 type MemoryHost interface {
 	// MemoryCheckInterval returns the number of instructions between memory
 	// checks; zero disables checking. Live-value registration happens either
@@ -410,7 +411,7 @@ type MemoryHost interface {
 // DeadlineHost is an optional Host extension for the execution deadline, found
 // by type assertion like the other optional host capabilities. A host that
 // implements it has runs interrupted when the script runs out of time, or when
-// the client it is answering goes away.
+// the client it answers goes away.
 //
 // The interval is a constant and not something the host decides once per
 // run, because a script sets its own limit with set_time_limit and may do it
@@ -437,9 +438,9 @@ type localSeed struct {
 // FrameLocals is the engine's view of the frame in flight, bound to the host
 // once per run and never copied around every call. Snapshot materialises the
 // frame's variables only when a callee actually needs them, and WriteBack
-// applies the mutations such a call made. The snapshot-before-call ordering
-// the old map handshake had is preserved because the host decides both
-// moments: it snapshots before the binding body runs and writes back after.
+// applies the mutations such a call made. The host keeps the ordering the old
+// map handshake had, snapshot before call, because it decides both moments:
+// it snapshots before the binding body runs and writes back after.
 type FrameLocals interface {
 	Snapshot() map[string]any
 	WriteBack(vars map[string]any)
@@ -504,8 +505,8 @@ func Run(host Host, program *Program) error {
 
 // run executes one frame, starting at entryPC with seeds already written into
 // its locals. globals is the host's own variable table, seeded only into the
-// top-level frame. The value the frame returns is reported through result, which
-// is nil for the top-level frame because nothing consumes it.
+// top-level frame. The frame writes its return value through result, which is
+// nil for the top-level frame because nothing consumes it.
 //
 // A closure call re-enters here and pushes no call frame on the running
 // loop: the call arrives from a host binding (usort() invoking its comparator),
@@ -641,8 +642,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 					value: loadLocal(host, program, st.locals, st.initialized, st.extras, slot),
 				})
 			}
-			// An unbound `$this` is left out and never captured as null, so
-			// the closure body reads it the way any other unset local is read.
+			// The capture skips an unbound `$this` and never stores null, so
+			// the closure body reads it the way it reads any other unset local.
 			if def.thisSlot >= 0 && st.initialized[def.thisSlot] {
 				captured = append(captured, localSeed{slot: def.thisSlot, value: st.locals[def.thisSlot]})
 			}
@@ -663,7 +664,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				updated, binaryErr := host.Binary(operator, current, value)
 				if binaryErr != nil {
 					// A compound assignment can fail the same way the binary
-					// operator can ($x >>= -1), and it is as catchable.
+					// operator can ($x >>= -1), and the error is as catchable.
 					if st.handle(binaryErr) {
 						continue
 					}
@@ -701,7 +702,7 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 		case opCompactInit:
 			st.stack = append(st.stack, make(map[string]any, inst.a))
 		case opCompactEntry:
-			// The map stays on the stack: one entry is written per name and
+			// The map stays on the stack: each name writes one entry and
 			// the last one leaves it as the call's value.
 			entries, ok := st.stack[len(st.stack)-1].(map[string]any)
 			if !ok {
@@ -962,8 +963,8 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 					return popErr
 				}
 			}
-			// The compiler resolved the operator to a class; the both-int64
-			// and both-string shapes are computed inline through the same
+			// The compiler resolved the operator to a class; fastBinary runs
+			// the both-int64 and both-string shapes inline through the same
 			// phpval rules phpArith reads, and every other operand shape
 			// falls through to the host with the operator name.
 			value, ok := any(nil), false
@@ -1061,9 +1062,9 @@ func run(program *Program, host Host, entryPC int, seeds []localSeed, globals ma
 				continue
 			}
 		case opRef:
-			// The setter writes the frame holding the call; a user
-			// function called in between installs its own st.locals, and this one
-			// keeps pointing at the caller's.
+			// The setter writes the frame holding the call; a user function
+			// called before the setter runs installs its own st.locals, and
+			// this one keeps pointing at the caller's.
 			if st.refWrites == nil {
 				st.refWrites = make([]bool, len(st.locals))
 			}
@@ -1507,14 +1508,14 @@ func loadLocal(host Host, program *Program, locals []any, initialized []bool, ex
 //
 // captured is the snapshot taken at the closure value's construction. Each
 // call gets a fresh frame seeded with it, so one call cannot see another's
-// writes, and the closure keeps working once its defining frame is gone.
+// writes, and the closure keeps working after its defining frame returns.
 func closureValue(program *Program, host Host, def closureDef, captured []localSeed) func(...any) (any, error) {
 	return func(args ...any) (any, error) {
 		seeds := make([]localSeed, 0, len(captured)+len(def.paramSlots))
 		seeds = append(seeds, captured...)
-		// Parameters are seeded after the captures, so a parameter of the same
-		// name wins; php rejects that overlap outright. An argument the caller
-		// omitted binds null, matching the interpreter's bindParams.
+		// Parameters follow the captures, so a parameter of the same
+		// name wins; php rejects that overlap outright. An argument the
+		// caller omitted binds null, matching the interpreter's bindParams.
 		for i, slot := range def.paramSlots {
 			var value any
 			if i < len(args) {
@@ -1593,8 +1594,8 @@ func fastBinary(class int, left, right any) (any, bool) {
 // applyNamedValues writes host-visible variables back into their slots. A slot
 // marked in refWrites keeps what the by-reference setter put there: names is a
 // snapshot from before the call, so it still carries the old value. A name the
-// compiler never saw goes to extras, which is allocated here on first use and
-// handed back to the caller.
+// compiler never saw goes to extras, which this function makes on first use
+// and returns to the caller.
 func applyNamedValues(program *Program, locals []any, initialized []bool, extras map[string]any, names map[string]any, refWrites []bool) map[string]any {
 	for name, value := range names {
 		if len(name) == 0 || name[0] == 0 {
