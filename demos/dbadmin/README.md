@@ -1,13 +1,13 @@
 # SQLite Admin demo
 
-A server-rendered, phpMyAdmin-style SQLite catalogue for phpscript. Controllers are annotated `.php` routes and all HTML views live in `templates/*.tpl`, rendered by [titpetric/minitpl](https://github.com/titpetric/minitpl). It carries a database overview, searchable and paginated table browsing, schema and index inspection, table creation, row insertion/editing/deletion, confirmed table drops, a direct SQL console, and CSV export.
+A server-rendered, phpMyAdmin-style SQLite catalogue for phpscript. Each controller is a `.php` file carrying a `@route` annotation, and every HTML view lives in `templates/*.tpl`, which [titpetric/minitpl](https://github.com/titpetric/minitpl) renders. It carries a database overview, searchable and paginated table browsing, schema and index inspection, table creation, row insertion/editing/deletion, confirmed table drops, a direct SQL console, and CSV export.
 
-The table editor creates up to four initial columns and includes common numeric, text, binary, boolean, and date/time types. Additional schema changes can be made through the SQL console. The demo connection and schema catalogue remain SQLite-backed; the PostgreSQL and MySQL selections validate definitions against those dialect presets.
+The table editor creates up to four initial columns and includes common numeric, text, binary, boolean, and date/time types. The SQL console takes any schema change beyond that. The demo connection and schema catalogue remain SQLite-backed; the PostgreSQL and MySQL selections check definitions against those dialect presets.
 
 ## Dependencies
 
-The template engine comes from composer, like in any other PHP project. It is
-not vendored into this repository. Install it before the first run:
+The template engine comes from composer, like in any other PHP project, and
+this repository vendors none of it. Install it before the first run:
 
 ```sh
 composer install
@@ -15,10 +15,10 @@ composer install
 
 That writes `vendor/`, which `bootstrap.php` pulls in with
 `require "vendor/autoload.php"`. phpscript interprets composer's generated
-autoloader as ordinary PHP; nothing about it is special-cased in the runtime.
+autoloader as ordinary PHP, and the runtime special-cases nothing about it.
 
 minitpl compiles each template to PHP on first use and caches the result in
-`templates/cache/`, which has to be writable. Both directories are gitignored.
+`templates/cache/`, which has to be writable. `.gitignore` holds both directories.
 
 ## Running
 
@@ -28,7 +28,7 @@ From this directory, start it with:
 PLATFORM_DB_DBADMIN=sqlite://dbadmin.sqlite go run ../.. server .
 ```
 
-Then open the address printed by the server (normally `http://localhost:8080`). Static assets are served directly from `public/`; the PHP controllers remain outside the public web root and are registered through their `@route` annotations. To use an absolute database path, use a three-slash DSN such as `sqlite:///tmp/dbadmin.sqlite`.
+Then open the address printed by the server (normally `http://localhost:8080`). The server answers a static asset straight out of `public/`; the PHP controllers sit outside the public web root and reach the router through their `@route` annotations. To use an absolute database path, use a three-slash DSN such as `sqlite:///tmp/dbadmin.sqlite`.
 
 ## Schema
 
@@ -40,7 +40,7 @@ $migrate->load("./schema/*.up.sql");
 $migrate->run();
 ```
 
-Each file is append only. Applied statements are recorded by index in a `migrations` table, so a later change is added as new statements at the end of the file; editing or removing statements that already ran leaves databases inconsistent with each other. Adding a table means adding `schema/<table>.up.sql`.
+Each file is append only. A `migrations` table records every applied statement by index, so a later change goes in as new statements at the end of the file; editing or removing statements that already ran leaves databases inconsistent with each other. Adding a table means adding `schema/<table>.up.sql`.
 
 ## Tests
 

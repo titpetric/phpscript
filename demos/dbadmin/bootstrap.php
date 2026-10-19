@@ -79,7 +79,7 @@ function csv_cell($value) {
  *
  * query() reports success as a boolean, so statements that return rows are
  * read with get_all() instead. Rows arrive as maps without a column order;
- * the names are sorted to keep the rendered table stable between requests.
+ * this sorts the names to keep the rendered table stable between requests.
  */
 function sql_execute($db, $query) {
 	$prefix = strtolower(ltrim($query));
