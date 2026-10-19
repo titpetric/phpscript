@@ -52,7 +52,7 @@ CGO_ENABLED=0 taskset -c 3 nice -n -20 go test \
 
 `-benchtime 1s`, not a fixed iteration count, so a benchmark that got faster takes more iterations and keeps its sample size.
 
-The binding families are the exception. `../allocation-performance.md` publishes their `ns/op` to the nanosecond and sweeps them at a fixed `-benchtime 200000x`, to hold the iteration count still across a shape change. A `1s` sweep of the same rows comes back with an interval wider than the differences that document reports, so a sweep that contradicts its table has not found a regression - it has measured something else. Re-measure those rows the way that document does before reading anything into them.
+The binding families are the exception. `../allocation-performance.md` publishes their `ns/op` to the nanosecond and sweeps them at a fixed `-benchtime 200000x`, to hold the iteration count still across a shape change. A `1s` sweep of the same rows reports an interval wider than the differences that document publishes, so a sweep that contradicts its table has not found a regression - it has measured something else. Re-measure those rows the way that document does before reading anything into them.
 
 ## The artifact
 
