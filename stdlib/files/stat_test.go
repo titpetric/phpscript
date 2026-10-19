@@ -83,8 +83,8 @@ echo "[", isset($bare["extension"]) ? "set" : "unset", ",", $bare["filename"], "
 }
 
 // TestRealpathAnswersInsideTheRoot covers the path spelling realpath reports:
-// a script can only address the bound tree, so the path it reports is named
-// from that root and carries no host prefix a script could write back out.
+// a script can only address the bound tree, so the path it reports starts at
+// that root and carries no host prefix a script could write back out.
 func TestRealpathAnswersInsideTheRoot(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php

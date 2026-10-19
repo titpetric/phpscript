@@ -38,9 +38,9 @@ func runWorkdir(t *testing.T, src string) string {
 	return out.String()
 }
 
-// TestGetcwdIsWrittenFromTheSourceRoot pins the spelling php cannot be compared
-// against: the source filesystem is mounted at "/", so that is where a script
-// starts and what every path it reads is written from.
+// TestGetcwdIsWrittenFromTheSourceRoot pins the spelling php cannot match: the
+// source filesystem sits at "/", so a script starts there and names every path
+// it reads from there.
 func TestGetcwdIsWrittenFromTheSourceRoot(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -121,9 +121,9 @@ echo file_get_contents("/note.txt");`)
 }
 
 // TestIncludeCacheIsKeyedByTheResolvedFile is the bug a mutable working
-// directory would otherwise introduce. The cache is shared across runtimes by
-// the server and the fixture harness, so a key holding the spelling in place
-// of the file would hand one request the file another request loaded.
+// directory would otherwise introduce. The server and the fixture harness
+// share the cache across runtimes, so a key holding the spelling in place of
+// the file would hand one request the file another request loaded.
 func TestIncludeCacheIsKeyedByTheResolvedFile(t *testing.T) {
 	t.Parallel()
 	got := runWorkdir(t, `<?php

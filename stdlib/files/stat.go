@@ -12,7 +12,7 @@ import (
 )
 
 // registerStat installs the questions a script asks about a path: what kind of
-// thing is there, how big it is, and what a directory holds.
+// thing is there, its size, and what a directory holds.
 //
 // They live here and not beside the other new bindings because they have to
 // resolve a path exactly as file_get_contents resolves it - through the bound
@@ -35,19 +35,19 @@ func registerStat(rt *runner.Runtime, r root) {
 		return ok && info.IsDir()
 	})
 
-	// is_readable reports whether $filename can be opened for reading, which
-	// here is whether it exists: a path inside the root is readable by the
-	// process that is asking, and the source filesystem carries no
+	// is_readable reports whether a script can open $filename for reading,
+	// which here is whether it exists: a path inside the root is readable by
+	// the process that is asking, and the source filesystem carries no
 	// permissions of its own.
 	rt.RegisterFunc("is_readable", func(filename string) bool {
 		_, ok := r.stat(filename)
 		return ok
 	})
 
-	// is_writable reports whether $filename could be written, which reads
+	// is_writable reports whether a script could write $filename, which reads
 	// writable_paths and not the file mode; a path the allowlist refuses is
-	// not writable however the host's permissions read, and a path it allows
-	// is, whether or not the file exists yet.
+	// not writable whatever the host's permissions say, and a path it allows
+	// is writable even when the file does not exist yet.
 	rt.RegisterFunc("is_writable", func(filename string) bool {
 		_, err := r.resolveWrite("is_writable", filename)
 		return err == nil
@@ -61,7 +61,8 @@ func registerStat(rt *runner.Runtime, r root) {
 		return err == nil && info.Mode().Perm()&0o111 != 0
 	})
 
-	// filesize returns the size of $filename in bytes, or false when it cannot be found.
+	// filesize returns the size of $filename in bytes, or false when nothing
+	// is there.
 	rt.RegisterFunc("filesize", func(filename string) any {
 		info, ok := r.stat(filename)
 		if !ok {
@@ -71,9 +72,9 @@ func registerStat(rt *runner.Runtime, r root) {
 	})
 
 	// filetype returns "file", "dir" or "link" for what $filename names, or
-	// false when it cannot be found; the exotic types php can answer with -
-	// fifo, block, char, socket - are reported as "file", because nothing
-	// inside a source filesystem can be one.
+	// false when nothing is there; it answers "file" for the exotic types php
+	// can name - fifo, block, char, socket - because nothing inside a source
+	// filesystem can be one.
 	rt.RegisterFunc("filetype", func(filename string) any {
 		info, ok := r.stat(filename)
 		if !ok {
@@ -90,7 +91,7 @@ func registerStat(rt *runner.Runtime, r root) {
 
 	// realpath returns $path written from the root, with . and .. resolved,
 	// or false when nothing is there; php answers a host path, and a runtime
-	// whose scripts may be served out of an embedded tree has none to answer
+	// that may serve its scripts out of an embedded tree has none to answer
 	// with, so this answers the spelling getcwd() and __DIR__ use.
 	rt.RegisterFunc("realpath", func(path string) any {
 		if _, ok := r.stat(path); !ok {

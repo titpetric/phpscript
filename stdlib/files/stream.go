@@ -14,8 +14,8 @@ import (
 func registerStreams(rt *runner.Runtime, r root) {
 	// fopen opens $filename in $mode and returns a handle, or false on
 	// failure; php://output is the script's own output stream, php://input is
-	// the raw request body (stdin under the cli SAPI), and a mode that can
-	// write is refused outside writable_paths.
+	// the raw request body (stdin under the cli SAPI), and fopen refuses a
+	// mode that can write outside writable_paths.
 	rt.RegisterFunc("fopen", func(filename, mode string) (any, error) {
 		if scheme, ok := strings.CutPrefix(filename, "php://"); ok {
 			switch scheme {
@@ -34,8 +34,8 @@ func registerStreams(rt *runner.Runtime, r root) {
 		if !isUpload {
 			name = r.resolve(filename)
 		}
-		// Only a mode that can write is held to writable_paths. Opening a
-		// file for reading is a read wherever it lives.
+		// fopen checks writable_paths only for a mode that can write. Opening
+		// a file for reading is a read wherever it lives.
 		if writes(mode) {
 			if _, err := r.resolveWrite("fopen", filename); err != nil {
 				return false, err
@@ -76,8 +76,8 @@ func registerStreams(rt *runner.Runtime, r root) {
 		return false
 	})
 	// stream_get_contents reads any reader for the same reason fwrite writes
-	// any writer: STDIN is one, and it is the usual way a script reads a whole
-	// handle at once.
+	// any writer: STDIN is one, and this is how a script reads a whole handle
+	// at once.
 	rt.RegisterFunc("stream_get_contents", func(stream io.Reader, _ ...any) (string, error) {
 		v, err := io.ReadAll(stream)
 		if err != nil {
@@ -123,9 +123,9 @@ func inputSource(rt *runner.Runtime) io.Reader {
 	return bytes.NewReader(nil)
 }
 
-// openMode maps a PHP fopen() mode string onto the flags os.OpenFile takes. The
-// "b" suffix is accepted and ignored, as it is on every platform PHP runs on
-// that is not Windows.
+// openMode maps a PHP fopen() mode string onto the flags os.OpenFile takes. It
+// takes the "b" suffix and ignores it, as PHP does on every platform it runs
+// on but Windows.
 func openMode(name, mode string) (*os.File, error) {
 	switch strings.TrimSuffix(mode, "b") {
 	case "r":
@@ -141,7 +141,7 @@ func openMode(name, mode string) (*os.File, error) {
 	}
 }
 
-// writes reports whether an fopen() mode can modify the file. Only "r" cannot;
+// writes reports whether an fopen() mode can change the file. Only "r" cannot;
 // every other mode either truncates, appends or allows a write on the handle.
 func writes(mode string) bool {
 	return strings.TrimSuffix(mode, "b") != "r"

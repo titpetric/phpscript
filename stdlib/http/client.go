@@ -21,9 +21,9 @@ import (
 // cannot recover from, so no spelling turns it off.
 const DefaultTimeout = 30 * time.Second
 
-// maxResponseBody is how much of a response body is read. A script reads a body
-// as a string, so it is held in memory, and an unbounded read turns a hostile
-// server into an out-of-memory error.
+// maxResponseBody caps how much of a response body send reads. A script reads
+// a body as a string, which holds the whole of it in memory, and an unbounded
+// read turns a hostile server into an out-of-memory error.
 const maxResponseBody = 32 << 20 // 32 MiB
 
 // Client is the PHP-visible HTTP\Client. The net/http client is a named
@@ -40,10 +40,10 @@ type Client struct {
 // is optional, and `new HTTP\Client` builds a client with a 30 second timeout
 // that follows redirects.
 //
-// $timeout is in seconds and covers the whole request. $headers are sent with
-// every request the client makes, and a header set on a request replaces the
-// client's. $insecure disables certificate verification, which is for a test
-// server and not for a service. An unrecognised key throws.
+// $timeout is in seconds and covers the whole request. The client sends
+// $headers with every request it makes, and a header set on a request replaces
+// the client's. $insecure disables certificate verification, which is for a
+// test server and not for a service. An unrecognised key throws.
 func NewClient(ctx context.Context, options any) (*Client, error) {
 	config := clientConfig{Timeout: DefaultTimeout, FollowRedirects: true}
 
@@ -64,9 +64,9 @@ func NewClient(ctx context.Context, options any) (*Client, error) {
 			case "headers":
 				config.Headers, err = toHeaders(value)
 			default:
-				// An unknown key is an error and no value quietly
-				// ignored, so a typo in a script is reported where it is
-				// written, ahead of a request going out without it.
+				// An unknown key is an error and no value quietly ignored, so a
+				// typo fails where the script wrote it, ahead of a request
+				// going out without it.
 				err = fmt.Errorf("HTTP\\Client: unknown option %q", toString(key))
 			}
 			return err == nil
@@ -175,9 +175,9 @@ func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Respon
 			defer wg.Done()
 			response, err := c.send(ctx, request)
 			if err != nil {
-				// A failure is reported on the response and never returned,
-				// so one unreachable host does not hide the results of every
-				// other request in the batch.
+				// Parallel reports a failure on the response and returns no
+				// error, so one unreachable host does not hide the results of
+				// every other request in the batch.
 				response = &Response{err: err.Error()}
 			}
 			mu.Lock()
@@ -191,8 +191,8 @@ func (c *Client) Parallel(ctx context.Context, requests any) (map[string]*Respon
 }
 
 // send performs one request against the client's configuration. Send and
-// Parallel share it so a batched request is configured the same as a single
-// one.
+// Parallel share it, so a batched request carries the same configuration as a
+// single one.
 func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response, error) {
 	prepared, err := c.prepare(ctx, request)
 	if err != nil {
@@ -211,9 +211,9 @@ func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response,
 	}
 	defer response.Body.Close()
 
-	// The body is read here and never exposed as a stream, because a
-	// script has no way to close one: PHP's request ends and whatever it did
-	// not read would leak the connection.
+	// send reads the body here and exposes no stream, because a script has no
+	// way to close one: PHP's request ends and whatever it did not read would
+	// leak the connection.
 	body, err := io.ReadAll(io.LimitReader(response.Body, maxResponseBody))
 	if err != nil {
 		span.RecordError(err)
@@ -230,9 +230,9 @@ func (c *Client) send(ctx context.Context, request *nethttp.Request) (*Response,
 }
 
 // prepare resolves a request against the client's base URL and default
-// headers. It clones and mutates nothing, so the same request value can be
-// sent by two clients, and so Parallel does not write to a request another
-// goroutine is reading.
+// headers. It clones and mutates nothing, so two clients can send the same
+// request value, and so Parallel does not write to a request another goroutine
+// is reading.
 func (c *Client) prepare(ctx context.Context, request *nethttp.Request) (*nethttp.Request, error) {
 	prepared := request.Clone(ctx)
 

@@ -13,8 +13,8 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// Mail leaves the process, so it is recorded as external work on the trace of
-// the request that sent it, whether the script used mail() or `new Mail`.
+// Mail leaves the process, so the span records it as external work on the trace
+// of the request that sent it, whether the script used mail() or `new Mail`.
 func TestMailRecordsAnExternalSpan(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -46,8 +46,8 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			traceOptions := telemetry.NewOptions("phpscript")
-			// oida records only when it is asked to; a test that reads its
-			// traces back is asking.
+			// oida records only when the options enable it; a test that reads
+			// its traces back sets Enabled.
 			traceOptions.Enabled = true
 			tracer, err := telemetry.New(traceOptions)
 			if err != nil {
@@ -96,11 +96,11 @@ func TestMailRecordsAnExternalSpan(t *testing.T) {
 }
 
 // TestProvider covers what a host builds from its mail block: a fixed set of
-// named servers, keyed by the name a script types. Names are lowercased and a
-// missing port is filled in while the provider is built, so a delivery reads a
-// complete credential. The map is copied, because configuration layering hands
-// one map to every site that declared no mail block, and a normalisation
-// written into it would be written into all of them.
+// named servers, keyed by the name a script types. The constructor lowercases
+// a name and fills in a missing port, so a delivery reads a complete
+// credential. It copies the map, because configuration layering passes one map
+// to every site that declared no mail block, and a normalisation written into
+// it would reach every one.
 func TestProvider(t *testing.T) {
 	t.Parallel()
 	servers := map[string]mailstdlib.Config{
@@ -126,9 +126,9 @@ func TestProvider(t *testing.T) {
 
 // TestProvider_Configured covers the verdict the constructor reads, so `new
 // Mail("marketing")` fails where the delivery would. An empty name is the
-// "default" server, as `new Mail` and mail() both resolve. A name nobody
-// configured is reported by the name the call passes, and the error says
-// nothing about the configuration.
+// "default" server, as `new Mail` and mail() both resolve. For a name nobody
+// configured, the error carries the name the call passes and says nothing
+// about the configuration.
 func TestProvider_Configured(t *testing.T) {
 	t.Parallel()
 	provider := mailstdlib.NewProvider(map[string]mailstdlib.Config{
@@ -155,8 +155,8 @@ func TestProvider_Configured(t *testing.T) {
 }
 
 // TestProvider_Send covers the delivery path: a name resolves to a credential,
-// the credential reaches the transport, and the credential is gone when the
-// call returns. A name nobody configured never reaches the transport, so the
+// the credential reaches the transport, and nothing holds it once the call
+// returns. A name nobody configured never reaches the transport, so the
 // refusal costs no connection.
 func TestProvider_Send(t *testing.T) {
 	t.Parallel()
@@ -185,9 +185,9 @@ func TestProvider_Send(t *testing.T) {
 }
 
 // TestProvider_SendMessage covers a whole message against a replaced
-// transport. A Deliver reads the three parts of a plain-text message, so a
-// message with an HTML part or a Reply-To is refused before the transport runs;
-// cutting it down to the text would deliver something the script did not send.
+// transport. A Deliver reads the three parts of a plain-text message, so the
+// provider refuses one with an HTML part or a Reply-To before the transport
+// runs; cut down to the text, it would be a message the script did not send.
 func TestProvider_SendMessage(t *testing.T) {
 	t.Parallel()
 	var sent []string
