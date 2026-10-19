@@ -24,9 +24,9 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 		if err != nil {
 			// A compile error normally means the program uses something the
 			// bytecode subset does not cover yet, and the interpreter runs it
-			// instead. A violated interface contract is not that: it is a
-			// verdict on the program, which the interpreter would reach too, so
-			// it is raised here and never deferred to a second opinion.
+			// instead. A violated interface contract differs: the verdict is
+			// on the program, and the interpreter would reach the same one,
+			// so this path throws instead of falling back.
 			var contract *model.InterfaceContractError
 			if errors.As(err, &contract) {
 				return true, NewRuntimeException(err.Error(), 0)
@@ -68,8 +68,9 @@ func (h *flatHost) BindFrame(frame flatvm.FrameLocals) { h.frame = frame }
 func (h *flatHost) TakeFrame() flatvm.FrameLocals { return h.frame }
 
 // boundScope materialises the running frame as an interpreter scope, for the
-// callees that read or write caller locals. The snapshot is taken here, before
-// the callee body runs, which is the ordering the by-reference marks rely on.
+// callees that read or write caller locals. boundScope snapshots the frame
+// here, before the callee body runs, the ordering the by-reference marks
+// rely on.
 func (h *flatHost) boundScope() *Scope {
 	scope := h.runtime.newScope()
 	if h.frame != nil {
@@ -80,9 +81,9 @@ func (h *flatHost) boundScope() *Scope {
 	return scope
 }
 
-// pullScope writes a materialised scope's variables back into the frame. The
-// scope is built fresh for one call and discarded after, so the magic
-// constants are deleted in place, with no filter into another map.
+// pullScope writes a materialised scope's variables back into the frame.
+// boundScope builds that scope for one call and nothing keeps it, so this
+// deletes the magic constants in place and filters nothing into another map.
 func (h *flatHost) pullScope(scope *Scope) {
 	if h.frame == nil {
 		return
@@ -102,9 +103,9 @@ func (h *flatHost) Construct(class string, args []any) (any, error) {
 func (h *flatHost) CallMethod(receiver any, method string, args []any) (any, error) {
 	// A method on a PHP-declared object dispatches through the interpreter
 	// and sees the frame. A Go receiver's method sees the frame only through
-	// a context parameter, so the scope is materialised inside callGoMethod's
-	// scopeFor and only for the methods that ask - which is none of the
-	// common data-access shapes.
+	// a context parameter, so callGoMethod's scopeFor materialises the scope
+	// for the methods that ask and no others - which leaves out every common
+	// data-access shape.
 	if obj, ok := receiver.(*model.Object); ok && obj.Class != nil {
 		scope := h.boundScope()
 		result, err := h.runtime.helperCall(&scopeRef{scope: scope})(receiver, method, args...)
@@ -158,15 +159,15 @@ func (h flatHost) Echo(value any) error {
 	return err
 }
 
-// Globals returns the table runInterpreted seeds its global scope from,
-// so the bytecode engine's top-level frame starts with the same names. It is not
-// answered from Lookup, which every frame reads: a global belongs to the global
+// Globals returns the table runInterpreted seeds its global scope from, so the
+// bytecode engine's top-level frame starts with the same names. Lookup, which
+// every frame reads, answers none of them: a global belongs to the global
 // scope, and resolveVar does not reach one from a function either.
 func (h flatHost) Globals() map[string]any { return h.runtime.globals }
 
 // Lookup is resolveVar's tail: the superglobals, which every frame sees, and
-// then the constant table. A frame's own names are the engine's slots, and a
-// global is seeded into the top-level frame by Globals.
+// then the constant table. A frame's own names are the engine's slots, and
+// Globals seeds a global into the top-level frame.
 func (h flatHost) Lookup(name string) any {
 	if value, ok := h.runtime.resolveAuto(name); ok {
 		return value
@@ -202,7 +203,7 @@ func (h flatHost) Truthy(value any) bool { return phpTruthy(value) }
 
 // SetEntry implements the by-reference foreach write-back. Only a *model.Array
 // is script-owned storage; a native Go collection a binding returned belongs to
-// the host, so the write is dropped and nothing is reported. Runtime.execForeach
+// the host, so this drops the write and reports nothing. Runtime.execForeach
 // takes the same view.
 func (h flatHost) SetEntry(container, key, value any) error {
 	array, ok := container.(*model.Array)
@@ -265,8 +266,8 @@ func (h flatHost) MatchCatch(declaredType string, err error) bool {
 // ClassConst reads a class constant, reusing the interpreter's resolution so
 // `Class::class`, autoloading and the per-class cache behave identically on
 // both backends. The compiler already collapsed self/static/parent, but the
-// scope still carries the class: a constant's default expression is evaluated
-// here, and it may name the class again.
+// scope still carries the class: a constant's default expression runs here,
+// and it may name the class again.
 func (h flatHost) ClassConst(class, name string) (any, error) {
 	scope := h.runtime.newScope()
 	scope.Set("__class__", h.runtime.boxed(class))
@@ -360,8 +361,8 @@ func (h flatHost) Entries(value any) []flatvm.Entry {
 }
 
 // Call resolves a function the way helperFunc does, but a binding whose
-// signature declares no context never sees the scope, so no snapshot,
-// no Scope and no write-back are built for it. That is the interpreter's own
+// signature declares no context never sees the scope, so this builds it no
+// snapshot, no Scope and no write-back. That is the interpreter's own
 // contract: installFunc calls the same bindings with no per-call scope.
 func (h *flatHost) Call(fnName, fallback string, args []any) (any, error) {
 	if entry, ok := h.runtime.lookupEntry(fnName); ok {
@@ -427,7 +428,7 @@ func (h flatHost) Include(path any, keyword string, once bool, vars map[string]a
 }
 
 // MemoryCheckInterval reports how often the VM should poll the memory limit;
-// zero when no limit is configured.
+// zero when the options name no limit.
 func (h flatHost) MemoryCheckInterval() int {
 	if h.runtime.opts.MemoryLimit <= 0 {
 		return 0
@@ -444,7 +445,7 @@ func (h flatHost) PopLiveWalker() {
 }
 
 // CheckDeadline answers the engine's per-run deadline check; see
-// runner/deadline.go for what the two watch flags mean.
+// runner/runtime_deadline.go for what the two watch flags mean.
 func (h flatHost) CheckDeadline() error {
 	if !h.runtime.watchingDeadline() {
 		return nil
@@ -468,10 +469,10 @@ func (h *flatHost) InvokeValue(args []any, callee any) (any, error) {
 // CallableValue takes `greet(...)` and `$fn(...)`, php 8.1's first-class
 // callable syntax over a name or a value, through the interpreter's resolution.
 //
-// A name the flat compiler declared is in the function table too - runFlat hoists
-// before it runs - so the Closure resolves here and the body it names runs on the
-// interpreter when the value is called, the way a callable held in a value
-// already does.
+// A name the flat compiler declared sits in the function table too - runFlat
+// hoists before it runs - so the Closure resolves here and the body it names
+// runs on the interpreter when something calls the value, the way a callable
+// held in a value already does.
 func (h *flatHost) CallableValue(target any, fallback string) (any, error) {
 	scope := h.boundScope()
 	result, err := h.runtime.helperCallable(&scopeRef{scope: scope})(target, fallback)
@@ -489,8 +490,8 @@ func (h *flatHost) CallableMember(target any, method any) (any, error) {
 }
 
 // UnsetProperty removes a named property, PHP's unset($obj->prop). Only a
-// PHP object carries removable storage; anything else is left alone, the
-// leniency execUnset applies.
+// PHP object carries removable storage, and this passes over anything else,
+// the leniency execUnset applies.
 func (h flatHost) UnsetProperty(receiver any, name string) error {
 	if object, ok := receiver.(*model.Object); ok {
 		object.DeleteProp(name)
