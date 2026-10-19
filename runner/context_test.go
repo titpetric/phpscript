@@ -73,13 +73,13 @@ func TestFromRequestGetAndPath(t *testing.T) {
 	}
 }
 
-// TestRequestSuperglobalMerge pins what $_REQUEST holds and in which order it
-// is built: query, form and cookie fields as PHP merges them, and the route's
+// TestRequestSuperglobalMerge pins what $_REQUEST holds and the order the
+// merge takes: query, form and cookie fields as PHP merges them, and the route's
 // path values written over all three, which is the documented deviation.
 func TestRequestSuperglobalMerge(t *testing.T) {
 	t.Parallel()
-	// The context is built inside the handler, while the body is still
-	// readable; after the handler returns the server has closed it.
+	// The handler builds the context, while the body is still readable; after
+	// the handler returns the server has closed it.
 	mux := http.NewServeMux()
 	var ctx runner.Context
 	mux.HandleFunc("POST /users/{id}", func(_ http.ResponseWriter, r *http.Request) {
@@ -98,8 +98,8 @@ func TestRequestSuperglobalMerge(t *testing.T) {
 	}
 }
 
-// TestRequestSuperglobalIsACopy pins that $_REQUEST is its own array, as it is
-// in PHP: writing through it must not reach $_GET, and the other way around.
+// TestRequestSuperglobalIsACopy pins that $_REQUEST is its own array, as in
+// PHP: writing through it must not reach $_GET, and the other way around.
 func TestRequestSuperglobalIsACopy(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("GET", "/?a=1", nil)
@@ -224,9 +224,9 @@ func TestFromRequestMultipart(t *testing.T) {
 }
 
 // TestFilesSuperglobal checks the array shape a script indexes into, which is
-// PHP's keys and not the Go struct behind them. The name the client sent is
-// kept whole in full_path and stripped to its base in name, so a client cannot
-// choose a directory for the server.
+// PHP's keys and not the Go struct behind them. full_path holds the name the
+// client sent whole, name holds its base alone, so a client cannot choose a
+// directory for the server.
 func TestFilesSuperglobal(t *testing.T) {
 	t.Parallel()
 	r := multipartRequest(t, nil,
@@ -290,8 +290,8 @@ echo $f["name"][0] . "|" . $f["name"][1] . "|" . $f["size"][0] . "|" . $f["size"
 	}
 }
 
-// TestFromRequestUrlencodedUnaffected pins that the multipart branch is taken
-// on the content type alone: an urlencoded POST still resolves through ParseForm
+// TestFromRequestUrlencodedUnaffected pins that the content type alone sends a
+// request down the multipart branch: an urlencoded POST resolves through ParseForm
 // and reports no uploads.
 func TestFromRequestUrlencodedUnaffected(t *testing.T) {
 	t.Parallel()
@@ -469,8 +469,8 @@ func TestServerVarsPlainGet(t *testing.T) {
 }
 
 // TestServerVarsRemoteAddr covers the split of Go's "address:port" into the two
-// keys PHP has for it. An IPv6 peer arrives bracketed and is written the way
-// PHP writes it, without brackets.
+// keys PHP has for it. An IPv6 peer arrives bracketed and lands the way PHP
+// writes it, without brackets.
 func TestServerVarsRemoteAddr(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -480,8 +480,8 @@ func TestServerVarsRemoteAddr(t *testing.T) {
 	}{
 		{remote: "127.0.0.1:56138", addr: "127.0.0.1", port: "56138"},
 		{remote: "[::1]:37154", addr: "::1", port: "37154"},
-		// A Go host may put anything in the field; one without a port is kept
-		// whole, and never guessed at.
+		// A Go host may put anything in the field; one without a port lands
+		// whole, and the split guesses at nothing.
 		{remote: "unix-socket", addr: "unix-socket", port: ""},
 		{remote: "", addr: "", port: ""},
 	}
@@ -654,8 +654,8 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 	ctx := runner.NewContext()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
 	// header() is a standard-library binding that finds this Context through
-	// the runtime context, so the library is registered here the way a host
-	// registers it: stdlib first, request second.
+	// the runtime context, so this test registers the library the way a host
+	// does: stdlib first, request second.
 	stdlib.Register(rt)
 	ctx.Register(rt)
 	prog, err := parser.Parse(`<?php header("Location: /next");`)
@@ -672,7 +672,7 @@ func TestLocationHeaderSetsRedirectStatus(t *testing.T) {
 
 // TestStatusLineHeaderSetsStatus pins the other spelling header() takes.
 // "HTTP/1.0 404 Not Found" carries a status alone, with no name and no value,
-// and is dropped for want of a name:value shape without this.
+// so without this branch it falls out for want of a name:value shape.
 func TestStatusLineHeaderSetsStatus(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -683,8 +683,8 @@ func TestStatusLineHeaderSetsStatus(t *testing.T) {
 		{header: `HTTP/1.1 503 Service Unavailable`, want: http.StatusServiceUnavailable},
 		{header: `HTTP/1.1 204`, want: http.StatusNoContent},
 
-		// Not status lines. The first is a header named Status, the rest name
-		// no status this response could be sent with.
+		// Not status lines. The first is a header named Status, and the rest
+		// name no status this response could carry.
 		{header: `Status: 404`, want: 0},
 		{header: `not a header at all`, want: 0},
 		{header: `HTTP/1.1 twenty`, want: 0},
@@ -796,8 +796,8 @@ func TestStatusArgumentIsCoerced(t *testing.T) {
 }
 
 // TestPostMaxSize covers a body larger than post_max_size. PHP does not parse
-// one at all, so a script sees empty superglobals; the reason is reported to
-// the host, which is the only place it can be seen.
+// one at all, so a script sees empty superglobals; the decode reports the
+// reason to the host, the one place that reads it.
 func TestPostMaxSize(t *testing.T) {
 	t.Parallel()
 	r := multipartRequest(t,
@@ -841,8 +841,8 @@ try {
 }
 
 // TestPostMaxSizeUnknownLength covers a body that does not announce its length.
-// It cannot be judged before it is read, so it is capped as it is parsed, and
-// ends the same way an announced one does.
+// Nothing can judge the size before the read, so the cap applies during the
+// parse, and the request ends the same way an announced one does.
 func TestPostMaxSizeUnknownLength(t *testing.T) {
 	t.Parallel()
 	r := httptest.NewRequest("POST", "/submit", strings.NewReader("name="+strings.Repeat("b", 4096)))
@@ -901,7 +901,7 @@ echo $_FILES["big"]["error"] === UPLOAD_ERR_INI_SIZE ? "|big-too-large" : "|big-
 }
 
 // runCtxOptions is runCtx for the cases that need the runtime built with
-// specific options, or configured before the request is registered onto it.
+// specific options, or set up before Register puts the request onto it.
 func runCtxOptions(t *testing.T, ctx runner.Context, opts runner.Options, setup func(*runner.Runtime), src string) string {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -995,7 +995,7 @@ func TestFromRequestCookieBracketNames(t *testing.T) {
 	}
 }
 
-// A multipart body's field names are read the same way.
+// The decode reads a multipart body's field names the same way.
 func TestFromRequestMultipartBracketNames(t *testing.T) {
 	t.Parallel()
 	r := multipartRequest(t, map[string]string{
@@ -1009,7 +1009,7 @@ func TestFromRequestMultipartBracketNames(t *testing.T) {
 	}
 }
 
-// A field nested past the limit is dropped whole; the rest still arrive.
+// The decode drops a field nested past the limit whole; the rest still arrive.
 func TestFromRequestInputLimits(t *testing.T) {
 	t.Parallel()
 	deep := "a" + strings.Repeat("[x]", 65) + "=1&b=kept"
@@ -1021,8 +1021,8 @@ func TestFromRequestInputLimits(t *testing.T) {
 	}
 }
 
-// A hand-assembled Context has no request to decode, so its flat maps are
-// promoted as they stand: the fixture harness, a CLI run, an embedder.
+// A hand-assembled Context has no request to decode, so Register promotes its
+// flat maps as they stand: the fixture harness, a CLI run, an embedder.
 func TestRegisterFallsBackToFlatMaps(t *testing.T) {
 	t.Parallel()
 	c := runner.NewContext()
@@ -1037,7 +1037,7 @@ func TestRegisterFallsBackToFlatMaps(t *testing.T) {
 }
 
 // Only the two form content types populate $_POST. A JSON body is
-// php://input and nothing else, as it is in PHP.
+// php://input and nothing else, as in PHP.
 func TestBodyDecodeIsFormOnly(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -1062,7 +1062,7 @@ func TestBodyDecodeIsFormOnly(t *testing.T) {
 	}
 }
 
-// TestWithRoutePattern covers which pattern the path values are built from: the
+// TestWithRoutePattern covers which pattern the path values come from: the
 // one the route's author declared, and not the one the router matched. chi
 // registers /c/{tail...} as /c/* and reports that back, so a value exported
 // under a name would have no name at all with r.Pattern as the only source.
@@ -1180,10 +1180,10 @@ func TestContext_GetAllHeaders(t *testing.T) {
 }
 
 // TestContext_HTTPResponseCode covers the Go-facing call behind
-// http_response_code(), where the SAPI is passed in. A web SAPI starts out
-// answering 200; the command line starts with no status at all, so php answers
-// false while none is chosen and true for the first one set, having no previous
-// number to report.
+// http_response_code(), which takes the SAPI as an argument. A web SAPI starts
+// out answering 200; the command line starts with no status at all, so php
+// answers false until something sets one and true for that first call, having
+// no previous number to report.
 func TestContext_HTTPResponseCode(t *testing.T) {
 	t.Parallel()
 	web := runner.NewContext()
@@ -1208,7 +1208,7 @@ func TestContext_HTTPResponseCode(t *testing.T) {
 		t.Errorf("the reporting call after one was set = %v, want 404", got)
 	}
 
-	// The parameter is an int, so php coerces what it is given, and $_SERVER
+	// The parameter is an int, so php coerces the argument, and $_SERVER
 	// holds every value as a string: a page handing REDIRECT_STATUS straight
 	// back is handing over "503" and means 503.
 	if got := cli.HTTPResponseCode("cli", "503"); got != int64(404) {
