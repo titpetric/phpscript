@@ -2,13 +2,13 @@
 
 The phpscript runtime contains a routing helper that turns PHP files into `net/http` handlers. It keeps the server shell and shared services in Go, while PHP owns small endpoint behavior.
 
-When `routes.enabled` is true in the active configuration, `phpscript server [directory]` scans the PHP source tree for `// @route` comments and registers those files as HTTP handlers. If no directory is provided, the current directory is used. Pass a custom configuration with `-f config.yml`; otherwise the embedded defaults are used.
+When `routes.enabled` is true in the active configuration, `phpscript server [directory]` scans the PHP source tree for `// @route` comments and registers those files as HTTP handlers. Without a directory argument it scans the current directory. Pass a custom configuration with `-f config.yml`; otherwise it reads the embedded defaults.
 
 ```sh
 phpscript server ./my-app
 ```
 
-The server also serves only the application's `public/` directory directly. Route files belong outside `public/`; annotations under `public/` are ignored.
+The server also serves only the application's `public/` directory directly. Route files belong outside `public/`; the scan skips annotations under `public/`.
 
 ```yaml
 routes:
@@ -26,7 +26,7 @@ tests/fixtures/routing/
 └── upload.php
 ```
 
-Routes are declared in PHP comments:
+A PHP comment declares the route:
 
 ```php
 <?php
@@ -38,7 +38,7 @@ $shm = new SharedMemory;
 echo $shm->get($_REQUEST["key"]);
 ```
 
-A route without a method registers both GET and POST. Explicit methods such as PUT or DELETE must be written in the annotation. There is no specific handling available for HEAD or OPTIONS requests, you have to bind them explicitly.
+A route without a method registers both GET and POST. The annotation spells explicit methods such as PUT or DELETE. There is no specific handling available for HEAD or OPTIONS requests, you have to bind them explicitly.
 
 ### Path parameters
 
@@ -50,9 +50,9 @@ Three spellings, each arriving in `$_REQUEST` under the name it declares:
 | `{pathname...}` | the remaining segments, joined   | `$_REQUEST["pathname"]` is `docs/2026/report.pdf`             |
 | `{id:[0-9]+}`   | one segment matching the pattern | `$_REQUEST["id"]`, and a segment that does not match is a 404 |
 
-A name is letters, digits and underscores. Anything else is refused: the route is not registered, the server logs it at boot with the file it came from, and `phpscript lint` reports it with a line number. There is no default-value syntax, so `{module=users}` is an authoring error.
+A name is letters, digits and underscores. The scan refuses anything else: the route is not registered, the server logs it at boot with the file it came from, and `phpscript lint` reports it with a line number. There is no default-value syntax, so `{module=users}` is an authoring error.
 
-The regex constraint is enforced by the bundled server, which routes with [chi](https://github.com/go-chi/chi). An application registering these routes on a standard library `http.ServeMux` gets the parameter without the constraint: `ServeMux` has no equivalent, and rejecting the route there would make the same annotation valid or invalid depending on the host. Constrain in PHP as well when the check has to hold either way.
+The bundled server enforces the regex constraint and routes with [chi](https://github.com/go-chi/chi). An application registering these routes on a standard library `http.ServeMux` gets the parameter without the constraint: `ServeMux` has no regex constraint, and rejecting the route there would make the same annotation valid or invalid depending on the host. Constrain in PHP as well when the check has to hold either way.
 
 PHP endpoint files handle:
 
@@ -64,7 +64,7 @@ PHP endpoint files handle:
 
 ## Shared host state
 
-Each HTTP request runs on a VM from the site's `runner.SessionPool`, reset between requests: nothing a request wrote survives into the next, and the standard library is registered once per pooled VM, not once per request. Host applications can bind Go values into the VM for shared process state or services. The example fixture under `tests/fixtures/routing` uses `SharedMemory`, a Go struct registered as the PHP class `SharedMemory`, for a small key/value store and counters:
+Each HTTP request runs on a VM from the site's `runner.SessionPool`, reset between requests: nothing a request wrote survives into the next, and the pool registers the standard library once per VM, not once per request. Host applications can bind Go values into the VM for shared process state or services. The example fixture under `tests/fixtures/routing` uses `SharedMemory`, a Go struct registered as the PHP class `SharedMemory`, for a small key/value store and counters:
 
 - `POST /kv/{key}` writes `$_POST["value"]` into shared memory.
 - `GET /kv/{key}` reads the value back.
@@ -141,7 +141,7 @@ if err := routes.Mount(ctx, router); err != nil {
 }
 ```
 
-`annotations.Route` scans the filesystem it is given and registers a handler per annotation. `Mount` attaches them to a router the host owns, which is also where `phpscript server` puts them. Go owns route registration, synchronization, durable services, and bindings. Every request gets a fresh PHP runtime, but `new SharedMemory` resolves to the same Go `shm` value.
+`annotations.Route` scans the filesystem it receives and registers a handler per annotation. `Mount` attaches them to a router the host owns, which is also where `phpscript server` puts them. Go owns route registration, synchronization, durable services, and bindings. Every request takes a pooled PHP runtime that a reset clears between requests, but `new SharedMemory` resolves to the same Go `shm` value.
 
 ## References
 
