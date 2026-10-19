@@ -122,7 +122,7 @@ func argon2Decode(hash string) (params, []byte, []byte, error) {
 			return params{}, nil, nil, fmt.Errorf("unknown argon2 parameter %q", name)
 		}
 	}
-	if err := p.validate(); err != nil {
+	if err := p.check(); err != nil {
 		return params{}, nil, nil, err
 	}
 

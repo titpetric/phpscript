@@ -7,9 +7,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// The bcrypt cost x/crypto runs between. validate refuses anything outside the
-// range, so a script naming a cost the library would reject is told in php's
-// wording before a derivation starts.
+// The bcrypt cost x/crypto runs between. params.check refuses anything outside
+// the range, so a script naming a cost the library would reject hears it in
+// php's wording before a derivation starts.
 const (
 	bcryptMinCost = bcrypt.MinCost
 	bcryptMaxCost = bcrypt.MaxCost

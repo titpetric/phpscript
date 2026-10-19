@@ -75,10 +75,10 @@ func defaultParams(algo string) params {
 	}
 }
 
-func (p params) validate() error {
-	// Refuses a parameter set the algorithm cannot run. The argon2 bounds are
-	// libargon2's, so php refuses the same values with the same meaning: at
-	// least one lane, at least one pass, and at least eight KiB per lane.
+// check refuses a parameter set the algorithm cannot run. The argon2 bounds
+// are libargon2's, so php refuses the same values with the same meaning: at
+// least one lane, at least one pass, and at least eight KiB per lane.
+func (p params) check() error {
 	if p.algo == algoBcrypt {
 		if p.cost < bcryptMinCost || p.cost > bcryptMaxCost {
 			return fmt.Errorf("cost must be between %d and %d, got %d", bcryptMinCost, bcryptMaxCost, p.cost)
@@ -280,7 +280,7 @@ func paramsFrom(opts []any) (params, error) {
 		}
 	}
 
-	if err := p.validate(); err != nil {
+	if err := p.check(); err != nil {
 		return params{}, err
 	}
 	return p, nil
