@@ -10,21 +10,21 @@ import (
 // This file is the one home of Go-callable dispatch. invokeAny used to
 // re-derive everything per call: two reflect.TypeOf traversals, the arity
 // check, a linear type switch over ~40 signatures, and on a miss a per-
-// argument parameter-type walk. newInvoker runs all of that once and hands
-// back a pre-bound call: registered functions cache theirs in the function
-// table entry, constructors and the evaluation environment's helpers build
-// theirs where they are installed, and only a callable that never had a
+// argument parameter-type walk. newInvoker runs that once and returns a
+// pre-bound call: registered functions cache theirs in the function table
+// entry, constructors and the evaluation environment's helpers build theirs
+// at the point that installs them, and only a callable that never had a
 // registration point still pays the constructor per call.
 
 // invoker is one callable's pre-bound dispatch. call owns the panic
 // boundary and the arity check; wantsCtx is the context-injection decision
 // invokeWithScopeContext and the flatstack host read without reflecting.
 //
-// call takes the runtime doing the calling because an entry is shared: a fork
-// copies the table, and a binding's *Callable argument has to bind to the
-// runtime the call is on and not to the one that built the value. Only the
-// reflect path reads it - it is what coerceArg needs - so the specialised
-// signatures below are wrapped once, so none of them takes it.
+// call takes the runtime doing the calling because two runtimes share an
+// entry: a fork copies the table, and a binding's *Callable argument has to
+// bind to the runtime the call is on and not to the one that built the value.
+// Only the reflect path reads it, where coerceArg needs it, so one wrapper
+// covers the specialised signatures below and none of them takes it.
 type invoker struct {
 	call     func(rt *Runtime, args []any) (any, error)
 	wantsCtx bool
@@ -34,9 +34,9 @@ type invoker struct {
 // fn's signature is one of the shapes the stdlib and the evaluation
 // environment register, the pre-planned reflect call otherwise.
 func newInvoker(fn any) invoker {
-	// A callable value is not a Go func and has no signature to plan: it is
-	// dispatched through the runtime doing the calling, which is all of
-	// what it needs.
+	// A callable value is not a Go func and has no signature to plan: the
+	// runtime doing the calling dispatches it, and that is the whole of what
+	// it needs.
 	if c, ok := fn.(*Callable); ok {
 		return invoker{call: func(rt *Runtime, args []any) (any, error) { return c.on(rt)(args...) }}
 	}
@@ -106,9 +106,9 @@ func reflectInvoker(ft reflect.Type, fn any) func(*Runtime, []any) (any, error) 
 	}
 	return func(rt *Runtime, args []any) (any, error) {
 		in := make([]reflect.Value, 0, len(args))
-		// The runtime context, when a binding declares one, is injected
-		// ahead of the script's arguments and does not count towards the
-		// PHP position.
+		// A binding that declares a runtime context takes it ahead of the
+		// script's arguments, and that slot does not count towards the PHP
+		// position.
 		offset := 1
 		if wantsCtx {
 			offset = 0
@@ -287,7 +287,7 @@ func (rt *Runtime) invokeEntry(e *funcEntry, args []any, scope *Scope) (any, err
 	}
 	result, err := inv.call(rt, args)
 	if err == nil && rt.opts.MemoryLimit > 0 {
-		// Burst guard: a single host call can allocate far more than the
+		// Burst guard: a single host call can take far more memory than the
 		// per-statement checkpoint interval sees (str_repeat, file reads).
 		// The shallow estimate only decides when to walk early; the walk is
 		// the truth and resets the pending counter.

@@ -71,7 +71,7 @@ type (
 )
 
 // dispatchPinErr is the error the error-returning probe bindings return
-// when asked to, so both dispatch paths can be checked for surfacing it.
+// when asked to, so a test can watch both dispatch paths surface it.
 var dispatchPinErr = errors.New("dispatch pin: forced failure")
 
 // dispatchPinSink is the func value the func(string) func(any) probe returns.
@@ -392,7 +392,7 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 			argSets: [][]any{{}, {int64(65), "a", nil}, {"boom"}},
 		},
 		{
-			// The variadic tail is coerced element by element: int64(1)
+			// The call coerces the variadic tail element by element: int64(1)
 			// arrives as "1", nil as "", true as "1", on both paths.
 			name: "func(string, ...string) string",
 			fast: func(s string, rest ...string) string {
@@ -551,7 +551,7 @@ func TestDispatchPinFastReflectParity(t *testing.T) {
 	}
 }
 
-// A call passing more arguments than the callable declares is refused as an
+// A call passing more arguments than the callable declares fails with an
 // ArgumentCountError carrying the declared and passed counts, on both paths:
 // the check runs before dispatch. Direct invocation carries no PHP name, so
 // Name stays empty and the message says "call()".
@@ -619,7 +619,7 @@ func TestDispatchPinArgumentPadding(t *testing.T) {
 
 // The reflect path coerces arguments to the declared parameter types: string
 // parameters render the value the way PHP does, time.Duration accepts Go's
-// duration syntax, and an unconvertible argument is refused as a TypeError
+// duration syntax, and an unconvertible argument fails with a TypeError
 // naming the position and the PHP spellings of both types.
 func TestDispatchPinReflectCoercion(t *testing.T) {
 	t.Parallel()
@@ -718,8 +718,8 @@ func TestDispatchPinWantsContext(t *testing.T) {
 }
 
 // A binding declaring a leading context receives one carrying the scope the
-// call ran under; a binding without one is called with the script's arguments
-// alone, and a nil scope is fine because no context is ever built for it.
+// call ran under; a binding without one takes the script's arguments alone,
+// and a nil scope is fine because nothing builds a context for it.
 func TestDispatchPinContextInjection(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -743,7 +743,8 @@ func TestDispatchPinContextInjection(t *testing.T) {
 		t.Fatalf("binding saw scope %p, want %p", seen, scope)
 	}
 
-	// Scope-free binding, nil scope: no context is derived, nothing panics.
+	// Scope-free binding, nil scope: the call derives no context and nothing
+	// panics.
 	v, err = rt.invokeWithScopeContext(func(s string) string { return s + "!" }, []any{"y"}, nil)
 	if err != nil {
 		t.Fatalf("nil scope: %v", err)
@@ -754,7 +755,7 @@ func TestDispatchPinContextInjection(t *testing.T) {
 }
 
 // Receivers for the callGoMethod resolution tests. Two distinct types carry a
-// same-named method so per-type caching can be watched for cross-talk, and one
+// same-named method so a test can watch per-type caching for cross-talk, and one
 // type declares its method on the pointer only so the pointer and value method
 // sets resolve separately.
 type dispatchPinReceiver struct{ id string }
@@ -783,8 +784,8 @@ func (*dispatchPinPtrOnly) Hello() string { return "ptronly-hello" }
 // callGoMethod resolves the exact Go name, then case-insensitively, then with
 // underscores stripped so a snake_case PHP spelling finds the idiomatic Go
 // name. A miss reports PHP's undefined-method message naming the class a
-// script sees. Every lookup is repeated so the warm-cache answer is asserted
-// to match the cold one, per receiver type.
+// script sees. Every lookup runs twice, and the test asserts the warm-cache
+// answer matches the cold one, per receiver type.
 func TestDispatchPinCallGoMethod(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -907,7 +908,7 @@ func TestDispatchPinUniformABI(t *testing.T) {
 		t.Fatalf("got %#v, want %q", v, "[65]")
 	}
 
-	// A non-callable value is refused with the type it actually holds.
+	// A non-callable value fails, and the error names the type it holds.
 	if _, err := invokeAny(nil, 42, nil); err == nil || !strings.Contains(err.Error(), "not callable: int") {
 		t.Fatalf("err = %v, want the not-callable report", err)
 	}
