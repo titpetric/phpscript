@@ -1,13 +1,13 @@
 package runner
 
 // This file pins the observable behaviour of the call-dispatch machinery
-// (invokeAny with its invokeFast shortcut, adapt, buildArgs/coerceArg,
+// (invokeAny with its fastInvoker shortcut, adapt, buildArgs/coerceArg,
 // callGoMethod, wantsContext, and the evaluation-environment helpers) ahead
 // of its consolidation into registration-time invokers. Every test here holds
 // before and after that refactor: the assertions go through invokeAny, adapt,
 // callGoMethod and the public API, never through the shortcut directly.
 //
-// The one lever the tests use is Go's type identity: invokeFast's type switch
+// The one lever the tests use is Go's type identity: fastInvoker's type switch
 // matches concrete unnamed signatures only, so a defined func type with the
 // same underlying signature is invisible to it and always takes the reflect
 // path. Calling the same behaviour through both spellings is what turns
@@ -27,7 +27,7 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// Named counterparts of every signature the invokeFast type switch covers.
+// Named counterparts of every signature the fastInvoker type switch covers.
 // A value of one of these types carries the same underlying signature but a
 // different dynamic type, which sends it down the reflect path.
 type (

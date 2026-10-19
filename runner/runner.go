@@ -75,10 +75,10 @@ func (rt *Runtime) loadNamed(name, src string) (*model.Program, error) {
 // LoadFile reads and parses a PHP file from the runtime source FS.
 //
 // Options.Precompile makes the include cache answer for entrypoints as well as
-// for includes: the file is parsed once for the life of the process, so the
-// bytecode and the compiled expressions keyed by that AST are read back and
-// never built again per request. Without it the file is read and parsed every
-// time, as a CLI run and an unconfigured host do.
+// for includes: the runtime parses the file once for the life of the process,
+// so each request reads back the bytecode and the compiled expressions keyed by
+// that AST and builds neither again. Without it every load reads and parses the
+// file again, as a CLI run and an unconfigured host do.
 func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 	rt.UpdateFilename(path)
 	rt.UpdateStatus(telemetry.StateReading)
@@ -103,9 +103,9 @@ func (rt *Runtime) LoadFile(path string) (*model.Program, error) {
 
 // loadResolved reads and parses a path the caller has already put through
 // resolveFSPath. Resolution happens once per include, above the cache lookup,
-// so that the cache is keyed by the file and not by the spelling: after a
-// chdir the same "x.php" names a different file, and a cache keyed on the
-// spelling would answer with the previous one.
+// so the cache keys on the file and not on the spelling: after a chdir the
+// same "x.php" names a different file, and a cache keyed on the spelling would
+// answer with the previous one.
 func (rt *Runtime) loadResolved(cleanPath string) (*model.Program, error) {
 	b, err := fs.ReadFile(rt.opts.RootFS, cleanPath)
 	if err != nil {
@@ -144,7 +144,7 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 		return err
 	}
 	// Coverage forces the interpreter: flatstack carries no coverage support,
-	// and the fallback is atomic, so the whole program runs where it is counted.
+	// and the fallback is atomic, so the whole program runs where exec counts it.
 	if rt.flat && rt.coverage == nil {
 		if handled, flatErr := rt.runFlat(p); handled {
 			err = flatErr
@@ -160,10 +160,10 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 func (rt *Runtime) HasErrorHandler() bool { return rt.errorHandler != nil }
 
 // RecordError reports err on the trace of the request this runtime is serving,
-// as the failure of the script it is running. Run calls it for the error a
-// script ends with; a host calls it for a failure that happened outside the
-// script, before or around it, which the script therefore has no throw to
-// catch: a request body refused for its size, say.
+// as the failure of the script it runs. Run calls it for the error a script
+// ends with; a host calls it for a failure that happened outside the script,
+// before or around it, which no throw in the script can catch: a request body
+// refused for its size, say.
 //
 // It records and returns. It does not unwind PHP execution, so nothing about it
 // is visible to a script through try/catch; a Go host observes it on the trace,
@@ -189,8 +189,8 @@ func (rt *Runtime) recordTraceError(err error) {
 		ctx = telemetry.WithSpanFilename(ctx, rt.entrypoint)
 	}
 	ctx = telemetry.WithSpanLine(ctx, rt.currentSourceLine())
-	// The span is named for what happened, not for this instance of it: the
-	// message is the recorded error, which the front end renders under the
+	// The span takes its name from what happened, not from this instance of it:
+	// the message is the recorded error, which the front end renders under the
 	// span and filters on. A message in the name would make every failure its
 	// own kind of failure.
 	rt.traceContext(ctx, "php error").RecordError(err)
@@ -199,9 +199,9 @@ func (rt *Runtime) recordTraceError(err error) {
 // runPrelude includes Options.Include ahead of this request's entrypoint, so
 // the entrypoint and everything it includes see what it declared.
 //
-// A file that is not there is skipped: the option names what to load when the
-// application carries it, so one configuration covers a tree whether or not
-// the bootstrap file it names has been written yet.
+// runPrelude skips a file that is not there: the option names what to load
+// when the application carries it, so one configuration covers a tree where
+// the bootstrap file it names does not exist yet.
 func (rt *Runtime) runPrelude() error {
 	if rt.preludeDone || rt.opts.Include == "" || rt.opts.RootFS == nil {
 		return nil
@@ -259,22 +259,22 @@ func (rt *Runtime) hoistOnce(p *model.Program, filename string) error {
 
 // hoist registers all function and class declarations found at the given level.
 //
-// A class declaring `implements` is held to the contract first: every method
-// the listed interfaces name must be declared by the class itself. The check is
-// a name comparison over the AST, so it happens before anything runs and no
-// member is copied onto the class either way. The bytecode backend runs the
-// same check where it collects classes, so both raise the same
-// RuntimeException.
-// An anonymous class is registered here too. Its declaration is written inside
-// an expression and not as a statement, so the parser collects it on the
-// program; from this point on it is an ordinary class under the name the parser
-// gave it.
+// model.CheckInterfaceContracts holds a class declaring `implements` to the
+// contract first: the class itself must declare every method the listed
+// interfaces name. The check is a name comparison over the AST, so it happens
+// before anything runs and copies no member onto the class either way. The
+// bytecode backend runs the same check where it collects classes, so both
+// raise the same RuntimeException.
+// hoist registers an anonymous class here too. The parser reads its
+// declaration inside an expression and not as a statement, so it collects the
+// class on the program; from there on the class is ordinary, under the name the
+// parser gave it.
 func (rt *Runtime) hoist(prog *model.Program, filename string) error {
 	stmts := prog.Stmts
 	if err := model.CheckInterfaceContracts(prog); err != nil {
 		return NewRuntimeException(err.Error(), 0)
 	}
-	// First pass: classes, so methods can be attached.
+	// First pass: classes, so a method has a class to attach to.
 	classes := map[string]*model.Class{}
 	declare := func(cd *model.ClassDecl) {
 		c := &model.Class{Name: cd.Name, Implements: model.InterfaceNames(cd, stmts), Fields: cd.Fields, Statics: cd.Statics, Consts: cd.Consts, Methods: map[string]*model.FuncDecl{}}
@@ -355,9 +355,8 @@ func (rt *Runtime) exec(stmts []model.Stmt, scope *Scope) (any, flow, error) {
 		// context armed: a script that slept past its limit and then does
 		// three more things has to stop at the first of them. A run with no
 		// limit and no request pays two bool loads it never enters.
-		// Read per statement and not once on entry: a script that calls
-		// set_time_limit halfway down its own statement list has to be bounded
-		// by the rest of that list.
+		// Read per statement and not once on entry: a set_time_limit call
+		// halfway down a statement list has to bound the rest of that list.
 		if rt.deadlineArmed {
 			if err := rt.checkDeadline(); err != nil {
 				return nil, flowNormal, err
@@ -512,8 +511,8 @@ func (rt *Runtime) execOne(s model.Stmt, scope *Scope) (any, flow, error) {
 		return nil, flowNormal, fmt.Errorf("uncaught exception: %s", phpString(v))
 
 	case *model.Use:
-		// Imports are resolved while parsing; the node exists so the
-		// formatter can print the statement back out.
+		// The parser resolves imports; the node exists so the formatter
+		// can print the statement back out.
 		return nil, flowNormal, nil
 
 	case *model.Declare:
@@ -554,10 +553,10 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 	)
 	// PHP's two loop semantics. `as &$v` binds the element, so a body that
 	// assigns to the target edits the source; `as $v` binds a copy, so it does
-	// not. Only a *model.Array can be written back to or copied; a collection
+	// not. Only a *model.Array accepts a write-back or a copy; a collection
 	// a binding returned belongs to the host and not to the script.
 	//
-	// The copy is made only when the body actually assigns through the target,
+	// The copy happens only when the body actually assigns through the target,
 	// because phpscript has no refcount to defer it with: an unconditional copy
 	// would charge every loop for a semantic almost none of them use. The test
 	// runs once per loop, not once per iteration.
@@ -587,9 +586,9 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		if err != nil {
 			return false
 		}
-		// The write-back happens before the flow is inspected: a reference makes
-		// the element live, so a body that assigns and then breaks or returns
-		// has still edited the source.
+		// The write-back happens before the switch reads the flow: a reference
+		// makes the element live, so a body that assigns and then breaks or
+		// returns has still edited the source.
 		if writable != nil {
 			if updated, readErr := rt.readLValue(valTarget, scope); readErr == nil {
 				writable.Set(k, updated)
@@ -614,9 +613,9 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 		src.Range(iter)
 	case *model.Object:
 		// An object visits its properties, name and value, in the order it
-		// reads them back. PHP visits only the ones visible where the loop is
-		// written; phpscript enforces no visibility anywhere, so it visits all
-		// of them. See docs/README.md.
+		// reads them back. PHP visits only the ones visible where the script
+		// writes the loop; phpscript enforces no visibility anywhere, so it
+		// visits them all. See docs/README.md.
 		src.Range(func(name string, value any) bool {
 			return iter(name, value)
 		})
@@ -638,7 +637,8 @@ func (rt *Runtime) execForeach(n *model.Foreach, scope *Scope) (any, flow, error
 				}
 			}
 		}
-		// Any other non-iterable source is skipped (PHP warns and continues).
+		// execForeach skips any other non-iterable source (PHP warns and
+		// continues).
 	}
 
 	if err != nil {
@@ -725,7 +725,7 @@ func (rt *Runtime) execDoWhile(n *model.DoWhile, scope *Scope) (any, flow, error
 func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 	val, fl, err := rt.exec(n.Body, scope)
 	if _, exiting := IsExit(err); exiting {
-		// finally is skipped too: PHP runs no finally block on exit.
+		// execTry skips finally too: PHP runs no finally block on exit.
 		return val, fl, err
 	}
 	// Running out of time, or losing the client, is not a condition the script
@@ -773,8 +773,8 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 // matchCatchType reports whether a catch clause declaring declaredType handles
 // rootErr. A union takes the error when any alternative does.
 //
-// There is no class hierarchy to walk, so the clause is answered from the name
-// the throwable records:
+// There is no class hierarchy to walk, so matchCatchType answers the clause
+// from the name the throwable records:
 //
 //   - nothing, or Throwable, takes everything.
 //   - an error that is no PHP class at all takes any clause, so a Go binding's
@@ -784,7 +784,7 @@ func (rt *Runtime) execTry(n *model.Try, scope *Scope) (any, flow, error) {
 //     between a fault in the program and a condition it raised, and it agrees
 //     with PHP for every built-in name: ErrorException is an Exception,
 //     AssertionError and TypeError are Errors.
-//   - any other name is compared to the class, case-insensitively.
+//   - any other name matches the class case-insensitively.
 func matchCatchType(declaredType string, rootErr error) bool {
 	declaredType = strings.TrimSpace(declaredType)
 	if declaredType == "" {
@@ -869,8 +869,8 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	return rt.includeFile(phpString(path), n.Once, scope)
 }
 
-// noopTrace is the span closer returned when no observer is registered. It
-// captures nothing, so returning it does not allocate.
+// noopTrace is the span closer trace returns when rt.observers is empty. It
+// captures nothing, so returning it costs no allocation.
 func noopTrace() {}
 
 // trace measures one region of interpreter work: a call, an include, a
@@ -895,11 +895,11 @@ func (rt *Runtime) trace(scope *Scope, message string, kind ...telemetry.Kind) f
 	}
 }
 
-// includeFile evaluates one include. once is the *_once form, which is answered
-// here and not at the call site so that both engines dedupe on the same
-// thing: the resolved file, never the spelling the script used. After a
-// chdir two directories can spell one name, and a scan over spellings would
-// skip the second file as though it had already run.
+// includeFile evaluates one include. once is the *_once form, which
+// includeFile answers here and not at the call site so that both engines
+// dedupe on the same thing: the resolved file, never the spelling the script
+// used. After a chdir two directories can spell one name, and a scan over
+// spellings would skip the second file as though it had already run.
 // markIncluded records a file as loaded without running it, for a caller that
 // installed its declarations another way. include_once and require_once answer
 // off this list.
@@ -955,7 +955,7 @@ func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error
 	if fl == flowReturn {
 		return value, nil
 	}
-	// PHP include/require constructs evaluate to 1 when the included file
+	// PHP include/require constructs answer 1 when the included file
 	// reaches its end without an explicit return.
 	return int64(1), nil
 }
@@ -966,9 +966,9 @@ func (rt *Runtime) addSourceSpans(program *model.Program) {
 	}
 }
 
-// currentSourceLine answers the line the statement being executed starts on, or
-// zero for a statement the parser recorded no span for - one the runner
-// synthesised, which no source line names.
+// currentSourceLine answers the line rt.currentStmt starts on, or zero for a
+// statement the parser recorded no span for - one the runner synthesised,
+// which no source line names.
 func (rt *Runtime) currentSourceLine() int {
 	if rt.currentStmt == nil {
 		return 0
@@ -977,7 +977,7 @@ func (rt *Runtime) currentSourceLine() int {
 }
 
 // setScopeFile binds __FILE__ and __DIR__ into a fresh call frame. The frame
-// is new, so nothing is shadowed and nothing needs restoring; includeFile,
+// is new, so the bind shadows nothing and needs no restore; includeFile,
 // which layers onto a live scope, resolves through pushScopeFile.
 func (rt *Runtime) setScopeFile(scope *Scope, filename string) {
 	scope.Set("__FILE__", rt.boxed(filename))
@@ -993,7 +993,7 @@ func (rt *Runtime) setScopeFile(scope *Scope, filename string) {
 //
 // The map is the runtime's, like fileDirs beside it, because a Runtime answers
 // one goroutine at a time and Fork builds a worker its own. A cache on the
-// declaration would be shared through the include cache, where two workers
+// declaration would travel through the include cache, where two workers
 // reach one AST.
 func (rt *Runtime) boxed(s string) any {
 	if v, ok := rt.boxedStrings[s]; ok {
@@ -1009,7 +1009,7 @@ func (rt *Runtime) boxed(s string) any {
 
 // fileDir caches path.Dir per filename: every invocation of a function binds
 // its declaring file's directory, and the set of filenames is the set of
-// loaded scripts, so the split is paid once per file and not once per call.
+// loaded scripts, so the split happens once per file and not once per call.
 func (rt *Runtime) fileDir(filename string) string {
 	if d, ok := rt.fileDirs[filename]; ok {
 		return d
@@ -1139,10 +1139,10 @@ func (rt *Runtime) SPLAutoload(class string) error {
 	return nil
 }
 
-// includeFallback is PHP's last stop for a relative include: a path that is
-// not found from the working directory is looked for in the directory of the
-// calling script. A path written as ./ or ../ names the working directory
-// only, and one written from the root has nothing to fall back to.
+// includeFallback is PHP's last stop for a relative include: when the working
+// directory holds no such path, it retries in the directory of the calling
+// script. A path written as ./ or ../ names the working directory only, and
+// one written from the root has nothing to fall back to.
 func (rt *Runtime) includeFallback(name string, scope *Scope) string {
 	slash := filepath.ToSlash(name)
 	if rt.include != nil || rt.opts.RootFS == nil || slash == "" ||
@@ -1195,10 +1195,10 @@ func cleanFSPath(p string) string {
 	return path.Clean(p)
 }
 
-// clampFSPath cleans p against the root: a ".." that would climb above it is
-// collapsed, so "a/../../etc/passwd" names etc/passwd
-// inside the root. Cleaning happens against "/" first, which does the
-// collapsing; path.Clean on its own keeps a leading "..".
+// clampFSPath cleans p against the root: the clean collapses a ".." that would
+// climb above the root, so "a/../../etc/passwd" names etc/passwd inside it.
+// Cleaning happens against "/" first, which does the collapsing; path.Clean on
+// its own keeps a leading "..".
 func clampFSPath(p string) string {
 	clean := strings.TrimPrefix(path.Clean("/"+filepath.ToSlash(p)), "/")
 	if clean == "" {
@@ -1208,14 +1208,14 @@ func clampFSPath(p string) string {
 }
 
 // rootPath spells an fs.FS path the way a script reads it. The source
-// filesystem is mounted at "/", so a name below it is written from there, and
-// that is what __FILE__, __DIR__ and getcwd() answer with.
+// filesystem sits at "/", so a name below it starts from there, and that is
+// what __FILE__, __DIR__ and getcwd() answer with.
 //
 // The point of the leading slash is that resolveFSPath leaves it alone: a path
 // written from the root names one file whatever the working directory is, the
 // way an absolute path does in PHP. Without it `include __DIR__ . "/x.php"`
 // would be re-resolved against the working directory and name a different file
-// after every chdir, and composer's autoloader is built on that.
+// after every chdir, and composer's autoloader depends on that.
 func rootPath(p string) string {
 	clean := clampFSPath(p)
 	if clean == "." {
@@ -1227,9 +1227,9 @@ func rootPath(p string) string {
 // resolveFSPath maps a path a script supplied onto the source filesystem,
 // through the working directory chdir() moved.
 //
-// A path written from the root is taken as it is; anything else is relative to
-// the working directory. Both are cleaned against the root, so neither can
-// climb out of it.
+// A path written from the root passes through as it stands; anything else is
+// relative to the working directory. clampFSPath cleans both against the root,
+// so neither can climb out of it.
 func (rt *Runtime) resolveFSPath(p string) string {
 	slash := filepath.ToSlash(p)
 	if strings.HasPrefix(slash, "/") {
@@ -1238,9 +1238,9 @@ func (rt *Runtime) resolveFSPath(p string) string {
 	if rt.opts.WorkDir == "" || rt.opts.WorkDir == "." {
 		return clampFSPath(slash)
 	}
-	// The working directory is joined before the clamp and never after, so a ".."
-	// climbs out of it the way it would on a real filesystem and stops at the
-	// root, not at the directory the script happens to be in.
+	// The join happens before the clamp and never after, so a ".." climbs out
+	// of the working directory the way it would on a real filesystem and stops
+	// at the root, not at the directory the script happens to be in.
 	return clampFSPath(rt.opts.WorkDir + "/" + slash)
 }
 
@@ -1265,8 +1265,8 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 
 	case *model.ListExpr:
 		// list($a, $b) = $arr destructures by position (integer keys). The
-		// source is read through helperIndex, so a binding returning a native
-		// []string destructures like an *Array.
+		// loop below reads the source through helperIndex, so a binding
+		// returning a native []string destructures like an *Array.
 		if !model.IsCollection(rhs) {
 			return fmt.Errorf("assign: list() target requires an array")
 		}
@@ -1316,10 +1316,10 @@ func (rt *Runtime) execAssign(n *model.Assign, scope *Scope) error {
 		}
 		arr, ok := base.(*model.Array)
 		if !ok {
-			// Native Go collections are writable where Go itself allows it: map
-			// entries can be added or replaced, existing slice elements can be
-			// overwritten. Only `$a[] =` needs an *Array, since a slice cannot
-			// grow through the interface holding it.
+			// Native Go collections are writable where Go itself allows it: a
+			// map takes a new or replacement entry, a slice an overwrite of an
+			// element it holds. Only `$a[] =` needs an *Array, since a slice
+			// cannot grow through the interface holding it.
 			if n.Op == "[]=" || tgt.Index == nil {
 				return fmt.Errorf("assign: cannot append to %T; a binding whose result is appended to must return *model.Array", base)
 			}
@@ -1371,12 +1371,12 @@ func bindConstructorID(target, value model.Expr, op string, result any) {
 
 // container evaluates the base of an index assignment, creating the array PHP
 // would create when nothing is there yet. `$rows[$first][$second] = $v` against
-// an unset $rows makes both levels; the new array has to be written back into
+// an unset $rows makes both levels; container writes the new array back into
 // the slot that held null, or the write would land in a value nothing holds.
 //
 // Only an assignable base is auto-vivified. A function result or a literal has
-// nowhere to write the array back to, so it is returned as-is and the caller
-// reports the assignment as unsupported.
+// nowhere to write the array back to, so container returns it as it stands and
+// the caller reports the assignment as unsupported.
 func (rt *Runtime) container(base model.Expr, scope *Scope) (any, error) {
 	value, err := rt.Eval(base, scope)
 	if err != nil {
@@ -1392,7 +1392,7 @@ func (rt *Runtime) container(base model.Expr, scope *Scope) (any, error) {
 	return created, nil
 }
 
-// assignable reports whether e names storage that can be written back to.
+// assignable reports whether e names storage a write can reach.
 func assignable(e model.Expr) bool {
 	switch model.UnwrapParenthesized(e).(type) {
 	case *model.Var, *model.Index, *model.PropAccess, *model.StaticProp:
@@ -1502,7 +1502,7 @@ func (rt *Runtime) readLValue(target model.Expr, scope *Scope) (any, error) {
 }
 
 // assignTo writes an already-evaluated value into an lvalue (used by list()
-// destructuring). Only plain `=` semantics are needed here.
+// destructuring). Only plain `=` semantics apply here.
 func (rt *Runtime) assignTo(target model.Expr, val any, scope *Scope) error {
 	switch tgt := model.UnwrapParenthesized(target).(type) {
 	case *model.Var:
@@ -1602,8 +1602,8 @@ func unsetGoIndex(base, key any) (replacement any, changed bool) {
 			return nil, false
 		}
 		// PHP keeps the keys around the hole and phpscript renumbers, as
-		// array_values() does, because a slice is dense. It is the divergence
-		// docs/README.md records.
+		// array_values() does, because a slice is dense. docs/README.md records
+		// the divergence.
 		shorter := reflect.MakeSlice(rv.Type(), 0, rv.Len()-1)
 		shorter = reflect.AppendSlice(shorter, rv.Slice(0, int(index)))
 		shorter = reflect.AppendSlice(shorter, rv.Slice(int(index)+1, rv.Len()))
@@ -1727,8 +1727,8 @@ func (rt *Runtime) invokeFunc(decl *model.FuncDecl, args []any) (any, error) {
 }
 
 // invokeMethod runs a method with $this bound to obj. The invocation span uses
-// the caller scope; the fresh scope below identifies where the method body is
-// defined and is used for spans created from within that body.
+// the caller scope; the fresh scope below records where the method body lives,
+// and spans starting inside that body read it from there.
 func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []any, caller *Scope) (any, error) {
 	scope := rt.acquireScope()
 	defer rt.releaseScope(scope)
@@ -1742,7 +1742,7 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 	if obj.Class != nil {
 		scope.Set("__class__", rt.boxed(obj.Class.Name))
 	}
-	// The span name costs two string builds, so it is only assembled when an
+	// The span name costs two string builds, so they happen only when an
 	// observer is listening.
 	if len(rt.observers) > 0 {
 		name := obj.ID
@@ -1768,8 +1768,9 @@ func (rt *Runtime) invokeMethod(obj *model.Object, decl *model.FuncDecl, args []
 // closureEnv is everything a closure carries away from its defining scope:
 // the lexical magic constants, the `use (...)` captures, and the bound
 // `$this` (nil for a `static function`, or for one written outside a method).
-// It is built once where the closure value is created, not on each call, which
-// is what makes the capture a snapshot the way PHP's by-value `use` is.
+// captureClosureEnv fills it once where newClosure builds the closure value,
+// not on each call, which makes the capture a snapshot the way PHP's by-value
+// `use` is.
 type closureEnv struct {
 	filename  any
 	directory any
@@ -1808,7 +1809,7 @@ func captureClosureEnv(cl *model.Closure, scope *Scope) closureEnv {
 
 // invokeClosure runs an anonymous function in a fresh scope seeded with its
 // captured environment and nothing else: the enclosing frame's other variables
-// are not reachable from the body. Parameters are bound after the captures, so a
+// are not reachable from the body. bindParams runs after the captures, so a
 // parameter of the same name wins; php rejects that overlap outright, as
 // "Cannot use lexical variable $x as a parameter name".
 func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) (any, error) {
@@ -1841,8 +1842,8 @@ func (rt *Runtime) invokeClosure(cl *model.Closure, args []any, env closureEnv) 
 }
 
 // runDeferred invokes callbacks registered since mark in last-in, first-out
-// order. Each callback is removed before invocation so it runs at most once,
-// including when it fails or registers another callback during the unwind.
+// order. It removes each one before the call, so a callback runs at most once,
+// including when it fails or registers another during the unwind.
 func (rt *Runtime) runDeferred(scope *Scope, mark int) error {
 	var errs []error
 	for len(scope.deferred) > mark {

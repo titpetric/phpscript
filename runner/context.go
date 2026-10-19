@@ -24,9 +24,9 @@ import (
 	"github.com/titpetric/phpscript/stdlib/shared"
 )
 
-// PHP's UPLOAD_ERR_* codes, as they appear in a $_FILES entry. Only the ones
-// this runtime can produce are named; 2, 3 and 8 come from a per-form limit and
-// from extensions that phpscript has no equivalent of.
+// PHP's UPLOAD_ERR_* codes, as they appear in a $_FILES entry. The list names
+// only the ones this runtime can produce; 2, 3 and 8 come from a per-form
+// limit and from extensions phpscript does not have.
 const (
 	UploadErrOK        = 0
 	UploadErrIniSize   = 1
@@ -51,13 +51,13 @@ type Context struct {
 	Headers map[string]string
 	Argv    []string
 
-	// ServerSource is what $_SERVER reads through when the names it holds can
-	// be answered without a map. A request answers most of them itself, so
-	// serving one fills Server with the few it cannot and leaves the rest to
-	// be derived on the first read that reaches them.
+	// ServerSource is what $_SERVER reads through when the source can derive a
+	// name without a map. A request answers most of them itself, so
+	// serving one fills Server with the few it cannot and leaves the rest for
+	// the first read that reaches them to derive.
 	//
 	// Nil reads Server alone, as a run with no request behind it
-	// has. A host setting keys on Server is answered either way: they are the
+	// has. Server still answers the keys a host sets either way: they are the
 	// source's extras, and an extra wins over a derived name.
 	ServerSource mapmap.Source
 
@@ -71,7 +71,7 @@ type Context struct {
 	// the second value.
 	//
 	// Nil for a Context built from no request; Register falls back
-	// to the flat map, so a host that fills c.Get itself is unaffected.
+	// to the flat map, so Register still reads a c.Get a host filled itself.
 	GetVars    *model.Array
 	PostVars   *model.Array
 	CookieVars *model.Array
@@ -81,25 +81,25 @@ type Context struct {
 	// form repeats it, which HTML spells as a "name[]" field.
 	Files map[string][]*UploadedFile
 
-	// response collects headers set by the PHP header() function. It is an
-	// http.Header (a map, hence reference-shared across copies of Context) so a
-	// host handler can flush it onto the response after execution.
+	// response collects headers set by the PHP header() function. The field is
+	// an http.Header (a map, hence reference-shared across copies of Context) so
+	// a host handler can flush it onto the response after execution.
 	response http.Header
 	status   *int
 	// errors holds what went wrong with the request itself, before any script
-	// ran: a body refused for its size. It is a pointer for the same reason
-	// status is, so a copy of a Context reports what another copy recorded.
+	// ran: a body refused for its size. A pointer for the same reason status
+	// is, so a copy of a Context reports what another copy recorded.
 	errors *[]error
 
-	// rawBody holds the request body bytes php://input answers with. It is a
-	// pointer for the same reason status is, so a copy of a Context reads
+	// rawBody holds the request body bytes php://input answers with. A pointer
+	// for the same reason status is, so a copy of a Context reads
 	// what another copy buffered.
 	rawBody *[]byte
 
-	// decode holds the request and what has been decoded out of it so far. A
+	// decode holds the request and what decoding has pulled out of it so far. A
 	// Context built by a host has none: there is nothing to decode, and the
-	// fields above are what it holds. It is a pointer for the same reason
-	// status is, so decoding through one copy is seen by every other.
+	// fields above are what it holds. A pointer for the same reason status is,
+	// so a decode through one copy shows in every other.
 	decode *decoder
 }
 
@@ -152,10 +152,10 @@ func NewContext() Context {
 	return c
 }
 
-// newContext allocates what every Context has. The maps a request is decoded
-// into are not among them: each is allocated by the decode that fills it, so a
-// page reading no query allocates no query map. NewContext adds them because a
-// host writes into the fields directly.
+// newContext allocates what every Context has. The maps a request decodes into
+// are not among them: the decode that fills each one allocates it, so a page
+// reading no query allocates no query map. NewContext adds them because a host
+// writes into the fields directly.
 func newContext() Context {
 	status := 0
 	var errs []error
@@ -176,12 +176,12 @@ func newContext() Context {
 type routePatternKey struct{}
 
 // WithRoutePattern records the @route path a request matched, before any
-// router-specific rewriting. The path values $_REQUEST carries are built
-// from it.
+// router-specific rewriting. pathValues builds the path values $_REQUEST
+// carries from it.
 //
-// Without it the pattern has to be recovered from r.Pattern, which is the
-// router's own dialect: chi reports /c/* for a route declared /c/{tail...},
-// and the name the value is exported under is not in there.
+// Without it, routePattern falls back to r.Pattern, which is the router's own
+// dialect: chi reports /c/* for a route declared /c/{tail...}, and the name
+// the value carries is not in there.
 func WithRoutePattern(ctx context.Context, pattern string) context.Context {
 	return context.WithValue(ctx, routePatternKey{}, pattern)
 }
@@ -209,23 +209,24 @@ func FromRequest(r *http.Request) Context {
 // FromRequestOptions builds a Context from an HTTP request. Path values come
 // out of the matched ServeMux pattern via r.PathValue.
 //
-// Query, form and cookie fields are recorded twice: flat for a Go host, and
-// decoded for the superglobals. Both keep the last value when a name repeats,
-// as PHP's parser does.
+// A decode records query, form and cookie fields twice: flat for a Go host,
+// and decoded for the superglobals. Both keep the last value when a name
+// repeats, as PHP's parser does.
 //
 // upload_max_filesize and post_max_size limit what the body may carry;
-// max_input_vars and max_input_nesting_level bound what is built from it.
+// max_input_vars and max_input_nesting_level bound what the decode builds
+// from it.
 func FromRequestOptions(r *http.Request, opts Options) Context {
 	c := newContext()
 	c.decode = &decoder{request: r, options: opts}
 
-	// The query, the body and the cookie header are not read here. Each is
-	// decoded by the first read that needs it, so a page that names no
-	// superglobal parses nothing; see decoder.
+	// The query, the body and the cookie header are not read here. The first
+	// read that needs one decodes it, so a page that names no superglobal
+	// parses nothing; see decoder.
 	//
-	// A body over post_max_size is refused here and not later, because PHP
-	// says so in its log whether or not the script goes on to read $_POST, and
-	// the announced length is there to be compared without reading anything.
+	// This check refuses a body over post_max_size here and not later, because
+	// PHP says so in its log whether the script reads $_POST or not, and
+	// comparing the announced length costs no read.
 	if opts.PostMaxSize.Exceeds(r.ContentLength) {
 		c.recordError(fmt.Errorf("POST Content-Length of %d bytes exceeds the post_max_size limit of %d bytes",
 			r.ContentLength, opts.PostMaxSize.Bytes()))
@@ -233,7 +234,7 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	}
 
 	// Server variables ($_SERVER). The request is the source and Server holds
-	// the extras, so the two are read together and neither is copied.
+	// the extras, so a read goes to both and copies neither.
 	c.serverVars(r)
 	c.ServerSource = &mapmap.RequestSource{Request: r, Extra: mapmap.MapSource(c.Server)}
 
@@ -241,8 +242,8 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 	c.pathValues(r)
 
 	// The headers are not copied into a map here either. HeaderMap builds one
-	// on the first read, and the HTTP_ spelling of each is derived from the
-	// request by mapmap.RequestSource.
+	// on the first read, and mapmap.RequestSource derives the HTTP_ spelling
+	// of each from the request.
 
 	return c
 }
@@ -251,8 +252,8 @@ func FromRequestOptions(r *http.Request, opts Options) Context {
 // decoding the request on the first call.
 //
 // The fields behind them are what a host sets; these are what anything reading
-// a request built from an *http.Request resolves through, because until one of them
-// is called there is nothing in the field to read.
+// a request built from an *http.Request resolves through, because the field
+// holds nothing until one of them runs.
 
 // GetMap answers the query string, one value per name.
 func (c Context) GetMap() map[string]string {
@@ -320,8 +321,8 @@ func (c Context) filesInto() map[string][]*UploadedFile {
 	return c.decode.files
 }
 
-// files answers what has been decoded so far, forcing nothing. Cleanup and the
-// memory accounting read it: neither should parse a body to do its job.
+// files answers what decoding has filled in so far, forcing nothing. Cleanup
+// and the memory accounting read it: neither should parse a body to do its job.
 func (c Context) files() map[string][]*UploadedFile {
 	if c.Files != nil || c.decode == nil {
 		return c.Files
@@ -348,8 +349,8 @@ func (c Context) HeaderMap() map[string]string {
 }
 
 // getVars, postVars and cookieVars answer the decoded form of each input,
-// decoding it on the first call. A host that set the exported field is answered
-// with that, and nothing is decoded.
+// decoding it on the first call. A host that set the exported field reads that
+// back, and nothing decodes.
 func (c Context) getVars() *model.Array {
 	if c.GetVars != nil {
 		return c.GetVars
@@ -404,8 +405,9 @@ func (c Context) decodeQuery() {
 	})
 }
 
-// decodeCookies fills $_COOKIE on the first call. r.Cookies() is ordered, and
-// Go does not percent-decode a cookie the way PHP does, so that happens here.
+// decodeCookies fills $_COOKIE on the first call. r.Cookies() keeps the order
+// sent, and Go does not percent-decode a cookie the way PHP does, so that
+// happens here.
 func (c Context) decodeCookies() {
 	if c.decode == nil {
 		return
@@ -427,8 +429,8 @@ func (c Context) decodeCookies() {
 
 // decodeForm fills $_POST, $_FILES and php://input on the first call.
 //
-// A body is read once and cannot be read again, so every path needing any
-// part of it comes through here.
+// Nothing can read a body twice, so every path needing any part of it comes
+// through here.
 func (c Context) decodeForm() {
 	if c.decode == nil {
 		return
@@ -442,16 +444,17 @@ func (c Context) decodeForm() {
 // which $_REQUEST merges over the request fields.
 //
 // The names come from the declared path and not the matched one, so a
-// parameter reads back under its declared name whichever router serves it. Both routers publish the values through r.PathValue: ServeMux
-// natively, chi by calling SetPathValue for every URL param it captured.
+// parameter reads back under its declared name whichever router serves it.
+// Both routers publish the values through r.PathValue: ServeMux natively, chi
+// by calling SetPathValue for every URL param it captured.
 //
-// A {name...} parameter is the exception. chi has no such syntax and is
-// registered with its * wildcard instead, which it publishes under "*".
+// A {name...} parameter is the exception. chi has no such syntax, so
+// RenderRoutePath spells it as chi's * wildcard, which chi publishes under "*".
 func (c Context) pathValues(r *http.Request) {
 	params, err := model.ParseRoutePath(routePattern(r))
 	if err != nil {
-		// A path the grammar refuses is reported by the linter and skipped at
-		// registration, so reaching here means a host registered it directly.
+		// The linter reports a path the grammar refuses and registration skips
+		// it, so reaching here means a host registered it directly.
 		return
 	}
 	for _, param := range params {
@@ -486,8 +489,8 @@ func (c Context) serverVars(r *http.Request) {
 	// PHP splits the peer address in two, the address in REMOTE_ADDR and the
 	// port in REMOTE_PORT, where Go keeps both in RemoteAddr as "address:port".
 	// An IPv6 address arrives bracketed and leaves without, as PHP writes it.
-	// A Go host is free to put anything in the field, so one that does not
-	// parse is passed through whole and leaves REMOTE_PORT unset.
+	// A Go host is free to put anything in the field, so a value that does not
+	// parse lands in REMOTE_ADDR whole and REMOTE_PORT stays unset.
 	if addr, port, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		c.Server["REMOTE_ADDR"] = addr
 		c.Server["REMOTE_PORT"] = port
@@ -497,9 +500,9 @@ func (c Context) serverVars(r *http.Request) {
 
 	// The scheme is the one this process is serving, r.TLS, and not the one
 	// X-Forwarded-Proto claims: that header is the client's to send, and a
-	// script deciding on it whether it is talking over TLS would be deciding on
+	// script deciding from it whether it talks over TLS would be deciding on
 	// what the client said. A host behind a proxy that terminates TLS is the
-	// one that knows the proxy is trusted, and sets the two keys itself.
+	// one that knows whether to trust the proxy, and sets the two keys itself.
 	// HTTPS is unset on a plain request, never "off", so an
 	// isset($_SERVER["HTTPS"]) test works in PHP.
 	c.Server["REQUEST_SCHEME"] = "http"
@@ -519,8 +522,9 @@ func (c Context) serverVars(r *http.Request) {
 	}
 
 	// REQUEST_TIME_FLOAT is when the request started, to the microsecond, and
-	// REQUEST_TIME the whole second of it. Both are read here and not per
-	// key so the two cannot disagree about which second the request began in.
+	// REQUEST_TIME the whole second of it. One clock read fills both, here and
+	// not per key, so the two cannot disagree about which second the request
+	// began in.
 	start := time.Now()
 	c.Server["REQUEST_TIME"] = strconv.FormatInt(start.Unix(), 10)
 	c.Server["REQUEST_TIME_FLOAT"] = strconv.FormatFloat(float64(start.UnixMicro())/1e6, 'f', 6, 64)
@@ -553,7 +557,7 @@ func isMultipart(r *http.Request) bool {
 
 // isURLEncoded reports whether the body is a urlencoded form. Only the two
 // form types populate $_POST: a JSON or XML body is php://input and nothing
-// else, as it is in PHP.
+// else, as in PHP.
 func isURLEncoded(r *http.Request) bool {
 	return mediaType(r) == "application/x-www-form-urlencoded"
 }
@@ -578,8 +582,8 @@ func (c *Context) parseBody(r *http.Request, opts Options) {
 	// php://input answers with, for any method and any content type, which is
 	// how a JSON API or a webhook receiver reads its payload. A multipart
 	// body is not buffered: PHP documents php://input as
-	// unavailable there, and it is the one body shape that carries whole
-	// files.
+	// unavailable there, and multipart is the one body shape that carries
+	// whole files.
 	if !isMultipart(r) && r.Body != nil {
 		buf, readErr := io.ReadAll(r.Body)
 		var tooLarge *http.MaxBytesError
@@ -605,8 +609,8 @@ func (c *Context) parseBody(r *http.Request, opts Options) {
 	}
 
 	// A body that did not announce its length is only found to be too large
-	// once it has been read past the cap. Everything decoded before that point
-	// is dropped, so this ends the same way an announced one does.
+	// once the read passes the cap. This drops everything decoded before that
+	// point, so it ends the same way an announced one does.
 	var tooLarge *http.MaxBytesError
 	if errors.As(err, &tooLarge) {
 		c.recordError(fmt.Errorf("POST body exceeds the post_max_size limit of %d bytes", tooLarge.Limit))
@@ -633,10 +637,10 @@ func (c *Context) parseBody(r *http.Request, opts Options) {
 // php://input, so a repeated `a[]` is two fields and not one map entry.
 //
 // A multipart body has no such string: net/http has parsed it into a map, so
-// order between two field names is gone and the names are sorted to make what
-// remains deterministic. Nesting is unaffected. What this cannot reproduce is
-// a form interleaving two top-level names and expecting the later to win,
-// which no browser produces.
+// order between two field names has gone and decodeBody sorts the names to
+// make what remains deterministic. Nesting survives. What this cannot
+// reproduce is a form interleaving two top-level names and expecting the later
+// to win, which no browser produces.
 func (c Context) decodeBody(r *http.Request, opts Options) *model.Array {
 	limits := opts.inputLimits()
 	if isURLEncoded(r) {
@@ -659,8 +663,8 @@ func (c Context) decodeBody(r *http.Request, opts Options) *model.Array {
 	return shared.ParsePairs(limits, pairs)
 }
 
-// capBody limits how much of a body of unannounced length is read, so a
-// chunked request cannot get past post_max_size by not saying how large it is.
+// capBody limits how much of a body of unannounced length a parser can read,
+// so a chunked request cannot get past post_max_size by withholding its length.
 func capBody(r *http.Request, limit Size) {
 	if limit <= 0 || r.Body == nil || r.ContentLength >= 0 {
 		return
@@ -688,14 +692,14 @@ func (c Context) collectUploads(r *http.Request, maxFileSize Size) {
 		}
 	}
 	// net/http spills the parts it could not hold in memory into temporary
-	// files of its own. Every one of them has been copied by now, so the
+	// files of its own. saveUpload has copied every one of them by now, so the
 	// originals go before the handler has a chance to forget about them.
 	_ = r.MultipartForm.RemoveAll()
 }
 
-// saveUpload writes one file part to its own temporary file. A failure is
-// reported the way PHP reports it, as an error code on the entry, because a
-// script reads $_FILES[...]["error"] and catches nothing.
+// saveUpload writes one file part to its own temporary file. It reports a
+// failure the way PHP does, as an error code on the entry, because a script
+// reads $_FILES[...]["error"] and catches nothing.
 func saveUpload(header *multipart.FileHeader, maxFileSize Size) *UploadedFile {
 	upload := &UploadedFile{
 		Name:     uploadBaseName(header.Filename),
@@ -738,8 +742,8 @@ func saveUpload(header *multipart.FileHeader, maxFileSize Size) *UploadedFile {
 }
 
 // uploadBaseName strips the directory part a client may have sent along with
-// the file name. The separator is the client's, not this host's, so both are
-// cut; PHP keeps the base name only.
+// the file name. The separator is the client's, not this host's, so it cuts on
+// both; PHP keeps the base name only.
 func uploadBaseName(name string) string {
 	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
 		name = name[i+1:]
@@ -749,7 +753,7 @@ func uploadBaseName(name string) string {
 
 // Cleanup removes the temporary files created for the uploaded parts of a
 // request. A host handler defers it for the lifetime of one request; a file the
-// script moved with move_uploaded_file is already gone and is skipped.
+// script moved with move_uploaded_file is already gone and Cleanup skips it.
 func (c Context) Cleanup() {
 	for _, files := range c.files() {
 		for _, file := range files {
@@ -804,8 +808,8 @@ func (c Context) Errors() []error {
 // separate copies the walk counts on its own.
 func (c Context) memoryFootprint(visited visitedSet) int64 {
 	total := int64(unsafe.Sizeof(c))
-	// What has been decoded, not what could be: forcing a parse to measure
-	// one would be the accounting deciding to do the work it is measuring.
+	// What decoding has filled in, not what it could: forcing a parse to
+	// measure one would be the accounting doing the work it measures.
 	for _, m := range c.decodedMaps() {
 		total += DeepSize(m, visited)
 	}
@@ -833,9 +837,9 @@ func (c Context) decodedMaps() []map[string]string {
 // runtime context. After this, PHP reads $_GET, $_POST and
 // $_REQUEST from this Context, and the request-aware functions find it.
 //
-// The functions themselves - getallheaders(), header(), http_response_code(),
-// setcookie() - are registered by stdlib/http, which reaches this Context
-// through RequestContext at call time. They are registered before this runs,
+// stdlib/http registers the functions themselves - getallheaders(), header(),
+// http_response_code(), setcookie() - and reaches this Context through
+// RequestContext at call time. That registration runs before this does,
 // because a host installs the standard library first and seeds the request
 // second; the indirection is what makes that order work either way.
 func (c Context) Register(rt *Runtime) {
@@ -854,7 +858,7 @@ func (c Context) Register(rt *Runtime) {
 	//
 	// The layers of the request this one replaces go back to the pool. A
 	// runtime serves one request at a time, so the moment the next registers
-	// is the moment the last one is done with them.
+	// is the moment the last one lets go of them.
 	releaseMapMaps(rt, superglobalNames...)
 	for _, name := range superglobalNames {
 		rt.auto.Set(name, nil)
@@ -910,8 +914,8 @@ func (c Context) Header(header string, opts ...any) {
 	if strings.EqualFold(name, "Location") && c.ResponseStatus() == 0 {
 		*c.status = http.StatusFound
 	}
-	// $code is an int parameter, so PHP coerces what it is given, and zero is
-	// the value that means the call named no status.
+	// $code is an int parameter, so PHP coerces whatever the call passes, and
+	// zero is the value that means the call named no status.
 	if len(opts) > 1 {
 		if code := toInt(opts[1]); code != 0 {
 			*c.status = int(code)
@@ -923,7 +927,7 @@ func (c Context) Header(header string, opts ...any) {
 // spelling header() takes in place of a name and a value.
 //
 // Neither the protocol nor the reason phrase reaches the response. Go writes
-// the protocol it is actually serving and the reason phrase that belongs to the
+// the protocol it actually serves and the reason phrase that belongs to the
 // code, so all the line can contribute is the number in the middle.
 func parseStatusLine(header string) (int, bool) {
 	if !strings.HasPrefix(header, "HTTP/") {
@@ -942,10 +946,10 @@ func parseStatusLine(header string) (int, bool) {
 
 // HTTPResponseCode implements PHP http_response_code([$response_code]).
 //
-// With no argument it reports the status this response will be sent with, and
-// with one it stages that status and reports the one it replaced.
+// With no argument it reports the status this response will carry, and with
+// one it stages that status and reports the one it replaced.
 //
-// PHP answers false while no status has been chosen, and true for the first one
+// PHP answers false while nothing has set a status, and true for the first one
 // set, having no previous number to return. On
 // a web SAPI neither happens: a request starts out answering 200. sapi is the
 // SAPI name the runtime runs under, and only the command line, or a host that
@@ -956,9 +960,9 @@ func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
 		previous = http.StatusOK
 	}
 
-	// The parameter is an int, so PHP coerces what it is given, and $_SERVER
-	// holds every value as a string: a page passing REDIRECT_STATUS straight
-	// back is passing "404" and means 404.
+	// The parameter is an int, so PHP coerces whatever the call passes, and
+	// $_SERVER holds every value as a string: a page passing REDIRECT_STATUS
+	// straight back is passing "404" and means 404.
 	code := 0
 	if len(opts) > 0 {
 		code = int(toInt(opts[0]))
@@ -1003,21 +1007,21 @@ func (c Context) SetRawBody(body []byte) {
 }
 
 // RequestContext returns the request data registered on a runtime context.
-// It is intended for request-aware Go bindings such as session management.
+// Request-aware Go bindings such as session management read through it.
 func RequestContext(ctx context.Context) (Context, bool) {
 	c, ok := ctx.Value(requestContextKey{}).(Context)
 	return c, ok
 }
 
 // AddResponseHeader appends a response header without replacing existing
-// values. It is useful for headers such as Set-Cookie that may occur more than
-// once in a response.
+// values, for headers such as Set-Cookie that may occur more than once in a
+// response.
 func (c Context) AddResponseHeader(name, value string) {
 	c.response.Add(name, value)
 }
 
 // ResponseStatus returns the status staged by header(), or zero when the host
-// should retain its default status. A Location header defaults to 302 like PHP.
+// should keep its default status. A Location header defaults to 302 like PHP.
 func (c Context) ResponseStatus() int {
 	if c.status == nil {
 		return 0
@@ -1147,7 +1151,7 @@ func (c Context) autoGlobal(name string) any {
 	return nil
 }
 
-// lazyArray renders a superglobal that is assembled and never decoded, as
+// lazyArray renders a superglobal that build assembles and nothing decodes, as
 // $_REQUEST is from the four inputs it merges and $_FILES from the body.
 func (c Context) lazyArray(build func() *model.Array) *mapmap.MapMap {
 	if c.decode == nil {
@@ -1171,8 +1175,8 @@ func (c Context) lazyInput(decoded func() *model.Array, flat func() map[string]s
 	}))
 }
 
-// arraySource reads a *model.Array as a mapmap source, so a decoded input is
-// read where it lies, with no copy into a second shape.
+// arraySource reads a *model.Array as a mapmap source, so a read reaches a
+// decoded input where it lies, with no copy into a second shape.
 type arraySource struct{ array *model.Array }
 
 // Get answers the entry under key.
@@ -1206,10 +1210,10 @@ func (s arraySource) Range(fn func(key string, value any) bool) bool {
 
 // ServerMap renders $_SERVER as a view over the request, with no array built.
 //
-// The names are read through the source, which is the request where there is
-// one, so nothing is copied for a script that reads a key or two and nothing at
-// all for one that reads none. The two times are seeded because PHP answers
-// them as numbers and every other name as a string.
+// A read goes to the source, which is the request where there is one, so a
+// script that reads a key or two copies nothing and one that reads none costs
+// nothing at all. ServerMap seeds the two times because PHP answers them as
+// numbers and every other name as a string.
 func (c Context) ServerMap() *mapmap.MapMap {
 	src := c.ServerSource
 	if src == nil {
@@ -1247,8 +1251,8 @@ func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 // must not reach $_GET, $_POST or $_COOKIE, nor theirs reach it.
 func (c Context) requestArrayInto(arr *model.Array) *model.Array {
 	// Through the accessors, because $_REQUEST is the four merged and reading
-	// it is a read of each: the fields hold nothing until the request is
-	// decoded into them.
+	// it means a read of each: the fields hold nothing until a decode fills
+	// them.
 	for _, source := range []*model.Array{
 		superglobal(c.getVars(), c.GetMap()),
 		superglobal(c.postVars(), c.PostMap()),

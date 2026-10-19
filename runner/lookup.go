@@ -11,7 +11,7 @@ import (
 )
 
 // Lookup resolves symName to a PHP function and returns it as T, a Go function
-// type. It is plugin.Lookup over a source tree.
+// type: plugin.Lookup over a source tree.
 //
 // T returns at most one value and an optional trailing error, checked here and
 // not at the call. A name matching nothing, or more than one
@@ -34,8 +34,8 @@ type LookupError struct {
 	// Symbol is the name the host passed, as it spelled it.
 	Symbol string
 
-	// Candidates holds what the name matched when it matched too much. It is
-	// empty for every other reason, which separates "there is no such
+	// Candidates holds what the name matched when it matched too much. Every
+	// other reason leaves it empty, which separates "there is no such
 	// function" from "say which one".
 	Candidates []string
 
@@ -44,7 +44,7 @@ type LookupError struct {
 }
 
 // Error names the symbol and the reason, and lists what the name matched when
-// it matched too much, so a host is told which spelling to use.
+// it matched too much, so a host reads which spelling to use.
 func (e *LookupError) Error() string {
 	if len(e.Candidates) == 0 {
 		return fmt.Sprintf("lookup %s: %s", e.Symbol, e.Reason)
@@ -88,9 +88,9 @@ type symbolSource struct {
 }
 
 // resolveSymbol turns the name a host passed into the name the function
-// table holds, installing the declaration if it is only in the tree so far.
+// table holds, installing the declaration when only the tree holds it so far.
 //
-// The three passes are ordered and never merged, so a tree holding both
+// The three passes keep their order and never merge, so a tree holding both
 // `main` and `App\Handler\main` answers the first for "main" and needs no
 // disambiguation. Only the last one scans anything: it covers a function
 // declared by a program the source root does not hold, which is a runtime the
@@ -135,8 +135,8 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 	}
 	if len(sources) > 1 {
 		// One qualified name declared by two files. Hoisting either would raise
-		// PHP's redeclaration error the moment the other arrives, so the
-		// host is told which files disagree instead.
+		// PHP's redeclaration error the moment the other arrives, so the error
+		// names which files disagree instead.
 		paths := make([]string, 0, len(sources))
 		for _, source := range sources {
 			paths = append(paths, source.path)
@@ -149,24 +149,24 @@ func (rt *Runtime) resolveSymbol(symName string) (string, error) {
 	}
 	// The file counts as included from here. Its declarations are live, so an
 	// application that require_once's it must not declare them a second time;
-	// without this the tree a handler binds out of could not be loaded by
-	// the application that owns it.
+	// without this the application that owns it could not load the tree a
+	// handler binds out of.
 	//
 	// What it costs is the file's top-level code, which a later require_once
 	// now skips. A file that declares handlers and also does work at include
-	// time has to be required before the lookup and never after.
+	// time takes its require before the lookup and never after.
 	rt.markIncluded(sources[0].path)
 	return found, nil
 }
 
 // symbolTable is the tree's free functions, indexed for the two ways a host
-// spells one. Both name maps are keyed by the folded name, because PHP compares
-// a function name case-insensitively, and both answer with names as declared.
+// spells one. Both name maps key on the folded name, because PHP compares a
+// function name case-insensitively, and both answer with names as declared.
 type symbolTable struct {
-	// sources says which file a declared name reads from. A name can be held by
-	// more than one file: the tree is the whole source root and not one
-	// program, so nothing has refused the second declaration yet, and reporting
-	// both is more use than picking one.
+	// sources says which file a declared name reads from. More than one file
+	// can hold a name: the tree is the whole source root and not one program,
+	// so nothing has refused the second declaration yet, and reporting both is
+	// more use than picking one.
 	sources map[string][]symbolSource
 
 	// exact answers a name spelled in full.
@@ -181,12 +181,12 @@ type symbolTable struct {
 
 // symbolIndex indexes the free functions the loaded tree declares.
 //
-// The table is kept until the cache behind it is written to again. It
-// is a walk of every statement of every program in the tree, so rebuilding it
-// per lookup made binding a handler cost the size of the application: 546us
-// and 470KB over eight hundred files, paid again for the next handler. A host
-// serving concurrently binds per runtime and therefore per goroutine, which is
-// often per request, so that is not a startup cost it could have absorbed.
+// The table lives until the next write to the cache behind it. Building it
+// walks every statement of every program in the tree, so rebuilding it per
+// lookup made binding a handler cost the size of the application: 546us and
+// 470KB over eight hundred files, paid again for the next handler. A host
+// serving concurrently binds per runtime and so per goroutine, which is often
+// per request, so that is not a startup cost it could have absorbed.
 func (rt *Runtime) symbolIndex() *symbolTable {
 	rt.scanTree()
 	if rt.symbols != nil && !rt.includeCache.changedSince(rt.symbolsVersion) {
@@ -207,8 +207,8 @@ func (rt *Runtime) symbolIndex() *symbolTable {
 			if !ok || decl.Class != "" {
 				continue
 			}
-			// The name maps are filled the first time a spelling is seen, so a
-			// name two files declare is one entry in each and two sources.
+			// table.index fills the name maps the first time a spelling arrives,
+			// so a name two files declare is one entry in each and two sources.
 			if _, seen := table.sources[decl.Name]; !seen {
 				table.index(decl.Name)
 			}
@@ -235,12 +235,12 @@ func (t *symbolTable) index(name string) {
 	}
 }
 
-// declaredUserFunc answers the spelling a PHP function is declared under on
-// this runtime, for a name given in full.
+// declaredUserFunc answers the spelling this runtime declares a PHP function
+// under, for a name given in full.
 //
-// The fold scan behind it is the one lookupEntry performs for every call PHP
-// makes under a spelling the table does not hold, and it is reached only when
-// the tree has no function of that name.
+// The fold scan behind it repeats the scan lookupEntry performs for every call
+// PHP makes under a spelling the table does not hold, and resolveSymbol
+// reaches it only when the tree has no function of that name.
 func (rt *Runtime) declaredUserFunc(name string) (string, bool) {
 	if _, ok := rt.userFns[name]; ok {
 		return name, true
@@ -256,8 +256,9 @@ func (rt *Runtime) declaredUserFunc(name string) (string, bool) {
 // scanTree parses the source root into the include cache the first time a
 // lookup needs it, so a host that has loaded nothing still resolves a symbol.
 //
-// A cache with anything in it is left alone: the host either precompiled or
-// served requests off it, and both fill it with the same programs this would.
+// scanTree leaves a cache with anything in it alone: the host either
+// precompiled or served requests off it, and both fill it with the same
+// programs this would.
 func (rt *Runtime) scanTree() {
 	if rt.lookupScanned {
 		return
@@ -272,7 +273,7 @@ func (rt *Runtime) scanTree() {
 // matchSymbols returns the declared names symName selects: the ones spelling it
 // in full, and failing that the ones ending in it after a namespace separator.
 //
-// The two passes are ordered and never merged, so a tree holding both
+// The two passes keep their order and never merge, so a tree holding both
 // `main` and `App\Handler\main` answers the first for "main" and needs no
 // disambiguation. Both compare case-insensitively, so PHP compares a
 // function name.
@@ -327,9 +328,9 @@ func signatureResults(typ reflect.Type) (resultShape, error) {
 	}
 }
 
-// lookupArgs renders the call's arguments as the values a PHP scope holds. A
-// variadic tail is spread, because PHP counts the arguments a call passes and a
-// slice in the last slot is one of them.
+// lookupArgs renders the call's arguments as the values a PHP scope holds. It
+// spreads a variadic tail, because PHP counts the arguments a call passes and
+// a slice in the last slot is one of them.
 func lookupArgs(typ reflect.Type, in []reflect.Value) []any {
 	fixed := len(in)
 	total := fixed
@@ -352,14 +353,14 @@ func lookupArgs(typ reflect.Type, in []reflect.Value) []any {
 }
 
 // phpArg widens one argument to the value set the interpreter operates on.
-// bindParams stores what it is handed verbatim, so this is the only place a Go
+// bindParams stores what it receives verbatim, so this is the only place a Go
 // int becomes the int64 PHP arithmetic reads as a number.
 //
-// Only the predeclared numeric types are widened. A named scalar keeps its
-// name: toInt and phpString already read time.Month and time.Duration as the
-// numbers they are, and a binding taking one back needs the type intact. Every
-// other value is passed through, so an *http.Request is the script's own
-// HTTP\Request and never a copy of one.
+// It widens the predeclared numeric types and nothing else. A named scalar
+// keeps its name: toInt and phpString already read time.Month and
+// time.Duration as the numbers they are, and a binding taking one back needs
+// the type intact. Every other value passes through, so an *http.Request is
+// the script's own HTTP\Request and never a copy of one.
 func phpArg(v reflect.Value) any {
 	if !v.IsValid() {
 		return nil
@@ -459,7 +460,7 @@ func convertResult(want reflect.Type, value any) (reflect.Value, error) {
 
 // convertSlice walks a PHP array into a typed slice, keys discarded. A binding
 // returning the cheap shape for its data (a []string, a []map[string]any) is
-// assignable and is handed over as it is.
+// assignable, and convertSlice returns it unchanged.
 func convertSlice(want reflect.Type, value any) (reflect.Value, error) {
 	if rv := reflect.ValueOf(value); rv.IsValid() && rv.Type().AssignableTo(want) {
 		return rv, nil
@@ -484,7 +485,7 @@ func convertSlice(want reflect.Type, value any) (reflect.Value, error) {
 	return out, nil
 }
 
-// convertMap walks a PHP array into a typed map. The key is rendered the way
+// convertMap walks a PHP array into a typed map. It renders the key the way
 // PHP renders an array key in the target's kind, so a string-keyed map reads
 // the names and an integer-keyed one reads the offsets.
 func convertMap(want reflect.Type, value any) (reflect.Value, error) {

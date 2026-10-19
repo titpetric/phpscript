@@ -132,7 +132,7 @@ func reflectInvoker(ft reflect.Type, fn any) func(*Runtime, []any) (any, error) 
 	}
 }
 
-// fastInvoker is invokeFast's type switch run once: each covered signature
+// fastInvoker runs the fast-path type switch once: each covered signature
 // returns a closure calling the binding directly, coercing exactly as the
 // reflect path coerces (string parameters through phpString, absent
 // arguments as zero values, variadic tails aliased under the borrowed-
