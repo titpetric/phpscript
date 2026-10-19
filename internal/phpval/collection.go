@@ -19,8 +19,8 @@ func Strings(a any) ([]string, error) {
 	}
 	// One captured struct and no two captured variables: each variable a
 	// closure captures by reference is its own heap allocation, and this runs
-	// under implode. The refused value is carried as its concrete type so the
-	// happy path stores nothing.
+	// under implode. The field holds the refused value as its concrete type,
+	// so the happy path stores nothing.
 	state := struct {
 		out     []string
 		refused *model.Object
@@ -39,7 +39,7 @@ func Strings(a any) ([]string, error) {
 	return state.out, nil
 }
 
-// Values returns a collection's values in order. A []any is returned as is:
+// Values returns a collection's values in order, and a []any as it stands:
 // callers only read it, and the shims that do not (array_splice) copy first.
 func Values(a any) []any {
 	if vals, ok := a.([]any); ok {

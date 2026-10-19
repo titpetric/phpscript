@@ -32,8 +32,8 @@ type Options struct {
 // the application's own classes and functions in the name registry, so the same
 // flag that makes a request find them makes the checks know them.
 // The configuration is what every command constructor takes, so one
-// signature covers all of them. This command reads it through globals,
-// which main fills from the configuration before any command is built.
+// signature covers them all. This command reads it through globals, which
+// main fills from the configuration before it builds any command.
 func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 	var opts Options
 
@@ -70,8 +70,8 @@ const (
 )
 
 func run(opts Options, args []string, out io.Writer) error {
-	// Before the first file is checked: the name registry is built once per
-	// process, and this is what puts the application's own names in it.
+	// Before collect reads the first file: phplint builds the name registry
+	// once per process, and this call puts the application's own names in it.
 	phplint.SetInclude(opts.Include)
 
 	results, err := collect(args, opts.Flatstack)
@@ -79,7 +79,7 @@ func run(opts Options, args []string, out io.Writer) error {
 		return err
 	}
 
-	// The report file is created before anything is printed, so an unwritable
+	// run creates the report file before it prints anything, so an unwritable
 	// path fails the command and leaves no half report behind.
 	var report *os.File
 	if opts.Output != "" {
@@ -92,7 +92,7 @@ func run(opts Options, args []string, out io.Writer) error {
 	}
 
 	// Stdout keeps the ansi tables on a terminal and falls back to markdown
-	// when it is redirected; the report file is always markdown.
+	// anywhere a redirect leads; the report file is always markdown.
 	sinks := []sink{{w: out, markdown: !table.IsTerminal(out)}}
 	if report != nil {
 		sinks = append(sinks, sink{w: report, markdown: true})
@@ -220,8 +220,8 @@ func collect(args []string, checkFlatstack bool) ([]result, error) {
 
 // newTable returns one folder's findings table. The folder names the file
 // column, so a table says which area it covers without spending a line on a
-// title. The line number is right aligned because it is a number; everything
-// else reads as a label.
+// title. The line number is right aligned as a number; everything else reads
+// as a label.
 func newTable(w io.Writer, markdown bool, dir string) *table.Table {
 	if dir == "" {
 		dir = "File"

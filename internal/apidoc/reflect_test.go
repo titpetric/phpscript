@@ -25,7 +25,7 @@ type reflectedCloser interface {
 // TestPHPTypeReflect covers the Go kind to PHP type map. A []byte is a string
 // because that is what a script holding binary data has; every other slice,
 // array and map is an array; a pointer reads through to what it points at; and
-// an empty interface is mixed where one with a method is an object.
+// an empty interface maps to mixed, one with a method to an object.
 func TestPHPTypeReflect(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -57,8 +57,7 @@ func TestPHPTypeReflect(t *testing.T) {
 		}
 	}
 
-	// An interface has no value to reflect from, so the two cases are named
-	// as types.
+	// An interface has no value to reflect from, so the two cases spell types.
 	if got := phpTypeReflect(reflect.TypeOf((*any)(nil)).Elem()); got != "mixed" {
 		t.Errorf("phpTypeReflect(any) = %q, want mixed", got)
 	}
@@ -69,8 +68,8 @@ func TestPHPTypeReflect(t *testing.T) {
 
 // TestIsRefSetterType covers the shape the runner passes for a by-reference
 // parameter: one empty-interface argument and no result. preg_match's
-// $matches arrives that way, so the signature is written with an ampersand and
-// no type.
+// $matches arrives that way, so the signature carries an ampersand and no
+// type.
 func TestIsRefSetterType(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -95,9 +94,9 @@ func TestIsRefSetterType(t *testing.T) {
 }
 
 // TestReflectParams covers the parameter list a binding documents when there
-// is no Go source to read names from. A context argument is the host's and is
-// dropped; the remaining names come from the PHP type, and a repeated name is
-// numbered so two ignored arguments do not both print as $value.
+// is no Go source to read names from. reflectParams drops a context argument,
+// takes the remaining names from the PHP type, and numbers a repeated name so
+// two ignored arguments do not both print as $value.
 func TestReflectParams(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -152,9 +151,9 @@ func TestReflectParams(t *testing.T) {
 }
 
 // TestReflectReturn covers the one PHP type a Go result list folds into. A
-// trailing error is thrown and never returned, so a function returning only an
-// error is void. Several non-error results are one array: the runtime packs
-// them into a list for the script to destructure.
+// trailing error reaches the script as a throw and never as a return, so a
+// function returning only an error is void. Two or more non-error results are
+// one array: the runtime packs them into a list for the script to destructure.
 func TestReflectReturn(t *testing.T) {
 	t.Parallel()
 	classTypes := map[reflect.Type]string{
@@ -198,7 +197,7 @@ func TestReflectReturn(t *testing.T) {
 
 // TestHasRegisteredReturn covers the test that decides whether a Go function's
 // result is a class a script can hold. A registered type is one; the error
-// beside it is not, and neither is a plain string.
+// beside it never counts, and neither does a plain string.
 func TestHasRegisteredReturn(t *testing.T) {
 	t.Parallel()
 	classTypes := map[reflect.Type]string{reflect.TypeOf(reflectedStruct{}): "Thing"}

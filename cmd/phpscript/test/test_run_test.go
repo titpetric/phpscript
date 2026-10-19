@@ -214,10 +214,10 @@ hello
 	}
 }
 
-// TestNewCommand covers the command main registers, and the flags a run is
-// configured through. Each is read off the set at Run, so a flag missing from
-// Bind is a documented option the command silently ignores, and the generated
-// cli reference is built from the same set.
+// TestNewCommand covers the command main registers, and the flags that
+// configure a run. Run reads each off the set, so a flag missing from Bind is
+// a documented option the command silently ignores, and the generated cli
+// reference comes off the same set.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := test.NewCommand(nil, &flags.Options{})
@@ -248,8 +248,8 @@ func TestNewCommand(t *testing.T) {
 		}
 	}
 
-	// The default scope of the parse caches is one per worker loop: a fixture
-	// is run several times under --count, and a cache per run would price the
+	// The default scope of the parse caches is one per worker loop: --count
+	// runs a fixture more than once, and a cache per run would price the
 	// parse into every one of them.
 	if flag := set.Lookup("cache"); flag != nil && flag.DefValue != test.CacheWorker {
 		t.Errorf("--cache defaults to %q, want %q", flag.DefValue, test.CacheWorker)

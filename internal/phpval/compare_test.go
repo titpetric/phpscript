@@ -34,7 +34,7 @@ func TestCompare(t *testing.T) {
 		{1, 1.0, 0},
 		{2.0, "2", 0},
 
-		// a numeric string is a number, as sort(explode(...)) needs
+		// a numeric string counts as a number, as sort(explode(...)) needs
 		{"10", "9", 1},
 		{"10", 9, 1},
 		{10, "9", 1},

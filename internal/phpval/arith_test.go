@@ -35,7 +35,7 @@ func TestOverflowAddInt(t *testing.T) {
 }
 
 // TestOverflowSubInt covers the borrow detection. Subtracting a negative is
-// the direction that overflows upward, so both signs of y are checked.
+// the direction that overflows upward, so the cases carry both signs of y.
 func TestOverflowSubInt(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {

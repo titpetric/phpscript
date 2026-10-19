@@ -18,7 +18,7 @@ import (
 //
 // The two answer different questions. A file count says what the suite has not
 // looked at; a statement count says how thoroughly it looked at the rest. A
-// folder scoring 8% of files and 90% of lines is tested in one corner, and
+// folder scoring 8% of files and 90% of lines has tests in one corner, and
 // neither number alone would say so.
 type folderCover struct {
 	Dir          string
@@ -30,8 +30,8 @@ type folderCover struct {
 	Files []coverage.Row
 }
 
-// files renders the file column: "4/50 (8%)". The header says what is counted,
-// so the cell carries the counts and nothing else.
+// files renders the file column: "4/50 (8%)". The header says what the column
+// counts, so the cell carries the counts and nothing else.
 func (f folderCover) files() string {
 	if f.FilesTotal == 0 {
 		return noCoverage
@@ -67,7 +67,7 @@ func percentOf(covered, total int) int {
 }
 
 // folderCoverage measures each group of fixtures against the PHP files those
-// fixtures loaded. A file is charged to the folder whose fixtures loaded it,
+// fixtures loaded. It charges a file to the folder whose fixtures loaded it,
 // because a fixture's own directory is its include root: two folders including
 // the same relative path are including their own copy of it.
 func folderCoverage(groups []fixtureGroup) []folderCover {
@@ -77,8 +77,8 @@ func folderCoverage(groups []fixtureGroup) []folderCover {
 		summary := folderCover{Dir: group.Dir, FilesTotal: len(rows), Files: rows}
 		for _, r := range rows {
 			// A file holding no runnable statement, a bag of declarations,
-			// has nothing left to reach and counts as reached. This is the
-			// same adjustment coverage.Row.Percent makes.
+			// has nothing left to reach and counts as reached.
+			// coverage.Row.Percent counts it the same way.
 			if r.Covered > 0 || r.Total == 0 {
 				summary.FilesCovered++
 			}
@@ -90,8 +90,8 @@ func folderCoverage(groups []fixtureGroup) []folderCover {
 	return out
 }
 
-// folderSummary is what the run prints for one folder when the fixture tables
-// are not being printed. Coverage is present only when the run measured it.
+// folderSummary is what the run prints for one folder when it prints no
+// fixture table. Coverage is present only when the run measured it.
 type folderSummary struct {
 	groupTotals
 	cover *folderCover
@@ -157,12 +157,12 @@ func writeFolderTable(w io.Writer, rows []folderSummary, markdown, timings bool)
 	writeTerminalGrid(w, headers, values, widths)
 }
 
-// writeFolderFileReport prints the per-file coverage of each folder, which is
-// what -v adds. It is the accounting the folder row summarises, one level down,
-// and it is where an unvisited file is named and not counted.
+// writeFolderFileReport prints the per-file coverage of each folder, the
+// report -v adds: the accounting the folder row summarises one level down,
+// and the one place an unvisited file appears by name.
 //
-// A folder whose fixtures loaded no PHP file of their own is skipped: a heading
-// over nothing reads as a folder that scored zero.
+// A folder whose fixtures loaded no PHP file of their own has no section: a
+// heading over nothing reads as a folder that scored zero.
 func writeFolderFileReport(w io.Writer, covers []folderCover) {
 	for _, cover := range covers {
 		if len(cover.Files) == 0 {
@@ -231,8 +231,8 @@ func writeTerminalGrid(w io.Writer, headers []string, values [][]string, widths 
 }
 
 // fixtureCoverage is one fixture's own statement coverage, which the fixture
-// tables carry as a column under --cover. It is the coverage of the PHP the
-// fixture loaded, not of the .phpt itself: the entrypoint runs by definition
+// tables carry as a column under --cover. The reading covers the PHP the
+// fixture loaded and not the .phpt itself: the entrypoint runs by definition
 // and would report every fixture at or near 100%.
 func fixtureCoverage(fx *tests.Fixture) string {
 	if fx == nil || fx.Coverage() == nil {

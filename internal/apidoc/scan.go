@@ -293,12 +293,12 @@ func (src *sources) lookupDecl(pkg, name string, samePkg bool) *declInfo {
 // lookupDeclIn returns the declaration a qualified selector names.
 //
 // The qualifier is either a package, in which case the declaration has to be a
-// function in a package of that name, or a value, in which case it is a method
-// and the receiver is what the qualifier holds. A qualifier naming no package
-// in the tree, which every import of the Go standard library is, leaves the
-// signature to reflection: without that, registering regexp.Compile would
-// publish the parameters of flatstack/engine.Compile, which shares the name and
-// nothing else.
+// function in a package of that name, or a value, in which case the name is a
+// method on the type the qualifier holds. A qualifier naming no package in the
+// tree, which every import of the Go standard library is, leaves the signature
+// to reflection: without that, registering regexp.Compile would publish the
+// parameters of flatstack/engine.Compile, which shares the name and nothing
+// else.
 func (src *sources) lookupDeclIn(pkg, qualifier, name string) *declInfo {
 	var method *declInfo
 	for _, info := range src.decls[name] {
@@ -441,8 +441,8 @@ func astParam(name string, t ast.Expr) Param {
 	return p
 }
 
-// paramName converts a Go parameter name to the PHP spelling, writing the
-// blank identifier a name that says the value is accepted and ignored.
+// paramName converts a Go parameter name to the PHP spelling, and names the
+// blank identifier for the value a binding takes and ignores.
 func paramName(name string) string {
 	if name == "" || name == "_" {
 		return "unused"

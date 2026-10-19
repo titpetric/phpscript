@@ -12,8 +12,8 @@ var (
 )
 
 // reflectParams derives PHP parameters from a Go function type. Reflection
-// carries no parameter names, so they are made up from the PHP type, with a
-// numeric suffix when a type repeats.
+// carries no parameter names, so nameParams invents them from the PHP type,
+// with a numeric suffix when a type repeats.
 func reflectParams(t reflect.Type) []Param {
 	params := []Param{}
 	for i := 0; i < t.NumIn(); i++ {
@@ -95,11 +95,11 @@ func typeParamName(p Param) string {
 }
 
 // reflectReturn folds a Go function's results into one PHP type. Registered
-// concrete types use their PHP class name; a trailing error is thrown, not
-// returned.
+// concrete types use their PHP class name; a trailing error reaches the script
+// as a throw and never as a return.
 //
-// Several non-error results are one array and no union: the runtime packs them
-// into a PHP list for the script to destructure, so time.Time.ISOWeek's
+// Two or more non-error results are one array and no union: the runtime packs
+// them into a PHP list for the script to destructure, so time.Time.ISOWeek's
 // (year, week) documents as array and not as int.
 func reflectReturn(t reflect.Type, classTypes map[reflect.Type]string) string {
 	kept := []string{}

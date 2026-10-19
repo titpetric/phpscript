@@ -127,8 +127,8 @@ func TestStringContextRefusesAnObject(t *testing.T) {
 	}
 }
 
-// TestBytes pins the rule the value helpers ask about a []byte: it is the
-// string it carries, so a binding returning one returns text and not a
+// TestBytes pins the rule the value helpers ask about a []byte: it reads as
+// the string it carries, so a binding returning one returns text and not a
 // list of integers.
 func TestBytes(t *testing.T) {
 	t.Parallel()
@@ -188,7 +188,7 @@ func TestInt(t *testing.T) {
 		{"007", 7},
 		{"12 34", 12},
 		{"- 5", 0},
-		// An exponent is part of the numeric prefix, as it is to a PHP cast.
+		// An exponent is part of the numeric prefix here and in a PHP cast.
 		{"1e3", 1000},
 		{"1.5e2", 150},
 		{"9223372036854775807", math.MaxInt64},

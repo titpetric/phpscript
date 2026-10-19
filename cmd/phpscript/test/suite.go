@@ -18,17 +18,17 @@ import (
 //
 // A file marks a suite root: the directory whose fixtures resolve their
 // prelude, their connections and their hooks through it. The run's own is
-// whatever -f named or the nearest one above the working directory, and it is
-// the only one allowed to set the keys that describe a whole run.
+// whatever -f named or the nearest one above the working directory, and it
+// alone may set the keys that describe a whole run.
 type suites struct {
 	// run is the suite the invocation itself is under, or nil. Its directory
-	// is not necessarily below the working directory, so it is kept apart from
-	// the discovered ones and applies to every fixture that finds no closer
-	// file.
+	// is not necessarily below the working directory, so suites holds it
+	// apart from the discovered ones, and resolve answers it for every
+	// fixture that finds no closer file.
 	run *tests.Suite
 
 	// found are the files discovered below the argument paths, sorted by
-	// directory so an outer suite is set up before one nested inside it.
+	// directory so setup runs an outer suite before one nested inside it.
 	found []*tests.Suite
 }
 
@@ -67,9 +67,9 @@ func (s suites) resolve(path string) *tests.Suite {
 // discoverSuites reads the configuration the run is under and every
 // phpscript.yml below the argument paths.
 //
-// Both halves are read whether or not the arguments select a fixture below them, so a
-// narrower path argument does not silently skip a suite's setup. The walk is
-// the fixture walk: a bare directory is not recursive, and `./...` is what
+// It reads both halves even where the arguments select no fixture below them,
+// so a narrower path argument does not silently skip a suite's setup. The walk
+// is the fixture walk: a bare directory is not recursive, and `./...` is what
 // reaches a tree.
 func discoverSuites(base config.Config, paths []string) (suites, error) {
 	var result suites
@@ -140,7 +140,7 @@ func discoverSuites(base config.Config, paths []string) (suites, error) {
 // runSuite reads the phpscript.yml the invocation itself is under: the nearest
 // one at or above the working directory.
 //
-// It is looked for upwards because that is where an application root sits
+// The walk climbs upwards because that is where an application root sits
 // relative to the tests it holds. A repository whose fixtures live in tests/
 // writes one file at its root, and every fixture below inherits it without the
 // tree repeating it per folder.
@@ -191,8 +191,8 @@ func walkRoot(p string) (string, bool, error) {
 // its folder configured, and the prelude and application root it named.
 //
 // --include still wins over what a suite named, and speaks from the
-// invocation root and not from a suite: it is what an operator typed about
-// this run, and the file it names sits in the invocation directory.
+// invocation root and not from a suite: an operator typed it about this run,
+// and the file it names sits in the invocation directory.
 func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 	for _, fx := range fixtures {
 		suite := found.resolve(fx.Path)
@@ -212,8 +212,8 @@ func applySuites(fixtures []*tests.Fixture, found suites, opts Options) {
 //
 // Only -v reports it. A hook writes whatever its migrations and its seed print,
 // and without -v the run answers with a folder table that a schema's log lines
-// would sit in the middle of. A failure is reported either way, by the error
-// the run ends with.
+// would sit in the middle of. The error the run ends with reports a failure
+// either way.
 func hookOutput(opts Options) io.Writer {
 	if opts.Verbose && !opts.JSON && !opts.coverReport() {
 		return os.Stdout
@@ -222,8 +222,8 @@ func hookOutput(opts Options) io.Writer {
 }
 
 // absDir answers the absolute spelling of a directory, or the given one when
-// the working directory cannot be read. Two spellings of one directory must
-// resolve to one suite, or its setup hook would run twice.
+// filepath.Abs fails. Two spellings of one directory must resolve to one
+// suite, or its setup hook would run twice.
 func absDir(dir string) string {
 	if abs, err := filepath.Abs(dir); err == nil {
 		return abs

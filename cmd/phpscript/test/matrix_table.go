@@ -14,7 +14,7 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// maxTableWidth bounds how far a verbose table is widened to fill a terminal.
+// maxTableWidth bounds how far fit widens a verbose table to fill a terminal.
 const maxTableWidth = 120
 
 // matrixHeaders labels each runner column of the matrix report.
@@ -32,8 +32,8 @@ type matrixTable interface {
 	writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration)
 }
 
-// terminalMatrix writes the ansi table. Column widths are established per
-// folder so a fixture can be printed as soon as it completes.
+// terminalMatrix writes the ansi table. sizeColumns rebuilds the column
+// widths per folder, so a row prints as soon as its fixture completes.
 type terminalMatrix struct {
 	w         io.Writer
 	headers   []string
@@ -60,13 +60,13 @@ func newMatrixTable(w io.Writer, opts Options, markdown bool) matrixTable {
 	return matrix
 }
 
-// fit widens the last column so a verbose table fills the terminal. The failure
-// detail below a row is wrapped into the runner columns, and the natural width
-// of three status columns leaves too little of a reason to read.
+// fit widens the last column so a verbose table fills the terminal. A row's
+// failure detail wraps into the runner columns, and the natural width of three
+// status columns leaves too little of a reason to read.
 //
-// It is applied after the widths have been rebuilt for a folder, never before:
-// fit adds to the last column, so applying it to already-fitted widths would
-// compound across folders.
+// writeGroup calls it after sizeColumns rebuilt a folder's widths, never
+// before: fit adds to the last column, so a second call on already-fitted
+// widths would compound across folders.
 func (t *terminalMatrix) fit(width int) {
 	if !t.verbose || width == 0 {
 		return
@@ -93,8 +93,8 @@ func newTerminalMatrix(w io.Writer, opts Options) *terminalMatrix {
 }
 
 // metrics reports whether the run named cost columns. Without a
-// benchmarking flag the matrix stays exactly as wide as it is without one,
-// which keeps the generated report stable.
+// benchmarking flag the matrix keeps its base width, which keeps the
+// generated report stable.
 func (t *terminalMatrix) metrics() bool {
 	return t.loop || t.profile || t.lat
 }
@@ -295,7 +295,7 @@ func (t *markdownMatrix) closeGroup(totals groupTotals) {
 }
 
 // writeSummary closes the report with the per-folder totals, so the reader
-// sees the aggregate without adding up the tables above it.
+// need not add up the tables above it.
 func (t *markdownMatrix) writeSummary(passed, failed, total int, duration time.Duration, engines []engineDuration) {
 	writeMarkdownSummary(t.w, t.totals, passed, failed, total, duration, t.metrics(), engines)
 }

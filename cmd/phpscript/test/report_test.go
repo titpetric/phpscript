@@ -11,9 +11,9 @@ import (
 	"github.com/titpetric/phpscript/tests"
 )
 
-// TestReportArgs covers the invocation the provenance comment names. It is
-// derived from the run's own options and never hardcoded, so the
-// committed report says which job wrote it and a reader can run the same
+// TestReportArgs covers the invocation the provenance comment names.
+// reportArgs builds it from the run's own options and never hardcodes it, so
+// the committed report says which job wrote it and a reader can run the same
 // command. The flags come out in one order, so a regenerated report differs
 // only where a result differs.
 func TestReportArgs(t *testing.T) {
@@ -67,7 +67,7 @@ func TestWriteReportHeader(t *testing.T) {
 	}
 }
 
-// TestOpenReport covers when the -o sink is created, which is before the first
+// TestOpenReport covers when openReport creates the -o sink, before the first
 // fixture runs: an unwritable path fails the command immediately and not after
 // the whole suite executed. A run naming no output opens nothing, so the
 // terminal table is the only sink.

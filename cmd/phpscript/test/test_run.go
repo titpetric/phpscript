@@ -42,13 +42,13 @@ type Options struct {
 	Cache     string
 
 	// Config is what the run started with: the embedded defaults, with the
-	// file -f named read over them. A phpscript.yml discovered in the fixture
-	// tree is read over this one in turn.
+	// file -f named read over them. discoverSuites reads a phpscript.yml from
+	// the fixture tree over this one in turn.
 	Config config.Config
 
 	// typed reports whether the command line carries a flag, and so decides
-	// between it and the value a configuration file supplies. It is nil for
-	// an Options a test assembles, where no command line exists.
+	// between it and the value a configuration file supplies. It stays nil
+	// for an Options a test assembles, where no command line exists.
 	typed func(string) bool
 }
 
@@ -73,7 +73,7 @@ func (o Options) given(name string) bool {
 }
 
 // coverReport reports whether the cover mode owns stdout with a per-symbol
-// report. The fixture tables are suppressed when it does.
+// report. The run leaves the fixture tables off stdout when it does.
 func (o Options) coverReport() bool {
 	return o.Cover == CoverFunc || o.Cover == CoverFile
 }
@@ -178,8 +178,8 @@ type fixtureRun struct {
 	DisplayPath string
 	Label       string
 	// Fixture is the fixture the run came from, carried so a table can read
-	// the coverage collector installed on it. It is nil for a run assembled
-	// by a test.
+	// the coverage collector installed on it. It stays nil for a run a test
+	// assembles.
 	Fixture *tests.Fixture
 	fixtureMetrics
 }
@@ -235,8 +235,8 @@ func runFixtureLoop(ctx context.Context, fx *tests.Fixture, r tests.Runner, opts
 	if opts.Profile {
 		runtime.ReadMemStats(&after)
 		// Per op, not per fixture: --count and --time run the fixture N times
-		// inside the one pair of readings, so the totals are divided by the
-		// runs and never sampled per iteration.
+		// inside the one pair of readings, so the loop divides the totals by
+		// the runs and never samples per iteration.
 		n := uint64(out.Runs)
 		out.AllocsPerOp = (after.Mallocs - before.Mallocs) / n
 		out.BytesPerOp = (after.TotalAlloc - before.TotalAlloc) / n
@@ -291,8 +291,8 @@ func Run(ctx context.Context, args []string, opts Options) error {
 		paths = []string{"./..."}
 	}
 
-	// The suites are read before the flags are checked, because the run-wide
-	// ones a phpscript.yml carries are among what is being checked.
+	// Suite discovery comes before the flag checks in run, because the
+	// run-wide options a phpscript.yml carries are among what run checks.
 	found, err := discoverSuites(opts.Config, paths)
 	if err != nil {
 		return err
@@ -386,8 +386,8 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 	// The state a suite lays down is what its fixtures assert against, so a
 	// setup that failed ends the run before a fixture reports the same missing
 	// table once per file. Teardown runs whatever the fixtures did, and its
-	// failure is reported without displacing theirs: a suite that could not
-	// clean up says less than a fixture that did not pass.
+	// failure prints on stderr without displacing theirs: a suite that could
+	// not clean up says less than a fixture that did not pass.
 	hooks := found.all()
 	if err := tests.RunSetup(ctx, hooks, hookOutput(opts)); err != nil {
 		return err
@@ -493,16 +493,16 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 		failedCount += groupFailed
 	}
 
-	// Coverage is measured once every fixture has run, so the per-folder
-	// reading is assembled here and not as each folder closed.
+	// A coverage reading needs every fixture to have run, so the per-folder
+	// measure happens here and not as each folder closed.
 	var covers []folderCover
 	if opts.Cover != "" && !opts.JSON && !opts.coverReport() {
 		covers = folderCoverage(groups)
 	}
 
-	// The folder summary is what a run answers with when the fixture tables are
-	// not being printed: one row per folder resolved from the arguments,
-	// in place of one table per fixture.
+	// The folder summary is what a run answers with when it prints no fixture
+	// table: one row per folder resolved from the arguments, in place of one
+	// table per fixture.
 	if !opts.JSON && !opts.coverReport() && !opts.Verbose {
 		for i := range covers {
 			folders[i].cover = &covers[i]
@@ -566,8 +566,8 @@ func run(ctx context.Context, args, paths []string, found suites, opts Options) 
 // gcCycles returns the number of completed GC cycles.
 //
 // runtime/metrics and not runtime.MemStats: NumGC is only reachable through
-// ReadMemStats, which stops the world, and this is read twice per fixture per
-// runner. The metrics reader takes a lock and copies a counter.
+// ReadMemStats, which stops the world, and runFixtureLoop reads it twice per
+// fixture per runner. The metrics reader takes a lock and copies a counter.
 func gcCycles() uint64 {
 	sample := [1]metrics.Sample{{Name: "/gc/cycles/total:gc-cycles"}}
 	metrics.Read(sample[:])
@@ -586,13 +586,13 @@ func gcCycles() uint64 {
 // for a hit the worker's own cache already has.
 const (
 	// CacheOff builds caches per fixture run and drops the runtime
-	// after it. Nothing one run parsed is visible to the next, so a run is
-	// charged the parsing its own includes cost - and what it held is returned
-	// when it ends, with nothing kept for the length of the suite.
+	// after it. Nothing one run parsed is visible to the next, so a run pays
+	// the parsing its own includes cost - and drops what it held when it
+	// ends, with nothing kept for the length of the suite.
 	CacheOff = "off"
 	// CacheWorker keeps one set per worker, reused by the fixtures that
-	// worker runs serially. What is held scales with --parallel and not
-	// with the number of fixtures.
+	// worker runs serially. What a worker holds scales with --parallel and
+	// not with the number of fixtures.
 	CacheWorker = "worker"
 )
 

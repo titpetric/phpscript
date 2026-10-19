@@ -42,16 +42,16 @@ func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 // It runs the script once, and again for every SIGHUP: a reload cancels the
 // generation running so a served script runs its shutdown callbacks and stops
 // listening, then re-reads the file. SIGINT and SIGTERM end it for good. All
-// three arrive through ctx, which the runtime is given, because a script with
-// nothing watching would ignore them.
+// three arrive through ctx, which runOnce sets on the runtime, because a
+// script with nothing watching would ignore them.
 func Run(ctx context.Context, args []string, config config.Config, globals *flags.Options) error {
 	if len(args) == 0 {
 		return errors.New("usage: phpscript <file.php>")
 	}
 
 	// The runtime resolves every path against RootFS, which cannot express a
-	// path outside itself: cleanFSPath strips the leading slash, so an absolute
-	// path would be looked up relative to the working directory. Sandboxing is
+	// path outside itself: cleanFSPath strips the leading slash, so an
+	// absolute path resolves against the working directory. Sandboxing is
 	// the right default for an include inside a script, but not for the file
 	// the user named on the command line, so a script that sits outside the
 	// working directory roots the runtime at its own directory instead.
@@ -111,8 +111,8 @@ func reloadScope(ctx context.Context) (context.Context, func() bool, func()) {
 }
 
 // runOnce is one generation: a runtime, the script read and parsed again, and
-// the run. Everything it builds is dropped when it returns, so
-// a reload pick up an edited file.
+// the run. It drops everything it built when it returns, so a reload picks up
+// an edited file.
 func runOnce(ctx context.Context, script, root string, argv []string, config config.Config, globals *flags.Options) error {
 	options := config.Runner
 	options.SAPI = "cli"
@@ -159,7 +159,7 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 	reqCtx.Register(rt)
 
 	runErr := rt.Run(prog)
-	// The profile is written whatever the script ended with. A run that failed
+	// writeCoverage runs whatever the script ended with. A run that failed
 	// halfway is exactly the run whose coverage is worth reading.
 	if coverErr := writeCoverage(collector, globals, root); coverErr != nil {
 		return coverErr
@@ -178,7 +178,7 @@ func runOnce(ctx context.Context, script, root string, argv []string, config con
 // the profile format reads them.
 //
 // The report goes to stderr because the script owns stdout: a run pipes its own
-// echo somewhere, and a coverage table mixed into it is corruption of the
+// echo somewhere, and a coverage table mixed into that stream corrupts the
 // output the command exists to produce. `phpscript test` prints its report on
 // stdout, because there the runner owns it.
 func writeCoverage(collector *coverage.Collector, globals *flags.Options, root string) error {

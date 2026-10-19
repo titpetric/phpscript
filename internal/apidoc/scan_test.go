@@ -65,8 +65,8 @@ type Thing struct{}
 	if got := strings.Join(upper.comment, "\n"); got != "upper returns $string uppercased." {
 		t.Errorf("upper comment = %q", got)
 	}
-	// The area is read off the installer's name with "register" taken off and
-	// the rest spelled in words, so registerFake installs the fake area.
+	// areaName takes "register" off the installer's name and spells the rest
+	// in words, so registerFake installs the fake area.
 	if upper.area != "fake" {
 		t.Errorf("upper area = %q, want fake", upper.area)
 	}

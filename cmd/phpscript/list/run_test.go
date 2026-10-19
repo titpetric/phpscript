@@ -77,7 +77,7 @@ func TestNewCommand(t *testing.T) {
 	}
 }
 
-// TestRun covers the exported entry point, which is run() pointed at stdout.
+// TestRun covers the exported entry point: run() pointed at stdout.
 // The markdown table is the same one a redirected run writes, so the one
 // assertion worth making here is that os.Stdout is where it lands.
 func TestRun(t *testing.T) {
@@ -112,8 +112,8 @@ func TestRun(t *testing.T) {
 }
 
 // TestRunRejectsBindingsWithPaths pins the refusal. The two modes answer about
-// different things, so a caller that named both named one of them by mistake and is
-// told which one it drops, and never left to guess.
+// different things, so a caller that named both named one of them by mistake,
+// and the error names which one it drops, never leaving them to guess.
 func TestRunRejectsBindingsWithPaths(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer

@@ -7,7 +7,7 @@ import (
 // Increment applies PHP's ++ operator: numbers and numeric strings step by
 // one (an int64 that would overflow becomes a float, as PHP's do), null
 // becomes int 1, and a non-numeric string takes the Perl-style alphanumeric
-// increment. Booleans, and any type PHP only warns about, are unchanged.
+// increment. A boolean stays put, as does any type PHP only warns about.
 func Increment(v any) any {
 	if num, ok := phpNumeric(v); ok {
 		if num.isInt {
@@ -29,9 +29,9 @@ func Increment(v any) any {
 
 // Decrement applies PHP's -- operator: numbers and numeric strings step
 // down by one (an int64 that would overflow becomes a float). There is no
-// string decrement; a non-numeric string is unchanged, except the empty
-// string, which PHP reads as 0 and returns int -1 for. Null and booleans
-// are unchanged.
+// string decrement; Decrement leaves a non-numeric string alone, except the
+// empty string, which PHP reads as 0 and returns int -1 for. It leaves null
+// and booleans alone too.
 func Decrement(v any) any {
 	if num, ok := phpNumeric(v); ok {
 		if num.isInt {
@@ -63,10 +63,10 @@ func StringNumber(s string) (any, bool) {
 }
 
 // incrementString is PHP's increment_string: the last character steps
-// within its class (a-z, A-Z, 0-9), z, Z and 9 wrap and carry left. A carry
-// that reaches a character outside the three classes is discarded; one that
-// runs off the start of the string prepends a, A or 1 by the class of the
-// first character. The empty string increments to "1".
+// within its class (a-z, A-Z, 0-9), z, Z and 9 wrap and carry left. It drops
+// a carry that reaches a character outside the three classes; one that runs
+// off the start of the string prepends a, A or 1 by the class of the first
+// character. The empty string increments to "1".
 func incrementString(s string) string {
 	if s == "" {
 		return "1"

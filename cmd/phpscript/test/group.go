@@ -11,7 +11,7 @@ import (
 
 // fixtureGroup is the fixtures of one folder, in discovery order. Grouping is
 // what lets the runner print a table per area in place of one long table, so
-// the fixtures of a folder are read as a set.
+// a reader takes a folder's fixtures as a set.
 type fixtureGroup struct {
 	Dir      string // folder holding the fixtures, "." when they sit in the run directory
 	Fixtures []*tests.Fixture
@@ -68,17 +68,17 @@ func mapFixtures[T any](fixtures []*tests.Fixture, parallel int, fn func(worker,
 }
 
 func mapFixtureBatch[T any](fixtures []*tests.Fixture, results []T, start, end, parallel int, fn func(worker, i int, fx *tests.Fixture) T) {
-	// Buffered to the whole batch, so the fixtures are queued in one go and
-	// the workers draw from it. An unbuffered channel makes the sender wait
-	// for a worker to take each one, which serialises the hand-off against
-	// the slowest fixture in flight.
+	// Buffered to the whole batch, so the sender queues the fixtures in one
+	// go and the workers draw from it. An unbuffered channel makes the sender
+	// wait for a worker to take each one, which serialises the hand-off
+	// against the slowest fixture in flight.
 	jobs := make(chan int, end-start)
 	var workers sync.WaitGroup
 	workers.Add(min(parallel, end-start))
 	for id := range min(parallel, end-start) {
 		// Each goroutine is one worker with a number, and the number is what
-		// --cache=worker scopes a cache to. The loop inside it is serial, so a
-		// worker's cache is never touched by two fixtures at once.
+		// --cache=worker scopes a cache to. Its loop is serial, so two
+		// fixtures never touch a worker's cache at once.
 		go func(id int) {
 			defer workers.Done()
 			for i := range jobs {

@@ -21,16 +21,16 @@ import (
 // Name is the command title.
 const Name = "Print runtime environment"
 
-// Options holds CLI flag options for the info command.
+// Options holds CLI flag options for the `info` command.
 type Options struct {
 	Verbose bool
 }
 
-// NewCommand creates a new info command. The verbosity dial is the shared -v:
-// here it lists every bound function, class and method under the summary.
+// NewCommand creates a new `info` command. The verbosity dial is the shared
+// -v: here it lists every bound function, class and method under the summary.
 // The configuration is what every command constructor takes, so one
-// signature covers all of them. This command reads it through globals,
-// which main fills from the configuration before any command is built.
+// signature covers them all. This command reads it through globals, which
+// main fills from the configuration before it builds any command.
 func NewCommand(_ *config.Config, globals *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "info",
@@ -49,9 +49,9 @@ func Run(ctx context.Context, args []string, opts Options) error {
 	stdlib.Register(rt)
 	stdlib.RegisterFS(rt, ".")
 	// The request-aware functions (header, http_response_code, getallheaders)
-	// are installed per request and not by stdlib.Register. Without this
-	// the counts here are short of what `phpscript list --bindings` and the
-	// generated reference report, and the three disagree about the same
+	// come from a request's own Register and not from stdlib.Register. Without
+	// this the counts here are short of what `phpscript list --bindings` and
+	// the generated reference report, and the three disagree about the same
 	// runtime.
 	runner.NewContext().Register(rt)
 	fmt.Fprintln(os.Stdout, "# phpscript")

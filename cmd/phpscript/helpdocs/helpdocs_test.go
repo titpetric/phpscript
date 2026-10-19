@@ -33,8 +33,8 @@ func TestRenderMarkdown(t *testing.T) {
 }
 
 // TestRenderTerminal covers the ansi path: the table becomes the box-drawing
-// table the rest of the tool prints, and everything outside one is printed
-// unchanged.
+// table the rest of the tool prints, and everything outside one passes
+// through unchanged.
 func TestRenderTerminal(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -50,7 +50,7 @@ func TestRenderTerminal(t *testing.T) {
 	if !strings.Contains(got, "\u256d") || !strings.Contains(got, "\u2502") {
 		t.Errorf("render has no box-drawing table:\n%s", got)
 	}
-	// The separator row is consumed by the parser and never printed as data.
+	// The parser consumes the separator row and never prints it as data.
 	if strings.Contains(got, "|---|") {
 		t.Errorf("the markdown separator row leaked into the render:\n%s", got)
 	}
@@ -147,7 +147,7 @@ func TestWrite(t *testing.T) {
 			t.Errorf("help is missing %q:\n%s", want, got)
 		}
 	}
-	// A command's own flags are its own: the shared set is printed once.
+	// A command's own flags are its own: the help prints the shared set once.
 	if strings.Count(got, "Measure statement coverage") != 1 {
 		t.Errorf("the shared flags are repeated per command:\n%s", got)
 	}

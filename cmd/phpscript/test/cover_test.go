@@ -128,9 +128,9 @@ for ($i = 0; $i < 3; $i++) {
 }
 
 // TestRunCommandCoverConflicts holds the flag contract this command owns:
-// coverage counts one run per fixture, so the benchmark loops are refused, and
-// a report mode owns stdout, so --json is refused with it. The mode vocabulary
-// itself belongs to internal/flags, which every command shares.
+// coverage counts one run per fixture, so run refuses the benchmark loops, and
+// a report mode owns stdout, so it refuses --json with one. The mode
+// vocabulary itself belongs to internal/flags, which every command shares.
 func TestRunCommandCoverConflicts(t *testing.T) {
 	t.Parallel()
 	if err := test.Run(context.Background(), nil, test.Options{Cover: test.CoverLine, Count: 5}); err == nil || !strings.Contains(err.Error(), "cover") {
@@ -327,8 +327,8 @@ func TestRunCommandFolderSummary(t *testing.T) {
 	coverReportSuite(t)
 	report := runCoverReport(t, test.Options{Cover: test.CoverLine, Include: "prelude.php"})
 
-	// Four files are loaded and three hold runnable statements; the interface
-	// counts as reached because it has nothing left to reach.
+	// The fixtures load four files and three hold runnable statements; the
+	// interface counts as reached because it has nothing left to reach.
 	row := reportLine(t, report, "| suite ")
 	for _, want := range []string{"4/4 (100%)", "4/6 (67%)"} {
 		if !strings.Contains(row, want) {

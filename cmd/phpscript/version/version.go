@@ -23,19 +23,19 @@ type Info struct {
 // Name is the command title.
 const Name = "Show version/build information"
 
-// Build is what the linker wrote into the binary, set by main before any
-// command is built.
+// Build is what the linker wrote into the binary, which main sets before it
+// builds any command.
 //
-// It is a package variable and no constructor argument because every
-// command constructor takes the same two arguments, and build information is
-// neither configuration nor a flag: it describes the binary, and not the
-// tree it is pointed at or the run an operator started.
+// A package variable and no constructor argument, because every command
+// constructor takes the same two arguments, and build information is neither
+// configuration nor a flag: it describes the binary, and not the tree an
+// operator points it at or the run they started.
 var Build Info
 
 // NewCommand creates a new version command.
 //
 // The configuration and the global options are what every command constructor
-// takes, so one signature covers all of them. This command reads neither.
+// takes, so one signature covers them all. This command reads neither.
 func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	return &cli.Command{
 		Name:  "version",
@@ -67,7 +67,7 @@ func Run(info Info) error {
 		fmt.Printf("  Branch:      %s\n", info.Branch)
 	}
 
-	// Get build info from embedded metadata
+	// Get build information from embedded metadata
 	exePath, err := os.Executable()
 	var bi *buildinfo.BuildInfo
 	if err == nil {
