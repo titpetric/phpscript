@@ -21,8 +21,8 @@ type Diagnostic struct {
 
 	// Fatal marks a finding the program cannot survive, as against one it
 	// might: a call to a function some host registers is a warning because the
-	// linter cannot see every binding, but a redeclaration is refused by the
-	// runtime whatever is registered. A fatal finding fails the lint run.
+	// linter cannot see every binding, but the runtime refuses a redeclaration
+	// whatever a host registers. A fatal finding fails the lint run.
 	Fatal bool
 }
 
@@ -59,10 +59,10 @@ func File(name, src string) ([]Diagnostic, error) {
 
 // lintJSONFlags reports a JSON_* constant.
 //
-// No JSON_* constant is defined here, so the name evaluates to null and
-// json_encode ignores the argument. The call runs and encodes correctly, which
-// is why this is a warning: nothing is broken, and the author named a
-// formatting the encoder does not vary. See docs/design.md.
+// Nothing here defines a JSON_* constant, so the name evaluates to null and
+// json_encode ignores the argument. The call runs and encodes correctly, so
+// this is a warning: nothing fails, and the author named a formatting the
+// encoder does not vary. See docs/design.md.
 //
 // The scan is over tokens and not the AST: a constant can appear in any
 // expression, and T_STRING already tells a bare name apart from the same text
@@ -108,8 +108,8 @@ func lintRoutes(file, src string, out *[]Diagnostic) {
 
 // lintInterfaces reports a class that declares `implements` and does not
 // declare a method the interface names. The runtime raises a RuntimeException
-// for the same condition, so the finding is the warning that arrives before the
-// program is run.
+// for the same condition, so the finding is the warning that arrives before
+// the program runs.
 func lintInterfaces(file string, prog *model.Program, out *[]Diagnostic) {
 	for _, v := range model.CheckInterfaces(prog.Stmts) {
 		*out = append(*out, Diagnostic{
@@ -280,11 +280,11 @@ func (w *stmtWalker) lintGlobal(n *model.Global) {
 }
 
 // lintAbstract reports the abstract modifier, which has nothing to mean
-// without inheritance (docs/design.md): an abstract class can be instantiated
-// like any other, and an abstract method has no body, so calling it returns
-// null where PHP declines the class uncompleted. Both parse and
-// are kept by the formatter; the linter is where the author hears that no
-// contract is being enforced. An interface is the contract that is checked.
+// without inheritance (docs/design.md): an abstract class instantiates like
+// any other, and an abstract method has no body, so calling it returns null
+// where PHP declines the class uncompleted. The parser takes both and the
+// formatter keeps them; the linter is where the author hears that nothing
+// enforces a contract. An interface is the contract the linter checks.
 func (w *stmtWalker) lintAbstract(n *model.ClassDecl) {
 	if n.Abstract {
 		*w.out = append(*w.out, Diagnostic{
@@ -336,9 +336,9 @@ func (w *stmtWalker) lintMagicMethods(n *model.ClassDecl) {
 }
 
 // lintExtends reports `extends` on a class, a documented won't-build
-// (docs/design.md): the parent name is recorded and nothing arrives through
-// it, so the child answers only with the members it wrote and is not an
-// instanceof the parent. An interface's extends is not reported: there it
+// (docs/design.md): the parser records the parent name and nothing arrives
+// through it, so the child answers only with the members it wrote and is not
+// an instanceof the parent. An interface's extends is not reported: there it
 // widens the declaration contract, which instanceof does follow.
 func (w *stmtWalker) lintExtends(n *model.ClassDecl) {
 	if n.Parent == "" {
@@ -404,8 +404,8 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 	w.walk(prog.Stmts)
 }
 
-// lintChainedAssign reports `$a = $b = value`, where one value is bound to two
-// or more names in a single statement.
+// lintChainedAssign reports `$a = $b = value`, a single statement binding one
+// value to two or more names.
 //
 // PHP copies an array on assignment, so there each name holds its own
 // array. phpscript's arrays are references, so one array sits
@@ -413,15 +413,16 @@ func lintReferences(file string, prog *model.Program, out *[]Diagnostic) {
 // other, a bug
 // the shape hides and never announces.
 //
-// The rule only sees the chains that are left after the parser has fixed the
-// ones it can. A chain ending in an array literal is split into one allocation
-// per name (parser.lowerChainedAlloc) and never reaches here; a chain ending in
-// a scalar literal is left alone and skipped here, because a string or a number
-// has no interior for the names to share. What remains is a chain ending in a
-// name, a call or a `new`, where either the value is a handle the names really
-// do share -- `$dba = $dbb = new Database` leaves one connection under two names in
-// PHP as well -- or its type is not known until the statement runs. Both are
-// worth reading again, and the finding says so.
+// The rule sees only the chains the parser left after fixing the ones it can.
+// The parser splits a chain ending in an array literal into one allocation
+// per name (parser.lowerChainedAlloc), and that chain never reaches here; it
+// leaves a chain ending in a scalar literal alone, and this check skips it,
+// because a string or a number has no interior for the names to share. What
+// remains is a chain ending in a name, a call or a `new`, where either the
+// value is a handle the names really do share -- `$dba = $dbb = new Database`
+// leaves one connection under two names in PHP as well -- or its type is not
+// known until the statement runs. Both are worth reading again, and the
+// finding says so.
 func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 	chained, ok := model.UnwrapParenthesized(n.Value).(*model.AssignExpr)
 	if !ok {
@@ -437,9 +438,9 @@ func lintChainedAssign(file string, n *model.Assign, out *[]Diagnostic) {
 	})
 }
 
-// chainedValue walks to the end of an assignment chain, so that
-// `$a = $b = $c = '00'` is judged by the `'00'` and not by the assignment
-// that binds `$c`.
+// chainedValue walks to the end of an assignment chain, so the check judges
+// `$a = $b = $c = '00'` by the `'00'` and not by the assignment that binds
+// `$c`.
 func chainedValue(n *model.AssignExpr) model.Expr {
 	v := model.UnwrapParenthesized(n.Value)
 	for {
@@ -454,9 +455,9 @@ func chainedValue(n *model.AssignExpr) model.Expr {
 // isScalarLiteral reports whether the source spells out a value that no name
 // can share: a string, int, float, bool or null literal, an interpolated
 // string, which always evaluates to a string, or a prefix operator over one of
-// those, so a negative number is written. A *model.Lit holding a
-// *model.Array is not one of these; the parser does not build them, but the
-// check reads the value and never guesses it.
+// those, so a negative number counts. A *model.Lit holding a *model.Array is
+// not one of these; the parser does not build them, but the check reads the
+// value and never guesses it.
 func isScalarLiteral(e model.Expr) bool {
 	switch v := e.(type) {
 	case *model.Interp:

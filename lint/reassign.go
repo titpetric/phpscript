@@ -7,16 +7,16 @@ import (
 )
 
 // lintTypeReassign reports a variable whose first literal assignment fixed a
-// type and whose later literal assignment spells a different one. The first
-// literal is read as the declaration of the variable's type, the convention
-// the flat VM's typed operator selection leans on; a reassignment at another
-// type is legal PHP and runs unchanged here too, so the finding is
+// type and whose later literal assignment spells a different one. The rule
+// reads the first literal as the declaration of the variable's type, the
+// convention the flat VM's typed operator selection leans on; a reassignment
+// at another type is legal PHP and runs unchanged here too, so the finding is
 // advisory and never fatal.
 //
 // Tracking is per function body (methods included), and the whole body is one
 // scope: an if arm assigning a string where the else arm assigns an int is
-// the same drift the rule exists to name. Only assignments whose right side
-// is a literal participate; a call, a variable or any other computed value
+// the same drift the rule exists to name. Only an assignment whose right
+// side is a literal counts; a call, a variable or any other computed value
 // says nothing about the declared type and neither records nor conflicts.
 // Closure bodies are not walked.
 func lintTypeReassign(file string, prog *model.Program, out *[]Diagnostic) {
@@ -107,8 +107,8 @@ func (w *reassignWalker) classDecl(n *model.ClassDecl) {
 }
 
 // walk visits every statement of one scope, branches included, recording and
-// checking literal assignments. Function and class declarations are skipped
-// here; declarations opens their own scope.
+// checking literal assignments. It skips function and class declarations;
+// declarations opens their own scope.
 func (w *reassignWalker) walk(stmts []model.Stmt, types map[string]string) {
 	for _, s := range stmts {
 		switch n := s.(type) {

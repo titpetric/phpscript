@@ -17,9 +17,9 @@ import (
 	"github.com/titpetric/phpscript/runner/coverage"
 )
 
-// TestPre covers the two flags read before a command exists. Both are taken
-// off the argument list, because pflag runs after the configuration has been
-// read and would report them as unknown.
+// TestPre covers the two flags Pre reads before a command exists. Pre takes
+// both off the argument list, because pflag runs after the configuration read
+// and would report them as unknown.
 func TestPre(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
@@ -195,7 +195,7 @@ func TestOptions_Covering(t *testing.T) {
 }
 
 // TestOptions_Report pins which modes own stdout with a per-symbol report on
-// top of writing the profile. It is what rules out combining one with --json.
+// top of writing the profile, so one of those modes rules out --json.
 func TestOptions_Report(t *testing.T) {
 	for mode, want := range map[string]bool{
 		"":                false,
@@ -209,8 +209,8 @@ func TestOptions_Report(t *testing.T) {
 	}
 }
 
-// TestOptions_BindWith pins that the shared set is declared before a command's
-// own flags, and that a command binding none still carries it.
+// TestOptions_BindWith pins that BindWith declares the shared set before a
+// command's own flags, and that a command binding none still carries it.
 func TestOptions_BindWith(t *testing.T) {
 	var opts flags.Options
 	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
@@ -226,7 +226,7 @@ func TestOptions_BindWith(t *testing.T) {
 	}
 }
 
-// TestOptions_Bind pins that every shared flag is declared once, with the
+// TestOptions_Bind pins that Bind declares every shared flag once, with the
 // shorthands the documentation names.
 func TestOptions_Bind(t *testing.T) {
 	var opts flags.Options
@@ -248,18 +248,18 @@ func TestOptions_Bind(t *testing.T) {
 			t.Errorf("--%s has no usage text", name)
 		}
 	}
-	// A bare --cover is --cover=line, so it is legal to write
-	// without a value in front of a command name.
+	// A bare --cover is --cover=line, so an operator may write it with no
+	// value in front of a command name.
 	if got := fs.Lookup("cover").NoOptDefVal; got != coverage.ModeLine {
 		t.Errorf("--cover NoOptDefVal = %q, want %q", got, coverage.ModeLine)
 	}
 }
 
-// TestOptions_Validate covers the coverage vocabulary every command shares.
-func TestOptions_Validate(t *testing.T) {
+// TestOptions_Check covers the coverage vocabulary every command shares.
+func TestOptions_Check(t *testing.T) {
 	t.Run("coverfile implies cover", func(t *testing.T) {
 		opts := flags.Options{CoverFile: "x.cov"}
-		if err := opts.Validate(); err != nil {
+		if err := opts.Check(); err != nil {
 			t.Fatalf("Validate: %v", err)
 		}
 		if opts.Cover != coverage.ModeLine {
@@ -268,7 +268,7 @@ func TestOptions_Validate(t *testing.T) {
 	})
 	t.Run("cover implies a coverfile", func(t *testing.T) {
 		opts := flags.Options{Cover: coverage.ModeFunc}
-		if err := opts.Validate(); err != nil {
+		if err := opts.Check(); err != nil {
 			t.Fatalf("Validate: %v", err)
 		}
 		if opts.CoverFile != coverage.DefaultCoverFile {
@@ -280,13 +280,13 @@ func TestOptions_Validate(t *testing.T) {
 	})
 	t.Run("unknown mode", func(t *testing.T) {
 		opts := flags.Options{Cover: "statements"}
-		if err := opts.Validate(); err == nil || !strings.Contains(err.Error(), "statements") {
+		if err := opts.Check(); err == nil || !strings.Contains(err.Error(), "statements") {
 			t.Errorf("err = %v, want one naming the mode", err)
 		}
 	})
 	t.Run("off", func(t *testing.T) {
 		var opts flags.Options
-		if err := opts.Validate(); err != nil {
+		if err := opts.Check(); err != nil {
 			t.Fatalf("Validate: %v", err)
 		}
 		if opts.Covering() || opts.Report() || opts.CoverFile != "" {
@@ -358,8 +358,8 @@ func TestOptions_WriteCoverProfile(t *testing.T) {
 	}
 }
 
-// TestOptions_RunWith covers the wrapper every command runs under: the flags validate,
-// the profiles land, and the command's own error comes back unchanged.
+// TestOptions_RunWith covers the wrapper every command runs under: Check reads
+// the flags, the profiles land, and the command's own error comes back whole.
 func TestOptions_RunWith(t *testing.T) {
 	dir := t.TempDir()
 	cpu := filepath.Join(dir, "cpu.pprof")
@@ -408,8 +408,9 @@ func TestOptions_RunWith(t *testing.T) {
 	})
 }
 
-// TestOptions_Chdir covers -w, which moves the process before the configuration is read
-// so a tree is named once, and not in every path a configuration holds.
+// TestOptions_Chdir covers -w, which moves the process before the
+// configuration read, so one name serves a tree and no path inside a
+// configuration repeats it.
 func TestOptions_Chdir(t *testing.T) {
 	dir := t.TempDir()
 	before, err := os.Getwd()
@@ -444,8 +445,8 @@ func TestOptions_Chdir(t *testing.T) {
 	}
 }
 
-// TestPreControlFlags covers -t and -s, which replace a command and never
-// modify one, and the rule that keeps them from eating a command's own flags.
+// TestPreControlFlags covers -t and -s, which replace a command and change
+// none, and the rule that keeps them from eating a command's own flags.
 func TestPreControlFlags(t *testing.T) {
 	tests := map[string]struct {
 		args      []string
@@ -475,7 +476,8 @@ func TestPreControlFlags(t *testing.T) {
 			args: []string{"--signal=reload"}, signal: "reload", remaining: []string{},
 		},
 		// The collision this rule exists for: -t is the test command's
-		// shorthand for --time, so after a command name it is the command's.
+		// shorthand for --time, so after a command name it belongs to the
+		// command.
 		"-t after a command name is the command's": {
 			args:      []string{"test", "-t", "10s", "./..."},
 			remaining: []string{"test", "-t", "10s", "./..."},

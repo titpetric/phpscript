@@ -35,8 +35,8 @@ function helper() { return 2; }`)
 }
 
 // TestRedeclareOverAHostName covers declaring over a name the runtime itself
-// registers: strlen is installed by the standard library, so a file declaring
-// it is refused the same way, with no earlier line to name.
+// registers: the standard library installs strlen, so a file declaring it
+// draws the same fatal finding, with no earlier line to name.
 func TestRedeclareOverAHostName(t *testing.T) {
 	t.Parallel()
 	found, err := lint.File("index.php", `<?php
@@ -56,7 +56,7 @@ function strlen($s) { return 0; }`)
 
 // TestRedeclareSkipsAGuardedName covers the polyfill idiom: declaring over an
 // absent built-in is what function_exists guards, and the author has written
-// both branches, so neither the duplicate nor the host name is reported.
+// both branches, so the check reports neither the duplicate nor the host name.
 func TestRedeclareSkipsAGuardedName(t *testing.T) {
 	t.Parallel()
 	found := messagesOf(mustLint(t, `<?php

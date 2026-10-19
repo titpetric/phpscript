@@ -27,39 +27,40 @@ var (
 	hostFuncs    map[string]bool
 )
 
-// SetInclude names a file to run against the name registry before any file is
-// checked, so the linter sees an application and not one
-// file of it: with `--include vendor/autoload.php` a name resolves against the
-// classmap, and not against the standard library alone.
+// SetInclude names a file to run against the name registry before the pass
+// checks any file, so the linter sees an application and not one file of it:
+// with `--include vendor/autoload.php` a name resolves against the classmap,
+// and not against the standard library alone.
 //
-// It must be called before the first File(). The registry is built once per
+// Call it before the first File(). knownRuntime builds the registry once per
 // process, because registration is deterministic.
 func SetInclude(path string) {
 	includeFile = path
 }
 
-// knownRuntime is the registry the checks query for the names a host registers. It is
-// built once per process: registration is deterministic, and the runtime never
-// executes a script here, so the table is read-only after construction.
+// knownRuntime is the registry the checks query for the names a host
+// registers. The first call builds it, once per process: registration is
+// deterministic, and the runtime never executes a script here, so nothing
+// writes to the table after construction.
 func knownRuntime() *runner.Runtime {
 	registryOnce.Do(func() {
-		// The working directory is the source root, because an --include is
-		// named relative to the invocation directory and the file it
+		// The working directory is the source root, because an --include
+		// path resolves against the invocation directory, and the file it
 		// names includes its own siblings relative to itself.
 		rt := runner.New(io.Discard, runner.Options{SAPI: "cli", RootFS: os.DirFS(".")})
 		stdlib.Register(rt)
 		stdlib.RegisterFS(rt, ".")
-		// The request-aware functions (header, http_response_code,
-		// getallheaders, ...) are installed per request and not by
-		// stdlib.Register; a server-targeted file still names them, so an
-		// empty request context registers them for the name check.
+		// A request context installs the request-aware functions (header,
+		// http_response_code, getallheaders, ...); stdlib.Register does
+		// not. A server-targeted file still names them, so an empty
+		// request context registers them for the name check.
 		runner.NewContext().Register(rt)
 		// The host bindings, before the include runs. What the include then
 		// declares is PHP, and a file declaring a function of the same name
-		// is either that same file being checked - bootstrap.php lints
-		// against itself otherwise, and every function it defines reads as a
+		// is either the file under lint - bootstrap.php lints against
+		// itself otherwise, and every function it defines reads as a
 		// redeclaration - or a duplicate the same-file check already covers.
-		// Only a name the runtime itself registers can be redeclared over.
+		// Only a name the runtime itself registers counts as a redeclaration.
 		internal, _ := rt.DefinedFunctions()
 		hostFuncs = make(map[string]bool, len(internal))
 		for _, name := range internal {
@@ -176,7 +177,7 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 	}
 	classKnown := func(class string) bool {
 		// self/static/parent resolve against the running method's class, which
-		// the walk does not track; the class they name is declared somewhere.
+		// the walk does not track; some file declares the class they name.
 		switch class {
 		case "self", "static", "parent":
 			return true
@@ -219,10 +220,10 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 				report(line, fmt.Sprintf("new: undefined class %q", n.Class))
 			}
 		case *model.StaticCall:
-			// A binding may be registered under the whole spelling - the
+			// A host may register a binding under the whole spelling - the
 			// clock is a set of functions named DateTime::now, DateTime::parse
 			// and so on, and no class with methods, so a static call resolves
-			// when either the class or the full name is known.
+			// when the registry answers for the class or the full name.
 			if !classKnown(n.Class) && !rt.FunctionExists(n.Class+"::"+n.Method) {
 				report(line, fmt.Sprintf("static call %s::%s(): unknown class", n.Class, n.Method))
 			}
@@ -246,8 +247,8 @@ func lintUndefinedNames(file string, prog *model.Program, out *[]Diagnostic) {
 }
 
 // astWalker visits every statement and every expression in a statement list,
-// at any nesting, including closure bodies written inside expressions. Each
-// expression is reported with the source line of the statement holding it,
+// at any nesting, including closure bodies written inside expressions. It
+// reports each expression with the source line of the statement holding it,
 // since expressions carry no spans of their own.
 type astWalker struct {
 	prog *model.Program
@@ -402,8 +403,8 @@ func (w *astWalker) one(e model.Expr) {
 		w.exprs(n.Args)
 		if n.Decl != nil {
 			// An anonymous class declares its body inside the expression;
-			// nothing else walks it. The declaration is passed to the
-			// statement hook so class-shaped checks see it too.
+			// nothing else walks it. The walk passes the declaration to
+			// the statement hook so class-shaped checks see it too.
 			if w.stmt != nil {
 				w.stmt(n.Decl)
 			}

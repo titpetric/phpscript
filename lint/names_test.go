@@ -11,10 +11,10 @@ import (
 )
 
 // TestSetInclude covers what the flag buys and the ordering it carries. The
-// recorded path is run against the name registry before any file is checked,
-// so the names an application declares resolve as well as the standard
-// library's. The registry is built once per process, so the path has to be
-// recorded before the first File.
+// linter runs the recorded path against the name registry before it checks any
+// file, so the names an application declares resolve as well as the standard
+// library's. knownRuntime builds the registry once per process, so a caller
+// records the path before the first File.
 func TestSetInclude(t *testing.T) {
 	previous := includeFile
 	t.Cleanup(func() { includeFile = previous })
@@ -43,7 +43,7 @@ func TestSetInclude(t *testing.T) {
 }
 
 // TestSetIncludeIsQuietWhenItFails covers the refusal to fail a lint run over
-// a bootstrap: a file that is not there, and one that cannot be parsed, each
+// a bootstrap: a file that is not there, and one the parser rejects, each
 // leave the registry alone and report nothing. An application whose
 // bootstrap cannot run outside a request still gets the findings the standard
 // library alone produces.
