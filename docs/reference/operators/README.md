@@ -5,7 +5,7 @@
 | Arithmetic                     | Compatibility         | `+`, `-`, `*`, `/`, `%`, `**`, and unary `+`/`-`.                                            |
 | Increment/decrement            | Compatibility         | Prefix and postfix `++` and `--` work on assignable targets.                                 |
 | Assignment                     | Compatibility         | `=` and every compound form; see [Mutation](#mutation).                                      |
-| Comparison                     | Partial compatibility | `<`, `<=`, `>`, `>=`, `==`, `!=`, `===`, and `!==` are supported with simplified coercion.   |
+| Comparison                     | Partial compatibility | `<`, `<=`, `>`, `>=`, `==`, `!=`, `===`, and `!==` work, with simplified coercion.           |
 | Logical                        | Partial compatibility | `!` and the two symbol forms. The word forms `and`, `or` and `xor` are a parse error.        |
 | Bitwise                        | Compatibility         | The five binary operators and `~`, at PHP's precedence and with PHP's string semantics.      |
 | String                         | Compatibility         | `.` and `.=` concatenate values.                                                             |
@@ -13,11 +13,11 @@
 | Array                          | Compatibility         | `+` on two arrays is their union, keeping the left entry where both hold a key.              |
 | Null coalescing and spaceship  | Not implemented       | `??`, `??=` and `<=>` are a parse error.                                                     |
 | Execution operator             | Not implemented       | Backticks are a parse error; there is no shell escape.                                       |
-| Error control (`@`)            | Not implemented       | The token is accepted but does not suppress errors.                                          |
+| Error control (`@`)            | Not implemented       | The parser accepts the token, which suppresses no errors.                                    |
 
 ## Precedence
 
-From lower to higher precedence, binary operators are grouped as follows:
+From lower to higher precedence, the parser groups binary operators as follows:
 
 1. `||`
 2. `&&`

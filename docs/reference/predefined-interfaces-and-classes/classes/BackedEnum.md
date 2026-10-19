@@ -36,6 +36,6 @@ public static function UnitEnum::cases(): array
 
 ## Status
 
-- phpscript does not implement this interface. The name is not declared.
-- The interface uses `extends`. `extends UnitEnum` parses here and is recorded for `instanceof`, and confers nothing: the inherited `cases()` would have to be declared by the implementing class itself.
+- phpscript has no `BackedEnum`. The name is not declared.
+- The interface uses `extends`. The parser accepts `extends UnitEnum` and records it for `instanceof`; the clause confers nothing, because the implementing class would have to declare `cases()` itself.
 - Enumerations are unavailable, so nothing would carry the interface. See [UnitEnum](UnitEnum.md) for what to write instead.
