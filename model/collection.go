@@ -12,12 +12,12 @@ import (
 // These helpers are one way for every consumer (the runner's foreach and index
 // access, the stdlib's array functions) to walk a collection whatever its
 // concrete type, so a binding returns the cheapest representation of its data
-// and pays nothing to build an *Array with no reader: an
-// *Array costs a struct, a map[any]any and a key slice, plus an interface box
-// per key and per value, where the equivalent []string costs one allocation.
+// and pays nothing to build an *Array with no reader: an *Array costs a
+// struct, a map[any]any and a key slice, plus an interface box per key and per
+// value, where the same data as a []string costs one allocation.
 //
-// *Array remains the right choice for values PHP mutates: it is the only shape
-// with insertion-ordered hybrid int/string keys and support for `$a[] = v`.
+// *Array remains the right choice for values PHP mutates: the only shape with
+// insertion-ordered hybrid int/string keys and support for `$a[] = v`.
 
 // Collection is a value that answers its own length and iteration, so a type
 // declared outside this package reads as an array without being one.
@@ -30,7 +30,7 @@ type Collection interface {
 	Range(fn func(key, val any) bool)
 }
 
-// Keyed is a Collection whose entries are read, written and removed by name,
+// Keyed is a Collection that reads, writes and removes its entries by name,
 // the operations indexing, isset() and unset() need.
 type Keyed interface {
 	Collection

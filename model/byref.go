@@ -11,8 +11,8 @@ var byRefArgs = map[string]map[int]bool{
 	"preg_replace_callback": {4: true},
 	"parse_str":             {1: true},
 
-	// The exit status of a command. exec's $output is not here: it is an
-	// array, and an array is shared, so the binding appends into the one the
+	// The exit status of a command. exec's $output is not here: the caller and
+	// the binding share one array, so the binding appends into the one the
 	// caller passed and reaches the same observable result. An integer has no
 	// such route back.
 	"exec":     {2: true},

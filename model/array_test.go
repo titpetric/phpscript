@@ -729,7 +729,7 @@ func BenchmarkArrayAppend50Sized(b *testing.B) { benchArrayAppend(b, 50, true) }
 func BenchmarkArrayAppend50SizedLegacy(b *testing.B) { benchLegacyAppend(b, 50, true) }
 
 // The Ints variants store values in 0..255, which the runtime boxes for free
-// (staticuint64s), so what is left is the array's own structural cost.
+// (staticuint64s), so what they time is the array's own structural cost.
 func BenchmarkArrayAppend5Ints(b *testing.B) {
 	b.ReportAllocs()
 	for range b.N {
@@ -865,9 +865,9 @@ func TestArrayResetKeepsStorage(t *testing.T) {
 }
 
 // TestArray_Delete covers unset: the entries either side keep their order and
-// nothing is renumbered, as PHP does. A list-mode array promotes first, because
-// dropping an element from the middle leaves the remaining keys sparse and list
-// mode cannot express that; dropping the last one stays in list mode.
+// Delete renumbers nothing, as PHP does. A list-mode array promotes first,
+// because dropping an element from the middle leaves the remaining keys sparse
+// and list mode cannot express that; dropping the last one stays in list mode.
 func TestArray_Delete(t *testing.T) {
 	t.Parallel()
 	arr := NewArray()
@@ -936,9 +936,9 @@ func TestArray_Pop(t *testing.T) {
 	}
 }
 
-// TestArray_Int64List covers the fast path a sort or a numeric shim takes: a
-// dense int64 list is answered as a []int64 copy, and anything else refuses.
-// The copy is why a caller can sort it without writing through the array.
+// TestArray_Int64List covers the fast path a sort or a numeric shim takes:
+// Int64List answers a dense int64 list with a []int64 copy and refuses the
+// rest. The copy is why a caller can sort it without writing through the array.
 func TestArray_Int64List(t *testing.T) {
 	t.Parallel()
 	arr := NewArray()

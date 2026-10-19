@@ -8,12 +8,12 @@ import (
 // instances share it, so a class-name comparison reads one class and no two
 // classes spelled alike.
 //
-// It is a package-level value and no entry in the runtime's class table. The
-// table is cleared between runs, so a seeded entry would have to be put back on
-// every reset; and RegisterClass merges into an existing entry, so a script
-// declaring its own `class stdClass` would write its methods onto the one every
-// other instance points at. Declared here, the script's declaration shadows it
-// in the table and this value is never reached.
+// It lives as a package-level value and no entry in the runtime's class table.
+// The runtime clears that table between runs, so every reset would have to
+// seed the entry again; and RegisterClass merges into an existing entry, so a
+// script declaring its own `class stdClass` would write its methods onto the
+// one every other instance points at. Declared here, the script's declaration
+// shadows it in the table and this value is never reached.
 func TestStdClass(t *testing.T) {
 	t.Parallel()
 	class := StdClass()
@@ -41,9 +41,9 @@ func TestStdClass(t *testing.T) {
 }
 
 // TestNewStdClass covers the instance `new stdClass` and the `(object)` cast
-// both produce: empty, pointing at the shared class. The class is shared and
-// the property bag is not, so a property written on one instance is invisible
-// on another.
+// both produce: empty, pointing at the shared class. Instances share the class
+// and no property bag, so a property written on one instance is invisible on
+// another.
 func TestNewStdClass(t *testing.T) {
 	t.Parallel()
 	first, second := NewStdClass(), NewStdClass()

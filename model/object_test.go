@@ -84,8 +84,8 @@ func TestObject_Names(t *testing.T) {
 }
 
 // TestObject_DeleteProp covers unset on a property. A declared field assigned
-// again lands back in its declared position, and a dynamic one is appended, so
-// the order survives the round trip the way PHP's does.
+// again lands back in its declared position, and SetProp appends a dynamic one,
+// so the order survives the round trip the way PHP's does.
 func TestObject_DeleteProp(t *testing.T) {
 	t.Parallel()
 	class := &Class{Fields: []Field{{Name: "total"}}}

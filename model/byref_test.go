@@ -10,9 +10,10 @@ import (
 // namespaced file carries both the qualified call name and the global name it
 // falls back to, so either spelling has to match.
 //
-// exec's $output, its second argument, is absent from the table: an array is
-// shared, so the binding appends into the one the caller passed and reaches the
-// same observable result. Its exit status, the third, has no such route back.
+// exec's $output, its second argument, is absent from the table: the caller
+// and the binding share one array, so the binding appends into the one the
+// caller passed and reaches the same observable result. Its exit status, the
+// third, has no such route back.
 func TestByRefArg(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
