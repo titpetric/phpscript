@@ -49,8 +49,8 @@ func TestBuffersNest(t *testing.T) {
 	}
 }
 
-// TestBuffersDiscardOnClean covers ob_end_clean: the level closes and its text
-// is dropped, so a template that rendered something a page did not want leaves
+// TestBuffersDiscardOnClean covers ob_end_clean: the level closes and pop drops
+// its text, so a template that rendered something a page did not want leaves
 // nothing behind in the output below it.
 func TestBuffersDiscardOnClean(t *testing.T) {
 	t.Parallel()

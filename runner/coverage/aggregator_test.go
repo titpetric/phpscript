@@ -30,8 +30,8 @@ func TestAggregator_Add(t *testing.T) {
 	}
 }
 
-// TestAggregator_Blocks covers the entries a profile is written from: one per
-// executable statement, in the order the profile carries them.
+// TestAggregator_Blocks covers the entries a writer builds a profile from: one
+// per executable statement, in the order the profile carries them.
 func TestAggregator_Blocks(t *testing.T) {
 	t.Parallel()
 	a := coverage.NewAggregator()
@@ -58,7 +58,7 @@ func TestAggregator_Blocks(t *testing.T) {
 }
 
 // TestAggregator_Functions covers the declaration spans a per-function report
-// is charged against, recorded once however many collectors named them.
+// charges against, recorded once no matter how many collectors named them.
 func TestAggregator_Functions(t *testing.T) {
 	t.Parallel()
 	a := coverage.NewAggregator()

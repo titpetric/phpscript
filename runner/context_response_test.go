@@ -19,9 +19,9 @@ func (e *exception) Error() string { return e.message }
 func (e *exception) GetCode() int { return e.code }
 
 // TestAcceptsHTML pins that only an explicit request for HTML counts as one.
-// "*/*" matches every type there is, and it is what curl and fetch() send, so
-// reading it as a request for HTML would put a website's error page in front of
-// every program that talks to the server.
+// "*/*" matches every type there is, and curl and fetch() send it, so reading
+// it as a request for HTML would put a website's error page in front of every
+// program that talks to the server.
 func TestAcceptsHTML(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -56,8 +56,8 @@ func TestAcceptsHTML(t *testing.T) {
 }
 
 // TestWantsErrorPage pins that Sec-Fetch-Dest decides when a browser sends it.
-// It is the one signal that separates a navigation from a fetch() the page made
-// on its own behalf, which Accept cannot do: both can name HTML.
+// The header is the one signal separating a navigation from a fetch() the page
+// made on its own behalf, which Accept cannot do: both can name HTML.
 func TestWantsErrorPage(t *testing.T) {
 	t.Parallel()
 	const navigation = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -160,9 +160,9 @@ func TestAnswered(t *testing.T) {
 	}
 }
 
-// TestWriteResponse pins that a response is flushed in one place: the headers
-// the script staged, then the status, then the body. A status of zero writes
-// none and leaves net/http its 200.
+// TestWriteResponse pins that WriteResponse flushes a response in one place:
+// the headers the script staged, then the status, then the body. A status of
+// zero writes none and leaves net/http its 200.
 func TestWriteResponse(t *testing.T) {
 	t.Parallel()
 	c := NewContext()
@@ -190,8 +190,8 @@ func TestWriteResponse(t *testing.T) {
 
 // TestWriteResponseRefusesAStatusThatCannotBeSent pins that a script cannot
 // bring the handler down by naming a number. http_response_code() takes any
-// integer and net/http panics on one outside 100 to 999, so a status that
-// cannot be sent is treated as no status at all.
+// integer and net/http panics on one outside 100 to 999, so WriteResponse
+// treats a status it cannot send as no status at all.
 func TestWriteResponseRefusesAStatusThatCannotBeSent(t *testing.T) {
 	t.Parallel()
 	for _, status := range []int{-1, 1, 99, 1000, 1 << 20} {

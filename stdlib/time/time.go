@@ -1,7 +1,7 @@
 // Package time exposes Go's time values to PHP without wrapping their method
-// sets. Constructors and package functions are registered explicitly; methods
-// such as Time.Format, Time.Add, Duration.Minutes and Location.String are
-// provided by the runtime's normal Go-value method dispatch.
+// sets. Register names the constructors and package functions explicitly;
+// methods such as Time.Format, Time.Add, Duration.Minutes and Location.String
+// reach a script through the runtime's normal Go-value method dispatch.
 //
 // Two consequences of dispatching to Go's own methods are worth stating, since
 // no wrapper is there to soften them:
@@ -10,7 +10,7 @@
 //     $t->add(86400) advances by 86.4 microseconds. The runtime coerces a
 //     string to a time.Duration, so $t->add("24h") is the spelling that means
 //     what a PHP author reading time()+86400 expects.
-//   - A method Go declares with several results returns a PHP list, read with
+//   - A method Go declares with two or more results returns a PHP list, read with
 //     list($year, $week) = $t->iso_week(). The short [$a, $b] = spelling does
 //     not parse in this runtime.
 package time
@@ -40,12 +40,12 @@ func Register(rt *runner.Runtime) {
 	c := &clock{location: stdtime.Local}
 
 	// The layouts worth naming, under Go's own names for them. A layout is an
-	// ordinary string and any of them can be written out, but the one a script
-	// reaches for by default is spelled out and never
-	// remembered: TIME_RFC3339 is the only layout here that carries the offset,
-	// so it is the one that survives a round trip through a database column or
-	// a JSON payload. A namespaced constant does not parse in this runtime, so
-	// the Time\ prefix the classes use is spelled TIME_ here.
+	// ordinary string and a script can write any of them out; a constant spells
+	// the one a script reaches for by default, so nobody has to remember it.
+	// TIME_RFC3339 is the only layout here that carries the offset, so it
+	// survives a round trip through a database column or a JSON payload. A
+	// namespaced constant does not parse in this runtime, so the Time\ prefix
+	// the classes use becomes TIME_ here.
 	rt.SetConst("TIME_RFC3339", stdtime.RFC3339)
 	rt.SetConst("TIME_RFC3339_NANO", stdtime.RFC3339Nano)
 	rt.SetConst("TIME_DATETIME", stdtime.DateTime)

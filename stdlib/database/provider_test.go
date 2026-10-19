@@ -11,10 +11,10 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// TestProvider covers the alias a host names in its runtime options. The
-// interface itself is declared in model, so a runtime can name a provider
-// without depending on this package, and the alias keeps one name for it on
-// both sides. A runtime whose options name none resolves through Default, the
+// TestProvider covers the alias a host names in its runtime options. model
+// declares the interface itself, so a runtime can name a provider without
+// depending on this package, and the alias keeps one name for it on both
+// sides. A runtime whose options name none resolves through Default, the
 // process environment as a CLI run has it, so a connection resolves before a
 // host has configured anything.
 func TestProvider(t *testing.T) {
@@ -182,7 +182,7 @@ func TestDatabaseProviderCachesUnderResolvedName(t *testing.T) {
 	}
 
 	// A registered "shop:migrate" is the credential migrations run under,
-	// and it is a connection of its own, and not the one queries use.
+	// a connection of its own and not the one queries use.
 	provider.Register("shop:migrate", "sqlite://:memory:")
 	privileged, err := provider.Open(t.Context(), "shop:migrate", "shop")
 	if err != nil {

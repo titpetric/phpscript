@@ -35,11 +35,11 @@ func TestColumns(t *testing.T) {
 	if len(blocks) != 3 {
 		t.Fatalf("blocks = %d, want 3", len(blocks))
 	}
-	// Sorted by file, then position, which is the order a profile is written.
+	// Sorted by file, then position, the order a profile carries them in.
 	if blocks[0].File != "app.php" || blocks[0].StartLine != 2 {
 		t.Errorf("first block = %+v, want app.php line 2", blocks[0])
 	}
-	// `  echo "a";` is indented two spaces and eleven characters long.
+	// `  echo "a";` sits two spaces in and runs eleven characters.
 	if blocks[0].StartCol != 3 || blocks[0].EndCol != 12 {
 		t.Errorf("columns = %d..%d, want 3..12", blocks[0].StartCol, blocks[0].EndCol)
 	}

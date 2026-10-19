@@ -11,10 +11,10 @@ import (
 const DefaultMaxCacheSize = 10000
 
 // IncludeCache stores parsed include/require programs by cleaned filesystem
-// path. Parsed programs are treated as immutable by Runtime.Run/exec: hoisting
-// copies declarations into runtime maps, while statement execution only reads
-// the AST, so cached *model.Program values can be shared safely by callers that
-// do not mutate ASTs themselves. Cache size is bounded to prevent memory leaks.
+// path. Runtime.Run/exec treat a parsed program as immutable: hoisting copies
+// declarations into runtime maps, while statement execution only reads the
+// AST, so callers that do not mutate ASTs themselves can share a cached
+// *model.Program safely. maxEntries bounds the size to prevent memory leaks.
 type IncludeCache struct {
 	mu         sync.RWMutex
 	maxEntries int
@@ -90,10 +90,10 @@ func (c *IncludeCache) Len() int {
 }
 
 // snapshot copies the entries so a caller can walk the whole cache without
-// holding the lock for the walk, and reports the version it copied at. The
-// programs themselves are shared and never copied, which is the cache's own
-// contract: a parsed program is treated as immutable and hoisting reads it into
-// per-runtime maps.
+// holding the lock for the walk, and reports the version it copied at. Callers
+// share the programs themselves and never copy them, which is the cache's own
+// contract: hoisting reads a parsed program into per-runtime maps and treats it
+// as immutable.
 func (c *IncludeCache) snapshot() (map[string]*model.Program, uint64) {
 	if c == nil {
 		return nil, 0
@@ -103,7 +103,7 @@ func (c *IncludeCache) snapshot() (map[string]*model.Program, uint64) {
 	return maps.Clone(c.programs), c.version
 }
 
-// changedSince reports whether the cache has been written since version.
+// changedSince reports whether the cache took a write since version.
 func (c *IncludeCache) changedSince(version uint64) bool {
 	if c == nil {
 		return false
@@ -124,7 +124,7 @@ func (c *IncludeCache) Get(path string) (*model.Program, bool) {
 	return prog, ok
 }
 
-// Set stores prog for path. Evicts one item if max capacity is reached.
+// Set stores prog for path. Evicts one item at the maxEntries limit.
 func (c *IncludeCache) Set(path string, prog *model.Program) {
 	if c == nil {
 		return

@@ -37,11 +37,11 @@ func TestResolveClassName(t *testing.T) {
 	}
 }
 
-// TestClassDefaultScope covers the scope a class's declared defaults are
-// evaluated in. A default is written inside the class body, so `self::X` in one
-// resolves to that class; the scope holding the `new` knows nothing
-// about it. __FILE__ and __DIR__ cross from the caller, so a default naming
-// either reads its declaring file.
+// TestClassDefaultScope covers the scope a class's declared defaults run in. A
+// default sits inside the class body, so `self::X` in one resolves to that
+// class; the scope holding the `new` knows nothing about it. __FILE__ and
+// __DIR__ cross from the caller, so a default naming either reads its
+// declaring file.
 func TestClassDefaultScope(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})

@@ -4,10 +4,11 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// Mount is Register narrowed to a profile: only the binding areas the bitmask
-// names are installed, so a name outside them is undefined in the runtime
+// Mount is Register narrowed to a profile: it installs only the binding areas
+// the bitmask names, so a name outside them stays undefined in the runtime
 // and never refused, unreachable through a call, a callable or either
-// engine. The extra bindings are the caller's own and are installed verbatim.
+// engine. The extra bindings are the caller's own, and Mount installs them
+// verbatim.
 func Mount(rt *runner.Runtime, profile Profile, bindings ...func(*runner.Runtime)) {
 	rt.SetProfile(profile)
 	registerExceptions(rt)

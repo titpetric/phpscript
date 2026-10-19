@@ -36,8 +36,8 @@ var areas = map[string]Profile{"all": All, "secure": Secure, "exec": Exec}
 var profile = All
 
 // ParseProfile reads a --stdlib value: area names separated by commas, empty
-// meaning All. An unknown name is refused, because a typo that fell back to All
-// would read as a narrowed runtime and serve an unnarrowed one.
+// meaning All. It refuses an unknown name, because a typo that fell back to
+// All would read as a narrowed runtime and serve an unnarrowed one.
 func ParseProfile(value string) (Profile, error) {
 	if strings.TrimSpace(value) == "" {
 		return All, nil

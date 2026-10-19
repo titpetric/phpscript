@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// concatHelpers is the helper table a string concatenation reads. Nothing
-// else is filled, so a chain that reaches another helper panics on a nil
-// func and the test names it.
+// concatHelpers is the helper table a string concatenation reads. It fills
+// nothing else, so a chain that reaches another helper panics on a nil func
+// and the test names it.
 func concatHelpers() *Helpers {
 	return &Helpers{
 		Concat: func(a, b any) string { return fmt.Sprint(a) + fmt.Sprint(b) },
@@ -74,8 +74,8 @@ func TestRun(t *testing.T) {
 		t.Errorf("Run() = %#v, want %q", value, "hello ada")
 	}
 
-	// A helper that panics mid-chain is reported through PanicError, with no
-	// value returned beside the error.
+	// Run reports a helper that panics mid-chain through PanicError, with no
+	// value beside the error.
 	panicking := &Helpers{
 		Concat:     func(a, b any) string { panic("nil map") },
 		PanicError: func(recovered any) error { return fmt.Errorf("host panic: %v", recovered) },
@@ -93,7 +93,7 @@ func TestRun(t *testing.T) {
 	}
 }
 
-// TestProgram_Slots covers the identifier spelling the table is keyed by.
+// TestProgram_Slots covers the identifier spelling the table keys on.
 // The compiler reuses the transpiler's prefixes, `v_` for a PHP variable and
 // `c_` for a bare name, so `$FOO` and `FOO` take separate slots. One
 // identifier read twice shares the slot it got the first time, so the runner

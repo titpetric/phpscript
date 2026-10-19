@@ -11,10 +11,10 @@ import (
 // 0xAARRGGBB, with alpha in the top byte on GD's own scale of 0 to 127 where 0
 // is opaque and 127 is transparent.
 //
-// That scale is inverted from every other alpha in Go, and it is the one thing
-// in this package a caller reads backwards. It is kept because ported
-// code computes on the value: imagecolorallocatealpha($im,230,230,230,70)
-// has to mean the same 55% here as it did under GD.
+// That scale runs opposite to every other alpha in Go, the one value in this
+// package a caller reads backwards. This package keeps it because ported code
+// computes on the value: imagecolorallocatealpha($im,230,230,230,70) has to
+// mean the same 55% here as it did under GD.
 const (
 	alphaOpaque      = 0
 	alphaTransparent = 127

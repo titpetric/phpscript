@@ -17,8 +17,8 @@ type Env struct {
 	// Scratch is the argument arena scratchCall boxes into, growing across
 	// evaluations and reset when the environment goes back to its pool. It
 	// is stack-disciplined: a call pushes its arguments, borrows the region
-	// for the call, and pops it when the call returns, so only the helpers
-	// that never retain their argument slice may be compiled onto it.
+	// for the call, and pops it when the call returns, so the compiler puts
+	// only the helpers that never keep their argument slice onto it.
 	Scratch []any
 }
 
@@ -56,7 +56,7 @@ type Helpers struct {
 	Slotted func(name string) bool
 }
 
-// constClosure returns v itself: literals are boxed once at compile time.
+// constClosure returns v itself: the compiler boxes a literal once.
 func constClosure(v any) closure {
 	return func(*Env) (any, error) { return v, nil }
 }

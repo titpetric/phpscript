@@ -7,8 +7,8 @@ import (
 )
 
 // TestRuntime_PushOutput covers nesting a redirection. The innermost writer
-// takes the text, so a captured region can itself capture. PHP's ob_* family in
-// stdlib/compat is built on that nesting.
+// takes the text, so a captured region can itself capture. stdlib/compat
+// builds PHP's ob_* family on that nesting.
 func TestRuntime_PushOutput(t *testing.T) {
 	t.Parallel()
 	var outer, inner bytes.Buffer
@@ -38,8 +38,8 @@ func TestRuntime_PushOutput(t *testing.T) {
 
 // TestRuntime_PopOutput covers ending the innermost redirection. A pop with
 // nothing pushed reports false, so a script calling ob_end_clean() without a
-// buffer open is told so; a nil push still leaves something to pop, because
-// dropping the level would unstack the caller's writer on the next pop.
+// buffer open reads the refusal; a nil push still leaves something to pop,
+// because dropping the level would unstack the caller's writer on the next pop.
 func TestRuntime_PopOutput(t *testing.T) {
 	t.Parallel()
 	var captured bytes.Buffer

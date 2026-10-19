@@ -17,9 +17,9 @@ var precompileFS = fstest.MapFS{
 	"public/style.css": {Data: []byte(`body { color: red; }`)},
 }
 
-// TestPrecompiler covers the walk: every .php file that parses is cached under
-// the path a script would name it by, and a file that does not parse is left
-// out, and the pass does not fail.
+// TestPrecompiler covers the walk: the pass caches every .php file that parses
+// under the path a script would name it by, skips one that does not parse, and
+// does not fail.
 func TestPrecompiler(t *testing.T) {
 	t.Parallel()
 	includes := runner.NewIncludeCache()
@@ -42,8 +42,8 @@ func TestPrecompiler(t *testing.T) {
 	}
 }
 
-// TestPrecompilerEmptyTree covers the inputs that have nothing to walk: a
-// Precompiler is constructed by a host that may not have configured one.
+// TestPrecompilerEmptyTree covers the inputs that have nothing to walk: a host
+// builds the Precompiler itself and may leave a field empty.
 func TestPrecompilerEmptyTree(t *testing.T) {
 	t.Parallel()
 	includes := runner.NewIncludeCache()

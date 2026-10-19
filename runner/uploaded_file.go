@@ -7,11 +7,11 @@ type UploadedFile struct {
 	Name string // client-supplied file name, without any directory part
 	// FullPath is the file name as the client sent it, directory part and all,
 	// which a directory upload uses to say where in the tree a file sat. PHP
-	// 8.1 added it; like Name, it is the client's word and not a path on this
-	// host.
+	// 8.1 added it; like Name, it carries the client's word and no path on
+	// this host.
 	FullPath string
 	Type     string // client-supplied content type
-	TmpName  string // path of the temporary copy, empty when Error is set
+	TmpName  string // path of the temporary copy, empty on a non-zero Error
 	Size     int64
 	Error    int // an UPLOAD_ERR_* code, UploadErrOK for a stored part
 }

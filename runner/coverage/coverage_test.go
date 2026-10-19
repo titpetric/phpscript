@@ -35,7 +35,7 @@ interface Shape {}
 
 // TestNew covers what a collector holds after one registration: every
 // executable statement seeded, declarations skipped, and the file recorded
-// whether or not anything in it ran.
+// even when nothing in it ran.
 func TestNew(t *testing.T) {
 	t.Parallel()
 	c := collect(t, "app.php", collectorSource, 0)
@@ -73,8 +73,8 @@ func TestCollector(t *testing.T) {
 	}
 }
 
-// TestCollector_Functions covers the declaration spans a per-function report is
-// charged against: free functions under their name, methods under Class::name.
+// TestCollector_Functions covers the declaration spans a per-function report
+// charges against: free functions under their name, methods under Class::name.
 // An interface declares only signatures and spans nothing.
 func TestCollector_Functions(t *testing.T) {
 	t.Parallel()

@@ -8,7 +8,7 @@ import (
 )
 
 // Drawable is an image this package can write a pixel into. A handle wraps one,
-// and a decoder that produced something else is copied into one by wrap.
+// and wrap copies a decoder that produced something else into one.
 type Drawable = draw.Image
 
 // fillRect paints r in one colour, replacing what lies under it.
@@ -23,9 +23,9 @@ func copyPixels(dst Drawable, src image.Image, at image.Point) {
 
 // resample scales the sr region of src into the dr region of dst.
 //
-// CatmullRom is the interpolation imagecopyresampled is read as: GD's own
-// resample is bicubic, and nearest neighbour would answer a different image for
-// every scaled fixture.
+// CatmullRom is the interpolation this package reads imagecopyresampled as:
+// GD's own resample is bicubic, and nearest neighbour would answer a different
+// image for every scaled fixture.
 func resample(dst Drawable, dr image.Rectangle, src image.Image, sr image.Rectangle) {
 	draw.CatmullRom.Scale(dst, dr, src, sr, draw.Src, nil)
 }

@@ -4,11 +4,11 @@ import (
 	"fmt"
 )
 
-// FuncSite is where a user function is declared. It is what turns the second
-// declaration of a name into a message worth reading: PHP's fatal error names
-// the first site, and a script carrying two declarations of the same
-// function usually got there by including a file twice, in which case the first
-// site is the only thing that says which file.
+// FuncSite is where a script declares a user function. The site turns the
+// second declaration of a name into a message worth reading: PHP's fatal error
+// names the first site, and a script carrying two declarations of the same
+// function normally got there by including a file twice, in which case the
+// first site is the only thing that says which file.
 type FuncSite struct {
 	File string
 	Line int

@@ -10,7 +10,7 @@ import (
 )
 
 // runScript parses and runs src against a runtime with the stdlib installed,
-// returning its output. The shims are exercised through the VM because that is
+// returning its output. It drives the shims through the VM because that is
 // where their return shape has to hold up: foreach, indexing, count() and
 // property writes all reach the value through reflection.
 func runScript(t *testing.T, src string) string {
@@ -65,8 +65,8 @@ func TestExceptionSemantics(t *testing.T) {
 		},
 		{
 			name: "reference semantics across a call",
-			// The helper avoids the name rename(), which php refuses: the name
-			// is taken by a built-in, and declaring over one is a fatal
+			// The helper avoids the name rename(), which php refuses: a
+			// built-in holds the name, and declaring over one is a fatal
 			// error there and a RedeclareError here.
 			php: `<?php
 function relabel($e) { $e->message = "renamed"; }
@@ -221,7 +221,7 @@ func TestRandomBindingsScript(t *testing.T) {
 		},
 		{
 			name: "random_bytes length is honoured",
-			// strlen counts characters, so a binary length is counted
+			// strlen counts characters, so this case reads a binary length
 			// through its hex spelling; see docs/README.md, known divergences.
 			php:  `<?php echo strlen(bin2hex(random_bytes(1))) / 2, " ", strlen(bin2hex(random_bytes(64))) / 2;`,
 			want: "1 64",

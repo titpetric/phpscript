@@ -46,7 +46,7 @@ func TestFileRows(t *testing.T) {
 	}
 }
 
-// TestFuncRows covers the per-function report: a block is charged to the
+// TestFuncRows covers the per-function report: it charges a block to the
 // innermost declaration containing it, top-level code to {main}, and an
 // uncalled function is the zero row the report exists to show.
 func TestFuncRows(t *testing.T) {
@@ -101,7 +101,7 @@ func TestWriteReport(t *testing.T) {
 	}
 }
 
-// TestSortRows pins the order a report is written in.
+// TestSortRows pins the order a report carries its rows in.
 func TestSortRows(t *testing.T) {
 	t.Parallel()
 	rows := []coverage.Row{
@@ -121,7 +121,7 @@ func TestSortRows(t *testing.T) {
 	}
 }
 
-// TestSortProfile pins the order a profile is written in.
+// TestSortProfile pins the order a profile carries its blocks in.
 func TestSortProfile(t *testing.T) {
 	t.Parallel()
 	blocks := []coverage.ProfileBlock{

@@ -37,9 +37,9 @@ func run(t *testing.T, provider *mailstdlib.Memory, source string) string {
 }
 
 // TestRegister covers the surface the installer puts within reach: the Mail
-// class and the mail function, each under the name a script types. Both are
-// installed whether or not the host configured a server, so calling code keeps
-// one spelling and its own fallback.
+// class and the mail function, each under the name a script types. The
+// installer adds both with or without a configured server, so calling code
+// keeps one spelling and its own fallback.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
@@ -139,7 +139,7 @@ func TestMailClass(t *testing.T) {
 // TestMail_SendHTML covers the two optional arguments of send(): $html travels
 // beside the text and $reply_to becomes the Reply-To, which reaches the
 // provider as one address. A bare address stays bare, and a display name comes
-// back quoted, the way it is written into the header.
+// back quoted, the way buildMessage writes it into the header.
 func TestMail_SendHTML(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory()
@@ -172,8 +172,8 @@ func TestMail_SendHTML(t *testing.T) {
 
 // TestMail_SendReplyToInjection pins the refusal of a Reply-To that is not one
 // address. A header smuggled in behind a line break leaves a malformed address
-// once the break is stripped, so the call throws and nothing reaches the
-// provider; a list is refused too, because the argument names one address.
+// once header strips the break, so the call throws and nothing reaches the
+// provider; send refuses a list too, because the argument names one address.
 func TestMail_SendReplyToInjection(t *testing.T) {
 	t.Parallel()
 	for _, replyTo := range []string{
@@ -210,9 +210,9 @@ func TestMail_SendReplyToInjection(t *testing.T) {
 type plainProvider struct{ model.MailProvider }
 
 // TestMail_SendThroughAPlainProvider covers a provider that declares the
-// interface and nothing more. Its Send still delivers plain text; a message
-// with an HTML part or a Reply-To is refused, because delivering the text alone
-// would send a different message than the script wrote.
+// interface and nothing more. Its Send still delivers plain text; the binding
+// refuses a message with an HTML part or a Reply-To, because delivering the
+// text alone would send a different message than the script wrote.
 func TestMail_SendThroughAPlainProvider(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory()
@@ -248,9 +248,9 @@ func TestMail_SendThroughAPlainProvider(t *testing.T) {
 	}
 }
 
-// TestMailUnknownServer pins the fail-fast: a name nobody configured is
-// reported at construction, before a script has written a message, and the
-// error names the server the script selects, and no other.
+// TestMailUnknownServer pins the fail-fast: the constructor reports a name
+// nobody configured before a script has written a message, and the error
+// names the server the script selects, and no other.
 func TestMailUnknownServer(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default")

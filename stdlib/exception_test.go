@@ -13,8 +13,8 @@ import (
 // catch clause can filter on it, and no two of them stand in a subclass
 // relation: phpscript has no inheritance. The constructor returns a pointer,
 // so the instance a script holds is addressable and `$e->message = "..."`
-// writes to it; the nil error is what keeps `new Exception` from throwing at
-// the point it is constructed.
+// writes to it; the nil error is what keeps `new Exception` from throwing
+// where a script constructs one.
 func TestException(t *testing.T) {
 	t.Parallel()
 	exception, err := stdlib.NewException("boom", 7)

@@ -69,9 +69,9 @@ func isSQLiteMemoryDSN(dsn string) bool {
 // scriptSQLitePath reports the sqlite file path a DSN names, and whether it
 // names one that would resolve outside the application root.
 //
-// resolveSQLiteDSN passes an absolute path and a file: URI through
-// untouched, because an operator writing config.yml may point a connection at a
-// real path on the host. A script is not the operator: Database::register takes
+// resolveSQLiteDSN passes an absolute path and a file: URI through untouched,
+// because an operator writing `config.yml` may point a connection at a real
+// path on the host. A script is not the operator: Database::register takes
 // its DSN from PHP, so the same spelling there is a tenant naming a host path,
 // and opening the connection creates the file. Only the script-facing
 // registration consults this; a configured DSN keeps resolving as it did.
@@ -90,7 +90,7 @@ func scriptSQLitePath(dsn string) (path string, outside bool) {
 	if path == "" {
 		return "", false
 	}
-	// A file: URI is handed to the driver verbatim, so it is not anchored by
-	// resolveSQLiteDSN and names whatever it says.
+	// resolveSQLiteDSN passes a file: URI to the driver verbatim and anchors
+	// nothing, so the URI names whatever it says.
 	return path, filepath.IsAbs(path) || strings.HasPrefix(path, "file:")
 }

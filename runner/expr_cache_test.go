@@ -9,10 +9,10 @@ import (
 )
 
 // TestExprCache_GetExpr covers the read side of the per-node cache. The key is
-// node identity and no structural equality: the cache is filled off the AST a
-// program holds, and that AST is the one Eval walks again, so two equal nodes
-// written in two places are two entries. A nil cache answers a miss, which is
-// what lets a runtime with no cache evaluate without a check at every lookup.
+// node identity and no structural equality: SetExpr keys off the AST a program
+// holds, and that AST is the one Eval walks again, so two equal nodes written
+// in two places are two entries. A nil cache answers a miss, which lets a
+// runtime with no cache run an expression without a check at every lookup.
 func TestExprCache_GetExpr(t *testing.T) {
 	t.Parallel()
 	cache := NewExprCache()
@@ -48,9 +48,9 @@ func TestExprCache_GetExpr(t *testing.T) {
 }
 
 // TestExprCache_EnsureFlat covers the write-through compile a caller gates a
-// flatstack run on. A program the compiler accepts is compiled once and read
-// back, and one it refuses reports the refusal on every call, because nothing
-// is stored for it: a stored verdict would let one run decide for the next.
+// flatstack run on. The cache compiles a program the compiler accepts once and
+// reads it back; one it refuses reports the refusal every call, because the
+// cache stores nothing: a stored verdict would let one run decide for the next.
 func TestExprCache_EnsureFlat(t *testing.T) {
 	t.Parallel()
 	cache := NewExprCache()
@@ -87,7 +87,7 @@ func TestExprCache_EnsureFlat(t *testing.T) {
 
 // The benchmarks below pin the cost of the expression engine: compilation
 // and Eval per node shape. They are the before/after evidence for any engine
-// change; docs/allocation-performance.md describes how a run is taken and
+// change; docs/allocation-performance.md describes how to take a run and
 // carries the measured history, including the expr-lang engine these
 // replaced.
 
@@ -134,7 +134,7 @@ func BenchmarkExprCompileDirect(b *testing.B) {
 }
 
 // benchEval evaluates e once to fill every cache layer, then measures the
-// steady state: env acquire, slot binding, and the closure run.
+// steady state: the acquireEnv call, slot binding, and the closure run.
 func benchEval(b *testing.B, e model.Expr) {
 	b.Helper()
 	rt := benchExprRuntime()

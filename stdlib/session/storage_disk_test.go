@@ -12,8 +12,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib/session"
 )
 
-// TestStorageDisk_Delete covers logging a session out. The file is removed, so
-// a later Load reports fs.ErrNotExist and a second Delete does too: the
+// TestStorageDisk_Delete covers logging a session out. Delete removes the file,
+// so a later Load reports fs.ErrNotExist and a second Delete does too: the
 // manager reads the same condition from either backend.
 func TestStorageDisk_Delete(t *testing.T) {
 	t.Parallel()
@@ -44,8 +44,8 @@ func TestStorageDisk_Delete(t *testing.T) {
 		t.Errorf("a second Delete = %v, want fs.ErrNotExist", err)
 	}
 
-	// An ID holding a path separator names a file outside the directory, and is
-	// refused before anything is removed.
+	// An ID holding a path separator names a file outside the directory, and
+	// Delete refuses it before removing anything.
 	if err := storage.Delete(ctx, "../outside"); err == nil {
 		t.Error("Delete accepted a path-traversing ID")
 	}
@@ -53,9 +53,10 @@ func TestStorageDisk_Delete(t *testing.T) {
 
 // TestStorageDiskPruneSweepsByModificationTime covers the sweep that bounds how
 // large the directory grows. A session rewritten on every request keeps a
-// current modification time, so age is read off the file and never off the ID.
+// current modification time, so Prune reads age off the file and never off the
+// ID.
 //
-// The temporary files Save writes are skipped, so a sweep running beside a save
+// Prune skips the temporary files Save writes, so a sweep running beside a save
 // cannot remove the file that save is about to rename into place.
 func TestStorageDiskPruneSweepsByModificationTime(t *testing.T) {
 	t.Parallel()

@@ -96,7 +96,7 @@ func TestPHPInfoReportsTheCompiledTree(t *testing.T) {
 	if !strings.Contains(report, "Cached Files => 1") {
 		t.Fatalf("the cached file is not reported:\n%s", report)
 	}
-	// Nothing measured a size, so no size is claimed.
+	// Nothing measured a size, so the section claims none.
 	if strings.Contains(report, "Cached Size") {
 		t.Fatalf("a size was reported with no precompile pass behind it:\n%s", report)
 	}

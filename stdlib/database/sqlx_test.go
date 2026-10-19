@@ -6,7 +6,7 @@ import (
 )
 
 // TestNewDB covers the handle every binding of this package queries through:
-// it carries the driver name the bind variable form is picked from, it keeps
+// it carries the driver name sqlx picks the bind variable form from, it keeps
 // its pool, and a query runs on it.
 func TestNewDB(t *testing.T) {
 	t.Parallel()
@@ -33,9 +33,8 @@ func TestNewDB(t *testing.T) {
 	}
 }
 
-// TestConnector covers the open function a provider is built with. Open
-// satisfies it, so the default provider and an instrumented one are built the
-// same way.
+// TestConnector covers the open function a provider takes. Open satisfies it,
+// so a host builds the default provider and an instrumented one the same way.
 func TestConnector(t *testing.T) {
 	t.Parallel()
 	var connector Connector = Open

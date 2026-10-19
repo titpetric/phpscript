@@ -46,7 +46,7 @@ func (s *Scope) bindStatic(name string, bag map[string]any) {
 	s.statics[name] = bag
 }
 
-// Get returns the value of name and whether it is set.
+// Get returns the value of name and whether the scope holds it.
 func (s *Scope) Get(name string) (any, bool) {
 	if s.statics != nil {
 		if bag, ok := s.statics[name]; ok {
@@ -85,9 +85,9 @@ func (s *Scope) Defer(callback any) {
 
 // DefinedVars returns a snapshot of PHP-visible variables in this frame.
 // Interpreter bookkeeping slots use a double-underscore prefix and are not PHP
-// variables, so they are omitted. `this` goes with them: it is bound by the
-// call and never declared in the body, and php leaves it out of
-// get_defined_vars() for that reason.
+// variables, so the snapshot drops them. `this` goes with them: the call binds
+// it and no body declares it, and php leaves it out of get_defined_vars() for
+// that reason.
 func (s *Scope) DefinedVars() map[string]any {
 	vars := make(map[string]any, len(s.vars)+len(s.statics))
 	for name, value := range s.vars {

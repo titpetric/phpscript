@@ -19,8 +19,8 @@ import (
 // bindings rooted at the working directory, and returns the handle the script
 // left in the IM constant together with what it echoed.
 //
-// A script is the only way to build an *Image: the constructors are registered
-// functions and the type has no exported one.
+// A script is the only way to build an *Image: the constructors exist as
+// registered functions and the type has no exported one.
 func runScript(t *testing.T, src string) (*gd.Image, string) {
 	t.Helper()
 	return runScriptAt(t, ".", src)
@@ -81,10 +81,10 @@ func writePNG(t *testing.T, path string, width, height int) {
 	}
 }
 
-// TestRegister covers what the stdlib wiring installs. The IMG_* and
-// IMAGETYPE_* constants are set unconditionally because ported code branches on
-// them, and imagetypes reports one fixed set: the decoders are linked into the
-// program and never discovered at runtime.
+// TestRegister covers what the stdlib wiring installs. That wiring sets the
+// IMG_* and IMAGETYPE_* constants unconditionally because ported code branches
+// on them, and imagetypes reports one fixed set: the program links its decoders
+// in and discovers none at runtime.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -124,9 +124,9 @@ func TestRegister(t *testing.T) {
 }
 
 // TestRegisterRoot covers the path rule the image functions share with
-// stdlib/files: every path a script names is anchored inside the root,
-// absolute and climbing spellings included. A path reaching the host
-// filesystem would let a virtual host read a file file_get_contents refuses.
+// stdlib/files: the root anchors every path a script names, absolute and
+// climbing spellings included. A path reaching the host filesystem would let a
+// virtual host read a file file_get_contents refuses.
 func TestRegisterRoot(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -205,7 +205,7 @@ func TestImage_Underlying(t *testing.T) {
 		t.Errorf("Underlying().Bounds() = %v, want the handle's %v", got, want)
 	}
 
-	// A fresh true colour image is filled with opaque black.
+	// imagecreatetruecolor fills a fresh image with opaque black.
 	if got := color.RGBAModel.Convert(drawable.At(0, 0)); got != (color.RGBA{A: 255}) {
 		t.Errorf("pixel 0,0 = %#v, want opaque black", got)
 	}

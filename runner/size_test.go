@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestParseSize covers the two spellings a size may be written in, and the
-// rejection of the php.ini shorthands that are not among them: a size that
-// cannot be read is an error, and never a guess.
+// TestParseSize covers the two spellings a size takes, and the rejection of
+// the php.ini shorthands that are not among them: a size ParseSize cannot
+// read is an error, and never a guess.
 func TestParseSize(t *testing.T) {
 	t.Parallel()
 	valid := map[string]int64{
@@ -41,7 +41,7 @@ func TestParseSize(t *testing.T) {
 	}
 }
 
-// TestSizeExceeds pins the meaning of the zero value: no limit, as it is in
+// TestSizeExceeds pins the meaning of the zero value: no limit, as in
 // php.ini, so nothing is ever over it.
 func TestSizeExceeds(t *testing.T) {
 	t.Parallel()
@@ -65,8 +65,8 @@ func TestSizeExceeds(t *testing.T) {
 	}
 }
 
-// TestSizeYAML covers reading a size out of a configuration file, where it is
-// written the way php.ini writes it, and writing it back.
+// TestSizeYAML covers reading a size out of a configuration file, spelled the
+// way php.ini writes it, and writing it back.
 func TestSizeYAML(t *testing.T) {
 	t.Parallel()
 	var opts runner.Options
@@ -114,10 +114,10 @@ func TestSize_UnmarshalYAML(t *testing.T) {
 	}
 }
 
-// TestSize_MarshalYAML covers the spelling a size is written back in, which is
-// the one it reads best in: a whole number of megabytes keeps the suffix, so a
-// configuration file a process rewrites still says 8M and not 8388608. Every
-// spelling round trips to the same byte count.
+// TestSize_MarshalYAML covers the spelling MarshalYAML writes a size back in,
+// which is the one it reads best in: a whole number of megabytes keeps the
+// suffix, so a configuration file a process rewrites still says 8M and not
+// 8388608. Every spelling round trips to the same byte count.
 func TestSize_MarshalYAML(t *testing.T) {
 	t.Parallel()
 	written := map[string]string{

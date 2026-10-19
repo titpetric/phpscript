@@ -12,15 +12,15 @@ var runtimeBaseline = int64(unsafe.Sizeof(Runtime{}))
 
 // Memory-limit checkpoint intervals. A checkpoint walks every live value, so
 // it cannot run per step; statements are far heavier than VM instructions,
-// hence the distinct intervals. Both apply only when a MemoryLimit is set.
+// hence the distinct intervals. Both apply only under a MemoryLimit.
 const (
 	memCheckStatements   = 256
 	memCheckInstructions = 4096
 )
 
-// visitedSet dedups containers by pointer identity during a deep walk, so an
-// array or object reachable through several variables is counted once and
-// self-referential containers terminate.
+// visitedSet dedups containers by pointer identity during a deep walk, so the
+// walk counts an array or object reachable through two or more variables once
+// and ends on a self-referential container.
 type visitedSet map[any]struct{}
 
 // DeepSize estimates the bytes held by a PHP value, recursing into
@@ -97,10 +97,10 @@ func DeepSize(v any, visited visitedSet) int64 {
 }
 
 // EstimateValueSize is a shallow estimate of what a value costs, in bytes: a
-// scalar or string is its own size, a collection is its header plus one level of
-// entries, and anything else is the shallow sizeof. It is cheap enough to run on
-// every binding's result, and it undercounts a deeper graph by design: the
-// walk that does not is DeepSize.
+// scalar or string is its own size, a collection is its header plus one level
+// of entries, and anything else is the shallow sizeof. The estimate is cheap
+// enough to run on every binding's result, and it undercounts a deeper graph
+// by design: the walk that does not is DeepSize.
 func EstimateValueSize(v any) int64 {
 	if v == nil {
 		return 0

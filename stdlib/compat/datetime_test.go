@@ -63,8 +63,8 @@ func TestStrtotimeReadsWhatDateWrote(t *testing.T) {
 
 // TestDate covers the format characters this shim reads and the one rule for
 // everything else: a backslash escapes the next character, U is the epoch
-// itself, the 12-hour characters report 12 at midnight and never 0, and a
-// character the shim does not know is written through unchanged. php renders
+// itself, the 12-hour characters report 12 at midnight and never 0, and the
+// shim writes a character it does not know through unchanged. php renders
 // the word-and-zone characters; stdlib/time is where a script reaches those,
 // and the passthrough is the recorded boundary between the two.
 func TestDate(t *testing.T) {

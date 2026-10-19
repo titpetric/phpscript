@@ -4,10 +4,10 @@ import (
 	"testing"
 )
 
-// TestArithmeticError covers the class name a shift by a negative number is
-// caught under. There is no class hierarchy here, so matchCatchType reads the
-// name off ThrowableClass and matches "Error" on its suffix: the name has to
-// end in Error for `catch (Error $e)` to take it.
+// TestArithmeticError covers the class name a catch clause takes a shift by a
+// negative number under. There is no class hierarchy here, so matchCatchType
+// reads the name off ThrowableClass and matches "Error" on its suffix: the
+// name has to end in Error for `catch (Error $e)` to take it.
 func TestArithmeticError(t *testing.T) {
 	t.Parallel()
 	err := &ArithmeticError{Message: "Bit shift by negative number"}

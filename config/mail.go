@@ -36,7 +36,7 @@ func (m Mail) Check(filename string) error {
 	sort.Strings(names)
 
 	for _, name := range names {
-		if err := m[name].Validate(name); err != nil {
+		if err := m[name].Check(name); err != nil {
 			return fmt.Errorf("%s: %w", filename, err)
 		}
 	}

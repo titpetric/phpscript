@@ -6,9 +6,9 @@ import (
 )
 
 // TestExecReturnsTheLastLine covers what exec() answers with and what it
-// collects: the return is the last line of stdout and $output is filled by
-// appending into the array the caller passed. Every expectation here came from
-// running the same call through php.
+// collects: the return is the last line of stdout and exec() appends to the
+// $output array the caller passed. Every expectation here came from running the
+// same call through php.
 func TestExecReturnsTheLastLine(t *testing.T) {
 	t.Parallel()
 	out := run(t, "", `<?php

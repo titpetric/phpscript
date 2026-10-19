@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-// TestPool covers the two numbers a pool is built from, which are its contract:
-// the worker count is the parallelism and the queue depth is the backpressure,
-// so a caller can read both back off the pool it holds.
+// TestPool covers the two numbers NewPool takes, which are its contract: the
+// worker count is the parallelism and the queue depth is the backpressure, so
+// a caller can read both back off the pool it holds.
 //
 // Zero workers is GOMAXPROCS, the parallelism the machine has for work that is
 // all CPU, and zero queue is DefaultQueue.
@@ -37,9 +37,9 @@ func TestPool(t *testing.T) {
 	}
 }
 
-// TestPool_Submit covers running work on a worker and waiting for it. The run
-// is handed a forked runtime and never the pool's own, which is
-// what keeps two submits off one set of frames.
+// TestPool_Submit covers running work on a worker and waiting for it. Each run
+// gets a forked runtime and never the pool's own, so two submits never share
+// one set of frames.
 func TestPool_Submit(t *testing.T) {
 	t.Parallel()
 	parent := New(io.Discard, Options{})
@@ -71,9 +71,9 @@ func TestPool_Submit(t *testing.T) {
 	}
 }
 
-// TestPool_Close covers the pool refusing work once it is closed, and a second
-// Close being harmless, because a host shutting down may reach it from more
-// than one place.
+// TestPool_Close covers the pool refusing work after Close, and a second Close
+// being harmless, because a host shutting down may reach it from more than one
+// place.
 func TestPool_Close(t *testing.T) {
 	t.Parallel()
 	pool := NewPool(New(io.Discard, Options{}), 1, 4, nil)
@@ -96,7 +96,7 @@ func TestPool_Close(t *testing.T) {
 }
 
 // lendingJob is a DoneJob that counts its runs and carries one channel across
-// all of them, the shape stdlib/http's per-request tracker takes.
+// every one of them, the shape stdlib/http's per-request tracker takes.
 type lendingJob struct {
 	runs int
 	done chan struct{}
@@ -113,9 +113,9 @@ func (j *lendingJob) Done() chan struct{} {
 
 // TestPool_SubmitLendsTheDoneChannel covers the DoneJob path: the pool signals
 // through the channel the job lends, and the buffered slot empties on receipt,
-// so one channel serves every run the job is submitted for. The send and the
-// receive pair per run, so no run reads the signal of the one before it and
-// answers ahead of its own work.
+// so one channel serves every submit of the job. The send and the receive pair
+// per run, so no run reads the signal of the one before it and answers ahead
+// of its own work.
 func TestPool_SubmitLendsTheDoneChannel(t *testing.T) {
 	t.Parallel()
 	pool := NewPool(New(io.Discard, Options{}), 1, 4, nil)

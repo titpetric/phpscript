@@ -59,8 +59,8 @@ echo grid($im, 2, 2);
 
 // TestDrawLine covers the Bresenham walk. The standard library draws no lines
 // and an axis-aligned shortcut is not enough, because ported border code names
-// arbitrary endpoints, so both an axis-aligned and a diagonal line are read
-// back.
+// arbitrary endpoints, so the test reads back both an axis-aligned and a
+// diagonal line.
 func TestDrawLine(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -122,7 +122,8 @@ echo grid($im, 2, 2);
 
 // TestDrawFill covers the scanline flood fill. It replaces the connected region
 // sharing the starting pixel's colour, so filling a blank image from a corner
-// paints all of it and a region walled off by another colour is left.
+// paints the whole image and the fill leaves a region walled off by another
+// colour alone.
 func TestDrawFill(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, gridHelper+`
@@ -146,7 +147,7 @@ echo grid($im, 3, 3);
 
 // TestDrawFillOutsideTheImage covers a starting point the image does not hold.
 // There is no region to walk, and GD treats the call as done and never
-// failed, so the return stays true and nothing is painted.
+// failed, so the return stays true and imagefill paints nothing.
 func TestDrawFillOutsideTheImage(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, gridHelper+`

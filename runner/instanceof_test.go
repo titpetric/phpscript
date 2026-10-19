@@ -9,7 +9,7 @@ import (
 // TestPHPInstanceOf covers `$value instanceof Class` as class-name equality,
 // compared without case as class names are everywhere else. A class declaring
 // `extends RuntimeException` is an instance of itself and of nothing else,
-// because there is no inheritance to follow; an interface name is answered from
+// because there is no inheritance to follow; an interface name matches against
 // the list the declaration recorded. See docs/design.md.
 func TestPHPInstanceOf(t *testing.T) {
 	t.Parallel()

@@ -7,7 +7,7 @@ import (
 
 // TestNewBridge covers the client a script's Database holds: a statement run
 // through it reaches the pool, and the observer set on it reads the query that
-// ran. Every span this package records is built from that reading.
+// ran. This package builds every span it records from that reading.
 func TestNewBridge(t *testing.T) {
 	t.Parallel()
 	pool, err := Open("sqlite", ":memory:")

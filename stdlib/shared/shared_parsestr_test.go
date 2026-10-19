@@ -139,8 +139,8 @@ func TestParseStr(t *testing.T) {
 	}
 }
 
-// A variable nested past the limit is dropped whole, not truncated. php warns
-// and drops it too.
+// The parse drops a variable nested past the limit whole and never truncates
+// it. php warns and drops it too.
 func TestParseStrNestingLimit(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -166,7 +166,7 @@ func TestParseStrNestingLimit(t *testing.T) {
 	}
 }
 
-// Pairs past the limit are dropped and earlier ones kept, as php does.
+// The parse drops pairs past the limit and keeps earlier ones, as php does.
 func TestParseStrVarLimit(t *testing.T) {
 	t.Parallel()
 	var b strings.Builder

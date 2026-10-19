@@ -8,7 +8,7 @@ import (
 
 // DB is one connection pool, as every caller of this package holds it.
 //
-// It is sqlx's handle and not a type of this package's own: the named
+// DB is sqlx's handle and not a wrapper this package declares: the named
 // parameters and the struct scanning are the whole reason for the dependency,
 // and a type that hid them would declare them again under other names.
 type DB = sqlx.DB
@@ -17,8 +17,8 @@ type DB = sqlx.DB
 // one to reach the same connection twice.
 type Conn = sqlx.Conn
 
-// Connector opens a pool for one driver and DSN. DatabaseProvider is built with
-// one, so a host that wants instrumented queries supplies its own.
+// Connector opens a pool for one driver and DSN. DatabaseProvider takes one, so
+// a host that wants instrumented queries supplies its own.
 type Connector = func(driver, dsn string) (*DB, error)
 
 // newDB wraps an open database/sql pool, under the driver name the handle reads

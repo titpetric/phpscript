@@ -22,8 +22,8 @@ var bindings = []string{
 }
 
 // run executes src against a runtime carrying the standard library and this
-// package's bindings rooted at dir, and returns what the script printed. The
-// standard library is installed because a script reading $output back reaches
+// package's bindings rooted at dir, and returns what the script printed. It
+// installs the standard library because a script reading $output back reaches
 // for count() and implode() to do it.
 func run(t *testing.T, dir, src string) string {
 	t.Helper()
@@ -103,7 +103,7 @@ func TestRegisterRoot(t *testing.T) {
 
 // TestRegisterNamesTheRunningProcess covers posix_getpid and getmypid: both
 // name the interpreter and never a command it starts, so the two report the
-// same number and it is the test binary's own.
+// same number, the test binary's own.
 func TestRegisterNamesTheRunningProcess(t *testing.T) {
 	t.Parallel()
 	want := strconv.Itoa(os.Getpid())

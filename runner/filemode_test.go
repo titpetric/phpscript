@@ -8,7 +8,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestParseFileMode covers the spellings a mode may be written in, all of them
+// TestParseFileMode covers the spellings a mode takes, every one of them
 // octal, and the rejection of anything that is not one.
 func TestParseFileMode(t *testing.T) {
 	t.Parallel()
@@ -83,8 +83,8 @@ func TestFileModeYAML(t *testing.T) {
 }
 
 // TestFileMode_UnmarshalYAML covers the decoder hook on its own. The quotes a
-// document may carry are not part of the mode, and a mode that cannot be read
-// leaves the field alone, so a bad document cannot make a stored upload 0000.
+// document may carry are not part of the mode, and an unreadable mode leaves
+// the field alone, so a bad document cannot make a stored upload 0000.
 func TestFileMode_UnmarshalYAML(t *testing.T) {
 	t.Parallel()
 	for _, text := range []string{`"0640"`, "0640", " 0640 ", `'0640'`, "640", "0o640"} {
@@ -107,10 +107,10 @@ func TestFileMode_UnmarshalYAML(t *testing.T) {
 	}
 }
 
-// TestFileMode_MarshalYAML covers the quoting the mode is written back under.
-// A mode written as a bare number is read as decimal by a YAML parser, so an
-// unquoted 0644 would come back as 1204 somewhere; the quotes are what keeps a
-// round trip octal.
+// TestFileMode_MarshalYAML covers the quoting MarshalYAML writes the mode back
+// under. A YAML parser reads a mode written as a bare number as decimal, so an
+// unquoted 0644 would come back as 1204 somewhere; the quotes keep a round
+// trip octal.
 func TestFileMode_MarshalYAML(t *testing.T) {
 	t.Parallel()
 	for _, mode := range []runner.FileMode{0, 0o600, 0o644, 0o1777, 0o4755} {

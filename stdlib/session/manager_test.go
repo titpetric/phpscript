@@ -146,7 +146,7 @@ func TestSessionManagerReadsAServedRequestsCookie(t *testing.T) {
 		t.Fatalf("Set-Cookie count = %d, want 1", len(issued))
 	}
 
-	// The second request carries it, and is answered by a manager of its own,
+	// The second request carries it, and a manager of its own answers it,
 	// because a served request runs on a runtime that holds nothing from the
 	// last one.
 	next, err := session.NewManager(storage)

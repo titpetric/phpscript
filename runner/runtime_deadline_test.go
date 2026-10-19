@@ -8,9 +8,9 @@ import (
 )
 
 // TestRequestScopesOnlyItsConnection holds what a request owns and what it does
-// not. The connection and the abort policy are put back when the handler
-// leaves; the time limit is the runtime's and a handler moving it means to move
-// it, which is php's rule where the request is the script.
+// not. The connection and the abort policy go back when the handler leaves;
+// the time limit is the runtime's and a handler moving it means to move it,
+// which is php's rule where the request is the script.
 func TestRequestScopesOnlyItsConnection(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -48,10 +48,10 @@ func TestRequestScopesOnlyItsConnection(t *testing.T) {
 }
 
 // TestRuntime_ClientContext covers which of the two contexts a binding waits
-// on. Inside a handler it is the request, so a call that should end when the
-// caller hangs up does; outside one there is no request and it is the script's
-// own, so the same binding still has something to wait on. Leaving the handler
-// puts the previous one back, so one request's disconnect stays off the next.
+// on. Inside a handler the request's, so a call that should end when the caller
+// hangs up does; outside one there is no request and the script's own serves,
+// so the same binding still has something to wait on. Leaving the handler puts
+// the previous one back, so one request's disconnect stays off the next.
 func TestRuntime_ClientContext(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -72,8 +72,8 @@ func TestRuntime_ClientContext(t *testing.T) {
 	if err := rt.ClientContext().Err(); err == nil {
 		t.Error("the client context did not end with the connection")
 	}
-	// The script's own context is untouched, so a serving script answers the
-	// next request after one caller hangs up.
+	// The disconnect leaves the script's own context alone, so a serving
+	// script answers the next request after one caller hangs up.
 	if err := rt.Context().Err(); err != nil {
 		t.Errorf("the disconnect ended the script's context: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestRuntime_ClientContext(t *testing.T) {
 }
 
 // TestScriptLimitCancelsTheBindingContext is the other side: the script's own
-// limit does end what is parked, because that is how a serving script stops.
+// limit does end a parked context, because that is how a serving script stops.
 func TestScriptLimitCancelsTheBindingContext(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})

@@ -5,12 +5,12 @@ import (
 )
 
 // Output redirection. The runtime writes all script output through Output(), so
-// capturing it is a matter of returning something else from there: push a
-// writer, and everything echo would emit lands in it until the matching pop.
+// a capture returns something else from there: push a writer, and everything
+// echo would emit lands in it until the matching pop.
 //
 // The stack is here because Output() is the runtime's own writer, and nothing
-// here reads the captured text. PHP's ob_* family is built on top
-// of it in stdlib/compat, which pushes the buffers a script reads back.
+// here reads the captured text. stdlib/compat builds PHP's ob_* family on top
+// of it, and pushes the buffers a script reads back.
 
 // PushOutput redirects script output to w until the matching PopOutput. Pushes
 // nest: the innermost writer receives the output, so a captured region can
@@ -42,11 +42,11 @@ func (rt *Runtime) OutputDepth() int { return len(rt.outStack) }
 // releaseOutput drops every redirection and keeps the array holding them,
 // for a runtime answering one request after another.
 //
-// The writers are cleared and never left behind the length, because the
-// innermost one is the response of the request that has ended, and holding a
-// connection alive until the next request pushes over the slot is a retention
-// with no owner. The array itself is one pointer per nesting level, and the
-// next PushOutput would allocate it again.
+// The clear zeroes the writers and never leaves one behind the length, because
+// the innermost one is the response of the request that has ended, and holding
+// a connection alive until the next request pushes over the slot is a
+// retention with no owner. The array itself is one pointer per nesting level,
+// and the next PushOutput would cost an allocation again.
 func (rt *Runtime) releaseOutput() {
 	clear(rt.outStack)
 	rt.outStack = rt.outStack[:0]

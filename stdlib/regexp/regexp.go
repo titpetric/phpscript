@@ -6,10 +6,11 @@
 // The constructors return *regexp.Regexp itself and no facade. Every
 // exported method of that type is a regexp operation, so publishing the whole
 // method set is the binding: $rx->find_string($s), $rx->split($s, -1),
-// $rx->replace_all_string($s, $repl). The type is named Regexp, which is the
-// class a script sees for the value and the name instanceof compares against.
+// $rx->replace_all_string($s, $repl). The runtime publishes the type as Regexp,
+// the class a script sees for the value and the name instanceof compares
+// against.
 //
-// It is wired in by importing it; stdlib/imports.go does that.
+// stdlib/imports.go wires it in by importing it.
 package regexp
 
 import (

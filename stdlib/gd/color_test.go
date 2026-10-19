@@ -54,9 +54,9 @@ echo $c["red"] . " " . $c["green"] . " " . $c["blue"] . " " . $c["alpha"];
 	}
 }
 
-// TestColorAlphaBlends covers what alpha does when a colour is painted. An
-// opaque colour replaces the pixel and a fully transparent one leaves it, which
-// is the behaviour a PHP script sees with imagealphablending on.
+// TestColorAlphaBlends covers what alpha does when blendPixel writes a colour.
+// An opaque colour replaces the pixel and a fully transparent one leaves it
+// alone, the behaviour a PHP script sees with imagealphablending on.
 func TestColorAlphaBlends(t *testing.T) {
 	t.Parallel()
 	_, out := runScript(t, `<?php

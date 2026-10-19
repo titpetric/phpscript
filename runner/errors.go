@@ -7,16 +7,16 @@ import (
 )
 
 // This file collects the error types a script catches. splint's grouping rule
-// accepts one errors.go for a package that files them together: an error is
-// reached through errors.As and through a PHP catch clause, and neither reader
-// navigates by filename.
+// accepts one errors.go for a package that files them together: a caller
+// reaches an error through errors.As and a script through a PHP catch clause,
+// and neither navigates by filename.
 //
-// ThrowableClass is what decides the PHP class a catch clause matches. A name
-// ending in Error is matched by `catch (Error $e)` and not by
-// `catch (Exception $e)`, as in PHP. UndefinedConstantError names
-// RuntimeException, and its own comment says why.
+// ThrowableClass is what decides the PHP class a catch clause matches.
+// `catch (Error $e)` matches a name ending in Error and `catch (Exception $e)`
+// does not, as in PHP. UndefinedConstantError names RuntimeException, and its
+// own comment says why.
 
-// ExitError is returned when PHP die()/exit() interrupts script execution.
+// ExitError reports that PHP die()/exit() interrupted script execution.
 type ExitError struct {
 	Code int
 }
@@ -71,8 +71,8 @@ func (e *TimeLimitError) Error() string {
 }
 
 // HostPanicError converts a panic raised by a registered Go constructor,
-// function, or method into the runtime error path. PHP try/catch can therefore
-// handle it like an error returned by the same host callable.
+// function, or method into the runtime error path, so PHP try/catch handles it
+// like an error returned by the same host callable.
 type HostPanicError struct {
 	Callable string
 	Value    any
@@ -106,7 +106,7 @@ func (e *ArgumentCountError) Error() string {
 	return fmt.Sprintf("%s() expects at most %s, %d given", name, plural(e.Want, "argument"), e.Got)
 }
 
-// TypeError reports an argument that cannot be converted to the type the
+// TypeError reports an argument that will not convert to the type the
 // callable's parameter declares. PHP raises TypeError for the same call, so it
 // names that class: `catch (TypeError $e)` and `catch (Error $e)` match it and
 // `catch (Exception $e)` does not, as in PHP.

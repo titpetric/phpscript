@@ -16,8 +16,8 @@ const keySep = "\x00"
 // process. Counts add: a statement two requests reached ran twice.
 //
 // A Collector keys statements by AST node, so one kept across requests grows
-// with every re-parse. The aggregator keys them by the profile line they will
-// be written as, which is bounded by the size of the application.
+// with every re-parse. The aggregator keys them by the profile line it writes
+// them as, and the size of the application bounds that.
 type Aggregator struct {
 	mu     sync.Mutex
 	blocks map[string]int
@@ -34,8 +34,8 @@ func NewAggregator() *Aggregator {
 	}
 }
 
-// Add folds one collector's counts in and returns. The collector is read, not
-// retained, so the caller may drop it and the AST it keys on.
+// Add folds one collector's counts in and returns, reading the collector and
+// keeping no reference, so the caller may drop it and the AST it keys on.
 func (a *Aggregator) Add(c *Collector) {
 	if c == nil {
 		return
@@ -120,8 +120,8 @@ func (a *Aggregator) Functions() []FuncSpan {
 	return funcs
 }
 
-// Empty reports whether anything has been folded in yet. A server that served
-// no PHP writes no profile at all, not even an empty one.
+// Empty reports whether the aggregator holds no counts yet. A server that
+// served no PHP writes no profile at all, not even an empty one.
 func (a *Aggregator) Empty() bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
