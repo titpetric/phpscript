@@ -13,15 +13,15 @@ import (
 // registerCSV installs the CSV pair over encoding/csv, which is RFC 4180 by
 // construction. That is a divergence by decision: PHP's $escape mechanism is
 // its own invention, and PHP 8.4 deprecates relying on it precisely because it
-// produces non-standard CSV, so the parameter is accepted and ignored and the
-// output here is what PHP emits when a script passes $escape = "". The
-// enclosure cannot vary for the same reason encoding/csv gets the quoting
-// right: it is fixed at '"', and naming another is refused and never
-// silently misquoted.
+// produces non-standard CSV, so these functions take $escape and ignore it,
+// and the output here is what PHP emits when a script passes $escape = "".
+// The enclosure cannot vary for the same reason encoding/csv gets the quoting
+// right: it stays at '"', and csvControls refuses another, never misquoting
+// silently.
 func registerCSV(rt *runner.Runtime) {
 	// fputcsv writes $fields to $stream as one RFC 4180 record ending in \n
-	// and returns the number of bytes written, or false on failure; $escape
-	// is accepted and ignored, and an $enclosure other than '"' is refused.
+	// and returns the number of bytes written, or false on failure; it ignores
+	// $escape and refuses an $enclosure other than '"'.
 	rt.RegisterFunc("fputcsv", func(stream io.Writer, fields any, opts ...any) (any, error) {
 		sep, err := csvControls("fputcsv", opts)
 		if err != nil {
@@ -47,9 +47,8 @@ func registerCSV(rt *runner.Runtime) {
 	})
 
 	// fgetcsv reads one CSV record from $stream and returns its fields as
-	// strings, or false at end of file; $length is accepted and ignored,
-	// $escape is accepted and ignored, and an $enclosure other than '"' is
-	// refused.
+	// strings, or false at end of file; it ignores $length and $escape, and
+	// refuses an $enclosure other than '"'.
 	rt.RegisterFunc("fgetcsv", func(stream io.Reader, opts ...any) (any, error) {
 		// The first optional argument is $length, a line-length hint PHP
 		// itself stopped needing; the separator and its companions follow.
@@ -82,8 +81,9 @@ func registerCSV(rt *runner.Runtime) {
 }
 
 // csvControls reads the ($separator, $enclosure, $escape) tail both functions
-// take. The separator is the one control encoding/csv lets vary; the enclosure
-// is checked and the escape is ignored, as the registration comment records.
+// take. The separator is the one control encoding/csv lets vary; csvControls
+// checks the enclosure and ignores the escape, as the registration comment
+// records.
 func csvControls(fn string, opts []any) (rune, error) {
 	sep := ','
 	if len(opts) > 0 && opts[0] != nil {

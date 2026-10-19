@@ -2,8 +2,8 @@
 // engine with a different bargain: RE2 guarantees a match runs in time linear
 // in the length of the subject, and pays for that by leaving out every
 // construct that would require backtracking. Two of those omissions show up in
-// ordinary PHP code, so preg_* is compiled by whichever engine can express the
-// pattern.
+// ordinary PHP code, so preg_* compiles each pattern on whichever engine can
+// express it.
 //
 //   - flags follow a /.../flags delimiter syntax, translated here to RE2's
 //     inline (?flags) form,
@@ -14,8 +14,8 @@
 // first library this runtime targets, and reporting "no match" for it
 // compiled every `{block}` and `{inline}` definition into garbage.
 //
-// RE2 stays the default: it is the faster of the two and cannot backtrack
-// catastrophically, which is also why the fallback carries a match timeout.
+// RE2 stays the default: the faster of the two, and it cannot backtrack
+// catastrophically. The fallback carries a match timeout for that reason.
 //
 // A third gap is in RE2's API and not in its syntax, so it decides the
 // engine per call and not per pattern. PHP's $offset moves where a match
@@ -23,7 +23,7 @@
 // the real start of the string.
 // Slicing subject[offset:] and adding the offset back gets both wrong, and RE2
 // has no entry point that takes a start position. regexp2's
-// FindStringMatchStartingAt does, so a non-zero $offset is routed to the
+// FindStringMatchStartingAt does, so a non-zero $offset runs on the
 // backtracking engine even for a pattern RE2 compiled, so a pattern
 // can carry both engines.
 //
@@ -82,12 +82,12 @@ func registerRegex(rt *runner.Runtime) {
 		return cache.phpPregReplaceCallback(pattern, fn, subject, limit, count, flags)
 	})
 	// preg_split splits $subject on every match of $pattern into at most
-	// $limit pieces, the last of which holds the remainder; $flags selects
+	// $limit pieces, the last of which holds the unsplit rest; $flags selects
 	// PREG_SPLIT_NO_EMPTY, PREG_SPLIT_DELIM_CAPTURE and
 	// PREG_SPLIT_OFFSET_CAPTURE.
 	rt.RegisterFunc("preg_split", cache.phpPregSplit)
 	// preg_quote escapes the characters that are special in a PCRE pattern,
-	// plus $delimiter, so a literal can be spliced into one.
+	// plus $delimiter, so a caller can splice a literal into one.
 	rt.RegisterFunc("preg_quote", phpPregQuote)
 }
 
@@ -108,7 +108,7 @@ const (
 
 // registerRegexConstants defines the PREG_* constants. The two families share
 // the low bits and are not interchangeable: PREG_SPLIT_NO_EMPTY and
-// PREG_PATTERN_ORDER are both 1, so only the function a flag is passed to
+// PREG_PATTERN_ORDER are both 1, so only the function that takes the flag
 // decides what it means.
 func registerRegexConstants(rt *runner.Runtime) {
 	rt.SetConst("PREG_PATTERN_ORDER", int64(pregPatternOrder))
@@ -158,12 +158,12 @@ func (c *regexpCache) phpPregMatchAll(pattern, subject string, matches func(any)
 // columns are present even when nothing matched, so a caller may index
 // $matches[1] before it checks the count.
 //
-// Without a flag that changes the entries, the columns are []string. Both
-// levels are indexed and iterated by the VM exactly like nested PHP arrays,
-// and the columns are plain string slices, so a match set of g groups over n
-// matches costs g+1 allocations where a *model.Array costs 2(g+1) plus 2n interface boxes
-// an *model.Array pair would. PREG_OFFSET_CAPTURE boxes every entry anyway and
-// takes the []any branch.
+// Without a flag that changes the entries, the columns are []string. The VM
+// indexes and iterates both levels exactly like nested PHP arrays, and the
+// columns are plain string slices, so a match set of g groups over n matches
+// costs g+1 allocations where an *model.Array pair would cost 2(g+1) plus 2n
+// interface boxes. PREG_OFFSET_CAPTURE boxes every entry anyway and takes the
+// []any branch.
 func patternOrder(subject string, all [][]int, groups int, flags int64) []any {
 	out := make([]any, 0, groups+1)
 	boxed := flags&(pregOffsetCapture|pregUnmatchedAsNull) != 0
@@ -249,9 +249,9 @@ func (c *regexpCache) phpPregReplace(pattern, replacement, subject string) strin
 
 // phpPregReplaceCallback implements preg_replace_callback($pattern, $callback,
 // $subject, $limit, &$count, $flags). Neither engine's ReplaceAll can call
-// back into the interpreter, so the replacement is assembled by hand from the
-// match indexes. $limit is the number of replacements, -1 for all of them; a
-// pattern that does not compile returns null with $count zero, as PHP does.
+// back into the interpreter, so this shim builds the replacement by hand from
+// the match indexes. $limit is the number of replacements, -1 for every match;
+// a pattern that does not compile returns null with $count zero, as PHP does.
 func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...any) (any, error), subject string, limit any, count func(any), flags any) (any, error) {
 	replaced := int64(0)
 	re, err := c.compilePCRE(pattern)
@@ -292,12 +292,12 @@ func (c *regexpCache) phpPregReplaceCallback(pattern string, callback func(...an
 // returning the pieces between the matches of $pattern, or false for a pattern
 // that does not compile.
 //
-// $limit caps the number of pieces, the last of which holds the unsplit
-// remainder; 0, -1 and an omitted argument all mean no limit, and any other
-// negative value splits nothing, which is PHP's behaviour and not a reading of
-// it. Only a piece that reaches the result counts against the limit, which is
-// what makes PREG_SPLIT_NO_EMPTY and $limit compose the way PHP's do: an empty
-// piece that NO_EMPTY drops leaves the limit alone.
+// $limit caps the number of pieces, the last of which holds the unsplit rest;
+// 0, -1 and an omitted argument all mean no limit, and any other negative
+// value splits nothing, which is PHP's behaviour and not a reading of it.
+// Only a piece that reaches the result counts against the limit, which is
+// what makes PREG_SPLIT_NO_EMPTY and $limit compose the way PHP's do: an
+// empty piece that NO_EMPTY drops leaves the limit alone.
 func (c *regexpCache) phpPregSplit(pattern, subject string, limit any, flags any) any {
 	re, err := c.compilePCRE(pattern)
 	if err != nil {
@@ -318,9 +318,8 @@ func (c *regexpCache) phpPregSplit(pattern, subject string, limit any, flags any
 			remaining--
 		}
 		if pieces.flags&pregSplitDelimCapture != 0 {
-			// Only the groups PHP would report: a trailing group that did not
-			// participate is not interleaved, while one in the middle is, as
-			// an empty string.
+			// Only the groups PHP would report: a trailing unmatched group is
+			// not interleaved, while one in the middle is, as an empty string.
 			n := participatingGroups(idx, len(idx)/2-1, 0)
 			for g := 1; g < n; g++ {
 				pieces.add(subject, idx[2*g], idx[2*g+1])
@@ -343,8 +342,8 @@ type splitPieces struct {
 
 // add appends the piece of subject between the byte offsets start and end, and
 // reports whether it landed in the result: PREG_SPLIT_NO_EMPTY drops an empty
-// one. A start of -1 is a capture group that did not participate, which is an
-// empty piece at offset -1.
+// one. A start of -1 is an unmatched capture group, which is an empty piece
+// at offset -1.
 func (s *splitPieces) add(subject string, start, end int) bool {
 	piece := ""
 	if start >= 0 {
@@ -379,8 +378,8 @@ func (s *splitPieces) result() any {
 // matchGroups renders one match as the row a script reads: index 0 is the
 // whole match and index g is group g.
 //
-// PHP drops the trailing groups that did not participate, so count($m) is
-// smaller for a match that ended before the last optional group;
+// PHP drops the trailing groups that did not match, so count($m) is smaller
+// for a match that ended before the last optional group;
 // PREG_UNMATCHED_AS_NULL turns those into nulls instead and then they all
 // stay. The flagless case is a []string for the reason patternOrder states.
 func matchGroups(subject string, idx []int, groups int, flags int64) any {
@@ -401,8 +400,8 @@ func matchGroups(subject string, idx []int, groups int, flags int64) any {
 
 // participatingGroups reports how many entries of a match row PHP keeps: every
 // group up to the last one that participated, and always at least the whole
-// match. PREG_UNMATCHED_AS_NULL keeps them all, since a null records the group
-// that did not participate, and hides nothing.
+// match. PREG_UNMATCHED_AS_NULL keeps them all, since a null records the
+// unmatched group and hides nothing.
 func participatingGroups(idx []int, groups int, flags int64) int {
 	if flags&pregUnmatchedAsNull != 0 {
 		return groups + 1
@@ -415,7 +414,7 @@ func participatingGroups(idx []int, groups int, flags int64) int {
 }
 
 // groupStart returns the byte offset group g matched at, or -1 when the group
-// did not participate or the pattern has no such group.
+// did not match or the pattern has no such group.
 func groupStart(idx []int, g int) int {
 	if 2*g+1 >= len(idx) {
 		return -1
@@ -424,7 +423,7 @@ func groupStart(idx []int, g int) int {
 }
 
 // groupText returns the text group g matched, empty for a group that did not
-// participate.
+// match.
 func groupText(subject string, idx []int, g int) string {
 	start := groupStart(idx, g)
 	if start < 0 {
@@ -435,8 +434,8 @@ func groupText(subject string, idx []int, g int) string {
 
 // matchValue renders group g the way $matches holds it under flags:
 // PREG_OFFSET_CAPTURE makes it a pair of the text and its byte offset, -1 for
-// a group that did not participate, and PREG_UNMATCHED_AS_NULL makes that
-// group's text null where PHP writes empty.
+// a group that did not match, and PREG_UNMATCHED_AS_NULL makes that group's
+// text null where PHP writes empty.
 func matchValue(subject string, idx []int, g int, flags int64) any {
 	start := groupStart(idx, g)
 	var text any = ""
@@ -453,7 +452,7 @@ func matchValue(subject string, idx []int, g int, flags int64) any {
 }
 
 // phpPregQuote escapes the characters that are special in a PCRE pattern, so a
-// literal can be spliced into one.
+// caller can splice a literal into one.
 func phpPregQuote(subject string, delimiter ...string) string {
 	special := ".\\+*?[^]$(){}=!<>|:-#/"
 	if len(delimiter) > 0 && delimiter[0] != "" {
@@ -538,7 +537,7 @@ func backtrackGroupCount(re *regexp2.Regexp) int {
 
 // findIndex returns the first match at or after byte offset start as byte
 // index pairs, two per group: idx[2g] and idx[2g+1] bound group g, and both
-// are -1 for a group that did not participate. Nil means no match.
+// are -1 for a group that did not match. Nil means no match.
 func (p *pattern) findIndex(subject string, start int) []int {
 	if p.re2 != nil && start == 0 {
 		return p.re2.FindStringSubmatchIndex(subject)
@@ -594,7 +593,7 @@ func (p *pattern) replaceAll(subject, repl string) string {
 
 // backtrackIndex flattens a regexp2 match into the byte index pairs RE2
 // returns. regexp2 counts in runes, so every index passes through offsets; a
-// group with no captures did not participate and is reported as -1, -1.
+// group with no captures did not match, so its pair is -1, -1.
 func backtrackIndex(match *regexp2.Match, groups int, offsets runeOffsets) []int {
 	idx := make([]int, 2*(groups+1))
 	for g := 0; g <= groups; g++ {
@@ -644,8 +643,8 @@ func newRuneOffsets(subject string) runeOffsets {
 }
 
 // byteOffset converts a rune index into a byte offset. A negative index is a
-// group that did not participate, which stays negative; an index past the last
-// rune is the end of the subject.
+// group that did not match, which stays negative; an index past the last rune
+// is the end of the subject.
 func (r runeOffsets) byteOffset(runeIndex int) int {
 	switch {
 	case runeIndex < 0:
@@ -718,8 +717,8 @@ func compilePCRE(source string) (*pattern, error) {
 	return p, nil
 }
 
-// splitPCRE separates a /body/flags pattern into body and flag characters. If
-// the pattern is not delimited it is treated as a bare body with no flags.
+// splitPCRE separates a /body/flags pattern into body and flag characters. For
+// an undelimited pattern the whole string is the body, with no flags.
 func splitPCRE(p string) (body, flags string) {
 	if len(p) < 2 {
 		return p, ""
@@ -749,7 +748,7 @@ func closingDelim(open byte) byte {
 }
 
 // translateFlags maps PCRE modifiers to RE2 inline flags. s, U, m, i, x map
-// directly; others are ignored.
+// directly; it drops the others.
 func translateFlags(flags string) string {
 	var b strings.Builder
 	for _, f := range flags {
@@ -762,9 +761,9 @@ func translateFlags(flags string) string {
 }
 
 // backtrackOptions maps PCRE modifiers to regexp2 options. PCRE's `s` makes the
-// dot match a newline, which regexp2 spells Singleline; `U` (ungreedy) has no
-// equivalent and is dropped, so a pattern needing both it and a backreference
-// matches greedily.
+// dot match a newline, which regexp2 spells Singleline; regexp2 has no option
+// for `U` (ungreedy), so the switch drops it: a pattern needing both it and a
+// backreference matches greedily.
 func backtrackOptions(flags string) regexp2.RegexOptions {
 	options := regexp2.RegexOptions(0)
 	for _, f := range flags {
