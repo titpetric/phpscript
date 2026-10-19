@@ -5,8 +5,8 @@
 // types themselves. Registration is not a method allowlist: every exported
 // method and field of the value a constructor returns is reachable from PHP,
 // so embedding *net/http.Request would publish the whole of net/http as
-// methods on HTTP\Request. Each facade therefore holds its net/http value in a
-// named unexported field, and the methods below are the whole surface.
+// methods on HTTP\Request. Each facade holds its net/http value in a named
+// unexported field, and the methods below are the whole surface.
 package http
 
 import (

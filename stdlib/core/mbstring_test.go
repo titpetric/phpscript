@@ -67,8 +67,8 @@ var_dump(mb_str_split("abc", 1));`)
 
 // TestMultibyteStrPad covers the padding, measured in characters, and the three
 // directions. Padding to a width the string already exceeds leaves it alone,
-// and a pad string longer than the gap is cut to fit, so the result is exactly
-// the width the call names.
+// and mb_str_pad cuts a pad string longer than the gap to fit, so the result is
+// exactly the width the call names.
 func TestMultibyteStrPad(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

@@ -13,8 +13,8 @@ import (
 // A tracker's lifetime ends when the request does, so this is a
 // free list and not a cache: a request takes one, the worker answers through it,
 // and answer puts it back having dropped the writer it wrapped. Nothing outside
-// one request ever holds a reference, and the one path where that is not certain
-// does not put it back; see answer.
+// one request ever holds a reference, and the one path where a reference may
+// outlive the request does not put it back; see answer.
 var trackers = sync.Pool{New: func() any { return &answerTracker{} }}
 
 // answerTracker records whether a handler has begun its response, so a throw
@@ -26,8 +26,8 @@ var trackers = sync.Pool{New: func() any { return &answerTracker{} }}
 //
 // failure is here and not beside the call because the value already lives for
 // the length of the request: a local error written from inside the run is a
-// second heap cell for the same request, and the code that reads it is the code
-// that wrote it.
+// second heap cell for the same request, and the same code writes it and reads
+// it.
 //
 // callable, request and args are the work, so the value submitted to the pool
 // is this one and the submit carries no closure. args is an array and no slice
@@ -48,7 +48,7 @@ type answerTracker struct {
 }
 
 // Done lends the pool this tracker's completion channel, which makes the
-// tracker a runner.DoneJob and the submit allocate none.
+// tracker a runner.DoneJob, so the submit costs no allocation.
 //
 // One buffered slot, emptied by the receive in answer, so the next run the
 // tracker serves signals through the same channel. The safety rule the lending
@@ -62,8 +62,8 @@ func (a *answerTracker) Done() chan struct{} {
 	return a.done
 }
 
-// Run answers the request this tracker holds, on the worker's runtime. It is
-// the runner.Job the pool runs, which is this value and not a closure over it.
+// Run answers the request this tracker holds, on the worker's runtime, as the
+// runner.Job the pool runs, which is this value and not a closure over it.
 func (a *answerTracker) Run(rt *runner.Runtime) {
 	// The response for the length of the call, so a handler that echoes
 	// reaches the client and not the process's own output. The tracker and
@@ -75,7 +75,7 @@ func (a *answerTracker) Run(rt *runner.Runtime) {
 	rt.PushOutput(a)
 	defer rt.PopOutput()
 
-	// The connection being answered, so connection_aborted() reports the
+	// The request's own connection, so connection_aborted() reports the
 	// client that is waiting and a disconnect ends the handler unless it
 	// ignored that. The Begin and End pair in place of EnterRequest's
 	// restore closure, which is a heap allocation per request.

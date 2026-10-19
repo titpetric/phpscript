@@ -77,10 +77,10 @@ func TestPHPArsort(t *testing.T) {
 // TestSortEntries covers the rebuild step, and the divergence from PHP these six
 // functions carry.
 //
-// An integer-keyed array is written back with Set, never Append: appending would
-// hand out fresh keys and turn a key-preserving sort into sort(). A native Go
-// slice is refused, because a slice has no keys to preserve and sorting one
-// would be sort() under another name.
+// The rebuild puts an integer-keyed array back with Set, never Append:
+// appending would hand out fresh keys and turn a key-preserving sort into
+// sort(). These six refuse a native Go slice, because a slice has no keys to
+// preserve and sorting one would be sort() under another name.
 func TestSortEntries(t *testing.T) {
 	t.Parallel()
 	sparse := setArray(int64(5), "five", int64(2), "two", int64(9), "nine")

@@ -9,11 +9,10 @@ import (
 // TestWait covers the wait sleep() and usleep() share, and the two ways it ends
 // early.
 //
-// A sleep that ran past a cancelled context would be the one place a script
-// could not be stopped, so both contexts end it: the connection being answered
-// is cancelled when the client goes away, and the script's own is cancelled
-// when it runs out of time. A duration at or below zero returns without arming
-// a timer.
+// A sleep that ran past a cancelled context would be the one place nothing
+// could stop a script, so both contexts end it: the client's ends when the
+// client goes away, and the script's own when it runs out of time. A duration
+// at or below zero returns without arming a timer.
 func TestWait(t *testing.T) {
 	t.Parallel()
 	const forever = 30 * time.Second

@@ -41,8 +41,8 @@ func TestRegisterHash(t *testing.T) {
 		},
 		{name: "hash", args: []any{"crc32b", "abc"}, want: "352441c2"},
 		{
-			// HMAC digests the key when it is longer than the block size,
-			// which is HMAC's own rule and no choice made here.
+			// HMAC digests a key longer than the block size, which is
+			// HMAC's own rule and no choice made here.
 			name: "hash_hmac",
 			args: []any{"sha256", "abc", "key"},
 			want: "9c196e32dc0175f86f4b1cb89289d6619de6bee699e4c378e68309ed97a1a6ab",
@@ -118,7 +118,7 @@ func TestRegisterHash_unknownAlgorithm(t *testing.T) {
 
 // TestRegisterHash_algos covers the list a script reads before it lets a user
 // pick an algorithm. It answers this build's table and not PHP's, so every
-// name it reports is one hash() accepts, and the list is sorted.
+// name it reports is one hash() accepts, and the names arrive sorted.
 func TestRegisterHash_algos(t *testing.T) {
 	t.Parallel()
 	rt := hashRuntime(t)

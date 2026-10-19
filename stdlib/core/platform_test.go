@@ -47,8 +47,8 @@ var_dump(strrpos("hello world", "o"), strrpos("hello world", "o", 5), strrpos("h
 
 // TestFilterVar covers the three validators this runtime implements, which
 // each answer the typed value or false and never the input: "42" validates to
-// the int 42, so a caller can use the result directly. The value is trimmed
-// first, and a float spelling fails the integer validator and truncates
+// the int 42, so a caller can use the result directly. filter_var trims the
+// value first, and a float spelling fails the integer validator and truncates
 // nothing.
 //
 // An unknown filter passes the value through, as FILTER_DEFAULT does.
@@ -107,10 +107,10 @@ var_dump(E_ALL, E_ERROR, E_WARNING, E_NOTICE, E_DEPRECATED);`)
 }
 
 // TestPlatformVersion covers the version this runtime reports, which is a
-// decision and not a measurement: it is the version whose semantics the
-// fixtures are written against, and the number a library reads when it picks
-// which language features it may use. The three spellings have to agree,
-// because a library gates on whichever one it learned.
+// decision and not a measurement: the fixtures follow that version's
+// semantics, and a library reads the number when it picks which language
+// features it may use. The three spellings have to agree, because a library
+// gates on whichever one it learned.
 //
 // The php binary the fixture matrix runs beside carries its own version, so
 // this test states the value and settles nothing by running php.
@@ -151,9 +151,9 @@ var_dump(PHP_OS, PHP_OS_FAMILY, php_uname());`)
 // library code reads it as "this extension is not configured", so a probe for
 // APCu or an opcache finds nothing and falls back.
 //
-// headers_sent is false for the length of a script because response headers
-// are staged and written after it finishes, so nothing has been sent while php
-// is still running.
+// headers_sent is false for the length of a script because the runtime stages
+// response headers and writes them after it finishes, so nothing leaves while
+// php is still running.
 func TestIniStubs(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

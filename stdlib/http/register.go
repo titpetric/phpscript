@@ -6,7 +6,7 @@ import (
 
 // Register installs the HTTP\Client and HTTP\Request bindings on rt.
 func Register(rt *runner.Runtime) {
-	// HTTP\Request is one outbound request. It is a net/http request, so a script
+	// HTTP\Request is one outbound request, a net/http request, so a script
 	// reads and writes it the way Go does: $request->method, $request->host,
 	// $request->url->path, and $request->header->set($name, $value). Building one
 	// sends nothing; a client does that with $client->send($request).
@@ -17,15 +17,15 @@ func Register(rt *runner.Runtime) {
 	// argument builds a client with a 30 second timeout that follows redirects.
 	rt.RegisterConstructor("HTTP\\Client", NewClient)
 
-	// HTTP\Mux routes requests to the PHP functions that answer them. It is
+	// HTTP\Mux routes requests to the PHP functions that answer them. The mux is
 	// net/http's ServeMux, so $mux->handle("GET /users/{id}", $fn) takes the
-	// patterns Go takes, and a handler is called with the response writer and
-	// the request themselves.
+	// patterns Go takes, and it calls a handler with the response writer and the
+	// request themselves.
 	rt.RegisterConstructor("HTTP\\Mux", func() *Mux { return NewMux(rt) })
 
 	// HTTP\Server listens on $addr and answers through $handler, an HTTP\Mux or
-	// anything else that answers a request; $workers bounds how many requests
-	// are answered at once and defaults to the number of cores.
+	// anything else that answers a request; $workers bounds how many requests the
+	// server answers at once and defaults to the number of cores.
 	// $server->listen() binds and returns the address, $server->wait() blocks
 	// until the script runs out of time, and $server->shutdown() stops it,
 	// letting what is in flight finish.

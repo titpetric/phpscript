@@ -67,9 +67,8 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 			switch c := pattern[p]; c {
 			case '*':
 				// The star matches nothing to begin with; the
-				// bytes it swallows are taken one at a time on
-				// the way back, below, where its two
-				// limits are enforced.
+				// resume below takes the bytes it swallows one
+				// at a time and checks its two limits there.
 				star, next, starPos, starStart = p+1, s, s, start
 				p++
 				continue
@@ -143,7 +142,7 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 		p, s, start = star, next, false
 	}
 
-	// The string is spent; the pattern matches only if what is left of it
+	// The string ran out; the pattern matches only if its remaining bytes
 	// can match the empty string, which only trailing stars do.
 	for p < len(pattern) && pattern[p] == '*' {
 		p++
@@ -155,8 +154,8 @@ func fnmatchBytes(pattern, str string, mode int64) bool {
 // is the '['. It reports the offset just past the closing ']', whether b is in
 // the set, and whether the expression closes at all.
 //
-// PHP accepts both [!...] and [^...] for a negated class, so both are read
-// here. A ']' in the first position is a literal, as POSIX has it.
+// PHP accepts both [!...] and [^...] for a negated class, so this function
+// reads both. A ']' in the first position is a literal, as POSIX has it.
 func fnmatchClass(pattern string, open int, b byte, noescape bool) (end int, in, closed bool) {
 	i := open + 1
 	negate := false
@@ -179,7 +178,7 @@ func fnmatchClass(pattern string, open int, b byte, noescape bool) (end int, in,
 		i++
 
 		// A '-' is a range only when something other than the closing
-		// ']' follows it; otherwise it is a member of the set.
+		// ']' follows it; otherwise the set holds it as a member.
 		if i+1 < len(pattern) && pattern[i] == '-' && pattern[i+1] != ']' {
 			i++
 			hi := pattern[i]

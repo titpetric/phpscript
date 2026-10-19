@@ -32,7 +32,7 @@ func registerLimits(rt *runner.Runtime) {
 	// set_time_limit bounds the rest of this script to $seconds and answers
 	// true; the clock restarts from the call, as a second call in PHP does,
 	// and 0 removes the limit. The limit is a deadline on the context the
-	// interpreter checks and every binding is handed, so it ends a Go call
+	// interpreter checks and every binding receives, so it ends a Go call
 	// that is waiting as well as a PHP loop that is spinning.
 	rt.RegisterFunc("set_time_limit", func(seconds int64) bool {
 		rt.SetTimeLimit(limitFor(seconds))

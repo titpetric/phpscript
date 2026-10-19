@@ -14,10 +14,10 @@ import (
 )
 
 // TestRegister covers the four classes the binding installs. A script reaches
-// them by name, so each one is constructed from PHP here, and the arguments
-// with no useful default are refused through the same path: HTTP\Server carries
-// the runtime the constructor closed over, so a refusal from Go reaches the
-// script as a throw.
+// them by name, so this test constructs each one from PHP, and the same path
+// refuses the arguments with no useful default: HTTP\Server carries the runtime
+// the constructor closed over, so a refusal from Go reaches the script as a
+// throw.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -103,8 +103,8 @@ func TestClient_Post(t *testing.T) {
 
 // newMux builds a router over a runtime that has declared the named PHP
 // handlers, and returns it with the buffer the script and its handlers echo
-// into. A handler has to be a PHP callable, so the functions are declared in a
-// script and named by string.
+// into. A handler has to be a PHP callable, so a caller declares the functions
+// in a script and names them by string.
 func newMux(t *testing.T, declarations string) (*http.Mux, *strings.Builder) {
 	t.Helper()
 
@@ -140,10 +140,9 @@ func TestNewMux(t *testing.T) {
 	}
 }
 
-// TestMux_Handle covers describing a route. The handler is resolved where the
-// route is written, so a name nothing declares is an error at handle() and not
-// a 500 on the first request that arrives, and an empty pattern is refused
-// outright.
+// TestMux_Handle covers describing a route. handle() resolves the handler as it
+// records the route, so a name nothing declares is an error there and not a 500
+// on the first request that arrives, and it refuses an empty pattern outright.
 func TestMux_Handle(t *testing.T) {
 	t.Parallel()
 	mux, _ := newMux(t, `<?php function ping($w, $r) { $w->write("pong"); }`)
@@ -172,8 +171,8 @@ func TestMux_Handle(t *testing.T) {
 
 // TestMux_ServeHTTP covers answering one request, the path a Go host takes when
 // it mounts a script's router without the script listening on anything. The two
-// net/http values reach the handler, what it echoes becomes the response, and a
-// throw is answered with a 500.
+// net/http values reach the handler, what it echoes becomes the response, and
+// the mux answers a throw with a 500.
 func TestMux_ServeHTTP(t *testing.T) {
 	t.Parallel()
 	mux, _ := newMux(t, `<?php
@@ -205,7 +204,7 @@ function boom($w, $r) {
 		t.Errorf("X-Answered-By = %q, want php", got)
 	}
 
-	// A handler that threw before writing anything is answered with a 500.
+	// The mux answers a handler that threw before writing anything with a 500.
 	boom := httptest.NewRecorder()
 	mux.ServeHTTP(boom, httptest.NewRequest(nethttp.MethodGet, "/boom", nil))
 	if boom.Code != nethttp.StatusInternalServerError {

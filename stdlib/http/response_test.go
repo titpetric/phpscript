@@ -6,8 +6,8 @@ import (
 )
 
 // TestResponse_Headers covers the whole header set a script walks with foreach.
-// A PHP array holds one value per key, so a header sent more than once is
-// joined with ", " and never dropped: Set-Cookie arrives twice on a login
+// A PHP array holds one value per key, so Headers() joins a header sent more
+// than once with ", " and drops neither: Set-Cookie arrives twice on a login
 // response, and a script reading the array has to see both.
 //
 // Header() answers one name case-insensitively through net/http's canonical
@@ -78,7 +78,7 @@ func TestResponseStatusAndOK(t *testing.T) {
 	}
 }
 
-// TestResponseBodyAndErr covers the two fields a failed request is read
+// TestResponseBodyAndErr covers the two fields a script reads a failed request
 // through. Only parallel() produces a failed response, so Err() is empty on
 // everything send() returns, and the body is a string the script can print
 // whatever the status.

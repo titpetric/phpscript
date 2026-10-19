@@ -24,9 +24,9 @@ echo gettype(1), "|", gettype(1.5), "|", gettype("a"), "|", gettype(true), "|",
 	}
 }
 
-// TestIntval covers the two halves of intval. With no base, or base 10, it is
-// the (int) cast; any other base applies to a string argument alone, so
-// intval(12.9, 16) is 12 and never a hex reading of the digits.
+// TestIntval covers the two halves of intval. With no base, or base 10, it
+// matches the (int) cast; any other base applies to a string argument alone,
+// so intval(12.9, 16) is 12 and never a hex reading of the digits.
 //
 // An array is the one case the cast does not own: PHP reads it as its
 // truthiness, so an empty array is 0 and a filled one is 1 whatever it holds.
@@ -63,7 +63,7 @@ echo intval("0x1A", 16), "|", intval("0x1A", 0), "|", intval("  -0x10", 0), "|",
 	}
 }
 
-// TestIntvalSaturates covers the int64 bounds. The magnitude accumulates
+// TestIntvalSaturates covers the int64 bounds. The absolute value accumulates
 // unsigned so that -9223372036854775808 still reads exactly, and one digit past
 // the bound saturates the way strtol does.
 func TestIntvalSaturates(t *testing.T) {
@@ -79,7 +79,7 @@ echo intval("9223372036854775807", 10), "|", intval("9223372036854775808", 10), 
 
 // TestCallUserFuncArray covers the array spelling of a dynamic call. The
 // arguments arrive as the list the array holds, so a callable taking three
-// parameters is called with three and not with one array.
+// parameters receives three arguments and not one array.
 func TestCallUserFuncArray(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

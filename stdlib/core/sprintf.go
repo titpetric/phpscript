@@ -42,9 +42,10 @@ const argNext = -1
 
 // phpSprintf formats args into format the way php's sprintf does.
 //
-// The conversion is php's, not Go's: an argument is coerced by phpval before it
-// is rendered, so %s of 42 is "42" where fmt writes %!s(int64=42), and width,
-// precision and padding count bytes, which is the unit the str* functions use.
+// The conversion is php's, not Go's: phpval coerces an argument before the
+// renderer writes it, so %s of 42 is "42" where fmt writes %!s(int64=42), and
+// width, precision and padding count bytes, which is the unit the str*
+// functions use.
 // docs/reference/extensions/strings.md owns the table of specifiers.
 func phpSprintf(format string, args ...any) (string, error) {
 	var out strings.Builder

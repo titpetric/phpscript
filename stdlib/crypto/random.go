@@ -12,9 +12,9 @@ import (
 // RegisterRandom installs the random functions on rt. random_bytes and
 // random_int are the PHP 7+ core pair (paragonie/random_compat existed solely
 // to polyfill them), read from crypto/rand, the same source Session\Manager
-// mints session ids from. rand reads the same source: it exists because the
-// PHP written against it is everywhere, but it takes no seed, so the seeded
-// reproducibility of srand/mt_srand stays absent and those two with it.
+// mints session ids from. rand reads the same source: existing PHP calls it
+// everywhere, but it takes no seed, so the seeded reproducibility of
+// srand/mt_srand stays absent and those two with it.
 func RegisterRandom(rt *runner.Runtime) {
 	// random_bytes returns $length cryptographically secure random bytes,
 	// throwing when $length is less than 1.
@@ -63,8 +63,8 @@ func RegisterRandom(rt *runner.Runtime) {
 const randMax = 2147483647
 
 // uniformInt64 picks from [min, max] inclusive. The span max-min+1 overflows
-// int64 when the bounds cover most of the type's range, so it is computed in
-// big.Int; rand.Int does the rejection sampling that keeps the pick unbiased.
+// int64 when the bounds cover most of the type's range, so big.Int carries it;
+// rand.Int does the rejection sampling that keeps the pick unbiased.
 func uniformInt64(name string, min, max int64) (int64, error) {
 	if min == max {
 		return min, nil

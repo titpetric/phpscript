@@ -27,14 +27,14 @@ func NewSharedMemory() *SharedMemory {
 	}
 }
 
-// SharedMemoryContext binds an SharedMemory instance into the context.
+// SharedMemoryContext binds a SharedMemory instance into the context.
 func SharedMemoryContext(ctx context.Context, s *SharedMemory) context.Context {
 	return context.WithValue(ctx, sharedMemoryKey{}, s)
 }
 
 // NewSharedMemoryBinding is a key-value and counter store: `new SharedMemory`
-// returns the store the host bound into the runtime context, and a store of its
-// own when none is bound.
+// returns the store the host bound into the runtime context, and a store of
+// its own when the host bound none.
 //
 // No command in this tree binds one, so under `phpscript server` and the rest
 // every `new SharedMemory` is its own store and holds nothing an earlier request
@@ -61,9 +61,9 @@ func RegisterSharedMemory(rt *runner.Runtime) {
 
 // sharedMemoryInfo reports the store bound into the runtime, for phpinfo().
 //
-// A store outlives the requests that write to it, so none of it is in what
-// memory_get_usage() answers. A host that bound none has nothing to report and
-// the section does not print.
+// A store outlives the requests that write to it, so memory_get_usage() counts
+// none of it. A host that bound none has nothing to report and the section does
+// not print.
 func sharedMemoryInfo(rt *runner.Runtime) []runner.InfoField {
 	store, _ := rt.Context().Value(sharedMemoryKey{}).(*SharedMemory)
 	if store == nil {

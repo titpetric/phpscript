@@ -28,7 +28,7 @@ func registerEnvironment(rt *runner.Runtime) {
 		}
 		return true
 	})
-	// getenv returns the value of the environment variable $name, or false when it is not set.
+	// getenv returns the value of the environment variable $name, or false when $name is unset.
 	rt.RegisterFunc("getenv", func(name string) any {
 		value, ok := rt.Env[name]
 		if !ok {

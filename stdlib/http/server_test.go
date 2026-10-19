@@ -14,8 +14,8 @@ import (
 
 // newServer builds a server over a handler answering "pong" on every path,
 // together with the runtime it belongs to. The handler is a plain net/http one
-// and no HTTP\Mux, so the listening half is read on its own: a Mux brings a
-// worker pool with it, and none of these tests is about that.
+// and no HTTP\Mux, so the tests here read the listening half on its own: a
+// Mux brings a worker pool with it, and none of these tests is about that.
 func newServer(t *testing.T, ctx context.Context) (*runner.Runtime, *http.Server) {
 	t.Helper()
 
@@ -47,8 +47,8 @@ func get(t *testing.T, addr string) string {
 	return string(body)
 }
 
-// TestServer covers construction. Building a server binds nothing, so the two
-// arguments with no useful default are checked here and the address stays empty
+// TestServer covers construction. Building a server binds nothing, so the test
+// checks the two arguments with no useful default and the address stays empty
 // until listen() runs: a script that built a server has not taken a port yet.
 func TestServer(t *testing.T) {
 	t.Parallel()
@@ -62,8 +62,8 @@ func TestServer(t *testing.T) {
 		t.Errorf("error = %v, want one naming addr", err)
 	}
 
-	// A handler that answers no request is refused where the server is built,
-	// ahead of a nil dereference on the first request.
+	// NewServer refuses a handler that answers no request, ahead of a nil
+	// dereference on the first request.
 	if _, err := http.NewServer(rt, "127.0.0.1:0", "not a handler"); err == nil {
 		t.Error("NewServer accepted a handler that answers no requests")
 	} else if !strings.Contains(err.Error(), "must answer requests") {
@@ -80,11 +80,11 @@ func TestServer(t *testing.T) {
 }
 
 // TestServer_Listen covers binding the port. It returns the address the system
-// picked, so a script that bound port 0 can report where it is, and it does
-// not block: the script carries on and calls wait() when it has nothing left.
+// picked, so a script that bound port 0 can report it, and it does not block:
+// the script carries on and calls wait() when it has nothing left.
 //
-// A second listen on a running server is an error, because the first address is
-// still being served and a silent rebind would lose it.
+// A second listen on a running server is an error, because the server still
+// answers on the first address and a silent rebind would lose it.
 func TestServer_Listen(t *testing.T) {
 	t.Parallel()
 	_, server := newServer(t, context.Background())
@@ -113,9 +113,9 @@ func TestServer_Listen(t *testing.T) {
 	}
 }
 
-// TestServer_Addr covers the address a script reads back. It is empty before
-// listen() and empty again once the server has stopped, so the field answers
-// where requests arrive and never a stale address.
+// TestServer_Addr covers the address a script reads back. Addr() reads empty
+// before listen() and empty again once the server has stopped, so the field
+// answers where requests arrive and never a stale address.
 func TestServer_Addr(t *testing.T) {
 	t.Parallel()
 	_, server := newServer(t, context.Background())
@@ -165,7 +165,7 @@ func TestServer_Shutdown(t *testing.T) {
 		t.Error("the server was still answering after Shutdown")
 	}
 
-	// The port is free again, so the address can be taken by a new server.
+	// The port is free again, so a new server can take the address.
 	rt := runner.New(io.Discard, runner.Options{})
 	rt.SetContext(context.Background())
 	replacement, err := http.NewServer(rt, bound, nethttp.HandlerFunc(func(w nethttp.ResponseWriter, r *nethttp.Request) {}))
@@ -178,9 +178,9 @@ func TestServer_Shutdown(t *testing.T) {
 	replacement.Shutdown()
 }
 
-// TestServer_Close covers the stop that drops what is in flight. A script with
-// answers nothing is waiting for calls it, so it reports a failure where
-// shutdown swallows one, and on a server that never listened it reports none.
+// TestServer_Close covers the stop that drops what is in flight. A script
+// calls it where a half-written reply costs nothing, so it reports a failure
+// that shutdown swallows, and reports none on a server that never listened.
 func TestServer_Close(t *testing.T) {
 	t.Parallel()
 	_, server := newServer(t, context.Background())
@@ -206,8 +206,8 @@ func TestServer_Close(t *testing.T) {
 	if got := server.Addr(); got != "" {
 		t.Errorf("Addr() after Close = %q, want empty", got)
 	}
-	// Close and Shutdown each stop the server once, however often they are
-	// called and whichever arrives first.
+	// Close and Shutdown each stop the server once, no matter how often a script
+	// calls them or which arrives first.
 	if err := server.Close(); err != nil {
 		t.Errorf("a second Close = %v, want nil", err)
 	}

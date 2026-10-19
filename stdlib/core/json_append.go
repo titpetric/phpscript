@@ -14,18 +14,18 @@ import (
 // encoding/json writes for the same document: the shapes handled here are the
 // ones it writes verbatim, and everything else defers to it.
 //
-// The walks are written out and call Range directly, taking no function value
-// as a parameter. A closure appending to buf captures buf, and a closure reaching a
-// function value the compiler cannot see through escapes to the heap along with
-// everything it captured: that is an allocation per collection, paid again per
-// row of a list of rows.
+// Each walk spells its loop out and calls Range directly, taking no function
+// value as a parameter. A closure appending to buf captures buf, and a closure
+// reaching a function value the compiler cannot see through escapes to the heap
+// along with everything it captured: that is an allocation per collection, paid
+// again per row of a list of rows.
 
 // appendJSONValue appends one value's encoding: the scalar and collection
-// shapes a handler's response is made of directly, and json.Marshal for the
+// shapes a handler's response carries directly, and json.Marshal for the
 // rest, floats included, whose spelling is encoding/json's own.
 //
-// The collections append in place, so a document reaches the stream without the
-// jsonEncodeValue tree being built first and walked by reflection after.
+// The collections append in place, so a document reaches the stream without
+// building the jsonEncodeValue tree first and walking it by reflection after.
 func appendJSONValue(buf []byte, v any) ([]byte, error) {
 	switch x := v.(type) {
 	case nil:
@@ -55,8 +55,8 @@ func appendJSONValue(buf []byte, v any) ([]byte, error) {
 		}
 		return appendJSONObject(x, buf)
 	case model.Collection:
-		// A view over request data, keyed by name, so an object. Reading it is
-		// what decodes the request behind it.
+		// A view over request data, keyed by name, so an object. The read
+		// decodes the request behind it.
 		if x == nil {
 			return append(buf, "null"...), nil
 		}
@@ -106,8 +106,8 @@ func appendJSONArrayList(a *model.Array, buf []byte) ([]byte, error) {
 // writes it in.
 //
 // Keys and no Range, because a keyed array answers its insertion order slice
-// itself and allocates nothing for it, and a keyed array is what a JSON
-// response is made of.
+// itself and allocates nothing for it, and a JSON response consists of keyed
+// arrays.
 func appendJSONArrayPairs(a *model.Array, buf []byte) ([]byte, error) {
 	keys := a.Keys()
 	buf = slices.Grow(buf, len(keys)*24+2)
@@ -180,9 +180,9 @@ func appendJSONCollection(c model.Collection, buf []byte) ([]byte, error) {
 }
 
 // appendJSONString appends a string's encoding. It takes the string itself and
-// no any, because a key reaching an any parameter is boxed, and a string does
-// not fit an interface word: that is one allocation per key of every object a
-// response carries.
+// no any, because an any parameter boxes the key, and a string does not fit an
+// interface word: that is one allocation per key of every object a response
+// carries.
 func appendJSONString(buf []byte, s string) ([]byte, error) {
 	if jsonSafe(s) {
 		buf = append(buf, '"')

@@ -79,7 +79,7 @@ func TestFnmatch(t *testing.T) {
 		{"post_*", "POST_ID", fnmCasefold, true},
 		{"POST_*", "post_id", 0, false},
 
-		// Backtracking across several stars.
+		// Backtracking across two or more stars.
 		{"*a*b*c*", "xaybzc", 0, true},
 		{"*a*b*c*", "xaybz", 0, false},
 		{"a**b", "ab", 0, true},

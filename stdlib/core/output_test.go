@@ -35,9 +35,9 @@ echo "\n";`)
 	}
 }
 
-// TestVarExportReturn covers the second argument: with $return true the source
-// is answered and nothing is written, so a caller nests one export
-// inside another string.
+// TestVarExportReturn covers the second argument: with $return true
+// var_export answers the source and writes nothing, so a caller nests one
+// export inside another string.
 func TestVarExportReturn(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -127,10 +127,10 @@ var_dump(print_r(true, true), print_r(false, true), print_r(null, true));`)
 }
 
 // TestFloatFormatting covers where php switches a float to the exponent form,
-// which is decided by the decimal point and not by Go's 'g' thresholds: 1e16
-// is still written out at seventeen digits and 1e17 is not, and a small
-// magnitude turns at the third leading zero. The mantissa always carries a
-// fraction and the exponent no leading zero, so it is 1.0E+17 and not 1e+17.
+// which the decimal point decides and not Go's 'g' thresholds: 1e16 is still
+// written out at seventeen digits and 1e17 is not, and a small value turns at
+// the third leading zero. The mantissa always carries a fraction and the
+// exponent no leading zero, so the spelling is 1.0E+17 and not 1e+17.
 //
 // echo passes precision=14 where var_dump passes the round-tripping form, so
 // one float has two spellings: 1/3 is 0.33333333333333 to echo.

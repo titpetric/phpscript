@@ -7,10 +7,10 @@ import (
 
 // TestArgon2VerifyPHPVectors is the interop check the whole encoding exists
 // for: every hash below comes from php 8.5's password_hash(), pasted, and
-// has to verify here. The awkward parameter sets are chosen: m=1025 with
-// p=3 is not a multiple of 4p, which argon2 rounds down for the lanes while
-// keeping the original value in the initial hash, and m=8 is the smallest php
-// accepts.
+// has to verify here. The parameter sets are awkward for a reason: m=1025
+// with p=3 does not divide evenly by 4p, which argon2 rounds down for the
+// lanes while keeping the original value in the initial hash, and m=8 is the
+// smallest php accepts.
 func TestArgon2VerifyPHPVectors(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

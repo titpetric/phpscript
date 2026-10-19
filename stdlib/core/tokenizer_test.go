@@ -10,13 +10,13 @@ import (
 )
 
 // TestTokenizerConstants covers the T_* ids token_get_all() reports arriving as
-// constants, all of them.
+// constants, every one of them.
 //
 // A script branches on a token by name, and a name that is not a constant reads
-// as null, so comparing a token against it is a branch that never runs. Every
-// id the tokenizer can emit is registered for that reason, and not the handful
-// one caller happened to need. They are constants and no globals, so they
-// resolve inside a function or a method too.
+// as null, so comparing a token against null is a branch that never runs. The
+// binding registers every id the tokenizer can emit for that reason, and not
+// the handful one caller happened to need. They are constants and no globals,
+// so they resolve inside a function or a method too.
 func TestTokenizerConstants(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

@@ -13,9 +13,9 @@ import (
 //
 // The value is a net/http request, so a script reads and writes it the way Go
 // does: $request->method, $request->host, and $request->header->set($name,
-// $value) for headers. Methods are written uppercase, "GET" and "POST"; a
-// lowercase one is upper-cased and never sent as written, because a server
-// treats the method as case-sensitive and would reject it.
+// $value) for headers. Methods go uppercase, "GET" and "POST"; a lowercase
+// one is upper-cased and never sent as written, because a server treats the
+// method as case-sensitive and would reject it.
 func NewRequest(ctx context.Context, method, url string, body ...string) (*nethttp.Request, error) {
 	if method == "" {
 		return nil, fmt.Errorf("HTTP\\Request: method is required")
@@ -30,8 +30,8 @@ func NewRequest(ctx context.Context, method, url string, body ...string) (*netht
 	}
 
 	// A nil *strings.Reader held in an io.Reader is not a nil io.Reader, and
-	// net/http would then read from it, so the two cases are passed separately
-	// and not through one variable.
+	// net/http would then read from it, so the call below passes the two cases
+	// separately and not through one variable.
 	var (
 		request *nethttp.Request
 		err     error
@@ -47,10 +47,9 @@ func NewRequest(ctx context.Context, method, url string, body ...string) (*netht
 	return request, nil
 }
 
-// flattenHeader renders a header set as the array shape a script reads. A
-// header sent more than once is joined with ", ". map[string]string is the
-// cheap shape for a value a script only reads; see
-// docs/allocation-performance.md.
+// flattenHeader renders a header set as the array shape a script reads, joining
+// a header sent more than once with ", ". map[string]string is the cheap shape
+// for a value a script only reads; see docs/allocation-performance.md.
 func flattenHeader(header nethttp.Header) map[string]string {
 	out := make(map[string]string, len(header))
 	for name, values := range header {

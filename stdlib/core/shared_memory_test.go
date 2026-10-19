@@ -137,9 +137,9 @@ func TestSharedMemory_Count(t *testing.T) {
 	}
 }
 
-// TestSharedMemory_Delete covers removing a name and reporting whether it is
-// present. One name holds a value or a counter, so the call clears it from the
-// values, then from the counters.
+// TestSharedMemory_Delete covers removing a name and reporting whether the
+// store held it. One name holds a value or a counter, so the call clears it
+// from the values, then from the counters.
 func TestSharedMemory_Delete(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

@@ -18,8 +18,8 @@ import (
 const benchPassword = "correct horse battery staple"
 
 // TestParamsFrom covers the ($algo, $options) tail both hashing functions
-// take: the algorithm decides which option keys are read and what an absent
-// key falls back to, so the two cannot be parsed independently.
+// take: the algorithm decides which option keys apply and what an absent key
+// falls back to, so paramsFrom cannot read the two independently.
 func TestParamsFrom(t *testing.T) {
 	t.Parallel()
 	options := func(pairs ...any) *model.Array {
@@ -125,7 +125,7 @@ func TestBcryptParamsOf(t *testing.T) {
 }
 
 // BenchmarkPasswordHash prices one derivation, which is the whole of
-// password_hash(): the encoding around it is a few string writes.
+// password_hash(): the encoding around it costs a few string writes.
 //
 // Every argon2 row runs one lane, because a row with more would spread over
 // goroutines and the pinned benchmark job narrows the affinity mask to one
@@ -204,7 +204,7 @@ func BenchmarkPasswordVerify(b *testing.B) {
 // refusedHashes are the spellings password_verify answers by shape. No
 // derivation can turn any of them into a match: the first three carry no salt
 // and no tag, and the fourth is argon2 1.0, which derives a different tag from
-// the same parameters and is refused as unreadable.
+// the same parameters, so argon2Decode refuses it as unreadable.
 var refusedHashes = []struct{ name, hash string }{
 	{"empty", ""},
 	{"not-a-hash", "not-a-hash"},
@@ -219,7 +219,7 @@ var refusedHashes = []struct{ name, hash string }{
 // password_verify("x", ""), where php returns in 31 ns. 4000 refusals measure
 // 804 us. One derivation at cost 4, the cheapest bcrypt accepts, is 898 us, so
 // a 200 ms ceiling fails on a decoy at any cost and leaves two orders of
-// magnitude of headroom over the measurement.
+// headroom over the measurement.
 //
 // It runs through the registered function and never passwordVerify, because
 // the registration is where a decoy would sit.
@@ -249,9 +249,9 @@ func TestPasswordVerifyRefusesWithoutDeriving(t *testing.T) {
 }
 
 // BenchmarkPasswordVerifyRefuse prices the path a stored value that is not a
-// hash takes. It is the one row in this file that is not a derivation, which is
-// the point of it: the cost is the length check and the prefix compare, and the
-// allocation count is zero because nothing is copied to a []byte.
+// hash takes, the one row in this file that is no derivation: the cost is the
+// length check and the prefix compare, and the allocation count is zero
+// because nothing copies into a []byte.
 func BenchmarkPasswordVerifyRefuse(b *testing.B) {
 	for _, tt := range refusedHashes {
 		b.Run(tt.name, func(b *testing.B) {
@@ -272,11 +272,11 @@ func BenchmarkPasswordVerifyRefuse(b *testing.B) {
 // rate of one. An argon2id derivation holds its whole memory_cost and streams
 // it, so two of them contend for memory bandwidth and the rate falls short of
 // twice. Dividing BenchmarkPasswordVerify's sec/op into the core count reports
-// the bcrypt case correctly and overstates the argon2 one, so the rate is
-// measured: under RunParallel, sec/op is wall clock per completed
+// the bcrypt case correctly and overstates the argon2 one, so this row
+// measures the rate: under RunParallel, sec/op is wall clock per completed
 // derivation across the cores in play, and logins per second is its reciprocal.
 //
-// `-cpu 1,2,4` is how the scaling is read, because RunParallel spawns GOMAXPROCS
+// `-cpu 1,2,4` reports the scaling, because RunParallel spawns GOMAXPROCS
 // goroutines and -cpu is what sets it. One row per core count, named by it.
 func BenchmarkPasswordVerifyThroughput(b *testing.B) {
 	stored := []params{
@@ -309,10 +309,10 @@ func BenchmarkPasswordVerifyThroughput(b *testing.B) {
 }
 
 // BenchmarkTokenDigest prices the per-request half of an authentication flow:
-// a digest of a high-entropy bearer token, and the keyed digest a signed
-// session cookie is checked with. Both are the same order as the rest of a
-// request, which is the measured reason a session is not re-derived from the
-// password on every call.
+// a digest of a high-entropy bearer token, and the keyed digest that checks a
+// signed session cookie. Both are the same order as the rest of a request,
+// which is the measured reason a session is not re-derived from the password
+// on every call.
 func BenchmarkTokenDigest(b *testing.B) {
 	token := []byte("01K6Y3Q7VT8ZC4N2M9XJ5B7D6F")
 	key := []byte("a-32-byte-signing-key-for-hmac!!")
