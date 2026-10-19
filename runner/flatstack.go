@@ -26,7 +26,7 @@ func (rt *Runtime) runFlat(ast *model.Program) (bool, error) {
 			// bytecode subset does not cover yet, and the interpreter runs it
 			// instead. A violated interface contract differs: the verdict is
 			// on the program, and the interpreter would reach the same one,
-			// so this path throws instead of falling back.
+			// so this path throws.
 			var contract *model.InterfaceContractError
 			if errors.As(err, &contract) {
 				return true, NewRuntimeException(err.Error(), 0)
