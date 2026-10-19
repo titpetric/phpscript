@@ -15,7 +15,7 @@ import (
 //   - "./..." or "dir/...": that directory and all subdirectories
 //   - "file.php": that file
 //
-// When paths is empty, "." is used.
+// An empty paths means ".".
 func ExpandFiles(paths []string) ([]string, error) {
 	if len(paths) == 0 {
 		paths = []string{"."}

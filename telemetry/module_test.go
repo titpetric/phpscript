@@ -43,8 +43,8 @@ func TestModuleRecordsRequestsAndServesFrontEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	router.Get("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
-		// Whatever the request runs is instrumented through the context, the
-		// same way a PHP binding below the interpreter is.
+		// Whatever the request runs instruments through the context, the same
+		// way a PHP binding below the interpreter does.
 		StartSpan(r.Context(), "load user", KindDatabase).End()
 		_, _ = w.Write([]byte("user"))
 	})
@@ -135,8 +135,8 @@ func TestModuleTracksLifecycleWork(t *testing.T) {
 		t.Fatalf("traces = %+v", traces)
 	}
 
-	// Startup work did not arrive over the network, so it is a background
-	// trace, and no request without a method.
+	// Startup work did not arrive over the network, so it lands on a
+	// background trace, and no request without a method.
 	trace := traces[0]
 	if trace.Name != "@startup boot.php" || trace.HTTP != nil || TraceHost(trace) != BackgroundHost {
 		t.Fatalf("trace = %+v", trace)

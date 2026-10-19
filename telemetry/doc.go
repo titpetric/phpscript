@@ -5,7 +5,7 @@
 // This is the only package in phpscript that imports oida. Everything else
 // instruments through the symbols bound here, so no call site names the
 // provider. The bindings are type aliases and thin wrappers, so a
-// *telemetry.Span is a *oida.Span: nothing is copied or adapted at runtime.
+// *telemetry.Span is a *oida.Span: nothing copies or adapts one at runtime.
 //
 // That covers the call sites, and no more of the dependency. The recorder and the
 // front end belong to the host platform, which names oida itself, so replacing
@@ -24,6 +24,6 @@
 //	rt.Observe(module)
 //
 // Instrumentation is nil safe. Spans started without a trace in the context,
-// or in a process where telemetry is disabled, return a nil span whose methods
+// or in a process running with telemetry off, return a nil span whose methods
 // do nothing, so instrumented code runs unchanged either way.
 package telemetry

@@ -8,10 +8,9 @@ import (
 )
 
 // TestStdlibReportsWhatTheRuntimeRegisters checks the listing against names the
-// runtime is known to bind, one per kind, and against the counts the runtime
-// reports for itself. The counts are what
-// this listing and `phpscript info` answer the same question about the same
-// build.
+// runtime binds, one per kind, and against the counts the runtime reports for
+// itself, so this listing and the `info` command answer the same question
+// about the same build.
 func TestStdlibReportsWhatTheRuntimeRegisters(t *testing.T) {
 	t.Parallel()
 	symbols := list.Stdlib()
@@ -71,8 +70,8 @@ func TestStdlibSignatures(t *testing.T) {
 		}
 	}
 
-	// preg_match's $matches is filled by the runner's by-reference setter,
-	// which has no type to publish, so the ampersand carries the meaning.
+	// The runner's by-reference setter fills preg_match's $matches, and it has
+	// no type to publish, so the ampersand carries the meaning.
 	if got := index["function preg_match"]; !strings.Contains(got, "&$") {
 		t.Errorf("preg_match = %q, want a by-reference parameter", got)
 	}
@@ -93,8 +92,8 @@ func TestStdlibMarkdownIsATable(t *testing.T) {
 	if !strings.HasPrefix(lines[1], "  |---") {
 		t.Errorf("separator = %q", lines[1])
 	}
-	// Every row is padded to the same width, which keeps the table
-	// line up in a terminal as well as in a markdown renderer.
+	// Every row carries the same width, so the table lines up in a terminal
+	// as well as in a markdown renderer.
 	for i, line := range lines[1:] {
 		if len(line) != len(lines[0]) {
 			t.Fatalf("line %d is %d wide, want %d", i+1, len(line), len(lines[0]))

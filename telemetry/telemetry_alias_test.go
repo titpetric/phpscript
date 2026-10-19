@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// newRecordingTracer returns a tracer that records. oida records only when it
-// is enabled, and a test that reads its traces back has to enable it.
+// newRecordingTracer returns a tracer that records. oida records for a caller
+// that turns it on, and a test reading its traces back has to.
 func newRecordingTracer(t *testing.T) *Tracer {
 	t.Helper()
 
@@ -130,8 +130,8 @@ func TestTraceFromContext(t *testing.T) {
 // TestSpanFromContext covers which span a nested call records under: the
 // innermost one in the context. Start derives a context carrying the span it
 // opened, so work below it nests; StartSpan derives none, so a leaf span
-// leaves the context naming its parent and nothing nests under a span that
-// has already been ended.
+// leaves the context naming its parent, and nothing nests under a span whose
+// End has run.
 func TestSpanFromContext(t *testing.T) {
 	t.Parallel()
 	if got := SpanFromContext(context.Background()); got != nil {
@@ -162,9 +162,9 @@ func TestSpanFromContext(t *testing.T) {
 	leaf.End()
 }
 
-// TestTraceID covers the correlation key a log line carries. It is the value of
-// the Request-Id header on an HTTP trace, so one string matches a log line with
-// its own trace, and it is empty where nothing is traced.
+// TestTraceID covers the correlation key a log line carries: the value of the
+// Request-Id header on an HTTP trace, so one string matches a log line with its
+// own trace, and the empty string where no trace exists.
 func TestTraceID(t *testing.T) {
 	t.Parallel()
 	if got := TraceID(context.Background()); got != "" {
@@ -181,8 +181,8 @@ func TestTraceID(t *testing.T) {
 	}
 }
 
-// TestNewStorageDisk covers the retention a site that configured `driver: disk`
-// is held to: completed traces written as JSON documents under the named
+// TestNewStorageDisk covers the retention a site naming `driver: disk` gets:
+// completed traces written as JSON documents under the named
 // folder, bounded by the limit, and readable by a process that did not record
 // them. Restore is what fills the read path of a fresh process, so a restart
 // keeps what the last one recorded.
