@@ -1,6 +1,6 @@
 # Bindings
 
-What makes the PHP runtime usable are the go bindings to the language. You can create Go types the way the runtime itself registers the `Exception` object that is used when `new Exception` is evaluated in the VM.
+What makes the PHP runtime usable are the go bindings to the language. You can create Go types the way the runtime itself registers the `Exception` object that the VM constructs when a script evaluates `new Exception`.
 
 The definition of an `Exception` on the Go side is as follows:
 
@@ -24,7 +24,7 @@ func NewException(message string, code int) (Exception, error) {
 }
 ```
 
-All the methods bound to the type are passed along to the VM. The PHP VM allows omitting arguments from the right side, leaving their default or zero value when invoking the code.
+The registration passes all the methods bound to the type along to the VM. The PHP VM allows omitting arguments from the right side, leaving their default or zero value when invoking the code.
 
 ```
 rt := runtime.New(os.Stdout)
@@ -48,7 +48,7 @@ The PHP runtime is request driven. The `stdlib/core` package registers a concurr
 - `func (m *SharedMemory) Set(_ context.Context, key, value string)`
 - `func (m *SharedMemory) Get(_ context.Context, key string) string`
 
-Two utility functions bind the same instance to multiple runtimes:
+Two utility functions bind the same instance to more than one runtime:
 
 - `core.SharedMemoryContext(context.Context, *core.SharedMemory) context.Context`
 - `core.NewSharedMemoryBinding(ctx context.Context) (*core.SharedMemory, error)`
@@ -61,7 +61,7 @@ rt.SetContext(core.SharedMemoryContext(rt.Context(), shm))
 core.RegisterSharedMemory(rt)
 ```
 
-The bindings can now be used from PHP. Using the `@route` hints, a request handler can look like this:
+A script can now use the bindings. Using the `@route` hints, a request handler can look like this:
 
 ```php
 <?php
