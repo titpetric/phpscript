@@ -6,7 +6,7 @@
 
 Interface for reading and writing an object with array syntax.
 
-A class implementing it can be indexed with `$obj[$key]`, and the four methods it names are what the engine calls for a read, a write, an `isset()` and an `unset()`.
+A class that declares it accepts `$obj[$key]`, and the engine calls the four methods it names for a read, a write, an `isset()` and an `unset()`.
 
 ## Interface synopsis
 
@@ -37,6 +37,6 @@ public function offsetUnset(mixed $offset): void
 
 ## Status
 
-- phpscript does not implement this interface. The name is not declared.
+- phpscript carries no such interface, and does not declare the name.
 - Nothing dispatches through it: there is no overloaded index, so `$obj["k"]` does not call `offsetGet()`. Indexing an object is not how a script reaches its data here.
 - Expose the array through a method, or hold it in a property and index the property.

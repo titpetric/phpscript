@@ -3,7 +3,7 @@ description: A PHP language-reference-shaped guide to the syntax and runtime beh
 compatibility:
   - feature: PHP language reference
     status: Partial compatibility
-    notes: Only documented chapters and features are implemented.
+    notes: phpscript implements only the documented chapters and features.
   - feature: phpscript extensions
     status: Compatibility
     notes: Documented separately because these APIs and syntax do not exist in PHP.
@@ -19,7 +19,7 @@ sitemap:
       - path: types/README.md
         description: Dynamic scalar, array, object, callable, and cast behavior.
       - path: types/value-semantics.md
-        description: What copies and what is shared, why `&` does nothing, and how binding output parameters work.
+        description: What copies and what two names share, why `&` does nothing, and how binding output parameters work.
       - path: variables/README.md
         description: Assignment, local scope, arrays, properties, and destructuring.
       - path: constants/README.md
@@ -53,7 +53,7 @@ sitemap:
       - path: predefined-interfaces-and-classes/reserved-interfaces.md
         description: Every interface and class PHP predefines, the version that added it, and what phpscript does about each.
       - path: predefined-interfaces-and-classes/classes/Traversable.md
-        description: The base interface foreach detects, which cannot be implemented on its own.
+        description: The base interface foreach detects, and which no class declares on its own.
       - path: predefined-interfaces-and-classes/classes/Iterator.md
         description: The five methods foreach calls, why nothing dispatches through them, and a flattened workaround.
       - path: predefined-interfaces-and-classes/classes/IteratorAggregate.md
@@ -98,7 +98,7 @@ sitemap:
       - path: extensions/bindings.md
         description: Exposing Go constructors, functions, methods, contexts, and values to PHP.
       - path: extensions/regexp.md
-        description: How PCRE patterns are compiled, and what differs between PHP's PCRE and Go's RE2.
+        description: How phpscript compiles PCRE patterns, and what differs between PHP's PCRE and Go's RE2.
       - path: extensions/hashing.md
         description: Digest width and what it buys, where md5 and sha1 stop being safe, and why a password needs a cost parameter and not a wider digest.
       - path: extensions/implemented-apis.md

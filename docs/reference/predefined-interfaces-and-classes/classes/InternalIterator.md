@@ -6,7 +6,7 @@
 
 Final class that eases implementing [IteratorAggregate](IteratorAggregate.md) for internal classes.
 
-It is not constructible from a script: the constructor is private, and the engine hands instances back from internal classes that expose iteration.
+A script cannot construct one: the constructor is private, and PHP's engine returns instances from internal classes that expose iteration.
 
 ## Class synopsis
 
@@ -43,6 +43,6 @@ public function valid(): bool
 
 ## Status
 
-- phpscript does not implement this class. The name is not declared.
+- phpscript has no `InternalIterator`. The name is not declared.
 - It exists in PHP to serve internal classes, and a script cannot construct one there either, so nothing portable depends on it.
 - A host binding with a sequence to expose returns a Go slice or an array; the runtime iterates both.

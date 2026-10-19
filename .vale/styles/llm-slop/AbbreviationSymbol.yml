@@ -2,7 +2,10 @@
 # package, config/config.yml, $config, config(), the info command, the /info
 # route, impl, perf, repo.
 #
-# A backtick before the word exempts it, so citing a symbol works in markdown,
+# A backtick, a slash or a dollar before the word exempts it. A slash makes the
+# word a path or a route, `stdlib/info` and `/info`, and a dollar makes it a PHP
+# variable, `$config`; a generated heading and a phpdoc tag can carry neither
+# backtick. Citing a symbol in backticks works in markdown,
 # in a Go doc comment and in a PHP comment alike. vale's TokenIgnores only
 # reaches markup formats, and a source file arrives as comments extracted to
 # plain text, so the guard lives in the pattern: `[^\x60]` consumes one
@@ -16,4 +19,4 @@ message: "Write %s out, or cite the symbol in backticks."
 level: error
 ignorecase: false
 raw:
-  - '[^`]\b(config|configs|info|impl|perf|repo|repos)\b'
+  - '[^`/$]\b(config|configs|info|impl|perf|repo|repos)\b'
