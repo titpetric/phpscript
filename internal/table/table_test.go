@@ -47,7 +47,7 @@ func TestTableRendersAnsi(t *testing.T) {
 		}
 	}
 
-	// Every row is padded to one width, which keeps the box square.
+	// Every row carries one width, which keeps the box square.
 	lines := strings.Split(strings.TrimSpace(Strip(got)), "\n")
 	for i, line := range lines[:5] {
 		if Width(line) != Width(lines[0]) {
@@ -92,7 +92,7 @@ func TestTableRowPadsShortRows(t *testing.T) {
 
 // TestAlign covers which side a column pads on. A label reads from the left
 // and a number reads from the right, so the two alignments put the padding on
-// opposite sides of the cell. In markdown the alignment is carried by the
+// opposite sides of the cell. In markdown the alignment rides on the
 // separator row, where a trailing colon is what a renderer reads as right.
 func TestAlign(t *testing.T) {
 	t.Parallel()
@@ -131,7 +131,8 @@ func TestAlign(t *testing.T) {
 	}
 }
 
-// TestCell covers the one value a cell carries and the color it is printed
+// TestCell covers the one value a cell carries and the color a terminal prints
+// it
 // in. A caller sets the color once; the terminal table wraps the text in it
 // and markdown drops it, so the same rows render in both formats with no
 // branch at the call site.

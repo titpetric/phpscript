@@ -1,6 +1,6 @@
 // Package table renders a result table as an ansi box-drawing table on a
-// terminal and as markdown everywhere else. The style constants are shared so
-// every command that prints a table looks like the same program.
+// terminal and as markdown everywhere else. Every command that prints a table
+// reads the same style constants, so the output looks like one program.
 package table
 
 import (
