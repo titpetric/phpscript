@@ -30,5 +30,5 @@ public function getIterator(): Traversable
 
 - phpscript does not implement this interface. The name is not declared.
 - The interface uses `extends`. `extends Traversable` parses and is recorded for `instanceof`, and confers nothing; Traversable declares no method, so flattening it loses nothing.
-- There is no interface-based dispatch, so `foreach` never calls `getIterator()`. The usual return values are unavailable too: `ArrayIterator` is not declared and `yield` is a documented won't-implement.
+- There is no interface-based dispatch, so `foreach` never calls `getIterator()`. The usual return values are unavailable too: `ArrayIterator` is not declared and `yield` is a documented won't-build.
 - Return an array from a method and loop over that. An array is the sequence type this runtime iterates.

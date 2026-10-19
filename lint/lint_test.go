@@ -254,7 +254,7 @@ func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
 	}
 }
 
-// global and extends are documented won't-implements (docs/design.md) that
+// global and extends are documented won't-builds (docs/design.md) that
 // parse and do nothing, so the linter is where a port hears about them before
 // the behaviour goes wrong at a distance.
 func TestFileReportsGlobalAndExtends(t *testing.T) {

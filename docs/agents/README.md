@@ -26,7 +26,7 @@ Each sprint runs in its own git worktree. A worktree makes `$PWD/bin/phpscript` 
 
 One finding is one commit. A sprint that produces four findings writes four, each reading on its own, and they all land on the one draft the "Where work lands" section defines. An agent opens no pull request.
 
-Out of scope in every sprint: anything in the "Non-negotiable" list in [../../AGENTS.md](../../AGENTS.md), and anything in the `Won't implement` table in [../design.md](../design.md). A finding that needs one of those is an issue from the feature-gap template.
+Out of scope in every sprint: anything in the "Non-negotiable" list in [../../AGENTS.md](../../AGENTS.md), and anything in the "Won't build" table in [../design.md](../design.md). A finding that needs one of those is an issue from the feature-gap template.
 
 ## The measurement protocol
 
