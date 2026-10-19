@@ -2,8 +2,8 @@
 
 | PHP language-reference feature | Status                | Notes                                                                                     |
 |--------------------------------|-----------------------|-------------------------------------------------------------------------------------------|
-| `throw`                        | Compatibility         | Values and constructed throwable objects can be thrown.                                   |
-| `try`, `catch`, `finally`      | Compatibility         | Clauses are tried in source order; `finally` always runs.                                 |
+| `throw`                        | Compatibility         | A script throws a value or a constructed throwable object.                                |
+| `try`, `catch`, `finally`      | Compatibility         | The runtime tries clauses in source order; `finally` always runs.                         |
 | Catch type filters             | Partial compatibility | A clause filters on the class name a throwable records. There is no hierarchy to descend. |
 | Exception hierarchy            | Not implemented       | Every throwable class is one type; none is a subclass of another.                         |
 | Extending exceptions           | Not implemented       | `extends` confers nothing. See [Design decisions](../../design.md).                       |
@@ -24,7 +24,7 @@ The catch variable receives the thrown object, so `getMessage()` and `getCode()`
 
 ## Which clause takes it
 
-Every throwable class is one type carrying the name a script constructed, so a clause is answered from that name, with no hierarchy to descend:
+Every throwable class is one type carrying the name a script constructed, so the runtime answers a clause from that name, with no hierarchy to descend:
 
 | Clause names                                    | Takes                                                                        |
 |-------------------------------------------------|------------------------------------------------------------------------------|
@@ -34,7 +34,7 @@ Every throwable class is one type carrying the name a script constructed, so a c
 | `Error`                                         | any class whose name ends in `Error`                                         |
 | any other name                                  | that class name, case-insensitively                                          |
 
-Clauses are tried in source order, and a union matches on either alternative:
+The runtime tries clauses in source order, and a union matches on either alternative:
 
 ```php
 try {
@@ -66,11 +66,11 @@ The method set answers on whatever reached the catch, including an error a Go bi
 | `getCode()`                        | The constructed code, or 0 for an error that carries none     |
 | `getPrevious()`                    | The wrapped error, or null                                    |
 | `getFile()`, `getLine()`           | Empty and 0; a throwable does not carry a source position     |
-| `getTrace()`, `getTraceAsString()` | An empty array and `#0 {main}`; no stack is recorded          |
+| `getTrace()`, `getTraceAsString()` | An empty array and `#0 {main}`; the runtime records no stack  |
 
 ## Errors from Go
 
-An error a Go function returned, and a panic recovered at the host-call boundary, enter the same catch path as an explicit `throw`. Neither is an instance of a PHP class, so every clause takes one: a binding failure reaches the `catch (Exception $e)` a script already wrote around the call. Without a matching `try`/`catch` the error is returned to the embedding host.
+An error a Go function returned, and a panic recovered at the host-call boundary, enter the same catch path as an explicit `throw`. Neither is an instance of a PHP class, so every clause takes one: a binding failure reaches the `catch (Exception $e)` a script already wrote around the call. Without a matching `try`/`catch` the runtime returns the error to the embedding host.
 
 ## References
 
