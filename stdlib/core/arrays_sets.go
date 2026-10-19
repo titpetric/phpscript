@@ -62,9 +62,9 @@ func registerArraySets(rt *runner.Runtime) {
 		return out, nil
 	})
 
-	// array_chunk splits $array into arrays of at most $length entries; the
-	// chunks are keyed from zero either way, and $preserve_keys decides
-	// whether the entries inside them keep their own keys or are renumbered.
+	// array_chunk splits $array into arrays of at most $length entries; it keys
+	// the chunks from zero either way, and $preserve_keys decides whether the
+	// entries inside them keep their own keys or get new ones from zero.
 	rt.RegisterFunc("array_chunk", func(array any, length int64, preserve_keys ...bool) (*model.Array, error) {
 		if length < 1 {
 			return nil, errors.New("array_chunk(): Argument #2 ($length) must be greater than 0")
@@ -96,14 +96,14 @@ func registerArraySets(rt *runner.Runtime) {
 	})
 
 	// array_diff returns the entries of $array whose value is in none of the
-	// other arrays, keys kept; values are compared as strings, which is php's
+	// other arrays, keys kept; it compares values as strings, which is php's
 	// own rule and the reason 0 and "0" are the same entry here.
 	rt.RegisterFunc("array_diff", func(array any, others ...any) *model.Array {
 		return filterByValue(array, others, false)
 	})
 
 	// array_intersect returns the entries of $array whose value is in every
-	// one of the other arrays, keys kept; values are compared as strings, as
+	// one of the other arrays, keys kept; it compares values as strings, as
 	// array_diff compares them.
 	rt.RegisterFunc("array_intersect", func(array any, others ...any) *model.Array {
 		return filterByValue(array, others, true)
@@ -122,19 +122,18 @@ func registerArraySets(rt *runner.Runtime) {
 	})
 
 	// array_key_first returns the first key of $array without moving
-	// anything, or null when it is empty.
+	// anything, or null for an empty array.
 	rt.RegisterFunc("array_key_first", func(array any) any {
 		return edgeKey(array, true)
 	})
 
-	// array_key_last returns the last key of $array, or null when it is empty.
+	// array_key_last returns the last key of $array, or null for an empty array.
 	rt.RegisterFunc("array_key_last", func(array any) any {
 		return edgeKey(array, false)
 	})
 
-	// array_is_list reports whether $array is keyed by the integers 0 to
-	// count-1 in that order, which is the shape of a list. An empty array is a
-	// list.
+	// array_is_list reports whether $array carries the integer keys 0 to
+	// count-1 in that order, the shape of a list. An empty array is a list.
 	rt.RegisterFunc("array_is_list", func(array any) bool {
 		want := int64(0)
 		isList := true
@@ -166,14 +165,14 @@ func valueList(array any) []any {
 // filterByValue is array_diff and array_intersect: same walk, opposite verdict.
 //
 // The comparison is by string, which is PHP's documented rule for this family -
-// (string)$a === (string)$b - and not the loose == the sorts use. It is why
-// array_diff([0], ["0"]) is empty.
+// (string)$a === (string)$b - and not the loose == the sorts use;
+// array_diff([0], ["0"]) is empty for that reason.
 func filterByValue(array any, others []any, keep bool) *model.Array {
 	seen := make(map[string]int, len(others))
 	for _, other := range others {
 		// Counting the arrays a value appears in, and never marking it
-		// present, is what lets intersect require all of them from the same
-		// pass diff uses to require none.
+		// present, is what lets intersect require every one of them from the
+		// same pass diff uses to require none.
 		inThis := make(map[string]bool)
 		model.RangeValues(other, func(_, v any) bool {
 			inThis[phpval.String(v)] = true
@@ -197,9 +196,10 @@ func filterByValue(array any, others []any, keep bool) *model.Array {
 // wanted turns "how many of the other arrays hold this" into the verdict.
 //
 // The two are not each other's negation: intersect keeps a value present in
-// every other array, diff keeps it when it is in NONE of them. With one other array those
-// coincide, so the difference only shows once a third is passed -
-// array_diff($a, $b, $c) drops a value $b holds even though $c does not.
+// every other array, diff keeps it when NONE of them hold it. With one other
+// array those coincide, so the difference only shows once a call passes a
+// third - array_diff($a, $b, $c) drops a value $b holds even though $c does
+// not.
 func wanted(count, others int, keep bool) bool {
 	if keep {
 		return count == others
@@ -207,7 +207,7 @@ func wanted(count, others int, keep bool) bool {
 	return count == 0
 }
 
-// filterByKey is array_diff_key and array_intersect_key. Keys are normalised
+// filterByKey is array_diff_key and array_intersect_key. It normalises keys
 // through phpval.Key first, so the integer 1 and the string "1" are the one key
 // PHP treats them as.
 func filterByKey(array any, others []any, keep bool) *model.Array {
