@@ -10,7 +10,7 @@ import (
 
 // shape renders an expression fully parenthesized, so a test states the tree
 // the precedence table built and never the value an engine would compute from
-// it. The parser cannot reach the runner to evaluate anything.
+// it. The parser cannot reach the runner, so it runs nothing.
 func shape(e model.Expr) string {
 	switch n := e.(type) {
 	case *model.Binary:
@@ -54,7 +54,7 @@ func expression(t *testing.T, src string) model.Expr {
 // TestBinaryPrecedence covers where each level of the table sits, against what
 // php computes for the same source. The bitwise operators are looser than any
 // comparison, the shifts are tighter than concatenation and looser than
-// addition, and every level is left-associative.
+// addition, and every level binds to the left.
 func TestBinaryPrecedence(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -84,8 +84,8 @@ func TestBinaryPrecedence(t *testing.T) {
 }
 
 // TestParenthesesOverridePrecedence covers the escape from the table: a
-// parenthesized group folds first whatever the levels say, and the node is
-// kept so the formatter can print the parentheses the author wrote.
+// parenthesized group folds first whatever the levels say, and the parser
+// keeps the node so the formatter prints the parentheses the author wrote.
 func TestParenthesesOverridePrecedence(t *testing.T) {
 	t.Parallel()
 	e := expression(t, `(1 + 2) * 3`)
@@ -114,8 +114,8 @@ func TestTernaryIsLooserThanEveryBinary(t *testing.T) {
 
 // TestAssignmentIsRightAssociative covers the one expression-level assignment
 // this parser accepts, the `($x = f()) !== false` idiom. It binds to the right
-// and only when the left side can be assigned to, so `1 = $a` parses as the
-// literal and never as an assignment.
+// and only where an assignment may target the left side, so `1 = $a` parses as
+// the literal and never as an assignment.
 func TestAssignmentIsRightAssociative(t *testing.T) {
 	t.Parallel()
 	if got, want := shape(expression(t, `$a = $b = 1`)), `($a = ($b = 1))`; got != want {

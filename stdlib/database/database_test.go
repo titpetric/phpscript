@@ -98,9 +98,9 @@ func TestDatabaseObserverIgnoresSentinelErrors(t *testing.T) {
 	}
 }
 
-// A statement is classified by the keyword it starts with, and the tag it
-// carries is recorded beside it: a trace groups by a query's purpose, which
-// the statement text alone does not answer.
+// The observer classifies a statement by the keyword it starts with and records
+// the tag it carries beside it: a trace groups by a query's purpose, which the
+// statement text alone does not answer.
 func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 	t.Parallel()
 	span, observe := newObservedSpan(t)
@@ -123,7 +123,7 @@ func TestDatabaseObserverRecordsQueryTypeAndComment(t *testing.T) {
 }
 
 // The CRUD helpers write by definition, so a read-only client refuses them
-// before a statement is built. The nil Bridge is the assertion that nothing
+// before it builds a statement. The nil Bridge is the assertion that nothing
 // reached the database: running one would panic.
 func TestDatabaseReadonlyRefusesWrites(t *testing.T) {
 	t.Parallel()
@@ -194,8 +194,8 @@ func TestDatabaseReadonlyRefusesWritingStatements(t *testing.T) {
 }
 
 // A refused statement never reaches the query log, so the span carrying the
-// call is where it is recorded. Otherwise a boundary that refuses the wrong
-// thing leaves nothing behind to debug it with.
+// call records the refusal. Otherwise a wrong refusal leaves nothing behind
+// to debug it with.
 func TestDatabaseReadonlyRecordsRefusalOnSpan(t *testing.T) {
 	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
@@ -279,10 +279,9 @@ func TestDatabaseRowsAreReadableAsPHPArrays(t *testing.T) {
 	}
 }
 
-// TestDatabase_SetID covers the name a constructed client is recorded under.
-// The runtime passes the receiving PHP variable, and every
-// span the client opens carries it, so two clients in one request are told
-// apart on the trace.
+// TestDatabase_SetID covers the name a constructed client records under. The
+// runtime passes the receiving PHP variable, and every span the client opens
+// carries it, so a trace tells two clients in one request apart.
 func TestDatabase_SetID(t *testing.T) {
 	t.Parallel()
 	database := &Database{}
@@ -358,8 +357,8 @@ func TestDatabase_Begin(t *testing.T) {
 }
 
 // TestDatabase_Commit covers the committed outcome: the row survives the
-// transaction, and the span Begin opened is renamed for the outcome and ended,
-// so one span carries the whole transaction.
+// transaction, and Commit renames the span Begin opened for the outcome and
+// ends it, so one span carries the whole transaction.
 func TestDatabase_Commit(t *testing.T) {
 	t.Parallel()
 	ctx, trace := newRecordedTrace(t)
@@ -392,8 +391,8 @@ func TestDatabase_Commit(t *testing.T) {
 	}
 }
 
-// TestDatabase_Rollback covers the discarded outcome: the row is gone, and the
-// span Begin opened carries the rollback as its name, so a trace says which
+// TestDatabase_Rollback covers the discarded outcome: the row never lands, and
+// the span Begin opened carries the rollback as its name, so a trace says which
 // way a transaction ended without a second span to pair with it.
 func TestDatabase_Rollback(t *testing.T) {
 	t.Parallel()
@@ -425,8 +424,8 @@ func TestDatabase_Rollback(t *testing.T) {
 }
 
 // TestDatabase_InsertID covers the key the server generated for the last
-// insert. It is the one part of an INSERT the statement does not carry, so a
-// script writing a row with an autoincrement key reads the new id here.
+// insert. That key is the one part of an INSERT the statement does not carry,
+// so a script writing a row with an autoincrement key reads the new id here.
 func TestDatabase_InsertID(t *testing.T) {
 	t.Parallel()
 	database := newLiveDatabase(t)
@@ -468,8 +467,8 @@ func newRecordedTrace(t *testing.T) (context.Context, *telemetry.Trace) {
 	t.Helper()
 
 	options := telemetry.NewOptions("phpscript")
-	// oida records only when it is told to; a test that reads its traces
-	// back tells it to.
+	// oida records only when the options enable it; a test that reads its
+	// traces back enables it.
 	options.Enabled = true
 	tracer, err := telemetry.New(options)
 	if err != nil {

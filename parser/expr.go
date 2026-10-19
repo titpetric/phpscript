@@ -33,7 +33,7 @@ func (p *parser) parseExpr() (model.Expr, error) {
 }
 
 // parseAssign supports assignment used as an expression (e.g. the PHP idiom
-// `if (($x = f()) !== false)`). It is right-associative and only valid when the
+// `if (($x = f()) !== false)`). It binds to the right and holds only when the
 // left side is an lvalue (variable, index, property or list()).
 func (p *parser) parseAssign() (model.Expr, error) {
 	left, err := p.parseTernary()
@@ -43,7 +43,7 @@ func (p *parser) parseAssign() (model.Expr, error) {
 	if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && isLValue(left) {
 		op := p.next().val
 		// `$a = &f()` / `$a = &$b`: PHP's assign-by-reference spelling. The
-		// marker is kept as a Ref node (bind stays by value); consuming it
+		// parser keeps the marker as a Ref node (bind stays by value); consuming it
 		// here reaches the forms the unary parser's tVar guard cannot.
 		byRef := op == "=" && p.isOp("&")
 		if byRef {
@@ -63,7 +63,7 @@ func (p *parser) parseAssign() (model.Expr, error) {
 	return left, nil
 }
 
-// isLValue reports whether e can be assigned to.
+// isLValue reports whether an assignment may target e.
 func isLValue(e model.Expr) bool {
 	switch model.UnwrapParenthesized(e).(type) {
 	case *model.Var, *model.Index, *model.PropAccess, *model.StaticProp, *model.ListExpr:
@@ -120,7 +120,7 @@ func (p *parser) parseBinary(minPrec int) (model.Expr, error) {
 		// PHP binds an assignment tighter than the comparison to its left, so
 		// `false !== $pos = strrpos($s, "\\")` assigns and then compares. The
 		// operand parser cannot see this (it stops at the operator), so the
-		// assignment is folded onto the right operand here.
+		// fold here puts the assignment onto the right operand.
 		if t := p.cur(); t.kind == tOp && isAssignOp(t.val) && isLValue(right) {
 			p.next()
 			byRef := t.val == "=" && p.isOp("&")
@@ -188,10 +188,10 @@ func (p *parser) parseUnary() (model.Expr, error) {
 		return p.parseUnary()
 	}
 	// `&$var` binds by value (the VM has no by-reference values), but the
-	// marker is kept as a Ref node so the formatter prints the source back
+	// parser keeps the marker as a Ref node so the formatter prints the source back
 	// as written and the linter reports it.
 	//
-	// The reference marker is taken in front of a variable alone. Taken in
+	// This reads the reference marker in front of a variable alone. Taken in
 	// front of anything, it swallows the binary `&` of `echo 6 & 3`: the
 	// operand parser reads `& 3` as a fresh reference expression and the
 	// program prints 6.
@@ -209,7 +209,7 @@ func (p *parser) parseUnary() (model.Expr, error) {
 // parseInstanceOf parses `expr instanceof Class`. PHP binds it tighter than
 // `!`, so `!$e instanceof Foo` negates the test and never tests the
 // negation, so it sits below parseUnary. A bare class name on the
-// right is qualified, the same resolution `new` and a static call get, so a
+// right takes a qualification, the same resolution `new` and a static call get, so a
 // `use` alias and an unqualified name inside a namespace reach the runtime
 // fully qualified. Any other operand - a variable, a parenthesized
 // expression - names the class at run time and passes through unresolved.
@@ -273,7 +273,7 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 			// `$obj->$m(...)` calls the method named by `$m`. Without the
 			// parens it would be a dynamic property, which stays unsupported.
 			//
-			// Only the bare variable is read. PHP 7's uniform variable syntax
+			// This takes the bare variable alone. PHP 7's uniform variable syntax
 			// made `$obj->$m["get"]()` mean `($obj->$m)["get"]()`, so taking
 			// the index here would call a different method than PHP does.
 			if p.cur().kind == tVar && p.peek(1).kind == tOp && p.peek(1).val == "(" {
@@ -286,7 +286,7 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 				continue
 			}
 			// `$obj->{expr}(...)` calls the method the expression names. The
-			// braces are how a name that is not a plain variable is spelled
+			// braces carry a name no plain variable can spell
 			// since PHP 7: `$obj->{$calls["read"]}()` is the method `$calls`
 			// holds, where the unbraced form would subscript a property.
 			if p.isOp("{") {
@@ -342,7 +342,7 @@ func (p *parser) parsePostfix() (model.Expr, error) {
 		case p.isOp("("):
 			// Calling a value and no name: `$fn($x)`, `$handlers[0]($x)`,
 			// `(self::$includeFile)($file)`. Named calls never reach here;
-			// they are consumed by parsePrimary.
+			// parsePrimary consumes them.
 			args, firstClass, err := p.parseCallArgs()
 			if err != nil {
 				return nil, err
@@ -517,7 +517,7 @@ func (p *parser) parseNamedExpr(name string, absolute bool) (model.Expr, error) 
 	if name == "__NAMESPACE__" {
 		return p.newLit(p.namespace), nil
 	}
-	// The magic constants are compiled, not looked up, the way php compiles
+	// The parser compiles the magic constants and looks none up, the way php compiles
 	// them. __LINE__ needs the token just consumed: the name itself.
 	// The other two need a file, and stay names when the caller gave none.
 	switch name {
@@ -553,10 +553,10 @@ func isFuncKeyword(name string) bool {
 
 // parseClosure parses an anonymous function `function(params) [use(...)] { body }`.
 // The `use` capture list names the enclosing variables the closure sees; the
-// runtime binds their values when the closure is created.
+// runtime binds their values where the closure value appears.
 func (p *parser) parseClosure() (*model.Closure, error) {
 	// `function &() {}` declares a by-reference return; like the named form,
-	// the marker is recorded and the closure returns by value.
+	// the parser records the marker and the closure returns by value.
 	byRef := false
 	if p.isOp("&") {
 		p.next()
@@ -606,7 +606,7 @@ func (p *parser) parseClosureUses() ([]model.ClosureUse, error) {
 }
 
 // parseList parses `list($a, $b, ...)` used as an assignment target. Empty
-// slots (`list(, $b)`) are represented by nil elements.
+// slots (`list(, $b)`) arrive as nil elements.
 func (p *parser) parseList() (model.Expr, error) {
 	if err := p.eatOp("("); err != nil {
 		return nil, err
@@ -631,7 +631,7 @@ func (p *parser) parseList() (model.Expr, error) {
 	return &model.ListExpr{Elems: p.exprs.take(mark)}, p.eatOp(")")
 }
 
-// parseVarRef reads the value a class name can be held in: a variable, then any
+// parseVarRef reads the value holding a class name: a variable, then any
 // index and property accessors applied to it. It stops before "(", so the
 // caller owns the argument list; that boundary is what separates the name from
 // the constructor call in `new $factories["png"]($file)`.
@@ -668,9 +668,9 @@ func (p *parser) parseNew() (model.Expr, error) {
 	if p.isKw("class") {
 		return p.parseAnonClass()
 	}
-	// `new $className(...)`: the class is named by a runtime value. The name
-	// can be held in an index or a property as well as in the variable itself,
-	// so the whole reference is taken here, and not only the variable.
+	// `new $className(...)`: a runtime value names the class. An index or a
+	// property can hold that name as well as the variable itself, so this
+	// takes the whole reference and never the variable alone.
 	// Leaving the accessors to parsePostfix would read
 	// `new $renderers["json"]($data)` as `(new $renderers)["json"]($data)`,
 	// which constructs the wrong value and then calls the result.
@@ -710,10 +710,10 @@ func (p *parser) parseNew() (model.Expr, error) {
 // The parser assigns it one anyway. A name is what `new` resolves, what a method
 // call looks a class up by, and what `instanceof` compares, so a class without
 // one would need a second path through every one of those; naming it here means
-// the declaration is registered and reached exactly like a written class, and
+// the runtime registers and reaches the declaration exactly like a written class, and
 // only the parser knows the difference. The spelling follows PHP's, which also
 // synthesizes a name, so a script that prints get_class() sees something of the
-// same shape. The declarations are collected on the program because they sit in
+// same shape. The parser collects the declarations on the program because they sit in
 // an expression, where nothing walking statements would find them.
 //
 // The arguments come before the heritage, as in PHP: `new class ($dsn)
@@ -761,7 +761,7 @@ func (p *parser) parseCallArgs() ([]model.Expr, bool, error) {
 // atFirstClassMarker reports whether the argument list starting at the current
 // token is exactly `(...)`. The lexer has no ellipsis token - a variadic
 // parameter reads three `.` operators in parseParamDecoration - and `.` is
-// string concatenation, so the whole five-token shape is matched at once rather
+// string concatenation, so one match takes the whole five-token shape rather
 // than consumed one token at a time and backed out of.
 func (p *parser) atFirstClassMarker() bool {
 	return p.isOpAt(0, "(") && p.isOpAt(1, ".") && p.isOpAt(2, ".") && p.isOpAt(3, ".") && p.isOpAt(4, ")")

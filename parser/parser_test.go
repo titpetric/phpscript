@@ -327,8 +327,8 @@ func TestParseClassModifiersRejected(t *testing.T) {
 	}
 }
 
-// `readonly` is not a reserved word in PHP; it is a modifier only when a class
-// declaration follows it.
+// `readonly` is not a reserved word in PHP; it reads as a modifier only where
+// a class declaration follows it.
 func TestParseReadonlyAsCallable(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, `<?php readonly(3);`)
@@ -338,8 +338,8 @@ func TestParseReadonlyAsCallable(t *testing.T) {
 	}
 }
 
-// `extends` and `implements` are recorded on the AST but confer no
-// inheritance; the parser's only job is to keep the names.
+// The parser records `extends` and `implements` on the AST, and neither
+// confers inheritance; keeping the names is the parser's whole job here.
 func TestParseClassHeritage(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, "<?php\nnamespace App;\n\nuse Vendor\\Framework\\TestCase;\n\nfinal class Suite extends TestCase implements \\Countable, Local {}\n")
@@ -384,8 +384,9 @@ func TestParseClassHeritageRejected(t *testing.T) {
 }
 
 // An interface body holds method signatures with no body, class constants and
-// the `static` spelling of a signature. The names it carries are resolved the
-// way class names are, so a namespace and a `use` alias both apply.
+// the `static` spelling of a signature. The parser resolves the names it
+// carries the way it resolves a class name, so a namespace and a `use` alias
+// both apply.
 func TestParseInterface(t *testing.T) {
 	t.Parallel()
 	src := "<?php\nnamespace App;\n\nuse Vendor\\Reader;\n\n" +
@@ -544,10 +545,10 @@ func TestParseBitwisePrecedence(t *testing.T) {
 	}
 }
 
-// The by-reference marker is skipped in front of a variable alone, and nothing
-// swallowed the binary `&` of `echo 6 & 3` and printed 6. It is a marker only
-// in front of a variable now, and nothing else may consume an operator
-// silently.
+// The parser reads the by-reference marker in front of a variable alone, and
+// nothing swallowed the binary `&` of `echo 6 & 3` and printed 6. The marker
+// stands in front of a variable and nowhere else, so nothing consumes an
+// operator silently.
 func TestParseAmpersandIsNotSwallowed(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, `<?php echo 6 & 3;`)
@@ -585,9 +586,9 @@ func TestParseReferenceMarkerBeforeVariable(t *testing.T) {
 	}
 }
 
-// `$a = $b = array()` is split into one assignment per name so that each name
-// gets its own allocation, as PHP's copy-on-assignment comes to
-// for a literal. The names are written right to left, as PHP evaluates them.
+// The parser cuts `$a = $b = array()` into one assignment per name, so each
+// name gets its own array, the same thing PHP's copy-on-assignment amounts to
+// for a literal. The names come out right to left, the order PHP runs them in.
 func TestParseSplitsChainedArrayLiteral(t *testing.T) {
 	t.Parallel()
 	prog := mustParse(t, "<?php\n$a = $b = $c = array(1);\n")
@@ -629,7 +630,7 @@ func TestParseSplitsChainedArrayLiteralInBodies(t *testing.T) {
 	}
 }
 
-// A chain is only split when re-evaluating the literal cannot be noticed. A
+// The parser cuts a chain only where running the literal again shows nothing. A
 // call inside it would run twice, and `new` allocates an object, which PHP
 // shares between the names as well; both keep the chain and are what
 // `phpscript lint` reports instead.
@@ -893,7 +894,7 @@ func TestParseEllipsisIsStillConcatenation(t *testing.T) {
 
 // benchSource is a file of the shape the parser meets in an application: a
 // class with methods, a function, control flow and interpolation, repeated
-// until it is the size of a real source file and no snippet.
+// until it reaches the size of a real source file and no snippet.
 var benchSource = func() string {
 	const unit = `
 class Row%[1]d {
@@ -932,8 +933,8 @@ function collect%[1]d(array $rows) {
 	return b.String()
 }()
 
-// BenchmarkParse measures the whole parse, the stage the token slice is
-// allocated and discarded. B/op is the number the token pool moves.
+// BenchmarkParse measures the whole parse, the stage that builds the token
+// slice and drops it. B/op is the number the token pool moves.
 func BenchmarkParse(b *testing.B) {
 	b.SetBytes(int64(len(benchSource)))
 	b.ReportAllocs()

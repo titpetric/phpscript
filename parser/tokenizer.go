@@ -95,7 +95,8 @@ const (
 	T_AND_EQUAL // &=
 	T_OR_EQUAL  // |=
 	T_XOR_EQUAL // ^=
-	// String interpolation. A double-quoted literal that embeds an expression is
+	// String interpolation. The tokenizer reports a double-quoted literal
+	// embedding an expression as
 	// reported as its pieces, and these are the ids that mark them.
 	T_ENCAPSED_AND_WHITESPACE // a literal run between two embedded expressions
 	T_CURLY_OPEN              // the `{` of a {$...}
@@ -236,7 +237,7 @@ func TokenIDs() map[string]int {
 // boxedInts holds pre-boxed int64 values so that emitting a token id or a line
 // number costs no allocation. The runtime only interns 0-255 itself
 // (runtime.staticuint64s); every T_* id is >= 256 and templates run past line
-// 255, so both would otherwise allocate 8 bytes per token.
+// 255, so both would otherwise cost 8 bytes per token.
 var boxedInts = func() [boxedIntMax]any {
 	var out [boxedIntMax]any
 	for i := range out {
@@ -264,10 +265,10 @@ var boxedChars = func() [utf8.RuneSelf]any {
 	return out
 }()
 
-// The [id, text, line] triples are carved out of chunked backing arrays rather
+// The tokenizer carves the [id, text, line] triples out of chunked backing arrays rather
 // than allocated one by one. Chunks start small and double so that a two-line
 // minitpl expression does not pay for a large block, and a whole file amortises
-// the per-token allocation away. Each triple is handed to PHP as a 3-element
+// the per-token allocation away. Each triple reaches PHP as a 3-element
 // slice with cap == len, so a script cannot scribble past its own token.
 const (
 	tokenChunkMin = 8
@@ -293,7 +294,7 @@ type phpTokenizer struct {
 
 func (t *phpTokenizer) run() []any {
 	// Presize (rule 6): PHP averages a little under one token every four bytes
-	// once whitespace runs and inline HTML are collapsed into single tokens.
+	// once a whitespace run and an inline HTML block each collapse to one token.
 	t.out = make([]any, 0, len(t.src)/4+8)
 	for t.pos < len(t.src) {
 		if !t.inPHP {
@@ -516,7 +517,7 @@ func (t *phpTokenizer) scanString(quote byte) {
 // emitInterp writes the token sequence PHP produces for an interpolated
 // literal and advances past it. Simple syntax reports its pieces as the bare
 // tokens they are; complex syntax opens with T_CURLY_OPEN and then reports the
-// expression inside the braces as the ordinary PHP it is.
+// expression inside the braces as the ordinary PHP that it holds.
 func (t *phpTokenizer) emitInterp(parts []interpPart) {
 	t.emitChar('"')
 	t.advance() // opening quote

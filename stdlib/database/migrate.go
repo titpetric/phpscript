@@ -25,13 +25,13 @@ type DatabaseMigrate struct {
 }
 
 // Load selects the migrations to run, as a glob against the runtime source
-// filesystem. Nothing is read here: mig reads the files it applies, and a
-// pattern matching nothing is only known to be wrong once Run looks.
+// filesystem. Load itself reads nothing: mig reads the files it applies, and a
+// pattern matching nothing shows up as wrong only once Run looks.
 //
 // A script names its migrations relative to itself ("./schema/*.up.sql"), so
-// the work directory is joined in. What the pattern matched is what mig records,
-// so a database migrated by the older binding - which recorded the base name
-// under no project - applies every file again.
+// Load joins the work directory in. What the pattern matched is what mig
+// records, so a database migrated by the older binding - which recorded the
+// base name under no project - applies every file again.
 func (m *DatabaseMigrate) Load(pattern string) error {
 	pattern = strings.TrimPrefix(path.Clean(strings.TrimPrefix(pattern, "./")), "/")
 	if m.workDir != "" && m.workDir != "." {
@@ -42,7 +42,7 @@ func (m *DatabaseMigrate) Load(pattern string) error {
 	return nil
 }
 
-// Run applies the loaded migrations. It is one span and not one per file:
+// Run applies the loaded migrations. It opens one span and not one per file:
 // migrations run at startup, where what matters is how long the schema took and
 // whether it failed, with no row per statement.
 func (m *DatabaseMigrate) Run(ctx context.Context) error {
@@ -73,7 +73,7 @@ func (m *DatabaseMigrate) Run(ctx context.Context) error {
 
 	applied, err := manager.Apply(ctx)
 
-	// Recorded before the run is reported, because recording an error on a
+	// Recorded before observe reports the run, because recording an error on a
 	// span is last write wins and what Apply returns is the driver error on
 	// its own. Reporting after it leaves the span with the message that
 	// names the file holding the statement.
@@ -82,17 +82,17 @@ func (m *DatabaseMigrate) Run(ctx context.Context) error {
 	return err
 }
 
-// observe reports the run mig returned. It stands in for the logger mig used to
-// be passed and now refuses, and it is where a failure becomes diagnosable:
+// observe reports the run mig returned. It stands in for the logger mig once
+// took and now refuses, and it turns a failure into something diagnosable:
 // what Apply returns is the driver error on its own, near "THIS": syntax error,
 // which does not say which of a dozen files it came out of.
 //
 // The log keeps the per-file line the old binding produced. The span carries the
-// file and the index of the statement within it, because a schema that failed at
-// startup is looked at on the trace before anyone opens the log. Only the file
-// the run stopped at goes there: mig applies in filename order and returns on
-// the first failure, and one attribute per file would bury it under the files
-// that pass.
+// file and the index of the statement within it, because an operator reads a
+// startup schema failure off the trace before anyone opens the log. Only the
+// file the run stopped at goes there: mig applies in filename order and returns
+// on the first failure, and one attribute per file would bury it under the
+// files that pass.
 //
 // runErr is what decides a file failed, and not the status on its record.
 // The slice mig reports holds a row per file plus the rows of files that are no

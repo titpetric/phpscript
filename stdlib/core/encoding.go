@@ -42,8 +42,8 @@ func registerEncoding(rt *runner.Runtime) {
 	// supported.
 	rt.RegisterFunc("http_build_query", phpHTTPBuildQuery)
 	// parse_str decodes the query string $string into $result, reading PHP's
-	// bracket syntax so a[b]=1 arrives as a nested array; it is the inverse
-	// of http_build_query and the decoder behind $_GET and $_POST.
+	// bracket syntax so a[b]=1 arrives as a nested array; it inverts
+	// http_build_query and is the decoder behind $_GET and $_POST.
 	rt.RegisterFunc("parse_str", phpParseStr)
 	// bin2hex returns $string spelled as lowercase hexadecimal, two digits per byte.
 	rt.RegisterFunc("bin2hex", phpBin2hex)
@@ -56,9 +56,9 @@ func phpBin2hex(str string) string {
 	return hex.EncodeToString([]byte(str))
 }
 
-// phpHex2bin returns any because PHP's contract is string|false: an odd length
-// or a character outside [0-9A-Fa-f] is reported by returning false, not by
-// raising. encoding/hex rejects both, so the whole contract is one decode.
+// phpHex2bin returns any because PHP's contract is string|false: it answers an
+// odd length or a character outside [0-9A-Fa-f] with false and never raises.
+// encoding/hex rejects both, so the whole contract is one decode.
 func phpHex2bin(str string) any {
 	out, err := hex.DecodeString(str)
 	if err != nil {
@@ -76,7 +76,7 @@ const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123
 
 // base64Values maps a byte to its base64 value, with -1 for whitespace (which
 // both decode modes skip) and -2 for anything else (which strict mode
-// rejects). It is a package-level table so no decode builds one per call.
+// rejects). The table is package level so no decode builds one per call.
 var base64Values = newBase64Values()
 
 func newBase64Values() [256]int8 {
@@ -94,12 +94,12 @@ func newBase64Values() [256]int8 {
 }
 
 // phpBase64Decode returns any because PHP's contract is string|false: strict
-// mode reports a bad character by returning false, not by raising.
+// mode answers a bad character with false and never raises.
 //
-// The decode is written out and never passed to encoding/base64 because
-// PHP's lenient mode drops every character outside the alphabet, padding
-// included, and decodes whatever is left over even when its length is not a
-// multiple of four. Neither StdEncoding nor RawStdEncoding does that.
+// This spells the decode out and never calls encoding/base64 because PHP's
+// lenient mode drops every character outside the alphabet, padding included,
+// and decodes what remains even when its length does not divide by four.
+// Neither StdEncoding nor RawStdEncoding does that.
 func phpBase64Decode(str string, strict ...any) any {
 	isStrict := len(strict) > 0 && phpval.Truthy(strict[0])
 
@@ -188,8 +188,8 @@ func phpRawURLEncode(str string) string { return urlEncode(str, false) }
 
 // urlEncode percent-escapes str. In form mode a space becomes '+', matching
 // urlencode(); otherwise every escaped byte becomes '%XX', matching
-// rawurlencode(). Go's url.QueryEscape leaves '~' literal where PHP
-// escapes it, so the tables above are spelled out here.
+// rawurlencode(). Go's url.QueryEscape leaves '~' literal where PHP escapes
+// it, so the tables above take its place.
 func urlEncode(str string, form bool) string {
 	safe := &urlRawSafe
 	if form {
@@ -237,7 +237,7 @@ func phpRawURLDecode(str string) string { return shared.RawURLDecode(str) }
 //
 // The setter is nil when a script omitted the argument. PHP raises an
 // ArgumentCountError for that call, and this runtime pads a short call instead,
-// so the decode is skipped, and nothing is written nowhere.
+// so phpParseStr returns before the decode and writes nothing.
 func phpParseStr(str string, result func(any)) {
 	if result == nil {
 		return
@@ -247,7 +247,7 @@ func phpParseStr(str string, result func(any)) {
 
 // phpHTTPBuildQuery takes data as any and reads it through model.RangeValues,
 // so a *model.Array keeps its insertion order and a map[string]any row from a
-// database binding is accepted without being converted to an array first.
+// database binding arrives with no array conversion first.
 func phpHTTPBuildQuery(data any) string {
 	var b strings.Builder
 	if n, ok := model.LenValues(data); ok {
@@ -259,8 +259,8 @@ func phpHTTPBuildQuery(data any) string {
 }
 
 // buildQuery appends data's pairs to b. prefix is the key path already walked,
-// so a nested value is named key[sub]; the brackets are escaped along with the
-// rest of the name when the pair is written.
+// so a nested value takes the name key[sub], and urlEncode escapes the
+// brackets along with the rest of that name as it writes the pair.
 func buildQuery(b *strings.Builder, prefix string, data any) {
 	model.RangeValues(data, func(key, val any) bool {
 		name := phpval.String(key)

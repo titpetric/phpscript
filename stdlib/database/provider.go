@@ -1,8 +1,8 @@
 // Package database holds the named sql connections a phpscript runtime
-// resolves through. It is a copy of the provider in
-// github.com/titpetric/platform, which lives in an internal package and
-// cannot be imported, so that a provider can be scoped to a virtual host
-// in place of a process global.
+// resolves through. It copies the provider in
+// github.com/titpetric/platform, which lives in an internal package no
+// outside module reaches, so that a virtual host can hold a provider of its
+// own in place of a process global.
 package database
 
 import (
@@ -15,13 +15,13 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Provider is what a runtime resolves named connections through. The interface
-// is declared in model, which a runtime can name in its options without
-// depending on this package.
+// Provider is what a runtime resolves named connections through. model declares
+// the interface, so a runtime can name it in its options without depending on
+// this package.
 type Provider = model.DatabaseProvider
 
 // Default is the provider a runtime whose options name none resolves through.
-// It is the process environment, as a CLI run has it.
+// It comes from the process environment, as a CLI run has it.
 var Default Provider = New(os.Environ())
 
 var (
@@ -43,7 +43,7 @@ type DatabaseProvider struct {
 	credentials map[string]string
 }
 
-// NewDatabaseProvider will allocate a valid `*DatabaseProvider` and return it.
+// NewDatabaseProvider returns a ready `*DatabaseProvider`.
 func NewDatabaseProvider(open Connector) *DatabaseProvider {
 	return &DatabaseProvider{
 		open:        open,
@@ -80,9 +80,9 @@ func New(environment []string) *DatabaseProvider {
 	return provider
 }
 
-// NewAt is New with relative sqlite paths resolved against root. It is what a
-// virtual host's connections are built with: the site wrote its DSN against
-// its own tree, and the server's working directory is not the site's to know.
+// NewAt is New with relative sqlite paths resolved against root. A virtual
+// host builds its connections through it: the site wrote its DSN against its
+// own tree, and the server's working directory is not the site's to know.
 func NewAt(root string, environment []string) *DatabaseProvider {
 	provider := New(environment)
 	provider.root = root
@@ -104,13 +104,13 @@ func (r *DatabaseProvider) List() []string {
 // Register adds a named credential to the provider.
 //
 // A host that keeps its connections in a database registers them per request,
-// from whichever goroutine is serving it, so the credentials map is guarded
-// like the pool cache beside it.
+// from whichever goroutine is serving it, so one mutex guards the credentials
+// map and the pool cache beside it.
 //
 // Re-registering a name with the same configuration is free. Re-registering it
-// with a different one drops the pool of the old credentials:
-// the cache is keyed by name, and a name that now means a different database
-// must not keep answering with the old one.
+// with a different one drops the pool of the old credentials: the cache keys
+// on the name, and a name that now means a different database must not keep
+// answering with the old one.
 func (r *DatabaseProvider) Register(name string, config string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -136,7 +136,7 @@ func (r *DatabaseProvider) credential(name string) (string, bool) {
 }
 
 // Connect issues a PingContext to verify a live connection before returning.
-// The context propagates tracing detail, so ping is grouped correctly.
+// The context propagates tracing detail, so the trace groups the ping right.
 func (r *DatabaseProvider) Connect(ctx context.Context, names ...string) (*DB, error) {
 	db, err := r.Open(ctx, names...)
 	if err != nil {
@@ -156,8 +156,9 @@ func (r *DatabaseProvider) Open(_ context.Context, names ...string) (*DB, error)
 
 // cached will return a singleton *DB from a named connection.
 //
-// The credential decides which name the pool belongs to, and the cache is read
-// and written under that one, and not under the first name the caller passed.
+// The credential picks which name the pool belongs to, and cached reads and
+// writes the cache under that one, and not under the first name the caller
+// passed.
 // Callers name fallbacks: Database\Migrate names "app:migrate" before
 // "app", and both mean the credential "app" until a deployment registers the
 // first. Keying on the name passed would open that caller a pool of

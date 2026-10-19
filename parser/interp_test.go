@@ -23,7 +23,7 @@ func parseInterpExpr(t *testing.T, src string) model.Expr {
 
 // TestLiteralWithoutInterpolationStaysALit guards the fast path: a literal that
 // embeds nothing must still parse to a plain Lit, whichever quote it uses and
-// whether or not it carries an escape or a dollar the escape kept literal.
+// whether it carries an escape or a dollar the escape kept literal.
 func TestLiteralWithoutInterpolationStaysALit(t *testing.T) {
 	t.Parallel()
 	for _, src := range []string{
@@ -141,9 +141,9 @@ func TestDollarBraceReadsTheVariableForm(t *testing.T) {
 	}
 }
 
-// TestInterpolationErrors covers the spellings that are reported and never
-// guessed at. Each one would otherwise produce a literal the author did not
-// write.
+// TestInterpolationErrors covers the spellings the scanner refuses outright
+// and guesses at never. Each one would otherwise produce a literal the author
+// did not write.
 func TestInterpolationErrors(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
