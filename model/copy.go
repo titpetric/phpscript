@@ -6,23 +6,23 @@ package model
 //
 // PHP arrays are values. `foreach ($rows as $row)` binds a copy, so
 // `$row["x"] = 1` edits the copy and leaves `$rows` alone; `foreach ($rows as
-// &$row)` binds the element itself. phpscript's arrays are pointers, so the
-// copy is made up front and never deferred: there is no refcount to make it
-// lazy the way PHP's copy-on-write does.
+// &$row)` binds the element itself. phpscript's arrays are pointers, so a
+// by-value loop copies up front and never defers: there is no refcount to make
+// it lazy the way PHP's copy-on-write does.
 //
 // Copying every element of every loop would be a large price for a semantic
-// almost no loop uses, so the copy is made only when the body actually assigns
+// almost no loop uses, so a loop copies only when the body actually assigns
 // through the loop variable. AssignsTo answers that, once per loop and not
 // once per iteration, and the flatstack compiler asks it once per program.
 
-// CopyValue returns a value with PHP's assignment semantics applied: arrays are
-// values and are copied, everything else is a handle or immutable and is
-// returned as it is.
+// CopyValue returns a value with PHP's assignment semantics applied: it copies
+// an array, which is a value, and returns anything else unchanged, a handle or
+// an immutable that needs no copy.
 //
-// The copy reaches nested arrays, because they are values too, and PHP's
-// `$copy["a"]["b"] = 1` cannot be observed through the original. It stops at
-// objects, which are handles in PHP as well, and at the native Go collections a
-// binding returns, which belong to the host and not to the script.
+// The copy reaches nested arrays, because they are values too, and a PHP
+// `$copy["a"]["b"] = 1` never shows through the original. It stops at objects,
+// which are handles in PHP as well, and at the native Go collections a binding
+// returns, which belong to the host and not to the script.
 func CopyValue(v any) any {
 	array, ok := v.(*Array)
 	if !ok {
@@ -44,27 +44,27 @@ func CopyArray(a *Array) *Array {
 	return out
 }
 
-// AssignsTo reports whether target's root name is written through by any
-// statement in body: `$v = ...`, `$v["k"] = ...`, `$v->p = ...`, `$v++`, or a
-// list() destructuring naming it.
+// AssignsTo reports whether any statement in body writes through target's root
+// name: `$v = ...`, `$v["k"] = ...`, `$v->p = ...`, `$v++`, or a list()
+// destructuring naming it.
 //
-// It is a root-name test and no exact-shape one. A write
-// to `$v["k"]` has to count: the element it reaches lives inside the value the
-// loop variable holds, so a by-value loop must have copied it. Over-reporting
-// costs a copy that turns out to be unobservable; under-reporting would let a
-// by-value loop edit its source.
+// The test matches the root name and no exact shape. A write to `$v["k"]` has
+// to count: the element it reaches lives inside the value the loop variable
+// holds, so a by-value loop must have copied it. Over-reporting costs a copy
+// that turns out to be unobservable; under-reporting would let a by-value loop
+// edit its source.
 func AssignsTo(target Expr, body []Stmt) bool {
 	root := RootName(target)
 	if root == "" {
-		// A target with no name to root on cannot be matched against, so treat it as
-		// the body writes to it.
+		// A target with no name to root on matches nothing, so treat it as a
+		// write the body makes.
 		return true
 	}
 	return stmtsAssignTo(body, root)
 }
 
-// RootName returns the variable name an lvalue is rooted at: `$v`, `$v["k"]`
-// and `$v->p->q` are all rooted at "v". It is "" for anything else.
+// RootName returns the variable name at the root of an lvalue: `$v`, `$v["k"]`
+// and `$v->p->q` all root at "v". It returns "" for anything else.
 func RootName(e Expr) string {
 	for {
 		switch n := UnwrapParenthesized(e).(type) {
@@ -107,7 +107,7 @@ func stmtAssignsTo(s Stmt, root string) bool {
 			stmtAssignsTo(n.Post, root) || stmtsAssignTo(n.Body, root)
 	case *Foreach:
 		// A nested loop that binds the same name rebinds it on every iteration,
-		// which is a write as far as the enclosing loop is concerned.
+		// which the enclosing loop counts as a write.
 		return RootName(n.ValTarget) == root || RootName(n.KeyTarget) == root ||
 			n.ValVar == root || n.KeyVar == root ||
 			exprAssignsTo(n.Source, root) || stmtsAssignTo(n.Body, root)

@@ -7,9 +7,9 @@ import (
 )
 
 // TestNode covers the two marker interfaces the runner switches on. A statement
-// is executed for its side effects and an expression evaluates to a value, so a
-// node reaches the interpreter through one marker or the other, and a type
-// carrying neither is unreachable.
+// runs for its side effects and an expression evaluates to a value, so a node
+// reaches the interpreter through one marker or the other, and a type carrying
+// neither is unreachable.
 //
 // Include carries both. PHP writes an include as a standalone statement and as
 // a value-producing expression, so one node stands in both positions.
@@ -153,8 +153,8 @@ func TestUnwrapParenthesized(t *testing.T) {
 }
 
 // TestArrayItem covers how an array literal tells a list-style entry from a
-// keyed one. Key is nil for `[v]`, where the position is assigned when the
-// literal is evaluated.
+// keyed one. Key is nil for `[v]`, where the runner assigns the position as it
+// builds the literal.
 //
 // `[null => v]` carries a key holding the null literal, which PHP normalises to
 // the empty string. A consumer reading Key for nil alone would turn the second
@@ -189,11 +189,11 @@ func TestArrayItem(t *testing.T) {
 
 // TestUse covers what survives parsing. The parser resolves an import to a
 // fully-qualified name while it reads the file, so the statement has no runtime
-// effect; the node is kept because the formatter rewrites files in place, and a
+// effect; the node stays because the formatter rewrites files in place, and a
 // node the printer cannot see is a node it deletes.
 //
-// Alias is set for the `as` spelling alone. The short name of Path is implied
-// otherwise, so an empty Alias is the mark of an import printed as written.
+// The parser fills Alias for the `as` spelling alone, and the short name of
+// Path is the local name; an empty Alias marks an import printed as written.
 func TestUse(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -225,8 +225,8 @@ func TestUse(t *testing.T) {
 }
 
 // TestDeclare covers the spelling a consumer has to tell apart. The runtime has
-// one set of semantics and no directive varies them, so the directives are
-// recorded for printing.
+// one set of semantics and no directive varies them, so the node carries the
+// directives for printing.
 //
 // A `declare(...) { ... }` still runs its body, and Block marks the spelling
 // even where that body is empty: the statement form has no body at all, so the
@@ -308,9 +308,9 @@ func TestStaticVar(t *testing.T) {
 // printed without one is a syntax error. Var is the bound name without its
 // sigil, so `echo $e` reads the caught error.
 //
-// Matching walks the clauses in source order, because it is by Go error type
-// and no PHP class hierarchy: the first clause whose type matches handles the
-// error, so the order the parser recorded is the order a consumer reads.
+// Matching walks the clauses in source order, because it compares Go error
+// types and no PHP class hierarchy: the first clause whose type matches handles
+// the error, so the order the parser recorded is the order a consumer reads.
 func TestCatch(t *testing.T) {
 	t.Parallel()
 	try := &Try{
@@ -355,7 +355,8 @@ func TestCatch(t *testing.T) {
 // keyword, which the formatter places comments by.
 //
 // An arm with an empty body falls through to the next one under PHP's
-// semantics, so an empty Body is a written arm and no missing one. Default is held apart from Cases because it matches no value.
+// semantics, so an empty Body is a written arm and no missing one. Default
+// sits apart from Cases because it matches no value.
 func TestSwitchCase(t *testing.T) {
 	t.Parallel()
 	sw := &Switch{
@@ -397,7 +398,7 @@ func TestSwitchCase(t *testing.T) {
 
 // TestClosureUse covers a closure's capture list. ByRef records the `&$name`
 // spelling; the runtime has no reference values, so both spellings bind the
-// same value, and the marker is kept so the formatter prints the source back
+// same value, and the marker stays so the formatter prints the source back
 // and the linter can report it.
 //
 // A capture binds into the closure's own frame, so a write through one is

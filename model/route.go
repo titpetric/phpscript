@@ -7,32 +7,32 @@ import (
 
 // RouteParam is one {...} segment of an @route path.
 //
-// Three spellings are accepted: {name} for one segment, {name...} for the rest
-// of them joined, {name:regex} for one matching a regex. Neither router takes
-// all three as written, so RenderPath translates per router and ParseRoutePath
-// is the one grammar an author writes against.
+// ParseRoutePath accepts three spellings: {name} for one segment, {name...}
+// for the rest of them joined, {name:regex} for one matching a regex. Neither
+// router takes all three as written, so RenderPath translates per router and
+// this grammar is the one an author writes against.
 type RouteParam struct {
 	Name string
 
 	// Rest is the {name...} form.
 	Rest bool
 
-	// Pattern is the regex of the {name:regex} form, empty otherwise. It is
-	// enforced by chi and not by ServeMux, which has no equivalent.
+	// Pattern is the regex of the {name:regex} form, empty otherwise. chi
+	// enforces it; ServeMux has no such syntax and ignores it.
 	Pattern string
 }
 
 // RouteDialect names a router's pattern syntax.
 type RouteDialect int
 
-// The dialects an @route path is translated into.
+// The dialects RenderRoutePath translates an @route path into.
 const (
 	// RouteChi is go-chi/chi: {name} and {name:regex} are native, and the
 	// remaining segments are the bare * wildcard, read as URL param "*".
 	RouteChi RouteDialect = iota
 
 	// RouteServeMux is net/http.ServeMux since Go 1.22: {name} and {name...}
-	// are native, and a regex constraint has no equivalent.
+	// are native, and it has no regex constraint.
 	RouteServeMux
 )
 
@@ -137,13 +137,13 @@ func closingBrace(path string, open int) int {
 // RenderRoutePath rewrites an @route path into the dialect a router reads.
 //
 // The one rewrite chi needs is {name...} to *, its only multi-segment
-// placeholder; the name is not recoverable from the rendered pattern, so
-// the path values $_REQUEST carries are built from the declared path instead.
+// placeholder; the name is not recoverable from the rendered pattern, so the
+// runner reads the declared path for the path values $_REQUEST carries.
 //
 // ServeMux drops a regex constraint, because it has none: the parameter still
 // matches its segment and the constraint is not enforced. RegisterMux says so.
 //
-// A path that does not parse is returned unchanged. Callers validate first.
+// RenderRoutePath returns an unparsable path unchanged; a caller checks first.
 func RenderRoutePath(path string, dialect RouteDialect) string {
 	if _, err := ParseRoutePath(path); err != nil {
 		return path

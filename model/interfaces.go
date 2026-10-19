@@ -32,7 +32,7 @@ type InterfaceContractError struct {
 }
 
 // Error lists every violation, one per line, so a class missing three methods
-// is reported once and not three times.
+// produces one error and not three.
 func (e *InterfaceContractError) Error() string {
 	parts := make([]string, 0, len(e.Violations))
 	for _, v := range e.Violations {
@@ -55,18 +55,18 @@ func CheckInterfaceContracts(prog *Program) error {
 
 // CheckInterfaces checks every class in stmts that declares `implements`
 // against the interfaces declared alongside it, and returns what is missing in
-// declaration order. It is a name comparison and copies nothing onto the class.
+// declaration order. The check compares names and copies nothing onto a class.
 //
-// A name no interface declaration in stmts defines is skipped: it is a php
-// built-in this runtime does not declare, or an interface from another file,
-// and neither is a contract this program can be held to.
+// CheckInterfaces skips a name no interface declaration in stmts defines: a
+// php built-in this runtime does not declare, or an interface from another
+// file, and neither one is a contract this program must meet.
 func CheckInterfaces(stmts []Stmt, extra ...*ClassDecl) []InterfaceViolation {
 	interfaces := interfaceIndex(stmts)
 	if len(interfaces) == 0 {
 		return nil
 	}
-	// extra carries the classes that are not statements: an anonymous class is
-	// declared inside an expression, and says `implements` like any other.
+	// extra carries the classes that are not statements: an anonymous class
+	// sits inside an expression, and says `implements` like any other.
 	decls := make([]*ClassDecl, 0, len(stmts)+len(extra))
 	for _, s := range stmts {
 		if cd, ok := s.(*ClassDecl); ok {
@@ -100,7 +100,7 @@ func CheckInterfaces(stmts []Stmt, extra ...*ClassDecl) []InterfaceViolation {
 
 // interfaceIndex maps the lower-cased name of every interface declared in
 // stmts to its declaration. PHP compares a class or interface name without
-// regard to case, so the index is keyed that way.
+// regard to case, so this index lower-cases every key.
 func interfaceIndex(stmts []Stmt) map[string]*InterfaceDecl {
 	var index map[string]*InterfaceDecl
 	for _, s := range stmts {
@@ -116,9 +116,9 @@ func interfaceIndex(stmts []Stmt) map[string]*InterfaceDecl {
 	return index
 }
 
-// requirement is one method name a contract declares, and the interface that
-// named it. A violation reports both.
-type requirement struct {
+// contractMethod is one method name a contract declares, and the interface
+// that named it. A violation reports both.
+type contractMethod struct {
 	Interface string
 	Method    string
 }
@@ -127,21 +127,21 @@ type requirement struct {
 // every interface it extends. The result is a union of names computed here
 // and no set of members held anywhere: an extended interface contributes
 // what it declares to what the class must declare, and contributes no more.
-func contractOf(name string, index map[string]*InterfaceDecl) []requirement {
+func contractOf(name string, index map[string]*InterfaceDecl) []contractMethod {
 	var (
-		out  []requirement
+		out  []contractMethod
 		seen = map[string]bool{}
 	)
 	collectContract(name, index, map[string]bool{}, seen, &out)
 	return out
 }
 
-func collectContract(name string, index map[string]*InterfaceDecl, visited, seen map[string]bool, out *[]requirement) {
+func collectContract(name string, index map[string]*InterfaceDecl, visited, seen map[string]bool, out *[]contractMethod) {
 	key := strings.ToLower(name)
 	if visited[key] {
 		// `interface A extends B` and `interface B extends A` is no PHP
-		// program, but a parser accepts what it is given and this walk must
-		// still terminate.
+		// program, but a parser accepts whatever the source says and this
+		// walk must still end.
 		return
 	}
 	visited[key] = true
@@ -155,7 +155,7 @@ func collectContract(name string, index map[string]*InterfaceDecl, visited, seen
 			continue
 		}
 		seen[method] = true
-		*out = append(*out, requirement{Interface: decl.Name, Method: m.Name})
+		*out = append(*out, contractMethod{Interface: decl.Name, Method: m.Name})
 	}
 	for _, parent := range decl.Extends {
 		collectContract(parent, index, visited, seen, out)
@@ -186,10 +186,10 @@ func declaredMethods(cd *ClassDecl, stmts []Stmt) map[string]bool {
 // InterfaceNames returns every interface name a class declares, plus the names
 // those interfaces extend, lower-cased and deduplicated.
 //
-// It is the same union contractOf walks, taken as names and not as methods,
-// and it is what `instanceof` answers an interface name from. Nothing is
-// inherited through it: the class holds the list it declared, and the list says
-// which contracts it checks against.
+// The result is the same union contractOf walks, taken as names and not as
+// methods, and `instanceof` answers an interface name from it. A class
+// inherits nothing through it: the class holds the list it declared, and that
+// list says which contracts it checks against.
 func InterfaceNames(cd *ClassDecl, stmts []Stmt) []string {
 	if cd == nil || len(cd.Implements) == 0 {
 		return nil
