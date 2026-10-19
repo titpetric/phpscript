@@ -54,17 +54,17 @@ One thing is true of every row and is not repeated in each: **phpscript declares
 
 | Value                | Meaning                                                                                                              |
 |----------------------|----------------------------------------------------------------------------------------------------------------------|
-| Implemented          | The name is declared and behaves as PHP's does, within the divergences the document records.                         |
-| Catch clause only    | The name is recognised in one position and is not a declared type.                                                   |
+| Implemented          | phpscript declares the name and it behaves as PHP's does, within the divergences the document records.               |
+| Catch clause only    | The parser recognises the name in one position only, not as a declared type.                                         |
 | Value only, no class | The runtime value exists; the class wrapping it in PHP does not.                                                     |
 | Won't build          | A decision recorded in [Design decisions](../../design.md), not a gap.                                               |
 | Not implemented      | The name is not declared. Some are gaps, some rest on a feature that is itself a decision; each document says which. |
 
 ## Interfaces that use extends
 
-Four of the interfaces above are declared with `extends`: [Iterator](classes/Iterator.md) and [IteratorAggregate](classes/IteratorAggregate.md) extend [Traversable](classes/Traversable.md), [Throwable](classes/Throwable.md) extends [Stringable](classes/Stringable.md), and [BackedEnum](classes/BackedEnum.md) extends [UnitEnum](classes/UnitEnum.md).
+PHP declares four of the interfaces above with `extends`: [Iterator](classes/Iterator.md) and [IteratorAggregate](classes/IteratorAggregate.md) extend [Traversable](classes/Traversable.md), [Throwable](classes/Throwable.md) extends [Stringable](classes/Stringable.md), and [BackedEnum](classes/BackedEnum.md) extends [UnitEnum](classes/UnitEnum.md).
 
-`interface A extends B` parses here and the extended names are recorded, so `instanceof` answers them; what it does not do is carry a method across. A class implementing the child must declare every method both name. Where the parent declares no method, as Traversable does, flattening the two costs nothing, and [Iterator](classes/Iterator.md#status) shows the flattened form.
+`interface A extends B` parses here and the parser records the extended names, so `instanceof` answers them; what it does not do is carry a method across. A class implementing the child must declare every method both name. Where the parent declares no method, as Traversable does, flattening the two costs nothing, and [Iterator](classes/Iterator.md#status) shows the flattened form.
 
 ## See also
 

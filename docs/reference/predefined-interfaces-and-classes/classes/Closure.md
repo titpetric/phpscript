@@ -6,7 +6,7 @@
 
 Class used to represent anonymous functions.
 
-Anonymous functions evaluate to objects of this type. The class exists so a closure can be rebound to another object or scope after it is created; it is not constructible with `new`.
+An anonymous function produces an object of this type. The class exists so a closure can rebind to another object or scope after PHP creates it, and `new` cannot construct one.
 
 ## Class synopsis
 
