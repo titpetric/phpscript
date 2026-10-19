@@ -7,7 +7,7 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestTest covers the block `phpscript test` reads out of config.yml. A fixture
+// TestTest covers the block `phpscript test` reads out of `config.yml`. A fixture
 // tree carries its defaults in a file, so a suite says what it needs and the
 // command line is not repeating it on every invocation.
 func TestTest(t *testing.T) {
@@ -91,9 +91,9 @@ func TestTestSuite(t *testing.T) {
 	}
 }
 
-// TestLoadTestSuite covers the file a suite root is read from. The caller does
-// the reading because it owns the filesystem: a fixture tree is compiled into
-// the test binary and reached through an fs.FS, while a run of the command
+// TestLoadTestSuite covers the file a suite root carries. The caller does the
+// reading because it owns the filesystem: the build compiles a fixture tree
+// into the test binary and an fs.FS reaches it, while a run of the command
 // reads the same file off disk.
 func TestLoadTestSuite(t *testing.T) {
 	t.Parallel()

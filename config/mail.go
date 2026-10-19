@@ -21,12 +21,12 @@ var flatMailKeys = []string{"host", "port", "username", "password", "from", "ins
 // named and none of the operator's, which docs/configuration.md records.
 type Mail map[string]mail.Config
 
-// Validate checks that every configured server can be delivered through, so a
+// Validate checks that mail can leave through every configured server, so a
 // credential the operator got wrong fails the command and not the first
 // delivery. A @schedule job discovering it at three in the morning is the
 // failure mode worth avoiding.
 //
-// Servers are checked in name order so the reported one does not depend on map
+// The walk runs in name order, so the server it names does not depend on map
 // iteration.
 func (m Mail) Validate(filename string) error {
 	names := make([]string, 0, len(m))
@@ -48,7 +48,7 @@ func (m Mail) Validate(filename string) error {
 //
 // It reads the generic map because that is the only place the difference is
 // still visible: the decoder can only report that a string is not a struct,
-// which names neither the key nor the fix. Keys and names are checked in a
+// which names neither the key nor the fix. The walk takes keys and names in a
 // fixed order, so the same file fails on the same line.
 func ValidateMailDeclaration(filename string, declared map[string]any) error {
 	servers, ok := declared["mail"].(map[string]any)

@@ -18,8 +18,8 @@ func Load(filename string) (Config, error) {
 		return base, fmt.Errorf("read config %q: %w", filename, err)
 	}
 
-	// Nothing is forbidden to the operator: server and virtualhost are theirs
-	// to set, so they are forbidden to a site.
+	// The overlay forbids the operator nothing: server and virtualhost are
+	// theirs to set, and a site may set neither.
 	result, _, err := OverlayBytes(base, filename, data, nil, "")
 	if err != nil {
 		return base, err

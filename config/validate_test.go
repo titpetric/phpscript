@@ -8,9 +8,9 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestConfig_Validate covers everything that would stop a server from starting,
-// checked without starting one: no listener is opened and no trace store is
-// built. A command runs it ahead of the server so a bad file fails the
+// TestConfig_Validate covers everything that would stop a server from
+// starting, without starting one: the check opens no listener and builds no
+// trace store. A command runs it ahead of the server so a bad file fails the
 // invocation and not the first request.
 func TestConfig_Validate(t *testing.T) {
 	t.Parallel()
@@ -92,10 +92,11 @@ func TestConfig_Validate(t *testing.T) {
 	})
 }
 
-// TestConfig_ValidateRoot covers the single application root the way an entry
-// of the virtual host list is covered, which Config.Validate falls through to
-// when the configuration lists no sites. fs.Sub does not stat, so a document
-// root that is not there is otherwise a 404 on the first request.
+// TestConfig_ValidateRoot covers the single application root the same way the
+// cases above cover an entry of the virtual host list. Config.Validate falls
+// through to it when the configuration lists no sites. fs.Sub does not stat,
+// so a document root that is not there otherwise answers 404 on the first
+// request.
 func TestConfig_ValidateRoot(t *testing.T) {
 	t.Parallel()
 	t.Run("a root holding its document root", func(t *testing.T) {

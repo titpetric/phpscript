@@ -1,4 +1,4 @@
-// Package config defines the config/config.yml configuration model.
+// Package config defines the configuration model in `config/config.yml`.
 package config
 
 import (
@@ -13,9 +13,10 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// DefaultRuntimeConfig is the config/config.yml compiled into the binary. Every
-// default lives in that file and nowhere else, so a file passed with -f is read
-// on top of this one and only has to name what it changes.
+// DefaultRuntimeConfig is the `config/config.yml` compiled into the binary.
+// Every default lives in that file and nowhere else, so the decoder reads a
+// file passed with -f on top of this one and that file only has to name what
+// it changes.
 //
 //go:embed config.yml
 var DefaultRuntimeConfig []byte
@@ -34,16 +35,16 @@ type Config struct {
 	// through, keyed by the name a script names.
 	Mail Mail `yaml:"mail"`
 
-	// DocumentRoot is the directory beneath the application root that is
-	// served over HTTP. It is "public" and almost never worth setting; it
-	// exists for a site whose tree already names that directory something
-	// else.
+	// DocumentRoot is the directory beneath the application root the server
+	// publishes over HTTP. The default is "public" and almost never worth
+	// setting; the key exists for a site whose tree already names that
+	// directory something else.
 	DocumentRoot string `yaml:"document_root"`
 
 	// Autoindex answers a directory that has no index page with a listing of
-	// what is in it, the way nginx's autoindex does. It is off, because
-	// publishing every file below the document root is a decision a site
-	// makes and not one it should arrive at by leaving an index.html out.
+	// what it holds, the way nginx's autoindex does. The default is off,
+	// because publishing every file below the document root is a decision a
+	// site makes and not one it should arrive at by leaving an index.html out.
 	Autoindex bool `yaml:"autoindex"`
 
 	// VirtualHost is the list of sites this server routes by domain. Each
@@ -54,12 +55,12 @@ type Config struct {
 
 // PlatformOptions returns the platform options `phpscript server` runs under.
 //
-// There is one recorder and the platform owns it: given these options it
-// builds the tracer, wraps every module in the tracing middleware and mounts
-// the debug front end under Telemetry.Path. phpscript registers no recorder of
-// its own. It observes the interpreter onto the trace that middleware started,
-// so interpreter spans show up on the same front end as the request that
-// caused them.
+// There is one recorder and the platform owns it: given these options the
+// platform builds the tracer, wraps every module in the tracing middleware and
+// mounts the debug front end under Telemetry.Path. phpscript registers no
+// recorder of its own, and observes the interpreter onto the trace that
+// middleware started, so interpreter spans show up on the same front end as
+// the request behind them.
 func (c Config) PlatformOptions() (*platform.Options, error) {
 	options, err := c.Telemetry.Resolved()
 	if err != nil {
@@ -128,10 +129,10 @@ type Routes struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// New returns the default configuration, which is config/config.yml as it is
-// compiled into the binary. Defaults live in that file and nowhere else, so a
-// file passed with -f is read on top of it and only has to name what it
-// changes.
+// New returns the default configuration: the `config/config.yml` the build
+// compiled into the binary. Defaults live in that file and nowhere else, so
+// the decoder reads a file passed with -f on top of it and that file only has
+// to name what it changes.
 func New() Config {
 	var result Config
 	if err := Unmarshal(DefaultRuntimeConfig, &result); err != nil {
@@ -155,10 +156,10 @@ func NewTestConfig() Config {
 // Value is the configuration a pointer holds, and the zero configuration for a
 // nil one.
 //
-// Every command constructor takes a *Config so one signature covers all of
-// them, and a command that reads no configuration is handed whatever the
-// caller has. This is what lets the ones that do read it work with a value
-// without each repeating the nil check.
+// Every command constructor takes a *Config so one signature covers them all,
+// and a command that reads no configuration takes whatever the caller has.
+// The commands that do read it then work with a value, and none repeats the
+// nil check.
 func Value(c *Config) Config {
 	if c == nil {
 		return Config{}

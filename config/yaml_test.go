@@ -6,9 +6,9 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestUnmarshal covers the decoder every configuration is read through: a
-// document names the keys it sets, the value it holds arrives typed, and a key
-// the struct does not declare is left alone.
+// TestUnmarshal covers the one decoder every configuration reaches: a
+// document names the keys it sets, the value it holds arrives typed, and the
+// decoder passes over a key the struct does not declare.
 func TestUnmarshal(t *testing.T) {
 	t.Parallel()
 	var result struct {
@@ -47,7 +47,7 @@ func TestUnmarshalError(t *testing.T) {
 }
 
 // TestUnmarshalDefaultConfig covers the embedded defaults going through the
-// same door: config.yml is a document this decoder reads, and New() panics if
+// same door: `config.yml` is a document this decoder reads, and New() panics if
 // it stops being one.
 func TestUnmarshalDefaultConfig(t *testing.T) {
 	t.Parallel()
