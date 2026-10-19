@@ -6,7 +6,7 @@ Install the command with Go:
 go install github.com/titpetric/phpscript@latest
 ```
 
-The binary is named `phpscript`. Running a PHP file is the default command, so these are equivalent:
+The binary is `phpscript`. Running a PHP file is the default command, so these two commands are interchangeable:
 
 ```bash
 phpscript script.php
@@ -17,38 +17,38 @@ You can use `titpetric/phpscript:latest` docker image (linux/amd64).
 
 Use `phpscript -f config.yml ...` to load runtime and server settings from a YAML file. Without `-f`, the binary uses its embedded defaults. See [Configuration](../configuration.md) for every available setting.
 
-`phpscript --help` prints the whole document: the commands, the global flags, each command's own flags and a table of worked examples per command. On a terminal the tables are drawn; redirected, the same document comes out as markdown.
+`phpscript --help` prints the whole document: the commands, the global flags, each command's own flags and a table of worked examples per command. On a terminal the command draws the tables; redirected, the same document comes out as markdown.
 
 ## Global flags
 
-Every command accepts these, and a command reads the ones it has a use for. They may be written before the command name or after it, so `phpscript --cover server` and `phpscript server --cover` are the same run.
+Every command accepts these, and a command reads the ones it has a use for. Write them before the command name or after it, so `phpscript --cover server` and `phpscript server --cover` are the same run.
 
-| Flag              | What it does                                                                                                             |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `-f`, `--file`    | Read a configuration file over the built-in defaults.                                                                    |
-| `-w`, `--workdir` | Change to this directory first, so every relative path resolves below it. The configuration file is read from there too. |
-| `--include`       | Include a PHP file ahead of every entrypoint, when it exists. Also the `runner.include` configuration key.               |
-| `-v`, `--verbose` | Report more. What that means is the command's: fixture failures, bound names, a coverage percentage.                     |
-| `--cpuprofile`    | Write a pprof CPU profile of the command.                                                                                |
-| `--memprofile`    | Write a pprof heap profile when the command ends.                                                                        |
-| `--cover`         | Measure statement coverage. `line` writes the profile, `func` and `file` also print a report.                            |
-| `--coverfile`     | Where the profile goes. Implies `--cover`; `{time}` expands to a UTC timestamp and missing directories are created.      |
-| `--stdlib`        | Install only these binding areas: `all`, `secure`, `exec`, comma separated. Default `all`.                               |
+| Flag              | What it does                                                                                                                       |
+|-------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `-f`, `--file`    | Read a configuration file over the built-in defaults.                                                                              |
+| `-w`, `--workdir` | Change to this directory first, so every relative path resolves below it. The command reads the configuration file from there too. |
+| `--include`       | Include a PHP file ahead of every entrypoint, when it exists. Also the `runner.include` configuration key.                         |
+| `-v`, `--verbose` | Report more. What that means is the command's: fixture failures, bound names, a coverage percentage.                               |
+| `--cpuprofile`    | Write a pprof CPU profile of the command.                                                                                          |
+| `--memprofile`    | Write a pprof heap profile when the command ends.                                                                                  |
+| `--cover`         | Measure statement coverage. `line` writes the profile, `func` and `file` also print a report.                                      |
+| `--coverfile`     | Where the profile goes. Implies `--cover`; `{time}` expands to a UTC timestamp and the command creates missing directories.        |
+| `--stdlib`        | Install only these binding areas: `all`, `secure`, `exec`, comma separated. Default `all`.                                         |
 
-`--stdlib` limits the standard library for the whole process. `secure` is every binding confined to the runtime's sandbox; `exec` is `stdlib/pexec`, which runs a command with the permissions of the user running phpscript and outside every filesystem boundary. A name the flag leaves out is undefined and nothing refuses it, so a script calling it gets "call to undefined function" through every route: a direct call, a variable function, `call_user_func`, a callable, and both engines.
+`--stdlib` limits the standard library for the whole process. `secure` is every binding confined to the runtime's sandbox; `exec` is `stdlib/pexec`, which runs a command with the permissions of the user running phpscript and outside every filesystem boundary. A name the flag leaves out stays undefined and nothing refuses it, so a script calling it gets "call to undefined function" through every route: a direct call, a variable function, `call_user_func`, a callable, and both engines.
 
 ```sh
 # A server for untrusted sites: no exec, system, passthru, shell_exec or the shell quoting pair.
 phpscript --stdlib=secure server
 ```
 
-It is one value for the process, with no per-virtual-host form. An operator decides what the runtime they started may reach; a grant written per site would be a capability in the file a site's neighbours share. An unknown area name is an error, because falling back to `all` would read as a narrowed runtime and serve an unnarrowed one.
+`--stdlib` is one value for the process, with no per-virtual-host form. An operator decides what the runtime they started may reach; a grant written per site would be a capability in the file a site's neighbours share. An unknown area name is an error, because falling back to `all` would read as a narrowed runtime and serve an unnarrowed one.
 
-`--include` is what makes one setting cover every way a tree is executed: the server includes it ahead of each request's entrypoint, `run` ahead of the script, `test` ahead of each fixture and `lint` ahead of the checks, so the names a linter knows are the names a request will find. A composer autoloader is the usual file:
+`--include` is what makes one setting cover every way phpscript runs a tree: the server includes it ahead of each request's entrypoint, `run` ahead of the script, `test` ahead of each fixture and `lint` ahead of the checks, so the names a linter knows are the names a request will find. A composer autoloader is the usual file:
 
 ## Instead of a command
 
-These two run on their own and exit. They are not flags a command accepts, so they are read before a command name; after one they belong to that command, so `phpscript test -t 10s` is still the test command's `--time`.
+These two run on their own and exit. They are not flags a command accepts, so the binary reads them before a command name; after one they belong to that command, so `phpscript test -t 10s` is still the test command's `--time`.
 
 | Flag                 | What it does                                                                                                     |
 |----------------------|------------------------------------------------------------------------------------------------------------------|
@@ -107,4 +107,4 @@ rt := runner.New(os.Stdout, runner.Options{RootFS: os.DirFS(".")})
 rt.RegisterConstructor("Storage", NewStorage)
 ```
 
-This enables PHP code such as `new Storage` to use Go-backed values. Constructor and method parameters receive `context.Context` automatically when the Go function signature declares it, and returned errors are surfaced to PHP as runtime exceptions.
+This enables PHP code such as `new Storage` to use Go-backed values. Constructor and method parameters receive `context.Context` automatically when the Go function signature declares it, and the runtime turns a returned error into a PHP runtime exception.

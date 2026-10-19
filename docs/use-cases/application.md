@@ -2,7 +2,7 @@
 
 This walkthrough builds a complete phpscript application from an empty directory: a bookmark list with a database, migrations, routed endpoints, compiled templates and an integration test suite.
 
-The finished application is [demos/example](../../demos/example). Every snippet below is taken from it, and its [venom suite](../../demos/example/tests/venom.yml) runs in CI, so the code here stays true.
+The finished application is [demos/example](../../demos/example). Every snippet below comes from it, and its [venom suite](../../demos/example/tests/venom.yml) runs in CI, so the code here stays true.
 
 ## 1. The layout
 
@@ -27,7 +27,7 @@ example/
         └── style.css          # served directly
 ```
 
-There is no front controller. Each endpoint is a file, and the annotation at the top of it is the routing table.
+There is no front controller. Each endpoint is a file, and the annotation at its top is the routing table.
 
 ## 2. Configure a connection
 
@@ -58,7 +58,7 @@ CREATE TABLE bookmarks (
 INSERT INTO bookmarks (title, url) VALUES ('phpscript', 'https://github.com/titpetric/phpscript');
 ```
 
-They are applied by a file carrying the `@startup` annotation, which the server runs to completion before it listens:
+A file carrying the `@startup` annotation applies them; the server runs that file to completion before it listens:
 
 ```php
 <?php
@@ -75,7 +75,7 @@ Migration files are append only. [Run migrations](database.md#run-migrations) co
 
 ## 4. Share setup between endpoints
 
-Every endpoint needs the same database handle and template engine, so they live in one file that each endpoint includes. `bootstrap.php` is not routed and is outside `public/`, so it is never reachable on its own:
+Every endpoint needs the same database handle and template engine, so they live in one file that each endpoint includes. `bootstrap.php` is not routed and is outside `public/`, so no request reaches it on its own:
 
 ```php
 <?php
@@ -136,7 +136,7 @@ $db->close();
 redirect_to("/?saved=1");
 ```
 
-Path parameters are declared in braces and arrive in `$_REQUEST`:
+A route declares path parameters in braces, and they arrive in `$_REQUEST`:
 
 ```php
 <?php
@@ -161,7 +161,7 @@ Keep all `$_GET` and `$_POST` reads in the annotated files. Shared code that rea
 
 ## 6. Render the output
 
-Templates are compiled to PHP by the bundled engine, not written as PHP. `load()` compiles `templates/list.tpl` into `templates/cache/list.tpl` on first use and recompiles it whenever the source is newer:
+The bundled engine compiles templates to PHP, so a template carries the engine's own syntax and no PHP source. `load()` compiles `templates/list.tpl` into `templates/cache/list.tpl` on first use and recompiles it whenever the source is newer:
 
 ```php
 $tpl->load("list.tpl");
@@ -169,7 +169,7 @@ $tpl->assign(array("title" => "Bookmarks", "bookmarks" => $bookmarks));
 $tpl->render();
 ```
 
-Assigned values are addressed by name in braces and array elements with a dot. A printed value is passed through `htmlspecialchars` on the way out, so a bookmark titled `<script>alert(1)</script>` renders as text:
+A template addresses assigned values by name in braces and array elements with a dot. The engine runs a printed value through `htmlspecialchars` on the way out, so a bookmark titled `<script>alert(1)</script>` renders as text:
 
 ```html
 <h1>{title}</h1>
@@ -201,7 +201,7 @@ The suite has a case for it, and `|unescape` is how a template opts a value out 
 phpscript -f config.yml server .
 ```
 
-The server applies the migrations, scans for annotations and prints the address it is listening on. Check what it registered:
+The server applies the migrations, scans for annotations and prints the address it listens on. Check what it registered:
 
 ```bash
 phpscript list ./...
@@ -217,9 +217,9 @@ phpscript list ./...
   | @startup                    | [migrate.php](./migrate.php)                 | <none>  |
 ```
 
-A file with no entry point is only reachable through an `include`. If an endpoint is missing from this table, its annotation is wrong. `vendor/` is skipped: a composer dependency does not publish routes into the application.
+A file with no entry point is only reachable through an `include`. If an endpoint is missing from this table, its annotation is wrong. The scan skips `vendor/`: a composer dependency does not publish routes into the application.
 
-PHP is parsed when the server boots, so restart it after editing a source file.
+The server parses PHP when it boots, so restart it after editing a source file.
 
 ## 8. Test it
 
@@ -241,7 +241,7 @@ testcases:
           - result.body ShouldContainSubstring Venom
 ```
 
-venom follows the redirect, so a `POST` that succeeds is asserted through the page it lands on.
+venom follows the redirect, so the assertions for a `POST` that succeeds read the page it lands on.
 
 Write the suite so it can run twice. No case depends on which row ids exist: each one that adds a bookmark reads back the id the application returned and deletes it again:
 
