@@ -1,13 +1,13 @@
 # Variables
 
-| PHP language-reference feature  | Status                | Notes                                                                                                                                                               |
-|---------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Basics                          | Compatibility         | Variables use the `$name` form and are created by assignment.                                                                                                       |
-| Predefined variables            | Partial compatibility | Only the request variables documented in [Predefined variables](../predefined-variables/README.md) are seeded.                                                      |
+| PHP language-reference feature  | Status                | Notes                                                                                                                                                           |
+|---------------------------------|-----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Basics                          | Compatibility         | Variables use the `$name` form; an assignment creates one.                                                                                                      |
+| Predefined variables            | Partial compatibility | The runtime seeds only the request variables documented in [Predefined variables](../predefined-variables/README.md).                                           |
 | Variable scope                  | Partial compatibility | Calls have local scope; `static $x` persists per function (per closure value); `global` is a won't-build no-op.                                                 |
-| Variable variables              | Partial compatibility | `new $className` and `$obj->$method(...)` resolve the name at run time; `$$name` is unavailable.                                                                    |
-| Variables from external sources | Partial compatibility | HTTP query, form, and route values are provided by the request context.                                                                                             |
-| References                      | Partial compatibility | `foreach ($a as &$v)` works; `$a = &$b` and `function &f()` parse, are kept by the formatter and bind by value. See [Value semantics](../types/value-semantics.md). |
+| Variable variables              | Partial compatibility | `new $className` and `$obj->$method(...)` resolve the name at run time; `$$name` is unavailable.                                                                |
+| Variables from external sources | Partial compatibility | The request context carries HTTP query, form, and route values.                                                                                                 |
+| References                      | Partial compatibility | `foreach ($a as &$v)` works; `$a = &$b` and `function &f()` parse, survive the formatter and bind by value. See [Value semantics](../types/value-semantics.md). |
 
 ## Basics
 
@@ -17,7 +17,7 @@ $items = array();
 $items[] = $name;
 ```
 
-Variables, array indexes, object properties, static properties, and `list(...)` targets can be assigned. Every PHP compound assignment applies: `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `.=`, `&=`, `|=`, `^=`, `<<=` and `>>=`.
+An assignment can target a variable, an array index, an object property, a static property, or a `list(...)` target. Every PHP compound assignment applies: `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `.=`, `&=`, `|=`, `^=`, `<<=` and `>>=`.
 
 Writing through an index that does not exist yet creates the arrays on the way down, as PHP does:
 
@@ -44,9 +44,9 @@ echo implode(",", array_keys($e));        // 0,1   php answers 0,2
 
 ## Variable scope
 
-Each function call receives a local scope containing its arguments. A function does not implicitly see variables from its caller. Blocks do not create an additional scope.
+Each function call receives a local scope containing its arguments. A function does not implicitly see variables from its caller. Blocks do not create a scope of their own.
 
-PHP's `global` statement will not be implemented: it parses and binds nothing, so the variable it names stays unset inside the function. Pass the collaborator as a parameter instead; [Design decisions](../../design.md) records why.
+phpscript will not build PHP's `global` statement: it parses and binds nothing, so the variable it names stays unset inside the function. Pass the collaborator as a parameter instead; [Design decisions](../../design.md) records why.
 
 Function-level `static` variables work as PHP defines them: the initializer runs once per function lifetime, later writes persist across calls, and every closure value carries its own static storage.
 
@@ -60,10 +60,10 @@ function counter() {
 
 ## Destructuring
 
-`list(...)` assignment is supported:
+`list(...)` assignment works:
 
 ```php
 list($id, $name) = $row;
 ```
 
-PHP's `foreach ($rows as list($id, $name))` destructuring form is parsed but is not implemented by the runtime.
+The parser accepts PHP's `foreach ($rows as list($id, $name))` destructuring form, and the runtime then throws `assign: unsupported list() element` on the first iteration, where php destructures each row.
