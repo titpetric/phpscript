@@ -92,8 +92,8 @@ func (h *handler) route(name, pattern string) http.Handler {
 func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	var out bytes.Buffer
 	request := runner.FromRequestOptions(r, h.config.runnerOptions)
-	// Uploaded parts are copied to temporary files for the script to read; they
-	// belong to this request and nothing outlives it.
+	// The decode copies uploaded parts to temporary files for the script to
+	// read; they belong to this request and nothing outlives it.
 	defer request.Cleanup()
 
 	// A pooled runtime, registered once by buildRuntime and reset between
@@ -123,8 +123,8 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	}
 
 	if trace := telemetry.TraceFromContext(r.Context()); trace != nil {
-		// The script's frames are gone once Run returns, so the peak is the
-		// request's memory footprint; a fresh usage walk would be baseline.
+		// Run drops the script's frames before it returns, so the peak is the
+		// request's memory footprint; a fresh usage walk would read baseline.
 		trace.Root().SetAttribute("memory_usage", rt.MemoryPeak())
 		if rt.MemoryLimit() > 0 {
 			trace.Root().SetAttribute("memory_limit", rt.MemoryLimit().Bytes())
@@ -134,8 +134,8 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request, file string) {
 	status := request.StatusFor(err)
 	body := out.Bytes()
 
-	// What went wrong, for a host error page to do as it likes with. It is set
-	// only for a failure, and a failure discards whatever the endpoint echoed
+	// What went wrong, for a host error page to do as it likes with. Only a
+	// failure fills it, and a failure discards whatever the endpoint echoed
 	// before it: half an answer is not one.
 	var notes string
 	if _, exited := runner.IsExit(err); err != nil && !exited {

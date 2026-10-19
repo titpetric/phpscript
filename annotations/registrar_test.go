@@ -90,8 +90,8 @@ func TestRegistrar(t *testing.T) {
 	}
 }
 
-// TestRoute_Register covers the walk that publishes a tree. A path the route
-// grammar refuses is skipped and never handed over: chi registers
+// TestRoute_Register covers the walk that publishes a tree. The walk passes
+// over a path the route grammar refuses and registers none: chi registers
 // {module=users} as a parameter of that literal name, matches every request to
 // the segment and exports nothing, so a refused path would be a live route
 // answering wrongly. Two files declaring one pattern both reach the registrar

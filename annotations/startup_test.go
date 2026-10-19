@@ -73,8 +73,8 @@ func TestStartupReturnsAnnotatedScriptError(t *testing.T) {
 }
 
 // The scanner walks in path order, so a failure in the first file must not stop
-// the second from running: the jobs of one tree are independent, and every
-// failure is joined into the returned error, and not the first alone.
+// the second from running: the jobs of one tree are independent, and the
+// returned error joins every failure the run met.
 func TestStartupRunsEveryJobAndJoinsFailures(t *testing.T) {
 	t.Parallel()
 	root := fstest.MapFS{
@@ -111,8 +111,8 @@ func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			traceOptions := telemetry.NewOptions("phpscript")
-			// oida records only when it is asked to; a test that reads its
-			// traces back is asking.
+			// oida records for a caller that asks; a test reading its traces
+			// back has to ask.
 			traceOptions.Enabled = true
 			tracer, err := telemetry.New(traceOptions)
 			if err != nil {
@@ -125,8 +125,8 @@ func TestStartupRecordsSuccessAndFailure(t *testing.T) {
 				annotations.WithObservers(recorder),
 			)
 
-			// The job is recorded on its own trace either way, and a failure
-			// is also returned.
+			// The job lands on its own trace either way, and a failure also
+			// comes back as an error.
 			if gotError := startup.Start(context.Background()) != nil; gotError != test.wantFailure {
 				t.Fatalf("returned error = %t, wantFailure = %t", gotError, test.wantFailure)
 			}

@@ -9,7 +9,7 @@ import (
 	"github.com/titpetric/phpscript/runner/coverage"
 )
 
-// Option configures how annotated PHP files are discovered and executed. The
+// Option configures how the scanner finds annotated PHP files and runs them. The
 // same options apply to Route and Startup: both scan one source tree and run
 // PHP files out of it.
 type Option func(*config)
@@ -97,8 +97,8 @@ func WithObservers(observers ...runner.Observer) Option {
 	}
 }
 
-// WithRuntimeFunc registers fn to customize each runtime after the standard
-// library and the request context have been installed on it.
+// WithRuntimeFunc registers fn to customize each runtime once the standard
+// library and the request context sit on it.
 func WithRuntimeFunc(fn RuntimeFunc) Option {
 	return func(c *config) {
 		if fn != nil {
@@ -127,7 +127,7 @@ func WithIncludeCache(cache *runner.IncludeCache) Option {
 }
 
 // WithModuleSuffix distinguishes the platform modules of one source tree from
-// another's. A server running several virtual hosts registers a module set per
+// another's. A server running two or more virtual hosts registers a module set per
 // site, and platform.Options.Modules addresses modules by name, so the names
 // have to differ.
 func WithModuleSuffix(suffix string) Option {

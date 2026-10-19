@@ -27,9 +27,9 @@ echo $total;
 }
 
 // TestRuntimeFunc covers the hook a host customizes an endpoint's runtime
-// with. It runs after the standard library is installed, so a hook sees the
-// bindings a script already has and a later hook replaces what an earlier one
-// registered. One runtime is built per request, so the hook runs once per
+// with. It runs once the standard library sits on the runtime, so a hook sees
+// the bindings a script already has and a later hook replaces what an earlier
+// one registered. Each request builds one runtime, so the hook runs once per
 // request and nothing a script did leaks into the next one.
 func TestRuntimeFunc(t *testing.T) {
 	t.Parallel()

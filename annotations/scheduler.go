@@ -23,8 +23,8 @@ type Scheduler struct {
 	config config
 	now    func() time.Time
 
-	// cancel ends the jobs Start launched. The context a module is started
-	// with belongs to the caller and not to the platform being retired,
+	// cancel ends the jobs Start launched. The context the caller passes
+	// Start belongs to the caller and not to the generation going away,
 	// so without this a reload leaves the previous tree's jobs running.
 	mu     sync.Mutex
 	cancel context.CancelFunc
@@ -47,7 +47,7 @@ func NewScheduler(root fs.FS, options ...Option) *Scheduler {
 	}
 }
 
-// Start discovers jobs and runs them until ctx is cancelled or Stop is
+// Start discovers jobs and runs them until ctx ends or a caller calls Stop,
 // called.
 func (s *Scheduler) Start(ctx context.Context) error {
 	var jobs []scheduledJob

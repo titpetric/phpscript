@@ -33,9 +33,9 @@ func NewStartup(root fs.FS, options ...Option) *Startup {
 // what failed.
 //
 // One job failing does not stop the others: the tree's jobs are independent,
-// and the errors are joined into the returned one so a caller learns about all
-// of them, and not the first alone. Whether a failure is fatal is the caller's
-// decision, not this module's; a server hosting several sites records it and
+// and the returned error joins every failure, so a caller learns of each one
+// and not the first alone. Whether a failure is fatal is the caller's
+// decision, not this module's; a server hosting many sites records it and
 // carries on, where a single site server may well not.
 func (s *Startup) Start(ctx context.Context) error {
 	var failures []error

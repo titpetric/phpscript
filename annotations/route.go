@@ -12,7 +12,7 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// Route serves the @route endpoints of a PHP source tree. It is a
+// Route serves the @route endpoints of a PHP source tree as a
 // platform.Module, and registers on a standard library mux just as well.
 type Route struct {
 	platform.UnimplementedModule
@@ -57,7 +57,7 @@ func (r *Route) Register(registrar Registrar) error {
 	var warnings []string
 	err := scanner{root: r.root, excluded: r.config.excludedDirs}.walk(func(file string, src []byte) error {
 		for _, route := range ParseRoutes(src) {
-			// A path the grammar refuses is skipped and never registered.
+			// This passes over a path the grammar refuses and registers none.
 			// chi accepts {module=users} as a parameter of that literal name,
 			// matches every request to the segment and exports nothing, which
 			// is a live route that answers wrongly. `phpscript lint` reports

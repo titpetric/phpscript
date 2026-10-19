@@ -123,7 +123,7 @@ func TestSchedulerStartScansFS(t *testing.T) {
 
 // TestSchedulerStopEndsItsJobs pins what a reload depends on. The context
 // the platform passes Start belongs to the caller and not to the
-// generation being retired, so a scheduler that ignored Stop would leave the
+// generation going away, so a scheduler that ignored Stop would leave the
 // previous tree's jobs running beside every generation that followed.
 func TestSchedulerStopEndsItsJobs(t *testing.T) {
 	var runs atomic.Int64
@@ -143,8 +143,7 @@ func TestSchedulerStopEndsItsJobs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Whatever had already started is allowed to finish, and nothing new
-	// may begin.
+	// Whatever had already started runs to its end, and nothing new begins.
 	time.Sleep(50 * time.Millisecond)
 	settled := runs.Load()
 
