@@ -1,18 +1,19 @@
 //go:build ignore
 
-// testserver.go is testserver.php written in Go, route for route, so the two
-// can be put through the same load generator and the difference read off.
+// testserver.go is testserver.php written in Go, route for route, so one load
+// generator drives both and the difference reads off directly.
 //
-// It is the same work: the same patterns on the same net/http router, the same
+// The work is the same: the same patterns on the same net/http router, the same
 // JSON objects encoded with the same encoder, the same reply bodies. What it
-// does not have is a VM, which is the whole of what the comparison measures.
+// does not have is a VM, and that absence is the whole of what the comparison
+// measures.
 //
-// TESTSERVER_WORKERS bounds how many requests are answered at once, the way the
-// PHP server's worker count does. Go does not need it - net/http answers each
-// request on a goroutine and the scheduler sorts it out - so unset is unbounded
-// and is the Go server anyone would actually write. Set, it is a semaphore of
-// that depth, so a side by side against a bounded PHP server compares the same
-// arrangement on both sides.
+// TESTSERVER_WORKERS bounds how many requests the server answers at once, the
+// way the PHP server's worker count does. Go needs no such bound - net/http
+// answers each request on a goroutine and the scheduler takes it from there -
+// so leaving it unset bounds nothing, which is the Go server anyone would
+// actually write. Set, it becomes a semaphore of that depth, so a side by side
+// against a bounded PHP server compares the same arrangement on both sides.
 //
 //	go run testdata/testserver.go
 //	TESTSERVER_ADDR=127.0.0.1:0 TESTSERVER_WORKERS=5 go run testdata/testserver.go
@@ -120,7 +121,7 @@ func echoRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 // slow holds the connection and notices the client leaving, as
-// connection_aborted() is for on the PHP side. Here it is the request context.
+// connection_aborted() is for on the PHP side. Here the request context says so.
 func slow(w http.ResponseWriter, r *http.Request) {
 	ticks := 0
 	for ticks < 20 {
@@ -146,7 +147,7 @@ func info(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "# go\n\nRuntime => net/http\nGo Version => %s\n", os.Getenv("GOVERSION"))
 }
 
-// bounded caps how many requests are answered at once, so a run can be put
+// bounded caps how many requests the server answers at once, so a run stands
 // beside a PHP server holding the same number of workers.
 func bounded(next http.Handler, workers int) http.Handler {
 	if workers < 1 {
