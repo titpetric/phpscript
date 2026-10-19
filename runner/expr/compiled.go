@@ -19,14 +19,14 @@ type Compiled struct {
 	Calls    []string
 	Closures []BoundClosure
 	// Exprs holds the marked sub-expressions (`++`/`--`, include) the
-	// compiled closures evaluate through the __eval base helper, keyed by
+	// compiled closures run through the __eval base helper, keyed by
 	// the mark id, the same contract the transpiler's marks use.
 	Exprs map[string]model.Expr
 }
 
 // CompileExpr compiles a model.Expr directly to a closure chain. It covers
-// the whole expression vocabulary the runtime evaluates; an expression shape
-// outside it is an error, spelled the way the transpiler spells one.
+// the whole expression vocabulary the runtime evaluates; a shape outside
+// that vocabulary is an error, spelled the way the transpiler spells one.
 func CompileExpr(e model.Expr, h *Helpers) (*Compiled, error) {
 	dc := &directCompiler{h: h, slots: map[string]int{}}
 	body, err := dc.compile(e)
@@ -160,8 +160,8 @@ func scratchName(name string) bool {
 	return false
 }
 
-// scratchCall is baseCall over the environment's arena: the arguments are
-// pushed, the region is borrowed for the call, and the pop returns it, so a
+// scratchCall is baseCall over the environment's arena: it pushes the
+// arguments, borrows the region for the call, and the pop returns it, so a
 // covered call boxes no slice per invocation. The three-index expression caps
 // the borrowed region, so an append inside the callee reallocates away from
 // the arena in place of writing over it.
@@ -200,7 +200,7 @@ func (dc *directCompiler) compileArgs(args []model.Expr) ([]closure, error) {
 }
 
 // nameOrExpr compiles a runtime name: the constant string when the syntax
-// names it, or the expression when it is a value (`$obj->$m(...)`,
+// names it, or the expression when a value does (`$obj->$m(...)`,
 // `new $class(...)`).
 func (dc *directCompiler) nameOrExpr(name string, e model.Expr) (closure, error) {
 	if e == nil {
@@ -268,7 +268,7 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 		// closure returns model.ArrayItemValue as an any, which boxes a
 		// four-word struct on the heap for the line below to unbox again. That
 		// is one allocation per entry of every array literal a script writes,
-		// and the two slices here are built once at compile time.
+		// and the compiler builds the two slices here once, at compile time.
 		keys := make([]closure, len(n.Items))
 		vals := make([]closure, len(n.Items))
 		for i, it := range n.Items {
@@ -449,7 +449,7 @@ func (dc *directCompiler) compile(e model.Expr) (closure, error) {
 }
 
 // compileInterp compiles an interpolated string to one closure that writes
-// every part into a single builder. The parts are compiled here, once, so an
+// every part into a single builder. It compiles the parts here, once, so an
 // embedded expression costs what the same expression costs anywhere else and
 // the literal pays no dispatch of its own per execution.
 //
@@ -488,10 +488,10 @@ func (dc *directCompiler) compileUnary(n *model.Unary) (closure, error) {
 	switch n.Op {
 	case "!", "~", "-", "+":
 	case "++", "--":
-		// The value must be read from the live scope at evaluation time,
-		// not from the slot snapshot, and the target is a general lvalue:
-		// the mark re-enters the runtime, exactly as the transpiled form
-		// does through __eval.
+		// The mark reads the value from the live scope at evaluation time
+		// and never from the slot snapshot, and the target is a general
+		// lvalue: the mark re-enters the runtime, exactly as the transpiled
+		// form does through __eval.
 		return dc.markCall(n), nil
 	default:
 		return nil, fmt.Errorf("transpile: unsupported operator %q", n.Op)
@@ -633,7 +633,7 @@ func (dc *directCompiler) compileCall(n *model.Call) (closure, error) {
 	if n.FirstClass {
 		// `greet(...)` takes the callable and never calls it, so the name
 		// goes in as a value and the fallback with it: resolution is the
-		// runtime's, as it is for a call, and the result is a Closure.
+		// runtime's, as with a call, and the result is a Closure.
 		return baseCall("__callable", []closure{constClosure(n.Name), constClosure(n.Fallback)}), nil
 	}
 	args := make([]closure, len(n.Args))

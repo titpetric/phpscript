@@ -94,9 +94,9 @@ func toInt(v any) int64 {
 	}
 }
 
-// namedScalarInt reads a named Go scalar as the integer PHP sees. It is the
-// reflect fallback for values no case above matched, and answers zero for
-// everything that is not numeric, which is the same answer toInt gave before.
+// namedScalarInt reads a named Go scalar as the integer PHP sees: the reflect
+// fallback for values no case above matched, answering zero for everything
+// that is not numeric, which is the same answer toInt gave before.
 func namedScalarInt(v any) int64 {
 	rv := reflect.ValueOf(v)
 	switch rv.Kind() {
@@ -345,8 +345,8 @@ func helperCast(typ string, v any) any {
 		// (array) on an object reads its properties out, in the order the
 		// object reads them back. PHP prefixes a private or protected name with
 		// its declaring class; phpscript enforces no visibility, and a
-		// key holding a NUL byte is one no script could index, so the plain
-		// name is used. See docs/README.md.
+		// key holding a NUL byte is one no script could index, so the cast
+		// keeps the plain name. See docs/README.md.
 		if obj, ok := v.(*model.Object); ok {
 			out := model.NewArraySize(obj.Len())
 			obj.Range(func(name string, val any) bool {
@@ -374,20 +374,20 @@ func helperCast(typ string, v any) any {
 // whose properties are its entries, a scalar lands under `scalar`, and null
 // produces an object with nothing in it.
 //
-// An object is returned as it is, which is PHP's behaviour and the reason the
-// cast is not a copy: `(object) $o === $o`. Nothing is copied on the way in
+// The cast returns an object unchanged, which is PHP's behaviour and the reason
+// it makes no copy: `(object) $o === $o`. It copies nothing on the way in
 // either. PHP copies the array because arrays are values there; here they are
 // handles (docs/reference/types/value-semantics.md), and the cast is not the
-// place to make one exception to that. An array nested under a property
-// therefore stays an array, which is also what PHP does, since its copy
-// does not convert nested arrays into objects.
+// place to make one exception to that. An array nested under a property stays
+// an array, as PHP does too, since its copy does not convert nested arrays
+// into objects.
 func helperToObject(v any) any {
 	switch {
 	case v == nil:
 		return model.NewStdClass()
 	case model.IsCollection(v):
 		// Ahead of the host-object test: an *model.Array is a pointer to a
-		// struct and would answer that test, and it is an array.
+		// struct and would answer that test, and the value is an array.
 		obj := model.NewStdClass()
 		model.RangeValues(v, func(key, val any) bool {
 			obj.SetProp(phpval.String(key), val)
@@ -404,8 +404,8 @@ func helperToObject(v any) any {
 
 // isObjectValue reports whether v is already an object: an interpreted one, or
 // a value a host binding returned, which `new Database` produces and which the
-// cast must return as it is, with no fold into a `scalar` property. Call it after
-// the collection test; a Go collection would otherwise answer it.
+// cast must return unchanged, with no fold into a `scalar` property. Call it
+// after the collection test; a Go collection would otherwise answer it.
 func isObjectValue(v any) bool {
 	if _, ok := v.(*model.Object); ok {
 		return true
@@ -497,10 +497,10 @@ func phpArith(op string, a, b any) any {
 
 // phpBitwise applies & | ^ << >>.
 //
-// Both operands are cast to int, except that & | ^ between two strings operate
-// bytewise and return a string, as they do in PHP: "a" | "b" is "c". The operand
-// length follows PHP: `&` and `^` stop at the shorter operand, `|` keeps the
-// longer one and treats the missing bytes as zero.
+// phpBitwise casts both operands to int, except that & | ^ between two strings
+// operate bytewise and return a string, as they do in PHP: "a" | "b" is "c".
+// The operand length follows PHP: `&` and `^` stop at the shorter operand, `|`
+// keeps the longer one and treats the missing bytes as zero.
 //
 // Shifts are int64 operations. A count of 64 or more needs no special case: Go
 // defines an over-wide shift as 0 for `<<`, and 0 or -1 by sign for `>>`, which
@@ -566,11 +566,11 @@ func bitwiseString(op string, a, b string) string {
 
 // phpNegate implements PHP's unary minus.
 //
-// A float is negated directly and never computed as `0 - x`, which loses the
-// sign of zero: PHP echoes -0.0 as -0. Everything else resolves through the
-// arithmetic helper so that negating the smallest int64 overflows to a float
-// the way every other arithmetic operator does, with no wrap back to
-// itself with Go's int64 negation.
+// phpNegate negates a float directly and never computes it as `0 - x`, which
+// loses the sign of zero: PHP echoes -0.0 as -0. Everything else resolves
+// through the arithmetic helper so that negating the smallest int64 overflows
+// to a float the way every other arithmetic operator does, with no wrap back
+// to itself with Go's int64 negation.
 func phpNegate(v any) any {
 	if f, ok := v.(float64); ok {
 		return -f
@@ -582,8 +582,8 @@ func phpNegate(v any) any {
 // casts to int, where ~n is -(n+1).
 //
 // PHP 8 raises a TypeError for a null, bool or array operand. phpscript casts
-// those the way every other bitwise operand is cast, so `~null` is -1 rather
-// than a fatal error (docs/README.md).
+// those the way it casts every other bitwise operand, so `~null` is -1 and no
+// fatal error (docs/README.md).
 func phpBitNot(v any) any {
 	if s, ok := v.(string); ok {
 		out := make([]byte, len(s))
@@ -683,7 +683,7 @@ func toFloat(v any) float64 {
 // definition and this is a call to it.
 func normalizeKey(k any) any { return phpval.Key(k) }
 
-// keyString spells a script's index as the name a model.Keyed is read by. PHP
-// normalises a key to an int or a string; a Keyed is named by string, so an
+// keyString spells a script's index as the name a model.Keyed answers to. PHP
+// normalises a key to an int or a string; a Keyed takes string names, so an
 // int index reads as its decimal spelling.
 func keyString(k any) string { return phpval.String(phpval.Key(k)) }

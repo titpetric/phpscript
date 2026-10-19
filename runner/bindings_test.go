@@ -6,17 +6,17 @@ import (
 
 // profileTestArea is a bit no binding package registers under, so a test
 // registering one installer under it does not reach a runtime any other test
-// mounts. The registry is process-wide and append-only: an entry cannot be
-// taken back out, so the area it is filed under is what keeps it contained.
+// mounts. The registry is process-wide and append-only: nothing removes an
+// entry, so its area is what keeps it contained.
 const profileTestArea Profile = 1 << 62
 
-// TestRegisterProfileBinding covers what an area bit decides. An installer
-// filed under one area is returned for a mask naming it and withheld from one
+// TestRegisterProfileBinding covers what an area bit decides. BindingsFor
+// answers an installer for a mask naming its area and withholds it from one
 // that does not, so a narrowed mount leaves a name undefined and never refuses
 // it at the call.
 //
-// A nil installer is dropped at registration, because a contributed nil would
-// panic inside Mount, after the host had already installed part of the surface.
+// RegisterProfileBinding drops a nil installer: a contributed nil would panic
+// inside Mount, after the host had already installed part of the surface.
 func TestRegisterProfileBinding(t *testing.T) {
 	before := len(BindingsFor(profileTestArea))
 
@@ -37,8 +37,8 @@ func TestRegisterProfileBinding(t *testing.T) {
 // TestRegisterBinding covers the area a binding lands in when it does not name
 // one, which is ProfileSecure: a binding package's init() calls this, so the
 // default decides what a host mounting the sandboxed surface gets. The
-// installer is a no-op, because the registry is append-only and whatever is
-// registered here runs on every Runtime the test binary sets up.
+// installer is a no-op, because the registry is append-only and whatever this
+// test registers runs on every Runtime the test binary sets up.
 func TestRegisterBinding(t *testing.T) {
 	secure, outside := len(BindingsFor(ProfileSecure)), len(BindingsFor(^ProfileSecure))
 
@@ -46,16 +46,16 @@ func TestRegisterBinding(t *testing.T) {
 	if got := len(BindingsFor(ProfileSecure)); got != secure+1 {
 		t.Fatalf("BindingsFor(ProfileSecure) returned %d installers, want %d", got, secure+1)
 	}
-	// Secure is one area and no mask of all of them, so the installer is
-	// withheld from every profile that does not name it.
+	// Secure is one area and no mask over every one, so BindingsFor withholds
+	// the installer from every profile that does not name it.
 	if got := len(BindingsFor(^ProfileSecure)); got != outside {
 		t.Errorf("the installer reached a profile without ProfileSecure: %d installers, want %d", got, outside)
 	}
 }
 
 // TestBindingsFor covers the two masks a host reaches the registry through.
-// Bindings is every area, the surface stdlib.Register mounts, so it is never
-// shorter than any single area's share of it.
+// Bindings is every area, the surface stdlib.Register mounts, so it holds at
+// least as much as any single area's share.
 func TestBindingsFor(t *testing.T) {
 	RegisterProfileBinding(profileTestArea, func(*Runtime) {})
 

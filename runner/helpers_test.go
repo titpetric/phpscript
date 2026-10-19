@@ -140,9 +140,9 @@ func TestArgAt(t *testing.T) {
 	}
 }
 
-// TestArgsTail covers the variadic remainder after the fixed parameters. The
-// slice is aliased and never copied: args is built fresh per call, so the
-// binding sees what reflect.Value.Call would have handed it.
+// TestArgsTail covers what follows the fixed parameters in a variadic call.
+// argsTail aliases the slice and never copies it: the runner builds args fresh
+// per call, so the binding sees what reflect.Value.Call would have handed it.
 func TestArgsTail(t *testing.T) {
 	t.Parallel()
 	args := []any{"a", "b", "c"}
@@ -170,9 +170,9 @@ func TestArgsTail(t *testing.T) {
 }
 
 // TestPHPParamTypeName covers the spelling a TypeError uses for a declared Go
-// parameter ("must be of type int"). It describes a parameter, so it is
+// parameter ("must be of type int"). It describes a parameter, which keeps it
 // separate from phpDebugType, which describes a value, and from gettype's
-// legacy names in stdlib: neither table may be folded into the other.
+// legacy names in stdlib: neither table folds into the other.
 func TestPHPParamTypeName(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -272,7 +272,7 @@ func TestCoerceArg(t *testing.T) {
 }
 
 // TestCallResult covers reducing a reflect Call result to a value and an error.
-// A Go callable returning several values becomes a PHP list in declaration
+// A Go callable returning two or more values becomes a PHP list in declaration
 // order, so a script destructures it: keeping only the first would answer a
 // different question, since time.Time.ISOWeek returns the year and the week.
 func TestCallResult(t *testing.T) {
@@ -323,8 +323,8 @@ func TestCallResult(t *testing.T) {
 
 // TestNameCallError covers filling in the PHP name of an error raised while
 // building a call. invokeAny works from the Go signature alone and has no name
-// to report; the name a script typed is known only at the dispatch site, and a
-// name already filled in is left alone.
+// to report; only the dispatch site holds the name a script typed, and
+// nameCallError leaves a filled-in name alone.
 func TestNameCallError(t *testing.T) {
 	t.Parallel()
 	if got := nameCallError(nil, "substr"); got != nil {
@@ -397,9 +397,9 @@ func TestRecoveredError(t *testing.T) {
 	}
 }
 
-// TestWantsContext covers the check that decides whether the runtime context is
-// injected ahead of a binding's arguments. Only a first parameter of
-// context.Context counts, so a binding taking a string first is called with the
+// TestWantsContext covers the check on whether the runner puts the runtime
+// context ahead of a binding's arguments. Only a first parameter of
+// context.Context counts, so a binding taking a string first receives the
 // arguments a script passed and nothing in front of them.
 func TestWantsContext(t *testing.T) {
 	t.Parallel()
@@ -541,7 +541,7 @@ func TestAdapt(t *testing.T) {
 		t.Errorf("the adapted call = %#v, want %#v", got, want)
 	}
 
-	// An int64 reaching a string parameter is rendered the way PHP renders it,
+	// The wrapper renders an int64 reaching a string parameter the way PHP does,
 	// so the binding reads "7" and never Go's own conversion of the code point.
 	coerced, err := fn(int64(9), int64(7))
 	if err != nil {

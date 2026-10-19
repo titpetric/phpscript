@@ -23,7 +23,7 @@
 // cheap path with one expensive path leaves that row describing neither. Read
 // the per-endpoint table for those.
 //
-// A runtime is named by the directory it is, with the concurrency appended:
+// A runtime takes the name of its directory, with the concurrency appended:
 // `phpscript-service-4` is testdata/phpscript-service answering four requests
 // at once. php-vanilla is one directory served two ways, so it carries the web
 // server in its name.
@@ -54,7 +54,7 @@ function fail($message) {
 }
 
 // pid_file and profile_file record what is up, so teardown reaches it from any
-// exit path. bin/ is gitignored and resolves the same for both sides of every
+// exit path. `.gitignore` holds bin/, and it resolves the same for both sides of every
 // call here: a relative path reads inside the runtime's root, and the shell a
 // command runs through starts in that same directory.
 function pid_file() {
@@ -65,7 +65,7 @@ function profile_file() {
 	return "bin/benchmark.profile";
 }
 
-// teardown takes down whatever is recorded as up. A server left behind holds
+// teardown takes down whatever the work files name as up. A server left behind holds
 // its port and keeps its workers on the cores the next measurement needs, so a
 // shutdown function registers this and every exit path reaches it, the
 // guarantee `trap stop_server EXIT` carries in the bash harness.
@@ -90,7 +90,7 @@ function teardown() {
 	}
 }
 
-// environments describes each test environment: the directory it is, how it
+// environments describes each test environment: its directory, how it
 // starts, and where its address comes from once it has one.
 function environments() {
 	return array(
@@ -385,7 +385,7 @@ function start_logged($environment, $settings, $log) {
 
 // start_compose brings up one php-vanilla profile and renices every process in
 // it. The other environments run at nice -n -20, and a default-priority server
-// on a shared box is descheduled for milliseconds at a time.
+// on a shared box loses the CPU for milliseconds at a time.
 function start_compose($environment, $settings) {
 	$prefix = "VANILLA_PORT=8098 VANILLA_NGINX_PORT=8099 VANILLA_WORKERS=" . $settings["workers"] . " VANILLA_JIT=" . $settings["jit"] . " ";
 	$compose = $prefix . "docker compose -f testdata/php-vanilla/compose.yml --profile " . $environment["profile"];
@@ -467,7 +467,7 @@ foreach (explode(",", $settings["targets"]) as $name) {
 	}
 
 	$environment = $known[$name];
-	// bin/ is gitignored and resolves the same for both sides of every call
+	// `.gitignore` holds bin/, and it resolves the same for both sides of every call
 	// here: a relative path reads inside the runtime's root, and the shell a
 	// command runs through starts in that same directory.
 	$log = "bin/benchmark-" . $name . ".log";

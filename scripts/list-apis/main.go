@@ -25,8 +25,8 @@ func main() {
 	}
 }
 
-// generate writes the listing for the tree at root. It is the whole of the
-// command, kept apart from main so a test asserts the wiring:
+// generate writes the listing for the tree at root, the whole of the command,
+// kept apart from main so a test can assert the wiring:
 // the listing is what a script sees, so a runtime built with one installer
 // missing publishes a reference that omits a whole area.
 func generate(out io.Writer, root string) error {
