@@ -1,8 +1,8 @@
 # Shared memory bindings
 
-`SharedMemory` is a thread-safe, process-local key/value store with atomic counters. A host can use it for small amounts of state that need to be shared between scripts or HTTP requests handled by the same Go process.
+`SharedMemory` is a thread-safe, process-local key/value store with atomic counters. A host can use it for small amounts of state that scripts or HTTP requests in the same Go process need in common.
 
-The class is part of the phpscript standard library. No PHP include is needed:
+The class is part of the phpscript standard library, so a script constructs it without an include:
 
 ```php
 <?php
@@ -12,7 +12,7 @@ $shm = new SharedMemory;
 
 ## Key/value storage
 
-Values are stored as strings:
+The store keeps values as strings:
 
 ```php
 $shm = new SharedMemory;
@@ -55,7 +55,7 @@ The available methods are:
 
 ## Sharing state between runtimes
 
-Without a host-provided instance, each `new SharedMemory` creates an empty store. No command in this repository binds one, `phpscript server` included, so a script running under any of them gets a store per `new` and reads back only what it wrote itself. To retain state between HTTP requests or other PHP runtimes, create one store in Go and add it to every runtime's context:
+Without a host-provided instance, each `new SharedMemory` creates an empty store. No command in this repository binds one, `phpscript server` included, so a script running under any of them gets a store per `new` and reads back only what it wrote itself. To keep state between HTTP requests or other PHP runtimes, create one store in Go and add it to every runtime's context:
 
 ```go
 shm := core.NewSharedMemory()
@@ -73,7 +73,7 @@ $shm->incr("requests");
 echo $shm->count("requests");
 ```
 
-The Go store synchronizes concurrent access, so the same instance can safely be used by multiple request runtimes. Despite its name, it is not operating-system shared memory: its contents are not shared between processes and are lost when the host process exits. Use a database or external cache when state must be durable or shared by multiple application processes.
+The Go store synchronizes concurrent access, so many request runtimes can safely share one instance. Despite its name, this is not operating-system shared memory: its contents are not shared between processes, and the host process drops them when it exits. Use a database or external cache when state must be durable or shared by more than one application process.
 
 ## References
 
