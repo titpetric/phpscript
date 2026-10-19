@@ -219,10 +219,10 @@ func rangeAll(t *testing.T, src mapmap.Source) map[string]any {
 	return seen
 }
 
-// TestSource covers the contract the read-only half of a MapMap is held to.
+// TestSource covers the contract the read-only half of a MapMap must meet.
 // Each of the three implementations answers Get, Len and Range, and a MapMap
-// built over any of them reads through to it, so one source type can be
-// swapped for another without the layer over it changing.
+// built over any of them reads through to it, so one source type stands in for
+// another and the layer over it stays put.
 func TestSource(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/", nil)
@@ -258,8 +258,8 @@ func TestSource(t *testing.T) {
 }
 
 // TestMapSource_Get covers the read a CLI run answers through: a plain map of
-// strings, where a key the map does not hold is reported as absent and never
-// as an empty string, because isset() reads the second return.
+// strings, where a key the map does not hold answers absent and never answers
+// an empty string, because isset() reads the second return.
 func TestMapSource_Get(t *testing.T) {
 	t.Parallel()
 	src := mapmap.MapSource{"REQUEST_METHOD": "GET", "EMPTY": ""}
@@ -267,7 +267,8 @@ func TestMapSource_Get(t *testing.T) {
 	if got, ok := src.Get("REQUEST_METHOD"); !ok || got != "GET" {
 		t.Errorf("Get(REQUEST_METHOD) = %v, %t, want GET, true", got, ok)
 	}
-	// An entry holding the empty string is held, so the two returns disagree.
+	// An entry holding the empty string counts as present, so the two returns
+	// disagree.
 	if got, ok := src.Get("EMPTY"); !ok || got != "" {
 		t.Errorf("Get(EMPTY) = %v, %t, want the empty string, true", got, ok)
 	}
@@ -289,8 +290,8 @@ func TestMapSource_Len(t *testing.T) {
 }
 
 // TestMapSource_Range covers the walk, and the bool that cuts it short. Go
-// map order is not insertion order, so the walk is checked by what it visited
-// and not by the sequence it visited them in.
+// map order is not insertion order, so the assertions take what the walk
+// visited and never the sequence it visited them in.
 func TestMapSource_Range(t *testing.T) {
 	t.Parallel()
 	src := mapmap.MapSource{"A": "1", "B": "2"}
@@ -324,7 +325,7 @@ func TestValueSource_Get(t *testing.T) {
 }
 
 // TestValueSource_Len covers count() over a source of PHP values: one per
-// name, however deep the value under it is.
+// name, at any depth of the value under it.
 func TestValueSource_Len(t *testing.T) {
 	t.Parallel()
 	src := mapmap.ValueSource{"a": []any{int64(1), int64(2)}, "q": "1"}
@@ -337,7 +338,8 @@ func TestValueSource_Len(t *testing.T) {
 }
 
 // TestValueSource_Range covers the walk over PHP values: every name once,
-// with the value handed over as it is stored and not flattened to a string.
+// carrying the value the source stores, which the walk never flattens to a
+// string.
 func TestValueSource_Range(t *testing.T) {
 	t.Parallel()
 	nested := []any{int64(1)}
@@ -386,9 +388,9 @@ func TestRequestSource_Get(t *testing.T) {
 }
 
 // TestRequestSource_Len covers count() over a request: the derived names plus
-// the headers plus the extras, each counted once. It is defined as the number
-// of names Range visits, so the two agree by construction and a name
-// double-counted in one shows up in both.
+// the headers plus the extras, each counted once. Len answers the number of
+// names Range visits, so the two agree by construction and a name counted
+// twice in one shows up in both.
 func TestRequestSource_Len(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)
@@ -409,9 +411,9 @@ func TestRequestSource_Len(t *testing.T) {
 
 // TestRequestSource_Range covers the order the names arrive in and the
 // de-duplication between the halves: the derived names first, then the
-// headers, then the extras that are not among either. A name Extra holds is
-// skipped where it would have been derived, so it is visited once with the
-// value Extra holds.
+// headers, then the extras that are not among either. The walk passes over a
+// name Extra holds where it would otherwise derive one, so that name arrives
+// once, carrying the value Extra holds.
 func TestRequestSource_Range(t *testing.T) {
 	t.Parallel()
 	request := httptest.NewRequest("GET", "http://example.com/?q=1", nil)

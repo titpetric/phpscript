@@ -1,11 +1,12 @@
 // Package mapmap holds a read-only map with a request-scoped layer of edits
 // over it.
 //
-// A superglobal is read far more often than it is written, and what it reads is
-// the request, which does not change while the request is served. Rendering it
-// into a *model.Array copies every entry into a second representation on the
-// way in, whether or not the script names the variable. A MapMap answers from
-// the request instead, and holds only what a script wrote.
+// A script reads a superglobal far more often than it writes one, and what it
+// reads is the request, which holds still for the length of that request.
+// Rendering it into a *model.Array copies every entry into a second
+// representation on the way in, whether the script names the variable or not.
+// A MapMap answers from the request and holds what a script wrote, nothing
+// else.
 //
 // The edits are request-scoped, so their map comes from a pool and goes back
 // cleared and never freed.
@@ -19,8 +20,8 @@ import (
 // Source is the read-only half of a MapMap: the request, or a map built for a
 // run that has no request behind it.
 //
-// A source is read while the request is served and is never written, so one may
-// be shared by every MapMap over it.
+// A source serves reads for the length of a request and takes no write, so
+// every MapMap over one can share it.
 type Source interface {
 	// Get answers the value of key and whether the source holds it.
 	Get(key string) (any, bool)
@@ -35,7 +36,7 @@ type Source interface {
 // MapMap reads through a Source and writes to a layer of its own.
 //
 // Read answers the layer first, so a script that assigns to a key sees what it
-// assigned; the source is left alone and stays shared. Nothing is copied
+// assigned; the write touches no source, which stays shared. Nothing copies
 // out of the source until something reads the whole thing.
 type MapMap struct {
 	src Source
@@ -50,8 +51,8 @@ type MapMap struct {
 	edits []edit
 }
 
-// edit is one write, or one removal when gone is set. A removal is recorded
-// and never applied, because the source it hides is read-only.
+// edit is one write, or one removal where gone says so. The layer records a
+// removal and applies none, because the source it hides takes no write.
 type edit struct {
 	key   string
 	value any
@@ -124,8 +125,8 @@ func (m *MapMap) Delete(key string) {
 		_, inSource = m.src.Get(key)
 	}
 	// A key the source does not hold leaves no trace: forgetting the write is
-	// the whole removal. One it does hold is marked, because the source cannot
-	// be written to.
+	// the whole removal. The layer marks one the source does hold, because
+	// the source takes no write.
 	if i >= 0 && !inSource {
 		m.edits = append(m.edits[:i], m.edits[i+1:]...)
 		return
@@ -165,7 +166,7 @@ func (m *MapMap) Len() int {
 
 // Range visits the source in its own order, then the keys only the layer holds.
 //
-// A key the layer overwrote is visited in the source's position with the
+// A key the layer overwrote arrives in the source's position carrying the
 // written value, so assigning to an existing key does not move it.
 func (m *MapMap) Range(fn func(key, value any) bool) {
 	if m == nil {
@@ -209,8 +210,8 @@ func (m *MapMap) Release() {
 	m.edits = nil
 }
 
-// MapSource reads a plain map. It is the source for a run with no request
-// behind it, which is every CLI invocation.
+// MapSource reads a plain map, and serves a run with no request behind it:
+// every CLI invocation.
 type MapSource map[string]string
 
 // Get answers the value of key.
@@ -262,9 +263,9 @@ func (s ValueSource) Range(fn func(key string, value any) bool) bool {
 //
 // Extra carries the names the request cannot answer on its own, which are the
 // ones a caller computed: the clock for REQUEST_TIME, and whatever the host
-// decided about the scheme behind a proxy. It is a Source of its own so a
-// caller passes the map it already has, with no copy into another.
-// It is read, never written, and wins over a derived name.
+// decided about the scheme behind a proxy. A Source of its own, so a caller
+// passes the map it already has with no copy into another. It serves reads,
+// takes no write, and wins over a derived name.
 type RequestSource struct {
 	Request *http.Request
 	Extra   Source
@@ -426,7 +427,7 @@ func (s *lazySource) resolve() Source {
 	return s.src
 }
 
-// Get builds the source if it has not been built, then reads it.
+// Get builds the source on first use, then reads it.
 func (s *lazySource) Get(key string) (any, bool) {
 	src := s.resolve()
 	if src == nil {
@@ -435,7 +436,7 @@ func (s *lazySource) Get(key string) (any, bool) {
 	return src.Get(key)
 }
 
-// Len builds the source if it has not been built, then counts it.
+// Len builds the source on first use, then counts it.
 func (s *lazySource) Len() int {
 	src := s.resolve()
 	if src == nil {
@@ -444,7 +445,7 @@ func (s *lazySource) Len() int {
 	return src.Len()
 }
 
-// Range builds the source if it has not been built, then walks it.
+// Range builds the source on first use, then walks it.
 func (s *lazySource) Range(fn func(key string, value any) bool) bool {
 	src := s.resolve()
 	if src == nil {
