@@ -21,23 +21,23 @@ func TestMail_Validate(t *testing.T) {
 
 	t.Run("every server is deliverable", func(t *testing.T) {
 		servers := config.Mail{"default": good, "marketing": good}
-		if err := servers.Validate("phpscript.yml"); err != nil {
+		if err := servers.Check("phpscript.yml"); err != nil {
 			t.Fatal(err)
 		}
 	})
 
 	t.Run("no servers configured", func(t *testing.T) {
-		if err := (config.Mail{}).Validate("phpscript.yml"); err != nil {
+		if err := (config.Mail{}).Check("phpscript.yml"); err != nil {
 			t.Fatal(err)
 		}
-		if err := config.Mail(nil).Validate("phpscript.yml"); err != nil {
+		if err := config.Mail(nil).Check("phpscript.yml"); err != nil {
 			t.Fatal(err)
 		}
 	})
 
 	t.Run("the error names the file and the server", func(t *testing.T) {
 		servers := config.Mail{"marketing": {From: "noreply@example.com"}}
-		err := servers.Validate("sites/one/phpscript.yml")
+		err := servers.Check("sites/one/phpscript.yml")
 		if err == nil {
 			t.Fatal("a server with no host validated")
 		}
@@ -55,7 +55,7 @@ func TestMail_Validate(t *testing.T) {
 			"alpha": {From: "noreply@example.com"},
 			"mid":   good,
 		}
-		err := servers.Validate("phpscript.yml")
+		err := servers.Check("phpscript.yml")
 		if err == nil {
 			t.Fatal("two servers with no host validated")
 		}
@@ -112,7 +112,7 @@ func TestValidateMailDeclaration(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			err := config.ValidateMailDeclaration("phpscript.yml", test.declared)
+			err := config.CheckMailDeclaration("phpscript.yml", test.declared)
 			if test.want == "" {
 				if err != nil {
 					t.Fatal(err)
@@ -143,7 +143,7 @@ func TestValidateMailDeclaration_flatKeyOrder(t *testing.T) {
 		"from":     "noreply@example.com",
 	}}
 
-	err := config.ValidateMailDeclaration("phpscript.yml", declared)
+	err := config.CheckMailDeclaration("phpscript.yml", declared)
 	if err == nil {
 		t.Fatal("a flat block validated")
 	}

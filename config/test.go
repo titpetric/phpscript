@@ -88,21 +88,21 @@ func LoadTestSuite(dir, filename string, data []byte, base Config, forbidden boo
 		}
 	}
 
-	if err := result.Test.Validate(filename); err != nil {
+	if err := result.Test.Check(filename); err != nil {
 		return nil, err
 	}
-	if err := result.Mail.Validate(filename); err != nil {
+	if err := result.Mail.Check(filename); err != nil {
 		return nil, err
 	}
 	return &TestSuite{Dir: dir, Config: result, Declared: declared}, nil
 }
 
-// Validate rejects a test block whose values name nothing the run can act on.
+// Check rejects a test block whose values name nothing the run can act on.
 //
 // Whether a hook file exists is not checked here, because the file lives in the
 // caller's filesystem and not on disk. The run reports a missing hook when
 // it goes to execute it.
-func (t Test) Validate(filename string) error {
+func (t Test) Check(filename string) error {
 	if t.Cache != "" && t.Cache != "worker" && t.Cache != "off" {
 		return fmt.Errorf("%s: test.cache must be worker or off, not %q", filename, t.Cache)
 	}

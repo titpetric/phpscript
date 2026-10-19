@@ -38,7 +38,7 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 		}
 	}
 
-	if err := ValidateMailDeclaration(filename, declared); err != nil {
+	if err := CheckMailDeclaration(filename, declared); err != nil {
 		return base, declared, err
 	}
 

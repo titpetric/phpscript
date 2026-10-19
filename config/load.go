@@ -24,7 +24,7 @@ func Load(filename string) (Config, error) {
 	if err != nil {
 		return base, err
 	}
-	if err := result.Mail.Validate(filename); err != nil {
+	if err := result.Mail.Check(filename); err != nil {
 		return base, err
 	}
 	return result, nil

@@ -415,7 +415,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 		if err != nil {
 			return err
 		}
-		return appConfig.Validate(name, root)
+		return appConfig.Check(name, root)
 	}
 
 	// A reload discards the platform value every registration binds to,

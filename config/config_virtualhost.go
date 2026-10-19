@@ -123,11 +123,11 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	return result, declared, nil
 }
 
-// ValidateVirtualHosts checks the whole list before the server builds a site,
+// CheckVirtualHosts checks the whole list before the server builds a site,
 // so a bad entry fails the server and not one request. The check loads every
 // entry, because the document root and the telemetry block two of the checks
 // need come from the site's phpscript.yml and not from the entry.
-func (c Config) ValidateVirtualHosts() error {
+func (c Config) CheckVirtualHosts() error {
 	if len(c.VirtualHost) == 0 {
 		return nil
 	}
@@ -170,7 +170,7 @@ func (c Config) ValidateVirtualHosts() error {
 		// A server the site got wrong fails startup and not the first
 		// delivery, which on a site whose only sender is a @schedule job is
 		// the middle of the night on the one path nobody is watching.
-		if err := loaded.Mail.Validate(filepath.Join(host.Root, VirtualHostConfigFile)); err != nil {
+		if err := loaded.Mail.Check(filepath.Join(host.Root, VirtualHostConfigFile)); err != nil {
 			return fmt.Errorf("virtualhost %q: %w", name, err)
 		}
 
@@ -194,10 +194,10 @@ func (c Config) ValidateVirtualHosts() error {
 	return nil
 }
 
-// ValidateRoot checks a single application root the way ValidateVirtualHosts
+// CheckRoot checks a single application root the way CheckVirtualHosts
 // checks an entry: fs.Sub does not stat, so a missing document root is
 // otherwise a 404 on the first request.
-func (c Config) ValidateRoot(root string) error {
+func (c Config) CheckRoot(root string) error {
 	if err := statDir(root); err != nil {
 		return fmt.Errorf("root: %w", err)
 	}

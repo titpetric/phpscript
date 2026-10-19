@@ -286,13 +286,13 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test", Root: site(t, "routes:\n  enabled: true\n")},
 			{Domain: "two.test", Root: site(t, "routes:\n  enabled: false\n")},
 		}
-		if err := base.ValidateVirtualHosts(); err != nil {
+		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
 
 	t.Run("no virtual hosts", func(t *testing.T) {
-		if err := config.New().ValidateVirtualHosts(); err != nil {
+		if err := config.New().CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -300,7 +300,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 	t.Run("empty domain", func(t *testing.T) {
 		base := config.New()
 		base.VirtualHost = []config.VirtualHost{{Root: site(t, "routes:\n  enabled: true\n")}}
-		if err := base.ValidateVirtualHosts(); err == nil {
+		if err := base.CheckVirtualHosts(); err == nil {
 			t.Fatal("an entry with no domain validated")
 		}
 	})
@@ -311,7 +311,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test", Root: site(t, "routes:\n  enabled: true\n")},
 			{Domain: "ONE.test.", Root: site(t, "routes:\n  enabled: true\n")},
 		}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a domain was configured twice")
 		}
@@ -325,7 +325,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base.VirtualHost = []config.VirtualHost{
 			{Domain: "one.test www.one.test ONE.test", Root: site(t, "routes:\n  enabled: true\n")},
 		}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("an entry listed a name twice")
 		}
@@ -340,7 +340,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test www.example.test", Root: site(t, "routes:\n  enabled: true\n")},
 			{Domain: "two.test WWW.Example.test.", Root: site(t, "routes:\n  enabled: true\n")},
 		}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("two entries claimed one name")
 		}
@@ -355,7 +355,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base.VirtualHost = []config.VirtualHost{
 			{Domain: "one.test www.one.test", Root: site(t, "routes:\n  enabled: true\n")},
 		}
-		if err := base.ValidateVirtualHosts(); err != nil {
+		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -363,7 +363,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 	t.Run("missing root", func(t *testing.T) {
 		base := config.New()
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: filepath.Join(t.TempDir(), "absent")}}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a root that does not exist validated")
 		}
@@ -379,7 +379,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		}
 		base := config.New()
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: file}}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a file validated as an application root")
 		}
@@ -395,7 +395,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		}
 		base := config.New()
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: root}}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a site with no document root validated")
 		}
@@ -412,7 +412,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test", Root: site(t, source)},
 			{Domain: "two.test", Root: site(t, source)},
 		}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("two sites shared a trace store")
 		}
@@ -427,7 +427,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test", Root: site(t, "telemetry:\n  driver: disk\n  storage_path: "+t.TempDir()+"\n  path: /debug/one\n")},
 			{Domain: "two.test", Root: site(t, "telemetry:\n  driver: disk\n  storage_path: "+t.TempDir()+"\n  path: /debug/two\n")},
 		}
-		if err := base.ValidateVirtualHosts(); err != nil {
+		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -436,7 +436,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base := config.New()
 		source := "telemetry:\n  path: " + base.Telemetry.Path + "\n"
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: site(t, source)}}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a site asked for the path the server mounts its own dashboard on")
 		}
@@ -451,7 +451,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		source := "telemetry:\n  path: " + base.Telemetry.Path + "\n"
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: site(t, source)}}
 		// The root router carries no dashboard, so it shadows nothing.
-		if err := base.ValidateVirtualHosts(); err != nil {
+		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})

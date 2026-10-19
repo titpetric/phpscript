@@ -45,7 +45,7 @@ func TestTest_Validate(t *testing.T) {
 		{name: "a negative parallel", block: config.Test{Parallel: -1}, want: "test.parallel must be at least 1"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.block.Validate("suite/phpscript.yml")
+			err := test.block.Check("suite/phpscript.yml")
 			if test.want == "" {
 				if err != nil {
 					t.Fatal(err)

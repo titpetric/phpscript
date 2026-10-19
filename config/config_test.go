@@ -54,7 +54,7 @@ func TestTelemetry_Validate(t *testing.T) {
 		{driver: "redis", fails: true},
 	} {
 		t.Run(test.driver, func(t *testing.T) {
-			err := config.Telemetry{Driver: test.driver}.Validate()
+			err := config.Telemetry{Driver: test.driver}.Check()
 			if test.fails {
 				if err == nil {
 					t.Fatalf("driver %q validated", test.driver)
@@ -73,7 +73,7 @@ func TestTelemetry_Validate(t *testing.T) {
 	}
 }
 
-// TestTelemetry_Resolved covers the storage a driver names. Validate decides
+// TestTelemetry_Resolved covers the storage a driver names. Check decides
 // the driver without building anything, so this path opens a store on disk and
 // nothing else does: a command that checks a file opens no directory.
 func TestTelemetry_Resolved(t *testing.T) {

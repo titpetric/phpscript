@@ -1,4 +1,4 @@
-// Package config defines the configuration model in `config/config.yml`.
+// Package `config` defines the configuration model in `config/config.yml`.
 package config
 
 import (
@@ -18,7 +18,7 @@ import (
 // file passed with -f on top of this one and that file only has to name what
 // it changes.
 //
-//go:embed config.yml
+//go:embed "config.yml"
 var DefaultRuntimeConfig []byte
 
 // Config configures phpscript runtimes and HTTP modules.
@@ -78,9 +78,9 @@ type Telemetry struct {
 	StoragePath       string `yaml:"storage_path"`
 }
 
-// Validate reports a telemetry block the server could not run under, without
+// Check reports a telemetry block the server could not run under, without
 // building the storage the driver names, which Resolved does.
-func (t Telemetry) Validate() error {
+func (t Telemetry) Check() error {
 	switch strings.ToLower(strings.TrimSpace(t.Driver)) {
 	case "", "memory", "disk":
 		return nil
@@ -91,7 +91,7 @@ func (t Telemetry) Validate() error {
 
 // Resolved returns oida options with storage applied.
 func (t Telemetry) Resolved() (telemetry.Options, error) {
-	if err := t.Validate(); err != nil {
+	if err := t.Check(); err != nil {
 		return t.Options, err
 	}
 

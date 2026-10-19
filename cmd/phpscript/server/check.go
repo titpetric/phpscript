@@ -19,7 +19,7 @@ func Check(filename, root string, out, errOut io.Writer) error {
 
 	appConfig, err := config.Load(filename)
 	if err == nil {
-		err = appConfig.Validate(name, root)
+		err = appConfig.Check(name, root)
 	}
 	if err != nil {
 		fmt.Fprintln(errOut, err)

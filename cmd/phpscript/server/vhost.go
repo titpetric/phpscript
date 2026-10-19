@@ -84,7 +84,7 @@ func registerVirtualHosts(ctx context.Context, svc *platform.Platform, appConfig
 // here, before the server starts, so a broken configuration fails startup
 // and not one request.
 func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []platform.Module, error) {
-	if err := appConfig.ValidateVirtualHosts(); err != nil {
+	if err := appConfig.CheckVirtualHosts(); err != nil {
 		return nil, nil, err
 	}
 
