@@ -14,7 +14,7 @@ That is why this is the per-function tool. A profile of `phpscript test` carries
 
 The contract's lock and private binary.
 
-The profile is written when the command ends. A script killed with `SIGKILL` loses it. For a server, that means arranging for the process to end on its own: `testdata/phpscript-http-bridge/server.php` ends on its `set_time_limit`, and `TESTSERVER_LIMIT` is what sets how long the profile covers.
+phpscript writes the profile when the command ends. A script killed with `SIGKILL` loses it. For a server, that means arranging for the process to end on its own: `testdata/phpscript-http-bridge/server.php` ends on its `set_time_limit`, and `TESTSERVER_LIMIT` is what sets how long the profile covers.
 
 Two parsing traps:
 
@@ -36,15 +36,15 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 '
 ```
 
-A heap profile, which is taken after a forced collection when the command ends:
+A heap profile, which the command takes after a forced collection when it ends:
 
 ```sh
 phpscript --memprofile=mem-after.pprof run path/to/script.php
 ```
 
-Both at once is allowed and is one run of the script.
+The command accepts both at once and runs the script once.
 
-The server, where the time limit is what ends the process and therefore writes the profile:
+The server, where the time limit is what ends the process and writes the profile:
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
@@ -97,7 +97,7 @@ For allocation counts, in place of bytes:
 go tool pprof -sample_index=alloc_objects -top -nodecount=40 mem-after.pprof
 ```
 
-What a one-shot run includes that a benchmark loop does not: process start, the parse, and the whole of `stdlib.Register` - 322 functions, 41 classes and 152 constants. On a short script those frames are most of the profile. That is the honest cost of a single invocation and it is the wrong profile for a hot loop.
+What a one-shot run includes that a benchmark loop does not: process start, the parse, and the whole of `stdlib.Register` - 322 functions, 41 classes and 152 constants. On a short script those frames are most of the profile. That is the honest cost of a single invocation and the wrong profile for a hot loop.
 
 A single run is one sample. It has no interval, so it ranks frames and does not compare two commits on its own. Where a delta is the claim, the delta comes from a benchmark.
 

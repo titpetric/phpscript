@@ -42,7 +42,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 
 `--cover` takes `line`, `func` or `file`. `line` writes the profile only; `func` and `file` also print a report in the format `go tool cover -func` prints. `--coverfile` implies `--cover`, defaults to `phpscript.cov`, expands `{time}` to a UTC timestamp, and creates the directory. `--split` additionally writes each fixture's own profile beside it.
 
-Benchmark sampling, which is the percentile mode. One process per area, under `GOMEMLIMIT`, for the reason the contract's memory section states: a runtime is retained as long as its parse cache, so one process over the whole suite holds every runtime it built and the kernel ends the run.
+Benchmark sampling, which is the percentile mode. One process per area, under `GOMEMLIMIT`, for the reason the contract's memory section states: a runtime lives as long as its parse cache, so one process over the whole suite holds every runtime it built and the kernel ends the run.
 
 ```sh
 flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
@@ -71,7 +71,7 @@ Cross-cutting flags:
 | `-o FILE`        | Writes the markdown report while the table still goes to the terminal         |
 | `-v`             | Adds each runtime's failure below its fixture                                 |
 
-Three combinations are refused, with these messages:
+The command refuses three combinations, with these messages:
 
 ```
 profile cannot be combined with parallel fixture execution
@@ -79,7 +79,7 @@ cover cannot be combined with --count or --time
 cover=func cannot be combined with --json
 ```
 
-The first because Go's allocation counters are process-wide and cannot be attributed to one concurrent fixture. The second because a coverage count is how many times a line ran, not how many times a loop replayed it. The third because both want stdout.
+The first because Go's allocation counters are process-wide and do not separate one concurrent fixture from another. The second because a coverage count is how many times a line ran, not how many times a loop replayed it. The third because both want stdout.
 
 ## The artifact
 
@@ -101,7 +101,7 @@ Which fields appear depends on the flags the run carries:
 
 `--json` is nanoseconds. The printed table is microseconds to one decimal, as the contract's latency shape reports them. Converting one into the other by hand is where a factor of a thousand gets published.
 
-`duration_ns` is the sample window and no per-run duration. It is roughly the `--time` value. The per-run numbers are the percentiles.
+`duration_ns` is the sample window and no per-run duration, roughly the `--time` value. The per-run numbers are the percentiles.
 
 `gc_runs` prints as `N (M%)` in the table, where M is the collector's share of that row's fixture execution count. A row whose GC share differs between before and after is not comparable and is re-measured, per the contract.
 
@@ -109,13 +109,13 @@ Which fields appear depends on the flags the run carries:
 
 Coverage is the interpreter's alone. The bytecode engine does not collect, and `php` is another process. A coverage number from a `--matrix` run describes one runtime.
 
-In the coverage summary, files and lines answer different questions: a high line percentage over few files says the covered files are covered well, not that the tree is. Both go in a report.
+In the coverage summary, files and lines answer different questions: a high line percentage over few files says the fixtures cover those files well, not that they cover the tree. Both go in a report.
 
 ## What this cannot answer
 
-| Question                                 | Document                                             |
-|------------------------------------------|------------------------------------------------------|
-| Per-function Go cost                     | [collect-phpscript-run.md](collect-phpscript-run.md) |
-| Go allocations attributable to a package | [collect-go-benchmarks.md](collect-go-benchmarks.md) |
-| HTTP latency                             | `wrk`, through [performance.md](performance.md)      |
-| Whether the tree still passes            | [collect-go-tests.md](collect-go-tests.md)           |
+| Question                       | Document                                             |
+|--------------------------------|------------------------------------------------------|
+| Per-function Go cost           | [collect-phpscript-run.md](collect-phpscript-run.md) |
+| Go allocations a package makes | [collect-go-benchmarks.md](collect-go-benchmarks.md) |
+| HTTP latency                   | `wrk`, through [performance.md](performance.md)      |
+| Whether the tree still passes  | [collect-go-tests.md](collect-go-tests.md)           |
