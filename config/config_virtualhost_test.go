@@ -30,7 +30,7 @@ func writeSite(t *testing.T, source string, documentRoots ...string) string {
 	return root
 }
 
-// TestDefaultConfigVirtualHosts pins what config/config.yml says about virtual
+// TestDefaultConfigVirtualHosts pins what `config/config.yml` says about virtual
 // hosting: no sites, and public as the document root every site gets without
 // naming one.
 func TestDefaultConfigVirtualHosts(t *testing.T) {
@@ -76,9 +76,9 @@ telemetry:
 	}
 }
 
-// TestVirtualHostAutoindexIsTheSitesOwn pins where directory listings are
-// decided. They describe what one site publishes, not how the process listens,
-// so the key is the site's to set and it is off for a site that says nothing.
+// TestVirtualHostAutoindexIsTheSitesOwn pins who decides directory listings.
+// They describe what one site publishes, not how the process listens, so the
+// key is the site's to set, and stays off for a site that says nothing.
 func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
 	t.Parallel()
 	base := config.New()
@@ -99,7 +99,7 @@ func TestVirtualHostAutoindexIsTheSitesOwn(t *testing.T) {
 }
 
 // TestVirtualHostLoadRejectsServer pins that a site cannot move the listen
-// address, and that it is told so, with no block dropped.
+// address, and that the overlay says so, with no block dropped.
 func TestVirtualHostLoadRejectsServer(t *testing.T) {
 	t.Parallel()
 	root := writeSite(t, `
@@ -273,7 +273,7 @@ func TestVirtualHostDomains(t *testing.T) {
 }
 
 // TestValidateVirtualHosts covers the checks over the list as a whole. Each
-// case names the domain it is about, which the error has to carry.
+// case names its own domain, which the error has to carry.
 func TestValidateVirtualHosts(t *testing.T) {
 	t.Parallel()
 	site := func(t *testing.T, source string, documentRoots ...string) string {
@@ -286,13 +286,13 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test", Root: site(t, "routes:\n  enabled: true\n")},
 			{Domain: "two.test", Root: site(t, "routes:\n  enabled: false\n")},
 		}
-		if err := base.ValidateVirtualHosts(); err != nil {
+		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
 
 	t.Run("no virtual hosts", func(t *testing.T) {
-		if err := config.New().ValidateVirtualHosts(); err != nil {
+		if err := config.New().CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -300,7 +300,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 	t.Run("empty domain", func(t *testing.T) {
 		base := config.New()
 		base.VirtualHost = []config.VirtualHost{{Root: site(t, "routes:\n  enabled: true\n")}}
-		if err := base.ValidateVirtualHosts(); err == nil {
+		if err := base.CheckVirtualHosts(); err == nil {
 			t.Fatal("an entry with no domain validated")
 		}
 	})
@@ -311,7 +311,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test", Root: site(t, "routes:\n  enabled: true\n")},
 			{Domain: "ONE.test.", Root: site(t, "routes:\n  enabled: true\n")},
 		}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a domain was configured twice")
 		}
@@ -325,7 +325,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base.VirtualHost = []config.VirtualHost{
 			{Domain: "one.test www.one.test ONE.test", Root: site(t, "routes:\n  enabled: true\n")},
 		}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("an entry listed a name twice")
 		}
@@ -340,7 +340,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test www.example.test", Root: site(t, "routes:\n  enabled: true\n")},
 			{Domain: "two.test WWW.Example.test.", Root: site(t, "routes:\n  enabled: true\n")},
 		}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("two entries claimed one name")
 		}
@@ -355,7 +355,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base.VirtualHost = []config.VirtualHost{
 			{Domain: "one.test www.one.test", Root: site(t, "routes:\n  enabled: true\n")},
 		}
-		if err := base.ValidateVirtualHosts(); err != nil {
+		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -363,7 +363,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 	t.Run("missing root", func(t *testing.T) {
 		base := config.New()
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: filepath.Join(t.TempDir(), "absent")}}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a root that does not exist validated")
 		}
@@ -379,7 +379,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		}
 		base := config.New()
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: file}}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a file validated as an application root")
 		}
@@ -395,7 +395,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		}
 		base := config.New()
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: root}}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a site with no document root validated")
 		}
@@ -412,7 +412,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test", Root: site(t, source)},
 			{Domain: "two.test", Root: site(t, source)},
 		}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("two sites shared a trace store")
 		}
@@ -427,7 +427,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 			{Domain: "one.test", Root: site(t, "telemetry:\n  driver: disk\n  storage_path: "+t.TempDir()+"\n  path: /debug/one\n")},
 			{Domain: "two.test", Root: site(t, "telemetry:\n  driver: disk\n  storage_path: "+t.TempDir()+"\n  path: /debug/two\n")},
 		}
-		if err := base.ValidateVirtualHosts(); err != nil {
+		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -436,7 +436,7 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base := config.New()
 		source := "telemetry:\n  path: " + base.Telemetry.Path + "\n"
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: site(t, source)}}
-		err := base.ValidateVirtualHosts()
+		err := base.CheckVirtualHosts()
 		if err == nil {
 			t.Fatal("a site asked for the path the server mounts its own dashboard on")
 		}
@@ -450,8 +450,8 @@ func TestValidateVirtualHosts(t *testing.T) {
 		base.Telemetry.Enabled = false
 		source := "telemetry:\n  path: " + base.Telemetry.Path + "\n"
 		base.VirtualHost = []config.VirtualHost{{Domain: "one.test", Root: site(t, source)}}
-		// Nothing is mounted on the root router, so nothing is shadowed.
-		if err := base.ValidateVirtualHosts(); err != nil {
+		// The root router carries no dashboard, so it shadows nothing.
+		if err := base.CheckVirtualHosts(); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -497,7 +497,7 @@ func TestVirtualHostMailIsTheSitesOwn(t *testing.T) {
 		},
 		// A null node is the spelling the decoder leaves as the inherited
 		// value, so without the guard in OverlayBytes this is the one way a
-		// site declaring it had no servers would be handed the operator's.
+		// site declaring it had no servers would inherit the operator's.
 		"naming the key with nothing under it is no servers": {
 			file: "mail:\n",
 			want: nil,

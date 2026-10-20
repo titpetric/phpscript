@@ -10,7 +10,7 @@ import (
 // claims. A tracer nothing enables starts no trace, so Start, StartSpan
 // and Do all run against a context holding none: the span is nil, every method
 // on it does nothing, and Do still calls fn and returns its error unchanged.
-// A binding therefore instruments without testing whether telemetry is on.
+// A binding can then instrument without testing whether telemetry is on.
 func TestInstrumentationUnderADisabledTracer(t *testing.T) {
 	t.Parallel()
 	tracer, err := New(NewOptions("phpscript"))

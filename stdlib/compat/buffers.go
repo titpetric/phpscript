@@ -9,7 +9,7 @@ import (
 
 // buffers is one runtime's stack of output buffering levels. The runtime holds
 // the same writers as its output redirections; this side keeps them typed so
-// their contents can be read back, the half PHP scripts use.
+// ob_get_contents can read their contents back, the half PHP scripts use.
 type buffers struct {
 	rt    *runner.Runtime
 	stack []*strings.Builder
@@ -47,10 +47,10 @@ func (b *buffers) contents() (string, bool) {
 	return b.stack[len(b.stack)-1].String(), true
 }
 
-// pop ends the innermost level and returns its contents. When flush is true the
-// contents are written to the enclosing level, or to the real output, the way
-// ob_end_flush does; otherwise they are discarded, as ob_end_clean does. The
-// second result is false when no buffer is active.
+// pop ends the innermost level and returns its contents. When flush is true it
+// writes the contents to the enclosing level, or to the real output, the way
+// ob_end_flush does; otherwise it drops them, as ob_end_clean does. The second
+// result is false when no buffer is active.
 func (b *buffers) pop(flush bool) (string, bool) {
 	if len(b.stack) == 0 {
 		return "", false
@@ -60,10 +60,9 @@ func (b *buffers) pop(flush bool) (string, bool) {
 	b.stack = b.stack[:last]
 	b.rt.PopOutput()
 	if flush {
-		// Writing after the pop targets the enclosing level, as
-		// makes nested buffers compose. WriteString, not Write: a []byte
-		// conversion here would copy the whole page every time a template
-		// engine flushes one.
+		// Writing after the pop targets the enclosing level, so nested buffers
+		// compose. WriteString, not Write: a []byte conversion here would copy
+		// the whole page every time a template engine flushes one.
 		if _, err := io.WriteString(b.rt.Output(), contents); err != nil {
 			return contents, true
 		}

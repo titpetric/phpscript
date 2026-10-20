@@ -46,8 +46,8 @@ func Register(rt *runner.Runtime) {
 	})
 
 	// mail sends a plain-text message to $recipient with $subject and $body
-	// through the host's "default" mail server, throwing when none is
-	// configured; PHP's $additional_headers and $additional_params are not
+	// through the host's "default" mail server, throwing when the host
+	// configured none; PHP's $additional_headers and $additional_params are not
 	// accepted.
 	rt.RegisterFunc("mail", func(ctx context.Context, recipient, subject, body string) error {
 		return send(ctx, provider(rt), Message{Server: DefaultName, Recipient: recipient, Subject: subject, Body: body})
@@ -56,12 +56,11 @@ func Register(rt *runner.Runtime) {
 
 // serverName reads the one optional argument `new Mail` takes.
 //
-// The argument is taken as any and not as a string so that a settings
-// array is refused and never coerced. A
-// string parameter turns that array into the empty name, which resolves to
-// "default": a script written against the old binding would go on sending,
-// silently, through whatever server the host configured first. It has to fail,
-// and it has to say where the settings live now.
+// The parameter is any and not a string, so this refuses a settings array and
+// coerces nothing. A string parameter turns that array into the empty name,
+// which resolves to "default": a script written against the old binding would
+// go on sending, silently, through whatever server the host configured first.
+// It has to fail, and it has to say where the settings live now.
 func serverName(names []any) (string, error) {
 	if len(names) > 1 {
 		return "", fmt.Errorf("Mail(): expects at most 1 argument, %d given", len(names))
@@ -83,19 +82,19 @@ func serverName(names []any) (string, error) {
 	return name, nil
 }
 
-// send is the one delivery path both bindings take, so every message is
-// recorded exactly once however the script spelled it.
+// send is the one delivery path both bindings take, so the span records every
+// message exactly once, whichever way the script spelled it.
 //
-// Mail leaves the process and is the slowest thing most scripts do, so it is
-// external work and no internal step. The recipient and the subject are
-// recorded; the body and its HTML are left out and only their size kept. A
+// Mail leaves the process and is the slowest thing most scripts do, so the span
+// marks it external work and no internal step. It carries the recipient and the
+// subject; the body and its HTML stay out of it and only their size goes in. A
 // body is the one part of a delivery that is certain to be private, and a size
-// answers the question a trace is opened to answer.
+// answers the question an operator opens a trace to answer.
 //
-// The server is recorded by its configured name and never by
-// its hostname. The name is what an operator reads the trace against, and it
-// is all this side of the provider holds, because the interface exposes
-// no part of a credential, hostname included.
+// The span names the server by its configured name and never by its hostname.
+// The name is what an operator reads the trace against, and the only server
+// detail this side of the provider holds, because the interface exposes no part
+// of a credential, hostname included.
 func send(ctx context.Context, servers model.MailProvider, message Message) (err error) {
 	span := telemetry.StartSpan(ctx, "mail", telemetry.KindExternal)
 	span.SetAttribute("server", message.Server)
@@ -119,16 +118,17 @@ func send(ctx context.Context, servers model.MailProvider, message Message) (err
 // messageSender is a provider that delivers a whole Message, HTML part and
 // Reply-To included. Provider and Memory are. model.MailProvider declares a
 // plain-text Send only, and stays that way so a host's own provider keeps
-// compiling; one without SendMessage is refused a message it cannot carry.
+// compiling; send refuses a message a provider without SendMessage cannot
+// carry.
 type messageSender interface {
 	SendMessage(ctx context.Context, message Message) error
 }
 
 // replyAddress reads the Reply-To a script passed as one address, a display
-// name allowed. CR and LF are stripped first, as from every header, so a
-// smuggled header leaves one malformed address behind, which is refused and
-// never sent. A bare address stays bare; one with a name is re-rendered, which
-// quotes the name and encodes it when it is not ASCII.
+// name allowed. header strips CR and LF first, as from every header, so a
+// smuggled header leaves one malformed address behind, which this refuses and
+// never sends. A bare address stays bare; one with a name is re-rendered, which
+// quotes the name and encodes a name outside ASCII.
 func replyAddress(value string) (string, error) {
 	if value == "" {
 		return "", nil
@@ -147,10 +147,10 @@ func replyAddress(value string) (string, error) {
 
 // Mail is the handle a script holds on one configured server.
 //
-// Both fields are unexported, so the object is opaque from PHP:
-// a binding publishes its exported methods and fields, so $mail->password,
-// var_dump, print_r, get_object_vars and json_encode all find nothing. The
-// only thing it can do is send, and the only thing it knows is a name.
+// Both fields stay unexported, so the object is opaque from PHP: a binding
+// publishes its exported methods and fields, so $mail->password, var_dump,
+// print_r, get_object_vars and json_encode all find nothing. The only thing it
+// can do is send, and the only thing it knows is a name.
 type Mail struct {
 	name     string
 	provider model.MailProvider

@@ -8,7 +8,7 @@ import (
 
 // registerEscape installs the two quoting functions. They touch nothing and are
 // not bound to a root: quoting is a string operation, and a script quotes an
-// argument whether or not it goes on to run anything.
+// argument whether it goes on to run anything.
 func registerEscape(rt *runner.Runtime) {
 	// escapeshellarg returns $arg single-quoted for the shell, with embedded single quotes escaped.
 	rt.RegisterFunc("escapeshellarg", phpEscapeshellarg)
@@ -32,10 +32,10 @@ const shellMeta = "#&;`|*?~<>^()[]{}$\\\x0a\xff"
 
 // phpEscapeshellcmd escapes the shell metacharacters in a whole command line.
 //
-// A quote is escaped only when it is unpaired, so a caller can write
-// escapeshellcmd("echo 'a b'") and keep the quoting they meant. That also means
-// the contents of a quoted argument stay live, so this is not the function to
-// pass user input through; escapeshellarg is.
+// It escapes a quote only where that quote has no partner, so a caller can
+// write escapeshellcmd("echo 'a b'") and keep the quoting they meant. That also
+// means the contents of a quoted argument stay live, so this is not the
+// function to pass user input through; escapeshellarg is.
 func phpEscapeshellcmd(command string) string {
 	var b strings.Builder
 	b.Grow(len(command))

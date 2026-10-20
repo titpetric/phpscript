@@ -35,9 +35,9 @@ func TestNewCommand(t *testing.T) {
 	}
 }
 
-// TestRun covers one generation of the loop: the script is read, the runtime
-// is built around it and its output reaches os.Stdout. The run returns once
-// the script ends, because nothing sent SIGHUP and no reload is pending.
+// TestRun covers one generation of the loop: runOnce reads the script, builds
+// the runtime around it, and the output reaches os.Stdout. The run returns
+// once the script ends, because nothing sent SIGHUP and no reload is pending.
 func TestRun(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "hello.php"), []byte("<?php echo \"from the script\\n\";\n"), 0o644); err != nil {
@@ -74,8 +74,8 @@ func TestRun(t *testing.T) {
 // TestResolveEntrypoint pins which scripts re-root the runtime. A path the
 // working directory can name keeps it as the root, because PHP resolves an
 // include against the working directory; anything the working directory cannot
-// name has to root at the script instead, or the leading slash is stripped and
-// the file is looked for in the wrong place.
+// name has to root at the script instead, or cleanFSPath strips the leading
+// slash and the runtime looks for the file in the wrong place.
 func TestResolveEntrypoint(t *testing.T) {
 	dir := t.TempDir()
 	nested := filepath.Join(dir, "sub")

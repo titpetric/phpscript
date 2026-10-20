@@ -43,7 +43,7 @@ func TestRegister(t *testing.T) {
 
 // TestRegisterIgnoresArguments covers the signature PHP has and this binding
 // does not read: phpinfo($what) selects sections in PHP, and the report here
-// is one block, so an argument is accepted and changes nothing. A script
+// is one block, so the binding takes an argument and changes nothing. A script
 // written for PHP calls phpinfo(INFO_GENERAL) and has to keep running.
 func TestRegisterIgnoresArguments(t *testing.T) {
 	t.Parallel()

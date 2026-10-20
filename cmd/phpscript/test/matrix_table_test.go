@@ -178,7 +178,7 @@ func TestMatrixTableFitWidensLastColumn(t *testing.T) {
 	if width := table.Width(lines[0]); width != maxTableWidth {
 		t.Errorf("table width = %d, want %d", width, maxTableWidth)
 	}
-	// A table already wider than the terminal is left alone.
+	// fit leaves a table already wider than the terminal alone.
 	before := tbl.detailWidth()
 	tbl.fit(10)
 	if tbl.detailWidth() != before {

@@ -74,8 +74,8 @@ func Columns(blocks []Block, source func(file string) []string) []ProfileBlock {
 	return out
 }
 
-// SortProfile orders blocks by file and position, which is the order a profile
-// is written in.
+// SortProfile orders blocks by file and position, the order a profile carries
+// them in.
 func SortProfile(blocks []ProfileBlock) {
 	sort.Slice(blocks, func(i, j int) bool {
 		if blocks[i].File != blocks[j].File {

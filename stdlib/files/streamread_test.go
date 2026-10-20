@@ -35,7 +35,7 @@ fclose($f);`)
 }
 
 // TestFgetsKeepsTheNewline covers what php's fgets returns: the line up to and
-// including its newline, and false once the handle is spent. A script reading
+// including its newline, and false once the handle runs out. A script reading
 // with `while (($line = fgets($f)) !== false)` leans on the false, so an empty
 // string at the end would loop forever.
 func TestFgetsKeepsTheNewline(t *testing.T) {
@@ -53,9 +53,9 @@ fclose($f);`)
 }
 
 // TestFseekMovesByWhence covers the three SEEK_* values and their
-// constants. PHP numbers them 0, 1 and 2, and so does Go's io package, so the
-// argument is passed through as it arrives; a translation table here would be a
-// second numbering to keep in step.
+// constants. PHP numbers them 0, 1 and 2, and so does Go's io package, so
+// fseek passes the argument through as it arrives; a translation table here
+// would be a second numbering to keep in step.
 func TestFseekMovesByWhence(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, streamRoot(t), nil, `<?php
@@ -107,7 +107,7 @@ fclose($f);`)
 }
 
 // TestFeofOnAnUnseekableHandle covers php://input and php://output, which
-// cannot be seeked: feof answers false for them, so a script draining the
+// take no seek: feof answers false for them, so a script draining the
 // request body with a feof loop would spin, and stream_get_contents is the
 // call for that.
 func TestFeofOnAnUnseekableHandle(t *testing.T) {

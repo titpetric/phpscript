@@ -7,19 +7,19 @@ import (
 )
 
 // RedeclareError is a second declaration of a function name that is already
-// taken. PHP treats it as a fatal error; this runtime has one error path, so it
-// is raised as a catchable RuntimeException and reaches a Go host as an error
-// from Run.
+// taken. PHP treats it as a fatal error; this runtime has one error path, so
+// declareFunc returns it as a catchable RuntimeException, and it reaches a Go
+// host as an error from Run.
 //
-// It is a type and no bare error because the two runtimes have to agree
-// on it. A compile failure normally means the bytecode engine does not cover
-// some form yet and the interpreter runs the program; this is a verdict on the
+// A named type and no bare error, because the two runtimes have to agree on
+// it. A compile failure normally means the bytecode engine does not cover some
+// form yet and the interpreter runs the program; this is a verdict on the
 // program, which the interpreter would reach too, so flatstack raises it and
 // falls back to no second opinion.
 type RedeclareError struct {
 	// Name is the function as a script spells it.
 	Name string
-	// At is the declaration being refused.
+	// At is the declaration declareFunc refuses.
 	At FuncSite
 	// Previous is the first declaration, zero when the name belongs to
 	// a registered binding and not to a declaration in PHP source.
@@ -30,11 +30,11 @@ type RedeclareError struct {
 
 // Error writes PHP's fatal-error text for the same condition, with one
 // difference by decision: the paths are the ones the script named, resolved
-// against the root the shims are bound to, where PHP prints host paths. A
+// against the root the shims bind to, where PHP prints host paths. A
 // runtime serving scripts out of an fs.FS has no host path to print.
 //
-// A program a host assembled itself carries no file or spans, so the clauses
-// that would name a location are left out, and never written empty.
+// A program a host assembled itself carries no file or spans, so Error omits
+// the clauses that would name a location and never writes one empty.
 func (e *RedeclareError) Error() string {
 	message := fmt.Sprintf("Cannot redeclare function %s()", e.Name)
 	if !e.Builtin {
@@ -55,10 +55,10 @@ func (e *RedeclareError) GetMessage() string { return e.Error() }
 // GetCode answers PHP's zero, since there is no error number to report.
 func (e *RedeclareError) GetCode() int { return 0 }
 
-// ThrowableClass names the class a catch clause filters on. Exception rather
-// than a name of its own: PHP has no class for this at all, because there it is
-// a compile-time fatal that no catch can reach, so there is no spelling to
-// match and Exception is the clause a script writing one would write.
+// ThrowableClass names the class a catch clause filters on. Exception and no
+// name of its own: PHP has no class for this, because there the condition is a
+// compile-time fatal that no catch can reach, so there is no spelling to match
+// and Exception is the clause a script writing one would write.
 func (e *RedeclareError) ThrowableClass() string { return "Exception" }
 
 // declareFunc records a function declaration and refuses a name that is already
@@ -66,9 +66,9 @@ func (e *RedeclareError) ThrowableClass() string { return "Exception" }
 //
 // Only declarations hoist reaches get here, which is every declaration the
 // runtime honours: a `function` written inside an `if` or a function body is
-// not a statement hoist walks, and executing it is a no-op, so there is nothing
-// to collide with. That is also why an `if (!function_exists('f'))` guard needs
-// no special case here.
+// not a statement hoist walks, and executing one is a no-op, so there is
+// nothing to collide with. That is also why an `if (!function_exists('f'))`
+// guard needs no special case here.
 func (rt *Runtime) declareFunc(name string, site FuncSite) error {
 	if previous, ok := rt.funcSites[name]; ok {
 		return &RedeclareError{Name: name, At: site, Previous: previous}

@@ -26,8 +26,8 @@ func TestExitError(t *testing.T) {
 	}
 }
 
-// TestIsExit covers recognising an exit through a wrapper. It is how a host
-// tells a script that ended from one that failed.
+// TestIsExit covers recognising an exit through a wrapper: a host tells a
+// script that ended from one that failed by that check.
 func TestIsExit(t *testing.T) {
 	t.Parallel()
 	exit, ok := IsExit(fmt.Errorf("while running: %w", &ExitError{Code: 7}))
@@ -90,9 +90,9 @@ func TestArgumentCountError(t *testing.T) {
 	}
 }
 
-// TestTypeError covers the message PHP's TypeError carries. The parameter is
-// named by position and not by name, because a Go binding's parameter names are
-// not recoverable through reflect.
+// TestTypeError covers the message PHP's TypeError carries. The message names
+// the parameter by position and not by name, because a Go binding's parameter
+// names are not recoverable through reflect.
 func TestTypeError(t *testing.T) {
 	t.Parallel()
 	err := &TypeError{Name: "str_repeat", Position: 2, Want: "int", Got: "string"}

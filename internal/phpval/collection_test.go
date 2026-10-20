@@ -46,9 +46,8 @@ func TestStrings(t *testing.T) {
 }
 
 // TestStringsRefusesObject covers the one element with no string form. php 8.5
-// raises Error with "Object of class C could not be converted to string", and
-// the same wording is reported here, so no spelling is invented for an object
-// inside implode.
+// raises Error with the wording want pins below, and Strings reports the same
+// wording, so nothing invents a spelling for an object inside implode.
 func TestStringsRefusesObject(t *testing.T) {
 	t.Parallel()
 	object := model.NewObject(&model.Class{Name: "C"})
@@ -72,8 +71,8 @@ func TestStringsRefusesObject(t *testing.T) {
 }
 
 // TestValues covers the order a collection reads back in and the one case that
-// copies nothing: a []any is the storage the caller already holds, so it is
-// returned as it is. Callers that write to the result copy first.
+// copies nothing: a []any is the storage the caller already holds, so Values
+// passes it through. Callers that write to the result copy first.
 func TestValues(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -100,7 +99,7 @@ func TestValues(t *testing.T) {
 		})
 	}
 
-	// A []any is returned as the same backing array, so a caller reading it
+	// Values returns a []any as the same backing array, so a caller reading it
 	// sees the collection and no copy of it.
 	source := []any{int64(1), int64(2)}
 	returned := Values(source)

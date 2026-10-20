@@ -2,9 +2,9 @@ package formatter
 
 // SkipError reports a file the formatter left alone: source it cannot parse,
 // a node it has no spelling for, or output that did not hold up to the checks
-// in File. Formatting rewrites a file in place, so anything the formatter does
-// not fully understand is safer left as it is than rewritten from a partial
-// reading of it.
+// in File. Formatting rewrites a file in place, so the formatter leaves
+// anything it does not fully understand untouched, which is safer than a
+// rewrite from a partial reading.
 type SkipError struct {
 	Path   string
 	Reason error

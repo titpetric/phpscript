@@ -4,7 +4,7 @@
 
 That split is the whole design. Connection settings are operator configuration, the same way database credentials are, so they live in the [`mail` block](../configuration.md#mail-servers) and reach a script only as a name it may construct against.
 
-Both bindings are part of the standard library. No PHP include is needed.
+Both bindings are part of the standard library. A script includes nothing to reach them.
 
 ## Sending one message
 
@@ -57,7 +57,7 @@ The arguments decide the shape of the message:
 
 Both parts of a multipart message, and a lone HTML part, are UTF-8 and quoted-printable, so a long line or a non-ASCII character reaches the relay as 7-bit lines of 76 characters at most. Write the text part by hand. A text-only client, a screen reader set to plain text and a spam filter read it, and stripping the tags from the HTML drops every link target.
 
-`$reply_to` is one address, with or without a display name. CR and LF are stripped from it as from every header, so a header smuggled in behind a line break leaves one malformed address, and the call throws before anything is sent:
+`$reply_to` is one address, with or without a display name. The binding strips CR and LF from it as from every header, so a header smuggled in behind a line break leaves one malformed address, and the call throws before delivery:
 
 ```php
 try {
@@ -90,13 +90,13 @@ mail:
     from: Marketing <marketing@example.com>
 ```
 
-`port` defaults to 25; a submission host usually listens on 587. Authentication is PLAIN and is used when both `username` and `password` are set; neither set means no authentication, which a local mailhog accepts. `from` may carry a display name, in which case the bare address is used as the envelope sender.
+`port` defaults to 25; 587 is the submission port. Authentication is PLAIN. With both `username` and `password`, the relay authenticates; with neither, a local mailhog accepts the unauthenticated connection. `from` may carry a display name, in which case the bare address becomes the envelope sender.
 
 The full key reference, including `insecure` and the STARTTLS rules, is in [Mail servers](../configuration.md#mail-servers).
 
 ## Failure is loud
 
-A name nobody configured is refused when the object is constructed, before a script has composed a message:
+The constructor refuses a name nobody configured, before a script has composed a message:
 
 ```php
 try {
@@ -121,11 +121,11 @@ try {
 }
 ```
 
-This is where `mail()` diverges from PHP, which answers `false` and says nothing about why. Nothing is queued and nothing is retried: a delivery either happened or it threw, and what to do about it belongs to the application.
+This is where `mail()` diverges from PHP, which answers `false` and says nothing about why. The binding queues nothing and retries nothing: a delivery either happened or it threw, and what to do about it belongs to the application.
 
 ## What a script cannot do
 
-The binding is built so that a request holding a mail handle cannot leak the credential behind it:
+A request holding a mail handle cannot leak the credential behind it:
 
 ```php
 $mail = new Mail("marketing");   // configured with a username and password
@@ -138,7 +138,7 @@ var_dump($mail->host);           // NULL
 
 The object carries no properties, so a property read, `var_dump`, `print_r`, `var_export`, `get_object_vars` and `json_encode` all find nothing. There is no call that lists the configured servers either, because naming what exists is itself a disclosure. And because the settings are a configuration key and no `env` entry, `getenv()` never reaches them.
 
-Passing the settings in place of a name is refused, with nothing quietly accepted:
+The constructor refuses the settings in place of a name and accepts nothing quietly:
 
 ```php
 new Mail(array("host" => "mail.example.com", "password" => "secret"));

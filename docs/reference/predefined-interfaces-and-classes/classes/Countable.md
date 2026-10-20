@@ -4,9 +4,9 @@
 
 ## Introduction
 
-Classes implementing Countable can be used with the `count()` function.
+The `count()` function accepts an object whose class implements Countable.
 
-The single method it names is called by `count()` when its argument is an object of a class that declares the interface.
+`count()` calls the single method it names when its argument is an object of a class that declares the interface.
 
 ## Interface synopsis
 
@@ -28,5 +28,5 @@ public function count(): int
 
 ## Status
 
-- phpscript does not implement this interface. `implements Countable` is accepted and unchecked, because no `interface` declaration in the same file defines the name.
+- phpscript has no `Countable`. The parser accepts `implements Countable` and checks nothing, because no `interface` declaration in the same file defines the name.
 - Nothing dispatches through it: `count()` does not call a `count()` method on an object. Call the method by name, or count the array the object holds.

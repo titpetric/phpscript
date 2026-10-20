@@ -10,8 +10,8 @@ import (
 // Limits bounds what a hostile form can build. A zero field means PHP's
 // default; negative means no limit.
 type Limits struct {
-	// MaxNesting is php.ini's max_input_nesting_level. A variable past it is
-	// dropped whole and never truncated.
+	// MaxNesting is php.ini's max_input_nesting_level. The parse drops a
+	// variable past it whole and never truncates one.
 	MaxNesting int
 
 	// MaxVars is php.ini's max_input_vars.
@@ -42,13 +42,13 @@ func (l Limits) maxVars() int {
 // ParseStr decodes an application/x-www-form-urlencoded string into the nested
 // array PHP builds from it. It backs parse_str(), $_GET and $_POST.
 //
-// Decoding happens before the brackets are read, so `k%5Ba%20b%5D=1` nests
+// ParseStr decodes before it reads the brackets, so `k%5Ba%20b%5D=1` nests
 // under the key `a b`.
 func ParseStr(raw string, limits Limits) *model.Array {
 	if raw == "" {
 		return model.NewArray()
 	}
-	// PHP 8 splits on `&` only; the arg_separator that also honoured `;` is gone.
+	// PHP 8 splits on `&` only, with no arg_separator honouring `;` any more.
 	fields := strings.Split(raw, "&")
 	pairs := make([]Pair, 0, len(fields))
 	for _, field := range fields {
@@ -69,8 +69,8 @@ type Pair struct {
 }
 
 // ParsePairs is ParseStr for input that arrived as pairs: multipart values and
-// the cookie header. Order is the order they are applied in, which decides the
-// result when two name the same variable.
+// the cookie header. Order is the order ParsePairs applies them in, which
+// decides the result when two name the same variable.
 func ParsePairs(limits Limits, pairs []Pair) *model.Array {
 	out := model.NewArray()
 	maxVars, maxNesting := limits.maxVars(), limits.maxNesting()
@@ -92,11 +92,11 @@ func ParsePairs(limits Limits, pairs []Pair) *model.Array {
 //
 // Two behaviours here look like bugs and are not. Mangling applies to the
 // top-level name only, so `a.b` is the key `a_b` while `e[f.g]` nests under
-// `f.g`. And anything after the last well-formed bracket is discarded rather
-// than making the name invalid, so `a[b]c` and `a[b]]` are both `a[b]`.
+// `f.g`. And parseKey discards anything after the last well-formed bracket
+// and keeps the name valid, so `a[b]c` and `a[b]]` are both `a[b]`.
 //
 // An unterminated *first* bracket is the exception: the name has no path at
-// all and is mangled whole, so `a[b` is the flat key `a_b`.
+// all and parseKey mangles it whole, so `a[b` is the flat key `a_b`.
 func parseKey(name string, maxNesting int) (string, []string, bool) {
 	open := strings.IndexByte(name, '[')
 	if open < 0 || strings.IndexByte(name[open:], ']') < 0 {

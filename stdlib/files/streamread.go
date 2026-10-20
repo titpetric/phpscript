@@ -9,24 +9,24 @@ import (
 
 // registerStreamReads installs the read half of the handle API. fopen() already
 // returns the handle these take, and fwrite() and stream_get_contents() already
-// take one, so these cover every way of reading a handle short of all of it at
-// once.
+// take one, so these cover every way of reading a handle short of reading it
+// whole at once.
 //
 // None of them buffers. A buffered reader would read further than the script
 // named, which fseek() and ftell() would then disagree with, so fgets()
 // walks the handle a byte at a time instead. That is one syscall per byte on a
-// host file: reading a whole file and splitting it is cheaper here, and a
+// host file: reading a whole file and splitting it costs less here, and a
 // script that can should.
 func registerStreamReads(rt *runner.Runtime) {
 	// The $whence values fseek takes. PHP numbers them 0, 1 and 2, and so does
-	// Go's io package, so the argument is passed through as it
-	// arrives, and never translated.
+	// Go's io package, so fseek passes the argument through as it arrives and
+	// never translates it.
 	rt.SetConst("SEEK_SET", int64(io.SeekStart))
 	rt.SetConst("SEEK_CUR", int64(io.SeekCurrent))
 	rt.SetConst("SEEK_END", int64(io.SeekEnd))
 
 	// fread reads at most $length bytes from $stream and returns them, or
-	// false when the handle cannot be read; a read at the end of the handle
+	// false when reading the handle fails; a read at the end of the handle
 	// returns the empty string, which ends a loop reading to the end.
 	rt.RegisterFunc("fread", func(stream io.Reader, length int64) any {
 		if stream == nil || length <= 0 {
@@ -103,9 +103,9 @@ func registerStreamReads(rt *runner.Runtime) {
 	})
 
 	// fseek moves $stream to $offset, counted from the start of the handle,
-	// from where it sits when $whence is SEEK_CUR, or from the end when it is
-	// SEEK_END; it answers 0 on success and -1 on failure, which is the
-	// opposite way round from every other function here and is php's own
+	// from where it sits when $whence is SEEK_CUR, or from the end when
+	// $whence is SEEK_END; it answers 0 on success and -1 on failure, which is
+	// the opposite way round from every other function here and is php's own
 	// choice.
 	rt.RegisterFunc("fseek", func(stream io.Seeker, offset int64, whence ...int64) int64 {
 		if stream == nil {

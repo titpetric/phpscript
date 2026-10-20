@@ -9,13 +9,13 @@ import (
 
 // bindingCtx is the context one binding call receives: the calling frame, the
 // script environment and the source location, carried as fields of one value
-// in place of four context.WithValue layers. The parent is embedded, so
+// in place of four context.WithValue layers. It embeds the parent, so
 // deadlines, cancellation and every other value pass through.
 //
-// It is allocated per call and never pooled or reused. A binding may hold the
-// context past the call - a database driver watching Done() on a goroutine of
-// its own does - and a reused value would rebind the parent a first holder
-// still reads.
+// The runtime builds one per call and never pools or reuses it. A binding may
+// hold the context past the call - a database driver watching Done() on a
+// goroutine of its own does - and a reused value would rebind the parent a
+// first holder still reads.
 type bindingCtx struct {
 	context.Context
 
@@ -27,14 +27,14 @@ type bindingCtx struct {
 	// session is the runtime's own context when the embedded parent is the
 	// request's: the active span and the request record Context.Register
 	// seeded live on the session chain, while the parent carries the values,
-	// the deadline and the cancellation of the request being answered. Nil
-	// when the parent is the session context already.
+	// the deadline and the cancellation of the request in flight. Nil when
+	// the parent is the session context already.
 	session context.Context
 
 	// detached drops the parent's cancellation and deadline while keeping its
-	// values. It is ignore_user_abort(true) read by a binding: the disconnect
-	// must not end work the handler said to finish, and what middleware
-	// attached still reaches it.
+	// values. The flag spells ignore_user_abort(true) for a binding: the
+	// disconnect must not end work the handler said to finish, and what
+	// middleware attached still reaches it.
 	detached bool
 }
 
@@ -86,11 +86,11 @@ func (c *bindingCtx) Deadline() (time.Time, bool) {
 // bindingContext builds the context injected into a binding whose first
 // parameter declares one.
 //
-// The base is the request being answered while one is live, so a value
-// middleware attached to r.Context(), its deadline and its cancellation all
-// reach the binding. runner/runtime_deadline.go states why rt.ctx itself is
-// never rebuilt; deriving a value per call is compatible with a binding parked
-// on the one it holds. Outside a request the base is the session context, and
+// The base is the request in flight while one is live, so a value middleware
+// attached to r.Context(), its deadline and its cancellation all reach the
+// binding. runner/runtime_deadline.go states why rt.ctx itself is never
+// rebuilt; deriving a value per call is compatible with a binding parked on
+// the one it holds. Outside a request the base is the session context, and
 // a handler that called ignore_user_abort(true) keeps the request's values
 // and drops its cancellation, so a disconnect does not end binding work the
 // handler chose to finish.
@@ -107,9 +107,9 @@ func (rt *Runtime) bindingContext(scope *Scope) context.Context {
 // fillSource records the file and the line spans started from the context
 // attribute to. The line belongs to the runtime and to no scope: the parser
 // compiles __LINE__ to a literal, so no frame carries it, and writing it into
-// one per statement to be read back here costs a map write on every statement
-// executed. It is resolved here and never recorded, for the reason currentStmt
-// states.
+// one per statement for a read back here costs a map write on every statement
+// executed. fillSource resolves it here and records nothing, for the reason
+// currentStmt states.
 func (rt *Runtime) fillSource(scope *Scope, c *bindingCtx) {
 	if filename, ok := scope.Get("__FILE__"); ok {
 		c.filename, _ = filename.(string)

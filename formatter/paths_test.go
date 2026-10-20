@@ -18,10 +18,10 @@ func write(t *testing.T, name, src string) string {
 	return path
 }
 
-// TestFile covers the rewrite and what it reports: a file nothing
-// formatted is written back and reported as changed, and a file already
-// formatted is reported unchanged and left alone. A caller running this over a
-// tree counts the second result to decide whether anything moved.
+// TestFile covers the rewrite and what it reports: the formatter writes an
+// unformatted file back and calls it changed, and leaves a formatted one
+// untouched and calls it unchanged. A caller running this over a tree counts
+// the second result to decide whether anything moved.
 func TestFile(t *testing.T) {
 	t.Parallel()
 	path := write(t, "index.php", "<?php\nif($a){echo 1;}\n")
@@ -58,8 +58,8 @@ func TestFile(t *testing.T) {
 }
 
 // TestFileSkipsWhatItCannotParse covers the refusal: formatting rewrites a
-// file in place, so a file the parser cannot read is left byte for byte alone
-// and reported as a *SkipError naming it. A directory of PHP holds valid code
+// file in place, so the formatter leaves a file the parser cannot read byte
+// for byte and answers a *SkipError naming it. A directory of PHP holds valid code
 // this parser does not support, and one such file does not stop the rest.
 func TestFileSkipsWhatItCannotParse(t *testing.T) {
 	t.Parallel()
@@ -89,7 +89,7 @@ func TestFileSkipsWhatItCannotParse(t *testing.T) {
 }
 
 // TestFileReportsAMissingPath covers a path that is not there: the read error
-// is returned as it came, with no *SkipError wrapper, because a caller walking
+// comes back as it came, with no *SkipError wrapper, because a caller walking
 // a tree has to stop on a read failure and carry on past a refusal.
 func TestFileReportsAMissingPath(t *testing.T) {
 	t.Parallel()

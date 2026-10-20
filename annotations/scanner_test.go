@@ -26,8 +26,9 @@ echo "public";
 }
 
 // TestScannerReadsOnlyWhatAnApplicationPublishes covers which files discovery
-// reads. A .php file is read at any depth, so routes can sit in one folder or
-// in a tree of them. A composer install tree is skipped: a dependency does not
+// reads. The scan reads a .php file at any depth, so routes can sit in one
+// folder or in a tree of them. It passes over a composer install tree: a
+// dependency does not
 // publish routes into the application, and walking it costs a parse of every
 // vendored file. A file with no annotation and a file with another extension
 // register nothing.

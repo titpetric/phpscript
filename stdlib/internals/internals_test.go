@@ -13,7 +13,7 @@ import (
 // TestRegister covers the two names this package installs and the signature
 // they carry. PHP passes $real_usage to split the allocator's own footprint
 // from the script's; the estimate here is one walk of the live values and has
-// no such split, so the argument is accepted and reports the same number.
+// no such split, so the binding takes the argument and reports the same number.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -82,7 +82,7 @@ if ($m1 > $m0 && $m2 < $m1) {
 }
 
 // TestMemoryLimitExhaustion grows an array in place; the walk sees the
-// growth even though no variable is reassigned, and the limit error is
+// growth even though the script reassigns no variable, and the limit error is
 // catchable as RuntimeException.
 func TestMemoryLimitExhaustion(t *testing.T) {
 	t.Parallel()

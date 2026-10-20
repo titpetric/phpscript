@@ -19,21 +19,21 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// The PHP algorithm identifiers. PASSWORD_DEFAULT is bcrypt in PHP 8, so it is
-// the same value as PASSWORD_BCRYPT and a script that passes either gets the
-// same hash; argon2id is the stronger choice per millisecond spent and is not
-// the default here for the same reason it is not the default there, which is
-// that it changes the memory footprint of a login.
+// The PHP algorithm identifiers. PASSWORD_DEFAULT is bcrypt in PHP 8, so it
+// carries the same value as PASSWORD_BCRYPT and a script that passes either
+// gets the same hash; argon2id is the stronger choice per millisecond spent and
+// is not the default here for the same reason php does not default to it: it
+// changes the memory footprint of a login.
 const (
 	algoBcrypt   = "2y"
 	algoArgon2i  = "argon2i"
 	algoArgon2id = "argon2id"
 
 	// defaultCost is PHP 8.5's PASSWORD_BCRYPT_DEFAULT_COST, not x/crypto's
-	// bcrypt.DefaultCost, which is still 10. The number is reported to
-	// scripts through the constant and is recorded inside every hash, so a
-	// difference here is a difference a script can see; matching PHP is what
-	// lets the .phpt fixture be checked against the php binary.
+	// bcrypt.DefaultCost, which is still 10. The constant reports the number to
+	// scripts and every hash records it, so a difference here is a difference a
+	// script can see; matching PHP is what lets the .phpt fixture run against
+	// the php binary.
 	defaultCost = 12
 )
 
@@ -52,8 +52,8 @@ const (
 
 // params is the algorithm and the work factors of one hash. One type covers
 // both algorithms because password_hash takes the options of whichever
-// algorithm the call names; only the fields that algorithm reads are
-// set, and validate() is what decides which those are.
+// algorithm the call names; defaultParams and readOptions fill only the fields
+// that algorithm reads, and the bounds check tests the same ones.
 type params struct {
 	algo   string
 	cost   int    // bcrypt, log2 of the key schedule iterations
@@ -75,10 +75,10 @@ func defaultParams(algo string) params {
 	}
 }
 
-// validate refuses a parameter set the algorithm cannot run. The argon2 bounds
-// are libargon2's, so php refuses the same values with the same meaning: one
-// lane minimum, one pass minimum, and at least eight KiB per lane.
-func (p params) validate() error {
+// check refuses a parameter set the algorithm cannot run. The argon2 bounds
+// are libargon2's, so php refuses the same values with the same meaning: at
+// least one lane, at least one pass, and at least eight KiB per lane.
+func (p params) check() error {
 	if p.algo == algoBcrypt {
 		if p.cost < bcryptMinCost || p.cost > bcryptMaxCost {
 			return fmt.Errorf("cost must be between %d and %d, got %d", bcryptMinCost, bcryptMaxCost, p.cost)
@@ -140,8 +140,8 @@ func Register(rt *runner.Runtime) {
 		return hash, nil
 	})
 
-	// password_verify reports whether $password produced $hash. The algorithm
-	// and the work factors are read out of $hash. An empty or malformed $hash
+	// password_verify reports whether $password produced $hash. It reads the
+	// algorithm and the work factors out of $hash. An empty or malformed $hash
 	// returns false; it raises no error.
 	rt.RegisterFunc("password_verify", passwordVerify)
 
@@ -236,13 +236,14 @@ func paramsOf(hash string) (params, bool) {
 }
 
 // isBcrypt reports whether a stored value is long enough and shaped right to be
-// a bcrypt hash. It is the two conditions x/crypto rejects a string on before it
-// parses anything - 59 bytes and a leading "$" - asked here so that a value
-// which is neither argon2 nor bcrypt is answered without copying it to a []byte.
+// a bcrypt hash. The two conditions x/crypto rejects a string on before it
+// parses anything - 59 bytes and a leading "$" - run here first, so a value
+// that is neither argon2 nor bcrypt answers false without a copy to a []byte.
 //
 // It decides nothing else. The revision marker, the cost digits and the base64
-// are x/crypto's to read, so a hash this accepts can still be refused, and the
-// set of hashes that verify is the same as if password_verify called it blind.
+// are x/crypto's to read, so x/crypto can still refuse a hash this accepts,
+// and the hashes that verify are the same set as if password_verify called it
+// blind.
 func isBcrypt(hash string) bool {
 	return len(hash) >= 59 && hash[0] == '$'
 }
@@ -256,11 +257,11 @@ func goForm(hash string) string {
 }
 
 // paramsFrom reads the ($algo, $options) tail both hashing functions take. PHP
-// allows the algorithm to be omitted in neither position, but it does allow
-// either to be null, and a script that passes only options is the common case
-// once the algorithm is whatever PASSWORD_DEFAULT resolves to.
+// requires the algorithm in both positions, though it does allow either to be
+// null, and a script that passes only options is the common case once the
+// algorithm is whatever PASSWORD_DEFAULT resolves to.
 //
-// The algorithm is resolved before the options are read, because the defaults
+// It resolves the algorithm before reading the options, because the defaults
 // an absent key falls back to are the algorithm's own.
 func paramsFrom(opts []any) (params, error) {
 	algo, err := algoFrom(opts)
@@ -279,7 +280,7 @@ func paramsFrom(opts []any) (params, error) {
 		}
 	}
 
-	if err := p.validate(); err != nil {
+	if err := p.check(); err != nil {
 		return params{}, err
 	}
 	return p, nil
@@ -287,9 +288,8 @@ func paramsFrom(opts []any) (params, error) {
 
 // algoFrom picks the algorithm out of the tail. A bare number is PHP 7's
 // spelling of the identifiers: 1 is bcrypt, 2 argon2i and 3 argon2id.
-// PHP 8 refuses an integer outright, and accepting it is what keeps a script
-// written against the older constants from silently storing the wrong
-// algorithm.
+// PHP 8 refuses an integer outright; accepting one here keeps a script written
+// against the older constants from silently storing the wrong algorithm.
 func algoFrom(opts []any) (string, error) {
 	algo := algoBcrypt
 	for _, opt := range opts {

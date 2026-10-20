@@ -9,7 +9,7 @@ import (
 // refTestHost is the part of the host contract these tests exercise: the
 // frame handle a real host holds, the snapshot-before-call and write-back-
 // after ordering of its slow path, plus the calls themselves. Every other
-// method is left to the embedded nil interface, so a test program that
+// method falls to the embedded nil interface, so a test program that
 // reaches one fails loudly, and never silently.
 type refTestHost struct {
 	Host
@@ -105,8 +105,8 @@ func TestVMRefSetterSurvivesLocalsWriteBack(t *testing.T) {
 	}
 }
 
-// An uninitialised target is the case that always worked: it is not in the
-// snapshot, so nothing overwrites it. It has to keep working.
+// An uninitialised target is the case that always worked: the snapshot does
+// not hold it, so nothing overwrites it. It has to keep working.
 func TestVMRefSetterWritesFreshLocal(t *testing.T) {
 	t.Parallel()
 	echoed := runRefProgram(t, `<?php
@@ -141,7 +141,7 @@ func TestVMRefMarksDoNotOutliveTheCall(t *testing.T) {
 
 // A by-reference call inside a user function marks that function's frame. The
 // caller's variable of the same name is a different slot in a different frame
-// and must not be shielded from its own write-back.
+// and its own write-back must still reach it.
 func TestVMRefMarksArePerFrame(t *testing.T) {
 	t.Parallel()
 	echoed := runRefProgram(t, `<?php
@@ -166,8 +166,8 @@ func TestVMRefMarksArePerFrame(t *testing.T) {
 
 // release has to zero the whole backing array, not just the live prefix. The
 // pool holds the buffers for the life of the process, so a value left above
-// the high-water mark of a later, smaller program would stay reachable through
-// the pool and never be collected.
+// the high-water mark of a later, smaller program would stay reachable
+// through the pool, and the collector would never free it.
 func TestExecStateReleaseClearsToCapacity(t *testing.T) {
 	st := &execState{
 		stack:       make([]any, 0, 8),
@@ -232,8 +232,8 @@ func TestExecStateReleaseEmpty(t *testing.T) {
 	st.release()
 }
 
-// memoryTestHost is a Host that also accounts memory. The capability is found
-// by type assertion, so implementing the four methods is the whole opt-in.
+// memoryTestHost is a Host that also accounts memory. A type assertion finds
+// the capability, so implementing the four methods is the whole opt-in.
 type memoryTestHost struct {
 	semanticHost
 	interval int
@@ -265,11 +265,11 @@ func (h *memoryTestHost) CheckMemory() error {
 }
 
 // TestMemoryHost covers the accounting hook the VM calls on a host that limits
-// memory. The interval is read once per run and decides how often CheckMemory
-// is called; the walker is registered for the length of the run and removed
-// on the way out, so the pooled state it closes over is never enumerated
-// past its release. The walk reaches the frame's initialised locals,
-// where a script's values are.
+// memory. The VM reads the interval once per run, and it decides how often
+// CheckMemory runs; the walker stays registered for the length of the run and
+// comes off on the way out, so nothing walks the pooled state it closes over
+// past its release. The walk reaches the frame's initialised locals, where a
+// script's values are.
 func TestMemoryHost(t *testing.T) {
 	t.Parallel()
 	host := &memoryTestHost{interval: 8}

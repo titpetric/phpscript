@@ -55,7 +55,7 @@ type fixture struct {
 }
 
 // parseFixture splits a .phpt file into its three sections and unmarshals the
-// YAML metadata. Sections are separated by lines containing only `---`.
+// YAML metadata. A line holding only `---` divides one section from the next.
 func parseFixture(data []byte) (fixture, error) {
 	parts := strings.SplitN(string(data), "\n---\n", 3)
 	if len(parts) != 3 {
@@ -76,10 +76,10 @@ func parseFixture(data []byte) (fixture, error) {
 	return f, nil
 }
 
-// runFixture executes the fixture's PHP the way the HTTP host does: output is
-// buffered and, on an uncaught error, discarded in favour of an "Internal
-// Server Error" body. The underlying error is returned too so a fixture can
-// additionally assert its message via the `error` metadata field.
+// runFixture executes the fixture's PHP the way the HTTP host does: it
+// buffers output and, on an uncaught error, discards it in favour of an
+// "Internal Server Error" body. It returns the underlying error too, so a
+// fixture can also assert its message through the `error` metadata field.
 func runFixture(ctx context.Context, f fixture) (string, error) {
 	prog, err := parser.Parse(f.PHP)
 	if err != nil {
@@ -172,10 +172,10 @@ func TestFixtures(t *testing.T) {
 var bindingBenchmarkSink int
 
 // BenchmarkGoBindingHTTP compares the same constructor and API calls made by a
-// native Go HTTP handler and by a per-request PHP runtime. Source parsing is
-// intentionally outside the timed region, and one prebuilt request is reused.
-// Per-iteration recorder allocation, runtime setup, reflective binding
-// dispatch, execution, and response writing are included where applicable.
+// native Go HTTP handler and by a per-request PHP runtime. Source parsing sits
+// outside the timed region, and each iteration reuses one prebuilt request.
+// The timed region covers recorder allocation, runtime setup, reflective
+// binding dispatch, execution and response writing, where each applies.
 func BenchmarkGoBindingHTTP(b *testing.B) {
 	prog, err := parser.Parse(`<?php
 $storage = new Storage;
@@ -264,7 +264,7 @@ func oneLine(s string) string {
 }
 
 // TestFixtureRequest covers the frontmatter block a fixture describes its
-// superglobals with. Every map is keyed by the name PHP reads it under, so a
+// superglobals with. Every map keys on the name PHP reads it under, so a
 // fixture writes $_GET and $_POST as yaml and the harness copies them across
 // without a translation table.
 func TestFixtureRequest(t *testing.T) {
@@ -322,8 +322,8 @@ func TestFixture_SetRootFS(t *testing.T) {
 }
 
 // TestShareSources covers the layer precompiling one directory compiles from.
-// Every body in the directory sits in one filesystem, so the tree is compiled
-// once for the whole area and not once per fixture in it.
+// Every body in the directory sits in one filesystem, so one compile covers
+// the whole area and no fixture in it compiles the tree again.
 func TestShareSources(t *testing.T) {
 	first := &Fixture{Name: "first", Path: "area/first.phpt", PHP: "<?php echo 1;"}
 	second := &Fixture{Name: "second", Path: "area/second.phpt", PHP: "<?php echo 2;"}
@@ -354,7 +354,7 @@ func TestShareSources(t *testing.T) {
 // TestFixture_SetAppRoot covers the second filesystem a fixture runs over: the
 // application root holding the prelude. The fixture directory answers first,
 // so a fixture's own relative include keeps meaning what it meant, and the
-// prelude is read off the root beneath it.
+// run reads the prelude off the root beneath it.
 func TestFixture_SetAppRoot(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "prelude.php"), []byte("<?php\nfunction prelude_tag() { return \"tagged\"; }\n"), 0o600); err != nil {
@@ -372,8 +372,8 @@ func TestFixture_SetAppRoot(t *testing.T) {
 		t.Fatalf("fixture failed: %s", res.FailureReason)
 	}
 
-	// An include the application does not carry is skipped: the setting says
-	// what to load when the tree holds it.
+	// The run skips an include the application does not carry: the setting
+	// says what to load when the tree holds it.
 	fx.SetAppRoot(dir, "prelude.php", "absent.php")
 	if res := RunFixture(t.Context(), fx); !res.Passed {
 		t.Fatalf("fixture failed with a prelude file that is not there: %s", res.FailureReason)
@@ -453,9 +453,9 @@ func TestFixture_RootDir(t *testing.T) {
 }
 
 // TestParseGolden covers the second fixture form: a _test.php body php can run
-// where it lies, and the _test.txt beside it. Both are taken as they are, with
-// CRLF normalised so a file checked out on Windows compares equal, and the
-// trailing newlines of the expected output dropped.
+// where it lies, and the _test.txt beside it. ParseGolden takes both as they
+// are, with CRLF normalised so a file checked out on Windows compares equal,
+// and the trailing newlines of the expected output dropped.
 func TestParseGolden(t *testing.T) {
 	fx := ParseGolden(
 		[]byte("<?php\r\necho \"ok\";\r\n"),
@@ -486,8 +486,8 @@ func TestFindFixtures(t *testing.T) {
 		"doc.phpt", "name: doc\ndescription: a document\n---\n<?php echo \"ok\";\n---\nok",
 		"body_test.php", "<?php echo \"ok\";\n",
 		"body_test.txt", "ok\n",
-		// A body with no expected output beside it is a php file in the tree,
-		// and no fixture.
+		// A body with no expected output beside it stays a php file in the
+		// tree, and no fixture.
 		"loose_test.php", "<?php echo \"loose\";\n",
 		"nested/deep.phpt", "name: deep\ndescription: a nested document\n---\n<?php echo \"ok\";\n---\nok",
 	)

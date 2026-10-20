@@ -18,9 +18,9 @@ func init() {
 }
 
 func registerOutput(rt *runner.Runtime) {
-	// var_export renders $value as parsable PHP source; with $return true the
-	// source is returned, otherwise it is written to the output and null is
-	// returned.
+	// var_export renders $value as parsable PHP source; with $return true it
+	// returns the source, otherwise it writes the source to the output and
+	// returns null.
 	rt.RegisterFunc("var_export", func(value any, ret ...any) (any, error) {
 		w := newValueWriter()
 		w.export(value, 0)
@@ -41,8 +41,8 @@ func registerOutput(rt *runner.Runtime) {
 		return err
 	})
 	// print_r renders $value for a reader, in a shape nothing parses. With
-	// $return true the text is returned; otherwise it is written to the output
-	// and true is returned.
+	// $return true it returns the text; otherwise it writes the text to the
+	// output and returns true.
 	rt.RegisterFunc("print_r", func(value any, ret ...any) (any, error) {
 		w := newValueWriter()
 		w.printR(value, 0)
@@ -62,10 +62,9 @@ func registerOutput(rt *runner.Runtime) {
 type valueWriter struct {
 	b *strings.Builder
 	// ids numbers objects for var_dump's "#n". PHP's number is the object
-	// handle, assigned when the object is created; nothing in this runtime
-	// records one, so the numbering here is per call and in the order the
-	// dump reaches them. Two calls therefore both start at #1 where PHP would
-	// count on.
+	// handle it assigns at construction; nothing in this runtime records one,
+	// so the numbering here is per call and in the order the dump reaches
+	// them. Two calls both start at #1 where PHP would count on.
 	ids map[uintptr]int
 	// active holds the objects on the path from the root, so a graph that
 	// refers back to itself prints *RECURSION* and never loops forever.
@@ -133,8 +132,8 @@ func (w *valueWriter) export(value any, indent int) {
 		for _, field := range objectFields(value) {
 			// PHP indents an object's property names three spaces past the
 			// object but recurses at two, so a nested array under a property
-			// sits one column to the left of its own key. Odd, but it is what
-			// var_export emits and what a fixture diff will hold this to.
+			// sits one column to the left of its own key. Odd, but var_export
+			// emits that and a fixture diff holds this to it.
 			w.exportEntry(exportKey(field.name), field.value, indent+3, indent+2)
 		}
 		w.pad(indent)
@@ -284,9 +283,9 @@ func isComposite(value any) bool {
 }
 
 // isObjectLike reports whether a value prints as an object. It repeats the
-// test is_object() makes and shares nothing with it, so this file stands alone; a
-// callable is included because PHP's Closure is an object too, and a script
-// that dumps one reads it as one.
+// test is_object() makes and shares nothing with it, so this file stands
+// alone; it counts a callable because PHP's Closure is an object too, and a
+// script that dumps one reads it as one.
 func isObjectLike(value any) bool {
 	if value == nil {
 		return false
@@ -337,8 +336,8 @@ func classOf(value any) string {
 }
 
 // objectKey returns the address identifying an object, and whether it has one.
-// A struct passed by value has no identity and cannot close a cycle, so it is
-// neither numbered nor guarded.
+// A struct passed by value has no identity and cannot close a cycle, so
+// objectKey neither numbers nor guards it.
 func objectKey(value any) (uintptr, bool) {
 	rv := reflect.ValueOf(value)
 	switch rv.Kind() {
@@ -390,8 +389,8 @@ func objectFields(value any) []objectField {
 	if rv.Kind() != reflect.Struct {
 		return nil
 	}
-	// An unexported Go field is not reachable from PHP at all, so it is not a
-	// private property: it is not a property.
+	// An unexported Go field never reaches PHP, so it counts as no property at
+	// all, let alone a private one.
 	rt := rv.Type()
 	fields := make([]objectField, 0, rt.NumField())
 	for i := 0; i < rt.NumField(); i++ {
@@ -458,14 +457,15 @@ func exportScalar(value any) string {
 	return exportString(phpval.String(value))
 }
 
-// exportString single-quotes a string the way var_export does: only the quote
-// and the backslash are escaped, so a newline stays a literal newline.
+// exportString single-quotes a string the way var_export does: it escapes only
+// the quote and the backslash, so a newline stays a literal newline.
 func exportString(s string) string {
 	return "'" + exportReplacer.Replace(s) + "'"
 }
 
-// exportReplacer is built once. strings.NewReplacer compiles its table on first
-// use behind a sync.Once, so one per call means compiling it per call.
+// exportReplacer holds one Replacer for the whole package. strings.NewReplacer
+// compiles its table on first use behind a sync.Once, so one per call means
+// compiling it per call.
 var exportReplacer = strings.NewReplacer(`\`, `\\`, `'`, `\'`)
 
 // exportFloat keeps a float readable back as a float. Without the fraction,
@@ -508,11 +508,11 @@ func printString(value any) string {
 // var_dump and var_export. echo and print_r pass 14 instead, so 0.1+0.2 is 0.3
 // for one and 0.30000000000000004 for the other.
 //
-// The exponent form is chosen from where the decimal point falls, not from
-// Go's 'g' thresholds: PHP switches when the point sits before the third
-// leading zero or past the last significant digit, so 1e16 stays written out
-// and 1e17 does not. Its mantissa always carries a fraction and its exponent
-// no leading zero, so it writes 1.0E+100 where Go writes 1e+100.
+// phpFormatFloat picks the exponent form from where the decimal point falls,
+// not from Go's 'g' thresholds: PHP switches when the point sits before the
+// third leading zero or past the last significant digit, so 1e16 stays written
+// out and 1e17 does not. Its mantissa always carries a fraction and its
+// exponent no leading zero, so it writes 1.0E+100 where Go writes 1e+100.
 func phpFormatFloat(f float64, precision int) string {
 	switch {
 	case math.IsInf(f, 1):

@@ -66,7 +66,7 @@ func TestRedeclaringAFunctionFails(t *testing.T) {
 				t.Fatalf("error is %T, want *runner.RedeclareError", err)
 			}
 			// Exception and no name of its own, so the clause a
-			// script would write for it is the clause that takes it.
+			// script would write for it takes it.
 			if got := redeclared.ThrowableClass(); got != "Exception" {
 				t.Errorf("ThrowableClass() = %q, want %q", got, "Exception")
 			}
@@ -161,8 +161,8 @@ func TestDeclaringTheSameFunctionAfterResetSucceeds(t *testing.T) {
 // which are PHP's own text for the same condition minus the clauses there is
 // nothing to fill. A declaration refused against a registered binding names no
 // earlier site, because there is no PHP declaration to point at, and a program
-// a host assembled carries no file, so the location clauses are left out and
-// never written empty.
+// a host assembled carries no file, so Error drops the location clauses and
+// never writes one empty.
 func TestRedeclareError_Error(t *testing.T) {
 	t.Parallel()
 	at := runner.FuncSite{File: "app/index.php", Line: 12}

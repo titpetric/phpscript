@@ -19,7 +19,7 @@ const Name = "Format php scripts"
 // NewCommand creates a new fmt command.
 //
 // The configuration and the global options are what every command constructor
-// takes, so one signature covers all of them. This command reads neither.
+// takes, so one signature covers them all. This command reads neither.
 func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	var list bool
 
@@ -35,9 +35,9 @@ func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	}
 }
 
-// Run formats files or directories in place by pretty-printing the AST. Files
-// the formatter cannot read in full are reported and left alone, so one file
-// using PHP that phpscript does not support does not stop the rest.
+// Run formats files or directories in place by pretty-printing the AST. It
+// reports a file the formatter cannot read in full and leaves it alone, so
+// one file using PHP that phpscript does not support does not stop the rest.
 func Run(args []string, list bool) error {
 	return run(args, list, os.Stdout, os.Stderr)
 }

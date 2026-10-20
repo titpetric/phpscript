@@ -32,10 +32,8 @@ func newTelemetryRecorder(t *testing.T) *telemetryRecorder {
 
 	traceOptions := telemetry.NewOptions("phpscript")
 
-	// oida records only when it is asked to; a test that reads its
-
-	// traces back is asking.
-
+	// oida records only when the caller sets Enabled; a test that reads
+	// its traces back sets it.
 	traceOptions.Enabled = true
 
 	tracer, err := telemetry.New(traceOptions)
@@ -131,8 +129,8 @@ func TestRuntimeObserverReceivesExecutionErrorSpan(t *testing.T) {
 func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when it is asked to; a test that reads its
-	// traces back is asking.
+	// oida records only when the caller sets Enabled; a test that reads
+	// its traces back sets it.
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
@@ -167,7 +165,7 @@ func TestRuntimeContextCarriesActiveSourceLine(t *testing.T) {
 // TestRuntimeContextLineAfterNestedCall covers a binding called in the same
 // statement as a PHP call that ran before it, the shape of
 // `$this->conn->db()->get(...)`: the call returns into that statement, so the
-// binding's span is attributed to its line, not to the last line the callee ran.
+// binding's span belongs to its line and not to the last line the callee ran.
 func TestRuntimeContextLineAfterNestedCall(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -401,7 +399,7 @@ func TestRuntimeObserverReceivesIncludedFileCount(t *testing.T) {
 		}
 	}
 
-	// The nested include is recorded below the one that ran it.
+	// The runtime records the nested include below the one that ran it.
 	if parent, child := recorder.spans[0], recorder.spans[1]; child.ParentID != parent.ID {
 		t.Fatalf("nested include parent = %d, want %d", child.ParentID, parent.ID)
 	}
@@ -490,8 +488,8 @@ func coverageBlock(t *testing.T, blocks []coverage.Block, file string, line int)
 	return coverage.Block{}
 }
 
-// TestCoverageCounts covers the count semantics: a loop body is charged once
-// per iteration, the loop header once, and an untaken branch stays at zero.
+// TestCoverageCounts covers what the interpreter charges: a loop body once per
+// iteration, the loop header once, and nothing for an untaken branch.
 func TestCoverageCounts(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -589,8 +587,8 @@ echo used();
 }
 
 // TestCoverageForcesInterpreter holds the flatstack boundary: a runtime created
-// with NewFlatStack executes interpreted while a collector is installed, so the
-// counts exist and no coverage support is needed in the bytecode backend.
+// with NewFlatStack executes interpreted while it holds a collector, so the
+// counts exist and the bytecode backend needs no coverage support.
 func TestCoverageForcesInterpreter(t *testing.T) {
 	t.Parallel()
 	prog, err := parser.Parse(`<?php
@@ -616,10 +614,10 @@ echo "covered";
 	}
 }
 
-// stubDatabase and stubMail stand in for the providers a host configures. The
-// interface is embedded and no method implemented: these tests read which value
-// the runtime answers with and never call through it, and implementing Open
-// would put the sql driver in this package's test binary for nothing.
+// stubDatabase and stubMail stand in for the providers a host configures. Each
+// embeds the interface and declares no method: these tests read which value the
+// runtime answers with and never call through it, and implementing Open would
+// put the sql driver in this package's test binary for nothing.
 type stubDatabase struct{ model.DatabaseProvider }
 
 type stubMail struct{ model.MailProvider }
@@ -700,8 +698,8 @@ func TestRuntimeAnswersForItsOptions(t *testing.T) {
 		t.Errorf("WorkDirPath() = %q, want the path a script reads", got)
 	}
 
-	// The whitelist is answered as a copy, so a binding that sorts or filters
-	// what it holds does not edit the host's configuration.
+	// WritablePaths answers a copy, so a binding that sorts or filters what
+	// it holds does not edit the host's configuration.
 	paths := rt.WritablePaths()
 	if len(paths) != 2 {
 		t.Fatalf("WritablePaths() = %v, want both", paths)
@@ -743,7 +741,7 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 		t.Errorf("ResolvePath(helper.php) = %q, want app/lib/helper.php", got)
 	}
 
-	// An absolute path is read from the source root and no host path.
+	// SetWorkDir reads an absolute path from the source root and no host path.
 	if !rt.SetWorkDir("/app") {
 		t.Fatal("SetWorkDir(/app) refused the root-relative spelling")
 	}
@@ -751,8 +749,8 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 		t.Errorf("WorkDirPath() = %q, want /app", got)
 	}
 
-	// A path naming no directory is refused, with the directory left alone,
-	// which is the false php documents.
+	// SetWorkDir refuses a path naming no directory and leaves the current one
+	// alone, which is the false php documents.
 	for _, dir := range []string{"nope", "index.php", "app/index.php"} {
 		if rt.SetWorkDir(dir) {
 			t.Errorf("SetWorkDir(%q) was accepted", dir)
@@ -762,9 +760,9 @@ func TestRuntime_SetWorkDir(t *testing.T) {
 		}
 	}
 
-	// A climb is clamped and never refused: the path resolves to the source
-	// root, so a script that walked up as far as it liked is standing at the
-	// top of the tree the host gave it and never above one.
+	// SetWorkDir clamps a climb and never refuses it: the path resolves to the
+	// source root, so a script that walked up as far as it liked is standing at
+	// the top of the tree the host gave it and never above one.
 	if !rt.SetWorkDir("../../..") {
 		t.Fatal("SetWorkDir refused to climb to the root")
 	}
@@ -835,7 +833,7 @@ function declared_in_php() { return 1; }
 	}
 
 	// Method lookup is php's, which is case-insensitive, and answers only for
-	// an interpreted class: a host-backed one is reflected over by its caller.
+	// an interpreted class: a caller reflects over a host-backed one itself.
 	if !rt.MethodExists("Site", "HELLO") {
 		t.Error("MethodExists is case-sensitive, want php's case-insensitive lookup")
 	}
@@ -859,11 +857,11 @@ function declared_in_php() { return 1; }
 	}
 }
 
-// TestRuntime_IncludeFile covers the include a host performs itself, which is
-// how composer's autoloader pulls a declaration file in: the file evaluates in
-// a fresh scope the way an `include` statement would, and the runtime records
-// it among the files it included, so the count a script reads and the one an
-// observer is told agree.
+// TestRuntime_IncludeFile covers the include a host performs itself, the call
+// composer's autoloader pulls a declaration file in with: the file evaluates
+// in a fresh scope the way an `include` statement would, and the runtime
+// records it among the files it included, so the count a script reads and the
+// count it publishes agree.
 func TestRuntime_IncludeFile(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)
@@ -883,8 +881,8 @@ func TestRuntime_IncludeFile(t *testing.T) {
 		t.Error("the class the included file declares is not defined")
 	}
 
-	// The record is written from the source filesystem's root, the spelling
-	// every path a script reads carries.
+	// The runtime writes the record from the source filesystem's root, the
+	// spelling every path a script reads carries.
 	included := rt.IncludedFiles()
 	if !slices.Contains(included, "/lib/site.php") {
 		t.Errorf("IncludedFiles = %v, want the file among them", included)
@@ -895,8 +893,8 @@ func TestRuntime_IncludeFile(t *testing.T) {
 		t.Errorf("IncludedFiles = %v after the caller edited its copy", again)
 	}
 
-	// The count an observer is told is published through UpdateIncludedFiles,
-	// which a host calls for the files it included outside the interpreter.
+	// UpdateIncludedFiles publishes the count to an observer; a host calls it
+	// for the files it included outside the interpreter.
 	rt.UpdateIncludedFiles(len(rt.IncludedFiles()))
 	if len(recorder.included) == 0 {
 		t.Fatal("no included-file count reached the observer")
@@ -911,10 +909,10 @@ func TestRuntime_IncludeFile(t *testing.T) {
 }
 
 // TestRuntime_CompiledTree covers what the parsed tree costs, which phpinfo()
-// reports and memory_limit does not charge for: the tree is shared by every
-// request and outlives all of them. The heap figure is zero until a precompile
-// pass measures one, because printing 0.00 MiB over a filled cache would read
-// as a measurement and not the absence of one.
+// reports and memory_limit does not charge for: every request shares the tree
+// and it outlives each one. The heap figure is zero until a precompile pass
+// measures one, because printing 0.00 MiB over a filled cache would read as a
+// measurement and not the absence of one.
 func TestRuntime_CompiledTree(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{
@@ -940,10 +938,10 @@ func TestRuntime_CompiledTree(t *testing.T) {
 	}
 }
 
-// TestRuntime_Reset covers what a pool does between two programs. It is
-// ResetSession plus the caches keyed by AST node, which hold the previous tree
-// alive: a runtime handed to the next program must not answer for the last
-// one's classes, constants or parsed files.
+// TestRuntime_Reset covers what a pool does between two programs: ResetSession
+// plus the caches keyed by AST node, which hold the previous tree alive. A
+// runtime handed to the next program must not answer for the last one's
+// classes, constants or parsed files.
 func TestRuntime_Reset(t *testing.T) {
 	t.Parallel()
 	var first strings.Builder
@@ -1048,9 +1046,9 @@ func TestRuntimeMemoryReporting(t *testing.T) {
 	}
 }
 
-// TestRuntime_Exit covers the value `exit` ends a script with. It is an error
-// so that it unwinds the interpreter, and an ending and no failure, which a
-// host reads through IsExit without naming the type.
+// TestRuntime_Exit covers the value `exit` ends a script with: an error, so it
+// unwinds the interpreter, and an ending and no failure, which a host reads
+// through IsExit without naming the type.
 func TestRuntime_Exit(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -1111,8 +1109,8 @@ func TestRuntime_SetConst(t *testing.T) {
 
 // TestRuntime_RegisterShutdown covers the callbacks php runs at the end of a
 // program, in registration order, so a registered flush reaches the output of
-// a script that already finished. Each is consumed by the run, so the next
-// program on a pooled runtime does not run the previous one's.
+// a script that already finished. The run consumes each, so the next program
+// on a pooled runtime does not run the previous one's.
 func TestRuntime_RegisterShutdown(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -1153,8 +1151,8 @@ func TestRuntime_RegisterShutdown(t *testing.T) {
 }
 
 // TestRuntime_Trace and TestRuntime_UpdateStatus cover the two publications a
-// host observes a run through. Both are exported for the phases that happen
-// outside PHP execution, where a serving host spends its time.
+// host observes a run through. The runtime exports both for the phases that
+// happen outside PHP execution, where a serving host spends its time.
 func TestRuntime_Trace(t *testing.T) {
 	t.Parallel()
 	recorder := newTelemetryRecorder(t)
@@ -1219,8 +1217,8 @@ func TestFilenameObserver(t *testing.T) {
 		t.Error("the interface method did not reach the recorder")
 	}
 
-	// Only the first entrypoint is published: an include is not a new one, and
-	// a span named for the file the run started in has to keep that name.
+	// The runtime publishes the first entrypoint only: an include is not a new
+	// one, and the span named for the run's first file has to keep that name.
 	rt.UpdateFilename("app/other.php")
 	if slices.Contains(recorder.filenames, "app/other.php") {
 		t.Errorf("a second entrypoint was published: %v", recorder.filenames)
@@ -1265,8 +1263,8 @@ func (*statusOnlyObserver) Trace(context.Context, string, ...telemetry.Kind) *te
 // TestScriptEnvironment covers what getenv() reads. A nil environment is the
 // process one, as a CLI run has it; a host that configured one passes it
 // instead, and a virtual host always does, so a site sees the variables it
-// declared and none of the operator's. The infrastructure names are held back
-// either way.
+// declared and none of the operator's. ScriptEnvironment holds the
+// infrastructure names back either way.
 func TestScriptEnvironment(t *testing.T) {
 	configured := ScriptEnvironment([]string{
 		"APP_ENV=production",

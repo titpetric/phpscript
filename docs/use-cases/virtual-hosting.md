@@ -1,6 +1,6 @@
 # Virtual hosting
 
-One `phpscript server` can answer for several websites. The operator lists the sites, each site owns the tree it is served from and the configuration it runs under, and the `Host` header of a request is the only thing that selects between them.
+One `phpscript server` can answer for more than one website. The operator lists the sites, each site owns the tree it serves and the configuration it runs under, and the `Host` header of a request is the only thing that selects between them.
 
 This walkthrough builds a server for two sites, `shop.example.com` and `blog.example.com`, and then shows what one domain cannot reach on the other. The reference for every key it uses is [Configuration](../configuration.md#virtual-hosts).
 
@@ -32,7 +32,7 @@ sites/
 
 ## 2. The operator's configuration
 
-`server.yml` names the listen address and the sites. A `root` is resolved against the working directory, so these are the two directories beside the file:
+`server.yml` names the listen address and the sites. A `root` resolves against the working directory, so these are the two directories beside the file:
 
 ```yaml
 server:
@@ -50,11 +50,11 @@ virtualhost:
     root: blog
 ```
 
-Two keys here are turned off. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would sit on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults carry, so a site that configures no database of its own inherits nothing. It is also what the sites' scripts read with `getenv()`, so leaving it empty is what keeps the operator's own environment out of them.
+Two keys here are off. `telemetry.enabled: false` leaves the platform's own dashboard unmounted: it would sit on the root router, in front of the host mux, and shadow the dashboard each site mounts for itself. `env: []` drops the connection the embedded defaults carry, so a site that configures no database of its own inherits nothing. The sites' scripts also read `env` with `getenv()`, so leaving it empty keeps the operator's own environment out of them.
 
 ## 3. Each site's configuration
 
-Every application root must hold a `phpscript.yml`. It is read on top of `server.yml`, so it only names what it changes.
+Every application root must hold a `phpscript.yml`. The server reads it on top of `server.yml`, so it only names what it changes.
 
 `shop/phpscript.yml` takes route scanning and the runner limits as they come, and names a tracer and a database of its own:
 
@@ -97,7 +97,7 @@ The files are what they would be if each site ran in a server of its own. `shop/
 <?php echo "shop";
 ```
 
-`shop/routes/hello.php`, outside the document root, is scanned for annotations:
+`shop/routes/hello.php` sits outside the document root, and the server scans it for annotations:
 
 ```php
 <?php
@@ -145,7 +145,7 @@ echo "connected";
 
 ## 5. Run it
 
-No application root is passed. The entries name their own, and an argument here is rejected:
+The operator passes no application root. The entries name their own, and `phpscript server` rejects an argument here:
 
 ```bash
 phpscript -f server.yml server
@@ -159,7 +159,7 @@ Server listening on 127.0.0.1:8080 http://127.0.0.1:8080
 
 `@startup` and `@schedule` run per site, and the modules they run as carry the domain, so `server.modules` still addresses one site's modules. Only `shop` printed, because only `shop` has a startup job.
 
-A startup job that fails is that site's problem. It is recorded on that site's recorder as a trace named after the module, `phpstartup:shop.example.com`, and the server carries on serving every site including the one whose job failed. The rest of that site's jobs still run.
+A startup job that fails is that site's problem. That site's tracer records it as a trace named after the module, `phpstartup:shop.example.com`, and the server carries on serving every site including the one whose job failed. The rest of that site's jobs still run.
 
 Requests select a site by `Host`:
 
@@ -174,7 +174,7 @@ curl -H 'Host: blog.example.com' http://127.0.0.1:8080/feed
 # {"posts":[]}
 ```
 
-A site that answers to more than one name lists them all in `domain`, separated by spaces. It is built once and every name reaches the same handler, sharing its routes, its recorder and its connections:
+A site that answers to more than one name lists them all in `domain`, separated by spaces. The server builds it once and every name reaches the same handler, sharing its routes, its recorder and its connections:
 
 ```yaml
 virtualhost:
@@ -184,7 +184,7 @@ virtualhost:
 
 The first name is the site's own, the one errors and module names report it as.
 
-Matching is exact, but a `Host` is compared lowercased, without its port and without a trailing dot, so all three of these reach `shop`:
+Matching is exact, but the host mux compares a `Host` lowercased, without its port and without a trailing dot, so all three of these reach `shop`:
 
 ```sh
 curl -H 'Host: SHOP.Example.com.' http://127.0.0.1:8080/
@@ -196,7 +196,7 @@ curl -H 'Host: shop.example.com' http://127.0.0.1:8080/
 
 Each site gets a router of its own, and that is where the boundaries come from.
 
-**Routes.** `/hello/{name}` is registered inside shop's router, so the blog does not have it, and `/feed` is not shop's:
+**Routes.** Shop's router registers `/hello/{name}`, so the blog does not have it, and `/feed` is not shop's:
 
 ```sh
 curl -i -H 'Host: blog.example.com' http://127.0.0.1:8080/hello/Ada
@@ -214,9 +214,9 @@ curl -s -H 'Host: shop.example.com' http://127.0.0.1:8080/debug/oida/traces
 curl -s -H 'Host: blog.example.com' http://127.0.0.1:8080/debug/oida/traces
 ```
 
-Each page is titled with the `service_name` its own file configured, `shop` on one domain and `blog` on the other, and lists the requests that arrived on that domain and no others. The counters and the trace store behind them are separate, not two views of one buffer.
+Each page takes its title from the `service_name` its own file configured, `shop` on one domain and `blog` on the other, and lists the requests that arrived on that domain and no others. The counters and the trace store behind them are separate, not two views of one buffer.
 
-**Databases.** A site's connections are built from its own `env`, and the provider holding them sees nothing else. The two `db.php` files are identical and only shop's works:
+**Databases.** The provider builds a site's connections from that site's own `env` and sees nothing else. The two `db.php` files are identical and only shop's works:
 
 ```sh
 curl -H 'Host: shop.example.com' http://127.0.0.1:8080/db.php
@@ -225,7 +225,7 @@ curl -H 'Host: blog.example.com' http://127.0.0.1:8080/db.php
 # eval "__new(\"Database\", \"shop\")": no configuration found for database: [shop] (1:1)
 ```
 
-The blog's request fails with 500. It is not a permission check: the connection does not exist in the provider that site's runtime resolves through.
+The blog's request fails with 500, not from a permission check: the connection does not exist in the provider that site's runtime resolves through.
 
 **Unclaimed domains.** There is no default site. A `Host` no entry claims gets 404 and reaches no site's code:
 
@@ -244,7 +244,7 @@ virtualhost "shop.example.com": shop/phpscript.yml: "server" is set by the opera
 
 The rest of the configuration is the site's. It can turn route scanning off, raise its own upload limits, choose the flat-stack runtime, or record its traces to disk, without any of it reaching the other site.
 
-Every entry is loaded and checked before the server listens, so a missing `phpscript.yml`, a root that is not a directory, a document root that does not exist, or a domain configured twice fails the server and not one request. [Configuration](../configuration.md#startup-checks) lists the checks.
+The startup check loads and checks every entry before the server listens, so a missing `phpscript.yml`, a root that is not a directory, a document root that does not exist, or a domain configured twice fails the server and not one request. [Configuration](../configuration.md#startup-checks) lists the checks.
 
 ## Where to go next
 

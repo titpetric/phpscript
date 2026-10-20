@@ -12,7 +12,7 @@ Not per-operation cost, and not percentiles. A duration here is one sample.
 
 ## Preconditions
 
-The contract's lock and `CGO_ENABLED=0`. A correctness run takes the lock too: it holds every core it is given for the length of the suite.
+The contract's lock and `CGO_ENABLED=0`. A correctness run takes the lock too: it holds every core for the length of the suite.
 
 The database fixtures read their connection strings from `.env.testing`:
 
@@ -20,9 +20,9 @@ The database fixtures read their connection strings from `.env.testing`:
 set -a; export $(grep -v ^# .env.testing | xargs -d "\n"); set +a
 ```
 
-Exported, not sourced. `. ./.env.testing` does not work: three of the four values carry an unquoted `&` and the fourth carries unquoted parentheses, so bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser, so `env: include: .env.testing` works where the shell does not. The file is left as it is.
+Exported, not sourced. `. ./.env.testing` does not work: three of the four values carry an unquoted `&` and the fourth carries unquoted parentheses, so bash backgrounds three assignments and takes the fourth as a syntax error. atkins reads the same file with a dotenv parser, so `env: include: .env.testing` works where the shell does not. Leave the file alone.
 
-The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression and is reported as a missing precondition.
+The sqlite entries are in-memory and need nothing. The mysql and postgres entries need the compose services, which `atkins db:up` starts. A package that fails for a missing database is not a regression; report it as a missing precondition.
 
 `-count 1` so the test cache answers from this run and no earlier one.
 
@@ -59,7 +59,7 @@ flock -w 3600 /tmp/phpscript-measure.lock bash -euc '
 '
 ```
 
-`-race` requires cgo, which is the one place the `CGO_ENABLED=0` rule is set aside. A race run produces no number and is never a timing baseline.
+`-race` requires cgo, the one place the `CGO_ENABLED=0` rule does not hold. A race run produces no number and is never a timing baseline.
 
 One package:
 
@@ -71,7 +71,7 @@ CGO_ENABLED=0 go test -count 1 -v ./runner
 
 `bench-gotest-<side>.json`, which is test2json: one JSON object per line, with `Action` (`run`, `pass`, `fail`, `output`), `Package`, `Test` and `Elapsed`. Already ignored by `bench*.json`.
 
-`cover/pkg.cov` under `-cover`. Already ignored by `/cover/*` and `*.cov`. It is large, in the tens of megabytes, and it stays behind for `go tool cover -html`.
+`cover/pkg.cov` under `-cover`. Already ignored by `/cover/*` and `*.cov`. The profile runs to tens of megabytes and stays behind for `go tool cover -html`.
 
 `bench-manifest-<side>.txt` alongside, as the contract requires.
 
@@ -95,9 +95,9 @@ Three tests fail when they regress, and none of them skips; a failure in one is 
 | `TestLexOperatorNoAlloc`                   | `parser/lexer_test.go`         | The lexer's operator path started allocating                                                             |
 | `TestNoInheritanceAtRuntime`               | `runner`                       | `model.Class` regrew a `Parent` field. A design guard, not a budget                                      |
 
-The contract's test-immutability rule covers what may and may not be done about any of them.
+The contract's test-immutability rule says what an agent may and may not change in any of them.
 
-Several packages log database connection lines at init. That output is noise.
+Packages that open a database log a connection line at init. That output is noise.
 
 ## What this cannot answer
 

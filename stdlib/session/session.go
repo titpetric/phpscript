@@ -4,11 +4,11 @@
 // as long as the process; disk storage is a file per session under a directory
 // the host chooses, and prunes by modification time.
 //
-// A manager wraps whichever storage it is given for tracing, so a request's
+// A manager wraps whichever storage it receives for tracing, so a request's
 // trace shows which backend it paid for and whether the session exists. The
-// session ID is never recorded: it is the credential in the cookie.
+// trace omits the session ID: that ID is the credential in the cookie.
 //
-// It is wired in by importing it; stdlib/imports.go does that.
+// Importing the package wires it in; stdlib/imports.go does that.
 package session
 
 import (
@@ -27,9 +27,9 @@ func Register(rt *runner.Runtime) {
 }
 
 // RegisterRoot installs the session classes with disk storage rooted at dir. A
-// $storage_path the script names resolves against dir and cannot climb out of
-// it, and is held to the runtime's writable_paths, so the directory it creates is
-// one the script could also have written a file into.
+// $storage_path the script names resolves against dir, cannot climb out of it,
+// and must sit inside the runtime's writable_paths, so the directory it creates
+// is one the script could also have written a file into.
 //
 // Without that, the constructor mkdir'd whatever the script named: a vhost could
 // create a directory anywhere the process could write, and read and write session

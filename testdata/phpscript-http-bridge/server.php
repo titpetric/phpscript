@@ -12,7 +12,7 @@
 //	phpscript run testdata/phpscript-http-bridge/server.php
 //
 // TESTSERVER_ADDR, TESTSERVER_WORKERS and TESTSERVER_LIMIT override the
-// address, how many requests are answered at once, and how long the script
+// address, how many requests the server answers at once, and how long the script
 // runs. Ctrl-C stops it; SIGHUP ends the generation running and reads the file
 // again.
 class Server {
@@ -86,7 +86,7 @@ class Server {
 	}
 
 	// The encoder writes straight to the response, so no string of the
-	// document stands in between, and it converts a PHP array the way
+	// document stands between the two, and it converts a PHP array the way
 	// json_encode() does.
 	function showUser(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 		$w->header()->set("Content-Type", "application/json");
@@ -107,8 +107,8 @@ class Server {
 	}
 
 	// What connection_aborted() is for. The work finishes, because in an
-	// application it is the transaction that already committed; what is
-	// skipped is the part nobody is left to read. ignore_user_abort(true)
+	// application that work is the transaction that already committed; the
+	// part this drops is the part nobody remains to read. ignore_user_abort(true)
 	// keeps the handler running long enough to make that choice, and without
 	// it the disconnect ends the handler where it next looks.
 	function slow(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
@@ -124,8 +124,8 @@ class Server {
 		}
 
 		if (connection_aborted()) {
-			// Nothing is written to the response: there is nobody to read it.
-			// error_log puts this on the request's trace and through the
+			// This writes nothing to the response: nobody remains to read it.
+			// error_log puts the line on the request's trace and through the
 			// host's error handler.
 			error_log("aborted after " . $ticks . " ticks, response skipped");
 			return;
@@ -145,7 +145,7 @@ class Server {
 
 		set_time_limit($config["limit"]);
 
-		// The third argument is how many requests are answered at once and the
+		// The third argument is how many requests the server answers at once and the
 		// fourth is how deep the queue behind them is; omitted they are the
 		// number of cores and 1024. Workers are the parallelism and the queue
 		// is the backpressure: a request that finds every worker busy waits
@@ -164,8 +164,8 @@ class Server {
 
 		echo "serving on http://" . $http->addr() . " until the time limit is up\n";
 
-		// Returns when the script runs out of time, and it is the last
-		// statement: the limit is a fatal, as php's is, so anything after it
+		// Returns when the script runs out of time, and stands last in the
+		// file: the limit is a fatal, as php's is, so anything after it
 		// would leave the process exiting non-zero. Ending here lets the
 		// shutdown callback have the last word and the process exit 0.
 		$http->wait();

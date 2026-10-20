@@ -27,7 +27,7 @@ type Options struct {
 	// name are only the ones it configured.
 	Mail model.MailProvider `yaml:"-"`
 
-	// Stdin is exposed to scripts as the STDIN stream. A nil reader produces an
+	// Stdin reaches scripts as the STDIN stream. A nil reader produces an
 	// empty stream; CLI hosts should pass os.Stdin explicitly.
 	Stdin io.Reader `yaml:"-"`
 
@@ -38,15 +38,15 @@ type Options struct {
 	// Empty means the RootFS root.
 	WorkDir string `yaml:"work_dir"`
 
-	// Include names a file included ahead of every entrypoint, for the
-	// functions and classes every entrypoint in an application needs whatever it is
-	// running: a composer autoloader, a bootstrap file. It is the `--include`
-	// flag, and a virtual host sets its own in the runner block of its
-	// phpscript.yml.
+	// Include names a file the runtime includes ahead of every entrypoint, for
+	// the functions and classes every entrypoint in an application needs
+	// whatever it runs: a composer autoloader, a bootstrap file. The
+	// `--include` flag sets it, and a virtual host sets its own in the runner
+	// block of its phpscript.yml.
 	//
-	// It is included once per request, before the entrypoint the request
-	// resolved to, so the entrypoint and everything it includes see what it
-	// declared. A file that is not there is skipped and nothing is reported: the
+	// It runs once per request, before the entrypoint the request resolved to,
+	// so the entrypoint and everything it includes see what it declared. The
+	// runtime passes over a file that is not there and reports nothing: the
 	// name says what to load when the application carries it, and one setting
 	// covers a server, a script run and a fixture run of the same tree.
 	Include string `yaml:"include"`
@@ -57,31 +57,31 @@ type Options struct {
 	// include cache and never parses the file again, so every request after
 	// the first runs the AST the caches are already keyed by.
 	//
-	// Nothing is invalidated. An edited file is picked up by a reload or a
-	// restart, and what the tree parsed to is resident until then.
+	// Nothing invalidates a cache entry. A reload or a restart takes up an
+	// edited file, and what the tree parsed to stays resident until then.
 	Precompile bool `yaml:"precompile"`
 
-	// WritablePaths optionally restricts filesystem writes. When empty, writes are
-	// left to normal OS/user permissions. Enforcement is done by filesystem shims.
+	// WritablePaths optionally restricts filesystem writes. When empty, normal
+	// OS/user permissions govern a write. Filesystem shims enforce the list.
 	WritablePaths []string `yaml:"writable_paths"`
 
 	// UploadMaxFilesize is the largest file part a request may carry, PHP's
-	// upload_max_filesize. A part over it is reported to the script as
-	// UPLOAD_ERR_INI_SIZE and is not stored. Zero is no limit.
+	// upload_max_filesize. A part over that size reaches the script as
+	// UPLOAD_ERR_INI_SIZE, and nothing stores it. Zero is no limit.
 	UploadMaxFilesize Size `yaml:"upload_max_filesize"`
 
-	// PostMaxSize is the largest request body that is parsed at all, PHP's
+	// PostMaxSize is the largest request body the runtime parses at all, PHP's
 	// post_max_size. A body over it leaves both $_POST and $_FILES empty, as it
 	// does in PHP. Zero is no limit.
 	PostMaxSize Size `yaml:"post_max_size"`
 
-	// MaxInputVars is how many fields are decoded into $_GET, $_POST and
+	// MaxInputVars is how many fields the decoder puts in $_GET, $_POST and
 	// $_COOKIE, PHP's max_input_vars. Zero is PHP's default of 1000; negative
 	// is no limit.
 	MaxInputVars int `yaml:"max_input_vars"`
 
 	// MaxInputNestingLevel is the deepest bracket chain a field name may have,
-	// PHP's max_input_nesting_level. A field past it is dropped whole. Zero is
+	// PHP's max_input_nesting_level. The decoder drops a deeper field whole. Zero is
 	// PHP's default of 64; negative is no limit.
 	//
 	// Both bound attacker-controlled input: `a[x][x]...` costs an array a level.
@@ -98,21 +98,21 @@ type Options struct {
 	// always does.
 	Env []string `yaml:"-"`
 
-	// MemoryLimit is the memory one script may allocate, PHP's memory_limit.
+	// MemoryLimit is the memory one script may take, PHP's memory_limit.
 	// Zero is no limit.
 	MemoryLimit Size `yaml:"memory_limit"`
 
-	// TimeLimit is how long one script may run before it is stopped, in
+	// TimeLimit is how long one script may run before the runtime stops it, in
 	// seconds, PHP's max_execution_time. Zero is no limit.
 	//
-	// NOT ENFORCED YET. The key is accepted and carried so a configuration
-	// written today keeps working when enforcement lands, with no parse
-	// failure in between.
+	// NOT ENFORCED YET. The decoder takes the key and carries it, so a
+	// configuration written today keeps working when enforcement lands and
+	// never fails to parse along the way.
 	TimeLimit int `yaml:"time_limit"`
 
 	// ConcurrencyLimit is how many scripts may execute at once. Zero is no
-	// limit. It has no equivalent in php.ini, where the SAPI owns it; here
-	// one process serves several sites and each gets its own share.
+	// limit. php.ini has no such key, because there the SAPI owns the number;
+	// here one process serves many sites and each takes its own share.
 	//
 	// NOT ENFORCED YET. See TimeLimit.
 	ConcurrencyLimit int `yaml:"concurrency_limit"`

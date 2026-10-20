@@ -14,8 +14,8 @@ type Database struct {
 	Bridge *Bridge
 	ID     string
 
-	// IsReadonly restricts the client to statements that only read. It is a
-	// property of the client, not of the connection: PHP reads and writes it as
+	// IsReadonly restricts the client to statements that only read. The flag
+	// belongs to the client and not the connection: PHP reads and writes it as
 	// `$db->is_readonly`, and it lives as long as the client does, which for a
 	// served request is the request.
 	//
@@ -224,10 +224,10 @@ func (b *Database) RowsAffected(ctx context.Context) (any, error) {
 // bound to it and the transaction depth are what this adds. Every method is nil
 // safe, so an uninstrumented run takes the same path.
 //
-// The bound values are recorded, not just their count: a placeholder query
-// names no row, and reading the values back is the reason
-// to open the trace at all. They are as sensitive as the columns they filter
-// on, so the front end belongs behind something that authenticates.
+// observe records the bound values, not just their count: a placeholder query
+// names no row, and reading the values back is the reason to open the trace at
+// all. They are as sensitive as the columns they filter on, so the front end
+// belongs behind something that authenticates.
 func (b *Database) observe(ctx context.Context, entry QueryLogEntry) {
 	span := databaseSpan(ctx)
 	span.SetAttribute("query", entry.Query)
@@ -243,10 +243,10 @@ func (b *Database) observe(ctx context.Context, entry QueryLogEntry) {
 
 // queryArgs renders the values bound to a statement. The bridge passes
 // positional arguments as a slice and named ones as the map or struct they came
-// from, so both shapes are kept as they are: the front end renders a slice and
-// a map perfectly well, and flattening them would lose which name held what.
-// An empty set is not recorded, so a query without placeholders has no
-// attribute and never an empty one.
+// from, so queryArgs passes both shapes through untouched: the front end
+// renders a slice and a map perfectly well, and flattening them would lose
+// which name held what. An empty set is not recorded, so a query without
+// placeholders has no attribute and never an empty one.
 func queryArgs(args any) (any, bool) {
 	if args == nil {
 		return nil, false
@@ -270,8 +270,9 @@ func recordRows(ctx context.Context, rows int) {
 	databaseSpan(ctx).SetAttribute("rows", rows)
 }
 
-// databaseSpan returns the span measuring the call in progress, or nil when the
-// run is uninstrumented. Every span method is nil safe, so callers do not check.
+// databaseSpan returns the span measuring the call in progress, or nil when
+// nothing instruments the run. Every span method is nil safe, so callers do
+// not check.
 func databaseSpan(ctx context.Context) *telemetry.Span {
 	span, _ := ctx.Value(databaseSpanKey{}).(*telemetry.Span)
 	return span
@@ -279,7 +280,7 @@ func databaseSpan(ctx context.Context) *telemetry.Span {
 
 // refuseWrite reports the error a read-only client returns for a CRUD helper.
 // There is nothing to classify: insert(), replace() and update() write by
-// definition, so they are refused before a statement is built for them.
+// definition, so it refuses them before anything builds a statement.
 func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 	if !b.IsReadonly {
 		return nil
@@ -292,9 +293,9 @@ func (b *Database) refuseWrite(ctx context.Context, statement string) error {
 // refuseQuery reports the error a read-only client returns for a statement that
 // is not a read, classifying it by the keyword it starts with.
 //
-// A refused statement never reaches the query log, so its text is recorded
-// here: a boundary nobody can see enforced is a boundary nobody can
-// debug when it refuses the wrong statement.
+// A refused statement never reaches the query log, so refuseQuery records its
+// text here: a boundary nobody can see enforced is a boundary nobody can debug
+// when it refuses the wrong statement.
 func (b *Database) refuseQuery(ctx context.Context, query string) error {
 	if !b.IsReadonly {
 		return nil
@@ -312,8 +313,8 @@ func (b *Database) refuseQuery(ctx context.Context, query string) error {
 	return err
 }
 
-// name qualifies a method with the PHP variable holding this client, so two
-// clients in one request are told apart in the trace.
+// name qualifies a method with the PHP variable holding this client, so the
+// trace tells two clients in one request apart.
 func (b *Database) name(method string) string {
 	if b.ID == "" {
 		return method

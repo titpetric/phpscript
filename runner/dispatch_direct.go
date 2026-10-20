@@ -15,8 +15,8 @@ import (
 // three.
 //
 // Each case is one method name with one signature, because a Go interface
-// encodes both. The assertion runs per call and the itab lookup is cached by
-// the runtime, so the per-call cost is a type check. A receiver or an
+// encodes both. The assertion runs per call and the runtime caches the itab
+// lookup, so the per-call cost is a type check. A receiver or an
 // argument shape a case does not cover answers handled=false, which sends the
 // call down the planned reflect path with its coercion and its errors intact;
 // nothing here may answer differently than that path would.

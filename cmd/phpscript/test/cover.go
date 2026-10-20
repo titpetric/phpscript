@@ -24,7 +24,7 @@ const (
 type profileBlock = coverage.ProfileBlock
 
 // writeCoverage renders the collectors installed on the fixtures: one profile
-// per fixture next to it when --split is set, and the merged profile at
+// per fixture next to it under --split, and the merged profile at
 // opts.CoverFile either way. It runs after the fixtures did, whichever mode ran
 // them; a fixture whose runtime runner never executed simply has empty counts.
 func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
@@ -50,8 +50,8 @@ func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 	case CoverFile:
 		return coverage.WriteReport(os.Stdout, coverage.FileRows(reportBlocks(blocks), coverFiles(fixtures)))
 	default:
-		// The folder table is the fuller answer and it has already been
-		// printed, so this line would only invite a comparison between two
+		// The folder table is the fuller answer and the run printed it
+		// already, so this line would only invite a comparison between two
 		// numbers measuring different things: the profile counts the .phpt
 		// entrypoints, which run by definition, and the table does not.
 		if !opts.JSON && opts.Verbose {
@@ -62,9 +62,8 @@ func writeCoverage(opts Options, fixtures []*tests.Fixture) error {
 }
 
 // mergeCoverBlocks folds every fixture's collected blocks into one profile.
-// The same statement reached by several fixtures is one block whose counts add
-// up, so a folder's total is independent of how its fixtures are
-// split up.
+// A statement more than one fixture reached is one block whose counts add up,
+// so a folder's total is independent of how it splits its fixtures.
 func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	merged := map[profileKey]*profileBlock{}
 	for _, fx := range fixtures {
@@ -79,9 +78,8 @@ func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 				merged[key] = &block
 				continue
 			}
-			// The same statement counted by several fixtures ran once per
-			// fixture, so the counts add up; the shape of the block does not
-			// change.
+			// A statement more than one fixture counted ran once per fixture,
+			// so the counts add up; the shape of the block does not change.
 			at.Count += b.Count
 			if b.NumStmt > at.NumStmt {
 				at.NumStmt = b.NumStmt
@@ -97,8 +95,8 @@ func mergeCoverBlocks(fixtures []*tests.Fixture) []profileBlock {
 	return blocks
 }
 
-// profileKey identifies a block across fixtures. Columns are derived from the
-// same source lines everywhere, so the line range is the identity.
+// profileKey identifies a block across fixtures. Columns come from the same
+// source lines everywhere, so the line range is the identity.
 type profileKey struct {
 	file      string
 	startLine int
@@ -198,8 +196,8 @@ func coverFixtures(fixtures []*tests.Fixture) {
 
 // coverFuncs merges every fixture's declaration spans, resolved to the paths
 // the profile names. Fixture entrypoints do not declare application functions
-// worth reporting, and their rows are excluded wholesale below, so their spans
-// are dropped here too.
+// worth reporting, and reportBlocks drops their rows wholesale below, so this
+// drops their spans too.
 func coverFuncs(fixtures []*tests.Fixture) []coverage.FuncSpan {
 	type key struct {
 		file, name string

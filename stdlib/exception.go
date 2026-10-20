@@ -25,13 +25,12 @@ func (e *Exception) ThrowableClass() string {
 	return e.Class
 }
 
-// NewException will return a new allocation for an exception.
-// A nil error is returned so a new exception is not thrown immediately
-// whenever a `new Exception` call is made in the runtime.
+// NewException returns a new allocation for an exception, and a nil error, so
+// a `new Exception` call in the runtime does not throw immediately.
 //
-// The exception is returned as a pointer. Returning the struct by value boxed
-// a copy into the interface the VM holds, which costs the same allocation but
-// loses reference semantics: the boxed copy is not addressable, so
+// NewException returns a pointer. Returning the struct by value boxed a copy
+// into the interface the VM holds, which costs the same allocation but loses
+// reference semantics: the boxed copy is not addressable, so
 // `$e->message = "..."` could not write to it and a method could not mutate
 // the instance the script holds.
 func NewException(message string, code int) (*Exception, error) {
@@ -43,8 +42,8 @@ func NewException(message string, code int) (*Exception, error) {
 }
 
 // newThrowable returns the constructor for one PHP throwable class. Each class
-// builds the same value and differs only in the name it records, so
-// a catch clause filters on and what get_class() reports.
+// builds the same value and differs only in the name it records: a catch
+// clause filters on that name and get_class() reports it.
 func newThrowable(class string) func(string, int) (*Exception, error) {
 	return func(message string, code int) (*Exception, error) {
 		return &Exception{
@@ -65,7 +64,7 @@ func (e *Exception) GetMessage() string {
 	return e.Message
 }
 
-// Error is implemented to satisfy an error interface.
+// Error returns the message, so *Exception is a Go error.
 func (e *Exception) Error() string {
 	return e.Message
 }

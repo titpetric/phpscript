@@ -8,14 +8,14 @@ import (
 )
 
 // phpInstanceOf evaluates `$value instanceof Class` as class-name equality:
-// it is `get_class($value) == "Class"`, compared case-insensitively as class
-// names are everywhere else.
+// `get_class($value) == "Class"`, compared case-insensitively as class names
+// are everywhere else.
 //
 // class is the name written on the right, or the value an expression there
 // produced, since PHP accepts a class name held in a variable and an object to
 // take the class of. A scalar, null and an array are an instance of nothing.
 //
-// An interface name is answered from the list the class declared, including the
+// An interface name matches against the list the class declared, including the
 // names those interfaces extend, so `$store instanceof Reader` is true when
 // Store implements an interface extending Reader. That list is names, and no
 // member arrives through it.
@@ -32,8 +32,8 @@ func phpInstanceOf(value, class any) bool {
 	if have := instanceOfClass(value); have != "" && strings.EqualFold(want, have) {
 		return true
 	}
-	// An interface name is not a class name, so it is answered from the list
-	// the declaration recorded. That list is names, not members: a class
+	// An interface name is not a class name, so the match runs against the
+	// list the declaration recorded. That list is names, not members: a class
 	// implementing an interface still declares everything it has.
 	if obj, ok := value.(*model.Object); ok && obj.Class != nil {
 		for _, name := range obj.Class.Implements {

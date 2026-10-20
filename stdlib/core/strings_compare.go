@@ -18,7 +18,7 @@ func registerStringCompare(rt *runner.Runtime) {
 	})
 	// strcasecmp compares $string1 and $string2 byte by byte with the ASCII
 	// letters folded to lower case, answering a negative number, a positive
-	// one, or 0 as strcmp does; a byte above 127 is compared as it is, so the
+	// one, or 0 as strcmp does; it compares a byte above 127 unfolded, so the
 	// folding does not reach an accented letter.
 	rt.RegisterFunc("strcasecmp", func(string1, string2 string) int64 {
 		return compareBytes(string1, string2, wholeString, true)
@@ -38,9 +38,9 @@ func registerStringCompare(rt *runner.Runtime) {
 }
 
 // wholeString is the limit strcmp and strcasecmp pass: they read to the end of
-// the shorter string and then let its length break the tie. It is not a large
-// number, because a large number is still a limit, and a limit reached is what
-// tells compareBytes to stop before the length rule.
+// the shorter string and then let its length break the tie. A large number
+// would not do, because a large number is still a limit, and a limit reached is
+// what tells compareBytes to stop before the length rule.
 const wholeString = -1
 
 // clampLength reads strncmp's $length. PHP 8 raises a ValueError below zero;
@@ -62,11 +62,11 @@ func clampLength(length int64) int {
 // arguments to.
 //
 // It returns the difference between the first two bytes that disagree, with no
-// normalisation to -1/0/1, because PHP's memcmp answers in that range and a fixture
-// recorded from php pins the number: strcmp("A", "a") is -32 there, not -1.
-// Bytes compare unsigned, so "\xff" sorts after "\x01" and never before it.
-// Only a tie broken by length normalises, which is also PHP's reading:
-// strcmp("a", "abcdefgh") is -1 and not -7.
+// normalisation to -1/0/1, because PHP's memcmp answers the byte difference and
+// a fixture recorded from php pins the number: strcmp("A", "a") is -32 there,
+// not -1. Bytes compare unsigned, so "\xff" sorts after "\x01" and never
+// before it. Only a tie broken by length normalises, which is also PHP's
+// reading: strcmp("a", "abcdefgh") is -1 and not -7.
 func compareBytes(string1, string2 string, limit int, fold bool) int64 {
 	n := len(string1)
 	if len(string2) < n {

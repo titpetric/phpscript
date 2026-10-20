@@ -11,31 +11,31 @@ import (
 )
 
 // Precompiler fills the caches a source tree serves from, before it serves
-// anything. Every .php file below Root is parsed into Includes and compiled
-// into Exprs, so the parse and the compile a request pays for today are paid
-// once at startup instead. Nothing is invalidated afterwards: an edited file
-// is picked up by a reload or a restart.
+// anything. The pass parses every .php file below Root into Includes and
+// compiles it into Exprs, so startup pays once for the parse and the compile a
+// request pays for today. Nothing invalidates an entry afterwards: a reload or
+// a restart takes up an edited file.
 type Precompiler struct {
-	// Root is the application root the tree is walked from.
+	// Root is the application root the walk starts at.
 	Root fs.FS
 
 	// Includes receives every file that parsed, keyed by its path below Root.
 	// That is the key Runtime.LoadFile and include/require both resolve to,
-	// because a path is cleaned against the root before it is read.
+	// because the runtime cleans a path against the root before the read.
 	Includes *IncludeCache
 
 	// Exprs receives the flat bytecode of each parsed program. Nil parses
 	// without compiling: a host running the interpreter never reads bytecode,
-	// and holding it is resident memory for nothing.
+	// and holding bytecode is resident memory for nothing.
 	Exprs *ExprCache
 
-	// Workers bounds how many files are parsed at once. Zero is GOMAXPROCS,
+	// Workers bounds how many files the pass parses at once. Zero is GOMAXPROCS,
 	// which is the parallelism the machine has for work that is all CPU.
 	Workers int
 }
 
 // Run parses and compiles the tree, and reports how many files it cached. The
-// heap the pass added is recorded on the include cache, where
+// pass records the heap it added on the include cache, where
 // opcache_get_status() reads it.
 func (p Precompiler) Run() int {
 	if p.Root == nil || p.Includes == nil {
@@ -47,11 +47,11 @@ func (p Precompiler) Run() int {
 		return 0
 	}
 
-	// The cost is measured and never estimated. A parsed program is a graph
-	// of nodes with no size of its own to add up, and the number worth
-	// reporting is what the process is holding because of the pass. Both reads
-	// follow a collection so the figure is live heap on each side and not
-	// whatever has not been swept.
+	// This measures the cost and estimates nothing. A parsed program is a
+	// graph of nodes with no size of its own to add up, and the number worth
+	// reporting is what the process holds because of the pass. Both reads
+	// follow a collection, so the figure is live heap on each side and never
+	// whatever the collector has yet to sweep.
 	before := liveHeap()
 	defer func() { p.Includes.Account(liveHeap() - before) }()
 
@@ -95,8 +95,8 @@ func liveHeap() int64 {
 	return int64(stats.HeapAlloc)
 }
 
-// sources lists the .php files below Root. A directory that cannot be read is
-// skipped and never ends the walk, so one unreadable folder costs its own
+// sources lists the .php files below Root. The walk passes over a directory it
+// cannot read and runs to the end, so one unreadable folder costs its own
 // files and not the tree.
 func (p Precompiler) sources() []string {
 	var files []string
@@ -112,10 +112,10 @@ func (p Precompiler) sources() []string {
 
 // compile parses one file into the caches and reports whether it cached it.
 //
-// A file that does not parse, and a program the flat compiler rejects, are
-// left out. Both are the state the tree is in without precompilation, and a
-// request that reaches one gets the same answer it gets today: startup is not
-// where a source error in a file nothing may ever request is reported.
+// The pass leaves out a file that does not parse, and a program the flat
+// compiler rejects. Both are the state the tree is in without precompilation,
+// and a request that reaches one gets the same answer it gets today: startup
+// stays quiet about a source error in a file nothing may ever request.
 func (p Precompiler) compile(name string) bool {
 	src, err := fs.ReadFile(p.Root, name)
 	if err != nil {

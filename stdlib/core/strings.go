@@ -61,14 +61,14 @@ func registerStrings(rt *runner.Runtime) {
 	// negative $length is a distance from it. Array arguments are not
 	// supported.
 	rt.RegisterFunc("substr_replace", phpSubstrReplace)
-	// ucfirst returns $string with its first character uppercased; non-ASCII
-	// letters are converted too.
+	// ucfirst returns $string with a leading a-z mapped up and every other
+	// first byte left alone; mb_ucfirst converts non-ASCII letters too.
 	rt.RegisterFunc("ucfirst", phpUcfirst)
-	// lcfirst returns $string with its first character lowercased; non-ASCII
-	// letters are converted too.
+	// lcfirst returns $string with a leading A-Z mapped down and every other
+	// first byte left alone; mb_lcfirst converts non-ASCII letters too.
 	rt.RegisterFunc("lcfirst", phpLcfirst)
 	// ucwords returns $string with the first ASCII letter of every word
-	// uppercased, words being separated by $separators, which defaults to "
+	// uppercased, where $separators separates the words and defaults to "
 	// \t\r\n\f\v".
 	rt.RegisterFunc("ucwords", phpUcwords)
 	// chr returns the one-byte string for $codepoint, taken modulo 256 with
@@ -76,19 +76,20 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("chr", phpChr)
 	// ord returns the first byte of $character as an integer, or 0 when $character is empty.
 	rt.RegisterFunc("ord", phpOrd)
-	// str_contains reports whether $needle occurs in $haystack; an empty
-	// needle is contained in every string.
+	// str_contains reports whether $needle occurs in $haystack; every string
+	// contains an empty needle.
 	rt.RegisterFunc("str_contains", phpStrContains)
 	// str_starts_with reports whether $haystack begins with $needle.
 	rt.RegisterFunc("str_starts_with", phpStrStartsWith)
 	// str_ends_with reports whether $haystack ends with $needle.
 	rt.RegisterFunc("str_ends_with", phpStrEndsWith)
-	// strrev returns $string with its characters in reverse order; multi-byte
-	// characters are preserved.
+	// strrev returns $string with its bytes in reverse order, so a multi-byte
+	// character comes out as its bytes in reverse.
 	rt.RegisterFunc("strrev", phpStrrev)
-	// str_split returns $string cut into chunks of $length characters, the last
-	// one shorter when the string does not divide evenly. An empty string
-	// returns an empty array.
+	// str_split returns $string cut into chunks of $length bytes, the last one
+	// shorter when the string does not divide evenly, so a chunk boundary may
+	// fall inside a multi-byte character. An empty string returns an empty
+	// array.
 	rt.RegisterFunc("str_split", phpStrSplit)
 	rt.SetConst("FNM_PATHNAME", int64(fnmPathname))
 	rt.SetConst("FNM_NOESCAPE", int64(fnmNoescape))
@@ -124,10 +125,10 @@ func registerStrings(rt *runner.Runtime) {
 	// join returns the values of $array joined with $separator, PHP's alias of implode.
 	rt.RegisterFunc("join", phpImplode)
 	// explode splits $str on $separator into a list; a positive $limit caps
-	// the parts, the last one holding the rest, and other limits are ignored.
+	// the parts, the last one holding the rest, and other limits do nothing.
 	rt.RegisterFunc("explode", phpExplode)
 	// htmlspecialchars escapes &, <, >, double and single quotes as HTML
-	// entities; the $flags and later arguments are accepted and ignored.
+	// entities; it takes the $flags and later arguments and ignores them.
 	rt.RegisterFunc("htmlspecialchars", func(s string, flags ...any) string {
 		return htmlSpecialCharsReplacer.Replace(s)
 	})
@@ -139,9 +140,10 @@ func registerStrings(rt *runner.Runtime) {
 	rt.RegisterFunc("crc32", phpCRC32)
 }
 
-// htmlSpecialCharsReplacer is built once: a strings.Replacer compiles a trie
-// over its pairs, and htmlspecialchars runs once per template variable, so
-// constructing it inside the binding paid for that trie on every call.
+// htmlSpecialCharsReplacer holds one Replacer for the whole package: a
+// strings.Replacer compiles a trie over its pairs, and htmlspecialchars runs
+// once per template variable, so constructing it inside the binding paid for
+// that trie on every call.
 var htmlSpecialCharsReplacer = strings.NewReplacer(
 	"&", "&amp;",
 	"<", "&lt;",
@@ -158,8 +160,8 @@ var crc32IEEETable = crc32.MakeTable(crc32.IEEE)
 // escaped ("stdlib.go: ([]byte)(s) escapes to heap"): crc32.ChecksumIEEE's
 // argument leaks into the slicing-by-8 and hardware paths, so every crc32()
 // allocated and copied its input. Short strings, every practical use since
-// crc32 keys and etags are short, run the table loop in place and allocate
-// nothing. Longer ones keep the standard library's implementation, which
+// crc32 keys and etags are short, run the table loop in place with no
+// allocation. Longer ones keep the standard library's implementation, which
 // processes eight bytes at a time and amortises the copy over the input.
 func phpCRC32(str string) int64 {
 	if len(str) > crc32NativeThreshold {
@@ -173,8 +175,8 @@ func phpCRC32(str string) int64 {
 }
 
 // crc32NativeThreshold is where the table loop stops winning outright. Below
-// it the loop is several times faster than allocating a copy (8 bytes: 38ns/0
-// allocs against 105ns/1 alloc); at 256 the two are level on this hardware.
+// it the loop beats allocating a copy (8 bytes: 38ns/0 allocs against
+// 105ns/1 alloc); at 256 the two are level on this hardware.
 // See BenchmarkCRC32.
 const crc32NativeThreshold = 256
 
@@ -223,10 +225,10 @@ func phpTrim(side trimSide, def string) func(string, ...string) string {
 // does: a byte stands for itself and "a..z" is every byte from the first to the
 // last, both included.
 //
-// A range whose end sorts below its start, or one missing either end, is read as
-// the literal bytes it is written with. PHP warns on each of those and then
-// reads it the same way; there are no warnings here, so the reading is the whole
-// of the behaviour.
+// A range whose end sorts below its start, or one missing either end, stays the
+// literal bytes the list spells. PHP warns on each of those and then reads it
+// the same way; there are no warnings here, so the reading is the whole of the
+// behaviour.
 func charMask(list string) [256]bool {
 	var mask [256]bool
 	for i := 0; i < len(list); {
@@ -296,8 +298,8 @@ func phpStrpos(haystack, needle string, offset ...int64) any {
 	return int64(i + start)
 }
 
-// phpStripos implements stripos($haystack, $needle[, $offset]). Both operands
-// are folded over A-Z only, which keeps their byte length, so the offset still
+// phpStripos implements stripos($haystack, $needle[, $offset]). It folds both
+// operands over A-Z only, which keeps their byte length, so the offset still
 // indexes the original haystack; PHP folds no wider than that either.
 func phpStripos(haystack, needle string, offset ...int64) any {
 	return phpStrpos(asciiLower(haystack), asciiLower(needle), offset...)
@@ -414,9 +416,9 @@ func asciiUpper(s string) string {
 // ucwordsDefaultSeparators is PHP's default $separators for ucwords.
 const ucwordsDefaultSeparators = " \t\r\n\f\v"
 
-// phpUcfirst maps the first byte up when it is a-z and leaves every other
-// first byte alone, so ucfirst("ábc") is unchanged. mbUcfirst converts the
-// first character whatever it is.
+// phpUcfirst maps the first byte up when that byte is a-z and leaves every
+// other first byte alone, so ucfirst("ábc") returns "ábc". mbUcfirst converts
+// the first character, ASCII or not.
 func phpUcfirst(str string) string {
 	if str == "" || str[0] < 'a' || str[0] > 'z' {
 		return str
@@ -446,8 +448,8 @@ func phpUcwords(str string, separators ...string) string {
 	for i := 0; i < len(str); i++ {
 		c := str[i]
 		if start && c >= 'a' && c <= 'z' {
-			// The copy is made on the first byte that actually changes, so a
-			// string already in the wanted case is returned as it arrived.
+			// The copy starts at the first byte that changes, so phpUcwords
+			// returns a string already in the wanted case as it arrived.
 			if b == nil {
 				b = []byte(str)
 			}
@@ -462,8 +464,8 @@ func phpUcwords(str string, separators ...string) string {
 }
 
 // chrTable holds the 256 one-byte strings chr can return. Building it once
-// means chr allocates nothing per call, where string(byte(n)) would allocate
-// for every byte outside the runtime's small-string cache.
+// means chr allocates nothing per call, where string(byte(n)) would cost an
+// allocation for every byte outside the runtime's small-string cache.
 var chrTable = func() [256]string {
 	var t [256]string
 	for i := range t {
@@ -502,8 +504,7 @@ func phpStrStartsWith(haystack, needle string) bool { return strings.HasPrefix(h
 func phpStrEndsWith(haystack, needle string) bool { return strings.HasSuffix(haystack, needle) }
 
 // phpStrrev reverses bytes, as PHP's strrev does, so a multi-byte character
-// comes out as its bytes in reverse, which is not valid UTF-8. mbStrrev
-// reverses characters.
+// comes out as its bytes in reverse, which is not valid UTF-8.
 func phpStrrev(str string) string {
 	b := []byte(str)
 	for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
@@ -548,7 +549,8 @@ func phpStrPad(str string, length int64, optional ...any) string {
 	case strPadLeft:
 		return padTo(pad, int(diff)) + str
 	case strPadBoth:
-		// An odd remainder goes to the right, as PHP halves downwards.
+		// An odd difference puts the extra byte on the right, as PHP halves
+		// downwards.
 		left := diff / 2
 		return padTo(pad, int(left)) + str + padTo(pad, int(diff-left))
 	default:

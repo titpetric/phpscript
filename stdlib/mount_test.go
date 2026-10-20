@@ -47,7 +47,7 @@ echo "none";`
 }
 
 // TestMountSecureExcludesExec pins the security property of the secure
-// profile: no pexec name is defined, and no call route reaches one - a direct
+// profile: it defines no pexec name, and no call route reaches one - a direct
 // call, call_user_func and a variable function all resolve through the one
 // function table, on either engine. strlen answers beside each refusal, so the
 // failure is the absence of the name and no broken runtime.

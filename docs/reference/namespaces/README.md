@@ -2,9 +2,9 @@
 
 | PHP language-reference feature     | Status                | Notes                                                                             |
 |------------------------------------|-----------------------|-----------------------------------------------------------------------------------|
-| Defining namespaces                | Partial compatibility | Only one semicolon-delimited namespace at the start of a file is supported.       |
-| Sub-namespaces                     | Compatibility         | Qualified names with `\` are supported.                                           |
-| Multiple namespaces per file       | Not implemented       | Braced namespaces and repeated declarations are unavailable.                      |
+| Defining namespaces                | Partial compatibility | The parser accepts only one semicolon-delimited namespace at the start of a file. |
+| Sub-namespaces                     | Compatibility         | Qualified names with `\` resolve.                                                 |
+| More than one namespace per file   | Not implemented       | Braced namespaces and repeated declarations are unavailable.                      |
 | Relative and fully-qualified names | Partial compatibility | Current-namespace and leading-`\` names resolve; `namespace\Name` is unavailable. |
 | Aliasing and importing             | Compatibility         | `use A\B\C;` and `use A\B\C as D;` alias a name for the rest of the file.         |
 | `__NAMESPACE__`                    | Compatibility         | Resolves to the current namespace name.                                           |
@@ -50,10 +50,10 @@ class Bootstrap
 }
 ```
 
-`use function` and `use const` are accepted and alias the same way.
+The parser accepts `use function` and `use const`, and both alias the same way.
 
 ## Autoloading
 
 Register a loader with `spl_autoload_register()`, which accepts every PHP callable spelling: a closure, a function name, `"Class::method"`, or `array($object, "method")`. `spl_autoload_unregister()` removes it again, matching by what the callable names and not by identity. Calling `spl_autoload_register()` without a callback installs phpscript's default loader, which lowercases the class name and resolves it as a `.php` file on the include path.
 
-composer's generated autoloader is interpreted as-is: `require "vendor/autoload.php"` runs `vendor/composer/ClassLoader.php` through the same interpreter as any other PHP, registers its `loadClass` method, and resolves PSR-4 and classmap entries from `composer.json`. Nothing about composer is special-cased in the runtime; see [demos/dbadmin](../../../demos/dbadmin) for a working application.
+phpscript interprets composer's generated autoloader as-is: `require "vendor/autoload.php"` runs `vendor/composer/ClassLoader.php` through the same interpreter as any other PHP, registers its `loadClass` method, and resolves PSR-4 and classmap entries from `composer.json`. Nothing about composer is special-cased in the runtime; see [demos/dbadmin](../../../demos/dbadmin) for a working application.

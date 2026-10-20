@@ -6,7 +6,7 @@
 
 Map that accepts objects as keys without contributing to their reference count.
 
-If the map holds the only remaining reference to a key, the object is collected and its entry disappears, which makes it a place to hang data derived from an object without extending the object's lifetime.
+If the map holds the only remaining reference to a key, PHP collects the object and its entry disappears, which makes it a place to hang data derived from an object without extending the object's lifetime.
 
 ## Class synopsis
 
@@ -43,6 +43,6 @@ public function offsetUnset(object $object): void
 
 ## Status
 
-- phpscript does not implement this class. The name is not declared.
+- phpscript has no `WeakMap`. The name is not declared.
 - It rests on three things that are unavailable: reference-count semantics, as described for [WeakReference](WeakReference.md), plus [ArrayAccess](ArrayAccess.md) and [IteratorAggregate](IteratorAggregate.md), neither of which dispatches here.
 - An object cannot be an array key in either language, so a map keyed by object needs the host. Use an array keyed by an identifier the script already has.

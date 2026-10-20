@@ -7,8 +7,8 @@ import (
 )
 
 // TestConfigTLS covers the two things the TLS settings decide: the name the
-// certificate is matched against, which is the configured host, and whether it
-// is checked at all.
+// dial matches the certificate against, which is the configured host, and
+// whether it verifies the certificate at all.
 func TestConfigTLS(t *testing.T) {
 	t.Parallel()
 	config := Config{Host: "mail.titpetric.com", Port: 587}
@@ -25,8 +25,8 @@ func TestConfigTLS(t *testing.T) {
 	}
 }
 
-// TestConfigValidate covers the checks that fail a command at startup rather
-// than a delivery hours later.
+// TestConfigValidate covers the checks that fail a command at startup, ahead
+// of a delivery hours later.
 func TestConfigValidate(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
@@ -55,7 +55,7 @@ func TestConfigValidate(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			err := test.config.Validate("default")
+			err := test.config.Check("default")
 			if test.want == "" {
 				if err != nil {
 					t.Fatalf("error = %v, want none", err)

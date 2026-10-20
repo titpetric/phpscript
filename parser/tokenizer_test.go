@@ -41,7 +41,8 @@ func TestTokenGetAllShape(t *testing.T) {
 		}{id, text})
 	}
 
-	// Verify key tokens are classified the way minitpl's _split_exp expects.
+	// Verify the tokenizer classifies key tokens the way minitpl's _split_exp
+	// expects.
 	var sawOpenTag, sawIf, sawVar, sawArrow bool
 	for _, g := range got {
 		switch {

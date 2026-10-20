@@ -6,14 +6,14 @@ import (
 )
 
 // Overlay reads filename over base and returns the configuration it describes,
-// together with the keys the file itself named, so a key it
-// set from one it inherited.
+// together with the keys the file itself named, so a caller can tell a key the
+// file set from one it inherited.
 //
-// It is the layering every phpscript.yml gets: a file names what it changes and
-// inherits the rest. A missing one is an error, with no fall back to base,
+// This is the layering every phpscript.yml gets: a file names what it changes
+// and inherits the rest. A missing one is an error, with no fall back to base,
 // because a tree served under settings nobody wrote is the failure worth
 // avoiding. forbidden names the keys the file may not set and owned says who
-// sets them instead; both are rejected and never dropped.
+// sets them instead; the overlay refuses both and drops neither.
 func Overlay(base Config, filename string, forbidden []string, owned string) (Config, map[string]any, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
@@ -23,8 +23,8 @@ func Overlay(base Config, filename string, forbidden []string, owned string) (Co
 }
 
 // OverlayBytes is Overlay over source already read. A caller holding the file
-// as bytes has its own filesystem to read from: the fixture tree is compiled
-// into the test binary, and a virtual host root is an absolute path no
+// as bytes has its own filesystem to read from: the build compiles the fixture
+// tree into the test binary, and a virtual host root is an absolute path no
 // fs.FS spells. filename is only what errors name.
 func OverlayBytes(base Config, filename string, data []byte, forbidden []string, owned string) (Config, map[string]any, error) {
 	var declared map[string]any
@@ -38,7 +38,7 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 		}
 	}
 
-	if err := ValidateMailDeclaration(filename, declared); err != nil {
+	if err := CheckMailDeclaration(filename, declared); err != nil {
 		return base, declared, err
 	}
 
@@ -51,8 +51,8 @@ func OverlayBytes(base Config, filename string, data []byte, forbidden []string,
 	// holds only the ones it named and a site cannot inherit the operator's
 	// credentials. The one spelling that does not behave that way is `mail:`
 	// with nothing under it: that is a null node, which the decoder leaves as
-	// the inherited value, so a file declaring it had no servers would be
-	// handed the operator's. Naming the key with nothing under it means no
+	// the inherited value, so a file declaring it had no servers would
+	// inherit the operator's. Naming the key with nothing under it means no
 	// servers.
 	//
 	// This is here and not beside the virtual host checks because a test

@@ -5,11 +5,11 @@ import (
 )
 
 // newRouter returns the mux every handler tree this command builds starts
-// from. It is a platform.Router, which is the same interface.
+// from. A chi.Router is a platform.Router: the same interface.
 //
-// The implementation is named here and nowhere else. A site's router, the
-// process router and the ones the tests drive are then one mux, so a request
-// that routes one way under test routes that way when it is served.
+// Only this function names the implementation. A site's router, the process
+// router and the ones the tests drive are then one mux, so a request that
+// routes one way under test routes that way in the server.
 func newRouter() chi.Router {
 	return chi.NewRouter()
 }

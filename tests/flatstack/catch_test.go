@@ -57,7 +57,7 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 		},
 		{
 			// catch (Exception) declines an engine error, so the clause after
-			// it is the one that runs.
+			// it runs.
 			name:   "exception does not catch an engine error",
 			source: `<?php try { explode(",", "a,b", array()); } catch (Exception $e) { echo "exception"; } catch (Throwable $e) { echo "throwable"; }`,
 			want:   "throwable",
@@ -82,7 +82,7 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 			var output strings.Builder
 			runtime := flatstack.New(&output, flatstack.Options{})
 			// The SPL class names and explode() are stdlib registrations;
-			// without them a throw would fail before any clause is reached.
+			// without them a throw would fail before any clause runs.
 			stdlib.Register(runtime)
 			err = runtime.Run(program)
 			switch {
@@ -103,7 +103,7 @@ func TestFlatstackCatchClauseSelection(t *testing.T) {
 // TestFlatstackCatchSurvivesCalleeJumps pins the handler discipline across
 // frames: opJump discards a handler when the jump leaves its try's pc range,
 // and a callee's pcs are always outside the caller's range, so the range rule
-// is scoped to the frame that armed the handler. Before that scoping, the
+// holds only inside the frame that armed the handler. Before that scoping, the
 // first branch in a called function silently disarmed the caller's catch.
 func TestFlatstackCatchSurvivesCalleeJumps(t *testing.T) {
 	t.Parallel()

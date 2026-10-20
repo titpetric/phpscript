@@ -1,9 +1,9 @@
 package http_test
 
-// Sending is tested here against httptest, and not in a .phpt fixture: a
-// fixture that reached the network would be a fixture that fails when the
-// network does. The fixture covers construction and introspection, which is
-// what a script can check without a server.
+// These tests send against httptest, and no .phpt fixture does: a fixture that
+// reached the network would be a fixture that fails when the network does. The
+// fixture covers construction and introspection, all a script can check
+// without a server.
 
 import (
 	"context"
@@ -122,9 +122,9 @@ func TestRequestIsANetHTTPRequest(t *testing.T) {
 	}
 }
 
-// TestRequestMethodIsUpperCased pins that a lowercase verb is corrected rather
-// than sent as written: a server treats the method as case-sensitive and would
-// reject it.
+// TestRequestMethodIsUpperCased pins that NewRequest upper-cases a lowercase
+// verb and never sends it as written: a server treats the method as
+// case-sensitive and would reject it.
 func TestRequestMethodIsUpperCased(t *testing.T) {
 	t.Parallel()
 	request, err := http.NewRequest(context.Background(), "post", "https://example.invalid")
@@ -176,7 +176,7 @@ func TestClientOptions(t *testing.T) {
 		t.Errorf("Authorization = %q, want the client header", gotAuth)
 	}
 
-	// Send clones, so the caller's request is unchanged and can be sent again.
+	// Send clones, so the caller keeps its request intact and can send it again.
 	if request.URL.IsAbs() {
 		t.Errorf("Send mutated the caller's request URL to %q", request.URL)
 	}
@@ -200,8 +200,8 @@ func TestClientRelativeURLWithoutBaseIsReported(t *testing.T) {
 	}
 }
 
-// TestClientRejectsUnknownOption pins that a typo is reported and never
-// silently ignored, under the Mail binding's rule too.
+// TestClientRejectsUnknownOption pins that NewClient reports a typo and never
+// ignores it silently, under the Mail binding's rule too.
 func TestClientRejectsUnknownOption(t *testing.T) {
 	t.Parallel()
 	_, err := http.NewClient(context.Background(), map[string]any{"timeuot": int64(5)})

@@ -74,8 +74,8 @@ func RegisterHash(rt *runner.Runtime) {
 	// hash_equals reports whether $known_string and $user_string are the
 	// same, in time that does not depend on how far along they first differ;
 	// strings of different lengths are never equal, and the comparison of a
-	// wrong-length guess is the one case that does leak, because the lengths
-	// are compared first.
+	// wrong-length guess is the one case that does leak, because the length
+	// check runs first.
 	rt.RegisterFunc("hash_equals", func(known_string, user_string string) bool {
 		if len(known_string) != len(user_string) {
 			return false
@@ -101,14 +101,14 @@ func RegisterHash(rt *runner.Runtime) {
 	})
 }
 
-// digests is the algorithm table, spelled the way PHP spells the names. It is
+// digests is the algorithm table, spelled the way PHP spells the names, and
 // shorter than PHP's hash_algos(): every entry here is one a Go binary already
 // carries, and hash_algos() below answers this table and not PHP's, so a
 // script reads the set it has.
 //
-// The family is registered because storing a token as a digest
-// that can still be looked up by index needs it: bcrypt cannot answer a lookup,
-// and a fast digest chosen by name can.
+// This build registers the family because storing a token as a digest an index
+// can still find needs it: bcrypt cannot answer a lookup, and a fast digest
+// chosen by name can.
 var digests = map[string]func() hash.Hash{
 	"md5":    md5.New,
 	"sha1":   sha1.New,
@@ -116,10 +116,9 @@ var digests = map[string]func() hash.Hash{
 	"sha256": sha256.New,
 	"sha384": sha512.New384,
 	"sha512": sha512.New,
-	// crc32b is PHP's name for the ordinary IEEE CRC-32, and it is here because
-	// it is what a script reaching for a cheap non-cryptographic checksum
-	// types. crc32() the function is a different spelling of the same thing and
-	// is bound elsewhere.
+	// crc32b is PHP's name for the ordinary IEEE CRC-32, the name a script
+	// reaching for a cheap non-cryptographic checksum types. crc32() the
+	// function spells the same thing and lives in stdlib/core.
 	"crc32b": func() hash.Hash { return crc32.NewIEEE() },
 }
 

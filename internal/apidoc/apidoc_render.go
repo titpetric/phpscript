@@ -15,7 +15,7 @@ const header = `# Implemented PHP APIs
 This file lists the functions and classes the standard phpscript CLI runtime
 registers, grouped by the Go package each binding lives in. The comment over a
 binding's registration site (or the godoc of the function it registers) is the
-line shown here, and the signature is derived from the Go implementation.
+line shown here, and the signature comes from the Go implementation.
 Regenerate with ` + "`atkins test:introspection`" + ` after changing a registration
 or its comment; docs/naming-conventions.md documents the comment convention.
 
@@ -104,7 +104,7 @@ func renderFuncs(b *strings.Builder, funcs []Func) {
 		b.WriteString("```php\n")
 		writeComment(b, f.Comment, "")
 		// A Class::method name is not declarable with the function keyword;
-		// it is cited the way a script calls it.
+		// Signature cites it the way a script calls it.
 		fmt.Fprintf(b, "%s\n", f.Signature())
 		b.WriteString("```\n\n")
 	}
@@ -150,8 +150,8 @@ func writeComment(b *strings.Builder, lines []string, indent string) {
 }
 
 // Signature renders the function as a script would declare it. A Class::method
-// name is not declarable with the function keyword, so it is cited the way a
-// script calls it instead.
+// name is not declarable with the function keyword, so the line reads the way
+// a script calls it.
 func (f Func) Signature() string {
 	if strings.Contains(f.Name, "::") {
 		return fmt.Sprintf("%s(%s): %s", f.Name, paramList(f.Params), f.Returns)

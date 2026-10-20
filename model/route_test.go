@@ -75,9 +75,9 @@ func TestParseRoutePathRejects(t *testing.T) {
 	}
 }
 
-// The rendered pattern is what each router is handed. The expectations come
-// from chi v5.3.2 and net/http.ServeMux: chi 404s on {tail...} and
-// ServeMux panics on {id:[0-9]+}, so neither dialect is the authored one.
+// Each router receives the rendered pattern. The expectations come from chi
+// v5.3.2 and net/http.ServeMux: chi 404s on {tail...} and ServeMux panics on
+// {id:[0-9]+}, so neither dialect is the authored one.
 func TestRenderRoutePath(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -106,7 +106,7 @@ func TestRenderRoutePath(t *testing.T) {
 	}
 }
 
-// TestRouteDialect covers the two router syntaxes a path is rendered into, and
+// TestRouteDialect covers the two router syntaxes RenderRoutePath writes, and
 // that they are distinct values: a dialect selects the rewrite, so two dialects
 // sharing one value would render a single syntax for both routers.
 //

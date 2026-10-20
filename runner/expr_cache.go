@@ -20,9 +20,9 @@ type compiledExpr struct {
 	closures map[string]*model.Closure
 	exprs    map[string]model.Expr
 	prog     *expr.Program
-	// varSlots maps each entry of vars to the engine's slot for its
-	// identifier; closureSlots does the same for closure literals. Both are
-	// resolved once here so Eval binds by index and not by map key.
+	// varSlots maps each entry of vars to the engine's slot for its identifier;
+	// closureSlots does the same for closure literals. newDirectCompiledExpr
+	// fills both once so Eval binds by index and not by map key.
 	varSlots     []int
 	closureSlots map[string]int
 }
@@ -63,9 +63,9 @@ func newDirectCompiledExpr(dc *expr.Compiled) *compiledExpr {
 
 // ExprCache stores immutable compiled expressions by AST node identity and
 // flat bytecode by parsed program identity. Runtime-local binding metadata
-// (compiledExpr) is rebuilt per runtime; both maps retain their key's node
-// for the lifetime of the explicitly shared cache. Capacity is bounded to
-// prevent memory leaks.
+// (compiledExpr) is rebuilt per runtime; both maps keep their key's node
+// for the lifetime of the explicitly shared cache. maxEntries bounds the
+// capacity to prevent memory leaks.
 type ExprCache struct {
 	mu         sync.RWMutex
 	maxEntries int
@@ -116,7 +116,7 @@ func (c *ExprCache) GetExpr(e model.Expr) (*expr.Compiled, bool) {
 }
 
 // SetExpr stores a direct-compiled expression by node identity. Evicts one
-// item if max capacity is reached.
+// item at the maxEntries limit.
 func (c *ExprCache) SetExpr(e model.Expr, dc *expr.Compiled) {
 	if c == nil {
 		return
@@ -149,10 +149,10 @@ func (c *ExprCache) Len() int {
 	return len(c.byExpr)
 }
 
-// EnsureFlat compiles p into the flat-program table when it is not there yet
-// and reports the compile verdict. It is the write-through form of the check
-// flatstack.Supports makes: a caller gating a run on the compiler pays one
-// compile, and the run reads it back without repeating it.
+// EnsureFlat compiles p into the flat-program table when the table lacks it
+// and reports the compile verdict. The call is the write-through form of the
+// check flatstack.Supports makes: a caller gating a run on the compiler pays
+// one compile, and the run reads it back without repeating it.
 func (c *ExprCache) EnsureFlat(p *model.Program) error {
 	if _, ok := c.getFlat(p); ok {
 		return nil

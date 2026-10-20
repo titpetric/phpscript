@@ -13,7 +13,7 @@ import (
 	"github.com/titpetric/phpscript/runner/expr"
 )
 
-// contextType is the reflect type of context.Context, used to detect callables
+// contextType is context.Context as a reflect.Type, which detects the callables
 // that declare the runtime context as their first argument for auto-injection.
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 
@@ -70,7 +70,7 @@ func (rt *Runtime) invokeWithScopeContext(fn any, args []any, scope *Scope) (any
 	}
 	result, err := invokeAny(rt, fn, args)
 	if err == nil && rt.opts.MemoryLimit > 0 {
-		// Burst guard: a single host call can allocate far more than the
+		// Burst guard: a single host call can take far more memory than the
 		// per-statement checkpoint interval sees (str_repeat, file reads).
 		// The shallow estimate only decides when to walk early; the walk is
 		// the truth and resets the pending counter.
@@ -144,9 +144,9 @@ func helperIndex(base, idx any) any {
 	rv := reflect.ValueOf(base)
 	switch rv.Kind() {
 	case reflect.Map:
-		// The key is coerced to the map's own type first. A script index is
-		// an int64 or a string, so reading a map[int]T with the value passed
-		// straight to MapIndex panics and answers nothing.
+		// coerceArg converts the key to the map's own type first. A script
+		// index is an int64 or a string, so reading a map[int]T with the value
+		// passed straight to MapIndex panics and answers nothing.
 		mapKey, ok := coerceArg(rv.Type().Key(), normalizeKey(idx))
 		if !ok || !mapKey.Type().AssignableTo(rv.Type().Key()) {
 			return nil
@@ -170,12 +170,12 @@ func helperIndex(base, idx any) any {
 // objects (Props bag) and, by reflection, exported fields of Go structs. When a
 // PHP object has no matching property but has a method by that name, it returns
 // a *Callable bound to that object; this supports PHP idioms such as
-// `call_user_func_array($this->query, $args)`, and it is what a router takes as
-// a handler registered as `$this->fnName`.
+// `call_user_func_array($this->query, $args)`, and a router takes one as a
+// handler registered as `$this->fnName`.
 func (rt *Runtime) helperGet(ref *scopeRef) func(base any, name string) any {
 	return func(base any, name string) any {
 		// A bound callable produced here can outlive the expression that read it,
-		// so the scope is captured by value and not through the reference.
+		// so the closure copies the scope by value and not through the reference.
 		scope := ref.scope
 		switch b := base.(type) {
 		case *model.Object:
@@ -228,17 +228,16 @@ func (rt *Runtime) boundGoMethod(base any, method string, scope *Scope) func(...
 // adapt wraps any Go callable in the uniform func(...any) (any, error)
 // signature the evaluation environment carries, which is the one shape the
 // engine's call closures assert. The wrapper performs PHP-ish argument
-// coercion via reflection so shims can still be written with natural Go
-// signatures.
+// coercion via reflection so shims keep natural Go signatures.
 func adapt(fn any) func(...any) (any, error) {
 	inv := newInvoker(fn)
 	return func(args ...any) (any, error) { return inv.call(nil, args) }
 }
 
-// adaptOn is adapt for a wrapper whose runtime is known. A Go func declaring a
-// callable parameter gets one bound to the runtime doing the calling, which is
-// what makes a callable handed across a fork run where the call sits; the
-// helpers adapt() wraps take `any` and resolve their own.
+// adaptOn is adapt for a wrapper whose runtime the caller holds. A Go func
+// declaring a callable parameter gets one bound to the runtime doing the
+// calling, which lets a callable handed across a fork run where the call sits;
+// the helpers adapt() wraps take `any` and resolve their own.
 func adaptOn(rt *Runtime, fn any) func(...any) (any, error) {
 	inv := newInvoker(fn)
 	return func(args ...any) (any, error) { return inv.call(rt, args) }
@@ -292,8 +291,8 @@ func isSlotIdent(name string) bool {
 }
 
 // nameCallError fills in the PHP name of an error raised while building a call.
-// invokeAny works from the Go signature alone and has no name to report; the
-// name a script typed is known only at the dispatch site.
+// invokeAny works from the Go signature alone and has no name to report; only
+// the dispatch site holds the name a script typed.
 func nameCallError(err error, name string) error {
 	// The nil check keeps the allocation count down: the errors.As targets
 	// below take their address and escape, which costs a heap allocation on
@@ -315,9 +314,9 @@ func nameCallError(err error, name string) error {
 
 // phpParamTypeName spells a declared Go parameter type the way PHP names the
 // type in a TypeError ("must be of type int"). It describes a *parameter*, so
-// it is separate from phpDebugType, which describes a value, and
-// from gettype's legacy names (integer/double/boolean) in stdlib: neither table
-// may be folded into the other.
+// it stays separate from phpDebugType, which describes a value, and from
+// gettype's legacy names (integer/double/boolean) in stdlib: nothing may fold
+// one table into the other.
 func phpParamTypeName(t reflect.Type) string {
 	if t == nil {
 		return "mixed"
@@ -346,10 +345,10 @@ func phpParamTypeName(t reflect.Type) string {
 }
 
 // phpDebugType names a value the way PHP's get_debug_type() does ("array
-// given"). It describes a *value*, so it is separate from
-// phpParamTypeName, which describes a declared parameter type, and from
-// gettype's legacy names (integer/double/boolean) in stdlib: neither table may
-// be folded into the other.
+// given"). It describes a *value*, so it stays separate from phpParamTypeName,
+// which describes a declared parameter type, and from gettype's legacy names
+// (integer/double/boolean) in stdlib: nothing may fold one table into the
+// other.
 func phpDebugType(v any) string {
 	switch value := v.(type) {
 	case nil:
@@ -402,8 +401,8 @@ func argAt(args []any, i int) any {
 	return nil
 }
 
-// argsTail2 is the variadic remainder after two fixed parameters, aliased
-// the way argsTail aliases.
+// argsTail2 is the variadic tail after two fixed parameters, aliased the way
+// argsTail aliases.
 func argsTail2(args []any) []any {
 	if len(args) > 2 {
 		return args[2:]
@@ -411,9 +410,9 @@ func argsTail2(args []any) []any {
 	return nil
 }
 
-// argsTail is the variadic remainder after the first fixed parameter. The
-// slice is aliased, not copied: args is built fresh for each call, so the
-// binding sees exactly what reflect.Value.Call would have handed it.
+// argsTail is the variadic tail after the first fixed parameter. It aliases
+// the slice and copies nothing: each call builds args fresh, so the binding
+// sees exactly what reflect.Value.Call would have handed it.
 func argsTail(args []any) []any {
 	if len(args) > 1 {
 		return args[1:]
@@ -422,8 +421,8 @@ func argsTail(args []any) []any {
 }
 
 // invokeAny calls fn (any Go callable) with args, coercing arguments to the
-// declared parameter types where convertible. Common signatures are dispatched
-// directly by invokeFast; the rest go through reflection.
+// declared parameter types where convertible. fastInvoker dispatches the
+// common signatures directly; the rest go through reflection.
 func invokeAny(rt *Runtime, fn any, args []any) (result any, err error) {
 	// The uniform ABI is the hot entry-less shape: a compiled closure, a bound
 	// method, a Callable resolution, an adapt output. One guard, no construction.
@@ -491,8 +490,8 @@ func coerceArgOn(rt *Runtime, v any, want reflect.Type) (reflect.Value, bool) {
 //
 // want must return one value or none, since a PHP closure returns one. An error
 // the callable reports has nowhere to go in a signature that declares no error
-// slot, so it is raised as a panic, which the host boundary turns into a
-// catchable throwable the way it does any other panic in a binding.
+// slot, so adaptCallable panics with it, and the host boundary turns that into
+// a catchable throwable the way it does any other panic in a binding.
 func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.Value, bool) {
 	if want.IsVariadic() || want.NumOut() > 1 {
 		return reflect.Value{}, false
@@ -520,12 +519,12 @@ func adaptCallable(call func(...any) (any, error), want reflect.Type) (reflect.V
 
 // coerceArg converts a value to the target parameter type where a cheap
 // conversion makes it assignable. The final return reports whether it did: a
-// false means the value cannot be passed, and the caller turns that into a PHP
-// TypeError, with no reflect.Value.Call left to panic on it.
+// false refuses the value, and the caller turns that into a PHP TypeError,
+// with no reflect.Value.Call left to panic on it.
 //
 // It converts everything except a callable, which needs the runtime the call is
-// on and resolves through coerceArgOn: this one is reached by a map key, a slice
-// element and a struct field, none of which a callable arrives as, and keeping it
+// on and resolves through coerceArgOn: a map key, a slice element and a struct
+// field reach this one, none of which a callable arrives as, and keeping it
 // callable-free is also what keeps the expression helpers out of an
 // initialisation cycle with the interpreter.
 func coerceArg(want reflect.Type, v any) (reflect.Value, bool) {
@@ -553,8 +552,8 @@ func coerceArg(want reflect.Type, v any) (reflect.Value, bool) {
 		}
 	}
 	// A string parameter renders the value the way PHP renders it in a string
-	// context. Go's own conversion is defined for every integer type and means
-	// something else: reflect turns int64(65) into "A" where PHP writes "65".
+	// context. Go's own conversion covers every integer type and means something
+	// else: reflect turns int64(65) into "A" where PHP writes "65".
 	if want.Kind() == reflect.String {
 		return reflect.ValueOf(phpString(v)).Convert(want), true
 	}
@@ -604,7 +603,7 @@ func (rt *Runtime) helperNew(ref *scopeRef) func(classValue any, args ...any) (a
 	return func(classValue any, args ...any) (any, error) {
 		scope := ref.scope
 		// `new $className(...)` arrives with the class as a runtime value: a
-		// string name, or an instance whose class is reused, as PHP allows.
+		// string name, or an instance whose class it reuses, as PHP allows.
 		var class string
 		switch v := classValue.(type) {
 		case string:
@@ -676,11 +675,11 @@ func (rt *Runtime) helperNew(ref *scopeRef) func(classValue any, args ...any) (a
 	}
 }
 
-// callGoMethod invokes an exported method on a Go value by reflection. Method
-// names are matched case-insensitively (PHP method calls are case-insensitive,
-// so `$obj->get()` resolves Go's exported Get). When the method's first
-// parameter is a context.Context the runtime context is auto-injected, and
-// arguments are coerced to the declared parameter types.
+// callGoMethod invokes an exported method on a Go value by reflection. It
+// matches method names case-insensitively (PHP method calls are
+// case-insensitive, so `$obj->get()` resolves Go's exported Get). When the
+// method's first parameter is a context.Context it injects the runtime context,
+// and coerces arguments to the declared parameter types.
 // goMethodKey and goMethodInfo cache Go method resolution per receiver type
 // and spelled name; see Runtime.goMethods.
 type goMethodKey struct {
@@ -696,8 +695,8 @@ type goMethodInfo struct {
 	// bind is the pre-planned call over the bound signature: coercion with
 	// the parameter types resolved once, padding, Call, result reduction.
 	// It takes the bound method value because the cache is per receiver
-	// type, not per receiver, and the runtime because a callable argument is
-	// bound to the runtime making the call.
+	// type, not per receiver, and the runtime because a callable argument
+	// binds to the runtime making the call.
 	bind func(rt *Runtime, m reflect.Value, args []any) (any, error)
 	// direct is the typed call for the method shapes a handler touches per
 	// request, dispatched through an interface assertion in place of
@@ -710,9 +709,9 @@ type goMethodInfo struct {
 // resolveGoMethod resolves the way callGoMethod always has: the exact name,
 // then case-insensitively, then without underscores so a snake_case PHP
 // spelling finds the idiomatic Go name (get_id -> GetID), the same ladder
-// methodByNameFold climbs. The bound signature and the context check are
-// computed here once, on the value, so the per-call path is one map hit and
-// an index.
+// methodByNameFold climbs. It computes the bound signature and the context
+// check once here, on the value, so the per-call path is one map hit and an
+// index.
 func resolveGoMethod(rv reflect.Value, name string) goMethodInfo {
 	t := rv.Type()
 	index := -1
@@ -797,10 +796,10 @@ func bindGoMethod(mtype reflect.Type) func(*Runtime, reflect.Value, []any) (any,
 	}
 }
 
-// callGoMethod invokes a Go method by reflection. scopeFor is consulted only
-// when the method's first parameter is a context, which is the one moment
-// the PHP frame has to be materialised; a caller with the scope in hand
-// passes a closure returning it, which never escapes and costs nothing.
+// callGoMethod invokes a Go method by reflection. It calls scopeFor only when
+// the method's first parameter is a context, the one moment the runtime has to
+// materialise the PHP frame; a caller with the scope in hand passes a closure
+// returning it, which never escapes and costs nothing.
 func (rt *Runtime) callGoMethod(base any, method string, args []any, scopeFor func() *Scope) (result any, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -865,9 +864,9 @@ func methodCallError(err error, method string) error {
 
 // throwableMethod implements PHP's Throwable interface over any Go error.
 //
-// Every throwable class name is registered to one type, so a catch clause binds
-// whatever error reached it: an Exception a script threw, an error a binding
-// returned, or a panic converted at the host boundary. All of them answer the
+// stdlib registers every throwable class name to one type, so a catch clause
+// binds whatever error reached it: an Exception a script threw, an error a
+// binding returned, or a panic converted at the host boundary. Each answers the
 // method set a script expects on a caught value. A method the concrete Go type
 // defines wins, so *stdlib.Exception reports its own code.
 func throwableMethod(base any, method string) (any, bool) {
@@ -919,7 +918,8 @@ func methodByNameFold(rv reflect.Value, method string) reflect.Value {
 
 // goFieldInfo is one cached field resolution: the index chain
 // Value.FieldByIndexErr reads, and whether the name resolved to an exported
-// field at all. A miss is cached so a probe does not rescan the field set.
+// field at all. structField caches a miss too, so a probe does not rescan the
+// field set.
 type goFieldInfo struct {
 	index []int
 	found bool
@@ -970,18 +970,18 @@ func fieldByNameFold(value reflect.Value, name string) reflect.Value {
 }
 
 // callResult reduces a reflect Call result to (value, error) following Go
-// conventions: a trailing error is surfaced, and the non-error values become
-// the PHP result.
+// conventions: the trailing error goes to the error result, and the non-error
+// values become the PHP result.
 //
-// A Go callable that returns several values is not a special case to hide. One
-// value is returned as itself; several become a PHP list, in declaration order,
-// which a script destructures the way PHP returns a tuple:
+// A Go callable returning two or more values is not a special case to hide.
+// One value returns as itself; two or more become a PHP list, in declaration
+// order, which a script destructures the way PHP returns a tuple:
 //
 //	list($year, $week) = $t->iso_week();
 //
 // Keeping only the first value would silently answer a different question than
 // the one asked: time.Time.ISOWeek returns (year, week), and dropping the tail
-// makes `$t->iso_week()` evaluate to the year.
+// makes `$t->iso_week()` answer the year.
 func callResult(out []reflect.Value) (any, error) {
 	var values []reflect.Value
 	for _, o := range out {

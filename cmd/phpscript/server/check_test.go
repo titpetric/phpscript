@@ -137,7 +137,7 @@ func TestCheck(t *testing.T) {
 		}
 	})
 
-	// Resolved builds the trace store on disk; Validate must not. A test of
+	// Resolved builds the trace store on disk; Check must not. A test of
 	// a configuration that created a directory, owned by whoever ran the
 	// test and not by the service, is a side effect with no owner.
 	t.Run("disk telemetry creates no storage", func(t *testing.T) {

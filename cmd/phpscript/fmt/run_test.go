@@ -47,8 +47,8 @@ func TestNewCommand(t *testing.T) {
 
 // TestRun covers both halves of the command over the same file: the default
 // rewrites it in place and names it on stdout, and -l names it and leaves the
-// bytes alone. The file is written with spaces for indentation and no trailing
-// newline, both of which the formatter normalises, so it is a file that needs
+// bytes alone. The test writes spaces for indentation and no trailing
+// newline, both of which the formatter normalises, so the file needs
 // formatting by construction.
 func TestRun(t *testing.T) {
 	const unformatted = "<?php\nif (true) {\n  echo 1;\n}"
@@ -91,9 +91,9 @@ func TestRun(t *testing.T) {
 	}
 }
 
-// TestRunReportsSkippedFiles covers the file the formatter refuses. One file
-// using PHP that phpscript cannot parse is reported on stderr and left as it
-// is, and the rest of the run continues: a directory of PHP holds both kinds.
+// TestRunReportsSkippedFiles covers the file the formatter refuses, PHP
+// phpscript cannot parse: run names it on stderr and leaves its bytes alone,
+// while the rest of the run continues. A directory of PHP holds both kinds.
 func TestRunReportsSkippedFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -126,8 +126,8 @@ func TestRunReportsSkippedFiles(t *testing.T) {
 }
 
 // captureStdout runs fn with os.Stdout on a pipe and returns what it wrote.
-// Run writes to os.Stdout directly, so the file descriptor is where its
-// output is read from.
+// Run writes to os.Stdout directly, so the file descriptor is the only place
+// to read its output from.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 

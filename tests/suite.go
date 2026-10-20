@@ -19,8 +19,8 @@ import (
 	"github.com/titpetric/phpscript/stdlib/mail"
 )
 
-// SuiteFile is the file a directory of fixtures configures itself with. It is
-// the same name an application root serves under, because it is the same file:
+// SuiteFile is the file a directory of fixtures configures itself with, the
+// same name an application root serves under, because the two are one file:
 // a tree that is both a site and a suite writes one configuration, not two.
 const SuiteFile = config.VirtualHostConfigFile
 
@@ -28,13 +28,13 @@ const SuiteFile = config.VirtualHostConfigFile
 // it: the connections they resolve, the prelude they load, and the hooks the
 // session runs around them.
 //
-// The provider is built once and held, because the setup hook and the fixtures
-// have to share a pool. Two providers over one DSN are two pool caches, and a
-// schema applied through the first is not in the database the second queries
-// when the DSN names no shared file.
+// Provider builds the provider once and holds it, because the setup hook and
+// the fixtures have to share a pool. Two providers over one DSN are two pool
+// caches, and a schema applied through the first is not in the database the
+// second queries when the DSN names no shared file.
 type Suite struct {
 	// Dir is the suite root as the caller spells it, the spelling an error
-	// names and what stdlib.RegisterFS is rooted at.
+	// names and the root stdlib.RegisterFS binds the shims to.
 	Dir string
 
 	// Config is the file read over the configuration the run started with.
@@ -57,18 +57,18 @@ type Suite struct {
 }
 
 // LoadSuite reads dir/phpscript.yml off disk over base, and returns nil when
-// the directory holds no such file. A directory without one is not a suite
-// root; it is a folder of fixtures that configures nothing.
+// the directory holds no such file. A directory without one is no suite root,
+// only a folder of fixtures that configures nothing.
 //
-// forbidden refuses the keys that describe a whole run and not one folder. It
-// is false for the configuration found at or above the invocation root, the
+// forbidden refuses the keys that describe a whole run and not one folder: it
+// stays false for the configuration found at or above the invocation root, the
 // run's own, and true for one discovered below it.
 func LoadSuite(dir string, base config.Config, forbidden bool) (*Suite, error) {
 	return loadSuite(os.DirFS(dir), dir, filepath.Join(dir, SuiteFile), base, forbidden)
 }
 
 // LoadSuiteFS is LoadSuite over a directory inside root, for a tree that is not
-// on disk. The embedded fixtures the Go tests run are read this way.
+// on disk. The Go tests read their embedded fixtures this way.
 func LoadSuiteFS(root fs.FS, dir string, base config.Config) (*Suite, error) {
 	sub, err := fs.Sub(root, dir)
 	if err != nil {
@@ -115,9 +115,9 @@ func (s *Suite) Provider() model.DatabaseProvider {
 }
 
 // Mail answers the mail servers the fixtures below this suite root send
-// through: what the suite declared, or nothing, which is the rule a virtual
-// host is held to. Nothing is delivered in a fixture run - construction is a
-// name lookup, and the names are what the fixtures are about.
+// through: what the suite declared, or nothing, the rule a virtual host
+// already follows. A fixture run delivers nothing - construction is a name
+// lookup, and the names are what the fixtures are about.
 func (s *Suite) Mail() model.MailProvider {
 	if s == nil {
 		return nil
@@ -223,9 +223,9 @@ func RunSetup(ctx context.Context, suites []*Suite, out io.Writer) error {
 
 // RunTeardown runs the teardown hooks in reverse, whatever the fixtures did.
 //
-// Every hook runs and every failure is reported, with no stop
-// at the first: the suites are independent, and a caller learns about all of
-// them, and not the one that happened to be innermost.
+// Every hook runs and the error list carries every failure, with no stop at
+// the first: the suites are independent, and a caller learns about every one
+// of them.
 func RunTeardown(ctx context.Context, suites []*Suite, out io.Writer) error {
 	var failures []error
 	for i := len(suites) - 1; i >= 0; i-- {

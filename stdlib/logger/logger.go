@@ -9,13 +9,13 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// Logger is a slog logger that fails the span it runs in when it is told about
+// Logger is a slog logger that fails the span it runs in when a caller reports
 // an error. Log output is the log's business and stays there; what reaches the
 // trace is the one thing a trace has a place for, which is that the work went
 // wrong.
 //
-// The context it holds is the one the work runs under: a logger is handed to a
-// library for the length of one call, so it lives as long as that context.
+// The context it holds is the one the work runs under: a caller passes a logger
+// to a library for the length of one call, so it lives as long as that context.
 type Logger struct {
 	ctx  context.Context
 	log  *slog.Logger
@@ -46,7 +46,7 @@ func (l *Logger) WithLogger(log *slog.Logger) *Logger {
 	return &out
 }
 
-// Info logs a message at info level.
+// Info logs a message at `info` level.
 func (l *Logger) Info(msg string, args ...any) {
 	if l == nil {
 		return
@@ -69,8 +69,8 @@ func (l *Logger) Error(msg string, args ...any) {
 	telemetry.SpanFromContext(l.ctx).RecordError(cause(msg, args))
 }
 
-// slog is where the message is written. A logger holding none writes to
-// the default logger, and reads it per call and not at construction, so a
+// slog returns the logger to write the message to. A logger holding none writes
+// to the default logger, and reads it per call and not at construction, so a
 // process that configures logging after the fact still gets the output.
 func (l *Logger) slog() *slog.Logger {
 	if l.log != nil {
@@ -79,7 +79,7 @@ func (l *Logger) slog() *slog.Logger {
 	return slog.Default()
 }
 
-// label is what the message is logged as.
+// label returns the string the logger writes for msg.
 func (l *Logger) label(msg string) string {
 	if l.name == "" {
 		return msg

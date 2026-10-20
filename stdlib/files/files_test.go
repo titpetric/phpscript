@@ -61,11 +61,11 @@ func TestHostPath(t *testing.T) {
 	}
 }
 
-// TestWritableRoots covers how a configured writable_paths entry is read: a
-// relative entry is a path inside the project and resolves under the bound
-// root, and an absolute one is kept as written and then matches nothing,
-// because the path it is compared against has already been clamped into the
-// root. There is no spelling that grants a write outside the tree.
+// TestWritableRoots covers how WritableRoots reads a configured
+// writable_paths entry: a relative entry is a path inside the project and
+// resolves under the bound root, and an absolute one survives as written and
+// then matches nothing, because resolve clamps the path it compares against
+// into the root. There is no spelling that grants a write outside the tree.
 func TestWritableRoots(t *testing.T) {
 	t.Parallel()
 	root := filepath.Join("/srv", "site")
@@ -107,7 +107,7 @@ func TestWritableRoots(t *testing.T) {
 	}
 
 	// An absolute entry grants nothing: the path a script's /srv/shared
-	// resolves to is under the root, so it is never inside /srv/shared.
+	// resolves to is under the root, so it never lands inside /srv/shared.
 	if allowed := files.Within(files.HostPath(runner.New(&strings.Builder{}, runner.Options{}), root, "/srv/shared/x"), filepath.FromSlash("/srv/shared")); allowed {
 		t.Error("an absolute writable_paths entry allowed a write")
 	}
@@ -168,8 +168,8 @@ func TestRegisterRoot(t *testing.T) {
 }
 
 // writableOptions is a runner configured with an upload directory below the
-// document root and a private one beside it, so a site that accepts
-// uploads is set up.
+// document root and a private one beside it, the layout of a site that
+// accepts uploads.
 func writableOptions() runner.Options {
 	return runner.Options{WritablePaths: []string{"upload", "public/upload"}}
 }

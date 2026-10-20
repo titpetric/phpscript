@@ -23,16 +23,15 @@ type StorageDisk struct {
 // newRootedStorageDisk is the Session\Storage\Disk constructor a rooted host
 // registers.
 //
-// A path the script named is resolved against the root through the runtime's own
-// rule, so it names the same file file_get_contents would and cannot climb out,
-// and is then held to writable_paths. The directory it creates is therefore one
+// The runtime's own rule resolves a path the script named against the root, so
+// it names the same file file_get_contents would and cannot climb out, and the
+// constructor then holds it to writable_paths. The directory it creates is one
 // the script could have written a file into by hand.
 //
 // With no path it falls through to the host's temporary directory, which is
-// outside the root by decision: no script can name it, so it is no path a
-// tenant chose. That is the spelling tests/fixtures/bindings/session_manager.phpt
-// uses, and DefaultStoragePath keeps two roots out of one directory
-// there.
+// outside the root by decision: no script can name it, so no tenant chose it.
+// That is the spelling tests/fixtures/bindings/session_manager.phpt uses, and
+// DefaultStoragePath keeps two roots out of one directory there.
 func newRootedStorageDisk(rt *runner.Runtime, dir string, storagePaths ...string) (*StorageDisk, error) {
 	if len(storagePaths) == 0 || storagePaths[0] == "" {
 		return NewStorageDisk(DefaultStoragePath(dir))
@@ -76,11 +75,11 @@ func DefaultStoragePath(dir string) string {
 	return filepath.Join(base, hex.EncodeToString(sum[:8]))
 }
 
-// NewStorageDisk creates the storage folder and verifies that it is writable.
+// NewStorageDisk creates the storage folder and verifies it accepts a write.
 // With no path, it uses DefaultStoragePath for no application root.
 //
-// The path is taken as given. A Go host chooses it, so there is nothing to
-// confine it against; the path a PHP script names resolves through
+// NewStorageDisk takes the path as given. A Go host chooses it, so there is
+// nothing to confine it against; the path a PHP script names resolves through
 // newRootedStorageDisk.
 func NewStorageDisk(storagePaths ...string) (*StorageDisk, error) {
 	storagePath := DefaultStoragePath("")
@@ -175,7 +174,7 @@ func (s *StorageDisk) Delete(ctx context.Context, id string) error {
 	return os.Remove(path)
 }
 
-// Prune removes sessions that have not been saved within maxAge.
+// Prune removes sessions whose last save is older than maxAge.
 func (s *StorageDisk) Prune(ctx context.Context, maxAge time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err

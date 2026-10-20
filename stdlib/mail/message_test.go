@@ -109,9 +109,9 @@ func TestBuildMessage_HTMLOnly(t *testing.T) {
 	}
 }
 
-// TestBuildMessage_Encoding covers what a relay is owed: 7-bit lines of at
-// most 76 characters ending in CRLF, whatever the script wrote. A single line
-// past the 998 octets RFC 5321 allows is rejected or broken by a relay; a raw
+// TestBuildMessage_Encoding covers what buildMessage owes a relay: 7-bit lines
+// of at most 76 characters ending in CRLF, whatever the script wrote. A relay
+// rejects or breaks a single line past the 998 octets RFC 5321 allows; a raw
 // UTF-8 byte in a part is only safe when the relay speaks 8BITMIME. Both parts
 // still decode back to what the script sent.
 func TestBuildMessage_Encoding(t *testing.T) {
@@ -159,7 +159,7 @@ func TestBuildMessage_Encoding(t *testing.T) {
 // TestBuildMessage_HeaderInjection covers every header a script or a host
 // supplies. A CR or LF in any of them would start a header of the script's
 // choosing, a Bcc being the one that turns a contact form into a relay, so
-// both are stripped and the value stays on its own line.
+// header strips both and the value stays on its own line.
 func TestBuildMessage_HeaderInjection(t *testing.T) {
 	t.Parallel()
 	const smuggled = "\r\nBcc: everyone@example.net\nX-Injected: 1"

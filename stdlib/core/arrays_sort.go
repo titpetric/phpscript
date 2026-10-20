@@ -77,7 +77,7 @@ func phpArsort(array any) (bool, error) {
 
 // callbackLess adapts a script comparator (func(...any) (any, error), as
 // rt.Callable returns it) to the boolean sort.SliceStable declares, the same
-// way phpUsort does. A comparator that raises is treated as "not less", so a
+// way phpUsort does. It reads a comparator that raises as "not less", so a
 // failing callback leaves the order it saw and aborts nothing mid-sort.
 func callbackLess(fn func(...any) (any, error), x, y any) bool {
 	r, err := fn(x, y)
@@ -89,10 +89,10 @@ func callbackLess(fn func(...any) (any, error), x, y any) bool {
 
 // sortEntries is the key-aware counterpart of sortValues. It snapshots the
 // entries with arrayEntries, sorts the snapshot, then rebuilds the array with
-// Clear followed by arrayReplay in restore mode: every key is written back with
-// Set, never Append, because Append would hand out fresh integer keys and turn
-// a key-preserving sort into sort(). Sorting the snapshot, and not the
-// storage also means the rewrite never iterates what it is overwriting.
+// Clear followed by arrayReplay in restore mode: arrayReplay puts every key
+// back with Set, never Append, because Append would hand out fresh integer
+// keys and turn a key-preserving sort into sort(). Sorting the snapshot, and
+// not the storage, also means the rewrite never iterates what it overwrites.
 //
 // Divergence from PHP, and from sort()/rsort()/usort() next door: these six
 // require a *model.Array and error on anything else, including the native Go

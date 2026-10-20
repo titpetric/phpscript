@@ -6,7 +6,7 @@
 
 Interface to detect whether a class is traversable using `foreach`.
 
-This is an abstract base interface. It cannot be implemented on its own: a class reaches it by implementing [Iterator](Iterator.md) or [IteratorAggregate](IteratorAggregate.md), both of which extend it. Every class PHP considers iterable answers `instanceof Traversable`.
+This is an abstract base interface. No class implements it on its own: a class reaches it by implementing [Iterator](Iterator.md) or [IteratorAggregate](IteratorAggregate.md), both of which extend it. Every class PHP considers iterable answers `instanceof Traversable`.
 
 ## Interface synopsis
 
@@ -18,6 +18,7 @@ interface Traversable {
 
 ## Status
 
-- phpscript does not declare this interface. A class may still write `implements Traversable`, and the name is accepted unchecked, because a name no `interface` declaration in the same file defines is not a contract.
+- phpscript has no `Traversable`. The name is not declared.
+- A class may still write `implements Traversable`, and the parser accepts the name unchecked, because a name no `interface` declaration in the same file defines is not a contract.
 - Nothing dispatches through it. `foreach` reads an object's properties and tests nothing about traversability, so implementing this interface changes nothing about how a loop treats an object.
 - `instanceof Traversable` is false for every value unless the script declares the interface itself and a class lists it.

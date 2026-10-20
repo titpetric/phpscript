@@ -10,7 +10,7 @@ import (
 // TestMemory_Configured covers which names an in-memory provider accepts.
 // Naming none configures every name, so a dry run captures whatever a script
 // sends; naming some lets a test read back the refusal a script reads for the
-// rest. An empty name is the "default" server, as it is everywhere else.
+// rest. An empty name is the "default" server, as everywhere else.
 func TestMemory_Configured(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -36,10 +36,9 @@ func TestMemory_Configured(t *testing.T) {
 }
 
 // TestMemory_Send covers queueing in place of delivering. A queued message
-// carries its target server's name, so a test reads back
-// which server a script selected. A name this provider does not hold is
-// refused the way a real delivery refuses it, so a test still exercises the
-// error a script reads.
+// carries its target server's name, so a test reads back which server a script
+// selected. This provider refuses a name it does not hold the way a real
+// delivery refuses it, so a test still exercises the error a script reads.
 func TestMemory_Send(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default", "marketing")
@@ -70,9 +69,9 @@ func TestMemory_Send(t *testing.T) {
 	}
 }
 
-// TestMemory_SendMessage covers queueing a whole message: the HTML part and the
-// Reply-To are kept as sent, an empty server is the "default" one, and a name
-// this provider does not hold is refused the way a real delivery refuses it.
+// TestMemory_SendMessage covers queueing a whole message: the queue holds the
+// HTML part and the Reply-To as sent, an empty server is the "default" one, and
+// this provider refuses a name it does not hold the way a real delivery does.
 func TestMemory_SendMessage(t *testing.T) {
 	t.Parallel()
 	queue := mailstdlib.NewMemory("default")

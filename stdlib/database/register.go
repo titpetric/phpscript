@@ -14,7 +14,7 @@ import (
 func Register(rt *runner.Runtime) {
 	// Database is the database client scripts query. $name selects a connection
 	// registered with the host; the constructor throws when the name is not
-	// registered or the pool cannot be opened.
+	// registered or the pool fails to open.
 	rt.RegisterConstructor("Database", func(ctx context.Context, name string) (*Database, error) {
 		handle, err := provider(rt).Connect(ctx, name)
 		if err != nil {
@@ -34,10 +34,10 @@ func Register(rt *runner.Runtime) {
 // the set of connections it can open.
 //
 // Connection names normally come from the host's environment, which is right
-// when the operator owns the list. An application that
-// keeps its connections in a table owns the list itself, and has nowhere to
-// put them: the provider is built once, before the first request, and putenv
-// writes to the script environment, which the provider never reads.
+// when the operator owns the list. An application that keeps its connections
+// in a table owns the list itself, and has nowhere to put them: the host
+// builds the provider once, before the first request, and putenv writes to
+// the script environment, which the provider never reads.
 func RegisterConnections(rt *runner.Runtime) {
 	// Database::connections returns the names this script can open, sorted.
 	rt.RegisterFunc("Database::connections", func() ([]string, error) {
@@ -89,19 +89,19 @@ func RegisterMigrate(rt *runner.Runtime) {
 	// and runs them against the named connection.
 	//
 	// The first name is also the project name mig records under, so two
-	// schemas sharing one database keep separate records by being opened
+	// schemas sharing one database keep separate records when they open
 	// under separate names. A script that names no connection migrates
 	// "default": the connection an unnamed one resolves to anyway.
 	//
-	// Each name is tried as "<name>:migrate" before "<name>", so a deployment
-	// can point migrations at a user allowed to alter tables while the script
-	// queries through one that is not, without the script naming either. The
-	// project stays "<name>" whichever credential answered: what a migration
-	// connects with is not what it is recorded under. A "<name>:migrate"
+	// The constructor tries each name as "<name>:migrate" before "<name>", so a
+	// deployment can point migrations at a user allowed to alter tables while
+	// the script queries through one that is not, without the script naming
+	// either. The project stays "<name>" whichever credential answered: what a
+	// migration connects with is not what it records under. A "<name>:migrate"
 	// credential cannot come from the PLATFORM_DB_<NAME>=<dsn> environment
-	// form, because an environment variable name holds no colon; it is
-	// registered through Database::register, so a virtual host
-	// owning its own connections already supplies them.
+	// form, because an environment variable name holds no colon; it arrives
+	// through Database::register, so a virtual host owning its own connections
+	// already supplies them.
 	//
 	// A name longer than 16 characters fails the run with mig's ErrNoProject,
 	// because 16 is the width of the project column.
@@ -131,7 +131,7 @@ func RegisterMigrate(rt *runner.Runtime) {
 
 // provider returns the connections rt resolves through. A host that configured
 // none, which is every CLI run, gets the process environment; a virtual host
-// sets its own and is held to it.
+// sets its own and resolves through nothing else.
 func provider(rt *runner.Runtime) model.DatabaseProvider {
 	if configured := rt.Database(); configured != nil {
 		return configured

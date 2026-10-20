@@ -26,7 +26,7 @@ func init() {
 func registerMultibyte(rt *runner.Runtime) {
 	// mb_strlen returns the number of characters in $string; the $encoding
 	// argument "8bit" answers in bytes, the byte-count escape hatch for
-	// binary data, and every other encoding is read as UTF-8.
+	// binary data, and it reads every other encoding as UTF-8.
 	rt.RegisterFunc("mb_strlen", func(s string, encoding ...any) int64 {
 		if eightBit([]any(encoding), 0) {
 			return int64(len(s))
@@ -129,7 +129,7 @@ func optionalOffset(rest []any) []int64 {
 }
 
 // optionalLength is optionalOffset for the $length of a substring call, where
-// an explicit null means "to the end" and is dropped, never read as 0.
+// an explicit null means "to the end": it drops the argument, never reads 0.
 func optionalLength(rest []any) []int64 {
 	if len(rest) > 0 && rest[0] != nil {
 		if l, ok := toOptionalInt(rest[0]); ok {

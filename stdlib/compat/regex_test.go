@@ -6,7 +6,7 @@ import (
 )
 
 // TestRuneOffsetsByteOffset covers the conversion regexp2 needs and RE2 does
-// not. It is the one part of the offset work an ASCII fixture cannot see: rune
+// not, the one part of the offset work an ASCII fixture cannot see: rune
 // index and byte offset are the same number until the subject holds a
 // multibyte character, so a missing conversion looks correct everywhere else.
 func TestRuneOffsetsByteOffset(t *testing.T) {
@@ -49,8 +49,8 @@ func TestRuneOffsetsByteOffset(t *testing.T) {
 			if got := offsets.byteOffset(len(test.want) + 5); got != len(test.subject) {
 				t.Errorf("byteOffset past end = %d, want %d", got, len(test.subject))
 			}
-			// A group that did not participate stays negative and is never
-			// becoming an offset into the subject.
+			// A group that never matched stays negative and never becomes an
+			// offset into the subject.
 			if got := offsets.byteOffset(-1); got != -1 {
 				t.Errorf("byteOffset(-1) = %d, want -1", got)
 			}

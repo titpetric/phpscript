@@ -21,9 +21,9 @@ type queryInfo struct {
 	Comment string
 }
 
-// readOnlyStatements are the statements a read-only client may run. It is an
-// allowlist, so a statement it does not name is refused: a keyword nobody
-// thought about is far more likely to be a write than a read.
+// readOnlyStatements are the statements a read-only client may run. The map is
+// an allowlist, so a client refuses a statement it does not name: a keyword
+// nobody thought about is far more likely to be a write than a read.
 //
 // EXPLAIN is not on it. `EXPLAIN ANALYZE insert ...` runs the statement it
 // reports on in postgres, so an explain is not reliably a read.
@@ -34,10 +34,10 @@ var readOnlyStatements = map[string]bool{
 	"desc":     true,
 }
 
-// parseQuery classifies a statement by its leading text. Comments preceding the
-// statement are skipped and never treated as the statement, so a query tagged
-// for `show processlist`, as in `/* userGet */ select ...` and the reason to
-// tag one, still reads as a select.
+// parseQuery classifies a statement by its leading text. It skips comments
+// preceding the statement and never treats one as the statement, so a query
+// tagged for `show processlist`, as in `/* userGet */ select ...` and the
+// reason to tag one, still reads as a select.
 //
 // This is prefix classification and no SQL parser: it reads what the statement
 // begins with, and nothing more. A statement has to be one statement.

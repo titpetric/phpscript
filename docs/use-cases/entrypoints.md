@@ -1,6 +1,6 @@
 # Custom entrypoints
 
-The server reaches PHP through a request: a URL resolves to a file, the request is decoded into superglobals, and the file runs top to bottom. That is the right shape for a site. A Go program calling one function needs another.
+The server reaches PHP through a request: a URL resolves to a file, the request fills the superglobals, and the file runs top to bottom. That is the right shape for a site. A Go program calling one function needs another.
 
 `runner.Lookup` is the other shape. The host names a symbol and the signature it wants, and gets a Go function back.
 
@@ -31,13 +31,13 @@ An `http.ResponseWriter` and an `*http.Request` are Go values, so they arrive as
 
 `HTTP\Request` is the name a script already has for `*net/http.Request`, the one `new HTTP\Request` builds for an outbound call, and `HTTP\ResponseWriter` is `http.ResponseWriter` under the same rule. `HTTP\ResponseWriter` names no constructor, because a handler receives a response writer and constructs none.
 
-Neither hint is checked, here or anywhere: parameter types are a [known divergence](../README.md#known-divergences-from-php), not something a lookup opts out of. Write them for the reader.
+Nothing checks either hint, here or anywhere: parameter types are a [known divergence](../README.md#known-divergences-from-php), not something a lookup opts out of. Write them for the reader.
 
 ## What an invocation carries
 
 The arguments alone.
 
-No request is decoded, so `$_GET`, `$_POST` and `$_SERVER` are undefined. No file body runs: the declaring program is hoisted for the functions and classes it declares, and its top-level statements are skipped. The scope the function body executes in holds its parameters and whatever it declares itself.
+The runtime decodes no request, so `$_GET`, `$_POST` and `$_SERVER` remain undefined. No file body runs: the runtime hoists the declaring program for the functions and classes it declares, and skips its top-level statements. The scope the function body executes in holds its parameters and whatever it declares itself.
 
 `BenchmarkLookup` splits the cost up, on one pinned core:
 
@@ -49,9 +49,9 @@ BenchmarkLookup/runtime      	   10000	    132753 ns/op	   84364 B/op	     684 a
 BenchmarkLookup/request      	    7159	    158615 ns/op	   96324 B/op	     850 allocs/op
 ```
 
-`bind` is resolving the symbol and building the closure, paid per runtime. `invoke` is calling it, the only line that scales with traffic, and `callable` is the same call through the untyped `rt.Callable`, so the gap between them is what the signature bridge costs. `runtime` runs no PHP at all: it is a runtime built and the standard library registered onto it.
+`bind` is resolving the symbol and building the closure, paid per runtime. `invoke` is calling it, the only line that scales with traffic, and `callable` is the same call through the untyped `rt.Callable`, so the gap between them is what the signature bridge costs. `runtime` runs no PHP at all: the benchmark builds a runtime and registers the standard library onto it.
 
-In that last pair, `request` less `runtime` is the script; the rest is the host getting ready to run it, and it is what a lookup on a reused runtime skips. It is also why the request path stops scaling with cores while the lookup path keeps going - at ninety kilobytes a go, the collector becomes the limit before the CPU does.
+In that last pair, `request` less `runtime` is the script; the rest is the host getting ready to run it, and a lookup on a reused runtime skips it. That setup cost is also why the request path stops scaling with cores while the lookup path keeps going - at ninety kilobytes a go, the collector becomes the limit before the CPU does.
 
 A host needing the superglobals still has them: build the runtime, `runner.FromRequest(r).Register(rt)`, and look up afterwards. The lookup adds none and removes none.
 
@@ -67,11 +67,11 @@ runner.Lookup[http.HandlerFunc](rt, "Handler\\index")      // by segment
 runner.Lookup[http.HandlerFunc](rt, "index")               // by name
 ```
 
-The last one is an error if two namespaces declare an `index`. `*runner.LookupError` carries the names that matched, so a host binding its handlers at startup is told which spelling to use, and no handler is served on a guess.
+The last one is an error if two namespaces declare an `index`. `*runner.LookupError` carries the names that matched, so a host binding its handlers at startup reads which spelling to use, and serves no handler on a guess.
 
 ## Signatures
 
-`T` is checked when it is bound, not when it is called. It must be a function type returning at most one value and an optional trailing `error`:
+`runner.Lookup` checks `T` when it binds the symbol, not when the host calls the result. `T` must be a function type returning at most one value and an optional trailing `error`:
 
 ```go
 runner.Lookup[func(*http.Request) bool](rt, "middleware")
@@ -84,7 +84,7 @@ A returned value takes PHP's own coercions into the declared result: `1` fills a
 
 ## Concurrency
 
-A `*runner.Runtime` serves one goroutine, and a looked-up function belongs to the runtime holding it. A host calling one from several goroutines builds a runtime per goroutine and shares the two caches between them:
+A `*runner.Runtime` serves one goroutine, and a looked-up function belongs to the runtime holding it. A host calling one from more than one goroutine builds a runtime per goroutine and shares the two caches between them:
 
 ```go
 includes, exprs := runner.NewIncludeCache(), runner.NewExprCache()
@@ -98,9 +98,9 @@ rt.SetExprCache(exprs)
 handle, err := runner.Lookup[http.HandlerFunc](rt, "App\\Handler\\index")
 ```
 
-That is the arrangement the HTTP server already keeps per request: the parse and the bytecode compile are paid once for the process, everything an invocation allocates is its own, and the only thing two goroutines share is a read lock.
+That is the arrangement the HTTP server already keeps per request: the process pays for the parse and the bytecode compile once, everything an invocation allocates is its own, and the only thing two goroutines share is a read lock.
 
-Sharing one runtime instead is a crash. `rt.compiled`, `rt.goMethods` and `rt.frames` are written during evaluation with no lock, so two goroutines calling one closure take the process down with `fatal error: concurrent map writes` out of `setCompiledExpr`.
+Sharing one runtime instead is a crash. Evaluation writes `rt.compiled`, `rt.goMethods` and `rt.frames` with no lock, so two goroutines calling one closure take the process down with `fatal error: concurrent map writes` out of `setCompiledExpr`.
 
 ## Reusing a runtime
 
@@ -135,11 +135,11 @@ LookupHandler/fresh-4           91.54µ    94.950Ki     872
 
 A kilobyte of every row is the `httptest` recorder, which the native handler allocates too.
 
-Pooling is 37x a fresh runtime per request, and it is 59x less garbage, which is the part that decides whether more cores help. What it costs is PHP's request isolation: script globals, `static $x` in a function or a class, constants the script defined and anything `register_shutdown_function` collected all survive into the next request on that runtime. A handler that is a pure function of its arguments does not care. One that is not will read the last request's state.
+Pooling is 37x a fresh runtime per request and 59x less garbage, which is the part that decides whether more cores help. What it costs is PHP's request isolation: script globals, `static $x` in a function or a class, constants the script defined and anything `register_shutdown_function` collected all survive into the next request on that runtime. A handler that is a pure function of its arguments does not care. One that is not will read the last request's state.
 
-`pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops all of it. That also drops the declarations, so the symbol is bound again per request - at a few hundred nanoseconds, so the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
+`pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops it all. That also drops the declarations, so the lookup binds the symbol again per request - at a few hundred nanoseconds, so the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
 
-One thing a pool does not carry: the writer is fixed when the runtime is built. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering is built on.
+One thing a pool does not carry: `runner.New` fixes the writer for the runtime's life. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering uses.
 
 ## Limits
 

@@ -62,10 +62,10 @@ func TestNewCommand(t *testing.T) {
 	}
 }
 
-// TestModule covers the module one application root is served through. The
-// root is a directory on disk and the document root is the subdirectory below
-// it that HTTP reaches, so a file beside the document root is not served and
-// a file inside it is.
+// TestModule covers the module serving one application root. The root is a
+// directory on disk and the document root is the subdirectory below it that
+// HTTP reaches, so the handler serves a file inside the document root and
+// never one beside it.
 func TestModule(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -360,7 +360,7 @@ func site(t *testing.T, name, body string) string {
 	return root
 }
 
-// operatorConfig writes the file the server is started with, and returns its
+// operatorConfig writes the file the server starts from, and returns its
 // path. Rewriting it and reloading is what these tests are about.
 func operatorConfig(t *testing.T, source string) string {
 	t.Helper()

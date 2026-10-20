@@ -65,8 +65,8 @@ func (t teeMatrixTable) writeSummary(passed, failed, total int, duration time.Du
 }
 
 // writeReportHeader opens a generated markdown report with its title, the
-// command that produced it, and a sentence naming what it covers. The
-// provenance line is derived from the invocation and never hardcoded, so it
+// command that produced it, and a sentence naming what it covers. It builds
+// the provenance line from the invocation and never hardcodes it, so the line
 // always names the job that actually wrote the file.
 func writeReportHeader(w io.Writer, argv []string) {
 	command := strings.Join(append([]string{"phpscript"}, argv...), " ")

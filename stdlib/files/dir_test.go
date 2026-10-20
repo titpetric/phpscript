@@ -43,8 +43,8 @@ func TestOpendirWalksTheSourceFilesystem(t *testing.T) {
 	}
 }
 
-// TestOpendirWalksTheHost covers the branch a CLI run takes, where no fs.FS is
-// bound and the same names come off the host under the bound root.
+// TestOpendirWalksTheHost covers the branch a CLI run takes, where the runtime
+// has no fs.FS and the same names come off the host under the bound root.
 func TestOpendirWalksTheHost(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -112,8 +112,8 @@ var_dump(readdir("not a handle"));`)
 }
 
 // TestOpendirIsJailedToTheRoot holds the handle functions to the rule every
-// path in this package follows: "/" is the source filesystem's root, and a path
-// that climbs is cleaned against it and escapes nothing.
+// path in this package follows: "/" is the source filesystem's root, and the
+// runtime cleans a path that climbs against it, so it escapes nothing.
 func TestOpendirIsJailedToTheRoot(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}

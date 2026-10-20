@@ -31,8 +31,8 @@ func TestFlatstackCompilesClosures(t *testing.T) {
 			want:   "a,bb,ccc",
 		},
 		{
-			// The capture is read where the closure value is created, so a
-			// later write to the captured variable is not visible to it.
+			// Creating the closure value reads the capture, so a later write
+			// to the captured variable never reaches it.
 			name:   "use captures a snapshot",
 			source: `<?php $m = 3; $f = function ($x) use ($m) { return $x * $m; }; $m = 10; echo implode(",", array_map($f, array(1, 2)));`,
 			want:   "3,6",
@@ -75,9 +75,9 @@ func TestFlatstackCompilesClosures(t *testing.T) {
 			want:   "12",
 		},
 		{
-			// A closure created inside a try is jumped over without leaving the
-			// handler the try armed, and one that throws is caught by the try
-			// holding the call.
+			// The jump over a closure created inside a try does not leave the
+			// handler the try armed, and the try holding the call catches one
+			// that throws.
 			name:   "created and throwing inside a try",
 			source: `<?php try { $f = function () { throw new Exception("boom"); }; echo implode(",", array_map($f, array(1))); } catch (Exception $e) { echo "caught:", $e->getMessage(); }`,
 			want:   "caught:boom",

@@ -68,7 +68,7 @@ func (s *StorageMemory) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// Prune removes sessions that have not been saved within maxAge.
+// Prune removes sessions whose last save is older than maxAge.
 func (s *StorageMemory) Prune(ctx context.Context, maxAge time.Duration) error {
 	if err := ctx.Err(); err != nil {
 		return err

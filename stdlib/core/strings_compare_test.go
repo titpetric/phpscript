@@ -67,7 +67,7 @@ func TestClampLength(t *testing.T) {
 
 // TestLowerASCII covers the fold the case-insensitive comparisons use: A-Z and
 // nothing else. These functions walk bytes and decode no rune, so a byte above
-// 127 passes through as it is.
+// 127 passes through unchanged.
 func TestLowerASCII(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

@@ -76,8 +76,8 @@ func TestInvokeStringArgumentCoercion(t *testing.T) {
 	}
 }
 
-// A call passing more arguments than the binding declares is refused on both
-// dispatch paths, as PHP refuses it for an internal function. reflect.Value
+// Both dispatch paths refuse a call passing more arguments than the binding
+// declares, as PHP refuses it for an internal function. reflect.Value
 // .Call panics on the same call, so the check has to run before either path.
 func TestInvokeTooManyArguments(t *testing.T) {
 	t.Parallel()
@@ -161,15 +161,15 @@ func TestInvokeTooFewArgumentsPads(t *testing.T) {
 }
 
 // A Go method reached through PHP follows the same argument rules as a
-// registered function: the surplus is refused and panics nowhere inside
-// reflect.Value.Call, and the message names the method a script typed.
+// registered function: the method path refuses the surplus and panics nowhere
+// inside reflect.Value.Call, and the message names the method a script typed.
 type counter struct{}
 
 func (counter) Add(a, b string) string { return a + b }
 
-// Tally declares a runtime context, so the method path's argument numbers and
-// positions are read against a signature one parameter longer than the one a
-// script calls.
+// Tally declares a runtime context, so the method path counts its argument
+// numbers and positions against a signature one parameter longer than the one
+// a script calls.
 func (counter) Tally(_ context.Context, a string, _ int64) string { return a }
 
 func TestInvokeMethodArgumentRules(t *testing.T) {
@@ -235,10 +235,10 @@ func TestInvokeMethodArgumentRules(t *testing.T) {
 // runInstant runs src with the standard library registered and $t bound to a
 // known instant, and returns what the script printed.
 //
-// The instant is built with the bindings a script uses, so the PHP spelling in
-// these tests is the spelling the runtime actually ships. A test-only class
-// would name a Go symbol that does not exist, and the point of these tests is
-// that the mapping between the two languages holds.
+// The prelude builds the instant with the bindings a script uses, so the PHP
+// spelling in these tests is the spelling the runtime actually ships. A
+// test-only class would name a Go symbol that does not exist, and the point of
+// these tests is that the mapping between the two languages holds.
 func runInstant(t *testing.T, src string) string {
 	t.Helper()
 	const prelude = `<?php set_timezone("UTC"); $t = DateTime::parse("2006-01-02 15:04:05", "2026-08-26 14:48:00"); `
@@ -270,10 +270,10 @@ func TestInvokeMethodParsesDurationString(t *testing.T) {
 	}
 }
 
-// A Go callable declaring several results hands PHP a list, in declaration
+// A Go callable declaring two or more results hands PHP a list, in declaration
 // order. Keeping only the first would answer a different question than the one
-// asked: time.Time.ISOWeek returns (year, week), and dropping the tail makes
-// $t->iso_week() evaluate to the year.
+// asked: time.Time.ISOWeek returns (year, week), and dropping the tail reduces
+// $t->iso_week() to the year.
 func TestInvokeSeveralResultsBecomeAList(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -432,7 +432,7 @@ func (e probeError) Error() string { return string(e) }
 
 // A thrown Exception reports its own code, and never the
 // zero the Throwable fallback supplies for a bare Go error. This needs the
-// standard library, where the Exception class is registered.
+// standard library, which registers the Exception class.
 func TestThrownExceptionKeepsItsCode(t *testing.T) {
 	t.Parallel()
 	program, err := parser.Parse(`<?php try { throw new Exception("m", 7); } catch (Throwable $e) { echo $e->getMessage() . ":" . $e->getCode(); }`)
@@ -450,10 +450,10 @@ func TestThrownExceptionKeepsItsCode(t *testing.T) {
 	}
 }
 
-// An argument that converts to no declared parameter type is refused before
-// reflect.Value.Call sees it, as a PHP TypeError naming the function, the
-// position and the types involved, and no host panic a script cannot
-// distinguish from a bug in the binding.
+// The argument check refuses an argument that converts to no declared
+// parameter type before reflect.Value.Call sees it, as a PHP TypeError naming
+// the function, the position and the types involved, and no host panic a
+// script cannot distinguish from a bug in the binding.
 func TestInvokeUnconvertibleArgument(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -522,8 +522,8 @@ func TestUndefinedFunctionStubIsNotSticky(t *testing.T) {
 	var out strings.Builder
 	rt := runner.New(&out, runner.Options{})
 
-	// The call site is compiled and evaluated while the name is unknown, so the
-	// environment holds the stub before the declaration below runs.
+	// The runtime compiles and runs the call site while the name is unknown,
+	// so the environment holds the stub before the declaration below runs.
 	miss, err := parser.Parse(`<?php try { greet(); } catch (Throwable $e) { echo "undefined\n"; }`)
 	if err != nil {
 		t.Fatalf("parse: %v", err)

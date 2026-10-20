@@ -7,9 +7,9 @@ import (
 )
 
 // Size is a byte count written the way a php.ini size is: a bare number of
-// bytes, or a number with an M suffix for megabytes. PHP's K and G shorthands
-// are rejected, so a configuration file says what it means in one of two
-// spellings and nothing else parses.
+// bytes, or a number with an M suffix for megabytes. ParseSize refuses PHP's
+// K and G shorthands, so a configuration file says what it means in one of
+// two spellings and nothing else parses.
 //
 // The zero value means no limit, as 0 does in php.ini.
 type Size int64
@@ -65,8 +65,8 @@ func (s Size) String() string {
 	return strconv.FormatInt(int64(s), 10)
 }
 
-// UnmarshalYAML reads a size from a configuration file, where it is written
-// either as a bare number or as a quoted or unquoted "8M".
+// UnmarshalYAML reads a size from a configuration file, spelled either as a
+// bare number or as a quoted or unquoted "8M".
 func (s *Size) UnmarshalYAML(data []byte) error {
 	text := strings.Trim(strings.TrimSpace(string(data)), `"'`)
 	size, err := ParseSize(text)

@@ -4,61 +4,61 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 
 ## The request
 
-| Term         | What it means                                                                                                                                                                                                 |
-|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Request      | One HTTP exchange. A server builds one `runner.Runtime` for it, executes the entrypoint, and drops the runtime when the response is written. Nothing a request declared outlives it.                          |
-| Entrypoint   | The one PHP file a request executes. Everything else it runs arrives through `include` or `require` from there. `phpscript run app.php` has one too; the file named on the command line.                      |
-| Prelude      | The file `runner.include` or `--include` names, included ahead of every entrypoint. It is where a composer autoloader or a bootstrap goes, so the entrypoint and everything it includes see what it declared. |
-| Superglobal  | A variable php binds in every scope without a `global` declaration: `$_GET`, `$_POST`, `$_SERVER`, `$_FILES`, `$_COOKIE`, `$_REQUEST`, `$_ENV`, `$_SESSION`. One binding per request.                         |
-| SAPI         | Server API, the php name for what is running the interpreter. `php_sapi_name()` answers `cli` for a command line run and `cgi-phpscript` for a served request.                                                |
-| Session      | php's `$_SESSION`, a per-visitor bag keyed by a cookie and stored by `Session\Manager`. It spans many requests.                                                                                               |
-| ResetSession | A Go method on `runner.Runtime`, and a different thing: it clears one runtime's declarations and globals so the runtime can execute another program. It has nothing to do with `$_SESSION`.                   |
+| Term         | What it means                                                                                                                                                                                          |
+|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Request      | One HTTP exchange. A server builds one `runner.Runtime` for it, executes the entrypoint, and drops the runtime when it has written the response. Nothing a request declared outlives it.               |
+| Entrypoint   | The one PHP file a request executes. Everything else it runs arrives through `include` or `require` from there. `phpscript run app.php` has one too; the file named on the command line.               |
+| Prelude      | The file `runner.include` or `--include` names, included ahead of every entrypoint. A composer autoloader or a bootstrap goes here, so the entrypoint and everything it includes see what it declared. |
+| Superglobal  | A variable php binds in every scope without a `global` declaration: `$_GET`, `$_POST`, `$_SERVER`, `$_FILES`, `$_COOKIE`, `$_REQUEST`, `$_ENV`, `$_SESSION`. One binding per request.                  |
+| SAPI         | Server API, the php name for what is running the interpreter. `php_sapi_name()` answers `cli` for a command line run and `cgi-phpscript` for a served request.                                         |
+| Session      | php's `$_SESSION`, a per-visitor bag keyed by a cookie and stored by `Session\Manager`. It spans many requests.                                                                                        |
+| ResetSession | A Go method on `runner.Runtime`, and a different thing: it clears one runtime's declarations and globals so the runtime can execute another program. It has nothing to do with `$_SESSION`.            |
 
 ## Where files live
 
 | Term              | What it means                                                                                                                                                                                            |
 |-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Application root  | The directory a site is served from, the one `phpscript server` is pointed at. Includes resolve against it, and nothing above it is reachable.                                                           |
-| Document root     | The directory below the application root that is served over HTTP, `public/` by default. A `.php` file in it runs when its name is requested; a file outside it does not.                                |
+| Application root  | The directory the server serves a site from, the one `phpscript server` points at. Includes resolve against it, and a script reaches nothing above it.                                                   |
+| Document root     | The directory below the application root that the server serves over HTTP, `public/` by default. A `.php` file in it runs when a request names it; a file outside it does not.                           |
 | Working directory | Where a relative path resolves from, inside the application root. `chdir()` moves it for the length of a request; `runner.work_dir` is where each one starts. `-w` moves the process before any of that. |
 | Include root      | The directory a fixture's own relative includes resolve against, which is the directory holding the fixture file.                                                                                        |
 | Suite root        | A directory in a fixture tree holding a `phpscript.yml`. The fixtures below it resolve their prelude, their connections and their hooks through it; the nearest one at or above a fixture wins.          |
-| Writable path     | A directory under `writable_paths` that scripts may write to. A `.php` file that lands in one is served as bytes and never executed, because an upload directory is content and not code.                |
+| Writable path     | A directory under `writable_paths` that scripts may write to. The server sends a `.php` file that lands in one as bytes and never executes it, because an upload directory is content and not code.      |
 
 ## Loading names
 
 | Term             | What it means                                                                                                                                                                                     |
 |------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Include, require | Evaluate another PHP file here, in this scope. `require` is fatal when the file is missing and `include` is not; the `_once` forms consult a per-request record of what has already run.          |
+| Include, require | Run another PHP file here, in this scope. `require` is fatal when the file is missing and `include` is not; the `_once` forms consult a per-request record of what has already run.               |
 | Autoloader       | A callback registered with `spl_autoload_register()` called with a class name the first time something names one that is not declared. composer's generated autoloader is one, interpreted as-is. |
-| Namespace        | The prefix a declaration carries, `Acme\Thing`. It is a name, not a directory: what maps one onto a path is an autoloader.                                                                        |
+| Namespace        | The prefix a declaration carries, `Acme\Thing`. A namespace is a name, not a directory: an autoloader maps one onto a path.                                                                       |
 | Binding          | A Go function, class or constant registered onto the runtime, which a script calls by its registered name. `phpscript list --bindings` prints every one this build carries.                       |
 
 ## Serving
 
-| Term              | What it means                                                                                                                                                                                                                                |
-|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Route             | A `// @route GET /path/{param}` comment on a PHP file outside the document root. The server scans for them at startup and mounts each on the router.                                                                                         |
-| Virtual host      | One of several sites in one process, each with its own root, its own `phpscript.yml`, its own database connections and its own environment. Requests reach one by the `Host` header.                                                         |
-| Startup job       | A file carrying `// @startup`, executed once in path order before the server listens. Migrations go here. It is server scope; a fixture run uses a suite's `test.hooks` instead.                                                             |
-| Scheduled job     | A file carrying `// @schedule`, started after the server listens and running until shutdown.                                                                                                                                                 |
-| Error page        | A file in the document root named after a status, `public/404.php`. It answers a browser; a program gets the plain status.                                                                                                                   |
-| Autoindex         | Answering a directory that holds no index page with a listing of what is in it, as nginx's `autoindex on;` does. Off by default.                                                                                                             |
-| Graceful shutdown | The path a server takes on SIGINT or SIGTERM: stop accepting, finish what is in flight, then stop the modules in registration order. It is when a coverage profile is written, and when the pidfile is removed.                              |
-| Reload            | What SIGHUP does, and what `phpscript -s reload` sends: the configuration is read again and the sites rebuilt, on the same socket and in the same process. A configuration the server cannot use is refused and the old one goes on serving. |
-| Generation        | One set of sites serving on the socket. A reload retires the current one and starts the next; they never overlap, and a request in flight is finished by the generation that took it.                                                        |
-| Pidfile           | The file `server.pid_file` names, holding the process id of the running server. It is what `-s reload` reads to find the process, and it is removed on a clean shutdown.                                                                     |
+| Term              | What it means                                                                                                                                                                                                                                   |
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Route             | A `// @route GET /path/{param}` comment on a PHP file outside the document root. The server scans for them at startup and mounts each on the router.                                                                                            |
+| Virtual host      | One of the sites one process answers for, each with its own root, its own `phpscript.yml`, its own database connections and its own environment. Requests reach one by the `Host` header.                                                       |
+| Startup job       | A file carrying `// @startup`, executed once in path order before the server listens. Migrations go here. Startup jobs are server scope; a fixture run uses a suite's `test.hooks` instead.                                                     |
+| Scheduled job     | A file carrying `// @schedule`, started after the server listens and running until shutdown.                                                                                                                                                    |
+| Error page        | A file in the document root named after a status, `public/404.php`. It answers a browser; a program gets the plain status.                                                                                                                      |
+| Autoindex         | Answering a directory that holds no index page with a listing of what is in it, as nginx's `autoindex on;` does. Off by default.                                                                                                                |
+| Graceful shutdown | The path a server takes on SIGINT or SIGTERM: stop accepting, finish what is in flight, then stop the modules in registration order. A graceful shutdown writes the coverage profile and removes the pidfile.                                   |
+| Reload            | What SIGHUP does, and what `phpscript -s reload` sends: the server reads the configuration again and rebuilds the sites, on the same socket and in the same process. It refuses a configuration it cannot use, and the old one goes on serving. |
+| Generation        | One set of sites serving on the socket. A reload retires the current one and starts the next; they never overlap, and the generation that took a request in flight finishes it.                                                                 |
+| Pidfile           | The file `server.pid_file` names, holding the process id of the running server. `-s reload` reads it to find the process, and a clean shutdown removes it.                                                                                      |
 
 ## Mail
 
-**Mail is the subject; SMTP is a protocol it happens to speak.** The class a script types is `Mail`, the configuration key is `mail`, the Go package is `stdlib/mail`. SMTP appears only where the wire protocol is genuinely meant: `net/smtp`, the STARTTLS settings, the conversation `deliverSMTP` runs. Naming the subject after one of its transports would have to be undone the first time a server is reached by an API instead.
+**Mail is the subject; SMTP is a protocol it happens to speak.** The class a script types is `Mail`, the configuration key is `mail`, the Go package is `stdlib/mail`. SMTP appears only where the wire protocol is genuinely meant: `net/smtp`, the STARTTLS settings, the conversation `deliverSMTP` runs. Naming the subject after one of its transports would have to be undone the first time an API reaches a server instead.
 
-| Term          | What it means                                                                                                                                                                                               |
-|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Mail server   | One named entry in the `mail` block: a host, a port, credentials and a from address. A script names it and never spells it.                                                                                 |
-| Server name   | The key the entry sits under, and the whole of what a script says about a server. `new Mail` names `default`, `new Mail($name)` the rest. Compared lowercased.                                              |
-| Mail provider | What resolves a name to a credential, `model.MailProvider`. It is per site, holds the servers that site configured, and declares no method that returns one, so a password never reaches the runtime scope. |
-| Delivery      | The transport a provider passes a resolved message to, `mail.Deliver`. SMTP by default; a host swaps it for an API or a queue without touching name resolution.                                             |
+| Term          | What it means                                                                                                                                                                                                 |
+|---------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Mail server   | One named entry in the `mail` block: a host, a port, credentials and a from address. A script names it and never spells it.                                                                                   |
+| Server name   | The key the entry sits under, and the whole of what a script says about a server. `new Mail` names `default`, `new Mail($name)` the rest. Compared lowercased.                                                |
+| Mail provider | What resolves a name to a credential, `model.MailProvider`. A site has one; it holds the servers that site configured and declares no method that returns one, so a password never reaches the runtime scope. |
+| Delivery      | The transport a provider passes a resolved message to, `mail.Deliver`. SMTP by default; a host swaps it for an API or a queue without touching name resolution.                                               |
 
 ## Running the code
 
@@ -72,11 +72,11 @@ The words this project uses, and what they mean here. Most are ordinary web deve
 
 ## Coverage
 
-| Term       | What it means                                                                                                                                                                                                            |
-|------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Statement  | The unit counted. Declarations are not executable and are not counted; a compound statement is charged for its header line only, so an untaken branch does not read as covered because the interpreter reaches its `if`. |
-| Block      | One line range of a profile, with how many statements it holds and how many times it ran. Statements sharing a line range merge into one.                                                                                |
-| Profile    | The `.cov` file, in the format `go test -coverprofile` writes. `mode: count` and one line per block, so `go tool cover -html` renders it.                                                                                |
-| Collector  | What one run reports statements to. It keys them by the syntax tree node the parser builds, so it belongs to one program.                                                                                                |
-| Aggregator | What a server folds each request's collector into. It keys blocks by the profile line they will be written as, so it is bounded by the size of the application however often a file is parsed.                           |
-| Mode       | `--cover=line` writes the profile, `func` and `file` also print a per-symbol report in the format `go tool cover -func` prints.                                                                                          |
+| Term       | What it means                                                                                                                                                                                                        |
+|------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Statement  | The unit counted. Declarations are not executable and are not counted; a compound statement counts for its header line only, so an untaken branch does not read as covered because the interpreter reaches its `if`. |
+| Block      | One line range of a profile, with how many statements it holds and how many times it ran. Statements sharing a line range merge into one.                                                                            |
+| Profile    | The `.cov` file, in the format `go test -coverprofile` writes. `mode: count` and one line per block, so `go tool cover -html` renders it.                                                                            |
+| Collector  | What one run reports statements to. It keys them by the syntax tree node the parser builds, so it belongs to one program.                                                                                            |
+| Aggregator | What a server folds each request's collector into. It keys blocks by the profile line that will hold them, so the size of the application bounds it no matter how often the parser reads a file.                     |
+| Mode       | `--cover=line` writes the profile, `func` and `file` also print a per-symbol report in the format `go tool cover -func` prints.                                                                                      |

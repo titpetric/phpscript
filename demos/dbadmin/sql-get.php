@@ -9,7 +9,7 @@ if (isset($_GET["query"])) {
 }
 
 // The console opens on an example statement, so the page shows what a result
-// looks like before anything is typed into it.
+// looks like before a visitor types anything into it.
 if ($query == "") {
 	$query = "SELECT * FROM catalogue LIMIT 50;";
 }

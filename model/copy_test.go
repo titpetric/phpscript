@@ -7,7 +7,7 @@ import (
 
 // TestCopyValue covers PHP's assignment semantics. An array is a value, so a
 // copy is independent of its source, and the copy reaches nested arrays because
-// they are values too: `$copy["a"]["b"] = 1` cannot be observed through the
+// they are values too: a `$copy["a"]["b"] = 1` never shows through the
 // original.
 //
 // The copy stops at objects, which PHP holds by handle, and at the native Go
@@ -97,10 +97,9 @@ func TestCopyArray(t *testing.T) {
 	})
 }
 
-// TestRootName covers the name an lvalue is rooted at. An index and a property
-// chain are rooted at the variable they start from, because the storage they
-// reach lives inside the value that variable holds. Parentheses are
-// transparent.
+// TestRootName covers the name an lvalue roots at. An index and a property
+// chain root at the variable they start from, because the storage they reach
+// lives inside the value that variable holds. Parentheses are transparent.
 //
 // A bare identifier carrying Const is a constant and no variable, so it roots
 // at nothing: a constant is not assignable, and treating `PHP_EOL` as the name
@@ -133,10 +132,10 @@ func TestRootName(t *testing.T) {
 	}
 }
 
-// TestAssignsTo covers the question a by-value foreach is compiled against:
-// would the body notice the copy. phpscript's arrays are pointers, so the copy
-// is made up front, and copying every element of every loop would be a large
-// price for a semantic almost no loop uses.
+// TestAssignsTo covers the question a by-value foreach compiles against: would
+// the body notice the copy. phpscript's arrays are pointers, so a by-value
+// loop copies up front, and copying every element of every loop would be a
+// large price for a semantic almost no loop uses.
 //
 // The test is on the root name and no exact shape. A write to `$v["k"]` counts,
 // because the element it reaches lives inside the value the loop variable

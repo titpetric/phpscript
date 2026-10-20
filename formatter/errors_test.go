@@ -25,7 +25,7 @@ func TestSkipError(t *testing.T) {
 		t.Errorf("Unwrap() = %v, want the reason", got)
 	}
 
-	// Through a wrapper: a caller several frames up reads it this way.
+	// Through a wrapper: a caller up the stack reads it this way.
 	wrapped := fmt.Errorf("formatting: %w", err)
 	var skip *SkipError
 	if !errors.As(wrapped, &skip) {

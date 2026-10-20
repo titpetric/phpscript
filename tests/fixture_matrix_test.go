@@ -8,9 +8,9 @@ import (
 
 // TestFixtureRunners covers the three states a runner opt-out carries. The
 // fields are pointers so an absent one is distinguishable from a false one: a
-// fixture declaring nothing about a runner is checked against it. The default
-// runtime has no field at all, because it defines the expected output the
-// other two columns are compared with.
+// fixture declaring nothing about a runner runs on it. The default runtime has
+// no field at all, because it defines the expected output the other two
+// columns compare against.
 func TestFixtureRunners(t *testing.T) {
 	var absent FixtureRunners
 	if absent.Flatstack != nil || absent.PHP != nil {
@@ -55,8 +55,8 @@ func TestFixtureRunsMetadata(t *testing.T) {
 			if got := fx.Runs(RunnerPHP); got != c.php {
 				t.Errorf("Runs(php) = %v, want %v", got, c.php)
 			}
-			// The runtime defines the expected output, so it can not be
-			// opted out of.
+			// The runtime defines the expected output, so nothing opts out
+			// of it.
 			if !fx.Runs(RunnerRuntime) {
 				t.Error("Runs(runtime) = false, want true")
 			}

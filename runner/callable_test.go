@@ -65,9 +65,8 @@ func constant(t testing.TB, rt *runner.Runtime, name string) any {
 // needs a declaration to run and refuses anything that is not one.
 //
 // The two array spellings are the documented refusal (docs/README.md): they stay
-// callable everywhere else. Class::method is not one of them, and
-// "no PHP function of that name is declared" describes no method a class
-// declares.
+// callable everywhere else. Class::method is not one of them, and the
+// "no PHP function of that name" refusal describes no method a class declares.
 func TestAsCallableTakesEverySpellingButAnArray(t *testing.T) {
 	t.Parallel()
 	rt := callableRuntime(t)
@@ -219,8 +218,8 @@ func TestCallable_Invoke(t *testing.T) {
 }
 
 // TestAsCallableReportsWhatItCaptured covers Captures, which is the question a
-// host asks before running a callable somewhere else: what came along is shared
-// by every runtime running it.
+// host asks before running a callable somewhere else: every runtime running it
+// shares what came along.
 func TestAsCallableReportsWhatItCaptured(t *testing.T) {
 	t.Parallel()
 	rt := callableRuntime(t)

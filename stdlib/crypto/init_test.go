@@ -9,13 +9,13 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// TestInitContributesEveryInstaller covers the wiring init.go does. Each of
-// the four installers is contributed through runner.RegisterBinding, so
+// TestInitContributesEveryInstaller covers the wiring init.go does. init()
+// contributes each of the four installers through runner.RegisterBinding, so
 // importing this package is what puts password hashing, the CSPRNG, the
 // message digests and the id generators into a binary, and stdlib.Register is
 // what puts them on a runtime. An installer left out of init() leaves its
-// names undefined with nothing else failing, so one name per installer is
-// named here. This test binary imports only this package, so the contributed
+// names undefined with nothing else failing, so this test spells one name per
+// installer. This test binary imports only this package, so the contributed
 // set is this package's alone.
 func TestInitContributesEveryInstaller(t *testing.T) {
 	t.Parallel()

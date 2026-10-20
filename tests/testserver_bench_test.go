@@ -17,17 +17,17 @@ import (
 )
 
 // This file prices one request on Path B, which is HTTP\Mux on runner.Pool: the
-// program is parsed once, each handler is resolved once at $mux->handle(), the
-// workers are forked once, and the response is streamed. `phpscript server` is
+// pool parses the program once, resolves each handler once at $mux->handle(),
+// forks the workers once and streams the response. `phpscript server` is
 // Path A and builds a runtime per request; a number from one never belongs in a
 // table with a number from the other. docs/agents/performance.md owns the
 // comparison and scripts/bench-http.sh is the latency half of the same harness.
 //
-// It is the real testdata/phpscript-http-bridge/server.php, and no copy of it. The file's class
-// declaration is taken and its two trailing statements are left, because
-// run() calls listen() and then parks in wait() until the script's time limit
-// ends it, which a benchmark cannot do. The driver below is what run() does up
-// to the point of binding a socket.
+// The benchmark runs the real testdata/phpscript-http-bridge/server.php, and
+// no copy of it. It takes the file's class declaration and leaves its two
+// trailing statements, because run() calls listen() and then parks in wait()
+// until the script's time limit ends it, which a benchmark cannot do. The
+// driver below is what run() does up to the point of binding a socket.
 //
 // The socket is outside the measurement: the writer discards, with no pass
 // through net/http's connection buffers. That cost is the same on the Go twin,
@@ -52,8 +52,8 @@ var benchServerRoutes = []struct {
 	target string
 	body   string
 	// want is a distinctive substring of the response, checked once before the
-	// timed loop. It is what makes the benchmark notice the bridge's server.php changing
-	// under it, and never quietly measures a 404.
+	// timed loop. The check notices the bridge's server.php changing under it,
+	// so the benchmark never quietly measures a 404.
 	want string
 }{
 	{name: "hello", method: http.MethodGet, target: "/hello?name=sprint", want: "hello sprint"},
@@ -188,8 +188,8 @@ func benchServerRequest(b *testing.B, method, target, body string) (*http.Reques
 	}
 }
 
-// benchServerBody is a request body that can be read again, built once outside
-// the timed loop.
+// benchServerBody is a request body that rewinds, built once outside the
+// timed loop.
 type benchServerBody struct {
 	*strings.Reader
 }

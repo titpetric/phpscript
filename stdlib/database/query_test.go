@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-// Classification reads the leading text of a statement, so what a query is
-// tagged with must not change what it is. The tag is the reason to look: a
+// Classification reads the leading text of a statement, so the tag a query
+// carries must not change its class. The tag is the reason to look: a
 // statement in `show processlist` says nothing about the code that issued it.
 func TestParseQuery(t *testing.T) {
 	t.Parallel()
@@ -91,8 +91,8 @@ func TestParseQuery(t *testing.T) {
 		query:   "/* select * from users",
 		notRead: true,
 	}, {
-		// A statement has to begin with its keyword to be classified, so a
-		// parenthesized union is refused, and never guessed at.
+		// parseQuery classifies only a statement beginning with its keyword,
+		// so it refuses a parenthesized union and never guesses at one.
 		name:    "leading parenthesis",
 		query:   "(select 1) union (select 2)",
 		notRead: true,
@@ -114,7 +114,7 @@ func TestParseQuery(t *testing.T) {
 }
 
 // The refusal names the statement, so a script catching the exception can say
-// which call it lost, and not that the database is read-only.
+// which call it lost, and not the bare fact of a read-only database.
 func TestQueryInfoRefusal(t *testing.T) {
 	t.Parallel()
 	if got := (queryInfo{Type: "drop"}).refusal(); got != "drop is not allowed" {

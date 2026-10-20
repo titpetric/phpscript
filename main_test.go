@@ -63,7 +63,7 @@ func TestWantsHelp(t *testing.T) {
 
 // TestWriteHelp covers the long help: the shared flags printed once, then every
 // registered command with the flags it adds of its own. A command's section
-// repeats no shared flag, because the shared set is stated once.
+// repeats no shared flag, because the document names the shared set once.
 func TestWriteHelp(t *testing.T) {
 	t.Parallel()
 	file, err := os.CreateTemp(t.TempDir(), "help")
@@ -92,7 +92,7 @@ func TestWriteHelp(t *testing.T) {
 		}
 	}
 
-	// A shared flag is printed in the shared section and in no command's own.
+	// A shared flag appears in the shared section and in no command's own.
 	shared := "--file"
 	if !strings.Contains(document, shared) {
 		t.Fatalf("the help does not name the shared flag %q:\n%s", shared, document)
@@ -102,9 +102,10 @@ func TestWriteHelp(t *testing.T) {
 	}
 }
 
-// TestDecorate covers what a command gets for free. The shared flags are bound
-// onto it and the work they imply wraps its Run, so no command package repeats
-// either, and a command naming no usage of its own is given the examples
+// TestDecorate covers what a command gets for free. decorate binds the shared
+// flags onto it and wraps its Run with the work they imply, so no command
+// package repeats either, and a command naming no usage of its own takes the
+// examples
 // registered under its name.
 func TestDecorate(t *testing.T) {
 	t.Parallel()

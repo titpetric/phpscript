@@ -18,7 +18,7 @@ func TestBitwiseSemantics(t *testing.T) {
 		expr string
 		want string
 	}{
-		// Operands are cast to int.
+		// The engine casts both operands to int.
 		{`"12abc" & 3`, "0"},
 		{`"12abc" | 3`, "15"},
 		{`true | 0`, "1"},
@@ -29,7 +29,7 @@ func TestBitwiseSemantics(t *testing.T) {
 		{`null & 5`, "0"},
 		{`"3" & 1`, "1"},
 
-		// Two strings are combined byte by byte and return a string. `&` and
+		// Two strings combine byte by byte and return a string. `&` and
 		// `^` stop at the shorter operand, `|` keeps the longer one.
 		{`"3" & "1"`, "1"},
 		{`"a" | "b"`, "c"},

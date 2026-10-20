@@ -24,10 +24,10 @@ var Default model.MailProvider = NewProvider(nil)
 var _ model.MailProvider = (*Provider)(nil)
 
 // Deliver passes one message to a transport, with the credential of the server
-// it resolved to. It is the one function a host swaps to send by something other than
-// SMTP, and it is a function and no second MailProvider because the name
-// resolution and the tenant isolation sit above it and are not to be
-// reimplemented. A Deliver is host code and reads the host's settings.
+// it resolved to. A host swaps this one function to send by something other
+// than SMTP. It stays a function and no second MailProvider because the name
+// resolution and the tenant isolation sit above it, where no host rewrites
+// them. A Deliver is host code and reads the host's settings.
 type Deliver func(config Config, recipient, subject, body string) error
 
 // errPlainTransport refuses a message a plain-text transport would have to cut
@@ -45,11 +45,10 @@ func (deliver Deliver) plain(config Config, message Message) error {
 
 // Provider holds the credentials of a set of named mail servers.
 //
-// The map is fixed once the provider is built. There is no
+// Nothing changes the map after the constructor fills it. There is no
 // registration call and no listing call: a script names a server and learns
 // only whether the delivery worked. That is also what lets the constructor
-// check a name and get the same verdict Send
-// makes for itself.
+// check a name and get the same verdict Send makes for itself.
 type Provider struct {
 	servers map[string]Config
 	deliver func(Config, Message) error
@@ -63,13 +62,13 @@ func NewProvider(servers map[string]Config) *Provider {
 
 // NewProviderFunc is NewProvider with the transport replaced, the way
 // database.NewDatabaseProvider takes its connector. A nil deliver is SMTP. A
-// Deliver reads a plain-text message, so a message with an HTML part or a
-// Reply-To is refused: cut down to fit, it would be a different message.
+// Deliver reads a plain-text message, so plain refuses a message with an HTML
+// part or a Reply-To: cut down to fit, it would be a different message.
 //
-// The map is copied and never retained, because configuration layering passes
-// one map to every site that declared no mail block, and a normalisation
-// written into it would be written into all of them. Names are lowercased and a
-// missing port is filled in here, so a delivery reads a complete credential.
+// The constructor copies the map and keeps no reference, because configuration
+// layering passes one map to every site that declared no mail block, and a
+// normalisation written into it would reach every one. It lowercases a name
+// and fills in a missing port, so a delivery reads a complete credential.
 func NewProviderFunc(deliver Deliver, servers map[string]Config) *Provider {
 	result := &Provider{
 		servers: make(map[string]Config, len(servers)),
@@ -87,7 +86,7 @@ func NewProviderFunc(deliver Deliver, servers map[string]Config) *Provider {
 	return result
 }
 
-// Configured reports why name cannot be delivered through, and nil when it can.
+// Configured reports why name cannot carry a delivery, and nil when it can.
 func (p *Provider) Configured(name string) error {
 	_, err := p.resolve(name)
 	return err
@@ -100,9 +99,9 @@ func (p *Provider) Send(ctx context.Context, name, recipient, subject, body stri
 
 // SendMessage sends message through the server it names.
 //
-// The credential is read here, into a local, and is gone when the call
-// returns. Nothing that outlives the delivery holds it: not the PHP object the
-// script called, and no part of the span or the error.
+// It reads the credential into a local and drops it when the call returns.
+// Nothing that outlives the delivery holds it: not the PHP object the script
+// called, and no part of the span or the error.
 func (p *Provider) SendMessage(_ context.Context, message Message) error {
 	config, err := p.resolve(message.Server)
 	if err != nil {
@@ -111,9 +110,10 @@ func (p *Provider) SendMessage(_ context.Context, message Message) error {
 	return p.deliver(config, message)
 }
 
-// resolve returns the credential for name, defaulting an empty name. A name
-// nobody configured is reported the way an unconfigured database connection
-// is: the name the caller passes, and nothing about the configuration.
+// resolve returns the credential for name, defaulting an empty name. For a
+// name nobody configured, the error carries what an unconfigured database
+// connection carries: the name the caller passes, and nothing about the
+// configuration.
 func (p *Provider) resolve(name string) (Config, error) {
 	if name == "" {
 		name = DefaultName
@@ -126,9 +126,9 @@ func (p *Provider) resolve(name string) (Config, error) {
 }
 
 // deliverSMTP runs the SMTP conversation, the transport a provider uses when
-// the host named none. It follows smtp.SendMail, which cannot be
-// used directly because it builds its own TLS config, leaving no way to reach a
-// host whose certificate does not verify (see Config.Insecure).
+// the host named none. It follows smtp.SendMail, which nothing here can call
+// directly because it builds its own TLS configuration, leaving no way to
+// reach a host whose certificate does not verify (see Config.Insecure).
 func deliverSMTP(config Config, message Message) error {
 	sender, err := envelopeAddress(config.From)
 	if err != nil {

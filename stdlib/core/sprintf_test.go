@@ -5,8 +5,9 @@ import (
 )
 
 // TestPhpSprintfCoercesArguments pins the part of sprintf a fixture cannot
-// reach from the other side: that an argument is converted before it is
-// rendered, and never passed to a Go formatter that reports its type back.
+// reach from the other side: that phpval converts an argument before the
+// renderer writes it, and never passes it to a Go formatter that reports its
+// type back.
 func TestPhpSprintfCoercesArguments(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

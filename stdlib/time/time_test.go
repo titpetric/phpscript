@@ -29,8 +29,8 @@ func run(t *testing.T, src string) string {
 
 // TestRegister covers the layout constants and the names a script reaches the
 // clock through. A namespaced constant does not parse in this runtime, so the
-// Time\ prefix the classes carry is spelled TIME_ for the constants, and the
-// value under each name is Go's own layout string.
+// constants carry the classes' Time\ prefix as TIME_, and the value under each
+// name is Go's own layout string.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -81,8 +81,8 @@ func TestRegister(t *testing.T) {
 
 // TestRegisterDispatchesToGoMethods covers the decision this package rests on:
 // the constructors return Go values and no facade, so every method a script
-// calls is Go's own method under the name PHP spells it with. A wrapper would
-// have to be written per method and would be the place a method went missing.
+// calls is Go's own method under the name PHP spells it with. A facade would
+// need one wrapper per method, the place a method goes missing.
 func TestRegisterDispatchesToGoMethods(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

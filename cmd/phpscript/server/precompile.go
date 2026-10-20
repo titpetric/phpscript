@@ -18,12 +18,12 @@ func sharedCaches(files *handler, options []annotations.Option) []annotations.Op
 }
 
 // precompile parses a site's tree into its caches before the site serves a
-// request, when runner.precompile named it. A site that did not is left
+// request, when runner.precompile named it. A site that did not stays
 // lazy: it parses a file the first time a request reaches it.
 //
-// Startup is not where a source error is reported. A file that does not parse
-// is left out of the caches and reaches the interpreter when a request names
-// it, so one broken file below the root cannot stop the server coming up.
+// Startup never reports a source error. A file that does not parse stays out
+// of the caches and reaches the interpreter when a request names it, so one
+// broken file below the root cannot stop the server coming up.
 func precompile(files *handler, name string) {
 	if !files.runnerOptions.Precompile {
 		return
@@ -32,7 +32,7 @@ func precompile(files *handler, name string) {
 	pass := runner.Precompiler{Root: files.root, Includes: files.includeCache}
 	if files.flatstack {
 		// Bytecode for a site running the interpreter is resident memory
-		// nothing executes; the flat compile is only paid where it is read.
+		// nothing executes; only a site that reads it pays the flat compile.
 		pass.Exprs = files.exprCache
 	}
 	cached := pass.Run()

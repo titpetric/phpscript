@@ -6,7 +6,7 @@
 
 Wrapper that protects a sensitive value against accidental exposure.
 
-A parameter carrying the `SensitiveParameter` attribute is replaced by one of these in a stack trace, so the value does not appear in the trace a failure prints.
+In a stack trace, PHP replaces a parameter carrying the `SensitiveParameter` attribute with one of these, so the value does not appear in the trace a failure prints.
 
 ## Class synopsis
 
@@ -38,7 +38,7 @@ public function getValue(): mixed
 
 ## Status
 
-- phpscript does not implement this class. The name is not declared.
-- It has nothing to attach to: attributes are unavailable, so the `SensitiveParameter` attribute that produces one cannot be written.
-- `__debugInfo()` is a magic method, which is unavailable as well, and `readonly` is parsed and not enforced.
+- phpscript has no `SensitiveParameterValue`. The name is not declared.
+- It has nothing to attach to: attributes are unavailable, so a script cannot write the `SensitiveParameter` attribute that produces one.
+- `__debugInfo()` is a magic method, which is unavailable as well, and the parser accepts `readonly` without enforcing it.
 - Keep the secret out of the argument list: read it from configuration inside the function that needs it.

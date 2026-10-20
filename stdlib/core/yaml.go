@@ -36,7 +36,7 @@ func registerYAML(rt *runner.Runtime) {
 
 // phpYAMLDecode reads YAML into the shapes json_decode answers with: a
 // mapping is an array keyed by its field names, a sequence is a list, and a
-// number is an int when it is whole.
+// whole number is an int.
 func phpYAMLDecode(text string) (any, error) {
 	var value any
 	if err := yaml.Unmarshal([]byte(text), &value); err != nil {
@@ -58,11 +58,11 @@ func phpYAMLEncode(value any) (any, error) {
 
 // yamlDecodeValue turns what the decoder answers into PHP values.
 //
-// The keys of a mapping are sorted by decision: the decoder returns a Go map,
-// a Go map has no order, and
-// reading the same document twice would otherwise build two differently
-// ordered arrays. A settings file is read by name, so sorting costs nothing
-// and the same input decodes the same way every time.
+// yamlMapping sorts a mapping's keys by decision: the decoder returns a Go
+// map, a Go map has no order, and reading the same document twice would
+// otherwise build two differently ordered arrays. A script reads a settings
+// file by name, so sorting costs nothing and the same input decodes the same
+// way every time.
 //
 // A whole number arrives as an int. `max_pages: 400` compared against a
 // count has to be one, and a float that happens to be whole would print as
@@ -114,8 +114,8 @@ func yamlMapping(in map[string]any) *model.Array {
 
 // yamlEncodeValue turns PHP values into what the YAML marshaller writes.
 //
-// A mapping becomes a yaml.MapSlice and not a map, so the keys are
-// written in the order the array set them: a settings file a script wrote
+// A mapping becomes a yaml.MapSlice and not a map, so the marshaller writes
+// the keys in the order the array set them: a settings file a script wrote
 // should read the way the script built it, and a Go map would shuffle it on
 // every run.
 func yamlEncodeValue(v any) any {

@@ -70,7 +70,7 @@ func TestStorageMemory_Delete(t *testing.T) {
 }
 
 // TestStorageMemory_Prune covers the sweep that bounds how long the map grows.
-// Age is measured from the last Save, so a session written again survives a
+// Prune measures age from the last Save, so a session written again survives a
 // sweep that would have taken the version before it.
 func TestStorageMemory_Prune(t *testing.T) {
 	t.Parallel()
@@ -94,7 +94,7 @@ func TestStorageMemory_Prune(t *testing.T) {
 	}
 
 	// A negative maxAge puts the cutoff in the future, so every session is past
-	// it and the map is emptied.
+	// it and Prune empties the map.
 	if err := storage.Prune(ctx, -time.Second); err != nil {
 		t.Fatalf("Prune: %v", err)
 	}

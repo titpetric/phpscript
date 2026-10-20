@@ -2,15 +2,15 @@
 // packages and golang.org/x/image.
 //
 // The surface is the one a ported image class actually calls: decode, create,
-// resample, draw, write. It is not all of ext/gd, and it is not everything
-// ext/gd would let you register: a binding is here because something needs it,
-// and the text family is absent because nothing did.
+// resample, draw, write. Not every one of ext/gd, and not everything ext/gd
+// would let you register: a binding is here because something needs it, and
+// the text family is absent because nothing did.
 //
-// imagetypes is answered and never omitted because ported code branches on
-// it, but there is one decoder set behind it and it always reports the same
-// three formats.
+// This package registers imagetypes and never omits it, because ported code
+// branches on it, but one decoder set sits behind it and it always reports the
+// same three formats.
 //
-// image.Decode reads whichever formats are registered in the process, and the
+// image.Decode reads whichever formats the process registered, and the
 // registration is an init: png and jpeg arrive with the encoders this package
 // calls by name, and gif has nothing here to reach for. A program decides what
 // it links, so the phpscript main package names all three and a host embedding
@@ -47,8 +47,8 @@ type Image struct {
 	truecolor bool
 }
 
-// Bounds is the image rectangle. It is exported so a host embedding this
-// package can inspect what a script produced.
+// Bounds is the image rectangle, exported so a host embedding this package
+// can inspect what a script produced.
 func (im *Image) Bounds() image.Rectangle { return im.m.Bounds() }
 
 // Underlying returns the drawable the handle wraps.
@@ -141,14 +141,14 @@ type root struct {
 // read another tenant's.
 //
 // Returning an absolute path unchanged would let the image functions reach any
-// file the process can, where file_get_contents on the same path is refused,
-// and would let imagepng write one.
+// file the process can, where the files shim refuses file_get_contents on the
+// same path, and would let imagepng write one.
 func (r root) resolve(p string) string {
 	clean := path.Clean("/" + filepath.ToSlash(p))
 	return filepath.Join(r.dir, filepath.FromSlash(clean))
 }
 
-// resolveWrite is resolve for a path about to be written. A path outside
+// resolveWrite is resolve for a path the caller will write. A path outside
 // writable_paths is an error, not a false return, matching stdlib/files: a
 // refused write is a configuration no script may escape.
 func (r root) resolveWrite(fn, p string) (string, error) {
@@ -181,16 +181,16 @@ func registerCreate(rt *runner.Runtime, r root) {
 	})
 
 	// imagecreatefromjpeg decodes $filename as JPEG and returns an image, or
-	// false when it cannot be read.
+	// false when the read fails.
 	rt.RegisterFunc("imagecreatefromjpeg", decoder(r, "jpeg"))
 	// imagecreatefrompng decodes $filename as PNG and returns an image, or
-	// false when it cannot be read.
+	// false when the read fails.
 	rt.RegisterFunc("imagecreatefrompng", decoder(r, "png"))
 	// imagecreatefromgif decodes $filename as GIF and returns an image, or
-	// false when it cannot be read.
+	// false when the read fails.
 	rt.RegisterFunc("imagecreatefromgif", decoder(r, "gif"))
-	// imagedestroy frees $image. Memory is reclaimed automatically here, so
-	// it only drops the pixels and returns true.
+	// imagedestroy frees $image. The garbage collector reclaims the memory
+	// here, so it only drops the pixels and returns true.
 	rt.RegisterFunc("imagedestroy", func(im *Image) bool {
 		if im == nil {
 			return false
@@ -219,8 +219,8 @@ func decoder(r root, want string) func(string) any {
 }
 
 // wrap turns a decoded image into a handle, copying into RGBA when the decoder
-// produced something that cannot be drawn on. Every paletted or YCbCr image
-// takes this path, so a decoded JPEG or GIF is writable.
+// produced something the drawing calls cannot touch. Every paletted or YCbCr
+// image takes this path, so a decoded JPEG or GIF is writable.
 func wrap(src image.Image) *Image {
 	if d, ok := src.(Drawable); ok {
 		if _, paletted := src.(*image.Paletted); !paletted {
@@ -260,7 +260,7 @@ func registerInfo(rt *runner.Runtime, r root) {
 	})
 
 	// getimagesize returns array(width, height, IMAGETYPE_*, "width=..
-	// height=..") for $filename, or false when it is not an image.
+	// height=..") for $filename, or false when that file is not an image.
 	rt.RegisterFunc("getimagesize", func(filename string) any {
 		f, err := os.Open(r.resolve(filename))
 		if err != nil {
@@ -386,9 +386,9 @@ func encodeTo(rt *runner.Runtime, r root, fn string, im *Image, args []any, enc 
 }
 
 // checkDimensions raises the ValueError PHP raises for a non-positive width or
-// height. PHP 8 raises for it where PHP 7 returned false, and
-// a binding that answers false instead would let a script carry on past a
-// mistake the engine it is being ported from stops at.
+// height. PHP 8 raises for it where PHP 7 returned false, and a binding that
+// answers false instead would let a script carry on past a mistake PHP 8
+// stops at.
 func checkDimensions(fn string, width, height int64) error {
 	if width <= 0 {
 		return fmt.Errorf("%s(): Argument #1 ($width) must be greater than 0", fn)

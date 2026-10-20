@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-// TestGenerate covers the wiring the listing depends on. The document is
-// built off a runtime, so what it names is what a script can call: an
+// TestGenerate covers the wiring the listing depends on. The generator reads a
+// runtime, so what it names is what a script can call: an
 // installer left out of generate publishes a reference with a whole area
 // missing, and the committed docs/reference/extensions/implemented-apis.md
 // would read as though those functions do not exist.
 //
 // The root is the module root, two directories up, because the generator reads
-// doc comments and parameter names out of the Go source tree it is pointed at.
+// doc comments and parameter names out of the Go source tree below it.
 func TestGenerate(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder

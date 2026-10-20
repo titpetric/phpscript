@@ -10,8 +10,8 @@ import (
 // Host-provided capability surfaced to PHP
 // ---------------------------------------------------------------------------
 
-// Storage is a host-provided key/value capability whose context parameters are
-// supplied automatically when PHP invokes its methods.
+// Storage is a host-provided key/value capability; the runner fills its
+// context parameters when PHP invokes its methods.
 type Storage interface {
 	Set(ctx context.Context, key, value string)
 	Get(ctx context.Context, key string) (Record, error)
@@ -20,8 +20,8 @@ type Storage interface {
 	Tenant() string
 }
 
-// Record is a rich value type returned to PHP. Its exported fields are read from
-// PHP via property access (`$rec->key`, `$rec->value`), matched case-insensitively.
+// Record is a rich value type returned to PHP. PHP reads its exported fields
+// through property access (`$rec->key`, `$rec->value`), case-insensitively.
 type Record struct {
 	Key   string
 	Value string
@@ -29,9 +29,9 @@ type Record struct {
 
 // memStorage is an in-memory Storage implementation.
 //
-// The map is bare: one is built per `new Storage`, a runtime serves one
-// goroutine, and nothing here is shared between two of them, so there is no lock
-// and none of these methods is safe to call concurrently. core.SharedMemory is
+// The map is bare: `new Storage` builds one per call, a runtime serves one
+// goroutine, and no two of them share anything here, so there is no lock and
+// none of these methods is safe to call concurrently. core.SharedMemory is
 // the binding for state two runtimes reach; see docs/testing.md.
 type memStorage struct {
 	data   map[string]string
@@ -40,9 +40,9 @@ type memStorage struct {
 
 func (s *memStorage) Set(_ context.Context, key, value string) { s.data[key] = value }
 
-// Get returns (Record, error): a rich struct value (not a scalar). The error is
-// omitted on the PHP side (handled as a throw); the Record is assigned to the
-// PHP variable, whose fields are then read with `->`.
+// Get returns (Record, error): a rich struct value (not a scalar). The PHP
+// side never sees the error (it arrives as a throw); the Record lands in the
+// PHP variable, whose fields a script then reads with `->`.
 func (s *memStorage) Get(_ context.Context, key string) (Record, error) {
 	v, ok := s.data[key]
 	if !ok {
@@ -70,7 +70,7 @@ func (s *memStorage) Tenant() string { return s.tenant }
 // a predicate, the shape a library's own method set has and what
 // coerceArgOn had to wrap through reflect.MakeFunc.
 //
-// It is one of two because there are two declared shapes to cover and one
+// Keep is one of two because there are two declared shapes to cover and one
 // signature cannot be both. Neither is on the Storage interface: the constructor
 // returns the concrete value, so PHP reaches every exported method on it, which
 // is the rule bindings.md states about registration not being an allowlist.

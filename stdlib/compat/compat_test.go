@@ -13,7 +13,7 @@ import (
 // TestRegister covers the three families one call installs: the ob_* buffers,
 // the clock and date shims, and the preg_* functions. A host that builds its
 // own Runtime without stdlib calls this one function for all three, so a
-// family missing from it is a family no script can reach.
+// family this call omits is a family no script can reach.
 func TestRegister(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(&strings.Builder{}, runner.Options{})
@@ -36,8 +36,8 @@ func TestRegister(t *testing.T) {
 }
 
 // runScript runs src against a runtime with the stdlib installed and returns
-// what reached the real output. The bindings are exercised through the VM
-// because that is where buffering has to hold up: it works by intercepting what
+// what reached the real output. It drives the bindings through the VM because
+// that is where buffering has to hold up: buffering works by intercepting what
 // echo and inline HTML write, not by anything a script can observe directly.
 func runScript(t *testing.T, src string) string {
 	t.Helper()
@@ -140,8 +140,8 @@ func TestBuffersAreScopedToOneRuntime(t *testing.T) {
 	stdlib.Register(firstRT)
 	stdlib.Register(secondRT)
 
-	// The first runtime is left mid-capture, so a shared stack would leak into
-	// the second one's level count and swallow its output.
+	// The test leaves the first runtime mid-capture, so a shared stack would
+	// leak into the second one's level count and swallow its output.
 	firstRT.PushOutput(&strings.Builder{})
 
 	if err := secondRT.Run(program); err != nil {

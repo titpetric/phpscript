@@ -17,7 +17,7 @@ type RuntimeFunc func(*runner.Runtime)
 // executes in, under the "cli" sapi. A routed endpoint takes a pooled runtime
 // from its handler instead; see handler.buildRuntime.
 //
-// The register hooks run after the standard library is installed and before the
+// The register hooks run once the standard library sits on the runtime, before the
 // caller's RuntimeFunc options, so an option can always wrap what came before
 // it, a runtime context value in particular.
 func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi string, register ...RuntimeFunc) *runner.Runtime {
@@ -53,7 +53,7 @@ func (c config) newRuntime(ctx context.Context, root fs.FS, out io.Writer, sapi 
 //
 // The collector is per run because it keys statements by the AST node the
 // parser produced: one kept across runs would grow with every re-parse, while
-// the aggregator holds one entry per statement range however often it is seen.
+// the aggregator holds one entry per statement range at any number of hits.
 func (c config) cover(rt *runner.Runtime) func() {
 	if c.coverage == nil {
 		return func() {}

@@ -71,7 +71,7 @@ func String(v any) string {
 		// strconv formats in place; fmt.Sprintf would box x into an any
 		// (an allocation of its own for values over 255) and run the
 		// formatter. String sits under implode, str_replace, in_array and
-		// array_unique, so it is worth the two lines.
+		// array_unique, which earns the two lines.
 		return strconv.FormatInt(x, 10)
 	case int:
 		return strconv.Itoa(x)
@@ -231,8 +231,8 @@ func Float(v any) float64 {
 // is 0.5, "1e3" is 1000, "abc" is 0).
 //
 // Int, Float and Number all read the string through here, so no two of them can
-// take a different number out of it, and this package exists to
-// prevent. The prefix is the one runner.numericPrefix reads for a cast, so
+// take a different number out of it, which this package exists to prevent.
+// The prefix is the one runner.numericPrefix reads for a cast, so
 // (int)"1e3" and phpval.Int("1e3") agree as well.
 //
 // isInt reports a prefix carrying no fraction and no exponent,
@@ -310,9 +310,9 @@ func parseFloat(prefix string) float64 {
 }
 
 // Number returns v in PHP's numeric domain: an int64 for what PHP treats as an
-// integer, a float64 for what it treats as a float. It is what lets abs(),
-// min(), max() and array_sum() return the type of the argument, so that
-// abs(-1) is int(1) and abs(-1.5) is float(1.5). A string is read through the
+// integer, a float64 for what it treats as a float. It lets abs(), min(),
+// max() and array_sum() return the argument's own type, so that abs(-1) is
+// int(1) and abs(-1.5) is float(1.5). Number reads a string through the
 // same numeric prefix Int and Float read, so the three never disagree: "12abc"
 // is int64(12), "-3.5" is float64(-3.5) and "abc" is int64(0).
 func Number(v any) any {
@@ -375,7 +375,7 @@ func Key(v any) any {
 }
 
 // floatKey truncates toward zero. Go leaves an out-of-range float-to-int
-// conversion undefined, so the ends are named and never left to the compiler.
+// conversion undefined, so floatKey names the ends the compiler would not.
 func floatKey(f float64) int64 {
 	switch {
 	case math.IsNaN(f):
@@ -397,7 +397,7 @@ func NumericKey(s string) (int64, bool) {
 	digits := s
 	if strings.HasPrefix(digits, "-") {
 		digits = digits[1:]
-		// "-0" prints as "0", so it is not the canonical spelling of anything.
+		// "-0" prints as "0", so it never spells a canonical integer.
 		if digits == "0" {
 			return 0, false
 		}

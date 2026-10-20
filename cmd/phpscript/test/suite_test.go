@@ -54,7 +54,7 @@ func TestSuiteIncludeIsAPreludeWithoutTheFlag(t *testing.T) {
 }
 
 // TestSuiteHooksRunOncePerSession covers both hooks and the order they run in.
-// Each appends to a file, so what is left records how many times each ran and
+// Each appends to a file, so the file records how many times each ran and
 // which side of the fixtures each sits on.
 func TestSuiteHooksRunOncePerSession(t *testing.T) {
 	tmp := writeTree(t, map[string]string{
@@ -80,8 +80,8 @@ func TestSuiteHooksRunOncePerSession(t *testing.T) {
 }
 
 // TestSuiteTeardownRunsAfterAFailure covers the half of the contract a passing
-// run cannot show: a suite releases what it took whether or not the fixtures
-// passed, and the run still reports the failure and not the hook.
+// run cannot show: a suite releases what it took even where the fixtures
+// failed, and the run still reports the failure and not the hook.
 func TestSuiteTeardownRunsAfterAFailure(t *testing.T) {
 	tmp := writeTree(t, map[string]string{
 		"suite/phpscript.yml": "test:\n  hooks:\n    teardown: teardown.php\n",
@@ -176,8 +176,8 @@ func TestSuiteBelowTheRunRootMayNotSetRunKeys(t *testing.T) {
 	}
 }
 
-// TestRunSuiteSetsFlagDefaults covers the same keys where they are allowed: the
-// file the run itself is under supplies them, and the run picks them up.
+// TestRunSuiteSetsFlagDefaults covers the same keys where a file may set them:
+// the file the run itself is under supplies them, and the run picks them up.
 func TestRunSuiteSetsFlagDefaults(t *testing.T) {
 	writeTree(t, map[string]string{
 		"phpscript.yml": "test:\n  parallel: 4\n  cache: off\n",

@@ -18,7 +18,7 @@ type JobFunc func(*Runtime)
 // Run calls f.
 func (f JobFunc) Run(rt *Runtime) { f(rt) }
 
-// DoneJob is a Job that lends the pool the channel its completion is signalled
+// DoneJob is a Job that lends the pool a channel to signal its completion
 // through, so a job serving many runs carries one channel in place of the pool
 // building one per submit. One buffered slot, which the worker sends into and
 // the submitter drains, so the channel serves the next run.

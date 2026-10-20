@@ -11,18 +11,18 @@ import (
 // while opendir returns a handle a loop walks one name at a time, which is
 // what a recursive walk written in PHP looks like.
 //
-// The handle carries the listing taken at open time, and no open
-// descriptor. A source filesystem an embedded application ships has no
-// descriptor to hold open, and both filesystems have to answer the same way, so
-// the listing is read through root.readDir - the same reader scandir uses.
+// The handle carries the listing taken at open time, and no open descriptor. A
+// source filesystem an embedded application ships has no descriptor to hold
+// open, and both filesystems have to answer the same way, so opendir reads the
+// listing through root.readDir - the same reader scandir uses.
 //
-// Nothing is therefore held between opendir and closedir, and a script that
-// forgets to close leaks nothing: the handle is an ordinary Go value the
-// collector takes once the script drops it.
+// Nothing stays open between opendir and closedir, and a script that forgets
+// to close leaks nothing: the handle is an ordinary Go value the collector
+// takes once the script drops it.
 func registerDirs(rt *runner.Runtime, r root) {
 	// opendir returns a handle for reading the names in $directory, or false
-	// when it is not a directory; php's $context argument is not taken,
-	// because there are no stream contexts to pass it.
+	// when $directory is not a directory; php's $context argument is not
+	// taken, because there are no stream contexts to pass it.
 	rt.RegisterFunc("opendir", func(directory string) any {
 		names, ok := r.readDir(directory)
 		if !ok {
@@ -37,9 +37,8 @@ func registerDirs(rt *runner.Runtime, r root) {
 	})
 
 	// readdir returns the next name in $dir_handle, or false once the listing
-	// is exhausted; "." and ".." are listed, as php lists them, and the
-	// handle is required, because there is no last-opened directory to fall
-	// back on.
+	// runs out; it lists "." and "..", as php lists them, and the handle is
+	// mandatory, because there is no last-opened directory to fall back on.
 	rt.RegisterFunc("readdir", func(dirHandle any) any {
 		h, ok := dirHandle.(*openDir)
 		if !ok || h.pos >= len(h.names) {
@@ -64,11 +63,11 @@ func registerDirs(rt *runner.Runtime, r root) {
 // this runtime does not have, so the handle is a Go value the script only ever
 // passes back to readdir() and closedir() - the same arrangement fopen() uses
 // with its *os.File. The Go name is not dirHandle because that is the name of
-// the argument the two readers take, and the generated reference is built from
-// argument names.
+// the argument the two readers take, and the generated reference uses argument
+// names.
 //
-// It is a pointer type because the cursor has to survive being copied into a
-// PHP variable and back out again on the next readdir().
+// A pointer type, because the cursor has to survive a copy into a PHP variable
+// and back out again on the next readdir().
 type openDir struct {
 	names []string
 	pos   int

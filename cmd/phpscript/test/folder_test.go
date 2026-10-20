@@ -11,9 +11,9 @@ import (
 )
 
 // TestRatio covers the form both coverage columns take. The header says what
-// is counted, so the cell carries the counts and the percent they come to, and
-// the percent rounds to whole: 1 of 2 reads 50%, where truncation would
-// read 49%.
+// the column counts, so the cell carries the counts and the percent they come
+// to, and the percent rounds to whole: 1 of 2 reads 50%, where truncation
+// would read 49%.
 func TestRatio(t *testing.T) {
 	t.Parallel()
 	for want, counts := range map[string][2]int{
@@ -81,11 +81,11 @@ func TestFolderCoverColumns(t *testing.T) {
 	}
 }
 
-// TestFolderCoverageCountsADeclarationFileAsReached covers the one adjustment
+// TestFolderCoverageCountsADeclarationFileAsReached covers the one exception
 // the file count makes: a file holding no runnable statement, a bag of
-// declarations, has nothing left to reach and counts as reached. Without it a
-// suite including a file of class declarations would be told to cover it and
-// have nothing to cover.
+// declarations, has nothing left to reach and counts as reached. Without it
+// the count would charge a suite including a file of class declarations for
+// coverage it cannot reach.
 func TestFolderCoverageCountsADeclarationFileAsReached(t *testing.T) {
 	t.Parallel()
 	rows := []coverage.Row{

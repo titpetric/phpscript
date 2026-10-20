@@ -37,7 +37,7 @@ func TestIsTerminal(t *testing.T) {
 	}
 }
 
-// TestBoxDrawing covers the two sets of constants a table is drawn from: every
+// TestBoxDrawing covers the two sets of constants a table draws with: every
 // box character is one column wide, so a border built by repeating one lines
 // up with the cells above it, and every color is a 256-color code that ends
 // with the one reset sequence.

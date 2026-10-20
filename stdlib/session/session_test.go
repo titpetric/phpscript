@@ -34,8 +34,8 @@ func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 		t.Fatalf("DefaultStoragePath is not stable: %s then %s", one, again)
 	}
 
-	// A relative root is resolved before it is digested, so the same tree named
-	// two ways is one site and never two.
+	// DefaultStoragePath resolves a relative root before digesting it, so the
+	// same tree named two ways is one site and never two.
 	if session.DefaultStoragePath(".") != session.DefaultStoragePath(mustAbs(t, ".")) {
 		t.Fatal("a relative and an absolute spelling of one root resolve to two directories")
 	}
@@ -53,8 +53,8 @@ func TestDefaultStoragePathIsPerRoot(t *testing.T) {
 // prune() takes an age, not an ID, so any script that can construct the storage
 // can empty it. While every application root shared one directory, one line of
 // PHP on any site of a virtual-host server deleted every other site's sessions;
-// session IDs being unguessable did not help, because nothing had to be guessed
-// and no path had to be named.
+// session IDs being unguessable did not help, because that line guessed no ID
+// and named no path.
 //
 // The unrooted host is in the table because it writes into the parent of the
 // scoped directories, so Prune has to skip them and never walk in.

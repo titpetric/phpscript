@@ -13,7 +13,7 @@ const (
 	opPop
 	opDup
 	opLoad
-	// opLoadConst reads a bare name. It is separate from opLoad because the
+	// opLoadConst reads a bare name. It stays separate from opLoad because the
 	// two answer differently when nothing defines the name: an unset variable
 	// is null, an undefined constant is an Error.
 	opLoadConst
@@ -77,9 +77,9 @@ const (
 	// returns and what the allocation rules prefer.
 	opCompactInit
 	// opCompactEntry writes one name into the map on top of the stack, which
-	// it leaves there: a is the local's slot and name is the key. A slot
-	// holding nothing is skipped, so compact() omits a name that is
-	// not set; a slot holding null is not, because null is a value.
+	// it leaves there: a is the local's slot and name is the key. It skips a
+	// slot holding nothing, so compact() omits a name that is not set, and
+	// keeps a slot holding null, because null is a value.
 	opCompactEntry
 	// opCompactDynamic is opCompactEntry for a name the compiler could not
 	// read off the source: it pops the name and looks the slot up in the
@@ -204,7 +204,7 @@ type userFuncDef struct {
 	// pass leaves the slot uninitialized.
 	paramSlots []int
 	// variadicSlot is the slot of a trailing `...$rest` parameter, -1 without
-	// one. It is not in paramSlots: the caller binds it to an array of the
+	// one. paramSlots leaves it out: the caller binds it to an array of the
 	// leftover arguments, empty when the caller stops short of it.
 	variadicSlot int
 }
@@ -214,8 +214,8 @@ type userFuncDef struct {
 // opClosure turns the definition into a callable value.
 //
 // The slot numbers are frame offsets, and the same number means the same name
-// in every frame: Program.localNames is per program, not per function. That is
-// what lets a capture be copied straight from the creating frame into the
+// in every frame: Program.localNames is per program, not per function, so
+// opClosure copies a capture straight from the creating frame into the
 // closure's own frame without a name lookup.
 type closureDef struct {
 	entryPC int
@@ -223,8 +223,8 @@ type closureDef struct {
 	// the caller did not pass leaves the slot null, as the
 	// interpreter's bindParams does.
 	paramSlots []int
-	// captures holds the slots of the `use (...)` list. They are read where the
-	// closure value is created, not where it is called, so the capture is the
+	// captures holds the slots of the `use (...)` list. opClosure reads them
+	// where the closure value appears, not at the call, so the capture is the
 	// snapshot PHP's by-value `use` describes.
 	captures []int
 	// thisSlot is the slot holding the receiver a closure written inside a
@@ -233,7 +233,7 @@ type closureDef struct {
 	thisSlot int
 }
 
-// catchClause is one compiled `catch (Type $var) { ... }`. declaredType is kept
+// catchClause is one compiled `catch (Type $var) { ... }`. declaredType stays
 // verbatim, including the `A|B` union form, because the host owns the matching
 // rules; local is -1 when the clause binds no variable.
 type catchClause struct {
@@ -253,7 +253,7 @@ type Program struct {
 	userFuncs map[string]userFuncDef
 	// userFuncsFold indexes userFuncs by lowercased name; PHP function and
 	// class names are case-insensitive, so a fold collision is already a
-	// redeclaration error before this map is built.
+	// redeclaration error before the compiler builds this map.
 	userFuncsFold map[string]userFuncDef
 	classes       []*model.Class
 	// catchGroups holds the clause list of every compiled try, in source
@@ -295,9 +295,9 @@ type Host interface {
 	Index(any, any) any
 	SetIndex(any, any, any, bool, string) error
 	// SetEntry writes value into container at key when container is a value the
-	// script owns. A collection a binding returned belongs to the host, so it is
-	// left alone and never reported as an error, matching what a by-reference
-	// foreach over one does in the interpreter.
+	// script owns. A collection a binding returned belongs to the host, so
+	// SetEntry leaves it alone and reports no error, matching what a
+	// by-reference foreach over one does in the interpreter.
 	SetEntry(container, key, value any) error
 	// UnsetIndex removes key from container, PHP's unset($a[$k]). Removing a
 	// key that is not there is not an error.
@@ -313,9 +313,9 @@ type Host interface {
 	// so both backends select the same clause.
 	MatchCatch(declaredType string, err error) bool
 	// Throw turns a thrown value into the error it travels as. A built-in
-	// throwable is an error already; an instance of a declared class is
-	// wrapped so a clause can filter on its declared class, and a
-	// catch binding it gets the object back.
+	// throwable is an error already; Throw wraps an instance of a declared
+	// class so a clause can filter on its declared class, and a catch
+	// binding it gets the object back.
 	Throw(value any) error
 	// CatchValue returns what a catch clause binds for err: the object
 	// for a thrown instance and the error itself for everything else.
@@ -323,7 +323,7 @@ type Host interface {
 	// ClassConst reads the constant name off class. The compiler has already
 	// collapsed `self`, `static` and `parent` to the enclosing class, so the
 	// name arrives concrete; `Class::class` still reaches the host, since it
-	// resolves without the class being declared.
+	// resolves even when nothing declares the class.
 	ClassConst(class, name string) (any, error)
 	// Cast applies a PHP type cast, spelled by its bare type name: "bool",
 	// "int", "float", "string", "array".

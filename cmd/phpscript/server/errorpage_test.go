@@ -12,10 +12,10 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// browserAccept is what Chrome sends when someone follows a link. It is the one
+// browserAccept is what Chrome sends when someone follows a link, the one
 // request shape a site's error page exists for, and the tests below use it
-// verbatim and not a tidied up "text/html", so the parser is held to a real
-// header and not to an easy one.
+// verbatim and not a tidied up "text/html", so the parser faces a real
+// header and not an easy one.
 const browserAccept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 
 var errorPageFS = fstest.MapFS{
@@ -147,7 +147,7 @@ func TestErrorPageAnswersBrowserNavigationOnly(t *testing.T) {
 // so it needs no prefix: an endpoint that declared what it answers with keeps
 // it. A payload is one way of saying so and a Content-Type is the other, and
 // either works for a file under the document root or a routed endpoint, on any
-// path, without the server being told which paths are the API.
+// path, and no configuration names which paths are the API.
 func TestErrorPageLeavesAnAnsweredResponseAlone(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, errorPageFS)
@@ -231,8 +231,8 @@ func TestErrorResponseDoesNotCarryTheFailure(t *testing.T) {
 }
 
 // TestErrorPageRunsOnce pins that a broken error page cannot dispatch one of its
-// own. A 500.php that throws is logged and the request falls back to the plain
-// status, and dispatches no second 500.php behind it.
+// own. A 500.php that throws reaches the log and the request falls back to the
+// plain status, and dispatches no second 500.php behind it.
 func TestErrorPageRunsOnce(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
@@ -251,7 +251,7 @@ func TestErrorPageRunsOnce(t *testing.T) {
 
 // TestErrorPageFallsBackThroughTheNameList pins the lookup: the status named in
 // PHP, then the status named in HTML, then error.php and error.html for a site
-// that keeps one page for several statuses.
+// that keeps one page for more than one status.
 func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
 	t.Parallel()
 	navigation := map[string]string{"Accept": browserAccept}
@@ -313,8 +313,8 @@ func TestErrorPageFallsBackThroughTheNameList(t *testing.T) {
 	})
 }
 
-// TestErrorPageSeesTheRequestItAnswersFor pins the $_SERVER keys a page is
-// given. They are Apache's ErrorDocument names, so a page written against
+// TestErrorPageSeesTheRequestItAnswersFor pins the $_SERVER keys a page
+// reads. They are Apache's ErrorDocument names, so a page written against
 // Apache works here, and they describe the request that failed and not the
 // page that is answering for it.
 func TestErrorPageSeesTheRequestItAnswersFor(t *testing.T) {
@@ -355,10 +355,10 @@ func TestErrorPageMayChooseItsOwnStatus(t *testing.T) {
 	}
 }
 
-// TestErrorPageInAWritableDirectoryIsNotRun pins that an error page is held to
+// TestErrorPageInAWritableDirectoryIsNotRun pins that an error page follows
 // the same rule as any other .php below the document root: a directory a
 // visitor can put files in is not a directory to run code from, and a 404.php
-// that arrived by upload is served as bytes and never executed. Here the
+// that arrived by upload goes out as bytes and never executes. Here the
 // whole document root is writable, so the page never runs at all.
 func TestErrorPageInAWritableDirectoryIsNotRun(t *testing.T) {
 	t.Parallel()
@@ -392,8 +392,8 @@ func post(h http.Handler, target, contentType, body string, headers map[string]s
 
 // TestUnroutedRequestKeepsItsBody is what lets 404.php dispatch a site's own
 // routes. A request that matched no file ran no script, so nothing read its
-// body and the page answering for it is the last thing that can. It sees the
-// form the way its target endpoint would.
+// body and only the page answering for it still can. It sees the form the way
+// its target endpoint would.
 func TestUnroutedRequestKeepsItsBody(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{
@@ -442,8 +442,8 @@ echo "no route";`)},
 
 // TestFailedScriptErrorPageHasNoBody pins the other half of the split. By the
 // time a failing script reaches an error page it has read the body itself, so
-// there is nothing left to pass on, and the page is told so and never left
-// given a payload it cannot read.
+// there is nothing left to pass on, and the page sees exactly that and never
+// a payload it cannot read.
 func TestFailedScriptErrorPageHasNoBody(t *testing.T) {
 	t.Parallel()
 	h := newErrorPageHandler(t, fstest.MapFS{

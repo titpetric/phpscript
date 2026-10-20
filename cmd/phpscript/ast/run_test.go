@@ -9,11 +9,11 @@ import (
 	"testing"
 )
 
-// TestNewCommand covers the command every other phpscript command is built
-// alongside: the constructor takes the configuration and the global options
-// because one signature covers all nine, and this command reads neither, so
-// both arguments are nil here and the command still builds. It declares no
-// flags of its own, so Bind stays nil and the shared flags are all it binds.
+// TestNewCommand covers the shape every phpscript command shares: the
+// constructor takes the configuration and the global options because one
+// signature covers all nine, and this command reads neither, so both
+// arguments are nil here and the command still builds. It declares no flags
+// of its own, so Bind stays nil and the shared flags are all it binds.
 func TestNewCommand(t *testing.T) {
 	t.Parallel()
 	command := NewCommand(nil, nil)

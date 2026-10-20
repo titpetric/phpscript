@@ -155,9 +155,9 @@ function load() { return 1; }
 		t.Fatalf("File returned an error: %v", err)
 	}
 
-	// Every chained statement whose value is a handle, or a name whose type the
-	// source does not settle, is reported once, whatever scope it sits in, and
-	// a chain of three names is still one finding and not one per link.
+	// A chained statement whose value is a handle, or a name whose type the
+	// source does not settle, draws one finding, whatever scope it sits in,
+	// and a chain of three names draws one too and not one per link.
 	wantLines := []int{2, 4, 5, 6, 7, 8, 9, 10, 11}
 	if len(diags) != len(wantLines) {
 		t.Fatalf("got %d diagnostics, want %d: %+v", len(diags), len(wantLines), diags)
@@ -172,10 +172,10 @@ function load() { return 1; }
 	}
 }
 
-// A chain that ends in a literal is left alone. A scalar is immutable, so
-// neither name can reach the other through it, and an array literal is split
-// into one allocation per name by the parser, so there is nothing left to
-// share. `$r['y'] = $r['m'] = '00'` is the shape this comes from.
+// The check leaves a chain that ends in a literal alone. A scalar is
+// immutable, so neither name can reach the other through it, and the parser
+// splits an array literal into one allocation per name, so there is nothing
+// left to share. `$r['y'] = $r['m'] = '00'` is the shape this comes from.
 func TestFileAcceptsChainedLiterals(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -222,7 +222,7 @@ function compute($v) { return $v; }
 }
 
 // A violated interface contract is a lint finding on the class's own line, so
-// a file is told what it is missing before it runs.
+// the author reads the missing method before the file runs.
 func TestFileReportsInterfaceContract(t *testing.T) {
 	t.Parallel()
 	src := "<?php\ninterface Reader {\n\tfunction get($key);\n\tfunction has($key);\n}\n\nclass Store implements Reader {\n\tfunction get($key) {\n\t\treturn $key;\n\t}\n}\n"
@@ -254,9 +254,9 @@ func TestFileAcceptsSatisfiedAndUndeclaredInterfaces(t *testing.T) {
 	}
 }
 
-// global and extends are documented won't-implements (docs/design.md) that
-// parse and do nothing, so the linter is where a port hears about them before
-// the behaviour goes wrong at a distance.
+// docs/design.md documents global and extends as won't-builds that parse and
+// do nothing, so the linter is where a port hears about them before the
+// behaviour goes wrong at a distance.
 func TestFileReportsGlobalAndExtends(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -294,7 +294,7 @@ function f() {
 }
 
 // Interface extends widens the declaration contract, which instanceof does
-// follow, so it is not the no-op the class form is and lints clean.
+// follow, so the interface form lints clean where the class form reports.
 func TestFileAcceptsInterfaceExtends(t *testing.T) {
 	t.Parallel()
 	src := "<?php\ninterface Reader {\n\tfunction get($key);\n}\ninterface Store extends Reader {\n\tfunction put($key, $value);\n}\n"
@@ -307,9 +307,9 @@ func TestFileAcceptsInterfaceExtends(t *testing.T) {
 	}
 }
 
-// A JSON_* constant is reported as a warning. The name is not defined, so it
-// arrives as null and json_encode ignores it: the call runs and encodes, and
-// what the author loses is the formatting they wrote.
+// The linter reports a JSON_* constant as a warning. Nothing defines the name,
+// so it arrives as null and json_encode ignores it: the call runs and encodes,
+// and what the author loses is the formatting they wrote.
 func TestLintJSONFlags(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -405,10 +405,10 @@ $sorter = function ($rows) {
 	}
 }
 
-// A class reference nothing declares (a `new`, a static call, property or
-// constant) is reported with the message the runtime would raise. Classes
-// declared in the file, registered host classes, anonymous classes and the
-// contextual self/static names lint clean.
+// The check reports a class reference nothing declares (a `new`, a static
+// call, property or constant) with the message the runtime would raise.
+// Classes declared in the file, registered host classes, anonymous classes and
+// the contextual self/static names lint clean.
 func TestFileReportsUndefinedClasses(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -521,8 +521,8 @@ function takesRef(&$x) { return $x; }
 
 // The abstract modifier has nothing to mean without inheritance: the class
 // instantiates like any other and an abstract method's call returns null
-// where PHP declines the incomplete class. Both spellings are
-// reported; a plain class with bodies lints clean.
+// where PHP declines the incomplete class. The linter reports both
+// spellings; a plain class with bodies lints clean.
 func TestFileReportsAbstract(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -557,10 +557,10 @@ class Circle {
 }
 
 // A function declared twice, or declared over a name the runtime registers, is
-// the RedeclareError waiting for the file to be hoisted; the linter reports it
-// first. A single declaration, a class method, and a name the source guards
-// with function_exists all lint clean, the last being the polyfill idiom where
-// declaring over an absent built-in is what the case covers.
+// the RedeclareError waiting for the runtime to hoist the file; the linter
+// reports it first. A single declaration, a class method, and a name the
+// source guards with function_exists all lint clean; the last is the polyfill
+// idiom, where declaring over an absent built-in is what the case covers.
 func TestFileReportsRedeclaredFunctions(t *testing.T) {
 	t.Parallel()
 	src := `<?php

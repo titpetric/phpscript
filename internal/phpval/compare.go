@@ -14,9 +14,9 @@ import (
 //
 //	arrays          the shorter is smaller, an array beats any scalar
 //	null vs string  the null becomes "" and both compare as strings
-//	bool or null    both sides are cast to bool
+//	bool or null    Compare casts both sides to bool
 //	numbers         a number and a numeric string compare numerically
-//	anything else   both sides are cast to string, compared bytewise.
+//	anything else   Compare casts both sides to string, compared bytewise.
 func Compare(x, y any) int {
 	xa, xIsArray := comparableArray(x)
 	ya, yIsArray := comparableArray(y)
@@ -30,7 +30,7 @@ func Compare(x, y any) int {
 	}
 
 	// null against a string is the one pairing PHP does not decide on
-	// truthiness: null is cast to "", so null is less than "a" but equal to "".
+	// truthiness: the null becomes "", so null is less than "a" but equal to "".
 	if x == nil {
 		if s, ok := y.(string); ok {
 			return strings.Compare("", s)
@@ -134,8 +134,8 @@ func compareBools(x, y bool) int {
 	}
 }
 
-// phpNum is a value in PHP's numeric domain: an int64 when it is an integer
-// that fits one, a float64 otherwise. text is the numeric string behind it,
+// phpNum is a value in PHP's numeric domain: an int64 for an integer that
+// fits one, a float64 otherwise. text is the numeric string behind it,
 // kept for the precision fallback in compareNumbers.
 type phpNum struct {
 	i       int64
@@ -153,8 +153,8 @@ func (n phpNum) float() float64 {
 }
 
 // phpNumeric returns v as a number, reporting false for anything PHP would
-// compare as a string. A numeric string is a number here, which is
-// point: PHP compares "10" and "9" as 10 and 9.
+// compare as a string. A numeric string counts as a number: PHP compares
+// "10" and "9" as 10 and 9.
 func phpNumeric(v any) (phpNum, bool) {
 	switch x := v.(type) {
 	case int:
@@ -171,7 +171,7 @@ func phpNumeric(v any) (phpNum, bool) {
 
 // numericString reads s the way PHP's is_numeric_string does: whitespace around
 // an optional sign, digits with an optional fraction and an optional exponent.
-// The syntax is checked here and never left to strconv, which also accepts
+// scanNumeric checks the syntax, and strconv never does: it also accepts
 // hex floats, digit separators, "Inf" and "NaN", none of which PHP considers
 // numeric, so "0x1A" has to sort as a string.
 func numericString(s string) (phpNum, bool) {
@@ -196,8 +196,8 @@ func numericString(s string) (phpNum, bool) {
 	return phpNum{f: f, text: text}, true
 }
 
-// scanNumeric validates a trimmed numeric literal, reporting whether it is one
-// and whether it is written as a plain integer (no fraction, no exponent).
+// scanNumeric checks a trimmed numeric literal. ok reports one; isInt reports
+// the plain integer spelling, with no fraction and no exponent.
 func scanNumeric(s string) (isInt, ok bool) {
 	i := 0
 	if i < len(s) && (s[i] == '+' || s[i] == '-') {

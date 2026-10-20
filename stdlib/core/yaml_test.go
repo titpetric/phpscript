@@ -25,9 +25,9 @@ var_dump(yaml_decode("a: 1\nb: two\nc:\n  - 1\n  - 2\n"));`)
 
 // TestYAMLDecodeKeysAreSorted covers a decision of this runtime's own.
 // The decoder answers a Go map and a Go map has no order, so reading one
-// document twice would build two differently ordered arrays. A settings file is
-// read by name, so sorting costs nothing and the same input decodes the same
-// way every time.
+// document twice would build two differently ordered arrays. A script reads a
+// settings file by name, so sorting costs nothing and the same input decodes
+// the same way every time.
 func TestYAMLDecodeKeysAreSorted(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -59,7 +59,7 @@ var_dump($doc["whole"] === 400);`)
 // TestYAMLDecodeRefusesWhatItCannotRead pins the divergence this binding
 // carries: invalid input raises an error where php's yaml_decode answers null.
 // A settings file that does not parse is a configuration the caller has to know
-// about, and a null would be read as an empty document.
+// about, and a null reads as an empty document.
 func TestYAMLDecodeRefusesWhatItCannotRead(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php
@@ -75,9 +75,9 @@ try {
 	}
 }
 
-// TestYAMLEncode covers what is written back: an array that is a list becomes a
-// sequence, any other array a mapping in key order, and a
-// scalar its own plain spelling.
+// TestYAMLEncode covers what the encoder writes back: an array that is a list
+// becomes a sequence, any other array a mapping in key order, and a scalar its
+// own plain spelling.
 func TestYAMLEncode(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php

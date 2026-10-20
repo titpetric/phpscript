@@ -15,9 +15,9 @@ func lexAll(t *testing.T, src string) []token {
 	return toks
 }
 
-// singleCharOperators lists every one-byte operator lexOperator accepts. It is
-// spelled out here, and not read from the implementation constant, so the
-// test fails if the set silently changes.
+// singleCharOperators lists every one-byte operator lexOperator accepts. The
+// list sits here in full and reads nothing from the implementation constant,
+// so the test fails where that set changes silently.
 const singleCharOperators = "+-*/%.,;()[]{}=<>!&|?:@\\"
 
 func TestLexSingleCharOperators(t *testing.T) {
@@ -120,7 +120,7 @@ func TestLexOperatorGreedy(t *testing.T) {
 }
 
 // TestLexOperatorNoAlloc is the regression test for the boxed operator table:
-// emitting an operator token must not allocate a string.
+// emitting an operator token must cost no string allocation.
 func TestLexOperatorNoAlloc(t *testing.T) {
 	for _, src := range []string{
 		strings.Repeat("(", 64),   // single-char
@@ -205,7 +205,7 @@ func TestLexRejectsUnknownCharacter(t *testing.T) {
 }
 
 // TestLexNumberLiterals covers PHP's integer and float spellings. The lexer
-// decides where a literal ends and whether it is a float; what base a prefix
+// decides where a literal ends and whether that literal is a float; what base a prefix
 // means is numLit's job, which TestNumLitBases covers.
 func TestLexNumberLiterals(t *testing.T) {
 	t.Parallel()
@@ -250,7 +250,8 @@ func TestLexNumberBoundaries(t *testing.T) {
 		src  string
 		want []string
 	}{
-		// A prefix with no digits after it is the integer 0 and an identifier.
+		// A prefix with no digits behind it reads as the integer 0 and an
+		// identifier.
 		{"0xg", []string{"0", "xg"}},
 		{"1 . 2", []string{"1", ".", "2"}},
 		{"0b12", []string{"0b1", "2"}},

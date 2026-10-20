@@ -8,7 +8,7 @@ package runner
 // resolveVar still reads the kind off the identifier.
 
 // varIdent is the identifier used for a PHP variable. `$this` stays `this`;
-// everything else is prefixed.
+// everything else takes a `v_` prefix.
 func varIdent(name string) string {
 	if name == "this" {
 		return "this"

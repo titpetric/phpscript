@@ -124,8 +124,8 @@ func TestRunReportsAnsiTableOnATerminal(t *testing.T) {
 	dir := t.TempDir()
 	writeLintFile(t, dir, "warn.php", `<?php if ($value = true) {}`)
 
-	// A pipe is not a terminal, so the table has to be built directly to check
-	// what a terminal would be given.
+	// A pipe is not a terminal, so this builds the table directly to check
+	// what a terminal would show.
 	var buf bytes.Buffer
 	tbl := newTable(&buf, false, "src")
 	tbl.Row(table.Colored(statusColor(statusWarn), statusWarn), table.Text("warn.php"), table.Text("1"), table.Text("finding"))
@@ -180,7 +180,7 @@ func TestNewCommand(t *testing.T) {
 	}
 }
 
-// TestRun covers the exported entry point, which is run() pointed at stdout.
+// TestRun covers the exported entry point: run() pointed at stdout.
 // A folder holding one failing file fails the command, because a parse error
 // is a finding the run cannot report around; the table is still printed, so
 // the operator reads what failed and not only that something did.
@@ -204,8 +204,8 @@ func TestRun(t *testing.T) {
 }
 
 // captureStdout runs fn with os.Stdout on a pipe and returns what it wrote.
-// Run picks os.Stdout itself, so the file descriptor is where its output is
-// read from.
+// Run picks os.Stdout itself, so the file descriptor is the only place to
+// read its output from.
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 

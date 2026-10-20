@@ -7,7 +7,7 @@
 //
 // This is the subject of the JIT comparison. A request here is php reading one
 // superglobal, one comparison and one write, which is the shape a web request
-// path has: opcache serves the compilation, and what is left for a JIT to
+// path has: opcache serves the compilation, and whatever remains for a JIT to
 // compile is a handful of opcodes that run once.
 
 header('Content-Type: text/plain; charset=utf-8');

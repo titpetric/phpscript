@@ -37,8 +37,8 @@ func Signal(appConfig config.Config, verb string, errOut io.Writer) error {
 		return ErrReported
 	}
 
-	// FindProcess never fails on unix. The send is what reports a process
-	// that is gone, so probing first would add a race without removing one.
+	// FindProcess never fails on unix. The send is what reports a dead
+	// process, so probing first would add a race without removing one.
 	process, err := os.FindProcess(pid)
 	if err != nil {
 		fmt.Fprintf(errOut, "-s: %v\n", err)

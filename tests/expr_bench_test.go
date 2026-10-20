@@ -25,7 +25,7 @@ echo $total, " ", $tag;
 
 // BenchmarkScriptInterp is the same loop shape over interpolated literals: the
 // per-iteration work is a double-quoted string that embeds a variable, an
-// array subscript and a property: what a template render is made of.
+// array subscript and a property: the parts a template render carries.
 // The parse happens once, so the number is the per-execution cost of the
 // literal.
 func BenchmarkScriptInterp(b *testing.B) {

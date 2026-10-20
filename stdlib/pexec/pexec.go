@@ -31,7 +31,7 @@ func Register(rt *runner.Runtime) {
 }
 
 // RegisterRoot installs the process bindings with commands rooted at dir, the
-// directory the filesystem shims are bound to. It replaces whatever root
+// directory the filesystem shims bind. It replaces whatever root
 // stands before it, so a host calls it after stdlib.Register, the way
 // stdlib.RegisterFS does for the filesystem.
 //
@@ -46,8 +46,8 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 }
 
 // root is the directory a command starts in, and the runtime it reads the
-// working directory off. It is read per call and never resolved once, because
-// chdir moves it while the script runs.
+// working directory off. Each call reads it again and never resolves it once,
+// because chdir moves it while the script runs.
 type root struct {
 	rt  *runner.Runtime
 	dir string

@@ -70,10 +70,10 @@ if ($f["error"] === UPLOAD_ERR_OK) { echo "|ok"; } else { echo "|error"; }
 	}
 }
 
-// TestMoveUploadedFileMode pins the mode of a stored upload: the temporary copy
-// is created private to this process, and a file a web server is expected to
-// serve cannot stay that way. A host that serves uploads to nobody but itself
-// configures something tighter.
+// TestMoveUploadedFileMode pins the mode of a stored upload: the request
+// runtime writes the temporary copy private to this process, and a file a web
+// server has to serve cannot stay that way. A host that serves uploads to
+// nobody but itself configures something tighter.
 func TestMoveUploadedFileMode(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -133,7 +133,7 @@ if (move_uploaded_file($_FILES["avatar"]["tmp_name"], "photo.png")) { echo "move
 }
 
 // runFS parses and runs src with the filesystem shims rooted at root. request
-// is optional; when set, its superglobals and uploads are installed too.
+// is optional; when set, runFS installs its superglobals and uploads too.
 func runFS(t *testing.T, root string, request *runner.Context, src string) string {
 	t.Helper()
 	return runFSOptions(t, root, request, runner.Options{}, src)

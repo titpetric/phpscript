@@ -59,9 +59,9 @@ func TestOverlay(t *testing.T) {
 	})
 }
 
-// TestOverlayBytes covers Overlay over source a caller already read. A fixture
-// tree is compiled into the test binary, so the bytes arrive from an fs.FS with
-// no path on disk; filename is only what errors name.
+// TestOverlayBytes covers Overlay over source a caller already read. The build
+// compiles a fixture tree into the test binary, so the bytes arrive from an
+// fs.FS with no path on disk; filename is only what errors name.
 func TestOverlayBytes(t *testing.T) {
 	t.Parallel()
 	base := config.New()

@@ -83,10 +83,10 @@ func TestFlatHostUnary(t *testing.T) {
 	}
 }
 
-// TestFlatHostEntries covers what the engine's foreach walks. An array and an
-// object are read in the order they read back, and a Go slice or map a binding
-// returned is walked too, so `foreach` over a binding's result behaves the way
-// it behaves in the interpreter.
+// TestFlatHostEntries covers what the engine's foreach walks. The walk takes an
+// array and an object in the order they read back, and a Go slice or map a
+// binding returned too, so `foreach` over a binding's result behaves the way it
+// behaves in the interpreter.
 func TestFlatHostEntries(t *testing.T) {
 	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}
@@ -119,8 +119,8 @@ func TestFlatHostEntries(t *testing.T) {
 
 // TestFlatHostSetEntry covers the by-reference foreach write-back. Only a
 // model.Array is script-owned storage; a native Go collection a binding
-// returned belongs to the host, so the write is dropped and nothing is
-// reported. Runtime.execForeach takes the same view.
+// returned belongs to the host, so SetEntry drops the write and reports
+// nothing. Runtime.execForeach takes the same view.
 func TestFlatHostSetEntry(t *testing.T) {
 	t.Parallel()
 	host := flatHost{runtime: New(io.Discard, Options{})}

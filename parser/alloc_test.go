@@ -7,7 +7,7 @@ import (
 )
 
 // TestNodeChunkKeepsPointerIdentity covers the property the chunked allocator
-// has to hold: every node is handed out once and keeps its own address, so a
+// has to hold: every node leaves the chunk once and keeps its own address, so a
 // map keyed by model.Expr tells two nodes apart. A chunk reset or reused would
 // make two expressions share an address, and the compiled-expression cache in
 // runner would answer one with the other's code.
@@ -15,8 +15,8 @@ func TestNodeChunkKeepsPointerIdentity(t *testing.T) {
 	t.Parallel()
 	var chunk nodeChunk[model.Lit]
 
-	// Past nodeChunkMax, so several backing arrays are carved and the
-	// addresses have to stay distinct across the boundary between them.
+	// Past nodeChunkMax, so the allocator carves more than one backing array
+	// and the addresses have to stay distinct across the boundary.
 	const count = 400
 	seen := make(map[*model.Lit]bool, count)
 	nodes := make([]*model.Lit, 0, count)
@@ -40,7 +40,7 @@ func TestNodeChunkKeepsPointerIdentity(t *testing.T) {
 }
 
 // TestNodeChunkGrows covers the sizing: a chunk starts at nodeChunkMin so a
-// two-line script pays for a small block, doubles while it is under
+// two-line script pays for a small block, doubles below
 // nodeChunkMax, and stops there so one long file does not reserve an array
 // the rest of the parse cannot use.
 func TestNodeChunkGrows(t *testing.T) {
@@ -154,7 +154,7 @@ func TestScratchDropsOnFailure(t *testing.T) {
 
 // TestNodeChunkBacksTheParser covers the allocator against a real parse: two
 // parses of the same source build separate nodes, so an AST cached by pointer
-// cannot be answered with another program's.
+// never answers with another program's.
 func TestNodeChunkBacksTheParser(t *testing.T) {
 	t.Parallel()
 	const src = `<?php echo 1 + 2;`

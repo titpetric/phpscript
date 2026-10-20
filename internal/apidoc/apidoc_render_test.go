@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// TestFunc_Signature covers the two forms a registered function is cited in.
-// A plain name is declarable, so it is written with the function keyword. A
-// Class::method name is not, so it is written the way a script calls it, and
-// pasting the line into a .php file would be a parse error either way round.
+// TestFunc_Signature covers Signature's two forms. A plain name is
+// declarable, so the line carries the function keyword. A Class::method name
+// is not, so the line reads the way a script calls it, and pasting the line
+// into a .php file would be a parse error either way round.
 func TestFunc_Signature(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -196,7 +196,7 @@ func TestRenderWritesOneStubPerRegistration(t *testing.T) {
 		}
 	}
 
-	// The page ends on exactly one newline. The file is committed, so a run
+	// The page ends on exactly one newline. The file lives in git, so a run
 	// that found no change has to write the same bytes.
 	if !strings.HasSuffix(page, "\n") || strings.HasSuffix(page, "\n\n") {
 		t.Errorf("rendered page ends with %q, want one newline", page[max(0, len(page)-8):])

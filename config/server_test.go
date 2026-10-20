@@ -6,8 +6,8 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestDefaultConfigServerBlock pins what config/config.yml starts the platform
-// with, including the service name every trace is recorded under.
+// TestDefaultConfigServerBlock pins what `config/config.yml` starts the platform
+// with, including the service name every trace carries.
 func TestDefaultConfigServerBlock(t *testing.T) {
 	t.Parallel()
 	result := config.New()
@@ -31,7 +31,7 @@ func TestDefaultConfigServerBlock(t *testing.T) {
 }
 
 // TestServerBlockConfiguresPlatformOptions covers the fields of the block a
-// file can set, on top of the defaults it is read over.
+// file can set, on top of the defaults the decoder reads it over.
 func TestServerBlockConfiguresPlatformOptions(t *testing.T) {
 	t.Parallel()
 	result := config.New()
@@ -64,7 +64,7 @@ telemetry:
 	if options.Telemetry.RingBufferSize != 10 {
 		t.Errorf("ring_buffer_size = %d, want 10", options.Telemetry.RingBufferSize)
 	}
-	// Keys the file left out keep what config.yml says and not the Go zero
+	// Keys the file left out keep what `config.yml` says and not the Go zero
 	// value, so a partial block is usable.
 	if options.Telemetry.ServiceName != "phpscript" || options.Telemetry.SampleRate != 100 {
 		t.Errorf("service name = %q, sample rate = %v", options.Telemetry.ServiceName, options.Telemetry.SampleRate)
@@ -72,7 +72,7 @@ telemetry:
 }
 
 // TestPlatformOptionsCarryStorage pins that the driver of the telemetry block
-// reaches the platform: the recorder it builds is the one that has to retain
+// reaches the platform: the recorder it builds is the one that has to keep
 // traces on disk.
 func TestPlatformOptionsCarryStorage(t *testing.T) {
 	t.Parallel()
@@ -115,8 +115,8 @@ func TestServer(t *testing.T) {
 	}
 }
 
-// TestServer_Options covers the platform options the block describes. No
-// recorder is configured here: Config.PlatformOptions adds one, so a caller
+// TestServer_Options covers the platform options the block describes. The
+// block carries no recorder: Config.PlatformOptions adds one, so a caller
 // reading the block alone starts a server that records nothing.
 func TestServer_Options(t *testing.T) {
 	t.Parallel()

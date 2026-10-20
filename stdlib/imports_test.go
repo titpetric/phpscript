@@ -13,7 +13,7 @@ import (
 // runner.RegisterBinding in its init(), so importing this package is what puts
 // the area in the binary and Register is what puts it on a runtime. A package
 // dropped from the import list would leave its names undefined with nothing
-// else failing, so one name per area is named here.
+// else failing, so this test names one per area.
 func TestRegisterInstallsEveryImportedArea(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

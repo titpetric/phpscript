@@ -39,7 +39,7 @@ type coverageModule struct {
 	roots []fs.FS
 }
 
-// newCoverageModule returns the module registered when --cover is set.
+// newCoverageModule returns the module a run with --cover registers.
 func newCoverageModule(globals *flags.Options, roots ...fs.FS) *coverageModule {
 	return &coverageModule{
 		UnimplementedModule: *platform.NewUnimplementedModule("phpcoverage"),
@@ -50,7 +50,7 @@ func newCoverageModule(globals *flags.Options, roots ...fs.FS) *coverageModule {
 }
 
 // watch adds a site's source tree to the roots a profile resolves columns
-// against. Every site registers one, and a virtual host server has several.
+// against. Every site registers one, so a virtual host server has one per site.
 func (m *coverageModule) watch(root fs.FS) {
 	m.roots = append(m.roots, root)
 }
@@ -98,8 +98,8 @@ func (m *coverageModule) serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// blocks renders what has been counted, with the columns a profile carries
-// resolved from the source text.
+// blocks renders the statements the aggregator counted, with the columns a
+// profile carries resolved from the source text.
 func (m *coverageModule) blocks() []coverage.ProfileBlock {
 	return coverage.Columns(m.aggregator.Blocks(), m.source)
 }

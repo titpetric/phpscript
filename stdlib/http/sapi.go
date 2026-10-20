@@ -69,8 +69,7 @@ func registerRequest(rt *runner.Runtime) {
 
 	// http_response_code stages the response status in $response_code and
 	// returns the one it replaced; called without one it returns the status
-	// the response will be sent with, or false when there is no request to
-	// answer for.
+	// the response will carry, or false when there is no request to answer for.
 	rt.RegisterFunc("http_response_code", func(opts ...any) any {
 		request, ok := runner.RequestContext(rt.Context())
 		if !ok {
@@ -101,8 +100,7 @@ func registerRequest(rt *runner.Runtime) {
 // where PHP writes path and HttpOnly, and the expiry is RFC 1123 where PHP
 // writes its own dashed variant. RFC 6265 makes attribute names
 // case-insensitive and both date spellings parseable, so a client cannot tell;
-// a test asserting the exact header text can, so this is written
-// down.
+// a test asserting the exact header text can, so this comment records it.
 func stageCookie(rt *runner.Runtime, name string, opts []any, encode bool) bool {
 	request, ok := runner.RequestContext(rt.Context())
 	if !ok {

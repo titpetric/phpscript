@@ -10,17 +10,17 @@ import (
 
 // registerWrites installs the write side: creating, removing, moving and
 // copying files, and the mode and ownership functions that decide who can read
-// what a script just wrote. All of them resolve against the root, and all of
-// them report failure the way PHP does, by returning false.
+// what a script just wrote. Every one resolves against the root and reports
+// failure the way PHP does, by returning false.
 //
 // A path outside writable_paths is the exception to that: it returns an error,
 // which the runtime turns into a catchable exception. A write the operating
 // system refused is a runtime condition a script handles by checking the
 // result; a write the configuration never allowed is a mistake worth raising.
-// PHP's file_put_contents flag values. LOCK_EX is accepted so ported code
-// keeps its spelling, but it is a no-op: none of the writers here lock, so
-// honouring it would promise an exclusion the rest of the package does not
-// keep.
+// PHP's file_put_contents flag values. file_put_contents takes LOCK_EX so
+// ported code keeps its spelling, and then does nothing with it: none of the
+// writers here lock, so honouring it would promise an exclusion the rest of
+// the package does not keep.
 const (
 	fileAppend = 8 // FILE_APPEND
 	lockEx     = 2 // LOCK_EX
@@ -32,8 +32,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 
 	// file_put_contents writes $data to $filename and returns the number of
 	// bytes written, or false on failure; FILE_APPEND appends in place of
-	// truncating, LOCK_EX is accepted as a no-op, and a path outside
-	// writable_paths is refused.
+	// truncating, LOCK_EX does nothing, and it refuses a path outside
+	// writable_paths.
 	rt.RegisterFunc("file_put_contents", func(filename, data string, flags ...int64) (any, error) {
 		name, err := r.resolveWrite("file_put_contents", filename)
 		if err != nil {
@@ -57,8 +57,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 		return int64(n), nil
 	})
 
-	// mkdir creates $directory and any missing parents; $permissions and
-	// $recursive are ignored, and a path outside writable_paths is refused.
+	// mkdir creates $directory and any missing parents; it ignores
+	// $permissions and $recursive, and refuses a path outside writable_paths.
 	rt.RegisterFunc("mkdir", func(directory string, permissions ...any) (bool, error) {
 		name, err := r.resolveWrite("mkdir", directory)
 		if err != nil {
@@ -66,7 +66,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 		}
 		return os.MkdirAll(name, 0o755) == nil, nil
 	})
-	// unlink deletes $filename and reports success; a path outside writable_paths is refused.
+	// unlink deletes $filename and reports success; it refuses a path outside
+	// writable_paths.
 	rt.RegisterFunc("unlink", func(filename string) (bool, error) {
 		name, err := r.resolveWrite("unlink", filename)
 		if err != nil {
@@ -74,9 +75,8 @@ func registerWrites(rt *runner.Runtime, r root) {
 		}
 		return os.Remove(name) == nil, nil
 	})
-	// touch creates $filename if it is missing and sets its access and
-	// modification times to $mtime, or to now; a path outside writable_paths
-	// is refused.
+	// touch creates a missing $filename and sets its access and modification
+	// times to $mtime, or to now; it refuses a path outside writable_paths.
 	rt.RegisterFunc("touch", func(filename string, mtime ...int64) (bool, error) {
 		name, err := r.resolveWrite("touch", filename)
 		if err != nil {
@@ -110,7 +110,7 @@ func registerWrites(rt *runner.Runtime, r root) {
 		}
 		return moveFile(src, dst) == nil, nil
 	})
-	// copy only reads the source, so only the destination is checked.
+	// copy only reads the source, so it checks only the destination.
 	rt.RegisterFunc("copy", func(from, to string) (bool, error) {
 		dst, err := r.resolveWrite("copy", to)
 		if err != nil {
@@ -119,9 +119,9 @@ func registerWrites(rt *runner.Runtime, r root) {
 		return copyFile(r.resolve(from), dst) == nil, nil
 	})
 
-	// A PHP mode argument is a raw Unix mode, usually written as the octal
-	// literal 0644, and runner.FileMode is the same number: both ends of the
-	// configuration and the script agree on what a mode is.
+	// A PHP mode argument is a raw Unix mode, an octal literal like 0644, and
+	// runner.FileMode is the same number: both ends of the configuration and
+	// the script agree on what a mode is.
 	rt.RegisterFunc("chmod", func(filename string, mode int64) (bool, error) {
 		name, err := r.resolveWrite("chmod", filename)
 		if err != nil {

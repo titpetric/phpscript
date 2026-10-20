@@ -6,19 +6,19 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
-// This file is how PHP is reached from more than one goroutine.
+// This file is how more than one goroutine reaches PHP.
 //
 // A Runtime is one execution: its frames, its compiled-expression memo, its Go
 // method cache, its output and its statics are all unguarded, because a script
 // is one program on one goroutine. Sharing one across goroutines is no race
-// to reason about, it is a concurrent map write.
+// to reason about but a concurrent map write.
 //
 // A fork is a second Runtime with the same symbols and the same caches and none
 // of the execution state. Where a VM with threads would keep a stack per thread
 // and index it by thread id, this keeps a whole runtime per worker and indexes
 // it by the handle the worker holds: a Go program cannot read a goroutine id
 // without parsing a stack trace, which costs around four microseconds, and the
-// frames are only one of the six things that would have to be split anyway.
+// frames are only one of the six things a split must cover anyway.
 //
 // What a fork does not carry is anything a program wrote: globals, statics,
 // constants a script defined, output. It carries what a host installed and what
@@ -29,9 +29,9 @@ import (
 
 // Fork returns a runtime that can run the same symbols as this one, writing to
 // w, and shares its parse and bytecode caches. It carries no part of an
-// execution, so it is safe on a goroutine of its own, and it
-// installs the whole standard library, so a Pool forks per worker
-// and not per request. The file comment above is the arrangement.
+// execution, so it runs safely on a goroutine of its own, and it installs the
+// whole standard library, so a Pool forks per worker and not per request. The
+// file comment above is the arrangement.
 func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	child := New(w, rt.opts)
 	child.flat = rt.flat
@@ -52,7 +52,7 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	// from inside the child. The host says how to install them and the child
 	// gets its own.
 	//
-	// Entries are copied first all the same, for a host that registered a
+	// Fork copies the entries first all the same, for a host that registered a
 	// stateless function by hand and set no preparer; the install overwrites
 	// every name it covers.
 	for name, entry := range rt.funcs {
@@ -70,10 +70,10 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	for name, decl := range rt.interfaces {
 		child.interfaces[name] = decl
 	}
-	// The constants a host froze, which excludes the ones a script defined. FreezeStdlib
-	// is where a host says which is which; without it the whole table is
-	// treated as the host's, which is the table a fork taken before any script ran
-	// has anyway.
+	// The constants a host froze, which excludes the ones a script defined.
+	// FreezeStdlib is where a host says which is which; without it the fork
+	// takes the whole table as the host's, which is the table a fork taken
+	// before any script ran has anyway.
 	source := rt.frozenConsts
 	if source == nil {
 		source = rt.constants
@@ -91,11 +91,11 @@ func (rt *Runtime) Fork(w io.Writer) *Runtime {
 	// carry. They are how a name becomes a declaration, and a fork exists to run
 	// the same symbols: without them a class the parent had not needed yet is
 	// unresolvable on the child, so a handler that is the first to name one
-	// answers 500 where the same line at script level works. What they capture -
-	// composer's ClassLoader is an object - is shared and read the way a
-	// handler's `$this` is, and the call itself runs on the child, because
-	// Runtime.autoload resolves the callable against the runtime doing the
-	// autoloading. The file each one includes is recorded on the child, so every
+	// answers 500 where the same line at script level works. Parent and child
+	// share what they capture - composer's ClassLoader is an object - and read
+	// it the way a handler reads `$this`, and the call itself runs on the child,
+	// because Runtime.autoload resolves the callable against the runtime doing
+	// the autoloading. The child records the file each one includes, so every
 	// worker includes it once.
 	child.autoloaders = append(child.autoloaders, rt.autoloaders...)
 
@@ -123,9 +123,9 @@ func copyEntries(dst, src map[string]*funcEntry) {
 // InvokeNamed runs the PHP function name with args, on a clean stack holding
 // nothing but the arguments.
 //
-// It is the re-entry a host callback needs: a name is a program counter, and
-// everything else about the call comes in through args. A closure is not
-// callable this way: it carries its defining scope, which belongs to
+// InvokeNamed is the re-entry a host callback needs: a name is a program
+// counter, and everything else about the call comes in through args. A closure
+// is not callable this way: it carries its defining scope, which belongs to
 // the runtime that built it, so a host needing a callback on another goroutine
 // names one.
 func (rt *Runtime) InvokeNamed(name string, args ...any) (any, error) {
@@ -157,10 +157,10 @@ func (rt *Runtime) SetPreparer(prepare func(*Runtime)) { rt.prepare = prepare }
 // InvokeClosure runs a closure declaration on this runtime, in a scope holding
 // its arguments and nothing else.
 //
-// It is the re-entry a host callback needs. The declaration is AST, so it runs
-// on whichever runtime the caller has; what it does not get is the closure's
-// defining scope, so Captures has to be false for the result
-// to mean anything. A fresh statics bag per call is the other half of that: two
+// InvokeClosure is the re-entry a host callback needs. The declaration is AST,
+// so it runs on whichever runtime the caller has; what it does not get is the
+// closure's defining scope, so Captures has to be false for the result to mean
+// anything. A fresh statics bag per call is the other half of that: two
 // goroutines running the same declaration are two calls, and neither
 // accumulates into the other.
 func (rt *Runtime) InvokeClosure(decl *model.Closure, args ...any) (any, error) {

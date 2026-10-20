@@ -13,7 +13,7 @@ import (
 )
 
 // TestIncludeFunc covers the resolver a host installs for include and require.
-// It is what keeps the runner free of a file system: the hook answers with a
+// The resolver keeps the runner free of a file system: the hook answers with a
 // parsed program, so a host serving scripts out of anything at all resolves
 // the path itself. An error it reports is the include failing, and nothing
 // falls back to reading a file.
@@ -66,9 +66,9 @@ func TestIncludeFunc(t *testing.T) {
 
 // TestRuntime_RegisterInclude covers a host reimplementing one include target
 // in Go. composer's generated vendor/autoload.php is the case it exists for:
-// the script sees the hook's value where PHP would see the file's, and the file
-// beside it is never parsed. Nothing is installed until the script includes it,
-// so the PHP semantics hold.
+// the script sees the hook's value where PHP would see the file's, and the
+// runner never parses the file beside it. The hook runs when the script
+// includes the path and not before, so the PHP semantics hold.
 func TestRuntime_RegisterInclude(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -96,8 +96,8 @@ func TestRuntime_RegisterInclude(t *testing.T) {
 		t.Errorf("output = %q, want the file not to have been parsed", got)
 	}
 
-	// The path is cleaned at registration, so the spellings a script may write
-	// for one file reach the same hook.
+	// RegisterInclude cleans the path at registration, so the spellings a
+	// script may write for one file reach the same hook.
 	out.Reset()
 	same, err := rt.Load(`<?php require "./vendor/autoload.php";`)
 	if err != nil {
@@ -150,7 +150,7 @@ func TestRuntime_RecordError(t *testing.T) {
 		t.Errorf("the handler received %d errors, want the nil to have been dropped", len(seen))
 	}
 
-	// Nothing about it is visible to a script: the program runs to its end.
+	// A script sees nothing of it: the program runs to its end.
 	var out strings.Builder
 	rt.ResetSession(&out, nil)
 	program, err := rt.Load(`<?php echo "ran";`)
@@ -171,8 +171,8 @@ func TestRuntime_RecordError(t *testing.T) {
 // looked for under each include_path entry in order.
 //
 // It answers nil for a class it cannot find, because a failed autoload is not
-// an error in PHP: the next loader in the queue gets its turn, and the missing
-// class is reported by the call that needed it.
+// an error in PHP: the next loader in the queue gets its turn, and the call
+// that needed the class reports it missing.
 func TestRuntime_SPLAutoload(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{RootFS: fstest.MapFS{
@@ -197,7 +197,7 @@ func TestRuntime_SPLAutoload(t *testing.T) {
 		t.Error("the class the included file declares is not defined")
 	}
 
-	// The second include_path entry is searched too, so the list is a list.
+	// SPLAutoload searches the second entry too, so the list is a list.
 	if err := rt.SPLAutoload("Widget"); err != nil {
 		t.Fatalf("SPLAutoload(Widget): %v", err)
 	}
@@ -214,10 +214,10 @@ func TestRuntime_SPLAutoload(t *testing.T) {
 	}
 }
 
-// TestRuntime_UnregisterAutoloader covers how a loader is matched for removal,
-// which is the way PHP matches it: by the function, object and method it names
-// and not by identity, because each `array($this, "loadClass")` a script writes
-// is a fresh array and comparing those would never remove anything.
+// TestRuntime_UnregisterAutoloader covers how PHP matches a loader for
+// removal: by the function, object and method it names and not by identity,
+// because each `array($this, "loadClass")` a script writes is a fresh array
+// and comparing those would never remove anything.
 func TestRuntime_UnregisterAutoloader(t *testing.T) {
 	t.Parallel()
 	rt := New(io.Discard, Options{})
@@ -271,7 +271,7 @@ func TestMatchCatchTypeUsesTheClassName(t *testing.T) {
 		declared string
 		want     bool
 	}{
-		// The name is compared, so a clause takes the class it names.
+		// matchCatchType compares the name, so a clause takes the class it names.
 		{"Exception", "Exception", true},
 		{"Exception", "Throwable", true},
 		{"Exception", "", true},
@@ -310,10 +310,10 @@ func TestMatchCatchTypeUsesTheClassName(t *testing.T) {
 	}
 }
 
-// TestMatchCatchTypeTakesAnyClauseForANonThrowable is the contract a host
-// binding is written against: an error a Go function returned, and a panic
-// recovered at the call boundary, belong to no PHP class, so the catch a script
-// already wrote has to reach them whichever throwable class it names.
+// TestMatchCatchTypeTakesAnyClauseForANonThrowable holds the contract a host
+// binding relies on: an error a Go function returned, and a panic recovered at
+// the call boundary, belong to no PHP class, so the catch a script already
+// wrote has to reach them whichever throwable class it names.
 func TestMatchCatchTypeTakesAnyClauseForANonThrowable(t *testing.T) {
 	t.Parallel()
 	for _, err := range []error{
@@ -365,11 +365,10 @@ func TestRunnerThrowablesNameTheirClass(t *testing.T) {
 // it; read that before changing this test.
 func TestNoInheritanceAtRuntime(t *testing.T) {
 	t.Parallel()
-	// model.Class may record what a declaration listed, so
-	// Implements is allowed: it is a list of names a class checks
-	// against, and no member arrives through it. A parent is different, and
-	// forbidden: a class that has one would start acquiring members it did not
-	// declare.
+	// model.Class may record what a declaration listed, so Implements stays:
+	// a list of names a class checks against, and no member arrives through
+	// it. A parent is different, and forbidden: a class that has one would
+	// start acquiring members it did not declare.
 	for _, name := range []string{"Parent", "Extends", "Parents", "Super", "Base"} {
 		if _, found := reflect.TypeOf(model.Class{}).FieldByName(name); found {
 			t.Fatalf("model.Class has a %s field: phpscript has no inheritance, `extends` is recorded on model.ClassDecl for the formatter only. See docs/design.md.", name)

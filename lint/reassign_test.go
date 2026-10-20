@@ -8,7 +8,7 @@ import (
 )
 
 // messages collects the findings of one source, so a case asserts on text and
-// never on index positions that shift when a check is added.
+// never on index positions a new check shifts.
 func messages(t *testing.T, src string) []string {
 	t.Helper()
 	found, err := lint.File("index.php", src)
@@ -123,8 +123,8 @@ function render() {
 
 // TestReassignReportsAStringOffset covers the second finding this file
 // produces: $s[$i] on a name declared as a string counts bytes, so a
-// multi-byte character reads as one of its bytes. It is silent for an array
-// under the same syntax, where indexing is what arrays are for.
+// multi-byte character reads as one of its bytes. The check stays silent for
+// an array under the same syntax, where indexing is what arrays are for.
 func TestReassignReportsAStringOffset(t *testing.T) {
 	t.Parallel()
 	onAString := messages(t, `<?php

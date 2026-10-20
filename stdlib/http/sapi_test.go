@@ -13,9 +13,9 @@ import (
 // runRequest runs src against a request a host assembled by hand, and returns
 // the request together with what the script echoed.
 //
-// The order is the one every host uses: the standard library is registered
-// once, and the request is seeded afterwards. These functions resolve the
-// request at call time, so registration cannot have captured it.
+// The order is the one every host uses: the host registers the standard library
+// once, then seeds the request. These functions resolve the request at call
+// time, so registration cannot have captured it.
 func runRequest(t *testing.T, request runner.Context, src string) string {
 	t.Helper()
 	return runRequestSAPI(t, request, "", src)
@@ -115,7 +115,7 @@ header("HTTP/1.1 418 I am a teapot");
 	if got := response.Values("X-Count"); len(got) != 1 || got[0] != "2" {
 		t.Errorf("X-Count = %v, want [2]", got)
 	}
-	// $replace false appends, so Set-Cookie is sent twice.
+	// $replace false appends, so the response carries Set-Cookie twice.
 	if got := response.Values("X-Trace"); len(got) != 2 {
 		t.Errorf("X-Trace = %v, want two values", got)
 	}
@@ -126,7 +126,7 @@ header("HTTP/1.1 418 I am a teapot");
 
 // TestHTTPResponseCode covers PHP's two answers. Called with a status it stages
 // it and returns the one it replaced; called with none it reports the status
-// the response will be sent with, so a template can branch on it.
+// the response will carry, so a template can branch on it.
 //
 // On a web SAPI a request starts out answering 200, so there is always a
 // previous number to return.
@@ -147,9 +147,9 @@ echo " " . http_response_code();
 }
 
 // TestHTTPResponseCodeOffTheWeb covers the two answers php reserves for a run
-// that has chosen no status: false while none is set, and true for the first
-// one, there being no previous number to report. The command line is where
-// that happens, and so is a Go host that named no SAPI.
+// that has chosen no status: false while nothing has staged one, and true for
+// the first one, there being no previous number to report. The command line is
+// where that happens, and so is a Go host that named no SAPI.
 func TestHTTPResponseCodeOffTheWeb(t *testing.T) {
 	t.Parallel()
 	request := runner.NewContext()

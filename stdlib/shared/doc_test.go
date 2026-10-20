@@ -8,9 +8,9 @@ import (
 
 // TestPair covers one already-decoded form field. Multipart values and the
 // cookie header arrive decoded, so a Pair carries the name and the value as
-// they are and the bracket path is read off the name afterwards: a name that
-// held `%5B` before decoding nests, and a name that holds a literal bracket
-// after decoding nests too.
+// they are and parseKey reads the bracket path off the name afterwards: a name
+// that held `%5B` before decoding nests, and a name that holds a literal
+// bracket after decoding nests too.
 func TestPair(t *testing.T) {
 	t.Parallel()
 	pairs := []shared.Pair{
@@ -28,10 +28,10 @@ func TestPair(t *testing.T) {
 }
 
 // TestParsePairs covers the entry point for input that did not arrive as a
-// query string. Order is the order pairs are applied in, so two pairs naming
-// one variable leave the last value, and the last assignment decides the
-// shape: a scalar written over an array replaces it. The limits are php.ini's,
-// and a name past the nesting limit is dropped whole.
+// query string. Order is the order ParsePairs applies pairs in, so two pairs
+// naming one variable leave the last value, and the last assignment decides
+// the shape: a scalar written over an array replaces it. The limits are
+// php.ini's, and the parse drops a name past the nesting limit whole.
 func TestParsePairs(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -95,9 +95,9 @@ func TestParsePairs(t *testing.T) {
 // TestFormDecodingIsOneImplementation covers the reason this package exists.
 // runner builds $_GET and $_POST and stdlib's parse_str() reads a string, and
 // both go through this decoder, so the nested array a request produces is the
-// one parse_str() produces for the same bytes. Decoding runs before the
-// brackets are read, so `k%5Ba%20b%5D=1` nests under the key `a b`, and a plus
-// in a top-level name is a space by then and mangles to an underscore.
+// one parse_str() produces for the same bytes. Decoding runs before parseKey
+// reads the brackets, so `k%5Ba%20b%5D=1` nests under the key `a b`, and a
+// plus in a top-level name is a space by then and mangles to an underscore.
 func TestFormDecodingIsOneImplementation(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

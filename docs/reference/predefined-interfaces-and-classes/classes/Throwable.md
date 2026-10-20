@@ -4,9 +4,9 @@
 
 ## Introduction
 
-Base interface for any object that can be thrown by a `throw` statement, including `Error` and `Exception`.
+Base interface for any object a `throw` statement can throw, including `Error` and `Exception`.
 
-A PHP class cannot implement it directly: it must extend `Exception` or `Error` instead.
+A PHP class implements it only by extending `Exception` or `Error`.
 
 ## Interface synopsis
 

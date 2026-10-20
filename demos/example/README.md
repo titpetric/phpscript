@@ -1,7 +1,7 @@
 # Example application
 
 A bookmark list: the application built step by step in
-[Building an application](../../docs/use-cases/application.md). It is the
+[Building an application](../../docs/use-cases/application.md), and the
 smallest complete phpscript application: a database with migrations, three
 annotated endpoints, a compiled template and a static asset.
 
@@ -10,8 +10,8 @@ phpscript -f config.yml server .
 ```
 
 Then open the address printed by the server (normally `http://localhost:8080`).
-`config.yml` registers the SQLite connection as `bookmarks`, so the database is
-created next to the sources on first start.
+`config.yml` registers the SQLite connection as `bookmarks`, so the first start
+creates the database next to the sources.
 
 | Route                              | File                                          |
 |------------------------------------|-----------------------------------------------|
@@ -38,4 +38,4 @@ cd tests && atkins test
 ```
 
 The suite leaves the database as it found it: each case that adds a bookmark
-extracts the new id and deletes it again, so it can be run repeatedly.
+extracts the new id and deletes it again, so the suite runs as often as you like.

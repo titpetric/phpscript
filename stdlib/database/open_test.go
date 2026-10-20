@@ -7,8 +7,8 @@ import (
 // TestOpen covers the pool DatabaseProvider builds by default. sql.Open
 // records the driver and the DSN and connects to nothing, so a pool exists
 // before any server has answered, and a provider holding ten connection
-// strings opens no sockets at startup. The driver name is kept on the sqlx
-// wrapper, where sqlx reads it to rebind placeholders for the dialect.
+// strings opens no sockets at startup. The sqlx wrapper keeps the driver
+// name, and sqlx reads it there to rebind placeholders for the dialect.
 func TestOpen(t *testing.T) {
 	t.Parallel()
 	db, err := Open("sqlite", ":memory:")
@@ -34,10 +34,10 @@ func TestOpen(t *testing.T) {
 }
 
 // newLiveDatabase returns a client over an in-memory sqlite holding a users
-// table with two rows. The pool is held to one connection, because a second
+// table with two rows. It holds the pool to one connection, because a second
 // connection to ":memory:" opens a second database and would find no table.
-// The driver is registered by the blank import in provider_test.go, which
-// compiles into this same test binary.
+// The blank import in provider_test.go registers the driver, and it compiles
+// into this same test binary.
 func newLiveDatabase(t *testing.T) *Database {
 	t.Helper()
 

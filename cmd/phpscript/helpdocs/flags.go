@@ -15,7 +15,7 @@ type Flag = cli.Flag
 // NewFlagSet returns an empty set named for what it will hold.
 //
 // The error handling is ContinueOnError, which is the only thing a set built
-// for the help can do: nothing parses it, so no argument in it is wrong,
+// for the help can do: nothing parses it, so it carries no wrong argument,
 // and a set that exited on a parse error would take the process with it while
 // rendering a document.
 func NewFlagSet(name string) *FlagSet {

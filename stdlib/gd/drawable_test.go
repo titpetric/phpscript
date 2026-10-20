@@ -8,7 +8,7 @@ import (
 
 // TestFillRect covers the uniform fill imagefilledrectangle and
 // imagecreatetruecolor both go through: the named rectangle takes the colour
-// and the pixel outside it is left alone.
+// and fillRect leaves the pixel outside it alone.
 func TestFillRect(t *testing.T) {
 	t.Parallel()
 	m := image.NewRGBA(image.Rect(0, 0, 3, 3))
@@ -23,9 +23,9 @@ func TestFillRect(t *testing.T) {
 	}
 }
 
-// TestCopyPixels covers the copy a decoded image takes when it cannot be drawn
-// on, including the offset: src is read from at, so a source whose bounds do
-// not start at the origin lands at the destination's origin.
+// TestCopyPixels covers the copy a decoded image takes when wrap cannot draw
+// on it, including the offset: copyPixels reads src from at, so a source whose
+// bounds do not start at the origin lands at the destination's origin.
 func TestCopyPixels(t *testing.T) {
 	t.Parallel()
 	src := image.NewRGBA(image.Rect(4, 4, 6, 6))
@@ -59,8 +59,8 @@ func TestResample(t *testing.T) {
 	}
 }
 
-// TestDrawable covers the alias the handle is declared through, so the type a
-// host reads off Underlying is the one this package writes into.
+// TestDrawable covers the alias the handle declares its image with, so the
+// type a host reads off Underlying is the one this package writes into.
 func TestDrawable(t *testing.T) {
 	t.Parallel()
 	var d Drawable = image.NewRGBA(image.Rect(0, 0, 1, 1))

@@ -4,7 +4,7 @@
 // signatures changed: the same class, the same six handlers against the same
 // patterns, answering the same bytes, so one load generator drives both.
 //
-// What a handler is written against is the difference. Slim's router and PSR-7
+// The surface a handler writes against is the difference. Slim's router and PSR-7
 // force four substitutions, and a PSR-7 response is immutable, so a handler
 // returns the response it built where the bridge writes to the one its caller
 // passed in:
@@ -15,8 +15,8 @@
 //	$r->path_value("id")                  $args["id"]
 //
 // This side pays a bootstrap per request: the autoloader runs, Slim builds its
-// App, its router and its middleware stack, the handler answers, and all of it
-// is torn down again. The README beside this file prices that against the same
+// App, its router and its middleware stack, the handler answers, and the
+// process drops every piece. The README beside this file prices that against the same
 // handler with nothing under it.
 
 declare(strict_types=1);
@@ -35,7 +35,7 @@ require __DIR__ . '/../vendor/autoload.php';
 // escapes an ampersand and php writes it as itself, which a raw query string
 // carrying two parameters reaches.
 //
-// Two differences are left and neither has a flag that closes it: php escapes
+// Two differences remain and neither has a flag that closes it: php escapes
 // non-ASCII to \uXXXX where Go writes UTF-8, and Go escapes < and > to
 // lowercase < where php's JSON_HEX_TAG writes <. No handler here
 // produces either.
@@ -43,12 +43,12 @@ const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_HEX_AMP | JSON_THROW_ON_ERROR;
 
 class Server
 {
-    // `config()` reads the environment into the one value everything else is
-    // built from, before anything is built.
+    // `config()` reads the environment into the one value everything else
+    // reads, ahead of the first construction.
     //
     // The worker count is the web server's here and not the script's: apache
     // forks VANILLA_WORKERS children and php-fpm starts that many, so conf/ is
-    // where each is told it and this reads it back for the record alone.
+    // where each stack reads it and this reads it back for the record alone.
     public function config(): array
     {
         $addr = getenv('VANILLA_ADDR');
@@ -164,8 +164,8 @@ class Server
         return $response;
     }
 
-    // getParsedBody() is the form, parsed by the time a handler runs, so
-    // nothing has to be parsed first. The body takes precedence over the
+    // getParsedBody() is the form, parsed by the time a handler runs, so the
+    // handler parses nothing itself. The body takes precedence over the
     // query, the order net/http's FormValue and the bridge's form_value()
     // both answer in.
     public function echoRequest(Request $request, Response $response): Response
@@ -191,10 +191,11 @@ class Server
         return $response;
     }
 
-    // What connection_aborted() is for. The work is allowed to finish, because
-    // in a real application it is the transaction that already committed; what
-    // is skipped is the part nobody is left to read. ignore_user_abort(true) is
-    // what keeps the handler running long enough to make that choice, because
+    // What connection_aborted() is for. The work runs to its end, because in a
+    // real application that work is the transaction that already committed;
+    // the part this drops is the part nobody remains to read.
+    // ignore_user_abort(true) keeps the handler running long enough to make
+    // that choice, because
     // without it the disconnect ends the handler where it next looks.
     //
     // The write and the flush per tick are what php needs here that the
@@ -223,8 +224,8 @@ class Server
         }
 
         if (connection_aborted()) {
-            // Nothing is written to the response: there is nobody to write it
-            // to. error_log puts this through the host's error handler, which
+            // This writes nothing to the response: nobody remains to read it.
+            // error_log puts the line through the host's error handler, which
             // here is the web server's error log.
             error_log('aborted after ' . $ticks . ' ticks, response skipped');
 

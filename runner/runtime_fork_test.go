@@ -10,7 +10,7 @@ import (
 )
 
 // forkParent is a runtime that has run src, so it holds the declarations a fork
-// is expected to carry over.
+// carries over.
 func forkParent(t *testing.T, src string) (*runner.Runtime, *strings.Builder) {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -57,7 +57,7 @@ func TestRuntime_Fork(t *testing.T) {
 // builds itself. Fork does it already, so this is for a host managing its own.
 //
 // It answers a copy, so a caller walking it while the runtime includes another
-// file is not reading the map being written.
+// file is not reading the map the include writes.
 func TestRuntime_DeclaredPrograms(t *testing.T) {
 	t.Parallel()
 	parent, _ := forkParent(t, `<?php function once() { return 1; }`)
@@ -110,7 +110,7 @@ func TestRuntime_SetPreparer(t *testing.T) {
 // declaration is AST, so it runs on whichever runtime the caller holds, and it
 // gets a scope holding its arguments and nothing else.
 //
-// The declaration is read off the parse tree and not out of a script variable:
+// The declaration comes off the parse tree and not out of a script variable:
 // a *model.Closure is what the method takes, and that is the form a host
 // holding one has.
 func TestRuntime_InvokeClosure(t *testing.T) {

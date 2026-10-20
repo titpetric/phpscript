@@ -12,17 +12,17 @@ type InfoField struct {
 }
 
 // InfoSection reports the rows a subsystem contributes to phpinfo(), or none
-// when it has nothing to say. It runs at the moment phpinfo() is called, so a
+// when it has nothing to say. It runs when a script calls phpinfo(), so a
 // section reports the state at that moment and never the state at
 // registration.
 type InfoSection func(rt *Runtime) []InfoField
 
 // RegisterInfo adds a named section to phpinfo(), after the runtime's own
-// block. Sections print in registration order, and one reporting no rows is
-// left out entirely, and never printed as a heading over nothing.
+// block. Sections print in registration order, and phpinfo() drops one
+// reporting no rows entirely, never printing a heading over nothing.
 //
-// It is how a binding answers for memory it holds across requests: a store
-// bound into the context, a cache a precompile pass filled. None of that is in
+// A binding answers for memory it holds across requests here: a store bound
+// into the context, a cache a precompile pass filled. None of that is in
 // memory_get_usage(), which measures one script's live values, so phpinfo() is
 // where the process-lifetime side is visible.
 func (rt *Runtime) RegisterInfo(name string, section InfoSection) {
@@ -59,7 +59,7 @@ func mib(bytes int64) string {
 
 // registerCompiledTreeInfo reports the parsed and compiled source tree under
 // phpinfo(). The name is phpscript's own: the mechanism is not opcache, there
-// is no arena behind it, and none of the opcache_* functions are implemented.
+// is no arena behind it, and no opcache_* function exists here.
 func (rt *Runtime) registerCompiledTreeInfo() {
 	rt.RegisterInfo("OPcache", func(rt *Runtime) []InfoField {
 		programs, expressions, heap := rt.CompiledTree()

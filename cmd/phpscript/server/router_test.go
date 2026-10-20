@@ -40,8 +40,8 @@ func TestNewRouter(t *testing.T) {
 }
 
 // TestNewRouterRunsMiddleware covers the other thing the server does with a
-// router: the tracing middleware is registered on it, and it has to wrap every
-// handler mounted after it.
+// router: it registers the tracing middleware there, and that has to wrap
+// every handler mounted after it.
 func TestNewRouterRunsMiddleware(t *testing.T) {
 	t.Parallel()
 	router := newRouter()

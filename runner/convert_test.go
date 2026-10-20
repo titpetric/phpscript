@@ -283,8 +283,8 @@ func TestHelperCast(t *testing.T) {
 }
 
 // TestHelperCastArray covers `(array)`. Null produces an empty array, a scalar
-// is wrapped, an object reads its properties out in the order the object reads
-// them back, and a Go collection converts with its keys kept.
+// becomes a one-entry array, an object reads its properties out in the order
+// the object reads them back, and a Go collection converts with its keys kept.
 func TestHelperCastArray(t *testing.T) {
 	t.Parallel()
 	if got := helperCast("array", nil).(*model.Array); got.Len() != 0 {
@@ -312,7 +312,7 @@ func TestHelperCastArray(t *testing.T) {
 
 // TestHelperToObject covers `(object)`. An array becomes a stdClass whose
 // properties are its entries, a scalar lands under `scalar`, null produces an
-// object with nothing in it, and an object is returned as it is, so
+// object with nothing in it, and an object passes through untouched, so
 // `(object) $o === $o`.
 func TestHelperToObject(t *testing.T) {
 	t.Parallel()
@@ -450,10 +450,10 @@ func TestPHPBitNot(t *testing.T) {
 	}
 }
 
-// TestPHPNegate covers unary minus. A float is negated directly and never
-// computed as `0 - x`, which loses the sign of zero: PHP echoes -0.0 as -0.
-// The smallest int64 overflows to a float the way every other arithmetic
-// operator overflows, with no wrap back to itself.
+// TestPHPNegate covers unary minus. phpNegate negates a float directly and
+// never computes it as `0 - x`, which loses the sign of zero: PHP echoes -0.0
+// as -0. The smallest int64 overflows to a float the way every other
+// arithmetic operator overflows, with no wrap back to itself.
 func TestPHPNegate(t *testing.T) {
 	t.Parallel()
 	if got, want := phpNegate(int64(5)), int64(-5); got != want {
@@ -473,9 +473,9 @@ func TestPHPNegate(t *testing.T) {
 	}
 }
 
-// TestKeyString covers the name a model.Keyed is read by. PHP normalises an
-// index to an int or a string and a Keyed is named by string, so an int index
-// reads as its decimal spelling.
+// TestKeyString covers the name keyString reads off a model.Keyed. PHP
+// normalises an index to an int or a string and a Keyed carries a string name,
+// so an int index reads as its decimal spelling.
 func TestKeyString(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

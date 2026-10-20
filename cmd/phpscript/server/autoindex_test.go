@@ -72,8 +72,8 @@ func TestAutoindexListsTheDirectory(t *testing.T) {
 	if strings.Contains(body, ".hidden") {
 		t.Errorf("listing shows a dotfile:\n%s", body)
 	}
-	// Nothing is fetched from anywhere else: a listing that loaded a stylesheet
-	// from a CDN would tell that CDN what is being browsed.
+	// The listing fetches nothing from anywhere else: one that loaded a
+	// stylesheet from a CDN would tell that CDN what a visitor is browsing.
 	if strings.Contains(body, "://") {
 		t.Errorf("listing names an off site URL:\n%s", body)
 	}
@@ -106,8 +106,8 @@ func TestAutoindexAnswersHeadWithHeadersAlone(t *testing.T) {
 	}
 }
 
-// TestAutoindexDoesNotReplaceAnIndexPage pins the order: a directory with an
-// index page is answered by it, and the listing is only for directories that
+// TestAutoindexDoesNotReplaceAnIndexPage pins the order: an index page answers
+// the directory that has one, and the listing is only for directories that
 // have none.
 func TestAutoindexDoesNotReplaceAnIndexPage(t *testing.T) {
 	t.Parallel()

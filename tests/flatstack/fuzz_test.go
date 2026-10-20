@@ -11,8 +11,8 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// FuzzFlatstackCompilerInput is adapted from the source flat-stack compiler
-// fuzz target. Parse and unsupported errors are valid; panics are not.
+// FuzzFlatstackCompilerInput follows the source flat-stack compiler fuzz
+// target. Parse and unsupported errors are valid; panics are not.
 func FuzzFlatstackCompilerInput(f *testing.F) {
 	seeds := []string{
 		`<?php $a = "value"; echo $a; ?>`,

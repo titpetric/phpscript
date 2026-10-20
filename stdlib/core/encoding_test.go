@@ -26,7 +26,7 @@ func TestPHPBase64Encode(t *testing.T) {
 // because encoding/base64 has neither.
 //
 // Lenient mode drops every character outside the alphabet, padding included,
-// and decodes what is left even when its length is not a multiple of four.
+// and decodes the rest even when its length is not divisible by four.
 // Strict mode reports a character outside the alphabet by answering false, so
 // the return type is any: php's contract is string|false.
 func TestPHPBase64Decode(t *testing.T) {
@@ -119,10 +119,10 @@ func TestURLDecode(t *testing.T) {
 	}
 }
 
-// TestPHPHTTPBuildQuery covers joining pairs into a query string: both halves
-// are urlencoded, so a nested key arrives as the escaped key%5Bsub%5D, and the
-// insertion order of the array is the order of the pairs. A null entry is
-// dropped, with no empty value written for it.
+// TestPHPHTTPBuildQuery covers joining pairs into a query string: the encoder
+// urlencodes both halves, so a nested key arrives as the escaped key%5Bsub%5D,
+// and the insertion order of the array is the order of the pairs. It drops a
+// null entry, writing no empty value for it.
 func TestPHPHTTPBuildQuery(t *testing.T) {
 	t.Parallel()
 	data := model.NewArray()
@@ -149,8 +149,8 @@ func TestPHPHTTPBuildQuery(t *testing.T) {
 // as a string, so a=1 reads back as the string "1".
 //
 // The setter is nil when a script omitted the by-reference argument. php raises
-// an ArgumentCountError for that call; this runtime pads a short call, so the
-// decode is skipped and nothing is written nowhere.
+// an ArgumentCountError for that call; this runtime pads a short call, so
+// phpParseStr skips the decode and writes nothing.
 func TestPHPParseStr(t *testing.T) {
 	t.Parallel()
 	var got any

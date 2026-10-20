@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Full-stack, interruptible function that may be suspended from anywhere in the call stack.
+Full-stack, interruptible function that a script can suspend from anywhere in the call stack.
 
 Execution inside a fiber pauses until something resumes it, so one call stack waits without blocking the one that started it.
 
@@ -50,7 +50,7 @@ public static function getCurrent(): ?Fiber
 | `Fiber::throw(Throwable $exception): mixed`  | Resumes execution of the fiber with an exception |
 | `Fiber::getReturn(): mixed`                  | Gets the value returned by the fiber             |
 | `Fiber::isStarted(): bool`                   | Determines if the fiber has started              |
-| `Fiber::isSuspended(): bool`                 | Determines if the fiber is suspended             |
+| `Fiber::isSuspended(): bool`                 | Determines if the fiber remains suspended        |
 | `Fiber::isRunning(): bool`                   | Determines if the fiber is running               |
 | `Fiber::isTerminated(): bool`                | Determines if the fiber has terminated           |
 | `Fiber::suspend(mixed $value = null): mixed` | Suspends execution of the current fiber          |
@@ -58,6 +58,6 @@ public static function getCurrent(): ?Fiber
 
 ## Status
 
-- phpscript will not implement this class, for the reason [Generator](Generator.md) is not implemented: there is no coroutine model. See [Design decisions](../../../design.md).
+- phpscript has no `Fiber` and will never have one, for the reason [Generator](Generator.md) is not implemented: there is no coroutine model. See [Design decisions](../../../design.md).
 - The name is not declared.
 - Concurrency belongs to the embedding Go application. A script runs to completion on one goroutine, and the host decides how many run at once.

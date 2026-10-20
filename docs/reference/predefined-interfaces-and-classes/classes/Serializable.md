@@ -6,7 +6,7 @@
 
 Interface for customized serializing.
 
-A class implementing it drops `__sleep()` and `__wakeup()`: `serialize()` is called when an instance needs serializing, and `unserialize()` replaces the constructor when one is read back. As of PHP 8.1.0, a class that implements it without also declaring `__serialize()` and `__unserialize()` raises a deprecation notice.
+A class implementing it drops `__sleep()` and `__wakeup()`: PHP calls `serialize()` when an instance needs serializing, and `unserialize()` replaces the constructor when PHP reads one back. As of PHP 8.1.0, a class that implements it without also declaring `__serialize()` and `__unserialize()` raises a deprecation notice.
 
 ## Interface synopsis
 
@@ -31,6 +31,6 @@ public function unserialize(string $data): void
 
 ## Status
 
-- phpscript does not implement this interface. The name is not declared.
+- phpscript has no `Serializable`. The name is not declared.
 - PHP's own serialization format has no implementation here, so there is no call site that would dispatch through the interface.
-- The interface is deprecated as of PHP 8.1.0 in favour of `__serialize()` and `__unserialize()`, which are magic methods and therefore also unavailable. Encode with `json_encode()` and decode with `json_decode()` instead.
+- PHP 8.1.0 deprecated the interface in favour of `__serialize()` and `__unserialize()`, which are magic methods and also unavailable. Encode with `json_encode()` and decode with `json_decode()` instead.

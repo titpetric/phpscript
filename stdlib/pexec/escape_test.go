@@ -5,8 +5,8 @@ import (
 )
 
 // TestEscapeshellcmd pins the quote pairing against php. A quote with a partner
-// later in the string is the author's own quoting and is left alone; a stray
-// one, and one of the other kind found while a quote is open, is escaped. Every
+// later in the string is the author's own quoting and stays; a stray one, and
+// one of the other kind found while a quote is open, gets a backslash. Every
 // expectation here came from running the same string through php.
 func TestEscapeshellcmd(t *testing.T) {
 	t.Parallel()
@@ -35,7 +35,7 @@ func TestEscapeshellcmd(t *testing.T) {
 
 // TestEscapeshellarg pins the quoting that is actually safe for an argument:
 // everything is inside single quotes, where only the quote itself is special,
-// and the quote is spliced out and back in escaped.
+// and escapeshellarg splices that quote out and back in escaped.
 func TestEscapeshellarg(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -54,9 +54,9 @@ func TestEscapeshellarg(t *testing.T) {
 }
 
 // TestLastLine covers what system() answers with. The output has already gone
-// to the page by then, so the last line is kept as the stream passes rather
-// than recovered from a buffer, and a stream that did not end with a newline
-// still has one.
+// to the page by then, so lastLine keeps the last line as the stream passes
+// and buffers nothing before it, and a stream that ended without a newline
+// still has a last line.
 func TestLastLine(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

@@ -57,8 +57,8 @@ echo "|" . file_get_contents("a.txt") . "|" . file_get_contents("b.txt");`)
 }
 
 // TestFilePutContents covers the convenience writer: a fresh write reports its
-// length, FILE_APPEND adds and truncates nothing, LOCK_EX is accepted, and a
-// target the operating system refuses answers false and never fails the
+// length, FILE_APPEND adds and truncates nothing, the writer takes LOCK_EX,
+// and a target the operating system refuses answers false and never fails the
 // script.
 func TestFilePutContents(t *testing.T) {
 	t.Parallel()
@@ -112,8 +112,8 @@ if (chmod("missing.txt", 0640)) { echo "|missing-ok"; } else { echo "|missing-fa
 }
 
 // TestChownSelf checks ownership by name and by id. Changing a file to the
-// owner it already has is the one chown any user is allowed to make, so this
-// runs the same whether or not the tests are root.
+// owner it already has is the one chown any user may make, so this runs the
+// same as root and as anyone else.
 func TestChownSelf(t *testing.T) {
 	t.Parallel()
 	me, err := user.Current()
@@ -169,9 +169,9 @@ if (chgrp("a.txt", "no-such-group-here")) { echo "|unknown-ok"; } else { echo "|
 	}
 }
 
-// TestWritesStayInRoot pins the confinement: a relative path that climbs out of
-// the root is cleaned back into it, so a script cannot write above the
-// directory the host bound.
+// TestWritesStayInRoot pins the confinement: the runtime cleans a relative
+// path that climbs out of the root back into it, so a script cannot write
+// above the directory the host bound.
 func TestWritesStayInRoot(t *testing.T) {
 	t.Parallel()
 	outside := t.TempDir()

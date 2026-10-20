@@ -18,15 +18,15 @@ func init() {
 }
 
 func registerJSON(rt *runner.Runtime) {
-	// json_encode returns the JSON encoding of $value. $flags is accepted and
-	// ignored because the encoding is not configurable, a forward slash is
-	// written as itself, and an encoding failure raises an error where php
+	// json_encode returns the JSON encoding of $value. It takes $flags and
+	// ignores it because the encoding is not configurable, writes a forward
+	// slash as itself, and raises an error on an encoding failure where php
 	// returns false.
 	rt.RegisterFunc("json_encode", phpJSONEncode)
 	// json_decode parses the JSON in $text. $associative must be true or
-	// omitted because decoding into objects is not implemented, $depth and
-	// $flags are accepted and ignored, and invalid input raises an error where
-	// php returns null.
+	// omitted because decoding into objects is not implemented. It takes $depth
+	// and $flags and ignores them, and invalid input raises an error where php
+	// returns null.
 	rt.RegisterFunc("json_decode", phpJSONDecode)
 
 	// The streaming pair. json_encode() and json_decode() work on a whole
@@ -34,15 +34,16 @@ func registerJSON(rt *runner.Runtime) {
 	// as a request body and a response are.
 	// `new JSON\Decoder(fopen("php://input", "r"))` reads a POST body without a
 	// string of it existing first, and an encoder over php://output writes the
-	// response as it is built. Both take the io.Reader or io.Writer they wrap,
-	// so any handle fopen() returns works, and so do STDIN and STDOUT.
+	// response as the script builds it. Both take the io.Reader or io.Writer
+	// they wrap, so any handle fopen() returns works, and so do STDIN and
+	// STDOUT.
 	rt.RegisterConstructor("JSON\\Encoder", NewJSONEncoder)
 	rt.RegisterConstructor("JSON\\Decoder", NewJSONDecoder)
 }
 
-// phpJSONEncode encodes value. $flags is accepted and ignored, the way
+// phpJSONEncode encodes value. It takes $flags and ignores it, the way
 // json_decode accepts $depth and $flags, so a port carrying
-// JSON_UNESCAPED_SLASHES runs: no JSON_* constant is defined, the argument
+// JSON_UNESCAPED_SLASHES runs: nothing defines a JSON_* constant, the argument
 // arrives as null, and there is nothing for it to select. The encoding is not
 // configurable by design; see docs/design.md, "JSON".
 func phpJSONEncode(value any, flags ...any) (any, error) {
@@ -55,8 +56,8 @@ func phpJSONEncode(value any, flags ...any) (any, error) {
 
 func phpJSONDecode(text string, opts ...any) (any, error) {
 	// $associative selects the shape objects decode into. The decoder only
-	// builds arrays, so false is refused and never answered with the shape it
-	// did not name; $depth and $flags are accepted and ignored. stdClass
+	// builds arrays, so this refuses false and never answers with the shape it
+	// did not name; it takes $depth and $flags and ignores them. stdClass
 	// exists and `(object)` builds one, so what is missing is the decode path,
 	// not the class; see docs/design.md, "JSON".
 	if len(opts) > 0 && opts[0] != nil && !phpval.Truthy(opts[0]) {
@@ -160,8 +161,8 @@ func jsonEncodeValue(v any) any {
 		})
 		return out
 	case model.Collection:
-		// A view over request data, which is keyed by name and so encodes as
-		// an object. Reading it is what decodes the request behind it.
+		// A view over request data, keyed by name and so encoding as an
+		// object. A read decodes the request behind it.
 		if x == nil {
 			return nil
 		}
@@ -189,7 +190,7 @@ func jsonEncodeValue(v any) any {
 }
 
 // arrayIsList reports whether an *model.Array's keys are the dense int64
-// sequence 0..n-1, i.e. whether it is a PHP list.
+// sequence 0..n-1, the shape of a PHP list.
 func arrayIsList(a *model.Array) bool {
 	expect := int64(0)
 	isList := true
@@ -226,13 +227,13 @@ func jsonDecodeValue(v any) any {
 	}
 }
 
-// JSONEncoder writes JSON values to a stream. It is Go's json.Encoder with the
-// one difference PHP forces: the value it is given is a PHP value, so it is
-// converted the way json_encode() converts one, and the two spellings answer
-// the same JSON for the same array.
+// JSONEncoder writes JSON values to a stream, Go's json.Encoder with the one
+// difference PHP forces: Encode takes a PHP value and converts it the way
+// json_encode() converts one, so the two spellings answer the same JSON for
+// the same array.
 //
-// A plain encoder appends the document into buf and writes it in one call. The
-// json.Encoder underneath is built by SetIndent alone, because indenting is
+// A plain encoder appends the document into buf and writes it in one call.
+// SetIndent alone builds the json.Encoder underneath, because indenting is
 // encoding/json's own pass over finished bytes and this writes none it could
 // read; an encoder nothing indents never builds one.
 type JSONEncoder struct {
@@ -242,7 +243,7 @@ type JSONEncoder struct {
 }
 
 // jsonEncoderBuffer is how much of its buffer an encoder keeps between values.
-// One response's worth is kept and reused; a large document's is released, so a
+// An encoder reuses one response's buffer and drops a large document's, so a
 // handle held open for the length of a script does not hold that peak with it.
 const jsonEncoderBuffer = 1 << 16
 
@@ -275,7 +276,7 @@ func (e *JSONEncoder) Encode(value any) error {
 	return err
 }
 
-// SetIndent is json.Encoder.SetIndent: each value is written across several
+// SetIndent is json.Encoder.SetIndent: the encoder breaks each value across
 // lines, $indent per level under $prefix, and two empty strings go back to one
 // line per value.
 func (e *JSONEncoder) SetIndent(prefix, indent string) {
@@ -293,8 +294,8 @@ type JSONDecoder struct {
 
 // NewJSONDecoder returns a decoder reading from $stream.
 //
-// UseNumber is on, as it is in json_decode(): without it Go reads every number
-// as a float, and the 7 in a document would come back as 7.0. With it a whole
+// UseNumber is on, as in json_decode(): without it Go reads every number as a
+// float, and the 7 in a document would come back as 7.0. With it a whole
 // number is an int and only a fractional one is a float, as php
 // answers and what a row written back out has to preserve.
 func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
@@ -316,8 +317,8 @@ func (d *JSONDecoder) Decode() (any, error) {
 	return jsonDecodeStream(d.dec)
 }
 
-// More is json.Decoder.More: another value is waiting in the stream. It is what
-// ends a decode loop.
+// More is json.Decoder.More: another value is waiting in the stream. This ends
+// a decode loop.
 func (d *JSONDecoder) More() bool {
 	return d.dec.More()
 }

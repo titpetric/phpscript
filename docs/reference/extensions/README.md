@@ -9,11 +9,11 @@
 | Parenthesis-free conditions | PHP-incompatible    | Selected `if` and `foreach` forms can omit parentheses.            |
 | `{...}` arrays              | PHP-incompatible    | Braces can delimit an array literal.                               |
 
-These features have no equivalent in the PHP language reference, or use syntax differently. Avoid them when source must also run on PHP.
+These features have no match in the PHP language reference, or use syntax differently. Avoid them when source must also run on PHP.
 
 ## Deferred callbacks
 
-`defer()` registers a callback to run when the current function, included file, or top-level file frame exits. Multiple callbacks run in last-in, first-out order, including when the frame exits with an error.
+`defer()` registers a callback to run when the current function, included file, or top-level file frame exits. Callbacks run in last-in, first-out order, including when the frame exits with an error.
 
 ```php
 function work() {
@@ -22,7 +22,7 @@ function work() {
 }
 ```
 
-A bound method can also be deferred:
+`defer()` also takes a bound method:
 
 ```php
 $db = new Database("app");
@@ -34,7 +34,7 @@ defer($db->rollback);
 
 ### `DateTime` and `Time`
 
-`Time`, `Time\Duration`, and `Time\Location` expose Go's `time.Time`, `time.Duration`, and `time.Location` values directly. Go's package-level functions are registered as `DateTime` statics; the returned `Time` values supply their exported methods automatically:
+`Time`, `Time\Duration`, and `Time\Location` expose Go's `time.Time`, `time.Duration`, and `time.Location` values directly. The registration installs Go's package-level functions, each a static on `DateTime`; the returned `Time` values supply their exported methods automatically:
 
 ```php
 set_timezone("Europe/Ljubljana");
@@ -45,7 +45,7 @@ $end = $start->add("30m");
 echo $end->format("2006-01-02 15:04 MST");
 ```
 
-Any PHP argument passed to a Go `time.Duration` parameter may be a duration string accepted by Go's `time.ParseDuration`, such as `"500ms"`, `"30m"`, or `"2h45m"`. A reusable value can be constructed explicitly:
+Any PHP argument passed to a Go `time.Duration` parameter may be a duration string accepted by Go's `time.ParseDuration`, such as `"500ms"`, `"30m"`, or `"2h45m"`. A script can construct a reusable value explicitly:
 
 ```php
 $retention = new Time\Duration("168h");
@@ -62,11 +62,11 @@ $expires = $start->add($retention);
 
 ### `Database\Migrate`
 
-`new Database\Migrate("name")` targets a named platform database, trying the connection `name:migrate` before `name` so migrations can run as a more privileged user without the script naming one. `load($pattern)` selects migration files from the application filesystem, and `run()` applies matching `*.up.sql` files in filename order, recording them under the project `name`. Files are append only: applied statements are recorded by index in a `migrations` table, so statements added at the end of an existing file run on the next start. See the [database guide](../../use-cases/database.md#run-migrations).
+`new Database\Migrate("name")` targets a named platform database, trying the connection `name:migrate` before `name` so migrations can run as a more privileged user without the script naming one. `load($pattern)` selects migration files from the application filesystem, and `run()` applies matching `*.up.sql` files in filename order, recording them under the project `name`. Files are append only: `run()` records applied statements by index in a `migrations` table, so statements added at the end of an existing file run on the next start. See the [database guide](../../use-cases/database.md#run-migrations).
 
 ### `SharedMemory`
 
-`new SharedMemory` creates a process-local key/value and counter store. An embedding host can place one shared instance in each runtime context to retain state across requests. See the [shared-memory guide](../../use-cases/shared-memory.md).
+`new SharedMemory` creates a process-local key/value and counter store. An embedding host can place one shared instance in each runtime context to keep state across requests. See the [shared-memory guide](../../use-cases/shared-memory.md).
 
 ### `Mail`
 
@@ -80,15 +80,15 @@ $campaigns = new Mail("marketing");
 $campaigns->send("list@example.com", "Newsletter", "Issue 1", "<h1>Issue 1</h1>", "editor@example.com");
 ```
 
-A non-empty `$html` sends a `multipart/alternative` message with `$body` as its text part; `$reply_to` is one address and throws when it is not. [HTML and a Reply-To](../../use-cases/mail.md#html-and-a-reply-to) has the details.
+A non-empty `$html` sends a `multipart/alternative` message with `$body` as its text part; `$reply_to` is one address and throws on anything else. [HTML and a Reply-To](../../use-cases/mail.md#html-and-a-reply-to) has the details.
 
 The name is the whole of what a script says about a server. Where the servers come from, what keys they take, and why a script can neither supply nor read a credential are in [Mail servers](../../configuration.md#mail-servers).
 
-Constructing throws when the name is not a configured server, so a typo is caught before a message is composed, ahead of the first delivery. A failed delivery throws too, so wrap `send()` in `try`/`catch` when the request should survive an unreachable mail server.
+Constructing throws when the name is not a configured server, so the constructor catches a typo before a script composes a message, ahead of the first delivery. A failed delivery throws too, so wrap `send()` in `try`/`catch` when the request should survive an unreachable mail server.
 
 ### `mail()`
 
-`mail($recipient, $subject, $body)` sends through the host's `default` server. It is installed on every runtime: with no server configured it still exists and throws catchably, so calling code keeps one spelling and its own fallback.
+`mail($recipient, $subject, $body)` sends through the host's `default` server. The registration installs it on every runtime: with no server configured it still exists and throws catchably, so calling code keeps one spelling and its own fallback.
 
 PHP's `$additional_headers` and `$additional_params` are not accepted.
 
@@ -116,11 +116,11 @@ foreach $items as $item {
 }
 ```
 
-Standard PHP requires the parentheses. Parenthesized forms remain supported and are recommended for portable scripts.
+Standard PHP requires the parentheses. Parenthesized forms remain supported; use them for portable scripts.
 
 ## Implemented APIs
 
-See the generated [implemented API inventory](implemented-apis.md) for the functions and classes in the standard CLI runtime. Regular-expression shims use Go's RE2 engine where PHP uses PCRE, and filesystem shims are rooted in the host-provided filesystem.
+See the generated [implemented API inventory](implemented-apis.md) for the functions and classes in the standard CLI runtime. Regular-expression shims use Go's RE2 engine where PHP uses PCRE, and filesystem shims take the host-provided filesystem as their root.
 
 Use `get_defined_functions()`, `get_declared_classes()`, and `get_defined_constants()` to inspect the exact APIs registered by a host.
 
@@ -133,7 +133,7 @@ Embedding hosts opt into runtime services separately:
 - `stdlib.Register(rt)` installs pure standard-library shims, constants, `Exception`, and every binding package contributed through `runner.RegisterBinding`: `Time`, `Database`, `Database\Migrate`, `Session`, `SharedMemory`, `Mail`, and `start_span`.
 - `stdlib.RegisterFS(rt, dir)` adds filesystem operations rooted at `dir`.
 - `runner.Options.Mail` names the `model.MailProvider` `Mail` and `mail()` resolve through, the way `Options.Database` names the connections. `mail.NewProvider(servers)` builds one from a configuration block; nil leaves both bindings on a provider holding no servers, which refuses catchably.
-- `mail.NewProviderFunc(deliver, servers)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector its pools are opened with. Name resolution and the rule that a script cannot read a credential sit above the seam and are unaffected.
+- `mail.NewProviderFunc(deliver, servers)` replaces the transport, the way `database.NewDatabaseProvider` takes the connector that opens its pools. Name resolution and the rule that a script cannot read a credential sit above the seam, so neither changes.
 - `mail.NewMemory(names...)` is a provider that queues messages in memory and sends nothing, so tests and dry runs capture mail without a mail server. Naming no servers configures every name.
 - `runner.Context.Register(rt)` adds the request-aware header functions and seeds `$_GET`, `$_POST`, `$_COOKIE`, `$_SERVER`, `$_ENV`, `$_REQUEST`, `$_FILES`, `$argv` and `$argc`. See [Predefined variables](../predefined-variables/README.md).
 

@@ -10,20 +10,20 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// discard is a logger writing its lines nowhere, for a test that is
-// looking at the trace wants of the log.
+// discard is a logger writing its lines nowhere, for a test that looks at the
+// trace alone.
 func discard(l *Logger) *Logger {
 	return l.WithLogger(slog.New(slog.NewTextHandler(&strings.Builder{}, nil)))
 }
 
 // TestLoggerFailsSpanOnError covers what the logger has to do with the trace and
-// the extent of it: an error fails the span the work runs in, and nothing else
-// the logger writes is recorded anywhere near it.
+// the extent of it: an error fails the span the work runs in, and the trace
+// records nothing else the logger writes.
 func TestLoggerFailsSpanOnError(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when it is asked to; a test that reads its
-	// traces back is asking.
+	// oida records only with Enabled set; a test that reads its
+	// traces back sets it.
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestLoggerFailsSpanOnError(t *testing.T) {
 		t.Fatalf("span = %+v", spans[0])
 	}
 
-	// A migration that did not apply is red on the front end and no line
+	// A migration that did not apply shows red on the front end and no line
 	// to read, and the error it failed with is the one mig reported.
 	if spans[0].Err() == nil || !strings.Contains(spans[0].ErrorText, "failed: syntax error") {
 		t.Fatalf("span error = %q", spans[0].ErrorText)
@@ -62,8 +62,8 @@ func TestLoggerFailsSpanOnError(t *testing.T) {
 func TestLoggerErrorWithoutErrorValue(t *testing.T) {
 	t.Parallel()
 	traceOptions := telemetry.NewOptions("phpscript")
-	// oida records only when it is asked to; a test that reads its
-	// traces back is asking.
+	// oida records only with Enabled set; a test that reads its
+	// traces back sets it.
 	traceOptions.Enabled = true
 	tracer, err := telemetry.New(traceOptions)
 	if err != nil {
@@ -85,7 +85,7 @@ func TestLoggerErrorWithoutErrorValue(t *testing.T) {
 }
 
 // TestLoggerWritesToSlog covers the half of the logger that is a logger: the
-// message and its values reach slog whether or not a trace is running.
+// message and its values reach slog with or without a trace running.
 func TestLoggerWritesToSlog(t *testing.T) {
 	t.Parallel()
 	var logged strings.Builder

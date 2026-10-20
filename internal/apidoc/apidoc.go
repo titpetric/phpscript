@@ -1,6 +1,6 @@
 // Package apidoc generates docs/reference/extensions/implemented-apis.md.
-// It combines two sources of truth: the live runtime, which says what is
-// registered and with which Go signature, and a scan of the Go source, which
+// It combines two sources of truth: the live runtime, which names every
+// registration and its Go signature, and a scan of the Go source, which
 // carries the doc comment written next to each registration and the parameter
 // names the reflect API cannot see. See scripts/list-apis for the entry point.
 package apidoc
@@ -73,11 +73,11 @@ func Generate(rt *runner.Runtime, srcRoot string) (string, error) {
 }
 
 // Reflect is Generate's first half without the source scan: what the runtime
-// registers, with the signature reflection can recover on its own. It is what a
-// shipped binary can answer, since its own Go source is not there
-// to read doc comments and PHP-spelled parameter names out of. Those are the
-// only things missing from the result; the names, types and returns are the
-// same ones the generated reference is rendered from.
+// registers, with the signature reflection can recover on its own. A shipped
+// binary can answer that much, since its own Go source is not there to read
+// doc comments and PHP-spelled parameter names out of. Those are the only
+// things missing from the result; the names, types and returns are the same
+// ones render turns into the generated reference.
 func Reflect(rt *runner.Runtime) ([]Func, []Class) {
 	return build(rt, emptySources())
 }
@@ -211,8 +211,8 @@ func primaryClassName(names []string, src *sources) string {
 //
 // Two constructors may build the same type, as Regexp\Compile and
 // Regexp\CompilePOSIX both build a *regexp.Regexp. The first name wins, so a
-// method returning that type is documented under one class and not under
-// whichever registration the scan reads last.
+// method returning that type lands under one class and not under whichever
+// registration the scan reads last.
 func registeredClassTypes(rt *runner.Runtime, src *sources) map[reflect.Type]string {
 	classTypes := map[reflect.Type]string{}
 	for _, group := range constructorGroups(rt) {
@@ -330,8 +330,8 @@ var infraMethods = map[string]bool{
 	"MarshalJSON": true, "UnmarshalJSON": true,
 }
 
-// returnType folds a Go result list into one PHP type. A trailing error is
-// thrown, not returned, so it never shows.
+// returnType folds a Go result list into one PHP type. A trailing error
+// reaches the script as a throw and never as a return, so it never shows.
 func returnType(results []string) string {
 	kept := make([]string, 0, len(results))
 	seen := map[string]bool{}

@@ -1,8 +1,8 @@
 // Package annotations discovers annotated PHP files in a source tree and binds
-// them a lifecycle: routed endpoints are served over HTTP, startup jobs run once
-// before the server listens, and scheduled jobs run on an interval.
+// them a lifecycle: a routed endpoint answers over HTTP, a startup job runs
+// once before the server listens, and a scheduled job runs on an interval.
 //
-// Two annotations are recognised, both written as comments:
+// The scanner reads three tags, each written as a comment:
 //
 //   - `// @route GET /users/{id}` registers an HTTP endpoint.
 //   - `// @startup` marks a file the server executes before it listens.
@@ -17,20 +17,19 @@
 //   - `// @route POST /users/{id}`
 //   - `// @route: /users/{id}`
 //
-// The tag can be repeated to register multiple handlers. In the case of a
-// duplicate handler being registered, the last one wins and a warning is
-// printed in the logs.
+// A file may repeat the tag to register two or more handlers. Where two
+// register the same handler, the last one wins and the logs carry a warning.
 //
-// If method is omitted, only GET and POST are routed to the handler. This
-// ignores requests like HEAD and OPTIONS, ideally leaving these to be resolved
-// in the router, invoking no PHP.
+// A tag naming no method routes GET and POST to the handler alone. That leaves
+// out requests like HEAD and OPTIONS, which the router answers on its own and
+// no PHP sees.
 //
 // Specific HTTP methods like PUT are only reachable when explicitly stated.
 //
-// The extracted path parameters are merged into `$_REQUEST`, so a route
-// declared `/users/{id}` answers `$_REQUEST['id']`.
+// The handler merges the extracted path parameters into `$_REQUEST`, so a
+// route declared `/users/{id}` answers `$_REQUEST['id']`.
 //
-// It relies on the Go standard library to extract path parameters present.
+// The Go standard library does the extracting.
 //
 // # Startup jobs
 //
@@ -43,15 +42,15 @@
 // A file may repeat `@schedule` with an interval spec and optional `-- args`
 // passed as `$argv`. Specs: `every N seconds|minutes|hours`, `hourly`, `daily`,
 // `weekly`, `monthly`, `every weekday`, `every sunday` (any weekday name),
-// `N times per hour|day`. Calendar specs fire at local midnight. A tick is
-// skipped when the previous run is still going. Output is recorded on the
+// `N times per hour|day`. Calendar specs fire at local midnight. The scheduler
+// drops a tick while the previous run is still going, and records output on the
 // oida span as `output`.
 //
 // # Discovery
 //
-// The .php files are scanned recursively, so you may keep them in a single
-// folder, or just place them in arbitrary subfolders. Files without annotations
-// are skipped, as are `vendor` directories: a composer dependency does not get
+// The scan reads .php files recursively, so a tree may keep them in a single
+// folder or spread them over subfolders. The scan passes over a file with no
+// annotation, and over a `vendor` directory: a composer dependency does not get
 // to publish routes into the application, or to run at startup.
 package annotations
 

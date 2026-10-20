@@ -39,7 +39,7 @@ func registerReflection(rt *runner.Runtime) {
 			return model.NewArray()
 		}
 		out := model.NewArraySize(obj.Len())
-		// A property named for its digits is an integer key once it is an array
+		// A property named for its digits becomes an integer key as an array
 		// entry, so `(object) array("a", "b")` reads back as a list.
 		obj.Range(func(name string, v any) bool {
 			out.Set(phpval.Key(name), v)
@@ -88,7 +88,7 @@ func registerReflection(rt *runner.Runtime) {
 		return false
 	})
 	// PHP exposes an opaque, per-object identity. A pointer is exactly that,
-	// and it is stable for as long as the object is alive, which is the only
+	// and stays stable for as long as the object is alive, which is the only
 	// guarantee PHP makes either.
 	rt.RegisterFunc("spl_object_hash", func(value any) string {
 		return fmt.Sprintf("%032x", objectIdentity(value))
@@ -105,8 +105,8 @@ func classNameOf(value any) string {
 	if object, ok := value.(*model.Object); ok && object.Class != nil {
 		return object.Class.Name
 	}
-	// A throwable records its own class, and several of them
-	// share one Go type, so the Go type name would answer "Exception" for an
+	// A throwable records its own class, and the throwable classes share one Go
+	// type, so the Go type name would answer "Exception" for an
 	// InvalidArgumentException.
 	if throwable, ok := value.(runner.Throwable); ok {
 		if class := throwable.ThrowableClass(); class != "" {

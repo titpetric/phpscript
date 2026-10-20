@@ -11,17 +11,16 @@ import (
 // lives here for the reason DatabaseProvider does, so a runtime can name it in
 // its options without importing stdlib/mail, which imports the runtime.
 type MailProvider interface {
-	// Configured reports why name cannot be delivered through, and nil when
-	// it can. The Mail constructor calls it so a script naming a server
-	// nobody configured is told at `new Mail`, ahead of the first
-	// send some hours later.
+	// Configured reports why a script cannot send through name, and nil when
+	// it can. The Mail constructor calls it, so `new Mail` refuses a server
+	// nobody configured, ahead of the first send some hours later.
 	//
-	// A provider's servers are fixed when it is built: there is no
-	// registration, so this verdict and the resolution Send makes for itself
-	// read the same set.
+	// A provider fixes its servers at construction and registers none later,
+	// so this verdict and the resolution Send makes for itself read the same
+	// set.
 	Configured(name string) error
 
-	// Send sends one message through the named server. The credential is
-	// read here, used for the one delivery, and dropped.
+	// Send sends one message through the named server. It reads the
+	// credential here, uses it for the one delivery, and drops it.
 	Send(ctx context.Context, name, recipient, subject, body string) error
 }

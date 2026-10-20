@@ -9,8 +9,8 @@ import (
 )
 
 // The conversions a script's option array needs. PHP is dynamically typed and
-// an option arrives as whatever the script wrote, so each one is read the way
-// PHP would read it in that position, and never type-asserted.
+// an option arrives as whatever the script wrote, so these helpers read each
+// one the way PHP would read it in that position and never type-assert it.
 
 // toString renders a value the way PHP renders it in a string context.
 func toString(value any) string {
@@ -67,9 +67,9 @@ func toInt(value any) int64 {
 	}
 }
 
-// toDuration reads a timeout. A bare number is seconds, so PHP's own
-// timeouts are spelled; a string with a unit ("500ms", "1m30s") is parsed as
-// Go spells one, so a sub-second timeout is expressible without a fraction.
+// toDuration reads a timeout. A bare number is seconds, the way PHP spells its
+// own timeouts; a string with a unit ("500ms", "1m30s") parses the way Go
+// spells one, so a sub-second timeout needs no fraction.
 func toDuration(value any) time.Duration {
 	switch v := value.(type) {
 	case string:

@@ -5,10 +5,10 @@ import (
 )
 
 // TestRuntimeException covers the exception the runtime raises for a condition
-// a script is expected to catch. The message is readable three ways, because a
-// Go caller reads Error and a script calls getMessage; ThrowableClass is what a
-// catch clause filters on, and naming RuntimeException is what puts it in reach
-// of `catch (Exception $e)`, where `catch (Error $e)` does not take it.
+// a script catches. The message is readable three ways, because a Go caller
+// reads Error and a script calls getMessage; ThrowableClass is what a catch
+// clause filters on, and naming RuntimeException is what puts it in reach of
+// `catch (Exception $e)`, where `catch (Error $e)` does not take it.
 func TestRuntimeException(t *testing.T) {
 	t.Parallel()
 	err := NewRuntimeException("out of memory", 12)

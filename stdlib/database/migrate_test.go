@@ -7,7 +7,7 @@ import (
 )
 
 // TestDatabaseMigrate covers the handle a script holds on a schema: the
-// connection the SQL is applied to, the filesystem it is read off, and the
+// connection it runs the SQL on, the filesystem it reads the files off, and the
 // project mig records applied files under. Running the same set twice applies
 // each file once, because mig reads its own record to decide, so a deployment
 // that migrates on every process start does not replay the schema.
@@ -38,8 +38,8 @@ func TestDatabaseMigrate(t *testing.T) {
 }
 
 // TestDatabaseMigrate_Load covers the glob a script names its migrations with.
-// A script writes the pattern relative to itself, so the runtime work
-// directory is joined in and the leading "./" comes off; what the pattern
+// A script writes the pattern relative to itself, so the handle joins in the
+// runtime work directory and takes the leading "./" off; what the pattern
 // matched is what mig records, so the spelling has to settle to one form.
 func TestDatabaseMigrate_Load(t *testing.T) {
 	t.Parallel()
@@ -107,10 +107,10 @@ func TestDatabaseMigrate_Run(t *testing.T) {
 }
 
 // newLiveMigrate returns a migration handle over an in-memory sqlite and the
-// given script filesystem. The pool is held to one connection, because a
+// given script filesystem. It holds the pool to one connection, because a
 // second connection to ":memory:" opens a second database and would find no
-// schema. The driver is registered by the blank import in provider_test.go,
-// which compiles into this same test binary.
+// schema. The blank import in provider_test.go registers the driver, and it
+// compiles into this same test binary.
 func newLiveMigrate(t *testing.T, root fs.FS) *DatabaseMigrate {
 	t.Helper()
 

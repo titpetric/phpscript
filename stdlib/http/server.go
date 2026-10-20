@@ -38,9 +38,9 @@ type Server struct {
 // or anything else that answers a request. Building one listens on nothing:
 // listen() does that.
 //
-// $workers is how many requests are answered at once, the number of cores when
-// omitted, and the argument after it is how deep the queue behind them is,
-// 1024 when omitted. docs/use-cases/http-server.md is what to size them by.
+// $workers is how many requests the server answers at once, the number of
+// cores when omitted; the next argument sets the queue depth, 1024 when
+// omitted. docs/use-cases/http-server.md is what to size them by.
 func NewServer(rt *runner.Runtime, addr string, handler any, workers ...int64) (*Server, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("HTTP\\Server: addr is required")
@@ -81,7 +81,7 @@ func (s *Server) Listen() (string, error) {
 		routed.usePool(runner.NewPool(s.rt, s.workers, s.queue, nil))
 	}
 	// Held locally as well as on the struct: shutdown() takes the fields back
-	// to nil the moment it is called, and this goroutine outlives that.
+	// to nil as soon as the script calls it, and this goroutine outlives that.
 	server := &nethttp.Server{Handler: s.handler}
 	stopped := make(chan struct{})
 	s.server, s.stopped = server, stopped
@@ -107,7 +107,7 @@ func (s *Server) Wait() {
 
 // Shutdown is http.Server.Shutdown with a second of grace, then Close.
 //
-// It answers nothing and throws nothing: it is written into a
+// It answers nothing and throws nothing: a script writes it into a
 // register_shutdown_function callback, which runs when the script has already
 // ended and has nowhere to put a failure. Calling it twice, or without having
 // listened, is not an error either.
@@ -130,9 +130,9 @@ func (s *Server) Shutdown() {
 	}
 }
 
-// close stops the server at once, dropping everything in flight. shutdown()
-// is the one to reach for; this is for a script that answers no
-// longer matter.
+// close stops the server at once, dropping everything in flight, and returns
+// the error shutdown() swallows. To let a request in flight finish, a script
+// calls shutdown().
 func (s *Server) Close() error {
 	server, stopped := s.take()
 	if server == nil {
@@ -154,7 +154,7 @@ func (s *Server) Addr() string {
 }
 
 // take claims the running server, so that shutdown and close each stop it once
-// however often they are called and whichever of them arrives first.
+// no matter how often a script calls them or which of them arrives first.
 func (s *Server) take() (*nethttp.Server, chan struct{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

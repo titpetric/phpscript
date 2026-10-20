@@ -52,7 +52,7 @@ func isObject(value any) bool {
 
 // isFloat backs is_float and is_double. A float is the one scalar this runtime
 // holds in a single Go type, so the test is the type assertion: an integer is
-// not a float here any more than it is in php, and neither is a numeric string.
+// not a float here any more than in php, and neither is a numeric string.
 func isFloat(value any) bool {
 	_, ok := value.(float64)
 	return ok
@@ -93,16 +93,16 @@ func phpGetType(value any) string {
 func registerLang(rt *runner.Runtime) {
 	rt.SetConst("DIRECTORY_SEPARATOR", string(os.PathSeparator))
 	rt.SetConst("PATH_SEPARATOR", string(os.PathListSeparator))
-	// STDIN holds the runtime, and no reader of the moment. The constant is
-	// frozen once and a runtime can serve more than one program - a --count
-	// loop, a worker reusing its runtime - and each of those brings its own
-	// stdin. Reading through the runtime means STDIN is whatever the current
-	// session's is, the way php://output writes wherever output goes at the
-	// time, and never where it went at the moment of the handle.
+	// STDIN holds the runtime, and no reader of the moment. SetConst stores
+	// the constant once and a runtime can serve more than one program - a
+	// --count loop, a worker reusing its runtime - and each of those brings
+	// its own stdin. Reading through the runtime means STDIN is whatever the
+	// current session's is, the way php://output writes wherever output goes
+	// at the time, and never where it went at the moment of the handle.
 	rt.SetConst("STDIN", stdinStream{rt: rt})
 	// spl_autoload_register registers $callback as an autoloader, or the
 	// default spl_autoload when $callback is null or omitted; $prepend puts
-	// it first and $throw is ignored.
+	// it first and $throw does nothing.
 	rt.RegisterFunc("spl_autoload_register", func(args ...any) (bool, error) {
 		var callback any = rt.SPLAutoload
 		if len(args) > 0 && args[0] != nil {
@@ -113,12 +113,12 @@ func registerLang(rt *runner.Runtime) {
 		return true, nil
 	})
 	// spl_autoload loads $class by including the lowercased class name plus
-	// ".php" from the include path; the $file_extensions argument is accepted
-	// and ignored.
+	// ".php" from the include path; it takes the $file_extensions argument and
+	// ignores it.
 	rt.RegisterFunc("spl_autoload", func(class string, fileExtensions ...any) error {
 		return rt.SPLAutoload(class)
 	})
-	// class_exists reports whether class $class is defined, running the
+	// class_exists reports whether class $class exists, running the
 	// autoloader first unless $autoload is false.
 	rt.RegisterFunc("class_exists", func(class string, autoload ...bool) (bool, error) {
 		load := true
@@ -130,8 +130,7 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("set_include_path", rt.SetIncludePath)
 	rt.RegisterFunc("get_include_path", rt.IncludePath)
 	// get_defined_constants returns the defined constants as a name-sorted
-	// array; with $categorize true they are grouped under a single "Core"
-	// key.
+	// array; $categorize true groups them under a single "Core" key.
 	rt.RegisterFunc("get_defined_constants", func(categorize ...bool) *model.Array {
 		// The introspection shims keep returning *model.Array: their whole value
 		// is a stable, name-sorted listing, which a Go map cannot express.
@@ -153,8 +152,8 @@ func registerLang(rt *runner.Runtime) {
 		return constants
 	})
 	// get_defined_functions returns an array with "internal" and "user" lists
-	// of function names; the $exclude_disabled argument is accepted and
-	// ignored.
+	// of function names; it takes the $exclude_disabled argument and ignores
+	// it.
 	rt.RegisterFunc("get_defined_functions", func(excludeDisabled ...bool) map[string][]string {
 		internal, user := rt.DefinedFunctions()
 		return map[string][]string{"internal": internal, "user": user}
@@ -186,7 +185,7 @@ func registerLang(rt *runner.Runtime) {
 	rt.RegisterFunc("php_sapi_name", func() string {
 		return rt.SAPI()
 	})
-	// isset reports whether every argument is set and not null.
+	// isset reports whether every argument exists and differs from null.
 	rt.RegisterFunc("isset", func(args ...any) bool {
 		for _, a := range args {
 			if a == nil {
@@ -211,10 +210,10 @@ func registerLang(rt *runner.Runtime) {
 	// is_float reports whether $value is a float.
 	rt.RegisterFunc("is_float", isFloat)
 	// is_double reports whether $value is a float, php's older spelling of
-	// is_float(). Both are registered because a script written for php uses
-	// whichever its author learned.
+	// is_float(). registerLang registers both because a script written for php
+	// uses whichever its author learned.
 	rt.RegisterFunc("is_double", isFloat)
-	// gettype returns the type of $value under PHP's legacy names: "integer",
+	// gettype returns $value's type under PHP's legacy names: "integer",
 	// "double", "boolean", "string", "array", "object" or "NULL".
 	rt.RegisterFunc("gettype", phpGetType)
 	// is_string reports whether $value is a string. A binding's []byte is one,
@@ -282,13 +281,13 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return phpCallUserFuncArray(fn, args)
 	})
-	// function_exists reports whether a function named $function is defined.
+	// function_exists reports whether a function named $function exists.
 	rt.RegisterFunc("function_exists", func(name string) bool { return rt.FunctionExists(name) })
-	// is_callable reports whether $value can be called as a function; there
+	// is_callable reports whether a call can run $value as a function; there
 	// are no $syntax_only or $callable_name parameters.
 	rt.RegisterFunc("is_callable", func(value any) bool { _, ok := rt.Callable(value); return ok })
-	// PHP's exit/die takes either a status or a message: a string argument is
-	// printed and the script exits with status 0, an integer sets the status.
+	// PHP's exit/die takes either a status or a message: it prints a string
+	// argument and exits with status 0, an integer sets the status.
 	terminate := func(code ...any) (any, error) {
 		status := 0
 		if len(code) > 0 {
@@ -302,12 +301,11 @@ func registerLang(rt *runner.Runtime) {
 		}
 		return nil, rt.Exit(status)
 	}
-	// exit terminates the script; a string $status is printed before exiting
-	// with code 0, an int $status becomes the exit code.
+	// exit terminates the script; it prints a string $status before exiting
+	// with code 0, and an int $status becomes the exit code.
 	rt.RegisterFunc("exit", terminate)
-	// die terminates the script exactly like exit; a string $status is
-	// printed before exiting with code 0, an int $status becomes the exit
-	// code.
+	// die terminates the script exactly like exit; it prints a string $status
+	// before exiting with code 0, and an int $status becomes the exit code.
 	rt.RegisterFunc("die", terminate)
 }
 
@@ -320,12 +318,12 @@ func phpCallUserFuncArray(fn func(...any) (any, error), args any) (any, error) {
 	return fn(phpval.Values(args)...)
 }
 
-// phpIntval backs intval. Without a base, or with the default base 10, it is
-// the (int) cast, which phpval.Int already is for every scalar; a collection is
-// its truthiness (intval([]) is 0, intval([1, 2]) is 1), which the cast owns
-// here because phpval.Int reads a collection as 0. Any other base applies to a
-// string argument only (intval(12.9, 16) is 12) and reads it through
-// strtolInt.
+// phpIntval backs intval. Without a base, or with the default base 10, intval
+// is the (int) cast, which phpval.Int already is for every scalar; a
+// collection is its truthiness (intval([]) is 0, intval([1, 2]) is 1), which
+// the cast owns here because phpval.Int reads a collection as 0. Any other
+// base applies to a string argument only (intval(12.9, 16) is 12) and reads it
+// through strtolInt.
 func phpIntval(num any, base ...any) int64 {
 	radix := int64(10)
 	if len(base) > 0 {
@@ -371,8 +369,8 @@ func strtolInt(s string, base int64) int64 {
 		i++
 	}
 	// strtol takes a 0x prefix only when a hex digit follows; without one it
-	// reads the lone "0" and stops. Both spellings of that are 0, so the
-	// prefix is taken unconditionally here.
+	// reads the lone "0" and stops. Both spellings of that are 0, so
+	// strtolInt takes the prefix unconditionally.
 	switch {
 	case (base == 0 || base == 16) && i+1 < len(s) && s[i] == '0' && (s[i+1] == 'x' || s[i+1] == 'X'):
 		base, i = 16, i+2
@@ -384,8 +382,8 @@ func strtolInt(s string, base int64) int64 {
 			base = 8
 		}
 	}
-	// The magnitude accumulates unsigned so that -9223372036854775808 base 10
-	// still reads exactly; one digit past the bound saturates like strtol.
+	// mag accumulates unsigned so that -9223372036854775808 base 10 still
+	// reads exactly; one digit past the bound saturates like strtol.
 	var mag uint64
 	overflowed := false
 	for ; i < len(s); i++ {
@@ -425,7 +423,7 @@ func strtolInt(s string, base int64) int64 {
 }
 
 // stdinStream is the reader STDIN answers with. It resolves the runtime's
-// current stdin per read, so a session that replaced it is read from.
+// current stdin per read, so a read reaches whatever stdin the session set.
 type stdinStream struct {
 	rt *runner.Runtime
 }

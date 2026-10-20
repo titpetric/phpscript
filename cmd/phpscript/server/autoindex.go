@@ -17,7 +17,7 @@ import (
 //
 // titpetric/exp/cmd/indexer, whose layout this borrows, loads bootstrap from a
 // CDN for the same page. A directory listing that fetches a third party asset
-// tells that third party what is being browsed, and renders unstyled on a
+// tells that third party what a visitor is browsing, and renders unstyled on a
 // machine with no route out, so this one fetches nothing. There is nowhere to
 // serve a separate asset from either: the document root belongs to the site.
 const autoindexStyle = `
@@ -52,8 +52,8 @@ var imageExtensions = map[string]bool{
 // when listings are off.
 //
 // dir names the directory relative to the document root, "." for the root
-// itself. The request's own path is what the entries are linked relative to, so
-// it has to be the one carrying a trailing slash; ServeHTTP redirects first.
+// itself. Every entry links relative to the request's own path, so that path
+// has to carry a trailing slash; ServeHTTP redirects first.
 func (h *handler) serveAutoindex(w http.ResponseWriter, r *http.Request, dir string) bool {
 	if !h.autoindex {
 		return false
@@ -77,20 +77,20 @@ func (h *handler) serveAutoindex(w http.ResponseWriter, r *http.Request, dir str
 // request path of the directory, which every link is relative to, and entries
 // are what fs.ReadDir answers: already sorted by name.
 //
-// The page is built here and not with html/template. A listing is a fixed
-// shape with no user supplied markup in it, so a template buys nothing but a
-// parse and a reflect walk per request; the escaping it would do is done by
-// escapeEntry, at the only two places a name reaches the page.
+// This writes the page directly and not with html/template. A listing is a
+// fixed shape with no user supplied markup in it, so a template buys nothing
+// but a parse and a reflect walk per request; escapeEntry does the escaping it
+// would, at the only two places a name reaches the page.
 //
-// Images are both shown and listed: the thumbnail is how a folder of
-// screenshots is browsed, and the row below is where its size is.
+// Images are both shown and listed: the thumbnail is how a visitor scans a
+// folder of screenshots, and the row below is where its size is.
 func renderAutoindex(urlPath string, entries []fs.DirEntry) []byte {
 	var images, dirs, files []fs.DirEntry
 	for _, entry := range entries {
 		switch {
 		// A listing is what a site chose to publish, and a dotfile below
 		// the document root is at best noise and at worst an .htaccess or an
-		// editor's backup of a script. It is left out of the page; a request
+		// editor's backup of a script. The page leaves it out; a request
 		// that names one is still answered.
 		case strings.HasPrefix(entry.Name(), "."):
 		case entry.IsDir():
@@ -134,8 +134,8 @@ func renderAutoindex(urlPath string, entries []fs.DirEntry) []byte {
 	return out.Bytes()
 }
 
-// writeAutoindexRow writes one entry as a table row. An entry whose metadata cannot
-// be read is still listed: it is there, and a size is not why anyone came.
+// writeAutoindexRow writes one entry as a table row. An entry whose Info call
+// fails still gets a row: the entry exists, and a size is not why anyone came.
 func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 	name, href := escapeEntry(entry)
 
@@ -155,11 +155,11 @@ func writeAutoindexRow(out *bytes.Buffer, entry fs.DirEntry) {
 }
 
 // escapeEntry returns the entry's name as text in the page and as the target of
-// a link to it, both escaped for where they go. A directory is named and linked
-// with a trailing slash, so following it lands on that directory's own listing
-// and not on the redirect to it.
+// a link to it, both escaped for where they go. A directory's name and its link
+// both carry a trailing slash, so following it lands on that directory's own
+// listing and not on the redirect to it.
 //
-// The two escapings are different and both are needed: URL escaping keeps a
+// The two escapings differ and the page needs both: URL escaping keeps a
 // name holding a space or a "?" addressable, and HTML escaping keeps one
 // holding a "&" or a "<" from ending the attribute, or the document, early.
 func escapeEntry(entry fs.DirEntry) (name, href string) {

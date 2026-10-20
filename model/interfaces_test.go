@@ -157,9 +157,9 @@ func TestInterfaceContractError(t *testing.T) {
 	}
 }
 
-// TestInterfaceContractError_Error covers the message a class missing several
-// methods is reported through. The violations are joined into one string, so
-// three missing methods are one error and no three.
+// TestInterfaceContractError_Error covers the message Error builds for a class
+// missing two methods: it joins the violations into one string, so three
+// missing methods are one error and no three.
 func TestInterfaceContractError_Error(t *testing.T) {
 	t.Parallel()
 	err := &model.InterfaceContractError{Violations: []model.InterfaceViolation{
@@ -180,12 +180,12 @@ func TestInterfaceContractError_Error(t *testing.T) {
 // TestInterfaceNames covers the names `instanceof` answers an interface name
 // from: what the class declared, plus what those interfaces extend, lower-cased
 // and deduplicated. PHP compares a class name without regard to case, so the
-// list is keyed that way.
+// deduplication keys on the lower-cased name.
 //
-// A name no interface declaration defines is listed all the same. Such a class
-// is checked against nothing, because the name is a php built-in this runtime
-// does not declare, and `$a instanceof Countable` still answers what the author
-// declared.
+// InterfaceNames lists a name no interface declaration defines all the same.
+// Nothing checks such a class, because the name is a php built-in this runtime
+// does not declare, and `$a instanceof Countable` still answers what the
+// author declared.
 func TestInterfaceNames(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

@@ -26,9 +26,9 @@ var_dump(get_class($s), get_class(null));`)
 
 // TestGetClassOfAHostValue pins a divergence the field doc states: a value a Go
 // constructor returns reports its Go type name, never the constructor's
-// registered name. The two are usually the same word; where a
-// host registers "Storage" for a Go type called storage they are not, and a
-// script comparing get_class($x) === "Storage" reads false.
+// registered name. The two agree whenever the registered name matches the Go
+// type; where a host registers "Storage" for a Go type called storage they
+// differ, and a script comparing get_class($x) === "Storage" reads false.
 func TestGetClassOfAHostValue(t *testing.T) {
 	t.Parallel()
 	var out strings.Builder
@@ -67,7 +67,7 @@ var_dump(get_parent_class($s), is_subclass_of($s, "Site"), get_class($s) === "Si
 }
 
 // TestGetObjectVars covers the properties an object reads back, in the order it
-// reads them. A property named for its digits is an integer key once it is an
+// reads them. A property named for its digits becomes an integer key as an
 // array entry, so `(object) array("a", "b")` reads back as a list and a
 // foreach over the result counts from zero.
 func TestGetObjectVars(t *testing.T) {

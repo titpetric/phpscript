@@ -29,7 +29,7 @@ func Test_Issue060(t *testing.T) {
 	}
 }
 
-// The same path is reported by the linter, where an author sees it
+// The linter reports the same path, where an author sees it
 // before a request ever reaches the route.
 func Test_Issue060Lint(t *testing.T) {
 	t.Parallel()

@@ -20,7 +20,7 @@ func Run(p *Program, env *Env) (any, error) {
 
 // Slots reports the slot index assigned to each per-evaluation identifier,
 // keyed by identifier. The runner resolves its variable list against it once
-// per compiled expression; the map is read-only after compilation.
+// per compiled expression; nothing writes the map after compilation.
 func (p *Program) Slots() map[string]int {
 	return p.slots
 }

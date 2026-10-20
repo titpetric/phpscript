@@ -11,8 +11,8 @@ import (
 )
 
 // sourceTree is the read-only application an embedded or in-memory host ships.
-// It is not on disk, so a read that answers from it proves the read goes
-// through the fs.FS and never the host filesystem underneath.
+// Nothing of it sits on disk, so a read that answers from it proves the read
+// used the fs.FS and never the host filesystem underneath.
 func sourceTree() fstest.MapFS {
 	return fstest.MapFS{
 		"one.txt":          {Data: []byte("one"), ModTime: sourceModTime},
@@ -22,9 +22,9 @@ func sourceTree() fstest.MapFS {
 	}
 }
 
-// sourceModTime is stamped on one entry so filemtime has something to report
-// that only the source filesystem knows. A zero MapFS mod time is the year 1,
-// which is a valid answer and so cannot be told apart from a miss.
+// sourceModTime marks one entry so filemtime has something to report that
+// only the source filesystem knows. A zero MapFS mod time is the year 1, a
+// valid answer that reads the same as a miss.
 var sourceModTime = time.Unix(1756600000, 0)
 
 // TestGlobListsTheSourceFilesystem pins the ordinary case: patterns resolve
@@ -51,12 +51,12 @@ func TestGlobListsTheSourceFilesystem(t *testing.T) {
 	}
 }
 
-// TestGlobIsJailedToTheSourceFilesystem pins where "/" points. It is the source
+// TestGlobIsJailedToTheSourceFilesystem pins where "/" points: the source
 // filesystem's root and never the host's, so an absolute pattern names something
 // inside the tree serving the script and there is no spelling that
 // reaches past it; php would list whatever the host holds at that path, and
-// that divergence is the point. A pattern that climbs is cleaned against the
-// root, the rule every path a script passes this package follows.
+// that divergence is the point. The runtime cleans a pattern that climbs
+// against the root, the rule every path a script passes this package follows.
 func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 	t.Parallel()
 	opts := runner.Options{RootFS: sourceTree()}
@@ -81,9 +81,9 @@ func TestGlobIsJailedToTheSourceFilesystem(t *testing.T) {
 }
 
 // TestGlobOnTheHostAnswersRelativeToTheRoot covers the branch a CLI run takes,
-// where no fs.FS is bound. The matches come back from the host as paths under
-// the root directory, and PHP echoes the pattern's own shape back, so the root
-// has to come off again before the script sees them.
+// where the runtime has no fs.FS. The matches come back from the host as paths
+// under the root directory, and PHP echoes the pattern's own shape back, so
+// the root has to come off again before the script sees them.
 func TestGlobOnTheHostAnswersRelativeToTheRoot(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

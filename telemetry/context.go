@@ -5,7 +5,7 @@ import (
 )
 
 // PHP has no lexical scope a Go caller can read, so the interpreter publishes
-// the file and line it is executing into the context it hands to bindings.
+// the file and line of the statement it runs into the binding's context.
 // Spans started from such a context record that location, so
 // a span in the front end point back at the line of PHP that caused it.
 
@@ -55,8 +55,8 @@ func SpanSource(ctx context.Context) (string, int) {
 	return filename, line
 }
 
-// withSource records the source location carried by ctx on a span. A nil span
-// is returned unchanged, so the caller does not have to check.
+// withSource records the source location ctx carries on a span, and answers a
+// nil span unchanged, so the caller does not have to check.
 func withSource(ctx context.Context, span *Span) *Span {
 	if span == nil {
 		return nil

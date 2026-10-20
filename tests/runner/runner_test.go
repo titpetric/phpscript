@@ -40,7 +40,7 @@ func (*contextMethodHost) Get(ctx context.Context, query string, args ...any) (a
 	return query + ":" + fmt.Sprint(args[0]), nil
 }
 
-// run parses src, wires a tiny shim stdlib, executes, and returns the output.
+// run parses src, wires a shim stdlib, executes, and returns the output.
 func run(t *testing.T, src string) string {
 	t.Helper()
 	prog, err := parser.Parse(src)
@@ -396,7 +396,7 @@ echo $g->hello();`
 	}
 }
 
-// TestBuiltinOverride proves expr-lang builtins are disabled so a registered
+// TestBuiltinOverride proves expr-lang builtins stay off so a registered
 // PHP function may reuse a name that expr ships as a builtin (e.g. `count`).
 func TestBuiltinOverride(t *testing.T) {
 	t.Parallel()
@@ -553,11 +553,11 @@ echo outer(2) . "|" . $local;`)
 }
 
 // TestLazyEnvInstallsFunctionsOnDemand covers the environments' on-demand
-// population. A registered function is wrapped into an environment the first
-// time an expression evaluated with that environment calls it, so the places a
-// call can hide from a naive "top-level expressions only" scan are what matters:
-// a closure body, a user function body, a method body, a nested/recursive call
-// and a by-reference call.
+// population. The runtime wraps a registered function into an environment the
+// first time an expression evaluated with that environment calls it, so the
+// places a call can hide from a naive "top-level expressions only" scan are
+// what matters: a closure body, a user function body, a method body, a
+// nested/recursive call and a by-reference call.
 func TestLazyEnvInstallsFunctionsOnDemand(t *testing.T) {
 	t.Parallel()
 	src := `<?php
@@ -626,9 +626,9 @@ echo $b->render() . "|" . depth(3) . "|" . implode("-", $sizes);`
 }
 
 // TestLazyEnvSeesFunctionsRegisteredAfterPooling asserts that an environment
-// which has already been used (and returned to the free list) still resolves a
-// function registered afterwards, and picks up a replacement implementation of a
-// name it had already installed.
+// the runtime already used (and returned to the free list) still resolves a
+// function registered afterwards, and picks up a replacement implementation of
+// a name it had already installed.
 func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
 	t.Parallel()
 	warm, err := parser.Parse(`<?php echo greet("a");`)
@@ -648,8 +648,8 @@ func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
 	}
 	out.Reset()
 
-	// Registered after every environment this runtime holds has been built,
-	// used and pooled.
+	// Registered after this runtime built, used and pooled every environment
+	// it holds.
 	rt.RegisterFunc("greet", func(s string) string { return "hi " + s })
 	rt.RegisterFunc("shout", strings.ToUpper)
 	rt.RegisterFunc("nested", func() string { return "!" })
@@ -662,9 +662,9 @@ func TestLazyEnvSeesFunctionsRegisteredAfterPooling(t *testing.T) {
 }
 
 // TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList drives evaluation deeper
-// than the pooled environment free list, so environments are built, nested,
-// discarded and reused while a call to a lazily installed function is live at
-// every level.
+// than the pooled environment free list, so the runtime builds, nests,
+// discards and reuses environments while a call to a lazily installed function
+// is live at every level.
 func TestLazyEnvRecursiveEvalNestsDeeperThanTheFreeList(t *testing.T) {
 	t.Parallel()
 	got := run(t, `<?php
@@ -681,7 +681,7 @@ echo down(40);`)
 }
 
 // TestLazyEnvUndefinedFunctionStillErrors asserts the diagnostic for a call to
-// a function that is not registered: it is a runtime error, and no silent nil.
+// a function that is not registered: a runtime error, and no silent nil.
 func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
 	t.Parallel()
 	prog, err := parser.Parse(`<?php echo no_such_function(1);`)
@@ -698,7 +698,7 @@ func TestLazyEnvUndefinedFunctionStillErrors(t *testing.T) {
 // previous attempt at class metadata a mistake: a check wired into one backend
 // and not the other means the two disagree about what a program does. A
 // violated contract must be the same RuntimeException whichever engine runs it,
-// raised before any output is produced.
+// raised before the program prints anything.
 func TestInterfaceContractRaisesOnBothBackends(t *testing.T) {
 	t.Parallel()
 	prog, err := parser.Parse(`<?php

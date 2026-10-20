@@ -1,17 +1,17 @@
 # Control structures
 
-| PHP language-reference feature | Status                | Notes                                                                                                               |
-|--------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------|
-| `if`, `elseif`, `else`         | Compatibility         | Brace-delimited branches are supported.                                                                             |
-| `while`, `for`, `foreach`      | Compatibility         | Brace-delimited loops are supported, including `foreach ($a as &$v)`.                                               |
-| `do-while`                     | Compatibility         | The body runs before the condition is first checked; `break` and `continue` behave as in the other loops.           |
-| `switch`                       | Compatibility         | Case fallthrough and `break` are supported.                                                                         |
-| `break`, `continue`            | Partial compatibility | Only the nearest loop/switch can be targeted; numeric levels are unavailable.                                       |
-| `return`                       | Compatibility         | A value is optional.                                                                                                |
-| `include`, `require`           | Compatibility         | All four keywords run, and the `*_once` pair executes a file only when it has not run yet.                          |
-| `declare`                      | Parsed, ignored       | Directives are read and dropped; a block form runs its body. See [Basic syntax](../basic-syntax/README.md#declare). |
-| `goto`, alternate syntax       | Not implemented       | These PHP control structures are a parse error.                                                                     |
-| Parenthesis-free conditions    | phpscript extension   | `if $value {}` and `foreach $items as $item {}` are accepted.                                                       |
+| PHP language-reference feature | Status                | Notes                                                                                                                     |
+|--------------------------------|-----------------------|---------------------------------------------------------------------------------------------------------------------------|
+| `if`, `elseif`, `else`         | Compatibility         | Brace-delimited branches run.                                                                                             |
+| `while`, `for`, `foreach`      | Compatibility         | Brace-delimited loops run, including `foreach ($a as &$v)`.                                                               |
+| `do-while`                     | Compatibility         | The body runs before the condition is first checked; `break` and `continue` behave as in the other loops.                 |
+| `switch`                       | Compatibility         | Cases fall through until `break`.                                                                                         |
+| `break`, `continue`            | Partial compatibility | Each targets the nearest loop/switch only; numeric levels are unavailable.                                                |
+| `return`                       | Compatibility         | A value is optional.                                                                                                      |
+| `include`, `require`           | Compatibility         | All four keywords run, and the `*_once` pair executes a file only when it has not run yet.                                |
+| `declare`                      | Parsed, ignored       | The parser drops a directive it reads; a block form runs its body. See [Basic syntax](../basic-syntax/README.md#declare). |
+| `goto`, alternate syntax       | Not implemented       | These PHP control structures are a parse error.                                                                           |
+| Parenthesis-free conditions    | phpscript extension   | The parser accepts `if $value {}` and `foreach $items as $item {}`.                                                       |
 
 ## Conditions
 
@@ -25,7 +25,7 @@ if ($foo) {
 }
 ```
 
-An `if` body must be wrapped in braces. Prefer parentheses for PHP-portable source; phpscript also accepts `if $foo { ... }`.
+An `if` body requires braces. Prefer parentheses for PHP-portable source; phpscript also accepts `if $foo { ... }`.
 
 ## Loops
 
@@ -55,4 +55,4 @@ do {
 
 ## Switch
 
-Cases fall through until `break`, matching PHP. Both `case value:` and `case value;` separators are accepted.
+Cases fall through until `break`, matching PHP. The parser accepts both `case value:` and `case value;` separators.

@@ -38,9 +38,9 @@ func (c carrierThrough) Value(key any) any {
 }
 
 // TestSpanSource covers the source location a span records. PHP has no lexical
-// scope a Go caller can read, so the interpreter publishes the file and line it
-// is executing into the context a binding runs under. An empty filename and a
-// line at or below zero are dropped on the way in, so a span never records a
+// scope a Go caller can read, so the interpreter publishes the file and line of
+// the statement it runs into the context a binding runs under. The write drops
+// an empty filename and a line at or below zero, so a span never records a
 // location of "" or 0 as though a PHP frame had published it.
 func TestSpanSource(t *testing.T) {
 	t.Parallel()
@@ -89,8 +89,8 @@ func TestSpanSource(t *testing.T) {
 }
 
 // TestWithSpanFilename covers the location reaching a span. A binding
-// instruments without naming a file, so the file the interpreter published and
-// the line beside it are copied onto every span started from that context.
+// instruments without naming a file, so every span started from that context
+// carries the file the interpreter published and the line beside it.
 func TestWithSpanFilename(t *testing.T) {
 	t.Parallel()
 	tracer := newRecordingTracer(t)

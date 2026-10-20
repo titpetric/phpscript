@@ -16,9 +16,9 @@ const VirtualHostConfigFile = "phpscript.yml"
 // sites.
 var tenantKeys = []string{"server", "virtualhost"}
 
-// tenantKeysOwner completes the sentence a rejected tenant key is reported
-// with. It is a whole clause and no word because the message is
-// documented verbatim in docs/configuration.md.
+// tenantKeysOwner completes the sentence that reports a rejected tenant key.
+// A whole clause and no word, because docs/configuration.md records the
+// message verbatim.
 const tenantKeysOwner = "is set by the operator, not by the site"
 
 // VirtualHost routes a set of domains to an application root. The operator owns
@@ -31,23 +31,23 @@ type VirtualHost struct {
 	// recorder, no matter which name a request arrived under. The usual case
 	// is a bare domain and its www form, "example.com www.example.com".
 	//
-	// The first name is the site's own, the one it is reported under.
+	// The first name is the site's own, the one every error names it by.
 	Domain string `yaml:"domain"`
 
 	// Root is the application root, the directory holding the site's
 	// phpscript.yml.
 	Root string `yaml:"root"`
 
-	// DocumentRoot is the directory under Root served over HTTP. It defaults
-	// to public and rarely needs setting: it is here for a site whose tree
-	// already names that directory something else, and no field an operator is
-	// expected to fill in.
+	// DocumentRoot is the directory under Root served over HTTP. The default
+	// is public and rarely needs setting: the key covers a site whose tree
+	// already names that directory something else, and no operator has to
+	// fill it in.
 	DocumentRoot string `yaml:"document_root"`
 }
 
 // Normalize rewrites Domain as the list Domains returns, so an entry carries
-// the names a Host header is compared against, and not the spelling the
-// operator used.
+// the names the router compares a Host header against, and not the spelling
+// the operator used.
 func (v VirtualHost) Normalize() VirtualHost {
 	v.Domain = strings.Join(v.Domains(), " ")
 	return v
@@ -67,9 +67,9 @@ func (v VirtualHost) Domains() []string {
 	return domains
 }
 
-// Name is the first name the entry lists. It is what the site is reported under
-// in errors and in the names of the modules it registers, so that a site
-// answering to several names is still one identifiable site.
+// Name is the first name the entry lists. Errors and the modules the site
+// registers all carry it, so a site answering to four names stays one
+// identifiable site.
 func (v VirtualHost) Name() string {
 	domains := v.Domains()
 	if len(domains) == 0 {
@@ -109,7 +109,7 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	result.VirtualHost = nil
 
 	// The operator's entry wins, because where a site sits on disk is the
-	// operator's call. public is the default and config.yml carries it; the
+	// operator's call. public is the default and `config.yml` carries it; the
 	// literal here only covers a Config assembled in Go without it.
 	documentRoot := v.DocumentRoot
 	if documentRoot == "" {
@@ -123,11 +123,11 @@ func (v VirtualHost) load(base Config) (Config, map[string]any, error) {
 	return result, declared, nil
 }
 
-// ValidateVirtualHosts checks the whole list before any site is built, so a
-// bad entry fails the server and not one request. Every entry is loaded
-// here, because the document root and the telemetry block two of the checks
+// CheckVirtualHosts checks the whole list before the server builds a site,
+// so a bad entry fails the server and not one request. The check loads every
+// entry, because the document root and the telemetry block two of the checks
 // need come from the site's phpscript.yml and not from the entry.
-func (c Config) ValidateVirtualHosts() error {
+func (c Config) CheckVirtualHosts() error {
 	if len(c.VirtualHost) == 0 {
 		return nil
 	}
@@ -170,7 +170,7 @@ func (c Config) ValidateVirtualHosts() error {
 		// A server the site got wrong fails startup and not the first
 		// delivery, which on a site whose only sender is a @schedule job is
 		// the middle of the night on the one path nobody is watching.
-		if err := loaded.Mail.Validate(filepath.Join(host.Root, VirtualHostConfigFile)); err != nil {
+		if err := loaded.Mail.Check(filepath.Join(host.Root, VirtualHostConfigFile)); err != nil {
 			return fmt.Errorf("virtualhost %q: %w", name, err)
 		}
 
@@ -185,7 +185,7 @@ func (c Config) ValidateVirtualHosts() error {
 		// The platform mounts its dashboard on the root router, which shadows
 		// that path prefix on every host, so a site that names the same
 		// path gets a dashboard nothing can reach. A site that names no path
-		// of its own gets none and is left alone.
+		// of its own gets none, and this check passes it over.
 		if c.Telemetry.Enabled && Declares(declared, "telemetry", "path") && loaded.Telemetry.Path == c.Telemetry.Path {
 			return fmt.Errorf("virtualhost %q: telemetry path %q is the path the server mounts its own dashboard on", name, loaded.Telemetry.Path)
 		}
@@ -194,10 +194,10 @@ func (c Config) ValidateVirtualHosts() error {
 	return nil
 }
 
-// ValidateRoot checks a single application root the way ValidateVirtualHosts
+// CheckRoot checks a single application root the way CheckVirtualHosts
 // checks an entry: fs.Sub does not stat, so a missing document root is
 // otherwise a 404 on the first request.
-func (c Config) ValidateRoot(root string) error {
+func (c Config) CheckRoot(root string) error {
 	if err := statDir(root); err != nil {
 		return fmt.Errorf("root: %w", err)
 	}

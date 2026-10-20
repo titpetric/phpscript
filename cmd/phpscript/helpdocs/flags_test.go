@@ -6,9 +6,9 @@ import (
 	"github.com/titpetric/phpscript/cmd/phpscript/helpdocs"
 )
 
-// TestNewFlagSet covers the set the help is rendered from: it is named for
-// what it holds, it starts empty, and a flag added to it is readable through
-// the four fields the flag table prints.
+// TestNewFlagSet covers the set the help renders from: the name says what it
+// holds, the set starts empty, and the flag table reads a flag added to it
+// through its four fields.
 func TestNewFlagSet(t *testing.T) {
 	t.Parallel()
 	var fs *helpdocs.FlagSet = helpdocs.NewFlagSet("test")

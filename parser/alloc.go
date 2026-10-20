@@ -13,20 +13,20 @@ import (
 // See docs/allocation-performance.md rules 6 and 7.
 //
 //   - nodeChunk carves nodes of one concrete type out of a backing array.
-//     Every node keeps its own address, is handed out exactly once and is
-//     never reset or reused, so pointer identity is preserved, which
+//     Every node keeps its own address, leaves the chunk exactly once and
+//     takes no reset and no reuse, so pointer identity holds, which
 //     runner.compileExpr relies on for its map[model.Expr]*compiledExpr cache.
 //     The trade is retention: a chunk stays reachable while any node in it
-//     does. That costs nothing here because the AST is retained as a whole
-//     (a *model.Program), and a failed parse drops all of it at once.
+//     does. That costs nothing here because one *model.Program holds the whole
+//     AST, and a failed parse drops every node at once.
 //
 //   - scratch is a per-type stack collecting the children of a node
 //     whose count is only known once parsed (call arguments, statement
 //     bodies, parameters, array items). Pushing onto the shared stack and
 //     copying out once produces one exactly-sized allocation per list, in place
-//     of the 1->2->4->8 growth of appending to a nil slice. It is re-entrant:
-//     nested lists push and pop above the outer mark, so the outer elements
-//     stay contiguous.
+//     of the 1->2->4->8 growth of appending to a nil slice. The stack is
+//     re-entrant: nested lists push and pop above the outer mark, so the outer
+//     elements stay contiguous.
 
 const (
 	nodeChunkMin = 16
@@ -88,9 +88,9 @@ func (s *scratch[T]) drop(mark int) { s.buf = s.buf[:mark] }
 // ---------------------------------------------------------------------------
 // Node constructors
 //
-// One per chunked node type. Chunk memory is zeroed by make, and every node is
-// handed out once, so a constructor that leaves a field unset is equivalent to
-// a composite literal that omits it.
+// One per chunked node type. make zeroes chunk memory, and every node leaves
+// the chunk once, so a constructor that leaves a field unset matches a
+// composite literal that omits it.
 // ---------------------------------------------------------------------------
 
 func (p *parser) newVar(name string) *model.Var {

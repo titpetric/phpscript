@@ -52,8 +52,8 @@ func TestNoJSONFlagConstants(t *testing.T) {
 	}
 }
 
-// $flags is accepted and ignored, as json_decode accepts $depth and $flags, so
-// a literal one changes nothing.
+// json_encode takes $flags and ignores it, as json_decode takes $depth and
+// $flags, so a literal one changes nothing.
 func TestJSONEncodeIgnoresFlags(t *testing.T) {
 	t.Parallel()
 	tests := []string{
@@ -70,8 +70,9 @@ func TestJSONEncodeIgnoresFlags(t *testing.T) {
 	}
 }
 
-// A JSON_* name is not defined, so it raises before json_encode is called.
-// phpscript lint reports it first: the argument changes nothing.
+// A JSON_* name is not defined, so the constant lookup raises before
+// json_encode runs. phpscript lint reports it first: the argument changes
+// nothing.
 func TestJSONFlagConstantThrows(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php try { echo json_encode(array(1), JSON_PRETTY_PRINT); } catch (Exception $e) { echo $e->getMessage(); }`)
@@ -80,8 +81,8 @@ func TestJSONFlagConstantThrows(t *testing.T) {
 	}
 }
 
-// A forward slash is written as itself, which is Go's behaviour and legal
-// JSON. php escapes it unless JSON_UNESCAPED_SLASHES is passed.
+// The encoder writes a forward slash as itself, which is Go's behaviour and
+// legal JSON. php escapes it unless the caller passes JSON_UNESCAPED_SLASHES.
 func TestJSONEncodeDoesNotEscapeSlashes(t *testing.T) {
 	t.Parallel()
 	got := runPHP(t, `<?php echo json_encode(array("path" => "a/b"));`)
@@ -94,9 +95,9 @@ func TestJSONEncodeDoesNotEscapeSlashes(t *testing.T) {
 }
 
 // TestJSONEncoder covers the one difference between this encoder and Go's: the
-// value handed to it is a PHP value, so a *model.Array converts the way
-// json_encode() converts one. A stream is required, because fopen() answers
-// false for a file it could not open and false is no stream.
+// encoder takes a PHP value, so a *model.Array converts the way json_encode()
+// converts one. NewJSONEncoder needs a stream, because fopen() answers false
+// for a file it could not open and false is no stream.
 func TestJSONEncoder(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -121,9 +122,10 @@ func TestJSONEncoder(t *testing.T) {
 }
 
 // TestJSONEncoder_Encode covers the key order a PHP array keeps through the
-// stream. encoding/json sorts a Go map's keys; an array is written in the order
-// the script set them, so a row encoded for a client reads back in assembly
-// order. Every value ends with a newline, separating one from the next.
+// stream. encoding/json sorts a Go map's keys; the encoder writes an array in
+// the order the script set its keys, so a row encoded for a client reads back
+// in assembly order. Every value ends with a newline, separating one from the
+// next.
 func TestJSONEncoder_Encode(t *testing.T) {
 	t.Parallel()
 	var out bytes.Buffer
@@ -149,7 +151,7 @@ func TestJSONEncoder_Encode(t *testing.T) {
 }
 
 // TestJSONEncoder_SetIndent covers json.Encoder.SetIndent reaching a script:
-// each value is written across several lines, $indent per level under $prefix.
+// the encoder breaks each value across lines, $indent per level under $prefix.
 // Two empty strings go back to one line per value.
 func TestJSONEncoder_SetIndent(t *testing.T) {
 	t.Parallel()
@@ -180,7 +182,7 @@ func TestJSONEncoder_SetIndent(t *testing.T) {
 	}
 }
 
-// TestJSONDecoder covers UseNumber being on, as it is in json_decode(): a whole
+// TestJSONDecoder covers UseNumber being on, as json_decode() has it: a whole
 // number decodes to an int and a fractional one to a float, so the 7 in a
 // document does not come back as 7.0.
 func TestJSONDecoder(t *testing.T) {

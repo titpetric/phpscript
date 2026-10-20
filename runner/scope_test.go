@@ -61,8 +61,8 @@ func TestScope_Unset(t *testing.T) {
 }
 
 // TestScope_DefinedVars covers what get_defined_vars() reports. An interpreter
-// bookkeeping slot takes a double-underscore prefix and is left out, and so is
-// `this`: the call binds it and no body declares it, so php leaves it out. A
+// bookkeeping slot takes a double-underscore prefix and drops out, and `this`
+// with it: the call binds it and no body declares it, so php leaves it out. A
 // static-bound name reports the value in its persistent bag.
 func TestScope_DefinedVars(t *testing.T) {
 	t.Parallel()
@@ -79,8 +79,8 @@ func TestScope_DefinedVars(t *testing.T) {
 }
 
 // TestScope_Defer covers the callbacks a frame runs on return. PHP has no
-// defer; this runtime does, and the order is last in, first out, so a release
-// registered after an acquire runs before it.
+// defer; this runtime does, and the order is last in, first out, so the
+// callback registered second runs first.
 func TestScope_Defer(t *testing.T) {
 	t.Parallel()
 	scope := NewScope()

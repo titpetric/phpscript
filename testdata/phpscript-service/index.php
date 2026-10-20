@@ -2,9 +2,9 @@
 
 // @route GET /
 
-// The same API as testdata/phpscript-http-bridge/server.php, written the way a
-// phpscript application is written: one file per endpoint, the annotation above
-// is the routing table, and the request arrives in the superglobals. Nothing
+// The same API as testdata/phpscript-http-bridge/server.php, in the shape a
+// phpscript application takes: one file per endpoint, the annotation above as
+// the whole routing table, and the request in the superglobals. Nothing
 // here builds a router or holds a handler.
 //
 // This is Path A, a runtime per request. The bridge is Path B, workers forked

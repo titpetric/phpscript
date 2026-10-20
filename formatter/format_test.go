@@ -368,8 +368,8 @@ func TestPathsReturnsChangedFilesAndSkipsTemplates(t *testing.T) {
 }
 
 // A directory of PHP holds code phpscript does not support yet. Formatting the
-// rest of it is more useful than stopping at the first file that does not
-// parse, so an unreadable file is reported and left alone.
+// rest serves an author better than stopping at the first file that does not
+// parse, so the formatter reports an unreadable file and leaves it untouched.
 func TestPathsSkipsFilesItCannotFormat(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
@@ -530,7 +530,7 @@ $indexed = $handlers[0](...);
 func TestFirstClassCallableIsNotACall(t *testing.T) {
 	t.Parallel()
 	// A zero-argument call and the callable that names it print differently,
-	// and the spelling is recorded on the node for that.
+	// the node carries the spelling for that reason.
 	out, err := formatter.Source("<?php\n$a = greet();\n$b = greet(...);\n")
 	if err != nil {
 		t.Fatal(err)
@@ -686,7 +686,7 @@ readonly final class Both {
 		"final class Sealed {",
 		"abstract class Base {",
 		"readonly class Frozen {",
-		// Modifiers are normalised to PHP's canonical order.
+		// The printer puts modifiers in PHP's canonical order.
 		"final readonly class Both {",
 	} {
 		if !strings.Contains(out, want) {

@@ -1,0 +1,26 @@
+# The abbreviations that are also identifiers in this repository: the config
+# package, config/config.yml, $config, config(), the info command, the /info
+# route, impl, perf, repo.
+#
+# A backtick, a slash, a dollar or a double quote before the word exempts it. A
+# slash makes the word a path or a route, `stdlib/info` and `/info`; a dollar
+# makes it a PHP variable, `$config`; a double quote makes it a string, which
+# is the one spelling a `//go:embed` directive can carry. Citing a symbol in
+# backticks works in markdown, in a Go doc comment and in a PHP comment alike,
+# and a package clause takes it too: `// Package `config` defines ...` passes
+# both this rule and splint's godoc/format.
+#
+# vale's TokenIgnores only reaches markup formats, and a source file arrives as
+# comments extracted to plain text, so the guard lives in the pattern:
+# `[^\x60]` consumes one character and refuses to match where that character is
+# a backtick. vale's engine has no lookbehind, which is why the guard is part
+# of the match and the reported text carries the character before the word.
+# `exceptions` is no help here: the existence extension point ignores it.
+#
+# Abbreviation.yml holds the rest, the ones no identifier collides with.
+extends: existence
+message: "Write %s out, or cite the symbol in backticks."
+level: error
+ignorecase: false
+raw:
+  - '[^`/$"]\b(config|configs|info|impl|perf|repo|repos)\b'

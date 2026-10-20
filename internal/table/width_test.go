@@ -37,7 +37,7 @@ func TestStrip(t *testing.T) {
 }
 
 // TestTruncate covers the cut a cell wider than its column takes: the result
-// measures the column width, and a string already inside it is left alone.
+// measures the column width, and a string already that narrow comes back whole.
 func TestTruncate(t *testing.T) {
 	t.Parallel()
 	if got, want := Truncate("abcdef", 3), "abc"; got != want {

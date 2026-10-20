@@ -8,17 +8,17 @@ import (
 // trace of the request that is running: the scoreboard state, the entrypoint
 // it resolved to, and one span per include, call or template.
 //
-// It is not a recorder. The host platform registers one, and the tracing
-// middleware that recorder installs is what puts a trace in the request
-// context; this type only writes onto it. That is why interpreter work shows
-// up on the platform's debug front end without phpscript mounting one.
+// This is no recorder. The host platform registers one, and the tracing
+// middleware that recorder installs puts a trace in the request context; this
+// type writes onto it and nothing more. So interpreter work shows up on the
+// platform's debug front end without phpscript mounting one.
 type Module struct {
 	tracer *Tracer
 }
 
 // NewModule returns an observer recording into tracer, which is the tracer the
-// host recorder built. A nil tracer is valid and means nothing is recorded:
-// every call below is nil safe, so instrumented code runs unchanged either way.
+// host recorder built. A nil tracer is valid and records nothing: every call
+// below is nil safe, so instrumented code runs unchanged either way.
 func NewModule(tracer *Tracer) *Module {
 	return &Module{tracer: tracer}
 }

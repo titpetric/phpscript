@@ -65,7 +65,7 @@ func (a *Array) Reset() {
 	clear(a.values)
 	// The sentinel, not 0, is what makes the claim above true: a reset array
 	// that held an integer key would otherwise append at 0 where a fresh one
-	// appends from the first key it is given.
+	// appends from the first key the caller sets.
 	a.nextID = noIntKey
 }
 
@@ -73,8 +73,7 @@ func (a *Array) Reset() {
 func (a *Array) isList() bool { return a.values == nil }
 
 // promote switches the array from list mode to map mode, materialising the
-// implicit integer keys. It is the only place the map and the key slice are
-// allocated.
+// implicit integer keys. No other code creates the map or the key slice.
 //
 // The empty case reuses the list's backing array as the key slice, so a
 // presized array whose first key is a string (json_decode of an object, the
@@ -159,10 +158,10 @@ func (a *Array) Get(key any) (any, bool) {
 }
 
 // Delete removes key, preserving the order of the entries around it (PHP's
-// unset). A list-mode array is promoted first: dropping an element from the
-// middle would leave the remaining keys sparse, which list mode cannot express,
-// and dropping the last one would still leave nextID past the end, which is
-// also what PHP does, since unset never renumbers.
+// unset). A list-mode array promotes itself first: dropping an element from
+// the middle would leave the remaining keys sparse, which list mode cannot
+// express, and dropping the last one would still leave nextID past the end,
+// which is also what PHP does, since unset never renumbers.
 func (a *Array) Delete(key any) {
 	if a.isList() {
 		i, ok := key.(int64)
@@ -203,8 +202,8 @@ func (a *Array) Pop() (any, any, bool) {
 	key := keys[len(keys)-1]
 	value, _ := a.Get(key)
 	a.Delete(key)
-	// The sentinel is excluded and never decremented: an array holding an
-	// integer key has had the index set, so the two cannot both be true, and
+	// The guard excludes the sentinel and never decrements it: an array holding
+	// an integer key has had the index set, so the two cannot both be true, and
 	// nextID-1 on the sentinel would wrap.
 	if i, ok := key.(int64); ok && a.nextID != noIntKey && i == a.nextID-1 {
 		a.nextID = i
@@ -251,7 +250,7 @@ func (a *Array) Range(fn func(key, val any) bool) {
 }
 
 // Map returns the array as a string-keyed map for Go APIs that accept named
-// values. PHP integer keys are represented by their decimal string form.
+// values. A PHP integer key becomes its decimal string form.
 func (a *Array) Map() map[string]any {
 	if a.isList() {
 		result := make(map[string]any, len(a.list))

@@ -34,7 +34,7 @@ func (o *Object) SetID(id string) {
 	o.ID = id
 }
 
-// SetProp writes a property, recording the name the first time it is seen.
+// SetProp writes a property, recording the name on its first write.
 // Assigning over a property that is already set leaves its position alone,
 // as PHP does.
 func (o *Object) SetProp(name string, v any) {
@@ -53,10 +53,9 @@ func (o *Object) Prop(name string) (any, bool) {
 	return v, ok
 }
 
-// DeleteProp removes a property. A declared field that is assigned again after
-// this returns to its declared position, because Names reads the declarations
-// first; a dynamic one is appended and lands at the end. Both are PHP's
-// behaviour.
+// DeleteProp removes a property. A later write to a declared field returns it
+// to its declared position, because Names reads the declarations first; SetProp
+// appends a dynamic one, which lands at the end. Both are PHP's behaviour.
 func (o *Object) DeleteProp(name string) {
 	if _, ok := o.Props[name]; !ok {
 		return
@@ -70,7 +69,7 @@ func (o *Object) DeleteProp(name string) {
 	}
 }
 
-// Len is how many properties are set.
+// Len counts the properties the object holds.
 func (o *Object) Len() int {
 	return len(o.Props)
 }
@@ -106,8 +105,8 @@ func (o *Object) Names() []string {
 	return out
 }
 
-// appendUnrecorded adds the properties Names did not reach, sorted, so that a
-// direct Props write is reported in a stable order and never a random one.
+// appendUnrecorded adds the properties Names did not reach, sorted, so Names
+// reports a direct Props write in a stable order and never a random one.
 func (o *Object) appendUnrecorded(out []string) []string {
 	have := make(map[string]bool, len(out))
 	for _, name := range out {

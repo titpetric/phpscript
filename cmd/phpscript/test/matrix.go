@@ -32,7 +32,7 @@ type matrixCell struct {
 // matrixRow is a fixture and its cell per runner, in opts.runners() order.
 // Metrics are the default runtime's: a row has one cost column and three
 // runners, so the matrix compares correctness across runners and cost on the
-// runtime the other two are measured against. Per-runner cost stays in --json.
+// runtime the other two measure against. Per-runner cost stays in --json.
 type matrixRow struct {
 	DisplayPath string
 	Label       string
@@ -67,8 +67,8 @@ func (r matrixRow) Failed() bool {
 }
 
 // runMatrix runs every fixture through every runner and reports the number of
-// failed fixtures. A fixture opted out of a runner, or a runner missing from
-// the machine, is skipped and never failed.
+// failed fixtures. It skips a fixture opted out of a runner, or a runner
+// missing from the machine, and counts neither as a failure.
 func runMatrix(ctx context.Context, groups []fixtureGroup, opts Options, report io.Writer) int {
 	var sinks teeMatrixTable
 	if !opts.JSON && opts.Verbose {

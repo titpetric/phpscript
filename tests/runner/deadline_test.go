@@ -29,8 +29,8 @@ func runLimited(t testing.TB, ctx context.Context, src string) (string, error) {
 	return out.String(), runErr
 }
 
-// TestTimeLimitEndsALoop is the whole of set_time_limit: a script that would
-// not stop on its own is stopped, and told why.
+// TestTimeLimitEndsALoop is the whole of set_time_limit: the runtime stops a
+// script that would not stop on its own, and tells it why.
 func TestTimeLimitEndsALoop(t *testing.T) {
 	t.Parallel()
 	started := time.Now()
@@ -213,8 +213,8 @@ while (true) { $n = 1; }
 }
 
 // TestEnterRequestScopesTheConnection covers what HTTP\Mux does per handler:
-// the connection being answered is the one connection_aborted reports on, and
-// the previous one comes back afterwards.
+// the connection a handler answers is the one connection_aborted reports on,
+// and the previous one comes back afterwards.
 func TestEnterRequestScopesTheConnection(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})
@@ -268,8 +268,8 @@ func TestTimeLimitEndsAnEmptyLoop(t *testing.T) {
 }
 
 // TestTimeLimitHoldsPastAnAbortBeingIgnored is the contract SetIgnoreUserAbort
-// documents: ignoring the client is not permission to run forever. The limit
-// is unreachable once the host context has been cancelled without this, because
+// documents: ignoring the client is not permission to run forever. Without
+// this, the limit is unreachable once the host cancels its context, because
 // the cause reads off that context.
 func TestTimeLimitHoldsPastAnAbortBeingIgnored(t *testing.T) {
 	t.Parallel()
@@ -380,8 +380,8 @@ func TestDeadlineStillHoldsAfterAShutdownPass(t *testing.T) {
 }
 
 // TestSetTimeLimitKeepsTheContextABindingHolds is the server case directly: the
-// context is built once and a limit is a timer on it, because rebuilding it
-// ends whatever is parked on it.
+// runtime builds the context once and a limit is a timer on it, because
+// rebuilding it ends whatever parks on it.
 func TestSetTimeLimitKeepsTheContextABindingHolds(t *testing.T) {
 	t.Parallel()
 	rt := runner.New(io.Discard, runner.Options{})

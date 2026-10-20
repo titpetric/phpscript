@@ -6,8 +6,8 @@ import (
 
 // Unmarshal reads a YAML document into target.
 //
-// Every configuration this tree reads is decoded here, the ones a test writes
-// inline included. The field tags on the structs of this package are one
+// This function decodes every configuration the tree reads, the ones a test
+// writes inline included. The field tags on the structs of this package are one
 // library's dialect, and a second decoder reading them would have to agree
 // with it on what a bare 0640 and a 2M mean; one door keeps that from being
 // two settings.

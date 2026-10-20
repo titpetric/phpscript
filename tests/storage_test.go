@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestRecord covers the struct a Get answers with. Both fields are exported,
+// TestRecord covers the struct a Get answers with. Record exports both fields,
 // so runner.helperGet reads `$rec->key` off them by reflection; an unexported
 // field would be invisible to a script.
 func TestRecord(t *testing.T) {

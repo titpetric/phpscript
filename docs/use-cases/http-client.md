@@ -1,8 +1,8 @@
 # HTTP client bindings
 
-The standard runtime registers the Go-backed `HTTP\Client` and `HTTP\Request` classes. They are what a script calls where PHP has the `curl_*` family, which phpscript does not implement.
+The standard runtime registers the Go-backed `HTTP\Client` and `HTTP\Request` classes. They are what a script calls where PHP has the `curl_*` family, which [Design decisions](../design.md#wont-build) refuses.
 
-A request is a `net/http` request handed straight over, so a script reads and writes it the way Go names it. A response is a facade, because its body is read in full before the script sees it.
+A request is a `net/http` request handed straight over, so a script reads and writes it the way Go names it. A response is a facade, because the runtime reads its body in full before the script sees it.
 
 ## Create a client
 
@@ -36,7 +36,7 @@ $client = new HTTP\Client(array(
 
 A client always has a timeout. No spelling turns it off, because a request with no deadline is the one failure a script cannot recover from.
 
-An unrecognised key throws, so a typo is reported where it is written, ahead of a request going out without it:
+An unrecognised key throws, so the constructor reports a typo where the script writes it, ahead of a request going out without it:
 
 ```php
 new HTTP\Client(array("timeuot" => 5));   // throws: unknown option "timeuot"
@@ -60,7 +60,7 @@ $request->header->set("Content-Type", "application/json");
 $response = $client->send($request);
 ```
 
-HTTP methods are written uppercase. A lowercase one is corrected before the request goes out, because a server treats the method as case-sensitive.
+A script writes HTTP methods uppercase. The request constructor uppercases a lowercase one before the request goes out, because a server treats the method as case-sensitive.
 
 `send()` throws on a transport failure or a timeout. An HTTP error status is not a failure, so check the status:
 
@@ -94,19 +94,19 @@ Everything `net/http` exports on a request is reachable, so there is one vocabul
 
 ## Read a response
 
-| Method          | Returns                                                              |
-|-----------------|----------------------------------------------------------------------|
-| `status()`      | The status code as an int, `0` when no response arrived              |
-| `ok()`          | Whether a response arrived with a 2xx status                         |
-| `err()`         | Why the request failed, or an empty string                           |
-| `body()`        | The body as a string                                                 |
-| `header($name)` | One response header, matched case-insensitively                      |
-| `headers()`     | Every response header as an array                                    |
-| `json()`        | The body decoded into arrays and scalars; throws when it is not JSON |
+| Method          | Returns                                                             |
+|-----------------|---------------------------------------------------------------------|
+| `status()`      | The status code as an int, `0` when no response arrived             |
+| `ok()`          | Whether a response arrived with a 2xx status                        |
+| `err()`         | Why the request failed, or an empty string                          |
+| `body()`        | The body as a string                                                |
+| `header($name)` | One response header, matched case-insensitively                     |
+| `headers()`     | Every response header as an array                                   |
+| `json()`        | The body decoded into arrays and scalars; throws on a non-JSON body |
 
-The body is read in full when the response is constructed, under a fixed ceiling. A script has no way to close a stream, so an unread body would leak its connection when the request ended.
+The response reads the body in full on construction, under a fixed ceiling. A script has no way to close a stream, so an unread body would leak its connection when the request ended.
 
-## Send several requests at once
+## Send requests in parallel
 
 `parallel()` takes an array of requests keyed by a name the script chooses, and returns the responses under those names. A page making three calls waits for the slowest of them:
 
@@ -142,7 +142,7 @@ $results["offline"]->status();  // 0, no response arrived
 $results["offline"]->err();     // the transport error, ending in "connection refused"
 ```
 
-`parallel()` throws when the argument is not an array of `HTTP\Request`, which is reported before any connection is opened. Each request is bounded by the client's timeout, and the client's headers and `base_url` apply to all of them.
+`parallel()` throws before opening any connection when the argument is not an array of `HTTP\Request`. The client's timeout bounds each request, and the client's headers and `base_url` apply to every one of them.
 
 ## A page that calls an API
 
@@ -177,7 +177,7 @@ foreach ($response->json() as $user) {
 }
 ```
 
-A transport failure throws and an error status does not, so both are handled, and neither leaves the page rendering a half-built list.
+A transport failure throws and an error status does not, so the route handles both, and neither leaves the page rendering a half-built list.
 
 ## Tracing
 

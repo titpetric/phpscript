@@ -18,7 +18,7 @@ import (
 // Collector accumulates statement execution counts, keyed by the statement
 // nodes the parser produced.
 //
-// A program is registered before it runs, seeding every executable statement at
+// Register runs before the program does, seeding every executable statement at
 // count zero under the filename it loads from. The entrypoint and every
 // include register, so the files in a profile are the files get_included_files
 // reports, and an included-but-unexecuted statement still appears, at zero.
@@ -75,7 +75,7 @@ func New() *Collector {
 }
 
 // Register seeds every executable statement of program at count zero under
-// filename. Declarations are not executable and are skipped; their bodies'
+// filename. A declaration does not execute, so Register skips it; its body's
 // statements carry spans of their own. A statement already registered keeps its
 // count, so re-including a cached program does not reset it.
 func (c *Collector) Register(filename string, program *model.Program) {
@@ -97,8 +97,8 @@ func (c *Collector) Register(filename string, program *model.Program) {
 
 // registerFuncs records the span of every declared function body: free
 // functions from the statement list, methods from class declarations, named or
-// anonymous. An abstract method declares no body and spans nothing to charge,
-// so it is skipped. Interfaces declare only signatures and are skipped whole.
+// anonymous. An abstract method has no body span to charge, so add returns
+// early; an interface declares only signatures and charges nothing.
 func (c *Collector) registerFuncs(filename string, program *model.Program) {
 	seen := map[*model.FuncDecl]bool{}
 	add := func(fd *model.FuncDecl, class string) {
@@ -248,8 +248,8 @@ func coverable(s model.Stmt) bool {
 
 // coverSpan is the line range charged for a statement. A compound statement's
 // parsed span covers its whole body, but the body's statements carry spans of
-// their own, so only the header line is charged here: an untaken branch must
-// not read as covered because the interpreter reaches its `if`.
+// their own, so coverSpan returns the header line alone: an untaken branch
+// must not read as covered because the interpreter reaches its `if`.
 func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 	switch n := s.(type) {
 	case *model.If, *model.For, *model.Foreach, *model.DoWhile, *model.Switch, *model.Try:
@@ -262,8 +262,8 @@ func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 	return span
 }
 
-// Name is how a file is spelled in a profile: below the directory the command
-// ran in, with no leading separator.
+// Name spells a file for a profile: below the directory the command ran in,
+// with no leading separator.
 //
 // The interpreter anchors an entrypoint at the source filesystem root for
 // __FILE__ ("/app.php") and names an include as it resolved it ("app.php").

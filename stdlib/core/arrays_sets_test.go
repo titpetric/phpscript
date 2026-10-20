@@ -18,7 +18,7 @@ func setArray(pairs ...any) *model.Array {
 }
 
 // entries reads an array back as alternating keys and values, the shape
-// setArray takes, so a want is written the same way as an input.
+// setArray takes, so a test spells an expected array the same way as an input.
 func entries(a *model.Array) []any {
 	var out []any
 	a.Range(func(k, v any) bool {
@@ -95,7 +95,8 @@ func TestFilterByValue(t *testing.T) {
 
 // TestFilterByKey covers array_diff_key and array_intersect_key. Keys run
 // through phpval.Key first, so the integer 1 of an array meets the string "1" a
-// binding's map[string]any carries as one key. No value is read or compared.
+// binding's map[string]any carries as one key. Neither one reads a value or
+// compares one.
 func TestFilterByKey(t *testing.T) {
 	t.Parallel()
 	named := setArray(int64(1), "a", "b", "c")

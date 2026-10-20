@@ -7,9 +7,9 @@ import (
 	"github.com/titpetric/phpscript/config"
 )
 
-// TestTelemetry covers the inline decode of the block. The oida options are
-// embedded with `yaml:",inline"`, so path and driver sit at the same level in a
-// file: a reader of config.yml sees one telemetry block and not a nested one.
+// TestTelemetry covers the inline decode of the block. The struct embeds the
+// oida options with `yaml:",inline"`, so path and driver sit at one level in a
+// file: a reader of `config.yml` sees one telemetry block and not a nested one.
 func TestTelemetry(t *testing.T) {
 	t.Parallel()
 	var result config.Telemetry
@@ -37,7 +37,7 @@ storage_path: "/dev/shm/site"
 }
 
 // TestTelemetry_Validate covers the driver names a server starts under. The
-// name is trimmed and lowercased before the comparison, so an operator who
+// check trims and lowercases the name before it compares, so an operator who
 // typed Disk is not refused over the spelling. An empty driver is memory.
 func TestTelemetry_Validate(t *testing.T) {
 	t.Parallel()
@@ -54,7 +54,7 @@ func TestTelemetry_Validate(t *testing.T) {
 		{driver: "redis", fails: true},
 	} {
 		t.Run(test.driver, func(t *testing.T) {
-			err := config.Telemetry{Driver: test.driver}.Validate()
+			err := config.Telemetry{Driver: test.driver}.Check()
 			if test.fails {
 				if err == nil {
 					t.Fatalf("driver %q validated", test.driver)
@@ -73,9 +73,9 @@ func TestTelemetry_Validate(t *testing.T) {
 	}
 }
 
-// TestTelemetry_Resolved covers the storage a driver names. Validate decides
-// the driver without building anything, so a store on disk is opened here and
-// only here: a command that validates a file opens no directory.
+// TestTelemetry_Resolved covers the storage a driver names. Check decides
+// the driver without building anything, so this path opens a store on disk and
+// nothing else does: a command that checks a file opens no directory.
 func TestTelemetry_Resolved(t *testing.T) {
 	t.Parallel()
 	t.Run("memory holds no store", func(t *testing.T) {
@@ -125,8 +125,8 @@ func TestTelemetry_Resolved(t *testing.T) {
 }
 
 // TestFlatstack covers the one key that selects the flat bytecode runtime.
-// config.yml carries it off, because the runner is the path every fixture is
-// measured against; a file turns it on per application root.
+// `config.yml` carries it off, because the runner is the path every
+// measurement compares against; a file turns it on per application root.
 func TestFlatstack(t *testing.T) {
 	t.Parallel()
 	if config.New().Flatstack.Enabled {
@@ -142,7 +142,7 @@ func TestFlatstack(t *testing.T) {
 	}
 }
 
-// TestRoutes covers the key that loads annotated PHP routes. config.yml carries
+// TestRoutes covers the key that loads annotated PHP routes. `config.yml` holds
 // it on, so a server started over an application root serves the @route
 // annotations in it without a file saying so.
 func TestRoutes(t *testing.T) {
@@ -160,7 +160,7 @@ func TestRoutes(t *testing.T) {
 	}
 }
 
-// TestValue covers the nil pointer every command constructor can be handed.
+// TestValue covers the nil pointer a caller may pass any command constructor.
 // One signature covers the commands that read configuration beside the ones
 // that read none, so the nil check lives here once.
 func TestValue(t *testing.T) {

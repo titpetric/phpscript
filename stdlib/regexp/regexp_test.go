@@ -45,8 +45,8 @@ echo (new Regexp\CompilePOSIX('a|ab'))->find_string("abc");`)
 }
 
 // run executes src on both engines and returns what the interpreter printed,
-// failing when the two disagree. The binding is reached through reflection in
-// either case, so a divergence would be the bytecode engine taking a different
+// failing when the two disagree. Both engines reach the binding through
+// reflection, so a divergence would be the bytecode engine taking a different
 // path to the same registration and no different regexp.
 func run(t *testing.T, src string) string {
 	t.Helper()

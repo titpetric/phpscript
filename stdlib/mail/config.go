@@ -7,16 +7,16 @@ import (
 	"strings"
 )
 
-// DefaultPort is the port a server that names none is reached on. It is the
-// plain SMTP port; a submission host usually wants 587.
+// DefaultPort is the port a provider fills in for a server that names none, the
+// plain SMTP port; a submission host listens on 587.
 const DefaultPort = 25
 
 // Config contains the connection and sender settings for one mail server.
 //
-// It is host configuration and never reaches a script: a provider holds it,
-// reads it inside a delivery, and returns the outcome alone. Config
-// is no binding return type anywhere, which keeps a password out of
-// the runtime scope.
+// Config is host configuration and never reaches a script: a provider holds
+// it, reads it inside a delivery, and returns the outcome alone. Config is no
+// binding return type anywhere, which keeps a password out of the runtime
+// scope.
 type Config struct {
 	Host     string `yaml:"host" json:"host"`
 	Port     int    `yaml:"port" json:"port"`
@@ -45,13 +45,13 @@ func (c Config) String() string {
 	return fmt.Sprintf("smtp://%s:%d from=%q auth=%s insecure=%t", c.Host, c.Port, c.From, auth, c.Insecure)
 }
 
-// Validate reports whether the server is usable, naming it.
+// Check reports whether the server is usable, naming it.
 //
-// Host and From are the operator's to get right, so they are checked when the
-// configuration is read and fail the server at startup. Leaving it to the
-// first delivery means finding out from a @schedule job at three in the
-// morning, on the one code path nobody is watching.
-func (c Config) Validate(name string) error {
+// Host and From are the operator's to get right, so the configuration check
+// tests them at startup and fails the server there. Leaving it to the first
+// delivery means finding out from a @schedule job at three in the morning, on
+// the one code path nobody is watching.
+func (c Config) Check(name string) error {
 	if c.Host == "" {
 		return fmt.Errorf("mail %q: host is required", name)
 	}
@@ -64,15 +64,15 @@ func (c Config) Validate(name string) error {
 	return nil
 }
 
-// address is the host:port the server is dialed on.
+// address is the host:port a delivery dials the server on.
 func (c Config) address() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
 // tlsConfig returns the STARTTLS settings for the configured host. Insecure
 // turns off verification entirely: the certificate is still used to encrypt the
-// session, but neither its chain nor its names are checked, so the connection
-// is open to a man in the middle.
+// session, but the dial verifies neither its chain nor its names, so the
+// connection is open to a man in the middle.
 func (c Config) tlsConfig() *tls.Config {
 	return &tls.Config{
 		ServerName:         c.Host,

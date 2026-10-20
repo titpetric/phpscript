@@ -35,13 +35,13 @@ type (
 	// Tracer records traces and backs the debug front end.
 	Tracer = oida.Tracer
 
-	// Sampler decides whether a request is traced.
+	// Sampler decides which requests a tracer records.
 	Sampler = oida.Sampler
 
 	// Storage retains completed traces.
 	Storage = oida.Storage
 
-	// Snapshot is the complete read model of a tracer at one point in time.
+	// Snapshot is the complete read model of a tracer at one instant.
 	Snapshot = oida.Snapshot
 
 	// Router is the subset of a router needed to mount the debug front end,
@@ -74,9 +74,9 @@ const (
 	StateError      = oida.StateError
 )
 
-// The names a host and a script agree on: where the front end is mounted, what
-// carries a trace identifier, and what a trace with no request behind it is
-// labelled.
+// The names a host and a script agree on: where the platform mounts the front
+// end, what carries a trace identifier, and the label a trace with no request
+// behind it takes.
 const (
 	// DefaultPath is the mount path of the debug front end.
 	DefaultPath = oida.DefaultPath
@@ -112,9 +112,9 @@ func NewOptions(serviceName string) Options {
 	return oida.NewOptions(serviceName)
 }
 
-// New returns a tracer configured with opts. It is the only constructor: oida
-// keeps no process wide tracer, so a caller holds the one it built and
-// passes it to whatever records into it.
+// New returns a tracer configured with opts, and is the only constructor: oida
+// keeps no process wide tracer, so a caller holds the one it built and passes
+// it to whatever records into it.
 func New(opts Options) (*Tracer, error) {
 	return oida.New(opts)
 }
@@ -127,20 +127,20 @@ func Start(ctx context.Context, name string, kind ...Kind) (context.Context, *Sp
 }
 
 // StartSpan records a span without deriving a context. Use it for leaf spans
-// that will not nest. The source location carried by ctx, when a PHP frame put
-// one there, is recorded on the span.
+// that will not nest. The span carries the source location ctx holds, where a
+// PHP frame put one there.
 func StartSpan(ctx context.Context, name string, kind ...Kind) *Span {
 	return withSource(ctx, oida.StartSpan(ctx, name, kind...))
 }
 
-// Do runs fn inside a span, records the returned error on it and ends it. The
-// error is returned unchanged.
+// Do runs fn inside a span, records the returned error on it and ends it, then
+// answers that error unchanged.
 func Do(ctx context.Context, name string, fn func(context.Context) error, kind ...Kind) error {
 	return oida.Do(ctx, name, fn, kind...)
 }
 
-// WithTrace returns a context carrying the trace. Spans started from it, or
-// from any context derived from it, are recorded on that trace.
+// WithTrace returns a context carrying the trace. A span started from it, or
+// from any context derived from it, lands on that trace.
 func WithTrace(ctx context.Context, t *Trace) context.Context {
 	return oida.WithTrace(ctx, t)
 }
@@ -155,9 +155,9 @@ func SpanFromContext(ctx context.Context) *Span {
 	return oida.SpanFromContext(ctx)
 }
 
-// TraceID returns the identifier of the trace in ctx, or an empty string. It is
-// the value of the Request-Id header for HTTP traces, which makes it the
-// cheapest correlation key for logs.
+// TraceID returns the identifier of the trace in ctx, or an empty string: the
+// value of the Request-Id header for HTTP traces, which makes it the cheapest
+// correlation key for logs.
 func TraceID(ctx context.Context) string {
 	return oida.TraceID(ctx)
 }
@@ -165,8 +165,8 @@ func TraceID(ctx context.Context) string {
 // TraceHost returns the host a trace belongs to. Background traces did not
 // arrive over the network and have no host, so they group under
 // BackgroundHost. oida dropped the function along with the rest of its view
-// model; the grouping is still what the server's own reporting reads by, so it
-// is stated here and not at each caller.
+// model; the server's own reporting still groups by it, so this file says so
+// once and no caller repeats it.
 func TraceHost(trace Trace) string {
 	if trace.HTTP == nil || trace.HTTP.Host == "" {
 		return BackgroundHost

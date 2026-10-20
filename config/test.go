@@ -10,24 +10,24 @@ import (
 // answer at all.
 var runKeys = []string{"parallel", "cache", "skip_php"}
 
-// runKeysOwner completes the sentence a rejected run key is reported with.
+// runKeysOwner completes the sentence that reports a rejected run key.
 const runKeysOwner = "is set by the run, not by a suite"
 
-// Test configures `phpscript test`. It is the defaults a fixture tree carries
-// for itself, so a suite describes what it needs and the command line
-// repeating it on every invocation. A flag still wins: the file describes a
+// Test configures `phpscript test`. The block holds the defaults a fixture
+// tree carries for itself, so a suite describes what it needs and no command
+// line repeats it on every invocation. A flag still wins: the file describes a
 // tree, and a flag is what an operator typed about this run of it.
 //
 // Include and Hooks belong to a suite root, the directory holding the file, and
 // apply to the fixtures below it. Parallel, Cache and SkipPHP describe the whole
-// run and are read only from the configuration -f names or the one found above
-// the working directory; a file below the invocation root that sets one fails
-// the run naming the key.
+// run, and the command takes them from the configuration -f names or the one
+// found above the working directory alone; a file below the invocation root
+// that sets one fails the run naming the key.
 type Test struct {
 	// Include names a file included ahead of every fixture below this suite
 	// root, once per session, for the functions and classes the fixtures expect
-	// to be there: a composer autoloader, a bootstrap file. It is the --include
-	// flag, which overrides this. A file that is not there is skipped.
+	// to be there: a composer autoloader, a bootstrap file. The --include flag
+	// overrides this key, and the session passes over a file that is not there.
 	Include string `yaml:"include"`
 
 	// Hooks are the PHP files the session runs around the fixtures.
@@ -48,9 +48,9 @@ type Test struct {
 // TestSuite is one phpscript.yml governing a directory of fixtures: where it
 // sits, and the configuration the fixtures below it run under.
 type TestSuite struct {
-	// Dir is the suite root, the directory holding the file. It is the
-	// application root the fixtures below resolve their prelude and their hooks
-	// against.
+	// Dir is the suite root, the directory holding the file, and the
+	// application root the fixtures below resolve their prelude and their
+	// hooks against.
 	Dir string
 
 	// Config is the file read over the configuration the run started with.
@@ -62,13 +62,13 @@ type TestSuite struct {
 }
 
 // LoadTestSuite reads a phpscript.yml already held as bytes over base. The
-// caller does the reading because it owns the filesystem: a fixture tree is
-// compiled into the test binary and reached through an fs.FS, while a run of
+// caller does the reading because it owns the filesystem: the build compiles a
+// fixture tree into the test binary and an fs.FS reaches it, while a run of
 // the command reads the same file off disk.
 //
-// forbidden decides whether the run-wide keys are refused. The configuration
-// found at or above the invocation root is the run's own and sets them; one
-// discovered below it governs a folder and does not.
+// forbidden decides whether this suite may set the run-wide keys. The
+// configuration found at or above the invocation root is the run's own and
+// sets them; one discovered below it governs a folder and does not.
 func LoadTestSuite(dir, filename string, data []byte, base Config, forbidden bool) (*TestSuite, error) {
 	// The listen address and a nested site are the operator's here too: a suite
 	// is a folder of fixtures, and neither key means anything to a run of them.
@@ -88,21 +88,21 @@ func LoadTestSuite(dir, filename string, data []byte, base Config, forbidden boo
 		}
 	}
 
-	if err := result.Test.Validate(filename); err != nil {
+	if err := result.Test.Check(filename); err != nil {
 		return nil, err
 	}
-	if err := result.Mail.Validate(filename); err != nil {
+	if err := result.Mail.Check(filename); err != nil {
 		return nil, err
 	}
 	return &TestSuite{Dir: dir, Config: result, Declared: declared}, nil
 }
 
-// Validate rejects a test block whose values name nothing the run can act on.
+// Check rejects a test block whose values name nothing the run can act on.
 //
 // Whether a hook file exists is not checked here, because the file lives in the
 // caller's filesystem and not on disk. The run reports a missing hook when
 // it goes to execute it.
-func (t Test) Validate(filename string) error {
+func (t Test) Check(filename string) error {
 	if t.Cache != "" && t.Cache != "worker" && t.Cache != "off" {
 		return fmt.Errorf("%s: test.cache must be worker or off, not %q", filename, t.Cache)
 	}

@@ -154,11 +154,11 @@ func TestRouteMountsOnPlatformRouter(t *testing.T) {
 }
 
 // TestRouteErrorPagesAreOfferedOnlyAnUnansweredError pins what a host's error
-// page is allowed to replace. An endpoint that put a payload in the body, or
+// page may replace. An endpoint that put a payload in the body, or
 // declared what it answers with, has answered, and its answer stands; an
 // endpoint that set a status and said nothing else has left a hole a page may
 // fill. None of it depends on the endpoint sitting under /api, which is the
-// point: the routes here do, and it is not what decides.
+// point: the routes here do, and the prefix decides nothing.
 func TestRouteErrorPagesAreOfferedOnlyAnUnansweredError(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -204,7 +204,7 @@ func TestRouteErrorPagesAreOfferedOnlyAnUnansweredError(t *testing.T) {
 }
 
 // TestRouteWithoutErrorPagesReportsOnlyTheStatus pins what a failed endpoint
-// answers when no host page is configured: the status and its standard text.
+// answers where a host registered no page: the status and its standard text.
 // What went wrong is in the log and on the trace, not in a body the client
 // reads back.
 func TestRouteWithoutErrorPagesReportsOnlyTheStatus(t *testing.T) {
@@ -222,7 +222,7 @@ func TestRouteWithoutErrorPagesReportsOnlyTheStatus(t *testing.T) {
 }
 
 // TestRouteErrorPageDeclinesLeavesTheStatus pins that a host page which does
-// not render, the ordinary case of a request no page is meant for, leaves the
+// not render, the ordinary case of a request outside its remit, leaves the
 // endpoint's own response unchanged.
 func TestRouteErrorPageDeclinesLeavesTheStatus(t *testing.T) {
 	t.Parallel()

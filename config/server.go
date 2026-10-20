@@ -7,9 +7,9 @@ import (
 // Server is the YAML spelling of platform.Options: everything a configuration
 // file gets to say about the platform `phpscript server` runs on. The options
 // the platform takes from the process and not from a file, such as the
-// config filesystem a composed service embeds, are not part of it, and neither
-// is the recorder: that one is the top level telemetry block, applied by
-// Config.PlatformOptions.
+// configuration filesystem a composed service embeds, are not part of it, and
+// neither is the recorder: that one is the top level telemetry block, which
+// Config.PlatformOptions applies.
 type Server struct {
 	// Addr is the address the HTTP server listens on.
 	Addr string `yaml:"addr"`
@@ -18,7 +18,7 @@ type Server struct {
 	Quiet bool `yaml:"quiet"`
 
 	// Modules limits which platform modules load, by name. An empty list
-	// loads all of them.
+	// loads every one.
 	Modules []string `yaml:"modules"`
 
 	// PidFile is the file the server records its process id in, and the one

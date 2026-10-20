@@ -130,8 +130,8 @@ func rowList(rows int) *model.Array {
 }
 
 // BenchmarkAppendJSONValue measures the walk over a list of keyed rows, which
-// is the response shape an API answers with and the one where a per-collection
-// cost in the walk is paid once per row and not once per document.
+// is the response shape an API answers with and the one where the walk pays a
+// per-collection cost once per row and not once per document.
 func BenchmarkAppendJSONValue(b *testing.B) {
 	list := rowList(64)
 	buf := make([]byte, 0, 8192)

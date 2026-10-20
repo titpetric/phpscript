@@ -41,8 +41,8 @@ func registerArrays(rt *runner.Runtime) {
 	// $strict is true.
 	rt.RegisterFunc("array_search", phpArraySearch)
 	// array_unique returns $array with duplicate values removed, comparing
-	// values as strings and keeping the first occurrence and its key; the
-	// $flags argument is accepted and ignored.
+	// values as strings and keeping the first occurrence and its key; it takes
+	// $flags and ignores it.
 	rt.RegisterFunc("array_unique", func(array any, flags ...any) *model.Array {
 		n, _ := model.LenValues(array)
 		out := model.NewArraySize(n)
@@ -57,14 +57,14 @@ func registerArrays(rt *runner.Runtime) {
 		})
 		return out
 	})
-	// array_merge merges the given arrays into one; integer keys are
-	// renumbered and later string keys overwrite earlier ones.
+	// array_merge merges the given arrays into one; it renumbers integer keys
+	// and later string keys overwrite earlier ones.
 	rt.RegisterFunc("array_merge", phpArrayMerge)
-	// reset returns the first value of $array, or false when it is empty;
+	// reset returns the first value of $array, or false for an empty array;
 	// there is no internal pointer here, so this is the value without the
 	// rewind.
 	rt.RegisterFunc("reset", func(array any) any { return edgeValue(array, true) })
-	// end returns the last value of $array, or false when it is empty; there
+	// end returns the last value of $array, or false for an empty array; there
 	// is no internal pointer here, so this is the value without the seek.
 	rt.RegisterFunc("end", func(array any) any { return edgeValue(array, false) })
 	// array_keys returns the keys of $array as a list; there is no $filter_value parameter.
@@ -83,9 +83,8 @@ func registerArrays(rt *runner.Runtime) {
 	})
 	// array_slice returns up to $length elements of $array starting at
 	// $offset, a negative $offset counting from the end and a negative
-	// $length stopping that many short of it; integer keys are reindexed from
-	// zero unless $preserve_keys is true, and string keys are kept either
-	// way.
+	// $length stopping that many short of it; it reindexes integer keys from
+	// zero unless $preserve_keys is true, and keeps string keys either way.
 	rt.RegisterFunc("array_slice", phpArraySlice)
 	// array_splice removes $length elements of $array at $offset, inserts
 	// $replacement in their place, and returns the removed elements; a value
@@ -109,7 +108,7 @@ func registerArrays(rt *runner.Runtime) {
 	// is an error.
 	rt.RegisterFunc("array_push", phpArrayPush)
 	// array_map returns a list of $callback applied to each value of $array;
-	// a single array is accepted and keys are not preserved.
+	// it takes a single array and keys are not preserved.
 	rt.RegisterFunc("array_map", func(callback any, array any) ([]any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -139,10 +138,10 @@ func registerArrays(rt *runner.Runtime) {
 	// true even when the value stored there is null.
 	rt.RegisterFunc("array_key_exists", phpArrayKeyExists)
 	// array_filter returns the elements of $array for which $callback is
-	// truthy, preserving the keys; without a $callback the values are
-	// filtered on their own truthiness, and $mode selects what the callback
-	// receives (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value
-	// and the key).
+	// truthy, preserving the keys; without a $callback it filters the values
+	// on their own truthiness, and $mode selects what the callback receives
+	// (ARRAY_FILTER_USE_KEY the key, ARRAY_FILTER_USE_BOTH the value and the
+	// key).
 	rt.RegisterFunc("array_filter", func(array any, options ...any) (*model.Array, error) {
 		var fn func(...any) (any, error)
 		if len(options) > 0 && options[0] != nil {
@@ -158,9 +157,9 @@ func registerArrays(rt *runner.Runtime) {
 		}
 		return phpArrayFilter(array, fn, mode)
 	})
-	// array_reduce folds $array with $callback, which is called with the
-	// carry and the value, starting from $initial and returning null for an
-	// empty array.
+	// array_reduce folds $array with $callback, which receives the carry and
+	// the value, starting from $initial and returning null for an empty
+	// array.
 	rt.RegisterFunc("array_reduce", func(array any, callback any, initial ...any) (any, error) {
 		fn, ok := rt.Callable(callback)
 		if !ok {
@@ -173,15 +172,15 @@ func registerArrays(rt *runner.Runtime) {
 		return phpArrayReduce(fn, array, carry)
 	})
 	// array_column returns the $column_key value of every row of $array,
-	// keyed by each row's $index_key when that is given; a null $column_key
-	// selects the whole row and rows missing the column are skipped.
+	// keyed by each row's $index_key when the call passes one; a null
+	// $column_key selects the whole row and it skips rows missing the column.
 	rt.RegisterFunc("array_column", phpArrayColumn)
-	// array_flip returns $array with its keys and values exchanged; a value
-	// that is neither an integer nor a string is skipped, as in PHP, but
-	// without the warning.
+	// array_flip returns $array with its keys and values exchanged; it skips a
+	// value that is neither an integer nor a string, as in PHP, but without
+	// the warning.
 	rt.RegisterFunc("array_flip", phpArrayFlip)
 	// array_reverse returns $array in reverse order, renumbering the integer
-	// keys from zero unless $preserve_keys is true; string keys are kept
+	// keys from zero unless $preserve_keys is true; it keeps string keys
 	// either way.
 	rt.RegisterFunc("array_reverse", phpArrayReverse)
 	// array_sum returns the sum of the values of $array as an int when every
@@ -203,9 +202,8 @@ const (
 )
 
 // arrayHasKey looks up a normalised key in any collection shape. A *model.Array
-// and a map[string]any answer in constant time; anything else is walked,
-// because a native Go map of some other key type still has to be compared key
-// by key.
+// and a map[string]any answer in constant time; it walks anything else, because
+// a native Go map of some other key type still needs a key-by-key comparison.
 func arrayHasKey(array any, key any) (any, bool) {
 	want := phpval.Key(key)
 	switch a := array.(type) {
@@ -233,7 +231,7 @@ func arrayHasKey(array any, key any) (any, bool) {
 }
 
 // phpArrayKeyExists is isset() without the null check: the key exists even when
-// the value stored under it is null, which is the only reason the two functions
+// the value stored there is null, which is the only reason the two functions
 // are not the same function.
 func phpArrayKeyExists(key, array any) bool {
 	_, ok := arrayHasKey(array, key)
@@ -243,7 +241,7 @@ func phpArrayKeyExists(key, array any) bool {
 // phpArrayFilter keeps the elements fn accepts. It returns an *model.Array
 // because the result keeps the keys of the input, holes included, which is a
 // shape only *model.Array carries (rule 4 of docs/allocation-performance.md).
-// A nil fn is PHP's omitted callback: the values are judged on truthiness.
+// A nil fn is PHP's omitted callback: it keeps the truthy values.
 func phpArrayFilter(array any, fn func(...any) (any, error), mode int64) (*model.Array, error) {
 	n, _ := model.LenValues(array)
 	out := model.NewArraySize(n)
@@ -302,12 +300,12 @@ func phpArrayReduce(fn func(...any) (any, error), array any, carry any) (any, er
 }
 
 // phpArrayColumn projects one field out of every row. The real caller is
-// Database::get_all, which returns a []map[string]any, so the rows are read
-// through model.RangeValues and may be any collection shape.
+// Database::get_all, which returns a []map[string]any, so this reads the rows
+// through model.RangeValues and takes any collection shape.
 //
-// Without $index_key the result is a plain list, so it is a presized []any.
-// With one it is keyed by a value taken from the rows, which can be a hybrid of
-// int and string keys, so it is an *model.Array (rule 4).
+// Without $index_key the result is a plain list, a presized []any. With one the
+// function keys the result by a value taken from the rows, which can be a
+// hybrid of int and string keys, so it returns an *model.Array (rule 4).
 func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 	n, _ := model.LenValues(array)
 
@@ -332,8 +330,8 @@ func phpArrayColumn(array any, columnKey any, indexKey ...any) any {
 		if !ok {
 			return true
 		}
-		// PHP appends a row whose index column is missing, and does not
-		// dropping it.
+		// PHP appends a row whose index column is missing, and drops none of
+		// them.
 		if k, ok := arrayColumnValue(row, index); ok {
 			out.Set(phpval.Key(k), v)
 		} else {
@@ -373,10 +371,10 @@ func phpArrayFlip(array any) *model.Array {
 }
 
 // phpArrayReverse reverses the order of the elements. PHP drops integer keys
-// and renumbers them from zero unless $preserve_keys is set, but it keeps
+// and renumbers them from zero unless $preserve_keys is true, but it keeps
 // string keys either way, so an array with any string key has to come back as
-// an *model.Array. An all-integer-keyed array being renumbered is a plain list,
-// which is a presized []any (rule 4).
+// an *model.Array. A renumbered all-integer-keyed array is a plain list, which
+// is a presized []any (rule 4).
 func phpArrayReverse(array any, preserveKeys ...any) any {
 	preserve := len(preserveKeys) > 0 && phpval.Truthy(preserveKeys[0])
 
@@ -446,9 +444,9 @@ func phpArraySum(array any) any {
 	return sum
 }
 
-// phpRange builds the inclusive sequence from start to end. The element count
-// is computed up front and every element is derived from the start, the way PHP
-// does it, so a float step never accumulates rounding error across the range.
+// phpRange builds the inclusive sequence from start to end. It counts the
+// elements up front and derives every one of them from the start, the way PHP
+// does, so a float step never accumulates rounding error across the range.
 //
 // The result is a presized []any: a range is a dense list by construction, so
 // there is no key information for an *model.Array to carry (rule 4).
@@ -565,10 +563,10 @@ func rangeInts(from, to, step int64) []any {
 // later string keys win.
 //
 // This returns an *model.Array even when every input is a list. Returning a
-// presized []any for that case is tempting, because it is the shape
-// `call_user_func_array($fn, array_merge(...))` forwards with no copy, but
-// rule 4 of docs/allocation-performance.md reserves *model.Array for values
-// the script appends to, and `$x = array_merge($a, $b); $x[] = "z"` is
+// presized []any for that case is tempting, because
+// `call_user_func_array($fn, array_merge(...))` forwards that shape with no
+// copy, but rule 4 of docs/allocation-performance.md reserves *model.Array for
+// values the script appends to, and `$x = array_merge($a, $b); $x[] = "z"` is
 // ordinary PHP that a Go slice cannot serve (a slice cannot grow through the
 // interface value holding it). Since model.Array gained its list mode, a
 // merged list costs one struct allocation more than the slice and no map at
@@ -595,7 +593,7 @@ func phpArrayMerge(arrs ...any) any {
 }
 
 // phpCompact builds an associative map from variables in the calling scope.
-// Names that do not exist are omitted, matching PHP's compact().
+// It omits names that do not exist, matching PHP's compact().
 func phpCompact(ctx context.Context, names ...string) map[string]any {
 	out := make(map[string]any, len(names))
 	scope, ok := runner.ScopeFromContext(ctx)
@@ -705,9 +703,9 @@ type arrayEntry struct {
 // arrayTarget is the shared guard of the four mutators. They resize their
 // argument, and a Go slice cannot grow through the interface value holding it,
 // so - like array_splice, whose precedent this follows - they require the one
-// shape that can: a *model.Array. A native slice from a binding (explode(),
-// array_keys()) is rejected loudly and never mutated into a copy the script
-// never sees. See "Known divergences from PHP" in docs/README.md.
+// shape that can: a *model.Array. This refuses a native slice from a binding
+// (explode(), array_keys()) loudly, and never mutates one into a copy the
+// script never sees. See "Known divergences from PHP" in docs/README.md.
 func arrayTarget(name string, array any) (*model.Array, error) {
 	a, ok := array.(*model.Array)
 	if !ok || a == nil {
@@ -728,9 +726,9 @@ func arrayEntries(a *model.Array) []arrayEntry {
 
 // arrayReplay appends entries to a, which the caller has cleared. With
 // renumber set it applies PHP's re-keying rule for array_shift and
-// array_unshift: integer keys are handed out again from zero through Append,
-// string keys keep their name. Without it every key comes back unchanged,
-// and array_pop needs that.
+// array_unshift: Append renumbers the integer keys from zero, string keys keep
+// their name. Without it every key comes back unchanged, and array_pop needs
+// that.
 func arrayReplay(a *model.Array, entries []arrayEntry, renumber bool) {
 	for _, e := range entries {
 		if _, isInt := e.key.(int64); isInt && renumber {
@@ -741,7 +739,7 @@ func arrayReplay(a *model.Array, entries []arrayEntry, renumber bool) {
 	}
 }
 
-// phpArrayShift removes the first element and renumbers what is left.
+// phpArrayShift removes the first element and renumbers the rest.
 func phpArrayShift(array any) (any, error) {
 	a, err := arrayTarget("array_shift", array)
 	if err != nil {
@@ -777,8 +775,8 @@ func phpArrayUnshift(array any, values ...any) (int64, error) {
 // shift and unshift it does not renumber: PHP leaves the surviving keys alone,
 // so popping 9 from [5 => a, 9 => c] leaves [5 => a], keeping the key 5.
 //
-// The append index is Array.Pop's business, since it is the one piece of state
-// a shim cannot reach.
+// The append index is Array.Pop's business, the one piece of state a shim
+// cannot reach.
 func phpArrayPop(array any) (any, error) {
 	a, err := arrayTarget("array_pop", array)
 	if err != nil {
@@ -848,8 +846,8 @@ func arrayFind(needle, haystack any, strict bool) (any, bool) {
 	return key, found
 }
 
-// arrayIdentical is PHP's === at value level: the types must match before the
-// values are looked at. Go's == would panic on a slice or a map, so values it
+// arrayIdentical is PHP's === at value level: the types must match before it
+// compares the values. Go's == would panic on a slice or a map, so values it
 // cannot compare directly fall back to reflect.DeepEqual.
 func arrayIdentical(x, y any) bool {
 	if x == nil || y == nil {
@@ -868,13 +866,13 @@ func arrayIdentical(x, y any) bool {
 // phpArraySlice returns the selected run of $array.
 //
 // PHP reindexes the integer keys of the result and keeps the string ones, and
-// $preserve_keys asks it to keep the integers too. The result is therefore a
-// list only when nothing in the selected run carries a string key and nothing
-// named the original integers; that case returns []any, which is the cheap
-// shape (docs/allocation-performance.md), and the rest returns a *model.Array
+// $preserve_keys asks it to keep the integers too. The result is a list only
+// when nothing in the selected run carries a string key and nothing named the
+// original integers; that case returns []any, which is the cheap shape
+// (docs/allocation-performance.md), and the rest returns a *model.Array
 // because the keys are then part of the result.
 //
-// $length is read as PHP reads it: omitted or null runs to the end of the
+// This reads $length as PHP reads it: omitted or null runs to the end of the
 // array, and a negative value stops that many elements short of the end rather
 // than yielding nothing.
 func phpArraySlice(array any, offset int64, args ...any) any {
@@ -1015,8 +1013,8 @@ func sortLess(x, y any) bool {
 }
 
 // sortValues reorders a list in place using less. A *model.Array is rebuilt as
-// a 0-indexed list; a native Go slice is sorted through its backing array,
-// which the script shares, so both are mutated in place as PHP expects.
+// a 0-indexed list; it sorts a native Go slice through the backing array the
+// script shares, so both change in place as PHP expects.
 func sortValues(a any, less func(x, y any) bool) bool {
 	switch target := a.(type) {
 	case nil:
@@ -1050,9 +1048,9 @@ func sortValues(a any, less func(x, y any) bool) bool {
 }
 
 // edgeValue is reset and end: the first or last value of the array, false when
-// it holds none. PHP defines both in terms of the internal pointer, which the
-// array model here does not carry; every practical call reads them for the
-// value, and this answers with that.
+// it holds none. PHP defines both through the internal pointer, which the array
+// model here does not carry; every practical call reads them for the value, and
+// this answers with that.
 func edgeValue(array any, first bool) any {
 	var out any = false
 	found := false

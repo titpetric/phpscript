@@ -10,7 +10,7 @@ import (
 // Double-quoted string interpolation.
 //
 // PHP spells an embedded expression two ways inside a double-quoted literal,
-// and both are scanned here so that the lexer, the parser and the token_get_all
+// and this file scans both, so the lexer, the parser and the token_get_all
 // tokenizer agree on where one ends. Simple syntax is `$name`, `$name[sub]` or
 // `$name->prop`, and reaches exactly one level: `"$o->p->q"` is the property `p`
 // followed by the literal text `->q`. Complex syntax is `{$expr}`, where the
@@ -56,7 +56,7 @@ type interpPart struct {
 //
 // A literal with no embedded expression still scans cleanly and reports
 // interp=false, so the caller keeps treating it as a plain
-// string. Text parts are decoded, so the caller never decodes twice.
+// string. The scan decodes a text part, so the caller never decodes twice.
 func scanInterp(src string, start int, line int) (parts []interpPart, end int, interp bool, err error) {
 	var text strings.Builder
 	textStart, textLine := start, line
@@ -197,10 +197,10 @@ func scanCurly(src string, i int, line int) (inner string, end int, err error) {
 }
 
 // parseInterp builds the AST for a tInterp token. The lexer already decided the
-// literal embeds an expression, and kept the source spelling in raw; the scan is
-// repeated here and never carried on the token because interpolated literals
-// are a small share of the tokens in a file and the token struct is allocated
-// for all of them.
+// literal embeds an expression, and kept the source spelling in raw; this runs
+// the scan again and carries nothing on the token, because interpolated
+// literals are a small share of the tokens in a file and every token pays for
+// the struct.
 func (p *parser) parseInterp(t token) (model.Expr, error) {
 	// raw is the literal with its quotes, so the body starts at 1 and the scan
 	// stops on the closing quote the lexer already found.
@@ -266,7 +266,7 @@ func (p *parser) interpSubscript(sub string, line int) (model.Expr, error) {
 
 // parseSubExpr parses PHP expression source that came from inside a literal. It
 // runs on a parser of its own because the source is a substring and no
-// span of the token stream, and it is handed the namespace and imports of the
+// span of the token stream, and it takes the namespace and imports of the
 // enclosing file so a name inside the braces resolves the way the same name
 // resolves outside them.
 func (p *parser) parseSubExpr(src string, line int) (model.Expr, error) {
@@ -290,7 +290,7 @@ func (p *parser) parseSubExpr(src string, line int) (model.Expr, error) {
 }
 
 // skipQuoted returns the offset just past the string literal opening at src[i],
-// or ok=false when it is unterminated. It only has to find the end, so it reads
+// or ok=false for a literal nothing terminates. It only has to find the end, so it reads
 // `\x` as two bytes without decoding it.
 func skipQuoted(src string, i int) (end int, ok bool) {
 	quote := src[i]
@@ -314,7 +314,7 @@ func skipQuoted(src string, i int) (end int, ok bool) {
 // an arbitrary expression, which names the variable whose name the expression
 // evaluates to. `${name}` is `$name` and `${arr['k']}` is `$arr['k']`; the
 // expression form is variable-variable syntax and needs `$$name`, which this
-// parser does not read, so it is an error.
+// parser does not read, so this fails.
 //
 // PHP deprecated the whole syntax in 8.2 and removes it in 9. It parses here
 // because php 8.5 runs it.

@@ -13,9 +13,9 @@ Four deliverables, in the order they pay off:
 - Two implementations of one thing, reduced to one.
 - A reproduction for a behaviour that is wrong but not yet fixed.
 
-Out of scope: new features, and anything the contract puts out of scope. A finding that needs a feature becomes an issue from the feature-gap template, not a half fix - [../design.md](../design.md) decides whether it is a gap or a decision, and a row in its "Won't implement" table is a decision.
+Out of scope: new features, and anything the contract puts out of scope. A finding that needs a feature becomes an issue from the feature-gap template, not a half fix - [../design.md](../design.md) decides whether the finding is a gap or a decision, and a row in its "Won't build" table is a decision.
 
-A finding the operator must decide is written up and left. It is not guessed at.
+Write up a finding the operator must decide and leave it. Do not guess.
 
 ## Where bugs are
 
@@ -33,11 +33,11 @@ A `SKIP` is a fixture that opted a runtime out, or a missing `php` binary. Any o
 
 **The advisory findings.** `phpscript lint ./...` over the demo trees and the fixture corpus. Undefined names, unreachable code and unused variables. A finding over `demos/` is worth more than one over a fixture, because a demo is real code.
 
-**The bindings the audit marks TODO.** `../allocation-performance.md` carries a per-binding audit whose legend distinguishes optimal, allocates-by-design, and a real improvement available. The TODO rows are a worklist that has already been triaged.
+**The bindings the audit marks TODO.** `../allocation-performance.md` carries a per-binding audit whose legend distinguishes optimal, allocates-by-design, and a real improvement available. The TODO rows are a worklist the audit already triaged.
 
 **A thin fixture area.** `../test-fixtures.md` is one table per area. An area with three fixtures covering a stdlib surface with thirty functions is where a defect is sitting unobserved.
 
-**`tests/fixtures/github/`** is the record of each report and no backlog: the three files there are closed, each naming the regression test that guards it. Read it for the shape of a good report; it holds no open work.
+**`tests/fixtures/github/`** is the record of each report and no backlog: the three files there carry closed reports, each naming the regression test that guards it. Read it for the shape of a good report; it holds no open work.
 
 ## Diagnosis
 
@@ -46,9 +46,9 @@ A diagnosis comes before a fix and has four parts:
 - The smallest source that shows it, and never the whole program around it.
 - What `php` prints for that same source. Run it; do not reason about it.
 - The file and line that decides. Not the file the symptom appears in.
-- Whether it is a bug or a documented divergence.
+- Whether the behaviour is a bug or a documented divergence.
 
-That last part is the one that gets skipped. `../README.md` carries each divergence as a claim. A fix that contradicts one of them is two changes: the behaviour and the paragraph that promised the old behaviour. Where something depends on the divergence, the fix is wrong and the finding is a documentation defect. Where it is stale, the paragraph goes in the same pull request. Either way the operator sees the claim named.
+That last part is the one that gets skipped. `../README.md` carries each divergence as a claim. A fix that contradicts one of them is two changes: the behaviour and the paragraph that promised the old behaviour. Where something depends on the divergence, the fix is wrong and the finding is a documentation defect. Where the claim is stale, the paragraph goes in the same pull request. Either way the operator sees the claim named.
 
 Three groups have no `php` to appeal to, and [../testing.md](../testing.md) lists them: host bindings, runtime introspection, and host request state. A diagnosis in one of those states what defines the expected output instead.
 
@@ -62,11 +62,11 @@ Where it goes:
 |-----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
 | Reachable from a fixture                                                                            | A `.phpt` in the matching `tests/fixtures/<area>/`, or a `<name>_test.php` with its `<name>_test.txt` beside it      |
 | Not reachable from a fixture, and not from route registration, server flags or host bindings either | `tests/github/issue_NNN_test.go` holding `Test_IssueNNN`, with a `.yml` in `tests/fixtures/github/` naming that test |
-| Reported but not yet diagnosed                                                                      | `tests/fixtures/github/<n>.yml`, written against the behaviour that is wanted                                        |
+| Reported but not yet diagnosed                                                                      | `tests/fixtures/github/<n>.yml`, written against the expected behaviour                                              |
 
-The expected section is `php`'s output, pasted. [../testing.md](../testing.md) owns the format, the metadata fields, the two fixture forms and the oracle rule; none of that is repeated here.
+The expected section is `php`'s output, pasted. [../testing.md](../testing.md) owns the format, the metadata fields, the two fixture forms and the oracle rule; this document repeats none of it.
 
-A new area is a new folder and nothing registers it. The fixture's own folder is its include root, so a shared support file is copied in, because an include that climbs out is rejected.
+A new area is a new folder and nothing registers it. The fixture's own folder is its include root, so copy a shared support file into it, because phpscript rejects an include that climbs out.
 
 ## Dead code
 
@@ -85,9 +85,9 @@ Four false positives, each real in this tree. A symbol reached only:
 - from a benchmark, which `go test` without `-bench` never runs;
 - from a `//go:build ignore` file, which `testdata/goserver/main.go` is;
 - from a demo or a venom suite, which no Go test reads;
-- by registered name, which every binding is. A binding is called by string from PHP and has no Go caller at all.
+- by registered name, which every binding is. A PHP source line calls a binding by its string name, so it has no Go caller at all.
 
-Two hard rules. A test is never dead code, which the contract states and which makes deleting one an edit under the test-immutability rule. And a registered name is removed in its own change: `../../AGENTS.md` requires a rename to register the new name and keep the old one as a second registration, so a removal that rides along with a rename is two changes in one.
+Two hard rules. A test is never dead code, which the contract states and which makes deleting one an edit under the test-immutability rule. And a registered name comes out in its own change: `../../AGENTS.md` requires a rename to register the new name and keep the old one as a second registration, so a removal that rides along with a rename is two changes in one.
 
 When a count reaches zero in `scripts/splint-baseline.json`, the rule comes out of the file, which makes it blocking from then on. Lower a count in the same commit that lowered the finding.
 

@@ -1,7 +1,7 @@
 // Package flatstack is the runner embedding API with an opt-in flat
-// bytecode backend. Unsupported programs are rejected before execution and run
-// by the full interpreter, preserving runner behavior while the bytecode subset
-// grows.
+// bytecode backend. The compiler rejects an unsupported program before
+// execution and the full interpreter runs the whole of it, preserving runner
+// behavior while the bytecode subset grows.
 package flatstack
 
 import (
@@ -47,8 +47,8 @@ type Scope = runner.Scope
 type Context = runner.Context
 
 // New returns a runtime that executes a supported program through flat bytecode
-// and delegates the whole of an unsupported one to the interpreter. It is the one
-// call that separates this package from runner.
+// and delegates the whole of an unsupported one to the interpreter. New is the
+// one call that separates this package from runner.
 func New(w io.Writer, opts Options) *Runtime { return runner.NewFlatStack(w, opts) }
 
 // NewExprCache returns a compiled-expression cache to share between runtimes.

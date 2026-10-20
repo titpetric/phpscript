@@ -37,7 +37,7 @@ type Command struct {
 }
 
 // Examples returns the rendered example document for one command, or the empty
-// string when it has none. It is what a command's cli.Usage hook returns, so
+// string when it has none. A command's cli.Usage hook returns it, so
 // `phpscript test --help` carries the same table the long help does.
 func Examples(name string, markdown bool) string {
 	src, err := fs.ReadFile(docs, "example."+name+".md")
@@ -119,18 +119,18 @@ func flagTable(w io.Writer, fs *FlagSet, markdown bool) {
 // Render writes src to w, turning each markdown table into the table view the
 // rest of the tool prints and passing everything else through unchanged.
 //
-// In markdown the source is written back unchanged. A round trip
-// through the table renderer would re-pad every cell and rewrite alignment
-// markers, which is a diff in a document nobody edited.
+// In markdown it writes the source back unchanged. A round trip through the
+// table renderer would re-pad every cell and rewrite alignment markers, which
+// is a diff in a document nobody edited.
 func Render(w io.Writer, src string, markdown bool) error {
 	if markdown {
 		_, err := io.WriteString(w, src)
 		return err
 	}
 
-	// One trailing newline off the source, because every line is written with
-	// one back. Without this a document ending the way documents end grows a
-	// blank line each time it is rendered.
+	// One trailing newline off the source, because Fprintln writes one back
+	// with every line. Without this a document ending the way documents end
+	// grows a blank line on every render.
 	lines := strings.Split(strings.TrimSuffix(src, "\n"), "\n")
 	for i := 0; i < len(lines); i++ {
 		rows, next := tableAt(lines, i)

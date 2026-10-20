@@ -28,13 +28,13 @@ func init() {
 // composer's generated autoloader is the reason it exists in this shape. It
 // gates on PHP_VERSION_ID, reports through PHP_SAPI/STDERR/PHP_EOL, probes for
 // APCu with function_exists + ini_get + filter_var, and builds its class map
-// with strtr/strrpos. None of that is composer-specific, and all of it is used by any
-// non-trivial PHP library uses.
+// with strtr/strrpos. None of that is composer-specific: any non-trivial PHP
+// library uses the same surface.
 
-// phpVersion is the PHP language version phpscript reports. It is not a claim
-// of full compatibility: it is the version whose semantics the runtime is
-// tested against (see docs/changelog), and the number libraries branch on when
-// they decide which language features they may use.
+// phpVersion is the PHP language version phpscript reports, and no claim of
+// full compatibility: phpscript tests its semantics against this version (see
+// docs/changelog), and libraries branch on the number when they decide which
+// language features they may use.
 const (
 	phpVersionMajor   = 8
 	phpVersionMinor   = 4
@@ -73,21 +73,21 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("INF", math.Inf(1))
 	rt.SetConst("NAN", math.NaN())
 
-	// The standard streams. STDIN is registered with the rest of the language
-	// constructs; the two output streams are the process's, not the response
-	// body, so a diagnostic written to STDERR stays out of the page.
+	// The standard streams. registerLang registers STDIN with the rest of the
+	// language constructs; the two output streams are the process's, not the
+	// response body, so a diagnostic written to STDERR stays out of the page.
 	rt.SetConst("STDOUT", os.Stdout)
 	rt.SetConst("STDERR", os.Stderr)
 
 	// htmlspecialchars() flags. phpscript always escapes as ENT_QUOTES does, so
-	// the values exist to be passed, not to select a behaviour.
+	// the values exist for a call to pass and never to select a behaviour.
 	rt.SetConst("ENT_QUOTES", int64(3))
 	rt.SetConst("ENT_COMPAT", int64(2))
 	rt.SetConst("ENT_NOQUOTES", int64(0))
 	rt.SetConst("ENT_HTML5", int64(48))
 	rt.SetConst("ENT_SUBSTITUTE", int64(8))
 
-	// filter_var() filters, of which only the validators below are implemented.
+	// filter_var() filters; phpFilterVar handles only the validators below.
 	rt.SetConst("FILTER_DEFAULT", int64(516))
 	rt.SetConst("FILTER_VALIDATE_INT", int64(257))
 	rt.SetConst("FILTER_VALIDATE_BOOLEAN", int64(258))
@@ -95,11 +95,11 @@ func registerPlatformConstants(rt *runner.Runtime) {
 	rt.SetConst("FILTER_VALIDATE_FLOAT", int64(259))
 	rt.SetConst("FILTER_NULL_ON_FAILURE", int64(134217728))
 
-	// $_FILES error codes. A script compares against these whether or not the
-	// runtime can produce them, so all of PHP's are defined; the request
-	// runtime sets OK, INI_SIZE, NO_FILE, NO_TMP_DIR and CANT_WRITE, since
-	// FORM_SIZE is a per-form limit, PARTIAL is an aborted transfer, and
-	// EXTENSION comes from extensions phpscript has no equivalent of.
+	// $_FILES error codes. A script compares against these even where the
+	// runtime cannot produce them, so registerPlatformConstants defines every
+	// one of PHP's; the request runtime sets OK, INI_SIZE, NO_FILE, NO_TMP_DIR
+	// and CANT_WRITE, since FORM_SIZE is a per-form limit, PARTIAL is an
+	// aborted transfer, and EXTENSION comes from extensions phpscript lacks.
 	rt.SetConst("UPLOAD_ERR_OK", int64(runner.UploadErrOK))
 	rt.SetConst("UPLOAD_ERR_INI_SIZE", int64(runner.UploadErrIniSize))
 	rt.SetConst("UPLOAD_ERR_FORM_SIZE", int64(2))
@@ -156,22 +156,22 @@ func osFamily() string {
 
 func registerPlatformFuncs(rt *runner.Runtime) {
 	// phpversion returns "8.4.0", the PHP language version phpscript reports;
-	// an $extension argument is ignored.
+	// it ignores an $extension argument.
 	rt.RegisterFunc("phpversion", func(extension ...any) any { return phpVersion })
 	// php_uname returns the host operating system name, the same value as
-	// PHP_OS; a $mode argument is ignored.
+	// PHP_OS; it ignores a $mode argument.
 	rt.RegisterFunc("php_uname", func(mode ...any) string { return osName() })
 	// zend_version returns the same version string as phpversion(); phpscript
 	// has no separate engine version.
 	rt.RegisterFunc("zend_version", func() string { return phpVersion })
 
 	// define defines constant $constant_name with value $value and returns
-	// true; the case-insensitivity flag is ignored.
+	// true; it ignores the case-insensitivity flag.
 	rt.RegisterFunc("define", func(constantName string, value any, _ ...any) bool {
 		rt.SetConst(constantName, value)
 		return true
 	})
-	// defined reports whether constant $constant_name is defined.
+	// defined reports whether constant $constant_name exists.
 	rt.RegisterFunc("defined", func(constantName string) bool {
 		_, ok := rt.Const(constantName)
 		return ok
@@ -184,8 +184,8 @@ func registerPlatformFuncs(rt *runner.Runtime) {
 		return nil, fmt.Errorf("undefined constant %q", name)
 	})
 
-	// Response headers are staged and written after the script finishes (see
-	// runner.Context.Header), so nothing has been sent while PHP is running.
+	// runner.Context.Header stages the response headers and writes them after
+	// the script finishes, so no header leaves the process while a script runs.
 	rt.RegisterFunc("headers_sent", func(_ ...any) bool { return false })
 
 	// phpscript has no php.ini. Reporting every directive as unset is what PHP

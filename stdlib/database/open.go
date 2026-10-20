@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// Open creates a *DB from a driver name and a DSN. It is the default
-// open function of DatabaseProvider.
+// Open creates a *DB from a driver name and a DSN, the default open function
+// of DatabaseProvider.
 //
 // The connection is not instrumented. Query level spans belong to the driver,
 // not to the provider, so a caller that wants them supplies an instrumented

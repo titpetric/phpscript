@@ -27,7 +27,7 @@ const (
 
 // token is a single lexical unit with source position for diagnostics.
 //
-// raw is set for string literals only. val holds the decoded value, which is
+// raw carries a value for string literals alone. val holds the decoded value, which is
 // what the runtime needs, but the decoding is lossy: it cannot tell `'$a'`
 // from `"\$a"`, and re-encoding the value picks one spelling for both. The
 // formatter rewrites files in place, so it prints the literal from raw, which
@@ -55,7 +55,7 @@ type lexer struct {
 
 func newLexer(src string) *lexer { return &lexer{src: src, line: 1} }
 
-// multiCharOps are matched greedily before single-char operators.
+// multiCharOps match greedily, ahead of the single-char operators.
 var multiCharOps = []string{
 	"===", "!==", "<<=", ">>=", "**=",
 	"==", "!=", "<=", ">=", "&&", "||", "->", "=>", "++", "--", "**",
@@ -63,7 +63,7 @@ var multiCharOps = []string{
 	"<<", ">>", "&=", "|=", "^=",
 }
 
-// singleCharOps lists every one-byte operator. It is a constant, so slicing it
+// singleCharOps lists every one-byte operator. A constant, so slicing it
 // (singleOpText below) produces a string header pointing into the binary's
 // read-only data. Emitting an operator token allocates nothing, where
 // `string(c)` allocated a fresh 1-byte string per token (rule 7).
@@ -81,8 +81,8 @@ var singleOpText = func() [utf8.RuneSelf]string {
 
 // multiOpsByFirst buckets multiCharOps by their first byte, longest first, so
 // lexOperator compares against the two or three candidates that can match
-// and never walks the whole table. Longest-first ordering is what keeps
-// "===" from being split into "==" and "=".
+// and never walks the whole table. Longest-first ordering keeps the lexer from
+// cutting "===" into "==" and "=".
 var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 	var out [utf8.RuneSelf][]string
 	for _, op := range multiCharOps {
@@ -98,7 +98,7 @@ var multiOpsByFirst = func() [utf8.RuneSelf][]string {
 
 // bytesPerToken estimates how many source bytes one token consumes, used to
 // presize the token slice (rule 6). Measured over the in-tree PHP fixtures the
-// ratio is 3.7 to 5.2 bytes per token (whitespace and comments are dropped, so the
+// ratio is 3.7 to 5.2 bytes per token (the lexer drops whitespace and comments, so the
 // count is well below the tokenizer's). Four is the conservative end: it costs
 // a little slack on comment-heavy files and avoids the doubling, which copies
 // the whole slice, on dense ones.
@@ -107,8 +107,9 @@ const bytesPerToken = 4
 // tokenPool recycles the token slice a parse walks.
 //
 // The slice is the largest single allocation the parser makes - a token is five
-// fields and a source file produces one per four bytes, and it is garbage the
-// moment the AST is built: model cannot hold a token, the type is unexported to
+// fields and a source file produces one per four bytes, and the whole slice
+// turns to garbage once the AST stands: model cannot hold a token, and the
+// type stays unexported to
 // it, and every read through p.toks[i] copies the struct and aliases nothing
 // the array. So the same backing array serves every parse in the process.
 //
@@ -285,17 +286,17 @@ func (l *lexer) lexNumber() {
 }
 
 // scanNumber returns the end offset of the numeric literal starting at pos,
-// and whether it is a float. It covers PHP's literal spellings: hexadecimal,
+// and whether that literal is a float. It covers PHP's spellings: hexadecimal,
 // binary and octal integers (both the 0o form and the legacy leading zero),
 // decimal integers, floats with a fractional part or an exponent, and the
-// underscore digit separator. Which base a prefix means is left to numLit;
+// underscore digit separator. numLit decides which base a prefix means;
 // this only decides where the literal ends.
 //
-// It is shared by the lexer and the token_get_all tokenizer so the two agree
-// on what one number token is.
+// The lexer and the token_get_all tokenizer both call it, so the two agree on
+// what one number token is.
 func scanNumber(src string, pos int) (end int, isFloat bool) {
 	// A base prefix takes the whole literal: an "e" inside 0x1e is a hex
-	// digit and no exponent, so these are matched before anything else.
+	// digit and no exponent, so this matches a prefix ahead of anything else.
 	if src[pos] == '0' && pos+1 < len(src) {
 		var isBaseDigit func(byte) bool
 		switch src[pos+1] {
@@ -311,8 +312,8 @@ func scanNumber(src string, pos int) (end int, isFloat bool) {
 			for p < len(src) && (isBaseDigit(src[p]) || src[p] == '_') {
 				p++
 			}
-			// A prefix with no digit after it is not a literal; "0" is, and
-			// what follows is left for the next token.
+			// A prefix with no digit behind it names no literal; "0" does,
+			// and the next token takes what follows.
 			if p > pos+2 {
 				return p, false
 			}
@@ -440,9 +441,9 @@ func (l *lexer) writeEscape(b *strings.Builder, quote byte) int {
 // (`\x1B`, `\033`, `\u{1F600}`), and keeps the backslash for anything it does
 // not recognise.
 //
-// It is shared by the lexer and the interpolation scanner so that the literal
-// runs between two embedded expressions decode the same way as a literal with
-// no interpolation in it.
+// The lexer and the interpolation scanner both call it, so a literal run
+// between two embedded expressions decodes the way a literal with no
+// interpolation does.
 func decodeEscape(src string, i int, quote byte, b *strings.Builder) int {
 	next := src[i+1]
 	if quote == '\'' {

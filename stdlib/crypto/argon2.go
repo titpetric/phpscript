@@ -13,7 +13,7 @@ import (
 // The work factors php defaults to, reported through the three
 // PASSWORD_ARGON2_DEFAULT_* constants. They are RFC 9106's second recommended
 // parameter set and cost more wall clock than bcrypt at cost 12. Lowering
-// memory_cost and leaving time_cost where it is trades the other way;
+// memory_cost and leaving time_cost at its default trades the other way;
 // docs/reference/extensions/hashing.md prices both.
 const (
 	argon2DefaultMemory = 65536
@@ -21,7 +21,7 @@ const (
 	argon2DefaultLanes  = 1
 )
 
-// The shape of the encoded hash, which is libargon2's and therefore php's: a
+// The shape of the encoded hash, which is libargon2's and so php's: a
 // 16-byte salt and a 32-byte tag, in the PHC string form with version 0x13.
 // Writing the same shape is what makes a hash written here verify under php
 // and the other way around.
@@ -82,7 +82,7 @@ func argon2Encode(salt, sum []byte, p params) string {
 }
 
 // argon2Decode reads the PHC string form back into the parameters, the salt
-// and the stored tag. The version field is required: a string without it is
+// and the stored tag. The version field is mandatory: a string without one is
 // argon2 1.0, which derives a different tag from the same inputs, so reading
 // one as 1.3 would report a mismatch as a match.
 func argon2Decode(hash string) (params, []byte, []byte, error) {
@@ -122,7 +122,7 @@ func argon2Decode(hash string) (params, []byte, []byte, error) {
 			return params{}, nil, nil, fmt.Errorf("unknown argon2 parameter %q", name)
 		}
 	}
-	if err := p.validate(); err != nil {
+	if err := p.check(); err != nil {
 		return params{}, nil, nil, err
 	}
 
@@ -140,8 +140,8 @@ func argon2Decode(hash string) (params, []byte, []byte, error) {
 	return p, salt, sum, nil
 }
 
-// isArgon2 reports whether a stored hash is one of the two variants, which is
-// how password_verify picks a derivation without being told.
+// isArgon2 reports whether a stored hash is one of the two variants, so
+// password_verify picks a derivation from the hash itself.
 func isArgon2(hash string) bool {
 	return strings.HasPrefix(hash, "$"+algoArgon2i+"$") || strings.HasPrefix(hash, "$"+algoArgon2id+"$")
 }

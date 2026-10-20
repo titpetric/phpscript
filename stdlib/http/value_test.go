@@ -8,9 +8,9 @@ import (
 )
 
 // TestToString covers how an option reaches a header value. PHP is dynamically
-// typed and an option arrives as whatever the script wrote, so a number written
-// where the header takes a string is rendered the way PHP renders it in a string
-// context, and null is the empty string.
+// typed and an option arrives as whatever the script wrote, so toString renders
+// a number written where the header takes a string the way PHP renders it in a
+// string context, and null is the empty string.
 func TestToString(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -98,9 +98,9 @@ func TestToInt(t *testing.T) {
 	}
 }
 
-// TestToDuration covers how a timeout is spelled. A bare number is seconds,
-// the spelling PHP's own timeouts use, and a string carrying a unit is
-// parsed as Go spells one, so a sub-second timeout is expressible without a
+// TestToDuration covers how a script spells a timeout. A bare number is
+// seconds, the spelling PHP's own timeouts use, and toDuration parses a string
+// carrying a unit the way Go spells one, so a sub-second timeout needs no
 // fraction.
 func TestToDuration(t *testing.T) {
 	t.Parallel()
@@ -127,10 +127,10 @@ func TestToDuration(t *testing.T) {
 }
 
 // TestToHeaders covers the headers option, which a script writes as an
-// associative array of name to value. Every PHP array shape the runtime hands
-// over is walked through model.RangeValues, so a native map and a *model.Array
-// read the same, and a value that is no array at all is reported where the
-// client is built.
+// associative array of name to value. toHeaders walks every PHP array shape
+// the runtime returns through model.RangeValues, so a native map and a
+// *model.Array read the same, and NewClient reports a value that is no array
+// at all.
 func TestToHeaders(t *testing.T) {
 	t.Parallel()
 	array := model.NewArray()

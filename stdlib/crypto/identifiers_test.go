@@ -5,7 +5,7 @@ import (
 )
 
 // TestEncodeCrockford pins the ULID text encoding to known vectors: the
-// all-zero value is 26 zeros, the all-ones value is the spec's maximum
+// all-zero value is 26 zeros, the all-ones value is the spec's largest
 // "7ZZZ..." (the leading 7 is the two-bit pad), and a single trailing one
 // lands in the last character.
 func TestEncodeCrockford(t *testing.T) {

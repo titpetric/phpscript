@@ -1,6 +1,6 @@
 # phpscript-service
 
-The test server's API written the way a phpscript application is written: one file per endpoint, the `// @route METHOD /path` annotation above it as the whole routing table, and the request in the superglobals. No front controller, and nothing in the program registers a handler.
+The test server's API in the shape a phpscript application takes: one file per endpoint, the `// @route METHOD /path` annotation above it as the whole routing table, and the request in the superglobals. No front controller, and nothing in the program registers a handler.
 
 ```php
 <?php
@@ -31,13 +31,13 @@ go build -o bin/phpscript .
 bin/phpscript server -f testdata/phpscript-service/config.yml testdata/phpscript-service
 ```
 
-`config.yml` is what makes the directory an application: `routes: enabled: true` turns on the annotation scan, and `server: addr` is the port. `public/` is the web root `phpscript server` requires, and it carries no endpoint: a route annotation inside it is ignored.
+`config.yml` is what makes the directory an application: `routes: enabled: true` turns on the annotation scan, and `server: addr` is the port. `public/` is the web root `phpscript server` requires, and it carries no endpoint: the scan passes over a route annotation inside it.
 
 The compose file mounts the binary. A benchmark measures the build under test, and an image carrying its own phpscript would report on the binary baked into that image.
 
 ## This is Path A
 
-`phpscript server` takes a pooled runtime per site and resets it between requests, decoding the superglobals for each one. `testdata/phpscript-http-bridge` is Path B: the script is the server, it is parsed once, each handler is resolved at `$mux->handle()`, and the workers are forked once at `listen()`.
+`phpscript server` takes a pooled runtime per site and resets it between requests, decoding the superglobals for each one. `testdata/phpscript-http-bridge` is Path B: the script is the server, one parse reads it, `$mux->handle()` resolves each handler, and `listen()` forks the workers once.
 
 A number from one never belongs in a table with a number from the other. `scripts/bench-http.sh` writes one table per runtime and heads each with the model its rows describe. [../../docs/agents/performance.md](../../docs/agents/performance.md) is the rule and [../../docs/design.md](../../docs/design.md) is why the two paths exist.
 
@@ -52,10 +52,10 @@ The gap is the reset between requests and the superglobals decoded for each one.
 
 ## Where it differs from the bridge
 
-The endpoints answer the same bytes on every route, so the two columns compare. Two things are written differently because the host is different:
+The endpoints answer the same bytes on every route, so the two columns compare. Two spellings differ because the host differs:
 
 - `header()` and `echo` in place of `$w->header()->set()` and `$w->write()`. The response is the one the server built for this request, so there is no writer to hold.
-- `json_encode(...) . "\n"` in place of `(new JSON\Encoder($w))->encode(...)`. The encoder writes to a stream and takes the newline with it; `json_encode` returns a document and the newline is appended. The bytes are the same either way, phpscript's `json_encode` being the same encoder.
+- `json_encode(...) . "\n"` in place of `(new JSON\Encoder($w))->encode(...)`. The encoder writes to a stream and takes the newline with it; `json_encode` returns a document and the handler appends the newline. The bytes are the same either way, phpscript's `json_encode` being the same encoder.
 
 ## Where a diagnostic goes
 
@@ -63,4 +63,4 @@ The endpoints answer the same bytes on every route, so the two columns compare. 
 
 The sweep's `/slow` abort check greps the process log, so it skips this side and says so. Reading the trace instead would mean scraping `/debug/oida`, a tenant-scoped admin surface behind a login in a virtual-hosting deployment, and a load harness has no business reaching into one.
 
-The mechanism is covered where it belongs: `TestIgnoreUserAbortRunsOn` and `TestClientAbortEndsTheScript` in `tests/runner/deadline_test.go` hold the handler running past a disconnect and `connection_aborted()` reporting it, and `tests/fixtures/runtime/execution_limits.phpt` pins the types the three functions answer in.
+The tests cover the mechanism where it belongs: `TestIgnoreUserAbortRunsOn` and `TestClientAbortEndsTheScript` in `tests/runner/deadline_test.go` hold the handler running past a disconnect and `connection_aborted()` reporting it, and `tests/fixtures/runtime/execution_limits.phpt` pins the types the three functions answer in.

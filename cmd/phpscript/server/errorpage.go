@@ -11,22 +11,22 @@ import (
 	"github.com/titpetric/phpscript/telemetry"
 )
 
-// errorPageNames returns the files that may answer for a status, in the order
-// they are tried. They live in the document root and are named after the status
-// they answer for, so a site puts one up by writing it and takes it down by
+// errorPageNames returns the files that may answer for a status, in lookup
+// order. They live in the document root and carry the name of the status they
+// answer for, so a site puts one up by writing it and takes it down by
 // deleting it. There is nothing to configure and nothing to switch on.
 //
 // The error pages come last so one page can cover the statuses a site does not
-// care to distinguish. error.php reads the status it is answering for out of
+// care to distinguish. error.php reads the status it answers for out of
 // $_SERVER["REDIRECT_STATUS"]; error.html cannot name it, and is the one page a
 // site of static files has to answer every failure with.
 //
-// The .php name is preferred at each step, so a site that adds a 404.php beside
+// The .php name wins at each step, so a site that adds a 404.php beside
 // a hand written 404.html starts serving the new one by writing it.
 //
 // The names are not nested. A directory of its own for /api could only add a
 // page, never remove one, so it cannot say "no page here", which is the state
-// an API actually wants. That is decided per request instead; see serveErrorPage.
+// an API actually wants. serveErrorPage decides that per request.
 func errorPageNames(status int) [4]string {
 	code := strconv.Itoa(status)
 	return [4]string{code + ".php", code + ".html", "error.php", "error.html"}
@@ -56,10 +56,10 @@ func (h *handler) errorPage(status int) (string, bool) {
 // plain status they got before this existed, and an API needs no configuration,
 // no prefix and no opt-out to keep them.
 //
-// The page runs once. Its own failure is logged and answered false, so a broken
-// 500.php cannot dispatch a 500 page of its own.
+// The page runs once. Its own failure goes to the log and answers false, so a
+// broken 500.php cannot dispatch a 500 page of its own.
 //
-// The request body is dropped, because every call site reaches this through
+// This drops the request body, because every call site reaches it through
 // a script that had already read the body. serveUnrouted is the entry point for
 // the other case.
 func (h *handler) serveErrorPage(w http.ResponseWriter, r *http.Request, status int, notes string) bool {
@@ -69,10 +69,9 @@ func (h *handler) serveErrorPage(w http.ResponseWriter, r *http.Request, status 
 // serveUnrouted renders the site's own page for a request that resolved to
 // nothing, and reports whether it did.
 //
-// It differs from serveErrorPage in one way: the page is handed the request
-// whole, body included. Nothing has read that body, because the request
-// matched no file and ran no script, so a page answering here is the last
-// thing that can,
+// It differs from serveErrorPage in one way: the page takes the request whole,
+// body included. Nothing has read that body, because the request matched no
+// file and ran no script, so a page answering here is the last thing that can,
 // and a site whose 404.php dispatches its own routes needs it to. A form
 // posting to a URL no file backs arrives with $_POST, $_FILES and php://input
 // filled the way its target endpoint would see them, and the page may answer

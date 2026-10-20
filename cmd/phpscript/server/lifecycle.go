@@ -9,9 +9,9 @@ import (
 )
 
 // lifecycleTracker is the part of the telemetry observer that records work
-// arriving from somewhere other than a request. It is matched structurally, the
-// way annotations matches it, so a host with telemetry off passes no observer
-// and nothing here has to know.
+// arriving from somewhere other than a request. Start matches it structurally,
+// the way annotations matches it, so a host with telemetry off passes no
+// observer and nothing here has to know.
 type lifecycleTracker interface {
 	TrackLifecycle(ctx context.Context, name, filename string, run func(context.Context) error) error
 }
@@ -20,11 +20,11 @@ type lifecycleTracker interface {
 // returned.
 //
 // The platform aborts the process when a module's Start returns an error, which
-// is right for a server that is one application and wrong for a server that is
-// several: one site's broken @startup job would take every other site down with
-// it. The module still reports what failed, and reporting is what this uses;
-// deciding that the failure is survivable belongs here, at the composition
-// site, not in the module.
+// is right for a server that is one application and wrong for a server that
+// holds more than one: one site's broken @startup job would take every other
+// site down with it. The module still reports what failed, and reporting is
+// what this uses; deciding that the failure is survivable belongs here, at the
+// composition site, not in the module.
 func nonFatal(module platform.Module, observers []runner.Observer) platform.Module {
 	return &nonFatalModule{Module: module, observers: observers}
 }

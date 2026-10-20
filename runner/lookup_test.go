@@ -57,7 +57,7 @@ func lookupRuntime(t testing.TB, out io.Writer, files fstest.MapFS) *runner.Runt
 }
 
 // TestLookupResolvesQualifiedName pins the resolution order: a name spelled in
-// full wins, a bare one is matched by its trailing segment, and a partial
+// full wins, a bare one matches on its trailing segment, and a partial
 // namespace picks between two that share the segment.
 func TestLookupResolvesQualifiedName(t *testing.T) {
 	t.Parallel()
@@ -331,7 +331,7 @@ function index(\HTTP\ResponseWriter $w, \HTTP\Request $r) {
 }
 
 // TestLookupCarriesOnlyItsArguments holds the lightweight contract: nothing
-// decodes a request, so the superglobals are undefined and not empty.
+// decodes a request, so the superglobals stay undefined and never empty.
 func TestLookupCarriesOnlyItsArguments(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{"scope.php": {Data: []byte(`<?php
@@ -358,7 +358,7 @@ function inspect($given) {
 }
 
 // TestLookupEchoesToTheRuntimeWriter keeps output where the runtime's output
-// goes. A lookup changes how a function is reached, not where it prints.
+// goes. A lookup changes how a caller reaches a function, not where it prints.
 func TestLookupEchoesToTheRuntimeWriter(t *testing.T) {
 	t.Parallel()
 	files := fstest.MapFS{"out.php": {Data: []byte(`<?php
@@ -420,7 +420,7 @@ function boom() {
 }
 
 // TestLookupResolvesWithoutPrecompiling covers the runtime a host built and did
-// nothing else with: the tree is walked on the first lookup that needs it.
+// nothing else with: the first lookup that needs the tree walks it.
 func TestLookupResolvesWithoutPrecompiling(t *testing.T) {
 	t.Parallel()
 	rt := lookupRuntime(t, nil, lookupTree)
@@ -460,7 +460,7 @@ func TestLookupFindsADeclarationAlreadyRun(t *testing.T) {
 
 // TestLookupConcurrent is the concurrency contract in executable form: one
 // runtime per goroutine over one shared cache pair, as the server
-// does per request. It is the test -race has to have.
+// does per request. This is the test -race has to have.
 func TestLookupConcurrent(t *testing.T) {
 	t.Parallel()
 	const workers, calls = 16, 50
@@ -565,8 +565,8 @@ echo $g->say("bob");
 
 // TestLookupError_Error covers the two renderings of the one error. A name
 // that matched too much lists what it matched, because the host's next move is
-// to spell one of them; every other reason has nothing to list, so the clause
-// is left off and never printed empty.
+// to spell one of them; every other reason has nothing to list, so Error drops
+// the clause and never prints it empty.
 func TestLookupError_Error(t *testing.T) {
 	t.Parallel()
 	ambiguous := &runner.LookupError{
@@ -584,8 +584,8 @@ func TestLookupError_Error(t *testing.T) {
 		t.Errorf("Error() = %q, want %q", got, want)
 	}
 
-	// The text a host actually sees comes through Lookup, so the rendering is
-	// checked against one the resolver raised and not only a built value.
+	// The text a host actually sees comes through Lookup, so this checks the
+	// rendering against one the resolver raised and not only a built value.
 	rt := lookupRuntime(t, nil, lookupTree)
 	if _, err := runner.Lookup[func(int) string](rt, "handle"); err == nil {
 		t.Fatal("Lookup(handle) resolved, want an ambiguity")

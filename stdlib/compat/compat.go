@@ -1,8 +1,8 @@
 // Package compat implements the PHP language surface a script reaches for
-// directly, and no library it calls: functions whose behaviour is defined by
-// what the interpreter does, not by what they compute.
+// directly, and no library it calls: functions whose behaviour follows from
+// what the interpreter does, not from what they compute.
 //
-// It is wired in by importing it, the way a program imports a database/sql
+// Importing it wires it in, the way a program imports a database/sql
 // driver:
 //
 //	import _ "github.com/titpetric/phpscript/stdlib/compat"
@@ -14,14 +14,14 @@
 //
 // PHP's ob_* family redirects everything echo would emit into a stack of
 // in-memory buffers, and template engines lean on it: rendering to a string is
-// "start a buffer, include the compiled template, take the contents". That is
-// what MiniTPL\Template::get() is built on.
+// "start a buffer, include the compiled template, take the contents".
+// MiniTPL\Template::get() builds on exactly that.
 //
 //	ob_start();
 //	include $compiled;
 //	$html = ob_get_clean();
 //
-// The buffers are pushed onto the runtime with runner.PushOutput, so the
+// ob_start pushes a buffer onto the runtime with runner.PushOutput, so the
 // capture covers everything that reaches Runtime.Output: echo, inline HTML, and
 // builtins that emit text of their own, such as die() with a message.
 //
@@ -64,7 +64,7 @@ func registerBuffers(rt *runner.Runtime) {
 	rt.OnReset(buffers.reset)
 
 	// ob_start takes a callback and chunk size in PHP. Neither changes what a
-	// template engine sees, so they are accepted and ignored.
+	// template engine sees, so ob_start accepts and ignores both.
 	rt.RegisterFunc("ob_start", func(_ ...any) bool {
 		buffers.push()
 		return true
