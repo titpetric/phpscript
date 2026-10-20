@@ -15,20 +15,20 @@ $db = new Database("dbadmin");
 $tpl = new MiniTPL\Template;
 
 // The user database is the .htpasswd file in this directory, and the session
-// is a cookie over it. Both are the defaults, so neither is named here: the
-// manager reads .htpasswd and keeps sessions on disk, which is why a reload
-// does not sign anybody out.
+// is a cookie over it. Both are the defaults, so neither constructor names
+// one: the manager reads .htpasswd and keeps sessions on disk, so a reload
+// leaves everybody signed in.
 //
-// No password and no hash appears in this application. The file is read by the
-// runtime, authenticate() answers a record or nothing, and what a session
-// carries is the user's id.
+// No password and no hash appears in this application. The runtime reads the
+// file, authenticate() answers a record or nothing, and a session carries the
+// user's id.
 $session = new Session\Manager;
 $auth = new Auth\Storage\PasswordFile;
 
 // Every page renders the same header, and the sign-in page renders it with
 // nobody signed in. add_default and not assign: load() clears the assigned
-// variables and re-applies the defaults, so a value a controller is not aware
-// of has to be a default or it is gone by the time the template renders.
+// variables and re-applies the defaults, so a value no controller knows about
+// survives only as a default.
 $tpl->add_default("username", "");
 $tpl->add_default("user_id", "");
 
@@ -54,8 +54,8 @@ function require_login($session, $db, $tpl) {
  *
  * The id is a ULID computed from the username, so the user table is a view of
  * the password file and this is an ordinary primary-key read. A session whose
- * user was removed from the file resolves to nothing, and the header prints
- * the id instead of a name.
+ * account the file has since dropped resolves to nothing, and the header
+ * prints the id in place of a name.
  */
 function current_user($db, $session) {
 	$id = $session->get();
@@ -85,10 +85,9 @@ function render_footer_stats() {
 }
 
 // There is no h() here, and no template names an escape filter: minitpl
-// escapes by markup context on its own, so a value passed through a second
-// escaper reaches the page as &amp;quot; where it should read a quote. The null
-// marker h() also rendered is written out in the three templates that show
-// one.
+// escapes by markup context on its own, so a value crossing a second escaper
+// reaches the page as &amp;quot; where a quote belongs. The three templates
+// that show a null marker spell it themselves.
 function identifier_ok($name) {
 	return preg_match("/^[A-Za-z_][A-Za-z0-9_]*$/", $name) == 1;
 }
@@ -137,7 +136,7 @@ function csv_cell($value) {
  *
  * query() reports success as a boolean, so statements that return rows are
  * read with get_all() instead. Rows arrive as maps without a column order;
- * the names are sorted to keep the rendered table stable between requests.
+ * this sorts the names to keep the rendered table stable between requests.
  */
 function sql_execute($db, $query) {
 	$prefix = strtolower(ltrim($query));
