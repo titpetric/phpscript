@@ -46,6 +46,7 @@ func TestRegisterInstallsEveryImportedArea(t *testing.T) {
 		area string
 		name string
 	}{
+		{area: "auth", name: "Auth\\Storage\\PasswordFile"},
 		{area: "database", name: "Database"},
 		{area: "http", name: "HTTP\\Client"},
 		{area: "mail", name: "Mail"},
