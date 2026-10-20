@@ -24,11 +24,34 @@ baseline="${root}/scripts/vale-baseline.json"
 target="${1:-.}"
 
 findings="$(mktemp)"
-trap 'rm -f "${findings}"' EXIT
+files="$(mktemp)"
+trap 'rm -f "${findings}" "${files}"' EXIT
+
+# git decides which files the gate reads, because .gitignore already names
+# everything that is not ours to rewrite: a composer vendor tree, an agent
+# worktree under .claude, a generated document. vale has no .gitignore support
+# of its own - its path controls are the section globs in .vale.ini, --glob,
+# and the arguments it is handed - so the list is built here and handed over.
+#
+# --cached --others --exclude-standard is tracked plus untracked-not-ignored,
+# which is every file `git status` would show and nothing a rule excludes. A
+# new document counts before it is added, and `composer install` changes no
+# count. The extension filter is the one .vale.ini declares, so a run scans
+# what the configuration says it scans and no binary is opened to find out.
+git -C "${root}" ls-files --cached --others --exclude-standard -- "${target}" \
+	| grep -E '\.(md|go|php)$' > "${files}"
+
+if [ ! -s "${files}" ]; then
+	echo "vale-gate: no md, go or php files under ${target}" >&2
+	exit 2
+fi
 
 # The same dockerised vale the mdox:lint task runs, so the gate and the job
-# that prints the findings read the same build of the same rules.
-docker run --rm -v "${root}:/src" -w /src jdkato/vale --output=line "${target}" \
+# that prints the findings read the same build of the same rules. xargs splits
+# the list into as many invocations as the argument limit needs, and -r keeps
+# an empty list from scanning the whole tree.
+xargs -r -a "${files}" -d '\n' \
+	docker run --rm -i -v "${root}:/src" -w /src jdkato/vale --output=line \
 	> "${findings}" 2>/dev/null
 
 if [ ! -f "${baseline}" ]; then
@@ -58,14 +81,18 @@ printf '%s\n' "${report}" | while IFS=$'\t' read -r count base delta rule; do
 	printf '%7s %8s %+6s  %s\n' "${count}" "${base}" "${delta}" "${rule}"
 done
 
-broke="$(printf '%s\n' "${report}" | awk -F'\t' '$3 > 0 { print $4 " grew by " $3 " to " $1 }')"
+# NF and the +0 both matter on an empty report, which is what a clean tree
+# against an empty baseline produces: awk compares an empty field as a string,
+# and "" sorts below "0", so a bare `$3 < 0` reported an improvement in a rule
+# with no name.
+broke="$(printf '%s\n' "${report}" | awk -F'\t' 'NF && $3+0 > 0 { print $4 " grew by " $3 " to " $1 }')"
 if [ -n "${broke}" ]; then
 	printf '\nvale-gate: %s\n' "${broke}" >&2
 	echo "vale-gate: fix the finding, or say why in the commit and raise the baseline" >&2
 	exit 1
 fi
 
-improved="$(printf '%s\n' "${report}" | awk -F'\t' '$3 < 0 { print $4 }' | tr '\n' ' ')"
+improved="$(printf '%s\n' "${report}" | awk -F'\t' 'NF && $3+0 < 0 { print $4 }' | tr '\n' ' ')"
 if [ -n "${improved}" ]; then
 	printf '\nvale-gate: below baseline, lower scripts/vale-baseline.json: %s\n' "${improved}"
 fi
