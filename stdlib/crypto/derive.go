@@ -41,6 +41,33 @@ func bcryptCost(hash string) (int, error) {
 	return bcrypt.Cost([]byte(goForm(hash)))
 }
 
+// bcryptEncoded reports whether a stored hash is one a comparison could match.
+//
+// bcrypt.Cost reads the revision and the cost digits and stops, so a hash whose
+// body is not bcrypt's base64 parses, reports a cost and then refuses every
+// password. Checking the body tells a user database that such a line carries
+// damage, where the cost alone would read as a wrong password.
+//
+// The width is exact because the format is: 7 bytes of prefix, 22 of salt and
+// 31 of tag, over an alphabet that is bcrypt's own and not standard base64.
+func bcryptEncoded(hash string) bool {
+	const (
+		bcryptLen      = 60
+		bcryptBodyAt   = 7
+		bcryptAlphabet = "./ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+	)
+
+	if len(hash) != bcryptLen || hash[0] != '$' || hash[1] != '2' || hash[3] != '$' || hash[6] != '$' {
+		return false
+	}
+	if hash[4] < '0' || hash[4] > '9' || hash[5] < '0' || hash[5] > '9' {
+		return false
+	}
+	return strings.IndexFunc(hash[bcryptBodyAt:], func(r rune) bool {
+		return !strings.ContainsRune(bcryptAlphabet, r)
+	}) < 0
+}
+
 // argon2Key runs the variant p names. argon2i is data-independent and argon2id
 // runs one data-independent pass before the data-dependent ones; both are
 // reachable because php registers both, and argon2id is the one to choose.

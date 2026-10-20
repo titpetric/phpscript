@@ -28,10 +28,10 @@ func TestDerive(t *testing.T) {
 			if !strings.HasPrefix(hash, tc.prefix) {
 				t.Errorf("derive() = %q, want a hash starting %q", hash, tc.prefix)
 			}
-			if !passwordVerify("correct horse", hash) {
+			if !PasswordVerify("correct horse", hash) {
 				t.Error("the hash it wrote does not verify")
 			}
-			if passwordVerify("wrong horse", hash) {
+			if PasswordVerify("wrong horse", hash) {
 				t.Error("a different password verified against it")
 			}
 		})

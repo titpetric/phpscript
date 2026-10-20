@@ -143,7 +143,7 @@ func Register(rt *runner.Runtime) {
 	// password_verify reports whether $password produced $hash. It reads the
 	// algorithm and the work factors out of $hash. An empty or malformed $hash
 	// returns false; it raises no error.
-	rt.RegisterFunc("password_verify", passwordVerify)
+	rt.RegisterFunc("password_verify", PasswordVerify)
 
 	// password_needs_rehash reports whether $hash records a different algorithm
 	// or different work factors than $algo and $options name. A login that
@@ -188,17 +188,15 @@ func Register(rt *runner.Runtime) {
 	})
 }
 
-// passwordVerify answers password_verify. The stored hash names the algorithm
-// and the work factors, so a login costs whatever the hash carries and nothing
-// here can lower that.
+// PasswordVerify answers password_verify, and is what stdlib/auth reads a
+// stored password file line with: a user database holds what password_hash
+// wrote, so the dispatch has one home.
 //
-// What it can do is not pay a derivation for a value no derivation could match.
-// A string that is neither argon2 nor long enough to be bcrypt is false in the
-// time it takes to read its first byte, which is also what php answers in: an
-// empty hash is 31 ns there. Spending a derivation on it instead would turn a
-// request carrying a wrong-shaped cookie into a fifth of a second of one core,
-// which is a request-rate limit an unauthenticated caller sets.
-func passwordVerify(password, hash string) bool {
+// The stored hash names the algorithm and the work factors, so a login costs
+// what that hash carries. A value no derivation could match reads false in
+// the time its first byte takes, as in php, which keeps a wrong-shaped cookie
+// from costing a core.
+func PasswordVerify(password, hash string) bool {
 	switch {
 	case isArgon2(hash):
 		return argon2Verify(password, hash)
@@ -207,6 +205,26 @@ func passwordVerify(password, hash string) bool {
 	default:
 		return false
 	}
+}
+
+// IsPasswordHash reports whether PasswordVerify can read a stored value: one
+// of the formats it dispatches on, with the parameters inside it readable. A
+// value this refuses matches no password, so a user database asks it when it
+// reads a file and stops there, ahead of the login that would fail.
+//
+// It runs the parse and no prefix test. The shape checks the dispatch uses are
+// loose by design, so that a hash php wrote and this build cannot read answers
+// false from password_verify; here a loose answer would accept a damaged line.
+func IsPasswordHash(stored string) bool {
+	if isArgon2(stored) {
+		_, _, _, err := argon2Decode(stored)
+		return err == nil
+	}
+	if !bcryptEncoded(stored) {
+		return false
+	}
+	_, err := bcryptCost(stored)
+	return err == nil
 }
 
 // algoName maps an identifier to the name password_get_info reports, which is
