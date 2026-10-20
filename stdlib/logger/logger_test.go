@@ -92,17 +92,50 @@ func TestLoggerWritesToSlog(t *testing.T) {
 	log := New(context.Background(), "migrate").
 		WithLogger(slog.New(slog.NewTextHandler(&logged, nil)))
 	log.Info("migration", "file", "schema.up.sql")
+	log.Warn("degraded", "file", "late.up.sql")
 	log.Error("failed", "error", errors.New("syntax error"))
 
 	lines := strings.Split(strings.TrimRight(logged.String(), "\n"), "\n")
-	if len(lines) != 2 {
+	if len(lines) != 3 {
 		t.Fatalf("logged = %q", logged.String())
 	}
 	if !strings.Contains(lines[0], `level=INFO msg="migrate migration" file=schema.up.sql`) {
 		t.Errorf("info line = %q", lines[0])
 	}
-	if !strings.Contains(lines[1], `level=ERROR msg="migrate failed" error="syntax error"`) {
-		t.Errorf("error line = %q", lines[1])
+	if !strings.Contains(lines[1], `level=WARN msg="migrate degraded" file=late.up.sql`) {
+		t.Errorf("warn line = %q", lines[1])
+	}
+	if !strings.Contains(lines[2], `level=ERROR msg="migrate failed" error="syntax error"`) {
+		t.Errorf("error line = %q", lines[2])
+	}
+}
+
+// TestLoggerWarnLeavesTheSpanAlone is the whole difference between Warn and
+// Error. A degradation the work survives is one log line, and the span the
+// warning runs under ends clean, error value and all.
+func TestLoggerWarnLeavesTheSpanAlone(t *testing.T) {
+	t.Parallel()
+	traceOptions := telemetry.NewOptions("phpscript")
+	traceOptions.Enabled = true
+	tracer, err := telemetry.New(traceOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, trace, err := tracer.StartTrace(context.Background(), "request")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, span := telemetry.Start(ctx, "session", telemetry.KindCache)
+	discard(New(ctx, "session")).Warn("storage fell back to memory", "error", errors.New("read-only file system"))
+	span.End()
+
+	spans := trace.Clone().Spans[1:]
+	if len(spans) != 1 {
+		t.Fatalf("spans = %+v", spans)
+	}
+	if spans[0].Err() != nil || spans[0].ErrorText != "" {
+		t.Errorf("span error = %q, want a span a warning did not fail", spans[0].ErrorText)
 	}
 }
 

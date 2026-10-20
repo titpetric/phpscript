@@ -12,8 +12,8 @@
 //		log.Info("migration", "file", item.Filename, "status", item.Status)
 //	}
 //
-// The method set is Info and Error, spelled and behaving the way slog spells
-// them, which is also the shape a library taking a logger declares.
+// The method set is Info, Warn and Error, spelled and behaving the way slog
+// spells them, which is also the shape a library taking a logger declares.
 // Output goes to slog.Default, read per call so a process that configures
 // logging past a logger's construction still reaches it, or to the logger passed to
 // WithLogger.
