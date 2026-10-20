@@ -2646,6 +2646,48 @@ function set_timezone(mixed $value): bool
 
 ## Classes
 
+### `Auth\Storage\PasswordFile`
+
+Registered from `stdlib/auth`.
+
+```php
+/**
+ * Auth\Storage\PasswordFile authenticates against an apache-format
+ * password file of `username:hash` lines, $path inside the application
+ * root; with no path it reads .htpasswd there. Lines may be bcrypt,
+ * argon2, apache md5 or {SHA}; the constructor refuses anything else and
+ * names the line.
+ */
+class Auth\Storage\PasswordFile
+{
+    public function __construct(string ...$paths) {}
+
+    /**
+     * authenticate reports the user $key names when $secret is theirs.
+     * 
+     * A missing user and a wrong password are one answer, so nothing a caller can
+     * see distinguishes them. What does distinguish them is time: a key the file
+     * does not carry costs no derivation, and one it carries costs whatever that
+     * line's format does. Closing that gap belongs to rate limiting, which bounds
+     * what any timing is worth; see docs/reference/extensions/hashing.md.
+     */
+    public function authenticate(string $key, string $secret): mixed {}
+
+    // exists reports whether the password file is there to read.
+    public function exists(): bool {}
+
+    /**
+     * users is every record in the file, ordered by username.
+     * 
+     * It carries no hash, so a script may hold it: everything above here sees a
+     * table of two columns, and the third column never leaves this package. A
+     * caller writes the rows into a table of its own and rebuilds it when the file
+     * changes.
+     */
+    public function users(): array {}
+}
+```
+
 ### `Database`
 
 Registered from `stdlib/database`.
@@ -3289,13 +3331,52 @@ class Regexp\CompilePOSIX
 Registered from `stdlib/session`.
 
 ```php
-// Session\Manager starts, reads and validates the request's session against the given $storage.
+/**
+ * Session\Manager starts, reads and validates the request's session
+ * against the given $storage, and logs a user in against the given
+ * $users. With no arguments it takes disk storage and the application's
+ * own .htpasswd, so `new Session\Manager` is a working login.
+ */
 class Session\Manager
 {
-    public function __construct(mixed $storage) {}
+    public function __construct(mixed $storage, mixed $users) {}
+
+    /**
+     * destroy ends the current session: it drops the data behind the cookie and
+     * expires the cookie on the way out.
+     * 
+     * A session that is not there is no error. Logging out twice, and logging out
+     * of a session a prune already took, are the same request to the client, and
+     * both end with no session and no cookie.
+     */
+    public function destroy(): void {}
 
     // get returns the user ID stored for the current session cookie.
     public function get(): string {}
+
+    /**
+     * login authenticates $key and $secret against the user database and starts a
+     * session for the user it names. It reports whether the credential held; a
+     * wrong password is false and no error.
+     * 
+     * The session carries the user's primary key, so a row written during the
+     * session references the user the way any other table does. The username
+     * stays in the user database, and a caller that needs it reads it there.
+     */
+    public function login(string $key, string $secret): bool {}
+
+    // set_auth replaces the user database login() authenticates against.
+    public function set_auth(mixed $users): void {}
+
+    /**
+     * set_storage replaces the storage sessions live in.
+     * 
+     * This is the setter half of the constructor: a script that took the
+     * manager's defaults and then needs memory storage says so here, and the rest
+     * of the manager holds. It wraps the storage for tracing as the constructor
+     * does, so the trace names whichever backend answered.
+     */
+    public function set_storage(mixed $storage): void {}
 
     // start creates a new session, stores userID, and stages its HTTP-only cookie.
     public function start(mixed $user_id): void {}

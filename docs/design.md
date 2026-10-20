@@ -93,7 +93,7 @@ Separate from the "Not implemented" rows in the [language reference](reference/R
 | Magic methods beyond `__construct` and `__invoke`                        | Explicit methods                                                                                                                                                                                |
 | `new self()`, `new static()`                                             | `new ClassName()`; the keywords are not resolved and fail loudly as an undefined class                                                                                                          |
 | `setcookie`, `setrawcookie`                                              | `Session\Manager`, or `header("Set-Cookie: ...", false)`                                                                                                                                        |
-| `session_start`, `session_id`, `session_destroy`, `$_SESSION`            | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`                                                                                                                             |
+| `session_start`, `session_id`, `session_destroy`, `$_SESSION`            | `Session\Manager`, `Session\Storage\Disk`, `Session\Storage\Memory`, `Auth\Storage\PasswordFile`                                                                                                |
 | `curl_*`                                                                 | `HTTP\Client`, `HTTP\Request`                                                                                                                                                                   |
 | PDO, `mysqli_*`, `pg_*`, `sqlite3_*`                                     | `Database`, `Database\Migrate`                                                                                                                                                                  |
 | `shmop_*`, `apcu_*`, `sem_*`                                             | `SharedMemory`                                                                                                                                                                                  |
@@ -155,9 +155,9 @@ The split is the one JSON makes above. The PHP names keep PHP's behaviour for po
 
 ### Cookies
 
-`setcookie()` is the row a reader questions, because dbadmin has a login. Go writes the session cookie. `Session\Manager::start()` mints the session id from `crypto/rand` and sets the header itself with `HttpOnly`, `Path=/` and `SameSite=Lax` fixed, so a script cannot weaken those attributes or choose the value. For any other cookie, `header()` already takes `$replace = false` and so emits repeated `Set-Cookie` headers; `setcookie()` in PHP is a string formatter over exactly that. `$_COOKIE` is the read side, which the runtime fills per request.
+`setcookie()` is the row a reader questions, because dbadmin has a login. Go writes the session cookie. `Session\Manager::start()` mints the session id from `crypto/rand` and sets the header itself with `HttpOnly`, `Path=/` and `SameSite=Lax` fixed, so a script cannot weaken those attributes or choose the value; `destroy()` writes the expiry of that same cookie, so even a logout needs no cookie string. For any other cookie, `header()` already takes `$replace = false` and so emits repeated `Set-Cookie` headers; `setcookie()` in PHP is a string formatter over exactly that. `$_COOKIE` is the read side, which the runtime fills per request.
 
-[demos/dbadmin](../demos/dbadmin) is the demonstration that the shape is enough: a complete login, logout, CSRF and post-redirect-message flow with no cookie string anywhere in its PHP.
+[demos/dbadmin](../demos/dbadmin) is the demonstration that the shape is enough: every page behind a session, a login against the application's own `.htpasswd`, and a logout, with no cookie string and no password hash anywhere in its PHP.
 
 ### Error handlers
 
