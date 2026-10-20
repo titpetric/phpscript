@@ -8,11 +8,17 @@
 // trace shows which backend it paid for and whether the session exists. The
 // trace omits the session ID: that ID is the credential in the cookie.
 //
+// Who a session belongs to is stdlib/auth's subject. A manager holds the user
+// database a host gave it and puts one question to that, in login();
+// everything else here is the cookie and the storage.
+//
 // Importing the package wires it in; stdlib/imports.go does that.
 package session
 
 import (
 	"github.com/titpetric/phpscript/runner"
+	"github.com/titpetric/phpscript/stdlib/auth"
+	"github.com/titpetric/phpscript/stdlib/logger"
 )
 
 // init contributes the session bindings to stdlib.Register.
@@ -44,6 +50,47 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	rt.RegisterConstructor("Session\\Storage\\Disk", func(storagePaths ...string) (*StorageDisk, error) {
 		return newRootedStorageDisk(rt, dir, storagePaths...)
 	})
-	// Session\Manager starts, reads and validates the request's session against the given $storage.
-	rt.RegisterConstructor("Session\\Manager", NewManager)
+	// Session\Manager starts, reads and validates the request's session
+	// against the given $storage, and logs a user in against the given
+	// $users. With no arguments it takes disk storage and the application's
+	// own .htpasswd, so `new Session\Manager` is a working login.
+	rt.RegisterConstructor("Session\\Manager", func(storage Storage, users auth.Storage) (*Manager, error) {
+		if storage == nil {
+			storage = defaultStorage(rt, dir)
+		}
+		if users == nil {
+			store, err := auth.NewPasswordFileRoot(rt, dir)
+			if err != nil {
+				return nil, err
+			}
+			users = store
+		}
+		return NewManager(storage, users)
+	})
+}
+
+// defaultStorage is the storage a manager takes when the script names none:
+// disk under the application root, and memory when disk cannot be had.
+//
+// The fallback writes a log line, because memory storage is a different
+// promise. It lives as long as the runtime that built it, and a server forks
+// one per worker, so a session minted on one worker is invisible to the next
+// and a login fails at random. One line costs less to read than that symptom.
+// The line names the path and the reason, and the trace names the backend on
+// every session span.
+//
+// Warn and not Error: the request that constructed this serves fine, and
+// failing its trace would report an outage over a misconfiguration.
+func defaultStorage(rt *runner.Runtime, dir string) Storage {
+	disk, err := newRootedStorageDisk(rt, dir)
+	if err == nil {
+		return disk
+	}
+
+	logger.New(rt.Context(), "session").Warn(
+		"disk storage is unavailable, falling back to memory; sessions last as long as the worker and are not shared between them",
+		"path", DefaultStoragePath(dir),
+		"error", err,
+	)
+	return NewStorageMemory()
 }

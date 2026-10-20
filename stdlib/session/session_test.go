@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -224,6 +225,131 @@ echo $disk->load("abc");
 			}
 		})
 	}
+}
+
+// TestRegisteredManagerTakesTheDefaults covers the spelling a site writes:
+// `new Session\Manager` with no arguments, meaning disk storage and the
+// application's own .htpasswd. A login is then the manager and nothing else:
+// the script names no store and reads no hash.
+func TestRegisteredManagerTakesTheDefaults(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+
+	root := t.TempDir()
+	passwords := "admin:$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW\n"
+	if err := os.WriteFile(filepath.Join(root, ".htpasswd"), []byte(passwords), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runRooted(t, root, `<?php
+$session = new Session\Manager;
+var_dump($session->login("admin", "hunter2hunter2"));
+echo $session->get(), "\n";
+var_dump($session->valid());
+$session->destroy();
+var_dump($session->valid());
+var_dump($session->login("admin", "wrong"));
+`)
+	if err != nil {
+		t.Fatalf("run: %v (output %q)", err, out)
+	}
+
+	// The session carries the id computed from the username, the value
+	// crypto.ULIDFrom("admin") answers.
+	want := "bool(true)\n4CD5VEBDA10GAVVT88QN6YW5EZ\nbool(true)\nbool(false)\nbool(false)\n"
+	if out != want {
+		t.Errorf("printed %q, want %q", out, want)
+	}
+}
+
+// TestRegisteredManagerWithoutAPasswordFile covers a site that has no user
+// database. The default store still constructs, because a manager carries a
+// cookie and a storage before any login, and the login alone fails.
+func TestRegisteredManagerWithoutAPasswordFile(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+
+	out, err := runRooted(t, t.TempDir(), `<?php
+$session = new Session\Manager;
+$session->start("row-1");
+echo $session->get(), "\n";
+try {
+	$session->login("admin", "hunter2hunter2");
+} catch (Throwable $e) {
+	echo "no user database\n";
+}
+`)
+	if err != nil {
+		t.Fatalf("run: %v (output %q)", err, out)
+	}
+	if want := "row-1\nno user database\n"; out != want {
+		t.Errorf("printed %q, want %q", out, want)
+	}
+}
+
+// TestDefaultStorageFallsBackToMemory covers the degradation and the line that
+// reports it.
+//
+// Memory storage is a different promise from disk: it lives as long as the
+// runtime, and a server forks one per worker, so a session minted on one
+// worker is invisible to the next and a login looks like it failed at random.
+// A silent fallback would leave the symptom as the only clue, so the warning
+// names the path and the reason.
+//
+// This test runs serial: it replaces the default slog logger.
+func TestDefaultStorageFallsBackToMemory(t *testing.T) {
+	// A regular file in place of the temporary directory: MkdirAll cannot
+	// make a directory under it, the same refusal a deployment reads off a
+	// read-only or unwritable mount.
+	blocked := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(blocked, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", blocked)
+
+	var logged strings.Builder
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	defer slog.SetDefault(previous)
+
+	// The session still works: the server answers a request that signs in,
+	// and only the durability of what it wrote drops.
+	out, err := runRooted(t, t.TempDir(), `<?php
+$session = new Session\Manager;
+$session->start("row-1");
+echo $session->get(), "\n";
+`)
+	if err != nil {
+		t.Fatalf("run: %v (output %q)", err, out)
+	}
+	if out != "row-1\n" {
+		t.Errorf("printed %q, want row-1", out)
+	}
+
+	line := logged.String()
+	for _, want := range []string{"level=WARN", "session disk storage is unavailable", "falling back to memory", "path=", "error="} {
+		if !strings.Contains(line, want) {
+			t.Errorf("logged %q, want it to carry %q", line, want)
+		}
+	}
+}
+
+// runRooted executes source against a runtime rooted at root, with a request
+// context registered: a session needs one, because Start stages a header on
+// the request it answers.
+func runRooted(t *testing.T, root, source string) (string, error) {
+	t.Helper()
+
+	prog, err := parser.Parse(source)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	var out strings.Builder
+	rt := runner.New(&out, runner.Options{})
+	stdlib.Register(rt)
+	stdlib.RegisterFS(rt, root)
+	runner.NewContext().Register(rt)
+	err = rt.Run(prog)
+	return out.String(), err
 }
 
 func mustAbs(t *testing.T, path string) string {

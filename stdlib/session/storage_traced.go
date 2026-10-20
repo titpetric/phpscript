@@ -17,6 +17,7 @@ import (
 // cookie, and the debug front end is a place it must not turn up.
 type tracedStorage struct {
 	storage Storage
+	backend string
 }
 
 var _ Storage = (*tracedStorage)(nil)
@@ -28,13 +29,35 @@ func traceStorage(storage Storage) Storage {
 	if _, ok := storage.(*tracedStorage); ok {
 		return storage
 	}
-	return &tracedStorage{storage: storage}
+	return &tracedStorage{storage: storage, backend: backendName(storage)}
+}
+
+// backendName is what the trace calls the storage behind the wrapper.
+//
+// Every span carries it, because the two backends promise different things of
+// a session: a disk session outlives the worker and every worker reads it,
+// where a memory session does neither. A manager that fell back to memory then
+// says so on each operation, and not in the log line alone (session.go,
+// defaultStorage).
+func backendName(storage Storage) string {
+	switch storage.(type) {
+	case *StorageDisk:
+		return "disk"
+	case *StorageMemory:
+		return "memory"
+	default:
+		// A storage a host implemented. Its type name would put a Go
+		// identifier on a front end, so the trace says this much and no
+		// more: neither of the two this package ships.
+		return "custom"
+	}
 }
 
 // Load reads session data, recording whether the session exists.
 func (s *tracedStorage) Load(ctx context.Context, id string) ([]byte, error) {
 	span := telemetry.StartSpan(ctx, "session load", telemetry.KindCache)
 	defer span.End()
+	span.SetAttribute("backend", s.backend)
 
 	data, err := s.storage.Load(ctx, id)
 	span.SetAttribute("hit", err == nil)
@@ -49,6 +72,7 @@ func (s *tracedStorage) Load(ctx context.Context, id string) ([]byte, error) {
 func (s *tracedStorage) Save(ctx context.Context, id string, data []byte) error {
 	span := telemetry.StartSpan(ctx, "session save", telemetry.KindCache)
 	defer span.End()
+	span.SetAttribute("backend", s.backend)
 	span.SetAttribute("bytes", len(data))
 
 	err := s.storage.Save(ctx, id, data)
@@ -60,6 +84,7 @@ func (s *tracedStorage) Save(ctx context.Context, id string, data []byte) error 
 func (s *tracedStorage) Delete(ctx context.Context, id string) error {
 	span := telemetry.StartSpan(ctx, "session delete", telemetry.KindCache)
 	defer span.End()
+	span.SetAttribute("backend", s.backend)
 
 	err := s.storage.Delete(ctx, id)
 	if telemetry.Recordable(err) && !missing(err) {
@@ -79,6 +104,7 @@ func missing(err error) bool {
 func (s *tracedStorage) Prune(ctx context.Context, maxAge time.Duration) error {
 	span := telemetry.StartSpan(ctx, "session prune", telemetry.KindCache)
 	defer span.End()
+	span.SetAttribute("backend", s.backend)
 	span.SetAttribute("max_age", maxAge.String())
 
 	err := s.storage.Prune(ctx, maxAge)
