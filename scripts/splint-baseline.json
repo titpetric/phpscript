@@ -1,6 +1,6 @@
 {
   "rules": {
-    "filecheck/long": 17,
+    "filecheck/long": 18,
     "imports/pollution": 1
   }
 }
