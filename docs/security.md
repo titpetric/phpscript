@@ -23,17 +23,42 @@ The order these go in is the order a mistake in them costs the most.
 
 A connection and a mail server are both named, never described. The server builds both providers per site from that site's own configuration, and they hold nothing else (`cmd/phpscript/server/vhost.go:158`, `:163`), so a name another site configured does not resolve at all, with no check to refuse it.
 
-| Surface                           | What a script gets                             | What it cannot get                                                                          |
-|-----------------------------------|------------------------------------------------|---------------------------------------------------------------------------------------------|
-| `new Database($name)`             | A client, or a failure naming `$name`          | The DSN. `get_object_vars()` is empty and `json_encode()` carries no credential             |
-| `Database::connections()`         | The names this site can open, sorted           | Any DSN behind a name                                                                       |
-| `Database::register($name, $dsn)` | A connection added to this site's own provider | Reach into another site's provider                                                          |
-| `new Mail($name)`, `mail()`       | A delivery, or a failure naming `$name`        | A host, a username or a password. There is no listing call and the object has no properties |
-| `getenv()`                        | The variables the site's `env` declared        | Anything named `PLATFORM_*`, and anything the operator's process carries                    |
+| Surface                                | What a script gets                                   | What it cannot get                                                                          |
+|----------------------------------------|------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| `new Database($name)`                  | A client, or a failure naming `$name`                | The DSN. `get_object_vars()` is empty and `json_encode()` carries no credential             |
+| `Database::connections()`              | The names this site can open, sorted                 | Any DSN behind a name                                                                       |
+| `Database::register($name, $dsn)`      | A connection added to this site's own provider       | Reach into another site's provider                                                          |
+| `new Mail($name)`, `mail()`            | A delivery, or a failure naming `$name`              | A host, a username or a password. There is no listing call and the object has no properties |
+| `new Auth\Storage\PasswordFile($file)` | A verdict on one credential, and the record it names | Any stored hash, and the file's contents. The store has no properties                       |
+| `getenv()`                             | The variables the site's `env` declared              | Anything named `PLATFORM_*`, and anything the operator's process carries                    |
 
 `Database::register` is the one place a connection string enters from PHP, and there a script supplies one it already holds, with nothing read back; the credential goes into the provider that site already resolves through (`stdlib/database/register.go:59`). `Mail` has no counterpart: naming what exists is itself a disclosure, and the constructor refuses settings, with no coercion. [Credentials stay with the host](configuration.md#credentials-stay-with-the-host) is the full account.
 
 `runner.InfrastructurePrefix` is what keeps connection strings out of `getenv()` (`runner/runtime.go:407`), and it applies to a variable the site declared itself: a site listing `PLATFORM_DB_SHOP` gets the connection and reads nothing back for the name.
+
+### The user database
+
+`Auth\Storage\PasswordFile` holds a site's accounts under the same rule: the site names the file, the runtime reads it, and the verification happens below the boundary. The format is apache's `htpasswd`, the one `mod_authn_file` reads, and a LAMP stack puts the same work in the same place - php sees `$_SERVER["PHP_AUTH_USER"]` after the web server has decided, and carries no secret store of its own.
+
+What a script holds is a store it can ask one question of, and the record an accepted credential names: a username, and a primary key computed from it (`stdlib/auth/user.go`). There is no property carrying a hash, no listing of hashes, and no method that returns one. `users()` lists the accounts and their keys, which is the file as two columns; the third column does not leave the package. Every call reads the file and drops the parse on return, so a hash stays a local the way a mail credential already does (`stdlib/mail/provider.go:86`).
+
+The path resolves inside the application root like any other, so a site cannot read its neighbour's file and cannot name one outside its tree. Keeping the file out of the document root is still the site's job: the server publishes `public/`, and a client fetches a password file there like any other asset.
+
+The constructor refuses a file that is there and unreadable, naming the line that stopped it, ahead of the login it would break. These are the formats a line may carry:
+
+| Line                      | Written by                     | What a guess costs an attacker                                |
+|---------------------------|--------------------------------|---------------------------------------------------------------|
+| `$2y$`, `$2a$`, `$2b$`    | `htpasswd -B`, `password_hash` | The cost the hash records; 214 ms at cost 12 on an Intel N150 |
+| `$argon2id$`, `$argon2i$` | `password_hash`                | The parameters the hash records, memory included              |
+| `$apr1$`                  | `htpasswd` with no flag        | 1000 md5 compressions, tens of microseconds                   |
+| `{SHA}`                   | `htpasswd -s`                  | One sha1, and no salt: a wordlist lookup per row              |
+| plain text, crypt DES     | `htpasswd -p`, `htpasswd -d`   | Refused                                                       |
+
+The refusal of the last two is a decision. Apache reads a plain password on some platforms, and a line no format claims is also what a truncated or corrupted hash looks like, so accepting the class would turn a damaged file into one that authenticates. The two weak rows above them carry no cost parameter worth anything, and this build reads them for compatibility with files that already exist; `htpasswd -B` is what to write. [Hashing](reference/extensions/hashing.md#what-a-derivation-costs) prices the first two.
+
+Removing an account ends its sessions, which is a sweep and not a check on the current request: a user holds a session per client, and `$session->delete_by_user($id)` drops every one of them and answers how many it took. A session carries its user's primary key as its whole payload, so a store matches on that and keeps no index of its own, and the manager clears its own session when the sweep took it. The `@startup` job that rebuilds a site's user table notices the removal, so that job signs the account out: `demos/dbadmin/users.php` reads the ids the table held, refills it from the file, and sweeps whatever the file stopped naming.
+
+The password file is not the `secrets:` block of issue 139 item 5, and does not advance it: it holds one kind of credential, the one a login compares against, and nothing decrypts.
 
 ## Service-managed and vhost-managed configuration
 
@@ -57,13 +82,14 @@ The startup checks run over the whole list before the server listens, and `phpsc
 
 A process started without `--stdlib` installs every binding package `stdlib/imports.go` imports (`stdlib/stdlib.go:17`), so every site gets the whole standard library, including the parts that reach outside the request:
 
-| Capability                                 | Binding          | What it reaches                                                                  |
-|--------------------------------------------|------------------|----------------------------------------------------------------------------------|
-| `exec`, `system`, `passthru`, `shell_exec` | `stdlib/pexec`   | A process at the privilege of the user running the server                        |
-| `new HTTP\Client`                          | `stdlib/http`    | Any address the host can route to, with headers the script sets                  |
-| `new HTTP\Server($addr, ...)`              | `stdlib/http`    | A listening socket on an address the script names                                |
-| `new Session\Storage\Disk($path)`          | `stdlib/session` | A directory the script names, created outside the root                           |
-| `imagecreatefrompng`, `imagepng`           | `stdlib/gd`      | A host path, until [#132](https://github.com/titpetric/phpscript/pull/132) lands |
+| Capability                                 | Binding          | What it reaches                                                                      |
+|--------------------------------------------|------------------|--------------------------------------------------------------------------------------|
+| `exec`, `system`, `passthru`, `shell_exec` | `stdlib/pexec`   | A process at the privilege of the user running the server                            |
+| `new HTTP\Client`                          | `stdlib/http`    | Any address the host can route to, with headers the script sets                      |
+| `new HTTP\Server($addr, ...)`              | `stdlib/http`    | A listening socket on an address the script names                                    |
+| `new Session\Storage\Disk($path)`          | `stdlib/session` | A directory inside the root, or the host's temporary directory when it names no path |
+| `new Auth\Storage\PasswordFile($file)`     | `stdlib/auth`    | A file inside the root, read and never written; no hash it holds reaches the script  |
+| `imagecreatefrompng`, `imagepng`           | `stdlib/gd`      | A path inside the root, writes held to `writable_paths`                              |
 
 `--stdlib` leaves the first row out:
 
@@ -94,18 +120,15 @@ Writes are additionally held to `writable_paths`, and a refused write throws whe
 
 ### Where phpscript leaves the root behind
 
-Four places reach the host filesystem directly. Two are decisions and two are defects.
+Three places reach the host filesystem directly, and all three are decisions.
 
-| Place                                    | Where                               | Status                                                                                                                    |
-|------------------------------------------|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| `exec` and the three functions beside it | `stdlib/pexec/exec.go:40`           | By design. A command is a process, and the root only decides where it starts                                              |
-| An uploaded part                         | `runner/request.go:739`             | By design. Written to the system temporary directory, readable back only through the request's own registry               |
-| `new Session\Storage\Disk($path)`        | `stdlib/session/storage_disk.go:20` | A defect. The constructor calls `os.MkdirAll` on the path the script named, outside the root and outside `writable_paths` |
-| gd image reads and writes                | `stdlib/gd/gd.go:139`               | A defect, fixed in [#132](https://github.com/titpetric/phpscript/pull/132)                                                |
+| Place                                    | Where                               | Status                                                                                                                                            |
+|------------------------------------------|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `exec` and the three functions beside it | `stdlib/pexec/exec.go:40`           | By design. A command is a process, and the root only decides where it starts                                                                      |
+| An uploaded part                         | `runner/request.go:739`             | By design. Written to the system temporary directory, readable back only through the request's own registry                                       |
+| `Session\Storage\Disk` with no path      | `stdlib/session/storage_disk.go:67` | By design. A directory of this application's own below the host's temporary directory, named after a digest of the root, so no script can name it |
 
-The two defects have one shape: a binding resolving an absolute path to itself while every other binding resolves it to the root. Both are visible from PHP as a disagreement between bindings, where `file_exists()` answers `false` for a path the host can see a file at.
-
-A deployment that cannot wait for either fix confines the process: a read-only bind mount over the tree, and a user whose only write permission is the volume.
+Two more rows belong to this table's history and not to the list above. `Session\Storage\Disk($path)` resolves the path a script names through the runtime's rule and holds it to `writable_paths` (`stdlib/session/storage_disk.go:36`), and gd does the same for an image path (`stdlib/gd/gd.go:146`), so every binding resolves an absolute path to the root and `file_exists()` agrees with its neighbours. [tests/fixtures/bindings/session_disk_root.phpt](../tests/fixtures/bindings/session_disk_root.phpt) pins the session half.
 
 ### Writable storage
 
@@ -137,6 +160,8 @@ What is per site, and not per process:
 | `@startup` and `@schedule` jobs                 | `cmd/phpscript/server/vhost.go:217` |
 
 The two caches are one pair per site, created with the site's file handler and shared between its routed endpoints and its document root so that one precompile pass covers both (`cmd/phpscript/server/precompile.go:13`). Sites share no cache.
+
+A site's accounts are its own for the same reason its files are: `Auth\Storage\PasswordFile` resolves against the root the bindings hold, so `new Session\Manager` on two sites reads two files and neither can name the other's. Two sites that share a tree share their accounts, which is one more thing a root that is a parent of another root gets wrong.
 
 Session storage on disk is one directory per application root, keyed by a digest of the absolute root (`stdlib/session/storage_disk.go:72`). `Session\Storage\Disk::prune` takes an age and not an ID, so while every root shared one directory, `new Session\Storage\Disk` followed by `prune()` on any site deleted every other site's sessions. Rooting the path a script names does not reach this, because a script that names no path never writes one down.
 

@@ -174,6 +174,45 @@ func (s *StorageDisk) Delete(ctx context.Context, id string) error {
 	return os.Remove(path)
 }
 
+// DeleteByUser removes every session file holding userID, counting what it
+// took. The walk reads each session because the payload is the only place the
+// user appears: a file carries its session id as its name and nothing more.
+func (s *StorageDisk) DeleteByUser(ctx context.Context, userID string) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	entries, err := os.ReadDir(s.storagePath)
+	if err != nil {
+		return 0, err
+	}
+
+	taken := 0
+	for _, entry := range entries {
+		if err := ctx.Err(); err != nil {
+			return taken, err
+		}
+		if entry.IsDir() || strings.HasPrefix(entry.Name(), ".session-") {
+			continue
+		}
+		path := filepath.Join(s.storagePath, entry.Name())
+		data, err := os.ReadFile(path)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return taken, err
+		}
+		if string(data) != userID {
+			continue
+		}
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return taken, err
+		}
+		taken++
+	}
+	return taken, nil
+}
+
 // Prune removes sessions whose last save is older than maxAge.
 func (s *StorageDisk) Prune(ctx context.Context, maxAge time.Duration) error {
 	if err := ctx.Err(); err != nil {

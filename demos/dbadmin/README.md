@@ -13,7 +13,7 @@ this repository vendors none of it. Install it before the first run:
 composer install
 ```
 
-That writes `vendor/`, which `bootstrap.php` pulls in with
+That writes `vendor/`, which `setup.php` pulls in with
 `require "vendor/autoload.php"`. phpscript interprets composer's generated
 autoloader as ordinary PHP, and the runtime special-cases nothing about it.
 
@@ -29,6 +29,41 @@ PLATFORM_DB_DBADMIN=sqlite://dbadmin.sqlite go run ../.. server .
 ```
 
 Then open the address printed by the server (normally `http://localhost:8080`). The server answers a static asset straight out of `public/`; the PHP controllers sit outside the public web root and reach the router through their `@route` annotations. To use an absolute database path, use a three-slash DSN such as `sqlite:///tmp/dbadmin.sqlite`.
+
+Every page is behind a login. The demo ships with two accounts:
+
+| Username | Password         |
+|----------|------------------|
+| `admin`  | `hunter2hunter2` |
+| `reader` | `readerreader`   |
+
+## Accounts
+
+`.htpasswd` in this directory is the user database, in apache's format: one
+`username:hash` per line, with lowercase names. It sits in the application root
+and not under `public/`, so no request can reach it, and the application never
+opens it either - `new Auth\Storage\PasswordFile` is what reads it, and a
+script gets a verdict, a username and an id. No password or hash appears in any
+PHP here, and the schema has no password column.
+
+Adding an account is a line in the file and a reload:
+
+```sh
+htpasswd -B -C 10 .htpasswd alice
+phpscript -s reload       # or: kill -HUP $(pidof phpscript)
+```
+
+bcrypt (`-B`) is what to write. The runtime also reads apache's default
+`$apr1$` md5 and its `{SHA}`, because files in the wild carry them, and neither
+has a cost parameter worth anything; see [security.md](../../docs/security.md).
+
+A reload re-runs the `@startup` jobs, and `users.php` is one: it rebuilds the
+`user` table from the file, so the accounts browse like any other table. That
+table is a view of the file and no store of its own - nothing writes to it, and
+`schema/` leaves it out. Its primary key is a ULID the username determines, so
+removing an account takes its row and nothing else, and adding the same name
+back restores the same key. A reload signs nobody out: sessions are files,
+keyed by the application root.
 
 ## Schema
 
@@ -50,6 +85,27 @@ Each file is append only. A `migrations` table records every applied statement b
 cd tests && atkins test
 ```
 
-The suite is idempotent: it removes its own leftovers before it starts and edits rows in a scratch table so the seeded rows keep the ids the migration gave them.
+Every step is `curl` under an `exec` step, sharing one cookie jar, because the
+suite signs in: venom's http executor follows redirects and cannot publish a
+captured cookie to a later step, so there is nowhere to keep a session id. The
+jar is a file, which is all the state the suite needs.
 
-> **Local demo only:** this application has no authentication or authorization, and its SQL console intentionally executes arbitrary SQL. Do not expose it to an untrusted network or use it against a production database.
+It runs against a locally started server too, with the reload command named for
+that process:
+
+```sh
+cd tests && venom run venom.yml \
+  --var=host=http://127.0.0.1:8080 \
+  --var='reload=pkill -HUP -x phpscript'
+```
+
+The suite is idempotent: it removes its own leftovers before it starts - the
+scratch tables, and the account the reload case appends to `.htpasswd` - and
+edits rows in a scratch table so the seeded rows keep the ids the migration
+gave them.
+
+> **Local demo only:** the login is a real session over a real password file,
+> but this application's SQL console intentionally executes arbitrary SQL for
+> anyone who signs in, and it has no authorization beyond "has an account". Do
+> not expose it to an untrusted network or use it against a production
+> database.

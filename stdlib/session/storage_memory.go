@@ -68,6 +68,24 @@ func (s *StorageMemory) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+// DeleteByUser removes every session holding userID, counting what it took.
+func (s *StorageMemory) DeleteByUser(ctx context.Context, userID string) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	taken := 0
+	for id, session := range s.sessions {
+		if string(session.data) != userID {
+			continue
+		}
+		delete(s.sessions, id)
+		taken++
+	}
+	return taken, nil
+}
+
 // Prune removes sessions whose last save is older than maxAge.
 func (s *StorageMemory) Prune(ctx context.Context, maxAge time.Duration) error {
 	if err := ctx.Err(); err != nil {

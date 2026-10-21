@@ -3,7 +3,7 @@
 <section class="card"><div class="cardhead"><div><h2>Table catalogue</h2><p>Inspect schemas and manage records.</p></div><a class="button" href="/table/create">+ New table</a></div>
 <div class="tablewrap"><table><thead><tr><th>Table</th><th>Columns</th><th>Rows</th><th>Definition</th><th>Actions</th></tr></thead><tbody>
 {foreach $tables as $table}
-<tr><td><a class="tablename" href="/table/{$table.name|h}">{$table.name|h}</a></td><td>{$table.columns}</td><td>{$table.rows}</td><td><code class="truncate">{$table.sql|h}</code></td><td class="actions"><a href="/table/{$table.name|h}">Browse</a><a href="/table/{$table.name|h}/structure">Structure</a></td></tr>
+<tr><td><a class="tablename" href="/table/{$table.name}">{$table.name}</a></td><td>{$table.columns}</td><td>{$table.rows}</td><td><code class="truncate">{$table.sql}</code></td><td class="actions"><a href="/table/{$table.name}">Browse</a><a href="/table/{$table.name}/structure">Structure</a></td></tr>
 {/foreach}
 </tbody></table></div></section>
 {include footer.tpl}

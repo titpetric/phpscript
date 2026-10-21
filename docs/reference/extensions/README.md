@@ -92,6 +92,71 @@ Constructing throws when the name is not a configured server, so the constructor
 
 PHP's `$additional_headers` and `$additional_params` are not accepted.
 
+### `Session\Manager`
+
+`new Session\Manager` is a login, a session cookie and the storage behind it. It replaces PHP's `session_start` family, which this runtime leaves out; Go writes the cookie with `HttpOnly`, `Path=/` and `SameSite=Lax` fixed, so a script neither chooses the value nor weakens the attributes. [Cookies](../../design.md#cookies) is why `setcookie` is absent.
+
+With no arguments it takes the two defaults a site wants: `Session\Storage\Disk` for the sessions, and `Auth\Storage\PasswordFile` over the `.htpasswd` in the application root for the accounts. A whole login is then the manager:
+
+```php
+$session = new Session\Manager;
+
+if ($session->login($_POST["username"], $_POST["password"])) {
+    header("Location: /");   // the session now carries the user's id
+}
+
+if (!$session->valid()) {
+    header("Location: /login");
+}
+
+echo $session->get();        // the signed-in user's primary key
+$session->destroy();         // log out: the stored session is deleted, the cookie expires
+```
+
+`login()` reports whether the credential held, and a wrong password is `false` and no error. `start($id)` is the other way in, for an application that identifies its visitor by some other means. `get()` answers the stored id, `valid()` whether the request carries a live session, and `destroy()` ends it.
+
+Either half is replaceable, by constructor argument or by setter:
+
+```php
+$session_store = new Session\Storage\Memory;
+$user_store    = new Auth\Storage\PasswordFile("config/users");
+
+$session = new Session\Manager($session_store, $user_store);
+
+$other = new Session\Manager;
+$other->set_storage($session_store);
+$other->set_auth($user_store);
+```
+
+`Session\Storage\Disk($path)` keeps a file per session under a directory inside the application root; with no path it uses one of the application's own below the host's temporary directory, which survives a reload. `Session\Storage\Memory` lives as long as the runtime, and a server forks one per worker, so it belongs to a CLI run or a test; a served site takes the disk one. A disk storage the runtime cannot create falls back to memory with a warning naming the path, and every session span carries the backend that answered.
+
+### `Auth\Storage\PasswordFile`
+
+`new Auth\Storage\PasswordFile($file)` is the user database a login puts its credential to: an apache-format `htpasswd` file of `username:hash` lines, resolved inside the application root, `.htpasswd` when the script names no path. Usernames are lowercase and compared as written.
+
+```php
+$users = new Auth\Storage\PasswordFile;
+
+if (!$users->exists()) {
+    echo "No accounts: write .htpasswd with htpasswd -B -C 10 .htpasswd admin";
+}
+
+$user = $users->authenticate("admin", $_POST["password"]);
+if ($user !== null) {
+    echo "signed in as $user, key " . $user->get_id();
+}
+
+foreach ($users->users() as $row) {
+    echo $row->get_id(), " ", $row, "\n";
+}
+```
+
+`authenticate()` answers a record or `null`, and a wrong password, an unknown name and a name in the wrong case are the same `null`. A record carries two things: `get_id()`, a ULID computed from the username, and its string form, which is the username - so `echo $user` and a `string` parameter both read the name with nothing spelled at the call site.
+
+The key follows from the name and sits in no column, so the file is a table other tables can reference: removing an account takes its row and nothing else, and adding the same name back answers the same key. `exists()` reports whether there is a file to read at all, so a default store does not fail a tree that has no accounts, and `users()` is the file as a listing of keys and names.
+
+No hash reaches a script, by construction: the store holds a path, every call reads the file, and no method returns a stored value. The formats a line may carry, the ones the parse refuses, and what each costs an attacker are in [security.md](../../security.md#the-user-database).
+
 ## Function keyword aliases
 
 All three declarations below mean the same thing to phpscript:

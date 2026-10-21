@@ -105,6 +105,35 @@ func TestStorageMemory_Prune(t *testing.T) {
 	}
 }
 
+// TestStorageMemory_DeleteByUser covers the sweep a removed account runs
+// through: the scan matches on the payload, where the user is, and another
+// user's session stays.
+func TestStorageMemory_DeleteByUser(t *testing.T) {
+	t.Parallel()
+	storage := session.NewStorageMemory()
+	ctx := context.Background()
+	if err := storage.Save(ctx, "abc", []byte("user-42")); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if err := storage.Save(ctx, "def", []byte("user-7")); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	taken, err := storage.DeleteByUser(ctx, "user-42")
+	if err != nil {
+		t.Fatalf("DeleteByUser: %v", err)
+	}
+	if taken != 1 {
+		t.Errorf("DeleteByUser took %d sessions, want 1", taken)
+	}
+	if _, err := storage.Load(ctx, "abc"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("Load after the sweep = %v, want fs.ErrNotExist", err)
+	}
+	if _, err := storage.Load(ctx, "def"); err != nil {
+		t.Errorf("the other user's session went with it: %v", err)
+	}
+}
+
 // TestStorageMemoryHonorsACanceledContext covers the check each method opens
 // with. A request that has gone away does not write a session, so the backend
 // reports the cancellation and leaves the map alone.

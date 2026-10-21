@@ -61,6 +61,59 @@ func TestSessionStorageImplementations(t *testing.T) {
 	}
 }
 
+// TestSessionStorageDeleteByUser covers the sweep a removed account runs
+// through: every session holding that user goes, another user's stays, and the
+// count is what the caller reports.
+func TestSessionStorageDeleteByUser(t *testing.T) {
+	t.Parallel()
+	disk, err := session.NewStorageDisk(filepath.Join(t.TempDir(), "sessions"))
+	if err != nil {
+		t.Fatalf("NewStorageDisk: %v", err)
+	}
+
+	storages := map[string]session.Storage{
+		"disk":   disk,
+		"memory": session.NewStorageMemory(),
+	}
+	for name, storage := range storages {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			// Two clients of one user, and a second user beside them.
+			for id, user := range map[string]string{
+				"aaa": "01JBQ0USER1",
+				"bbb": "01JBQ0USER1",
+				"ccc": "01JBQ0USER2",
+			} {
+				if err := storage.Save(ctx, id, []byte(user)); err != nil {
+					t.Fatalf("Save %s: %v", id, err)
+				}
+			}
+
+			taken, err := storage.DeleteByUser(ctx, "01JBQ0USER1")
+			if err != nil {
+				t.Fatalf("DeleteByUser: %v", err)
+			}
+			if taken != 2 {
+				t.Errorf("DeleteByUser took %d sessions, want 2", taken)
+			}
+			for _, id := range []string{"aaa", "bbb"} {
+				if _, err := storage.Load(ctx, id); !errors.Is(err, fs.ErrNotExist) {
+					t.Errorf("session %s survived the sweep, error = %v", id, err)
+				}
+			}
+			if _, err := storage.Load(ctx, "ccc"); err != nil {
+				t.Errorf("the other user's session went with it: %v", err)
+			}
+
+			// A user holding none is no error and no count.
+			taken, err = storage.DeleteByUser(ctx, "01JBQ0USER1")
+			if err != nil || taken != 0 {
+				t.Errorf("a second sweep took %d, %v, want 0 and no error", taken, err)
+			}
+		})
+	}
+}
+
 func TestSessionStorageHonorsCanceledContext(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())

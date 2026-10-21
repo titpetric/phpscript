@@ -4,269 +4,523 @@ name: dbadmin
 # `atkins test` from this directory: that reloads the compose service, resolves
 # the container address and passes it in as {{.host}}.
 #
-# The suite is idempotent. It removes its own leftovers before it starts and
-# does its row editing in a scratch table, so the seeded catalogue rows keep
-# the ids the migration gave them.
+# Every step is an `exec` running curl rather than an `http` step, and that is
+# the login's doing. venom's http executor follows redirects and cannot be told
+# not to, so the 302 that carries the session cookie is a response gone by the
+# time it reports; and `extracts` does not publish a variable a later step or
+# testcase can read in this build, so there is nowhere to put the session id
+# even once it is captured. curl's cookie jar solves both: .venom-jar carries
+# the session the way a browser would, and it is a file on disk that survives
+# from one step to the next.
+#
+# Each step prints the response and then a STATUS line, so a step asserts on
+# the status and the body together. A step that wants to see a redirect asks
+# for headers and does not follow; a step that wants the page the redirect
+# leads to follows with -L and does not ask for headers.
+#
+# The suite is idempotent. It removes its own leftovers before it starts - the
+# scratch tables and the user it appends to the password file - and does its
+# row editing in a scratch table, so the seeded catalogue rows keep the ids the
+# migration gave them.
 
 vars:
   host: http://dbadmin.localhost
+  password: hunter2hunter2
+  # How to make the service re-read its tree, which the reload case needs: a
+  # SIGHUP re-runs the @startup jobs, and users.php is what rebuilds the user
+  # table from the password file. The default is the compose service, and
+  # `--var=reload=...` is how a run against a locally started server
+  # (`phpscript server .` in the directory above) points it at that process.
+  reload: docker compose -f ../../../compose.yml kill -s HUP phpscript
+  # bcrypt at cost 4 of "venomvenom", which is what the reload case appends to
+  # the password file:
+  #   php -r 'echo password_hash("venomvenom", PASSWORD_BCRYPT, ["cost" => 4]);'
+  # The cost is the lowest bcrypt accepts, because this one is written on every
+  # run and the derivation is the suite's own latency.
+  venom_hash: '$2y$04$OMlazGvq2PggDEJvSPMJS.iyGlOXHj82.NAwsrbcV/2y9mdorrqCO'
 
 testcases:
   - name: remove leftovers from an earlier run
     steps:
-      - type: http
-        method: POST
-        url: "{{.host}}/sql"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "query=DROP TABLE IF EXISTS venom_rows"
+      # The password file is the one piece of state outside the database, and
+      # the reload case at the end of the suite appends to it. A run that died
+      # between the two left the line behind.
+      - type: exec
+        script: |
+          rm -f .venom-jar
+          grep -v '^venom:' ../.htpasswd > .venom-htpasswd
+          cp .venom-htpasswd ../.htpasswd
+          rm -f .venom-htpasswd
+          {{.reload}}
+          sleep 1
         assertions:
-          - result.statuscode ShouldEqual 200
-      - type: http
-        method: POST
-        url: "{{.host}}/sql"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "query=DROP TABLE IF EXISTS venom_scratch"
-        assertions:
-          - result.statuscode ShouldEqual 200
-      - type: http
-        method: POST
-        url: "{{.host}}/sql"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "query=DELETE FROM catalogue WHERE name LIKE 'Venom%'"
-        assertions:
-          - result.statuscode ShouldEqual 200
+          - result.code ShouldEqual 0
 
-  - name: dashboard lists the migrated table
+  - name: every page is behind the login
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/"
+      - type: exec
+        script: curl -sS -i -w '\nSTATUS %{http_code}\n' {{.host}}/
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring catalogue
-          - result.body ShouldContainSubstring migrations
-          - result.body ShouldContainSubstring Table catalogue
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /login'
+      # A mutating route is no more reachable than a page: the gate is in the
+      # bootstrap every controller includes.
+      - type: exec
+        script: curl -sS -i --data-urlencode "query=DROP TABLE catalogue" -w '\nSTATUS %{http_code}\n' {{.host}}/sql
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /login'
+      - type: exec
+        script: curl -sS -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Sign in
+          - result.systemout ShouldContainSubstring .htpasswd
+      # The sign-in page is not signed in, so it carries no account strip.
+      - type: exec
+        script: curl -sS {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldNotContainSubstring Sign out
+
+  - name: a mistyped password is refused, and says nothing about the account
+    steps:
+      - type: exec
+        script: curl -sS -d "username=admin&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Those credentials were not accepted
+      # The same answer for a name no line of the file carries, so the response
+      # does not say which accounts are real.
+      - type: exec
+        script: curl -sS -d "username=nobody&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Those credentials were not accepted
+      # The username is compared as written: the file carries lowercase names
+      # and the primary key is computed from them.
+      - type: exec
+        script: curl -sS -d "username=Admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Those credentials were not accepted
+      # A refused login leaves no session behind.
+      - type: exec
+        script: curl -sS -i -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /login'
+
+  - name: signing in stages an http-only session cookie
+    steps:
+      - type: exec
+        script: curl -sS -i -c .venom-jar -d "username=admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /'
+          - result.systemout ShouldContainSubstring HttpOnly
+          - result.systemout ShouldContainSubstring SameSite=Lax
+      # The session names the account, and the header prints it.
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - 'result.systemout ShouldContainSubstring class="who">admin'
+          - result.systemout ShouldContainSubstring Sign out
+      # A visitor who already has a session has nothing to do on the form.
+      - type: exec
+        script: curl -sS -i -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /'
+
+  - name: remove the scratch tables an earlier run left
+    steps:
+      - type: exec
+        script: curl -sS -b .venom-jar --data-urlencode "query=DROP TABLE IF EXISTS venom_rows" -w '\nSTATUS %{http_code}\n' {{.host}}/sql
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+      - type: exec
+        script: curl -sS -b .venom-jar --data-urlencode "query=DROP TABLE IF EXISTS venom_scratch" -w '\nSTATUS %{http_code}\n' {{.host}}/sql
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+      - type: exec
+        script: curl -sS -b .venom-jar --data-urlencode "query=DELETE FROM catalogue WHERE name LIKE 'Venom%'" -w '\nSTATUS %{http_code}\n' {{.host}}/sql
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+
+  - name: dashboard lists the migrated tables
+    steps:
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring catalogue
+          - result.systemout ShouldContainSubstring migrations
+          - result.systemout ShouldContainSubstring Table catalogue
+
+  - name: the user table is a view of the password file
+    steps:
+      # The accounts are browsable like any other table, because that is all
+      # they are: users.php rebuilds this table from .htpasswd at startup, and
+      # no password column exists anywhere in the schema.
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/user
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring admin
+          - result.systemout ShouldContainSubstring reader
+          - result.systemout ShouldContainSubstring 2 matching rows
+      # The id is the ULID computed from the username: the Crockford base32 of
+      # the first 128 bits of sha256(name), which is what the same digest
+      # printed through php answers. The query carries no string literal, so
+      # the quoting is the table name's alone.
+      - type: exec
+        script: curl -sS -b .venom-jar --data-urlencode 'query=SELECT id, username FROM "user" ORDER BY username' -w '\nSTATUS %{http_code}\n' {{.host}}/sql
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring 4CD5VEBDA10GAVVT88QN6YW5EZ
+          - result.systemout ShouldContainSubstring 1X150SCJN3XFEB036EYP5HQCWS
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/user/structure
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring username
+          - result.systemout ShouldNotContainSubstring password
 
   - name: browse shows the seeded rows
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/catalogue"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring SQLite Handbook
-          - result.body ShouldContainSubstring Desk Lamp
-          - result.body ShouldContainSubstring Local database
-          - result.body ShouldContainSubstring 3 matching rows
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring SQLite Handbook
+          - result.systemout ShouldContainSubstring Desk Lamp
+          - result.systemout ShouldContainSubstring Local database
+          - result.systemout ShouldContainSubstring 3 matching rows
 
   - name: browse filters on the search term
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/catalogue?q=Handbook"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' '{{.host}}/table/catalogue?q=Handbook'
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring SQLite Handbook
-          - result.body ShouldNotContainSubstring Desk Lamp
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring SQLite Handbook
+          - result.systemout ShouldNotContainSubstring Desk Lamp
 
   - name: browse paginates past the seeded rows
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/catalogue?page=2"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' '{{.host}}/table/catalogue?page=2'
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring No rows found.
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring No rows found.
 
   - name: structure reports columns and the create statement
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/catalogue/structure"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue/structure
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring created_at
-          - result.body ShouldContainSubstring CREATE TABLE catalogue
-          - result.body ShouldContainSubstring Danger zone
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring created_at
+          - result.systemout ShouldContainSubstring CREATE TABLE catalogue
+          - result.systemout ShouldContainSubstring Danger zone
 
   - name: export returns csv
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/catalogue/export"
+      - type: exec
+        script: curl -sS -i -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue/export
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.headers.Content-Type ShouldContainSubstring text/csv
-          - result.headers.Content-Disposition ShouldContainSubstring catalogue.csv
-          - result.body ShouldContainSubstring created_at
-          - result.body ShouldContainSubstring SQLite Handbook
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring text/csv
+          - result.systemout ShouldContainSubstring catalogue.csv
+          - result.systemout ShouldContainSubstring created_at
+          - result.systemout ShouldContainSubstring SQLite Handbook
 
   - name: sql console runs its default query
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/sql"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/sql
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring 3 row(s) returned
-          - result.body ShouldContainSubstring SQLite Handbook
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring 3 row(s) returned
+          - result.systemout ShouldContainSubstring SQLite Handbook
 
   - name: sql console runs a query from the url
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/sql?query=SELECT+COUNT(*)+AS+total+FROM+catalogue"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' '{{.host}}/sql?query=SELECT+COUNT(*)+AS+total+FROM+catalogue'
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring 1 row(s) returned
-          - result.body ShouldContainSubstring total
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring 1 row(s) returned
+          - result.systemout ShouldContainSubstring total
 
   - name: sql console executes a posted query
     steps:
-      - type: http
-        method: POST
-        url: "{{.host}}/sql"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "query=SELECT name FROM catalogue ORDER BY id LIMIT 1"
+      - type: exec
+        script: curl -sS -b .venom-jar --data-urlencode "query=SELECT name FROM catalogue ORDER BY id LIMIT 1" -w '\nSTATUS %{http_code}\n' {{.host}}/sql
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring 1 row(s) returned
-          - result.body ShouldContainSubstring SQLite Handbook
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring 1 row(s) returned
+          - result.systemout ShouldContainSubstring SQLite Handbook
 
   - name: create table form offers the dialect presets
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/create"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/create
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring New database table
-      - type: http
-        method: GET
-        url: "{{.host}}/table/create?engine=pgsql"
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring New database table
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' '{{.host}}/table/create?engine=pgsql'
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring selected>PostgreSQL
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring selected>PostgreSQL
 
   - name: insert form renders the columns
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/catalogue/insert"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue/insert
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring Insert row
-          - result.body ShouldContainSubstring value_1
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Insert row
+          - result.systemout ShouldContainSubstring value_1
 
   - name: edit form loads an existing row
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/catalogue/row/1/edit"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue/row/1/edit
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring Update row
-          - result.body ShouldContainSubstring SQLite Handbook
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Update row
+          - result.systemout ShouldContainSubstring SQLite Handbook
 
   - name: a table can be created from the form
     steps:
-      - type: http
-        method: POST
-        url: "{{.host}}/table/create"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "table_name=venom_rows&engine=sqlite&column_count=2&name_1=id&type_1=INTEGER&default_1=&pk_1=1&name_2=label&type_2=TEXT&default_2="
+      - type: exec
+        script: |
+          curl -sS -L -b .venom-jar \
+            -d "table_name=venom_rows&engine=sqlite&column_count=2&name_1=id&type_1=INTEGER&default_1=&pk_1=1&name_2=label&type_2=TEXT&default_2=" \
+            -w '\nSTATUS %{http_code}\n' {{.host}}/table/create
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring CREATE TABLE &quot;venom_rows&quot;
-          - result.body ShouldContainSubstring label
-      - type: http
-        method: GET
-        url: "{{.host}}/"
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring CREATE TABLE &quot;venom_rows&quot;
+          - result.systemout ShouldContainSubstring label
+      - type: exec
+        script: curl -sS -b .venom-jar {{.host}}/
         assertions:
-          - result.body ShouldContainSubstring venom_rows
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring venom_rows
 
   - name: a row can be inserted, edited and deleted
     steps:
-      - type: http
-        method: POST
-        url: "{{.host}}/table/venom_rows/insert"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "null_0=1&value_1=Venom probe"
+      - type: exec
+        script: curl -sS -L -b .venom-jar -d "null_0=1&value_1=Venom probe" -w '\nSTATUS %{http_code}\n' {{.host}}/table/venom_rows/insert
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring Venom probe
-          - result.body ShouldContainSubstring 1 matching rows
-      - type: http
-        method: POST
-        url: "{{.host}}/table/venom_rows/row/1/edit"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "value_0=1&value_1=Venom probe renamed"
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Venom probe
+          - result.systemout ShouldContainSubstring 1 matching rows
+      - type: exec
+        script: curl -sS -L -b .venom-jar -d "value_0=1&value_1=Venom probe renamed" -w '\nSTATUS %{http_code}\n' {{.host}}/table/venom_rows/row/1/edit
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring Venom probe renamed
-      - type: http
-        method: POST
-        url: "{{.host}}/table/venom_rows/row/1/delete"
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Venom probe renamed
+      - type: exec
+        # -d "" and not -X POST: -X would keep the method on the redirect that
+        # follows, and POST to the browse page is not a route.
+        script: curl -sS -L -b .venom-jar -d "" -w '\nSTATUS %{http_code}\n' {{.host}}/table/venom_rows/row/1/delete
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldNotContainSubstring Venom probe
-          - result.body ShouldContainSubstring No rows found.
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldNotContainSubstring Venom probe
+          - result.systemout ShouldContainSubstring No rows found.
 
   - name: a table can be dropped after confirmation
     steps:
-      - type: http
-        method: POST
-        url: "{{.host}}/table/venom_rows/drop"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "confirmation=venom_rows"
+      - type: exec
+        script: curl -sS -L -b .venom-jar -d "confirmation=venom_rows" -w '\nSTATUS %{http_code}\n' {{.host}}/table/venom_rows/drop
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring Table catalogue
-          - result.body ShouldNotContainSubstring venom_rows
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring Table catalogue
+          - result.systemout ShouldNotContainSubstring venom_rows
 
   - name: dropping requires a matching confirmation
     steps:
-      - type: http
-        method: POST
-        url: "{{.host}}/table/catalogue/drop"
-        headers:
-          Content-Type: application/x-www-form-urlencoded
-        body: "confirmation=wrong"
+      - type: exec
+        script: curl -sS -b .venom-jar -d "confirmation=wrong" -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue/drop
         assertions:
-          - result.body ShouldContainSubstring Confirmation did not match the table name.
-      - type: http
-        method: GET
-        url: "{{.host}}/table/catalogue"
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring Confirmation did not match the table name.
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/catalogue
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.body ShouldContainSubstring 3 matching rows
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring 3 matching rows
 
   - name: unknown and invalid table names are rejected
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/table/nope"
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/nope
         assertions:
-          - result.body ShouldContainSubstring Table not found.
-      - type: http
-        method: GET
-        url: "{{.host}}/table/bad-name"
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring Table not found.
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/bad-name
         assertions:
-          - result.body ShouldContainSubstring Invalid table name.
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring Invalid table name.
 
   - name: static assets are served from the web root
     steps:
-      - type: http
-        method: GET
-        url: "{{.host}}/assets/style.css"
+      # The document root is public/, so the password file in the application
+      # root is not reachable over HTTP at all - by either spelling.
+      - type: exec
+        script: curl -sS -i -w '\nSTATUS %{http_code}\n' {{.host}}/assets/style.css
         assertions:
-          - result.statuscode ShouldEqual 200
-          - result.headers.Content-Type ShouldContainSubstring text/css
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring text/css
+      - type: exec
+        script: curl -sS -o /dev/null -w 'STATUS %{http_code}\n' {{.host}}/.htpasswd
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 404
+      - type: exec
+        script: curl -sS -b .venom-jar -o /dev/null -w 'STATUS %{http_code}\n' {{.host}}/../.htpasswd
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldNotContainSubstring STATUS 200
+
+  - name: a user added to the password file signs in after a reload
+    steps:
+      # The file is the user database, so adding an account is a line and a
+      # reload. @startup jobs run again on SIGHUP, which is what rebuilds the
+      # user table; nothing invalidates a cache and no request is dropped.
+      - type: exec
+        script: |
+          echo 'venom:{{.venom_hash}}' >> ../.htpasswd
+          {{.reload}}
+          sleep 2
+        assertions:
+          - result.code ShouldEqual 0
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/user
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldContainSubstring venom
+          - result.systemout ShouldContainSubstring 3 matching rows
+      # The session the suite signed in with is still the session: storage is
+      # on disk and keyed by the application root, so a reload does not sign
+      # anybody out.
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - 'result.systemout ShouldContainSubstring class="who">admin'
+      # The new account signs in, with a session of its own.
+      - type: exec
+        script: curl -sS -i -c .venom-other -d "username=venom&password=venomvenom" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /'
+      - type: exec
+        script: curl -sS -b .venom-other -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - 'result.systemout ShouldContainSubstring class="who">venom'
+      # Removing the account again takes the row and the sessions it signs:
+      # the id was computed from the name, so nothing else is stored, and the
+      # rebuild sweeps the sessions of every id the file stopped naming. The
+      # jar stays on disk through this, because the next step is the cookie
+      # the removed user kept.
+      - type: exec
+        script: |
+          grep -v '^venom:' ../.htpasswd > .venom-htpasswd
+          cp .venom-htpasswd ../.htpasswd
+          rm -f .venom-htpasswd
+          {{.reload}}
+          sleep 2
+        assertions:
+          - result.code ShouldEqual 0
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/table/user
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - result.systemout ShouldNotContainSubstring venom
+          - result.systemout ShouldContainSubstring 2 matching rows
+      # The removed account is signed out everywhere it was signed in.
+      - type: exec
+        script: |
+          curl -sS -i -b .venom-other -w '\nSTATUS %{http_code}\n' {{.host}}/
+          rm -f .venom-other
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /login'
+      # The account that stayed keeps its session: the sweep took the ids the
+      # file dropped and no others.
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - 'result.systemout ShouldContainSubstring class="who">admin'
+
+  - name: signing out ends the session
+    steps:
+      - type: exec
+        script: curl -sS -i -b .venom-jar -c .venom-jar -d "" -w '\nSTATUS %{http_code}\n' {{.host}}/logout
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /login'
+          - result.systemout ShouldContainSubstring Max-Age=0
+      # The cookie the client kept is worth nothing: the stored session is
+      # gone, not only the cookie.
+      - type: exec
+        script: curl -sS -i -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /login'
+      - type: exec
+        script: rm -f .venom-jar
+        assertions:
+          - result.code ShouldEqual 0

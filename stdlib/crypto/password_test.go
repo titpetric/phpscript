@@ -124,6 +124,44 @@ func TestBcryptParamsOf(t *testing.T) {
 	}
 }
 
+// TestIsPasswordHash covers the stricter question a user database asks: not
+// "which derivation would run" but "could this value ever match". The two
+// differ on a hash whose prefix and cost parse and whose body does not:
+// password_verify answers false for one, and a parse refuses the line.
+func TestIsPasswordHash(t *testing.T) {
+	t.Parallel()
+
+	bcryptHash, err := derive("pw", params{algo: algoBcrypt, cost: 4})
+	if err != nil {
+		t.Fatal(err)
+	}
+	argon2Hash, err := derive("pw", params{algo: algoArgon2id, memory: 8, time: 1, lanes: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, stored := range []string{bcryptHash, goForm(bcryptHash), argon2Hash} {
+		if !IsPasswordHash(stored) {
+			t.Errorf("IsPasswordHash(%q) = false, want true", stored)
+		}
+	}
+
+	for _, stored := range []string{
+		"",
+		"not-a-hash",
+		bcryptHash[:59],                     // one byte short of the format
+		bcryptHash[:57] + "!!!",             // the body is not bcrypt's base64
+		"$2y$xx$" + bcryptHash[7:],          // the cost is not digits
+		"$argon2id$m=8,t=1,p=1$YWJj$YWJjZA", // argon2 1.0, a different derivation
+		"$argon2id$v=19$m=8,t=1,p=1$YWJj$",  // no tag
+		"$apr1$Zx1kLm9q$BwLItAYS8lPw/bCsIXHax1",
+	} {
+		if IsPasswordHash(stored) {
+			t.Errorf("IsPasswordHash(%q) = true, want false", stored)
+		}
+	}
+}
+
 // BenchmarkPasswordHash prices one derivation, which is the whole of
 // password_hash(): the encoding around it costs a few string writes.
 //
@@ -221,7 +259,7 @@ var refusedHashes = []struct{ name, hash string }{
 // a 200 ms ceiling fails on a decoy at any cost and leaves two orders of
 // headroom over the measurement.
 //
-// It runs through the registered function and never passwordVerify, because
+// It runs through the registered function and never PasswordVerify, because
 // the registration is where a decoy would sit.
 func TestPasswordVerifyRefusesWithoutDeriving(t *testing.T) {
 	rt := runner.New(io.Discard, runner.Options{})
@@ -257,7 +295,7 @@ func BenchmarkPasswordVerifyRefuse(b *testing.B) {
 		b.Run(tt.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for b.Loop() {
-				if passwordVerify(benchPassword, tt.hash) {
+				if PasswordVerify(benchPassword, tt.hash) {
 					b.Fatal("verify accepted a hash it cannot read")
 				}
 			}
@@ -298,7 +336,7 @@ func BenchmarkPasswordVerifyThroughput(b *testing.B) {
 			b.ReportAllocs()
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
-					if !passwordVerify(benchPassword, hash) {
+					if !PasswordVerify(benchPassword, hash) {
 						b.Error("verify failed")
 						return
 					}

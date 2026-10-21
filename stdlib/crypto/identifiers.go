@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -54,6 +55,13 @@ func RegisterIdentifiers(rt *runner.Runtime) {
 		hex.Encode(out[24:], b[10:])
 		return string(out[:]), nil
 	})
+}
+
+// ULIDFrom renders a ULID computed from seed: the first 128 bits of its sha256
+// digest, in the same Crockford base32 as ulid(), with no timestamp in it.
+func ULIDFrom(seed string) string {
+	sum := sha256.Sum256([]byte(seed))
+	return encodeCrockford([16]byte(sum[:16]))
 }
 
 // timestampedID builds the 16 bytes both generators format: the current
