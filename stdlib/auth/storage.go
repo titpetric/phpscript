@@ -21,11 +21,12 @@ type Storage interface {
 	// refusal is a failed login.
 	Authenticate(ctx context.Context, key, secret string) (User, error)
 
-	// Exists reports whether the store is there to read.
+	// Exists reports whether there is a user database to ask: the store is
+	// there, and it holds at least one account.
 	//
 	// A manager takes a default store on this answer, so the default fails no
 	// tree that has no user database: construction resolves where the store
-	// would sit, and this says whether anything sits there. A login page
+	// would sit, and this says whether any account sits there. A login page
 	// prints that state, and an installer asks it first.
 	Exists() (bool, error)
 }

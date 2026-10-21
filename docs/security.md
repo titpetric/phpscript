@@ -44,17 +44,20 @@ What a script holds is a store it can ask one question of, and the record an acc
 
 The path resolves inside the application root like any other, so a site cannot read its neighbour's file and cannot name one outside its tree. Keeping the file out of the document root is still the site's job: the server publishes `public/`, and a client fetches a password file there like any other asset.
 
-The constructor refuses a file that is there and unreadable, naming the line that stopped it, ahead of the login it would break. These are the formats a line may carry:
+The constructor refuses a file that is there and unreadable, naming the line that stopped it, ahead of the login it would break. It also refuses a utf-8 byte order mark ahead of the first username: the parse would otherwise leave the mark in the name, so that account would match nothing a login types and nobody would learn why. These are the formats a line may carry:
 
-| Line                      | Written by                     | What a guess costs an attacker                                |
-|---------------------------|--------------------------------|---------------------------------------------------------------|
-| `$2y$`, `$2a$`, `$2b$`    | `htpasswd -B`, `password_hash` | The cost the hash records; 214 ms at cost 12 on an Intel N150 |
-| `$argon2id$`, `$argon2i$` | `password_hash`                | The parameters the hash records, memory included              |
-| `$apr1$`                  | `htpasswd` with no flag        | 1000 md5 compressions, tens of microseconds                   |
-| `{SHA}`                   | `htpasswd -s`                  | One sha1, and no salt: a wordlist lookup per row              |
-| plain text, crypt DES     | `htpasswd -p`, `htpasswd -d`   | Refused                                                       |
+| Line                           | Written by                     | What a guess costs an attacker                                |
+|--------------------------------|--------------------------------|---------------------------------------------------------------|
+| `$2y$`, `$2a$`, `$2b$`, `$2x$` | `htpasswd -B`, `password_hash` | The cost the hash records; 214 ms at cost 12 on an Intel N150 |
+| `$argon2id$`, `$argon2i$`      | `password_hash`                | The parameters the hash records, memory included              |
+| `$apr1$`                       | `htpasswd` with no flag        | 1000 md5 compressions, tens of microseconds                   |
+| `{SHA}`                        | `htpasswd -s`                  | One sha1, and no salt: a wordlist lookup per row              |
+| plain text, crypt DES          | `htpasswd -p`, `htpasswd -d`   | Refused                                                       |
+| `$2$`, bcrypt with no revision | bcrypt before the 2a revision  | Refused                                                       |
 
-The refusal of the last two is a decision. Apache reads a plain password on some platforms, and a line no format claims is also what a truncated or corrupted hash looks like, so accepting the class would turn a damaged file into one that authenticates. The two weak rows above them carry no cost parameter worth anything, and this build reads them for compatibility with files that already exist; `htpasswd -B` is what to write. [Hashing](reference/extensions/hashing.md#what-a-derivation-costs) prices the first two.
+The refusal of the last two rows is a decision. Apache reads a plain password on some platforms, and a line no format claims is also what a truncated or corrupted hash looks like, so accepting the class would turn a damaged file into one that authenticates. The bcrypt row reads exactly the four revision markers php's crypt reads: for `$2$`, the 1997 spelling with no minor revision, php answers the failure string `*0` where Go's implementation still verifies the body, so a `$2$` line would sign a user in here and nowhere else, and `password_verify` answers false for it in both runtimes (`tests/fixtures/stdlib/password_bcrypt_revisions.phpt` settles that against the php binary). The two weak rows carry no cost parameter worth anything, and this build reads them for compatibility with files that already exist; `htpasswd -B` is what to write. [Hashing](reference/extensions/hashing.md#what-a-derivation-costs) prices the first two.
+
+A file the parse accepts can still hold no account: an operator stages a file of comments, or sweeps the last user out of one. `exists()` answers false for it, as for a missing file, so a login page says there are no accounts where a form refusing every password would name no cause.
 
 Removing an account ends its sessions, which is a sweep and not a check on the current request: a user holds a session per client, and `$session->delete_by_user($id)` drops every one of them and answers how many it took. A session carries its user's primary key as its whole payload, so a store matches on that and keeps no index of its own, and the manager clears its own session when the sweep took it. The `@startup` job that rebuilds a site's user table notices the removal, so that job signs the account out: `demos/dbadmin/users.php` reads the ids the table held, refills it from the file, and sweeps whatever the file stopped naming.
 

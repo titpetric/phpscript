@@ -143,6 +143,11 @@ func TestPasswordFileRefusesTheFile(t *testing.T) {
 			want:  "unreadable password hash",
 		},
 		{
+			name:  "a utf-8 byte order mark ahead of the first username",
+			lines: []string{"\ufeffadmin:" + testHashes["bcrypt"]},
+			want:  "line 1: a utf-8 byte order mark",
+		},
+		{
 			name:  "no hash at all",
 			lines: []string{"admin:"},
 			want:  "no password hash",
@@ -257,6 +262,34 @@ func TestPasswordFileExists(t *testing.T) {
 	// file, before anything asks Exists.
 	if store, err := NewPasswordFile(dir); err == nil {
 		t.Errorf("NewPasswordFile(%q) = %+v, want a refusal", dir, store)
+	}
+}
+
+// TestPasswordFileExistsNeedsAnAccount covers the file that is there and holds
+// nobody: comments and blank lines parse to no accounts, and an empty file is
+// the same state. exists() answers false for both, so a login page says there
+// are no accounts where a form refusing every password would name no cause.
+func TestPasswordFileExistsNeedsAnAccount(t *testing.T) {
+	t.Parallel()
+
+	for name, store := range map[string]*PasswordFile{
+		"comments alone": writeFile(t, "# the operator's note", "", "# another note"),
+		"an empty file":  writeFile(t),
+	} {
+		exists, err := store.Exists()
+		if err != nil {
+			t.Fatalf("%s: Exists() = %v", name, err)
+		}
+		if exists {
+			t.Errorf("%s: Exists() = true, want false for a file holding no accounts", name)
+		}
+
+		// The listing stays empty and carries no error, as for a missing
+		// file, so a caller rebuilding a table writes no rows.
+		users, err := store.Users(context.Background())
+		if err != nil || len(users) != 0 {
+			t.Errorf("%s: Users() = %v, %v, want none and no error", name, users, err)
+		}
 	}
 }
 

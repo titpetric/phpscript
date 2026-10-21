@@ -152,6 +152,8 @@ func TestIsPasswordHash(t *testing.T) {
 		bcryptHash[:59],                     // one byte short of the format
 		bcryptHash[:57] + "!!!",             // the body is not bcrypt's base64
 		"$2y$xx$" + bcryptHash[7:],          // the cost is not digits
+		"$2$" + bcryptHash[4:],              // 1997 bcrypt, no minor revision; php's crypt answers "*0"
+		"$2c$" + bcryptHash[4:],             // a revision php's crypt never wrote
 		"$argon2id$m=8,t=1,p=1$YWJj$YWJjZA", // argon2 1.0, a different derivation
 		"$argon2id$v=19$m=8,t=1,p=1$YWJj$",  // no tag
 		"$apr1$Zx1kLm9q$BwLItAYS8lPw/bCsIXHax1",
@@ -241,12 +243,15 @@ func BenchmarkPasswordVerify(b *testing.B) {
 
 // refusedHashes are the spellings password_verify answers by shape. No
 // derivation can turn any of them into a match: the first three carry no salt
-// and no tag, and the fourth is argon2 1.0, which derives a different tag from
-// the same parameters, so argon2Decode refuses it as unreadable.
+// and no tag, the fourth is bcrypt's 1997 spelling with no revision marker,
+// which php's crypt refuses, and the last is argon2 1.0, which derives a
+// different tag from the same parameters, so argon2Decode refuses it as
+// unreadable.
 var refusedHashes = []struct{ name, hash string }{
 	{"empty", ""},
 	{"not-a-hash", "not-a-hash"},
 	{"bcrypt/truncated", "$2y$12$Lw1SjMDYJ.x6mKLVCqTfke"},
+	{"bcrypt/no-revision", "$2$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW"},
 	{"argon2id/version=16", "$argon2id$v=16$m=65536,t=4,p=1$c29tZXNhbHRzb21lc2FsdA$RdescudvJCsgt3ub+b+dWRWJTmaaJObG"},
 }
 
