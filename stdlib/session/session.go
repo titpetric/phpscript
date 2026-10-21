@@ -20,8 +20,7 @@ func init() {
 	runner.RegisterBinding(Register)
 }
 
-// Register installs the session storage and manager classes, rooted at the
-// process working directory the way the filesystem shims are.
+// Register installs the session classes at the working directory.
 func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, ".")
 }

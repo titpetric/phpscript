@@ -35,9 +35,7 @@ func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	}
 }
 
-// Run formats files or directories in place by pretty-printing the AST. It
-// reports a file the formatter cannot read in full and leaves it alone, so
-// one file using PHP that phpscript does not support does not stop the rest.
+// Run formats files or directories in place, reporting what it left alone.
 func Run(args []string, list bool) error {
 	return run(args, list, os.Stdout, os.Stderr)
 }

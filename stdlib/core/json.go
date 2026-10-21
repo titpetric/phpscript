@@ -307,18 +307,12 @@ func NewJSONDecoder(stream io.Reader) (*JSONDecoder, error) {
 	return &JSONDecoder{dec: dec}, nil
 }
 
-// Decode reads the next value from the stream and returns it, or throws at the
-// end of the stream - a null is a value JSON carries, so `while ($d->more())`
-// is the loop and no test against what this returned.
-//
-// It decodes through json_decode()'s own walk and not json.Decoder.Decode,
-// which would build a map and lose the key order the two spellings agree on.
+// Decode reads the next value from the stream, throwing at the end of it.
 func (d *JSONDecoder) Decode() (any, error) {
 	return jsonDecodeStream(d.dec)
 }
 
-// More is json.Decoder.More: another value is waiting in the stream. This ends
-// a decode loop.
+// More reports another value waiting in the stream, ending a decode loop.
 func (d *JSONDecoder) More() bool {
 	return d.dec.More()
 }

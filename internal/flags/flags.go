@@ -307,8 +307,7 @@ func (o *Options) Check() error {
 // Covering reports whether the flags name coverage.
 func (o *Options) Covering() bool { return o.Cover != "" }
 
-// Report reports whether the coverage mode prints a per-symbol report on top
-// of writing the profile.
+// Report reports whether the coverage mode prints a per-symbol report.
 func (o *Options) Report() bool {
 	return o.Cover == coverage.ModeFunc || o.Cover == coverage.ModeFile
 }

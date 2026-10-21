@@ -48,12 +48,10 @@ func ParseSize(s string) (Size, error) {
 	return Size(value), nil
 }
 
-// Bytes returns the limit as a byte count. Zero is no limit; a caller has to
-// decide what that means for it.
+// Bytes returns the limit as a byte count, zero for no limit.
 func (s Size) Bytes() int64 { return int64(s) }
 
-// Exceeds reports whether n is over the limit. A zero Size is no limit, so
-// nothing exceeds it.
+// Exceeds reports whether n is over the limit, which a zero Size is not.
 func (s Size) Exceeds(n int64) bool { return s > 0 && n > int64(s) }
 
 // String writes the size back in the spelling it reads in: megabytes when it
@@ -77,8 +75,7 @@ func (s *Size) UnmarshalYAML(data []byte) error {
 	return nil
 }
 
-// MarshalYAML writes the size back as a string, so a round trip through a
-// configuration file keeps the M suffix.
+// MarshalYAML writes the size as a string, keeping the M suffix.
 func (s Size) MarshalYAML() ([]byte, error) {
 	return []byte(s.String()), nil
 }

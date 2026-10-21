@@ -107,8 +107,7 @@ func (rt *Runtime) newNamedCallable(name string) *Callable {
 	return c
 }
 
-// Call invokes the callable on the runtime that built it, as a script
-// calling one means: `($this->fn)(...)` is the call `$this->fn(...)` makes.
+// Call invokes the callable on the runtime that built it.
 func (c *Callable) Call(args ...any) (any, error) { return c.call(args...) }
 
 // Invoke runs the callable on rt, in a scope holding args and nothing else -
@@ -142,14 +141,9 @@ func (c *Callable) Invoke(rt *Runtime, args ...any) (any, error) {
 	return rt.InvokeNamed(c.name, args...)
 }
 
-// Captures reports whether the callable holds anything from its defining scope:
-// a closure's `use (...)` clause or the `$this` one written inside a method
-// binds, and the receiver a bound method reads its properties off.
-//
-// A host asks this before running one somewhere else. A callable that captures
-// nothing is a function of its arguments, and a function of its arguments runs
-// anywhere: a declared function held by name and a Class::method spelling,
-// whose receiver is an empty instance per call, both answer false.
+// Captures reports whether the callable holds anything from its defining
+// scope: a `use (...)` clause, a `$this`, a receiver. A host asks before
+// running one elsewhere, since one capturing nothing runs anywhere.
 func (c *Callable) Captures() bool {
 	if c.closure != nil {
 		return len(c.closure.Uses) > 0 || c.env.this != nil || c.env.class != nil
@@ -246,16 +240,7 @@ func (rt *Runtime) asStaticCallable(spelled, className, method string) (*Callabl
 	return rt.newStaticMethod(class, decl, nil), nil
 }
 
-// Callable resolves a PHP `callable` value into the uniform
-// func(...any) (any, error) signature the runtime invokes everywhere.
-//
-// Every spelling php accepts resolves: a *Callable, a Go func, "function_name",
-// "Class::method", array($object, "method") and array("Class", "method"). It
-// answers the call and not the value, which is the shape a binding taking a
-// callable declares; AsCallable is the other direction.
-//
-// The second return reports whether v is callable at all; callers turn that
-// into PHP's "not a valid callback" error with their own function name.
+// Callable resolves a PHP callable into func(...any) (any, error).
 func (rt *Runtime) Callable(v any) (func(...any) (any, error), bool) {
 	return rt.callableWithScope(rt.newScope(), v)
 }

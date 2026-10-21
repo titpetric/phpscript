@@ -154,12 +154,7 @@ func NewTestConfig() Config {
 }
 
 // Value is the configuration a pointer holds, and the zero configuration for a
-// nil one.
-//
-// Every command constructor takes a *Config so one signature covers them all,
-// and a command that reads no configuration takes whatever the caller has.
-// The commands that do read it then work with a value, and none repeats the
-// nil check.
+// nil one, so no command repeats the nil check.
 func Value(c *Config) Config {
 	if c == nil {
 		return Config{}

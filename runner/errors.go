@@ -26,14 +26,7 @@ func (e *ExitError) Error() string {
 	return fmt.Sprintf("exit(%d)", e.Code)
 }
 
-// ScriptExit reports the status a script ended with, and marks this error as
-// an ending and no failure.
-//
-// It exists so a package that cannot name *ExitError can still recognise one:
-// runner imports flatstack/engine, so engine cannot import runner back, and
-// the VM has to recognise an exit when it unwinds one past a catch clause. A
-// type assertion keeps runner.isExit an interface check, with no string
-// comparison on the message.
+// ScriptExit reports the status a script ended with, an ending and no failure.
 func (e *ExitError) ScriptExit() int {
 	return e.Code
 }
@@ -145,9 +138,7 @@ type UndefinedConstantError struct {
 	Name string
 }
 
-// ThrowableClass names the PHP class, implementing Throwable. RuntimeException
-// does not end in Error, so `catch (Exception $e)` takes it and
-// `catch (Error $e)` does not.
+// ThrowableClass names RuntimeException, which `catch (Error $e)` misses.
 func (e *UndefinedConstantError) ThrowableClass() string { return "RuntimeException" }
 
 // Error names the constant, quoted the way php quotes it.

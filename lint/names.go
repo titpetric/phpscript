@@ -27,13 +27,7 @@ var (
 	hostFuncs    map[string]bool
 )
 
-// SetInclude names a file to run against the name registry before the pass
-// checks any file, so the linter sees an application and not one file of it:
-// with `--include vendor/autoload.php` a name resolves against the classmap,
-// and not against the standard library alone.
-//
-// Call it before the first File(). knownRuntime builds the registry once per
-// process, because registration is deterministic.
+// SetInclude names a file to run against the name registry, before File().
 func SetInclude(path string) {
 	includeFile = path
 }

@@ -72,12 +72,7 @@ func Generate(rt *runner.Runtime, srcRoot string) (string, error) {
 	return render(funcs, classes), nil
 }
 
-// Reflect is Generate's first half without the source scan: what the runtime
-// registers, with the signature reflection can recover on its own. A shipped
-// binary can answer that much, since its own Go source is not there to read
-// doc comments and PHP-spelled parameter names out of. Those are the only
-// things missing from the result; the names, types and returns are the same
-// ones render turns into the generated reference.
+// Reflect is Generate without the source scan, and so without its comments.
 func Reflect(rt *runner.Runtime) ([]Func, []Class) {
 	return build(rt, emptySources())
 }

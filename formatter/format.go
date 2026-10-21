@@ -59,9 +59,8 @@ func splitShebang(src string) (shebang, rest string, ok bool) {
 	return strings.TrimRight(line, "\r"), rest, true
 }
 
-// Print renders prog as formatted PHP source. A node the printer has no
-// spelling for comes out as a placeholder comment; use Source, which refuses
-// to rewrite a file in that case.
+// Print renders prog as formatted PHP source, a node it cannot spell as a
+// placeholder comment. Source fails on such a file instead.
 func Print(prog *model.Program, opts Options) string {
 	out, _ := printProgram(prog, opts)
 	return out

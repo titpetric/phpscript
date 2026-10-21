@@ -345,14 +345,8 @@ func (rt *Runtime) Exit(code int) error {
 	return &ExitError{Code: code}
 }
 
-// Output returns the writer script output goes to: echo statements, inline
-// HTML, and any builtin that emits text of its own, such as die() with a
-// message, so their text joins the response body in the order the script
-// produced it.
-//
-// While a redirection is active (PushOutput, which output buffering builds
-// on) this is the innermost writer, so it captures everything the script
-// emits and passes none of it on.
+// Output returns the writer script output goes to, which under an active
+// PushOutput is the innermost one and passes nothing on.
 func (rt *Runtime) Output() io.Writer {
 	if n := len(rt.outStack); n > 0 {
 		return rt.outStack[n-1]
@@ -660,16 +654,13 @@ func (rt *Runtime) UpdateStatus(state telemetry.State) {
 	}
 }
 
-// MemoryUsage returns the current request-scoped memory estimation in bytes,
-// computed by a fresh walk of the live roots.
+// MemoryUsage returns request-scoped bytes, walking the live roots.
 func (rt *Runtime) MemoryUsage() int64 {
 	return rt.MemoryWalk()
 }
 
-// MemoryPeak returns the high-water usage mark. MemoryWalk samples it at walk
-// points (memory_get_usage calls and limit checkpoints), so an allocation
-// both made and released between walks does not raise it, unlike PHP's
-// allocator-level peak.
+// MemoryPeak returns the high-water mark, sampled at the walk points and not
+// at every allocation the way php's is.
 func (rt *Runtime) MemoryPeak() int64 {
 	rt.MemoryWalk()
 	return rt.memPeak
@@ -680,13 +671,7 @@ func (rt *Runtime) MemoryLimit() Size {
 	return rt.opts.MemoryLimit
 }
 
-// CompiledTree reports what the parsed and compiled source tree costs this
-// runtime: cached programs, compiled expressions, and the heap a precompile
-// pass measured itself adding, which is zero until one runs.
-//
-// memory_limit counts none of it. Every request shares the tree and it
-// outlives them all, and php draws the same line by keeping a compiled script
-// under opcache.memory_consumption.
+// CompiledTree reports the programs, expressions and heap the tree costs.
 func (rt *Runtime) CompiledTree() (programs, expressions int, heap int64) {
 	return rt.includeCache.Len(), rt.exprCache.Len(), rt.includeCache.Precompiled()
 }
@@ -694,12 +679,8 @@ func (rt *Runtime) CompiledTree() (programs, expressions int, heap int64) {
 // Precompiled reports whether this runtime precompiles.
 func (rt *Runtime) Precompiled() bool { return rt.opts.Precompile }
 
-// AccountRequest folds the size of host-owned request-lifetime values into
-// the baseline the memory walk starts from: the request Context, the parsed
-// *http.Request, the response writer. A host calls it once per value at the
-// point a request crosses into the runtime; the walk then adds live script
-// values on top. The baseline is an estimate of what the request costs before
-// any PHP evaluates, and no audit of every host allocation.
+// AccountRequest folds host-owned request values into the baseline the memory
+// walk starts from, as an estimate and no audit.
 func (rt *Runtime) AccountRequest(values ...any) {
 	visited := make(visitedSet)
 	for _, v := range values {
@@ -834,8 +815,7 @@ func (rt *Runtime) releaseScope(scope *Scope) {
 	rt.scopeFree = append(rt.scopeFree, scope)
 }
 
-// Trace publishes a trace span to registered observers and returns the first
-// mutable span one of them created.
+// Trace publishes a span to the observers, returning the first mutable one.
 func (rt *Runtime) Trace(message string, kind ...telemetry.Kind) *telemetry.Span {
 	return rt.traceContext(rt.ctx, message, kind...)
 }
@@ -881,13 +861,7 @@ func (rt *Runtime) UpdateIncludedFiles(count int) {
 	}
 }
 
-// RegisterConstructor binds a class name to a Go constructor so `new Name` in
-// PHP instantiates a native Go value. The constructor may take a leading
-// context.Context (auto-injected) and may return a trailing error, which
-// reaches the script as a thrown error. When a direct variable assignment
-// receives a constructed value that implements SetID(string), the runtime
-// passes it the PHP variable name without the leading dollar sign.
-// Example:
+// RegisterConstructor binds a class name to a Go constructor. Example:
 //
 //	rt.RegisterConstructor("Storage", func(ctx context.Context) (Storage, error) { ... }).
 //	// PHP:  $storage = new Storage;   // == storage, err := NewStorage(ctx).
@@ -903,21 +877,13 @@ func (rt *Runtime) LookupConstructor(name string) (any, bool) {
 	return nil, false
 }
 
-// SetCoverage installs a statement-coverage collector; nil turns collection
-// off. Coverage is an interpreter feature: with a collector in place, a
-// runtime created with NewFlatStack stops delegating to the bytecode backend,
-// because flatstack carries no coverage support (docs/flatstack.md) and the
-// fallback is atomic: a program partly counted would be a program partly run.
+// SetCoverage installs a statement-coverage collector.
 func (rt *Runtime) SetCoverage(c *coverage.Collector) { rt.coverage = c }
 
-// SetIncludeCache installs a shared include cache. Only runtimes whose include
-// paths resolve within the same source-root namespace may share one. Passing
-// nil disables include caching.
+// SetIncludeCache installs a cache shared by the runtimes of one source root.
 func (rt *Runtime) SetIncludeCache(cache *IncludeCache) { rt.includeCache = cache }
 
-// SetExprCache installs a source-keyed compiled-program cache that is safe to
-// share across runtimes. AST-specific expression metadata remains runtime-local.
-// Passing nil disables cross-runtime expression caching.
+// SetExprCache installs a source-keyed cache any runtime may share.
 func (rt *Runtime) SetExprCache(cache *ExprCache) { rt.exprCache = cache }
 
 // FS returns the configured source root (or nil).
@@ -926,20 +892,13 @@ func (rt *Runtime) FS() fs.FS { return rt.opts.RootFS }
 // Stdin returns the input stream configured by the runtime host.
 func (rt *Runtime) Stdin() io.Reader { return rt.opts.Stdin }
 
-// WorkDir returns the working directory as an fs.FS path inside the source
-// root: "." for the root itself, "app" for a directory below it. Bindings that
-// resolve a path against it want this spelling.
+// WorkDir returns the working directory as an fs.FS path: "." for the root.
 func (rt *Runtime) WorkDir() string { return rt.opts.WorkDir }
 
-// WorkDirPath returns the working directory the way a script reads it, written
-// from the source filesystem's root. This is what getcwd() answers with.
+// WorkDirPath returns the working directory as getcwd() answers it.
 func (rt *Runtime) WorkDirPath() string { return rootPath(rt.opts.WorkDir) }
 
-// ResolvePath maps a path a script supplied onto the source filesystem, through
-// the working directory. An include resolves through the same function,
-// exported so a binding taking a path from PHP reaches the same file: a
-// runtime where include "x.php" and file_get_contents("x.php") name different
-// files would be worse than either rule on its own.
+// ResolvePath maps a script's path onto the source filesystem.
 func (rt *Runtime) ResolvePath(p string) string { return rt.resolveFSPath(p) }
 
 // SetWorkDir moves the working directory and reports whether it could. A
@@ -964,12 +923,10 @@ func (rt *Runtime) SetWorkDir(dir string) bool {
 	return true
 }
 
-// Database returns the provider named connections resolve through, or nil when
-// the host configured none. The binding decides what nil falls back to.
+// Database returns the provider named connections resolve through, or nil.
 func (rt *Runtime) Database() model.DatabaseProvider { return rt.opts.Database }
 
-// Mail returns the provider named mail servers resolve through, or nil when the
-// host configured none. The binding decides what nil falls back to.
+// Mail returns the provider named mail servers resolve through, or nil.
 func (rt *Runtime) Mail() model.MailProvider { return rt.opts.Mail }
 
 // WritablePaths returns the configured writable path whitelist.
@@ -997,10 +954,8 @@ func (rt *Runtime) SetGlobal(name string, val any) {
 	rt.globals[name] = val
 }
 
-// PutEnv writes one variable into the script environment, backing putenv().
-// While Env is the frozen snapshot FreezeStdlib took, the write copies it
-// first, the way SetConst copies the frozen constants: the snapshot is what a
-// reset restores, so a write landing in it would outlive its program.
+// PutEnv writes one variable into the script environment, backing putenv(),
+// copying the frozen snapshot first so the write dies with its program.
 func (rt *Runtime) PutEnv(name, value string) {
 	rt.ownEnv()
 	rt.Env[name] = value
@@ -1032,17 +987,13 @@ func (rt *Runtime) SetConst(name string, val any) {
 	rt.constants[name] = val
 }
 
-// RegisterShutdown appends a callback to run when the current program exits.
-// Shutdown callbacks run in registration order, including after exit or error.
+// RegisterShutdown appends a callback the program's exit runs, in order.
 func (rt *Runtime) RegisterShutdown(callback any) {
 	rt.shutdown = append(rt.shutdown, callback)
 }
 
-// Const returns a registered constant value and whether the table holds it.
-//
-// The magic constants are not among them, so defined("__FILE__") and
-// constant("__FILE__") match php: it compiles those names and neither
-// function can see one.
+// Const returns a registered constant and whether the table holds it. The
+// magic constants are not among them, as in php.
 func (rt *Runtime) Const(name string) (any, bool) {
 	v, ok := rt.constants[name]
 	return v, ok
@@ -1098,17 +1049,13 @@ func (rt *Runtime) registerUserFunc(name string, fn any) {
 }
 
 // FunctionExists reports whether name resolves to a host shim or a PHP
-// user-defined function, backing `function_exists`. Template engines guard
-// their generated block functions with it, so an always-false answer would
-// redeclare them on every include.
+// function, backing `function_exists`.
 func (rt *Runtime) FunctionExists(name string) bool {
 	_, ok := rt.lookupFunc(strings.TrimPrefix(name, "\\"))
 	return ok
 }
 
-// IncludeFile evaluates path as PHP in a fresh scope, the same way an `include`
-// statement would. Hosts that resolve classes outside the interpreter (the
-// composer autoloader) use it to pull a declaration file into the runtime.
+// IncludeFile evaluates path as PHP in a fresh scope, as `include` would.
 func (rt *Runtime) IncludeFile(path string) (any, error) {
 	return rt.includeFile(path, false, rt.newScope())
 }
@@ -1310,16 +1257,12 @@ func (rt *Runtime) lookupConstructor(name string) (*funcEntry, bool) {
 	return nil, false
 }
 
-// OnError installs an error handler (register_error_handler). When set, the
-// runtime routes evaluation errors here and aborts no caller.
+// OnError installs the handler evaluation errors route to, aborting nobody.
 func (rt *Runtime) OnError(fn func(error)) {
 	rt.errorHandler = fn
 }
 
-// OnReset registers fn to run whenever the runtime is reset between programs.
-// A binding that keeps state of its own beside the runtime registers one, so a
-// host reusing the runtime starts the next program without it; the ob_* buffer
-// stack in stdlib/compat is the case that required it.
+// OnReset registers fn to run between programs.
 func (rt *Runtime) OnReset(fn func()) {
 	rt.resets = append(rt.resets, fn)
 }
@@ -1722,10 +1665,7 @@ func (rt *Runtime) helperFunc(ref *scopeRef) func(name, fallback string, args ..
 	}
 }
 
-// ScopeBuiltins names the builtins installed per-environment, outside
-// the function table. function_exists() and the linter both read the function
-// table, which does not carry these, so a script calling one reads as a call to
-// something undefined without this list.
+// ScopeBuiltins names the builtins the function table does not carry.
 func ScopeBuiltins() []string {
 	return []string{"func_get_args"}
 }

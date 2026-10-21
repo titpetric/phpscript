@@ -16,13 +16,8 @@ package model
 // once per iteration, and the flatstack compiler asks it once per program.
 
 // CopyValue returns a value with PHP's assignment semantics applied: it copies
-// an array, which is a value, and returns anything else unchanged, a handle or
-// an immutable that needs no copy.
-//
-// The copy reaches nested arrays, because they are values too, and a PHP
-// `$copy["a"]["b"] = 1` never shows through the original. It stops at objects,
-// which are handles in PHP as well, and at the native Go collections a binding
-// returns, which belong to the host and not to the script.
+// an array and its nested arrays, which are values, and returns anything else
+// unchanged. An object is a handle in PHP as well, and so is a Go collection.
 func CopyValue(v any) any {
 	array, ok := v.(*Array)
 	if !ok {
@@ -44,15 +39,9 @@ func CopyArray(a *Array) *Array {
 	return out
 }
 
-// AssignsTo reports whether any statement in body writes through target's root
-// name: `$v = ...`, `$v["k"] = ...`, `$v->p = ...`, `$v++`, or a list()
-// destructuring naming it.
-//
-// The test matches the root name and no exact shape. A write to `$v["k"]` has
-// to count: the element it reaches lives inside the value the loop variable
-// holds, so a by-value loop must have copied it. Over-reporting costs a copy
-// that turns out to be unobservable; under-reporting would let a by-value loop
-// edit its source.
+// AssignsTo reports whether any statement in body writes through target's
+// root name, matching that name and no exact shape: a write to `$v["k"]`
+// reaches inside the value, so a by-value loop must have copied it.
 func AssignsTo(target Expr, body []Stmt) bool {
 	root := RootName(target)
 	if root == "" {

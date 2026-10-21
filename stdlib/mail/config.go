@@ -31,12 +31,7 @@ type Config struct {
 }
 
 // String renders the settings that identify a server and elides the two that
-// authenticate to it.
-//
-// Nothing formats a Config today. The method is here so that nothing can start
-// to by accident: a %v in an error or a log line is the cheapest way for a
-// password to escape the process, and this makes that spelling harmless
-// permanently. It does not affect the yaml decoder, which reads the fields.
+// authenticate to it, so a %v in a log line leaks no password.
 func (c Config) String() string {
 	auth := "no"
 	if c.Username != "" || c.Password != "" {

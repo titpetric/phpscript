@@ -5,15 +5,10 @@ import (
 	"os"
 )
 
-// Overlay reads filename over base and returns the configuration it describes,
-// together with the keys the file itself named, so a caller can tell a key the
-// file set from one it inherited.
-//
-// This is the layering every phpscript.yml gets: a file names what it changes
-// and inherits the rest. A missing one is an error, with no fall back to base,
-// because a tree served under settings nobody wrote is the failure worth
-// avoiding. forbidden names the keys the file may not set and owned says who
-// sets them instead; the overlay refuses both and drops neither.
+// Overlay reads filename over base and returns the configuration it describes
+// with the keys the file itself named, so a caller can tell a key the file set
+// from one it inherited. A missing file is an error, with no fall back to
+// base; forbidden names the keys it may not set and owned says who does.
 func Overlay(base Config, filename string, forbidden []string, owned string) (Config, map[string]any, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {

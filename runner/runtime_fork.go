@@ -120,14 +120,8 @@ func copyEntries(dst, src map[string]*funcEntry) {
 	}
 }
 
-// InvokeNamed runs the PHP function name with args, on a clean stack holding
-// nothing but the arguments.
-//
-// InvokeNamed is the re-entry a host callback needs: a name is a program
-// counter, and everything else about the call comes in through args. A closure
-// is not callable this way: it carries its defining scope, which belongs to
-// the runtime that built it, so a host needing a callback on another goroutine
-// names one.
+// InvokeNamed runs the PHP function name with args, on a clean stack. A
+// closure is not callable this way: it carries its defining scope.
 func (rt *Runtime) InvokeNamed(name string, args ...any) (any, error) {
 	entry, ok := rt.lookupEntry(name)
 	if !ok {
@@ -147,11 +141,7 @@ func (rt *Runtime) DeclaredPrograms() map[*model.Program]string {
 	return out
 }
 
-// SetPreparer records how a host installs this runtime's bindings, so that Fork
-// can install the same ones on a child.
-//
-// stdlib.Register calls it. A host registering its own bindings on top passes a
-// function that installs those too, or its forks will not have them.
+// SetPreparer records how a host installs its bindings, for Fork to replay.
 func (rt *Runtime) SetPreparer(prepare func(*Runtime)) { rt.prepare = prepare }
 
 // InvokeClosure runs a closure declaration on this runtime, in a scope holding

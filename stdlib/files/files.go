@@ -24,9 +24,7 @@ func init() {
 	runner.RegisterBinding(Register)
 }
 
-// Register installs the filesystem shims rooted at the process working
-// directory. A host serving scripts out of a project directory binds that
-// instead, with RegisterRoot.
+// Register installs the filesystem shims rooted at the working directory.
 func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, ".")
 }
@@ -193,13 +191,8 @@ func (r root) writableAllows(name string) bool {
 	return false
 }
 
-// Within reports whether name is dir or something beneath it. The separator is
-// what keeps a sibling out: /srv/site/uploads-old is not under /srv/site/upload
-// even though the string starts the same way.
-//
-// A host has the same question to answer, so this package exports it: a server
-// that serves a writable directory has to know not to execute the PHP a script
-// may have written into it.
+// Within reports whether name is dir or something beneath it. The separator
+// keeps a sibling out: /srv/site/uploads-old is not under /srv/site/upload.
 func Within(name, dir string) bool {
 	if name == dir {
 		return true
@@ -208,15 +201,8 @@ func Within(name, dir string) bool {
 }
 
 // HostPath maps a path a script supplied onto the host filesystem beneath dir,
-// through the runtime's own resolution rule.
-//
-// A binding in another package calls it so that the file it opens is the file
-// file_get_contents would open for the same spelling. The rule lives in the
-// runtime and not here, and every caller joining its answer onto the root is
-// what keeps one rule and not one per package: a binding that resolves a path
-// itself can leave the root.
-//
-// An empty path names nothing and answers empty.
+// through the runtime's own rule, so one rule serves every binding. An empty
+// path names nothing and answers empty.
 func HostPath(rt *runner.Runtime, dir, p string) string {
 	if p == "" {
 		return ""

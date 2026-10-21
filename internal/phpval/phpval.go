@@ -40,13 +40,9 @@ func GoString(v any) (string, bool) {
 	return "", false
 }
 
-// Bytes answers the string a []byte carries, and whether v holds one.
-//
-// A PHP string is a byte string, so a binding's []byte is one of those rather
-// than a list of integers: regexp.Regexp.Find returns the text it matched, not
-// fifteen numbers. This is the test the value rules ask wherever a []byte would
-// otherwise fall through to the reflect path and read as a slice - truthiness,
-// identity, an offset read, gettype and model.IsCollection.
+// Bytes answers the string a []byte carries, and whether v holds one. A PHP
+// string is a byte string, so a binding's []byte is one of those and never a
+// list of integers.
 func Bytes(v any) (string, bool) {
 	b, ok := v.([]byte)
 	if !ok {
@@ -93,12 +89,8 @@ func String(v any) string {
 }
 
 // StringContext is String with the refusal PHP raises where a script's own
-// conversion reaches a value that has no string form.
-//
-// PHP distinguishes two situations and so does this: an array key and var_dump
-// never refuse a value, and a string context does. There is no __toString in
-// this runtime, so an object has no string form and php's Error covers the
-// case. The renderer is String's, with no second one.
+// conversion reaches a value that has no string form. There is no __toString
+// here, so an object is that value; an array key and var_dump refuse nothing.
 func StringContext(v any) (string, error) {
 	if _, ok := v.(*model.Object); ok {
 		return "", &ConversionError{Class: classNameOf(v)}

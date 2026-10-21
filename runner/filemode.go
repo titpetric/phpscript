@@ -57,8 +57,7 @@ func (m FileMode) Mode() os.FileMode {
 	return out
 }
 
-// String writes the mode back as four octal digits, the spelling a
-// configuration file and chmod() both use.
+// String writes the mode as four octal digits.
 func (m FileMode) String() string {
 	return fmt.Sprintf("%04o", uint32(m))
 }
@@ -74,8 +73,7 @@ func (m *FileMode) UnmarshalYAML(data []byte) error {
 	return nil
 }
 
-// MarshalYAML writes the mode back as a quoted octal string, so a round trip
-// through a configuration file cannot come back as a decimal number.
+// MarshalYAML writes the mode as a quoted octal string, never a decimal.
 func (m FileMode) MarshalYAML() ([]byte, error) {
 	return []byte(`"` + m.String() + `"`), nil
 }

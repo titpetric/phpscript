@@ -404,11 +404,7 @@ func cgiName(name string) string {
 	return string(out)
 }
 
-// Lazy defers building a source until something reads it, so a
-// superglobal cost nothing until a script names it.
-//
-// build runs at most once, on the first Get, Len or Range. A request that
-// reaches no read never parses, and one that reads twice parses once.
+// Lazy defers building a source until the first Get, Len or Range.
 func Lazy(build func() Source) Source { return &lazySource{build: build} }
 
 type lazySource struct {

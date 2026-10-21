@@ -87,15 +87,7 @@ func (c Context) StatusFor(err error) int {
 	return http.StatusInternalServerError
 }
 
-// Answered reports whether the script answered this request itself, which a
-// host takes as the script refusing whatever error page the site put up.
-//
-// A body counts, because a script that echoed something has said what the
-// response is: an endpoint returning 404 with a JSON payload keeps it. So does
-// a Content-Type, because a script that declared what it answers with has
-// ruled out HTML, which is a one line opt-out for an endpoint with nothing to
-// put in the body. Neither has anything to do with where the script sits in
-// the URL space.
+// Answered reports whether the script answered this request itself.
 func (c Context) Answered(body []byte) bool {
 	return len(body) > 0 || c.response.Get("Content-Type") != ""
 }

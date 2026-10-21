@@ -123,8 +123,7 @@ func NewStorage(ctx context.Context) (Storage, error) {
 	return &memStorage{data: map[string]string{}, tenant: tenant}, nil
 }
 
-// NewFailStorage is a constructor that always fails, used to exercise the
-// thrown-error path of `new`.
+// NewFailStorage always fails, for the thrown-error path of `new`.
 func NewFailStorage(ctx context.Context) (Storage, error) {
 	return nil, errors.New("boom")
 }

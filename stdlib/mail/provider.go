@@ -54,8 +54,7 @@ type Provider struct {
 	deliver func(Config, Message) error
 }
 
-// NewProvider returns a provider holding the given servers, keyed by the name
-// a script names, sending over SMTP.
+// NewProvider returns a provider sending over SMTP to the named servers.
 func NewProvider(servers map[string]Config) *Provider {
 	return NewProviderFunc(nil, servers)
 }

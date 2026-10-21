@@ -35,8 +35,7 @@ func NewCommand(_ *config.Config, _ *flags.Options) *cli.Command {
 	}
 }
 
-// Run prints a markdown table for the given path arguments, or for the
-// registered runtime surface when bindings is true.
+// Run prints a markdown table for the paths, or for the runtime surface.
 func Run(args []string, bindings bool) error {
 	return run(os.Stdout, args, bindings)
 }

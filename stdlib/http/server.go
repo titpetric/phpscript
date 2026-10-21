@@ -94,13 +94,7 @@ func (s *Server) Listen() (string, error) {
 	return s.bound, nil
 }
 
-// wait blocks until the script runs out of time, or the client that started it
-// goes away, and returns. A script with no limit and no client waits until the
-// host's own context ends, which for a command line run is never.
-//
-// Nothing runs after it in a script the time limit ended: the limit is a fatal,
-// as php's is, so the next statement is where the script stops. Cleanup belongs
-// in a register_shutdown_function callback, which runs with the clock off.
+// Wait blocks until the script runs out of time or its client goes away.
 func (s *Server) Wait() {
 	<-s.rt.Context().Done()
 }

@@ -46,9 +46,7 @@ type Scope = runner.Scope
 // Context is runner.Context.
 type Context = runner.Context
 
-// New returns a runtime that executes a supported program through flat bytecode
-// and delegates the whole of an unsupported one to the interpreter. New is the
-// one call that separates this package from runner.
+// New returns a runtime running flat bytecode where it can.
 func New(w io.Writer, opts Options) *Runtime { return runner.NewFlatStack(w, opts) }
 
 // NewExprCache returns a compiled-expression cache to share between runtimes.
@@ -66,8 +64,7 @@ func NewContext() Context { return runner.NewContext() }
 // FromRequest returns the request context of r, decoded as a script reads it.
 func FromRequest(r *http.Request) Context { return runner.FromRequest(r) }
 
-// ScopeFromContext answers the calling PHP scope of a binding, when one is on
-// ctx.
+// ScopeFromContext answers the calling PHP scope of a binding.
 func ScopeFromContext(ctx context.Context) (*Scope, bool) {
 	return runner.ScopeFromContext(ctx)
 }
@@ -75,9 +72,8 @@ func ScopeFromContext(ctx context.Context) (*Scope, bool) {
 // IsExit reports whether err is the error exit() and die() raise, and answers it.
 func IsExit(err error) (*ExitError, bool) { return runner.IsExit(err) }
 
-// Supports reports whether p will execute through flat bytecode and not
-// the compatibility interpreter. Call this in benchmarks to prevent measuring
-// an accidental fallback.
+// Supports reports whether p executes through flat bytecode, which a
+// benchmark asks so that it measures no accidental fallback.
 func Supports(p *model.Program) error {
 	_, err := flatvm.Compile(p)
 	return err

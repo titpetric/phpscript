@@ -16,15 +16,7 @@ var bindings struct {
 	installers []binding
 }
 
-// RegisterBinding contributes a runtime installer under ProfileSecure, which
-// stdlib.Register runs on every Runtime it sets up. Installers run in
-// registration order, before the bindings a host passes to stdlib.Register
-// directly. A binding that reaches outside the sandbox registers through
-// RegisterProfileBinding with its area bit instead.
-//
-// Binding packages call this from their init() (see stdlib/core/defer.go), so
-// importing a package wires it in. Why the registry lives in the leaf package
-// that owns Runtime is docs/reference/extensions/bindings.md.
+// RegisterBinding contributes a runtime installer under ProfileSecure.
 func RegisterBinding(installer func(*Runtime)) {
 	RegisterProfileBinding(ProfileSecure, installer)
 }
@@ -42,8 +34,7 @@ func RegisterProfileBinding(profile Profile, installer func(*Runtime)) {
 	bindings.installers = append(bindings.installers, binding{profile: profile, install: installer})
 }
 
-// Bindings returns every contributed installer in registration order,
-// regardless of area; stdlib.Register runs the whole surface.
+// Bindings returns every contributed installer, whatever its area.
 func Bindings() []func(*Runtime) {
 	return BindingsFor(^Profile(0))
 }

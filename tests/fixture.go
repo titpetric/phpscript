@@ -232,10 +232,7 @@ type Fixture struct {
 	flatErr     error
 }
 
-// SetRootFS binds the filesystem a fixture's includes resolve against. The
-// directory holding the .phpt is the right answer for every caller: the php
-// runner uses it as its working directory, so all three runners resolve a
-// relative include to the same file.
+// SetRootFS binds the filesystem a fixture's includes resolve against.
 func (f *Fixture) SetRootFS(root fs.FS) {
 	f.rootFS = root
 }
@@ -317,13 +314,6 @@ const (
 )
 
 // SetCacheScope says how far this fixture's parse caches reach.
-//
-// The caches are what a suite trades memory for speed with. Worker, the
-// default, keeps one set per worker loop, reused by the fixtures that worker
-// runs serially, so what a run holds scales with --parallel and not with the
-// number of fixtures. Off builds a set per run and drops them, its runtime
-// with them, when the run ends, so a run pays its own parsing and holds
-// nothing afterwards.
 func (f *Fixture) SetCacheScope(scope string) {
 	f.cacheScope = scope
 }
@@ -567,46 +557,24 @@ func absPath(p string) string {
 // cleanState reports whether the run drops what it built when it ends.
 func (f *Fixture) cleanState() bool { return f.cacheScope == CacheOff }
 
-// SetAppRoot points the fixture at the application root it runs under: the
-// directory the test command runs in, or the suite root of the
-// phpscript.yml governing the fixture. The autoload folder convention and the
-// prelude includes resolve there, while the fixture's own relative includes
-// keep resolving against its directory: runnerOptions layers the two, fixture
-// directory first.
-//
-// An include that is not there is not an error; the setting says what to load
-// when the application carries it, and a tree without an autoload.php simply
-// runs without one.
+// SetAppRoot points the fixture at the application root its autoload folder
+// and prelude includes resolve against, none of which has to be there.
 func (f *Fixture) SetAppRoot(root string, includes ...string) {
 	f.appRoot = root
 	f.includes = includes
 }
 
-// SetDatabase names the connections this fixture's Database and
-// Database\Migrate bindings resolve through. Nil leaves the binding on the
-// process environment, as a fixture whose suite declared no env of
-// its own has always had.
-//
-// A suite passes the provider its setup hook applied the schema through, so the
-// fixtures below it query the database the hook prepared, with no second
-// pool opened over the same DSN.
+// SetDatabase names the connections this fixture's bindings resolve through.
 func (f *Fixture) SetDatabase(provider model.DatabaseProvider) {
 	f.database = provider
 }
 
-// SetMail names the mail servers this fixture's Mail binding and mail()
-// resolve through. Nil leaves the binding on the default provider, which holds
-// no servers, so both refuse catchably naming the server they looked for.
-//
-// A suite passes the servers its own phpscript.yml named, so a fixture can
-// name a server its folder configured and no others.
+// SetMail names the mail servers this fixture's bindings resolve through.
 func (f *Fixture) SetMail(provider model.MailProvider) {
 	f.mail = provider
 }
 
-// SetCoverage installs a statement-coverage collector for the fixture's
-// runtime runner. Only that runner reports coverage: flatstack carries no
-// coverage support, and the php runner is another process.
+// SetCoverage installs a collector for the runtime runner.
 func (f *Fixture) SetCoverage(c *coverage.Collector) {
 	f.coverage = c
 }
