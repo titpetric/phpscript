@@ -18,8 +18,7 @@ import (
 // resolve a path exactly as file_get_contents resolves it - through the bound
 // root, the per-request working directory chdir() moved, and the source
 // filesystem before the host. A second resolver written elsewhere would be a
-// second answer to "which file is that", the one thing a sandbox
-// cannot have two of.
+// second answer to "which file is that", which a sandbox cannot have.
 func registerStat(rt *runner.Runtime, r root) {
 	// is_file reports whether $filename names an ordinary file, in the source
 	// filesystem or on the host; a directory is not one, and neither is a

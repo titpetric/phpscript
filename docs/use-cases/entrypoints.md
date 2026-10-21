@@ -139,7 +139,7 @@ Pooling is 37x a fresh runtime per request and 59x less garbage, which is the pa
 
 `pooled_reset` is the same pool with `rt.ResetSession(io.Discard, nil)` first, which drops it all. That also drops the declarations, so the lookup binds the symbol again per request - at a few hundred nanoseconds, so the line is still 15x a fresh runtime. If you are unsure which handler you have, use this one.
 
-One thing a pool does not carry: `runner.New` fixes the writer for the runtime's life. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering uses.
+A pool does not carry the writer: `runner.New` fixes it for the runtime's life. That does not arise above because the handler writes through `$w`, but a function that `echo`es needs `rt.PushOutput(w)` and a deferred `rt.PopOutput()` around the call, which is the same stack output buffering uses.
 
 ## Limits
 

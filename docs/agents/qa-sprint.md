@@ -10,7 +10,7 @@ Four deliverables, in the order they pay off:
 
 - A diagnosed bug, with the fixture that pins it, and the fix.
 - Code nothing reaches, deleted.
-- Two implementations of one thing, reduced to one.
+- Two implementations of the same subject, reduced to one.
 - A reproduction for a behaviour that is wrong but not yet fixed.
 
 Out of scope: new features, and anything the contract puts out of scope. A finding that needs a feature becomes an issue from the feature-gap template, not a half fix - [../design.md](../design.md) decides whether the finding is a gap or a decision, and a row in its "Won't build" table is a decision.
@@ -93,7 +93,7 @@ When a count reaches zero in `scripts/splint-baseline.json`, the rule comes out 
 
 ## Simplification
 
-What counts: two implementations of one thing, reduced to one. A helper with one caller, inlined. A branch no input reaches. An error path that cannot happen.
+What counts: two implementations of the same subject, reduced to one. A helper with one caller, inlined. A branch no input reaches. An error path that cannot happen.
 
 The gate is that behaviour is identical:
 

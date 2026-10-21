@@ -2,7 +2,7 @@
 
 The interfaces and classes PHP predefines, in the order the PHP manual lists them at [Predefined Interfaces and Classes](https://www.php.net/manual/en/reserved.interfaces.php), with what phpscript does about each. Every row links to a document describing the name, its synopsis as PHP declares it, and a `Status` section recording where phpscript differs.
 
-One thing is true of every row and is not repeated in each: **phpscript declares none of these names except `stdClass`, and nothing dispatches through an interface.** A class may write `implements Countable` and it will load, because a name no `interface` declaration in the same file defines is not a contract and is not checked; but `count()` will not call its `count()` method. Declaring an interface is a claim about shape, and here it stays one.
+This holds of every row and is not repeated in each: **phpscript declares none of these names except `stdClass`, and nothing dispatches through an interface.** A class may write `implements Countable` and it will load, because a name no `interface` declaration in the same file defines is not a contract and is not checked; but `count()` will not call its `count()` method. Declaring an interface is a claim about shape, and here it stays one.
 
 ## Table of contents
 

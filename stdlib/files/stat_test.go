@@ -41,7 +41,7 @@ echo "[", filesize("missing.php") === false ? "false" : "other", ",", filetype("
 // with file_get_contents: a path written from "/" names the bound root and
 // never the host's, and a relative path resolves against the working
 // directory. A second resolver written here would name a second file for one
-// spelling, the one thing a sandbox cannot have two of.
+// spelling, which a sandbox cannot have.
 func TestStatResolvesThroughTheBoundRoot(t *testing.T) {
 	t.Parallel()
 	out := runFS(t, statRoot(t), nil, `<?php

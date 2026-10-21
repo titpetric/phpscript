@@ -352,7 +352,7 @@ func TestClientParallelReportsFailurePerRequest(t *testing.T) {
 }
 
 // TestClientParallelRejectsBadInput pins that the argument has to be an array
-// of requests: the one thing Parallel throws for.
+// of requests, the input Parallel throws for.
 func TestClientParallelRejectsBadInput(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

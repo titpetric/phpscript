@@ -297,7 +297,7 @@ The same call against mysql stores `2026-08-26 16:48:00` and against postgres `2
 
 Reading back takes no conversion: the column is a `Time`, so `$row["at"]->format(TIME_RFC3339)` renders it and `$row["at"]->unix()` compares it.
 
-### One thing that will surprise you
+### What the zone does to a printed time
 
 **`echo` prints a wall clock, and the driver chooses the zone.** A value written as `14:48:00Z` echoes as `2026-08-26 16:48:00` when it comes back from mysql or from a `TIMESTAMPTZ`, because both return it in the local zone. Same instant, different zone. Compare with `->unix()` or `->equal()`, never by echoing two values and reading them; format with `TIME_RFC3339` when the reading has to be unambiguous.
 
