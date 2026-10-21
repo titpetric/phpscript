@@ -63,6 +63,7 @@ tasks:
   default:
     cmds:
       - task: fmt
+      - task: lint
       - task: go:test
       - task: build
       - task: db:down
@@ -345,21 +346,28 @@ tasks:
       - go env GOMAXPROCS
       - flock -w 3600 /tmp/phpscript-measure.lock nice -n -20 go test -run XXX -bench "$PARALLEL" -benchmem -benchtime 1s -count 10 ./tests/runner ./tests/flatstack | tee -a "bench-go-${SIDE:-sweep}.txt"
 
-  # splint exits 1 when it found anything at all, warnings included, and this
-  # tree carries around a thousand of them: uncovered symbols, files whose name
-  # does not match what is in them, sources with no test beside them. A job that
-  # fails on all of it fails always and gates nothing, so the gate is a ratchet
-  # over scripts/splint-baseline.json: the error class may not grow, the warnings
-  # are printed with their movement, and a count that went down asks for the
-  # baseline to come down with it. scripts/splint-gate.sh carries the reasoning.
-  # Two ratchets, one per linter. vale needs one for the same reason splint
-  # does: its exit status reads a rule's level and nothing else, so the three
-  # write-good rules at level: warning printed 4,606 findings and passed.
+  # Linting is one notion, the way formatting is: the Go source, the markdown
+  # and the prose in both. Every place that lints invokes this task, never a
+  # gate script or mdox:lint alone, so the three cannot drift apart.
+  #
+  # default calls it after the first fmt, so mdox checks markdown the formatter
+  # has already settled and a finding here is prose and never padding. It also
+  # runs ahead of the test legs, because a prose finding costs seconds to fix
+  # and the suite costs minutes to reach.
+  #
+  # Two ratchets, one per linter, because neither tool's exit status gates
+  # anything on its own: splint exits 1 on any finding at any severity and this
+  # tree carries around a thousand, and vale reads a rule's level and nothing
+  # else, so the three write-good rules at level: warning printed 4,606
+  # findings and passed. Each gate compares a rule against its baseline and
+  # fails the rule that grew; the scripts carry the reasoning.
   lint:
+    desc: "Lint the Go source, the markdown and the prose in both"
     passthru: true
     cmds:
       - ./scripts/splint-gate.sh
       - ./scripts/vale-gate.sh
+      - task: mdox:lint
 
   # Every generated document in one target, and the only place they are
   # generated. The default pipeline does not call this: five of these documents
