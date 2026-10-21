@@ -355,6 +355,57 @@ func TestSessionManagerDestroy(t *testing.T) {
 	}
 }
 
+// TestSessionManagerDeleteByUser covers a removed account losing every session
+// it holds, including the one making the request: the sweep clears this
+// manager's own session, so valid() answers false before the request ends.
+func TestSessionManagerDeleteByUser(t *testing.T) {
+	t.Parallel()
+	storage := session.NewStorageMemory()
+	manager, err := session.NewManager(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A second client of the same user, and a third of another.
+	elsewhere, err := session.NewManager(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := session.NewManager(storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, _ := servedContext(t, "")
+	elsewhereCtx, _ := servedContext(t, "")
+	otherCtx, _ := servedContext(t, "")
+	if err := manager.Start(ctx, "user-42"); err != nil {
+		t.Fatal(err)
+	}
+	if err := elsewhere.Start(elsewhereCtx, "user-42"); err != nil {
+		t.Fatal(err)
+	}
+	if err := other.Start(otherCtx, "user-7"); err != nil {
+		t.Fatal(err)
+	}
+
+	taken, err := manager.DeleteByUser(ctx, "user-42")
+	if err != nil {
+		t.Fatalf("DeleteByUser: %v", err)
+	}
+	if taken != 2 {
+		t.Errorf("DeleteByUser took %d sessions, want both of the user's", taken)
+	}
+	if valid, err := manager.Valid(ctx); err != nil || valid {
+		t.Errorf("Valid after the sweep = %v, %v; want false, nil", valid, err)
+	}
+	if valid, err := elsewhere.Valid(elsewhereCtx); err != nil || valid {
+		t.Errorf("the other client of the same user stayed signed in: %v, %v", valid, err)
+	}
+	if valid, err := other.Valid(otherCtx); err != nil || !valid {
+		t.Errorf("another user lost their session: %v, %v", valid, err)
+	}
+}
+
 // TestSessionManagerDestroyWithoutASession covers logging out twice, and
 // logging out of a session a prune has already taken. Both end with no
 // session, which is the request the client made, and both return nil.

@@ -56,6 +56,8 @@ The constructor refuses a file that is there and unreadable, naming the line tha
 
 The refusal of the last two is a decision. Apache reads a plain password on some platforms, and a line no format claims is also what a truncated or corrupted hash looks like, so accepting the class would turn a damaged file into one that authenticates. The two weak rows above them carry no cost parameter worth anything, and this build reads them for compatibility with files that already exist; `htpasswd -B` is what to write. [Hashing](reference/extensions/hashing.md#what-a-derivation-costs) prices the first two.
 
+Removing an account ends its sessions, which is a sweep and not a check on the current request: a user holds a session per client, and `$session->delete_by_user($id)` drops every one of them and answers how many it took. A session carries its user's primary key as its whole payload, so a store matches on that and keeps no index of its own, and the manager clears its own session when the sweep took it. The `@startup` job that rebuilds a site's user table notices the removal, so that job signs the account out: `demos/dbadmin/users.php` reads the ids the table held, refills it from the file, and sweeps whatever the file stopped naming.
+
 The password file is not the `secrets:` block of issue 139 item 5, and does not advance it: it holds one kind of credential, the one a login compares against, and nothing decrypts.
 
 ## Service-managed and vhost-managed configuration

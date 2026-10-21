@@ -132,6 +132,16 @@ func (s *Manager) Destroy(ctx context.Context) error {
 	return nil
 }
 
+// DeleteByUser signs one user out of every client, answering how many sessions
+// it took. It clears this manager's own session when the sweep took it, so
+// valid() answers false in the same request the account went away in.
+func (s *Manager) DeleteByUser(ctx context.Context, userID string) (int, error) {
+	if current, err := s.Get(ctx); err == nil && current == userID {
+		s.sessionID = ""
+	}
+	return s.storage.DeleteByUser(ctx, userID)
+}
+
 // Start creates a new session, stores userID, and stages its HTTP-only cookie.
 func (s *Manager) Start(ctx context.Context, userID any) error {
 	request, ok := runner.RequestContext(ctx)

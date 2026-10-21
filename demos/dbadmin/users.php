@@ -22,6 +22,17 @@ if (!$auth->exists()) {
 	return;
 }
 
+// The ids the table carried before the rebuild. A name the file dropped loses
+// its row here, and whoever holds a session under that id loses the session
+// with it: this job notices a removal, so this job signs the account out. A
+// first start has no table and no rows.
+$held = [];
+if ($db->get("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user'")) {
+	foreach ($db->get_all("SELECT id FROM \"user\"") as $row) {
+		$held[$row["id"]] = true;
+	}
+}
+
 // One transaction, because sqlite applies DDL inside one: a request served by
 // the previous generation during a reload sees the old table or the new one,
 // and never a moment with no table at all.
@@ -34,7 +45,18 @@ foreach ($auth->users() as $user) {
 	// get_id() is the computed ULID, and the record renders as its username
 	// in a string context, so the second placeholder takes "$user".
 	$db->query("INSERT INTO \"user\" (id, username) VALUES (?, ?)", $user->get_id(), "$user");
+	unset($held[$user->get_id()]);
 }
 
 $db->commit();
 $db->close();
+
+// Whatever remains in $held is an account the file dropped, and every session
+// it signs goes now. The session store is the default one, the same disk
+// folder the pages read, so a cookie a removed user kept lands on /login.
+if ($held) {
+	$session = new Session\Manager;
+	foreach (array_keys($held) as $id) {
+		$session->delete_by_user($id);
+	}
+}

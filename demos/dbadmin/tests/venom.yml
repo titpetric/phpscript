@@ -464,11 +464,13 @@ testcases:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
           - 'result.systemout ShouldContainSubstring class="who">venom'
-      # Removing the account again takes the row and nothing else: the id was
-      # computed from the name, so there is nothing stored to clean up.
+      # Removing the account again takes the row and the sessions it signs:
+      # the id was computed from the name, so nothing else is stored, and the
+      # rebuild sweeps the sessions of every id the file stopped naming. The
+      # jar stays on disk through this, because the next step is the cookie
+      # the removed user kept.
       - type: exec
         script: |
-          rm -f .venom-other
           grep -v '^venom:' ../.htpasswd > .venom-htpasswd
           cp .venom-htpasswd ../.htpasswd
           rm -f .venom-htpasswd
@@ -483,6 +485,23 @@ testcases:
           - result.systemout ShouldContainSubstring STATUS 200
           - result.systemout ShouldNotContainSubstring venom
           - result.systemout ShouldContainSubstring 2 matching rows
+      # The removed account is signed out everywhere it was signed in.
+      - type: exec
+        script: |
+          curl -sS -i -b .venom-other -w '\nSTATUS %{http_code}\n' {{.host}}/
+          rm -f .venom-other
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 302
+          - 'result.systemout ShouldContainSubstring Location: /login'
+      # The account that stayed keeps its session: the sweep took the ids the
+      # file dropped and no others.
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - 'result.systemout ShouldContainSubstring class="who">admin'
 
   - name: signing out ends the session
     steps:

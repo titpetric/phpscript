@@ -93,6 +93,18 @@ func (s *tracedStorage) Delete(ctx context.Context, id string) error {
 	return err
 }
 
+// DeleteByUser drops every session one user holds, recording how many.
+func (s *tracedStorage) DeleteByUser(ctx context.Context, userID string) (int, error) {
+	span := telemetry.StartSpan(ctx, "session delete_by_user", telemetry.KindCache)
+	defer span.End()
+	span.SetAttribute("backend", s.backend)
+
+	taken, err := s.storage.DeleteByUser(ctx, userID)
+	span.SetAttribute("sessions", taken)
+	span.RecordError(err)
+	return taken, err
+}
+
 // missing reports whether an error means the session does not exist. An expired
 // or never-created session is what a logged out visitor looks like, so the span
 // records a miss and the trace no failure.

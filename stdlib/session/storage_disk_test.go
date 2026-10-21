@@ -101,3 +101,49 @@ func TestStorageDiskPruneSweepsByModificationTime(t *testing.T) {
 		t.Errorf("Stat of the subdirectory = %v, want it left alone", err)
 	}
 }
+
+// TestStorageDisk_DeleteByUser covers the sweep a removed account runs through
+// on disk. The walk reads each file because the payload is where the user is,
+// and it leaves a save's temporary file and a subdirectory alone, as Prune
+// does: a sweep running beside a save cannot take the file that save is about
+// to rename into place.
+func TestStorageDisk_DeleteByUser(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join(t.TempDir(), "sessions")
+	storage, err := session.NewStorageDisk(dir)
+	if err != nil {
+		t.Fatalf("NewStorageDisk: %v", err)
+	}
+	ctx := context.Background()
+
+	if err := storage.Save(ctx, "abc", []byte("user-42")); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if err := storage.Save(ctx, "def", []byte("user-7")); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	inFlight := filepath.Join(dir, ".session-456")
+	if err := os.WriteFile(inFlight, []byte("user-42"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "nested"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	taken, err := storage.DeleteByUser(ctx, "user-42")
+	if err != nil {
+		t.Fatalf("DeleteByUser: %v", err)
+	}
+	if taken != 1 {
+		t.Errorf("DeleteByUser took %d sessions, want 1", taken)
+	}
+	if _, err := storage.Load(ctx, "abc"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("Load after the sweep = %v, want fs.ErrNotExist", err)
+	}
+	if _, err := storage.Load(ctx, "def"); err != nil {
+		t.Errorf("the other user's session went with it: %v", err)
+	}
+	if _, err := os.Stat(inFlight); err != nil {
+		t.Errorf("Stat of the in-flight temporary file = %v, want it left alone", err)
+	}
+}
