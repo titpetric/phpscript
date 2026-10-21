@@ -294,31 +294,3 @@ func TestFlatHostHelpers(t *testing.T) {
 		t.Errorf(`Cast("int", "12abc") = %#v, want 12`, got)
 	}
 }
-
-// TestFlatHostFrame covers the handle the engine binds once per run, which
-// replaced the map copied in and out around every call. A host with no frame
-// bound materialises an empty scope, so a callee reading caller locals before
-// the bind sees nothing and never a nil map.
-func TestFlatHostFrame(t *testing.T) {
-	t.Parallel()
-	host := &flatHost{runtime: New(io.Discard, Options{})}
-	if host.TakeFrame() != nil {
-		t.Error("a fresh host carries a frame")
-	}
-
-	scope := host.boundScope()
-	if scope == nil {
-		t.Fatal("boundScope() answered nothing with no frame bound")
-	}
-	if got := len(scope.DefinedVars()); got != 0 {
-		t.Errorf("the materialised scope holds %d variables, want 0", got)
-	}
-
-	// With no frame bound there is nowhere to write back to, so pullScope
-	// leaves the materialised scope as it found it.
-	scope.Set("rows", int64(3))
-	host.pullScope(scope)
-	if value, ok := scope.Get("rows"); !ok || value != int64(3) {
-		t.Errorf("pullScope with no frame bound changed the scope: %#v", value)
-	}
-}

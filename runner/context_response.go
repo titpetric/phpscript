@@ -118,3 +118,117 @@ func (c Context) SetDefaultHeader(name, value string) {
 		c.response.Set(name, value)
 	}
 }
+
+// Header implements PHP header($header[, $replace[, $code]]): it parses a
+// "Name: value" line and stages it on the response header set. replace controls
+// whether an existing header of the same name is overwritten (default true).
+func (c Context) Header(header string, opts ...any) {
+	name, value, ok := strings.Cut(header, ":")
+	if !ok {
+		// A status line, "HTTP/1.0 404 Not Found", is the other thing header()
+		// takes. It has no name:value shape, and what it carries is the status.
+		if code, ok := parseStatusLine(header); ok {
+			*c.status = code
+		}
+		return
+	}
+	name = strings.TrimSpace(name)
+	value = strings.TrimSpace(value)
+
+	replace := true
+	if len(opts) > 0 {
+		replace = phpTruthy(opts[0])
+	}
+	if replace {
+		c.response.Set(name, value)
+	} else {
+		c.response.Add(name, value)
+	}
+	if strings.EqualFold(name, "Location") && c.ResponseStatus() == 0 {
+		*c.status = http.StatusFound
+	}
+	// $code is an int parameter, so PHP coerces whatever the call passes, and
+	// zero is the value that means the call named no status.
+	if len(opts) > 1 {
+		if code := toInt(opts[1]); code != 0 {
+			*c.status = int(code)
+		}
+	}
+}
+
+// parseStatusLine reads the status out of a "HTTP/1.0 404 Not Found" line, the
+// spelling header() takes in place of a name and a value.
+//
+// Neither the protocol nor the reason phrase reaches the response. Go writes
+// the protocol it actually serves and the reason phrase that belongs to the
+// code, so all the line can contribute is the number in the middle.
+func parseStatusLine(header string) (int, bool) {
+	if !strings.HasPrefix(header, "HTTP/") {
+		return 0, false
+	}
+	fields := strings.Fields(header)
+	if len(fields) < 2 {
+		return 0, false
+	}
+	code, err := strconv.Atoi(fields[1])
+	if err != nil || code < 100 || code > 599 {
+		return 0, false
+	}
+	return code, true
+}
+
+// HTTPResponseCode implements PHP http_response_code([$response_code]).
+//
+// With no argument it reports the status this response will carry, and with
+// one it stages that status and reports the one it replaced.
+//
+// PHP answers false while nothing has set a status, and true for the first one
+// set, having no previous number to return. On
+// a web SAPI neither happens: a request starts out answering 200. sapi is the
+// SAPI name the runtime runs under, and only the command line, or a host that
+// named no SAPI at all, starts without a status.
+func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
+	previous := c.ResponseStatus()
+	if previous == 0 && sapi != "" && sapi != "cli" {
+		previous = http.StatusOK
+	}
+
+	// The parameter is an int, so PHP coerces whatever the call passes, and
+	// $_SERVER holds every value as a string: a page passing REDIRECT_STATUS
+	// straight back is passing "404" and means 404.
+	code := 0
+	if len(opts) > 0 {
+		code = int(toInt(opts[0]))
+	}
+	// A zero, a null and a false are not a status. PHP treats the call as the
+	// reporting one, which is all any of them amounts to here.
+	if code == 0 {
+		if previous == 0 {
+			return false
+		}
+		return int64(previous)
+	}
+
+	*c.status = code
+	if previous == 0 {
+		return true
+	}
+	return int64(previous)
+}
+
+// ResponseHeaders returns the headers header() staged, for a host to copy.
+func (c Context) ResponseHeaders() http.Header { return c.response }
+
+// AddResponseHeader appends a header, for a Set-Cookie and its like.
+func (c Context) AddResponseHeader(name, value string) {
+	c.response.Add(name, value)
+}
+
+// ResponseStatus returns the status staged by header(), or zero when the host
+// should keep its default status. A Location header defaults to 302 like PHP.
+func (c Context) ResponseStatus() int {
+	if c.status == nil {
+		return 0
+	}
+	return *c.status
+}
