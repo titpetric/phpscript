@@ -11,8 +11,6 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/runner"
@@ -24,7 +22,7 @@ import (
 // shop leaves the document root alone, which is the common case: public is
 // the default and nothing has to say so. blog names web, the reason the setting
 // exists at all.
-func newVirtualHostServer(t *testing.T) (http.Handler, []platform.Module, config.Config) {
+func newVirtualHostServer(t *testing.T) (http.Handler, []LifecycleModule, config.Config) {
 	t.Helper()
 
 	dir := t.TempDir()

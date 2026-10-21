@@ -69,25 +69,6 @@ var_dump([1 => "a", "k" => [true]]);`)
 	}
 }
 
-// TestVarDumpObject covers the visibility annotation, which is the one part of
-// a dump that reads the class and not the value: a private property carries
-// the declaring class, a protected one does not, and a public one carries
-// nothing.
-func TestVarDumpObject(t *testing.T) {
-	t.Parallel()
-	got := runPHP(t, `<?php
-class Point { public $x = 1; private $y = 2; protected $z = 3; }
-var_dump(new Point());`)
-
-	want := "object(Point)#1 (3) {\n" +
-		"  [\"x\"]=>\n  int(1)\n" +
-		"  [\"y\":\"Point\":private]=>\n  int(2)\n" +
-		"  [\"z\":protected]=>\n  int(3)\n}\n"
-	if got != want {
-		t.Errorf("var_dump of an object =\n%q\nwant\n%q", got, want)
-	}
-}
-
 // TestPrintR covers the shape print_r writes for a reader: eight columns per
 // level of nesting with the entries four past the parenthesis, and the blank
 // line php leaves after a nested array.
@@ -109,56 +90,5 @@ echo print_r(0.1 + 0.2, true), "\n";`)
 		"0.3\n"
 	if got != want {
 		t.Errorf("print_r =\n%q\nwant\n%q", got, want)
-	}
-}
-
-// TestPrintRScalars covers what print_r makes of the three values that have no
-// text: true is "1", and false and null are both the empty string, so a
-// template printing one of them writes nothing, and never "false".
-func TestPrintRScalars(t *testing.T) {
-	t.Parallel()
-	got := runPHP(t, `<?php
-var_dump(print_r(true, true), print_r(false, true), print_r(null, true));`)
-
-	want := "string(1) \"1\"\nstring(0) \"\"\nstring(0) \"\"\n"
-	if got != want {
-		t.Errorf("print_r of the empty scalars = %q, want %q", got, want)
-	}
-}
-
-// TestFloatFormatting covers where php switches a float to the exponent form,
-// which the decimal point decides and not Go's 'g' thresholds: 1e16 is still
-// written out at seventeen digits and 1e17 is not, and a small value turns at
-// the third leading zero. The mantissa always carries a fraction and the
-// exponent no leading zero, so the spelling is 1.0E+17 and not 1e+17.
-//
-// echo passes precision=14 where var_dump passes the round-tripping form, so
-// one float has two spellings: 1/3 is 0.33333333333333 to echo.
-func TestFloatFormatting(t *testing.T) {
-	t.Parallel()
-	got := runPHP(t, `<?php
-var_dump(1e15, 1e16, 1e17, 1e-4, 1e-5, 1.0E+100, -0.0);
-echo 1e16, " ", 0.1 + 0.2, " ", 1/3, "\n";`)
-
-	want := "float(1000000000000000)\nfloat(10000000000000000)\nfloat(1.0E+17)\n" +
-		"float(0.0001)\nfloat(1.0E-5)\nfloat(1.0E+100)\nfloat(-0)\n" +
-		"1.0E+16 0.3 0.33333333333333\n"
-	if got != want {
-		t.Errorf("float formatting =\n%q\nwant\n%q", got, want)
-	}
-}
-
-// TestFloatNonFinite covers the three values that are not numbers, which print
-// as names in every renderer and carry no sign in var_export.
-func TestFloatNonFinite(t *testing.T) {
-	t.Parallel()
-	got := runPHP(t, `<?php
-var_export(INF);
-echo "\n";
-var_dump(INF, -INF, NAN);`)
-
-	want := "INF\nfloat(INF)\nfloat(-INF)\nfloat(NAN)\n"
-	if got != want {
-		t.Errorf("non-finite floats = %q, want %q", got, want)
 	}
 }

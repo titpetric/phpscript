@@ -3,8 +3,6 @@ package server
 import (
 	"context"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -25,12 +23,12 @@ type lifecycleTracker interface {
 // site down with it. The module still reports what failed, and reporting is
 // what this uses; deciding that the failure is survivable belongs here, at the
 // composition site, not in the module.
-func nonFatal(module platform.Module, observers []runner.Observer) platform.Module {
-	return &nonFatalModule{Module: module, observers: observers}
+func nonFatal(module LifecycleModule, observers []runner.Observer) LifecycleModule {
+	return &nonFatalModule{LifecycleModule: module, observers: observers}
 }
 
 type nonFatalModule struct {
-	platform.Module
+	LifecycleModule
 	observers []runner.Observer
 }
 
@@ -39,7 +37,7 @@ type nonFatalModule struct {
 // as lifecycle work, where an operator looks for it.
 func (m *nonFatalModule) Start(ctx context.Context) error {
 	run := func(ctx context.Context) error {
-		return m.Module.Start(ctx)
+		return m.LifecycleModule.Start(ctx)
 	}
 	for _, observer := range m.observers {
 		if tracker, ok := observer.(lifecycleTracker); ok {

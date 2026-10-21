@@ -7,8 +7,6 @@ import (
 
 	_ "embed"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
 )
@@ -61,7 +59,7 @@ type Config struct {
 // recorder of its own, and observes the interpreter onto the trace that
 // middleware started, so interpreter spans show up on the same front end as
 // the request behind them.
-func (c Config) PlatformOptions() (*platform.Options, error) {
+func (c Config) PlatformOptions() (*PlatformOptions, error) {
 	options, err := c.Telemetry.Resolved()
 	if err != nil {
 		return nil, err

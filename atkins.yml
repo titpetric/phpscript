@@ -355,17 +355,22 @@ tasks:
   # runs ahead of the test legs, because a prose finding costs seconds to fix
   # and the suite costs minutes to reach.
   #
-  # Two ratchets, one per linter, because neither tool's exit status gates
-  # anything on its own: splint exits 1 on any finding at any severity and this
-  # tree carries around a thousand, and vale reads a rule's level and nothing
-  # else, so the three write-good rules at level: warning printed 4,606
-  # findings and passed. Each gate compares a rule against its baseline and
-  # fails the rule that grew; the scripts carry the reasoning.
+  # splint runs bare, over every rule at every severity, and one finding fails
+  # the run. It had a ratchet over scripts/splint-baseline.json until the tree
+  # reached zero: a baseline records the findings it was written with, so the
+  # eighteen files over the length limit sat in it for as long as nobody
+  # lowered the number, and the count drifted above the recorded one without
+  # failing anything. The target for every rule is zero and this states it.
+  #
+  # vale keeps its gate, because its exit status reads a rule's level and
+  # nothing else: the three write-good rules at level: warning printed 4,606
+  # findings and passed. scripts/vale-gate.sh carries the reasoning, and its
+  # baseline holds no rule at all.
   lint:
     desc: "Lint the Go source, the markdown and the prose in both"
     passthru: true
     cmds:
-      - ./scripts/splint-gate.sh
+      - splint ./...
       - ./scripts/vale-gate.sh
       - task: mdox:lint
 

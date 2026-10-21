@@ -8,8 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
@@ -67,7 +65,7 @@ func normalizeHost(host string) string {
 
 // registerVirtualHosts wires one site per configured domain and puts a host mux
 // in front of them.
-func registerVirtualHosts(ctx context.Context, svc *platform.Platform, appConfig config.Config, globals *flags.Options, cover *coverageModule) error {
+func registerVirtualHosts(ctx context.Context, svc *Service, appConfig config.Config, globals *flags.Options, cover *coverageModule) error {
 	handler, modules, err := buildVirtualHosts(ctx, appConfig, globals, cover)
 	if err != nil {
 		return err
@@ -83,12 +81,12 @@ func registerVirtualHosts(ctx context.Context, svc *platform.Platform, appConfig
 // lifecycle modules the platform starts on their behalf. It builds every site
 // here, before the server starts, so a broken configuration fails startup
 // and not one request.
-func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []platform.Module, error) {
+func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []LifecycleModule, error) {
 	if err := appConfig.CheckVirtualHosts(); err != nil {
 		return nil, nil, err
 	}
 
-	var modules []platform.Module
+	var modules []LifecycleModule
 	sites := make(map[string]http.Handler, len(appConfig.VirtualHost))
 	for _, host := range appConfig.VirtualHost {
 		host = host.Normalize()
@@ -121,7 +119,7 @@ func buildVirtualHosts(ctx context.Context, appConfig config.Config, globals *fl
 // The site gets a router of its own because it owns its routes, its telemetry
 // and its databases. Nothing it registers is visible on another domain, and the
 // connections its scripts can name are only the ones its own env configured.
-func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []platform.Module, error) {
+func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig config.Config, globals *flags.Options, cover *coverageModule) (http.Handler, []LifecycleModule, error) {
 	router := newRouter()
 
 	// A site answering to more than one name is still one site, reported and
@@ -213,7 +211,7 @@ func newVirtualHost(ctx context.Context, host config.VirtualHost, siteConfig con
 	// A site's startup failure is its own. That site's recorder records it
 	// and the server carries on, because the alternative is one tenant's
 	// broken job stopping every other tenant.
-	return router, []platform.Module{
+	return router, []LifecycleModule{
 		nonFatal(annotations.NewStartup(root, annotationOptions...), observers),
 		annotations.NewScheduler(root, annotationOptions...),
 	}, nil

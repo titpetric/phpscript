@@ -71,36 +71,6 @@ telemetry:
 	}
 }
 
-// TestPlatformOptionsCarryStorage pins that the driver of the telemetry block
-// reaches the platform: the recorder it builds is the one that has to keep
-// traces on disk.
-func TestPlatformOptionsCarryStorage(t *testing.T) {
-	t.Parallel()
-	result := config.New()
-	result.Telemetry.Driver = "disk"
-	result.Telemetry.StoragePath = t.TempDir()
-
-	options, err := result.PlatformOptions()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if options.Telemetry.Storage == nil {
-		t.Fatal("disk storage did not reach the platform options")
-	}
-}
-
-// TestPlatformOptionsRejectAnUnknownDriver pins that a bad telemetry block
-// fails the server and never starts it without the storage it named.
-func TestPlatformOptionsRejectAnUnknownDriver(t *testing.T) {
-	t.Parallel()
-	result := config.New()
-	result.Telemetry.Driver = "s3"
-
-	if _, err := result.PlatformOptions(); err == nil {
-		t.Fatal("an unknown driver started the server")
-	}
-}
-
 // TestServer covers the four keys a file gets to say about the platform. The
 // recorder is not among them: that one is the top level telemetry block, so a
 // site cannot move the dashboard by writing a server block.

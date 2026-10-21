@@ -3,8 +3,6 @@ package annotations
 import (
 	"net/http"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/model"
 )
 
@@ -32,7 +30,7 @@ func (r serveMuxRegistrar) Handle(method string, path string, handler http.Handl
 
 // platformRegistrar registers routes on a platform router.
 type platformRegistrar struct {
-	platform.Router
+	Router
 }
 
 func (r platformRegistrar) Handle(method string, path string, handler http.Handler) {

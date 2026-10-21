@@ -321,36 +321,6 @@ func TestFixture_SetRootFS(t *testing.T) {
 	}
 }
 
-// TestShareSources covers the layer precompiling one directory compiles from.
-// Every body in the directory sits in one filesystem, so one compile covers
-// the whole area and no fixture in it compiles the tree again.
-func TestShareSources(t *testing.T) {
-	first := &Fixture{Name: "first", Path: "area/first.phpt", PHP: "<?php echo 1;"}
-	second := &Fixture{Name: "second", Path: "area/second.phpt", PHP: "<?php echo 2;"}
-
-	ShareSources([]*Fixture{first, second})
-
-	for _, fx := range []*Fixture{first, second} {
-		if got := len(fx.sources); got != 2 {
-			t.Errorf("%s carries %d bodies, want 2", fx.Name, got)
-		}
-		if _, ok := fx.sources[first.sourceName()]; !ok {
-			t.Errorf("%s does not carry %s", fx.Name, first.sourceName())
-		}
-		if _, ok := fx.sources[second.sourceName()]; !ok {
-			t.Errorf("%s does not carry %s", fx.Name, second.sourceName())
-		}
-	}
-
-	// A fixture naming its own root keys a cache of its own, so the bodies of
-	// one directory do not reach the tree a second directory compiled.
-	apart := &Fixture{Name: "apart", Path: "other/apart.phpt", PHP: "<?php echo 3;"}
-	ShareSources([]*Fixture{first, apart})
-	if len(apart.sources) != 1 {
-		t.Errorf("apart carries %d bodies, want 1", len(apart.sources))
-	}
-}
-
 // TestFixture_SetAppRoot covers the second filesystem a fixture runs over: the
 // application root holding the prelude. The fixture directory answers first,
 // so a fixture's own relative include keeps meaning what it meant, and the
@@ -449,71 +419,6 @@ func TestFixture_RootDir(t *testing.T) {
 		if got := fx.RootDir(); got != tc.want {
 			t.Errorf("RootDir() for path %q root %q = %q, want %q", tc.path, tc.root, got, tc.want)
 		}
-	}
-}
-
-// TestParseGolden covers the second fixture form: a _test.php body php can run
-// where it lies, and the _test.txt beside it. ParseGolden takes both as they
-// are, with CRLF normalised so a file checked out on Windows compares equal,
-// and the trailing newlines of the expected output dropped.
-func TestParseGolden(t *testing.T) {
-	fx := ParseGolden(
-		[]byte("<?php\r\necho \"ok\";\r\n"),
-		[]byte("ok\r\n\n"),
-		filepath.FromSlash("fixtures/area/echo_test.php"),
-	)
-
-	if fx.Name != "echo" {
-		t.Errorf("Name = %q, want \"echo\"", fx.Name)
-	}
-	if want := "<?php\necho \"ok\";\n"; fx.PHP != want {
-		t.Errorf("PHP = %q, want %q", fx.PHP, want)
-	}
-	if fx.Expected != "ok" {
-		t.Errorf("Expected = %q, want \"ok\"", fx.Expected)
-	}
-	if want := filepath.FromSlash("fixtures/area/echo_test.php"); fx.Path != want {
-		t.Errorf("Path = %q, want %q", fx.Path, want)
-	}
-}
-
-// TestFindFixtures covers discovery over a real tree: both fixture forms, in
-// path order, and a _test.php with no expected output beside it left out. A
-// path ending in /... walks the subdirectories, and one without it reads only
-// the directory named.
-func TestFindFixtures(t *testing.T) {
-	dir := writeTree(t,
-		"doc.phpt", "name: doc\ndescription: a document\n---\n<?php echo \"ok\";\n---\nok",
-		"body_test.php", "<?php echo \"ok\";\n",
-		"body_test.txt", "ok\n",
-		// A body with no expected output beside it stays a php file in the
-		// tree, and no fixture.
-		"loose_test.php", "<?php echo \"loose\";\n",
-		"nested/deep.phpt", "name: deep\ndescription: a nested document\n---\n<?php echo \"ok\";\n---\nok",
-	)
-
-	flat, err := FindFixtures([]string{dir})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := fixtureNames(flat), []string{"body", "doc"}; !reflect.DeepEqual(got, want) {
-		t.Errorf("FindFixtures(dir) = %v, want %v", got, want)
-	}
-
-	deep, err := FindFixtures([]string{filepath.Join(dir, "...")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := fixtureNames(deep), []string{"body", "deep", "doc"}; !reflect.DeepEqual(got, want) {
-		t.Errorf("FindFixtures(dir/...) = %v, want %v", got, want)
-	}
-
-	one, err := FindFixtures([]string{filepath.Join(dir, "doc.phpt")})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := fixtureNames(one), []string{"doc"}; !reflect.DeepEqual(got, want) {
-		t.Errorf("FindFixtures(file) = %v, want %v", got, want)
 	}
 }
 

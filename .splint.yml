@@ -24,3 +24,9 @@ filecheck:
     # a loop over a switch of every opcode is the shape that makes it quick.
     - path: flatstack/engine/*.go
       max-lines: 1400
+    # The AST is one subject: the node set the parser writes and both engines
+    # read. grouping/filename wants a file per exported type and exempts a file
+    # that compiles by itself, which this one does and a split one would not,
+    # so the choice is fifty files of six lines each or this.
+    - path: model/ast.go
+      max-lines: 500

@@ -43,7 +43,7 @@ tasks:
       # status reads a rule's level and nothing else, so a style whose rules
       # are all level: error fails on any finding and a bare run is a command
       # that never passes. The gate reads the findings and compares each rule
-      # against its baseline, which is what bare splint and splint-gate.sh do.
+      # against its baseline, and splint runs bare because its tree is at zero.
       - if: $(test -f scripts/vale-gate.sh)
         cmd: ./scripts/vale-gate.sh
       - if: $(test -f .vale.ini && ! test -f scripts/vale-gate.sh)

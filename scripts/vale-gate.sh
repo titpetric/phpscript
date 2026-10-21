@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# vale-gate turns vale's findings into a gate, the way scripts/splint-gate.sh
-# turns splint's into one.
+# vale-gate turns vale's findings into a gate, which splint needs no help to
+# be: it exits 1 on a finding and its tree is at zero.
 #
 # vale's own exit status reads the level of a rule and nothing else: it exits
 # non-zero for an error and zero for a warning or a suggestion. Every llm-slop

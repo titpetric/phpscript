@@ -1,6 +1,0 @@
-{
-  "rules": {
-    "filecheck/long": 10,
-    "imports/pollution": 1
-  }
-}
