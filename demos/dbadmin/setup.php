@@ -32,6 +32,12 @@ $auth = new Auth\Storage\PasswordFile;
 $tpl->add_default("username", "");
 $tpl->add_default("user_id", "");
 
+// The sign-in and sign-out forms carry this token in a hidden field, and the
+// same value travels in a cookie; csrf_check() accepts a post only when the
+// two halves agree. A default, because the sign-out form sits in the header
+// of every page.
+$tpl->add_default("csrf", csrf_token());
+
 /**
  * Sends a visitor without a session to the sign-in page, and tells the
  * template who they are.
@@ -82,6 +88,39 @@ function render_footer_stats() {
 	$duration = microtime(true) - $request_start_time;
 	$memory = memory_get_usage();
 	return sprintf("page rendered in %.4f seconds, used %s memory", $duration, format_memory_bytes($memory));
+}
+
+/**
+ * The visitor's form token: the value of the csrf cookie, or a fresh one the
+ * response stages as that cookie when the request carries none.
+ *
+ * The pair is the double-submit pattern. A page on another origin can neither
+ * read the cookie nor set it, so it cannot write a form whose hidden field
+ * matches, and the token needs no store on the server. HttpOnly holds,
+ * because the server renders the token into the form and no script reads the
+ * cookie.
+ */
+function csrf_token() {
+	if (isset($_COOKIE["csrf"]) && preg_match("/^[0-9a-f]{32}$/", $_COOKIE["csrf"]) == 1) {
+		return $_COOKIE["csrf"];
+	}
+
+	$token = bin2hex(random_bytes(16));
+	setcookie("csrf", $token, array("path" => "/", "httponly" => true, "samesite" => "Lax"));
+	return $token;
+}
+
+/**
+ * Whether the posted csrf field agrees with the csrf cookie. A post missing
+ * either half fails, and the comparison is hash_equals, so it leaks nothing
+ * about where the two differ.
+ */
+function csrf_check() {
+	if (!isset($_COOKIE["csrf"]) || !isset($_POST["csrf"]) || $_COOKIE["csrf"] == "") {
+		return false;
+	}
+
+	return hash_equals($_COOKIE["csrf"], $_POST["csrf"]);
 }
 
 // There is no h() here, and no template names an escape filter: minitpl

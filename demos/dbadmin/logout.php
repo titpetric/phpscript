@@ -11,5 +11,14 @@
 // answer it with a redirect to the page this one redirects to anyway.
 include "setup.php";
 
+// The sign-out form carries the same token pair the sign-in form does, so a
+// cross-site post cannot end a visitor's session even from a client that
+// sends the session cookie anyway.
+if (!csrf_check()) {
+	http_response_code(403);
+	echo "The request did not carry the sign-out form's token.";
+	exit();
+}
+
 $session->destroy();
 redirect_to("/login");

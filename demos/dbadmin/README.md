@@ -65,6 +65,14 @@ removing an account takes its row and nothing else, and adding the same name
 back restores the same key. A reload signs nobody out: sessions are files,
 keyed by the application root.
 
+The sign-in route holds each address, and each account name, to five refusals
+in ten seconds, and answers further posts with 429 until the window passes: a
+password check pays a bcrypt derivation, and without the ceiling an
+unauthenticated caller decides how many of those the server runs. The sign-in
+and sign-out forms carry a double-submit `csrf` token, and a post that does
+not return the cookie's value gets 403; [security.md](../../docs/security.md)
+states what that adds over the session cookie's `SameSite=Lax`.
+
 ## Schema
 
 `schema/` holds one `*.up.sql` migration per table, containing its `CREATE TABLE` statement and the demo rows to seed it with. `migrate.php` is an `@startup` file, so the migrations run to completion before the server accepts requests:

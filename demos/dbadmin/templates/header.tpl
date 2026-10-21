@@ -7,5 +7,5 @@
 <title>{$title} · SQLite Admin</title><link rel="stylesheet" href="/assets/style.css"></head>
 <body><header class="topbar"><a class="brand" href="/"><span class="logo">S</span><span>SQLite <b>Admin</b></span></a>
 <nav><a href="/">Catalogue</a><a href="/table/create">Create table</a><a href="/sql">SQL console</a></nav>
-{if $username != ""}<form class="signedin" method="post" action="/logout"><span class="who">{$username}</span><button class="linkbutton">Sign out</button></form>{/if}</header>
+{if $username != ""}<form class="signedin" method="post" action="/logout"><input type="hidden" name="csrf" value="{$csrf}"><span class="who">{$username}</span><button class="linkbutton">Sign out</button></form>{/if}</header>
 <main class="shell"><div class="pagehead"><div><div class="eyebrow">Database administration</div><h1>{$title}</h1></div></div>
