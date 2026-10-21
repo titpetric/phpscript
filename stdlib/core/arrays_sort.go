@@ -2,9 +2,12 @@ package core
 
 import (
 	"errors"
+	"reflect"
 	"sort"
 
+	"github.com/titpetric/phpscript/internal/arrayi64"
 	"github.com/titpetric/phpscript/internal/phpval"
+	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
 )
 
@@ -113,4 +116,111 @@ func sortEntries(name string, array any, less func(x, y arrayEntry) bool) (bool,
 	a.Clear()
 	arrayReplay(a, entries, false)
 	return true, nil
+}
+
+// phpUsort sorts values in place using cmp, reindexing with integer keys (PHP
+// semantics). cmp is the env-adapted comparator: func(...any)(any,error).
+func phpUsort(cmp func(...any) (any, error), a any) bool {
+	return sortValues(a, func(x, y any) bool {
+		r, err := cmp(x, y)
+		if err != nil {
+			return false
+		}
+		return phpval.Int(r) < 0
+	})
+}
+
+// phpSort orders a list with PHP's default comparison (see phpval.Compare). Like
+// sort(), it discards the keys and reindexes the result from zero.
+func phpSort(array any) bool {
+	if sortInt64Array(array, false) {
+		return true
+	}
+	return sortValues(array, sortLess)
+}
+
+// phpRsort is phpSort in descending order.
+func phpRsort(array any) bool {
+	if sortInt64Array(array, true) {
+		return true
+	}
+	return sortValues(array, func(x, y any) bool { return sortLess(y, x) })
+}
+
+func sortInt64Array(a any, desc bool) bool {
+	arr, ok := a.(*model.Array)
+	if !ok || arr == nil {
+		return false
+	}
+	vals, ok := arr.Int64List()
+	if !ok {
+		return false
+	}
+	arrayi64.Sort(vals, len(vals))
+	if desc {
+		for i, j := 0, len(vals)-1; i < j; i, j = i+1, j-1 {
+			vals[i], vals[j] = vals[j], vals[i]
+		}
+	}
+	arr.ReplaceInt64List(vals)
+	return true
+}
+
+// sortLess is the boolean sort.SliceStable wants, derived from phpval.Compare so
+// that ties stay ties.
+func sortLess(x, y any) bool {
+	return phpval.Compare(x, y) < 0
+}
+
+// sortValues reorders a list in place using less. A *model.Array is rebuilt as
+// a 0-indexed list; it sorts a native Go slice through the backing array the
+// script shares, so both change in place as PHP expects.
+func sortValues(a any, less func(x, y any) bool) bool {
+	switch target := a.(type) {
+	case nil:
+		return false
+	case *model.Array:
+		if target == nil {
+			return false
+		}
+		vals := phpval.Values(target)
+		sort.SliceStable(vals, func(i, j int) bool { return less(vals[i], vals[j]) })
+		target.Clear()
+		for _, v := range vals {
+			target.Append(v)
+		}
+		return true
+	case []any:
+		sort.SliceStable(target, func(i, j int) bool { return less(target[i], target[j]) })
+		return true
+	}
+
+	rv := reflect.ValueOf(a)
+	if rv.Kind() != reflect.Slice {
+		return false
+	}
+	// rv indexes the same backing array sort.SliceStable swaps, so reads stay
+	// consistent with the ongoing sort.
+	sort.SliceStable(a, func(i, j int) bool {
+		return less(rv.Index(i).Interface(), rv.Index(j).Interface())
+	})
+	return true
+}
+
+// edgeValue is reset and end: the first or last value of the array, false when
+// it holds none. PHP defines both through the internal pointer, which the array
+// model here does not carry; every practical call reads them for the value, and
+// this answers with that.
+func edgeValue(array any, first bool) any {
+	var out any = false
+	found := false
+	model.RangeValues(array, func(_, v any) bool {
+		out = v
+		found = true
+		return !first
+	})
+	if !found {
+		return false
+	}
+	return out
 }

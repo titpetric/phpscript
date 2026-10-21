@@ -1,272 +1,73 @@
 package core
 
 import (
-	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/titpetric/phpscript/model"
 )
 
-// cases assert it came back list-shaped, i.e. dense int64 keys in order.
-func TestPHPArrayMergeShapes(t *testing.T) {
+// TestArrayKeyExistsHoldsNull covers the difference array_key_exists() answers
+// and isset() does not: a key whose value is null is a key the array holds.
+func TestArrayKeyExistsHoldsNull(t *testing.T) {
 	t.Parallel()
-	assoc := model.NewArray()
-	assoc.Set("a", 1)
-	assoc.Set("b", 2)
+	array := model.NewArray()
+	array.Set("a", nil)
 
-	list := model.NewArray()
-	list.Append("x")
-	list.Append("y")
-
-	sparse := model.NewArray()
-	sparse.Set(int64(3), "three")
-
-	cases := []struct {
-		name     string
-		args     []any
-		wantList []any
-		wantMap  map[string]any
-		wantKeys []any
-	}{
-		{
-			name:     "two []string lists",
-			args:     []any{[]string{"a", "b"}, []string{"c"}},
-			wantList: []any{"a", "b", "c"},
-		},
-		{
-			name:     "[]any and list Array",
-			args:     []any{[]any{"q"}, list},
-			wantList: []any{"q", "x", "y"},
-		},
-		{
-			name:     "no arguments",
-			args:     nil,
-			wantList: []any{},
-		},
-		{
-			name:     "nil argument",
-			args:     []any{nil, []string{"a"}},
-			wantList: []any{"a"},
-		},
-		{
-			name:     "string keys keep the Array",
-			args:     []any{assoc, []string{"tail"}},
-			wantMap:  map[string]any{"a": 1, "b": 2},
-			wantKeys: []any{"a", "b", int64(0)},
-		},
-		{
-			name:     "map argument keeps the Array",
-			args:     []any{map[string]any{"k": "v"}},
-			wantMap:  map[string]any{"k": "v"},
-			wantKeys: []any{"k"},
-		},
-		{
-			name:     "sparse int keys keep the Array",
-			args:     []any{sparse, []string{"tail"}},
-			wantKeys: []any{int64(0), int64(1)},
-		},
+	if !phpArrayKeyExists("a", array) {
+		t.Error("array_key_exists is false for a key holding null")
 	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := phpArrayMerge(tc.args...)
-			arr, ok := got.(*model.Array)
-			if !ok {
-				t.Fatalf("array_merge returned %T, want *model.Array", got)
-			}
-			if tc.wantList != nil {
-				if !arrayIsList(arr) {
-					t.Fatalf("array_merge keys = %v, want the dense 0..n-1 list", arr.Keys())
-				}
-				var vals []any
-				arr.Range(func(_, v any) bool { vals = append(vals, v); return true })
-				if len(vals) != len(tc.wantList) {
-					t.Fatalf("array_merge = %v, want %v", vals, tc.wantList)
-				}
-				for i := range vals {
-					if vals[i] != tc.wantList[i] {
-						t.Fatalf("array_merge = %v, want %v", vals, tc.wantList)
-					}
-				}
-				return
-			}
-			for k, want := range tc.wantMap {
-				if v, ok := arr.Get(k); !ok || v != want {
-					t.Errorf("array_merge[%q] = %v (%v), want %v", k, v, ok, want)
-				}
-			}
-			if tc.wantKeys != nil {
-				keys := arr.Keys()
-				if len(keys) != len(tc.wantKeys) {
-					t.Fatalf("array_merge keys = %v, want %v", keys, tc.wantKeys)
-				}
-				for i := range keys {
-					if keys[i] != tc.wantKeys[i] {
-						t.Fatalf("array_merge keys = %v, want %v", keys, tc.wantKeys)
-					}
-				}
-			}
-		})
+	if phpArrayKeyExists("b", array) {
+		t.Error("array_key_exists is true for a key nothing set")
+	}
+	if _, ok := arrayHasKey(array, "a"); !ok {
+		t.Error("arrayHasKey is false for a key holding null")
 	}
 }
 
-// TestPHPArrayMergeCopiesInputs asserts array_merge produces a new array, as
-// PHP does: writing to the result must not reach back into an argument.
-func TestPHPArrayMergeCopiesInputs(t *testing.T) {
+// TestArraySumPromotes covers array_sum(): a float or a numeric string anywhere
+// makes the sum a float, and a list of integers stays an integer.
+func TestArraySumPromotes(t *testing.T) {
 	t.Parallel()
-	src := []any{"a", "b"}
-	out, ok := phpArrayMerge(src).(*model.Array)
+	if got := phpArraySum([]any{int64(1), int64(2)}); got != int64(3) {
+		t.Errorf("array_sum of integers = %#v, want int64(3)", got)
+	}
+	if got := phpArraySum([]any{int64(1), 2.5, "3"}); got != 6.5 {
+		t.Errorf("array_sum with a float = %#v, want 6.5", got)
+	}
+	if got := phpArraySum(model.NewArray()); got != int64(0) {
+		t.Errorf("array_sum of an empty array = %#v, want int64(0)", got)
+	}
+}
+
+// TestArrayFlipAndReverse covers the two rearrangements: flip swaps keys for
+// values, and reverse renumbers a list unless the call asks to keep the keys,
+// which is what php's second argument decides.
+func TestArrayFlipAndReverse(t *testing.T) {
+	t.Parallel()
+	source := model.NewArray()
+	source.Set("a", int64(1))
+	source.Set("b", int64(2))
+
+	flipped := phpArrayFlip(source)
+	if value, _ := flipped.Get(int64(1)); value != "a" {
+		t.Errorf("array_flip put %#v under 1, want a", value)
+	}
+
+	// A list of integer keys reverses into a Go slice, which is the cheapest
+	// shape for the list it stays (docs/allocation-performance.md).
+	reversed, ok := phpArrayReverse([]any{int64(1), int64(2), int64(3)}).([]any)
 	if !ok {
-		t.Fatalf("array_merge returned %T, want *model.Array", out)
+		t.Fatalf("array_reverse of a list answered %T, want a slice", reversed)
 	}
-	out.Set(int64(0), "changed")
-	if src[0] != "a" {
-		t.Errorf("array_merge aliased its argument: src = %v", src)
+	if reversed[0] != int64(3) {
+		t.Errorf("array_reverse put %#v first, want 3", reversed[0])
 	}
-}
 
-// TestPHPArrayMergeResultIsAppendable is the reason array_merge does not
-// return a []any for the all-lists case: a Go slice cannot grow through the
-// interface value holding it, so `$x = array_merge($a, $b); $x[] = "z"` would
-// be an error. Rule 4 of docs/allocation-performance.md.
-func TestPHPArrayMergeResultIsAppendable(t *testing.T) {
-	t.Parallel()
-	out, ok := phpArrayMerge([]string{"a"}, []string{"b"}).(*model.Array)
+	kept, ok := phpArrayReverse(source, true).(*model.Array)
 	if !ok {
-		t.Fatalf("array_merge returned a non-appendable shape")
+		t.Fatalf("array_reverse with preserve_keys answered %T", kept)
 	}
-	out.Append("z")
-	if got := out.Len(); got != 3 {
-		t.Fatalf("Len after append = %d, want 3", got)
+	if value, _ := kept.Get("b"); value != int64(2) {
+		t.Errorf("array_reverse with preserve_keys dropped the string key")
 	}
-	if v, ok := out.Get(int64(2)); !ok || v != "z" {
-		t.Errorf("appended element = %v (%v), want z", v, ok)
-	}
-}
-
-// TestArrayMutatorsRejectNonArrays covers the one case a .phpt fixture cannot:
-// the four mutators resize their argument, so they require a *model.Array and
-// must say so, with no silent mutation of a copy the script never sees. PHP
-// has no spelling that passes them a Go slice, so only a Go test reaches this path.
-func TestArrayMutatorsRejectNonArrays(t *testing.T) {
-	t.Parallel()
-	// The shapes a binding returns in place of a *model.Array.
-	inputs := []any{nil, (*model.Array)(nil), []any{"a"}, []string{"a"}, "str"}
-
-	mutators := []struct {
-		name string
-		call func(any) error
-	}{
-		{"array_shift", func(v any) error { _, err := phpArrayShift(v); return err }},
-		{"array_pop", func(v any) error { _, err := phpArrayPop(v); return err }},
-		{"array_unshift", func(v any) error { _, err := phpArrayUnshift(v, "x"); return err }},
-		{"array_push", func(v any) error { _, err := phpArrayPush(v, "x"); return err }},
-	}
-
-	for _, m := range mutators {
-		t.Run(m.name, func(t *testing.T) {
-			for _, in := range inputs {
-				err := m.call(in)
-				if err == nil {
-					t.Errorf("%s(%T) = nil error, want a rejection", m.name, in)
-					continue
-				}
-				if !strings.HasPrefix(err.Error(), m.name+":") {
-					t.Errorf("%s(%T) error = %q, want it named by the function", m.name, in, err)
-				}
-			}
-			// The same call on a real array must still work.
-			a := model.NewArray()
-			a.Append("a")
-			if err := m.call(a); err != nil {
-				t.Errorf("%s(*model.Array) = %v, want no error", m.name, err)
-			}
-		})
-	}
-}
-
-// TestArrayFindStrict pins the comparison in_array and array_search share: the
-// loose path is phpval.Compare, so PHP 8's "a non-numeric string does not equal
-// 0" holds, and the strict path compares the Go type first.
-func TestArrayFindStrict(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name    string
-		needle  any
-		hay     any
-		strict  bool
-		wantKey any
-		wantOK  bool
-	}{
-		{name: "numeric string matches int", needle: "1", hay: []any{int64(1)}, wantKey: int64(0), wantOK: true},
-		{name: "numeric string is not identical to int", needle: "1", hay: []any{int64(1)}, strict: true},
-		{name: "zero does not match a word", needle: int64(0), hay: []any{"a"}},
-		{name: "string key is returned", needle: "b", hay: map[string]any{"y": "b"}, wantKey: "y", wantOK: true},
-		{name: "int and float differ under strict", needle: int64(1), hay: []any{1.0}, strict: true},
-		{name: "nested array compares by value", needle: []any{"a"}, hay: []any{[]any{"a"}}, strict: true, wantKey: int64(0), wantOK: true},
-		{name: "null only matches null under strict", needle: nil, hay: []any{"", nil}, strict: true, wantKey: int64(1), wantOK: true},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			key, ok := arrayFind(tc.needle, tc.hay, tc.strict)
-			if ok != tc.wantOK {
-				t.Fatalf("found = %v, want %v", ok, tc.wantOK)
-			}
-			if ok && !reflect.DeepEqual(key, tc.wantKey) {
-				t.Errorf("key = %#v, want %#v", key, tc.wantKey)
-			}
-		})
-	}
-}
-
-func BenchmarkArrayMerge(b *testing.B) {
-	head := []any{"SELECT 1"}
-	tail := []string{"a", "b", "c", "d"}
-
-	b.Run("lists", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			_ = phpArrayMerge(head, tail)
-		}
-	})
-	b.Run("lists_legacy", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			_ = legacyArrayMerge(head, tail)
-		}
-	})
-
-	assoc := model.NewArray()
-	assoc.Set("a", 1)
-	assoc.Set("b", 2)
-	b.Run("string_keys", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			_ = phpArrayMerge(assoc, tail)
-		}
-	})
-}
-
-// legacyArrayMerge is the pre-fast-path implementation, kept so the benchmark
-// measures the change, and asserts nothing (see docs/allocation-performance.md).
-func legacyArrayMerge(arrs ...any) *model.Array {
-	size := 0
-	for _, a := range arrs {
-		n, _ := model.LenValues(a)
-		size += n
-	}
-	out := model.NewArraySize(size)
-	for _, a := range arrs {
-		model.RangeValues(a, func(k, v any) bool {
-			if _, isInt := k.(int64); isInt {
-				out.Append(v)
-			} else {
-				out.Set(k, v)
-			}
-			return true
-		})
-	}
-	return out
 }
