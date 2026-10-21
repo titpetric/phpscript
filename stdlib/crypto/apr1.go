@@ -40,9 +40,8 @@ func APR1Verify(password, stored string) bool {
 	return subtle.ConstantTimeCompare([]byte(apr1Encode(password, salt)), []byte(stored)) == 1
 }
 
-// IsAPR1 reports whether a stored value claims to be this format. A user
-// database picks its derivation from that answer, which stdlib/auth needs:
-// one password file carries a format per line.
+// IsAPR1 reports whether a stored value claims to be this format, which a
+// password file carrying a format per line asks.
 func IsAPR1(stored string) bool {
 	_, _, ok := apr1Split(stored)
 	return ok

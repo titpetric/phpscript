@@ -54,13 +54,9 @@ func (l *Logger) Info(msg string, args ...any) {
 	l.slog().InfoContext(l.ctx, l.label(msg), args...)
 }
 
-// Warn logs a message at warning level and records nothing on the span.
-//
-// The level exists for a degradation the work survives, where Error would be
-// the wrong claim: a session store that fell back to memory serves the request
-// that constructed it, and failing that request's trace would report an
-// outage where there is a misconfiguration. The trace carries an attribute
-// naming what is in effect, and its spans end clean.
+// Warn logs a message at warning level and records nothing on the span, for a
+// degradation the work survives: a session store that fell back to memory
+// still serves the request, so failing its trace would report an outage.
 func (l *Logger) Warn(msg string, args ...any) {
 	if l == nil {
 		return

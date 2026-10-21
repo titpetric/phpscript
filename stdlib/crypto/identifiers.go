@@ -58,15 +58,7 @@ func RegisterIdentifiers(rt *runner.Runtime) {
 }
 
 // ULIDFrom renders a ULID computed from seed: the first 128 bits of its sha256
-// digest, in the same Crockford base32 as ulid(). One seed answers one id, for
-// as long as the digest does.
-//
-// This is no PHP name and registers nothing. A user database whose records
-// carry no stored key derives one from the name (stdlib/auth), which makes the
-// key a pure function of it.
-//
-// There is no timestamp in it, unlike the generators above: a derived id has
-// no creation time to carry, so all 128 bits come from the digest.
+// digest, in the same Crockford base32 as ulid(), with no timestamp in it.
 func ULIDFrom(seed string) string {
 	sum := sha256.Sum256([]byte(seed))
 	return encodeCrockford([16]byte(sum[:16]))

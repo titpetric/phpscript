@@ -374,9 +374,9 @@ func TestPasswordFileRereadsTheFile(t *testing.T) {
 	}
 }
 
-// TestPasswordFileCancelledContext covers the one thing a read owes the
-// request it runs under: a cancelled context ends the call, with the
-// filesystem left alone.
+// TestPasswordFileCancelledContext covers what a read owes the request it
+// runs under: a cancelled context ends the call and leaves the filesystem
+// alone.
 func TestPasswordFileCancelledContext(t *testing.T) {
 	t.Parallel()
 

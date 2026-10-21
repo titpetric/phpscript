@@ -24,8 +24,7 @@ func init() {
 	runner.RegisterBinding(Register)
 }
 
-// Register installs the user stores, rooted at the process working directory
-// the way the filesystem shims are.
+// Register installs the user stores at the working directory.
 func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, ".")
 }
