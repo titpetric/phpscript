@@ -285,6 +285,41 @@ try {
 	}
 }
 
+// TestRegisteredManagerDefersThePasswordFileParse covers what the default
+// store costs a request: `new Session\Manager` opens the password file and
+// parses nothing, so a page that never calls login() does not pay for the
+// account list, and a file with a bad line refuses the login that reads it,
+// naming the line an operator fixes.
+func TestRegisteredManagerDefersThePasswordFileParse(t *testing.T) {
+	t.Setenv("TMPDIR", t.TempDir())
+
+	root := t.TempDir()
+	passwords := "admin:$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW\nreader:plaintext\n"
+	if err := os.WriteFile(filepath.Join(root, ".htpasswd"), []byte(passwords), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := runRooted(t, root, `<?php
+$session = new Session\Manager;
+$session->start("row-1");
+echo $session->get(), "\n";
+try {
+	$session->login("admin", "hunter2hunter2");
+} catch (Throwable $e) {
+	echo $e->getMessage(), "\n";
+}
+`)
+	if err != nil {
+		t.Fatalf("run: %v (output %q)", err, out)
+	}
+	if !strings.HasPrefix(out, "row-1\n") {
+		t.Errorf("printed %q, want the session before any login", out)
+	}
+	if want := `line 2: "reader": unreadable password hash`; !strings.Contains(out, want) {
+		t.Errorf("printed %q, want the refusal carrying %q", out, want)
+	}
+}
+
 // TestDefaultStorageFallsBackToMemory covers the degradation and the line that
 // reports it.
 //
