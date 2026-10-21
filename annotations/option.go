@@ -114,12 +114,8 @@ func WithExprCache(cache *runner.ExprCache) Option {
 	}
 }
 
-// WithIncludeCache sets a shared include cache used by routed endpoints.
-//
-// Include paths are relative to one filesystem root, so a cache belongs to one
-// source tree. A host that precompiles that tree passes the cache it filled,
-// and the endpoints read their entrypoints back out of it, and parse
-// them per request; a host that passes none gets a cache of its own.
+// WithIncludeCache sets a shared include cache, which belongs to one source
+// tree: include paths resolve against one filesystem root.
 func WithIncludeCache(cache *runner.IncludeCache) Option {
 	return func(c *config) {
 		c.includeCache = cache
@@ -127,9 +123,7 @@ func WithIncludeCache(cache *runner.IncludeCache) Option {
 }
 
 // WithModuleSuffix distinguishes the platform modules of one source tree from
-// another's. A server running two or more virtual hosts registers a module set per
-// site, and platform.Options.Modules addresses modules by name, so the names
-// have to differ.
+// another's, as a server of two virtual hosts registers both.
 func WithModuleSuffix(suffix string) Option {
 	return func(c *config) {
 		c.moduleSuffix = strings.TrimSpace(suffix)
@@ -144,12 +138,8 @@ func WithErrorPages(fn ErrorPageFunc) Option {
 	}
 }
 
-// WithCoverage counts the statements annotated PHP files execute, folding each
-// run's counts into an aggregator that outlives them.
-//
-// Routed endpoints, startup jobs and scheduled jobs are the application code a
-// server spends its life in, so a coverage measurement that skipped them would
-// report the document root and call it the site.
+// WithCoverage counts the statements annotated PHP files execute, into an
+// aggregator that outlives the runs.
 func WithCoverage(aggregator *coverage.Aggregator) Option {
 	return func(c *config) {
 		c.coverage = aggregator

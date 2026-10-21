@@ -47,8 +47,7 @@ type Image struct {
 	truecolor bool
 }
 
-// Bounds is the image rectangle, exported so a host embedding this package
-// can inspect what a script produced.
+// Bounds is the image rectangle, for a host to read.
 func (im *Image) Bounds() image.Rectangle { return im.m.Bounds() }
 
 // Underlying returns the drawable the handle wraps.
@@ -82,9 +81,7 @@ func init() {
 	runner.RegisterBinding(Register)
 }
 
-// Register installs the image functions and the IMG_* and IMAGETYPE_*
-// constants, rooted at the process working directory the way the filesystem
-// shims are.
+// Register installs the image functions and constants at the working directory.
 func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, ".")
 }

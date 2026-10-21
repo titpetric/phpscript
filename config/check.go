@@ -31,8 +31,7 @@ func (c Config) Check(filename, root string) error {
 	return c.CheckRoot(root)
 }
 
-// ErrRootWithVirtualHosts is the refusal an application root gets when the
-// configuration lists virtual hosts.
+// ErrRootWithVirtualHosts refuses a root beside a list of virtual hosts.
 func ErrRootWithVirtualHosts(root string) error {
 	return fmt.Errorf("server: the configuration lists virtual hosts, which name their own roots; %q on the command line has no virtual host to belong to", root)
 }

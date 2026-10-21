@@ -23,20 +23,14 @@ func init() {
 	runner.RegisterProfileBinding(runner.ProfileExec, Register)
 }
 
-// Register installs the process bindings rooted at the process working
-// directory. A host serving scripts out of a project directory binds that
-// instead, with RegisterRoot.
+// Register installs the process bindings rooted at the working directory.
 func Register(rt *runner.Runtime) {
 	RegisterRoot(rt, "")
 }
 
-// RegisterRoot installs the process bindings with commands rooted at dir, the
-// directory the filesystem shims bind. It replaces whatever root
-// stands before it, so a host calls it after stdlib.Register, the way
-// stdlib.RegisterFS does for the filesystem.
-//
-// An empty dir leaves a command in the process working directory, where a host
-// that bound no directory of its own starts it.
+// RegisterRoot installs the process bindings with commands rooted at dir,
+// replacing whatever root stood before it. An empty dir is the process
+// working directory.
 func RegisterRoot(rt *runner.Runtime, dir string) {
 	r := root{rt: rt, dir: dir}
 

@@ -2884,16 +2884,10 @@ class HTTP\Mux
      */
     public function handle(string $pattern, mixed $handler): void {}
 
-    /**
-     * serve_http answers one request, so a Go host can mount a script's router
-     * without the script listening on anything.
-     */
+    // serve_http answers one request, the script listening on nothing.
     public function serve_http(mixed $w, mixed $r): void {}
 
-    /**
-     * use_pool_for_test installs the workers, for a test sizing them itself. The
-     * server calls usePool; this is the same thing with a name a test can reach.
-     */
+    // use_pool_for_test is usePool under a name a test can reach.
     public function use_pool_for_test(mixed $pool): void {}
 }
 ```
@@ -3003,15 +2997,7 @@ class HTTP\Server
      */
     public function shutdown(): void {}
 
-    /**
-     * wait blocks until the script runs out of time, or the client that started it
-     * goes away, and returns. A script with no limit and no client waits until the
-     * host's own context ends, which for a command line run is never.
-     * 
-     * Nothing runs after it in a script the time limit ended: the limit is a fatal,
-     * as php's is, so the next statement is where the script stops. Cleanup belongs
-     * in a register_shutdown_function callback, which runs with the clock off.
-     */
+    // wait blocks until the script runs out of time or its client goes away.
     public function wait(): void {}
 }
 ```
@@ -3033,20 +3019,10 @@ class JSON\Decoder
 {
     public function __construct(resource $stream) {}
 
-    /**
-     * decode reads the next value from the stream and returns it, or throws at the
-     * end of the stream - a null is a value JSON carries, so `while ($d->more())`
-     * is the loop and no test against what this returned.
-     * 
-     * It decodes through json_decode()'s own walk and not json.Decoder.Decode,
-     * which would build a map and lose the key order the two spellings agree on.
-     */
+    // decode reads the next value from the stream, throwing at the end of it.
     public function decode(): mixed {}
 
-    /**
-     * more is json.Decoder.More: another value is waiting in the stream. This ends
-     * a decode loop.
-     */
+    // more reports another value waiting in the stream, ending a decode loop.
     public function more(): bool {}
 }
 ```
@@ -3394,14 +3370,10 @@ Registered from `stdlib/core`.
 
 ```php
 /**
- * SharedMemory is a key-value and counter store: `new SharedMemory`
- * returns the store the host bound into the runtime context, and a store of
- * its own when the host bound none.
- * 
- * No command in this tree binds one, so under `phpscript server` and the rest
- * every `new SharedMemory` is its own store and holds nothing an earlier request
- * wrote. Retaining state across requests is something an embedding host adds
- * with SharedMemoryContext; see docs/use-cases/shared-memory.md.
+ * SharedMemory returns the store the host bound into the runtime
+ * context, and a store of its own when the host bound none. No command in
+ * this tree binds one, so `new SharedMemory` holds nothing across requests
+ * until an embedding host adds SharedMemoryContext.
  */
 class SharedMemory
 {

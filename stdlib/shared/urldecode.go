@@ -1,10 +1,6 @@
 package shared
 
-// URLDecode decodes an application/x-www-form-urlencoded string.
-//
-// Lenient, because PHP is: `a=%zz` decodes to the literal `%zz`. net/url
-// refuses the same input and drops the whole pair, which loses a field a
-// browser did send.
+// URLDecode decodes a form-urlencoded string, leniently as PHP does.
 func URLDecode(s string) string {
 	return decode(s, true)
 }

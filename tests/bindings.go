@@ -51,8 +51,7 @@ type BindingRecord struct {
 	Name string
 }
 
-// Label is an exported method so tests can exercise `$r->label()` dispatch on a
-// forwarded Go value.
+// Label exercises `$r->label()` dispatch on a forwarded Go value.
 func (r BindingRecord) Label() string {
 	return r.Name
 }
@@ -69,8 +68,7 @@ func RegisterBindings(rt *runner.Runtime) {
 	}
 }
 
-// BindingFunc returns the raw (unregistered, unadapted) Go function behind a
-// binding name, so benchmarks can measure the reflection return path on its own.
+// BindingFunc returns the unadapted Go function behind a binding name.
 func BindingFunc(name string) any {
 	return BindingFuncs()[name]
 }

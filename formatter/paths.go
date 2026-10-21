@@ -9,11 +9,7 @@ import (
 	"github.com/titpetric/phpscript/parser"
 )
 
-// Paths formats each path argument in place and reports what happened to every
-// file it looked at. It skips a file it cannot format and the run carries on:
-// a directory of PHP holds valid code phpscript does not support yet, and one
-// such file must not stop it formatting the rest. The error it returns covers
-// reading and writing alone.
+// Paths formats each path argument in place, skipping what it cannot.
 func Paths(paths []string) ([]Result, error) {
 	return walk(paths, true)
 }
@@ -58,8 +54,7 @@ func walk(paths []string, write bool) ([]Result, error) {
 	return results, nil
 }
 
-// File formats path in place. Reports whether the file contents changed, and
-// returns a *SkipError for a file it left untouched.
+// File formats path in place, a *SkipError for one it left untouched.
 func File(path string) (bool, error) {
 	return format(path, true)
 }

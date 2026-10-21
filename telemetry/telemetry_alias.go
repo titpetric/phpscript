@@ -104,17 +104,12 @@ var (
 	ErrDisabled          = oida.ErrDisabled
 )
 
-// NewOptions returns the default options for a service of that name, which the
-// front end displays and every trace records. oida applies the OIDA_*
-// environment to options built this way, so a deployment still configures
-// itself; options built as a literal read none.
+// NewOptions returns the default options for a service, under OIDA_*.
 func NewOptions(serviceName string) Options {
 	return oida.NewOptions(serviceName)
 }
 
-// New returns a tracer configured with opts, and is the only constructor: oida
-// keeps no process wide tracer, so a caller holds the one it built and passes
-// it to whatever records into it.
+// New returns a tracer configured with opts, which its caller holds.
 func New(opts Options) (*Tracer, error) {
 	return oida.New(opts)
 }
@@ -126,21 +121,17 @@ func Start(ctx context.Context, name string, kind ...Kind) (context.Context, *Sp
 	return ctx, withSource(ctx, span)
 }
 
-// StartSpan records a span without deriving a context. Use it for leaf spans
-// that will not nest. The span carries the source location ctx holds, where a
-// PHP frame put one there.
+// StartSpan records a leaf span, deriving no context for one to nest under.
 func StartSpan(ctx context.Context, name string, kind ...Kind) *Span {
 	return withSource(ctx, oida.StartSpan(ctx, name, kind...))
 }
 
-// Do runs fn inside a span, records the returned error on it and ends it, then
-// answers that error unchanged.
+// Do runs fn inside a span, recording the error it returns.
 func Do(ctx context.Context, name string, fn func(context.Context) error, kind ...Kind) error {
 	return oida.Do(ctx, name, fn, kind...)
 }
 
-// WithTrace returns a context carrying the trace. A span started from it, or
-// from any context derived from it, lands on that trace.
+// WithTrace returns a context whose spans land on the trace.
 func WithTrace(ctx context.Context, t *Trace) context.Context {
 	return oida.WithTrace(ctx, t)
 }
@@ -155,18 +146,13 @@ func SpanFromContext(ctx context.Context) *Span {
 	return oida.SpanFromContext(ctx)
 }
 
-// TraceID returns the identifier of the trace in ctx, or an empty string: the
-// value of the Request-Id header for HTTP traces, which makes it the cheapest
-// correlation key for logs.
+// TraceID returns the identifier of the trace in ctx.
 func TraceID(ctx context.Context) string {
 	return oida.TraceID(ctx)
 }
 
-// TraceHost returns the host a trace belongs to. Background traces did not
-// arrive over the network and have no host, so they group under
-// BackgroundHost. oida dropped the function along with the rest of its view
-// model; the server's own reporting still groups by it, so this file says so
-// once and no caller repeats it.
+// TraceHost returns the host a trace belongs to, and BackgroundHost for a
+// trace that arrived over no network.
 func TraceHost(trace Trace) string {
 	if trace.HTTP == nil || trace.HTTP.Host == "" {
 		return BackgroundHost
@@ -174,21 +160,12 @@ func TraceHost(trace Trace) string {
 	return trace.HTTP.Host
 }
 
-// NewStorageDisk returns storage retaining at most limit traces as JSON
-// documents, so they survive a restart.
-//
-// This is the one place phpscript names an oida sub-package. oida selects a
-// driver from OIDA_STORAGE_DRIVER and the OIDA_STORAGE_* variables, and the
-// telemetry block in a site's configuration is what phpscript configures a
-// site by; reaching the constructor directly keeps `driver: disk` meaning what
-// it says, with that choice out of the environment.
+// NewStorageDisk returns storage retaining at most limit traces as JSON.
 func NewStorageDisk(limit int, paths ...string) (Storage, error) {
 	return storage.NewDiskStorage(limit, paths...)
 }
 
-// Mount registers the debug front end on r under Options.Path, serving the
-// traces of that tracer. oida takes the tracer itself now, there being no
-// process wide one to resolve from options.
+// Mount registers the debug front end on r under Options.Path.
 func Mount(r Router, tracer *Tracer) error {
 	return oida.Mount(r, tracer)
 }

@@ -56,13 +56,7 @@ type Suite struct {
 	mail     model.MailProvider
 }
 
-// LoadSuite reads dir/phpscript.yml off disk over base, and returns nil when
-// the directory holds no such file. A directory without one is no suite root,
-// only a folder of fixtures that configures nothing.
-//
-// forbidden refuses the keys that describe a whole run and not one folder: it
-// stays false for the configuration found at or above the invocation root, the
-// run's own, and true for one discovered below it.
+// LoadSuite reads dir/phpscript.yml off disk over base, or returns nil.
 func LoadSuite(dir string, base config.Config, forbidden bool) (*Suite, error) {
 	return loadSuite(os.DirFS(dir), dir, filepath.Join(dir, SuiteFile), base, forbidden)
 }

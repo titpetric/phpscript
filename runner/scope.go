@@ -69,16 +69,14 @@ func (s *Scope) Set(name string, val any) {
 	s.vars[name] = val
 }
 
-// Unset removes name from the frame (PHP's unset). Removing a name nothing set
-// is not an error. Unsetting a static-bound name breaks the local
-// link and leaves the stored value for the next call, as PHP does.
+// Unset removes name from the frame, leaving a static's stored value as PHP
+// does.
 func (s *Scope) Unset(name string) {
 	delete(s.statics, name)
 	delete(s.vars, name)
 }
 
-// Defer registers a callback to run when the current PHP execution frame
-// returns. Callbacks run in last-in, first-out order.
+// Defer registers a callback the frame's return runs, last in first out.
 func (s *Scope) Defer(callback any) {
 	s.deferred = append(s.deferred, callback)
 }

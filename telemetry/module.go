@@ -16,9 +16,7 @@ type Module struct {
 	tracer *Tracer
 }
 
-// NewModule returns an observer recording into tracer, which is the tracer the
-// host recorder built. A nil tracer is valid and records nothing: every call
-// below is nil safe, so instrumented code runs unchanged either way.
+// NewModule returns an observer recording into tracer, nil recording nothing.
 func NewModule(tracer *Tracer) *Module {
 	return &Module{tracer: tracer}
 }
@@ -50,14 +48,12 @@ func (m *Module) TrackLifecycle(ctx context.Context, name, filename string, run 
 	})
 }
 
-// UpdateStatus implements runner.Observer: it moves the trace of the running
-// request to the scoreboard state the interpreter reports.
+// UpdateStatus moves the running request's trace to the reported state.
 func (m *Module) UpdateStatus(ctx context.Context, state State) {
 	TraceFromContext(ctx).SetState(state)
 }
 
-// Trace implements runner.Observer: it records one span of interpreter work,
-// such as an include, a call or a template, on the running trace.
+// Trace records one span of interpreter work on the running trace.
 func (m *Module) Trace(ctx context.Context, message string, kind ...Kind) *Span {
 	return StartSpan(ctx, message, kind...)
 }
@@ -75,8 +71,7 @@ func (m *Module) UpdateFilename(ctx context.Context, filename string) {
 	}
 }
 
-// UpdateIncludedFiles records how many files the request included beyond its
-// entrypoint.
+// UpdateIncludedFiles records the files included past the entrypoint.
 func (m *Module) UpdateIncludedFiles(ctx context.Context, count int) {
 	TraceFromContext(ctx).Root().SetAttribute("included_files", count)
 }

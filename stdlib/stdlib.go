@@ -9,14 +9,7 @@ import (
 	"github.com/titpetric/phpscript/runner"
 )
 
-// Register installs the shims, PHP constants, every binding contributed by an
-// imported binding package (see runner.RegisterBinding and imports.go), and
-// any bindings the caller passes. The filesystem shims come in that way too,
-// rooted at the process working directory; use RegisterFS to bind them to
-// another root.
-//
-// It mounts the process profile, every area unless --stdlib narrowed it, so
-// one flag reaches every runtime the process builds.
+// Register installs the shims and every binding, under the process profile.
 func Register(rt *runner.Runtime, bindings ...func(*runner.Runtime)) {
 	Mount(rt, profile, bindings...)
 }

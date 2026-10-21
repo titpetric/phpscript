@@ -55,10 +55,7 @@ func (e *RedeclareError) GetMessage() string { return e.Error() }
 // GetCode answers PHP's zero, since there is no error number to report.
 func (e *RedeclareError) GetCode() int { return 0 }
 
-// ThrowableClass names the class a catch clause filters on. Exception and no
-// name of its own: PHP has no class for this, because there the condition is a
-// compile-time fatal that no catch can reach, so there is no spelling to match
-// and Exception is the clause a script writing one would write.
+// ThrowableClass names Exception, php having no class for a redeclaration.
 func (e *RedeclareError) ThrowableClass() string { return "Exception" }
 
 // declareFunc records a function declaration and refuses a name that is already

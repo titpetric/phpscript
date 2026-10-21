@@ -14,11 +14,9 @@ import (
 // type: plugin.Lookup over a source tree.
 //
 // T returns at most one value and an optional trailing error, checked here and
-// not at the call. A name matching nothing, or more than one
-// declaration, is a *LookupError naming what it matched. The returned function
-// belongs to rt, which serves one goroutine.
-//
-// docs/use-cases/entrypoints.md is the surface, with the example.
+// not at the call. A name matching nothing, or more than one declaration, is a
+// *LookupError naming what it matched, and the returned function belongs to
+// rt, which serves one goroutine. The example is in entrypoints.md.
 func Lookup[T any](rt *Runtime, symName string) (T, error) {
 	var zero T
 	fn, err := rt.lookup(symName, reflect.TypeOf((*T)(nil)).Elem())

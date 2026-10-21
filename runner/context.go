@@ -175,13 +175,7 @@ func newContext() Context {
 // RoutePattern puts on the request context.
 type routePatternKey struct{}
 
-// WithRoutePattern records the @route path a request matched, before any
-// router-specific rewriting. pathValues builds the path values $_REQUEST
-// carries from it.
-//
-// Without it, routePattern falls back to r.Pattern, which is the router's own
-// dialect: chi reports /c/* for a route declared /c/{tail...}, and the name
-// the value carries is not in there.
+// WithRoutePattern records the @route path a request matched, unrewritten.
 func WithRoutePattern(ctx context.Context, pattern string) context.Context {
 	return context.WithValue(ctx, routePatternKey{}, pattern)
 }
@@ -199,9 +193,7 @@ func routePattern(r *http.Request) string {
 	return r.Pattern
 }
 
-// FromRequest builds a Context from an HTTP request with no size limits on the
-// body. A host that has runtime options, which is every host that reads a
-// configuration file, uses FromRequestOptions instead.
+// FromRequest builds a Context with no size limit on the body.
 func FromRequest(r *http.Request) Context {
 	return FromRequestOptions(r, Options{})
 }
@@ -789,12 +781,8 @@ func (c Context) recordError(err error) {
 	*c.errors = append(*c.errors, err)
 }
 
-// Errors returns what the request got wrong before any script ran, which today
-// is a body or a file part refused for its size. A script has no way to catch
-// these: they happened outside it, and the only sign of them it gets is the
-// empty superglobal or the UPLOAD_ERR_INI_SIZE entry they left behind. Register
-// reports each one to the runtime through Runtime.RecordError, so a Go host
-// sees them on the request trace or through Runtime.OnError.
+// Errors returns what the request got wrong before any script ran, which no
+// script can catch: a body or a file part refused for its size.
 func (c Context) Errors() []error {
 	if c.errors == nil {
 		return nil
@@ -880,8 +868,7 @@ func (c Context) Register(rt *Runtime) {
 	}
 }
 
-// GetAllHeaders implements PHP getallheaders(): an associative array of the
-// incoming request headers keyed by canonical header name.
+// GetAllHeaders is getallheaders(): the request headers, canonically keyed.
 func (c Context) GetAllHeaders() *model.Array {
 	return mapToArray(c.HeaderMap())
 }
@@ -983,8 +970,7 @@ func (c Context) HTTPResponseCode(sapi string, opts ...any) any {
 	return int64(previous)
 }
 
-// ResponseHeaders returns the headers staged by the PHP header() function so a
-// host handler can copy them onto the http.ResponseWriter after execution.
+// ResponseHeaders returns the headers header() staged, for a host to copy.
 func (c Context) ResponseHeaders() http.Header { return c.response }
 
 // RawBody returns the request body bytes buffered for php://input, if any. A
@@ -1013,9 +999,7 @@ func RequestContext(ctx context.Context) (Context, bool) {
 	return c, ok
 }
 
-// AddResponseHeader appends a response header without replacing existing
-// values, for headers such as Set-Cookie that may occur more than once in a
-// response.
+// AddResponseHeader appends a header, for a Set-Cookie and its like.
 func (c Context) AddResponseHeader(name, value string) {
 	c.response.Add(name, value)
 }

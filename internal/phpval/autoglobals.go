@@ -58,8 +58,7 @@ func (g *AutoGlobals) Set(name string, value any) bool {
 	return true
 }
 
-// Claims reports name naming a superglobal field, bound or not, so a lazy
-// binder answers the closed set and nothing else.
+// Claims reports name naming a superglobal field, bound or not.
 func (g *AutoGlobals) Claims(name string) bool {
 	return g.field(name) != nil
 }

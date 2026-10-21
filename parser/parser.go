@@ -24,22 +24,11 @@ import (
 )
 
 // Parse compiles PHP source into a model.Program.
-//
-// Parse leaves __FILE__, __DIR__ and __LINE__ as names for the runtime to
-// answer, because a caller with no file cannot say what they are. The formatter
-// and the linter read this, and both have to print the source back.
 func Parse(src string) (*model.Program, error) {
 	return parse(src, "")
 }
 
-// ParseFile compiles src as the contents of name, resolving the magic constants
-// that name settles.
-//
-// php resolves __FILE__, __DIR__ and __LINE__ when it compiles a file, and this
-// does the same: each becomes a literal in the AST. A program then carries no
-// lookup for them, so neither engine writes them into a scope per call frame or
-// per statement, and neither reads them back. name is the path a script sees,
-// which is the runtime's own spelling and not the host's.
+// ParseFile compiles src as the contents of name.
 func ParseFile(name, src string) (*model.Program, error) {
 	return parse(src, name)
 }

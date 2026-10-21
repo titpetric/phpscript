@@ -113,8 +113,7 @@ func (m *Mux) usePool(pool *runner.Pool) {
 	m.once.Do(func() { m.pool = pool })
 }
 
-// UsePoolForTest installs the workers, for a test sizing them itself. The
-// server calls usePool; this is the same thing with a name a test can reach.
+// UsePoolForTest is usePool under a name a test can reach.
 func (m *Mux) UsePoolForTest(pool *runner.Pool) { m.usePool(pool) }
 
 // closeWorkers stops them once the workers have answered the queue, for a
@@ -125,8 +124,7 @@ func (m *Mux) closeWorkers() {
 	}
 }
 
-// ServeHTTP answers one request, so a Go host can mount a script's router
-// without the script listening on anything.
+// ServeHTTP answers one request, the script listening on nothing.
 func (m *Mux) ServeHTTP(w nethttp.ResponseWriter, r *nethttp.Request) {
 	m.mux.ServeHTTP(w, r)
 }

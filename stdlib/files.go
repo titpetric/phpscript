@@ -8,16 +8,10 @@ import (
 	"github.com/titpetric/phpscript/stdlib/session"
 )
 
-// RegisterFS reroots the filesystem bindings Register installed at dir. A path
-// from PHP resolves under dir and cannot climb out of it, "/" names dir itself,
-// and writable_paths bounds a write; see files.RegisterRoot.
-//
-// RegisterFS reroots stdlib/gd with them, because a script loads an image by
-// the path it would pass file_get_contents. It reroots stdlib/pexec for a
-// different reason: a command is a process and no path, and the root only
-// decides where it starts, so that it matches what getcwd() says. It reaches
-// pexec only when the mount included it, because rerooting installs the area's
-// bindings and would restore what a narrowed profile left out.
+// RegisterFS reroots the filesystem bindings Register installed at dir, which
+// a path from PHP resolves under and cannot climb out of. gd and session go
+// with them, and pexec where the mount included it: the root is where a
+// command starts, so that getcwd() agrees with it.
 func RegisterFS(rt *runner.Runtime, dir string) {
 	files.RegisterRoot(rt, dir)
 	gd.RegisterRoot(rt, dir)

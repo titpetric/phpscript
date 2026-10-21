@@ -29,15 +29,9 @@ import (
 // into a short limit.
 const maxTimeLimit = 100 * 365 * 24 * time.Hour
 
-// SetTimeLimit bounds how long the script may run, restarting the clock from
-// now the way a second set_time_limit call does. Zero removes the limit, and
-// maxTimeLimit caps a longer one.
-//
-// The limit is the runtime's wherever the call comes from, including a handler
-// of the script's own HTTP server: a serving script is one script and this is
-// its deadline. The timer cancels the context every binding holds, so a
-// blocked Go call ends too, and a handler extending the limit extends the
-// server and leaves the context the server parks on untouched.
+// SetTimeLimit bounds how long the script may run, restarting the clock the
+// way a second set_time_limit call does. Zero removes the limit, maxTimeLimit
+// caps a longer one, and the timer cancels the context bindings hold.
 func (rt *Runtime) SetTimeLimit(limit time.Duration) {
 	if limit < 0 {
 		limit = 0
@@ -50,11 +44,6 @@ func (rt *Runtime) SetTimeLimit(limit time.Duration) {
 func (rt *Runtime) TimeLimit() time.Duration { return rt.timeLimit }
 
 // SetIgnoreUserAbort decides whether the client going away ends the script.
-//
-// Off, which is the default, the disconnect stops the script where it next
-// looks. On, the script runs to its own end and asks ConnectionAborted when it
-// reads. A time limit still applies either way: ignoring the client is
-// not permission to run forever.
 func (rt *Runtime) SetIgnoreUserAbort(enable bool) {
 	rt.ignoreAbort = enable
 }
@@ -62,8 +51,7 @@ func (rt *Runtime) SetIgnoreUserAbort(enable bool) {
 // IgnoreUserAbort reports whether the run carries on through a disconnect.
 func (rt *Runtime) IgnoreUserAbort() bool { return rt.ignoreAbort }
 
-// ConnectionAborted reports that the client closed the connection: the request
-// a handler answers inside one, and whatever started the script outside one.
+// ConnectionAborted reports that the client closed the connection.
 func (rt *Runtime) ConnectionAborted() bool {
 	return ended(rt.clientDone)
 }
@@ -79,14 +67,8 @@ func (rt *Runtime) ClientContext() context.Context {
 	return rt.Context()
 }
 
-// EnterRequest records the connection of one request for the length of it, and
-// returns the function that puts the previous one back.
-//
-// This serves a host answering one request after another on one runtime, which
-// HTTP\Mux does. The saved state covers everything a request can change: the
-// connection connection_aborted() reports, whether a disconnect ends it, and
-// the limit, because php settles the three per request and there a request is
-// a script.
+// EnterRequest records the connection of one request for the length of it,
+// and returns the function that puts the previous one back.
 func (rt *Runtime) EnterRequest(ctx context.Context) func() {
 	saved := rt.BeginRequest(ctx)
 	return func() { rt.EndRequest(saved) }

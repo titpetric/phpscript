@@ -12,9 +12,7 @@ package model
 // declaration shadows it in the table and this value is never reached.
 var stdClass = &Class{Name: "stdClass"}
 
-// StdClass returns the class every stdClass instance points at. Every one
-// shares it, so two instances are the same class and never two classes
-// sharing a name.
+// StdClass returns the class every stdClass instance shares.
 func StdClass() *Class {
 	return stdClass
 }

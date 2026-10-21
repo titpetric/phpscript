@@ -19,8 +19,6 @@ const (
 )
 
 // SetProfile records the area mask this runtime's bindings install under.
-// stdlib.Mount calls it, so that a later reroot of one area can test
-// whether the mount included it.
 func (rt *Runtime) SetProfile(profile Profile) { rt.profile = profile }
 
 // Profile reports the area mask this runtime's bindings install under.

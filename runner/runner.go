@@ -38,16 +38,8 @@ type IncludeFunc func(path string) (*model.Program, error)
 // SetIncludeResolver installs the include/require resolver.
 func (rt *Runtime) SetIncludeResolver(fn IncludeFunc) { rt.include = fn }
 
-// RegisterInclude installs a host implementation of one include target: an
-// include or require of path runs fn in place of parsing the file, and the
-// script sees fn's return value where PHP would see the file's.
-//
-// This is for files the runtime reimplements in Go. composer's generated
-// vendor/autoload.php is the motivating case: it bootstraps a class loader
-// through PHP features the interpreter does not support, while phpscript can
-// read the same composer metadata natively. Binding it here, and not
-// installing the loader at startup, keeps the PHP semantics intact: nothing is
-// autoloadable until the script has actually included the autoloader.
+// RegisterInclude installs a host implementation of one include target, for a
+// file the runtime reimplements in Go: composer's vendor/autoload.php.
 func (rt *Runtime) RegisterInclude(path string, fn func() (any, error)) {
 	if rt.includeHooks == nil {
 		rt.includeHooks = map[string]func() (any, error){}
@@ -55,8 +47,7 @@ func (rt *Runtime) RegisterInclude(path string, fn func() (any, error)) {
 	rt.includeHooks[cleanFSPath(path)] = fn
 }
 
-// Load parses PHP source into a program. The source names no file, so
-// __FILE__ and __DIR__ stay names for the runtime to answer.
+// Load parses PHP source, naming no file, into a program.
 func (rt *Runtime) Load(src string) (*model.Program, error) {
 	return rt.loadNamed("", src)
 }
@@ -155,19 +146,11 @@ func (rt *Runtime) Run(p *model.Program) (err error) {
 	return err
 }
 
-// HasErrorHandler reports whether a host installed one with OnError, for a
-// binding deciding where a message with nowhere obvious to go should go.
+// HasErrorHandler reports whether a host installed one with OnError.
 func (rt *Runtime) HasErrorHandler() bool { return rt.errorHandler != nil }
 
-// RecordError reports err on the trace of the request this runtime is serving,
-// as the failure of the script it runs. Run calls it for the error a script
-// ends with; a host calls it for a failure that happened outside the script,
-// before or around it, which no throw in the script can catch: a request body
-// refused for its size, say.
-//
-// It records and returns. It does not unwind PHP execution, so nothing about it
-// is visible to a script through try/catch; a Go host observes it on the trace,
-// or through the handler installed with OnError.
+// RecordError reports err on the trace of the request this runtime serves,
+// unwinding nothing, so no try/catch in the script sees it.
 func (rt *Runtime) RecordError(err error) {
 	if err == nil {
 		return

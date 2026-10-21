@@ -25,14 +25,9 @@ func (e *Exception) ThrowableClass() string {
 	return e.Class
 }
 
-// NewException returns a new allocation for an exception, and a nil error, so
-// a `new Exception` call in the runtime does not throw immediately.
-//
-// NewException returns a pointer. Returning the struct by value boxed a copy
-// into the interface the VM holds, which costs the same allocation but loses
-// reference semantics: the boxed copy is not addressable, so
-// `$e->message = "..."` could not write to it and a method could not mutate
-// the instance the script holds.
+// NewException returns an exception and a nil error, so `new Exception` does
+// not throw. The pointer is what keeps `$e->message = "..."` writable: a
+// struct boxed into the VM's interface is not addressable.
 func NewException(message string, code int) (*Exception, error) {
 	return &Exception{
 		Message: message,

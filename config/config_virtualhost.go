@@ -45,9 +45,8 @@ type VirtualHost struct {
 	DocumentRoot string `yaml:"document_root"`
 }
 
-// Normalize rewrites Domain as the list Domains returns, so an entry carries
-// the names the router compares a Host header against, and not the spelling
-// the operator used.
+// Normalize rewrites Domain as the list Domains returns, the names the router
+// compares a Host header against.
 func (v VirtualHost) Normalize() VirtualHost {
 	v.Domain = strings.Join(v.Domains(), " ")
 	return v

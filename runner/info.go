@@ -17,14 +17,7 @@ type InfoField struct {
 // registration.
 type InfoSection func(rt *Runtime) []InfoField
 
-// RegisterInfo adds a named section to phpinfo(), after the runtime's own
-// block. Sections print in registration order, and phpinfo() drops one
-// reporting no rows entirely, never printing a heading over nothing.
-//
-// A binding answers for memory it holds across requests here: a store bound
-// into the context, a cache a precompile pass filled. None of that is in
-// memory_get_usage(), which measures one script's live values, so phpinfo() is
-// where the process-lifetime side is visible.
+// RegisterInfo adds a named section to phpinfo(), in registration order.
 func (rt *Runtime) RegisterInfo(name string, section InfoSection) {
 	rt.infoSections = append(rt.infoSections, namedInfoSection{name: name, section: section})
 }

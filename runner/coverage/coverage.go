@@ -262,13 +262,7 @@ func coverSpan(s model.Stmt, span model.SourceSpan) model.SourceSpan {
 	return span
 }
 
-// Name spells a file for a profile: below the directory the command ran in,
-// with no leading separator.
-//
-// The interpreter anchors an entrypoint at the source filesystem root for
-// __FILE__ ("/app.php") and names an include as it resolved it ("app.php").
-// Both are the same file, and a report that kept the two spellings apart would
-// count it twice.
+// Name spells a file for a profile, with no leading separator.
 func Name(filename string) string {
 	return strings.TrimPrefix(filename, "/")
 }
