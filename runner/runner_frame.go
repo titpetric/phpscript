@@ -207,12 +207,13 @@ func combineErrors(errs ...error) error {
 func (rt *Runtime) bindParams(decl *model.FuncDecl, args []any, scope *Scope) error {
 	for i, p := range decl.Params {
 		if p.Variadic {
-			n := 0
-			if len(args) > i {
-				n = len(args) - i
-			}
-			rest := model.NewArraySize(n)
-			for _, arg := range args[i:] {
+			// min, because a caller that stopped short of the variadic
+			// parameter leaves i past the end: `f($a, $b, ...$rest)` called as
+			// `f("x")` reaches here with i at 2 and one argument, and args[i:]
+			// panics on the slice bound.
+			tail := args[min(i, len(args)):]
+			rest := model.NewArraySize(len(tail))
+			for _, arg := range tail {
 				rest.Append(arg)
 			}
 			scope.Set(p.Name, rest)
