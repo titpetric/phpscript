@@ -8,8 +8,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/runner/coverage"
 )
@@ -29,7 +27,7 @@ const CoveragePath = "/debug/phpscript/coverage"
 // aggregator holds one entry per statement range and is what survives the
 // request that produced it. See runner/coverage.
 type coverageModule struct {
-	platform.UnimplementedModule
+	ZeroModule
 	aggregator *coverage.Aggregator
 	globals    *flags.Options
 
@@ -42,10 +40,10 @@ type coverageModule struct {
 // newCoverageModule returns the module a run with --cover registers.
 func newCoverageModule(globals *flags.Options, roots ...fs.FS) *coverageModule {
 	return &coverageModule{
-		UnimplementedModule: *platform.NewUnimplementedModule("phpcoverage"),
-		aggregator:          coverage.NewAggregator(),
-		globals:             globals,
-		roots:               roots,
+		ZeroModule: *newZeroModule("phpcoverage"),
+		aggregator: coverage.NewAggregator(),
+		globals:    globals,
+		roots:      roots,
 	}
 }
 
@@ -56,7 +54,7 @@ func (m *coverageModule) watch(root fs.FS) {
 }
 
 // Mount publishes the endpoint.
-func (m *coverageModule) Mount(_ context.Context, r platform.Router) error {
+func (m *coverageModule) Mount(_ context.Context, r Router) error {
 	r.Handle(CoveragePath, http.HandlerFunc(m.serve))
 	return nil
 }

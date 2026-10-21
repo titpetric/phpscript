@@ -29,7 +29,7 @@ func TestRangeShapes(t *testing.T) {
 
 // TestRangeCharacterPairs covers which pairs read as characters: both ends one
 // byte, whatever that byte is. php answers strings for range("1", "5") too,
-// and an end of more than one byte is a number instead.
+// and reads an end of more than one byte as a number.
 func TestRangeCharacterPairs(t *testing.T) {
 	t.Parallel()
 	if _, _, ok := rangeChars("a", "e"); !ok {

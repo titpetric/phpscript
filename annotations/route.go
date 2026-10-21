@@ -7,15 +7,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/model"
 )
 
 // Route serves the @route endpoints of a PHP source tree as a
 // platform.Module, and registers on a standard library mux just as well.
 type Route struct {
-	platform.UnimplementedModule
+	Module
 	root   fs.FS
 	config config
 }
@@ -24,14 +22,14 @@ type Route struct {
 func NewRoute(root fs.FS, options ...Option) *Route {
 	cfg := newConfig(options...)
 	return &Route{
-		UnimplementedModule: *platform.NewUnimplementedModule(cfg.moduleName("phproute")),
-		root:                root,
-		config:              cfg,
+		Module: *newModule(cfg.moduleName("phproute")),
+		root:   root,
+		config: cfg,
 	}
 }
 
 // Mount registers all discovered routes with the platform router.
-func (r *Route) Mount(_ context.Context, router platform.Router) error {
+func (r *Route) Mount(_ context.Context, router Router) error {
 	if router == nil {
 		return fmt.Errorf("annotations: nil router")
 	}

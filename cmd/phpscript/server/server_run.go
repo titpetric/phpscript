@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/titpetric/cli"
-	"github.com/titpetric/platform"
 
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/config"
@@ -47,9 +46,9 @@ func NewCommand(cfg *config.Config, globals *flags.Options) *cli.Command {
 	}
 }
 
-// Module implements the platform.Module interface.
+// Module implements the LifecycleModule interface.
 type Module struct {
-	platform.UnimplementedModule
+	ZeroModule
 	handler http.Handler
 }
 
@@ -66,13 +65,13 @@ func NewModule(root, documentRoot string, options runner.Options, flatstack, aut
 // path the router has not claimed.
 func newModule(name string, handler http.Handler) *Module {
 	return &Module{
-		UnimplementedModule: *platform.NewUnimplementedModule(name),
-		handler:             handler,
+		ZeroModule: *newZeroModule(name),
+		handler:    handler,
 	}
 }
 
 // Mount registers HTTP routes.
-func (m *Module) Mount(_ context.Context, r platform.Router) error {
+func (m *Module) Mount(_ context.Context, r Router) error {
 	r.Handle("/*", m.handler)
 	return nil
 }
@@ -391,13 +390,13 @@ func Run(ctx context.Context, args []string, appConfig config.Config, globals *f
 
 // newManager builds the manager Run starts, with nothing bound yet. A test
 // drives Reload on it directly, without a signal.
-func newManager(ctx context.Context, args []string, started config.Config, globals *flags.Options) (*platform.Manager, error) {
+func newManager(ctx context.Context, args []string, started config.Config, globals *flags.Options) (*Manager, error) {
 	options, err := started.PlatformOptions()
 	if err != nil {
 		return nil, err
 	}
 
-	manager := platform.NewManager(options)
+	manager := newPlatformManager(options)
 
 	// One aggregator for the process: a reload replaces the sites and leaves the
 	// measurement of what this process ran.
@@ -420,7 +419,7 @@ func newManager(ctx context.Context, args []string, started config.Config, globa
 
 	// A reload discards the platform value every registration binds to,
 	// so every registration belongs here and not in Run.
-	manager.Setup = func(svc *platform.Platform) error {
+	manager.Setup = func(svc *Service) error {
 		appConfig, err := reloadConfig(started, globals)
 		if err != nil {
 			return err
@@ -442,13 +441,13 @@ func reloadConfig(started config.Config, globals *flags.Options) (config.Config,
 }
 
 // setup registers what one generation serves.
-func setup(ctx context.Context, svc *platform.Platform, appConfig config.Config, args []string, globals *flags.Options, cover *coverageModule) error {
+func setup(ctx context.Context, svc *Service, appConfig config.Config, args []string, globals *flags.Options, cover *coverageModule) error {
 	// The platform records, phpscript observes: the interpreter reports onto
 	// the trace the recorder's middleware put in the request context rather
 	// than into a second recorder. Looked up per generation, each of which
 	// builds its own. Telemetry off leaves the observers empty.
 	var observers []runner.Observer
-	var recorder *platform.TelemetryModule
+	var recorder *TelemetryModule
 	if svc.Find(&recorder) {
 		observers = append(observers, telemetry.NewModule(recorder.Tracer()))
 	}
@@ -481,7 +480,7 @@ func setup(ctx context.Context, svc *platform.Platform, appConfig config.Config,
 
 // warnFrozen reports a reloaded setting the manager read once and cannot
 // apply. Refusing instead would take a working server down over one.
-func warnFrozen(log platform.Logger, started, reloaded config.Config) {
+func warnFrozen(log Logger, started, reloaded config.Config) {
 	if log == nil {
 		return
 	}
@@ -509,7 +508,7 @@ func warnFrozen(log platform.Logger, started, reloaded config.Config) {
 // modules mounted straight onto the platform router. The route modules stay on
 // that router and not a nested one, so the platform keeps seeing the pattern
 // a request matched, the label its traces carry.
-func registerSite(svc *platform.Platform, appConfig config.Config, observers []runner.Observer, root string, globals *flags.Options, cover *coverageModule) error {
+func registerSite(svc *Service, appConfig config.Config, observers []runner.Observer, root string, globals *flags.Options, cover *coverageModule) error {
 	documentRoot := documentRoot(appConfig)
 
 	// One application owns the process, so its scripts read the process

@@ -31,7 +31,7 @@ func TestASCIICaseFolding(t *testing.T) {
 
 // TestUcwordsSeparators covers ucwords(): the default separators are the five
 // whitespace bytes, and a call naming its own replaces them, so a hyphen
-// capitalises only where the call asks for it.
+// capitalises only where the call names it.
 func TestUcwordsSeparators(t *testing.T) {
 	t.Parallel()
 	if got := phpUcwords("hello big-world"); got != "Hello Big-world" {

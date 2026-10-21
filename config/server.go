@@ -1,9 +1,5 @@
 package config
 
-import (
-	"github.com/titpetric/platform"
-)
-
 // Server is the YAML spelling of platform.Options: everything a configuration
 // file gets to say about the platform `phpscript server` runs on. The options
 // the platform takes from the process and not from a file, such as the
@@ -29,8 +25,8 @@ type Server struct {
 
 // Options returns the platform options this block describes, with no recorder
 // configured. Callers want Config.PlatformOptions, which adds one.
-func (s Server) Options() *platform.Options {
-	return &platform.Options{
+func (s Server) Options() *PlatformOptions {
+	return &PlatformOptions{
 		ServerAddr: s.Addr,
 		Quiet:      s.Quiet,
 		Modules:    s.Modules,

@@ -10,8 +10,6 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/annotations"
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
@@ -129,7 +127,7 @@ func TestModule_Mount(t *testing.T) {
 	router.Get("/claimed", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("router"))
 	})
-	var mounted platform.Router = router
+	var mounted Router = router
 	if err := module.Mount(context.Background(), mounted); err != nil {
 		t.Fatalf("Mount: %v", err)
 	}
@@ -395,7 +393,7 @@ func body(t *testing.T, url, host string) (int, string) {
 
 // managerFixture is a started manager and the file it reads.
 type managerFixture struct {
-	manager  *platform.Manager
+	manager  *Manager
 	filename string
 }
 

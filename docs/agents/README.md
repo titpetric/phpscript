@@ -275,7 +275,7 @@ Three tests fail the build when they regress; none of them skips.
 | `TestLexOperatorNoAlloc`                   | `parser/lexer_test.go`         | The lexer's operator path allocates nothing                                           |
 | `TestNoInheritanceAtRuntime`               | `runner`                       | `model.Class` has no `Parent` field                                                   |
 
-An improvement lowers its budget in its own commit, the way a finding lowers `scripts/splint-baseline.json`. A budget is never raised. A change that needs one raised goes to the operator. `TestNoInheritanceAtRuntime` is a design guard and is not negotiable at all.
+An improvement lowers its budget in its own commit. A budget is never raised. A change that needs one raised goes to the operator. `TestNoInheritanceAtRuntime` is a design guard and is not negotiable at all.
 
 ## The frozen configuration model
 

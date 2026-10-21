@@ -6,7 +6,7 @@ import (
 
 // TestTrimSides covers the three trims one constructor builds: the default
 // character list is php's five whitespace bytes plus NUL, a call naming its
-// own list replaces that list, and each side strips only where it is asked to.
+// own list replaces that list, and each side strips its own end.
 func TestTrimSides(t *testing.T) {
 	t.Parallel()
 	both := phpTrim(trimBoth, defaultTrimChars)
@@ -25,15 +25,15 @@ func TestTrimSides(t *testing.T) {
 	if got := both("xxhelloxx", "x"); got != "hello" {
 		t.Errorf("trim with a named list = %q, want hello", got)
 	}
-	// A NUL is in the default list, which is what makes a C string trim.
+	// A NUL is in the default list, so a C string trims.
 	if got := both("x\x00"); got != "x" {
 		t.Errorf("trim of a trailing NUL = %q, want x", got)
 	}
 }
 
 // TestCharMaskRanges covers the "a..z" spelling the trim family's character
-// list takes: the range includes both ends, a reversed range is no range, and
-// a trailing ".." is two literal dots.
+// list takes: the range includes both ends, and a short list is two literal
+// characters.
 func TestCharMaskRanges(t *testing.T) {
 	t.Parallel()
 	mask := charMask("a..e")

@@ -6,15 +6,13 @@ import (
 	"fmt"
 	"io/fs"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/runner"
 )
 
 // Startup runs the @startup jobs of a PHP source tree once, in path order,
 // before the platform starts its server.
 type Startup struct {
-	platform.UnimplementedModule
+	Module
 	root   fs.FS
 	config config
 }
@@ -23,9 +21,9 @@ type Startup struct {
 func NewStartup(root fs.FS, options ...Option) *Startup {
 	cfg := newConfig(options...)
 	return &Startup{
-		UnimplementedModule: *platform.NewUnimplementedModule(cfg.moduleName("phpstartup")),
-		root:                root,
-		config:              cfg,
+		Module: *newModule(cfg.moduleName("phpstartup")),
+		root:   root,
+		config: cfg,
 	}
 }
 

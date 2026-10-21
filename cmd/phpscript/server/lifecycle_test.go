@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/config"
 	"github.com/titpetric/phpscript/internal/flags"
 	"github.com/titpetric/phpscript/runner"
@@ -15,7 +13,7 @@ import (
 
 // failingModule stands in for a startup module whose jobs did not run.
 type failingModule struct {
-	platform.UnimplementedModule
+	ZeroModule
 	err     error
 	started bool
 }
@@ -41,8 +39,8 @@ func TestNonFatalRecordsTheFailureInsteadOfReturningIt(t *testing.T) {
 	recorder := telemetry.NewModule(tracer)
 
 	module := &failingModule{
-		UnimplementedModule: *platform.NewUnimplementedModule("phpstartup:shop.example.com"),
-		err:                 errors.New("startup boot.php: missing_function"),
+		ZeroModule: *newZeroModule("phpstartup:shop.example.com"),
+		err:        errors.New("startup boot.php: missing_function"),
 	}
 
 	if err := nonFatal(module, []runner.Observer{recorder}).Start(context.Background()); err != nil {
@@ -78,7 +76,7 @@ func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	recorder := telemetry.NewModule(tracer)
-	module := &failingModule{UnimplementedModule: *platform.NewUnimplementedModule("phpstartup:blog.example.com")}
+	module := &failingModule{ZeroModule: *newZeroModule("phpstartup:blog.example.com")}
 
 	if err := nonFatal(module, []runner.Observer{recorder}).Start(context.Background()); err != nil {
 		t.Fatal(err)
@@ -94,8 +92,8 @@ func TestNonFatalRecordsASuccessfulStart(t *testing.T) {
 func TestNonFatalSurvivesWithoutARecorder(t *testing.T) {
 	t.Parallel()
 	module := &failingModule{
-		UnimplementedModule: *platform.NewUnimplementedModule("phpstartup:shop.example.com"),
-		err:                 errors.New("startup boot.php: missing_function"),
+		ZeroModule: *newZeroModule("phpstartup:shop.example.com"),
+		err:        errors.New("startup boot.php: missing_function"),
 	}
 	if err := nonFatal(module, nil).Start(context.Background()); err != nil {
 		t.Fatalf("error = %v, want nil", err)
@@ -109,7 +107,7 @@ func TestNonFatalSurvivesWithoutARecorder(t *testing.T) {
 // it registered.
 func TestNonFatalKeepsTheModuleName(t *testing.T) {
 	t.Parallel()
-	module := &failingModule{UnimplementedModule: *platform.NewUnimplementedModule("phpstartup:shop.example.com")}
+	module := &failingModule{ZeroModule: *newZeroModule("phpstartup:shop.example.com")}
 	if got := nonFatal(module, nil).Name(); got != "phpstartup:shop.example.com" {
 		t.Fatalf("name = %q", got)
 	}

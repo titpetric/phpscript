@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/titpetric/platform"
-
 	"github.com/titpetric/phpscript/runner"
 	"github.com/titpetric/phpscript/telemetry"
 )
@@ -18,7 +16,7 @@ import (
 // Scheduler runs @schedule jobs for the life of the server. Start returns
 // immediately; each job waits until its next due time in its own goroutine.
 type Scheduler struct {
-	platform.UnimplementedModule
+	Module
 	root   fs.FS
 	config config
 	now    func() time.Time
@@ -40,10 +38,10 @@ type scheduledJob struct {
 func NewScheduler(root fs.FS, options ...Option) *Scheduler {
 	cfg := newConfig(options...)
 	return &Scheduler{
-		UnimplementedModule: *platform.NewUnimplementedModule(cfg.moduleName("phpschedule")),
-		root:                root,
-		config:              cfg,
-		now:                 time.Now,
+		Module: *newModule(cfg.moduleName("phpschedule")),
+		root:   root,
+		config: cfg,
+		now:    time.Now,
 	}
 }
 

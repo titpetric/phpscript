@@ -3342,12 +3342,9 @@ class Session\Manager
     public function __construct(mixed $storage, mixed $users) {}
 
     /**
-     * delete_by_user signs one user out everywhere, answering how many sessions it
-     * took. A user holds a session per client, so removing an account is a sweep
-     * and not a check on the current request.
-     * 
-     * The sweep clears this manager's own session when it took it, so valid()
-     * answers false in the same request the account went away in.
+     * delete_by_user signs one user out of every client, answering how many sessions
+     * it took. It clears this manager's own session when the sweep took it, so
+     * valid() answers false in the same request the account went away in.
      */
     public function delete_by_user(string $user_id): int {}
 
@@ -3420,7 +3417,7 @@ class Session\Storage\Disk
     /**
      * delete_by_user removes every session file holding userID, counting what it
      * took. The walk reads each session because the payload is the only place the
-     * user appears: a file is named for its session and nothing else.
+     * user appears: a file carries its session id as its name and nothing more.
      */
     public function delete_by_user(string $user_id): int {}
 

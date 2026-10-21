@@ -40,8 +40,8 @@ func TestArraySumPromotes(t *testing.T) {
 }
 
 // TestArrayFlipAndReverse covers the two rearrangements: flip swaps keys for
-// values, and reverse renumbers a list unless the call asks to keep the keys,
-// which is what php's second argument decides.
+// values, and reverse renumbers a list unless php's second argument says to
+// keep the keys.
 func TestArrayFlipAndReverse(t *testing.T) {
 	t.Parallel()
 	source := model.NewArray()

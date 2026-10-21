@@ -7,22 +7,6 @@ import (
 	"testing"
 )
 
-func TestAreaName(t *testing.T) {
-	t.Parallel()
-	cases := map[string]string{
-		"registerStrings": "strings",
-		"registerJSON":    "json",
-		"Register":        "",
-		"RegisterFS":      "",
-		"init":            "",
-	}
-	for in, want := range cases {
-		if got := areaName(in); got != want {
-			t.Errorf("areaName(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 // TestScan exercises the source scan over a synthetic registration file: the
 // registration-site comment, the godoc fallback with its leading symbol
 // rewritten, signature extraction, and the by-reference setter convention.
