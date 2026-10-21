@@ -39,8 +39,7 @@ func TestDerive(t *testing.T) {
 }
 
 // TestBcryptVerify covers the bcrypt half on a hash written at php's revision
-// marker, which x/crypto refuses until the prefix is rewritten, and the cost
-// read back off it.
+// marker, passed to x/crypto as it stands, and the cost read back off it.
 func TestBcryptVerify(t *testing.T) {
 	t.Parallel()
 	hash, err := derive("hunter2", params{algo: algoBcrypt, cost: bcryptMinCost})
@@ -67,6 +66,33 @@ func TestBcryptVerify(t *testing.T) {
 	}
 	if _, err := bcryptCost("not-a-bcrypt-hash"); err == nil {
 		t.Error("bcryptCost() read a cost out of a string that is not a hash")
+	}
+}
+
+// TestBcryptRevisions feeds x/crypto a hash php wrote, unrewritten, under the
+// three revision markers the password-file table in docs/security.md reads.
+// php verifies all three spellings of the same body, and so does x/crypto:
+// decodeVersion refuses only a major version above '2' and carries the minor
+// through the comparison, so the revision cancels and a rewrite on the way in
+// changes nothing.
+func TestBcryptRevisions(t *testing.T) {
+	t.Parallel()
+
+	// php -r 'echo password_hash("hunter2", PASSWORD_BCRYPT, ["cost" => 4]);'
+	const phpHash = "$2y$04$WmT0g666saxPq75RDYYNtOIhBRHjNejxJUmMZRbdM1dNyrUKxKFBK"
+
+	for _, revision := range []string{phpPrefix, goPrefix, "$2b$"} {
+		stored := revision + phpHash[len(phpPrefix):]
+		if !bcryptVerify("hunter2", stored) {
+			t.Errorf("bcryptVerify(%q) = false, want true", stored)
+		}
+		if bcryptVerify("hunter3", stored) {
+			t.Errorf("bcryptVerify(%q) accepted the wrong password", stored)
+		}
+		cost, err := bcryptCost(stored)
+		if err != nil || cost != 4 {
+			t.Errorf("bcryptCost(%q) = %d, %v, want 4", stored, cost, err)
+		}
 	}
 }
 
