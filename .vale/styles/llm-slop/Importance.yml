@@ -13,7 +13,9 @@ tokens:
   - '\bdo not skip\b'
   - '\bit is worth (?:noting|knowing|saying|mentioning)\b'
   - '\bworth (?:noting|knowing|a mention)\b'
-  - '\bone thing to know\b'
+  # "One thing" opens an advisory nobody asked for, and the thing it names is
+  # either a finding, which goes in the report, or nothing.
+  - '\bone thing\b'
   - '\bheads up\b'
   - '\bthe key (?:insight|takeaway|thing)\b'
   - '\bthe important (?:thing|part) (?:is|here)\b'

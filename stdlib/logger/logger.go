@@ -11,8 +11,7 @@ import (
 
 // Logger is a slog logger that fails the span it runs in when a caller reports
 // an error. Log output is the log's business and stays there; what reaches the
-// trace is the one thing a trace has a place for, which is that the work went
-// wrong.
+// trace is what a trace has a place for, that the work went wrong.
 //
 // The context it holds is the one the work runs under: a caller passes a logger
 // to a library for the length of one call, so it lives as long as that context.

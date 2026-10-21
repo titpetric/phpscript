@@ -95,7 +95,7 @@ The unpinned job leaves `GOMAXPROCS` alone, records it in the manifest, and take
 
 ### The sprint gate
 
-`atkins default` is not the gate for a sprint. Its `build` task runs `go install .`, which is the one thing the private-binary rule exists to prevent, and it builds a docker image a sprint has no use for. Running it replaces the binary on `PATH` that whoever measures next will time against.
+`atkins default` is not the gate for a sprint. Its `build` task runs `go install .`, the write the private-binary rule exists to prevent, and it builds a docker image a sprint has no use for. Running it replaces the binary on `PATH` that whoever measures next will time against.
 
 The gate is the subset that compiles nothing into a shared location, with the private binary first on `PATH`:
 

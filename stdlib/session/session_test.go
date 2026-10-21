@@ -107,8 +107,8 @@ func TestPruneDoesNotCrossApplicationRoots(t *testing.T) {
 // application roots.
 //
 // It asserts on the directories that appear and not on what PHP prints,
-// because the path is the one thing about this class a script cannot observe, and
-// the whole claim is about where the files land.
+// because the path is what a script cannot observe about this class, and the
+// whole claim is about where the files land.
 func TestRegisteredDiskStorageIsPerRoot(t *testing.T) {
 	temp := t.TempDir()
 	t.Setenv("TMPDIR", temp)
