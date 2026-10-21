@@ -24,7 +24,7 @@ package engine
 // head keeps its own opcodes, and the pass renumbers every recorded pc
 // afterwards.
 
-// fusePrograms rewrites p.code in place and remaps every recorded pc.
+// fuseProgram rewrites p.code in place and remaps every recorded pc.
 func fuseProgram(p *Program) {
 	if len(p.code) == 0 {
 		return

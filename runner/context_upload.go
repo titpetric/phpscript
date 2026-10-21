@@ -159,7 +159,7 @@ func uploadValue(file *UploadedFile, key string) any {
 	return nil
 }
 
-// filesArray renders $_FILES. A field named "files[]" takes PHP's parallel
+// filesArrayInto renders $_FILES. A field named "files[]" takes PHP's parallel
 // array shape, $_FILES["files"]["name"][0]; any other field takes the scalar
 // shape, $_FILES["file"]["name"], and keeps the last file sent under it, the
 // way a repeated form value assigns over the one before it.

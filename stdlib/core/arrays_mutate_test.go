@@ -7,6 +7,8 @@ import (
 	"github.com/titpetric/phpscript/model"
 )
 
+// TestPHPArrayMergeShapes covers both key regimes. array_merge always returns
+// an *model.Array so the result stays appendable (see phpArrayMerge); wantList
 // cases assert it came back list-shaped, i.e. dense int64 keys in order.
 func TestPHPArrayMergeShapes(t *testing.T) {
 	t.Parallel()

@@ -439,7 +439,7 @@ func (c Context) pathValues(r *http.Request) {
 
 // serverVars fills $_SERVER with the part of PHP's server array that the
 // request itself answers for. Every value is a string, as $_SERVER
-// holds, with the two exceptions serverArray types back.
+// holds, with the two exceptions ServerMap and serverArrayInto type back.
 //
 // The keys PHP fills from the SAPI and from resolving a URL to a file on disk
 // (DOCUMENT_ROOT, SCRIPT_NAME, SCRIPT_FILENAME, PHP_SELF, PATH_INFO,

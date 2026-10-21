@@ -12,6 +12,11 @@ import (
 // slice around the removed element. runner_assign.go writes the script-owned
 // storage, *model.Array, directly.
 
+// assignGoIndex writes into a native Go collection returned by a binding. Go
+// maps accept new and replacement keys (they are reference types, so the script
+// observes the write), and existing slice elements are addressable through the
+// shared backing array. A slice cannot grow through the interface value holding
+// it, so callers reject `$a[] =` before reaching here.
 func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 	if keyed, ok := base.(model.Keyed); ok {
 		name := keyString(key)
@@ -66,11 +71,6 @@ func assignGoIndex(base, key any, value func(current any) (any, error)) error {
 	return fmt.Errorf("assign: target is not an array")
 }
 
-// assignGoIndex writes into a native Go collection returned by a binding. Go
-// maps accept new and replacement keys (they are reference types, so the script
-// observes the write), and existing slice elements are addressable through the
-// shared backing array. A slice cannot grow through the interface value holding
-// it, so callers reject `$a[] =` before reaching here.
 // unsetGoIndex removes key from a native Go collection, returning the
 // container to store back and whether it changed.
 //

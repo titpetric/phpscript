@@ -125,11 +125,6 @@ func (rt *Runtime) evalInclude(n *model.Include, scope *Scope) (any, error) {
 	return rt.includeFile(phpString(path), n.Once, scope)
 }
 
-// includeFile evaluates one include. once is the *_once form, which
-// includeFile answers here and not at the call site so that both engines
-// dedupe on the same thing: the resolved file, never the spelling the script
-// used. After a chdir two directories can spell one name, and a scan over
-// spellings would skip the second file as though it had already run.
 // markIncluded records a file as loaded without running it, for a caller that
 // installed its declarations another way. include_once and require_once answer
 // off this list.
@@ -142,6 +137,11 @@ func (rt *Runtime) markIncluded(path string) {
 	rt.UpdateIncludedFiles(len(rt.included))
 }
 
+// includeFile evaluates one include. once is the *_once form, which
+// includeFile answers here and not at the call site so that both engines
+// dedupe on the same thing: the resolved file, never the spelling the script
+// used. After a chdir two directories can spell one name, and a scan over
+// spellings would skip the second file as though it had already run.
 func (rt *Runtime) includeFile(path string, once bool, scope *Scope) (any, error) {
 	path = rt.includeFallback(path, scope)
 	resolved := rt.resolveFSPath(path)

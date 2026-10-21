@@ -83,13 +83,6 @@ func (rt *Runtime) Eval(e model.Expr, scope *Scope) (any, error) {
 	return expr.Run(ce.prog, &st.cenv)
 }
 
-// resolveVar returns the value Eval binds for one variable entry. Bare
-// identifiers that are not set in the current scope fall back to the constant
-// table (PHP constants are visible in every scope, whereas plain variables
-// belong to their frame), then the superglobals. A bare name nothing
-// defines is an error - PHP 8 raises Error there, while an unset variable of
-// the same spelling stays null, so the two carry different
-// identifiers.
 // helperVar reads a variable or bare name from the live scope at evaluation
 // time. The closure engine reads it in place of the slot snapshot inside
 // expressions that contain a marked sub-expression, whose scope writes a
@@ -104,6 +97,13 @@ func (rt *Runtime) helperVar(ref *scopeRef) func(string, bool) (any, error) {
 	}
 }
 
+// resolveVar returns the value Eval binds for one variable entry. Bare
+// identifiers that are not set in the current scope fall back to the constant
+// table (PHP constants are visible in every scope, whereas plain variables
+// belong to their frame), then the superglobals. A bare name nothing
+// defines is an error - PHP 8 raises Error there, while an unset variable of
+// the same spelling stays null, so the two carry different
+// identifiers.
 func (rt *Runtime) resolveVar(name, ident string, scope *Scope) (any, error) {
 	if v, ok := scope.Get(name); ok {
 		return v, nil
