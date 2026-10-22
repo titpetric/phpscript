@@ -34,7 +34,7 @@ type PasswordFile struct {
 }
 
 // NewPasswordFileRoot is the Auth\Storage\PasswordFile constructor a rooted
-// host registers, and the one stdlib/session takes a default store from.
+// host registers.
 //
 // The path resolves against the root through the runtime's own rule, so it
 // names the file file_get_contents would and cannot climb out. Nothing here
@@ -51,6 +51,36 @@ func NewPasswordFileRoot(rt *runner.Runtime, dir string, paths ...string) (*Pass
 	store := &PasswordFile{path: files.HostPath(rt, dir, name)}
 	if _, err := store.read(); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("Auth\\Storage\\PasswordFile: %s: %v", name, err)
+	}
+	return store, nil
+}
+
+// DefaultPasswordFileRoot is the user store `new Session\Manager` takes when
+// the script names none. It holds the path NewPasswordFileRoot would and
+// skips the validating parse: a manager constructs on every request, most
+// requests never call login(), and the first Authenticate or Users call
+// reads the file and refuses a bad line with the message naming it.
+//
+// What stays eager is the refusal of a file that is there and does not open,
+// and of a directory in its place: both name a tree an operator has to fix,
+// at the cost of one open against a parse.
+func DefaultPasswordFileRoot(rt *runner.Runtime, dir string) (*PasswordFile, error) {
+	store := &PasswordFile{path: files.HostPath(rt, dir, DefaultPasswordFile)}
+
+	file, err := os.Open(store.path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return store, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("Auth\\Storage\\PasswordFile: %s: %v", DefaultPasswordFile, err)
+	}
+	info, err := file.Stat()
+	_ = file.Close()
+	if err != nil {
+		return nil, fmt.Errorf("Auth\\Storage\\PasswordFile: %s: %v", DefaultPasswordFile, err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("Auth\\Storage\\PasswordFile: %s is a directory", DefaultPasswordFile)
 	}
 	return store, nil
 }

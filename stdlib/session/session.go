@@ -54,12 +54,16 @@ func RegisterRoot(rt *runner.Runtime, dir string) {
 	// against the given $storage, and logs a user in against the given
 	// $users. With no arguments it takes disk storage and the application's
 	// own .htpasswd, so `new Session\Manager` is a working login.
+	//
+	// The default store opens the file and defers the parse to the login
+	// that reads it: a manager constructs on every request, and a page
+	// that never calls login() does not pay for the account list.
 	rt.RegisterConstructor("Session\\Manager", func(storage Storage, users auth.Storage) (*Manager, error) {
 		if storage == nil {
 			storage = defaultStorage(rt, dir)
 		}
 		if users == nil {
-			store, err := auth.NewPasswordFileRoot(rt, dir)
+			store, err := auth.DefaultPasswordFileRoot(rt, dir)
 			if err != nil {
 				return nil, err
 			}

@@ -374,6 +374,67 @@ func TestNewPasswordFileRoot(t *testing.T) {
 	}
 }
 
+// TestDefaultPasswordFileRoot covers the store `new Session\Manager` takes
+// when the script names none: construction opens the default file and defers
+// the parse, so a broken file constructs and the first call that reads it
+// refuses it naming the line. What still refuses at construction is a
+// directory in the file's place, and a missing file still constructs.
+func TestDefaultPasswordFileRoot(t *testing.T) {
+	t.Parallel()
+
+	rt := runner.New(io.Discard, runner.Options{})
+
+	// A valid file authenticates through the deferred parse.
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, DefaultPasswordFile), []byte("admin:"+testHashes["bcrypt"]+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err := DefaultPasswordFileRoot(rt, root)
+	if err != nil {
+		t.Fatalf("DefaultPasswordFileRoot(%q) = %v", root, err)
+	}
+	if user, err := store.Authenticate(context.Background(), "admin", testPassword); err != nil || user == nil {
+		t.Fatalf("Authenticate() = %v, %v", user, err)
+	}
+
+	// A broken file constructs, and the calls that read it refuse it at the
+	// line NewPasswordFileRoot names.
+	broken := t.TempDir()
+	lines := "admin:" + testHashes["bcrypt"] + "\nreader:plaintext\n"
+	if err := os.WriteFile(filepath.Join(broken, DefaultPasswordFile), []byte(lines), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, err = DefaultPasswordFileRoot(rt, broken)
+	if err != nil {
+		t.Fatalf("DefaultPasswordFileRoot over a broken file = %v, want a store", err)
+	}
+	if _, err := store.Authenticate(context.Background(), "admin", testPassword); err == nil || !strings.Contains(err.Error(), "line 2") {
+		t.Errorf("Authenticate() = %v, want the refusal naming line 2", err)
+	}
+	if _, err := store.Users(context.Background()); err == nil || !strings.Contains(err.Error(), "line 2") {
+		t.Errorf("Users() = %v, want the refusal naming line 2", err)
+	}
+
+	// A missing file constructs, the state a site with no login is in.
+	absent, err := DefaultPasswordFileRoot(rt, t.TempDir())
+	if err != nil {
+		t.Fatalf("DefaultPasswordFileRoot with no file = %v, want a store", err)
+	}
+	if exists, err := absent.Exists(); err != nil || exists {
+		t.Errorf("Exists() = %v, %v, want false and no error", exists, err)
+	}
+
+	// A directory in the file's place refuses at construction: that is a
+	// tree an operator has to fix before any login runs.
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, DefaultPasswordFile), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if store, err := DefaultPasswordFileRoot(rt, dir); err == nil {
+		t.Errorf("DefaultPasswordFileRoot over a directory = %+v, want a refusal", store)
+	}
+}
+
 // TestPasswordFileRereadsTheFile is the property that makes a reload enough to
 // add a user: the store caches nothing, so an edited file takes effect on the
 // next call and nothing anywhere needs invalidating.
