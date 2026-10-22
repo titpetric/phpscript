@@ -18,6 +18,15 @@ name: dbadmin
 # for headers and does not follow; a step that wants the page the redirect
 # leads to follows with -L and does not ask for headers.
 #
+# The sign-in and sign-out posts carry a csrf field that must agree with the
+# csrf cookie. The pair is double-submit: the server stores nothing, so any
+# client that controls its own cookies satisfies the check by sending the same
+# value in both halves, and most steps here do exactly that with a fixed
+# token. What the check refuses is a cross-site form post, where the attacker
+# writes neither half. The sign-in and sign-out cases take the long way - read
+# the form, extract the token the page rendered, post it back - because those
+# two prove the rendered forms carry a working token.
+#
 # The suite is idempotent. It removes its own leftovers before it starts - the
 # scratch tables and the user it appends to the password file - and does its
 # row editing in a scratch table, so the seeded catalogue rows keep the ids the
@@ -47,7 +56,7 @@ testcases:
       # between the two left the line behind.
       - type: exec
         script: |
-          rm -f .venom-jar
+          rm -f .venom-jar .venom-csrf .venom-other
           grep -v '^venom:' ../.htpasswd > .venom-htpasswd
           cp .venom-htpasswd ../.htpasswd
           rm -f .venom-htpasswd
@@ -89,7 +98,7 @@ testcases:
   - name: a mistyped password is refused, and says nothing about the account
     steps:
       - type: exec
-        script: curl -sS -d "username=admin&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        script: curl -sS -b "csrf=venomtoken" -d "csrf=venomtoken&username=admin&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
@@ -97,7 +106,7 @@ testcases:
       # The same answer for a name no line of the file carries, so the response
       # does not say which accounts are real.
       - type: exec
-        script: curl -sS -d "username=nobody&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        script: curl -sS -b "csrf=venomtoken" -d "csrf=venomtoken&username=nobody&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
@@ -105,7 +114,7 @@ testcases:
       # The username is compared as written: the file carries lowercase names
       # and the primary key is computed from them.
       - type: exec
-        script: curl -sS -d "username=Admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        script: curl -sS -b "csrf=venomtoken" -d "csrf=venomtoken&username=Admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 200
@@ -117,10 +126,68 @@ testcases:
           - result.systemout ShouldContainSubstring STATUS 302
           - 'result.systemout ShouldContainSubstring Location: /login'
 
+  - name: a sign-in post without the form's token is refused
+    steps:
+      # The right password with no token is still 403: the check answers before
+      # anything reads the credential, and no session cookie is staged.
+      - type: exec
+        script: curl -sS -i -c .venom-csrf -d "username=admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 403
+          - result.systemout ShouldContainSubstring did not carry the sign-in form
+          - 'result.systemout ShouldNotContainSubstring Set-Cookie: session'
+      # A token field whose cookie half is absent fails the same way: the pair
+      # has to agree, not merely exist.
+      - type: exec
+        script: |
+          curl -sS -b .venom-csrf -d "csrf=mismatched&username=admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+          rm -f .venom-csrf
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 403
+          - result.systemout ShouldContainSubstring did not carry the sign-in form
+
+  - name: repeated refusals hit the sign-in rate limit
+    steps:
+      # Six wrong passwords from one address cross the five-refusal ceiling.
+      # The first five come back as ordinary refusals; the output asserted on
+      # is the sixth.
+      - type: exec
+        script: |
+          for n in 1 2 3 4 5; do
+            curl -sS -o /dev/null -b "csrf=venomtoken" -d "csrf=venomtoken&username=admin&password=wrong-password" {{.host}}/login
+          done
+          curl -sS -b "csrf=venomtoken" -d "csrf=venomtoken&username=admin&password=wrong-password" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 429
+          - result.systemout ShouldContainSubstring Too many sign-in attempts
+      # The limit answers before the password is read, so the right password
+      # gets the same 429 and costs the server no derivation: a guessing
+      # client learns nothing by mixing a real candidate in.
+      - type: exec
+        script: curl -sS -b "csrf=venomtoken" -d "csrf=venomtoken&username=admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 429
+          - result.systemout ShouldContainSubstring Too many sign-in attempts
+      # Wait out the ten-second window, so the sign-in that follows starts
+      # with a clean counter.
+      - type: exec
+        script: sleep 11
+        assertions:
+          - result.code ShouldEqual 0
+
   - name: signing in stages an http-only session cookie
     steps:
+      # The long way, deliberately: read the form, take the token it rendered
+      # and the cookie that came with it, and post both back. This is the step
+      # that proves a browser's sign-in works end to end.
       - type: exec
-        script: curl -sS -i -c .venom-jar -d "username=admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        script: |
+          TOKEN=$(curl -sS -c .venom-jar {{.host}}/login | sed -n 's/.*name="csrf" value="\([0-9a-f]*\)".*/\1/p')
+          curl -sS -i -b .venom-jar -c .venom-jar -d "csrf=$TOKEN&username=admin&password={{.password}}" -w '\nSTATUS %{http_code}\n' {{.host}}/login
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 302
@@ -453,7 +520,9 @@ testcases:
           - 'result.systemout ShouldContainSubstring class="who">admin'
       # The new account signs in, with a session of its own.
       - type: exec
-        script: curl -sS -i -c .venom-other -d "username=venom&password=venomvenom" -w '\nSTATUS %{http_code}\n' {{.host}}/login
+        script: |
+          TOKEN=$(curl -sS -c .venom-other {{.host}}/login | sed -n 's/.*name="csrf" value="\([0-9a-f]*\)".*/\1/p')
+          curl -sS -i -b .venom-other -c .venom-other -d "csrf=$TOKEN&username=venom&password=venomvenom" -w '\nSTATUS %{http_code}\n' {{.host}}/login
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 302
@@ -505,8 +574,28 @@ testcases:
 
   - name: signing out ends the session
     steps:
+      # A post without the form's token signs nobody out, even from the client
+      # that holds the session cookie: a cross-site page can make a browser
+      # send that cookie, and the token is what it cannot supply.
       - type: exec
-        script: curl -sS -i -b .venom-jar -c .venom-jar -d "" -w '\nSTATUS %{http_code}\n' {{.host}}/logout
+        script: curl -sS -i -b .venom-jar -d "" -w '\nSTATUS %{http_code}\n' {{.host}}/logout
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 403
+          - result.systemout ShouldContainSubstring did not carry the sign-out form
+      # The session survived the refused post.
+      - type: exec
+        script: curl -sS -b .venom-jar -w '\nSTATUS %{http_code}\n' {{.host}}/
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring STATUS 200
+          - 'result.systemout ShouldContainSubstring class="who">admin'
+      # The sign-out button is a form in the header of every page, so the
+      # token comes from the page the way a browser's click would carry it.
+      - type: exec
+        script: |
+          TOKEN=$(curl -sS -b .venom-jar {{.host}}/ | sed -n 's/.*name="csrf" value="\([0-9a-f]*\)".*/\1/p' | head -n 1)
+          curl -sS -i -b .venom-jar -c .venom-jar -d "csrf=$TOKEN" -w '\nSTATUS %{http_code}\n' {{.host}}/logout
         assertions:
           - result.code ShouldEqual 0
           - result.systemout ShouldContainSubstring STATUS 302
