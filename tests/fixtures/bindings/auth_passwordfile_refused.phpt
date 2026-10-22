@@ -18,10 +18,21 @@ description: >
   have: the primary key is computed from the name, so two spellings would be
   two users with two keys and two sets of rows.
 
+  A utf-8 byte order mark is refused for the account it would hide: TrimSpace
+  leaves the mark on the first username, so that user matches nothing a login
+  types and nobody learns why. A bcrypt line with no revision marker - the
+  1997 "$2$" spelling - is refused because php's crypt answers the failure
+  string "*0" for it, so the line would sign in here and nowhere else;
+  tests/fixtures/stdlib/password_bcrypt_revisions.phpt settles that against
+  the php binary.
+
   A file that is not there is the one state that is not an error. It is what a
   tree with no user database looks like, exists() is the question for it, and
   Session\Manager takes a default store without that default failing a site
-  that has no login at all.
+  that has no login at all. A file of comments alone constructs the same way,
+  and exists() answers false for it too: there is no account to ask about, and
+  a login page that printed "wrong password" over that state would send the
+  operator reading the wrong file.
 ---
 <?php
 // The file that is not there: a store, not a refusal.
@@ -38,7 +49,7 @@ try {
 }
 
 // Each of these names the line, so the message is what an operator fixes.
-foreach (array("broken", "uppercase", "duplicate") as $name) {
+foreach (array("broken", "uppercase", "duplicate", "bom", "no-revision") as $name) {
 	try {
 		new Auth\Storage\PasswordFile("passwordfile/" . $name);
 		echo "constructed\n";
@@ -46,6 +57,12 @@ foreach (array("broken", "uppercase", "duplicate") as $name) {
 		echo $e->getMessage(), "\n";
 	}
 }
+
+// A file of comments alone is a valid file holding no accounts: it
+// constructs, and exists() answers false the way a missing file does.
+$staged = new Auth\Storage\PasswordFile("passwordfile/comments");
+var_dump($staged->exists());
+var_dump($staged->users());
 
 // A path cannot climb out of the application root: the spelling below resolves
 // to the fixture's own directory, where no such file exists.
@@ -60,4 +77,9 @@ no file
 Auth\Storage\PasswordFile: passwordfile/broken: line 2: "reader": unreadable password hash, want bcrypt ($2y$), argon2, apache md5 ($apr1$) or {SHA}; write it with htpasswd -B
 Auth\Storage\PasswordFile: passwordfile/uppercase: line 2: username "Reader" is not lowercase; the primary key is computed from the name, so two spellings are two users
 Auth\Storage\PasswordFile: passwordfile/duplicate: line 2: "admin" is already in this file
+Auth\Storage\PasswordFile: passwordfile/bom: line 1: a utf-8 byte order mark precedes the first username; save the file without one
+Auth\Storage\PasswordFile: passwordfile/no-revision: line 1: "admin": unreadable password hash, want bcrypt ($2y$), argon2, apache md5 ($apr1$) or {SHA}; write it with htpasswd -B
+bool(false)
+array(0) {
+}
 bool(false)

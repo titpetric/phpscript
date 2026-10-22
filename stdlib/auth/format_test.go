@@ -27,20 +27,25 @@ var testHashes = map[string]string{
 	"sha":      "{SHA}/IxesZSAbjGiE/BzEx5zsAEqD7U=",
 }
 
-// unreadableHashes are the values a line may not carry. Three of them are real
+// unreadableHashes are the values a line may not carry. Four of them are real
 // formats this build will not read, and the rest are what a damaged file looks
 // like; they are one list because the refusal is one refusal, and a plain-text
 // password is not distinguishable from a truncated hash.
 var unreadableHashes = map[string]string{
-	"plain text":        "hunter2hunter2",
-	"empty":             "",
-	"crypt des":         "abFjERrjIDnVE",
-	"php md5 crypt":     "$1$abcdefgh$W3/Qmrm9IyJrlaEZhHu/p.",
-	"truncated bcrypt":  "$2y$04$j1zOEFHUWgLb8D1SytMeoe",
-	"bcrypt bad base64": "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEb!!!",
-	"argon2 no version": "$argon2id$m=8,t=1,p=1$cy9CN0dXU2gvYnVVemZmRw$bJcfAH11Sej7T96VdH4lBTbzdCH4FhajmuGb8ZYGRh0",
-	"sha not base64":    "{SHA}not base64 at all",
-	"sha wrong width":   "{SHA}YWJj",
+	"plain text":       "hunter2hunter2",
+	"empty":            "",
+	"crypt des":        "abFjERrjIDnVE",
+	"php md5 crypt":    "$1$abcdefgh$W3/Qmrm9IyJrlaEZhHu/p.",
+	"truncated bcrypt": "$2y$04$j1zOEFHUWgLb8D1SytMeoe",
+	// The 1997 spelling with no minor revision, then a revision php's crypt
+	// never wrote. php -r answers bool(false) for both through
+	// password_verify, so a line carrying either would verify nowhere.
+	"bcrypt no revision":  "$2$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW",
+	"bcrypt bad revision": "$2c$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW",
+	"bcrypt bad base64":   "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEb!!!",
+	"argon2 no version":   "$argon2id$m=8,t=1,p=1$cy9CN0dXU2gvYnVVemZmRw$bJcfAH11Sej7T96VdH4lBTbzdCH4FhajmuGb8ZYGRh0",
+	"sha not base64":      "{SHA}not base64 at all",
+	"sha wrong width":     "{SHA}YWJj",
 }
 
 func TestVerify(t *testing.T) {

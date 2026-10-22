@@ -2673,7 +2673,12 @@ class Auth\Storage\PasswordFile
      */
     public function authenticate(string $key, string $secret): mixed {}
 
-    // exists reports whether the password file is there to read.
+    /**
+     * exists reports whether there is a user database to ask: the password file
+     * is there, and at least one of its lines is an account. A file of comments
+     * and blank lines alone answers false, so a login page says there are no
+     * accounts where a form refusing every password would name no cause.
+     */
     public function exists(): bool {}
 
     /**

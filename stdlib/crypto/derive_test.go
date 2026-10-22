@@ -69,29 +69,42 @@ func TestBcryptVerify(t *testing.T) {
 	}
 }
 
-// TestBcryptRevisions feeds x/crypto a hash php wrote, unrewritten, under the
-// three revision markers the password-file table in docs/security.md reads.
-// php verifies all three spellings of the same body, and so does x/crypto:
-// decodeVersion refuses only a major version above '2' and carries the minor
-// through the comparison, so the revision cancels and a rewrite on the way in
-// changes nothing.
-func TestBcryptRevisions(t *testing.T) {
+// phpBcryptHash is php's own derivation of "hunter2hunter2" at cost 4, the
+// vector the auth fixtures also carry:
+//
+//	php -r 'echo password_hash("hunter2hunter2", PASSWORD_BCRYPT, ["cost" => 4]);'
+const phpBcryptHash = "$2y$04$j1zOEFHUWgLb8D1SytMeoeFw/s1.z5eOLow3m0r25ypMopsjEbQGW"
+
+// TestBcryptVerifyPinsTheRevision covers the dispatch answering what php
+// answers across the revision markers, on one php-written body. php reads
+// $2a$, $2b$, $2x$ and $2y$; its crypt answers the failure string "*0" for
+// the 1997 "$2$" spelling with no minor revision and for a marker it never
+// wrote, so password_verify answers false for both:
+//
+//	php -r 'var_dump(password_verify("hunter2hunter2", "$2$04$j1zOEF..."));'  // bool(false)
+//	php -r 'var_dump(password_verify("hunter2hunter2", "$2c$04$j1zOEF..."));' // bool(false)
+//
+// x/crypto parses both spellings and verifies the body, so the refusal is the
+// dispatch's and not the library's.
+func TestBcryptVerifyPinsTheRevision(t *testing.T) {
 	t.Parallel()
+	body := strings.TrimPrefix(phpBcryptHash, "$2y")
 
-	// php -r 'echo password_hash("hunter2", PASSWORD_BCRYPT, ["cost" => 4]);'
-	const phpHash = "$2y$04$WmT0g666saxPq75RDYYNtOIhBRHjNejxJUmMZRbdM1dNyrUKxKFBK"
+	for _, rev := range []string{"$2a", "$2b", "$2x", "$2y"} {
+		if !bcryptVerify("hunter2hunter2", rev+body) {
+			t.Errorf("bcryptVerify refused the %s$ revision php reads", rev)
+		}
+	}
 
-	for _, revision := range []string{phpPrefix, goPrefix, "$2b$"} {
-		stored := revision + phpHash[len(phpPrefix):]
-		if !bcryptVerify("hunter2", stored) {
-			t.Errorf("bcryptVerify(%q) = false, want true", stored)
+	for _, hash := range []string{"$2" + body, "$2c" + body} {
+		if bcryptVerify("hunter2hunter2", hash) {
+			t.Errorf("bcryptVerify(%q) = true, where php answers false", hash)
 		}
-		if bcryptVerify("hunter3", stored) {
-			t.Errorf("bcryptVerify(%q) accepted the wrong password", stored)
+		if PasswordVerify("hunter2hunter2", hash) {
+			t.Errorf("PasswordVerify(%q) = true, where php answers false", hash)
 		}
-		cost, err := bcryptCost(stored)
-		if err != nil || cost != 4 {
-			t.Errorf("bcryptCost(%q) = %d, %v, want 4", stored, cost, err)
+		if _, ok := paramsOf(hash); ok {
+			t.Errorf("paramsOf(%q) read parameters off a hash php reports as unknown", hash)
 		}
 	}
 }

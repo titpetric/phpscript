@@ -252,17 +252,17 @@ func paramsOf(hash string) (params, bool) {
 	return params{algo: algoBcrypt, cost: cost}, true
 }
 
-// isBcrypt reports whether a stored value is long enough and shaped right to be
-// a bcrypt hash. The two conditions x/crypto rejects a string on before it
-// parses anything - 59 bytes and a leading "$" - run here first, so a value
-// that is neither argon2 nor bcrypt answers false without a copy to a []byte.
+// isBcrypt reports whether a stored value has the length and the revision
+// marker of a bcrypt hash. The length is what x/crypto rejects a string on
+// before it parses anything, run here first so a value that is neither argon2
+// nor bcrypt answers false without a copy to a []byte.
 //
-// It decides nothing else. The revision marker, the cost digits and the base64
-// are x/crypto's to read, so x/crypto can still refuse a hash this accepts,
-// and the hashes that verify are the same set as if password_verify called it
-// blind.
+// The revision marker is the one place this is stricter than x/crypto, which
+// parses the 1997 "$2$" spelling php refuses; bcryptRevision names the four
+// markers php reads. The cost digits and the base64 stay x/crypto's to read,
+// so it can still refuse a hash this accepts.
 func isBcrypt(hash string) bool {
-	return len(hash) >= 59 && hash[0] == '$'
+	return len(hash) >= 59 && bcryptRevision(hash)
 }
 
 // paramsFrom reads the ($algo, $options) tail both hashing functions take. PHP

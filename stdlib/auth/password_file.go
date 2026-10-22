@@ -94,7 +94,10 @@ func (p *PasswordFile) Authenticate(ctx context.Context, key, secret string) (Us
 	return newUser(key), nil
 }
 
-// Exists reports whether the password file is there to read.
+// Exists reports whether there is a user database to ask: the password file
+// is there, and at least one of its lines is an account. A file of comments
+// and blank lines alone answers false, so a login page says there are no
+// accounts where a form refusing every password would name no cause.
 func (p *PasswordFile) Exists() (bool, error) {
 	info, err := os.Stat(p.path)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -106,7 +109,12 @@ func (p *PasswordFile) Exists() (bool, error) {
 	if info.IsDir() {
 		return false, fmt.Errorf("password file %s is a directory", p.path)
 	}
-	return true, nil
+
+	entries, err := p.read()
+	if err != nil {
+		return false, fmt.Errorf("password file %s: %v", p.path, err)
+	}
+	return len(entries) > 0, nil
 }
 
 // Users is every record in the file, ordered by username.
@@ -166,7 +174,14 @@ func (p *PasswordFile) read() (map[string]string, error) {
 	entries := map[string]string{}
 	scanner := bufio.NewScanner(file)
 	for line := 1; scanner.Scan(); line++ {
-		text := strings.TrimSpace(scanner.Text())
+		text := scanner.Text()
+		// An editor that writes a byte order mark puts it ahead of the first
+		// username, TrimSpace leaves it there, and that account then matches
+		// nothing a login types. The refusal names what silence would hide.
+		if line == 1 && strings.HasPrefix(text, "\ufeff") {
+			return nil, errors.New("line 1: a utf-8 byte order mark precedes the first username; save the file without one")
+		}
+		text = strings.TrimSpace(text)
 		// A comment is apache's `#` and a blank line is a blank line.
 		if text == "" || strings.HasPrefix(text, "#") {
 			continue

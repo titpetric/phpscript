@@ -1,0 +1,2 @@
+# A staged file: the operator wrote the header and no accounts yet.
+# htpasswd -B appends the first one.
