@@ -29,16 +29,16 @@ func derive(password string, p params) (string, error) {
 	return phpPrefix + strings.TrimPrefix(string(hash), goPrefix), nil
 }
 
-// bcryptVerify reports whether password produced hash, reading the cost and the
-// salt out of the hash the way argon2Verify does.
+// bcryptVerify reports whether password produced hash, as stored: x/crypto
+// reads php's `$2y$` marker itself, so no prefix rewrite sits before it.
 func bcryptVerify(password, hash string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(goForm(hash)), []byte(password)) == nil
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
 // bcryptCost is the cost a stored hash carries, and an error for a
 // string the library cannot read.
 func bcryptCost(hash string) (int, error) {
-	return bcrypt.Cost([]byte(goForm(hash)))
+	return bcrypt.Cost([]byte(hash))
 }
 
 // bcryptEncoded reports whether a stored hash is one a comparison could match.

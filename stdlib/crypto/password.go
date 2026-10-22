@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/titpetric/phpscript/model"
 	"github.com/titpetric/phpscript/runner"
@@ -37,14 +36,14 @@ const (
 	defaultCost = 12
 )
 
-// phpPrefix is what PHP's crypt() writes and x/crypto refuses; goPrefix is
-// what x/crypto writes and PHP accepts.
+// phpPrefix is the revision php's password_hash writes; goPrefix is the one
+// x/crypto's GenerateFromPassword writes. Both name the same derivation.
 //
-// The two are the same algorithm. The `y` revision is PHP's marker for the
-// 2011 fix to the sign-extension bug, which Go's implementation never carried, and
-// x/crypto rejects any minor version outside the set it reads. Rewriting the
-// prefix on the way in and out makes a hash written here verify under php, and
-// a hash written by php verify here.
+// Reading needs no rewrite: x/crypto refuses only a major version above '2'
+// and carries the minor through the comparison, so a stored `$2y$`, `$2a$` or
+// `$2b$` verifies as it stands. Writing does need one, because the prefix is
+// script-visible: derive swaps goPrefix for phpPrefix on the way out, and a
+// hash written here reads byte for byte like php's.
 const (
 	phpPrefix = "$2y$"
 	goPrefix  = "$2a$"
@@ -264,14 +263,6 @@ func paramsOf(hash string) (params, bool) {
 // blind.
 func isBcrypt(hash string) bool {
 	return len(hash) >= 59 && hash[0] == '$'
-}
-
-// goForm rewrites a PHP-written hash into the revision x/crypto accepts.
-func goForm(hash string) string {
-	if strings.HasPrefix(hash, phpPrefix) {
-		return goPrefix + strings.TrimPrefix(hash, phpPrefix)
-	}
-	return hash
 }
 
 // paramsFrom reads the ($algo, $options) tail both hashing functions take. PHP

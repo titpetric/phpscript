@@ -109,7 +109,7 @@ func TestBcryptParamsOf(t *testing.T) {
 		t.Errorf("derive wrote %q", hash[:4])
 	}
 
-	for _, stored := range []string{hash, goForm(hash)} {
+	for _, stored := range []string{hash, goPrefix + hash[len(phpPrefix):]} {
 		got, ok := paramsOf(stored)
 		if !ok {
 			t.Fatalf("paramsOf(%q) failed", stored)
@@ -140,7 +140,7 @@ func TestIsPasswordHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, stored := range []string{bcryptHash, goForm(bcryptHash), argon2Hash} {
+	for _, stored := range []string{bcryptHash, goPrefix + bcryptHash[len(phpPrefix):], argon2Hash} {
 		if !IsPasswordHash(stored) {
 			t.Errorf("IsPasswordHash(%q) = false, want true", stored)
 		}
