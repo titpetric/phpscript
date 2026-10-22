@@ -15,12 +15,14 @@ func init() {
 	runner.RegisterBinding(registerArrays)
 }
 
-// through model.RangeValues, so a script can pass either a PHP array or the
-// native Go slice/map a binding returned. Those that build a fresh list return
-// a []any (one allocation, presized) in place of an *model.Array (a struct, a
-// map[any]any, a growing key slice and an interface box per key). The ones that
-// preserve or merge keys still return *model.Array, because only *model.Array
-// carries PHP's ordered hybrid-key semantics.
+// registerArrays installs the array shims. They take `any`, not *model.Array,
+// and read their input through model.RangeValues, so a script can pass either
+// a PHP array or the native Go slice/map a binding returned. Those that build
+// a fresh list return a []any (one allocation, presized) in place of an
+// *model.Array (a struct, a map[any]any, a growing key slice and an interface
+// box per key). The ones that preserve or merge keys still return
+// *model.Array, because only *model.Array carries PHP's ordered hybrid-key
+// semantics.
 func registerArrays(rt *runner.Runtime) {
 	rt.RegisterFunc("compact", phpCompact)
 	// count returns the number of elements in $array; non-array values count as 0.

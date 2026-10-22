@@ -15,11 +15,6 @@ import (
 // Throwable method set every Go error answers. The typed fast paths it falls
 // back from live in dispatch_direct.go.
 
-// callGoMethod invokes an exported method on a Go value by reflection. It
-// matches method names case-insensitively (PHP method calls are
-// case-insensitive, so `$obj->get()` resolves Go's exported Get). When the
-// method's first parameter is a context.Context it injects the runtime context,
-// and coerces arguments to the declared parameter types.
 // goMethodKey and goMethodInfo cache Go method resolution per receiver type
 // and spelled name; see Runtime.goMethods.
 type goMethodKey struct {

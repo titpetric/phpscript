@@ -4,7 +4,6 @@ import (
 	"testing"
 )
 
-// TestToString pins the strconv formatting against the fmt formatting it
 func TestPHPStrReplace(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

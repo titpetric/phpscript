@@ -642,9 +642,6 @@ func (c *compiler) doWhileStmt(node *model.DoWhile, path string) error {
 	return nil
 }
 
-// unsetStmt lowers `unset($a, $b[$k])`. It clears a local in place and removes
-// an array entry through the host. Property and static-property targets have
-// no instruction yet, so a program using one falls back to the interpreter.
 // compactCall translates compact("a", "b") into the array it names,
 // array("a" => $a, "b" => $b), with a name that is not set left out.
 //
@@ -689,6 +686,9 @@ func (c *compiler) compactCall(node *model.Call, path string) error {
 	return nil
 }
 
+// unsetStmt lowers `unset($a, $b[$k])`. It clears a local in place and removes
+// an array entry through the host. Property and static-property targets have
+// no instruction yet, so a program using one falls back to the interpreter.
 func (c *compiler) unsetStmt(node *model.Unset, path string) error {
 	for i, target := range node.Targets {
 		targetPath := fmt.Sprintf("%s.target[%d]", path, i)

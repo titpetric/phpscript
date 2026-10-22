@@ -62,10 +62,6 @@ func (c Context) Register(rt *Runtime) {
 	}
 }
 
-// serverArray renders $_SERVER. Context.Server holds every value as a string
-// because that is what all but two of PHP's server keys are; the two that are
-// not, REQUEST_TIME as an integer and REQUEST_TIME_FLOAT as a float, get their
-// type back here, so a script comparing either with === sees what PHP writes.
 // releaseMapMaps returns the edit layers of the named globals, if they are
 // views and if anything wrote to them.
 func releaseMapMaps(rt *Runtime, names ...string) {
@@ -188,6 +184,11 @@ func (c Context) ServerMap() *mapmap.MapMap {
 	return m
 }
 
+// serverArrayInto renders $_SERVER. Context.Server holds every value as a
+// string because that is what all but two of PHP's server keys are; the two
+// that are not, REQUEST_TIME as an integer and REQUEST_TIME_FLOAT as a float,
+// get their type back here, so a script comparing either with === sees what
+// PHP writes.
 func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 	mapToArrayInto(arr, c.Server)
 	if seconds, err := strconv.ParseInt(c.Server["REQUEST_TIME"], 10, 64); err == nil {
@@ -199,7 +200,7 @@ func (c Context) serverArrayInto(arr *model.Array) *model.Array {
 	return arr
 }
 
-// requestArray renders $_REQUEST: the query, form and cookie fields merged in
+// requestArrayInto renders $_REQUEST: the query, form and cookie fields merged in
 // PHP's default request order, with the route's path values written over them
 // last. The path values are the one deviation from PHP, whose $_REQUEST
 // carries no route parameters: a path parameter is request input here, and

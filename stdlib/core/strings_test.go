@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// TestPHPCRC32 pins the table implementation to the standard library's result
 // across the threshold that switches between them.
 func TestPHPCRC32(t *testing.T) {
 	t.Parallel()
